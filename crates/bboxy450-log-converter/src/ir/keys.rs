@@ -170,5 +170,5 @@ pub const EVENT_KIND: Schema = Tagged(&[
 pub const EVENT: Schema = Record(fields![
     0 => "seq": Scalar, 1 => "id": Bytes, 2 => "parent": Bytes,
     3 => "turn": Scalar, 4 => "at": Scalar, 5 => "fidelity": FIDELITY,
-    6 => "raw": RAW, 7 => "kind": EVENT_KIND,
+    6 => "raw": RAW, 7 => "kind": EVENT_KIND, 8 => "record": Bytes,
 ]);

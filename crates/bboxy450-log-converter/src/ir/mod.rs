@@ -43,6 +43,20 @@ pub type Timestamp = String;
 #[serde(transparent)]
 pub struct EventId(pub [u8; 16]);
 
+/// Native-record anchor, computed directly from a native reference without a lookup.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[serde(transparent)]
+pub struct RecordId(pub [u8; 16]);
+
+impl RecordId {
+    /// Use the EventId framing with an empty role tag.
+    /// # Panics
+    /// Panics if a field exceeds the u32 framing limit.
+    pub fn native(provider: Provider, native_id: &str, native_key: &str) -> Self {
+        Self(EventId::native(provider, native_id, native_key).0)
+    }
+}
+
 impl EventId {
     /// Native records use an empty role tag.
     /// # Panics
@@ -51,8 +65,16 @@ impl EventId {
         Self::framed(provider, native_id, native_key, "")
     }
 
-    /// Inferred turn boundaries use the unchanged anchor key and the separate
-    /// role tag `turn-start` or `turn-end`.
+    /// Derive a projection using the unchanged native key and its lc-ir role tag.
+    /// Content uses `block-N`; boundaries, usage, subagent and context use their
+    /// fixed tags. Whole-record events alone use the empty tag.
+    /// # Panics
+    /// Panics if a field exceeds the u32 framing limit.
+    pub fn tagged(provider: Provider, native_id: &str, native_key: &str, role_tag: &str) -> Self {
+        Self::framed(provider, native_id, native_key, role_tag)
+    }
+
+    /// Inferred turn boundaries use `turn-start` or `turn-end` on the anchor key.
     /// # Panics
     /// Panics if a field exceeds the u32 framing limit.
     pub fn inferred(provider: Provider, native_id: &str, anchor: &str, role_tag: &str) -> Self {
@@ -130,8 +152,13 @@ impl Provider {
 }
 impl std::str::FromStr for Provider {
     type Err = &'static str;
-    fn from_str(name:&str)->Result<Self,Self::Err> {
-        match name {"claude"=>Ok(Self::Claude),"codex"=>Ok(Self::Codex),"bboxy"|"bboxy450-harness"=>Ok(Self::Bboxy),_=>Err("unknown provider")}
+    fn from_str(name: &str) -> Result<Self, Self::Err> {
+        match name {
+            "claude" => Ok(Self::Claude),
+            "codex" => Ok(Self::Codex),
+            "bboxy" | "bboxy450-harness" => Ok(Self::Bboxy),
+            _ => Err("unknown provider"),
+        }
     }
 }
 unit_enum!(Relation {
@@ -197,7 +224,8 @@ pub struct Lineage {
 pub struct Event {
     pub seq: u64,
     pub id: EventId,
-    pub parent: Option<EventId>,
+    pub record: RecordId,
+    pub parent: Option<RecordId>,
     pub turn: Option<TurnId>,
     pub at: Option<Timestamp>,
     pub fidelity: Fidelity,
@@ -237,7 +265,7 @@ pub enum EventKind {
     },
     Compaction {
         summary: Option<Vec<Block>>,
-        replaced_through: Option<EventId>,
+        replaced_through: Option<RecordId>,
         replacement: Vec<EventId>,
         sealed: Option<Sealed>,
     },

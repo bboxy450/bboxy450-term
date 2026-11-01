@@ -260,7 +260,8 @@ fn event_identity_obeys_the_exact_native_and_inferred_key_formula() {
     let e = Event {
         seq: 3,
         id,
-        parent: Some(EventId([9; 16])),
+        record: RecordId::native(Provider::Claude, "synthetic", "uuid-0"),
+        parent: Some(RecordId([9; 16])),
         turn: None,
         at: None,
         fidelity: Fidelity::Partial,
@@ -426,6 +427,56 @@ fn reader_accepts_valid_noncanonical_lengths_floats_containers_and_key_order() {
         assert_eq!(
             emitted, canonical,
             "reader rejected or changed valid CBOR: {name}"
+        );
+    }
+}
+
+#[test]
+fn record_references_join_single_and_multi_event_parents_without_state() {
+    let make = |key: &str, tag: &str, seq, parent: Option<&str>| Event {
+        seq,
+        id: EventId::tagged(Provider::Claude, "dag-fixture", key, tag),
+        record: RecordId::native(Provider::Claude, "dag-fixture", key),
+        parent: parent.map(|key| RecordId::native(Provider::Claude, "dag-fixture", key)),
+        turn: None,
+        at: None,
+        fidelity: Fidelity::Opaque,
+        raw: None,
+        kind: EventKind::Native {
+            provider: Provider::Claude,
+            record_type: "synthetic".into(),
+        },
+    };
+    let multi = [
+        make("assistant-multi", "block-0", 0, None),
+        make("assistant-multi", "block-1", 1, None),
+    ];
+    let single = make("native-single", "", 2, None);
+    let sidechain = make("sidechain", "block-0", 3, Some("assistant-multi"));
+    let other = make("other-child", "block-0", 4, Some("native-single"));
+    // Each reference is computable from the native UUID; no map or second pass.
+    assert!(
+        multi
+            .iter()
+            .all(|event| sidechain.parent == Some(event.record))
+    );
+    assert_eq!(other.parent, Some(single.record));
+    assert_eq!(single.id.0, single.record.0);
+    assert!(multi.iter().all(|event| event.id.0 != event.record.0));
+    assert_eq!(
+        RecordId::native(Provider::Claude, "synthetic", "uuid-0").0,
+        EventId::native(Provider::Claude, "synthetic", "uuid-0").0
+    );
+    // Broken control: guessing the parent's block-0 id misses the empty-tag record.
+    let guessed = EventId::tagged(Provider::Claude, "dag-fixture", "native-single", "block-0");
+    assert_ne!(guessed.0, single.id.0);
+    assert_ne!(Some(RecordId(guessed.0)), other.parent);
+    for event in multi.into_iter().chain([single, sidechain, other]) {
+        assert_eq!(
+            cbor::decode::<Event>(&cbor::encode(&event).unwrap())
+                .unwrap()
+                .value(),
+            &event
         );
     }
 }

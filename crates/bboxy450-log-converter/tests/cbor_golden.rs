@@ -27,7 +27,7 @@ fn session() -> Session {
 }
 fn event(kind: Value) -> Event {
     serde_json::from_value(json!({
-        "seq":0,"id":EventId::native(Provider::Claude,"synthetic","uuid-0"),"parent":vec![2;16],"turn":"turn-0","at":"2026-01-01T00:00:00.000Z",
+        "seq":0,"id":EventId::native(Provider::Claude,"synthetic","uuid-0"),"record":RecordId::native(Provider::Claude,"synthetic","uuid-0"),"parent":vec![2;16],"turn":"turn-0","at":"2026-01-01T00:00:00.000Z",
         "fidelity":"full","raw":{"provider":"claude","bytes":[0,255,10]},"kind":kind
     }))
     .unwrap()
@@ -205,6 +205,7 @@ fn cases() -> BTreeMap<String, Vec<u8>> {
     let minimal = Event {
         seq: u64::MAX,
         id: EventId([0; 16]),
+        record: RecordId([0; 16]),
         parent: None,
         turn: None,
         at: None,
