@@ -11,6 +11,8 @@ if [ "${1:-}" = --worker ]; then
         export RUSTC_WRAPPER='' RUSTC_WORKSPACE_WRAPPER=''
     fi
     export CARGO_BUILD_JOBS=2
+    # Match Make's unattended fixture concurrency even when land invokes us directly.
+    export RUST_TEST_THREADS=${RUST_TEST_THREADS:-2}
     exec python3 -I "$dir/landing.py" presubmit-worker "$@"
 fi
 exec python3 -I "$dir/landing.py" presubmit "$@"
