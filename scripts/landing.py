@@ -7,6 +7,7 @@ Shell entry points keep the same contract on every worktree. All Git commands
 use argument arrays; fixture runs use their own repository and shared-state dir.
 """
 import argparse
+import ast
 from contextlib import contextmanager
 import fcntl
 import fnmatch
@@ -39,16 +40,25 @@ STAGE_MARGIN = 90.
 FORMAL_PHASE_PREFIX = "formal-phase: "
 
 
-def landing_machinery(paths):
-    names = {"landing.py", "land.sh", "presubmit.sh", "quarantine-test.sh", "quarantine.py",
-             "invariants.sh", "ci-local.sh", "test-landing.py", "test-resource-ledger.py",
-             "formal-stage.py"}
-    # Imported landing/recovery fixtures are machinery too. Ordinary scripts
-    # retain their own checks without paying for the whole landing corpus.
+def fixture_copy_scripts(root=None):
+    """Read the fixture's one copy tuple as data, without importing its tests."""
+    path = Path(root or Path(__file__).resolve().parents[1]) / "scripts/test-landing.py"
+    declarations = [node for node in ast.parse(path.read_text()).body
+                    if isinstance(node, ast.Assign)
+                    and any(isinstance(target, ast.Name) and target.id == "FIXTURE_SCRIPTS" for target in node.targets)]
+    if len(declarations) != 1:
+        raise Refusal("fixture_copy_tuple_missing_or_ambiguous")
+    names = ast.literal_eval(declarations[0].value)
+    if not isinstance(names, tuple) or not all(isinstance(name, str) and Path(name).name == name for name in names):
+        raise Refusal("fixture_copy_tuple_invalid")
+    return set(names)
+
+
+def landing_machinery(paths, root=None):
+    names = {"invariants.sh", "ci-local.sh", "test-landing.py", "test-resource-ledger.py"}
+    names.update(fixture_copy_scripts(root))
     return any(p.startswith("scripts/") and
-               (Path(p).name in names or Path(p).name.startswith(
-                   ("landing_", "resource-ledger", "test-landing-")))
-               or p.startswith("scripts/fixtures/landing/") for p in paths)
+               (Path(p).name in names or Path(p).name.startswith("resource-ledger")) for p in paths)
 
 
 def load_average():
@@ -913,7 +923,7 @@ def presubmit_worker(base, result_path, recheck=None):
         if packages:
             checked(["sh", "scripts/quarantine-test.sh", "--locked", *packages], root)
             checked(["cargo", "clippy", "--locked", *packages, "--all-targets", "--", "-D", "warnings"], root)
-        if recheck is None and landing_machinery(data["paths"]):
+        if recheck is None and landing_machinery(data["paths"], root):
             checked(["python3", "-I", "scripts/test-landing.py", "--all"], root)
             if (root / "scripts/test-resource-ledger.py").exists():
                 checked(["python3", "-I", "scripts/test-resource-ledger.py"], root)
@@ -1090,7 +1100,7 @@ def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, oper
     if code == 0:
         record["formal"] = formal_receipt(transcript, sha, root)
         record["commands"] = execution_commands(root, sha, transcript,
-                                                 fixtures=landing_machinery(data["paths"]))
+                                                 fixtures=landing_machinery(data["paths"], root))
     if "recheck" in data:
         record["recheck"] = data["recheck"]
     record["result"] = str(output / "result.json")
@@ -1275,7 +1285,7 @@ def wide_check(root, data, gate_log=None, *, canonical=False):
               **proof}
     if code == 0:
         record["commands"] = execution_commands(root, sha, Path(gate_log).read_text(),
-                                                 fixtures=any(p.startswith("scripts/") for p in data["paths"]))
+                                                 fixtures=landing_machinery(data["paths"], root))
     if "output" in locals():
         record.update(phase_totals(output / "phases.jsonl", time.monotonic()))
         record["timing_basis"] = "observed_output_phase_wall"

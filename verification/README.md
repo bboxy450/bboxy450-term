@@ -203,7 +203,10 @@ Presubmit still compiles and exports every model. It requests
 `FORMAL_REUSE=0`, including when a caller inherited a reuse override.
 The formal driver may reuse a model only when its TLA/configuration bytes,
 fresh native graph bytes, independent expectation, contract metadata and full
-tool-pin map match a complete green archived model. A per-key atomic pointer
+tool-pin map and checker_sha256 match a complete green archived model.
+The checker digest covers tracked working-tree bytes of scripts/formal.py,
+scripts/test-formal.py, crates/bboxy450-tlc and crates/bbt-yarn; any checker
+change invalidates every model verdict. A per-key atomic pointer
 under the private Git evidence store avoids a global archive scan. Missing,
 corrupt, legacy or mismatched entries re-check; an index write failure does
 not invalidate newly checked archived evidence. Each reused row names its
@@ -275,3 +278,16 @@ inputs to its current SHA. The archive keeps the original evidence digest and
 records provenance; the default receipt validator remains exact-SHA. This
 equivalent-input predicate supplies the existing LandingVerification checks,
 with eligibility covered by real Git fixtures and deliberately broken guards.
+
+R2 reads the literal FIXTURE_SCRIPTS tuple used by test-landing.py's copy loop,
+without importing or executing the fixture module. Fixed records/invariant CI
+entries and resource-ledger files complete the trigger; adding a copied script
+requires no separate trigger edit. Canonical ci-local runs the mutation controls
+in a disposable checkout of its committed HEAD, restoring and removing it before
+continuing, so the author checkout stays intact.
+
+The archive in git-common-dir is shared across all local branches and is unsigned.
+Content hashes detect mismatched inputs or accidental corruption; they do not
+authenticate the writer or prove that an archive was executed. Presubmit reuse
+therefore trusts this local evidence store. Full postsubmit never reuses its
+verdicts and independently checks every model, which bounds this residual risk.

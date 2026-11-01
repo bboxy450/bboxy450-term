@@ -306,8 +306,13 @@ def evidence_receipt(target, root=ROOT, *, require_clean=True, expected_source=N
         raise ValueError("formal evidence reference tools differ from pins")
     if "tool_pins" in data and data["tool_pins"] != pins:
         raise ValueError("formal evidence full tool pins differ")
+    checker = checker_sha256(root) if "checker_sha256" in data or any("reuse_key" in m for m in models) else None
+    if "checker_sha256" in data and data["checker_sha256"] != checker:
+        raise ValueError("formal evidence checker sources differ")
     contract_names = {name for row in contract_records for name in row["models"]}
     for m in models:
+        if "checker_sha256" in m and m["checker_sha256"] != checker:
+            raise ValueError("formal model checker sources differ")
         if (m["graph_equal"] is not True or m["states"] < 1 or m["edges"] < 0
                 or m["tlc_exit"] != {"pass": 0, "safety": 12, "deadlock": 11, "liveness": 13}[m["expected"]]):
             raise ValueError("formal evidence contains incomplete or mismatched verification")
@@ -316,7 +321,7 @@ def evidence_receipt(target, root=ROOT, *, require_clean=True, expected_source=N
         if m["name"] in contract_names and m["contract_metadata"] != contract_metadata(target / "models", m["name"]):
             raise ValueError("formal evidence contract metadata differs")
         if "reuse_key" in m and m["reuse_key"] != model_reuse_key(
-                target / "models", m["name"], m["expected"], m["contract_metadata"], pins):
+                target / "models", m["name"], m["expected"], m["contract_metadata"], pins, checker=checker):
             raise ValueError("formal evidence reuse inputs differ")
     return {"source": sha, "checkout": str(root), "evidence": str(path),
             "evidence_sha256": hashlib.sha256(raw).hexdigest(), "dirty": data["dirty"],
@@ -381,12 +386,25 @@ def evidence_store(root=ROOT):
     return (root / common).resolve() / "bboxy-formal-evidence"
 
 
-def model_reuse_key(root, name, expected, metadata, pins):
+def checker_sha256(root=None):
+    """Hash tracked checker sources using their current working-tree bytes."""
+    root = Path(root or ROOT)
+    paths = ("scripts/formal.py", "scripts/test-formal.py", "crates/bboxy450-tlc", "crates/bbt-yarn")
+    files = subprocess.check_output(["git", "ls-files", "-z", "--", *paths], cwd=root, text=True).split("\0")
+    files = sorted(set(files) - {""})
+    if (not all(p in files for p in paths[:2])
+            or not all(any(p.startswith(directory + "/") for p in files) for directory in paths[2:])):
+        raise ValueError("checker source inventory is incomplete")
+    hashes = {name: hashlib.sha256((root / name).read_bytes()).hexdigest() for name in files}
+    return hashlib.sha256(json.dumps(hashes, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def model_reuse_key(root, name, expected, metadata, pins, *, checker=None):
     # Include configurations and freshly exported native graphs as well as the
     # required TLA, expectation, bounds metadata and every pinned host/tool.
     suffixes = (".tla", ".cfg", "Graph.cfg", ".states", ".edges")
     value = {"name": name, "expected": expected, "contract_metadata": metadata,
-             "tool_pins": pins, "files": {suffix: hashlib.sha256(
+             "tool_pins": pins, "checker_sha256": checker or checker_sha256(), "files": {suffix: hashlib.sha256(
                  (root / (name + suffix)).read_bytes()).hexdigest() for suffix in suffixes}}
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
@@ -407,7 +425,7 @@ def publish_model_index(store, archive, data):
             temporary.unlink(missing_ok=True)
 
 
-def reused_model(store, root, name, expected, metadata, pins, key):
+def reused_model(store, root, name, expected, metadata, pins, key, checker):
     try:
         pointer = json.loads((store / "by-model" / (key + ".json")).read_text())
         digest = pointer["evidence"]
@@ -417,6 +435,7 @@ def reused_model(store, root, name, expected, metadata, pins, key):
         raw = (archive / "evidence.json").read_bytes()
         data = json.loads(raw)
         if (hashlib.sha256(raw).hexdigest() != digest or data.get("dirty") is not False
+                or data.get("checker_sha256") != checker
                 or data.get("tool_pins") != pins or data.get("tlc") != pins["tlc"]
                 or data.get("java") != pins["java"][f"{platform.system()}-{platform.machine()}"]):
             return None
@@ -424,12 +443,12 @@ def reused_model(store, root, name, expected, metadata, pins, key):
         if len(rows) != 1:
             return None
         row = rows[0]
-        if (row.get("reuse_key") != key or row["expected"] != expected
+        if (row.get("reuse_key") != key or row.get("checker_sha256") != checker or row["expected"] != expected
                 or row["contract_metadata"] != metadata or row["graph_equal"] is not True
                 or row["states"] < 1 or row["edges"] < 0
                 or row["tlc_exit"] != {"pass": 0, "safety": 12, "deadlock": 11, "liveness": 13}[expected]
                 or row["tla_sha256"] != hashlib.sha256((archive / "models" / (name + ".tla")).read_bytes()).hexdigest()
-                or model_reuse_key(archive / "models", name, expected, metadata, pins) != key):
+                or model_reuse_key(archive / "models", name, expected, metadata, pins, checker=checker) != key):
             return None
         for suffix, exit_code, wanted in ((".log", row["tlc_exit"], expected), ("Graph.log", 0, "pass")):
             output = (archive / "models" / (name + suffix)).read_text()
@@ -443,13 +462,14 @@ def reused_model(store, root, name, expected, metadata, pins, key):
         return None  # Missing, corrupt or stale cache always re-checks.
 
 
-def check_model(root, row, contract_names, java, jar, pins, store, *, reuse=False):
+def check_model(root, row, contract_names, java, jar, pins, store, *, reuse=False, checker=None):
     name, expected, count, width = row
     if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*', name) or expected not in {"pass", "safety", "deadlock", "liveness"}:
         raise ValueError("invalid model manifest")
     metadata = contract_metadata(root, name) if name in contract_names else None
-    key = model_reuse_key(root, name, expected, metadata, pins)
-    cached = reused_model(store, root, name, expected, metadata, pins, key) if reuse else None
+    checker = checker or checker_sha256()
+    key = model_reuse_key(root, name, expected, metadata, pins, checker=checker)
+    cached = reused_model(store, root, name, expected, metadata, pins, key, checker) if reuse else None
     if cached is not None:
         states, edges = native_graph(root, name)
         if (cached["states"] == len(states) == int(count) and cached["edges"] == len(edges)
@@ -470,7 +490,7 @@ def check_model(root, row, contract_names, java, jar, pins, store, *, reuse=Fals
     print(f"formal: {name}: {actual}, {len(actual_states)} states, {len(actual_edges)} edges match", flush=True)
     return {"name": name, "expected": expected, "states": len(actual_states),
             "edges": len(actual_edges), "tlc_exit": checked.returncode, "graph_equal": True,
-            "contract_metadata": metadata, "reuse_key": key,
+            "contract_metadata": metadata, "reuse_key": key, "checker_sha256": checker,
             "tla_sha256": hashlib.sha256((root / f"{name}.tla").read_bytes()).hexdigest()}
 
 
@@ -500,15 +520,16 @@ def main():
             {name for row in records for name in row["models"]}):
         raise ValueError("project contract missing from crate coverage")
     java, jar, pins = tools(target)
+    checker = checker_sha256()
     evidence = {"source": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                 "tlc": pins["tlc"], "java": pins["java"][f"{platform.system()}-{platform.machine()}"],
-                "tool_pins": pins,
+                "tool_pins": pins, "checker_sha256": checker,
                 "crates": records, "contracts": contract_records, "models": [], "complete_tlc_replacement": False,
                 "dirty": source_dirty(ROOT),
                 "input_sha256": input_hashes(ROOT, records, contract_records)}
     for row in rows:
         evidence["models"].append(check_model(root, row, contract_names, java, jar, pins,
-                                               evidence_store(ROOT), reuse=args.reuse))
+                                               evidence_store(ROOT), reuse=args.reuse, checker=checker))
     (target / "evidence.json").write_text(json.dumps(evidence, indent=2) + '\n')
     archive = archive_evidence(target)
     print("formal: receipt " + json.dumps(evidence_receipt(archive, require_clean=False), sort_keys=True))

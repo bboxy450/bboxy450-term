@@ -307,6 +307,12 @@ class ModelReuseTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root=Path(self.temp.name)/"models";self.root.mkdir()
         self.store=Path(self.temp.name)/"archive";self.store.mkdir()
+        self.checker=Path(self.temp.name)/"checker";self.checker.mkdir()
+        for name in ("scripts/formal.py", "scripts/test-formal.py", "crates/bboxy450-tlc/src/lib.rs", "crates/bbt-yarn/src/model.rs"):
+            path=self.checker/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text("fixture checker\n")
+        subprocess.run(["git","init","-q",str(self.checker)],check=True)
+        subprocess.run(["git","add","."],cwd=self.checker,check=True)
+        checker_patch=mock.patch.object(formal,"ROOT",self.checker);checker_patch.start();self.addCleanup(checker_patch.stop)
         self.pins={"tlc":{"version":"fixture"},"java":{
             formal.platform.system()+"-"+formal.platform.machine():{"version":"fixture"}}}
         self.rows=[(name,"pass","1","1") for name in ("One","Two")]
@@ -327,7 +333,8 @@ class ModelReuseTests(unittest.TestCase):
 
     def archive(self,rows):
         data={"source":"a"*40,"dirty":False,"tlc":self.pins["tlc"],
-              "java":next(iter(self.pins["java"].values())),"tool_pins":self.pins,"models":rows}
+              "java":next(iter(self.pins["java"].values())),"tool_pins":self.pins,
+              "checker_sha256":formal.checker_sha256(),"models":rows}
         raw=json.dumps(data).encode();digest=formal.hashlib.sha256(raw).hexdigest()
         path=self.store/digest;(path/"models").mkdir(parents=True)
         (path/"evidence.json").write_bytes(raw)
@@ -367,6 +374,22 @@ class ModelReuseTests(unittest.TestCase):
             rows=self.check(True)
         self.assertEqual(run.call_count,4,"changed tool pins reused evidence")
         self.assertTrue(all("reused_from" not in row for row in rows))
+
+    def test_changed_checker_harness_rechecks_every_model(self):
+        self.warm()
+        with (self.checker/"scripts/formal.py").open("a") as stream:stream.write(" ")
+        with mock.patch.object(formal,"tlc",side_effect=self.reference) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            rows=self.check(True)
+        self.assertEqual(run.call_count,4,"changed checker harness reused evidence")
+        self.assertTrue(all("reused_from" not in row for row in rows))
+
+    def test_every_checker_source_family_changes_the_digest(self):
+        baseline=formal.checker_sha256()
+        for name in ("scripts/test-formal.py", "crates/bboxy450-tlc/src/lib.rs", "crates/bbt-yarn/src/model.rs"):
+            path=self.checker/name;original=path.read_bytes();path.write_bytes(original+b" ")
+            self.assertNotEqual(formal.checker_sha256(),baseline,name+" did not invalidate checker evidence")
+            path.write_bytes(original)
 
     def test_postsubmit_rechecks_and_records_no_reuse(self):
         self.warm()

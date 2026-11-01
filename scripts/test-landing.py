@@ -30,6 +30,12 @@ from concurrent.futures import ThreadPoolExecutor
 sys.dont_write_bytecode = True
 
 SOURCE = Path(__file__).with_name("landing.py")
+# The copy loop and production trigger both consume this tuple. Keep it literal
+# so landing.py can read the declaration without importing this fixture runner.
+FIXTURE_SCRIPTS = ("landing.py", "formal.py", "formal-stage.py", "harness-submodule.py", "presubmit.sh", "land.sh",
+                   "quarantine.py", "quarantine.sh", "quarantine-test.sh", "main_watch.py", "main-watch.sh",
+                   "landing_recovery.py", "main-red-bounded.sh", "release-inputs.py", "verify-signatures.py",
+                   "verify-signatures-core.py", "test-landing-budget-controls.py")
 spec = importlib.util.spec_from_file_location("landing", SOURCE)
 landing = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(landing)
@@ -126,17 +132,18 @@ class Repository:
         for name in ("MAKEFLAGS", "MFLAGS", "GNUMAKEFLAGS", "MAKEOVERRIDES", "MAKELEVEL",
                      "TARGET_DIR", "CI_LOG", "CI_ARGS", "CARGO_BUILD_BUILD_DIR"):
             self.environment.pop(name, None)
-        for name in ("landing.py", "formal.py", "formal-stage.py", "harness-submodule.py", "presubmit.sh", "land.sh", "quarantine.py", "quarantine.sh", "quarantine-test.sh",
-                     "main_watch.py", "main-watch.sh", "landing_recovery.py", "main-red-bounded.sh"):
+        for name in FIXTURE_SCRIPTS:
             target = self.root / "scripts" / name
             target.parent.mkdir(exist_ok=True)
-            shutil.copy2(SOURCE.with_name(name), target)
+            source = "verify-signatures.py" if name == "verify-signatures-core.py" else name
+            shutil.copy2(SOURCE.with_name(source), target)
         self.write("scripts/cache-env.sh", "# isolated fixture; never the production cache policy\nexport CARGO_BUILD_JOBS=2\n")
         shell = '#!/bin/sh\nprintf "%s\\n" "$0 $*" >> "$BBOXY_LANDING_STATE_DIR/shell.log"\n'
         for name in ("invariants", "layering", "pending-flags", "kill-own-pids", "generated-sources", "licenses",
                      "brand", "images", "cross-os", "never-block", "lab-check"):
             self.write(f"scripts/{name}.sh", shell)
-        self.write("scripts/test-landing.py", 'print("nested fixture checks")\n')
+        self.write("scripts/test-landing.py", f'FIXTURE_SCRIPTS = {FIXTURE_SCRIPTS!r}\nprint("nested fixture checks")\n')
+        self.write("scripts/test-landing-budget-controls.py", 'print("nested budget controls")\n')
         self.write("verification/corpus.toml", '[[model]]\nname="Fixture"\nexpected="pass"\n')
         self.write("verification/coverage.toml", "".join(
             f'[[crate]]\nname="{name}"\nstatus="implementation-tests"\nmodels=[]\nscope="private fixture"\nsources=["crates/{name}/src/lib.rs"]\n'
@@ -628,7 +635,7 @@ except Exception as error:
         self.assertIn("golden_dispatch_tests_missing", result.stdout + result.stderr)
 
     def test_landing_script_cut_runs_its_fixtures_and_only_non_cargo_invariants(self):
-        self.cut("scripts/landing_fixture_gate.sh")
+        self.cut("scripts/main_watch.py")
         result = self.repo.presubmit()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("nested fixture checks", result.stdout)
@@ -912,6 +919,23 @@ class GateReceiptTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("dirty source tree", result.stderr)
         self.assertNotIn("ci-local: source", result.stdout)
+
+    def test_real_ci_runs_budget_controls_and_propagates_failure(self):
+        repo = Repository()
+        self.addCleanup(repo.close)
+        repo.tooling()
+        shutil.copy2(SOURCE.with_name("ci-local.sh"), repo.root / "scripts/ci-local.sh")
+        repo.write("scripts/ui-lint.sh", "#!/bin/sh\nexit 0\n")
+        binary = Path(repo.environment["CARGO_TARGET_DIR"]) / "debug/bboxy450-term"
+        binary.parent.mkdir(parents=True)
+        binary.write_text("#!/bin/sh\nexit 0\n")
+        binary.chmod(0o700)
+        repo.write("scripts/test-landing-budget-controls.py", 'print("budget-control-sentinel")\nraise SystemExit(19)\n')
+        repo.commit("Fixture failing budget controls")
+        result = subprocess.run(["sh", "scripts/ci-local.sh"], cwd=repo.root,
+                                env=dict(repo.environment, BBOXY_GATE_SLOT="none"), capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 19, "budget controls did not block full CI: " + result.stdout + result.stderr)
+        self.assertIn("budget-control-sentinel", result.stdout)
 
 
 class SlotTests(unittest.TestCase):
@@ -1458,8 +1482,9 @@ class LandTests(unittest.TestCase):
 
     def test_a_script_move_replays_script_fixtures_but_keeps_the_green_rust(self):
         self.cut()
-        self.cut('scripts/landing_fixture-gate.sh')
-        self.repo.movement('scripts/landing_incoming-helper.sh')
+        self.repo.write('scripts/main_watch.py', (self.repo.root / 'scripts/main_watch.py').read_text() + '\n# fixture copied script cut\n')
+        self.repo.commit('Fixture copied script cut')
+        self.repo.movement('scripts/main-watch.sh', contents=(self.repo.root / 'scripts/main-watch.sh').read_text() + '\n# incoming copied script\n')
         result = self.repo.land()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.cargo_test_count(), 1)
@@ -1469,7 +1494,8 @@ class LandTests(unittest.TestCase):
             ['python3', '-I', 'scripts/test-landing.py', '--all']]})
 
     def test_a_record_only_move_reuses_a_script_cuts_fixture_result(self):
-        self.cut('scripts/landing_fixture-gate.sh')
+        self.repo.write('scripts/main_watch.py', (self.repo.root / 'scripts/main_watch.py').read_text() + '\n# fixture copied script cut\n')
+        self.repo.commit('Fixture copied script cut')
         self.repo.movement('.bboxy/other.md')
         result = self.repo.land()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -2422,6 +2448,16 @@ class BudgetPresubmitTests(unittest.TestCase):
                          "filtered invariant was skipped")
 
     def test_ignored_invariant_still_runs(self):
+        # Exercise the exact product discriminator as well as the process
+        # witness (whose explicit --ignored command stays outside batching).
+        source = SOURCE.with_name("invariants.sh").read_text().split("<<'PY_INVARIANTS'\n", 1)[1]
+        module = landing.ast.parse(source)
+        function = next(node for node in module.body if isinstance(node, landing.ast.FunctionDef) and node.name == "covered")
+        namespace = {}
+        exec(compile(landing.ast.Module(body=[function], type_ignores=[]), "invariant coverage discriminator", "exec"), namespace)
+        check = {"env": {}, "packages": ["c"], "targets": [("--test", "ctl")], "test": "ctl_once"}
+        observed = [{"package": "c", "kind": "test", "target": "ctl", "test": "ctl_once", "result": "ignored"}]
+        self.assertFalse(namespace["covered"](check, observed), "ignored result suppressed the invariant")
         self.coverage_fixture(ignored=True)
         self.dry_run()
         self.assertEqual(len((self.repo.state/"ctl-runs").read_text().splitlines()),2,
@@ -2448,11 +2484,32 @@ class BudgetPresubmitTests(unittest.TestCase):
     def test_another_target_cannot_discharge_the_invariant(self):
         self.stale_coverage("target")
 
-    def test_harness_helper_cut_skips_landing_fixtures(self):
-        file=self.repo.root/"scripts/harness-submodule.py"
-        self.cut("scripts/harness-submodule.py",file.read_text()+"\n# ordinary helper cut\n")
+    def test_brand_cut_skips_landing_fixtures(self):
+        file=self.repo.root/"scripts/brand.sh"
+        self.cut("scripts/brand.sh",file.read_text()+"\n# ordinary helper cut\n")
         _,result=self.dry_run()
         self.assertNotIn("nested fixture checks",result.stdout,"unrelated script ran landing fixtures")
+
+    def test_harness_helper_cut_runs_landing_fixtures(self):
+        file=self.repo.root/"scripts/harness-submodule.py"
+        self.cut("scripts/harness-submodule.py",file.read_text()+"\n# copied helper cut\n")
+        _,result=self.dry_run()
+        self.assertIn("nested fixture checks",result.stdout,"copied harness helper skipped fixtures")
+
+    def test_main_watch_cut_runs_landing_fixtures(self):
+        file=self.repo.root/"scripts/main_watch.py"
+        self.cut("scripts/main_watch.py",file.read_text()+"\n# copied watcher cut\n")
+        _,result=self.dry_run()
+        self.assertIn("nested fixture checks",result.stdout,"copied watcher skipped fixtures")
+
+    def test_added_fixture_copy_automatically_triggers(self):
+        name = "new-copied-fixture.py"
+        self.assertFalse(landing.landing_machinery(["scripts/" + name], self.repo.root))
+        path = self.repo.root / "scripts/test-landing.py"
+        text = path.read_text().replace("FIXTURE_SCRIPTS = (", 'FIXTURE_SCRIPTS = ("' + name + '", ', 1)
+        path.write_text(text)
+        self.assertTrue(landing.landing_machinery(["scripts/" + name], self.repo.root),
+                        "added fixture copy did not trigger")
 
     def test_landing_machinery_cut_runs_fixtures(self):
         self.cut("scripts/landing.py",(self.repo.root/"scripts/landing.py").read_text()+"\n# landing machinery fixture\n")
