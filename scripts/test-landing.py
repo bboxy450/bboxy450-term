@@ -133,7 +133,7 @@ class Repository:
             shutil.copy2(SOURCE.with_name(name), target)
         self.write("scripts/cache-env.sh", "# isolated fixture; never the production cache policy\nexport CARGO_BUILD_JOBS=2\n")
         shell = '#!/bin/sh\nprintf "%s\\n" "$0 $*" >> "$BBOXY_LANDING_STATE_DIR/shell.log"\n'
-        for name in ("invariants", "layering", "pending-flags", "kill-own-pids", "licenses",
+        for name in ("invariants", "layering", "pending-flags", "kill-own-pids", "generated-sources", "licenses",
                      "brand", "images", "cross-os", "never-block", "lab-check"):
             self.write(f"scripts/{name}.sh", shell)
         self.write("scripts/test-landing.py", 'print("nested fixture checks")\n')
@@ -1271,17 +1271,118 @@ class LandTests(unittest.TestCase):
         self.assertEqual(result.returncode, 77, result.stdout + result.stderr)
         self.assertEqual(self.repo.remote_head(), self.repo.base)
 
-    def test_wide_rebase_cannot_reuse_a_green_log_from_the_old_candidate(self):
+    def test_records_rebase_accepts_gate_and_runs_only_records_checks(self):
+        self.repo.write("scripts/generated-sources.sh", (self.repo.root / "scripts/generated-sources.sh").read_text()
+                        + "test ! -e .bboxy/untracked-invalid.md\n")
         sha = self.cut("crates/a/src/lib.rs")
         proof = self.gate_log(sha)
-        self.repo.movement(".bboxy/other.md")
+        # Checks must inspect committed C', not unrelated untracked records in
+        # the author's worktree. The generated-sources witness above enforces it.
+        self.repo.write(".bboxy/untracked-invalid.md", "# Not a committed record\n")
+        name = ".bboxy/decisions/unreferenced-record.md"
+        self.repo.movement(name, contents="---\ntype: decision\nnumber: 1\n---\n# Fixture record\n")
         hook = json.loads((self.repo.state / "behavior.json").read_text())["hook"]
         run("sh", hook, cwd=self.repo.root)
+        (self.repo.state / "behavior.json").unlink()
+        result = self.repo.land("--gate-log", proof)
+        self.assertEqual(result.returncode, 0, "records-only gate was refused: " + result.stdout + result.stderr)
+        self.assertNotEqual(self.repo.remote_head(), sha)
+        record = json.loads((self.repo.state / "landings.log").read_text())
+        self.assertEqual(record["gate_log_source"], sha)
+        self.assertEqual(record["tested_sha"], sha)
+        self.assertEqual(record["records_delta"], [name])
+        self.assertEqual(record["records_checks_exit"], 0)
+        self.assertEqual(record["formal"]["source"], self.repo.remote_head())
+        # The old evidence stays strict; only the guarded R5 route produces a
+        # new current-source receipt, without rerunning its checked models.
+        with self.assertRaises(landing.Refusal):
+            landing.formal_receipt(proof.read_text(), sha, self.repo.root)
+        landing.verify_formal_receipt(record["formal"], self.repo.remote_head(), self.repo.root)
+        calls = [json.loads(s) for s in (self.repo.state / "cargo.jsonl").read_text().splitlines()]
+        for argv in calls:
+            self.assertEqual(argv[1:3], ["--target-dir", str((self.repo.state / "slots/bboxy450-gate-slot-1/target").resolve())])
+        self.assertEqual([argv[:1] + argv[3:] for argv in calls], [["test", "-p", "bboxy450-doc", "--locked", "--test", "corpus", "-q"],
+                                 ["test", "-p", "bboxy450-mermaid", "--locked", "-q"]])
+        scripts = (self.repo.state / "shell.log").read_text().splitlines()
+        self.assertEqual(scripts, ["scripts/" + name + ".sh " for name in (
+            "layering", "pending-flags", "kill-own-pids", "generated-sources", "licenses", "brand",
+            "images", "cross-os", "never-block")])
+        self.assertNotIn("formal-phase:", result.stdout, "records rebase reran formal export")
+        self.assertNotIn("nested fixture checks", result.stdout)
+
+    def test_records_gate_refuses_a_byte_outside_records(self):
+        sha = self.cut("crates/a/src/lib.rs")
+        proof = self.gate_log(sha)
+        # Outside the formal source inventory: this must be stopped by R5's
+        # tree predicate itself, rather than the separate evidence hash check.
+        self.repo.write("crates/c/uninventoried.txt", "x")
+        self.repo.commit("Fixture one-byte non-record delta")
+        result = self.repo.land("--gate-log", proof)
+        self.assertNotEqual(result.returncode, 0, "non-records delta was accepted")
+        self.assertIn("gate_log_source_mismatch", result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
+
+    def test_records_gate_refuses_a_changed_rust_source(self):
+        sha = self.cut("crates/a/src/lib.rs")
+        proof = self.gate_log(sha)
+        self.cut("crates/c/src/lib.rs")
         result = self.repo.land("--gate-log", proof)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("gate_log_source_mismatch", result.stderr)
-        self.assertNotEqual(self.repo.remote_head(), sha)
         self.assertEqual(self.cargo_test_count(), 0)
+
+    def test_records_gate_refuses_a_record_named_by_code(self):
+        name = ".bboxy/specs/e2e-acceptance.md"
+        self.repo.write("crates/a/src/lib.rs", f'const RECORD: &str = "{name}";\n')
+        self.repo.write(name, "original fixture")
+        sha = self.repo.commit("Fixture named record")
+        proof = self.gate_log(sha)
+        self.repo.write(name, "changed fixture")
+        self.repo.commit("Fixture changed named record")
+        result = self.repo.land("--gate-log", proof)
+        self.assertNotEqual(result.returncode, 0, "code-named record was accepted")
+        self.assertIn("gate_log_source_mismatch", result.stderr)
+        self.assertEqual(self.cargo_test_count(), 0)
+
+    def test_records_gate_refuses_failed_records_checks(self):
+        sha = self.cut("crates/a/src/lib.rs")
+        proof = self.gate_log(sha)
+        name = ".bboxy/decisions/bad-record.md"
+        self.repo.write(name, "# Missing frontmatter")
+        self.repo.commit("Fixture invalid records delta")
+        (self.repo.state / "behavior.json").write_text(json.dumps({"corpus_frontmatter": name}))
+        result = self.repo.land("--gate-log", proof)
+        self.assertNotEqual(result.returncode, 0, "failed records checks were accepted")
+        self.assertIn("gate_log_source_mismatch", result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
+
+    def test_records_gate_refuses_secret_like_changed_record(self):
+        sha = self.cut("crates/a/src/lib.rs")
+        proof = self.gate_log(sha)
+        self.repo.write(".bboxy/decisions/secret-fixture.md", "---\ntype: decision\nnumber: 1\n---\ntoken: " + "a" * 40)
+        self.repo.commit("Fixture synthetic secret-like record")
+        result = self.repo.land("--gate-log", proof)
+        self.assertNotEqual(result.returncode, 0, "secret-like record was accepted")
+        self.assertIn("records secret scan failed", result.stderr)
+        self.assertNotIn("a" * 40, result.stdout + result.stderr)
+
+    def test_records_gate_refuses_non_records_rename_and_mode(self):
+        self.cut("crates/a/src/lib.rs")
+        self.repo.write("crates/c/original.txt", "x")
+        sha = self.repo.commit("Fixture rename and mode baseline")
+        proof = self.gate_log(sha)
+        run("git", "mv", "crates/c/original.txt", "crates/c/renamed.txt", cwd=self.repo.root)
+        self.repo.commit("Fixture non-record rename")
+        result = self.repo.land("--gate-log", proof)
+        self.assertIn("gate_log_source_mismatch", result.stderr)
+        self.assertNotEqual(result.returncode, 0)
+        run("git", "mv", "crates/c/renamed.txt", "crates/c/original.txt", cwd=self.repo.root)
+        path = self.repo.root / "crates/c/original.txt"
+        path.chmod(0o755)
+        self.repo.commit("Fixture non-record mode delta")
+        result = self.repo.land("--gate-log", proof)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("gate_log_source_mismatch", result.stderr)
 
     def test_wide_moved_main_reuses_the_full_green_for_disjoint_changes(self):
         self.cut("crates/a/src/lib.rs")

@@ -264,3 +264,14 @@ still runs, with the normal test-thread configuration and the original assertion
 `make test-harness-standalone` runs the unchanged child `make test` with a private
 Cargo target. It retains the child's generated evidence under the parent target
 archives generated formal evidence and restores only four upstream test-owned run artifacts, preserving source.
+
+R5 full-log reuse compares C and its rebased candidate with Git's complete tree
+diff (including names and modes) excluding only `.bboxy`. Every changed record
+is checked for literal code references, including removed paths from renames.
+Records checks run in the existing private checking checkout, so untracked
+records in the author's tree cannot satisfy them. Only a signed candidate with
+passing records gates can rebind unchanged formal
+inputs to its current SHA. The archive keeps the original evidence digest and
+records provenance; the default receipt validator remains exact-SHA. This
+equivalent-input predicate supplies the existing LandingVerification checks,
+with eligibility covered by real Git fixtures and deliberately broken guards.
