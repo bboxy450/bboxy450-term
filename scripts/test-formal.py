@@ -300,5 +300,90 @@ print("Model checking completed. No error has been found.")
                 formal.dot_graph(dot, 1)
 
 
+
+class ModelReuseTests(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory(prefix="formal-reuse-fixture-")
+        self.addCleanup(self.temp.cleanup)
+        self.root=Path(self.temp.name)/"models";self.root.mkdir()
+        self.store=Path(self.temp.name)/"archive";self.store.mkdir()
+        self.pins={"tlc":{"version":"fixture"},"java":{
+            formal.platform.system()+"-"+formal.platform.machine():{"version":"fixture"}}}
+        self.rows=[(name,"pass","1","1") for name in ("One","Two")]
+        for name,_,_,_ in self.rows:
+            for suffix,text in [(".tla","---- MODULE "+name+" ----\n"),
+                                (".cfg","fixture config\n"),("Graph.cfg","fixture graph\n"),
+                                (".states","0\n"),(".edges","")]:
+                (self.root/(name+suffix)).write_text(text)
+
+    def reference(self,java,jar,root,name,graph):
+        if graph:(root/(name+".dot")).write_text('digraph {\n1 [label="v0 = 0"];\n}\n')
+        (root/(name+("Graph" if graph else "")+".log")).write_text("Model checking completed. No error has been found.")
+        return subprocess.CompletedProcess([],0,"Model checking completed. No error has been found.","")
+
+    def check(self,reuse):
+        return [formal.check_model(self.root,row,set(),None,None,self.pins,self.store,reuse=reuse)
+                for row in self.rows]
+
+    def archive(self,rows):
+        data={"source":"a"*40,"dirty":False,"tlc":self.pins["tlc"],
+              "java":next(iter(self.pins["java"].values())),"tool_pins":self.pins,"models":rows}
+        raw=json.dumps(data).encode();digest=formal.hashlib.sha256(raw).hexdigest()
+        path=self.store/digest;(path/"models").mkdir(parents=True)
+        (path/"evidence.json").write_bytes(raw)
+        for file in self.root.iterdir():formal.shutil.copyfile(file,path/"models"/file.name)
+        formal.publish_model_index(self.store,path,data)
+        return digest
+
+    def warm(self):
+        with mock.patch.object(formal,"tlc",side_effect=self.reference) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            rows=self.check(False)
+        self.assertEqual(run.call_count,4)
+        return self.archive(rows)
+
+    def test_identical_models_reuse_archived_verdicts(self):
+        digest=self.warm()
+        with mock.patch.object(formal,"tlc",side_effect=self.reference) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            rows=self.check(True)
+        self.assertEqual(run.call_count,0,"identical models were rechecked")
+        self.assertTrue(all(row["reused_from"]==digest for row in rows))
+
+    def test_changed_tla_rechecks_only_the_changed_model(self):
+        digest=self.warm()
+        with (self.root/"One.tla").open("a") as stream:stream.write(" ")
+        with mock.patch.object(formal,"tlc",side_effect=self.reference) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            rows=self.check(True)
+        self.assertEqual(run.call_count,2,"changed TLA reused stale evidence")
+        self.assertNotIn("reused_from",rows[0])
+        self.assertEqual(rows[1]["reused_from"],digest)
+
+    def test_changed_tool_pin_rechecks_every_model(self):
+        self.warm();self.pins["tlc"]["version"]="changed"
+        with mock.patch.object(formal,"tlc",side_effect=self.reference) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            rows=self.check(True)
+        self.assertEqual(run.call_count,4,"changed tool pins reused evidence")
+        self.assertTrue(all("reused_from" not in row for row in rows))
+
+    def test_postsubmit_rechecks_and_records_no_reuse(self):
+        self.warm()
+        with mock.patch.object(formal,"tlc",side_effect=self.reference) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            rows=self.check(False)
+        self.assertEqual(run.call_count,4,"postsubmit reused a verdict")
+        self.assertTrue(all("reused_from" not in row for row in rows),"postsubmit reused a verdict")
+        source=Path(__file__).with_name("ci-local.sh").read_text()
+        self.assertIn('make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR" FORMAL_REUSE=0',source)
+
+    def test_expectation_metadata_and_export_configs_are_key_inputs(self):
+        key=formal.model_reuse_key(self.root,"One","pass",None,self.pins)
+        self.assertNotEqual(key,formal.model_reuse_key(self.root,"One","safety",None,self.pins))
+        self.assertNotEqual(key,formal.model_reuse_key(self.root,"One","pass",{"bounds":[1]},self.pins))
+        (self.root/"One.cfg").write_text("changed config")
+        self.assertNotEqual(key,formal.model_reuse_key(self.root,"One","pass",None,self.pins))
+
 if __name__ == "__main__":
     unittest.main()

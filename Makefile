@@ -1527,16 +1527,19 @@ test-formal-contracts:
 format-formal-contracts:
 	@set -eu; . ./scripts/cache-env.sh; rustfmt --edition 2024 crates/bboxy450-term/tests/formal_contracts.rs crates/bboxy450-term/tests/formal_contracts/models.rs crates/bboxy450-term/tests/formal_contracts/witnesses.rs
 
-test-formal: init-submodules test-yarn-model
-	@python3 -I scripts/test-harness-submodule.py
-	@python3 -I scripts/test-formal.py
+FORMAL_REUSE ?= 0
+test-formal:
+	@python3 -I scripts/formal-stage.py initialization -- $(MAKE) init-submodules TARGET_DIR='$(TARGET_DIR)'
+	@python3 -I scripts/formal-stage.py export -- $(MAKE) test-yarn-model TARGET_DIR='$(TARGET_DIR)'
+	@python3 -I scripts/formal-stage.py harness-check -- python3 -I scripts/test-harness-submodule.py
+	@python3 -I scripts/formal-stage.py self-tests -- python3 -I scripts/test-formal.py
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo run --locked -p bboxy450-tlc --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
-	cargo run --locked -p bboxy450-yarn --features model --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
-	BBOXY_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/formal/models' cargo test --locked -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)'; \
-	FORMAL_OUT='$(abspath $(TARGET_DIR))/formal/harness' cargo test --locked -p bboxy450-harness --test formal_models --test formal_nonvacuity --test reactor_projection --target-dir '$(TARGET_DIR)'; \
-	python3 -I scripts/harness-submodule.py --models '$(abspath $(TARGET_DIR))/formal/harness' --target '$(abspath $(TARGET_DIR))/formal/models'; \
-	python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal'
+	python3 -I scripts/formal-stage.py tlc-verify -- cargo run --locked -p bboxy450-tlc --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
+	python3 -I scripts/formal-stage.py yarn-verify -- cargo run --locked -p bboxy450-yarn --features model --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
+	BBOXY_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/formal/models' python3 -I scripts/formal-stage.py contracts -- cargo test --locked -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)'; \
+	FORMAL_OUT='$(abspath $(TARGET_DIR))/formal/harness' python3 -I scripts/formal-stage.py harness-native -- cargo test --locked -p bboxy450-harness --test formal_models --test formal_nonvacuity --test reactor_projection --target-dir '$(TARGET_DIR)'; \
+	python3 -I scripts/formal-stage.py harness-export -- python3 -I scripts/harness-submodule.py --models '$(abspath $(TARGET_DIR))/formal/harness' --target '$(abspath $(TARGET_DIR))/formal/models'; \
+	python3 -I scripts/formal-stage.py java-parity -- python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' $(if $(filter 1,$(FORMAL_REUSE)),--reuse,)
 
 .PHONY: format-yarn-model
 format-yarn-model:

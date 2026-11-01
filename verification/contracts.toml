@@ -295,9 +295,9 @@ checks = ["make test-formal", "make test"]
 name = "LandingVerification"
 title = "Source-bound formal evidence before landing"
 models = ["LandingVerification", "BrokenLandingVerification"]
-sources = ["scripts/landing.py", "scripts/formal.py", "Makefile"]
-implementation_tests = ["scripts/test-landing.py"]
-assumptions = "Three candidate identities, two remote bases and one input mutation. Checks abstract successful complete executions; Git atomic fast-forward and cryptographic signatures require real landing fixtures. The model requires fresh Rust checks; the implementation may reuse them only through its existing disjoint-change proof. Opt-in full landing runs canonical make test after the initial rebase and uses these same RustChecksPass, NativeAndTlcAgree and PublishVerifiedCandidate actions; it adds no authority or model transition."
+sources = ["scripts/landing.py", "scripts/formal.py", "scripts/formal-stage.py", "scripts/quarantine.py", "scripts/invariants.sh", "scripts/ci-local.sh", "Makefile"]
+implementation_tests = ["scripts/test-landing.py", "scripts/test-formal.py", "scripts/test-landing-budget-controls.py"]
+assumptions = "Three candidate identities, two remote bases and one input mutation. Checks abstract successful complete executions; Git atomic fast-forward and cryptographic signatures require real landing fixtures. The model requires fresh Rust checks; the implementation may reuse them only through its existing disjoint-change proof. Per-model deterministic verdict memoization supplies the same NativeAndTlcAgree action only after current export TLA/config/native-graph bytes, independent expectation, contract metadata and all tool pins equal a validated immutable archived model; the full receipt still binds current candidate/input hashes. Quarantine observations discharge only the same attempt/source/target's exact observed passing invariant, with ignored/filtered tests still executed. Byte-key validation, coverage parsing and advisory timing allocations have Python/process controls; these pure evidence predicates add no publication authority or model transition. Full postsubmit never reuses model verdicts."
 property = "Publishing needs clean current-source Rust and formal evidence, matching model inputs and remote base; old or partial evidence cannot authorize a push."
 checks = ["make test-formal", "make test"]
 

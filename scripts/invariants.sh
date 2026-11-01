@@ -18,11 +18,15 @@ run_cargo=true
 selected_gate=''
 affected_set=false
 affected_crates=''
+covered_tests=''
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --slow) run_slow=true; shift ;;
         --parity) run_parity=true; shift ;;
         --no-cargo) run_cargo=false; shift ;;
+        --covered-tests)
+            [ "$#" -ge 2 ] || { echo 'invariants: --covered-tests requires a receipt' >&2; exit 2; }
+            covered_tests=$2; shift 2 ;;
         --affected)
             [ "$#" -ge 2 ] || { echo 'invariants: --affected requires one crate-list argument' >&2; exit 2; }
             [ "$affected_set" = false ] || { echo 'invariants: select --affected once' >&2; exit 2; }
@@ -52,7 +56,7 @@ if [ -n "$selected_gate" ]; then
 fi
 
 # One Cargo test graph; exact libtest filters retain each invariant's own verdict.
-exec python3 -I - "$invariant_tools" "$run_slow" "$run_parity" "$run_cargo" "$selected_gate" "$affected_set" "$affected_crates" <<'PY_INVARIANTS'
+exec python3 -I - "$invariant_tools" "$run_slow" "$run_parity" "$run_cargo" "$selected_gate" "$affected_set" "$affected_crates" "$covered_tests" <<'PY_INVARIANTS'
 import collections
 import glob
 import importlib.util
@@ -63,9 +67,10 @@ import shlex
 import subprocess
 import sys
 import tomllib
+import json
 
 sys.dont_write_bytecode = True
-tools, slow, parity, cargo_enabled, selected, affected_set, affected_arg = sys.argv[1:]
+tools, slow, parity, cargo_enabled, selected, affected_set, affected_arg, coverage_path = sys.argv[1:]
 spec = importlib.util.spec_from_file_location("landing", Path(tools) / "landing.py")
 landing = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(landing)
@@ -156,6 +161,37 @@ def test_check(command):
     return result
 
 
+def prior_coverage():
+    if not coverage_path or not os.environ.get("BBOXY_PRESUBMIT_ATTEMPT"):
+        return []
+    try:
+        data = json.loads(Path(coverage_path).read_text())
+        target = str(Path(os.environ.get("BBOXY_CARGO_TARGET_DIR", "target")).resolve())
+        if (data["sha"] == landing.git("rev-parse", "HEAD") and data["target"] == target
+                and data["attempt"] == os.environ["BBOXY_PRESUBMIT_ATTEMPT"]
+                and isinstance(data["tests"], list)
+                and all(isinstance(row, dict) and all(isinstance(row.get(k), str) for k in
+                        ("package", "kind", "target", "test", "result")) for row in data["tests"])):
+            return data["tests"]
+    except (OSError, ValueError, KeyError):
+        pass
+    return []
+
+
+def covered(check, observed):
+    # A different explicit environment needs its own execution. Unobserved,
+    # ignored, failed or ambiguous outcomes can never discharge an invariant.
+    if not check or check["env"]:
+        return False
+    targets = {(t[0].removeprefix("--"), t[1] if len(t) > 1 else None)
+               for t in check["targets"]}
+    results = [row["result"] for row in observed if row.get("package") in check["packages"]
+               and row.get("test") == check["test"]
+               and any(row.get("kind") == kind and (name is None or row.get("target") == name)
+                       for kind, name in targets)]
+    return results == ["ok"]
+
+
 def run_batch(checks):
     argv = ["cargo", "test", "--locked", "--no-fail-fast"]
     if os.environ.get("BBOXY_CARGO_TARGET_DIR"):
@@ -205,6 +241,7 @@ try:
         if unknown:
             raise ValueError("unknown affected crates: " + " ".join(sorted(unknown)))
     entries = []
+    observed_coverage = prior_coverage()
     for path in sorted(Path(".bboxy/invariants").glob("*.md")):
         data = fields(path)
         if data.get("type") != "invariant" or (selected and path.stem != selected):
@@ -219,6 +256,9 @@ try:
                 entry["skip"] = "unaffected crates"
             else:
                 entry["batch"] = test_check(entry["command"])
+                if covered(entry["batch"], observed_coverage):
+                    entry["skip"] = "covered in this presubmit"
+                    entry["batch"] = None
         if selected and entry["skip"]:
             raise ValueError("selected gate excluded: " + entry["name"] + " (" + entry["skip"] + ")")
         entries.append(entry)

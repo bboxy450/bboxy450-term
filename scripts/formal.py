@@ -300,6 +300,8 @@ def evidence_receipt(target, root=ROOT, *, require_clean=True):
     pins = json.loads((root / "verification/tools.lock.json").read_text())
     if data["tlc"] != pins["tlc"] or data["java"] not in pins["java"].values():
         raise ValueError("formal evidence reference tools differ from pins")
+    if "tool_pins" in data and data["tool_pins"] != pins:
+        raise ValueError("formal evidence full tool pins differ")
     contract_names = {name for row in contract_records for name in row["models"]}
     for m in models:
         if (m["graph_equal"] is not True or m["states"] < 1 or m["edges"] < 0
@@ -309,6 +311,9 @@ def evidence_receipt(target, root=ROOT, *, require_clean=True):
             raise ValueError("formal evidence TLA model hash differs")
         if m["name"] in contract_names and m["contract_metadata"] != contract_metadata(target / "models", m["name"]):
             raise ValueError("formal evidence contract metadata differs")
+        if "reuse_key" in m and m["reuse_key"] != model_reuse_key(
+                target / "models", m["name"], m["expected"], m["contract_metadata"], pins):
+            raise ValueError("formal evidence reuse inputs differ")
     return {"source": sha, "checkout": str(root), "evidence": str(path),
             "evidence_sha256": hashlib.sha256(raw).hexdigest(), "dirty": data["dirty"],
             "models": len(models), "crates": len(records), "contracts": len(contract_records)}
@@ -317,8 +322,7 @@ def evidence_receipt(target, root=ROOT, *, require_clean=True):
 def archive_evidence(target, root=ROOT):
     """Keep reviewable evidence after an owned checking slot is removed."""
     target, root = Path(target).resolve(), Path(root).resolve()
-    common = Path(subprocess.check_output(["git", "rev-parse", "--git-common-dir"], cwd=root, text=True).strip())
-    store = (root / common).resolve() / "bboxy-formal-evidence"
+    store = evidence_store(root)
     store.mkdir(parents=True, exist_ok=True)
     digest = hashlib.sha256((target / "evidence.json").read_bytes()).hexdigest()
     destination = store / digest
@@ -335,13 +339,122 @@ def archive_evidence(target, root=ROOT):
             except OSError:
                 if not destination.is_dir():
                     raise
+    data = json.loads((destination / "evidence.json").read_text())
+    if data.get("dirty") is False and any("reuse_key" in row for row in data["models"]):
+        # Publish optimization pointers only after the complete source-bound
+        # receipt has validated. Each key is independent; concurrent writers
+        # can atomically replace it with another equivalent green receipt.
+        evidence_receipt(destination, root)
+        try:
+            publish_model_index(store, destination, data)
+        except OSError:
+            print("formal: reuse index unavailable; checked evidence remains archived", flush=True)
     return destination
+
+
+def evidence_store(root=ROOT):
+    common = Path(subprocess.check_output(["git", "rev-parse", "--git-common-dir"], cwd=root, text=True).strip())
+    return (root / common).resolve() / "bboxy-formal-evidence"
+
+
+def model_reuse_key(root, name, expected, metadata, pins):
+    # Include configurations and freshly exported native graphs as well as the
+    # required TLA, expectation, bounds metadata and every pinned host/tool.
+    suffixes = (".tla", ".cfg", "Graph.cfg", ".states", ".edges")
+    value = {"name": name, "expected": expected, "contract_metadata": metadata,
+             "tool_pins": pins, "files": {suffix: hashlib.sha256(
+                 (root / (name + suffix)).read_bytes()).hexdigest() for suffix in suffixes}}
+    return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def publish_model_index(store, archive, data):
+    index = store / "by-model"
+    index.mkdir(exist_ok=True)
+    for row in data["models"]:
+        key = row.get("reuse_key")
+        if key is None:
+            continue  # Legacy receipts cannot attest the additional key inputs.
+        with tempfile.NamedTemporaryFile(mode="w", dir=index, delete=False) as stream:
+            temporary = Path(stream.name)
+            json.dump({"evidence": archive.name, "model": row["name"]}, stream)
+        try:
+            temporary.replace(index / (key + ".json"))
+        finally:
+            temporary.unlink(missing_ok=True)
+
+
+def reused_model(store, root, name, expected, metadata, pins, key):
+    try:
+        pointer = json.loads((store / "by-model" / (key + ".json")).read_text())
+        digest = pointer["evidence"]
+        if pointer["model"] != name or not re.fullmatch(r"[a-f0-9]{64}", digest):
+            return None
+        archive = store / digest
+        raw = (archive / "evidence.json").read_bytes()
+        data = json.loads(raw)
+        if (hashlib.sha256(raw).hexdigest() != digest or data.get("dirty") is not False
+                or data.get("tool_pins") != pins or data.get("tlc") != pins["tlc"]
+                or data.get("java") != pins["java"][f"{platform.system()}-{platform.machine()}"]):
+            return None
+        rows = [row for row in data["models"] if row["name"] == name]
+        if len(rows) != 1:
+            return None
+        row = rows[0]
+        if (row.get("reuse_key") != key or row["expected"] != expected
+                or row["contract_metadata"] != metadata or row["graph_equal"] is not True
+                or row["states"] < 1 or row["edges"] < 0
+                or row["tlc_exit"] != {"pass": 0, "safety": 12, "deadlock": 11, "liveness": 13}[expected]
+                or row["tla_sha256"] != hashlib.sha256((archive / "models" / (name + ".tla")).read_bytes()).hexdigest()
+                or model_reuse_key(archive / "models", name, expected, metadata, pins) != key):
+            return None
+        for suffix, exit_code, wanted in ((".log", row["tlc_exit"], expected), ("Graph.log", 0, "pass")):
+            output = (archive / "models" / (name + suffix)).read_text()
+            if verdict(subprocess.CompletedProcess([], exit_code, output)) != wanted:
+                return None
+        for suffix in (".log", "Graph.log", ".dot"):
+            source = archive / "models" / (name + suffix)
+            shutil.copyfile(source, root / source.name)
+        return {**row, "reused_from": digest}
+    except (OSError, ValueError, KeyError, TypeError):
+        return None  # Missing, corrupt or stale cache always re-checks.
+
+
+def check_model(root, row, contract_names, java, jar, pins, store, *, reuse=False):
+    name, expected, count, width = row
+    if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*', name) or expected not in {"pass", "safety", "deadlock", "liveness"}:
+        raise ValueError("invalid model manifest")
+    metadata = contract_metadata(root, name) if name in contract_names else None
+    key = model_reuse_key(root, name, expected, metadata, pins)
+    cached = reused_model(store, root, name, expected, metadata, pins, key) if reuse else None
+    if cached is not None:
+        states, edges = native_graph(root, name)
+        if (cached["states"] == len(states) == int(count) and cached["edges"] == len(edges)
+                and all(len(state) == int(width) for state in states)):
+            print(f"formal: {name}: reused_from {cached['reused_from']}", flush=True)
+            return cached
+    graph = tlc(java, jar, root, name, True)
+    if verdict(graph) != "pass":
+        raise ValueError(f"graph generation failed: {name}")
+    actual_states, actual_edges = dot_graph(root / f"{name}.dot", int(width))
+    native_states, native_edges = native_graph(root, name)
+    if actual_states != native_states or actual_edges != native_edges or len(actual_states) != int(count):
+        raise ValueError(f"native/TLC graph mismatch: {name}; states={len(native_states)}/{len(actual_states)}, edges={len(native_edges)}/{len(actual_edges)}")
+    checked = tlc(java, jar, root, name, False)
+    actual = verdict(checked)
+    if actual != expected:
+        raise ValueError(f"native/TLC verdict mismatch: {name}: {expected}/{actual}")
+    print(f"formal: {name}: {actual}, {len(actual_states)} states, {len(actual_edges)} edges match", flush=True)
+    return {"name": name, "expected": expected, "states": len(actual_states),
+            "edges": len(actual_edges), "tlc_exit": checked.returncode, "graph_equal": True,
+            "contract_metadata": metadata, "reuse_key": key,
+            "tla_sha256": hashlib.sha256((root / f"{name}.tla").read_bytes()).hexdigest()}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target", type=Path, required=True)
     parser.add_argument("--verify-evidence", action="store_true")
+    parser.add_argument("--reuse", action="store_true", help="presubmit-only reuse of identical archived models")
     args = parser.parse_args()
     target = args.target.resolve()
     if args.verify_evidence:
@@ -365,29 +478,13 @@ def main():
     java, jar, pins = tools(target)
     evidence = {"source": subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),
                 "tlc": pins["tlc"], "java": pins["java"][f"{platform.system()}-{platform.machine()}"],
+                "tool_pins": pins,
                 "crates": records, "contracts": contract_records, "models": [], "complete_tlc_replacement": False,
                 "dirty": source_dirty(ROOT),
                 "input_sha256": input_hashes(ROOT, records, contract_records)}
-    for name, expected, count, width in rows:
-        if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*', name) or expected not in {"pass", "safety", "deadlock", "liveness"}:
-            raise ValueError("invalid model manifest")
-        graph = tlc(java, jar, root, name, True)
-        if verdict(graph) != "pass":
-            raise ValueError(f"graph generation failed: {name}")
-        actual_states, actual_edges = dot_graph(root / f"{name}.dot", int(width))
-        native_states, native_edges = native_graph(root, name)
-        if actual_states != native_states or actual_edges != native_edges or len(actual_states) != int(count):
-            raise ValueError(f"native/TLC graph mismatch: {name}; states={len(native_states)}/{len(actual_states)}, edges={len(native_edges)}/{len(actual_edges)}")
-        checked = tlc(java, jar, root, name, False)
-        actual = verdict(checked)
-        if actual != expected:
-            raise ValueError(f"native/TLC verdict mismatch: {name}: {expected}/{actual}")
-        metadata = contract_metadata(root, name) if name in contract_names else None
-        evidence["models"].append({"name": name, "expected": expected, "states": len(actual_states),
-                                   "edges": len(actual_edges), "tlc_exit": checked.returncode, "graph_equal": True,
-                                   "contract_metadata": metadata,
-                                   "tla_sha256": hashlib.sha256((root / f"{name}.tla").read_bytes()).hexdigest()})
-        print(f"formal: {name}: {actual}, {len(actual_states)} states, {len(actual_edges)} edges match", flush=True)
+    for row in rows:
+        evidence["models"].append(check_model(root, row, contract_names, java, jar, pins,
+                                               evidence_store(ROOT), reuse=args.reuse))
     (target / "evidence.json").write_text(json.dumps(evidence, indent=2) + '\n')
     archive = archive_evidence(target)
     print("formal: receipt " + json.dumps(evidence_receipt(archive, require_clean=False), sort_keys=True))

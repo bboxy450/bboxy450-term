@@ -34,6 +34,40 @@ import uuid
 sys.dont_write_bytecode = True
 
 _timing_path = None
+STAGE_ALLOCATIONS = {"formal": 290., "tests": 400., "fixtures": 60., "invariants_misc": 60.}
+STAGE_MARGIN = 90.
+FORMAL_PHASE_PREFIX = "formal-phase: "
+
+
+def landing_machinery(paths):
+    names = {"landing.py", "land.sh", "presubmit.sh", "quarantine-test.sh", "quarantine.py",
+             "invariants.sh", "ci-local.sh", "test-landing.py", "test-resource-ledger.py",
+             "formal-stage.py"}
+    # Imported landing/recovery fixtures are machinery too. Ordinary scripts
+    # retain their own checks without paying for the whole landing corpus.
+    return any(p.startswith("scripts/") and
+               (Path(p).name in names or Path(p).name.startswith(
+                   ("landing_", "resource-ledger", "test-landing-")))
+               or p.startswith("scripts/fixtures/landing/") for p in paths)
+
+
+def load_average():
+    try:
+        return os.getloadavg()[0]
+    except OSError:
+        return None
+
+
+def budget_findings(totals, load_start, load_end):
+    findings = [{"kind": "stage_allocation", "stage": stage, "seconds": seconds,
+                 "allocation_seconds": STAGE_ALLOCATIONS[stage]}
+                for stage, seconds in totals["stage_seconds"].items()
+                if seconds > STAGE_ALLOCATIONS[stage]]
+    if totals["unclassified_seconds"] > 15:
+        findings.append({"kind": "unclassified", "seconds": totals["unclassified_seconds"],
+                         "allocation_seconds": 15.})
+    return [{**row, "load_average_start": load_start, "load_average_end": load_end}
+            for row in findings]
 
 
 class Refusal(Exception):
@@ -405,7 +439,12 @@ def cargo_backed(check):
 
 def checked(argv, root):
     print("presubmit:", shlex.join(map(str, argv)), flush=True)
-    code = measured_command(list(map(str, argv)), root, _timing_path)
+    names = {Path(str(arg)).name for arg in argv}
+    stage = ("formal" if list(argv)[:2] == ["make", "test-formal"] else
+             "tests" if "quarantine-test.sh" in names else
+             "fixtures" if names & {"test-landing.py", "test-resource-ledger.py"} else
+             "invariants_misc")
+    code = measured_command(list(map(str, argv)), root, _timing_path, stage=stage)
     if code:
         raise Refusal(f"check_failed ({code}): {argv[0]}", 1)
 
@@ -452,25 +491,30 @@ def ledger_stage(argv):
     return "smoke"
 
 
-def measured_command(argv, root, timing_path, *, stream=None, env=None):
+def measured_command(argv, root, timing_path, *, stream=None, env=None, stage=None):
     phase = None
+    substep = None
+    previous = None
     def switch(value):
-        nonlocal phase
-        if value != phase and timing_path is not None:
-            line = (json.dumps({"at": time.monotonic(), "phase": value}) + "\n").encode()
+        nonlocal phase, previous
+        active = stage if stage != "formal" or substep else None
+        state = (value, active, substep)
+        if state != previous and timing_path is not None:
+            line = (json.dumps({"at": time.monotonic(), "phase": value,
+                                "stage": active, "substep": substep}) + "\n").encode()
             fd = os.open(timing_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
             try:
                 os.write(fd, line)
             finally:
                 os.close(fd)
-        phase = value
+        phase, previous = value, state
     cargo = argv[0] == "cargo" or any(Path(arg).name == "quarantine-test.sh" for arg in argv)
     fixtures = any(Path(arg).name in {"test-landing.py", "test-resource-ledger.py"} for arg in argv)
     switch("compile" if cargo else "test" if fixtures else "other")
     argv, env = cargo_invocation(argv, env)
     ledger = ledger_module()
-    stage = ledger_stage(argv)
-    accounting = ledger.begin(stage, root) if ledger is not None and stage else None
+    accounting_stage = ledger_stage(argv)
+    accounting = ledger.begin(accounting_stage, root) if ledger is not None and accounting_stage else None
     wrapped = ledger.attempt(accounting, "wrap", argv) if ledger is not None else None
     options = ledger.attempt(accounting, "popen_options") if ledger is not None else None
     child = subprocess.Popen(wrapped or argv, cwd=root, env=env, text=True,
@@ -480,7 +524,13 @@ def measured_command(argv, root, timing_path, *, stream=None, env=None):
     try:
         for line in child.stdout:
             clean = re.sub(r"\x1b\[[0-9;]*m", "", line)
-            if re.match(r"\s*(Compiling|Checking) ", clean):
+            if stage == "formal" and clean.startswith(FORMAL_PHASE_PREFIX):
+                event = json.loads(clean[len(FORMAL_PHASE_PREFIX):])
+                if event.get("event") not in {"start", "end"} or not re.fullmatch(r"[\w.-]+", event.get("step", "")):
+                    raise Refusal("invalid_formal_phase")
+                substep = event["step"] if event["event"] == "start" else None
+                switch("other")
+            elif re.match(r"\s*(Compiling|Checking) ", clean):
                 switch("compile")
             elif re.match(r"\s*Finished .*(?:profile|target)", clean):
                 switch("other")
@@ -497,6 +547,7 @@ def measured_command(argv, root, timing_path, *, stream=None, env=None):
         return child.wait()
     finally:
         child.stdout.close()
+        stage = substep = None
         switch("other")
         if ledger is not None:
             ledger.attempt(accounting, "finish", child.returncode)
@@ -525,10 +576,20 @@ class TwoClocks:
         self.phase = "compile"  # setup cannot run forever outside either cap
         self.compile = self.run = self.test = 0.
         self.tests_started = False
+        self.stage = self.substep = None
+        self.stage_seconds = dict.fromkeys(STAGE_ALLOCATIONS, 0.)
+        self.formal_step_seconds = {}
+
+    def classified(self, elapsed):
+        if self.phase != "compile" and self.stage in self.stage_seconds:
+            self.stage_seconds[self.stage] += elapsed
+            if self.stage == "formal" and self.substep:
+                self.formal_step_seconds[self.substep] = self.formal_step_seconds.get(self.substep, 0.) + elapsed
 
     def event(self, value):
         at = max(self.at, value["at"])
         elapsed = at - self.at
+        self.classified(elapsed)
         if self.phase == "compile":
             self.compile += elapsed
         else:
@@ -536,6 +597,7 @@ class TwoClocks:
             if self.phase == "test":
                 self.test += elapsed
         self.at, self.phase = at, value["phase"]
+        self.stage, self.substep = value.get("stage"), value.get("substep")
         self.tests_started |= self.phase == "test"
 
     def totals(self, ended):
@@ -543,8 +605,15 @@ class TwoClocks:
         build = self.compile + (tail if self.phase == "compile" else 0.)
         run = self.run + (tail if self.phase != "compile" else 0.)
         test = self.test + (tail if self.phase == "test" else 0.)
+        stages, steps = dict(self.stage_seconds), dict(self.formal_step_seconds)
+        if self.phase != "compile" and self.stage in stages:
+            stages[self.stage] += tail
+            if self.stage == "formal" and self.substep:
+                steps[self.substep] = steps.get(self.substep, 0.) + tail
         return {"compile_seconds": build, "run_seconds": run, "test_seconds": test,
-                "unclassified_seconds": max(0., run - test), "tests_started": self.tests_started}
+                "unclassified_seconds": max(0., run - sum(stages.values())),
+                "stage_seconds": stages, "formal_step_seconds": steps,
+                "tests_started": self.tests_started}
 
     def expired(self, ended, build_cap, run_bound):
         totals = self.totals(ended)
@@ -597,7 +666,7 @@ def command_tools(argv, root):
             sources.update(p for row in tomllib.loads(contracts.read_text())["contract"]
                            for field in ["sources", "implementation_tests"] for p in row[field])
         return {"Makefile", "scripts/formal.py", "scripts/test-formal.py",
-                "verification/corpus.toml", "verification/coverage.toml", "verification/tools.lock.json",
+                "scripts/formal-stage.py", "verification/corpus.toml", "verification/coverage.toml", "verification/tools.lock.json",
                 "crates/bboxy450-tlc/src/lib.rs", "crates/bboxy450-tlc/examples/verify.rs",
                 "crates/bbt-yarn/src/model.rs", "crates/bbt-yarn/examples/verify.rs",
                 "crates/bbt-yarn-macros/src/lib.rs", "verification/contracts.toml",
@@ -819,7 +888,10 @@ def presubmit_worker(base, result_path, recheck=None):
     root = repository()
     data = recheck_data(affected(base + "..HEAD", root=root), recheck)
     atomic_write(result_path, json.dumps(data) + "\n")
-    checked(["make", "test-formal"], root)
+    coverage_path = result_path.parent / "quarantine-coverage.json"
+    os.environ["BBOXY_PRESUBMIT_COVERAGE"] = str(coverage_path)
+    os.environ["BBOXY_PRESUBMIT_ATTEMPT"] = result_path.parent.name
+    checked(["make", "test-formal", "FORMAL_REUSE=1"], root)
     if data["tier"] == "lab":
         if recheck is None:
             records_checks(root, data["paths"])
@@ -831,12 +903,13 @@ def presubmit_worker(base, result_path, recheck=None):
         if packages:
             checked(["sh", "scripts/quarantine-test.sh", "--locked", *packages], root)
             checked(["cargo", "clippy", "--locked", *packages, "--all-targets", "--", "-D", "warnings"], root)
-        if recheck is None and any(p.startswith("scripts/") for p in data["paths"]):
+        if recheck is None and landing_machinery(data["paths"]):
             checked(["python3", "-I", "scripts/test-landing.py", "--all"], root)
             if (root / "scripts/test-resource-ledger.py").exists():
                 checked(["python3", "-I", "scripts/test-resource-ledger.py"], root)
         if packages or recheck is None:
-            checked(["sh", "scripts/invariants.sh", "--affected", " ".join(data["affected"])], root)
+            checked(["sh", "scripts/invariants.sh", "--affected", " ".join(data["affected"]),
+                     "--covered-tests", str(coverage_path)], root)
         dispatch = any(Path(p).name in ("ctl.rs", "seat_socket.rs", "logic.rs")
                        or "/src/ctl/" in p or "/src/mcp/" in p for p in data["paths"])
         if dispatch and packages and (recheck is None or "bboxy450-term-proto" in data["affected"]):
@@ -845,12 +918,12 @@ def presubmit_worker(base, result_path, recheck=None):
             output = io.StringIO()
             code = measured_command(["cargo", "test", "--locked", "-p", "bboxy450-term-proto",
                                      "--test", "gui_wire_golden"],
-                                    root, _timing_path, stream=output)
+                                    root, _timing_path, stream=output, stage="invariants_misc")
             print(output.getvalue(), end="", flush=True)
             if code or not re.search(r"test result: ok\. [1-9][0-9]* passed", output.getvalue()):
                 raise Refusal("golden_dispatch_tests_missing")
     for argv in data.get("recheck", {}).get("commands", []):
-        if argv != ["make", "test-formal"]:
+        if argv not in (["make", "test-formal"], ["make", "test-formal", "FORMAL_REUSE=1"]):
             checked(argv, root)
     if data["parity"] == "yes":
         scoped_parity(root, data, result_path.parent / "parity")
@@ -935,6 +1008,7 @@ def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, oper
     output.mkdir(parents=True, mode=0o700)
     result_path = output / "affected.json"
     started = time.monotonic()
+    load_start = load_average()
     clocks = TwoClocks(started)
     reason = None
     reader = None
@@ -985,6 +1059,8 @@ def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, oper
             stop_worker(child)
             raise
         finally:
+            read_events()
+            ended = time.monotonic()
             if reader is not None:
                 reader.close()
     transcript = (output / "commands.log").read_text()
@@ -998,12 +1074,17 @@ def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, oper
               "log": str(output / "commands.log"),
               "timing_basis": "setup_and_visible_compile_build;all_other_execution_run",
               **clocks.totals(ended)}
+    record.update(load_average_start=load_start, load_average_end=load_average(),
+                  stage_allocations={**STAGE_ALLOCATIONS, "margin": STAGE_MARGIN})
+    record["findings"] = budget_findings(record, load_start, record["load_average_end"])
     if code == 0:
         record["formal"] = formal_receipt(transcript, sha, root)
         record["commands"] = execution_commands(root, sha, transcript,
-                                                 fixtures=any(p.startswith("scripts/") for p in data["paths"]))
+                                                 fixtures=landing_machinery(data["paths"]))
     if "recheck" in data:
         record["recheck"] = data["recheck"]
+    record["result"] = str(output / "result.json")
+    atomic_write(output / "result.json", json.dumps(record, sort_keys=True) + "\n")
     append_record("presubmit.log", record)
     print(transcript, end="")
     print(json.dumps(record, sort_keys=True), flush=True)
@@ -1068,7 +1149,7 @@ def formal_receipt(transcript, sha, root=None):
 
 def refresh_formal(root, sha):
     """A disjoint Rust recheck still needs formal evidence for its new commit."""
-    result = command(["make", "test-formal"], cwd=root, check=False)
+    result = command(["make", "test-formal", "FORMAL_REUSE=1"], cwd=root, check=False)
     log = state_directory() / "formal" / (sha + "-" + uuid.uuid4().hex[:8] + ".log")
     atomic_write(log, result.stdout + result.stderr)
     print(result.stdout + result.stderr, end="", flush=True)
@@ -1522,11 +1603,18 @@ def land(gate_log=None, full=False):
                                     if row.get("operation") == proof["operation"]]
                         for field in ("compile_seconds", "run_seconds", "test_seconds", "unclassified_seconds"):
                             proof[field] = sum(row[field] for row in attempts)
+                        for field in ("stage_seconds", "formal_step_seconds"):
+                            proof[field] = {key: sum(row.get(field, {}).get(key, 0.) for row in attempts)
+                                            for key in {key for row in attempts for key in row.get(field, {})}}
+                        proof["findings"] = [finding for row in attempts for finding in row.get("findings", [])]
+                        proof["load_average_start"] = attempts[0].get("load_average_start")
+                        proof["load_average_end"] = attempts[-1].get("load_average_end")
                         proof["build_attempts"] = len(attempts)
                 spent += time.monotonic() - started
                 check_timings.append({k: proof.get(k) for k in
                                       ("sha", "affected", "recheck", "log", "gate_log", "gate_log_sha256", "compile_seconds", "run_seconds",
-                                       "test_seconds", "unclassified_seconds", "timing_basis")})
+                                       "test_seconds", "unclassified_seconds", "timing_basis", "stage_seconds",
+                                       "formal_step_seconds", "load_average_start", "load_average_end", "findings")})
                 if code:
                     raise Refusal("presubmit_failed", 77)
                 if tested is None or common_paths:
@@ -1568,7 +1656,8 @@ def land(gate_log=None, full=False):
             landing["formal"] = formal
             landing.update({k: proof[k] for k in ("gate_log", "gate_log_sha256", "compile_seconds",
                                                  "run_seconds", "test_seconds", "unclassified_seconds", "build_attempts",
-                                                 "tests_started", "timing_basis") if k in proof})
+                                                 "tests_started", "timing_basis", "stage_seconds", "formal_step_seconds",
+                                                 "load_average_start", "load_average_end", "findings") if k in proof})
             landing["check_timings"] = check_timings
             landing["commands"] = list(executed_commands.values())
             if len(check_timings) > 1:
@@ -1576,6 +1665,10 @@ def land(gate_log=None, full=False):
             for kind in ("compile_seconds", "run_seconds", "test_seconds", "unclassified_seconds"):
                 landing[kind] = (sum(row[kind] for row in check_timings)
                                  if all(row[kind] is not None for row in check_timings) else None)
+            for kind in ("stage_seconds", "formal_step_seconds"):
+                landing[kind] = {key: sum((row.get(kind) or {}).get(key, 0.) for row in check_timings)
+                                 for key in {key for row in check_timings for key in (row.get(kind) or {})}}
+            landing["findings"] = [finding for row in check_timings for finding in (row.get("findings") or [])]
             append_record("landings.log", landing)
             ledger = ledger_module()
             if ledger is not None:
