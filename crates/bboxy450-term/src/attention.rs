@@ -92,11 +92,7 @@ impl Episodes {
         }
         let notification = Notification {
             id: NotificationId(seat.record.id.to_string()),
-            title: format!(
-                "{} · {}",
-                seat.record.name,
-                bbt_ui::modules::harness::label(&seat.record.harness_kind)
-            ),
+            title: format!("{} · {}", seat.record.name, seat.record.harness_kind),
             body: first_line(seat.state.detail.as_deref()).unwrap_or_else(|| {
                 match seat.state.activity {
                     Activity::Waiting(bbt_proto::WaitKind::Permission) => {
@@ -296,10 +292,14 @@ mod tests {
             let desired = episodes.notifications(&Notifications::default(), false, None);
             let title = &desired.values().next().unwrap().notification.title;
             if kind == "bboxy450-harness" {
-                assert_eq!(title, "fixture · Bboxy");
+                assert_eq!(title, "fixture · bboxy450-harness");
             }
             assert!(!title.to_lowercase().contains("bboxy harness"));
-            assert!(!title.contains("bboxy450-harness"));
+            assert!(
+                !title
+                    .split(|c: char| !c.is_alphanumeric())
+                    .any(|word| word == "Bboxy")
+            );
         }
     }
 
