@@ -102,7 +102,7 @@ help:
 	  'make check-plugin-skills         Strict plugin, mux and app all-target Clippy' \
 	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
 	  'make test-harness-native         Scripted harness seat, completed turn and bounded group cleanup' \
-	  'make test-harness-codex-native   Real Codex shared daemon, local model, direct and forwarding shim' \
+	  'make test-capability-native      Capability file and real Codex shared-daemon environment scans' \
 	  'make init-submodules             Initialize and verify the pinned harness unattended' \
 	  'Fresh clone: git clone --recurse-submodules https://github.com/bboxy450/bboxy450-term' \
 	  'make test-harness-proxy          Codex proxy hook composition, seat policy and large catalogs' \
@@ -794,12 +794,12 @@ test-cli-error-isolation:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test diagnostics --test ctl --test ctl_report; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test headless notification_recording_requires_a_test_account_before_startup -- --exact
 
+.PHONY: test-capability-native
 .PHONY: test-shared-codex-cleanup
 test-shared-codex-cleanup:
 	@python3 -I -B scripts/test-shared-codex-cleanup.py
 
-.PHONY: test-harness-codex-native
-test-harness-codex-native: build test-capability-file test-capability-scan
+test-capability-native: build test-capability-file test-capability-scan
 	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --codex '$(CODEX_BIN)'
 	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --codex '$(CODEX_BIN)' --cold --shim
 
