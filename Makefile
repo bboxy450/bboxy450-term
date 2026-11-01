@@ -1851,3 +1851,7 @@ test-harness-standalone: init-submodules fetch-harness
 .PHONY: test-harness-launch
 test-harness-launch:
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-harness-wake-up --lib launch::embed_tests --target-dir '$(TARGET_DIR)'
+
+.PHONY: check-harness-default
+check-harness-default:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-harness --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
