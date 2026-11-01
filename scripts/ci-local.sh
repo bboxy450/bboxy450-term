@@ -83,7 +83,7 @@ fi
 ledger integration make test-capability-scan TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger integration make test-capability-control TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger integration make test-harness-native TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
-ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
+ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR" FORMAL_REUSE=0
 ledger smoke sh scripts/ui-lint.sh
 ledger build cargo build -p bboxy450-term --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
 smoke_bin="$BBOXY_CARGO_TARGET_DIR/debug/bboxy450-term"

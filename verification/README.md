@@ -196,6 +196,34 @@ the model checker. `make push` also runs this check. The evidence hash records a
 script-produced result; it is not a proof of arbitrary Rust refinement or a
 replacement for signed commits, actual test execution and review.
 
+### d5002 presubmit work and verdict reuse
+
+Presubmit still compiles and exports every model. It requests
+`make test-formal FORMAL_REUSE=1`; full ci-local explicitly forces
+`FORMAL_REUSE=0`, including when a caller inherited a reuse override.
+The formal driver may reuse a model only when its TLA/configuration bytes,
+fresh native graph bytes, independent expectation, contract metadata and full
+tool-pin map match a complete green archived model. A per-key atomic pointer
+under the private Git evidence store avoids a global archive scan. Missing,
+corrupt, legacy or mismatched entries re-check; an index write failure does
+not invalidate newly checked archived evidence. Each reused row names its
+`reused_from` evidence hash. The new receipt always binds the current candidate,
+current complete inventory and current source hashes. This memoizes the same
+deterministic NativeAndTlcAgree evidence predicate in LandingVerification;
+it adds no publication permission or assumption that changed models still pass.
+
+`formal-stage.py` frames every Make formal sub-step. The existing presubmit
+two-clock observer excludes compilation from `stage_seconds` and records
+`formal_step_seconds`, start/end one-minute load and advisory findings. The
+allocations are formal290/tests400/fixtures60/invariants_misc60 plus90 margin.
+Missing phase markers above15s and stage overruns are findings; the unchanged
+900s run cap still blocks. Landing fixtures run only for the d5002 machinery
+scope; full ci-local still runs them and resource-ledger fixtures every time.
+Quarantine receipts discharge only exact observed passing invariant tests in
+the same attempt/source/target. Filtered, ignored, ambiguous and differently
+configured checks still run. `test-landing-budget-controls.py` removes these
+guards individually and requires named red then restored green results.
+
 
 `SeatIngestion` projects the #47 independent read/parse boundary: two seats,
 two records each, one pending slot per seat, fair healthy-seat admission/read/

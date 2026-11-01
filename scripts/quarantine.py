@@ -7,6 +7,59 @@ import re
 import subprocess
 import sys
 import uuid
+import os
+
+
+class TestCoverage:
+    """Only observed libtest outcomes, tied to this attempt, source and target."""
+    def __init__(self, root, arguments, api):
+        self.root, self.api = root, api
+        self.path = os.environ.get("BBOXY_PRESUBMIT_COVERAGE")
+        self.attempt = os.environ.get("BBOXY_PRESUBMIT_ATTEMPT")
+        self.packages = api.metadata(root) if self.path and self.attempt else {}
+        self.current = None
+        self.tests = []
+        target = os.environ.get("BBOXY_CARGO_TARGET_DIR", "target")
+        for i, arg in enumerate(arguments):
+            if arg == "--target-dir" and i + 1 < len(arguments):
+                target = arguments[i + 1]
+            elif arg.startswith("--target-dir="):
+                target = arg.split("=", 1)[1]
+        self.target = str((root / target).resolve())
+        self.sha = api.git("rev-parse", "HEAD", cwd=root) if self.packages else None
+
+    def observe(self, line):
+        if not self.packages:
+            return
+        line = re.sub(r"\x1b\[[0-9;]*m", "", line).strip()
+        heading = re.fullmatch(r"Running (.+) \((.+)\)", line)
+        if heading:
+            source, binary = heading.groups()
+            source = source.removeprefix("unittests ")
+            stem = re.sub(r"-[0-9a-f]{8,}$", "", Path(binary).name)
+            candidates = []
+            for package, info in self.packages.items():
+                for target in info["targets"]:
+                    kinds = target["kind"]
+                    kind = ("lib" if set(kinds) & {"lib", "proc-macro"} else
+                            "test" if "test" in kinds else "bin" if "bin" in kinds else None)
+                    if (kind and target["name"].replace("-", "_") == stem.replace("-", "_")
+                            and str(target["src_path"]).endswith("/" + source)):
+                        candidates.append((package, kind, target["name"], Path(binary).name))
+            self.current = candidates[0] if len(candidates) == 1 else None
+        elif line.startswith(("Doc-tests ", "test result:")):
+            self.current = None
+        elif self.current:
+            result = re.fullmatch(r"test (\S+) \.\.\. (ok|FAILED|ignored)(?:,.*| .*)?", line)
+            if result:
+                package, kind, target, binary = self.current
+                self.tests.append({"package": package, "kind": kind, "target": target,
+                                   "binary": binary, "test": result[1], "result": result[2]})
+
+    def passed(self):
+        if self.packages and self.sha == self.api.git("rev-parse", "HEAD", cwd=self.root):
+            self.api.atomic_write(Path(self.path), json.dumps({"sha": self.sha, "target": self.target,
+                "attempt": self.attempt, "tests": self.tests}) + "\n")
 
 
 def rows(root):
@@ -116,6 +169,7 @@ def test(arguments, api):
     split = cargo_args.index("--") if "--" in cargo_args else len(cargo_args)
     if "--no-fail-fast" not in cargo_args[:split]:
         cargo_args.insert(split, "--no-fail-fast")
+    coverage = TestCoverage(root, cargo_args, api)
     # One ordered stream preserves Cargo's binary headings alongside libtest's
     # per-binary durations; --no-fail-fast guarantees later suites still run.
     child = subprocess.Popen(["cargo", "test", *cargo_args], cwd=root, text=True,
@@ -123,10 +177,12 @@ def test(arguments, api):
     lines = []
     for line in child.stdout:
         lines.append(line)
+        coverage.observe(line)
         print(line, end="", flush=True)
     child.stdout.close()
     result = subprocess.CompletedProcess(child.args, child.wait(), "".join(lines), "")
     if not result.returncode:
+        coverage.passed()
         return 0
     failed = re.findall(r"(?m)^test (.+) \.\.\. FAILED$", result.stdout)
     counts = sum(map(int, re.findall(r"test result: FAILED\..*? (\d+) failed", result.stdout)))
@@ -150,4 +206,5 @@ def test(arguments, api):
         if record["verdict"] != "flake":
             return retry.returncode or 1
         print("quarantine: passed alone, still tracked: " + name, file=sys.stderr)
+    coverage.passed()
     return 0
