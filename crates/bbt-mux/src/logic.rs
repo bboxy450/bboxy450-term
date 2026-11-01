@@ -5338,6 +5338,13 @@ impl Worker {
         use crate::mcp::tools;
         use crate::registry::Class;
         use serde_json::json;
+        // Tool discovery uses the mounted plugin snapshot, just like
+        // tools/list, even while the document scan is still pending.
+        let plugins = if call.tool == "orient" {
+            self.plugin_catalogue(actor)
+        } else {
+            Vec::new()
+        };
         let index = port
             .map(|port| port.index.clone())
             .unwrap_or_else(|| self.workspaces.cache.startup().index.clone());
@@ -5378,14 +5385,6 @@ impl Worker {
                     .messaging
                     .inbox_summary(record.id, record.generation)
                     .map_err(|_| "inbox counts are unavailable; no count was substituted")?;
-                let plugins = port
-                    .map(|port| {
-                        crate::mcp::plugin_tools::catalogue(
-                            &port.host.plugin_host().seat_tools(),
-                            actor,
-                        )
-                    })
-                    .unwrap_or_default();
                 let catalogue = tools::catalogue(actor, plugins);
                 let tools = catalogue["tools"]
                     .as_array()
