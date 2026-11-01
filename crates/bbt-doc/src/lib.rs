@@ -10,6 +10,7 @@ pub mod highlight;
 pub mod links;
 pub mod markdown;
 pub mod mermaid;
+pub mod reports;
 pub use markdown::{
     Block, BlockKind, Frontmatter, Inline, Markdown, StreamingMarkdown, TableAlign, parse,
 };

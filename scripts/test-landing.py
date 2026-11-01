@@ -610,6 +610,23 @@ except Exception as error:
         self.assertIn("invariants.sh --affected \n", (self.repo.state / "shell.log").read_text())
         self.assertFalse((self.repo.state / "cargo.jsonl").exists())
 
+    def test_script_only_report_trailer_selects_the_committed_tree_gate(self):
+        self.repo.write("scripts/fixture-gate.sh", "// fixture cut\n")
+        self.repo.commit("Fixture report candidate\n\nReport: [[reports/2026-10-31-work]]")
+        result = self.repo.presubmit()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = [json.loads(line) for line in (self.repo.state / "cargo.jsonl").read_text().splitlines()]
+        self.assertEqual(len(calls), 1)
+        self.assertIn("reports::committed_report_trailers_resolve_in_their_own_trees", calls[0])
+
+    def test_script_only_report_gate_failure_refuses_presubmit(self):
+        self.repo.write("scripts/fixture-gate.sh", "// fixture cut\n")
+        self.repo.commit("Fixture report candidate\n\nReport: [[missing]]")
+        (self.repo.state / "behavior.json").write_text('{"fail":"test"}')
+        result = self.repo.presubmit()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("reports::committed_report_trailers_resolve_in_their_own_trees", result.stdout + result.stderr)
+
     def test_formal_failure_refuses_a_scoped_presubmit_before_cargo(self):
         self.repo.write("Makefile", "test-formal:\n\t@exit 23\n")
         self.cut("crates/c/src/lib.rs")
@@ -973,27 +990,52 @@ class LandTests(unittest.TestCase):
         self.assertEqual(self.repo.remote_head(), self.repo.base)
         self.assertFalse((self.repo.state / "landings.log").exists())
 
-    def test_narrow_cold_log_is_no_longer_accepted(self):
+    def test_scoped_exact_full_gate_supersedes_a_timed_out_presubmit(self):
         sha = self.cut()
         (self.repo.state / "presubmit.log").write_text(json.dumps({
             "sha": sha, "error": "presubmit_timeout", "exit": 124,
             "compile_seconds": 900., "tests_started": False}) + '\n')
-        result = self.repo.land("--gate-log", self.gate_log(sha))
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("gate_log_requires_wide_cut", result.stderr)
-        self.assertEqual(self.repo.remote_head(), self.repo.base)
+        proof = self.gate_log(sha)
+        result = self.repo.land("--gate-log", proof)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.repo.remote_head(), sha)
         self.assertEqual(self.cargo_test_count(), 0)
+        record = json.loads((self.repo.state / "landings.log").read_text())
+        self.assertEqual(record["tested_sha"], sha)
+        self.assertEqual(record["gate_log_sha256"], hashlib.sha256(proof.read_bytes()).hexdigest())
+        self.assertEqual(record["tier"], "code")
 
-    def test_run_timeout_does_not_push_or_accept_a_provided_gate(self):
+    def test_scoped_stale_full_gate_cannot_supersede_a_run_timeout(self):
         sha = self.cut()
         (self.repo.state / "behavior.json").write_text('{"block":"test","test_started":true}')
         (self.repo.state / "fixture.json").write_text('{"timeout_seconds":3}')
         result = self.repo.land()
         self.assertEqual(result.returncode, 77, result.stdout + result.stderr)
-        result = self.repo.land("--gate-log", self.gate_log(sha))
+        result = self.repo.land("--gate-log", self.gate_log(self.repo.base))
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("gate_log_requires_wide_cut", result.stderr)
+        self.assertIn("gate_log_source_mismatch", result.stderr)
         self.assertEqual(self.repo.remote_head(), self.repo.base)
+
+    def test_scoped_source_binding_has_a_broken_control(self):
+        sha = self.cut()
+        proof = self.gate_log(sha)
+        proof.write_text(proof.read_text().replace(f"ci-local: source {sha}", "ci-local: source " + "0" * 40))
+        result = self.repo.land("--gate-log", proof)
+        self.assertIn("gate_log_source_mismatch", result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
+        # The result and formal receipt still match HEAD. Removing just the
+        # source binding must make this real private landing accept the bad log.
+        tool = self.repo.root / "scripts/landing.py"
+        original = tool.read_text()
+        guard = 'if sources != [[sha, "normal"]]:'
+        self.assertEqual(original.count(guard), 1)
+        tool.write_text(original.replace(guard, 'if False: # deliberately broken source binding'))
+        broken = self.repo.commit("Fixture broken source binding")
+        proof = self.gate_log(broken)
+        proof.write_text(proof.read_text().replace(f"ci-local: source {broken}", "ci-local: source " + "0" * 40))
+        result = self.repo.land("--gate-log", proof)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.repo.remote_head(), broken)
 
     def test_wide_exact_green_log_is_reused_and_hashed_without_another_gate(self):
         sha = self.cut("crates/a/src/lib.rs")

@@ -173,8 +173,12 @@ def tlc(java, jar, root, name, graph):
         command += ["-dump", "dot,actionlabels", f"{name}.dot"]
     command += [name]
     try:
-        result = subprocess.run(command, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                                text=True, timeout=60)
+        # TLC extracts standard modules using java.io.tmpdir and deletes them
+        # on exit. Concurrent checking slots must never own the same files.
+        with tempfile.TemporaryDirectory(prefix="tlc-", dir=root) as own:
+            command.insert(1, f"-Djava.io.tmpdir={own}")
+            result = subprocess.run(command, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    text=True, timeout=60)
     except subprocess.TimeoutExpired as error:
         (root / f"{name}{suffix}.log").write_bytes(error.stdout or b"")
         raise ValueError(f"TLC timed out: {name}; incomplete is not a pass") from error

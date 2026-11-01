@@ -4138,9 +4138,33 @@ fn mcp_fixture_first_turn_orients_reports_and_retains_signed_task_receipts() {
 #[test]
 fn mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_only() {
     let f = Fixture::new();
+    // These external fixture edits bypass the native writer. Observe their exact
+    // digest before the next mutation instead of racing the asynchronous index.
+    let write = |metadata| {
+        let expected = f.task_file(metadata);
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let observed = f.call(
+                f.oracle.id,
+                Ulid::new(),
+                "knowledge_fetch",
+                json!({"locator":f.task_path()}),
+            );
+            if observed["isError"] == false
+                && observed["structuredContent"]["digest"] == expected.digest
+            {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "fixture edit not indexed: {observed}"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    };
     let mut metadata = f.task_metadata();
     metadata["acceptance"] = json!(["criterion 1",{"criterion":"specs/fixture.md:7","spec":"specs/fixture.md","line":7}]);
-    f.task_file(metadata);
+    write(metadata);
     let accept = || {
         f.mutate(
             f.oracle.id,
@@ -4181,10 +4205,10 @@ fn mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_onl
     assert_eq!(data(accept())["task_status"], "accepted");
     assert_eq!(f.task_document().metadata["status"], "accepted");
     // Legacy tasks without a criteria list still need the exact command and zero.
-    f.task_file(f.task_metadata());
+    write(f.task_metadata());
     data(f.report(verification("true", 0, json!([]))));
     assert_eq!(data(accept())["task_status"], "accepted");
-    f.task_file(f.task_metadata());
+    write(f.task_metadata());
     data(f.report(verification("true", 0, json!([]))));
     data(f.mutate(
         f.oracle.id,
@@ -7445,4 +7469,155 @@ fn indexed_task_acceptance_cancels_the_pending_delegation_with_a_done_reason() {
         assert_eq!(receipt["wake"], "none");
         assert_eq!(receipt["reason"], "done");
     }
+}
+
+// Reports use the normal authenticated Index, provider and task lifecycle.
+#[test]
+fn report_document_create_fetch_search_ownership_and_append_only() {
+    let f = Fixture::new();
+    f.task_file(f.task_metadata());
+    let create = json!({"path":"reports/2026-10-31-work.md", "frontmatter":{
+        "type":"report", "task":"#1", "commits":[], "verify":{"command":"true","exit_code":0},
+        "author":format!("seat:{}", f.own.id), "created":"2026-10-31T00:00:00Z"
+    }, "body":"Files and mechanisms. Commands and actual exits. Criterion evidence. Gaps."});
+    let mut other = create.clone();
+    other["frontmatter"]["author"] = json!(format!("seat:{}", f.peer.id));
+    knowledge_denied(
+        f.mutate(f.peer.id, Ulid::new(), "knowledge_write", other),
+        "report_task_denied",
+    );
+    let mut spoof = create.clone();
+    spoof["frontmatter"]["author"] = json!(format!("seat:{}", f.peer.id));
+    knowledge_denied(
+        f.mutate(f.own.id, Ulid::new(), "knowledge_write", spoof),
+        "report_author_mismatch",
+    );
+    let op = Ulid::new();
+    let result = f.mutate(f.own.id, op, "knowledge_write", create.clone());
+    let record = data(result.clone())["record"].clone();
+    let number = record["frontmatter"]["number"].as_u64().unwrap();
+    assert!(number > 1);
+    assert_eq!(
+        f.mutate(f.own.id, op, "knowledge_write", create.clone()),
+        result
+    );
+    let fetched = data(knowledge_fetch(&f, f.own.id, "[[reports/2026-10-31-work]]"));
+    assert_eq!(fetched["body"], create["body"]);
+    let search = data(knowledge_search(
+        &f,
+        f.own.id,
+        json!({"query":"type:report"}),
+    ));
+    assert_eq!(search["items"].as_array().unwrap().len(), 1, "{search}");
+    for actor in [f.own.id, f.oracle.id] {
+        let mut update = knowledge_update_args(&fetched);
+        update["body"] = json!("Attempted correction in place");
+        knowledge_denied(
+            f.mutate(actor, Ulid::new(), "knowledge_write", update),
+            "report_append_only",
+        );
+    }
+    assert_eq!(
+        data(knowledge_fetch(&f, f.own.id, &format!("#{number}")))["body"],
+        create["body"]
+    );
+    let mut correction = create;
+    correction["path"] = json!("reports/2026-10-31-work-correction.md");
+    correction["frontmatter"]["supersedes"] = json!(format!("#{number}"));
+    assert!(data(f.mutate(f.own.id, Ulid::new(), "knowledge_write", correction))["record"]["frontmatter"]["number"].as_u64().unwrap() > number);
+}
+
+#[test]
+fn task_accept_requires_linked_report_to_exist_and_name_this_task() {
+    let f = Fixture::new();
+    f.task_file(f.task_metadata());
+    let report = |link: &str| {
+        f.mutate(
+            f.own.id,
+            Ulid::new(),
+            "task_report",
+            json!({
+                "task_path":"#1", "summary":"See full committed report", "report":link,
+                "verify_result":verification("true", 0, json!([]))
+            }),
+        )
+    };
+    data(report("[[reports/2026-10-31-missing]]"));
+    let missing = f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_accept",
+        json!({"task_path":"#1"}),
+    );
+    assert_eq!(missing["isError"], true, "{missing}");
+    assert!(
+        missing.to_string().contains("linked report unavailable"),
+        "{missing}"
+    );
+    let record = data(f.mutate(f.own.id, Ulid::new(), "knowledge_write", json!({
+        "path":"reports/2026-10-31-work.md", "frontmatter":{
+            "type":"report", "task":"#1", "commits":[], "verify":{"command":"true","exit_code":0},
+            "author":format!("seat:{}", f.own.id), "created":"2026-10-31T00:00:00Z"
+        }, "body":"Full evidence"
+    })))["record"].clone();
+    let mut other = f.task_metadata();
+    other["id"] = json!(Ulid::new());
+    other["number"] = json!(1000);
+    let other_path = f.config.repository.join(".bboxy/tasks/other.md");
+    std::fs::write(
+        &other_path,
+        format!(
+            "---\n{}---\nOther brief",
+            serde_yaml::to_string(&other).unwrap()
+        ),
+    )
+    .unwrap();
+    // A filesystem editor can corrupt an immutable record: acceptance must read
+    // the real report again, rather than trust the earlier task_report call.
+    let path = f
+        .config
+        .repository
+        .join(".bboxy/reports/2026-10-31-work.md");
+    let mut metadata = record["frontmatter"].clone();
+    metadata["task"] = json!("#1000");
+    std::fs::write(
+        &path,
+        format!(
+            "---\n{}---\nFull evidence",
+            serde_yaml::to_string(&metadata).unwrap()
+        ),
+    )
+    .unwrap();
+    data(report("[[reports/2026-10-31-work]]"));
+    assert_eq!(
+        f.task_document().metadata["report"]["report"],
+        "[[reports/2026-10-31-work]]"
+    );
+    let mismatch = f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_accept",
+        json!({"task_path":"#1"}),
+    );
+    assert_eq!(mismatch["isError"], true, "{mismatch}");
+    assert!(
+        mismatch.to_string().contains("different task"),
+        "{mismatch}"
+    );
+    metadata["task"] = json!("#1");
+    std::fs::write(
+        &path,
+        format!(
+            "---\n{}---\nFull evidence",
+            serde_yaml::to_string(&metadata).unwrap()
+        ),
+    )
+    .unwrap();
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_accept",
+        json!({"task_path":"#1"}),
+    ));
+    assert_eq!(f.task_document().metadata["status"], "accepted");
 }

@@ -50,6 +50,7 @@ fn real_binary_runs_headless_against_a_fixture_without_opening_the_production_ro
     let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
         .args(["plugin", "check"])
         .arg(&binary)
+        .env("HOME", root.path())
         .env("BBOXY_RUN_DIR", &protected)
         .env("BBOXY_CAPABILITY", "fixture-secret-not-forwarded")
         .env("ICQ_PLUGIN_FIXTURE", "fixture-secret-not-forwarded")
@@ -73,6 +74,7 @@ fn real_binary_runs_headless_against_a_fixture_without_opening_the_production_ro
     );
     let help = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
         .args(["plugin", "--help"])
+        .env("HOME", root.path()).env("BBOXY_RUN_DIR", &protected)
         .output()
         .unwrap();
     assert!(help.status.success());
@@ -84,6 +86,7 @@ fn real_binary_runs_headless_against_a_fixture_without_opening_the_production_ro
     let refused = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
         .args(["plugin", "check"])
         .arg(&candidate)
+        .env("HOME", root.path())
         .env("BBOXY_RUN_DIR", &protected)
         .output()
         .unwrap();

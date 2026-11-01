@@ -1,0 +1,23 @@
+Task: #509 tasks/2026-10-31-error-journal-hygiene.md
+Worktree: /Users/feral/mydev/bboxy450-term-journal; branch journal-hygiene; base 42320d93.
+Scope: fixture diagnostic routing, private bootstrap ownership, optional JSON-RPC probe classification.
+
+crates/bboxy450-term/src/main.rs:9726 — validate explicit private custody and select its run before inherited BBOXY_RUN_DIR; supervisor/logic/desktop defer once-only producer configuration until their stdin bootstrap is decoded.
+crates/bboxy450-term/tests/{ctl,ctl_records,headless,e2e_night,plugins,r5_stall,recovery}.rs — every subprocess helper owns its HOME/run fallback; malformed/default commands and formerly global nonexistent endpoints stay private.
+crates/bboxy450-term/tests/diagnostics.rs:64 — real private supervisor startup failure journals only in its decoded bootstrap run, despite an inherited decoy operator run.
+crates/bboxy450-term/tests/diagnostics.rs:126 — real MCP subprocess returns -32601 for server/discover before/after initialization and other optional probes, ignores notifications, retains the forwarded tool error and malformed -32602 request, and withholds request arguments.
+crates/bboxy450-term/tests/diagnostics.rs:219 — actual headless app, bundled fixture provider and failing ctl app status; private rows retained, decoy operator active/archive/read-mark paths untouched. All identities/homes/sockets belong to this test.
+crates/bbt-mux/src/mcp/bridge.rs:213 — omit only method-not-found responses from failure production; other RPC errors and real tool errors/refusals retain existing reporting.
+verification/{contracts,coverage,corpus}.toml; tests/formal_contracts/{models,seat_models}.rs — DiagnosticRouting/BrokenDiagnosticRouting describe private ownership before first producer configuration; finite atomic routing only, no IO delivery/fairness or whole-Rust proof.
+Makefile; scripts/test-error-journal-control.py — canonical focused checks and deliberate guard removal; restoration happens in finally and the restored source is checked again.
+
+make test-error-journal — exit 0; 5 diagnostic tests passed, strict -D warnings Clippy on mux/app all targets passed. Raw log: /tmp/rook-journal-focused-fixed.log.
+make test-error-journal-control — exit 0; removing bootstrap isolation made nested Make exit 2 on the private-journal assertion; restored source test exited 0. Raw log: /tmp/rook-journal-control.log.
+make test-boundaries — exit 0; 37 tests passed across seat wiring, ctl, private signing, shell startup, failed-process recovery and cockpit process lifecycle (one subprocess helper is invoked by its parent). Raw log: /tmp/rook-journal-boundaries.log.
+make test-licenses — exit 0; policy/notice/source checks and 9 fixtures held. Raw log: /tmp/rook-journal-licenses-final.log.
+git diff --check — exit 0.
+Initial focused run exited 2: new fixture needed mode 0700 and malformed endpoint refusal is exit 1, not 4; corrected before the passing run.
+
+Redacted app/status mechanism: ctl::Endpoint::read can emit endpoint: missing capability; error_journal::scrub withholds the whole line because it contains capability. The process guard reproduces this exact redacted category and retains it privately. Client::reply also has a capability-bearing EOF reason. Historical redacted rows do not distinguish these original reasons; no matching PID evidence exists in repository-local run logs, so their exact original reason remains unproven. No live operator journal was read or modified.
+Final exact-commit full CI/formal receipt and landing results are handed off through task_report and the source-bound gate log, separately from these scoped presubmit results.
+First make test on signed 520546c1486a6c0f492102b3a35def7f5bd29ff7 exited 2 after all workspace Rust tests passed: formal.contracts requires the exact checks list [make test-formal, make test], so the additional focused target in DiagnosticRouting was refused. Removed only that extra metadata entry; the focused target remains documented in Make and this evidence record. Raw failed logs: /tmp/rook-journal-make-test.log and /tmp/rook-journal-ci-first.log.

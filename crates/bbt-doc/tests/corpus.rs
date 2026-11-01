@@ -9,6 +9,8 @@
     reason = "test/fixture IO, not the UI thread"
 )]
 use std::{collections::BTreeMap, fs, io, path::Path};
+#[path = "corpus/reports.rs"]
+mod reports;
 
 fn record_sources(root: &Path) -> io::Result<Vec<(String, String)>> {
     fn walk(root: &Path, dir: &Path, out: &mut Vec<(String, String)>) -> io::Result<()> {
@@ -87,6 +89,7 @@ fn frontmatter_errors(root: &Path) -> io::Result<(usize, Vec<String>)> {
             }
         }
     }
+    errors.extend(reports::report_errors(&sources, ""));
     Ok((sources.len(), errors))
 }
 
@@ -102,7 +105,10 @@ fn real_bboxy_frontmatter_parses() {
     // A subprocess fixture can check actual mux-authored files without writing
     // into this repository. Ordinary corpus gates retain the real root.
     let root = corpus_root();
-    let (count, errors) = frontmatter_errors(&root).unwrap();
+    let (count, mut errors) = frontmatter_errors(&root).unwrap();
+    if std::env::var_os("BBOXY_DOC_CORPUS_ROOT").is_none() {
+        errors.extend(reports::repository_commit_errors(&root));
+    }
     assert!(count > 0, "the real .bboxy corpus must not be empty");
     assert!(errors.is_empty(), "{}", errors.join("\n"));
     println!("frontmatter: {count} Markdown records, positive unique numbers, 0 errors");

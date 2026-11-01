@@ -7,6 +7,8 @@
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """Negative controls for false-green formal verification infrastructure."""
 import importlib.util
+import contextlib
+from concurrent.futures import ThreadPoolExecutor
 import io
 import json
 from pathlib import Path
@@ -28,6 +30,63 @@ publisher_spec.loader.exec_module(publisher)
 
 
 class GateTests(unittest.TestCase):
+    def test_concurrent_tlc_standard_module_cleanup_has_private_ownership(self):
+        with tempfile.TemporaryDirectory() as own:
+            root = Path(own)
+            java = root / "java-fixture"
+            java.write_text(f"#!{sys.executable}\n" + r'''
+# bboxy450-term fixture; origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+import os, sys, time
+from pathlib import Path
+name=sys.argv[-1]
+tmp=Path(next(arg.split("=",1)[1] for arg in sys.argv if arg.startswith("-Djava.io.tmpdir=")))
+module=tmp/"Integers.tla"
+module.write_text(str(os.getpid()))
+barrier=Path.cwd().parent
+(barrier/(name+".ready")).touch()
+deadline=time.monotonic()+3
+def wait(path):
+    while not path.exists():
+        if time.monotonic()>deadline: raise RuntimeError("fixture barrier timeout")
+        time.sleep(.002)
+wait(barrier/"Reader.ready")
+wait(barrier/"Cleaner.ready")
+if name=="Cleaner":
+    module.unlink()
+    (barrier/"cleaned").touch()
+else:
+    wait(barrier/"cleaned")
+    if not module.exists() or module.read_text()!=str(os.getpid()):
+        print("standard module lost to another TLC process")
+        sys.exit(150)
+print("Model checking completed. No error has been found.")
+''')
+            java.chmod(0o700)
+            for name in ("Reader", "Cleaner"):
+                (root / name).mkdir()
+
+            def run_pair():
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    jobs = [pool.submit(formal.tlc, java, root / "unused.jar", root / name, name, False)
+                            for name in ("Reader", "Cleaner")]
+                    return [job.result() for job in jobs]
+
+            self.assertEqual([formal.verdict(row) for row in run_pair()], ["pass", "pass"])
+            self.assertFalse(list((root / "Reader").glob("tlc-*")))
+            self.assertFalse(list((root / "Cleaner").glob("tlc-*")))
+            for name in ("Reader.ready", "Cleaner.ready", "cleaned"):
+                (root / name).unlink()
+            # Broken control: both JVMs own the same extraction directory.
+            shared = root / "shared"
+            shared.mkdir()
+            with mock.patch.object(formal.tempfile, "TemporaryDirectory",
+                                   side_effect=lambda *a, **k: contextlib.nullcontext(str(shared))):
+                reader, cleaner = run_pair()
+            self.assertEqual(formal.verdict(cleaner), "pass")
+            self.assertEqual(reader.returncode, 150)
+            with self.assertRaisesRegex(ValueError, "TLC tool failure"):
+                formal.verdict(reader)
+
     def test_frontend_inventory_keeps_project_contracts_out_of_standalone_checker(self):
         root = Path(__file__).resolve().parents[1]
         rows = formal.tomllib.loads((root / "verification/corpus.toml").read_text())["model"]

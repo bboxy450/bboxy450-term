@@ -896,6 +896,7 @@ async fn raw_supervisor(root: &Path) -> (tokio::process::Child, bbt_mux::logic::
     }
     let mut child = tokio::process::Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
         .arg("supervisor")
+        .env("HOME", root).env("BBOXY_RUN_DIR", root.join("run"))
         .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::inherit())

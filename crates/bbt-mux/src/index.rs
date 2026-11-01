@@ -878,6 +878,21 @@ impl Index {
             self.unchanged(&update)?;
         }
         let current = self.current(&update.path)?;
+        // Enforce immutability at publication too: a create prepared before another
+        // writer wins must never replace its report, even without an etag.
+        let report_birth = update.metadata["type"] == "report";
+        if report_birth
+            || current
+                .as_ref()
+                .is_some_and(|d| d.metadata["type"] == "report")
+        {
+            if current.is_some() {
+                return Err(invalid(
+                    "report_append_only: create a correction with supersedes",
+                ));
+            }
+            bbt_doc::reports::validate(&update.path, &update.metadata).map_err(invalid)?;
+        }
         if let Some(number) = imported_number {
             update.metadata["number"] = json!(number);
         } else {
@@ -1008,7 +1023,7 @@ impl Index {
         if guarded {
             self.unchanged(&update)?;
         }
-        if (guarded || decision_birth) && update.expected.is_none() {
+        if (guarded || decision_birth || report_birth) && update.expected.is_none() {
             std::fs::hard_link(&temp, &destination)?;
         } else {
             std::fs::rename(&temp, &destination)?;

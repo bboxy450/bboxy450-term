@@ -36,6 +36,12 @@ the current role, workspace and tool schemas. Rediscover after a plugin change.
    the commit, commands with real exit status, and evidence for every acceptance
    line. Only the accepting authority uses `task_accept` or `task_reject`;
    acceptance requires verification exit 0 and evidence, not an agent's claim.
+   Write the full report in your worktree at `.bboxy/reports/YYYY-MM-DD-slug.md`,
+   commit it with the work and a `Report: [[reports/YYYY-MM-DD-slug]]` trailer,
+   then call `task_report` with a one-paragraph summary and `report` locator.
+   Report frontmatter includes `task`, `commits`, `verify: {command, exit_code}`,
+   `author: seat:<id>` and `created`; the host supplies `id` and the Index assigns `number`.
+   Reports are append-only; corrections create a new report with `supersedes:`.
 3. **Messages.** Use available `message_*` tools within the grants from `orient`.
    DMs are the default for briefs, questions and handoffs. Channels carry shared
    decisions, roll calls and whole-workstream milestones. Check delivery with

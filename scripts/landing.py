@@ -851,6 +851,11 @@ def presubmit_worker(base, result_path, recheck=None):
             checked(argv, root)
     if data["parity"] == "yes":
         scoped_parity(root, data, result_path.parent / "parity")
+    # A cut without a Report trailer satisfies the optional link contract without
+    # adding a Cargo gate to script/lab-only or disjoint incremental checks.
+    messages = git("log", "--format=%B", base + "..HEAD", cwd=root)
+    if any(line.startswith("Report:") for line in messages.splitlines()):
+        checked(["cargo", "test", "-p", "bboxy450-doc", "--locked", "--test", "corpus", "reports::committed_report_trailers_resolve_in_their_own_trees", "--", "--exact"], root)
     return 0
 
 
@@ -1114,7 +1119,7 @@ def wide_check(root, data, gate_log=None):
     if git("rev-parse", "HEAD", cwd=root) != sha:
         raise Refusal("candidate_changed_during_gate")
     clean_source(root)
-    record = {"sha": sha, "tier": "wide", "affected": data["affected"],
+    record = {"sha": sha, "tier": data["tier"], "affected": data["affected"],
               "seconds": time.monotonic() - started, "verdict": "green" if code == 0 else "red",
               "exit": code, "binary_durations": binary_durations(Path(gate_log).read_text()),
               **proof}
@@ -1490,12 +1495,10 @@ def land(gate_log=None):
             candidate = git("rev-parse", "HEAD", cwd=root)
             if tested is None or common_paths or recheck is not None:
                 started = time.monotonic()
-                if data["tier"] == "wide" and recheck is None:
+                if recheck is None and (data["tier"] == "wide" or (gate_log and tested is None)):
                     proof = wide_check(root, data, gate_log if tested is None else None)
                     code = proof["exit"]
                 else:
-                    if gate_log and tested is None:
-                        raise Refusal("gate_log_requires_wide_cut")
                     code = command(["sh", "scripts/presubmit.sh", base,
                                     *(["--recheck", str(recheck)] if recheck else [])], cwd=root,
                                    capture=False, check=False).returncode
@@ -1601,7 +1604,7 @@ def main():
     p.add_argument("--recheck", type=Path)
     p = sub.add_parser("land")
     p.add_argument("--gate-log", type=Path,
-                   help="reuse full NORMAL CI on the exact wide candidate SHA")
+                   help="reuse full NORMAL CI on the exact candidate SHA, for any tier")
     args = parser.parse_args()
     if args.verb == "affected":
         result = affected(args.range)

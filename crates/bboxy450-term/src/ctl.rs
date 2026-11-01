@@ -100,7 +100,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   task list [--unassigned | --seat SEAT | --status STATUS]
   task get <#N|path|id>
   task status <#N|path|id>
-  task report <#N|path|id> --summary TEXT [--commit SHA] [--verify-result JSON]
+  task report <#N|path|id> --summary TEXT [--commit SHA] [--report LOCATOR] [--verify-result JSON]
                                           JSON: command, exit_code, optional evidence entries
   task accept <#N|path|id>
   task reject <#N|path|id> --reason TEXT
@@ -509,13 +509,15 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             ));
         }
     }
-    if flags
-        .keys()
-        .any(|key| matches!(key.as_str(), "summary" | "commit" | "verify-result"))
-        && !matches!(&command, Command::TaskReport { .. })
+    if flags.keys().any(|key| {
+        matches!(
+            key.as_str(),
+            "summary" | "commit" | "report" | "verify-result"
+        )
+    }) && !matches!(&command, Command::TaskReport { .. })
     {
         return Err(format!(
-            "{USAGE_PREFIX}--summary, --commit and --verify-result apply only to task report"
+            "{USAGE_PREFIX}--summary, --commit, --report and --verify-result apply only to task report"
         ));
     }
     if flags.contains_key("reason")
@@ -611,6 +613,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "commit",
             "message",
             "verify-result",
+            "report",
             "reason",
             "disposition",
             "evidence",
@@ -2471,6 +2474,8 @@ mod tests {
                 "actual output",
                 "--commit",
                 "abc123",
+                "--report",
+                "[[reports/2026-10-31-work]]",
                 "--verify-result",
                 &encoded,
                 "--op",
@@ -2487,6 +2492,7 @@ mod tests {
                 task: "#1".into(),
                 summary: "actual output".into(),
                 commit: Some("abc123".into()),
+                report: Some("[[reports/2026-10-31-work]]".into()),
                 verify_result: Some(verification),
             }
         );
@@ -2498,6 +2504,7 @@ mod tests {
             "task report #1 --summary x --verify-result nope",
             "task report #1 --summary x --verify-result {}",
             "task accept #1 --verify-result {}",
+            "task accept #1 --report missing",
             "task status #1 --reason x",
             "task reject #1 --reason x --summary unused",
         ] {

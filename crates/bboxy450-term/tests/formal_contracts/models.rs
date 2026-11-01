@@ -18,6 +18,12 @@ mod seat_models;
 #[path = "plugin_models.rs"]
 mod plugin_models;
 
+#[path = "task_page_model.rs"]
+mod task_page_model;
+
+#[path = "report_models.rs"]
+mod report_models;
+
 fn eq(i: usize, n: i64) -> Expr {
     Var(i).eq(Int(n))
 }
@@ -1648,7 +1654,8 @@ fn native_frame_observation(b: bool) -> Model {
 }
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 35] = [
+    let families: [fn(bool) -> Model; 36] = [
+        seat_models::diagnostic_routing,
         native_surface_resize,
         crate_publication,
         native_frame_observation,
@@ -1706,6 +1713,8 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     ]);
     // Plugin-system families live beside their own contract module.
     cases.extend(plugin_models::cases());
+    cases.extend(task_page_model::cases());
+    cases.extend(report_models::cases());
     cases
 }
 

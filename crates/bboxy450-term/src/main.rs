@@ -9724,16 +9724,18 @@ fn screen_hash(screen: &bbt_proto::Screen) -> String {
 }
 
 fn diagnostic_root(args: &[String]) -> Result<std::path::PathBuf, String> {
+    // Validate private custody before choosing any fallback. In particular an
+    // inherited seat run must never win over an explicit throwaway account.
+    let account = bboxy450_term::cockpit::Config::test_account_from_args(args)
+        .map_err(|e| e.to_string())?;
     if let Some(path) = args.windows(2).find(|p| p[0] == "--run-dir").map(|p| &p[1]) {
         return Ok(path.into());
     }
+    if let Some(account) = account {
+        return Ok(account.join("run"));
+    }
     if let Some(path) = std::env::var_os("BBOXY_RUN_DIR") {
         return Ok(path.into());
-    }
-    if let Some(account) =
-        bboxy450_term::cockpit::Config::test_account_from_args(args).map_err(|e| e.to_string())?
-    {
-        return Ok(account.join("run"));
     }
     bbt_mux::transport::default_socket_path()
         .map_err(|e| e.to_string())?
@@ -9761,7 +9763,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("--desktop-fixture requires a debug build and --test-account".into());
     }
     let diagnostics_root = diagnostic_root(&hook_args).ok();
-    if let Some(root) = &diagnostics_root {
+    // Private backends read their authoritative run from stdin. Let their
+    // bootstrap configure the once-only producer, rather than pinning an
+    // unrelated inherited run before that configuration has arrived.
+    if !hook_args.first().is_some_and(|arg| matches!(arg.as_str(), "supervisor" | "logic" | "desktop"))
+        && let Some(root) = &diagnostics_root
+    {
         bbt_rt::error_journal::configure(root);
     }
     if let Some(result) = stall::private_entry(&hook_args) {

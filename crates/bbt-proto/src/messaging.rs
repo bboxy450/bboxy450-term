@@ -1031,6 +1031,8 @@ pub enum TaskRequest {
         task_path: String,
         summary: String,
         commit: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        report: Option<String>,
         verify_result: Option<TaskVerification>,
     },
 }

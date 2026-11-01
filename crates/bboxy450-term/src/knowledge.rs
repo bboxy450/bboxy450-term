@@ -619,6 +619,9 @@ impl Watch {
     }
 }
 fn validate_record(record: &d::Record, reference: &d::RecordRef) -> d::Result<()> {
+    if record.frontmatter["type"] == "report" {
+        bbt_doc::reports::validate(&reference.path, &record.frontmatter).map_err(error)?;
+    }
     if &record.reference != reference || record.etag != reference.digest {
         return Err(error("knowledge record changed during the read"));
     }

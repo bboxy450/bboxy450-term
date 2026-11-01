@@ -132,6 +132,9 @@ pub struct ReportRequest {
     pub summary: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub commit: Option<String>,
+    /// Locator of the committed immutable report document.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub report: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub verify_result: Option<TaskVerification>,
 }

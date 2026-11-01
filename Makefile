@@ -73,6 +73,8 @@ help:
 	  'make check-clipboard-isolation  Strict all-target lint for the private pasteboard fixtures' \
 	  'make test-parity                Full local CI including visual parity' \
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
+	  'make test-error-journal          Private fixture journals, optional probes and strict lint' \
+	  'make test-error-journal-control  Remove bootstrap isolation; require failure and restored pass' \
 	  'make build-recovery-test         Retain the exact-HEAD recovery test executable' \
 	  'make test-recovery-built         Run the retained recovery test after source/hash checks' \
 	  'make test-gui-events             Durable GUI restart and event socket regressions' \
@@ -149,7 +151,11 @@ help:
 	  'make test-role-identity          ROLE-first seat, pane and message identity; check-role-identity / parity-role-identity' \
 	  'make test-app-overlays           Native/ctl menus, dialog input and persistent swarm rename' \
 	  'make test-seat-actions           Captured seat menus, scoped task assignment and exact-child kill' \
+	  'make test-kb-reports             Native immutable reports and committed-tree provenance gates' \
+	  'make check-kb-reports            Strict all-target lint for report paths' \
 	  'make test-task-contract          Exact native task catalogue and plugin schema alignment' \
+	  'make test-task-pages             Byte-bounded task pages, oversized rows and GUI pagination' \
+	  'make check-task-pages            Strict mux/app all-target Clippy' \
 	  'make test-scoped-workspaces      Captured native docs/tasks/graph and cross-project ctl fences' \
 	  'make test-overlay-captures       Private headless light/dark menu and dialog evidence' \
 	  'make test-ui-overlays            Pure context-menu/dialog interactions and strict shared UI Clippy' \
@@ -521,6 +527,19 @@ test-boundaries:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib cockpit::shell_path::tests -- --include-ignored; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib refresh_replaces_a_confirmed_failed_process -- --include-ignored; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test cockpit -- --ignored --test-threads=1
+
+.PHONY: test-error-journal test-error-journal-bootstrap test-error-journal-control
+test-error-journal-bootstrap:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test diagnostics private_backend_bootstrap_owns_its_journal_before_reporting_failure -- --exact --nocapture
+
+test-error-journal-control:
+	@JOURNAL_CONTROL_TARGET='$(abspath $(TARGET_DIR))' python3 -I scripts/test-error-journal-control.py
+
+test-error-journal:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test diagnostics -- --include-ignored --nocapture; \
+	cargo clippy --locked -p bboxy450-term-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-fifty-seat-startup
 test-fifty-seat-startup: build-fifty-seat-probe
@@ -987,6 +1006,21 @@ test-settings-night:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib ctl::tests::every_verb_maps_to_exactly_one_window_action -- --exact; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) notification_foreground_tests; \
 	python3 -I -B scripts/e2e/settings_night.py --binary '$(TARGET_DIR)/debug/$(APP)' --out '$(TARGET_DIR)/night-settings-acceptance/verdicts'
+
+.PHONY: test-task-pages test-task-pages-gui check-task-pages
+test-task-pages:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib work_items; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_only -- --exact; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test messaging_ui; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts
+	@$(MAKE) test-task-pages-gui
+
+test-task-pages-gui:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test messaging_flow task_list_large_board_renders_through_the_real_gui_socket -- --ignored --exact --nocapture
+
+check-task-pages:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-term-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 test-settings-role-picker-ui:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -1709,3 +1743,19 @@ push-branch:
 	python3 -I scripts/formal.py --target '$(FORMAL_DIR)' --verify-evidence; \
 	grep -E "^ci-local: result $$(git rev-parse HEAD) (normal|extended) 0$$" '$(CI_LOG)' >/dev/null; \
 	GIT_TERMINAL_PROMPT=0 git push --set-upstream origin "HEAD:refs/heads/$$push_branch"
+
+.PHONY: test-kb-reports check-kb-reports
+test-kb-reports:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-doc --test corpus --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' report_document_; \
+	cargo test --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' task_accept_requires_linked_report_; \
+	cargo test --locked -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' knowledge::effects::report_tests::publication_rechecks_assigned_task_and_linked_report -- --exact; \
+	cargo test --locked -p $(APP) --lib --target-dir '$(TARGET_DIR)' ctl::tests::task_verbs_parse_typed_evidence_and_require_their_own_flags -- --exact
+
+check-kb-reports:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-plugin -p bboxy450-doc -p bboxy450-term-proto -p bboxy450-term-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: format-kb-reports
+format-kb-reports:
+	rustfmt --edition 2024 --config skip_children=true crates/bbt-plugin/src/task_system.rs crates/bbt-plugin/tests/contract_dtos.rs crates/bbt-doc/src/reports.rs crates/bbt-doc/tests/corpus/reports.rs crates/bboxy450-term/src/ctl/task.rs crates/bboxy450-term/tests/formal_contracts/report_models.rs crates/bbt-doc/tests/corpus.rs crates/bbt-mux/src/index.rs crates/bbt-mux/src/knowledge/effects.rs crates/bbt-mux/src/mcp/knowledge.rs crates/bbt-mux/src/mcp/work_items.rs crates/bbt-mux/tests/mcp.rs crates/bbt-proto/src/messaging.rs crates/bboxy450-term/src/ctl.rs crates/bboxy450-term/src/knowledge.rs crates/bboxy450-term/tests/formal_contracts/models.rs
