@@ -223,4 +223,4 @@ time and `kill(-pgid, 0) == ESRCH` remain real process assertions.
 
 `make test-harness-standalone` runs the unchanged child `make test` with a private
 Cargo target. It retains the child's generated evidence under the parent target
-and restores only four upstream test-owned run artifacts, preserving source.
+archives generated formal evidence and restores only four upstream test-owned run artifacts, preserving source.
