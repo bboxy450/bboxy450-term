@@ -9,6 +9,16 @@ use pulldown_cmark::{Alignment, CodeBlockKind, Event, LinkType, Options, Parser,
 
 pub fn parse(source: &str) -> Markdown {
     let (frontmatter, offset) = frontmatter(source);
+    Markdown {
+        source: source.into(),
+        body_start: offset,
+        frontmatter,
+        blocks: body(source, offset),
+    }
+}
+
+// Parse a body suffix without mistaking a mid-document rule for frontmatter.
+pub(super) fn body(source: &str, offset: usize) -> Vec<Block> {
     let options = Options::ENABLE_TABLES
         | Options::ENABLE_TASKLISTS
         | Options::ENABLE_STRIKETHROUGH
@@ -18,13 +28,7 @@ pub fn parse(source: &str) -> Markdown {
         .into_offset_iter()
         .map(|(event, span)| (event, span.start + offset..span.end + offset))
         .collect();
-    let blocks = Reader { events, at: 0 }.blocks(None);
-    Markdown {
-        source: source.into(),
-        body_start: offset,
-        frontmatter,
-        blocks,
-    }
+    Reader { events, at: 0 }.blocks(None)
 }
 
 fn frontmatter(source: &str) -> (Frontmatter, usize) {
@@ -330,9 +334,17 @@ impl Reader<'_> {
                         }
                     }
                 }
-                Event::Start(Tag::Image { dest_url, link_type, .. }) => Inline::Image {
-                    target: if matches!(link_type, LinkType::WikiLink { has_pothole:true }) { dest_url.strip_suffix('\\').unwrap_or(&dest_url).into() } else {dest_url.into_string()},
-                    wiki: matches!(link_type,LinkType::WikiLink {..}),
+                Event::Start(Tag::Image {
+                    dest_url,
+                    link_type,
+                    ..
+                }) => Inline::Image {
+                    target: if matches!(link_type, LinkType::WikiLink { has_pothole: true }) {
+                        dest_url.strip_suffix('\\').unwrap_or(&dest_url).into()
+                    } else {
+                        dest_url.into_string()
+                    },
+                    wiki: matches!(link_type, LinkType::WikiLink { .. }),
                     alt: Inline::plain_text(&self.inlines(Some(TagEnd::Image))),
                     asset: None,
                 },

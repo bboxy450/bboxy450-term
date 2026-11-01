@@ -6,6 +6,8 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 mod layout;
 mod parse;
+mod streaming;
+pub use streaming::StreamingMarkdown;
 pub use parse::parse;
 
 use serde::{Deserialize, Serialize};

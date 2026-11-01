@@ -6,8 +6,11 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Markdown parsing and retained document composition. Files, navigation,
 //! signature verification and renderer execution belong to the host.
+pub mod highlight;
 pub mod links;
 pub mod markdown;
 pub mod mermaid;
 pub mod reports;
-pub use markdown::{Block, BlockKind, Frontmatter, Inline, Markdown, TableAlign, parse};
+pub use markdown::{
+    Block, BlockKind, Frontmatter, Inline, Markdown, StreamingMarkdown, TableAlign, parse,
+};

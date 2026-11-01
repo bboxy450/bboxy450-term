@@ -1818,6 +1818,8 @@ pub fn cases() -> Vec<(Model, &'static str)> {
             ]
         })
         .collect::<Vec<_>>();
+    // Toolkit registration stays away from concurrent module append sites.
+    cases.extend(toolkit_models::cases());
     cases.extend([
         (import_staging(false), "pass"),
         (import_staging(true), "safety"),
@@ -1903,3 +1905,6 @@ fn native_surface_resize(b: bool) -> Model {
     safe(&mut m, "PresentedExtentMatchesTarget", eq(6, 0));
     m
 }
+
+#[path = "toolkit_models.rs"]
+mod toolkit_models;

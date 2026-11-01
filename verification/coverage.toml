@@ -159,7 +159,7 @@ sources = ["crates/bbt-proto/src/lib.rs", "crates/bbt-proto/src/seat_state.rs", 
 [[crate]]
 name = "bboxy450-rt"
 status = "contract-model"
-models = ["DirtyWake"]
+models = ["DirtyWake", "DirtyWakeFrame"]
 scope = "Immediate dirty-set lost-wakeup interleavings. Weak memory, retained/deferred modes, arbitrary Tokio cancellation and IO scheduling remain implementation/tool coverage gaps."
 sources = ["crates/bbt-rt/src/wake.rs"]
 
@@ -180,16 +180,16 @@ sources = ["crates/bbt-ui-model/src/lib.rs", "crates/bboxy450-term/src/focus_ack
 [[crate]]
 name = "bboxy450-ui"
 status = "contract-model"
-models = ["TransportCapture", "FocusFrame", "WindowDurability", "SelectionGesture", "SidebarAccordions", "SidebarReveal"]
-scope = "Host focus acknowledgement and durable UI-reply boundaries; control geometry, layout and all UI transitions are not formally proven."
-sources = ["crates/bbt-ui/src/text_selection.rs", "crates/bbt-ui/src/lib.rs", "crates/bboxy450-term/src/focus_ack.rs", "crates/bboxy450-term/src/window_writes.rs"]
+models = ["TransportCapture", "FocusFrame", "WindowDurability", "SelectionGesture", "SidebarAccordions", "SidebarReveal", "StreamToView", "ScrollStick", "DirtyWakeFrame"]
+scope = "Host focus acknowledgement and durable UI-reply boundaries; editor history/completion, disclosure, control geometry and layout retain implementation tests, with no formal proof of all UI transitions."
+sources = ["crates/bbt-ui/src/text_selection.rs", "crates/bbt-ui/src/lib.rs", "crates/bbt-ui/src/modules/transcript.rs", "crates/bboxy450-term/src/focus_ack.rs", "crates/bboxy450-term/src/window_writes.rs"]
 
 [[crate]]
 name = "bboxy450-doc"
 status = "contract-model"
-models = ["ReportProvenance"]
-scope = "ReportProvenance bounds the host ownership, immutable publication and linked acceptance contract for report documents; actual syntax, Git history resolution and filesystem behavior remain implementation-tested. Document layout and source rendering use fixture and parity tests; no model of document interaction is claimed."
-sources = ["crates/bbt-mux/src/knowledge/effects.rs", "crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-doc/src/reports.rs", "crates/bbt-doc/src/lib.rs"]
+models = ["IncrementalMarkdown", "AsyncRenderPreparation", "ReportProvenance"]
+scope = "Document layout and source rendering use fixture and parity tests; streaming cache identity and late preparation retirement use finite models; byte parsing, syntax spans and layout still require implementation tests. ReportProvenance bounds report ownership, immutable publication and linked acceptance; report syntax, Git history resolution and filesystem behavior remain implementation-tested."
+sources = ["crates/bbt-doc/src/lib.rs", "crates/bbt-doc/src/markdown/streaming.rs", "crates/bbt-doc/src/highlight.rs", "crates/bbt-mux/src/knowledge/effects.rs", "crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-doc/src/reports.rs"]
 
 [[crate]]
 name = "bboxy450-book"

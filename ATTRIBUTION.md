@@ -119,3 +119,11 @@ Use `make sync-licenses` for canonical crate notice copies, `make test-licenses`
 for policy/source checks and unattended negative cases, and
 `make check-license-packages` for Cargo package-content checks. The install and
 release workflows include the license and attribution documents with binaries.
+
+## Prepared rich toolkit content
+
+Streaming Markdown, transcript/diff/tool/approval controls and editor extensions
+are project-authored source under the policy above. Syntax highlighting uses
+[syntect](https://github.com/trishume/syntect), MIT, as an unchanged dependency
+with its pure Rust `fancy-regex` backend; no highlighter source was copied.
+Its embedded syntax and theme assets retain the dependency's upstream notices.

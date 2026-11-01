@@ -15,7 +15,9 @@ pub fn replay_images(out: &Path, cases: &[Case]) -> Result<usize> {
     let mut renderer = ChromeRenderer::new(crate::images()?)?;
     println!("adapter: {:?}", renderer.context.adapter_info);
     for (i, case) in cases.iter().enumerate() {
-        let rgba = if case.fixture.as_ref().is_some_and(|f|f["layer"]=="close") {
+        let rgba = if case.fixture.as_ref().is_some_and(|f|f["layer"]=="toolkit") {
+            crate::toolkit::render_case(&mut renderer,case)?
+        } else if case.fixture.as_ref().is_some_and(|f|f["layer"]=="close") {
             crate::close::render_case(&mut renderer,case)?
         } else if case.fixture.as_ref().is_some_and(|f|f["layer"]=="paths") {
             crate::paths::render_case(&mut renderer,case)?
@@ -172,7 +174,7 @@ impl CasePolicy {
             || f.is_some_and(|f| {
                 matches!(
                     f["layer"].as_str(),
-                    Some("close" | "seat-row" | "tabs" | "swarms" | "panes" | "titlebars" | "launchers" | "streams" | "graphs" | "settings" | "perf" | "documents")
+                    Some("toolkit" | "close" | "seat-row" | "tabs" | "swarms" | "panes" | "titlebars" | "launchers" | "streams" | "graphs" | "settings" | "perf" | "documents")
                 )
             })
         {
