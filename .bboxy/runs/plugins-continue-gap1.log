@@ -1,0 +1,20 @@
+task=2026-10-31-plugins-continue
+scope=gap1 issue31 G3
+baseline_0aa36d0a_land_exit=77; test-formal refused unexecuted PluginHookBudget corpus pair
+fix_d9294c19=add PluginHookBudget/BrokenPluginHookBudget to corpus; restore exact mandatory checks array
+python3_-I_scripts/test-formal.py_exit=0; 14 infrastructure controls
+make_test-settings-plugins_test-formal-contracts_exit=0; G3 native night full pass; seven native contract/API checks and strict lint
+formal_d9294c19=100 models;31 crates;43 contracts; native/TLC graph and verdict parity
+formal_evidence_sha256=f4a7f213f8f0c448130fe7075e4e6a7c323c8cb240a882a5805d9ddf37864b90
+PluginHookBudget=pass;30 states;72 edges;BrokenPluginHookBudget=safety;49 states;125 edges
+presubmit_d9294c19_exit=124; BUILD=1136.123s/1800s; RUN=900.039s/900s; author landing exit77
+presubmit_d9294c19_failures=logic::ring_batch_tests::ring_reads_progress_independently,logic::ring_batch_tests::ring_reads_progress_independently_per_host; unchanged 15s deadline at ring_batch_tests.rs:417; RUST_TEST_THREADS unset
+fix_presubmit=default RUST_TEST_THREADS to Make's two threads; preserve explicit override and existing deadlines/assertions
+make_test-seat-ingestion_exit=0; nine ring tests including both 967-seat sweeps in4.27s; harness client/transport, pending/watched replay and two real capture fairness witnesses passed
+landing=pending retry with canonical fixture concurrency; no full make test claim
+presubmit_c0444b3c_exit=124; BUILD=1092.509s/1800s; RUN=900.007s/900s; landing_exit=77
+presubmit_c0444b3c_ring_tests=both 967-seat sweeps passed; mux lib272passed,0failed,8ignored
+presubmit_c0444b3c_failure=capture_fairness.rs:352 retained pre-47 global one-page-per-turn assertion; four exact serial Screens and other-seat progress221.770ms passed
+fix_capture_fairness=align diagnostic page bound with logic.rs bounded128 independent ingestion attempts; retain held-seat latency, serial Screens and lossless diagnostics assertions; ring-reads-batched.md explicitly supersedes global batching
+landing_contract=provided full-gate logs are wide-cut-only; retain existing rule; next scoped check has corrected verifier and already-built private fixture artifacts
+make_test-seat-ingestion_after_verifier_fix_exit=0; independent-read and held-history suites passed; capture_fairness2passed in1.53s
