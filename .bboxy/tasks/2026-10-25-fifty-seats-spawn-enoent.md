@@ -3,12 +3,22 @@ id: "01M5T135QBAWKH59VEGDB5690A"
 type: "task"
 number: 329
 title: "Diagnose fifty-seat spawn ENOENT under load"
-status: "open"
+status: "done"
 role: "executor"
 owner: "Sable Embertail"
 verify: "cargo test -p bbt-supervisor --locked --test supervisor fifty_seats_share_one_supervisor_poller -- --exact"
 created: "2026-10-25T17:17:52.235467Z"
-updated: "2026-10-25T17:17:52.235467Z"
+updated: "2026-11-01T01:45:00Z"
+reconciliation:
+- by: seat:01M6ABH71TVWGZ621NTD701PSH
+  disposition: cancelled
+  evidence:
+  - https://github.com/bboxy450/bboxy450-term/issues/38
+  - https://github.com/bboxy450/bboxy450-term/commit/0f6a34d4
+  fresh_accepted: false
+  kind: historical
+  previous_status: open
+  reason: "KB cleanup 2026-10-31 (Oracle Nyx Copperwing, operator-requested): GitHub #38 closed not_planned 2026-10-30; quarantine row removed; cause never proven; regression test retained"
 ---
 # Diagnose fifty-seat spawn ENOENT under load
 

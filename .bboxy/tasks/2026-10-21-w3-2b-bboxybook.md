@@ -4,7 +4,17 @@ type: "task"
 number: 114
 title: "W3.2b — bboxybook: our storybook on the native wgpu renderer"
 created: "2026-10-21T23:14:34Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-11-01T01:45:00Z"
+status: "done"
+reconciliation:
+- by: seat:01M6ABH71TVWGZ621NTD701PSH
+  disposition: superseded
+  evidence:
+  - main: crates/bboxybook
+  fresh_accepted: false
+  kind: historical
+  previous_status: none
+  reason: "KB cleanup 2026-10-31 (Oracle Nyx Copperwing, operator-requested): legacy record; body already marks it SUPERSEDED; plan replaced and later delivered by other tasks; deliverable exists on main"
 ---
 # W3.2b — bboxybook: our storybook on the native wgpu renderer
 

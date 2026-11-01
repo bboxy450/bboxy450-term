@@ -4,7 +4,17 @@ type: "task"
 number: 102
 title: "W2.1 — bbt-mux: supervisor, PTYs, lease protocol"
 created: "2026-10-21T22:20:03Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-11-01T01:45:00Z"
+status: "done"
+reconciliation:
+- by: seat:01M6ABH71TVWGZ621NTD701PSH
+  disposition: superseded
+  evidence:
+  - main: crates/bbt-supervisor
+  fresh_accepted: false
+  kind: historical
+  previous_status: none
+  reason: "KB cleanup 2026-10-31 (Oracle Nyx Copperwing, operator-requested): legacy record; body already marks it SUPERSEDED; plan replaced and later delivered by other tasks; deliverable exists on main"
 ---
 # W2.1 — bbt-mux: supervisor, PTYs, lease protocol
 

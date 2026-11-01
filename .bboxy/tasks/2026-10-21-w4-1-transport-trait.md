@@ -4,7 +4,18 @@ type: "task"
 number: 108
 title: "W4.1 — bbt-net: Transport trait, loopback, quinn endpoint with expected-key auth"
 created: "2026-10-21T22:26:59Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-11-01T01:45:00Z"
+status: "done"
+reconciliation:
+- by: seat:01M6ABH71TVWGZ621NTD701PSH
+  disposition: superseded
+  evidence:
+  - https://github.com/bboxy450/bboxy450-term/issues/71
+  - https://github.com/bboxy450/bboxy450-term/issues/84
+  fresh_accepted: false
+  kind: historical
+  previous_status: none
+  reason: "KB cleanup 2026-10-31 (Oracle Nyx Copperwing, operator-requested): legacy record; body already marks it SUPERSEDED; plan replaced and later delivered by other tasks; transport later carried by #71/#84"
 ---
 # W4.1 — bbt-net: Transport trait, loopback, quinn endpoint with expected-key auth
 

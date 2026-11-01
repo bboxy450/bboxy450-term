@@ -4,7 +4,18 @@ type: "task"
 number: 130
 title: "W2.4 — local messaging: envelopes, the channel tree, priority, harness delivery"
 created: "2026-10-22T18:33:46Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-11-01T01:45:00Z"
+status: "done"
+reconciliation:
+- by: seat:01M6ABH71TVWGZ621NTD701PSH
+  disposition: implemented
+  evidence:
+  - https://github.com/bboxy450/bboxy450-term/commit/ba677d38
+  - https://github.com/bboxy450/bboxy450-term/commit/1f9442d3
+  fresh_accepted: false
+  kind: historical
+  previous_status: none
+  reason: "KB cleanup 2026-10-31 (Oracle Nyx Copperwing, operator-requested): W2.4 local messaging accepted and landed"
 ---
 # W2.4 — local messaging: envelopes, the channel tree, priority, harness delivery
 
