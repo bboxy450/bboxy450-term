@@ -337,7 +337,15 @@ fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
                 State::NeedsRetrust => "needs re-trust",
                 State::Unchecked => "descriptor unchecked",
                 State::Disabled => "disabled",
-                State::Enabled => "enabled · not started",
+                State::Enabled
+                    if calls
+                        .iter()
+                        .any(|call| call.outcome.as_deref() == Some("failed")) =>
+                {
+                    "degraded"
+                }
+                State::Enabled if !calls.is_empty() => "called · health not queried",
+                State::Enabled => "enabled · unmeasured",
             }
             .into(),
             say: Some(
@@ -360,10 +368,33 @@ fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
         // Host phase spans are measured for every call; a flame graph needs one.
         trace: shape.is_some_and(|s| s.trace) || calls.iter().any(|call| !call.spans.is_empty()),
         calls,
-        alerts: if state == State::NeedsRetrust {
-            vec!["Binary changed; explicit trust of the current digest is required.".into()]
-        } else {
-            vec![]
+        alerts: {
+            let mut alerts = Vec::new();
+            if state == State::NeedsRetrust {
+                alerts.push(
+                    "Binary changed; explicit trust of the current digest is required.".into(),
+                );
+            }
+            alerts.extend(entry.hook_warnings.iter().map(|warning| {
+                format!(
+                    "Slow hook {}: {:.0} ms exceeds {} ms budget ({} consecutive overrun{}){}",
+                    warning.event,
+                    warning.elapsed_ms,
+                    warning.budget_ms,
+                    warning.consecutive_overruns,
+                    if warning.consecutive_overruns == 1 {
+                        ""
+                    } else {
+                        "s"
+                    },
+                    if warning.skipped {
+                        "; skipped until you re-enable the plugin or trust a new binary"
+                    } else {
+                        ""
+                    }
+                )
+            }));
+            alerts
         },
         ..Default::default()
     }

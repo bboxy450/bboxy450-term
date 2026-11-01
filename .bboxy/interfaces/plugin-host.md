@@ -183,3 +183,24 @@ Both sides: the host (`bbt-mux` `plugins/setup.rs`, `PluginRequest::Setup`, `ctl
 | Settings | The auth field shows the recorded result in plain words ("logged in · <detail> · 12 ms", "login refused (exit 2)", "setup failed (<code>)", "setup not run"). "Run setup" is available for a trusted plugin whose shape declares auth; when a login is needed it opens the plugin login row in the window's swarm and focuses it. |
 | Deferred | A device-flow URL or code the login prints is shown only in its row; Settings does not repeat it. `ctl plugin setup` waits for the login within ctl's own reply timeout; a longer login still completes and is recorded. |
 | Verification | `PluginSetup`/`BrokenPluginSetup` (native and Java TLC; owner loss and orphan cleanup included); `bboxy450-term` `tests/plugin_login.rs` (the real app and ctl: a typed code completes the login in its row, the row closes, a SIGHUP-ignoring grandchild is ended; a wrong code is a refused login); `tests/plugin_setup.rs` (the private-terminal success, refusal, hang at a 1 s budget and missing-auth cases; a login seat past its budget; an orphaned login seat ended on reattach); supervisor `a_bare_terminal_gets_only_its_environment_and_ends_its_process_group`; `setup.rs` escape-stripping unit; SDK shape test; app label/request and `bbt-ui` controller/settings/seat-row tests. |
+
+## Hook budget warning and skip agreement (#31, operator batch 2026-10-31)
+
+The host registry owns one bounded persistent budget record per candidate,
+keyed by activation generation and declared event/phase (bus subject included).
+Wall time includes hook connection/admission and dispatch. A completed overrun
+raises `Entry.hook_warnings`; an under-budget completion clears an unlatched
+consecutive counter. Three consecutive overruns latch a skip for that event,
+with one `account/control` publication on that transition. Later attempts are
+named `hook_budget_skipped` measurements and preserve the block grant's failure
+policy. The registry alert remains authoritative if the best-effort activity
+stream is unavailable. Re-enable or re-trust advances the activation generation;
+a late completion cannot affect its replacement, including A → B → A. Restart
+retains the account record. Observational timeline ring eviction cannot clear a
+skip. Settings reports measured time, budget and consecutive count, never the
+plugin's requested work duration. The SDK G3 fixture attempts 10 s; production
+ceilings and real cancellation remain enforced.
+
+Host/consumer owners remain PluginHost and Settings. Verification:
+`PluginHookBudget` / broken control with native/TLC parity, registry persistence
+witnesses, the real host alert/skip test, and `make test-settings-plugins`.

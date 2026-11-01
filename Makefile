@@ -167,6 +167,7 @@ help:
 	  'make test-sidebar-panels-e2e      Private collapse, draft, scroll and restart regressions' \
 	  'make test-oracle-control         Seat MCP grants, spawn/split, focus and detached reattach' \
 	  'make test-settings-role-picker-ui Pure Settings pointer release and retained picker regressions' \
+	  'make test-settings-plugins        Private G3 SDK hook warnings, skips and Settings proof' \
 	  'make test-settings-night          Private full R2/G1/G2 Settings proofs and negative controls' \
 	  'make test-notification-copy       Actual native request fields, real waiting/mute and copy mutations' \
 	  'make test-attention-notifications Question hooks, notification retries and read-only native diagnostics' \
@@ -956,7 +957,23 @@ test-spawn-wire:
 .PHONY: test-swarm-switch check-swarm-switch
 .PHONY: test-sidebar-accordions check-sidebar-accordions
 .PHONY: test-settings-role-picker-ui test-settings-role-picker check-settings-role-picker
-.PHONY: test-settings-night
+.PHONY: test-settings-night test-settings-plugins
+
+test-settings-plugins:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib hook_budget; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test plugin_host slow_hooks_warn_then_skip_with_one_account_control_alert -- --exact; \
+	cargo test --locked -p bboxy450-term-plugin-fixture --test variants --target-dir '$(TARGET_DIR)' concurrent_installs_to_one_destination_keep_complete_fixture_bytes -- --exact; \
+	cargo run --locked -p bboxy450-term-plugin-fixture --example g3 --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/g3-plugins'
+	@$(MAKE) compile PROFILE=debug
+	@BBOXY_G3_FIXTURE='$(abspath $(TARGET_DIR))/g3-plugins' python3 -I -B scripts/e2e/settings_night.py --binary '$(TARGET_DIR)/debug/$(APP)' --out '$(TARGET_DIR)/night-settings-plugins' --only G3
+	@$(MAKE) test-settings-plugins-native
+
+.PHONY: test-settings-plugins-native
+test-settings-plugins-native:
+	@'$(abspath $(TARGET_DIR))/debug/$(APP)' e2e night --group settings --only G3 --scripts scripts/e2e > '$(TARGET_DIR)/g3-night.jsonl'
+	@python3 -I -c 'import json,sys; rows=[json.loads(s) for s in open(sys.argv[1]) if s.startswith("{")]; rows=[r for r in rows if r.get("kind")=="e2e" and r.get("function")=="G3"]; assert len(rows)==1 and rows[0]["verdict"]=="pass" and rows[0]["coverage"]=="full",rows; print("G3 native night: full pass")' '$(TARGET_DIR)/g3-night.jsonl'
+
 .PHONY: test-notification-copy
 notification-status:
 	@'$(NOTIFICATION_BIN)' ctl debug notifications native

@@ -12,6 +12,7 @@
 mod raw;
 mod reference;
 mod root;
+mod sdk_hook;
 
 use bbt_plugin_fixture::{Kind, Knobs};
 
@@ -20,6 +21,7 @@ fn main() {
     match knobs.kind {
         Kind::Reference => reference::main(&knobs),
         Kind::Root => root::main(knobs),
+        Kind::SdkHook => sdk_hook::main(knobs),
         Kind::Inspect => raw::inspect(&knobs),
         Kind::Demux => raw::demux(),
         Kind::Callback => raw::callback(),

@@ -55,6 +55,8 @@ pub use host::{
     Verdict, seat_role,
 };
 pub use host::{MessageSender, RecordReader};
+#[path = "hook_budget.rs"]
+mod hook_budget;
 #[path = "measure.rs"]
 mod measure;
 #[path = "setup.rs"]
@@ -396,12 +398,18 @@ impl Registry {
                 }
                 _ => None,
             };
+            let hook_warnings = activation
+                .as_ref()
+                .map(|a| self.hook_warnings(&candidate.id, a.generation))
+                .transpose()?
+                .unwrap_or_default();
             entries.push(Entry {
                 candidate,
                 activation,
                 trust,
                 conformance,
                 measurements: Vec::new(),
+                hook_warnings,
                 setup,
             });
         }

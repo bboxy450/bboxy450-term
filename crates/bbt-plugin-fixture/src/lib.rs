@@ -21,7 +21,10 @@ use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Mutex;
+use std::sync::{
+    Mutex,
+    atomic::{AtomicU64, Ordering},
+};
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
@@ -41,6 +44,8 @@ pub enum Kind {
     Reference,
     /// A credential-free data_source over the Markdown files of its root.
     Root,
+    /// SDK-served repo_graph with a hook attempting ten seconds of work.
+    SdkHook,
     /// A shape-only descriptor for inspection tests.
     Inspect,
     /// Out-of-order replies, a host request and a stray ID (client tests).
@@ -173,7 +178,12 @@ impl Knobs {
             fs::create_dir_all(parent).expect("fixture plugin directory");
         }
         // A fresh file (never an overwritten one): exec of a replaced inode is safe.
-        let staged = path.with_extension("fixture-copy");
+        static COPIES: AtomicU64 = AtomicU64::new(0);
+        let staged = path.with_extension(format!(
+            "fixture-copy-{}-{}",
+            std::process::id(),
+            COPIES.fetch_add(1, Ordering::Relaxed)
+        ));
         fs::copy(&built, &staged).expect("copy fixture plugin");
         fs::set_permissions(&staged, fs::Permissions::from_mode(0o700))
             .expect("fixture plugin mode");

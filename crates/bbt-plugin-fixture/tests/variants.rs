@@ -145,3 +145,28 @@ fn first_exec_latency_of_fresh_copies() {
         );
     }
 }
+
+// Concurrent fixture preparation must never share a staging file.
+#[test]
+fn concurrent_installs_to_one_destination_keep_complete_fixture_bytes() {
+    let root = tempfile::tempdir().unwrap();
+    let knobs = bbt_plugin_fixture::Knobs::of(bbt_plugin_fixture::Kind::Inspect);
+    let expected = std::fs::read(knobs.build()).unwrap();
+    let destination = root.path().join("bboxy450-term-repo_graph-shared");
+    let barrier = std::sync::Arc::new(std::sync::Barrier::new(8));
+    let children: Vec<_> = (0..8)
+        .map(|_| {
+            let (knobs, destination, barrier) =
+                (knobs.clone(), destination.clone(), barrier.clone());
+            std::thread::spawn(move || {
+                barrier.wait();
+                knobs.install(&destination);
+            })
+        })
+        .collect();
+    for child in children {
+        child.join().unwrap();
+    }
+    assert_eq!(std::fs::read(destination).unwrap(), expected);
+    assert_eq!(std::fs::read_dir(root.path()).unwrap().count(), 1);
+}

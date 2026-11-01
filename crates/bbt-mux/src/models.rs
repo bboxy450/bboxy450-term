@@ -17,13 +17,16 @@ use bboxy450_tlc::build::{action, all, eq, implies, model, ne, no_bad, safe};
 use bboxy450_tlc::{Expr, Model, Response};
 
 /// Every shipped family of this crate.
-pub fn families() -> [fn(bool) -> Model; 5] {
+mod hook_budget;
+
+pub fn families() -> [fn(bool) -> Model; 6] {
     [
         plugin_activation,
         plugin_connection,
         plugin_hook_gate,
         plugin_setup,
         plugin_hook_queue,
+        hook_budget::plugin_hook_budget,
     ]
 }
 

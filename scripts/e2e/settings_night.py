@@ -39,6 +39,8 @@ def run(binary, script, out, native_copy_test=None):
                BBOXY_RUN_DIR=str(root / "run"),
                PATH=str(root / "bin") + ":/usr/bin:/bin:/usr/sbin:/sbin")
     (root / "zsh-config/.zprofile").write_text("export PATH=" + shlex.quote(env["PATH"]) + "\n")
+    if script.stem == "G3":
+        env["BBOXY_G3_FIXTURE"] = str(Path(os.environ["BBOXY_G3_FIXTURE"]).resolve(strict=True))
     calls = []
 
     def ctl(*args, check=True):
@@ -109,7 +111,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--out", type=Path, required=True)
-    parser.add_argument("--only", nargs="+", choices=("R2", "G1", "G2"), default=["R2", "G1", "G2"])
+    parser.add_argument("--only", nargs="+", choices=("R2", "G1", "G2", "G3"), default=["R2", "G1", "G2"])
     args = parser.parse_args()
     binary = args.binary.resolve(strict=True)
     scripts = Path(__file__).resolve().parent
@@ -121,6 +123,10 @@ def main():
     manifest = {"binary": str(binary), "binary_sha256": digest(binary), "source_head": revision,
                 "tracked_diff_sha256": hashlib.sha256(diff).hexdigest(),
                 "inputs": {str(p): digest(p) for p in inputs}, "promises": args.only}
+    if "G3" in args.only:
+        fixture = Path(os.environ["BBOXY_G3_FIXTURE"]).resolve(strict=True)
+        manifest["sdk_fixtures"] = {str(p): digest(p) for p in fixture.glob("bboxy450-term-*")}
+        manifest["inputs"][str(scripts / "plugins.py")] = digest(scripts / "plugins.py")
     (args.out / "invocation.json").write_text(json.dumps(manifest, indent=2) + "\n")
     verdicts = [run(binary, scripts / (name + ".sh"), args.out) for name in args.only]
     passed = all(v["status"] == "pass" and v["coverage"] == "full" and v["exit_code"] == 0 for v in verdicts)

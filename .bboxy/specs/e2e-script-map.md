@@ -59,7 +59,7 @@ The detailed plans preserve all 54 rows from Aster’s six-part ICQ map. Their c
 | F4 | `scripts/e2e/F4.sh` | partial | script not implemented: a filter change while attached migrates the consumer: pending rows for still-granted subjects are delivered, revoked ones dropped unprojected, one audit line on account/control | |
 | G1 | `scripts/e2e/G1.sh` | full | — | #226 |
 | G2 | `scripts/e2e/G2.sh` | full | — | #226 |
-| G3 | `scripts/e2e/G3.sh` | partial | script not implemented: Settings › Plugins lists every discovered plugin with trust state, tier, shape, health and the call-and-hook timeline; a 10 s hook shows the warning | |
+| G3 | `scripts/e2e/G3.sh` | full | Private headless Settings, SDK-built Rust ten-second hook cut at its declared budget, measured warning, three-overrun skip and untrusted no-exec marker | `make test-settings-plugins` |
 | G4 | `scripts/e2e/G4.sh` | partial | script not implemented: Settings › Knowledge lists roots with their provider; swapping to a stub provider and back moves no file | |
 | G5 | `scripts/e2e/G5.sh` | partial | script not implemented: theme is data: a token change in design/tokens.toml changes the look without a code change | |
 | D1 | `scripts/e2e/D1.sh` | full | — | Private admitted records; all six native heading levels, lists, tables, code, task lists and footnotes; actual paint fonts/lines and unchanged glyph ink across retained modal widths |
@@ -559,11 +559,11 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 
 **Promise:** Settings › Plugins lists every discovered plugin with trust state, tier, shape, health and the call-and-hook timeline; a 10 s hook shows the warning.
 
-**Deterministic steps (plan):** Discover deterministic plugins spanning trust/tier/shape/healthy/failing states; open Plugins; trigger one bounded hook controlled by an injected10s clock; read timeline and capture.
+**Deterministic steps:** `make test-settings-plugins` builds SDK Rust fixtures, starts a private headless app with file custody, discovers two candidates, trusts/checks/enables one, and drives hooks through a private seat socket. The fixture attempts 10 seconds of work; the real host deadline cuts it at its declared 800 ms budget. Settings captures show measured warnings, health, shape, trust/tier and the timeline; three overruns latch the skip. No fake clock or production ceiling change.
 
 **Required assertions:** Every discovered plugin appears exactly once with correct trust,tier,shape,health; hook call start/finish and10s warning visible, no UI blocking. Untrusted plugin remains unexecuted.
 
-**Gaps at baseline afff4758:** Plugins UI host, discovery/call fixture and clock/timeline read hooks; current ctl exposes none. A file listing or plugin's own claim cannot substitute.
+**Evidence:** `scripts/e2e/plugins.py` asserts produced Settings nodes/captures and real registry measurements; `plugin_host::slow_hooks_warn_then_skip_with_one_account_control_alert` asserts the single account/control event; `plugins::hook_budget::tests` checks persistence and late-generation completion. The untrusted SDK fixture has an execution marker that must remain absent. Host timing and deadline cancellation are measured; the fixture's attempted 10 s work is not claimed as completed work.
 
 **Baseline pointers:** ctl.rs:251; e2e-acceptance.md:G3; plugins spec.
 
