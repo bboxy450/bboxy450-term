@@ -69,6 +69,14 @@ PR #87 is the worst case: it touches models' inputs, landing machinery and bbt-m
 
 **R4. Hard gate and judgement stay separate.** The 900 s run bound is still the only presubmit block. A stage over its allocation is an advisory finding in `landings.log` with the stage, seconds and load, and it never fails a landing. Two findings in a row for the same stage go to the Architect for re-allocation.
 
+**R5. A records-only rebase keeps a gate log valid.** Context: landing PR #87 by `--gate-log` froze bboxy450-term main for about 75 minutes. Any push during the full ci-local run would move `origin/main`, and `gate_log_source_mismatch` (`landing.py:1098`) would void the log. That freeze binds every pusher, which makes it a chokepoint. Rule: a gate log for candidate C is accepted for C′, C rebased onto a newer `origin/main`, when all of the following hold.
+  1. `git diff --quiet C C′ -- . ':!.bboxy'` exits 0, so the tested tree and C′ differ only under `.bboxy/`.
+  2. No changed `.bboxy/` path is named by code: `git grep -F -l <path> C′ -- crates scripts Makefile verification lab` is empty for each changed path. Example: `.bboxy/specs/e2e-acceptance.md` is read by a bbt-ui test.
+  3. The records gate set from `scripts/records-push.sh` passes on C′.
+  4. C′ is signed, and the landing record carries `gate_log_source: C`, `records_delta: [paths]` and `records_checks_exit: 0`.
+
+If any condition fails, the landing refuses with `gate_log_source_mismatch`, as today. Records pushes then never wait on a landing, and no landing waits on records.
+
 **Immediate path for PR #87 (no change needed).** `land --gate-log` already admits a validated full exact-SHA ci-local log for any tier (`landing.py:1511`; the d667 ruling, whose record is not yet on main). `land --full` runs that canonical check itself. Either lands 63499b1e with the cap unchanged, so a retry at lower load is not the only route.
 
 ## Verification
@@ -80,8 +88,13 @@ PR #87 is the worst case: it touches models' inputs, landing machinery and bbt-m
 | R2 | `test-landing.py` case: a cut touching only `scripts/harness-submodule.py` runs no landing fixtures | a cut touching `scripts/landing.py` runs them |
 | R3 | `scripts/test-formal.py` case: an unchanged model is reused with `reused_from` set; a one-byte `.tla` change re-checks only that model | a changed tool pin re-checks every model; postsubmit evidence never contains `reused_from` |
 | R4 | `test-landing.py` case: a stage over allocation writes a finding and the exit stays 0 | a run over 900 s still exits 124 |
+| R5 | `test-landing.py` case: a gate log for C lands C′ when C..C′ adds only an unreferenced `.bboxy/decisions/*.md`, and the landing record names `gate_log_source` | a C′ that also changes one byte under `crates/` refuses `gate_log_source_mismatch`; a C′ that changes `.bboxy/specs/e2e-acceptance.md` refuses, because the path is named by code |
 | Budget | two consecutive code-tier presubmits touching bbt-mux show ≥ 90 s margin in `stage_seconds` | |
+
+## Change log
+
+- **2026-11-01, at the Oracle's request** (message 01M6CC26D3KMZNQY5GFKC027JR). Added R5 after the 75-minute main freeze for PR #87 (landed at `afda1b63`).
 
 ## Owner and status
 
-Owner: Nyx Copperwing <ARCHITECT> (allocation). Implementation goes to an Executor under an Oracle brief; landing machinery is in `scripts/landing.py`, `scripts/invariants.sh`, `scripts/formal.py` and `Makefile`. Status stays proposed until the Oracle accepts it, and the allocation is re-measured after R1-R3 land.
+Owner: Nyx Copperwing <ARCHITECT> (allocation). Implementation goes to an Executor under an Oracle brief (E1c, task #4900); landing machinery is in `scripts/landing.py`, `scripts/invariants.sh`, `scripts/formal.py` and `Makefile`. Status stays proposed until the Oracle accepts it, and the allocation is re-measured after R1-R3 land.
