@@ -460,19 +460,20 @@ impl Manifest {
         self
     }
 
-    /// Request a host API method (`records.search`, `records.fetch`,
-    /// `events.publish`, `messages.send`) for [`Ctx::host`]. The operator
-    /// still grants it (and, for `messages.send`, each destination).
-    /// Declare a transport launcher parameter. None means a required value.
+    /// Declare a v1 text transport launcher parameter. None requires a value.
     pub fn transport_field(mut self, name: &str, label: &str, default: Option<&str>) -> Self {
         self.spawn_fields.push(bbt_plugin::transport::Field {
             name: name.into(),
             label: label.into(),
+            kind: "text".into(),
             default: default.map(str::to_owned),
         });
         self
     }
 
+    /// Request a host API method (`records.search`, `records.fetch`,
+    /// `events.publish`, `messages.send`) for [`Ctx::host`]. The operator
+    /// grants it (and, for `messages.send`, each destination).
     pub fn host_api(mut self, method: &str) -> Self {
         self.host_api.push(method.into());
         self

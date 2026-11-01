@@ -750,6 +750,8 @@ test-plugin-transports:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-plugin -p bboxy450-term-plugin-sdk --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-ui --test launchers --test settings_destinations --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --lib logic::plugin_transport::deadline_tests --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --lib transport_owner_tests --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-term-mux --test plugin_transport --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --test remote_launch --target-dir '$(TARGET_DIR)'; \
 	cargo run --locked -p bboxy450-term-plugin-fixture --example transport --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/transport-plugins/bboxy450-term-transport-example'

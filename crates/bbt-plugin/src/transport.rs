@@ -13,9 +13,15 @@ use std::collections::{BTreeMap, BTreeSet};
 pub struct Field {
     pub name: String,
     pub label: String,
+    #[serde(default = "text_kind")]
+    pub kind: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default: Option<String>,
 }
+fn text_kind() -> String {
+    "text".into()
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct WrapRequest {
     pub fields: BTreeMap<String, String>,
@@ -35,7 +41,8 @@ pub fn validate_fields(fields: &[Field]) -> Result<(), Refusal> {
         ));
     }
     for field in fields {
-        if field.name.is_empty()
+        if field.kind != "text"
+            || field.name.is_empty()
             || field.name.len() > 64
             || !field
                 .name
@@ -52,7 +59,7 @@ pub fn validate_fields(fields: &[Field]) -> Result<(), Refusal> {
         {
             return Err(Refusal::new(
                 "invalid_transport_fields",
-                "transport fields need unique bounded names, labels and defaults without NUL",
+                "transport fields require kind text, unique bounded names, labels and defaults without NUL",
             ));
         }
     }

@@ -50,6 +50,36 @@
         }
       },
       "additionalProperties": true
+    },
+    "Field": {
+      "type": "object",
+      "required": [
+        "name",
+        "label"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "kind": {
+          "const": "text",
+          "default": "text"
+        },
+        "default": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000]*$"
+        }
+      },
+      "additionalProperties": true
     }
   },
   "x-methods": {
@@ -57,5 +87,6 @@
       "request": "#/$defs/WrapRequest",
       "result": "#/$defs/WrapResult"
     }
-  }
+  },
+  "$comment": "bboxy450-term \u2014 https://github.com/bboxy450/bboxy450-term; LicenseRef-Respectful-Slop-1.0-Draft. Credit copied/adapted/translated reuse. Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md"
 }

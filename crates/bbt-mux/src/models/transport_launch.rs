@@ -15,12 +15,13 @@ pub(super) fn plugin_transport_launch(b: bool) -> Model {
             ("generation", 3, 1),
             ("root_revision", 3, 1),
             ("enabled", 1, 1),
-            ("admitted", 1, 0),
+            ("admitted", 2, 0),
             ("captured_generation", 3, 0),
             ("captured_root", 3, 0),
             ("ready", 1, 0),
             ("launched", 1, 0),
             ("bad", 1, 0),
+            ("host_busy", 1, 0),
         ],
     );
     action(
@@ -57,15 +58,32 @@ pub(super) fn plugin_transport_launch(b: bool) -> Model {
     action(
         &mut m,
         "Launch",
-        all([eq(6, 1), eq(7, 0), current.clone()]),
-        &[(6, Int(0)), (7, Int(1))],
+        all([eq(3, 1), eq(6, 1), eq(7, 0), eq(9, 0), current.clone()]),
+        &[(3, Int(2)), (6, Int(0)), (7, Int(1))],
     );
     action(
         &mut m,
         "RefuseStalePlan",
-        all([eq(6, 1), current.clone().negate()]),
-        &[(6, Int(0))],
+        all([eq(3, 1), eq(6, 1), current.clone().negate()]),
+        &[(3, Int(2)), (6, Int(0))],
     );
+    action(&mut m, "HoldHostState", eq(9, 0), &[(9, Int(1))]);
+    action(&mut m, "ReleaseHostState", eq(9, 1), &[(9, Int(0))]);
+    action(
+        &mut m,
+        "RefuseBusyPlan",
+        all([eq(3, 1), eq(6, 1), eq(9, 1)]),
+        &[(3, Int(2)), (6, Int(0))],
+    );
+    action(
+        &mut m,
+        "DeadlineBeforeWrapReady",
+        all([eq(3, 1), eq(6, 0)]),
+        &[(3, Int(2)), (6, Int(0))],
+    );
+    action(&mut m, "OwnerLost", eq(3, 1), &[(3, Int(2)), (6, Int(0))]);
+    // A late or duplicate completion after retirement cannot publish a plan.
+    action(&mut m, "DiscardLateCompletion", eq(3, 2), &[]);
     // An admitted operation is never submitted twice, including after restart.
     action(&mut m, "QueryOrRestart", eq(8, 0).or(eq(8, 1)), &[]);
     if b {
@@ -77,5 +95,46 @@ pub(super) fn plugin_transport_launch(b: bool) -> Model {
         );
     }
     no_bad(&mut m, 8);
+    m
+}
+
+// Progress has the same reachable graph as the positive safety family. The
+// deadline and owner completion service are weakly fair; replies, blocking
+// pool capacity and release of the host connection mutex are not.
+// Adapted from bboxy450-term, PluginTransportLaunch (this file):
+// https://github.com/bboxy450/bboxy450-term
+// Retain credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+pub(super) fn plugin_transport_progress(b: bool) -> Model {
+    let mut m = plugin_transport_launch(false);
+    m.name = if b {
+        "BrokenPluginTransportProgress"
+    } else {
+        "PluginTransportProgress"
+    }
+    .into();
+    m.responses.push(Response {
+        name: "EveryAdmittedWrapTerminates".into(),
+        request: eq(3, 1),
+        response: eq(3, 2),
+    });
+    let owner: Vec<_> = m
+        .actions
+        .iter()
+        .enumerate()
+        .filter_map(|(i, action)| {
+            ["Launch", "RefuseStalePlan", "RefuseBusyPlan"]
+                .contains(&action.name.as_str())
+                .then_some(i)
+        })
+        .collect();
+    m.weak_fair.push(owner);
+    if !b {
+        let deadline = m
+            .actions
+            .iter()
+            .position(|a| a.name == "DeadlineBeforeWrapReady")
+            .unwrap();
+        m.weak_fair.push(vec![deadline]);
+    }
     m
 }

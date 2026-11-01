@@ -184,6 +184,8 @@ Project-owned contributions use the [Respectful Slop License 1.0-Draft](LICENSE)
 see [ATTRIBUTION.md](ATTRIBUTION.md) and [NOTICE](NOTICE).
 
 Transport parameters are declared with `Manifest::transport_field(name, label, default)`.
+Version 1 uses text fields (`kind: "text"`); omitting kind defaults to text for
+existing declarations. Other kinds refuse with `invalid_transport_fields`.
 The trusted shape supplies defaults and field names; unknown or missing fields
 are refused before `wrap`. Return literal argv, never a shell-expanded field.
 Settings > Machines lists discovered transports, and enabled transports appear

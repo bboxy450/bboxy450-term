@@ -29,11 +29,13 @@ fn transport_fields_use_only_the_trusted_names_and_defaults() {
         Field {
             name: "route".into(),
             label: "Route".into(),
+            kind: "text".into(),
             default: None,
         },
         Field {
             name: "prefix".into(),
             label: "Prefix".into(),
+            kind: "text".into(),
             default: Some("default".into()),
         },
     ];
@@ -64,4 +66,24 @@ fn transport_fields_use_only_the_trusted_names_and_defaults() {
     let mut invalid = fields;
     invalid[1].default = Some("a\0b".into());
     assert!(validate_fields(&invalid).is_err());
+}
+
+#[test]
+fn transport_field_kind_is_explicit_text_and_unsupported_kinds_are_refused() {
+    use bbt_plugin::transport::{Field, validate_fields};
+    let implicit: Field = serde_json::from_value(serde_json::json!({
+        "name":"route", "label":"Route"
+    }))
+    .unwrap();
+    assert_eq!(implicit.kind, "text");
+    assert_eq!(serde_json::to_value(&implicit).unwrap()["kind"], "text");
+    validate_fields(&[implicit]).unwrap();
+    let unsupported: Field = serde_json::from_value(serde_json::json!({
+        "name":"route", "label":"Route", "kind":"select"
+    }))
+    .unwrap();
+    assert_eq!(
+        validate_fields(&[unsupported]).unwrap_err().code,
+        "invalid_transport_fields"
+    );
 }

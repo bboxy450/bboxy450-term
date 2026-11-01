@@ -208,7 +208,8 @@ witnesses, the real host alert/skip test, and `make test-settings-plugins`.
 ## Transport 1.0 (#84, operator batch 2026-10-31)
 
 Producer: a trusted SDK/MCP `bboxy450-term-transport-<provider>` declares
-bounded `spawn_fields` (unique name, human label, optional default). Consumer:
+bounded `spawn_fields` (unique name, human label, `kind: "text"`, optional default).
+Omitted kind defaults to text; unsupported kinds refuse as `invalid_transport_fields`. Consumer:
 Settings Machines shows discovered transports and their state/fields; an enabled
 transport is a Via choice `plugin:<provider>`. Machine preferences and launcher
 fields retain names separately from labels. Changing Via clears another
@@ -241,3 +242,17 @@ remote-launch tests remain, and `make test-plugin-transports` captures Settings.
 Explicit seat restart replays its retained, already-authorized wrapped argv,
 matching built-in transport recovery. It does not run a new plugin callback.
 A new spawn always resolves the current trusted activation and fields.
+
+
+The transport admission deadline is captured before worker scheduling. An async
+owner timer covers a saturated blocking pool as well as the plugin RPC;
+expired queued work is canceled and a running worker's late result is retired.
+The launch owner checks connection authority with a nonblocking lock attempt:
+contention refuses `transport_unavailable`, and replacement refuses
+`transport_changed`. A dropped GUI waiter does not revoke its owned admission.
+`PluginTransportProgress` assumes weak fairness only for that timer and the
+owner completion group, not for a plugin reply, blocking capacity or mutex
+release. Its broken control removes timer fairness. Private runtime witnesses
+hold the blocking pool or host mutex, retire late/duplicate completion and keep
+status reads moving. Wall clocks, filesystems, signatures and journal durability
+remain implementation coverage, without a Rust refinement claim.

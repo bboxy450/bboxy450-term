@@ -20,7 +20,7 @@ use bboxy450_tlc::{Expr, Model, Response};
 mod hook_budget;
 mod transport_launch;
 
-pub fn families() -> [fn(bool) -> Model; 7] {
+pub fn families() -> [fn(bool) -> Model; 8] {
     [
         plugin_activation,
         plugin_connection,
@@ -29,6 +29,7 @@ pub fn families() -> [fn(bool) -> Model; 7] {
         plugin_hook_queue,
         hook_budget::plugin_hook_budget,
         transport_launch::plugin_transport_launch,
+        transport_launch::plugin_transport_progress,
     ]
 }
 

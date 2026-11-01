@@ -665,3 +665,13 @@ frontend = "project"
 name = "BrokenPluginTransportLaunch"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "PluginTransportProgress"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenPluginTransportProgress"
+expected = "liveness"
+frontend = "project"

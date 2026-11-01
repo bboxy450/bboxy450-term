@@ -807,12 +807,25 @@ impl PluginHost {
 
     /// No IO on the launch owner: plugin control reconciliation removes a
     /// superseded connection before acknowledging the disable/re-pin.
-    pub fn transport_plan_current(&self, plan: &TransportPlan) -> bool {
-        self.0.state.lock().is_ok_and(|s| {
-            s.connections
-                .get(&(plan.candidate.clone(), Lane::Calls))
-                .is_some_and(|c| c.authority == plan.authority)
-        })
+    pub fn transport_plan_current(&self, plan: &TransportPlan) -> d::Result<()> {
+        let state = self.0.state.try_lock().map_err(|_| {
+            error(
+                "transport_unavailable",
+                "host connection state busy or unavailable before launch",
+            )
+        })?;
+        if state
+            .connections
+            .get(&(plan.candidate.clone(), Lane::Calls))
+            .is_some_and(|c| c.authority == plan.authority)
+        {
+            Ok(())
+        } else {
+            Err(error(
+                "transport_changed",
+                "activation changed before launch",
+            ))
+        }
     }
 
     /// Close every connection whose authority is no longer current and
@@ -908,5 +921,73 @@ impl PluginHost {
                 connection.close().await;
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod transport_owner_tests {
+    use super::*;
+
+    #[test]
+    fn a_busy_connection_snapshot_never_blocks_the_launch_owner() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap();
+        let registry = Registry::new(
+            SqliteStore::open(&temp.path().join("account")).unwrap(),
+            DiscoveryRoots::new(temp.path(), temp.path()),
+        )
+        .unwrap();
+        let host = PluginHost::new(
+            registry,
+            temp.path(),
+            runtime.handle().clone(),
+            ProviderConfig::default(),
+        )
+        .unwrap();
+        // The contention branch does not inspect a plan's authority. This
+        // private record is data only; no plugin is installed or executed.
+        let source = temp.path().join("candidate").to_string_lossy().into_owned();
+        let name = serde_json::json!({"system":"transport","provider":"private"});
+        let authority = Authority {
+            activation: serde_json::from_value(serde_json::json!({
+                "candidate":"private", "source":source, "scope":"repository",
+                "name":name.clone(), "sha256":"a".repeat(64), "generation":1,
+                "desired_enabled":true, "needs_retrust":false, "inspection":null
+            }))
+            .unwrap(),
+            record: serde_json::from_value(serde_json::json!({
+                "sha256":"a".repeat(64), "source":source, "copy":source,
+                "data_dir":source, "name":name, "scope":"repository",
+                "approved_tier":"transport"
+            }))
+            .unwrap(),
+        };
+        let plan = TransportPlan {
+            argv: vec!["/bin/true".into()],
+            candidate: "private".into(),
+            authority,
+        };
+        let held = host.0.state.lock().unwrap();
+        let worker = host.clone();
+        let (tx, rx) = std::sync::mpsc::channel();
+        let thread = std::thread::spawn(move || {
+            let _ = tx.send(worker.transport_plan_current(&plan));
+        });
+        let observed = rx.recv_timeout(std::time::Duration::from_secs(5));
+        drop(held); // Also releases a deliberately blocking implementation before assertion.
+        thread.join().unwrap();
+        host.close();
+        runtime.shutdown_timeout(std::time::Duration::from_secs(3));
+        assert_eq!(
+            observed
+                .expect("launch owner waited for the connection mutex")
+                .unwrap_err()
+                .code,
+            "transport_unavailable"
+        );
     }
 }

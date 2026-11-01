@@ -97,28 +97,30 @@ impl Worker {
             }
         };
         let tx = self.client.tx.clone();
-        self.plugin_jobs.spawn_blocking_on(
-            move || {
-                let via = options.via.as_ref().expect("plugin transport");
-                let result = (|| {
-                    let inner = bbt_proto::TransportSpec::inner_command(
-                        &options.cwd.to_string_lossy(),
-                        &harness.command,
-                        &options.env,
-                    )
-                    .map_err(|e| {
-                        crate::knowledge::data_source::CommandError::new(
-                            "invalid_transport_command",
-                            e,
-                        )
-                    })?;
-                    host.wrap_transport(
+        let deadline = Instant::now() + Duration::from_secs(2);
+        let via = options.via.clone().expect("plugin transport");
+        let cwd = options.cwd.to_string_lossy().into_owned();
+        let env = options.env.clone();
+        let command = harness.command.clone();
+        let wrap_host = host.clone();
+        self.plugin_jobs.spawn_on(
+            async move {
+                let result = bounded_wrap(deadline, move || {
+                    let inner = bbt_proto::TransportSpec::inner_command(&cwd, &command, &env)
+                        .map_err(|e| {
+                            crate::knowledge::data_source::CommandError::new(
+                                "invalid_transport_command",
+                                e,
+                            )
+                        })?;
+                    wrap_host.wrap_transport(
                         via.kind.strip_prefix("plugin:").unwrap(),
                         &via.fields,
                         vec!["/bin/sh".into(), "-lc".into(), inner],
-                        Instant::now() + Duration::from_secs(2),
+                        deadline,
                     )
-                })();
+                })
+                .await;
                 let done = Completion {
                     principal,
                     call,
@@ -147,11 +149,9 @@ impl Worker {
                 .result
                 .map_err(|e| invalid(format!("{}: {}", e.code, e.message)))?;
             self.workspaces.current(&self.registry, &done.binding)?;
-            if !done.host.transport_plan_current(&plan) {
-                return Err(invalid(
-                    "transport_changed: activation changed before launch",
-                ));
-            }
+            done.host
+                .transport_plan_current(&plan)
+                .map_err(|e| invalid(format!("{}: {}", e.code, e.message)))?;
             if let crate::mcp::Principal::Operator { device_id, .. } = &done.principal
                 && self.operator_device_for_effect()? != *device_id
             {
@@ -175,5 +175,155 @@ impl Worker {
             .complete(&done.principal, &done.call, value)
             .and_then(seat_result);
         let _ = done.reply.send(result);
+    }
+}
+
+struct CancelQueuedWrap(tokio::task::AbortHandle);
+impl Drop for CancelQueuedWrap {
+    fn drop(&mut self) {
+        self.0.abort();
+    }
+}
+
+// Origin: bboxy450-term; credit reuse: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+// A separate async timer includes time queued behind blocking work. Only its
+// result reaches the launch owner; a late blocking completion has no effects.
+async fn bounded_wrap<T: Send + 'static>(
+    deadline: Instant,
+    work: impl FnOnce() -> crate::knowledge::data_source::Result<T> + Send + 'static,
+) -> crate::knowledge::data_source::Result<T> {
+    bounded_job(deadline, tokio::task::spawn_blocking(work)).await
+}
+
+async fn bounded_job<T: Send + 'static>(
+    deadline: Instant,
+    mut job: tokio::task::JoinHandle<crate::knowledge::data_source::Result<T>>,
+) -> crate::knowledge::data_source::Result<T> {
+    let _cancel_queued = CancelQueuedWrap(job.abort_handle());
+    match tokio::time::timeout_at(tokio::time::Instant::from_std(deadline), &mut job).await {
+        Ok(Ok(result)) if Instant::now() < deadline => result,
+        Ok(Err(_)) => Err(crate::knowledge::data_source::CommandError::new(
+            "transport_worker_lost",
+            "transport worker stopped before replying",
+        )),
+        _ => {
+            // The guard cancels queued work; a running result is retired.
+            Err(crate::knowledge::data_source::CommandError::new(
+                "transport_timeout",
+                "transport wrap exceeded its two-second admission budget",
+            ))
+        }
+    }
+}
+
+#[cfg(test)]
+mod deadline_tests {
+    use super::*;
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+        mpsc,
+    };
+
+    struct Release(Option<mpsc::Sender<()>>);
+    impl Drop for Release {
+        fn drop(&mut self) {
+            if let Some(tx) = self.0.take() {
+                let _ = tx.send(());
+            }
+        }
+    }
+
+    #[test]
+    fn a_ready_plan_observed_after_the_deadline_is_refused() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap();
+        let deadline = Instant::now();
+        let job = runtime.spawn_blocking(|| Ok("completed plan"));
+        let until = Instant::now() + Duration::from_secs(3);
+        while !job.is_finished() && Instant::now() < until {
+            std::thread::yield_now();
+        }
+        assert!(job.is_finished(), "fixture worker never completed");
+        let result = runtime.block_on(bounded_job(deadline, job));
+        runtime.shutdown_timeout(Duration::from_secs(3));
+        assert_eq!(result.unwrap_err().code, "transport_timeout");
+    }
+
+    #[test]
+    fn deadline_covers_the_worker_queue_and_cancels_undispatched_work() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .max_blocking_threads(1)
+            .enable_all()
+            .build()
+            .unwrap();
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let release = Release(Some(release_tx));
+        let held = runtime.spawn_blocking(move || {
+            entered_tx.send(()).unwrap();
+            let _ = release_rx.recv();
+        });
+        entered_rx.recv_timeout(Duration::from_secs(3)).unwrap();
+        let calls = Arc::new(AtomicUsize::new(0));
+        let count = calls.clone();
+        let result = runtime.block_on(async {
+            tokio::time::timeout(
+                Duration::from_secs(3),
+                bounded_wrap(Instant::now() + Duration::from_secs(2), move || {
+                    count.fetch_add(1, Ordering::SeqCst);
+                    Ok(())
+                }),
+            )
+            .await
+        });
+        drop(release);
+        runtime.block_on(held).unwrap();
+        runtime.shutdown_timeout(Duration::from_secs(3));
+        let error = result
+            .expect("blocking queue prevented the async deadline")
+            .unwrap_err();
+        assert_eq!(error.code, "transport_timeout");
+        assert_eq!(
+            calls.load(Ordering::SeqCst),
+            0,
+            "timed-out work ran after capacity returned"
+        );
+    }
+
+    #[test]
+    fn deadline_retires_a_running_workers_late_result() {
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap();
+        let (entered_tx, entered_rx) = mpsc::channel();
+        let (release_tx, release_rx) = mpsc::channel();
+        let (finished_tx, finished_rx) = mpsc::channel();
+        let release = Release(Some(release_tx));
+        let waiting = runtime.spawn(bounded_wrap(
+            Instant::now() + Duration::from_secs(2),
+            move || {
+                entered_tx.send(()).unwrap();
+                let _ = release_rx.recv();
+                let _ = finished_tx.send(());
+                Ok("late plan")
+            },
+        ));
+        entered_rx.recv_timeout(Duration::from_secs(3)).unwrap();
+        let result =
+            runtime.block_on(async { tokio::time::timeout(Duration::from_secs(3), waiting).await });
+        drop(release);
+        finished_rx.recv_timeout(Duration::from_secs(3)).unwrap();
+        runtime.shutdown_timeout(Duration::from_secs(3));
+        assert_eq!(
+            result.unwrap().unwrap().unwrap_err().code,
+            "transport_timeout"
+        );
     }
 }
