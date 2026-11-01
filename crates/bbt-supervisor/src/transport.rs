@@ -389,14 +389,19 @@ impl SocketPeer {
 
     pub fn enqueue(&mut self, message: Message) -> io::Result<bool> {
         let reply = matches!(&message, Message::Reply { .. });
+        let bytes = encode(&Frame::new(message))?;
+        Ok(self.enqueue_encoded(bytes, reply))
+    }
+
+    // Only frames produced by our typed encoders enter this queue.
+    pub(crate) fn enqueue_encoded(&mut self, bytes: Vec<u8>, reply: bool) -> bool {
         let limit = if reply {
             MAX_SOCKET_QUEUE_BYTES
         } else {
             MAX_EVENT_QUEUE_BYTES
         };
-        let bytes = encode(&Frame::new(message))?;
         if self.queued_bytes + bytes.len() > limit {
-            return Ok(false);
+            return false;
         }
         self.queued_bytes += bytes.len();
         if reply {
@@ -404,7 +409,7 @@ impl SocketPeer {
         } else {
             self.queue.push_back(bytes);
         }
-        Ok(true)
+        true
     }
 
     pub fn wants_write(&self) -> bool {

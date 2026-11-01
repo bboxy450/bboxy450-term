@@ -1,0 +1,5 @@
+ROLE: EXECUTOR — direct operator batch ingest3, GH #47, 2026-10-31.
+Scope: supervisor encoding, seat routing epoch, SQLite inode fence, provenance static binding; bounded live-output signing only if needed. No budget/plugin/Settings/release edits.
+Step 1: supervisor.rs bounded_batch_reply serializes each candidate once, reserves every member error, assembles the unchanged typed JSON envelope and sends those bytes through the existing bounded reply queue. Exact encoded length (including framing) remains the admission bound. No state/ownership/wire semantics change; existing formal model applies.
+Focused: cargo test --locked --target-dir target -p bboxy450-harness-host --lib ring_batch — exit 0, 5 passed. New byte-equivalence witness covers 0..8 members and every byte value; exact-budget refusal witness retains later small rows.
+Landing/formal/dependent tests/Clippy and quiet profiles: pending; raw command logs remain in target/ingest3.

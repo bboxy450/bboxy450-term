@@ -1220,51 +1220,77 @@ fn batch_wire_bytes(request_id: Ulid, results: &[RingReadResult]) -> io::Result<
     .map(|bytes| bytes.len())
 }
 
+// Encode each candidate once and reuse its bytes on the socket. The empty typed
+// frame supplies the envelope, keeping JSON version/field layout authoritative.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 fn bounded_batch_reply(
     request_id: Ulid,
     results: Vec<RingReadResult>,
     max_bytes: usize,
-) -> Result<Reply, Failure> {
+) -> Result<(Reply, Vec<u8>), Failure> {
     let encoding_failed = || Failure::new(FailureCode::Invalid, "ring batch reply encoding failed");
-    let mut bounded: Vec<_> = results
-        .iter()
-        .map(|row| RingReadResult {
+    let empty = crate::transport::encode(&Frame::new(Message::Reply {
+        request_id,
+        result: Ok(Reply::RingHistoryBatch {
+            results: Vec::new(),
+        }),
+    }))
+    .map_err(|_| encoding_failed())?;
+    let insertion = empty
+        .windows(2)
+        .position(|pair| pair == b"[]")
+        .ok_or_else(encoding_failed)?
+        + 1;
+    let mut bounded = Vec::with_capacity(results.len());
+    let mut rows = Vec::with_capacity(results.len());
+    let mut used = empty.len() + results.len().saturating_sub(1);
+    for row in &results {
+        let reserved = RingReadResult {
             seat: row.seat,
             generation: row.generation,
             from: row.from,
             to: row.to,
             result: Err(batch_limit()),
-        })
-        .collect();
-    let mut used = batch_wire_bytes(request_id, &bounded).map_err(|_| encoding_failed())?;
+        };
+        let bytes = serde_json::to_vec(&reserved).map_err(|_| encoding_failed())?;
+        used = used.checked_add(bytes.len()).ok_or_else(encoding_failed)?;
+        bounded.push(reserved);
+        rows.push(bytes);
+    }
     if used > max_bytes {
         return Err(Failure::new(
             FailureCode::Invalid,
             "batch budget cannot contain member results",
         ));
     }
-    // Replacing a JSON array member changes only its own encoded length. Reserve
-    // named errors first, so one oversized member cannot erase a later small one.
+    // Reserve every named refusal first: a large member cannot erase a later
+    // small member. Replacement changes exactly one array element's byte count.
     for (index, candidate) in results.into_iter().enumerate() {
-        let reserved = serde_json::to_vec(&bounded[index])
-            .map_err(|_| encoding_failed())?
-            .len();
-        let actual = serde_json::to_vec(&candidate)
-            .map_err(|_| encoding_failed())?
-            .len();
+        let bytes = serde_json::to_vec(&candidate).map_err(|_| encoding_failed())?;
         if let Some(next) = used
-            .checked_sub(reserved)
-            .and_then(|n| n.checked_add(actual))
+            .checked_sub(rows[index].len())
+            .and_then(|n| n.checked_add(bytes.len()))
             && next <= max_bytes
         {
             used = next;
             bounded[index] = candidate;
+            rows[index] = bytes;
         }
     }
-    if !batch_wire_bytes(request_id, &bounded).is_ok_and(|bytes| bytes <= max_bytes) {
+    let mut wire = Vec::with_capacity(used);
+    wire.extend_from_slice(&empty[..insertion]);
+    for (index, row) in rows.into_iter().enumerate() {
+        if index != 0 {
+            wire.push(b',');
+        }
+        wire.extend_from_slice(&row);
+    }
+    wire.extend_from_slice(&empty[insertion..]);
+    if wire.len() != used || used - 4 > crate::transport::MAX_FRAME_BYTES {
         return Err(encoding_failed());
     }
-    Ok(Reply::RingHistoryBatch { results: bounded })
+    wire[..4].copy_from_slice(&((used - 4) as u32).to_be_bytes());
+    Ok((Reply::RingHistoryBatch { results: bounded }, wire))
 }
 
 impl Drop for Actor {
@@ -1754,9 +1780,20 @@ impl Actor {
             );
             batch.diagnostic.finish(diagnostic_outcome(&result), 0, 0);
             if let Some(reply) = batch.reply {
-                let _ = reply.try_send(result);
+                let _ = reply.try_send(result.map(|(reply, _)| reply));
             } else {
-                self.socket_reply(batch.client, batch.request_id, result);
+                match result {
+                    Ok((_, wire)) => {
+                        let queued = match self.clients.get_mut(&batch.client) {
+                            Some(Target::Socket { peer, .. }) => peer.enqueue_encoded(wire, true),
+                            _ => false,
+                        };
+                        if !queued {
+                            self.disconnect(batch.client);
+                        }
+                    }
+                    Err(error) => self.socket_reply(batch.client, batch.request_id, Err(error)),
+                }
             }
         }
     }
@@ -3279,7 +3316,7 @@ mod capture_read_tests {
         }))
         .unwrap()
         .len();
-        let Reply::RingHistoryBatch { results } =
+        let (Reply::RingHistoryBatch { results }, wire) =
             bounded_batch_reply(id, vec![first, oversized, last], budget).unwrap()
         else {
             panic!("batch reply required")
@@ -3291,8 +3328,41 @@ mod capture_read_tests {
             results[1].result.as_ref().unwrap_err().code,
             FailureCode::Limit
         );
+        assert_eq!(wire.len(), budget);
+        let expected = crate::transport::encode(&Frame::new(Message::Reply {
+            request_id: id,
+            result: Ok(Reply::RingHistoryBatch {
+                results: results.clone(),
+            }),
+        }))
+        .unwrap();
+        assert_eq!(
+            wire, expected,
+            "byte-identical typed JSON including framing"
+        );
         assert!(batch_wire_bytes(id, &results).unwrap() <= budget);
         assert!(bounded_batch_reply(id, results, 1).is_err());
+    }
+
+    #[test]
+    fn ring_batch_cached_encoding_matches_typed_wire_for_all_byte_values() {
+        for count in 0..=MAX_RING_BATCH_MEMBERS {
+            let rows = (1..=count)
+                .map(|id| batch_row(id as u128, (0..=255).collect()))
+                .collect();
+            let id = Ulid::new();
+            let (reply, wire) = bounded_batch_reply(id, rows, MAX_RING_BATCH_BYTES).unwrap();
+            let expected = crate::transport::encode(&Frame::new(Message::Reply {
+                request_id: id,
+                result: Ok(reply),
+            }))
+            .unwrap();
+            assert_eq!(wire, expected);
+            assert_eq!(
+                crate::transport::read_frame::<Message>(&mut wire.as_slice()).unwrap(),
+                crate::transport::read_frame::<Message>(&mut expected.as_slice()).unwrap()
+            );
+        }
     }
 
     // keeps: invariant ring-reads-batched
