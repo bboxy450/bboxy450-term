@@ -16,3 +16,18 @@ Commands:
 This is the explicitly authorized early checkpoint for P3/P4 consumers.
 Full make test has NOT run at this checkpoint. P0, shared gate integration and P2 follow on this branch.
 The report will be extended with full verification and copied to the requested harness KB log at handoff.
+
+RecordId dependency checkpoint
+- Authority: lc-ir §2 and Oracle messages 01M6CQBBW5WC8WPS0SDB668Y53 /
+  01M6CQFWQK3SGEP9A01E4QH2TK. RecordId is the five-field EventId framing
+  with empty role_tag; references compute directly from the native key.
+- Event.record added at CBOR key 8; existing field numbers retained.
+  Event.parent and Compaction.replaced_through now carry RecordId.
+- Deliberately regenerated all 68 fixed golden cases: 66 event cases changed
+  for the new required record field. Session and the standalone mixed-key
+  ordering vector are unchanged. Existing EventId bytes are unchanged.
+- cargo test --locked -p bboxy450-log-converter: exit 0; 11 compatibility,
+  one 68-case golden, two CLI tests. Log: /tmp/lc-record-id-tests.log.
+- Stateless multi-event/single-event parent joins pass. Broken control that
+  guesses a block-0 parent misses the single empty-tag event, as specified.
+- Workspace inventory added; full make test still pending at this checkpoint.
