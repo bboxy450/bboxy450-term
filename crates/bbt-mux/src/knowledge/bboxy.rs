@@ -349,7 +349,9 @@ impl<'a> BboxySource<'a> {
                 items: items.clone(),
                 next: (end < rows.len()).then(|| self.cursor(&query, end)),
             };
-            if serde_json::to_vec(&page).map_err(command_io)?.len() <= PAGE_BYTES {
+            if serde_json::to_vec(&page).map_err(command_io)?.len() <= PAGE_BYTES
+                && crate::mcp::read_pages::fits(&serde_json::to_value(&page).map_err(command_io)?)
+            {
                 return Ok(page);
             }
             if items.len() <= 1 {
@@ -550,11 +552,20 @@ impl<'a> BboxySource<'a> {
                     reference: doc.map(|doc| reference(doc)),
                     title: doc
                         .and_then(|d| d.metadata["title"].as_str())
-                        .map(str::to_owned),
+                        .map(|s| crate::mcp::tools::clip(s, 4096).to_owned()),
                     record_type: doc
                         .and_then(|d| d.metadata["type"].as_str())
-                        .map(str::to_owned),
-                    frontmatter: doc.map_or_else(|| json!({}), |d| d.metadata.clone()),
+                        .map(|s| crate::mcp::tools::clip(s, 128).to_owned()),
+                    frontmatter: doc.map_or_else(
+                        || json!({}),
+                        |d| {
+                            if d.metadata.to_string().len() > 16 * 1024 {
+                                crate::mcp::read_pages::lean_frontmatter(&d.metadata)
+                            } else {
+                                d.metadata.clone()
+                            }
+                        },
+                    ),
                     id,
                 }
             })
@@ -581,7 +592,9 @@ impl<'a> BboxySource<'a> {
                 next,
                 edges_truncated: truncated,
             };
-            if serde_json::to_vec(&result).map_err(command_io)?.len() <= PAGE_BYTES {
+            if serde_json::to_vec(&result).map_err(command_io)?.len() <= PAGE_BYTES
+                && crate::mcp::read_pages::fits(&serde_json::to_value(&result).map_err(command_io)?)
+            {
                 return Ok(result);
             }
             if nodes.len() <= 1 {
@@ -944,8 +957,12 @@ impl DataSource for BboxySource<'_> {
             hits.push(d::SearchHit {
                 number: reference.number,
                 reference,
-                title: title(doc),
-                record_type: doc.metadata["type"].as_str().unwrap_or_default().to_owned(),
+                title: crate::mcp::tools::clip(&title(doc), 4096).to_owned(),
+                record_type: crate::mcp::tools::clip(
+                    doc.metadata["type"].as_str().unwrap_or_default(),
+                    128,
+                )
+                .to_owned(),
                 snippet: doc.body.chars().take(256).collect(),
                 score,
             });

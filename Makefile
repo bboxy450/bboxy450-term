@@ -148,7 +148,7 @@ help:
 	  'make test-kb-reports             Native immutable reports and committed-tree provenance gates' \
 	  'make check-kb-reports            Strict all-target lint for report paths' \
 	  'make test-task-contract          Exact native task catalogue and plugin schema alignment' \
-	  'make test-task-pages             Byte-bounded task pages, oversized rows and GUI pagination' \
+	  'make test-task-pages             Byte-bounded KB/task reads, body continuation and GUI/capture paging' \
 	  'make check-task-pages            Strict mux/app all-target Clippy' \
 	  'make test-scoped-workspaces      Captured native docs/tasks/graph and cross-project ctl fences' \
 	  'make test-overlay-captures       Private headless light/dark menu and dialog evidence' \
@@ -1001,17 +1001,24 @@ test-settings-night:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) notification_foreground_tests; \
 	python3 -I -B scripts/e2e/settings_night.py --binary '$(TARGET_DIR)/debug/$(APP)' --out '$(TARGET_DIR)/night-settings-acceptance/verdicts'
 
-.PHONY: test-task-pages test-task-pages-gui check-task-pages
+.PHONY: test-task-pages test-task-pages-gui test-task-pages-history check-task-pages
 test-task-pages:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib work_items; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib read_pages; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test knowledge native_read_byte_pages; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_read_byte_pages; \
 	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_only -- --exact; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test messaging_ui; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts
 	@$(MAKE) test-task-pages-gui
+	@$(MAKE) test-task-pages-history
 
 test-task-pages-gui:
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test messaging_flow task_list_large_board_renders_through_the_real_gui_socket -- --ignored --exact --nocapture
+
+test-task-pages-history:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_history_byte_pages_reconstruct_two_mib -- --ignored --exact
 
 check-task-pages:
 	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-term-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings

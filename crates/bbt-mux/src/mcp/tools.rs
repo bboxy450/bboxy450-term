@@ -206,6 +206,7 @@ pub(crate) fn graph(
         .map_err(|e| e.to_string()),
         _ => Err("graph is unavailable in this catalogue".into()),
     }?;
+    let value = super::read_pages::graph_page(value);
     let empty = value["nodes"].as_array().is_some_and(Vec::is_empty);
     let reason = if args.graph == "task" && (own_only || actor.role.class != Class::Oracle) {
         "nothing_assigned"
@@ -256,7 +257,7 @@ fn execution_graph(
     let selected: BTreeSet<_> = names.into_iter().take(limit).collect();
     let nodes:Vec<_>=selected.iter().map(|id|{
         let doc=index.documents.values().find(|doc|doc.id==*id);
-        json!({"id":id,"path":doc.map(|d|&d.path),"title":doc.and_then(|d|d.metadata["title"].as_str()).map(|s|clip(s,512)),"type":doc.and_then(|d|d.metadata["type"].as_str())})
+        json!({"id":id,"path":doc.map(|d|&d.path),"title":doc.and_then(|d|d.metadata["title"].as_str()).map(|s|clip(s,512)),"type":doc.and_then(|d|d.metadata["type"].as_str()).map(|s|clip(s,128))})
     }).collect();
     let mut edges = Vec::new();
     let mut edge_more = false;

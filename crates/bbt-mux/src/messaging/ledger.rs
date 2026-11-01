@@ -28,6 +28,20 @@ use crate::{
 mod power_tests;
 mod suppression;
 
+// Origin: bboxy450-term; policy https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+// Measure the complete read envelope before advancing a private SQLite cursor.
+fn read_page_base(kind: &str) -> Result<usize> {
+    Ok(serde_json::to_vec(&crate::mcp::success(
+        Ulid::nil(),
+        serde_json::json!({"kind":kind,"page":{"items":[],"next":u64::MAX}}),
+    ))?
+    .len())
+}
+fn read_item_cost<T: Serialize>(item: &T, comma: bool) -> Result<usize> {
+    let encoded = serde_json::to_string(item)?;
+    Ok(encoded.len() + serde_json::to_vec(&encoded)?.len() - 2 + usize::from(comma) * 2)
+}
+
 // The partial index holds only pending events. SQLite orders equal index keys
 // by rowid, preserving durable FIFO without reading retained sent payloads.
 const BUS_OUTBOX_QUERY: &str =
@@ -786,18 +800,22 @@ impl Ledger {
             sqlint(after)?
         ])?;
         let mut items = Vec::new();
-        let mut bytes = 0;
+        let mut bytes = read_page_base("receipts")?;
         let mut cursor = after;
         let mut next = None;
         while let Some(row) = rows.next()? {
             let raw: Vec<u8> = row.get(1)?;
-            if items.len() >= limit || (!items.is_empty() && bytes + raw.len() > 512 * 1024) {
+            let receipt: Receipt = serde_json::from_slice(&raw)?;
+            let addition = read_item_cost(&receipt, !items.is_empty())?;
+            if items.len() >= limit
+                || (!items.is_empty() && bytes + addition > crate::mcp::read_pages::BUDGET)
+            {
                 next = Some(cursor);
                 break;
             }
-            bytes += raw.len();
+            bytes += addition;
             cursor = u64_at(row, 0)?;
-            items.push(serde_json::from_slice(&raw)?);
+            items.push(receipt);
         }
         Ok(Page { items, next })
     }
@@ -1175,7 +1193,7 @@ impl Ledger {
         let mut q=db.prepare_cached("SELECT seq,envelope,held_out FROM msg_messages m WHERE seq>?1 AND (?2 IS NULL OR sender=?2 OR EXISTS(SELECT 1 FROM msg_deliveries d WHERE d.message=m.seq AND d.recipient=?2 AND d.evidence!='sender-stored')) ORDER BY seq")?;
         let mut rows = q.query(params![sqlint(after)?, actor.map(|s| s.to_string())])?;
         let mut items = Vec::new();
-        let mut bytes = 0;
+        let mut bytes = read_page_base("messages")?;
         let mut next = None;
         while let Some(row) = rows.next()? {
             let sequence = u64_at(row, 0)?;
@@ -1194,11 +1212,14 @@ impl Ledger {
             if thread.is_some_and(|t| t != view.thread_id) || !matches_channel {
                 continue;
             }
-            if items.len() >= limit || (!items.is_empty() && bytes + raw.len() > 512 * 1024) {
+            let addition = read_item_cost(&message, !items.is_empty())?;
+            if items.len() >= limit
+                || (!items.is_empty() && bytes + addition > crate::mcp::read_pages::BUDGET)
+            {
                 next = items.last().map(|m: &StoredMessage| m.sequence);
                 break;
             }
-            bytes += raw.len();
+            bytes += addition;
             items.push(message);
         }
         Ok(Page { items, next })
@@ -1225,6 +1246,7 @@ impl Ledger {
         let mut q = db.prepare_cached("SELECT seq,envelope,held_out,(?2 IS NULL OR sender=?2 OR EXISTS(SELECT 1 FROM msg_deliveries d WHERE d.message=m.seq AND d.recipient=?2 AND d.evidence!='sender-stored')) FROM msg_messages m WHERE seq<=?1 ORDER BY seq DESC LIMIT 257")?;
         let mut rows = q.query(params![upper, actor.map(|actor| actor.to_string())])?;
         let mut items = Vec::new();
+        let mut response_bytes = read_page_base("messages")?;
         let mut bytes = 0;
         let mut scanned = 0;
         let mut through = None;
@@ -1266,6 +1288,12 @@ impl Ledger {
             if !matches_channel {
                 continue;
             }
+            let addition = read_item_cost(&message, !items.is_empty())?;
+            if !items.is_empty() && response_bytes + addition > crate::mcp::read_pages::BUDGET {
+                next = Some(sequence + 1);
+                break;
+            }
+            response_bytes += addition;
             items.push(message);
         }
         items.reverse();

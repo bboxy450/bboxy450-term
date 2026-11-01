@@ -406,7 +406,7 @@ checks = ["make test-formal", "make test"]
 name = "TaskBytePage"
 title = "Byte-bounded task summary pages retain every ordered task"
 models = ["TaskBytePage", "BrokenTaskBytePage"]
-sources = ["crates/bbt-mux/src/mcp/work_items.rs", "crates/bboxy450-term/tests/formal_contracts/task_page_model.rs"]
+sources = ["crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-mux/src/mcp/read_pages.rs", "crates/bbt-mux/src/mcp/journal.rs", "crates/bbt-mux/src/knowledge/bboxy.rs", "crates/bbt-mux/src/mcp/messaging.rs", "crates/bbt-mux/src/messaging/ledger.rs", "crates/bboxy450-term/tests/formal_contracts/task_page_model.rs"]
 implementation_tests = ["crates/bbt-mux/src/mcp/work_items_inventory_tests.rs", "crates/bboxy450-term/tests/messaging_ui.rs", "crates/bboxy450-term/tests/messaging_flow.rs"]
 assumptions = "One immutable authorized inventory of three ordered IDs, summary costs 1/2/1 and page budget 2. The third source item is oversized and projected to cost 1. Append, publish-prefix and follow-next are atomic caller actions. No fairness assumption or progress claim for an unavailable provider/caller; when the caller follows next, every emitted page advances by a nonempty ordered prefix. Existing workspace and retained-operation guards are unchanged and retain their contracts. Exact UTF-8/JSON escaping, the duplicated MCP envelope, 16 KiB scope margin, metadata/body omission, pathological fields, 128-item lookahead, live inventory changes, IO deadlines and GUI retention/scrolling are implementation-only checks."
 property = "Encoded pages stay within the byte budget, the cursor never skips an unreturned item and next names the last emitted ID. The broken control removes the byte-cut guard and exceeds the bound. The real API witness lists all 160 large-body tasks without response_bound and proves the same uncut projection is refused."
@@ -460,6 +460,16 @@ sources = ["crates/bboxy450-term/src/stall/load.rs", "crates/bbt-supervisor/src/
 implementation_tests = ["crates/bboxy450-term/src/stall/load.rs", "crates/bbt-supervisor/src/client/tests.rs", "crates/bbt-mux/src/logic/ring_batch_tests.rs", "crates/bbt-mux/tests/logic.rs", "crates/bbt-mux/tests/capture_fairness.rs", "crates/bbt-supervisor/tests/terminal_replies.rs"]
 assumptions = "Two seats, two ordered records each, one read/parse slot per seat; A starts with a held read and history may remain held. Admission, healthy read completion and publication are separate atomic actions, individually weakly fair when enabled. A bounded owner quantum may admit multiple seats; admission is progress even before publication, and seat-local Busy retry clocks eventually become ready. CPU lanes are acquired only after read completion, hold no dependency wait, and service finite page/record quanta fairly; their exact count and throughput are implementation/performance coverage. Typed provider-down admission parks the host and an up transition resumes its pending replay; the real capture_fairness reconnect witness checks this implementation mapping. A permanently failed dependency has no progress promise; B does. The broken control restores one shared head queue, so A prevents B admission and must fail liveness. Real attachment/view incarnation (including A-to-B-to-A), bytes/page/checkpoint limits, duplicate/refused replies, cancellation/restart and live-versus-replay effects use native/API/process witnesses and existing TransportCapture/CheckpointFence contracts. The model does not prove CPU deadlines, arbitrary Rust, filesystem/OS scheduling, the supervisor disk writer or whole-system refinement."
 property = "One bounded next-sequence slot per seat; publication never skips/reorders a record, and every healthy seat drains independently of a held peer/history read."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "FetchBodyPage"
+title = "UTF-8 body continuation has no gap or overlap"
+models = ["FetchBodyPage", "BrokenFetchBodyPage"]
+sources = ["crates/bbt-mux/src/mcp/read_pages.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/mcp/knowledge.rs", "crates/bbt-mux/src/knowledge/seat_reads.rs", "crates/bboxy450-term/tests/formal_contracts/task_page_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/mcp/read_pages.rs", "crates/bbt-mux/tests/knowledge.rs", "crates/bbt-mux/tests/mcp.rs"]
+assumptions = "One immutable etag-bound body with character lengths 2/1/4 and byte boundaries 0/2/3/7. Emit is atomic; weak fairness of each Emit models a caller that continues following next with an available provider. Under that assumption the body completes; no progress claim for an unavailable caller/provider. Real encoding, response envelope, frontmatter projection, stale etags, resources and large corpus IO remain implementation checks."
+property = "The next offset equals bytes already delivered and stays at a UTF-8 boundary, ending at body length. The broken control advances offset past the emitted bytes."
 checks = ["make test-formal", "make test"]
 
 [[contract]]

@@ -567,6 +567,16 @@ expected = "liveness"
 frontend = "project"
 
 [[model]]
+name = "FetchBodyPage"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenFetchBodyPage"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "ReportProvenance"
 expected = "pass"
 frontend = "project"

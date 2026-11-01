@@ -1114,7 +1114,9 @@ fn target(registry: &Registry, actor: &Actor, id: Ulid) -> Checked<SeatRecord> {
     Ok(target)
 }
 fn projection(doc: &Document) -> Value {
-    json!({"id":doc.id,"path":format!(".bboxy/{}",doc.path),"metadata":doc.metadata,"body":tools::clip(&doc.body,16384),"body_truncated":doc.body.len()>16384})
+    super::read_pages::task_detail(
+        json!({"id":doc.id,"path":format!(".bboxy/{}",doc.path),"metadata":doc.metadata,"body":tools::clip(&doc.body,16384),"body_truncated":doc.body.len()>16384}),
+    )
 }
 
 /// Summary shared by MCP, the GUI TaskCard adapter and `ctl task list`.
