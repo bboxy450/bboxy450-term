@@ -148,8 +148,12 @@ def contracts(root, models):
     seen = set()
     for row in rows:
         name = row["name"]
-        pair = {name, "Broken" + name}
-        if name in seen or set(row["models"]) != pair or not pair.issubset(models):
+        controls = row.get("controls", ["Broken" + name])
+        pair = {name, *controls}
+        if (name in seen or not controls or len(set(controls)) != len(controls)
+                or any(not control.startswith("Broken") for control in controls)
+                or len(row["models"]) != len(pair) or set(row["models"]) != pair
+                or not pair.issubset(models)):
             raise ValueError(f"missing, duplicate or unexecuted contract pair: {name}")
         seen.add(name)
         for field in ["assumptions", "property", "title"]:

@@ -102,6 +102,8 @@ help:
 	  'make check-plugin-skills         Strict plugin, mux and app all-target Clippy' \
 	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
 	  'make test-harness-native         Scripted harness seat, completed turn and bounded group cleanup' \
+	  'make test-log-converter          Converter IR/bxl unit tests, fmt, Clippy and dependency guards' \
+	  'make test-log-converter-native   P0 resume probes, pinned zstd compatibility and 100 MB corpus' \
 	  'make test-capability-native      Capability file and real Codex shared-daemon environment scans' \
 	  'make init-submodules             Initialize and verify the pinned harness unattended' \
 	  'Fresh clone: git clone --recurse-submodules https://github.com/bboxy450/bboxy450-term' \
@@ -1534,6 +1536,7 @@ test-formal: init-submodules test-yarn-model
 	cargo run --locked -p bboxy450-tlc --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
 	cargo run --locked -p bboxy450-yarn --features model --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
 	BBOXY_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/formal/models' cargo test --locked -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)'; \
+	BBOXY_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/formal/models' cargo test --locked -p bboxy450-log-converter --test formal_models --target-dir '$(TARGET_DIR)'; \
 	FORMAL_OUT='$(abspath $(TARGET_DIR))/formal/harness' cargo test --locked -p bboxy450-harness --test formal_models --test formal_nonvacuity --test reactor_projection --target-dir '$(TARGET_DIR)'; \
 	python3 -I scripts/harness-submodule.py --models '$(abspath $(TARGET_DIR))/formal/harness' --target '$(abspath $(TARGET_DIR))/formal/models'; \
 	python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal'
@@ -1904,9 +1907,19 @@ check-capability-file:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo clippy --locked -p bboxy450-harness-wake-up -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
-.PHONY: check-log-converter test-log-converter
+.PHONY: check-log-converter test-log-converter check-log-converter-policy
 check-log-converter:
 	@set -eu; . ./scripts/cache-env.sh; cargo check --locked -p bboxy450-log-converter --all-targets
 
-test-log-converter:
-	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-log-converter
+test-log-converter: check-log-converter-policy
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo fmt -p bboxy450-log-converter -- --check; \
+	cargo clippy --locked -p bboxy450-log-converter --all-targets --all-features -- -D warnings; \
+	cargo test --locked -p bboxy450-log-converter
+
+check-log-converter-policy:
+	@python3 -I scripts/harness-submodule.py --check-resolution
+
+.PHONY: test-log-converter-native
+test-log-converter-native:
+	@sh scripts/e2e/log-converter-native.sh

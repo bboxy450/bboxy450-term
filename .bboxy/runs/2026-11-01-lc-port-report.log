@@ -31,3 +31,55 @@ RecordId dependency checkpoint
 - Stateless multi-event/single-event parent joins pass. Broken control that
   guesses a block-0 parent misses the single empty-tag event, as specified.
 - Workspace inventory added; full make test still pending at this checkpoint.
+
+P0 and P2 source checkpoint (full workspace gate pending)
+- P0 logic copied from retired-repo 7945ad92 into C/probes. Only origin
+  headers, workspace paths, README commands and policy-header wiring changed.
+  The pure witness/isolation controls are C/tests/probe_checks.rs.
+- scripts/e2e/log-converter-native.sh drives the real clients from full
+  ci-local only, with labelled missing-client SKIP. It never joins presubmit.
+  Original P0-only native run: exit 0, all five scripts exit 0, seven positive
+  resume witnesses, six expected negative controls, zero SKIP. Every positive
+  requires CLI exit 0 and prior-turn content in captured mock model input.
+  Log: /tmp/lc-port-native.log (synthetic temporary fixtures only).
+- Root cargo-metadata resolution guard now traverses the converter's complete
+  graph and rejects upward app/harness edges, d4949 packages and renamed or
+  platform manifest aliases. Declared copied/adapted/translated banned origins
+  are rejected; independent-inspiration credit is allowed. Secret-shape findings
+  suppress values. Ten Python controls pass, including the preserved real ACP /
+  serde_json-preserve_order rejection. /tmp/lc-bxl-dependency-controls.log.
+- C/src/bxl implements canonical IR frames, per-log nonblocking writer ownership,
+  one bounded worker lane, per-frame fsync, data-before-index atomic sidecar
+  rename, bounded reader/tail, cursor resume, recovery, seal/rotation, standard
+  seek tables, dictionary-ID/missing checks, streaming blob deduplication and
+  Decoded forwarding. Existing keys are retained through typed forwarding.
+  Recovery/seek conservatively scan; no constant-time seek claim is made.
+- Default crate tests: exit 0. P2 witnesses: 7 bxl API tests, 2 torn/checksum,
+  3 tail/process, 2 size/rotation, 2 future-format/dictionary, 1 determinism,
+  1 native-model corpus, and 1 P0 control. Existing 11 compatibility, 68-case
+  golden and 2 CLI cases also pass. Two full-run-only witnesses are explicitly
+  ignored by ordinary cargo tests (upstream zstd CLI and 100 MB corpus).
+  Log: /tmp/lc-bxl-term-tests.log. This unoptimized development run is not the
+  d5002 runtime measurement; the term CI profile measurement is still running.
+- All-target/all-feature crate clippy: exit 0 after scoping term's UI-only
+  blocking-IO lint exceptions to converter IO and unattended test fixtures.
+  Log: /tmp/lc-bxl-term-clippy.log.
+- LcAppendLog plus three real broken transitions join term's corpus, contracts,
+  coverage and native exporter. Root formal.py accepts a named control list,
+  preserving old pairs; omitted controls fail. Fifteen formal infrastructure
+  tests pass. Java parity in this workspace is not yet claimed.
+- Source notices, all 33 workspace license inventories, and layering: exit 0.
+  C includes the canonical license/notice/attribution and prior-license copies.
+- Pinned zstd 1.5.7 build initially hit a 180 s tool-setup guard under load.
+  The build-only guard is now 600 s and owns a process group for timeout cleanup.
+  Compatibility remains mandatory; no timeout is counted as passing evidence.
+- Full ci-local native target includes pinned zstd -d/-t and a 100 MB raw-included
+  size test. Neither runs in presubmit. Actual results are pending here.
+- verification/log-converter.md records model bounds, fairness, source mappings,
+  filesystem assumptions and implementation-only coverage. No Rust/kernel
+  refinement, full TLC completeness or real-service validation is claimed.
+  P9 dictionaries and later-phase parse/watch/switch work remain out of scope.
+- Root ATTRIBUTION and its other-crate mirrors are outside #5096 allowed paths;
+  original P1 inspiration/origin notices remain attached to the ported source.
+- This early checkpoint is pushed under the explicit dependency-unblocking
+  instruction. Full make test and current-source formal evidence remain pending.

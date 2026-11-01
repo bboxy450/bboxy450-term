@@ -442,9 +442,16 @@ fn record_references_join_single_and_multi_event_parents_without_state() {
         at: None,
         fidelity: Fidelity::Opaque,
         raw: None,
-        kind: EventKind::Native {
-            provider: Provider::Claude,
-            record_type: "synthetic".into(),
+        kind: if tag.is_empty() {
+            EventKind::Native {
+                provider: Provider::Claude,
+                record_type: "synthetic".into(),
+            }
+        } else {
+            EventKind::Message {
+                role: Role::Assistant,
+                blocks: vec![Block::Text { text: key.into() }],
+            }
         },
     };
     let multi = [

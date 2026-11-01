@@ -16,4 +16,5 @@
 //! Native parsers, lowerers and the bxl transport land in later phases.
 #![forbid(unsafe_code)]
 
+pub mod bxl;
 pub mod ir;

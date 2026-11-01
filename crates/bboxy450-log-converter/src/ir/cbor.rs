@@ -241,7 +241,7 @@ fn transcode(value: Value, schema: Schema, decoding: bool) -> Result<Value, Erro
     }
 }
 
-fn canonical_bytes(mut value: Value) -> Result<Vec<u8>, Error> {
+pub(crate) fn canonical_bytes(mut value: Value) -> Result<Vec<u8>, Error> {
     canonicalize(&mut value)?;
     encoded_bytes(&value)
 }

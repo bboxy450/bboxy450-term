@@ -592,3 +592,15 @@ implementation_tests = ["crates/bboxy450-term/tests/capability_file.rs", "crates
 assumptions = "Three distinct generation incarnations, idle/live/stopping phases and one current/old-file marker. Publish a private overlay after exclusive mkdir and descriptor validation, abandon a failed launch plan, request stop, repeated consumer reads and process-exit cleanup are atomic owner actions. The live phase covers both prepared and running overlays. No fairness or liveness claim: a process can remain live/stopping. Unix permission/uid checks, O_EXCL/O_NOFOLLOW, parser bounds, actual process ancestry and old-credential authentication are implementation witnesses, not arbitrary Rust refinement."
 property = "Exactly the current overlay owns the file until process exit, and no old path remains after cleanup. The omitted-cleanup control retains an old-file marker and violates OverlayOwnsCapabilityFile. The process witnesses check failed Claude wiring cleanup, replacement/close removal, new generation files and server refusal of copied old credentials."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "LcAppendLog"
+models = ["LcAppendLog", "BrokenLcAppendLogTornRead", "BrokenLcAppendLogEarlyIndex", "BrokenLcAppendLogMixedTable"]
+controls = ["BrokenLcAppendLogTornRead", "BrokenLcAppendLogEarlyIndex", "BrokenLcAppendLogMixedTable"]
+sources = ["crates/bboxy450-log-converter/src/bxl/writer.rs", "crates/bboxy450-log-converter/src/bxl/reader.rs", "crates/bboxy450-log-converter/src/bxl/frame.rs", "crates/bboxy450-log-converter/src/bxl/mod.rs", "crates/bboxy450-log-converter/src/bxl/wire.rs", "crates/bboxy450-log-converter/tests/formal/append_log.rs", "crates/bboxy450-log-converter/tests/formal/export.rs", "crates/bboxy450-log-converter/tests/formal_models.rs"]
+implementation_tests = ["crates/bboxy450-log-converter/tests/bxl.rs", "crates/bboxy450-log-converter/tests/torn.rs", "crates/bboxy450-log-converter/tests/tail.rs", "crates/bboxy450-log-converter/tests/compat.rs", "crates/bboxy450-log-converter/tests/size.rs"]
+assumptions = "One owning writer per log; complete bytes survive this local-filesystem abstraction; recovery syncs complete frames. Weak fairness per reader action group; arbitrary OS IO/power loss is not proven."
+bounds = "Three frames with two dense events each, two readers, one rotation; two seek-table halves and a parked reader."
+property = "NoTornRead, IndexNeverPastDurable, IndexSound, SyncedSurvives, RecoveryIdempotent; TailCatchesUp under explicit weak fairness."
+checks = ["make test-formal", "make test"]
+title = "Append-only durable log and concurrent tail readers"
