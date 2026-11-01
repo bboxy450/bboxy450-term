@@ -72,6 +72,7 @@ if [ "$after_tests" = false ]; then
     if [ -f "$ledger_helper" ]; then
         ledger integration python3 -I scripts/test-resource-ledger.py
     fi
+    ledger integration python3 -I scripts/test-landing-budget-controls.py --out "$BBOXY_CARGO_TARGET_DIR/landing-budget-controls"
     ledger build cargo build --workspace --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
     ledger build cargo clippy --workspace --all-targets --locked --target-dir "$BBOXY_CARGO_TARGET_DIR" -- -D warnings
     # The harness deliberately clears CLOEXEC in this one fixture. Run it in
