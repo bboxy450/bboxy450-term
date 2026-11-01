@@ -212,6 +212,13 @@ parity proves timing deadlines, Rust refinement or disk-writer independence.
 initialize exactly the recorded gitlink without prompts or following a branch.
 Missing or unapproved submodules fail loudly.
 
+The same initializer checks Cargo's resolved parent feature graph. Neither
+`bboxy450-harness/acp` nor `serde_json/preserve_order` may be enabled there;
+the real ACP-enabled metadata graph is a rejecting control. Parent workspace
+build, test, Clippy and formal commands use default harness features. ACP is
+tested only by the submodule's own `make test`, which explicitly canonicalizes
+schema and golden JSON without changing the parent's map-ordering contract.
+
 `make test-formal` imports every native harness model and broken-control export and their independent
 expected verdicts into this repository's Java TLC graph/verdict comparison.
 The harness's own coverage and multi-control contracts validate its complete
@@ -220,6 +227,11 @@ the imported implementation, tests, tools, inventories and workspace resolution.
 `HarnessEmbedLifecycle` also maps to the real private MCP seat-spawn witness in
 `make test-harness-native`; it is not duplicated. Terminal bytes, elapsed close
 time and `kill(-pgid, 0) == ESRCH` remain real process assertions.
+
+The upstream descriptor-inheritance fixture intentionally clears CLOEXEC. Full
+CI runs it separately in `make test-harness-native`, after the workspace suites,
+so concurrent forking tests cannot inherit its exposed descriptor. Every case
+still runs, with the normal test-thread configuration and the original assertions.
 
 `make test-harness-standalone` runs the unchanged child `make test` with a private
 Cargo target. It retains the child's generated evidence under the parent target
