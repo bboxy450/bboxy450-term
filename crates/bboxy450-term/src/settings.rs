@@ -516,7 +516,11 @@ pub fn records(
                 });
                 crate::spawn_params::join(
                     &std::iter::once(command)
-                        .chain(defaults.arguments.clone().unwrap_or_default())
+                        .chain(defaults.arguments.clone().unwrap_or_else(|| {
+                            builtin
+                                .as_ref()
+                                .map_or_else(Vec::new, |h| h.command[1..].to_vec())
+                        }))
                         .collect::<Vec<_>>(),
                 )
             },
