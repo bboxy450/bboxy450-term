@@ -106,9 +106,11 @@ def harness_contracts(root, models):
         for field in ("sources", "implementation_tests"):
             row[field] = [prefix + path for path in row[field]]
     for row in rows:
-        if row["name"] in {"HarnessEmbedLifecycle", "HarnessCancelTreeGroup"}:
+        if row["name"] in {"HarnessEmbedLifecycle", "HarnessCancelTreeGroup", "HarnessProcessLifecycle"}:
             row["implementation_tests"].append("crates/bbt-mux/tests/mcp.rs")
             row["sources"].extend(["crates/bbt-mux/src/mcp/seats.rs", "crates/bbt-mux/src/adapters/mod.rs"])
+            if row["name"] == "HarnessProcessLifecycle":
+                row["sources"].append("crates/bbt-supervisor/src/supervisor.rs")
     return rows
 
 
