@@ -119,6 +119,12 @@ class Repository:
                                 CARGO_TARGET_DIR=str(self.state / "target"),
                                 RUSTC_WRAPPER="", RUSTC_WORKSPACE_WRAPPER="")
         self.environment.pop("BBOXY_CARGO_TARGET_DIR", None)
+        # A parent make test may pass TARGET_DIR on its command line. GNU Make
+        # exports those overrides through MAKEFLAGS; no private repository may
+        # inherit them and write another fixture's formal evidence.
+        for name in ("MAKEFLAGS", "MFLAGS", "GNUMAKEFLAGS", "MAKEOVERRIDES", "MAKELEVEL",
+                     "TARGET_DIR", "CI_LOG", "CI_ARGS", "CARGO_BUILD_BUILD_DIR"):
+            self.environment.pop(name, None)
         for name in ("landing.py", "formal.py", "presubmit.sh", "land.sh", "quarantine.py", "quarantine.sh", "quarantine-test.sh",
                      "main_watch.py", "main-watch.sh", "landing_recovery.py", "main-red-bounded.sh"):
             target = self.root / "scripts" / name
@@ -1080,6 +1086,31 @@ class LandTests(unittest.TestCase):
         proof = Path(record["gate_log"]).read_text()
         self.assertIn(f"ci-local: source {sha} normal", proof)
         self.assertEqual(proof.splitlines()[-1], f"ci-local: result {sha} normal 0")
+
+    def test_private_make_overrides_stay_private_with_a_shared_path_control(self):
+        parent = self.repo.state / "inherited-parent-target"
+        overrides = " -- TARGET_DIR=" + str(parent)
+        with patch.dict(os.environ, {"MAKEFLAGS": overrides, "MAKELEVEL": "7",
+                                    "TARGET_DIR": str(parent), "CI_LOG": str(parent / "ci.log"),
+                                    "CI_ARGS": "--slow"}):
+            other = Repository()
+            self.addCleanup(other.close)
+            other.tooling()
+        other.remote()
+        other.write("crates/c/src/lib.rs", "// isolated inherited Make flags\n")
+        other.commit("Fixture private Make overrides")
+        result = other.land()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(parent.exists(), "private formal check wrote a parent target")
+        # Deliberately restore the inheritance: the same real Make path now
+        # writes evidence into the shared parent. This is the collision witness.
+        other.environment["MAKEFLAGS"] = overrides
+        other.environment["TARGET_DIR"] = str(parent)
+        other.write("crates/c/src/lib.rs", "// deliberately shared Make target\n")
+        other.commit("Fixture broken Make isolation")
+        result = other.land()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue((parent / "formal/evidence.json").is_file())
 
     def test_full_failed_make_cannot_push(self):
         self.cut()
