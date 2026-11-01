@@ -62,6 +62,8 @@ impl Sanitizer {
             native_id: None,
         }
     }
+    // Synchronous converter setup, in a child/preparation worker, never UI.
+    #[allow(clippy::disallowed_methods)]
     pub fn with_capability_file(mut self, path: &Path) -> Result<Self, CapabilityRefusal> {
         let file = std::fs::OpenOptions::new()
             .read(true)

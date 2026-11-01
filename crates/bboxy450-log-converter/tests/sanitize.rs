@@ -146,6 +146,7 @@ fn invalid_raw_is_removed_with_explicit_fidelity_downgrade() {
     assert_eq!(e.fidelity, Fidelity::Partial);
 }
 #[test]
+#[allow(clippy::disallowed_methods)] // Private synchronous file fixture.
 fn capability_file_validation_and_exact_value() {
     use std::io::Write;
     use std::os::unix::fs::OpenOptionsExt;

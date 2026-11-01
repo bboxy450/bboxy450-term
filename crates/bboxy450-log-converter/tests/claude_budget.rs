@@ -64,6 +64,7 @@ impl Seek for ReadCounter {
         self.file.seek(offset)
     }
 }
+#[allow(clippy::disallowed_methods)] // Offline allocation/read instrumentation.
 fn measure(path: &std::path::Path, wanted: usize) -> (usize, u64, u64) {
     let row = format!(
         "{}\n",
@@ -106,6 +107,7 @@ fn measure(path: &std::path::Path, wanted: usize) -> (usize, u64, u64) {
 }
 #[test]
 #[ignore = "100 MB allocation witness belongs only in full ci-local, never presubmit"]
+#[allow(clippy::disallowed_methods)] // Owned temporary files; no UI thread.
 fn hundred_megabytes_has_constant_live_memory_and_single_read() {
     let dir = std::env::temp_dir().join(format!("lc-budget-{}", ulid::Ulid::new()));
     std::fs::create_dir(&dir).unwrap();

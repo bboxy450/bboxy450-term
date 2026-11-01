@@ -11,6 +11,7 @@ use std::{
     io::{self, BufReader, Write},
     os::unix::fs::OpenOptionsExt,
 };
+#[allow(clippy::disallowed_methods)] // Standalone converter process.
 fn main() -> io::Result<()> {
     let mut args = std::env::args_os().skip(1);
     let source = args

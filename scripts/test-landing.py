@@ -866,7 +866,9 @@ class GateReceiptTests(unittest.TestCase):
         control_marker = repo.state / "capability-control-ran"
         control_target = '\ntest-capability-control:\n\t@touch ' + shlex.quote(str(control_marker)) + '\n'
         scan_target = '\ntest-capability-scan:\n\t@true\n'
-        normal_makefile = (repo.root / 'Makefile').read_text() + scan_target
+        converter_targets = ''.join('\n' + target + ':\n\t@true\n' for target in
+            ('test-log-converter-controls', 'test-log-converter-budget', 'test-log-converter-native'))
+        normal_makefile = (repo.root / 'Makefile').read_text() + scan_target + converter_targets
         repo.write('Makefile', normal_makefile + control_target)
         repo.write("scripts/ui-lint.sh", "#!/bin/sh\nexit 0\n")
         binary = Path(repo.environment["CARGO_TARGET_DIR"]) / "debug/bboxy450-term"
@@ -880,8 +882,8 @@ class GateReceiptTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(control_marker.is_file(), 'canonical CI must execute the capability control')
         self.assertIn('"make", "test-capability-control"', result.stdout)
-        self.assertIn('"make", "test-log-converter"', result.stdout)
-        self.assertIn('"make", "test-log-converter-native"', result.stdout)
+        for target in ('test-log-converter', 'test-log-converter-controls', 'test-log-converter-budget', 'test-log-converter-native'):
+            self.assertIn('"make", "' + target + '"', result.stdout)
         log = repo.state / "actual-ci.log"
         log.write_text(result.stdout + result.stderr)
         self.assertEqual(landing.gate_proof(log, sha, repo.root)["tested_sha"], sha)
@@ -908,7 +910,7 @@ class GateReceiptTests(unittest.TestCase):
         log.write_text(result.stdout + result.stderr)
         with self.assertRaisesRegex(landing.Refusal, 'gate_log_not_green'):
             landing.gate_proof(log, native_failed)
-        repo.write("Makefile", "test-harness-native test-log-converter test-log-converter-native:\n\t@true\ntest-formal:\n\t@exit 23\n" + scan_target + control_target)
+        repo.write("Makefile", "test-harness-native test-log-converter test-log-converter-native:\n\t@true\ntest-formal:\n\t@exit 23\n" + scan_target + control_target + converter_targets)
         formal_failed = repo.commit("Fixture failing formal gate")
         result = subprocess.run(["sh", "scripts/ci-local.sh"], cwd=repo.root,
                                 env=environment, text=True, capture_output=True, timeout=15)

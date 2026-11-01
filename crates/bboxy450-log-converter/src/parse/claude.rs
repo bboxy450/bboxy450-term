@@ -62,16 +62,30 @@ pub struct Parser<R> {
     cursor: Cursor,
     retain_raw: bool,
     current_record: RecordId,
+    infer_first_id: bool,
 }
 impl<R: BufRead + Seek> Parser<R> {
+    /// Reads native identity from the first record when present. If a log has
+    /// a metadata-only prefix, supply its known native id with with_native_id.
     pub fn new(reader: R, id: SessionId) -> io::Result<Self> {
+        let mut parser = Self::with_native_id(reader, id, id.0.to_string())?;
+        parser.infer_first_id = true;
+        Ok(parser)
+    }
+    /// Explicit native identity keeps metadata prefixes and subsequent DAG
+    /// references in one namespace, without a lookahead or an identity map.
+    pub fn with_native_id(
+        reader: R,
+        id: SessionId,
+        native_id: impl Into<String>,
+    ) -> io::Result<Self> {
         Self::resume(
             reader,
             Session {
                 id,
                 source: Source {
                     provider: Provider::Claude,
-                    native_id: id.0.to_string(),
+                    native_id: native_id.into(),
                     cli_version: None,
                     parser_revision: PARSER_REVISION,
                 },
@@ -96,6 +110,7 @@ impl<R: BufRead + Seek> Parser<R> {
             cursor,
             retain_raw: true,
             current_record: RecordId([0; 16]),
+            infer_first_id: false,
         })
     }
     pub fn without_raw(mut self) -> Self {
@@ -248,7 +263,9 @@ impl<R: BufRead + Seek> Parser<R> {
             }
         };
         if self.cursor.line_ordinal == 0 {
-            if let Some(id) = text(&row, "sessionId") {
+            if self.infer_first_id
+                && let Some(id) = text(&row, "sessionId")
+            {
                 self.session.source.native_id = id;
             }
             self.session.created_at = text(&row, "timestamp");
@@ -269,7 +286,9 @@ impl<R: BufRead + Seek> Parser<R> {
         self.current_record = self.record(&key);
         let at = text(&row, "timestamp");
         let parent = if row["isCompactSummary"] == true {
-            self.cursor.compaction
+            self.cursor
+                .compaction
+                .or_else(|| text(&row, "parentUuid").map(|p| self.record(&p)))
         } else {
             text(&row, "parentUuid")
                 .or_else(|| text(&row, "leafUuid"))
@@ -476,11 +495,10 @@ impl<R: BufRead + Seek> Parser<R> {
             .iter()
             .position(|e| e.id == self.id(&key, "turn-start"))
             && let Some(owner) = events.iter().position(|e| e.raw.is_some())
+            && start < owner
         {
-            if start < owner {
-                let raw = events[owner].raw.take();
-                events[start].raw = raw;
-            }
+            let raw = events[owner].raw.take();
+            events[start].raw = raw;
         }
         if typ == "assistant"
             || request_at.is_some()

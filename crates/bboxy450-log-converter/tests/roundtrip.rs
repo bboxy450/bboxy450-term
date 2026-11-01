@@ -367,3 +367,39 @@ fn claude_no_raw_retains_readable_and_sealed_reasoning() {
     }
     assert!(seen);
 }
+
+#[test]
+fn claude_native_identity_for_metadata_prefix_and_standalone_summary_parent() {
+    use serde_json::json;
+    let rows = [
+        json!({"type":"file-history-snapshot","uuid":"prefix"}),
+        json!({"type":"user","uuid":"summary","sessionId":"known-native","parentUuid":"external-boundary","isCompactSummary":true,"message":{"content":"summary"}}),
+    ];
+    let input = rows.iter().map(|v| format!("{v}\n")).collect::<String>();
+    let mut parser = Parser::with_native_id(
+        Cursor::new(input.as_bytes()),
+        SessionId(ulid::Ulid::from(1u128)),
+        "known-native",
+    )
+    .unwrap();
+    let mut events = vec![];
+    while let Some(batch) = parser.next_record().unwrap() {
+        events.extend(batch)
+    }
+    assert_eq!(parser.session().source.native_id, "known-native");
+    assert_eq!(
+        events[0].record,
+        RecordId::native(Provider::Claude, "known-native", "prefix")
+    );
+    assert_eq!(
+        events[1].parent,
+        Some(RecordId::native(
+            Provider::Claude,
+            "known-native",
+            "external-boundary"
+        ))
+    );
+    let mut output = vec![];
+    lower::claude::write(parser.session(), &events, &mut output).unwrap();
+    assert_eq!(output, input.as_bytes());
+}
