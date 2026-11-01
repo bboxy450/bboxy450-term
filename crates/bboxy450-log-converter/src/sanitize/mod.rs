@@ -5,6 +5,9 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 
+//! Adapted from bboxy450-harness src/redact.rs (scrub_import span merging):
+//! https://github.com/bboxy450/bboxy450-harness/blob/04edebdc/src/redact.rs
+//! Origin policy: https://github.com/bboxy450/bboxy450-harness/blob/main/ATTRIBUTION.md
 //! Deterministic d4947/lc-ir §6 pass, shared by every provider. Apply after
 //! parsing, before persisting or exporting demo content. Raw JSON is rewritten
 //! too; invalid raw is removed and fidelity becomes Partial. Opaque sealed
@@ -135,7 +138,8 @@ impl Sanitizer {
     }
     fn sanitize_event(&self, event: &mut Event) {
         event.id = fake_event(event.id);
-        event.parent = event.parent.map(fake_event);
+        event.record = fake_record(event.record);
+        event.parent = event.parent.map(fake_record);
         if let Some(at) = &mut event.at {
             *at = self.text(at);
         }
@@ -182,7 +186,7 @@ impl Sanitizer {
                 if let Some(blocks) = summary {
                     self.blocks(blocks, false);
                 }
-                *replaced_through = replaced_through.map(fake_event);
+                *replaced_through = replaced_through.map(fake_record);
                 for id in replacement {
                     *id = fake_event(*id);
                 }
@@ -277,6 +281,12 @@ impl Sanitizer {
                             || key.eq_ignore_ascii_case("proxy-authorization")
                         {
                             v = Value::String("<redacted>".into());
+                        } else if matches!(
+                            key.to_ascii_lowercase().as_str(),
+                            "host" | "hostname" | "ssh_host"
+                        ) && v.is_string()
+                        {
+                            v = Value::String("<host>".into());
                         } else {
                             self.value(&mut v);
                         }
@@ -338,6 +348,7 @@ impl Sanitizer {
         out = patterns()[6]
             .replace_all(&out, |c: &regex::Captures<'_>| fake_token(&c[0]))
             .into_owned();
+        out = patterns()[11].replace_all(&out, "$1<host>").into_owned();
         out = patterns()[10].replace_all(&out, "$1<host>").into_owned();
         out = patterns()[7].replace_all(&out, "<ip>").into_owned();
         out = patterns()[8].replace_all(&out, "<host>").into_owned();
@@ -360,7 +371,7 @@ fn patterns() -> &'static Vec<Regex> {
         r"(?:sk-[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9]{20,}|github_pat_[A-Za-z0-9_]{20,}|AKIA[A-Z0-9]{16}|xox[baprs]-[A-Za-z0-9-]{10,}|AIza[A-Za-z0-9_-]{30,})",
         r"(?is)-----BEGIN [^-\r\n]+-----.*?(?:-----END [^-\r\n]+-----|$)",
         r"(?im)(?:\b(?:proxy-)?authorization\s*[:=]\s*[^\r\n]+|\bbearer\s+[A-Za-z0-9._~+/-]+=*)",
-        r"/Users/[^/\s\x22'<>]+",
+        r"/Users/[^/\r\n\x22'<>]+",
         r"[\p{L}0-9.!#$%&'*+/=?^_`{|}~-]+@[\p{L}0-9.-]+",
         r"(?i)\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b",
         r"\b[0-7][0-9A-HJKMNP-TV-Z]{25}\b",
@@ -368,6 +379,7 @@ fn patterns() -> &'static Vec<Regex> {
         r"(?i)\b(?:localhost|(?:[a-z0-9](?:[a-z0-9-]*[a-z0-9])?\.)+[a-z][a-z0-9-]*)(?::[0-9]+)?\b",
         r"\[?[0-9A-Fa-f]*:[0-9A-Fa-f:]+\]?",
         r#"(?i)([a-z][a-z0-9+.-]*://)[^/\s"<>]+"#,
+            r"(?im)(\b(?:hostname|host|ssh_host)\s*[:=]\s*)[^\s]+",
     ].iter().map(|p|Regex::new(p).expect("fixed sanitizer regex")).collect())
 }
 fn fake_token(s: &str) -> String {
@@ -430,4 +442,8 @@ fn truncate_value(value: &mut Value, remaining: &mut usize) {
 }
 fn owner_uid() -> Result<u32, CapabilityRefusal> {
     Ok(rustix::process::geteuid().as_raw())
+}
+
+fn fake_record(id: RecordId) -> RecordId {
+    RecordId(fake_event(EventId(id.0)).0)
 }

@@ -1,15 +1,16 @@
 # Copyright 2026 Boxy (bboxy450) and contributors.
 # SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
-# Project: bboxy450-term — https:#github.com/bboxy450/bboxy450-term
-# License: https:#github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 # Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
-# Policy: https:#github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 
 
 """P3 F2: real Claude resumes a parse/lower output from private staging."""
 import hashlib
 from pathlib import Path
 import sys
+sys.dont_write_bytecode=True
 sys.path.insert(0,str(Path(__file__).resolve().parent))
 from support import Case, Mock, available, claude_session
 

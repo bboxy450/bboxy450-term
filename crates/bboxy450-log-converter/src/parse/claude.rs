@@ -19,7 +19,7 @@
 //! | tool_use / tool_result | ToolCall / ToolResult (errors retained) |
 //! | images | Image metadata; original payload only in raw |
 //! | sidechain / Task / Agent | Subagent + lineage |
-//! | compact_boundary / isCompactSummary | Compaction |
+//! | compact_boundary / isCompactSummary | Compaction / Message(SummaryOnly), joined by parent |
 //! | usage / context | Usage / Context |
 //! | requests / turn_duration / final EOF | inferred TurnStart / TurnEnd |
 //! | other / malformed / truncated | Native / Notice / Notice |
@@ -45,20 +45,23 @@ pub struct Cursor {
     pub offset: u64,
     pub line_ordinal: u64,
     pub next_seq: u64,
-    pub previous: Option<EventId>,
+    pub previous: Option<RecordId>,
     pub turn: Option<TurnId>,
     pub parse_errors: u64,
     anchor: Option<String>,
     at: Option<Timestamp>,
+    anchor_parent: Option<RecordId>,
     pending: BTreeSet<[u8; 32]>,
     pending_overflow: bool,
-    compaction: Option<EventId>,
+    seen_response: bool,
+    compaction: Option<RecordId>,
 }
 pub struct Parser<R> {
     reader: R,
     session: Session,
     cursor: Cursor,
     retain_raw: bool,
+    current_record: RecordId,
 }
 impl<R: BufRead + Seek> Parser<R> {
     pub fn new(reader: R, id: SessionId) -> io::Result<Self> {
@@ -92,6 +95,7 @@ impl<R: BufRead + Seek> Parser<R> {
             session,
             cursor,
             retain_raw: true,
+            current_record: RecordId([0; 16]),
         })
     }
     pub fn without_raw(mut self) -> Self {
@@ -116,13 +120,16 @@ impl<R: BufRead + Seek> Parser<R> {
         self.read_record(true)
     }
     fn id(&self, key: &str, tag: &str) -> EventId {
-        EventId::inferred(Provider::Claude, &self.session.source.native_id, key, tag)
+        EventId::tagged(Provider::Claude, &self.session.source.native_id, key, tag)
+    }
+    fn record(&self, key: &str) -> RecordId {
+        RecordId::native(Provider::Claude, &self.session.source.native_id, key)
     }
     fn emit(
         &mut self,
         kind: EventKind,
         id: EventId,
-        parent: Option<EventId>,
+        parent: Option<RecordId>,
         at: Option<Timestamp>,
         raw: Option<Raw>,
         fidelity: Fidelity,
@@ -130,6 +137,7 @@ impl<R: BufRead + Seek> Parser<R> {
         let event = Event {
             seq: self.cursor.next_seq,
             id,
+            record: self.current_record,
             parent,
             turn: self.cursor.turn.clone(),
             at,
@@ -138,29 +146,36 @@ impl<R: BufRead + Seek> Parser<R> {
             kind,
         };
         self.cursor.next_seq += 1;
-        self.cursor.previous = Some(id);
+        self.cursor.previous = Some(self.current_record);
         event
     }
     fn end(&mut self) -> Option<Event> {
         self.cursor.turn.as_ref()?;
         let key = self.cursor.anchor.as_deref().unwrap_or("0");
         let id = self.id(key, "turn-end");
-        let outcome = if self.cursor.pending.is_empty() && !self.cursor.pending_overflow {
+        let outcome = if self.cursor.seen_response
+            && self.cursor.pending.is_empty()
+            && !self.cursor.pending_overflow
+        {
             TurnOutcome::Completed
         } else {
             TurnOutcome::Unknown
         };
+        let current = self.current_record;
+        self.current_record = self.record(key);
         let event = self.emit(
             EventKind::TurnEnd { outcome },
             id,
-            self.cursor.previous,
+            self.cursor.anchor_parent,
             self.cursor.at.clone(),
             None,
             Fidelity::Inferred,
         );
+        self.current_record = current;
         self.cursor.turn = None;
         self.cursor.pending.clear();
         self.cursor.pending_overflow = false;
+        self.cursor.seen_response = false;
         Some(event)
     }
     fn read_record(&mut self, final_eof: bool) -> io::Result<Option<Vec<Event>>> {
@@ -183,6 +198,7 @@ impl<R: BufRead + Seek> Parser<R> {
             return Ok(None);
         }
         let ordinal = self.cursor.line_ordinal;
+        self.current_record = self.record(&ordinal.to_string());
         if terminated {
             line.pop();
         }
@@ -250,13 +266,14 @@ impl<R: BufRead + Seek> Parser<R> {
             });
         }
         let key = text(&row, "uuid").unwrap_or_else(|| ordinal.to_string());
+        self.current_record = self.record(&key);
         let at = text(&row, "timestamp");
         let parent = if row["isCompactSummary"] == true {
             self.cursor.compaction
         } else {
             text(&row, "parentUuid")
                 .or_else(|| text(&row, "leafUuid"))
-                .map(|p| self.id(&p, ""))
+                .map(|p| self.record(&p))
         };
         let typ = row["type"].as_str().unwrap_or("unknown");
         let content = &row["message"]["content"];
@@ -271,7 +288,7 @@ impl<R: BufRead + Seek> Parser<R> {
                 vec![]
             }
         });
-        let request_at = if request {
+        let request_at = if request && !blocks.iter().any(|b| b["type"] == "tool_result") {
             blocks.iter().position(|b| b["type"] == "text")
         } else {
             None
@@ -284,8 +301,8 @@ impl<R: BufRead + Seek> Parser<R> {
         } else if (typ == "system" && row["subtype"] == "compact_boundary") || typ == "summary" {
             let replaced = text(&row["compactMetadata"], "logicalParentUuid")
                 .or_else(|| text(&row, "logicalParentUuid"))
-                .map(|p| self.id(&p, ""));
-            self.cursor.compaction = Some(self.id(&key, ""));
+                .map(|p| self.record(&p));
+            self.cursor.compaction = Some(self.record(&key));
             mapped.push((
                 0,
                 EventKind::Compaction {
@@ -307,8 +324,8 @@ impl<R: BufRead + Seek> Parser<R> {
         if mapped.is_empty() {
             mapped.push((0, native(typ)));
         }
-        // Mixed result/new-request rows finish their old result before opening
-        // the new turn. Inferred tags cannot collide with native/block IDs.
+        // A tool-result record is not a new request, even if it also carries
+        // contextual text (lc-ir §2). All content remains represented.
         for (index, kind) in mapped {
             if request_at == Some(index) {
                 if let Some(end) = self.end() {
@@ -325,6 +342,9 @@ impl<R: BufRead + Seek> Parser<R> {
                     None,
                     Fidelity::Inferred,
                 ));
+            }
+            if typ == "assistant" || matches!(kind, EventKind::ToolResult { .. }) {
+                self.cursor.seen_response = true;
             }
             match &kind {
                 EventKind::ToolCall { call_id, .. } => {
@@ -414,7 +434,7 @@ impl<R: BufRead + Seek> Parser<R> {
                     relation: Relation::SubagentOf,
                     session: child,
                     native: Some((Provider::Claude, agent)),
-                    at: Some(self.id(&key, "")),
+                    at: Some(self.id(&key, "subagent")),
                 });
             }
             events.push(self.emit(
@@ -462,8 +482,15 @@ impl<R: BufRead + Seek> Parser<R> {
                 events[start].raw = raw;
             }
         }
-        self.cursor.anchor = Some(key);
-        self.cursor.at = at;
+        if typ == "assistant"
+            || request_at.is_some()
+            || blocks.iter().any(|b| b["type"] == "tool_result")
+            || (typ == "system" && row["subtype"] == "turn_duration")
+        {
+            self.cursor.anchor_parent = parent;
+            self.cursor.anchor = Some(key);
+            self.cursor.at = at;
+        }
         if typ == "system"
             && row["subtype"] == "turn_duration"
             && let Some(end) = self.end()

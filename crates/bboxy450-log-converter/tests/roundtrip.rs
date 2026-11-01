@@ -128,7 +128,7 @@ fn claude_checkpoint_dag_metadata_and_block_ids() {
         .collect::<Vec<_>>();
     assert!(matches!(tagged[0], EventKind::Usage { .. }));
     assert!(matches!(tagged[1], EventKind::Context { .. }));
-    let native_parent = EventId::native(
+    let native_parent = RecordId::native(
         Provider::Claude,
         source,
         "10000000-0000-4000-8000-000000000000",
@@ -180,6 +180,7 @@ fn claude_large_inputs_and_repaired_new_turns_stay_distinct() {
     let large = "x".repeat(300_000);
     let rows = [
         json!({"type":"user","uuid":"u","message":{"content":[{"type":"tool_result","tool_use_id":"orphan","content":"old"},{"type":"text","text":"new"}]}}),
+        json!({"type":"user","uuid":"new-request","message":{"content":"new request"}}),
         json!({"type":"assistant","uuid":"a","message":{"content":[{"type":"tool_use","id":"write","name":"Write","input":{"file_path":"target","content":large}}]}}),
     ];
     let bytes = rows.iter().map(|v| format!("{v}\n")).collect::<String>();
@@ -274,4 +275,95 @@ fn claude_appending_a_turn_end_preserves_delivered_ids() {
         extended[..before.len()],
         "ClaudeIdsStableUnderAppend"
     );
+}
+
+#[test]
+fn claude_record_dag_and_compaction_summary_join_without_identity_maps() {
+    use serde_json::json;
+    let rows = [
+        json!({"type":"assistant","uuid":"a","sessionId":"dag","message":{"content":[{"type":"text","text":"spoken"},{"type":"thinking","thinking":"thought"}]}}),
+        json!({"type":"user","uuid":"side","sessionId":"dag","parentUuid":"a","isSidechain":true,"agentId":"child","message":{"content":[{"type":"tool_result","tool_use_id":"t","content":"output"}]}}),
+        json!({"type":"system","uuid":"boundary","sessionId":"dag","parentUuid":"side","subtype":"compact_boundary","compactMetadata":{"logicalParentUuid":"a"}}),
+        json!({"type":"user","uuid":"summary","sessionId":"dag","parentUuid":"side","isCompactSummary":true,"message":{"content":"summary text"}}),
+        json!({"type":"last-prompt","uuid":"leaf","sessionId":"dag","leafUuid":"side"}),
+    ];
+    let input = rows.iter().map(|v| format!("{v}\n")).collect::<String>();
+    let (session, events) = support::parse(input.as_bytes());
+    let anchor = |key| RecordId::native(Provider::Claude, "dag", key);
+    let first = events
+        .iter()
+        .filter(|e| e.record == anchor("a"))
+        .collect::<Vec<_>>();
+    assert_eq!(first.len(), 2);
+    assert!(first.iter().all(|e| e.id.0 != e.record.0));
+    assert!(
+        events
+            .iter()
+            .filter(|e| e.record == anchor("side"))
+            .all(|e| e.parent == Some(anchor("a")))
+    );
+    let boundary = events
+        .iter()
+        .find(|e| e.record == anchor("boundary"))
+        .unwrap();
+    assert!(
+        matches!(boundary.kind,EventKind::Compaction{replaced_through:Some(id),..}if id==anchor("a"))
+    );
+    assert_eq!(boundary.id.0, boundary.record.0);
+    let summary = events
+        .iter()
+        .find(|e| e.record == anchor("summary"))
+        .unwrap();
+    assert_eq!(summary.parent, Some(anchor("boundary")));
+    assert_eq!(summary.fidelity, Fidelity::SummaryOnly);
+    assert!(matches!(
+        summary.kind,
+        EventKind::Message {
+            role: Role::User,
+            ..
+        }
+    ));
+    assert!(
+        events
+            .iter()
+            .filter(|e| e.record == anchor("leaf"))
+            .all(|e| e.parent == Some(anchor("side")))
+    );
+    for key in ["a", "side", "boundary", "summary", "leaf"] {
+        assert_eq!(
+            events
+                .iter()
+                .filter(|e| e.record == anchor(key) && e.raw.is_some())
+                .count(),
+            1,
+            "ClaudeOneRawPerRecord"
+        );
+    }
+    let mut output = vec![];
+    lower::claude::write(&session, &events, &mut output).unwrap();
+    assert_eq!(output, input.as_bytes());
+}
+#[test]
+fn claude_no_raw_retains_readable_and_sealed_reasoning() {
+    let source = support::fixture();
+    let mut parser = Parser::new(Cursor::new(source), SessionId(ulid::Ulid::from(1u128)))
+        .unwrap()
+        .without_raw();
+    let mut seen = false;
+    while let Some(events) = parser.next_record().unwrap() {
+        for e in events {
+            assert!(e.raw.is_none());
+            if let EventKind::Reasoning {
+                text: Some(text),
+                sealed: Some(sealed),
+                ..
+            } = e.kind
+            {
+                assert_eq!(text, "A separate thought");
+                assert_eq!(sealed.bytes, b"synthetic-signature");
+                seen = true;
+            }
+        }
+    }
+    assert!(seen);
 }
