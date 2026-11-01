@@ -35,11 +35,8 @@ fn has_mark(layout: &c::Layout, kind: &str) -> bool {
 fn has_text(layout: &c::Layout, text: &str) -> bool {
     nodes(layout).iter().any(|n| matches!(&n.kind, c::LayoutKind::Text { runs, .. } if runs.iter().map(|r| r.text.as_str()).collect::<String>() == text))
 }
-// Literal executable previews stay truthful; identity text must use the display name.
 fn assert_display_names(layout: &c::Layout, surface: &str) {
-    fn visit(node: &c::Layout, surface: &str, command: bool) {
-        let command = command
-            || matches!(&node.kind, c::LayoutKind::Named(name) if name.ends_with("/command"));
+    for node in nodes(layout) {
         if let c::LayoutKind::Text { runs, .. } = &node.kind {
             let text = runs.iter().map(|r| r.text.as_str()).collect::<String>();
             assert!(
@@ -47,15 +44,13 @@ fn assert_display_names(layout: &c::Layout, surface: &str) {
                 "{surface}: legacy label {text:?}"
             );
             assert!(
-                command || !text.contains("bboxy450-harness"),
-                "{surface}: internal kind used as a display name {text:?}"
+                !text
+                    .split(|c: char| !c.is_alphanumeric())
+                    .any(|word| word == "Bboxy"),
+                "{surface}: interim label {text:?}"
             );
         }
-        for child in &node.children {
-            visit(child, surface, command);
-        }
     }
-    visit(layout, surface, false);
 }
 fn complete(surface: &str, ids: &[&str]) -> Result<(), String> {
     for kind in bboxy450_term::settings::roles::HARNESSES {
@@ -86,13 +81,12 @@ fn harness_branding_all_menu_surfaces_and_launch_keys() {
         let (_, label, _, color, _) = harness::launchables().find(|(id, ..)| *id == kind).unwrap();
         assert_eq!(item.label, label);
         if kind == "bboxy450-harness" {
-            assert_eq!(item.label, "Bboxy");
-            assert_eq!(harness::label(kind), "Bboxy");
+            assert_eq!(item.label, "bboxy450-harness");
             assert_eq!(
                 bbt_mux::adapters::HarnessRecord::builtin(kind)
                     .unwrap()
                     .name,
-                "Bboxy"
+                "bboxy450-harness"
             );
         }
         assert_eq!(item.tile.as_deref(), Some(color));
@@ -222,11 +216,14 @@ fn harness_branding_settings_and_seat_surfaces() {
         view.section = section.into();
         let layout = solve(view.element(ctx, &metrics, 1400., 1800.));
         assert_display_names(&layout, section);
-        assert!(has_text(&layout, "Bboxy"), "{section} must say Bboxy");
+        assert!(
+            has_text(&layout, "bboxy450-harness"),
+            "{section} must use the canonical name"
+        );
         for kind in bboxy450_term::settings::roles::HARNESSES {
             assert!(has_mark(&layout, kind), "{section} {kind}");
             let label = if section == "Notifications" {
-                harness::label(kind)
+                kind
             } else {
                 view.launch
                     .iter()
@@ -300,7 +297,7 @@ fn harness_branding_headless_menu() {
     let launcher = new_launcher(None, 0).launcher;
     let menu = scene.launcher_layout([1280., 1000.], &launcher).unwrap();
     assert!(has_mark(menu.solved(), "bboxy450-harness"));
-    assert!(has_text(menu.solved(), "Bboxy"));
+    assert!(has_text(menu.solved(), "bboxy450-harness"));
     assert_display_names(menu.solved(), "headless menu");
     let mut gpu = bbt_rt::handle()
         .block_on(gpu::VerificationFrame::new())

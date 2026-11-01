@@ -1084,7 +1084,7 @@ impl Build<'_> {
             .iter()
             .find(|h| h.harness == name)
             .map(|h| h.label.as_str())
-            .unwrap_or(super::harness::label(name));
+            .unwrap_or(name);
         let title = col(
             "",
             plain(None, [0.; 4], 0.),
@@ -1506,7 +1506,7 @@ impl Settings {
                 .iter()
                 .map(|(name, h)| {
                     (
-                        super::harness::label(name).into(),
+                        name.clone(),
                         format!(
                             "{} · role {} · wake {} · hooks {} · {}",
                             h.command, h.role, h.wake, h.hooks, h.state_from
@@ -3088,7 +3088,7 @@ impl Settings {
                     .into(),
                     txt(
                         &format!("{key}/label/text"),
-                        super::harness::label(name),
+                        name,
                         font(13., 500, false, ui::Color::Foreground),
                     )
                     .into(),

@@ -82,12 +82,7 @@ impl HarnessRecord {
         if matches!(kind, "pi" | "omp" | "bboxy450-harness") {
             return Ok(Self {
                 kind: kind.into(),
-                name: if kind == "bboxy450-harness" {
-                    "Bboxy"
-                } else {
-                    kind
-                }
-                .into(),
+                name: kind.into(),
                 command: if kind == "bboxy450-harness" {
                     vec![kind.into(), "seat".into()]
                 } else {
