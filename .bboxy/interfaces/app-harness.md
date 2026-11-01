@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-29T01:18:52Z"
+updated: "2026-11-01T13:00:00Z"
 ---
 # ICD: app ↔ harness
 
@@ -29,6 +29,21 @@ updated: "2026-10-29T01:18:52Z"
 | Versioning | the app never writes the user's `~/.claude` or `~/.codex`; writes the client makes there are listed with cause; the hook-trust record is the one accepted app-caused write |
 | Verified by | promises L3, L4, T6, T9; the native integration proof on installed clients |
 | Open | a real model's choice to orient is advisory only, never a verdict |
+
+## Phase 1a process seat amendment
+
+Per [harness decision d4071](https://github.com/bboxy450/bboxy450-harness/blob/main/.bboxy/decisions/d4071-icd-348-amendment-signoff.md), the following additive rows are agreed in the gated Side A PR and signed off by the Oracle at landing. They are copied verbatim from [embed-seat §7 at 42e7a20](https://github.com/bboxy450/bboxy450-harness/blob/42e7a20/.bboxy/interfaces/embed-seat.md). The harness ICD stays proposed until that landing.
+
+| #348 row | Change |
+|---|---|
+| Side B | add: `bboxy450-harness seat`, an in-suite line-mode harness (this ICD) |
+| Amended by | add: `bboxy450-harness:[[embed-seat]]`, phase 1a process seat |
+| What crosses | add: for `bboxy450-harness`, the MCP server by `--mcp-config` (the same `mcp.json`) and the startup context by `--append-system-prompt`. No hook shim, no skill/plugin dir |
+| States and lifecycle | add: a `bboxy450-harness` seat is a PTY process with no daemon. State is `Cadence`, grade Inferred. Phase 1a: no automatic wake (a guarded input is refused as `composer-readiness-missing`, with zero PTY bytes), and a restart is a fresh session. Wake readiness, persisting the session id and resume are phase 1b, in a separate amendment |
+| Startup context | add: `bboxy450-harness` receives the same `startup_prompt` text through `--append-system-prompt`. The capability never enters argv |
+| Launch permissions | add: no permission flag is passed to `bboxy450-harness`. Its own `Policy` governs, and approvals are answered in line mode (§2) or fall to `on_unattended` (default deny) |
+| Versioning | add: the app never writes `~/.bboxy450-harness`. The harness writes only its own sessions there |
+| Verified by | add, phase 1a (E4): `make test-harness-native` `bboxy450-harness` case covering spawn, a PTY line that becomes a turn, a guarded `seat_input_text` refused as `composer-readiness-missing` with zero PTY bytes and no retry, and seat close under the supervisor's 250 ms SIGHUP→SIGKILL. On close, every group reaches ESRCH within 2 s, the exit is recorded, and a manual `--resume` recovers. Phase 1b (readiness, session-id persistence, resume) is **unproven** and is not claimed by this row |
 
 A change to this interface names both sides, the reason and the verification it needs, and lands only with both sides' owners agreeing. A question an Executor asks about this boundary is a missing line here: the answer is written into this table, not only sent.
 

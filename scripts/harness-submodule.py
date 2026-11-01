@@ -55,12 +55,12 @@ def import_models(root, source, target):
 def check_resolution(root):
     data = json.loads(subprocess.check_output(['cargo', 'metadata', '--format-version', '1', '--locked'], cwd=root))
     toolkit = {"bboxy450-rt": "bbt-rt", "bboxy450-yarn": "bbt-yarn", "bboxy450-tlc": "bboxy450-tlc",
-               "bboxy450-ui": "bbt-ui", "bboxy450-ui-core": "bbt-ui-model", "bboxy450-render": "bbt-render"}
+               "bboxy450-ui": "bbt-ui", "bboxy450-ui-core": "bbt-ui-model", "bboxy450-render": "bbt-render", "bboxy450-doc": "bbt-doc"}
     for name, directory in toolkit.items():
         matches = [p for p in data['packages'] if p['name'] == name]
         if len(matches) != 1 or matches[0]['source'] is not None or Path(matches[0]['manifest_path']).resolve() != root / 'crates' / directory / 'Cargo.toml':
             raise ValueError(f'harness: {name} must resolve once to the in-tree path')
-    print('harness: all six toolkit dependencies resolve to in-tree paths', flush=True)
+    print('harness: all seven toolkit dependencies resolve to in-tree paths', flush=True)
 
 
 def standalone(root, artifacts):

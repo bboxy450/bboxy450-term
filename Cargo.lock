@@ -368,6 +368,7 @@ dependencies = [
  "arc-swap",
  "async-stream",
  "base64 0.22.1",
+ "bboxy450-doc",
  "bboxy450-render",
  "bboxy450-rt",
  "bboxy450-tlc",

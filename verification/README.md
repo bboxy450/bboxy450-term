@@ -212,7 +212,7 @@ parity proves timing deadlines, Rust refinement or disk-writer independence.
 initialize exactly the recorded gitlink without prompts or following a branch.
 Missing or unapproved submodules fail loudly.
 
-`make test-formal` imports all 58 native harness exports and their independent
+`make test-formal` imports every native harness model and broken-control export and their independent
 expected verdicts into this repository's Java TLC graph/verdict comparison.
 The harness's own coverage and multi-control contracts validate its complete
 source inventory; parent coverage lists every imported model. The receipt hashes

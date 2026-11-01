@@ -1826,11 +1826,11 @@ init-submodules:
 test-harness-native: init-submodules
 	@python3 -I scripts/harness-submodule.py --check-resolution
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo build --locked -p bboxy450-harness --target-dir '$(TARGET_DIR)'; \
-	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' mcp_harness_seat_completes_and_closes_without_orphans -- --ignored --exact --nocapture
+	cargo build --locked -p bboxy450-harness --features test-fixtures --target-dir '$(TARGET_DIR)'; \
+	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' mcp_harness_seat_ -- --ignored --nocapture
 
 format-harness-embed:
-	@rustfmt --edition 2024 crates/bbt-mux/src/adapters/mod.rs crates/bbt-mux/src/mcp/seats.rs crates/bbt-mux/tests/mcp.rs crates/bboxy450-term/src/settings/roles.rs crates/bbt-proto/src/gui/roles.rs
+	@rustfmt --edition 2024 crates/bboxy450-harness-wake-up/src/launch.rs crates/bbt-mux/src/adapters/mod.rs crates/bbt-mux/src/mcp/seats.rs crates/bbt-mux/tests/mcp.rs crates/bboxy450-term/src/settings/roles.rs crates/bbt-proto/src/gui/roles.rs
 
 .PHONY: fetch-harness check-harness-embed test-harness-standalone
 fetch-harness:
@@ -1847,3 +1847,7 @@ check-harness-embed:
 test-harness-standalone: init-submodules fetch-harness
 	@set -eu; . ./scripts/cache-env.sh; \
 	CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))/harness-standalone' python3 -I scripts/harness-submodule.py --standalone --target '$(abspath $(TARGET_DIR))/harness-standalone-artifacts'
+
+.PHONY: test-harness-launch
+test-harness-launch:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-harness-wake-up --lib launch::embed_tests --target-dir '$(TARGET_DIR)'

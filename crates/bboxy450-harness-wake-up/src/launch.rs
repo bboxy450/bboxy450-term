@@ -418,13 +418,17 @@ fn startup_prompt(context: &LaunchContext<'_>) -> Result<String> {
         serde_json::to_string(context.cwd)?,
     ))
 }
-fn claude_wiring(overlay: &Path, context: &LaunchContext<'_>) -> Result<PathBuf> {
+fn mcp_wiring(overlay: &Path, context: &LaunchContext<'_>) -> Result<()> {
     write(
         &overlay.join("mcp.json"),
         &serde_json::to_vec(&serde_json::json!({"mcpServers":{"bboxy":{
             "command":context.executable,"args":["mcp"]
         }}}))?,
     )?;
+    Ok(())
+}
+fn claude_wiring(overlay: &Path, context: &LaunchContext<'_>) -> Result<PathBuf> {
+    mcp_wiring(overlay, context)?;
     let plugin = overlay.join("bboxy450");
     for dir in [
         plugin.join(".claude-plugin"),
@@ -509,6 +513,18 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
     let mut session = context.harness_session_id.map(str::to_owned);
     let mut notes = Vec::new();
     match record.kind.as_str() {
+        "bboxy450-harness" => {
+            mcp_wiring(&overlay, context)?;
+            spec.args.extend([
+                "--cwd".into(),
+                context.cwd.to_string_lossy().into(),
+                "--append-system-prompt".into(),
+                startup_prompt(context)?,
+                "--mcp-config".into(),
+                overlay.join("mcp.json").to_string_lossy().into(),
+            ]);
+            notes.push("generic harness: cadence is display-only; autonomous PTY submit requires operator handoff");
+        }
         "claude" => {
             if spec.args.iter().any(|a| a == "--bare") {
                 return Err(invalid("Claude --bare disables hook/socket integration"));
@@ -1041,5 +1057,87 @@ mod runtime_tests {
         std::fs::set_permissions(&first.overlay, std::fs::Permissions::from_mode(0o755)).unwrap();
         assert!(cleanup_stale_runtime_alias(&first.overlay, Some(&first.endpoint)).is_err());
         assert_eq!(std::fs::read_link(first.alias()).unwrap(), first.overlay);
+    }
+}
+
+#[cfg(test)]
+mod embed_tests {
+    use super::*;
+    use crate::{StateSource, WakeMethod};
+    use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn embedded_seat_gets_the_claude_prompt_and_mcp_file_without_hook_or_plugin() {
+        let temp = tempfile::tempdir().unwrap();
+        let context = LaunchContext {
+            id: crate::Ulid::new(),
+            generation: 1,
+            name: "literal \"quoted\" name",
+            role_name: "executor",
+            harness_session_id: None,
+            skill: "unused skill",
+            cwd: temp.path(),
+            role_prompt: "ROLE: EXECUTOR\nUse the assigned repository.",
+            executable: Path::new("/tmp/bboxy term"),
+            overlay_parent: temp.path(),
+            user_home: temp.path(),
+            user_zdotdir: None,
+            socket: Path::new("/tmp/private.sock"),
+            capability: [0xab; 32],
+            resume: false,
+        };
+        let record = HarnessRecord {
+            kind: "bboxy450-harness".into(),
+            name: "Harness".into(),
+            command: vec!["bboxy450-harness".into(), "seat".into()],
+            wake_method: WakeMethod::Pty,
+            state_source: StateSource::Cadence,
+            hooks: false,
+        };
+        let harness = plan(&record, &context).unwrap();
+        let claude = plan(&HarnessRecord::builtin("claude").unwrap(), &context).unwrap();
+        let argument = |args: &[String], flag: &str| {
+            args.windows(2).find(|p| p[0] == flag).unwrap()[1].clone()
+        };
+        assert_eq!(
+            argument(&harness.args, "--append-system-prompt"),
+            argument(&claude.args, "--append-system-prompt")
+        );
+        assert_eq!(
+            argument(&harness.args, "--cwd"),
+            temp.path().to_str().unwrap()
+        );
+        assert_eq!(
+            std::fs::read(harness.overlay.join("mcp.json")).unwrap(),
+            std::fs::read(claude.overlay.join("mcp.json")).unwrap()
+        );
+        assert_eq!(
+            argument(&harness.args, "--mcp-config"),
+            harness.overlay.join("mcp.json").to_str().unwrap()
+        );
+        assert_eq!(std::fs::read_dir(&harness.overlay).unwrap().count(), 1);
+        assert_eq!(
+            std::fs::metadata(&harness.overlay)
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o700
+        );
+        assert_eq!(
+            std::fs::metadata(harness.overlay.join("mcp.json"))
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+        assert!(!harness.args.join(" ").contains(&"ab".repeat(32)));
+        assert!(
+            !harness
+                .args
+                .iter()
+                .any(|a| a == "--yolo" || a == "--dangerously-skip-permissions")
+        );
     }
 }
