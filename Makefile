@@ -31,6 +31,7 @@ REQUIREMENT := identifier "com.bboxy450.term" and anchor apple generic and certi
 APP_VERSION = $(shell python3 -c 'import tomllib; a=tomllib.load(open("crates/bboxy450-term/Cargo.toml","rb"))["package"]["version"]; print(a if isinstance(a,str) else tomllib.load(open("Cargo.toml","rb"))["workspace"]["package"]["version"])')
 ARCHIVE = $(DIST_DIR)/$(APP)-$(APP_VERSION)-macos-$(shell uname -m).zip
 CI_LOG ?= $(abspath $(TARGET_DIR))/ci-local.log
+LAND_GATE_LOG ?=
 CI_ARGS ?=
 CRATES_PUBLISHER_RECEIPT ?= $(HOME)/.local/state/bboxy450-term/crates-publisher.json
 export CARGO_PROFILE_DEV_DEBUG ?= 0
@@ -199,7 +200,7 @@ help:
 	  'make publish-release            Signed tag + GitHub app release (authorization required)' \
 	  'make push                       Push signed, tested HEAD to main (authorization required)' \
 	  'make land                       Land this branch on main in one go (LAND.md; authorization required)' \
-	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... BBOXY_CACHE_MODE=auto|off CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2 RUST_TEST_THREADS=2' \
+	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... LAND_GATE_LOG=... BBOXY_CACHE_MODE=auto|off CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2 RUST_TEST_THREADS=2' \
 	  'GitKB: GITKB_BIN=... PLUGIN_WORKSPACE=/explicit/local/project'
 
 build:
@@ -698,7 +699,7 @@ land:
 	mkdir -p '$(abspath $(TARGET_DIR))'; \
 	for attempt in 1 2 3; do \
 	  log='$(abspath $(TARGET_DIR))'/land-attempt-$$attempt.log; \
-	  sh scripts/land.sh > "$$log" 2>&1; rc=$$?; tail -n 3 "$$log"; \
+	  sh scripts/land.sh $(if $(LAND_GATE_LOG),--gate-log '$(abspath $(LAND_GATE_LOG))',) > "$$log" 2>&1; rc=$$?; tail -n 3 "$$log"; \
 	  if [ $$rc -eq 0 ]; then exit 0; fi; \
 	  if tail -n 60 "$$log" | grep -qiE "$(LAND_TRANSIENT)"; then \
 	    printf 'land: transient failure (attempt %s, exit %s); retrying in 60 s\n' "$$attempt" "$$rc"; sleep 60; continue; \
