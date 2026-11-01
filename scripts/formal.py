@@ -106,7 +106,7 @@ def harness_contracts(root, models):
         for field in ("sources", "implementation_tests"):
             row[field] = [prefix + path for path in row[field]]
     for row in rows:
-        if row["name"] == "HarnessEmbedLifecycle":
+        if row["name"] in {"HarnessEmbedLifecycle", "HarnessCancelTreeGroup"}:
             row["implementation_tests"].append("crates/bbt-mux/tests/mcp.rs")
             row["sources"].extend(["crates/bbt-mux/src/mcp/seats.rs", "crates/bbt-mux/src/adapters/mod.rs"])
     return rows
@@ -257,7 +257,7 @@ def input_hashes(root, records, contract_records):
         # Hash the complete imported implementation, witnesses, tools and inventories.
         paths.update(str(p.relative_to(root)) for directory in ("src", "tests", "scripts", "verification")
                      for p in (child / directory).rglob("*") if p.is_file() and "__pycache__" not in p.parts)
-        paths.update(str((child / p).relative_to(root)) for p in ("Cargo.toml", "Cargo.lock", "Makefile"))
+        paths.update(str((child / p).relative_to(root)) for p in ("Cargo.toml", "Cargo.lock", "Makefile", "clippy.toml"))
     paths.update(p for row in records for p in row["sources"])
     paths.update(p for row in contract_records for field in ["sources", "implementation_tests"] for p in row[field])
     return {p: hashlib.sha256((root / p).read_bytes()).hexdigest() for p in sorted(paths) if (root / p).is_file()}

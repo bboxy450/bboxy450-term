@@ -4859,7 +4859,7 @@ fn seat_orchestration_fixture() {
 
 fn isolated_seat_fixture(mode: &str) {
     // Darwin sockaddr_un is 104 bytes; this fixture owns a short private HOME.
-    let temp = if mode == "harness" {
+    let temp = if mode.starts_with("harness") {
         tempfile::Builder::new()
             .prefix("bhx-")
             .tempdir_in("/tmp")
@@ -4882,7 +4882,7 @@ fn isolated_seat_fixture(mode: &str) {
         .env("CODEX_HOME", temp.path().join("codex"))
         .env("BBOXY_TEST_CUSTODY", "memory")
         .env("BBOXY_MCP_SEAT_FIXTURE", mode);
-    if mode == "harness" {
+    if mode.starts_with("harness") {
         command.env(
             "BBOXY_HARNESS_TEST_BIN",
             std::env::var_os("BBOXY_HARNESS_TEST_BIN")
@@ -4897,7 +4897,7 @@ fn isolated_seat_fixture(mode: &str) {
         String::from_utf8_lossy(&stdout),
         String::from_utf8_lossy(&stderr)
     );
-    if mode == "harness" {
+    if mode.starts_with("harness") {
         for line in String::from_utf8_lossy(&stderr)
             .lines()
             .filter(|line| line.starts_with("harness-native:"))
@@ -4952,7 +4952,8 @@ fn mcp_seat_isolated_process() {
         "spawn" => seat_spawn_fixture(),
         "orchestrate" => seat_orchestration_fixture(),
         "native" => seat_native_fixture(),
-        "harness" => seat_harness_fixture(),
+        "harness" => seat_harness_fixture(false),
+        "harness-owner" => seat_harness_fixture(true),
         _ => panic!("unknown fixture mode"),
     }
 }
@@ -4964,7 +4965,27 @@ fn mcp_harness_seat_completes_and_closes_without_orphans() {
     isolated_seat_fixture("harness");
 }
 
-fn seat_harness_fixture() {
+// Only exact process groups created and recorded by this private fixture.
+struct OwnedHarnessGroups(Vec<i32>);
+impl Drop for OwnedHarnessGroups {
+    fn drop(&mut self) {
+        for pgid in &self.0 {
+            // SAFETY: each group was recorded from this fixture's own live child.
+            unsafe {
+                libc::kill(-*pgid, libc::SIGKILL);
+            }
+        }
+    }
+}
+
+// keeps: harness embed-seat §3/§6; HarnessCancelTreeGroup and HarnessEmbedLifecycle.
+#[test]
+#[ignore = "real private PTY; make test-harness-native runs both close routes"]
+fn mcp_harness_seat_owner_close_retires_hup_ignoring_tool_and_recovers() {
+    isolated_seat_fixture("harness-owner");
+}
+
+fn seat_harness_fixture(owner_close: bool) {
     use std::os::unix::fs::PermissionsExt;
     let home = PathBuf::from(std::env::var_os("HOME").unwrap());
     let binary = PathBuf::from(std::env::var_os("BBOXY_HARNESS_TEST_BIN").unwrap());
@@ -4979,16 +5000,47 @@ fn seat_harness_fixture() {
     // Only this disposable home sees the scripted-provider launcher. The adapter
     // still launches its production argv [bboxy450-harness, seat]. No key/network.
     let shim = bin.join("bboxy450-harness");
-    std::fs::write(
-        &shim,
-        format!(
-            "#!/bin/sh\nexec {} \"$@\" --scripted {} --sessions {}\n",
-            quote(&binary),
-            quote(&fixture),
-            quote(&home.join("sessions"))
-        ),
-    )
-    .unwrap();
+    let tool_pid_path = home.join("tool-pid");
+    let command = format!(
+        "trap '' HUP; printf '%s\\n' \"$$\" > {0}.tmp; mv {0}.tmp {0}; sleep 600",
+        quote(&tool_pid_path)
+    );
+    let tool_call = json!({"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"owned-hup-tool","type":"function","function":{"name":"bash","arguments":serde_json::to_string(&json!({"command":command})).unwrap()}}]},"finish_reason":null}]});
+    std::fs::write(home.join("tool.sse"), format!("data: {tool_call}\n\ndata: {{\"choices\":[{{\"index\":0,\"delta\":{{}},\"finish_reason\":\"tool_calls\"}}]}}\n\ndata: [DONE]\n\n")).unwrap();
+    let fixture_mcp = binary.parent().unwrap().join("mcp-fixture");
+    assert!(fixture_mcp.is_file());
+    // The production MCP file names current_exe, which is libtest here. Substitute
+    // the pinned harness's stdio fixture so this test never launches libtest as
+    // an MCP server. Keep the original overlay untouched for inspection.
+    let mut script = format!(
+        "#!/usr/bin/python3\nBINARY={}\nFIXTURE={}\nMCP={}\nHOME={}\nOWNER={}\n",
+        serde_json::to_string(&binary).unwrap(),
+        serde_json::to_string(&fixture).unwrap(),
+        serde_json::to_string(&fixture_mcp).unwrap(),
+        serde_json::to_string(&home).unwrap(),
+        if owner_close { "True" } else { "False" }
+    );
+    script.push_str(r#"import json, os, sys
+from pathlib import Path
+args = sys.argv[1:]
+index = args.index('--mcp-config') + 1
+original = Path(args[index])
+config = json.loads(original.read_text())
+assert config['mcpServers']['bboxy']['args'] == ['mcp']
+Path(HOME, 'launcher-argv.json').write_text(json.dumps(args))
+config['mcpServers']['bboxy'] = {'command': MCP, 'args': ['normal'], 'env': {'MCP_SPAWNS': str(Path(HOME, 'mcp-pids'))}}
+private = Path(HOME, 'fixture-mcp.json')
+private.write_text(json.dumps(config))
+private.chmod(0o600)
+args[index] = str(private)
+args.extend(['--scripted', FIXTURE, '--sessions', str(Path(HOME, 'sessions'))])
+if OWNER:
+    # Fixture-only authority for its owned tool; the production argv above has
+    # no permission selector and is asserted separately by the launch-kit test.
+    args.extend(['--scripted', str(Path(HOME, 'tool.sse')), '--yolo'])
+os.execv(BINARY, [BINARY, *args])
+"#);
+    std::fs::write(&shim, script).unwrap();
     std::fs::set_permissions(&shim, std::fs::Permissions::from_mode(0o700)).unwrap();
     std::fs::write(
         home.join(".zprofile"),
@@ -5015,6 +5067,7 @@ fn seat_harness_fixture() {
     // SAFETY: observe only the exact process spawned by this private fixture.
     let pgid = unsafe { libc::getpgid(pid) };
     assert!(pgid > 0);
+    let mut groups = OwnedHarnessGroups(vec![pgid]);
     f.wait_screen(seat, "session ");
     let screen = f.screen(seat);
     let first = screen.lines().next().unwrap();
@@ -5024,6 +5077,22 @@ fn seat_harness_fixture() {
     let role = f.registry().get(seat).unwrap().role;
     assert_eq!(role.name, "executor");
     assert_eq!(role.class, Class::Worker);
+    let attempts = f.input_attempts.load(std::sync::atomic::Ordering::SeqCst);
+    let refusal = f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "seat_input_text",
+        f.input_args(seat, "must not be submitted", true),
+    );
+    assert_eq!(refusal["isError"], true);
+    let handoff = &refusal["structuredContent"];
+    assert_eq!(handoff["cause"], "composer-readiness-missing", "{handoff}");
+    assert_eq!(handoff["error"]["code"], "not_submitted");
+    assert_eq!(
+        f.input_attempts.load(std::sync::atomic::Ordering::SeqCst),
+        attempts,
+        "handoff never writes or retries PTY input"
+    );
     f.runtime
         .block_on(f.client().gui_input(
             seat,
@@ -5034,35 +5103,112 @@ fn seat_harness_fixture() {
         .unwrap();
     f.wait_screen(seat, "Done.");
     f.wait_screen(seat, "— EndTurn");
+    assert_eq!(
+        f.input_attempts.load(std::sync::atomic::Ordering::SeqCst),
+        attempts,
+        "the completed turn used the GUI path; the guarded input was never retried"
+    );
+    let launch: Vec<String> =
+        serde_json::from_slice(&std::fs::read(home.join("launcher-argv.json")).unwrap()).unwrap();
+    assert!(
+        launch
+            .windows(2)
+            .any(|pair| pair[0] == "--append-system-prompt"
+                && pair[1].contains("ROLE: EXECUTOR")
+                && pair[1].contains("orient"))
+    );
+    let until = Instant::now() + Duration::from_secs(10);
+    let mcp_pid: i32 = loop {
+        if let Ok(text) = std::fs::read_to_string(home.join("mcp-pids"))
+            && let Ok(pid) = text.trim().parse()
+        {
+            break pid;
+        }
+        assert!(Instant::now() < until, "private MCP fixture did not start");
+        std::thread::sleep(Duration::from_millis(5));
+    };
+    // SAFETY: observe only the exact MCP fixture PID recorded in our private home.
+    let mcp_pgid = unsafe { libc::getpgid(mcp_pid) };
+    assert!(mcp_pgid > 0 && mcp_pgid != pgid);
+    groups.0.push(mcp_pgid);
+    let log_path = home.join(format!("sessions/{session}.jsonl"));
+    let completed: Vec<Value> = std::fs::read_to_string(&log_path)
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str::<Value>(line).unwrap())
+        .filter(|event| event["event"]["type"] == "item_completed")
+        .collect();
+    assert!(!completed.is_empty());
+    if owner_close {
+        f.runtime
+            .block_on(f.client().gui_input(
+                seat,
+                1,
+                Ulid::new(),
+                b"run the owned HUP-ignoring tool\r".to_vec(),
+            ))
+            .unwrap();
+        let until = Instant::now() + Duration::from_secs(10);
+        let tool_pid: i32 = loop {
+            if let Ok(text) = std::fs::read_to_string(&tool_pid_path)
+                && let Ok(pid) = text.trim().parse()
+            {
+                break pid;
+            }
+            assert!(
+                Instant::now() < until,
+                "owned tool did not start: {}",
+                f.screen(seat)
+            );
+            std::thread::sleep(Duration::from_millis(5));
+        };
+        // SAFETY: this PID was recorded by our own scripted tool in our private HOME.
+        let tool_pgid = unsafe { libc::getpgid(tool_pid) };
+        assert!(tool_pgid > 0 && tool_pgid != pgid && tool_pgid != mcp_pgid);
+        groups.0.push(tool_pgid);
+    }
     let start = Instant::now();
-    f.runtime
-        .block_on(f.client().close(
-            seat,
-            1,
-            Ulid::new(),
-            bbt_mux::registry::Position {
-                swarm: f.own.swarm,
-                tab: Ulid::new(),
-                split_path: vec![],
-                ratios: vec![],
-                layout_revision: 0,
-            },
-            0,
-        ))
-        .unwrap();
+    if owner_close {
+        f.runtime
+            .block_on(f.client().close(
+                seat,
+                1,
+                Ulid::new(),
+                bbt_mux::registry::Position {
+                    swarm: f.own.swarm,
+                    tab: Ulid::new(),
+                    split_path: vec![],
+                    ratios: vec![],
+                    layout_revision: 0,
+                },
+                0,
+            ))
+            .unwrap();
+    } else {
+        // A cooked EOF at the empty prompt is the documented Op::Close route.
+        f.runtime
+            .block_on(f.client().gui_input(seat, 1, Ulid::new(), vec![4]))
+            .unwrap();
+    }
     loop {
-        // SAFETY: pgid was recorded from this fixture's exact child before close.
-        let alive = unsafe { libc::kill(-pgid, 0) };
-        if alive == -1 && std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH) {
+        let retired = groups.0.iter().all(|pgid| {
+            // SAFETY: observe only groups created and recorded by this fixture.
+            (unsafe { libc::kill(-*pgid, 0) }) == -1
+                && std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH)
+        });
+        if retired {
             break;
         }
         assert!(
             start.elapsed() < Duration::from_secs(2),
-            "harness group {pgid} survived close"
+            "owned groups {:?} survived close",
+            groups.0
         );
         std::thread::sleep(Duration::from_millis(5));
     }
-    assert!(start.elapsed() < Duration::from_secs(2));
+    let close_elapsed = start.elapsed();
+    assert!(close_elapsed < Duration::from_secs(2));
+    groups.0.clear(); // Every original group is gone; never signal a recycled ID.
     let observer = f.supervisor.as_ref().unwrap().connect().unwrap();
     let bbt_supervisor::Reply::Seats { seats } = observer
         .request(bbt_supervisor::Action::ListOwnedSeats)
@@ -5077,17 +5223,73 @@ fn seat_harness_fixture() {
         .exited
         .as_ref()
         .unwrap();
-    assert_eq!(exited.code, 0, "{exited:?}");
-    assert_eq!(exited.signal, None);
-    let log = std::fs::read_to_string(home.join(format!("sessions/{session}.jsonl"))).unwrap();
-    let closed: Value = serde_json::from_str(log.lines().last().unwrap()).unwrap();
-    assert_eq!(
-        closed["event"]["type"], "session_closed",
-        "close must be durable"
-    );
+    if owner_close {
+        let private_home = tempfile::Builder::new()
+            .prefix("hresume-")
+            .tempdir_in("/tmp")
+            .unwrap();
+        let mut resume = std::process::Command::new(&binary);
+        resume
+            .args(["seat", "--resume", &session.to_string(), "--sessions"])
+            .arg(home.join("sessions"))
+            .arg("--scripted")
+            .arg(&fixture)
+            .env_clear()
+            .env("HOME", private_home.path())
+            .env("PATH", "/usr/bin:/bin")
+            .stdin(std::process::Stdio::null());
+        let (status, stdout, stderr) =
+            bounded_client(resume, Duration::from_secs(10), &private_home);
+        assert!(
+            status.success(),
+            "manual resume failed: {}",
+            String::from_utf8_lossy(&stderr)
+        );
+        assert!(
+            String::from_utf8_lossy(&stdout).contains("Done."),
+            "completed text was not replayed"
+        );
+        let mut check = std::process::Command::new(&binary);
+        check
+            .arg("check-transcript")
+            .arg(&log_path)
+            .env_clear()
+            .env("HOME", private_home.path())
+            .env("PATH", "/usr/bin:/bin")
+            .stdin(std::process::Stdio::null());
+        let (checked, _, errors) = bounded_client(check, Duration::from_secs(10), &private_home);
+        assert!(
+            checked.success(),
+            "recovered transcript failed protocol laws: {}",
+            String::from_utf8_lossy(&errors)
+        );
+        let recovered: Vec<Value> = std::fs::read_to_string(&log_path)
+            .unwrap()
+            .lines()
+            .map(|line| serde_json::from_str(line).unwrap())
+            .collect();
+        assert!(
+            completed.iter().all(|item| recovered.contains(item)),
+            "manual recovery lost completed items"
+        );
+    } else {
+        assert_eq!(exited.code, 0, "{exited:?}");
+        assert_eq!(exited.signal, None);
+        let log = std::fs::read_to_string(&log_path).unwrap();
+        let closed: Value = serde_json::from_str(log.lines().last().unwrap()).unwrap();
+        assert_eq!(
+            closed["event"]["type"], "session_closed",
+            "close must be durable"
+        );
+    }
     eprintln!(
-        "harness-native: first-line session ULID, completed scripted turn, exit 0 in {:?}, group ESRCH, unknown profile refused",
-        start.elapsed()
+        "harness-native: route={} exit={exited:?} close={close_elapsed:?}; every group ESRCH; completed turn; unknown profile refused; composer-readiness-missing has zero writes{}",
+        if owner_close { "owner" } else { "Ctrl-D" },
+        if owner_close {
+            "; HUP-ignoring tool retired; manual recovery preserved completed items; check-transcript=0"
+        } else {
+            ""
+        }
     );
 }
 
