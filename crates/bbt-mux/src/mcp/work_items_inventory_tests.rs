@@ -30,6 +30,7 @@ struct Corpus {
     rows: Vec<d::Record>,
     calls: Mutex<Calls>,
     native: bool,
+    list_page_size: usize,
     /// A slow provider: each graph page takes this long, clipped by a deadline.
     delay: Option<Duration>,
 }
@@ -76,6 +77,7 @@ impl Corpus {
             rows,
             calls: Mutex::default(),
             native: false,
+            list_page_size: 2,
             delay: None,
         }
     }
@@ -163,7 +165,7 @@ impl DataSource for Corpus {
             .unwrap_or("0")
             .parse::<usize>()
             .unwrap();
-        let end = (offset + request.limit.unwrap_or(128).min(2)).min(rows.len());
+        let end = (offset + request.limit.unwrap_or(128).min(self.list_page_size)).min(rows.len());
         Ok(d::Page {
             items: rows[offset..end]
                 .iter()
@@ -328,6 +330,115 @@ impl Fixture {
         };
         value
     }
+}
+
+// keeps: 160 large task bodies/history never poison an MCP page. The next
+// cursor is the last emitted ID, including when bytes cut before the item limit.
+#[test]
+fn task_list_byte_pages_cover_large_bodies_and_reject_uncut_control() {
+    let mut f = Fixture::new();
+    f.source.list_page_size = 128;
+    f.source.rows = (1..=160)
+        .map(|n| {
+            let mut row = record(n, "task", Some(json!(format!("seat:{}", f.worker.id))));
+            row.body = "body ".repeat(3276) + "done"; // Exactly 16 KiB.
+            row.frontmatter["title"] = json!("\"\\é".repeat(1024)); // 4 KiB, escaped twice.
+            row.frontmatter["history"] = json!(["historical evidence".repeat(1024)]);
+            row.frontmatter["verify_result"] =
+                json!({"command":"true","exit_code":0,"evidence":["x".repeat(8192)]});
+            row
+        })
+        .collect();
+    let actor = Fixture::actor(&f.worker);
+    let mut after = Value::Null;
+    let mut ids = Vec::new();
+    let mut pages = 0;
+    loop {
+        let page = f.read(&actor, "task_list", json!({"limit":128,"after":after}));
+        let op = Ulid::new();
+        let result =
+            crate::mcp::knowledge::bounded(op, crate::mcp::success(op, page.clone()), false);
+        assert_eq!(result["isError"], false, "{result}");
+        assert!(serde_json::to_vec(&result).unwrap().len() <= TASK_PAGE_BYTES);
+        let items = page["items"].as_array().unwrap();
+        assert!(
+            !items.is_empty() && items.len() < 128,
+            "bytes must cut the page"
+        );
+        for item in items {
+            assert_eq!(item["body"], "");
+            assert_eq!(item["body_truncated"], true);
+            assert!(item["metadata"].get("history").is_none());
+            assert_eq!(item["metadata"]["verify_result"], json!({"exit_code":0}));
+            ids.push(item["id"].as_str().unwrap().to_owned());
+        }
+        let crate::mcp::work_items::TaskResponse::Items { items: cards, next } =
+            response("task_list", result).unwrap()
+        else {
+            panic!("GUI/ctl summary adapter must accept the lean page");
+        };
+        assert_eq!(cards.len(), items.len());
+        assert_eq!(cards[0].verify.as_ref().unwrap().exit_code, 0);
+        assert_eq!(json!(next), page["next"]);
+        pages += 1;
+        if page["next"].is_null() {
+            break;
+        }
+        assert_eq!(page["next"], *items.last().unwrap().get("id").unwrap());
+        assert_ne!(page["next"], after);
+        after = page["next"].clone();
+        assert!(pages < 160);
+    }
+    assert!(pages > 1);
+    assert_eq!(
+        ids,
+        (1..=160)
+            .map(|n| Ulid::from(n as u128).to_string())
+            .collect::<Vec<_>>()
+    );
+
+    let full = f.read(&actor, "task_status", json!({"task_id":ids[0]}));
+    assert_eq!(full["body"], f.source.rows[0].body);
+    assert_eq!(full["body_truncated"], false);
+    assert_eq!(full["metadata"], f.source.rows[0].frontmatter);
+
+    let docs = ProviderTasks(&f.source, Some(f.worker.swarm))
+        .documents(
+            &f.registry,
+            &actor,
+            &serde_json::from_value(json!({"limit":128})).unwrap(),
+        )
+        .unwrap();
+    // Deliberately remove the byte cut while retaining the same projection.
+    let uncut = list_page(&docs, 128, usize::MAX).unwrap();
+    let op = Ulid::new();
+    let broken = crate::mcp::knowledge::bounded(op, crate::mcp::success(op, uncut), false);
+    assert_eq!(
+        broken["structuredContent"]["error"]["code"],
+        "response_bound"
+    );
+}
+
+#[test]
+fn task_list_projects_one_oversized_item_and_counts_escaped_envelope() {
+    let mut f = Fixture::new();
+    let mut row = record(1, "task", Some(json!(format!("seat:{}", f.worker.id))));
+    row.body = "x".repeat(crate::mcp::MAX_RESULT + 1);
+    row.frontmatter["title"] = json!("é\"\\\u{1}".repeat(crate::mcp::MAX_RESULT));
+    row.frontmatter["report"] = json!({"summary":"x".repeat(crate::mcp::MAX_RESULT)});
+    f.source.rows = vec![row];
+    let page = f.read(
+        &Fixture::actor(&f.worker),
+        "task_list",
+        json!({"limit":128}),
+    );
+    assert!(page["next"].is_null());
+    assert_eq!(page["items"].as_array().unwrap().len(), 1);
+    assert_eq!(page["items"][0]["body_truncated"], true);
+    let op = Ulid::new();
+    let result = crate::mcp::knowledge::bounded(op, crate::mcp::success(op, page), false);
+    assert_eq!(result["isError"], false);
+    assert!(serde_json::to_vec(&result).unwrap().len() < TASK_PAGE_BYTES);
 }
 
 // keeps: scoped task inventory must not perform body IO proportional to unrelated Markdown/tasks.

@@ -460,6 +460,54 @@ fn read_pages_capture_scope_keep_actual_next_and_ignore_old_scope_replies() {
     assert!(!records.replies(&replies));
     assert!(records.tasks().is_empty());
 }
+
+#[test]
+fn task_byte_pages_render_every_row_of_a_large_board() {
+    use bboxy450_term::messaging::Records;
+    use bbt_proto::messaging::{TaskRequest, TaskResponse};
+    let mut records = Records::default();
+    records.select(SwarmId::from_u128(52));
+    let mut results = Results::default();
+    for page in 0_u128..3 {
+        let request = records
+            .commands()
+            .into_iter()
+            .find(|command| {
+                matches!(command, UiMsg::Task {
+                request: TaskRequest::List { unassigned: false, after, .. }, ..
+            } if *after == (page > 0).then(|| Ulid::from(page * 30)))
+            })
+            .expect("Tasks follows the exact last-emitted ID even for a short byte page");
+        let cards = (page * 30 + 1..=page * 30 + 30)
+            .map(|id| {
+                let mut card = task_card(Ulid::from(id));
+                card.status = "open".into();
+                card
+            })
+            .collect();
+        results.push(
+            op_id(&request),
+            Reply::Task(TaskResponse::Items {
+                items: cards,
+                next: (page < 2).then(|| Ulid::from((page + 1) * 30)),
+            }),
+        );
+        assert!(records.replies(&results));
+        assert!(records.issue.is_none());
+        records.more_tasks();
+    }
+    assert_eq!(records.tasks().len(), 90);
+    assert!(records.task_next.is_none());
+    assert_eq!(records.omitted, 0);
+    assert_eq!(
+        records
+            .entries(&Default::default(), None)
+            .iter()
+            .filter(|entry| { matches!(entry, bbt_ui::modules::stream_dock::Entry::Task { .. }) })
+            .count(),
+        90
+    );
+}
 /// A busy provider connection is transient: the Tasks panel retries within the
 /// workspace_pending bound and keeps its last good list instead of showing 0.
 #[test]

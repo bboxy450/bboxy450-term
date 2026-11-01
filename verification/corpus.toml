@@ -512,6 +512,16 @@ expected = "pass"
 frontend = "project"
 
 [[model]]
+name = "TaskBytePage"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTaskBytePage"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "BrokenGraphQueryCursors"
 expected = "safety"
 frontend = "project"

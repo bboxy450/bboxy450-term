@@ -30,6 +30,8 @@ type Checked<T> = std::result::Result<T, String>;
 pub(crate) const TASK_LIST_BUDGET: Duration = Duration::from_secs(8);
 /// Code of the named refusal when [`TASK_LIST_BUDGET`] runs out.
 pub(crate) const DEADLINE_EXCEEDED: &str = "deadline_exceeded";
+/// Leave room for captured workspace/authority fields added after preparation.
+const TASK_PAGE_BYTES: usize = super::MAX_RESULT - 16 * 1024;
 
 /// Refusal code for a task read failure message: the named deadline or `rejected`.
 pub(crate) fn failure_code(reason: &str) -> &'static str {
@@ -411,7 +413,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
         ),
         (
             "task_list",
-            "Page tasks assigned to seats in the captured swarm; workers see only their current assignments. Only the account operator may request the read-only open unassigned inventory.",
+            "Page lean task summaries assigned to seats in the captured swarm; workers see only their current assignments. Follow next with after; task_status reads bodies and full metadata. Pages are bounded by bytes and item count. Only the account operator may request the read-only open unassigned inventory.",
             json!({"unassigned":{"type":"boolean"},"swarm_id":id,"status":{"type":"string","maxLength":32},"assignee":{"type":"string","maxLength":64},"after":id,"limit":{"type":"integer","minimum":1,"maximum":128}}),
             vec![],
         ),
@@ -836,12 +838,7 @@ pub(crate) fn prepare(
                 )
             });
             docs.sort_by(|a, b| a.id.cmp(&b.id));
-            let more = docs.len() > limit;
-            docs.truncate(limit);
-            let items: Vec<_> = docs.iter().map(projection).collect();
-            return Ok(Prepared::Read(
-                json!({"items":items,"next":if more { docs.last().map(|d|&d.id) } else { None }}),
-            ));
+            return Ok(Prepared::Read(list_page(&docs, limit, TASK_PAGE_BYTES)?));
         }
         "task_report" => {
             let args: Report = tools::parse(&call.args)?;
@@ -1094,6 +1091,76 @@ fn target(registry: &Registry, actor: &Actor, id: Ulid) -> Checked<SeatRecord> {
 }
 fn projection(doc: &Document) -> Value {
     json!({"id":doc.id,"path":format!(".bboxy/{}",doc.path),"metadata":doc.metadata,"body":tools::clip(&doc.body,16384),"body_truncated":doc.body.len()>16384})
+}
+
+/// Summary shared by MCP, the GUI TaskCard adapter and `ctl task list`.
+/// Keep full reports, verification evidence and provenance on task_status only.
+/// body_truncated marks every list item as a partial read, including empty bodies.
+fn list_projection(doc: &Document) -> Value {
+    let mut metadata = serde_json::Map::new();
+    for field in [
+        "id",
+        "type",
+        "title",
+        "status",
+        "role",
+        "assignee",
+        "delegated_by",
+        "swarm",
+        "updated",
+    ] {
+        if let Some(value) = doc.metadata[field].as_str() {
+            let summary = tools::clip(value, if field == "title" { 4096 } else { 2048 });
+            metadata.insert(field.into(), json!(summary));
+        }
+    }
+    if let Some(number) = doc.metadata["number"].as_u64() {
+        metadata.insert("number".into(), json!(number));
+    }
+    if let Some(exit_code) = doc.metadata["verify_result"]["exit_code"].as_i64() {
+        metadata.insert("verify_result".into(), json!({"exit_code":exit_code}));
+    }
+    // An external provider can supply an arbitrarily long path. The stable ID
+    // remains an exact task_status locator when that path cannot fit a card.
+    let path = if doc.path.len() <= 4096 {
+        format!(".bboxy/{}", doc.path)
+    } else {
+        doc.id.clone()
+    };
+    json!({"id":doc.id,"path":path,"metadata":metadata,"body":"","body_truncated":true})
+}
+
+// Origin: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// Keep reuse credit attached: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+fn list_page(docs: &[Document], limit: usize, byte_bound: usize) -> Checked<Value> {
+    // MCP carries JSON twice: structuredContent and an escaped text copy. Count
+    // both, reserving a full cursor even for the eventual terminal page.
+    let mut bytes = serde_json::to_vec(&super::success(
+        Ulid::nil(),
+        json!({"items":[],"next":Ulid::nil()}),
+    ))
+    .map_err(|e| e.to_string())?
+    .len();
+    let mut items = Vec::new();
+    for doc in docs.iter().take(limit) {
+        let item = list_projection(doc);
+        let encoded = serde_json::to_string(&item).map_err(|e| e.to_string())?;
+        let item_bytes = encoded.len()
+            + serde_json::to_vec(&encoded)
+                .map_err(|e| e.to_string())?
+                .len()
+            - 2
+            + usize::from(!items.is_empty()) * 2;
+        if bytes + item_bytes > byte_bound {
+            break;
+        }
+        bytes += item_bytes;
+        items.push(item);
+    }
+    // Every bounded summary fits by itself; never skip the item that cut a page.
+    debug_assert!(docs.is_empty() || !items.is_empty());
+    let next = (items.len() < docs.len()).then(|| &docs[items.len() - 1].id);
+    Ok(json!({"items":items,"next":next}))
 }
 fn task_state(state: &str) -> Checked<()> {
     if matches!(

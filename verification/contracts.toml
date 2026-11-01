@@ -393,6 +393,16 @@ property = "The same opaque token can occur in independent E2E/decision queries 
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "TaskBytePage"
+title = "Byte-bounded task summary pages retain every ordered task"
+models = ["TaskBytePage", "BrokenTaskBytePage"]
+sources = ["crates/bbt-mux/src/mcp/work_items.rs", "crates/bboxy450-term/tests/formal_contracts/task_page_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/mcp/work_items_inventory_tests.rs", "crates/bboxy450-term/tests/messaging_ui.rs", "crates/bboxy450-term/tests/messaging_flow.rs"]
+assumptions = "One immutable authorized inventory of three ordered IDs, summary costs 1/2/1 and page budget 2. The third source item is oversized and projected to cost 1. Append, publish-prefix and follow-next are atomic caller actions. No fairness assumption or progress claim for an unavailable provider/caller; when the caller follows next, every emitted page advances by a nonempty ordered prefix. Existing workspace and retained-operation guards are unchanged and retain their contracts. Exact UTF-8/JSON escaping, the duplicated MCP envelope, 16 KiB scope margin, metadata/body omission, pathological fields, 128-item lookahead, live inventory changes, IO deadlines and GUI retention/scrolling are implementation-only checks."
+property = "Encoded pages stay within the byte budget, the cursor never skips an unreturned item and next names the last emitted ID. The broken control removes the byte-cut guard and exceeds the bound. The real API witness lists all 160 large-body tasks without response_bound and proves the same uncut projection is refused."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "NativeSurfaceResize"
 title = "Native resize does not require shared GPU queue idleness"
 models = ["NativeSurfaceResize", "BrokenNativeSurfaceResize"]

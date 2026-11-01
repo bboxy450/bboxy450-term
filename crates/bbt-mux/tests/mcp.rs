@@ -4138,9 +4138,33 @@ fn mcp_fixture_first_turn_orients_reports_and_retains_signed_task_receipts() {
 #[test]
 fn mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_only() {
     let f = Fixture::new();
+    // These external fixture edits bypass the native writer. Observe their exact
+    // digest before the next mutation instead of racing the asynchronous index.
+    let write = |metadata| {
+        let expected = f.task_file(metadata);
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let observed = f.call(
+                f.oracle.id,
+                Ulid::new(),
+                "knowledge_fetch",
+                json!({"locator":f.task_path()}),
+            );
+            if observed["isError"] == false
+                && observed["structuredContent"]["digest"] == expected.digest
+            {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "fixture edit not indexed: {observed}"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    };
     let mut metadata = f.task_metadata();
     metadata["acceptance"] = json!(["criterion 1",{"criterion":"specs/fixture.md:7","spec":"specs/fixture.md","line":7}]);
-    f.task_file(metadata);
+    write(metadata);
     let accept = || {
         f.mutate(
             f.oracle.id,
@@ -4181,10 +4205,10 @@ fn mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_onl
     assert_eq!(data(accept())["task_status"], "accepted");
     assert_eq!(f.task_document().metadata["status"], "accepted");
     // Legacy tasks without a criteria list still need the exact command and zero.
-    f.task_file(f.task_metadata());
+    write(f.task_metadata());
     data(f.report(verification("true", 0, json!([]))));
     assert_eq!(data(accept())["task_status"], "accepted");
-    f.task_file(f.task_metadata());
+    write(f.task_metadata());
     data(f.report(verification("true", 0, json!([]))));
     data(f.mutate(
         f.oracle.id,

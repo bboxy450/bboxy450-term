@@ -144,6 +144,8 @@ help:
 	  'make test-app-overlays           Native/ctl menus, dialog input and persistent swarm rename' \
 	  'make test-seat-actions           Captured seat menus, scoped task assignment and exact-child kill' \
 	  'make test-task-contract          Exact native task catalogue and plugin schema alignment' \
+	  'make test-task-pages             Byte-bounded task pages, oversized rows and GUI pagination' \
+	  'make check-task-pages            Strict mux/app all-target Clippy' \
 	  'make test-scoped-workspaces      Captured native docs/tasks/graph and cross-project ctl fences' \
 	  'make test-overlay-captures       Private headless light/dark menu and dialog evidence' \
 	  'make test-ui-overlays            Pure context-menu/dialog interactions and strict shared UI Clippy' \
@@ -981,6 +983,21 @@ test-settings-night:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib ctl::tests::every_verb_maps_to_exactly_one_window_action -- --exact; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) notification_foreground_tests; \
 	python3 -I -B scripts/e2e/settings_night.py --binary '$(TARGET_DIR)/debug/$(APP)' --out '$(TARGET_DIR)/night-settings-acceptance/verdicts'
+
+.PHONY: test-task-pages test-task-pages-gui check-task-pages
+test-task-pages:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib work_items; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_only -- --exact; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test messaging_ui; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts
+	@$(MAKE) test-task-pages-gui
+
+test-task-pages-gui:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test messaging_flow task_list_large_board_renders_through_the_real_gui_socket -- --ignored --exact --nocapture
+
+check-task-pages:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-term-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 test-settings-role-picker-ui:
 	@set -eu; . ./scripts/cache-env.sh; \
