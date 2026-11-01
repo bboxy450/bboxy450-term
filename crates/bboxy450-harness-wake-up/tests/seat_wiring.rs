@@ -12,6 +12,155 @@ use bboxy450_harness_wake_up::{
 use std::path::Path;
 const PROMPT: &str =
     "ROLE: EXECUTOR\nFollow the assigned settings prompt: \"literal\" \\ path · next line.\n";
+
+#[test]
+fn overlay_creation_refuses_existing_symlinks_and_directories() {
+    use bboxy450_harness_wake_up::capability::{Refusal, create_overlay};
+    use std::{fs, os::unix::fs::PermissionsExt};
+    let root = tempfile::tempdir().unwrap();
+    let target = root.path().join("unrelated");
+    fs::create_dir(&target).unwrap();
+    fs::write(target.join("keep"), b"unrelated contents").unwrap();
+    let path = root.path().join(format!("launch-{}", Ulid::new()));
+    std::os::unix::fs::symlink(&target, &path).unwrap();
+    let error = create_overlay(&path).err().unwrap();
+    assert_eq!(
+        error.get_ref().unwrap().downcast_ref::<Refusal>(),
+        Some(&Refusal::OverlaySymlink)
+    );
+    assert_eq!(
+        fs::read(target.join("keep")).unwrap(),
+        b"unrelated contents"
+    );
+    assert!(
+        fs::symlink_metadata(&path)
+            .unwrap()
+            .file_type()
+            .is_symlink()
+    );
+    fs::remove_file(&path).unwrap();
+    fs::create_dir(&path).unwrap();
+    assert_eq!(
+        create_overlay(&path).err().unwrap().to_string(),
+        "seat_admission_overlay_exists"
+    );
+    fs::remove_dir(&path).unwrap();
+    let owned = create_overlay(&path).unwrap();
+    assert_eq!(
+        fs::metadata(&path).unwrap().permissions().mode() & 0o7777,
+        0o700
+    );
+    drop(owned);
+    assert!(!path.exists(), "unretained overlay must be removed");
+}
+
+#[test]
+fn a_failed_plan_removes_its_capability_overlay() {
+    let root = tempfile::tempdir().unwrap();
+    let mut record = HarnessRecord::builtin("claude").unwrap();
+    // Rejected in the Claude wiring branch, after the capability has been created.
+    record.command.push("--bare".into());
+    let result = plan(
+        &record,
+        &LaunchContext {
+            id: Ulid::new(),
+            generation: 1,
+            name: "failed plan",
+            role_name: "executor",
+            harness_session_id: None,
+            skill: "fixture",
+            cwd: root.path(),
+            role_prompt: PROMPT,
+            executable: Path::new("/tmp/owned app"),
+            overlay_parent: root.path(),
+            user_home: root.path(),
+            user_zdotdir: None,
+            socket: Path::new("/tmp/owned.sock"),
+            capability: [31; 32],
+            resume: false,
+        },
+    );
+    assert!(result.is_err());
+    assert_eq!(
+        std::fs::read_dir(root.path()).unwrap().count(),
+        0,
+        "FailedPlanRemovesOwnedOverlay"
+    );
+}
+
+#[test]
+fn a_wiring_write_failure_removes_its_capability_overlay() {
+    let root = tempfile::tempdir().unwrap();
+    let result = std::process::Command::new(std::env::current_exe().unwrap())
+        .env_clear()
+        .env("HOME", root.path())
+        .env("CAPABILITY_FAILURE_ROOT", root.path())
+        .args(["--ignored", "--exact", "failed_wiring_child"])
+        .output()
+        .unwrap();
+    assert!(
+        result.status.success(),
+        "owned file-limit fixture: {}",
+        String::from_utf8_lossy(&result.stderr)
+    );
+    assert_eq!(
+        std::fs::read_dir(root.path()).unwrap().count(),
+        0,
+        "FailedWiringRemovesOwnedOverlay"
+    );
+}
+
+#[test]
+#[ignore = "owned subprocess with a private file-size limit"]
+fn failed_wiring_child() {
+    let root = std::path::PathBuf::from(std::env::var_os("CAPABILITY_FAILURE_ROOT").unwrap());
+    let limit = libc::rlimit {
+        rlim_cur: 65,
+        rlim_max: 65,
+    };
+    // SAFETY: only this owned subprocess is affected; the pointer is initialized.
+    assert_eq!(unsafe { libc::setrlimit(libc::RLIMIT_FSIZE, &limit) }, 0);
+    // SAFETY: SIG_IGN is a valid handler; only this fixture process is affected.
+    unsafe {
+        libc::signal(libc::SIGXFSZ, libc::SIG_IGN);
+    }
+    let record = HarnessRecord::builtin("claude").unwrap();
+    let error = plan(
+        &record,
+        &LaunchContext {
+            id: Ulid::new(),
+            generation: 1,
+            name: "failed wiring",
+            role_name: "executor",
+            harness_session_id: None,
+            skill: "fixture",
+            cwd: &root,
+            role_prompt: PROMPT,
+            executable: Path::new("/tmp/owned app"),
+            overlay_parent: &root,
+            user_home: &root,
+            user_zdotdir: None,
+            socket: Path::new("/tmp/owned.sock"),
+            capability: [31; 32],
+            resume: false,
+        },
+    )
+    .err()
+    .unwrap();
+    // The first write (65-byte capability) fits; subsequent Claude wiring fails.
+    assert_eq!(
+        error
+            .downcast_ref::<std::io::Error>()
+            .unwrap()
+            .raw_os_error(),
+        Some(libc::EFBIG)
+    );
+    assert_eq!(
+        std::fs::read_dir(root).unwrap().count(),
+        0,
+        "FailedWiringRemovesOwnedOverlay"
+    );
+}
 // keeps: spec harness-kits §5
 #[test]
 fn resumed_generation_gets_a_fresh_overlay_and_keeps_the_native_resume_path() {

@@ -86,6 +86,16 @@ fn capability_file_shape_exclusive_create_and_repeated_reads() {
     assert_eq!(fs::read(target).unwrap(), b"keep");
 }
 #[test]
+fn capability_file_refuses_uppercase_hex() {
+    let root = tempfile::tempdir().unwrap();
+    let file = capability::create(root.path(), &[0xab; 32]).unwrap();
+    fs::write(&file, fs::read(&file).unwrap().to_ascii_uppercase()).unwrap();
+    assert_eq!(
+        capability::read(&file).unwrap_err().to_string(),
+        "seat_admission_file_malformed"
+    );
+}
+#[test]
 fn both_consumers_refuse_each_unsafe_file_with_a_typed_reason() {
     for reason in [
         "symlink",

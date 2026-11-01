@@ -42,6 +42,18 @@ fn capability(mode: u8) -> Model {
         );
     }
     action(&mut m, "RequestStop", eq(1, 1), &[(1, Int(2))]);
+    // The owned live phase includes a prepared overlay before plan() returns.
+    action(
+        &mut m,
+        "AbandonFailedPlan",
+        eq(1, 1),
+        &[
+            (1, Int(0)),
+            (2, Int(0)),
+            (3, Int(i64::from(mode == 3))),
+            (4, Int(0)),
+        ],
+    );
     // Files remain usable by repeated hook/MCP starts until the process exits.
     action(
         &mut m,

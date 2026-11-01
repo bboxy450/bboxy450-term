@@ -472,8 +472,11 @@ UI, messaging MCP tools, networking, external identity enrollment or multi-accou
 ## Read-only MCP control (W2.5a)
 
 `bboxy450-term mcp` returns before window, GPU or runtime setup. It reads
-`BBOXY_SOCK`, `BBOXY_CAPABILITY` (64 hex characters), `BBOXY_SEAT_ID` and
-`BBOXY_GENERATION` from its launch environment. These identify one admitted seat
+`BBOXY_SOCK`, `BBOXY_CAPABILITY_FILE`, `BBOXY_SEAT_ID` and
+`BBOXY_GENERATION` from its launch environment. The value is read on every start
+from the euid-owned 0600 file in its exclusive 0700 launch overlay; symlinks,
+other owners/modes and malformed content are refused. The legacy value variable
+is never exported. These identify one admitted seat
 generation, not a caller-supplied role. No capability is put in the catalogue,
 tool results, audit or diagnostics. The private CLI uses blocking IO; it is not
 called on the UI thread.

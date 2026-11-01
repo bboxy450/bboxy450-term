@@ -474,10 +474,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
     let overlay = context
         .overlay_parent
         .join(format!("launch-{}", crate::Ulid::new()));
-    std::fs::DirBuilder::new()
-        .recursive(true)
-        .mode(0o700)
-        .create(&overlay)?;
+    let owned_overlay = crate::capability::create_overlay(&overlay)?;
     let mut spec = LaunchPlan {
         program: record.command[0].clone(),
         args,
@@ -747,6 +744,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
     }
     spec.harness_session_id = session;
     spec.notes = notes;
+    owned_overlay.retain();
     Ok(spec)
 }
 

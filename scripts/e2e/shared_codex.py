@@ -12,6 +12,7 @@ private owners have stopped. Unmarked legacy roots are never inferred to be ours
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 import argparse
 import http.server
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -27,6 +28,11 @@ import threading
 import time
 import traceback
 
+_scan_spec = importlib.util.spec_from_file_location('capability_scan', Path(__file__).with_name('capability_scan.py'))
+_scan_module = importlib.util.module_from_spec(_scan_spec)
+_scan_spec.loader.exec_module(_scan_module)
+NativeScanner = _scan_module.NativeScanner
+
 
 OWNER_TAG = "bboxy450-term/scripts/e2e/shared_codex.py:1"
 DIAGNOSTICS = {
@@ -34,6 +40,7 @@ DIAGNOSTICS = {
     "evidence.json", "message-evidence.jsonl", "identity-observation.json",
     "owned-daemon-updater.json", "owned-logic-fault.json", "render-evidence.json",
     "stream-evidence.json", "color-evidence.json", "cleanup-recovery.json",
+    "capability-evidence.json",
 }
 DIAGNOSTIC_BYTES = 64 * 1024
 
@@ -248,6 +255,7 @@ def export_artifacts(root, destination):
 
 def run_fixture(options, binary, codex, fixture):
     root = fixture.root
+    capability_scanner = NativeScanner(root, binary)
     cold, render_check = options.cold, options.render_check
     print("Private shared-daemon fixture: " + str(root), flush=True)
     home, work, run = (root / name for name in ("home", "work", "run"))
@@ -539,6 +547,7 @@ def run_fixture(options, binary, codex, fixture):
         wait(lambda: seats(), lambda rows: all(rows[seat]["state"]["grade"] == "reported"
                                               for seat in (a, b)), "shared native binding")
         before = seats()
+        capability_scanner.scan(daemon_pid, app.pid, 'two-live-seats')
         ctl("seat", "restart", a)
         wait(lambda: seats(), lambda rows: rows[a]["record"]["generation"] == before[a]["record"]["generation"] + 1,
              "seat restarts its generation")
@@ -548,6 +557,9 @@ def run_fixture(options, binary, codex, fixture):
         assert after[b]["state"]["process"] == before[b]["state"]["process"], after[b]
         assert after[b]["record"]["generation"] == before[b]["record"]["generation"]
         os.kill(daemon_pid, 0)
+        capability_scanner.scan(daemon_pid, app.pid, 'after-generation-replacement')
+        (root / 'capability-evidence.json').write_text(json.dumps(capability_scanner.observations) + '\n')
+        print('Native capability environments: ' + json.dumps(capability_scanner.observations), flush=True)
         def captured_output(seat):
             chunks = []
             generation = after[seat]["record"]["generation"]
