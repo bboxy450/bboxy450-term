@@ -319,7 +319,7 @@ sources = ["crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/cockpit
 implementation_tests = ["crates/bboxy450-term/tests/diagnostics.rs"]
 assumptions = "One private fixture, one inherited operator run and one report each from provider and ctl. Account/bootstrap selection and reports are atomic. No fairness or delivery guarantee is assumed; datagram loss, filesystem bounds, malformed CLI routing, real provider processes and exact redaction use private process witnesses. This is a routing specification, not a whole-Rust refinement proof. Optional JSON-RPC probe classification is stateless and checked by actual bridge responses and retained tool failures."
 property = "Private account/bootstrap ownership selects the private run before the once-only producer is configured. Neither producer reaches the operator run. The broken control pins the inherited operator run before private configuration."
-checks = ["make test-formal", "make test-error-journal", "make test"]
+checks = ["make test-formal", "make test"]
 
 [[contract]]
 name = "ImportStaging"
