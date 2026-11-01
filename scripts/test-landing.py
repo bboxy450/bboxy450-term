@@ -1351,6 +1351,33 @@ class LandTests(unittest.TestCase):
         self.assertIn("gate_log_source_mismatch", result.stderr)
         self.assertEqual(self.cargo_test_count(), 0)
 
+    def test_records_gate_refuses_a_new_executable_invariant(self):
+        sha = self.cut("crates/a/src/lib.rs")
+        proof = self.gate_log(sha)
+        self.repo.write(".bboxy/invariants/new-gate.md",
+                        "---\ntype: invariant\nnumber: 1\ncheck: cargo test -p a fixture\n---\n# New gate\n")
+        self.repo.commit("Fixture new executable invariant after full gate")
+        result = self.repo.land("--gate-log", proof)
+        self.assertNotEqual(result.returncode, 0, "executable invariant delta was accepted")
+        self.assertIn("gate_log_source_mismatch: executable gate record", result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
+        self.assertEqual(self.cargo_test_count(), 0)
+
+    def test_records_gate_refuses_submodule_delta_despite_ignore_config(self):
+        first = self.cut("crates/a/src/lib.rs")
+        run("git", "update-index", "--add", "--cacheinfo", "160000", self.repo.base,
+            "vendor/fixture", cwd=self.repo.root)
+        run("git", "commit", "-q", "-m", "Fixture first gitlink", cwd=self.repo.root)
+        source = run("git", "rev-parse", "HEAD", cwd=self.repo.root)
+        run("git", "update-index", "--cacheinfo", "160000", first,
+            "vendor/fixture", cwd=self.repo.root)
+        run("git", "commit", "-q", "-m", "Fixture changed gitlink", cwd=self.repo.root)
+        candidate = run("git", "rev-parse", "HEAD", cwd=self.repo.root)
+        run("git", "config", "diff.ignoreSubmodules", "all", cwd=self.repo.root)
+        with self.assertRaisesRegex(landing.Refusal, "non-records tree delta",
+                                    msg="ignored submodule delta was accepted"):
+            landing.records_gate_delta(self.repo.root, source, candidate)
+
     def test_records_gate_refuses_failed_records_checks(self):
         sha = self.cut("crates/a/src/lib.rs")
         proof = self.gate_log(sha)

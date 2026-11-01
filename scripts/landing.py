@@ -1180,7 +1180,7 @@ def refresh_formal(root, sha):
 
 def records_gate_delta(root, source, sha):
     """R5 compares trees, including renames and modes, never commit subjects."""
-    different = command(["git", "diff", "--quiet", source, sha, "--", ".", ":!.bboxy"],
+    different = command(["git", "diff", "--quiet", "--ignore-submodules=none", source, sha, "--", ".", ":!.bboxy"],
                         cwd=root, check=False)
     if different.returncode:
         raise Refusal("gate_log_source_mismatch: non-records tree delta")
@@ -1189,6 +1189,9 @@ def records_gate_delta(root, source, sha):
     delta = git("diff", "--no-renames", "--name-only", "-z", source, sha, "--", ".bboxy/", cwd=root)
     paths = sorted(set(delta.split("\0")) - {""})
     for name in paths:
+        # invariants.sh globs this directory and executes each record's check.
+        if name == ".bboxy/invariants" or name.startswith(".bboxy/invariants/"):
+            raise Refusal("gate_log_source_mismatch: executable gate record: " + name)
         named = command(["git", "grep", "-F", "-l", "-e", name, sha, "--",
                          "crates", "scripts", "Makefile", "verification", "lab"], cwd=root, check=False)
         if named.returncode != 1:

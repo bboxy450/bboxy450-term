@@ -269,8 +269,11 @@ Cargo target. It retains the child's generated evidence under the parent target
 archives generated formal evidence and restores only four upstream test-owned run artifacts, preserving source.
 
 R5 full-log reuse compares C and its rebased candidate with Git's complete tree
-diff (including names and modes) excluding only `.bboxy`. Every changed record
-is checked for literal code references, including removed paths from renames.
+diff (including names, modes and gitlinks with submodule ignoring disabled)
+excluding only `.bboxy`. Changes under `.bboxy/invariants/` always refuse reuse:
+invariants.sh discovers these records by glob and executes their check fields.
+Every other changed record is checked for literal code references, including
+removed paths from renames.
 Records checks run in the existing private checking checkout, so untracked
 records in the author's tree cannot satisfy them. Only a signed candidate with
 passing records gates can rebind unchanged formal
