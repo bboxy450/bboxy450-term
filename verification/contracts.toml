@@ -574,12 +574,21 @@ property = "Every admitted wrap eventually becomes terminal, including a held wo
 checks = ["make test-formal", "make test"]
 
 [[contract]]
-name = "SeatCapabilityFile"
-title = "Admission never enters exec environments and has its overlay lifetime"
-models = ["SeatCapabilityFile", "BrokenSeatCapabilityEnvironment", "BrokenSeatCapabilityCleanup"]
-controls = [{name="BrokenSeatCapabilityEnvironment",expected="safety"},{name="BrokenSeatCapabilityCleanup",expected="safety"}]
+name = "SeatCapabilityEnvironment"
+title = "Admission never enters exec environments"
+models = ["SeatCapabilityEnvironment", "BrokenSeatCapabilityEnvironment"]
+sources = ["crates/bboxy450-harness-wake-up/src/capability.rs", "crates/bboxy450-harness-wake-up/src/launch.rs", "crates/bbt-supervisor/src/supervisor.rs", "crates/bbt-mux/src/mcp/bridge.rs", "crates/bbt-mux/src/adapters/hook.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/capability_file.rs", "scripts/e2e/capability_probe.py", "scripts/test-capability-control.py"]
+assumptions = "Three distinct generation incarnations, idle/live/stopping phases and one current/old-file marker. Publish a fully prepared private overlay, request stop, repeated consumer reads and process-exit cleanup are atomic owner actions. No fairness or liveness claim: a process can remain live/stopping. Unix permission/uid checks, O_EXCL/O_NOFOLLOW, parser bounds, actual process ancestry and old-credential authentication are implementation witnesses, not arbitrary Rust refinement."
+property = "The value never enters an exec environment. The environment control sets it during fresh publication and violates NoAdmissionValueInEnvironment; the real environment reintroduction control fails the child process scan."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "SeatCapabilityCleanup"
+title = "Admission files share their launch overlay lifetime"
+models = ["SeatCapabilityCleanup", "BrokenSeatCapabilityCleanup"]
 sources = ["crates/bboxy450-harness-wake-up/src/capability.rs", "crates/bboxy450-harness-wake-up/src/launch.rs", "crates/bbt-supervisor/src/supervisor.rs", "crates/bbt-mux/src/mcp/bridge.rs", "crates/bbt-mux/src/adapters/hook.rs"]
 implementation_tests = ["crates/bboxy450-term/tests/capability_file.rs", "scripts/e2e/capability_probe.py"]
 assumptions = "Three distinct generation incarnations, idle/live/stopping phases and one current/old-file marker. Publish a fully prepared private overlay, request stop, repeated consumer reads and process-exit cleanup are atomic owner actions. No fairness or liveness claim: a process can remain live/stopping. Unix permission/uid checks, O_EXCL/O_NOFOLLOW, parser bounds, actual process ancestry and old-credential authentication are implementation witnesses, not arbitrary Rust refinement."
-property = "The value never enters an exec environment; exactly the current overlay owns the file until process exit, and no old path remains after cleanup. Environment and omitted-cleanup controls violate their named safety invariants."
-checks = ["make test-formal", "make test-capability-file", "make test-harness-native", "make test"]
+property = "Exactly the current overlay owns the file until process exit, and no old path remains after cleanup. The omitted-cleanup control retains an old-file marker and violates OverlayOwnsCapabilityFile. The process witness checks replacement/close removal, new generation files and server refusal of copied old credentials."
+checks = ["make test-formal", "make test"]

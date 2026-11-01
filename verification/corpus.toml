@@ -677,13 +677,18 @@ expected = "liveness"
 frontend = "project"
 
 [[model]]
-name = "SeatCapabilityFile"
+name = "SeatCapabilityEnvironment"
 expected = "pass"
 frontend = "project"
 
 [[model]]
 name = "BrokenSeatCapabilityEnvironment"
 expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "SeatCapabilityCleanup"
+expected = "pass"
 frontend = "project"
 
 [[model]]

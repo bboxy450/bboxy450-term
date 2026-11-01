@@ -12,9 +12,10 @@ use bboxy450_tlc::{
 };
 fn capability(mode: u8) -> Model {
     let name = match mode {
+        0 => "SeatCapabilityEnvironment",
         1 => "BrokenSeatCapabilityEnvironment",
-        2 => "BrokenSeatCapabilityCleanup",
-        _ => "SeatCapabilityFile",
+        2 => "SeatCapabilityCleanup",
+        _ => "BrokenSeatCapabilityCleanup",
     };
     let mut m = model(
         name,
@@ -55,26 +56,30 @@ fn capability(mode: u8) -> Model {
         &[
             (1, Int(0)),
             (2, Int(0)),
-            (3, Int(i64::from(mode == 2))),
+            (3, Int(i64::from(mode == 3))),
             (4, Int(0)),
         ],
     );
-    safe(&mut m, "NoAdmissionValueInEnvironment", eq(4, 0));
-    safe(
-        &mut m,
-        "OverlayOwnsCapabilityFile",
-        all([
-            eq(3, 0),
-            implies(eq(1, 0), eq(2, 0)),
-            implies(eq(1, 0).negate(), Var(0).eq(Var(2))),
-        ]),
-    );
+    if mode < 2 {
+        safe(&mut m, "NoAdmissionValueInEnvironment", eq(4, 0));
+    } else {
+        safe(
+            &mut m,
+            "OverlayOwnsCapabilityFile",
+            all([
+                eq(3, 0),
+                implies(eq(1, 0), eq(2, 0)),
+                implies(eq(1, 0).negate(), Var(0).eq(Var(2))),
+            ]),
+        );
+    }
     m
 }
 pub fn cases() -> Vec<(Model, &'static str)> {
     vec![
         (capability(0), "pass"),
         (capability(1), "safety"),
-        (capability(2), "safety"),
+        (capability(2), "pass"),
+        (capability(3), "safety"),
     ]
 }
