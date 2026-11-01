@@ -1909,7 +1909,7 @@ check-capability-file:
 
 .PHONY: check-log-converter test-log-converter check-log-converter-policy
 check-log-converter:
-	@set -eu; . ./scripts/cache-env.sh; cargo check --locked -p bboxy450-log-converter --all-targets
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-log-converter --all-targets -- -D warnings
 
 test-log-converter: check-log-converter-policy
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -1923,3 +1923,10 @@ check-log-converter-policy:
 .PHONY: test-log-converter-native
 test-log-converter-native:
 	@sh scripts/e2e/log-converter-native.sh
+
+.PHONY: test-log-converter-codex-native
+# P4 runs only in the full native gate, never ordinary Cargo unit tests.
+test-log-converter-codex-native:
+	@set -eu; . ./scripts/cache-env.sh; python3 -I -B scripts/e2e/log-converter-codex.py
+
+test-log-converter-native: test-log-converter-codex-native
