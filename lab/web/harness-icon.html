@@ -6,11 +6,12 @@
 </head><body><script>
 const el = Lab.el;
 Lab.page({ title: 'harness icon', checker: true, note: 'Monochrome marks on currentColor. Claude ✳, Codex hexagon, pi, omp ring, zsh prompt. Plus the chrome mark from the pick: the sidebar-toggle fox.',
-  states: ['bboxy450-harness', 'claude', 'codex', 'pi', 'omp', 'zsh', 'gear', 'sidebarfox'],
+  states: ['Bboxy', 'claude', 'codex', 'pi', 'omp', 'zsh', 'gear', 'sidebarfox'],
   render(s, body) {
+    const icon = s === 'Bboxy' ? 'bboxy450-harness' : s;
     const row = el('div', { style: 'display:flex;gap:28px;align-items:end' });
-    for (const px of [12, 16, 20, 32, 64]) row.append(el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:6px;--icon:' + px + 'px' }, C.harnessIcon(s), el('small', { style: 'color:var(--fg-dim);font-size:10px' }, px)));
-    row.append(el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:6px;--icon:32px;color:var(--accent)' }, C.harnessIcon(s), el('small', { style: 'color:var(--fg-dim);font-size:10px' }, 'tinted')));
+    for (const px of [12, 16, 20, 32, 64]) row.append(el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:6px;--icon:' + px + 'px' }, C.harnessIcon(icon), el('small', { style: 'color:var(--fg-dim);font-size:10px' }, px)));
+    row.append(el('div', { style: 'display:flex;flex-direction:column;align-items:center;gap:6px;--icon:32px;color:var(--accent)' }, C.harnessIcon(icon), el('small', { style: 'color:var(--fg-dim);font-size:10px' }, 'tinted')));
     body.append(row);
   } });
 </script></body></html>

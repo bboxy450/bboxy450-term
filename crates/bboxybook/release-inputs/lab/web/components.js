@@ -105,7 +105,7 @@
 
   // select: the native control keeps keyboard and the OS menu, but draws none of its own chrome; the caret is our chevdown icon
   function selectBox(optsArr, val, on) { const s = el('select', { onchange: e => on && on(e.target.value) }); for (const o of optsArr) s.append(el('option', { value: o, ...(o === val ? { selected: '' } : {}) }, o)); return el('span', { class: 'sel' }, s, harnessIcon('chevdown', 'caret')); }
-  function harnessIcon(name, extra) { if (name === 'bboxy450-harness' || name === 'bboxy') return el('span', { class: 'hicon ' + (extra || ''), title: 'bboxy harness' }, el('img', { src: 'bboxy.png', style: 'width:100%;height:100%;border-radius:2px;object-fit:contain' })); return el('span', { class: 'hicon ' + (extra || ''), title: name, html: ICON_SVG[name] || ICON_SVG.zsh }); }
+  function harnessIcon(name, extra) { if (name === 'bboxy450-harness' || name === 'bboxy') return el('span', { class: 'hicon ' + (extra || ''), title: 'Bboxy' }, el('img', { src: 'bboxy.png', style: 'width:100%;height:100%;border-radius:2px;object-fit:contain' })); return el('span', { class: 'hicon ' + (extra || ''), title: name, html: ICON_SVG[name] || ICON_SVG.zsh }); }
   function roleMark(role) { return el('span', { class: 'rmark', style: 'color:var(--role-' + (role || 'unsigned') + ')', title: role || 'unsigned' }, ROLE_MARK[role || 'unsigned']); }
   // Display only: ROLE stays visible before a shrinkable first name. Full names
   // and routing identities remain in the original records and name tooltips.
@@ -1222,7 +1222,7 @@
     { id: 'codex', label: 'Codex', sub: 'executor by default', harness: 'codex', role: 'executor', kind: 'Harness', tile: '#1F2937', section: 'Suggestions' },
     { id: 'pi', label: 'pi', sub: 'executor by default', harness: 'pi', role: 'executor', kind: 'Harness', tile: '#7C3AED', section: 'Harnesses' },
     { id: 'omp', label: 'omp', sub: 'executor by default', harness: 'omp', role: 'executor', kind: 'Harness', tile: '#0EA5E9', section: 'Harnesses' },
-    { id: 'bboxy450-harness', label: 'bboxy harness', sub: 'executor by default', harness: 'bboxy450-harness', role: 'executor', kind: 'Harness', tile: '#168BFF', section: 'Harnesses' },
+    { id: 'bboxy450-harness', label: 'Bboxy', sub: 'executor by default', harness: 'bboxy450-harness', role: 'executor', kind: 'Harness', tile: '#168BFF', section: 'Harnesses' },
     { id: 'zsh', label: 'zsh', sub: 'shell by default', harness: 'zsh', role: 'shell', kind: 'Shell', tile: '#111827', section: 'Shells' },
   ];
   // App title bar (design system › elements.title_bar): window dots · sidebar toggle (the fox ear) · the identity PNG · app name ·
@@ -1952,7 +1952,7 @@
           row('Desktop notifications', 'a seat that needs your answer posts one; clicking it focuses the seat', toggle(on, setN('enabled')), on !== d.enabled, () => setN('enabled')(d.enabled)),
           row('Only in the background', 'none while this window is frontmost', toggle(v.only_when_not_frontmost, setN('only_when_not_frontmost'), !on), v.only_when_not_frontmost !== d.only_when_not_frontmost, () => setN('only_when_not_frontmost')(d.only_when_not_frontmost)),
           group('Per harness', 'off silences every seat of that harness'),
-          ...Object.keys(SET.harness).map(h => row(el('span', { class: 'nh' }, harnessIcon(SET.harness[h].icon || 'zsh'), h === 'bboxy450-harness' ? 'bboxy harness' : h), null, toggle(hon(h), setH(h), !on), hon(h) !== hdef(h), rsH(h))),
+          ...Object.keys(SET.harness).map(h => row(el('span', { class: 'nh' }, harnessIcon(SET.harness[h].icon || 'zsh'), h === 'bboxy450-harness' ? 'Bboxy' : h), null, toggle(hon(h), setH(h), !on), hon(h) !== hdef(h), rsH(h))),
           note('A muted seat (⌘M) never notifies and keeps the ordinary waiting rim.'),
         ]));
       }

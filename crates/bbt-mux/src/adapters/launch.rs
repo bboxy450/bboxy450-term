@@ -132,7 +132,7 @@ pub(crate) fn in_login_shell(
     fn wrap(program: &mut String, args: &mut Vec<String>, shell: &str, kind: &str) {
         let executable = std::mem::replace(program, shell.into());
         let original = std::mem::take(args);
-        let missing = "bboxy harness is not installed on PATH. In a bboxy450-term checkout run make build-harness, then add target/debug to PATH.";
+        let missing = "Bboxy is not installed on PATH. In a bboxy450-term checkout run make build-harness, then add target/debug to PATH.";
         if Path::new(shell)
             .file_name()
             .is_some_and(|name| name == "fish")
@@ -286,7 +286,7 @@ mod login_shell_tests {
         assert_eq!(output.status.code(), Some(127));
         let reason = String::from_utf8_lossy(&output.stderr);
         assert!(
-            reason.contains("bboxy harness is not installed on PATH"),
+            reason.contains("Bboxy is not installed on PATH"),
             "{reason}"
         );
         assert!(reason.contains("make build-harness"), "{reason}");

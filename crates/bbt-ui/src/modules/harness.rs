@@ -25,12 +25,7 @@ pub fn launchables() -> impl Iterator<Item = Launchable> {
             "pi" => ("pi", "executor by default", "#7C3AED", "Harnesses"),
             "omp" => ("omp", "executor by default", "#0EA5E9", "Harnesses"),
             "zsh" => ("zsh", "shell by default", "#111827", "Shells"),
-            "bboxy450-harness" => (
-                "bboxy harness",
-                "executor by default",
-                "#168BFF",
-                "Harnesses",
-            ),
+            "bboxy450-harness" => ("Bboxy", "executor by default", "#168BFF", "Harnesses"),
             _ => (id, "executor by default", "#111827", "Harnesses"),
         };
         (id, label, sub, tile, section)
@@ -38,7 +33,7 @@ pub fn launchables() -> impl Iterator<Item = Launchable> {
 }
 pub fn label(kind: &str) -> &str {
     if kind == "bboxy450-harness" {
-        "bboxy harness"
+        "Bboxy"
     } else {
         kind
     }

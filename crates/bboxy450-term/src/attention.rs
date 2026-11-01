@@ -286,6 +286,23 @@ mod tests {
         assert_eq!(episodes.key(id), Some(restarted_source));
     }
 
+    #[test]
+    fn harness_branding_notification_title_uses_the_display_name() {
+        for kind in crate::settings::roles::HARNESSES {
+            let mut seat = fixture(Activity::Waiting(WaitKind::Question));
+            seat.record.harness_kind = kind.into();
+            let mut episodes = Episodes::default();
+            episodes.observe(&seat, Instant::now());
+            let desired = episodes.notifications(&Notifications::default(), false, None);
+            let title = &desired.values().next().unwrap().notification.title;
+            if kind == "bboxy450-harness" {
+                assert_eq!(title, "fixture · Bboxy");
+            }
+            assert!(!title.to_lowercase().contains("bboxy harness"));
+            assert!(!title.contains("bboxy450-harness"));
+        }
+    }
+
     // keeps: spec attention §5
     #[test]
     fn one_episode_loops_until_explicit_focus_or_leaving_and_repeat_keeps_its_key() {

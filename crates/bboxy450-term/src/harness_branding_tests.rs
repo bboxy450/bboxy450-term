@@ -35,6 +35,28 @@ fn has_mark(layout: &c::Layout, kind: &str) -> bool {
 fn has_text(layout: &c::Layout, text: &str) -> bool {
     nodes(layout).iter().any(|n| matches!(&n.kind, c::LayoutKind::Text { runs, .. } if runs.iter().map(|r| r.text.as_str()).collect::<String>() == text))
 }
+// Literal executable previews stay truthful; identity text must use the display name.
+fn assert_display_names(layout: &c::Layout, surface: &str) {
+    fn visit(node: &c::Layout, surface: &str, command: bool) {
+        let command = command
+            || matches!(&node.kind, c::LayoutKind::Named(name) if name.ends_with("/command"));
+        if let c::LayoutKind::Text { runs, .. } = &node.kind {
+            let text = runs.iter().map(|r| r.text.as_str()).collect::<String>();
+            assert!(
+                !text.to_lowercase().contains("bboxy harness"),
+                "{surface}: legacy label {text:?}"
+            );
+            assert!(
+                command || !text.contains("bboxy450-harness"),
+                "{surface}: internal kind used as a display name {text:?}"
+            );
+        }
+        for child in &node.children {
+            visit(child, surface, command);
+        }
+    }
+    visit(layout, surface, false);
+}
 fn complete(surface: &str, ids: &[&str]) -> Result<(), String> {
     for kind in bboxy450_term::settings::roles::HARNESSES {
         if !ids.contains(&kind) {
@@ -63,6 +85,16 @@ fn harness_branding_all_menu_surfaces_and_launch_keys() {
         let item = items.iter().find(|i| i.id == kind).unwrap();
         let (_, label, _, color, _) = harness::launchables().find(|(id, ..)| *id == kind).unwrap();
         assert_eq!(item.label, label);
+        if kind == "bboxy450-harness" {
+            assert_eq!(item.label, "Bboxy");
+            assert_eq!(harness::label(kind), "Bboxy");
+            assert_eq!(
+                bbt_mux::adapters::HarnessRecord::builtin(kind)
+                    .unwrap()
+                    .name,
+                "Bboxy"
+            );
+        }
         assert_eq!(item.tile.as_deref(), Some(color));
         let fields =
             bboxy450_term::spawn_params::resolve(kind, &Default::default(), None, "/fixture");
@@ -89,6 +121,7 @@ fn harness_branding_all_menu_surfaces_and_launch_keys() {
         let layout = solve(picker.element(ui::Context::new(ui::Theme::Dark, ui::Density::Cozy)));
         assert!(has_mark(&layout, kind), "launcher {kind}");
         assert!(has_text(&layout, label), "launcher label {kind}");
+        assert_display_names(&layout, "launcher");
         for leaf in item.children.as_ref().unwrap() {
             assert!(
                 matches!(spawn_pick(&leaf.id, Default::default(), None, None), Some(live::UiMsg::Spawn {harness_kind, ..}) if harness_kind == kind)
@@ -188,6 +221,8 @@ fn harness_branding_settings_and_seat_surfaces() {
     for section in ["Harnesses", "Notifications"] {
         view.section = section.into();
         let layout = solve(view.element(ctx, &metrics, 1400., 1800.));
+        assert_display_names(&layout, section);
+        assert!(has_text(&layout, "Bboxy"), "{section} must say Bboxy");
         for kind in bboxy450_term::settings::roles::HARNESSES {
             assert!(has_mark(&layout, kind), "{section} {kind}");
             let label = if section == "Notifications" {
@@ -231,7 +266,9 @@ fn harness_branding_settings_and_seat_surfaces() {
                 ui::modules::swarm_card::pending_row(&pending, ctx),
             ),
         ] {
-            assert!(has_mark(&solve(element), kind), "{surface} {kind}");
+            let layout = solve(element);
+            assert!(has_mark(&layout, kind), "{surface} {kind}");
+            assert_display_names(&layout, surface);
         }
         let graph = ui::modules::graph_tab::GraphTab {
             seats: vec![ui::modules::graph_tab::Seat {
@@ -242,10 +279,9 @@ fn harness_branding_settings_and_seat_surfaces() {
             }],
             ..Default::default()
         };
-        assert!(
-            has_mark(&solve(graph.element(ctx, &metrics)), kind),
-            "graph {kind}"
-        );
+        let layout = solve(graph.element(ctx, &metrics));
+        assert!(has_mark(&layout, kind), "graph {kind}");
+        assert_display_names(&layout, "graph");
         let patch = ui::modules::settings::controller::Patch::HarnessLaunch {
             harness: kind.into(),
             command: kind.into(),
@@ -264,7 +300,8 @@ fn harness_branding_headless_menu() {
     let launcher = new_launcher(None, 0).launcher;
     let menu = scene.launcher_layout([1280., 1000.], &launcher).unwrap();
     assert!(has_mark(menu.solved(), "bboxy450-harness"));
-    assert!(has_text(menu.solved(), "bboxy harness"));
+    assert!(has_text(menu.solved(), "Bboxy"));
+    assert_display_names(menu.solved(), "headless menu");
     let mut gpu = bbt_rt::handle()
         .block_on(gpu::VerificationFrame::new())
         .unwrap();
