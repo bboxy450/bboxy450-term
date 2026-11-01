@@ -834,6 +834,10 @@ if args==['build','-p','bboxy450-term','--locked']:
         calls = [json.loads(line) for line in (self.repo.state / "phase-cargo").read_text().splitlines()]
         self.assertEqual((self.repo.state / "phase-calls").read_text().splitlines(),
                          ["test-capability-scan", "test-capability-control", "ui-lint", "smoke"])
+        commands = [json.loads(line.removeprefix("ci-command: "))
+                    for line in result.stdout.splitlines() if line.startswith("ci-command: ")]
+        self.assertEqual([command[1] for command in commands if command[0] == "make"],
+                         ["test-capability-scan", "test-capability-control", "test-harness-native", "test-formal"])
         self.assertIn("scripts/invariants.sh --parity", (self.repo.state / "shell.log").read_text())
         return result.stdout, calls
 

@@ -1112,7 +1112,8 @@ mod embed_tests {
             argument(&harness.args, "--mcp-config"),
             harness.overlay.join("mcp.json").to_str().unwrap()
         );
-        assert_eq!(std::fs::read_dir(&harness.overlay).unwrap().count(), 1);
+        assert_eq!(std::fs::read_dir(&harness.overlay).unwrap().count(), 2);
+        assert!(harness.overlay.join("capability").is_file());
         assert_eq!(
             std::fs::metadata(&harness.overlay)
                 .unwrap()
