@@ -60,6 +60,7 @@ impl RoleCatalog {
             ("codex", "executor"),
             ("pi", "executor"),
             ("omp", "executor"),
+            ("bboxy450-harness", "executor"),
             ("zsh", "shell"),
         ]
         .into_iter()
@@ -201,7 +202,7 @@ mod tests {
             .push("Coordinator".into());
         catalog.harnesses.get_mut("codex").unwrap().default_role = "Coordinator".into();
         catalog.validate().unwrap();
-        for kind in ["pi", "omp", "custom"] {
+        for kind in ["pi", "omp", "bboxy450-harness", "custom"] {
             let mut configured = catalog.clone();
             configured.harnesses.insert(
                 kind.into(),

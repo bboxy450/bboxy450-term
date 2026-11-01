@@ -204,3 +204,23 @@ restores a shared head queue and must fail healthy-seat liveness. Native socket
 reordered completion, held seat/history, exact 967-seat serial replay and stale
 owner fixtures map it to implementation. Neither this projection nor corpus
 parity proves timing deadlines, Rust refinement or disk-writer independence.
+
+## Pinned harness integration
+
+`crates/bboxy450-harness` is an independent Git submodule. Clone with
+`--recurse-submodules`; `make init-submodules` and both CI/landing entry points
+initialize exactly the recorded gitlink without prompts or following a branch.
+Missing or unapproved submodules fail loudly.
+
+`make test-formal` imports all 58 native harness exports and their independent
+expected verdicts into this repository's Java TLC graph/verdict comparison.
+The harness's own coverage and multi-control contracts validate its complete
+source inventory; parent coverage lists every imported model. The receipt hashes
+the imported implementation, tests, tools, inventories and workspace resolution.
+`HarnessEmbedLifecycle` also maps to the real private MCP seat-spawn witness in
+`make test-harness-native`; it is not duplicated. Terminal bytes, elapsed close
+time and `kill(-pgid, 0) == ESRCH` remain real process assertions.
+
+`make test-harness-standalone` runs the unchanged child `make test` with a private
+Cargo target. It retains the child's generated evidence under the parent target
+and restores only four upstream test-owned run artifacts, preserving source.

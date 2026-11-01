@@ -67,6 +67,51 @@ def tools(target):
     return java, jar, pins
 
 
+def harness_root(root):
+    if not (root / "Cargo.toml").is_file():
+        return None  # Contract/hash-only infrastructure fixtures.
+    manifest = tomllib.loads((root / "Cargo.toml").read_text())
+    member = "crates/bboxy450-harness"
+    if member in manifest.get("workspace", {}).get("members", []):
+        child = root / member
+        if not (child / "verification/corpus.toml").is_file():
+            raise ValueError("harness formal submodule is missing; run make init-submodules")
+        return child
+    return None
+
+
+def corpus(root):
+    rows = tomllib.loads((root / "verification/corpus.toml").read_text())["model"]
+    child = harness_root(root)
+    if child:
+        rows += [{**row, "frontend": row.get("frontend", "project")}
+                 for row in tomllib.loads((child / "verification/corpus.toml").read_text())["model"]]
+    return rows
+
+
+def harness_contracts(root, models):
+    child = harness_root(root)
+    if not child:
+        return []
+    # Reuse the pinned harness's multi-control validation and complete source inventory.
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("embedded_harness_formal", child / "scripts/formal.py")
+    module = importlib.util.module_from_spec(spec)
+    sys.dont_write_bytecode = True
+    spec.loader.exec_module(module)
+    module.coverage(child, models)
+    rows = module.contracts(child, models)
+    prefix = str(child.relative_to(root)) + "/"
+    for row in rows:
+        for field in ("sources", "implementation_tests"):
+            row[field] = [prefix + path for path in row[field]]
+    for row in rows:
+        if row["name"] == "HarnessEmbedLifecycle":
+            row["implementation_tests"].append("crates/bbt-mux/tests/mcp.rs")
+            row["sources"].extend(["crates/bbt-mux/src/mcp/seats.rs", "crates/bbt-mux/src/adapters/mod.rs"])
+    return rows
+
+
 def coverage(root, models):
     config = tomllib.loads((root / "verification/coverage.toml").read_text())
     manifest = tomllib.loads((root / "Cargo.toml").read_text())
@@ -115,7 +160,7 @@ def contracts(root, models):
             raise ValueError(f"missing mandatory checks: {name}")
     if not rows:
         raise ValueError("project contract inventory is empty")
-    return rows
+    return rows + harness_contracts(root, models)
 
 
 def contract_metadata(root, name):
@@ -206,6 +251,13 @@ def input_hashes(root, records, contract_records):
              "verification/contracts.toml", "crates/bboxy450-term/tests/formal_contracts.rs",
              "crates/bboxy450-term/tests/formal_contracts/models.rs",
              "crates/bboxy450-term/tests/formal_contracts/witnesses.rs"}
+    child = harness_root(root)
+    if child:
+        paths.update({"Cargo.toml", "Cargo.lock", ".gitmodules", "scripts/harness-submodule.py"})
+        # Hash the complete imported implementation, witnesses, tools and inventories.
+        paths.update(str(p.relative_to(root)) for directory in ("src", "tests", "scripts", "verification")
+                     for p in (child / directory).rglob("*") if p.is_file() and "__pycache__" not in p.parts)
+        paths.update(str((child / p).relative_to(root)) for p in ("Cargo.toml", "Cargo.lock", "Makefile"))
     paths.update(p for row in records for p in row["sources"])
     paths.update(p for row in contract_records for field in ["sources", "implementation_tests"] for p in row[field])
     return {p: hashlib.sha256((root / p).read_bytes()).hexdigest() for p in sorted(paths) if (root / p).is_file()}
@@ -230,7 +282,7 @@ def evidence_receipt(target, root=ROOT, *, require_clean=True):
         raise ValueError("formal evidence source differs from current HEAD")
     if require_clean and (data.get("dirty") is not False or source_dirty(root)):
         raise ValueError("formal evidence requires clean source")
-    required = tomllib.loads((root / "verification/corpus.toml").read_text())["model"]
+    required = corpus(root)
     expected = {m["name"]: m["expected"] for m in required}
     models = data["models"]
     if len(expected) != len(required) or len(models) != len(expected) or {
@@ -298,7 +350,7 @@ def main():
     if not rows or len({r[0] for r in rows}) != len(rows):
         raise ValueError("empty or duplicate formal corpus")
     names = {r[0] for r in rows}
-    required = tomllib.loads((ROOT / "verification/corpus.toml").read_text())["model"]
+    required = corpus(ROOT)
     expected_corpus = {r["name"]: r["expected"] for r in required}
     if len(expected_corpus) != len(required) or {r[0]: r[1] for r in rows} != expected_corpus:
         raise ValueError("formal corpus differs from required independent expectations")

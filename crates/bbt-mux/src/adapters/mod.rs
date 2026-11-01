@@ -78,11 +78,15 @@ impl HarnessRecord {
     }
 
     pub fn builtin(kind: &str) -> Result<Self> {
-        if matches!(kind, "pi" | "omp") {
+        if matches!(kind, "pi" | "omp" | "bboxy450-harness") {
             return Ok(Self {
                 kind: kind.into(),
                 name: kind.into(),
-                command: vec![kind.into()],
+                command: if kind == "bboxy450-harness" {
+                    vec![kind.into(), "seat".into()]
+                } else {
+                    vec![kind.into()]
+                },
                 tile: "#7397d4".into(),
                 icon: kind.into(),
                 default_role: role_preset("executor")?,
@@ -217,11 +221,18 @@ impl Adapter for Session {
 mod configured_harness_tests {
     use super::*;
     #[test]
-    fn advertised_pi_and_omp_reuse_generic_pty_records() {
-        for kind in ["pi", "omp"] {
+    fn advertised_generic_pty_records() {
+        for kind in ["pi", "omp", "bboxy450-harness"] {
             let harness = HarnessRecord::builtin(kind).unwrap();
             harness.validate().unwrap();
-            assert_eq!(harness.command, [kind]);
+            assert_eq!(
+                harness.command,
+                if kind == "bboxy450-harness" {
+                    vec![kind, "seat"]
+                } else {
+                    vec![kind]
+                }
+            );
             assert_eq!(harness.wake_method, WakeMethod::Pty);
             assert_eq!(harness.state_source, StateSource::Cadence);
             assert_eq!(harness.default_role, role_preset("executor").unwrap());
