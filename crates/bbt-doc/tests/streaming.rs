@@ -18,6 +18,8 @@ const CORPUS: &[&str] = &[
     "[link][r]\n\n# Stable\n\nBefore\n\n- [r]: u\n\nAfter [link][r]\n",
     "footnote [^f]\n\n# Stable\n\nBefore\n\n- [^f]: x\n\nAfter [^f]\n",
     "[link][foo bar]\n\n# Stable\n\nBefore\n\n[foo\nbar]: u\n\nAfter [link][foo bar]\n",
+    "[link][a\\]b]\n\n# Stable\n\nBefore\n\n[a\\]b]: u\n\nAfter [link][a\\]b]\n",
+    "[link][a\\\\]\n\n# Stable\n\nBefore\n\n[a\\\\]: u\n\nAfter [link][a\\\\]\n",
 ];
 #[test]
 fn quoted_definition_seed_resolves_a_retained_prefix() {
@@ -25,6 +27,14 @@ fn quoted_definition_seed_resolves_a_retained_prefix() {
     s.append("[link][r]\n\n# Stable\n\nBefore\n\nTail\n");
     assert!(s.stable_blocks() > 0);
     s.append("\n> [r]: u\n\nAfter\n");
+    assert_eq!(s.document(), &parse(&s.document().source));
+}
+#[test]
+fn escaped_definition_label_seed_resolves_a_retained_prefix() {
+    let mut s = StreamingMarkdown::default();
+    s.append("[link][a\\]b]\n\n# Stable\n\nBefore\n\nTail\n");
+    assert!(s.stable_blocks() > 0);
+    s.append("\n[a\\]b]: u\n\nAfter\n");
     assert_eq!(s.document(), &parse(&s.document().source));
 }
 #[test]
@@ -131,7 +141,8 @@ fn generated_block_mixtures_match_full_parse_after_each_scalar_append() {
         // Seven out of eight seeds contain no definitions: ordinary brackets
         // must exercise prefix reuse. Dedicated seeds still cover late binding.
         if seed % 8 == 0 {
-            source.push_str("\n\n[x][ref] and [^f]\n\n");
+            let label = if seed % 32 == 24 { "multi line" } else { "ref" };
+            source.push_str(&format!("\n\n[x][{label}] and [^f]\n\n"));
             source.push_str(match seed % 32 {
                 0 => "> [ref]: https://example.com\n",
                 8 => "- [ref]: https://example.com\n",

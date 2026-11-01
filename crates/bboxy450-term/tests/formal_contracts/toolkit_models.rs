@@ -416,6 +416,7 @@ mod rework_witnesses {
                     real.jump_to_latest();
                     assert_eq!(after[0], i64::from(real.following()));
                     assert_eq!(after[3] as f32, real.layout_offset().min(after[2] as f32));
+                    assert_eq!((after[1], after[4]), (0, 0), "jump resets both intents");
                 }
             }
         }

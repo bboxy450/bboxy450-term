@@ -49,13 +49,26 @@ fn definition_label(mut line: &str) -> Option<&str> {
     }
 }
 fn definitions(source: &str, from: usize) -> (bool, Option<usize>) {
+    fn closing_bracket(label: &str) -> Option<usize> {
+        let mut bytes = label.bytes().enumerate();
+        while let Some((at, byte)) = bytes.next() {
+            if byte == b'\\' {
+                // Skip an escaped bracket or backslash; even runs of slashes
+                // leave the following bracket available to close the label.
+                bytes.next();
+            } else if byte == b']' {
+                return Some(at);
+            }
+        }
+        None
+    }
     let mut start = from;
     let mut possible = None;
     for line in source[from..].split_inclusive('\n') {
         if let Some(label) = definition_label(line) {
             let label_start = start + line.len() - label.len();
             let rest = &source[label_start..];
-            match rest.find(']') {
+            match closing_bracket(rest) {
                 Some(end) if end > 0 && rest[end + 1..].starts_with(':') => return (true, None),
                 None => {
                     possible.get_or_insert(start);

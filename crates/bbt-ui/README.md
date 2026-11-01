@@ -329,8 +329,10 @@ Slop respectfully. Keep the credit attached.
   applies token colours (`color.ui.ok`, `color.state.errored`) and `Folds` per
   hunk. Toggle a hunk from its `<key>/hunk/<index>/toggle` hit region; reset fold
   state when replacing the diff source. Damaged headers/lines and truncated hunks
-  remain visible as local notes; file and hunk headers always start a new region,
-  even when a preceding hunk's counters are wrong. Diff parsing runs on a host worker.
+  remain visible as local notes. Git file markers always start a new region;
+  paired headers before a hunk recover incorrect counters. Valid body rows such
+  as removals of `-- comment` and additions of `++ x` keep their hunk and numbering.
+  Diff parsing runs on a host worker.
 - `tool_call::ToolCall` uses two `Accordion`s with independent argument/output
   disclosure and a status chip. `toggle` accepts the named header hit regions.
 - `approval::Approval` skips disabled options and handles Up/Down/Home/End/Enter;

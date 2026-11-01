@@ -86,9 +86,20 @@ impl Diff {
         let (mut old, mut new) = (0_u64, 0_u64);
         let (mut old_left, mut new_left) = (0_u64, 0_u64);
         let mut file_headers = true;
-        for line in source.lines() {
-            // Boundaries outrank hunk counters, even when the counters lie.
-            if header(line, "diff --git") || header(line, "---") || header(line, "+++") {
+        let mut lines = source.lines();
+        while let Some(line) = lines.next() {
+            // A body row can also begin with --- or +++. Prefer valid hunk
+            // counters; recover a short hunk at a file-header pair before @@.
+            // A pair that exactly completes the current hunk remains body text.
+            let mut lookahead = lines.clone();
+            let paired_boundary = header(line, "---")
+                && (old_left, new_left) != (1, 1)
+                && lookahead.next().is_some_and(|s| header(s, "+++"))
+                && lookahead.next().is_some_and(|s| s.starts_with("@@"));
+            if header(line, "diff --git")
+                || ((old_left == 0 && new_left == 0 || paired_boundary)
+                    && (header(line, "---") || header(line, "+++")))
+            {
                 finish(&mut out, &mut old_left, &mut new_left);
                 file_headers = true;
                 if out.hunks.is_empty() {

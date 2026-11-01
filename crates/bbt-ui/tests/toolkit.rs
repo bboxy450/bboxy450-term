@@ -169,6 +169,54 @@ fn diff_orphan_note_and_bad_header_do_not_discard_valid_hunks() {
     assert_eq!(bad.hunks[1].lines[0].old, Some(9));
 }
 #[test]
+fn diff_removing_a_comment_prefix_preserves_following_hunk_lines() {
+    let d = Diff::parse("@@ -1,3 +1,2 @@\n--- comment\n keep\n tail\n").unwrap();
+    assert_eq!(d.hunks[0].lines.len(), 3);
+    assert_eq!(d.hunks[0].lines[0].kind, Kind::Removed);
+    assert_eq!(d.hunks[0].lines[0].text, "-- comment");
+    assert_eq!(
+        (d.hunks[0].lines[2].old, d.hunks[0].lines[2].new),
+        (Some(3), Some(2))
+    );
+    assert!(d.trailer.is_empty());
+}
+#[test]
+fn diff_adding_a_double_plus_prefix_preserves_following_hunk_lines() {
+    let d = Diff::parse("@@ -1,2 +1,3 @@\n+++ x\n keep\n tail\n").unwrap();
+    assert_eq!(d.hunks[0].lines.len(), 3);
+    assert_eq!(d.hunks[0].lines[0].kind, Kind::Added);
+    assert_eq!(d.hunks[0].lines[0].text, "++ x");
+    assert_eq!(
+        (d.hunks[0].lines[2].old, d.hunks[0].lines[2].new),
+        (Some(2), Some(3))
+    );
+    assert!(d.trailer.is_empty());
+}
+#[test]
+fn diff_removing_bare_dashes_preserves_following_hunk_lines() {
+    let d = Diff::parse("@@ -1,3 +1,2 @@\n---\n keep\n tail\n").unwrap();
+    assert_eq!(d.hunks[0].lines.len(), 3);
+    assert_eq!(d.hunks[0].lines[0].kind, Kind::Removed);
+    assert_eq!(d.hunks[0].lines[0].text, "--");
+    assert_eq!(
+        (d.hunks[0].lines[2].old, d.hunks[0].lines[2].new),
+        (Some(3), Some(2))
+    );
+    assert!(d.trailer.is_empty());
+}
+#[test]
+fn diff_header_like_body_pairs_can_end_at_the_next_hunk() {
+    for context in ["", " keep\n"] {
+        let n = if context.is_empty() { 1 } else { 2 };
+        let source = format!("@@ -1,{n} +1,{n} @@\n--- old\n+++ new\n{context}@@ -8 +8 @@\n old\n");
+        let d = Diff::parse(&source).unwrap();
+        assert_eq!(d.hunks.len(), 2);
+        assert_eq!(d.hunks[0].lines[0].kind, Kind::Removed);
+        assert_eq!(d.hunks[0].lines[1].kind, Kind::Added);
+        assert!(d.hunks[1].file_headers.is_empty());
+    }
+}
+#[test]
 fn diff_file_headers_win_over_incorrect_hunk_counts() {
     for count in [0, 1, 9] {
         let source = format!(
