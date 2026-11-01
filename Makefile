@@ -213,6 +213,7 @@ help:
 	  'make push                       Push signed, tested HEAD to main (authorization required)' \
 	  'make land-full                  Run full make test after rebase, then land (authorization required)' \
 	  'make land                       Land this branch on main in one go (LAND.md; authorization required)' \
+	  'make dispatch BATCH=x BRIEF=f   Headless Codex Executor on brief f in worktree ../<repo>-cx-x (Oracle only)' \
 	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... LAND_GATE_LOG=... BBOXY_CACHE_MODE=auto|off CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2 RUST_TEST_THREADS=2' \
 	  'GitKB: GITKB_BIN=... PLUGIN_WORKSPACE=/explicit/local/project'
 
@@ -706,9 +707,13 @@ push:
 # One-go landing (LAND.md): scripts/land.sh rebases, runs the gate, rechecks only
 # what overlaps when main moves, then pushes. A private Cargo build dir keeps other
 # worktrees' artifacts out; transient network/TLC-tool failures retry, nothing else.
-.PHONY: land land-full
+.PHONY: land land-full dispatch
 land-full:
 	@$(MAKE) land LAND_ARGS=--full
+
+dispatch:
+	@test -n "$(BATCH)" -a -n "$(BRIEF)" || { echo 'usage: make dispatch BATCH=name BRIEF=path/to/brief.md'; exit 2; }
+	sh scripts/dispatch-codex.sh '$(BATCH)' '$(abspath $(BRIEF))'
 
 land:
 	@set -u; export CARGO_BUILD_BUILD_DIR="$${CARGO_BUILD_BUILD_DIR:-$(abspath $(TARGET_DIR))/private-build}"; \
