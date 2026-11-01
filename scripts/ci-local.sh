@@ -74,7 +74,9 @@ if [ "$after_tests" = false ]; then
     fi
     ledger build cargo build --workspace --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
     ledger build cargo clippy --workspace --all-targets --locked --target-dir "$BBOXY_CARGO_TARGET_DIR" -- -D warnings
-    ledger unit sh scripts/quarantine-test.sh --workspace --locked
+    # The harness deliberately clears CLOEXEC in this one fixture. Run it in
+    # test-harness-native, outside concurrent forking cases, as its own Make does.
+    ledger unit sh scripts/quarantine-test.sh --workspace --locked -- --skip non_pty_spawn_does_not_keep_a_sibling_master_alive
 fi
 ledger integration make test-harness-native TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"

@@ -1838,7 +1838,8 @@ test-harness-native: init-submodules
 	@python3 -I scripts/harness-submodule.py --check-resolution
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo build --locked -p bboxy450-harness --features test-fixtures --target-dir '$(TARGET_DIR)'; \
-	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' mcp_harness_seat_ -- --ignored --nocapture
+	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' mcp_harness_seat_ -- --ignored --nocapture; \
+	cargo test --locked -p bboxy450-harness --test seat_process --target-dir '$(TARGET_DIR)' non_pty_spawn_does_not_keep_a_sibling_master_alive -- --exact
 
 format-harness-embed:
 	@rustfmt --edition 2024 crates/bboxy450-harness-wake-up/src/launch.rs crates/bbt-mux/src/adapters/mod.rs crates/bbt-mux/src/mcp/seats.rs crates/bbt-mux/tests/mcp.rs crates/bboxy450-term/src/settings/roles.rs crates/bbt-proto/src/gui/roles.rs
@@ -1866,3 +1867,17 @@ test-harness-launch:
 .PHONY: check-harness-default
 check-harness-default:
 	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-harness --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-harness-protocol
+test-harness-protocol:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-harness --test protocol_golden --target-dir '$(TARGET_DIR)'
+
+.PHONY: format-harness-protocol
+format-harness-protocol:
+	@rustfmt --edition 2024 crates/bboxy450-harness/src/protocol/mod.rs crates/bboxy450-harness/src/frontends/headless.rs crates/bboxy450-harness/tests/protocol_golden.rs
+
+.PHONY: test-harness-json-isolation
+test-harness-json-isolation:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --workspace --locked --target-dir '$(TARGET_DIR)' ctl_noun_verb_grammar_replies_and_errors; \
+	cargo test --workspace --locked --target-dir '$(TARGET_DIR)' mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority

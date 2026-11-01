@@ -523,7 +523,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
                 "--mcp-config".into(),
                 overlay.join("mcp.json").to_string_lossy().into(),
             ]);
-            notes.push("generic harness: cadence is display-only; autonomous PTY submit requires operator handoff");
+            notes.push("bboxy450-harness: cadence is inferred; automatic input is refused as composer-readiness-missing");
         }
         "claude" => {
             if spec.args.iter().any(|a| a == "--bare") {

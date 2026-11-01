@@ -34,6 +34,7 @@ def initialize(root):
     if head != entry[1]:
         raise ValueError('harness: checkout differs from the pinned gitlink')
     print(f'harness: pinned {head}', flush=True)
+    return True
 
 
 def import_models(root, source, target):
@@ -52,8 +53,38 @@ def import_models(root, source, target):
     print(f'harness: imported {len(rows)} native models for parent TLC parity', flush=True)
 
 
+def workspace_metadata(root, features=()):
+    command = ['cargo', 'metadata', '--format-version', '1', '--locked']
+    if features:
+        command += ['--features', ','.join(features)]
+    return json.loads(subprocess.check_output(command, cwd=root))
+
+
+def validate_json_features(data):
+    packages = {p['id']: p['name'] for p in data['packages']
+                if p['name'] in {'serde_json', 'bboxy450-harness'}}
+    nodes = {n['id']: set(n['features']) for n in data['resolve']['nodes']}
+    if set(packages.values()) != {'serde_json', 'bboxy450-harness'} or not packages.keys() <= nodes.keys():
+        raise ValueError('harness: parent JSON feature inventory is missing')
+    violations = set()
+    for ident, name in packages.items():
+        if name == 'serde_json' and 'preserve_order' in nodes[ident]:
+            violations.add('serde_json/preserve_order')
+        if name == 'bboxy450-harness' and 'acp' in nodes[ident]:
+            violations.add('bboxy450-harness/acp')
+    if violations:
+        raise ValueError('harness: parent feature isolation rejected: ' + ', '.join(sorted(violations)))
+    return sorted(set().union(*(nodes[ident] for ident, name in packages.items() if name == 'serde_json')))
+
+
+def check_json_features(root, features=()):
+    resolved = validate_json_features(workspace_metadata(root, features))
+    print('harness: parent JSON features isolated: ' + ', '.join(resolved), flush=True)
+
+
 def check_resolution(root):
-    data = json.loads(subprocess.check_output(['cargo', 'metadata', '--format-version', '1', '--locked'], cwd=root))
+    data = workspace_metadata(root)
+    validate_json_features(data)
     toolkit = {"bboxy450-rt": "bbt-rt", "bboxy450-yarn": "bbt-yarn", "bboxy450-tlc": "bboxy450-tlc",
                "bboxy450-ui": "bbt-ui", "bboxy450-ui-core": "bbt-ui-model", "bboxy450-render": "bbt-render", "bboxy450-doc": "bbt-doc"}
     for name, directory in toolkit.items():
@@ -109,8 +140,15 @@ def main():
     parser.add_argument('--models', type=Path)
     parser.add_argument('--standalone', action='store_true')
     parser.add_argument('--check-resolution', action='store_true')
+    parser.add_argument('--check-json-features', action='store_true')
+    parser.add_argument('--acp-control', action='store_true', help='reject the real ACP-enabled metadata graph (negative control)')
     parser.add_argument('--target', type=Path)
     args = parser.parse_args()
+    if args.acp_control and not args.check_json_features:
+        parser.error('--acp-control requires --check-json-features')
+    if args.check_json_features:
+        check_json_features(args.root, ['bboxy450-harness/acp'] if args.acp_control else ())
+        return
     if args.check_resolution:
         check_resolution(args.root)
         return
@@ -119,7 +157,8 @@ def main():
     if args.models:
         import_models(args.root, args.models, args.target)
     else:
-        initialize(args.root)
+        if initialize(args.root):
+            check_json_features(args.root)
 
 
 if __name__ == '__main__':
