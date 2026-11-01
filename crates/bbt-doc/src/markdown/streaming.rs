@@ -14,6 +14,23 @@ pub struct StreamingMarkdown {
     tail: usize,
     stable: usize,
     reparsed: Range<usize>,
+    definition_scan: usize,
+    definitions: bool,
+}
+
+// Equivalent to a multiline ^\s{0,3}\[[^\]]+\]: check, without a regex
+// dependency or rescanning the stable prefix. Inline brackets are not global.
+fn definition_line(line: &str) -> bool {
+    let indent = line.chars().take_while(|c| c.is_whitespace()).count();
+    if indent > 3 {
+        return false;
+    }
+    let Some(label) = line.trim_start().strip_prefix('[') else {
+        return false;
+    };
+    label
+        .find(']')
+        .is_some_and(|end| end > 0 && label[end + 1..].starts_with(':'))
 }
 impl StreamingMarkdown {
     pub fn document(&self) -> &Markdown {
@@ -28,14 +45,19 @@ impl StreamingMarkdown {
     }
     pub fn append(&mut self, delta: &str) -> &Markdown {
         if delta.is_empty() {
+            self.reparsed = self.document.source.len()..self.document.source.len();
             return &self.document;
         }
         self.document.source.push_str(delta);
-        // Reference definitions and footnotes have document-wide scope. A later
-        // definition can change an earlier inline, so this conservative guard
-        // invalidates the entire prefix. Closed YAML remains outside the body.
+        // Definitions have document-wide scope, including later uses of an old
+        // definition. Such documents use the full parser's reference context.
+        // Only the previous unfinished line and new bytes need classification.
         // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-        let global = self.document.source.contains('[');
+        self.definitions |= self.document.source[self.definition_scan..]
+            .lines()
+            .any(definition_line);
+        self.definition_scan = self.document.source.rfind('\n').map_or(0, |n| n + 1);
+        let global = self.definitions;
         let unsettled_header = !self.document.source.contains('\n')
             || self
                 .document

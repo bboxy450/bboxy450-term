@@ -90,21 +90,30 @@ fn generated_block_mixtures_match_full_parse_after_each_scalar_append() {
         "é🙂\n",
         "<div>\n",
         "</div>\n",
-        "[x][ref]\n",
-        "[ref]: https://example.com\n",
+        "[x](https://example.com)\n",
+        "`a[i]` and `vec![]`\n",
+        "- [ ] task\n",
         "*em* ",
         "\t",
         "  ",
     ];
+    let mut incremental_seeds = 0;
     for seed in 1..=96_u64 {
         let mut rng = seed;
-        let mut source = String::new();
+        let mut source = "## Stable\n\n[inline](url), `a[i]` and `vec![]`.\n\n".to_string();
         for _ in 0..12 {
             rng = rng.wrapping_mul(6364136223846793005).wrapping_add(1);
             source.push_str(pieces[(rng >> 32) as usize % pieces.len()]);
         }
+        // Seven out of eight seeds contain no definitions: ordinary brackets
+        // must exercise prefix reuse. Dedicated seeds still cover late binding.
+        if seed % 8 == 0 {
+            source
+                .push_str("\n\n[x][ref] and [^f]\n\n[ref]: https://example.com\n[^f]: footnote\n");
+        }
         let mut stream = StreamingMarkdown::default();
         let mut prefix = String::new();
+        let mut retained_appends = 0;
         for ch in source.chars() {
             let part = ch.to_string();
             prefix.push(ch);
@@ -113,6 +122,44 @@ fn generated_block_mixtures_match_full_parse_after_each_scalar_append() {
                 &parse(&prefix),
                 "seed {seed} prefix {prefix:?}"
             );
+            retained_appends += usize::from(stream.reparsed_range().start > 0);
         }
+        incremental_seeds += usize::from(retained_appends * 2 > source.chars().count());
     }
+    assert!(
+        incremental_seeds >= 80,
+        "only {incremental_seeds}/96 seeds primarily used prefix reuse"
+    );
+    eprintln!("generated incremental coverage: {incremental_seeds}/96 seeds");
+}
+
+#[test]
+fn ordinary_brackets_reparse_only_the_open_tail_and_count_bytes() {
+    let mut stream = StreamingMarkdown::default();
+    let mut parsed_bytes = 0;
+    let mut full_bytes = 0;
+    for i in 0..100 {
+        let delta = format!(
+            "## Section {i}\n\n[link](https://example.com) and `a[i]`, `vec![]`, {{\"a\": []}}.\n\n- [ ] task\n- [x] done\n\n```rust\nlet a = vec![1, 2];\nlet n = a[0];\n```\n\nTail {i}\n\n"
+        );
+        let before = stream.document().source.len();
+        stream.append(&delta);
+        let range = stream.reparsed_range();
+        parsed_bytes += range.len();
+        full_bytes += stream.document().source.len();
+        if i > 0 {
+            assert!(
+                range.start >= before.saturating_sub(32),
+                "lost prefix at append {i}: {range:?}"
+            );
+        }
+        assert_eq!(stream.document(), &parse(&stream.document().source));
+    }
+    assert!(
+        parsed_bytes * 10 < full_bytes,
+        "tail {parsed_bytes} versus full {full_bytes}"
+    );
+    eprintln!("ordinary brackets: reparsed={parsed_bytes}, full={full_bytes}");
+    stream.append("");
+    assert!(stream.reparsed_range().is_empty());
 }

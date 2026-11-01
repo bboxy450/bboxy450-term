@@ -322,8 +322,9 @@ Slop respectfully. Keep the credit attached.
   are explicit. Retry gaps or replace from a host snapshot. Retain the controller
   across replacements and call `retire` on drop.
 - `ScrollStick` starts following. Supply real user scroll offsets to
-  `user_scroll`; layout clamps only the projection. `jump_to_latest` restores
-  following without overwriting saved manual intent during growth/reflow.
+  `user_scroll`; reaching or passing the current maximum restores following.
+  Layout clamps only the projection and preserves manual intent during
+  growth/reflow. `jump_to_latest` restores following and resets manual intent.
 - `diff::Diff::parse` prepares unified hunks and old/new line numbers. `DiffView`
   applies token colours (`color.ui.ok`, `color.state.errored`) and `Folds` per
   hunk. Toggle a hunk from its `<key>/hunk/<index>/toggle` hit region; reset fold

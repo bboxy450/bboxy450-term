@@ -82,23 +82,26 @@ impl Diff {
                     });
             } else if old_left > 0 || new_left > 0 {
                 let h = out.hunks.last_mut().ok_or("missing diff hunk")?;
-                let prefix = line.chars().next().ok_or("unprefixed hunk line")?;
-                let kind = match prefix {
-                    ' ' => Kind::Context,
-                    '+' => Kind::Added,
-                    '-' => Kind::Removed,
-                    _ => return Err("invalid diff line"),
+                let (mut kind, mut text) = match line.as_bytes().first() {
+                    None => (Kind::Context, ""),
+                    Some(b' ') => (Kind::Context, &line[1..]),
+                    Some(b'+') => (Kind::Added, &line[1..]),
+                    Some(b'-') => (Kind::Removed, &line[1..]),
+                    _ => (Kind::Note, line),
                 };
-                let consumes_old = kind != Kind::Added;
-                let consumes_new = kind != Kind::Removed;
-                if consumes_old && old_left == 0 || consumes_new && new_left == 0 {
-                    return Err("hunk count exceeded");
+                if kind != Kind::Added && old_left == 0 || kind != Kind::Removed && new_left == 0 {
+                    kind = Kind::Note;
+                    text = line;
                 }
+                // A damaged record consumes the remaining side(s) as context,
+                // preserving subsequent numbering and rendering its raw bytes.
+                let consumes_old = kind != Kind::Added && old_left > 0;
+                let consumes_new = kind != Kind::Removed && new_left > 0;
                 h.lines.push(Line {
                     old: consumes_old.then_some(old),
                     new: consumes_new.then_some(new),
                     kind,
-                    text: line[1..].into(),
+                    text: text.into(),
                 });
                 if consumes_old {
                     old_left -= 1;
@@ -224,7 +227,9 @@ impl DiffView<'_> {
             align: c::Alignment::Stretch,
             children,
         });
-        let [w, h] = body.natural(f32::INFINITY, ctx, m).expect("diff styles").0;
+        let Ok(([w, h], _)) = body.natural(f32::INFINITY, ctx, m) else {
+            return named(self.key, body);
+        };
         named(
             self.key,
             c::Element::ScrollView(c::ScrollView {

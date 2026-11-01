@@ -33,6 +33,54 @@ fn stream_to_view_orders_once_and_retires_dropped_and_aba_generations() {
     assert_eq!(v.apply(a2, 0, |s| s.push('!')), Apply::Applied);
     assert_eq!(v.value().unwrap(), "A!");
 }
+
+#[test]
+fn coalesced_frames_apply_stream_deltas_and_rearm_a_budgeted_tail() {
+    use bbt_rt::{DirtySet, ViewRing, Waker};
+    use std::sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    };
+    #[derive(Default)]
+    struct Wakes(AtomicUsize);
+    impl Waker for Wakes {
+        fn wake(&self) {
+            self.0.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+    fn drive(rearm: bool) -> (Vec<usize>, usize, usize) {
+        let wakes = Arc::new(Wakes::default());
+        let dirty = DirtySet::new(1, wakes.clone());
+        let queue = ViewRing::new(8, dirty.source(0));
+        let mut view = StreamToView::default();
+        let generation = view.open(Vec::new());
+        for sequence in 0..3 {
+            queue.push((generation, sequence));
+        }
+        assert_eq!(wakes.0.load(Ordering::SeqCst), 1, "arrivals must coalesce");
+        let mut frames = 0;
+        while !dirty.drain().is_empty() {
+            frames += 1;
+            assert!(frames <= 2, "no busy frame loop");
+            for _ in 0..2 {
+                if let Some((generation, sequence)) = queue.pop() {
+                    assert_eq!(
+                        view.apply(generation, sequence as u64, |v| v.push(sequence)),
+                        Apply::Applied
+                    );
+                }
+            }
+            if rearm {
+                queue.complete_drain();
+            }
+        }
+        (view.value().unwrap().clone(), frames, queue.len())
+    }
+    assert_eq!(drive(true), (vec![0, 1, 2], 2, 0));
+    // Actual API negative control: omit the bounded-drain completion and the
+    // final admitted delta has no wake. The formal Broken model omits rearm too.
+    assert_eq!(drive(false), (vec![0, 1], 1, 1));
+}
 #[test]
 fn scroll_stick_survives_growth_shrink_and_restores_only_on_explicit_follow() {
     let mut s = ScrollStick::default();
@@ -70,6 +118,22 @@ fn diff_numbers_zero_count_hunks_and_fold_state_are_independent() {
     assert!(!f.closed(1));
     f.toggle(0);
     assert!(!f.closed(0));
+}
+
+#[test]
+fn diff_blank_context_and_one_bad_line_preserve_the_other_lines() {
+    let blank = Diff::parse("@@ -1,3 +1,3 @@\n first\n\n last\n").expect("empty context is valid");
+    assert_eq!(blank.hunks[0].lines[1].text, "");
+    assert_eq!(blank.hunks[0].lines[1].kind, Kind::Context);
+    let bad = Diff::parse("@@ -1,3 +1,3 @@\n first\n?damaged\n last\n")
+        .expect("only damaged line degrades");
+    assert_eq!(bad.hunks[0].lines[0].text, "first");
+    assert_eq!(bad.hunks[0].lines[1].text, "?damaged");
+    assert_eq!(bad.hunks[0].lines[1].kind, Kind::Note);
+    assert_eq!(
+        (bad.hunks[0].lines[2].old, bad.hunks[0].lines[2].new),
+        (Some(3), Some(3))
+    );
 }
 #[test]
 fn approval_skips_disabled_wraps_and_never_chooses_without_enter() {
@@ -111,6 +175,50 @@ fn approval_skips_disabled_wraps_and_never_chooses_without_enter() {
     }
     assert_eq!(p.handle(Key::Enter), None);
     assert_eq!(p.selected(), None);
+}
+
+#[test]
+fn moving_approval_selection_changes_the_painted_focus() {
+    use bbt_ui::{self as ui, components as c};
+    use bbt_ui_model::layout::{Rect, TextMeasure, TextStyle};
+    struct Metrics;
+    impl TextMeasure for Metrics {
+        fn width(&self, text: &str, style: &TextStyle) -> f32 {
+            text.chars().count() as f32 * style.size * 0.5
+        }
+    }
+    impl c::Measure for Metrics {
+        fn font_metrics(&self, s: &TextStyle) -> [f32; 2] {
+            [s.size * 0.8, s.size * 0.2]
+        }
+    }
+    let ctx = ui::Context::new(ui::Theme::Dark, ui::Density::Cozy);
+    let mut p = Approval::new(
+        "choice",
+        "Run?",
+        vec![
+            OptionItem {
+                key: "allow".into(),
+                label: "Allow".into(),
+                enabled: true,
+            },
+            OptionItem {
+                key: "deny".into(),
+                label: "Deny".into(),
+                enabled: true,
+            },
+        ],
+    );
+    let paint = |p: &Approval| {
+        let layout = p
+            .element(ctx)
+            .layout(Rect::new(0., 0., 400., 0.), ctx, &Metrics)
+            .unwrap();
+        format!("{:?}", c::paint(&layout, ctx))
+    };
+    let before = paint(&p);
+    p.handle(Key::Down);
+    assert_ne!(before, paint(&p));
 }
 #[test]
 fn tool_disclosures_toggle_only_the_requested_section() {

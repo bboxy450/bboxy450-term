@@ -49,6 +49,8 @@ help:
 	  'make test                       Full local CI; no operator input' \
 	  'make push-branch                Push the current signed, tested branch for PR review' \
 	  'make test-toolkit               Document append, rich widgets, editor and headless stories' \
+	  'make test-toolkit-models        Toolkit model/code witnesses and broken controls' \
+	  'make list-toolkit-package       UI package list; refuses bundled reports' \
 	  'make stories-toolkit            Headless native rich widget PNG captures' \
 	  'make test-formal                Native Yarn checker + Java TLC graph/verdict parity' \
 	  'make check-formal-evidence      Verify the source-bound formal landing receipt' \
@@ -1664,7 +1666,24 @@ check-seat-ingestion:
 format-seat-ingestion:
 	@rustfmt --edition 2024 --config skip_children=true crates/bbt-supervisor/src/client.rs crates/bbt-supervisor/src/client/wire.rs crates/bbt-supervisor/src/client/tests.rs crates/bbt-supervisor/src/supervisor.rs crates/bbt-supervisor/src/transport.rs crates/bbt-mux/src/provider/fake.rs crates/bbt-mux/src/provider/shared.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/src/logic/ingestion.rs crates/bbt-mux/src/logic/history.rs crates/bbt-mux/src/logic/ring_batch_tests.rs crates/bbt-mux/tests/logic.rs crates/bbt-mux/tests/common/capture_priority.rs crates/bboxy450-term/src/stall/load.rs crates/bboxy450-term/tests/formal_contracts/models.rs
 
-.PHONY: test-toolkit check-toolkit stories-toolkit
+.PHONY: test-toolkit check-toolkit stories-toolkit test-toolkit-rework test-toolkit-models list-toolkit-package format-toolkit
+format-toolkit:
+	@rustfmt --edition 2024 --config skip_children=true crates/bbt-doc/src/markdown/streaming.rs crates/bbt-doc/src/highlight.rs crates/bbt-doc/tests/streaming.rs crates/bbt-ui/src/modules/diff.rs crates/bbt-ui/src/modules/transcript.rs crates/bbt-ui/tests/toolkit.rs crates/bboxybook/tests/toolkit.rs crates/bboxy450-term/tests/formal_contracts/toolkit_models.rs
+
+test-toolkit-rework:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked --no-fail-fast -p bboxy450-doc --test streaming -p bboxy450-ui --test toolkit --target-dir '$(TARGET_DIR)' -- --nocapture
+
+test-toolkit-models:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term --test formal_contracts rework_witnesses --target-dir '$(TARGET_DIR)' -- --nocapture
+
+list-toolkit-package:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo package --list --allow-dirty --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' > '$(TARGET_DIR)/toolkit-package-list.txt'; \
+	if rg '^reports/' '$(TARGET_DIR)/toolkit-package-list.txt'; then exit 1; fi; \
+	cat '$(TARGET_DIR)/toolkit-package-list.txt'
+
 test-toolkit:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-doc -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \

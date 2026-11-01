@@ -7,6 +7,7 @@
 //! Owned, off-thread code preparation. Layout consumes spans; it never lexes.
 use crate::{Block, BlockKind, Markdown};
 use std::collections::BTreeMap;
+use std::sync::OnceLock;
 use syntect::{
     easy::HighlightLines,
     highlighting::{FontStyle, ThemeSet},
@@ -25,17 +26,23 @@ pub struct Span {
 pub trait Highlighter {
     fn highlight(&self, info: &str, text: &str) -> Vec<Span>;
 }
-pub struct RustHighlighter {
+struct Resources {
     syntaxes: SyntaxSet,
     themes: ThemeSet,
+}
+static RESOURCES: OnceLock<Resources> = OnceLock::new();
+pub struct RustHighlighter {
+    resources: &'static Resources,
     light: bool,
 }
 impl RustHighlighter {
     pub fn new(light: bool) -> Self {
         bbt_rt::assert_not_ui_thread();
         Self {
-            syntaxes: SyntaxSet::load_defaults_newlines(),
-            themes: ThemeSet::load_defaults(),
+            resources: RESOURCES.get_or_init(|| Resources {
+                syntaxes: SyntaxSet::load_defaults_newlines(),
+                themes: ThemeSet::load_defaults(),
+            }),
             light,
         }
     }
@@ -44,10 +51,11 @@ impl Highlighter for RustHighlighter {
     fn highlight(&self, info: &str, text: &str) -> Vec<Span> {
         bbt_rt::assert_not_ui_thread();
         let syntax = self
+            .resources
             .syntaxes
             .find_syntax_by_token(info.split_whitespace().next().unwrap_or(""))
-            .unwrap_or_else(|| self.syntaxes.find_syntax_plain_text());
-        let theme = &self.themes.themes[if self.light {
+            .unwrap_or_else(|| self.resources.syntaxes.find_syntax_plain_text());
+        let theme = &self.resources.themes.themes[if self.light {
             "InspiredGitHub"
         } else {
             "base16-ocean.dark"
@@ -55,7 +63,7 @@ impl Highlighter for RustHighlighter {
         let mut h = HighlightLines::new(syntax, theme);
         let mut spans = vec![];
         for line in text.split_inclusive('\n') {
-            let Ok(ranges) = h.highlight_line(line, &self.syntaxes) else {
+            let Ok(ranges) = h.highlight_line(line, &self.resources.syntaxes) else {
                 return vec![];
             };
             for (style, value) in ranges {
@@ -69,6 +77,17 @@ impl Highlighter for RustHighlighter {
             }
         }
         spans
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn prepared_jobs_share_syntax_and_theme_resources() {
+        let a = RustHighlighter::new(false);
+        let b = RustHighlighter::new(true);
+        assert!(std::ptr::eq(a.resources, b.resources));
     }
 }
 #[derive(Debug, Clone)]

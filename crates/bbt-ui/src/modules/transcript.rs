@@ -96,6 +96,23 @@ impl ScrollStick {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn endpoint_scroll_follows_and_jump_resets_manual_intent() {
+        let mut s = ScrollStick::default();
+        s.user_scroll(2., 3.);
+        assert!(!s.following());
+        assert_eq!(s.requested, 2.);
+        s.user_scroll(3., 3.);
+        assert!(s.following());
+        s.jump_to_latest();
+        assert_eq!(s.requested, 0.);
+        assert!(s.following());
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Apply {
     Applied,

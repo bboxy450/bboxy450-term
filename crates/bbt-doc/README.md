@@ -55,14 +55,18 @@ Slop respectfully. Keep the credit attached.
 `StreamingMarkdown::append` retains completed prefix blocks, reparses the open
 tail and preserves absolute UTF-8 source offsets. An incomplete first line may
 still join its predecessor (notably a table row), so that predecessor remains in
-the tail until the line settles. EOF alone never freezes a block. Brackets can
-introduce document-wide reference/footnote dependencies; those documents use a
-conservative full-parse fallback. YAML remains unsettled until its delimiter
+the tail until the line settles. EOF alone never freezes a block. Only reference
+or footnote definition lines (`^\s{0,3}\[[^\]]+\]:`) introduce document-wide
+dependencies; those documents retain the full parser's reference context.
+Inline links, task lists, indexing and JSON brackets keep prefix reuse. The
+definition scanner examines only the unfinished line and appended bytes.
+YAML remains unsettled until its delimiter
 closes. `reparsed_range()` exposes the work actually performed.
 
 `highlight::Highlighter` is the owned-span hook. `RustHighlighter` uses syntect
-5.3 with `fancy-regex`, without native Oniguruma. Construct/reuse highlighters on
-a preparation worker. `Highlights::prepare` validates exact text coverage and
+5.3 with only parsing, bundled syntaxes/themes and `regex-fancy`. The SyntaxSet
+and ThemeSet are shared through a process `OnceLock`, initialized on a preparation
+worker. `Highlights::prepare` validates exact text coverage and
 binds spans to the block offset, language and source; unsupported languages keep
 plain readable text. `highlighted_body_element` only composes prepared runs.
 
