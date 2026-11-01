@@ -4406,11 +4406,15 @@ impl App {
         }
     }
     fn update_launcher_runs(&mut self) {
+        let transports = bboxy450_term::settings::registry::transports(self.live_state.as_deref());
         if let Some(params) = self
             .launcher
             .as_mut()
             .and_then(|l| l.launcher.params.as_mut())
         {
+            if bboxy450_term::spawn_params::refresh_transport_fields(&mut params.fields, &transports) {
+                params.refresh();
+            }
             let home = std::env::var("HOME").unwrap_or_default();
             params.runs = self.launch_directory_error.clone().unwrap_or_else(|| {
                 bboxy450_term::spawn_params::Resolved::from_fields(&params.fields, &home)
@@ -4478,7 +4482,7 @@ impl App {
                     connect: route,
                     ..Default::default()
                 });
-            bboxy450_term::spawn_params::with_machine(fields, &defaults)
+            bboxy450_term::spawn_params::with_machine_transports(fields, &defaults, &bboxy450_term::settings::registry::transports(model))
         } else {
             fields
         }
@@ -7524,7 +7528,7 @@ impl App {
                         .fields
                         .iter()
                         .map(|f| bbt_proto::gui::UiSpawnField {
-                            label: f.key.label().into(),
+                            label: f.label().into(),
                             value: f.value.clone(),
                             source: f.source.label().into(),
                             fixed: f.fixed,

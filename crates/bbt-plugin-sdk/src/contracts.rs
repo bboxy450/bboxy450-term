@@ -24,7 +24,7 @@ use serde_json::Value;
 
 use crate::{AuthStatus, Contract, Ctx, HookEvent, HookReply, Init, Manifest, Plugin, Refusal};
 use bbt_plugin::{data_source as ds, decision_model as dm, event_sink as es, provider as pv};
-use bbt_plugin::{repo_graph as rg, session as ss, task_system as ts};
+use bbt_plugin::{repo_graph as rg, session as ss, task_system as ts, transport as tr};
 
 /// Everything but the contract methods: the descriptor, root binding and the
 /// optional tool, hook, health and auth entry points (all with
@@ -238,6 +238,22 @@ pub fn serve_repo_graph<T: RepoGraph>(
     }
 }
 
+/// `transport` 1.0: wrap an inner argv with the declared launch fields.
+pub trait Transport {
+    fn wrap(&mut self, req: tr::WrapRequest, ctx: &Ctx) -> Result<tr::WrapResult, Refusal>;
+}
+pub fn serve_transport<T: Transport>(
+    plugin: &mut T,
+    method: &str,
+    args: Value,
+    ctx: &Ctx,
+) -> Result<Value, Refusal> {
+    match method {
+        "wrap" => typed(args, |r| plugin.wrap(r, ctx)),
+        _ => Err(unknown(Contract::Transport, method)),
+    }
+}
+
 /// `session` 0.1: describe external harness sessions.
 pub trait Session {
     fn describe(
@@ -357,6 +373,11 @@ adapter!(
 adapter!(
     /// Serve a [`Provider`] as a whole plugin.
     AsProvider, Provider, Contract::Provider, serve_provider
+);
+
+adapter!(
+    /// Serve a [`Transport`] as a whole plugin.
+    AsTransport, Transport, Contract::Transport, serve_transport
 );
 
 #[cfg(test)]

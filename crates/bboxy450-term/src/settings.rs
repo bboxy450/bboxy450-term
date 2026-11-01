@@ -446,8 +446,15 @@ pub fn records(
     out.machine_controls = true;
     for (id, machine) in &preferences.machines {
         if !out.destination_ids.values().any(|observed| observed == id) {
-            out.destination_ids.insert(format!("machine/{}", out.machines.len()), id.clone());
-            out.machines.push((id.trim_start_matches("ssh:").into(), machine.connect.clone(), String::new(), machine.key.clone(), bbt_ui::modules::link::MachineState::Legacy(false)));
+            out.destination_ids
+                .insert(format!("machine/{}", out.machines.len()), id.clone());
+            out.machines.push((
+                id.trim_start_matches("ssh:").into(),
+                machine.connect.clone(),
+                String::new(),
+                machine.key.clone(),
+                bbt_ui::modules::link::MachineState::Legacy(false),
+            ));
         }
     }
     for (row, id) in &out.destination_ids {
@@ -770,10 +777,15 @@ fn parse(doc: &DocumentMut) -> Result<Preferences, String> {
         }
     }
     let read_number = |name: &str| -> Result<Option<f32>, String> {
-        doc.get("sidebar").and_then(|section| section.get(name)).map(|item| {
-            item.as_float().or_else(|| item.as_integer().map(|v| v as f64))
-                .map(|v| v as f32).ok_or_else(|| format!("invalid Settings sidebar.{name}; file was not changed"))
-        }).transpose()
+        doc.get("sidebar")
+            .and_then(|section| section.get(name))
+            .map(|item| {
+                item.as_float()
+                    .or_else(|| item.as_integer().map(|v| v as f64))
+                    .map(|v| v as f32)
+                    .ok_or_else(|| format!("invalid Settings sidebar.{name}; file was not changed"))
+            })
+            .transpose()
     };
     preferences.apply(&Patch::SidebarLayout {
         conversation_fraction: read_number("conversation_fraction")?.unwrap_or(0.45),
@@ -887,6 +899,17 @@ fn parse(doc: &DocumentMut) -> Result<Preferences, String> {
             .ok_or("Settings [machines] must be a table")?;
         for (id, table) in machines.iter() {
             let mut machine = bbt_ui::modules::settings::Machine::default();
+            if let Some(params) = table.get("parameters").and_then(Item::as_table_like) {
+                for (key, value) in params.iter() {
+                    machine.parameters.insert(
+                        key.into(),
+                        value
+                            .as_str()
+                            .ok_or("Transport parameter must be text")?
+                            .into(),
+                    );
+                }
+            }
             for (key, _) in bbt_ui::modules::settings::machines::FIELDS {
                 if let Some(value) = table.get(key) {
                     if key == "routes" {
@@ -1009,8 +1032,12 @@ impl Store {
                     Value::from(*conversation_fraction as f64),
                 );
                 if let Some(height) = composer_body_height {
-                    roles::replace(&mut doc["sidebar"]["composer_body_height"], Value::from(*height as f64));
-                } else if let Some(table) = doc.get_mut("sidebar").and_then(Item::as_table_like_mut) {
+                    roles::replace(
+                        &mut doc["sidebar"]["composer_body_height"],
+                        Value::from(*height as f64),
+                    );
+                } else if let Some(table) = doc.get_mut("sidebar").and_then(Item::as_table_like_mut)
+                {
                     table.remove("composer_body_height");
                 }
                 if let Some(height) = tasks_height {
@@ -1025,6 +1052,15 @@ impl Store {
                 continue;
             }
             if let Patch::MachineLaunch { id, machine } = patch {
+                let mut params = toml_edit::Table::new();
+                for (key, value) in &machine.parameters {
+                    params[key] = toml_edit::value(value.clone());
+                }
+                if !machine.parameters.is_empty() {
+                    doc["machines"][id]["parameters"] = Item::Table(params);
+                } else if let Some(table) = doc["machines"][id].as_table_like_mut() {
+                    table.remove("parameters");
+                }
                 for (key, _) in bbt_ui::modules::settings::machines::FIELDS {
                     let value = if key == "routes" {
                         Value::Array(machine.routes.iter().map(String::as_str).collect())

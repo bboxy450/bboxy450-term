@@ -18,8 +18,9 @@ use bboxy450_tlc::{Expr, Model, Response};
 
 /// Every shipped family of this crate.
 mod hook_budget;
+mod transport_launch;
 
-pub fn families() -> [fn(bool) -> Model; 6] {
+pub fn families() -> [fn(bool) -> Model; 7] {
     [
         plugin_activation,
         plugin_connection,
@@ -27,6 +28,7 @@ pub fn families() -> [fn(bool) -> Model; 6] {
         plugin_setup,
         plugin_hook_queue,
         hook_budget::plugin_hook_budget,
+        transport_launch::plugin_transport_launch,
     ]
 }
 

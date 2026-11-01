@@ -41,6 +41,8 @@ def run(binary, script, out, native_copy_test=None):
     (root / "zsh-config/.zprofile").write_text("export PATH=" + shlex.quote(env["PATH"]) + "\n")
     if script.stem == "G3":
         env["BBOXY_G3_FIXTURE"] = str(Path(os.environ["BBOXY_G3_FIXTURE"]).resolve(strict=True))
+    if os.environ.get("BBOXY_TRANSPORT_PLUGIN"):
+        env["BBOXY_TRANSPORT_PLUGIN"] = str(Path(os.environ["BBOXY_TRANSPORT_PLUGIN"]).resolve(strict=True))
     calls = []
 
     def ctl(*args, check=True):
@@ -127,6 +129,9 @@ def main():
         fixture = Path(os.environ["BBOXY_G3_FIXTURE"]).resolve(strict=True)
         manifest["sdk_fixtures"] = {str(p): digest(p) for p in fixture.glob("bboxy450-term-*")}
         manifest["inputs"][str(scripts / "plugins.py")] = digest(scripts / "plugins.py")
+    if os.environ.get("BBOXY_TRANSPORT_PLUGIN"):
+        fixture = Path(os.environ["BBOXY_TRANSPORT_PLUGIN"]).resolve(strict=True)
+        manifest["transport_sdk_fixture"] = {str(fixture): digest(fixture)}
     (args.out / "invocation.json").write_text(json.dumps(manifest, indent=2) + "\n")
     verdicts = [run(binary, scripts / (name + ".sh"), args.out) for name in args.only]
     passed = all(v["status"] == "pass" and v["coverage"] == "full" and v["exit_code"] == 0 for v in verdicts)

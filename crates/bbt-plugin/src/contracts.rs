@@ -14,7 +14,7 @@ use crate::{
     policy::{RoleClass, Tier},
 };
 
-/// The seven systems briefed in P-0. Describe-only contracts stay at 0.1.
+/// App-owned systems. Describe-only contracts stay at 0.1.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Contract {
@@ -25,11 +25,12 @@ pub enum Contract {
     RepoGraph,
     DecisionModel,
     Provider,
+    Transport,
 }
 
 impl Contract {
     /// All known system tokens, also used for longest-token filename matching.
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::DataSource,
         Self::TaskSystem,
         Self::EventSink,
@@ -37,6 +38,7 @@ impl Contract {
         Self::RepoGraph,
         Self::DecisionModel,
         Self::Provider,
+        Self::Transport,
     ];
 
     /// A stable wire token; it does not depend on the app's filename prefix.
@@ -49,6 +51,7 @@ impl Contract {
             Self::RepoGraph => "repo_graph",
             Self::DecisionModel => "decision_model",
             Self::Provider => "provider",
+            Self::Transport => "transport",
         }
     }
 
@@ -72,7 +75,7 @@ impl Contract {
     pub fn tier(self) -> Tier {
         match self {
             Self::RepoGraph => Tier::Read,
-            Self::Session | Self::Provider => Tier::Transport,
+            Self::Session | Self::Provider | Self::Transport => Tier::Transport,
             _ => Tier::Export,
         }
     }
@@ -103,6 +106,7 @@ impl Contract {
             Self::RepoGraph => &["describe", "changes_since"],
             Self::Session | Self::Provider => &["describe"],
             Self::EventSink => &["deliver"],
+            Self::Transport => &["wrap"],
             Self::DecisionModel => &["choose"],
         }
     }
@@ -115,7 +119,7 @@ impl Contract {
                 format!("{} has no callable method {method}", self.name()),
             ));
         }
-        Ok(if self == Self::EventSink {
+        Ok(if matches!(self, Self::EventSink | Self::Transport) {
             RoleClass::HostOnly
         } else if self == Self::DecisionModel
             || self == Self::DataSource && method == "commit"
@@ -155,6 +159,7 @@ impl Contract {
             Self::RepoGraph => include_str!("../schemas/repo_graph-1.0.schema.json"),
             Self::DecisionModel => include_str!("../schemas/decision_model-1.0.schema.json"),
             Self::Provider => include_str!("../schemas/provider-0.1.schema.json"),
+            Self::Transport => include_str!("../schemas/transport-1.0.schema.json"),
         }
     }
 }

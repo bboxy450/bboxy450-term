@@ -149,9 +149,10 @@ impl Controller {
                 self.section == "Machines"
                     && values.machine_controls
                     && values.machine_defaults.contains_key(id)
-                    && super::super::machines::FIELDS
+                    && values.machine_defaults[id]
+                        .edit_fields(&values.plugin_transports)
                         .iter()
-                        .any(|(name, _)| *name == key)
+                        .any(|(name, _)| name == key)
             }
             Field::RoleNew => self.section == "Roles" || !self.query.trim().is_empty(),
             Field::RoleAdd
@@ -183,12 +184,15 @@ impl Controller {
     }
     pub(super) fn role_fields(&self, values: &Records) -> Vec<Field> {
         if self.section == "Machines" {
-            if !values.machine_controls { return vec![]; }
+            if !values.machine_controls {
+                return vec![];
+            }
             return std::iter::once(Field::MachineNew)
-                .chain(values.machine_defaults.keys().flat_map(|id| {
-                    super::super::machines::FIELDS
-                        .iter()
-                        .map(move |(key, _)| Field::Machine(id.clone(), (*key).into()))
+                .chain(values.machine_defaults.iter().flat_map(|(id, machine)| {
+                    machine
+                        .edit_fields(&values.plugin_transports)
+                        .into_iter()
+                        .map(move |(key, _)| Field::Machine(id.clone(), key))
                 }))
                 .collect();
         }
@@ -718,11 +722,11 @@ impl Regions {
         };
         if section == "Machines" {
             add("machine/new".into(), Field::MachineNew);
-            for id in view.values.machine_defaults.keys() {
-                for (key, _) in super::super::machines::FIELDS {
+            for (id, machine) in &view.values.machine_defaults {
+                for (key, _) in machine.edit_fields(&view.values.plugin_transports) {
                     add(
-                        super::super::machines::region(id, key),
-                        Field::Machine(id.clone(), key.into()),
+                        super::super::machines::region(id, &key),
+                        Field::Machine(id.clone(), key),
                     );
                 }
             }

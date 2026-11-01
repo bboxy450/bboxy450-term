@@ -177,6 +177,14 @@ struct Authority {
     record: TrustRecord,
 }
 
+/// A wrap result retains the authority that produced it until the launch owner
+/// checks its captured root and this activation immediately before spawning.
+pub struct TransportPlan {
+    pub argv: Vec<String>,
+    candidate: String,
+    authority: Authority,
+}
+
 /// Each plugin has up to one connection per lane.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum Lane {
@@ -736,6 +744,75 @@ impl PluginHost {
                 Err(reason)
             }
         }
+    }
+
+    /// Host-only transport resolution on an IO worker; field names/defaults
+    /// come from the trusted shape, never from a plugin's returned argv.
+    pub fn wrap_transport(
+        &self,
+        provider: &str,
+        fields: &std::collections::BTreeMap<String, String>,
+        command: Vec<String>,
+        deadline: Instant,
+    ) -> d::Result<TransportPlan> {
+        let entries = self
+            .0
+            .registry
+            .refresh()
+            .map_err(|e| error(&e.code, e.message))?;
+        let matching: Vec<_> = entries
+            .iter()
+            .filter(|e| {
+                e.candidate
+                    .name
+                    .as_ref()
+                    .is_some_and(|n| n.system == Contract::Transport && n.provider == provider)
+            })
+            .collect();
+        let entry = match matching.as_slice() {
+            [entry] if entry.state() == bbt_plugin::registry::State::Enabled => *entry,
+            _ => {
+                return Err(error(
+                    "transport_unavailable",
+                    "transport must be uniquely discovered, trusted, checked and enabled",
+                ));
+            }
+        };
+        let candidate = entry.candidate.id.clone();
+        let (authority, _) = self.authorize(&candidate)?;
+        let shape = authority.record.shape.as_ref().expect("authorized shape");
+        let fields = bbt_plugin::transport::resolve_fields(&shape.spawn_fields, fields)
+            .map_err(|e| error(&e.code, e.message))?;
+        let result = self.call(
+            &candidate,
+            Contract::Transport,
+            "wrap",
+            json!({"fields":fields,"command":command}),
+            deadline,
+        )?;
+        if self.authorize(&candidate)?.0 != authority {
+            return Err(error(
+                "transport_changed",
+                "transport authority changed during wrap",
+            ));
+        }
+        let result: bbt_plugin::transport::WrapResult = serde_json::from_value(result)
+            .map_err(|e| error("invalid_provider_result", e.to_string()))?;
+        Ok(TransportPlan {
+            argv: result.argv,
+            candidate,
+            authority,
+        })
+    }
+
+    /// No IO on the launch owner: plugin control reconciliation removes a
+    /// superseded connection before acknowledging the disable/re-pin.
+    pub fn transport_plan_current(&self, plan: &TransportPlan) -> bool {
+        self.0.state.lock().is_ok_and(|s| {
+            s.connections
+                .get(&(plan.candidate.clone(), Lane::Calls))
+                .is_some_and(|c| c.authority == plan.authority)
+        })
     }
 
     /// Close every connection whose authority is no longer current and

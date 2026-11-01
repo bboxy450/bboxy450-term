@@ -2101,6 +2101,7 @@ mod gui_tests {
                 SeatRecord::new(seat, swarm, "role fixture", "cat"),
                 harness,
                 crate::adapters::launch::LaunchOptions {
+                    transport_argv: None,
                     via: None,
                     env: vec![("PATH".into(), "/usr/bin:/bin".into())],
                     cwd: repository,
@@ -2193,7 +2194,12 @@ mod gui_tests {
         )
         .unwrap();
         let device = logic.client.gui_device().await.unwrap().id;
-        let device_public = key_store.load(device).unwrap().unwrap().verifying_key().to_bytes();
+        let device_public = key_store
+            .load(device)
+            .unwrap()
+            .unwrap()
+            .verifying_key()
+            .to_bytes();
         let spec = LaunchSpec::new("/bin/cat", root.path());
         let seat = spec.seat;
         let swarm = Ulid::new();

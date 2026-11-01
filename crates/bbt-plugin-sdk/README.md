@@ -22,6 +22,7 @@ JSON Schema in `schemas/` that both the host and the SDK use.
 | `repo_graph` 1.0 | repositories under a root and their relations | describe, changes_since | `RepoGraph` / `AsRepoGraph` | `bboxy450-term-repo_graph-example` |
 | `session` 0.1 | external harness sessions | describe | `Session` / `AsSession` | `bboxy450-term-session-example` |
 | `provider` 0.1 | hosts seats may run on | describe | `Provider` / `AsProvider` | `bboxy450-term-provider-example` |
+| `transport` 1.0 | host-only command wrapper with declared launcher fields | wrap | `Transport` / `AsTransport` | `bboxy450-term-transport-example` |
 
 The executable is named `bboxy450-term-<contract>-<provider>`
 (`[a-z0-9-]` provider). Authority never crosses a contract: `root`, `author`,
@@ -181,3 +182,9 @@ its model and a broken control that must fail.
 
 Project-owned contributions use the [Respectful Slop License 1.0-Draft](LICENSE);
 see [ATTRIBUTION.md](ATTRIBUTION.md) and [NOTICE](NOTICE).
+
+Transport parameters are declared with `Manifest::transport_field(name, label, default)`.
+The trusted shape supplies defaults and field names; unknown or missing fields
+are refused before `wrap`. Return literal argv, never a shell-expanded field.
+Settings > Machines lists discovered transports, and enabled transports appear
+as `plugin:<provider>` Via choices. Built-in ssh/mosh/et remain available.

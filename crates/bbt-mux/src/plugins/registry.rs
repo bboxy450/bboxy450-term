@@ -52,7 +52,7 @@ pub use source::{DataSourceProvider, ProviderConfig, ProviderObservation};
 mod host;
 pub use host::{
     HOOK_QUEUE, HOST_OWNED, HookEvent, HookOutcome, MAX_CONCURRENT_CALLS, PluginHost, SeatTool,
-    Verdict, seat_role,
+    TransportPlan, Verdict, seat_role,
 };
 pub use host::{MessageSender, RecordReader};
 #[path = "hook_budget.rs"]

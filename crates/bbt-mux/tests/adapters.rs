@@ -251,6 +251,7 @@ exec /bin/sleep 30
                 record,
                 harness,
                 bbt_mux::adapters::launch::LaunchOptions {
+                    transport_argv: None,
                     via: None,
                     env,
                     cwd: root.clone(),
@@ -705,6 +706,7 @@ fn logic_refuses_a_forged_codex_role_class_without_admitting_a_seat() {
             record.clone(),
             HarnessRecord::builtin("codex").unwrap(),
             bbt_mux::adapters::launch::LaunchOptions {
+                transport_argv: None,
                 via: None,
                 env: vec![],
                 cwd: directory.path().into(),
@@ -1010,6 +1012,7 @@ fn adapters_logic_launch_retains_overlay_until_exit_and_authenticates_shim_fallb
             record,
             HarnessRecord::builtin("zsh").unwrap(),
             bbt_mux::adapters::launch::LaunchOptions {
+                transport_argv: None,
                 via: None,
                 env: vec![],
                 cwd: temp.path().into(),

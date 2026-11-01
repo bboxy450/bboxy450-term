@@ -604,7 +604,9 @@ pub(super) fn picker(
 // https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 pub(super) fn machines(view: &Settings, b: &Build, state: &Presentation) -> Vec<c::Item> {
     let mut cards = vec![view.machines(b, false).into()];
-    if !view.values.machine_controls { return cards; }
+    if !view.values.machine_controls {
+        return cards;
+    }
     cards.push(
         b.card(
             "machine/new/card",
@@ -625,21 +627,57 @@ pub(super) fn machines(view: &Settings, b: &Build, state: &Presentation) -> Vec<
         )
         .into(),
     );
+    if !view.values.plugin_transports.is_empty() {
+        let rows = view
+            .values
+            .plugin_transports
+            .iter()
+            .enumerate()
+            .map(|(index, t)| {
+                b.note(
+                    &format!("transport/{index}"),
+                    &format!(
+                        "{} · {} · Via {} · fields: {}",
+                        t.name,
+                        t.status,
+                        t.id,
+                        t.fields
+                            .iter()
+                            .map(|f| f.label.as_str())
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    ),
+                    true,
+                )
+                .into()
+            })
+            .collect();
+        cards.push(
+            b.card(
+                "plugin-transports",
+                "Plugin transports",
+                rows,
+                [4., 14., 10., 14.],
+            )
+            .into(),
+        );
+    }
     for (id, machine) in &view.values.machine_defaults {
-        let fields = super::machines::FIELDS
+        let fields = machine
+            .edit_fields(&view.values.plugin_transports)
             .into_iter()
             .map(|(key, label)| {
-                let region = super::machines::region(id, key);
+                let region = super::machines::region(id, &key);
                 b.field(
                     &format!("{region}/field"),
-                    label,
+                    &label,
                     None,
                     text_input(
                         b,
                         &region,
-                        Field::Machine(id.clone(), key.into()),
-                        &machine.value(key),
-                        label,
+                        Field::Machine(id.clone(), key.clone()),
+                        &machine.value(&key),
+                        &label,
                         state,
                         key == "routes",
                     ),

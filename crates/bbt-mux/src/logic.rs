@@ -221,6 +221,7 @@ enum Command {
         crate::mcp::Door,
         oneshot::Sender<Result<bbt_proto::SeatId>>,
     ),
+    PluginTransportReady(Box<plugin_transport::Completion>),
     GuiMessaging(
         Ulid,
         Ulid,
@@ -2198,6 +2199,8 @@ struct LegacySaved {
 // captured. A new overlay supplies fresh endpoint capabilities on every launch.
 #[derive(Serialize, Deserialize)]
 struct RecoveryLaunch {
+    #[serde(default)]
+    transport_argv: Option<Vec<String>>,
     #[serde(default)]
     via: Option<bbt_proto::TransportSpec>,
     #[serde(default)]
@@ -4918,6 +4921,7 @@ impl Worker {
                         record,
                         harness,
                         crate::adapters::launch::LaunchOptions {
+                            transport_argv: None,
                             via: None,
                             env: vec![],
                             cwd: args.cwd.canonicalize()?,
@@ -6288,6 +6292,7 @@ impl Worker {
         store.put(
             "recovery_launch",
             &serde_json::to_vec(&RecoveryLaunch {
+                transport_argv: options.transport_argv.clone(),
                 via: options.via.clone(),
                 environment: if options.via.is_some() {
                     options.env
@@ -6453,6 +6458,7 @@ impl Worker {
                 record,
                 harness,
                 crate::adapters::launch::LaunchOptions {
+                    transport_argv: context.transport_argv,
                     via: context.via,
                     env: context.environment,
                     cwd,
@@ -9534,8 +9540,13 @@ impl Worker {
             return Err(invalid("reserved_spawn_environment"));
         }
         if let Some(via) = &spec.via {
-            via.argv(&spec.cwd, &harness.command, &spec.env)
-                .map_err(invalid)?;
+            if via.kind.starts_with("plugin:") {
+                bbt_proto::TransportSpec::inner_command(
+                    &spec.cwd, &harness.command, &spec.env,
+                ).map_err(invalid)?;
+            } else {
+                via.argv(&spec.cwd, &harness.command, &spec.env).map_err(invalid)?;
+            }
         }
         let swarm = Ulid::from(spec.swarm.0.0);
         let name = match spec.name {
@@ -9559,6 +9570,7 @@ impl Worker {
             record,
             harness,
             crate::adapters::launch::LaunchOptions {
+                transport_argv: None,
                 via: spec.via,
                 env: spec.env,
                 cwd: spec.cwd.into(),
@@ -9896,9 +9908,14 @@ impl Worker {
                         self.start_gui_swarm(*action, origin, reply);
                     }
                     Command::GuiSpawn(id, spec, door, reply) => {
-                        let result = self.gui_spawn(id, spec, door);
-                        let _ = reply.send(result);
+                        if spec.via.as_ref().is_some_and(|via| via.kind.starts_with("plugin:")) {
+                            self.start_plugin_transport(id, spec, door, reply);
+                        } else {
+                            let result = self.gui_spawn(id, spec, door);
+                            let _ = reply.send(result);
+                        }
                     }
+                    Command::PluginTransportReady(done) => self.finish_plugin_transport(*done),
                     Command::GuiMessaging(id, swarm, request, origin, reply) => {
                         let result = self.gui_messaging(id, swarm, request, origin);
                         let _ = reply.send(result);
@@ -12050,3 +12067,6 @@ mod native_hook_tests {
             });
     }
 }
+
+#[path = "logic/plugin_transport.rs"]
+mod plugin_transport;

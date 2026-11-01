@@ -100,6 +100,7 @@ The tier is the data that leaves the machine; a contract's tier is the highest o
 | `decision_model` | export | the state, instructions and criteria of every decision go to a hosted model |
 | `session` | transport | keystrokes and output of an external session |
 | `provider` | transport | a supervisor link: every byte of every seat it hosts |
+| `transport` | transport | the wrapped command, environment and declared connection fields |
 
 Hook events raise the effective tier: a `read` plugin subscribed to a payload event is `export` in practice and is shown so ([[plugins]] §1 Hooks). P-0's trust-record type takes this table as data.
 

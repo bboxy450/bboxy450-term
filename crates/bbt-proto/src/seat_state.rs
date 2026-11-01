@@ -72,9 +72,33 @@ pub struct TransportSpec {
     pub port: Option<u16>,
     #[serde(default)]
     pub key: Option<String>,
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub fields: std::collections::BTreeMap<String, String>,
 }
 impl TransportSpec {
+    pub fn inner_command(
+        cwd: &str,
+        argv: &[String],
+        env: &[(String, String)],
+    ) -> Result<String, String> {
+        bbt_ui_model::transport::remote_command(cwd, argv, env)
+    }
     pub fn validate(&self) -> Result<(), String> {
+        if let Some(provider) = self.kind.strip_prefix("plugin:") {
+            if provider.is_empty()
+                || provider.len() > 128
+                || !provider
+                    .bytes()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-')
+                || self.fields.len() > 32
+                || self.fields.iter().any(|(k, v)| {
+                    k.is_empty() || k.len() > 64 || v.len() > 4096 || v.contains('\0')
+                })
+            {
+                return Err("Invalid plugin transport fields".into());
+            }
+            return Ok(());
+        }
         bbt_ui_model::transport::Transport {
             kind: &self.kind,
             route: &self.route,
@@ -89,6 +113,9 @@ impl TransportSpec {
         argv: &[String],
         env: &[(String, String)],
     ) -> Result<Vec<String>, String> {
+        if self.kind.starts_with("plugin:") {
+            return Err("Plugin transport argv is resolved by the plugin host".into());
+        }
         let inner = bbt_ui_model::transport::remote_command(cwd, argv, env)?;
         bbt_ui_model::transport::Transport {
             kind: &self.kind,

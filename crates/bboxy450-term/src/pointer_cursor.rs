@@ -507,6 +507,7 @@ mod tests {
             "available",
             vec![
                 SpawnField {
+                    parameter: None,
                     key: FieldKey::Role,
                     value: "executor".into(),
                     source: Source::BuiltIn,
@@ -514,6 +515,7 @@ mod tests {
                     fixed: true
                 },
                 SpawnField {
+                    parameter: None,
                     key: FieldKey::Command,
                     value: "zsh".into(),
                     source: Source::BuiltIn,

@@ -305,6 +305,7 @@ pub struct Manifest {
     pub tools: Vec<Tool>,
     /// Harness and bus events delivered to [`Plugin::on_hook`].
     pub hooks: Vec<Hook>,
+    pub spawn_fields: Vec<bbt_plugin::transport::Field>,
     /// Host API methods requested for [`Ctx::host`].
     pub host_api: Vec<String>,
     /// Prefix of embedded skill resource URIs, e.g. `gitkb`.
@@ -339,6 +340,7 @@ impl Manifest {
             skills: Vec::new(),
             tools: Vec::new(),
             hooks: Vec::new(),
+            spawn_fields: Vec::new(),
             host_api: Vec::new(),
             resource_scheme: scheme,
             signed_writer: false,
@@ -461,6 +463,16 @@ impl Manifest {
     /// Request a host API method (`records.search`, `records.fetch`,
     /// `events.publish`, `messages.send`) for [`Ctx::host`]. The operator
     /// still grants it (and, for `messages.send`, each destination).
+    /// Declare a transport launcher parameter. None means a required value.
+    pub fn transport_field(mut self, name: &str, label: &str, default: Option<&str>) -> Self {
+        self.spawn_fields.push(bbt_plugin::transport::Field {
+            name: name.into(),
+            label: label.into(),
+            default: default.map(str::to_owned),
+        });
+        self
+    }
+
     pub fn host_api(mut self, method: &str) -> Self {
         self.host_api.push(method.into());
         self
@@ -569,6 +581,7 @@ impl Manifest {
             "shape_version": SHAPE_VERSION,
             "systems": systems,
             "hooks": self.hooks,
+            "spawn_fields": self.spawn_fields,
             "health_command": "health",
             "signed_writer": self.signed_writer,
             "fixture_bootstrap": self.fixture_bootstrap,

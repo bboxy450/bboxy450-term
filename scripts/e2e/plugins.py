@@ -137,6 +137,24 @@ def main():
     require(any("skipped until" in text for text in labels(page)), "Settings has no latched-skip warning")
     app.capture("window", "g3-skipped", frame(page))
     negative(app.work, "missing-slow-hook-warning", lambda: warning_visible({"tree": []}))
+    if os.environ.get("BBOXY_TRANSPORT_PLUGIN"):
+        transport = repository / ".bboxy/plugins/bboxy450-term-transport-example"
+        shutil.copy2(os.environ["BBOXY_TRANSPORT_PLUGIN"], transport)
+        entries = app.ctl("plugin", "trust", transport)["entries"]
+        candidate = next(e["candidate"]["id"] for e in entries if e["candidate"]["source"] == str(transport))
+        app.ctl("plugin", "check", candidate)
+        app.ctl("plugin", "enable", candidate)
+        until = time.monotonic() + 10
+        while True:
+            page = app.section("Machines")
+            content = " ".join(labels(page))
+            if "Local wrapper" in content and "plugin:example" in content:
+                break
+            require(time.monotonic() < until, "Settings Machines omitted the enabled SDK transport")
+            time.sleep(.05)
+        require("Plugin transports" in content and "Prefix" in content and "Delay (ms)" in content,
+                "Settings omitted the declared transport parameter fields")
+        app.capture("window", "transport-machines", frame(page))
     (app.work / "g3-evidence.json").write_text(json.dumps({"overruns": observed, "entries": entries,
         "attempted_hook_work_ms": 10000, "ui_response_seconds_during_hook": response_seconds, "operator_input": False, "before_skip_samples": before}, indent=2) + "\n")
 

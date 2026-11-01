@@ -152,6 +152,8 @@ pub struct Records {
     pub machine_defaults: std::collections::BTreeMap<String, Machine>,
     #[serde(skip)]
     pub machine_controls: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub plugin_transports: Vec<machines::PluginTransport>,
     pub roles: Vec<(String, Role)>,
     pub harness: Vec<(String, Harness)>,
     pub plugins: Vec<plugins::Plugin>,

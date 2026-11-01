@@ -204,3 +204,40 @@ ceilings and real cancellation remain enforced.
 Host/consumer owners remain PluginHost and Settings. Verification:
 `PluginHookBudget` / broken control with native/TLC parity, registry persistence
 witnesses, the real host alert/skip test, and `make test-settings-plugins`.
+
+## Transport 1.0 (#84, operator batch 2026-10-31)
+
+Producer: a trusted SDK/MCP `bboxy450-term-transport-<provider>` declares
+bounded `spawn_fields` (unique name, human label, optional default). Consumer:
+Settings Machines shows discovered transports and their state/fields; an enabled
+transport is a Via choice `plugin:<provider>`. Machine preferences and launcher
+fields retain names separately from labels. Changing Via clears another
+transport's parameter overrides. Builtin ssh/mosh/et argv remains unchanged.
+
+`transport_wrap({fields, command}) -> {argv}` is host-only, at transport tier.
+The host validates names/defaults against the trusted shape and both DTO schemas;
+no network or shell interpretation is required by the contract. The inner argv
+is `/bin/sh -lc <existing quoted cwd/env/command composition>`, so remote context
+has the same meaning as the builtins. Returned argv is validated before the
+supervisor sees it. Malformed fields/commands refuse during trusted inspection.
+
+The operator spawn operation is admitted before IO. Wrap runs on a blocking IO
+worker, bounded at two seconds, while the logic owner remains available. Its
+completion captures the root binding and connection authority. The owner fences
+both before launching, revalidates the role, and uses the same original journal
+operation. Pre-effect refusals are rejected; ambiguous supervisor outcomes stay
+unknown and never authorize an automatic second launch. Losing a UI waiter does
+not revoke an admitted owned launch. A busy/unavailable completion queue returns
+an honest unknown outcome instead of waiting on the owner. Disable/re-pin
+reconciliation removes superseded connections before acknowledgement.
+
+Verification: `PluginTransportLaunch` / broken control and existing
+OperationRecovery; the real SDK fixture in `tests/plugin_transport.rs` checks
+literal fields through the owner and supervisor without network, a held wrap
+versus status reads, disable in flight, and duplicate operation IDs. The SDK
+example passes conformance, malformed declarations refuse at trust, builtin
+remote-launch tests remain, and `make test-plugin-transports` captures Settings.
+
+Explicit seat restart replays its retained, already-authorized wrapped argv,
+matching built-in transport recovery. It does not run a new plugin callback.
+A new spawn always resolves the current trusted activation and fields.

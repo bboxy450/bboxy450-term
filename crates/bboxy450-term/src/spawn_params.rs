@@ -51,6 +51,7 @@ pub fn resolve_with_catalog(
     let defaults = settings.get(harness);
     let builtin = bbt_mux::adapters::HarnessRecord::builtin(harness).ok();
     let field = |key, value, source, choices, fixed| SpawnField {
+        parameter: None,
         key,
         value,
         source,
@@ -231,6 +232,16 @@ pub fn with_machine(
     fields
 }
 
+pub fn with_machine_transports(
+    mut fields: Vec<SpawnField>,
+    machine: &bbt_ui::modules::settings::Machine,
+    transports: &[bbt_ui::modules::settings::machines::PluginTransport],
+) -> Vec<SpawnField> {
+    fields.retain(|f| f.key != FieldKey::Directory);
+    fields.splice(1..1, machine.fields_with_transports(transports));
+    fields
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Resolved {
     pub via: Option<bbt_proto::TransportSpec>,
@@ -314,6 +325,15 @@ impl Resolved {
                     )
                 },
                 key: (!key.is_empty()).then(|| expand(key)),
+                fields: fields
+                    .iter()
+                    .filter_map(|f| {
+                        f.parameter
+                            .as_ref()
+                            .filter(|p| p.owner == get(FieldKey::Via))
+                            .map(|p| (p.name.clone(), f.value.clone()))
+                    })
+                    .collect(),
             };
             via.validate()?;
             Some(via)
@@ -337,15 +357,25 @@ impl Resolved {
         let inner = std::iter::once(self.command.clone())
             .chain(self.args.clone())
             .collect::<Vec<_>>();
-        self.via.as_ref().map_or_else(
-            || inner.clone(),
-            |via| {
-                via.argv(&self.cwd, &inner, &self.env)
-                    .expect("validated configured transport")
-            },
-        )
+        self.via
+            .as_ref()
+            .filter(|via| !via.kind.starts_with("plugin:"))
+            .map_or_else(
+                || inner.clone(),
+                |via| {
+                    via.argv(&self.cwd, &inner, &self.env)
+                        .expect("validated configured transport")
+                },
+            )
     }
     pub fn runs(&self) -> String {
+        if self
+            .via
+            .as_ref()
+            .is_some_and(|via| via.kind.starts_with("plugin:"))
+        {
+            return "Launch through the selected plugin transport".into();
+        }
         if self.via.is_some() {
             return join(&self.argv());
         }
@@ -375,6 +405,7 @@ impl Resolved {
             machine.connect = via.route.clone();
             machine.port = via.port.map_or(String::new(), |port| port.to_string());
             machine.key = via.key.clone().unwrap_or_default();
+            machine.parameters = via.fields.clone();
             machine.directory = self.cwd.clone();
             if !previous_route.is_empty() && previous_route != via.route {
                 machine.routes.retain(|route| route != &previous_route);
@@ -419,6 +450,62 @@ pub fn join(values: &[String]) -> String {
         .map(|v| quote(v))
         .collect::<Vec<_>>()
         .join(" ")
+}
+
+/// Refresh only descriptor-owned fields after a Via choice; values never cross
+/// from one transport's parameter namespace into another.
+pub fn refresh_transport_fields(
+    fields: &mut Vec<SpawnField>,
+    transports: &[bbt_ui::modules::settings::machines::PluginTransport],
+) -> bool {
+    let via = fields
+        .iter()
+        .find(|f| f.key == FieldKey::Via)
+        .map(|f| f.value.clone())
+        .unwrap_or_default();
+    let wanted = transports
+        .iter()
+        .find(|t| t.id == via)
+        .map(|t| t.fields.as_slice())
+        .unwrap_or_default();
+    let old: Vec<_> = fields.iter().filter_map(|f| f.parameter.as_ref()).collect();
+    if old.len() == wanted.len()
+        && old
+            .iter()
+            .zip(wanted)
+            .all(|(a, b)| a.owner == via && a.name == b.name && a.label == b.label)
+    {
+        return false;
+    }
+    let values: BTreeMap<_, _> = fields
+        .iter()
+        .filter_map(|f| {
+            f.parameter
+                .as_ref()
+                .filter(|p| p.owner == via)
+                .map(|p| (p.name.clone(), f.value.clone()))
+        })
+        .collect();
+    fields.retain(|f| f.parameter.is_none());
+    fields.extend(wanted.iter().enumerate().map(|(i, p)| {
+        SpawnField {
+            key: FieldKey::TransportParam(i as u8),
+            value: values
+                .get(&p.name)
+                .cloned()
+                .or(p.default.clone())
+                .unwrap_or_default(),
+            source: Source::Settings,
+            choices: None,
+            fixed: false,
+            parameter: Some(bbt_ui_model::TransportParameter {
+                owner: via.clone(),
+                name: p.name.clone(),
+                label: p.label.clone(),
+            }),
+        }
+    }));
+    true
 }
 
 #[cfg(test)]

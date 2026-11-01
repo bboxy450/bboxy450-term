@@ -231,6 +231,7 @@ fn parameter_level_launches_on_enter_and_changes_values_on_right_or_click() {
         "claude",
         vec![
             SpawnField {
+                parameter: None,
                 key: FieldKey::Role,
                 value: "oracle".into(),
                 source: Source::Settings,
@@ -249,6 +250,7 @@ fn parameter_level_launches_on_enter_and_changes_values_on_right_or_click() {
                 ])
             },
             SpawnField {
+                parameter: None,
                 key: FieldKey::Directory,
                 value: "/swarm".into(),
                 source: Source::LastChoice,
@@ -256,6 +258,7 @@ fn parameter_level_launches_on_enter_and_changes_values_on_right_or_click() {
                 choices: Some(vec![])
             },
             SpawnField {
+                parameter: None,
                 key: FieldKey::Arguments,
                 value: "--old".into(),
                 source: Source::LastChoice,

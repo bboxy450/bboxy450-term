@@ -629,6 +629,27 @@ async fn exercise(
                     ));
                 }
             }
+            Contract::Transport => {
+                let fields: std::collections::BTreeMap<_, _> = shape
+                    .spawn_fields
+                    .iter()
+                    .map(|f| {
+                        (
+                            f.name.clone(),
+                            f.default.clone().unwrap_or_else(|| "fixture".into()),
+                        )
+                    })
+                    .collect();
+                contract_call(
+                    client,
+                    account,
+                    &catalogue,
+                    contract,
+                    "wrap",
+                    json!({"fields":fields,"command":["/bin/echo","fixture inner argv"]}),
+                )
+                .await?;
+            }
             Contract::EventSink => {
                 let envelope = signed_envelope_fixture()?;
                 let result = contract_call(

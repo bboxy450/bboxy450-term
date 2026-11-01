@@ -17,7 +17,7 @@ fn contract_authority_is_fixed_and_hooks_raise_exposure() {
             c.tier(),
             match c {
                 Contract::RepoGraph => Tier::Read,
-                Contract::Session | Contract::Provider => Tier::Transport,
+                Contract::Session | Contract::Provider | Contract::Transport => Tier::Transport,
                 _ => Tier::Export,
             }
         );

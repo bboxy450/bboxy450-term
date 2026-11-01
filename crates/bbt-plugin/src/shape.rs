@@ -300,6 +300,9 @@ pub struct Shape {
     pub skills: Vec<Skill>,
     #[serde(default)]
     pub hooks: Vec<Hook>,
+    /// Transport-owned launcher parameters, cached with the trusted shape.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub spawn_fields: Vec<crate::transport::Field>,
     #[serde(default)]
     pub auth: Option<Auth>,
     pub health_command: String,
@@ -334,6 +337,14 @@ impl Shape {
             ));
         }
         skills::validate(&self.skills)?;
+        crate::transport::validate_fields(&self.spawn_fields)?;
+        if !self.spawn_fields.is_empty() && !self.systems.iter().any(|s| s.contract == "transport")
+        {
+            return Err(Refusal::new(
+                "transport_fields_without_contract",
+                "spawn_fields requires the transport contract",
+            ));
+        }
         if self.name.is_empty()
             || self.version.is_empty()
             || self.systems.is_empty()

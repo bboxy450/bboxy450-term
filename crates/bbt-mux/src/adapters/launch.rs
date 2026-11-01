@@ -22,6 +22,7 @@ pub struct LaunchContext<'a> {
     pub resume: bool,
 }
 pub struct LaunchOptions {
+    pub transport_argv: Option<Vec<String>>,
     pub via: Option<bbt_proto::TransportSpec>,
     pub env: Vec<(String, String)>,
     pub cwd: PathBuf,
@@ -218,13 +219,21 @@ pub fn transport_spec(
         .via
         .as_ref()
         .ok_or_else(|| crate::store::invalid("missing transport"))?;
-    let argv = via
-        .argv(
+    let argv = if let Some(argv) = &options.transport_argv {
+        argv.clone()
+    } else {
+        via.argv(
             &options.cwd.to_string_lossy(),
             &harness.command,
             &options.env,
         )
-        .map_err(crate::store::invalid)?;
+        .map_err(crate::store::invalid)?
+    };
+    if argv.first().is_none_or(String::is_empty) {
+        return Err(crate::store::invalid(
+            "transport returned an empty executable",
+        ));
+    }
     let mut spec = LaunchSpec::new(&argv[0], &options.user_home);
     spec.seat = seat.id;
     spec.generation = seat.generation;

@@ -20,6 +20,7 @@ pub mod session;
 pub mod shape;
 pub mod skills;
 pub mod task_system;
+pub mod transport;
 pub mod trust;
 
 /// A stable, named refusal suitable for a checker or registry entry.

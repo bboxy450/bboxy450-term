@@ -18,7 +18,53 @@ static REFERENCE: LazyLock<Vec<Plugin>> = LazyLock::new(|| {
     serde_json::from_str(include_str!("plugin-reference.json"))
         .expect("pinned public plugin fixtures")
 });
+pub fn transports(
+    model: Option<&crate::model::Model>,
+) -> Vec<bbt_ui::modules::settings::machines::PluginTransport> {
+    use bbt_ui::modules::settings::machines::{PluginParameter, PluginTransport};
+    let Some(model) = model else {
+        return Vec::new();
+    };
+    let scope = match model.ui.window.stage.swarm {
+        Some(s) => model.swarm_scope(s).ok().map(Some),
+        None => Some(None),
+    };
+    if Some(model.plugin_scope) != scope {
+        return Vec::new();
+    }
+    model
+        .plugin_registry
+        .iter()
+        .flat_map(|entries| entries.iter())
+        .filter_map(|entry| {
+            let name = entry
+                .candidate
+                .name
+                .as_ref()
+                .filter(|n| n.system == bbt_proto::gui::PluginContract::Transport)?;
+            let shape = entry.trust.as_ref().and_then(|t| t.shape.as_ref());
+            Some(PluginTransport {
+                id: format!("plugin:{}", name.provider),
+                name: shape.map_or_else(|| name.provider.clone(), |s| s.name.clone()),
+                status: serde_json::to_value(entry.state()).ok()?.as_str()?.into(),
+                fields: shape
+                    .map(|s| {
+                        s.spawn_fields
+                            .iter()
+                            .map(|f| PluginParameter {
+                                name: f.name.clone(),
+                                label: f.label.clone(),
+                                default: f.default.clone(),
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+            })
+        })
+        .collect()
+}
 pub(super) fn project(out: &mut Records, model: Option<&crate::model::Model>) {
+    out.plugin_transports = transports(model);
     if let Some(model) = model {
         let scope = match model.ui.window.stage.swarm {
             Some(s) => model.swarm_scope(s).ok().map(Some),

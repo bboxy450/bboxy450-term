@@ -559,6 +559,26 @@ fn every_contract_dto_round_trips_through_its_schema() {
         s,
     );
 
+    check(
+        Contract::Transport,
+        "wrap",
+        false,
+        &bbt_plugin::transport::WrapRequest {
+            fields: Default::default(),
+            command: vec!["/bin/echo".into(), "literal argument".into()],
+        },
+        s,
+    );
+    check(
+        Contract::Transport,
+        "wrap",
+        true,
+        &bbt_plugin::transport::WrapResult {
+            argv: vec!["/bin/echo".into(), "literal argument".into()],
+        },
+        s,
+    );
+
     // Every method of every contract, both directions, has a typed DTO.
     for contract in Contract::ALL {
         let methods = contract

@@ -87,6 +87,7 @@ help:
 	  'make parity-documents           Existing strict document gallery geometry gate' \
 	  'make test-document-provenance   Collapsed task evidence, retained clicks and source preservation' \
 	  'make test-harness-startup        Launch identity, shell configuration and shared wake regressions' \
+	  'make test-plugin-transports      SDK transport fields, native wrap/launch fences and Settings proof' \
 	  'make test-plugin-skills          Canonical MCP instructions, descriptors and selected-provider fences' \
 	  'make check-plugin-skills         Strict plugin, mux and app all-target Clippy' \
 	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
@@ -731,6 +732,16 @@ test-harness-startup:
 	cargo test --locked -p bboxy450-harness-wake-up --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test adapters; \
 	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib login_shell_exec -- --include-ignored
+
+.PHONY: test-plugin-transports
+test-plugin-transports:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-plugin -p bboxy450-term-plugin-sdk --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-ui --test launchers --test settings_destinations --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --test plugin_transport --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --test remote_launch --target-dir '$(TARGET_DIR)'; \
+	cargo run --locked -p bboxy450-term-plugin-fixture --example transport --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/transport-plugins/bboxy450-term-transport-example'
+	@BBOXY_TRANSPORT_PLUGIN='$(abspath $(TARGET_DIR))/transport-plugins/bboxy450-term-transport-example' $(MAKE) test-settings-plugins
 
 .PHONY: test-plugin-skills check-plugin-skills
 test-plugin-skills:
