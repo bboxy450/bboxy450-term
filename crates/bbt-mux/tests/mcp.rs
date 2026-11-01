@@ -5002,7 +5002,7 @@ fn seat_harness_fixture(owner_close: bool) {
     let shim = bin.join("bboxy450-harness");
     let tool_pid_path = home.join("tool-pid");
     let command = format!(
-        "trap '' HUP; printf '%s\\n' \"$$\" > {0}.tmp; mv {0}.tmp {0}; sleep 600",
+        "trap '' HUP; trap '' TERM; printf '%s\\n' \"$$\" > {0}.tmp; mv {0}.tmp {0}; sleep 600",
         quote(&tool_pid_path)
     );
     let tool_call = json!({"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"owned-hup-tool","type":"function","function":{"name":"bash","arguments":serde_json::to_string(&json!({"command":command})).unwrap()}}]},"finish_reason":null}]});
