@@ -2385,7 +2385,8 @@ fn task_migration_catalogue_upgrade_retains_all_seats_and_shell_state() {
             .lines()
             .filter_map(|line| line.split_once('='))
             .collect();
-        let cap = fields["BBOXY_CAPABILITY"];
+        let cap = fs::read_to_string(fields["BBOXY_CAPABILITY_FILE"]).unwrap();
+        let cap = cap.trim();
         let mut bridge = Bridge::new(Config {
             socket: fields["BBOXY_SOCK"].into(),
             seat: seat.parse().unwrap(),
@@ -2684,7 +2685,8 @@ fn oracle_mcp_splits_focuses_and_reattaches_without_restarting_harnesses() {
         .lines()
         .filter_map(|l| l.split_once('='))
         .collect();
-    let cap = admission["BBOXY_CAPABILITY"];
+    let cap = fs::read_to_string(admission["BBOXY_CAPABILITY_FILE"]).unwrap();
+    let cap = cap.trim();
     let capability =
         std::array::from_fn(|i| u8::from_str_radix(&cap[i * 2..i * 2 + 2], 16).unwrap());
     let mut bridge = Bridge::new(Config {
@@ -2979,7 +2981,8 @@ fn signed_mentions_refresh_retains_sessions_and_shell_state() {
         .lines()
         .filter_map(|line| line.split_once('='))
         .collect();
-    let cap = admission["BBOXY_CAPABILITY"];
+    let cap = fs::read_to_string(admission["BBOXY_CAPABILITY_FILE"]).unwrap();
+    let cap = cap.trim();
     let capability =
         std::array::from_fn(|i| u8::from_str_radix(&cap[i * 2..i * 2 + 2], 16).unwrap());
     let mut bridge = Bridge::new(Config {

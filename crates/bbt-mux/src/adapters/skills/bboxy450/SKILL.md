@@ -55,7 +55,7 @@ Omit `op_id` unless you are retrying: every tool mints and returns one for you.
 Preserve that ID for a retry with the same arguments; different arguments are
 refused as `op_id_reused`. If a tool result is
 unknown, query the original operation; do not automatically repeat a message,
-spawn, paste or Enter. Never expose `BBOXY_CAPABILITY`. Seat state, output silence,
+spawn, paste or Enter. Never expose the contents of `BBOXY_CAPABILITY_FILE`. Seat state, output silence,
 OSC 7501 and ordinary hooks do not by themselves prove composer readiness.
 
 Hand off: files changed and their mechanism; commands and actual exit status;

@@ -799,7 +799,7 @@ test-shared-codex-cleanup:
 	@python3 -I -B scripts/test-shared-codex-cleanup.py
 
 .PHONY: test-harness-codex-native
-test-harness-codex-native: build
+test-harness-codex-native: build test-capability-file
 	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --codex '$(CODEX_BIN)'
 	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --codex '$(CODEX_BIN)' --cold --shim
 
@@ -1881,3 +1881,16 @@ test-harness-json-isolation:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --workspace --locked --target-dir '$(TARGET_DIR)' ctl_noun_verb_grammar_replies_and_errors; \
 	cargo test --workspace --locked --target-dir '$(TARGET_DIR)' mcp_mutation_argument_ids_are_visible_retryable_and_cannot_spoof_authority
+
+.PHONY: fmt-capability-file test-capability-file
+fmt-capability-file:
+	@rustfmt --edition 2024 --config skip_children=true crates/bboxy450-harness-wake-up/src/capability.rs crates/bboxy450-harness-wake-up/src/lib.rs crates/bboxy450-harness-wake-up/src/launch.rs crates/bboxy450-harness-wake-up/tests/ready_exec.rs crates/bboxy450-harness-wake-up/tests/seat_wiring.rs crates/bbt-mux/src/adapters/mod.rs crates/bbt-mux/src/adapters/hook.rs crates/bbt-mux/src/mcp/bridge.rs crates/bbt-mux/tests/hook_gate.rs crates/bbt-mux/tests/mcp.rs crates/bbt-supervisor/src/supervisor.rs crates/bbt-supervisor/src/supervisor/companion.rs crates/bboxy450-term/tests/capability_file.rs crates/bboxy450-term/tests/formal_contracts/models.rs crates/bboxy450-term/tests/formal_contracts/capability_models.rs crates/bboxy450-term/tests/diagnostics.rs crates/bboxy450-term/tests/swarm_workdir.rs
+
+test-capability-file:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-harness-wake-up --test seat_wiring --test ready_exec --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p $(APP) --test capability_file --target-dir '$(TARGET_DIR)' -- --nocapture
+
+.PHONY: test-capability-control
+test-capability-control:
+	@set -eu; . ./scripts/cache-env.sh; python3 -I -B scripts/test-capability-control.py '$(abspath $(TARGET_DIR))'

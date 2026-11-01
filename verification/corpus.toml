@@ -675,3 +675,13 @@ frontend = "project"
 name = "BrokenPluginTransportProgress"
 expected = "liveness"
 frontend = "project"
+
+[[model]]
+name = "SeatCapabilityFile"
+expected = "pass"
+[[model]]
+name = "BrokenSeatCapabilityEnvironment"
+expected = "safety"
+[[model]]
+name = "BrokenSeatCapabilityCleanup"
+expected = "safety"

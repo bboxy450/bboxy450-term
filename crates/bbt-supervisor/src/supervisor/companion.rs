@@ -49,6 +49,7 @@ impl Companion {
             .current_dir(&spec.cwd)
             .envs(&spec.env)
             .envs(&service.env)
+            .env_remove("BBOXY_CAPABILITY")
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null());

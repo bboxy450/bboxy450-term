@@ -16,6 +16,8 @@
 #[cfg(not(unix))]
 compile_error!("bboxy450-harness-wake-up currently requires Unix sockets and terminals");
 
+/// Private overlay admission files shared by launchers, hooks and MCP bridges.
+pub mod capability;
 /// Single-use positive readiness and guarded literal terminal input.
 pub mod guard;
 /// Bounded hook events, OSC projection and caller-authenticated fallback delivery.
