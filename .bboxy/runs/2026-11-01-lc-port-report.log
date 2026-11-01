@@ -1,0 +1,18 @@
+LC-port #5096 — initial compiling workspace checkpoint
+Worktree: /Users/feral/mydev/bboxy450-term-log-converter
+Branch: log-converter; no merge or land.sh.
+Authority: delegated task 2026-11-01-lc-port-into-term and Oracle early-push message 01M6CPY9ZQFVNZYVQW5EDZD4PZ.
+
+Ported P1 source/IR and 68-case CBOR goldens from retired repo bb87743b.
+Logic retained; headers now start with the term policy and retain original origin notices.
+Workspace version/repository metadata inherited. Public harness label and provider aliases match d5089.
+Crate uses ordinary dependencies only; it imports no application or harness crate.
+The standalone formal.py was not copied; formal inventory integration follows.
+
+Commands:
+- make lock — exit 0, six new packages; no unrelated dependency upgrades.
+- make check-log-converter — exit 0; all crate targets compile inside the initialized pinned-harness workspace.
+
+This is the explicitly authorized early checkpoint for P3/P4 consumers.
+Full make test has NOT run at this checkpoint. P0, shared gate integration and P2 follow on this branch.
+The report will be extended with full verification and copied to the requested harness KB log at handoff.

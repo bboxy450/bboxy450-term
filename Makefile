@@ -1962,3 +1962,10 @@ test-harness-branding-control: init-submodules
 	cat '$(TARGET_DIR)/harness-branding-control.log'; test "$$status" = 101; \
 	grep -F 'broken picker omits bboxy450-harness' '$(TARGET_DIR)/harness-branding-control.log'; \
 	printf '%s\n' 'branding omission control: expected red 101'
+
+.PHONY: check-log-converter test-log-converter
+check-log-converter:
+	@set -eu; . ./scripts/cache-env.sh; cargo check --locked -p bboxy450-log-converter --all-targets
+
+test-log-converter:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-log-converter
