@@ -96,3 +96,18 @@ Drive this app through its flags, `ctl`, sockets and captures. Never inject OS k
 **Track work in the built-in bboxy task system** (`.bboxy/tasks/`, through the bboxy MCP `knowledge_*`/`task_*` tools or `ctl task`), never in GitKB tasks, even when a seat's swarm selects a GitKB knowledge provider. Use GitHub for handoffs. **GitKB, ATC and ICQ are retired as workflow tools; never invoke `git-kb` for this repository's tasks or notes.** Only the GitKB plugin and its tests call it. `scripts/land.sh` runs the signed landing gates and records its receipt locally, without messaging. Use it when the brief requires it; use the Make targets above for build/test/install work. Do not recruit, assign, merge or publish outside that brief.
 
 The Oracle verifies landed code and logs; the Architect owns interface/spec consistency; Creativity owns the reference lab. Design gaps are written into the relevant spec/interface, not answered only in a message. Operator instructions outrank defaults.
+
+## Oracle merge and publish authorization (operator, 2026-10-31)
+
+The Oracle may merge PRs into `main` and publish the toolkit crates as **bboxy450**, autonomously. Operator: "you can merge if executor did enough automatic testing, its important to write correct specs, write correct code, do formal verification, do unit - integration - smoke testing".
+
+The Oracle checks each of these itself, not from the Executor's report. A merge needs all of them:
+
+- the change matches its written spec or ICD
+- formal verification is green: `make test-formal`, with any changed stateful contract carrying its updated model and a broken control
+- unit, integration and smoke tests are green under `make test`, run unattended
+- the diff has been read
+- every commit is signed
+- the landing gates pass through `scripts/land.sh`
+
+If any of these is missing, the PR goes back to its Executor. Crate releases follow the signed release order in `~/.agents/AGENTS.md`.
