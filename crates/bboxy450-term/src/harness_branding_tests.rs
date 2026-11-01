@@ -48,19 +48,17 @@ fn harness_branding_all_menu_surfaces_and_launch_keys() {
     let items = launcher_items(None);
     let ids: Vec<_> = items.iter().map(|i| i.id.as_str()).collect();
     complete("launcher", &ids).unwrap();
-    let mut filtered = new_launcher(None, 0).launcher;
-    filtered
-        .items
-        .retain(|i| harness::HARNESSES.contains(&i.id.as_str()));
-    complete(
-        "new-seat picker",
-        &filtered
-            .items
-            .iter()
-            .map(|i| i.id.as_str())
-            .collect::<Vec<_>>(),
-    )
-    .unwrap();
+    for side in [
+        bbt_proto::seat_state::Side::Right,
+        bbt_proto::seat_state::Side::Bottom,
+    ] {
+        let filtered = preset_launcher_items(items.clone(), Some(side));
+        complete(
+            "split picker",
+            &filtered.iter().map(|i| i.id.as_str()).collect::<Vec<_>>(),
+        )
+        .unwrap();
+    }
     for kind in bboxy450_term::settings::roles::HARNESSES {
         let item = items.iter().find(|i| i.id == kind).unwrap();
         let (_, label, _, color, _) = harness::launchables().find(|(id, ..)| *id == kind).unwrap();
@@ -111,6 +109,21 @@ fn harness_branding_all_menu_surfaces_and_launch_keys() {
             .collect::<Vec<_>>(),
     )
     .unwrap();
+    let machines = std::collections::BTreeMap::from([(
+        "ssh:fixture".into(),
+        bbt_ui::modules::settings::Machine::default(),
+    )]);
+    for kind in bboxy450_term::settings::roles::HARNESSES {
+        for suffix in ["", ":right", ":bottom", ":tab"] {
+            assert_eq!(
+                bboxy450_term::spawn_params::machine_target(
+                    &format!("ssh:fixture:{kind}{suffix}"),
+                    &machines
+                ),
+                Some((kind.into(), "ssh:fixture".into()))
+            );
+        }
+    }
     let proto = bbt_proto::gui::RoleCatalog::builtin();
     complete(
         "role catalogue",

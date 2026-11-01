@@ -214,7 +214,7 @@ pub fn machine_target(
         _ => id,
     };
     for machine in machines.keys() {
-        for harness in ["claude", "codex", "pi", "omp", "zsh"] {
+        for harness in crate::settings::roles::HARNESSES {
             if root == format!("{machine}:{harness}") {
                 return Some((harness.into(), machine.clone()));
             }
@@ -602,7 +602,7 @@ mod tests {
     }
     #[test]
     fn resolver_table_prefills_every_local_row_and_names_its_source() {
-        for harness in ["claude", "codex", "pi", "omp", "zsh"] {
+        for harness in crate::settings::roles::HARNESSES {
             for has_folder in [false, true] {
                 for has_last in [false, true] {
                     let mut swarm = Swarm::new(SwarmId::from_u128(1), "test", vec![]);
