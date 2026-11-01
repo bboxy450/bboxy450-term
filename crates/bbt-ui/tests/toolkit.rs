@@ -111,7 +111,12 @@ fn diff_numbers_zero_count_hunks_and_fold_state_are_independent() {
     );
     assert_eq!((l[3].old, l[3].new), (None, Some(6)));
     assert_eq!(d.hunks[1].lines[0].old, None);
-    assert!(Diff::parse("@@ -1,2 +1 @@\n one\n").is_err());
+    assert!(
+        Diff::parse("@@ -1,2 +1 @@\n one\n").unwrap().hunks[0]
+            .lines
+            .iter()
+            .any(|l| l.kind == Kind::Note)
+    );
     let mut f = Folds::default();
     f.toggle(0);
     assert!(f.closed(0));
@@ -133,6 +138,65 @@ fn diff_blank_context_and_one_bad_line_preserve_the_other_lines() {
     assert_eq!(
         (bad.hunks[0].lines[2].old, bad.hunks[0].lines[2].new),
         (Some(3), Some(3))
+    );
+}
+#[test]
+fn diff_short_hunk_recovers_at_the_next_hunk() {
+    let d = Diff::parse("@@ -1,3 +1,3 @@\n one\n@@ -9 +9 @@\n-old\n+new\n").unwrap();
+    assert_eq!(d.hunks.len(), 2);
+    assert!(d.hunks[0].lines.iter().any(|l| l.kind == Kind::Note));
+    assert_eq!(d.hunks[1].lines[0].old, Some(9));
+}
+#[test]
+fn diff_short_hunk_at_eof_stays_visible() {
+    let d = Diff::parse("@@ -1,3 +1,3 @@\n one\n").unwrap();
+    assert_eq!(d.hunks[0].lines[0].text, "one");
+    assert!(d.hunks[0].lines.iter().any(|l| l.kind == Kind::Note));
+}
+#[test]
+fn diff_orphan_note_and_bad_header_do_not_discard_valid_hunks() {
+    let d = Diff::parse(
+        "\\ No newline at end of file\n@@ broken @@\n+unlocated\n@@ -9 +9 @@\n-old\n+new\n",
+    )
+    .unwrap();
+    assert_eq!(d.headers[0], "\\ No newline at end of file");
+    assert_eq!(d.hunks[0].header, "@@ broken @@");
+    assert_eq!(d.hunks[0].lines[0].kind, Kind::Note);
+    assert_eq!(d.hunks[1].lines[0].old, Some(9));
+    let bad = Diff::parse("@@ broken @@\n+unlocated\n@@ -9 +9 @@\n-old\n+new\n").unwrap();
+    assert_eq!(bad.hunks.len(), 2);
+    assert_eq!(bad.hunks[0].lines[1].text, "+unlocated");
+    assert_eq!(bad.hunks[1].lines[0].old, Some(9));
+}
+#[test]
+fn diff_file_headers_win_over_incorrect_hunk_counts() {
+    for count in [0, 1, 9] {
+        let source = format!(
+            "@@ -1,{count} +1,{count} @@\n same\ndiff --git a/b b/b\n--- a/b\n+++ b/b\n@@ -8 +8 @@\n-old\n+new\n"
+        );
+        let d = Diff::parse(&source).unwrap();
+        assert_eq!(d.hunks.len(), 2);
+        assert_eq!(
+            d.hunks[1].file_headers,
+            vec!["diff --git a/b b/b", "--- a/b", "+++ b/b"]
+        );
+        assert!(
+            !d.hunks[0]
+                .lines
+                .iter()
+                .any(|l| l.text.contains("diff --git") || l.text.contains("--- a/b"))
+        );
+    }
+    let d =
+        Diff::parse("@@ -1,9 +1,9 @@\n same\n--- a/c\n+++ b/c\n@@ -8 +8 @@\n-old\n+new\n").unwrap();
+    assert_eq!(d.hunks[1].file_headers, vec!["--- a/c", "+++ b/c"]);
+    let d = Diff::parse(
+        "@@ -1,9 +1,9 @@\n same\ndiff --git\n---\told\n+++\tnew\n@@ -8 +8 @@\n-old\n+new\n",
+    )
+    .unwrap();
+    assert_eq!(
+        d.hunks[1].file_headers,
+        vec!["diff --git", "---\told", "+++\tnew"]
     );
 }
 #[test]

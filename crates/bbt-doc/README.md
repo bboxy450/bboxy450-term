@@ -55,11 +55,14 @@ Slop respectfully. Keep the credit attached.
 `StreamingMarkdown::append` retains completed prefix blocks, reparses the open
 tail and preserves absolute UTF-8 source offsets. An incomplete first line may
 still join its predecessor (notably a table row), so that predecessor remains in
-the tail until the line settles. EOF alone never freezes a block. Only reference
-or footnote definition lines (`^\s{0,3}\[[^\]]+\]:`) introduce document-wide
-dependencies; those documents retain the full parser's reference context.
-Inline links, task lists, indexing and JSON brackets keep prefix reuse. The
-definition scanner examines only the unfinished line and appended bytes.
+the tail until the line settles. EOF alone never freezes a block. Reference and
+footnote definitions introduce document-wide dependencies, including definitions
+inside blockquotes/list items and labels split across lines. Those documents
+retain the full parser's reference context. A line-leading open label temporarily
+uses full parsing until its closing bracket disambiguates it; an ordinary inline
+link then resumes prefix reuse. Task lists, indexing and JSON brackets keep prefix
+reuse. The scanner examines the unfinished line and appended bytes, or resumes
+from an ambiguous label's original line.
 YAML remains unsettled until its delimiter
 closes. `reparsed_range()` exposes the work actually performed.
 

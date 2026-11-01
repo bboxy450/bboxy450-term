@@ -1,160 +1,136 @@
-# Toolkit widgets implementation and rework report
+# Toolkit widgets: second rework report
 
 Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
-Task: `tasks/2026-10-31-toolkit-widgets.md` (#50) in the harness KB.
+Task: `tasks/2026-10-31-toolkit-widgets.md` (#50), harness KB.
 Executor: E2 toolkit-widgets, Boxy <bboxy450@gmail.com>.
 Worktree: `/Users/feral/mydev/bboxy450-term-harness-widgets`; branch `harness-widgets`.
-PR: https://github.com/bboxy450/bboxy450-term/pull/86 (review branch only).
+PR: https://github.com/bboxy450/bboxy450-term/pull/86 (unmerged review branch).
 
-This report supersedes the rejected implementation at signed `b81d3c38`.
-That commit's full gate passed, but source review found an overly broad parser
-fallback and models that did not establish the intended properties. A green
-check did not resolve those defects. The rework below changes both implementation
-and the verification contracts, with failing controls against the original code.
+This supersedes the reports at b81d3c38 and 18ff123b. The second review accepted
+the ledger model, package exclusion, syntect trim, OnceLock, coalesced wake model
+and explicit prefix invalidation. This revision preserves those mechanisms and
+fixes the remaining Markdown classifier, local diff recovery and ScrollStick
+witness. A passing gate on an earlier revision did not establish these fixes.
 
-The binding scope amendment is harness decision
+Binding scope/flake disposition:
 [d824](https://github.com/bboxy450/bboxy450-harness/blob/main/.bboxy/decisions/d824-e2-toolkit-widgets-scope.md).
-It authorizes the real formal-model directory, Makefile workflows and synchronized
-attribution copies. The task's recorded rejection supplies the rework criteria.
-AGENTS.md and the term KB schema are untouched. This is ordinary repository
-documentation, excluded from the UI crate package by `exclude = ["reports/"]`.
+It accepts the actual formal-model directory, Makefile and synchronized
+ATTRIBUTION copies. AGENTS.md and the term KB schema remain unchanged.
+`crates/bbt-ui/Cargo.toml` excludes `reports/`, so this document is not packaged.
 
-The enclosing signed Git revision is the handoff candidate. The final full gate
-runs after this document is committed: `target/ci-ready.log` records its exact
-`ci-local: source` and `ci-local: result` lines; `task_report` records that result
-and the fresh formal receipt. Results below are actual completed development
-checks, not a predicted result for a future commit. Raw logs remain outside Git.
+The enclosing signed commit is the candidate. The exact-source full gate runs
+**after** committing this document, with no RUST_TEST_THREADS override. Its
+command, actual exit, source/result lines and formal receipt are handed off
+through `task_report`; `target/ci-round2.log` retains the full output. This
+pre-gate document does not predict a successful result. Raw logs stay outside Git.
 
-## Rework acceptance evidence
+## Second review: mechanisms and evidence
 
-| MUST | Files and mechanism | Witness / result |
+| Requirement | Source and mechanism | Witness |
 | --- | --- | --- |
-| 1. Narrow Markdown fallback | `crates/bbt-doc/src/markdown/streaming.rs:23` classifies only definition lines matching `^\s{0,3}\[[^\]]+\]:`; the scanner retains the unfinished-line offset and never scans the stable prefix again. Only definition documents keep full-parser reference context. Inline links, task lists, JSON and indexing retain the prefix. | `crates/bbt-doc/tests/streaming.rs:137` counts bytes across 100 appends: **16,461 reparsed versus 785,890 full-parse bytes**. `:76` keeps full-parse equivalence at every scalar append, with only one eighth of seeds adding definitions; **96/96 seeds** use prefix reuse for most appends. Dedicated every-split fence/table/late-definition corpus remains. |
-| 2. Stream ledger | `crates/bboxy450-term/tests/formal_contracts/toolkit_models.rs:11` tracks each applied sequence count and its captured origin. Invariants require exactly one entry per sequence below `next`, none at/above it, current-generation origins and an empty dropped view. No `bad` flag exists. | `:387` removes the generation guard from the good model and requires the specific `AppliedOriginsBelongToCurrentGeneration` violation. Broken also bypasses order/identity checks, corrupting actual ledger fields. The real API witness remains `bbt-ui/tests/toolkit.rs:17`. |
-| 3. Package exclusion | `crates/bbt-ui/Cargo.toml` excludes `reports/`; the document remains committed without shipping local diagnostic paths in a crate. | `make list-toolkit-package` exited **0**. It runs `cargo package --list --allow-dirty --locked -p bboxy450-ui` with the local target, retains `target/toolkit-package-list.txt`, and fails if any `reports/` path occurs. |
-| 4. Syntect feature surface | `crates/bbt-doc/Cargo.toml` enables only `parsing`, `default-syntaxes`, `default-themes`, `regex-fancy`. | `make lock` exited **0**. Lock diff removes eleven packages: base64 0.23.1, deranged, linked-hash-map, num-conv, plist, powerfmt, quick-xml 0.42, time, time-core, time-macros, yaml-rust. Existing quick-xml 0.41 remains for wayland-scanner, outside syntect's dependency chain. `Cargo.lock` is the reviewable diff; `/tmp/e2-rework-lock.diff` retains the command view. |
-| 5. Resource reuse | `crates/bbt-doc/src/highlight.rs:33` holds SyntaxSet and ThemeSet in a static OnceLock, initialized after the worker-thread guard. Each highlighter borrows these same resources. | `highlight.rs:87` checks pointer identity across dark/light highlighters; owned-worker spans, unknown language bytes, UI-thread refusal and late-generation tests pass in `make test-toolkit`. |
-| 6. Diff robustness | `crates/bbt-ui/src/modules/diff.rs:40` accepts empty context and degrades one damaged line to a visible Note while advancing the remaining side counters. `DiffView::element` handles measurement failure without expect/panic. Header/range/truncation failures remain explicit. | `bbt-ui/tests/toolkit.rs:124` checks blank context, preservation of a damaged raw line and correct subsequent numbering. All diff/open/fold stories render headless. |
-| 7. Scroll agreement | `toolkit_models.rs:155` now re-sticks at `offset >= maximum`; jump resets requested/manual intent to zero, matching `transcript.rs:88`. The model includes `jump ~> following`; restoration is atomic, needing no fairness assumption. README describes endpoint and reset semantics. | `toolkit_models.rs:405` compares reachable endpoint/jump edges with the actual API; `transcript.rs:103` checks actual reset state. Existing growth/shrink/nonfinite tests and visible transcript-scroll story assertion pass. |
-| 8. Coalesced frame wake | `toolkit_models.rs:233` extends upstream DirtyWake's bits/pending/producer_pc/drain_pc with a queue, admitted/consumed ledger, coalesced frame-ready bit and budget-tail rearm. A frame can consume two deltas, so arrivals need not each allocate a frame. | `bbt-ui/tests/toolkit.rs:38` applies new StreamToView mutations through actual DirtySet/ViewRing APIs: three deltas, two frames. Omitting complete_drain is the real negative control: one delta remains without a wake. Broken model omits rearm and fails liveness; `toolkit_models.rs:437` requires upstream wake fields and a two-delta frame transition. |
-| 9. Definition invalidation | `toolkit_models.rs:96` distinguishes ordinary/inline-bracket appends from definition-line appends. A definition changes semantic identity and explicitly invokes invalidation before returning; Broken skips it. | Native good passes and Broken has a stale returned cache. Contracts record internal classification/invalidation as one externally atomic append and map the full-parse equivalence and work-range tests. |
+| Container/multiline definitions | `crates/bbt-doc/src/markdown/streaming.rs`, `definition_label` removes quote and bullet/ordered-list markers before classifying a leading label. `definitions` recognizes a colon after a closing label even across lines. An unfinished label retains its original scan offset and temporarily uses full parsing; a closed ordinary link resumes caching. Confirmed definitions retain document-wide reference context. | `crates/bbt-doc/tests/streaming.rs`, `quoted_definition_seed_resolves_a_retained_prefix` fails on 18ff123b and passes now. The every-split/random-append corpus includes `> [r]: u`, `- [r]: u`, `- [^f]: x` and `[foo\nbar]: u`; scalar mixtures include all four. A separate ambiguous-label test proves caching resumes after a nondefinition closes. |
+| Local diff recovery | `crates/bbt-ui/src/modules/diff.rs`, `Diff::parse` retains malformed rows as Notes. Incomplete hunks get a diagnostic at the next boundary or EOF. Invalid hunk headers create a visible unnumbered region. File/hunk headers take precedence over erroneous counters, including bare/tab-separated headers; orphan notes remain visible. The Result signature is preserved for compatibility. | `crates/bbt-ui/tests/toolkit.rs` tests short hunks at another hunk and EOF, orphan no-newline notes, bad headers, and next-file headers after zero/short/long counts. Earlier blank-context, bad-row numbering, multifile and folding witnesses remain. Rendering has no expect/panic path. |
+| ScrollStick claim/witness | `crates/bboxy450-term/tests/formal_contracts/toolkit_models.rs`, `scroll_stick` removes the vacuous response and jump marker. `verification/contracts.toml` makes no asynchronous jump liveness claim. The original safety controls still check retained manual intent and following projection. | `scroll_model_matches_the_real_endpoint_and_jump_policy` reconstructs the real controller from each reachable jump source, calls `jump_to_latest`, and compares its following flag and layout projection to the model successor. The implementation unit test checks private reset state. |
+
+The Markdown classifier is conservative rather than a second Markdown parser.
+Possible definitions can temporarily trigger full parsing, including a leading
+open bracket inside a code block. It does not permanently disable caching for
+ordinary inline links, task lists, JSON or indexing. Grammar and measured work
+remain implementation coverage, explicitly outside the finite identity model.
 
 ## Red to green
 
-Red commands ran against the original production/model implementation at
-`b81d3c38` with the new regression witnesses added. Failures were assertions,
-not compilation failures. Make exits are recorded separately from Cargo's 101.
+New regression witnesses ran against the unchanged production code at signed
+18ff123b before the fixes. `make test-toolkit-rework` exited **2**, with actual
+assertion failures, not compiler failures. `/tmp/e2-round2-red.log` records:
 
-| Required item | Red command / actual result | Green command / actual result |
-| --- | --- | --- |
-| 1 | `make test-toolkit-rework` **2**: append 1 reparsed `0..308`, losing the stable prefix | Same target **0**; 16,461/785,890 byte measurement and scalar equivalence/coverage assertions pass |
-| 2 | `make test-toolkit-models` **2**: deleting the good model's generation guard produced no violation | Same target **0**; the specific ledger-origin invariant detects the deletion |
-| 6 | `make test-toolkit-rework` **2**: empty context returned `unprefixed hunk line` | Same target **0**; empty context and a damaged line preserve the rest of the hunk |
-| 7 | `make test-toolkit-models` **2**: model jump retained nonzero manual intent | Same target **0**; endpoint/jump edges agree with Rust, and jump liveness is registered |
-| 8 | `make test-toolkit-models` **2**: upstream wake/queue state was absent | Same target **0**; upstream state and coalescing transition exist; the new real API witness passes and its omitted-rearm control loses the tail |
+- `quoted_definition_seed_resolves_a_retained_prefix`: the retained `[link][r]`
+  stayed Text after `> [r]: u`, while full parsing produced a Link.
+- The every-split equivalence test failed on that same quoted-definition corpus.
+- `diff_short_hunk_recovers_at_the_next_hunk` and
+  `diff_short_hunk_at_eof_stays_visible`: whole-diff truncation errors.
+- `diff_orphan_note_and_bad_header_do_not_discard_valid_hunks`: orphan-note error.
+- `diff_file_headers_win_over_incorrect_hunk_counts`: the next file's region
+  incorrectly contained a preceding hunk row.
 
-Red logs: `/tmp/e2-rework-red-widgets.log`, `/tmp/e2-rework-red-models.log`.
-Green logs: `/tmp/e2-rework-test-toolkit-rework.log`,
-`/tmp/e2-rework-test-toolkit-models.log`. The earlier
-`/tmp/e2-rework-green-widgets.log` and `/tmp/e2-rework-green-models.log` also
-record the first green pass; the named test-toolkit logs include the stronger
-coverage and ledger-origin assertions added afterward.
+After the fixes, `make test-toolkit-rework` exited **0**:
+**6 streaming tests and 15 UI tests** pass (`/tmp/e2-round2-green.log`).
+The byte witness reparses **16,461 bytes versus 785,890** for repeated full
+parsing, across 100 appends with inline links/task lists/indexing. **95/96**
+scalar-append seeds reuse a prefix for most appends; only one eighth introduce
+explicit definitions. Every append is compared with full parsing.
 
-After the rework gate passed on signed `6ee43422`, GitHub reported a conflict
-with newer main `2e7a6791`. Read-only merge-tree inspection located only the
-adjacent module declarations and cases.extend calls in formal_contracts/models.rs.
-The follow-up commit moves this workstream's declaration and single append away
-from those shared insertion points, retaining the same model code and families
-array. No merge, rebase or history rewrite is performed. The final full gate is
-rerun on that signed handoff commit rather than treating the parent result as a
-new result. Parent evidence: `/tmp/e2-rework-ci-6ee43422.log`, normal exit 0;
-formal receipt SHA-256
-`b2c34d3109d3cb2f494d7e3519845ac43e82a89d3bad191628711125b43407d6`.
+The first rework's required red-to-green evidence remains in
+`/tmp/e2-rework-red-widgets.log` and `/tmp/e2-rework-red-models.log`, with green
+`/tmp/e2-rework-test-toolkit-rework.log` and
+`/tmp/e2-rework-test-toolkit-models.log`: removing the good StreamToView generation
+guard now violates its ledger-origin invariant; the original Scroll model
+retained stale manual intent; the original wake model lacked upstream wake/queue
+state. These were real assertion failures against b81d3c38. The second review
+specifically accepted the ledger, wake shape and invalidation action.
 
-## Completed commands
+## Evidence for the nine original outcomes
 
-| Command | Exit / evidence |
+| Item | Files and mechanism / evidence |
 | --- | --- |
-| `make test-toolkit-rework` | **0**: four parser properties and eleven UI controller/paint/queue tests; byte and seed counters retained in `/tmp/e2-rework-test-toolkit-rework.log` |
-| `make test-toolkit-models` | **0**: four independent model/code checks, including every positive/broken verdict; `/tmp/e2-rework-test-toolkit-models.log` |
-| `make test-toolkit` | **0**: doc/UI unit, integration and doc tests; all 128 headless Metal theme/density stories; `/tmp/e2-rework-test-toolkit.log` |
-| `make check-toolkit` | **0**: strict all-target toolkit Clippy; `/tmp/e2-rework-check-toolkit.log` |
-| `make lock` | **0**: eleven dependencies removed; `/tmp/e2-rework-lock.log` and Cargo.lock diff |
-| `make list-toolkit-package` | **0**: no reports path; `/tmp/e2-rework-package-list-checked.log` and `target/toolkit-package-list.txt` |
-| `make test-licenses` | **0**: synchronized notices and package/license fixtures; `/tmp/e2-rework-test-licenses.log` |
-| `make parity-documents` | **0**: 168/168 required geometry cases measured, 0 unproven, 0 mismatches; 16 advisory pixel reviews. `/tmp/e2-rework-parity-documents.log`, `target/parity-documents/index.html` |
+| 1. Streaming Markdown | `bbt-doc/src/markdown/streaming.rs` retains stable blocks and the unsettled tail; tests cover scalar/random/single splits, fences, tables, UTF-8, YAML and late definitions. Work bytes and incremental-path coverage are asserted above. |
+| 2. Highlighting | `bbt-doc/src/highlight.rs` prepares owned spans on a guarded worker; SyntaxSet/ThemeSet share OnceLock resources. `bboxybook/src/documents.rs` uses Work::prepare, generation/revision fencing and AsyncRenderPreparation. Syntect enables exactly parsing/default-syntaxes/default-themes/regex-fancy. Pointer reuse, unknown syntax, exact byte coverage and UI-thread refusal have implementation witnesses. |
+| 3. Transcript | `bbt-ui/src/modules/transcript.rs` accepts keyed prepared Message bodies; the host supplies bbt-doc body elements without a UI-to-doc cycle. StreamToView rejects duplicates/gaps/retired generations and A-B-A callbacks. |
+| 4. Diff | `bbt-ui/src/modules/diff.rs` supplies independent hunk folding, line numbers and theme-token addition/removal colours, now with local malformed-input recovery. |
+| 5. Tool card | `bbt-ui/src/modules/tool_call.rs` composes title/status and independent Accordion arguments/output. The controller test toggles only the requested disclosure. |
+| 6. Approval | `bbt-ui/src/modules/approval.rs` handles enabled-choice keyboard selection; paint assertions show selection changes visible focus. |
+| 7. Editor | `bbt-ui/src/text_edit.rs` and its modules support logical Up/Down, word/line motions, undo/redo, history/draft restoration and captured slash/mention completion. Unicode, stale draft and completion-caret tests exercise the real controller. |
+| 8. Formal | `toolkit_models.rs` registers four good/Broken families through one append, with contracts/source mapping in verification. StreamToView uses an exactly-once current-generation applied ledger; IncrementalMarkdown explicitly classifies definition appends and invalidates; ScrollStick checks manual intent/following; DirtyWakeFrame extends upstream bits/pending/drain_pc with queue accounting, coalesced frames and budget-tail rearm. Its real DirtySet/ViewRing witness applies three deltas in two frames, while omitting complete_drain leaves the tail unwoken. |
+| 9. Stories | `bboxybook/tests/toolkit.rs` renders 16 states × 4 densities × 2 themes = 128 headless stories. Assertions check folded lines disappear, syntax has multiple colours and manual transcript scrolling changes pixels. Approval focus has a separate real paint witness. |
 
-Native model graphs from the focused rework check (full native/TLC parity is
-refreshed by the final exact-source gate):
+## Previously completed checks retained by the second review
 
-| Model | Good states / edges | Broken states / edges | Broken verdict |
-| --- | --- | --- | --- |
-| StreamToView | 104 / 285 | 704 / 2164 | safety |
-| IncrementalMarkdown | 33 / 45 | 48 / 63 | safety |
-| ScrollStick | 32 / 288 | 38 / 342 | safety |
-| DirtyWakeFrame | 142 / 245 | 129 / 212 | liveness |
+These are historical development results, not substitutes for the new exact-head
+full gate. No RUST_TEST_THREADS override is needed by any new test.
 
-## Original widget outcomes retained
+| Command | Actual exit and evidence |
+| --- | --- |
+| `make test-toolkit` | 0; doc/UI unit/integration/doc tests and all 128 headless stories, `/tmp/e2-rework-test-toolkit.log` |
+| `make check-toolkit` | 0; strict all-target Clippy, `/tmp/e2-rework-check-toolkit.log` |
+| `make lock` | 0; lock diff removes base64 0.23.1, deranged, linked-hash-map, num-conv, plist, powerfmt, quick-xml 0.42, time, time-core, time-macros and yaml-rust. quick-xml 0.41 remains for wayland-scanner, outside syntect. `/tmp/e2-rework-lock.diff` |
+| `make list-toolkit-package` | 0; Cargo package --list omits reports/, `/tmp/e2-rework-package-list-checked.log` |
+| `make test-licenses` | 0; synchronized notices and license fixtures, `/tmp/e2-rework-test-licenses.log` |
+| `make parity-documents` | 0; 168/168 required geometry cases, no unproven/mismatched cases; 16 advisory pixel reviews. `/tmp/e2-rework-parity-documents.log` |
 
-- Streaming Markdown and syntax spans are in bboxy450-doc; worker preparation
-  fences generation/revision and layout consumes owned prepared spans.
-- `modules/transcript.rs` accepts keyed prepared Markdown body elements without
-  introducing a UI-to-doc dependency cycle. StreamToView rejects retired,
-  duplicate and out-of-order effects; gaps require host retry/snapshot repair.
-- `modules/diff.rs` supplies unified line numbers, themed additions/removals and
-  independent hunk folding. `modules/tool_call.rs` supplies status/title and
-  independent Accordion disclosures for arguments/output.
-- `modules/approval.rs` supplies keyboard enabled-choice selection. Editor
-  logical vertical/word/line motions, undo/redo, history/draft restoration and
-  captured slash/mention completion hooks remain covered in `tests/toolkit.rs`.
-- All four formal contracts remain registered in corpus/contracts/coverage.
-  Models remain in their own module, appended through one cases.extend call.
-- Sixteen story states across four densities and two themes still render headless.
-  Story assertions now prove folded lines disappear while the other hunk remains,
-  rendered code has multiple colours, and manual transcript scroll changes pixels.
-  The UI paint witness proves moving approval selection changes painted focus.
+The package-list and model checks are refreshed for this revision; exact commands
+and exits accompany the final task report. Native/TLC parity and every full-gate
+layer are refreshed on the enclosing signed source. The 18ff123b full green result
+used RUST_TEST_THREADS=1 after an issue-85 failure; that serial retry is historical
+and is not offered as evidence for this review's default-concurrency requirement.
 
-## Bounds, remaining gaps and disposition
+## Bounds, gaps and release follow-up
 
-Definition-bearing documents deliberately use full-parser reference context;
-only matching definition lines activate that path. The finite corpus and
-random mixtures do not prove all Markdown grammar. Prefix/tail work is measured
-in bytes; no downstream harness p99 frame budget is claimed.
+Formal bounds, atomicity and fairness are in `verification/contracts.toml`.
+DirtyWakeFrame admits three deltas with a two-delta frame budget and weakly fair
+wake/drain/frame service. Weak memory, wall-clock timing and unbounded streams
+remain outside these models. Finite native/TLC parity is neither arbitrary Rust
+refinement nor complete TLA+ semantics proof.
 
-The formal abstractions state owners, atomic steps, finite bounds and fairness
-in verification/contracts.toml. DirtyWakeFrame has at most three arrivals and
-fair posted-wake/drain/frame servicing, with weak memory and wall-clock deadlines
-outside the model. Finite native/TLC parity is not arbitrary Rust refinement or
-complete TLA+ semantics proof. Real API witnesses bridge the stated abstractions.
+Remaining SHOULD: approval Escape cancellation, descriptions and separate
+allow/deny tones. The four requested semantic story/paint checks are implemented.
+Oracle-deferred follow-ups remain keyed/virtualized transcript reuse, Plan/Image
+widgets, ANSI handling/tail truncation and intra-line diff. Downstream harness
+frame/history budgets and independent browser captures for the new controls are
+not claimed. Normal-policy night/slow checks remain skipped. There is no new
+process boundary requiring a separate boundary suite.
 
-Remaining SHOULD: approval Escape cancellation, option descriptions and distinct
-allow/deny tones. These add option/event API and state/paint behavior beyond the
-current prompt contract. The four requested semantic story/paint checks are done.
-Keyed/virtualized transcript reuse, Plan/Image widgets, ANSI/tail truncation and
-intra-line diff remain explicitly deferred by the Oracle's rework brief.
+Issue #85's two mux flakes have the d824 disposition. No mux code, assertions,
+quarantine or concurrency setting changes here. Any repeated failure is reported
+with its actual exit; it is never relabeled as green.
 
-Independent browser reference captures for the new controls and downstream
-history windowing/frame-budget measurements remain outside this patch. Existing
-normal-policy night/slow tests remain skipped by the canonical gate. No new
-process boundary is implemented, so no extra boundary or live-provider claim is
-made. All tests run with private unattended fixtures, without operator prompts.
+The original attribution diff synchronizes 31 existing copies because
+`scripts/license-packages.py` COPIES requires byte identity with the root syntect
+credit. D824 and the second review explicitly accept these copies, including
+plugins/gitkb/ATTRIBUTION.md.
 
-The two mux flakes are tracked in issue #85 and dispositioned by d824. No mux
-runtime/test assertion or quarantine is changed here. The prior b81 full run
-passed both. Only a repeated #85 failure may use that disposition; the final
-rework gate's actual outcome is recorded separately, never relabeled as green.
-
-The original attribution diff updates 31 existing copies: root syntect credit
-must be copied byte-for-byte under scripts/license-packages.py COPIES. D824
-accepts those paths. No additional policy copy change is needed for feature
-removal; origin/license notices stay attached.
-
-## Release follow-up
-
-bboxy450-ui and bboxy450-doc need the 0.1.2 API releases, with the corresponding
-bboxy450-book update for its gallery/CLI and dependency floors. RT/render/Yarn
-have no new runtime API in this rework. Public editor enum additions still
-require downstream exhaustive matches to be updated. No version, crate publish,
-main merge or release tag is performed by this Executor.
+For 0.1.2, bump bboxy450-ui and bboxy450-doc for the new APIs, and bboxy450-book
+for its gallery/CLI and dependency floors. RT/render/Yarn have no new runtime API
+here. Editor enum additions require downstream exhaustive matches to update.
+No version bump, publication, merge or release tag is performed.
 
 Project policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md

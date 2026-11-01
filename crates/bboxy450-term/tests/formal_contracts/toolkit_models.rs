@@ -162,7 +162,6 @@ pub fn scroll_stick(b: bool) -> Model {
             ("maximum", 3, 0),
             ("actual", 3, 0),
             ("manual_intent", 3, 0),
-            ("jump", 1, 0),
         ],
     );
     for target in 0_i64..=3 {
@@ -176,7 +175,6 @@ pub fn scroll_stick(b: bool) -> Model {
                     (1, Int(target)),
                     (3, Int(target.min(maximum))),
                     (4, Int(target)),
-                    (5, Int(0)),
                 ],
             );
         }
@@ -184,7 +182,7 @@ pub fn scroll_stick(b: bool) -> Model {
             &mut m,
             &format!("FollowingLayout{target}"),
             eq(0, 1),
-            &[(2, Int(target)), (3, Int(target)), (5, Int(0))],
+            &[(2, Int(target)), (3, Int(target))],
         );
         for requested in 0..=3 {
             action(
@@ -195,7 +193,6 @@ pub fn scroll_stick(b: bool) -> Model {
                     (2, Int(target)),
                     (1, Int(if b { target } else { requested })),
                     (3, Int(if b { target } else { target.min(requested) })),
-                    (5, Int(0)),
                 ],
             );
         }
@@ -204,13 +201,7 @@ pub fn scroll_stick(b: bool) -> Model {
         &mut m,
         "JumpToLatest",
         Bool(true),
-        &[
-            (0, Int(1)),
-            (1, Int(0)),
-            (3, Var(2)),
-            (4, Int(0)),
-            (5, Int(1)),
-        ],
+        &[(0, Int(1)), (1, Int(0)), (3, Var(2)), (4, Int(0))],
     );
     safe(
         &mut m,
@@ -222,11 +213,6 @@ pub fn scroll_stick(b: bool) -> Model {
         "FollowingShowsTail",
         implies(eq(0, 1), Var(3).eq(Var(2))),
     );
-    m.responses.push(Response {
-        name: "JumpRestoresFollowing".into(),
-        request: eq(5, 1),
-        response: eq(0, 1),
-    });
     m
 }
 
@@ -417,22 +403,24 @@ mod rework_witnesses {
             .unwrap();
         let mut actual = bbt_ui::modules::transcript::ScrollStick::default();
         actual.user_scroll(3., 3.);
-        for edges in &r.edges {
+        for (from, edges) in r.edges.iter().enumerate() {
             for edge in edges {
                 if edge.action == endpoint {
                     assert_eq!(r.states[edge.to][0], i64::from(actual.following()));
                 }
                 if edge.action == jump {
-                    assert_eq!((r.states[edge.to][1], r.states[edge.to][4]), (0, 0));
+                    let before = &r.states[from];
+                    let after = &r.states[edge.to];
+                    let mut real = bbt_ui::modules::transcript::ScrollStick::default();
+                    real.user_scroll(before[1] as f32, before[2] as f32);
+                    real.jump_to_latest();
+                    assert_eq!(after[0], i64::from(real.following()));
+                    assert_eq!(after[3] as f32, real.layout_offset().min(after[2] as f32));
                 }
             }
         }
-        assert!(
-            m.responses
-                .iter()
-                .any(|p| p.name == "JumpRestoresFollowing")
-        );
     }
+
     #[test]
     fn dirty_frame_extends_coalesced_wake_and_can_consume_two_arrivals() {
         let m = dirty_wake_frame(false);

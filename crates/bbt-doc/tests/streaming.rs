@@ -14,7 +14,30 @@ const CORPUS: &[&str] = &[
     "- item\n\n  continuation\n\n- next\n\n> quote\n>\n> body\n\nend\n",
     "\u{feff}---\r\nnumber: 8\r\n---\r\n\r\n# BOM\r\n\r\nbody\r\n",
     "<div>\nraw\n</div>\n\nNext\n\n***\n\nlast\n",
+    "[link][r]\n\n# Stable\n\nBefore\n\n> [r]: u\n\nAfter [link][r]\n",
+    "[link][r]\n\n# Stable\n\nBefore\n\n- [r]: u\n\nAfter [link][r]\n",
+    "footnote [^f]\n\n# Stable\n\nBefore\n\n- [^f]: x\n\nAfter [^f]\n",
+    "[link][foo bar]\n\n# Stable\n\nBefore\n\n[foo\nbar]: u\n\nAfter [link][foo bar]\n",
 ];
+#[test]
+fn quoted_definition_seed_resolves_a_retained_prefix() {
+    let mut s = StreamingMarkdown::default();
+    s.append("[link][r]\n\n# Stable\n\nBefore\n\nTail\n");
+    assert!(s.stable_blocks() > 0);
+    s.append("\n> [r]: u\n\nAfter\n");
+    assert_eq!(s.document(), &parse(&s.document().source));
+}
+#[test]
+fn a_possible_multiline_label_can_close_without_disabling_prefix_reuse() {
+    let mut s = StreamingMarkdown::default();
+    s.append("# Stable\n\nBefore\n\n[open\n");
+    assert_eq!(s.reparsed_range().start, 0);
+    s.append("label](url)\n\nAfter\n");
+    assert_eq!(s.document(), &parse(&s.document().source));
+    s.append("\nTail\n");
+    assert!(s.reparsed_range().start > 0);
+    assert_eq!(s.document(), &parse(&s.document().source));
+}
 // Property witness: every prefix, every single split, and reproducible random
 // multi-append partitions, including every byte boundary inside fences/tables.
 #[test]
@@ -108,8 +131,13 @@ fn generated_block_mixtures_match_full_parse_after_each_scalar_append() {
         // Seven out of eight seeds contain no definitions: ordinary brackets
         // must exercise prefix reuse. Dedicated seeds still cover late binding.
         if seed % 8 == 0 {
-            source
-                .push_str("\n\n[x][ref] and [^f]\n\n[ref]: https://example.com\n[^f]: footnote\n");
+            source.push_str("\n\n[x][ref] and [^f]\n\n");
+            source.push_str(match seed % 32 {
+                0 => "> [ref]: https://example.com\n",
+                8 => "- [ref]: https://example.com\n",
+                16 => "- [^f]: footnote\n",
+                _ => "[multi\nline]: https://example.com\n[^f]: footnote\n",
+            });
         }
         let mut stream = StreamingMarkdown::default();
         let mut prefix = String::new();

@@ -16,21 +16,61 @@ pub struct StreamingMarkdown {
     reparsed: Range<usize>,
     definition_scan: usize,
     definitions: bool,
+    definition_candidate: Option<usize>,
 }
 
-// Equivalent to a multiline ^\s{0,3}\[[^\]]+\]: check, without a regex
-// dependency or rescanning the stable prefix. Inline brackets are not global.
-fn definition_line(line: &str) -> bool {
-    let indent = line.chars().take_while(|c| c.is_whitespace()).count();
-    if indent > 3 {
-        return false;
+// A definition can start after nested blockquote/list markers. This is a
+// conservative classifier, not a second Markdown parser: ambiguous open labels
+// temporarily use the full parser until a closing bracket disambiguates them.
+fn definition_label(mut line: &str) -> Option<&str> {
+    line = line.strip_prefix('\u{feff}').unwrap_or(line);
+    loop {
+        line = line.trim_start();
+        if let Some(rest) = line.strip_prefix('>') {
+            line = rest;
+            continue;
+        }
+        let bytes = line.as_bytes();
+        if matches!(bytes.first(), Some(b'-' | b'+' | b'*'))
+            && bytes.get(1).is_some_and(u8::is_ascii_whitespace)
+        {
+            line = &line[1..];
+            continue;
+        }
+        let digits = bytes.iter().take_while(|b| b.is_ascii_digit()).count();
+        if (1..=9).contains(&digits)
+            && matches!(bytes.get(digits), Some(b'.' | b')'))
+            && bytes.get(digits + 1).is_some_and(u8::is_ascii_whitespace)
+        {
+            line = &line[digits + 1..];
+            continue;
+        }
+        return line.strip_prefix('[');
     }
-    let Some(label) = line.trim_start().strip_prefix('[') else {
-        return false;
-    };
-    label
-        .find(']')
-        .is_some_and(|end| end > 0 && label[end + 1..].starts_with(':'))
+}
+fn definitions(source: &str, from: usize) -> (bool, Option<usize>) {
+    let mut start = from;
+    let mut possible = None;
+    for line in source[from..].split_inclusive('\n') {
+        if let Some(label) = definition_label(line) {
+            let label_start = start + line.len() - label.len();
+            let rest = &source[label_start..];
+            match rest.find(']') {
+                Some(end) if end > 0 && rest[end + 1..].starts_with(':') => return (true, None),
+                None => {
+                    possible.get_or_insert(start);
+                }
+                // The colon may be the next append, including after a label
+                // spanning several lines. Keep its original start until then.
+                Some(end) if end > 0 && end + 1 == rest.len() => {
+                    possible.get_or_insert(start);
+                }
+                _ => {}
+            }
+        }
+        start += line.len();
+    }
+    (false, possible)
 }
 impl StreamingMarkdown {
     pub fn document(&self) -> &Markdown {
@@ -53,11 +93,14 @@ impl StreamingMarkdown {
         // definition. Such documents use the full parser's reference context.
         // Only the previous unfinished line and new bytes need classification.
         // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-        self.definitions |= self.document.source[self.definition_scan..]
-            .lines()
-            .any(definition_line);
+        let (found, possible) = definitions(
+            &self.document.source,
+            self.definition_candidate.unwrap_or(self.definition_scan),
+        );
+        self.definitions |= found;
+        self.definition_candidate = possible;
         self.definition_scan = self.document.source.rfind('\n').map_or(0, |n| n + 1);
-        let global = self.definitions;
+        let global = self.definitions || self.definition_candidate.is_some();
         let unsettled_header = !self.document.source.contains('\n')
             || self
                 .document

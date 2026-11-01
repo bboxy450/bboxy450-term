@@ -458,7 +458,7 @@ title = "Stable-prefix Markdown cache identity"
 models = ["IncrementalMarkdown", "BrokenIncrementalMarkdown"]
 sources = ["crates/bboxy450-term/tests/formal_contracts/toolkit_models.rs", "crates/bbt-doc/src/markdown/streaming.rs", "crates/bbt-doc/src/markdown/parse.rs"]
 implementation_tests = ["crates/bbt-doc/tests/streaming.rs"]
-assumptions = "Three semantic prefix identities, three tail states, a definition-presence bit and pending line classification. Append ordinary/inline-bracket lines and append definition lines are distinct actions; classification plus invalidation are internal steps of one atomic parser call, so only the returned state is visible. Definition documents keep full-parse reference context. Grammar, UTF-8, YAML, multiline definitions and actual bytes use full-parse equivalence and measured reparsed-range tests; no arbitrary-parser refinement is claimed."
+assumptions = "Three semantic prefix identities, three tail states, a definition-presence bit and pending line classification. Append ordinary/inline-bracket lines and append definition lines are distinct actions; classification plus invalidation are internal steps of one atomic parser call, so only the returned state is visible. Definition documents keep full-parse reference context. Container markers, multiline labels and temporary ambiguous-label fallback use every-split/full-parse equivalence and candidate-disambiguation tests in bbt-doc/tests/streaming.rs; grammar, UTF-8, YAML and actual work bytes remain implementation coverage. No arbitrary-parser refinement is claimed."
 property = "Every returned available cache has the current prefix identity. A definition-line action changes that identity and must invalidate; Broken skips that invalidation. Seven eighths of generated seeds avoid definitions, keeping inline links, task lists and code brackets on the incremental path. The ordinary-bracket witness counts real reparsed bytes across 100 appends."
 checks = ["make test-formal", "make test"]
 
@@ -469,7 +469,7 @@ models = ["ScrollStick", "BrokenScrollStick"]
 sources = ["crates/bboxy450-term/tests/formal_contracts/toolkit_models.rs", "crates/bbt-ui/src/modules/transcript.rs"]
 implementation_tests = ["crates/bbt-ui/tests/toolkit.rs"]
 assumptions = "One view, following bit, manual intent and offsets bounded 0..3. User scroll, jump and layout after content growth/shrink are atomic. The actual projection clamps but the requested intent survives temporary empty/shrunk content. Pixel shaping, wheel burst aggregation and multiple scoped views use the existing app chat_scroll tests."
-property = "Following layout shows the tail; manual intent survives layout. User scroll at or beyond the maximum restores following. Jump resets requested/manual intent to zero and satisfies jump ~> following without a fairness assumption (restoration is atomic). Broken overwrites manual intent during layout. A model-edge witness checks endpoints and jump against the real API."
+property = "Following layout shows the tail; manual intent survives layout. User scroll at or beyond the maximum restores following. Jump synchronously restores following and resets requested/manual intent to zero; there is no asynchronous jump liveness claim. Broken overwrites manual intent during layout. A model-edge witness calls real jump_to_latest and compares following and projected offset after each reachable model jump; an implementation unit test checks the private reset state."
 checks = ["make test-formal", "make test"]
 
 [[contract]]
