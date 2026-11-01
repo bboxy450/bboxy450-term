@@ -725,3 +725,23 @@ frontend = "project"
 name = "BrokenGitKbAttribution"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "LcAppendLog"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenLcAppendLogTornRead"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenLcAppendLogEarlyIndex"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenLcAppendLogMixedTable"
+expected = "safety"
+frontend = "project"

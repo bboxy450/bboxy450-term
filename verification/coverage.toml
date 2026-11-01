@@ -316,7 +316,7 @@ sources = ["crates/bboxy450-harness/verification/coverage.toml", "crates/bboxy45
 
 [[crate]]
 name = "bboxy450-log-converter"
-status = "implementation-tests"
-models = []
-scope = "P1 pure IR and canonical CBOR: fixed vectors, every variant, unknown fields and stateless RecordId DAG joins. No product state model yet; verification/log-converter.md records the implementation coverage."
-sources = ["crates/bboxy450-log-converter/src/ir/mod.rs", "crates/bboxy450-log-converter/src/ir/cbor.rs", "crates/bboxy450-log-converter/src/ir/keys.rs"]
+status = "contract-model"
+models = ["LcAppendLog", "BrokenLcAppendLogTornRead", "BrokenLcAppendLogEarlyIndex", "BrokenLcAppendLogMixedTable"]
+scope = "LcAppendLog: three frames with two events each, two readers, one rotation, crash/recovery, atomic index rename and a parked seek-table reader. Per-reader weak fairness. No Rust/filesystem refinement or kernel power-loss guarantee; CBOR, zstd and parsing are implementation-tested. See verification/log-converter.md."
+sources = ["crates/bboxy450-log-converter/src/bxl/mod.rs", "crates/bboxy450-log-converter/src/bxl/writer.rs", "crates/bboxy450-log-converter/src/bxl/reader.rs", "crates/bboxy450-log-converter/src/bxl/frame.rs", "crates/bboxy450-log-converter/src/bxl/wire.rs", "crates/bboxy450-log-converter/src/ir/mod.rs", "crates/bboxy450-log-converter/src/ir/cbor.rs", "crates/bboxy450-log-converter/src/ir/keys.rs"]

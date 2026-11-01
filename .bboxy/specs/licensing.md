@@ -47,6 +47,7 @@ the scope within that package.
 
 | Crate | Publishes as | License | Why | Vendored or third-party code |
 |---|---|---|---|---|
+| `bboxy450-log-converter` | `bboxy450-log-converter` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | IR and bxl storage ported from the retired bboxy450-log-converter project; origin notices retained | Independent implementation; ctx/casr/Harbor/session-bridge ideas only |
 | `bbt-core` | `bboxy450-term-core` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | Custom terms for separately identified bboxy450-owned additions; pre-adoption fork stays Apache-2.0; vte retains its dual terms | `vendor/alacritty/*` (Apache-2.0, alacritty authors), `vendor/vte` (MIT OR Apache-2.0, vte authors), and `src/keyboard.rs`, an adaptation of alacritty `input/keyboard.rs build_sequence` at 5421470 (Apache-2.0, upstream header kept plus a "modified by bboxy450" line; decision [[d36-apache-code-placement\|#36]]); their notices stay verbatim |
 | `bbt-rt` | `bboxy450-rt` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
 | `bboxy450-tlc` | `bboxy450-tlc` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | Independent native finite-state checker; no upstream TLC source copied. |

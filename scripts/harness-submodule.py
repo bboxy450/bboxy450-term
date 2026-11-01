@@ -10,12 +10,19 @@ import argparse
 import json
 from pathlib import Path
 import os
+import re
 import shutil
 import subprocess
 import tomllib
 
 MEMBER = 'crates/bboxy450-harness'
 URL = 'https://github.com/bboxy450/bboxy450-harness'
+CONVERTER = 'bboxy450-log-converter'
+# d4949 permits ideas, never these packages or copied implementations.
+DENIED_CONVERTERS = {'ctx', 'ctxrs', 'casr', 'cross-agent-session-resumer', 'harbor',
+                     'session-bridge', 'claude-code-log'}
+DENIED_ORIGINS = ('github.com/ctxrs/ctx', 'github.com/dicklesworthstone/cross_agent_session_resumer',
+                  'github.com/laude-institute/harbor', 'session-bridge', 'github.com/daaain/claude-code-log')
 
 
 def initialize(root):
@@ -82,9 +89,80 @@ def check_json_features(root, features=()):
     print('harness: parent JSON features isolated: ' + ', '.join(resolved), flush=True)
 
 
+def denied_converter(name, source=''):
+    return (name.lower().replace('_', '-') in DENIED_CONVERTERS
+            or any(origin in source.lower() for origin in DENIED_ORIGINS))
+
+
+def validate_converter_secret(text):
+    # Values are never included in diagnostics. Native probe transcripts remain
+    # test-owned temporary files; only synthetic source/fixture files are scanned.
+    patterns = (r'sk-(?:or-v1-)?[A-Za-z0-9_-]{20,}',
+                r'(?i)(?:api_key|key|token)\s*[:=]\s*[\x22\x27]?[0-9a-f]{32,}',
+                r'-----BEGIN (?:OPENSSH |RSA |EC )?PRIVATE KEY-----',
+                r'(?:ghp_|github_pat_)[A-Za-z0-9_]{30,}')
+    if any(re.search(pattern, text) for pattern in patterns):
+        raise ValueError('converter: credential shape in source (value suppressed)')
+
+
+def validate_converter_dependencies(data):
+    packages = {p['id']: p for p in data['packages']}
+    roots = [ident for ident, package in packages.items() if package['name'] == CONVERTER]
+    nodes = {n['id']: n for n in data['resolve']['nodes']}
+    if len(roots) != 1 or roots[0] not in nodes:
+        raise ValueError('converter: dependency inventory is missing')
+    pending, visited = roots[:], set()
+    while pending:
+        ident = pending.pop()
+        if ident in visited:
+            continue
+        visited.add(ident)
+        package = packages[ident]
+        if package['name'] in {'bbt-mux', 'bboxy450-term-mux', 'bboxy450-term', 'bboxy450-harness'}:
+            raise ValueError('converter: forbidden upward dependency: ' + package['name'])
+        if denied_converter(package['name'], package.get('source') or ''):
+            raise ValueError('converter: d4949 denied dependency: ' + package['name'])
+        pending.extend(nodes[ident]['dependencies'])
+    return visited
+
+
+def validate_converter_sources(root):
+    crate = root / 'crates' / CONVERTER
+    def dependencies(table):
+        if not isinstance(table, dict):
+            return
+        for key, value in table.items():
+            if key in {'dependencies', 'dev-dependencies', 'build-dependencies'}:
+                for alias, entry in value.items():
+                    name = entry.get('package', alias) if isinstance(entry, dict) else alias
+                    source = entry.get('git', '') if isinstance(entry, dict) else ''
+                    if denied_converter(name, source):
+                        raise ValueError('converter: d4949 denied manifest dependency: ' + name)
+            else:
+                dependencies(value)
+    dependencies(tomllib.loads((crate / 'Cargo.toml').read_text()))
+    for path in crate.rglob('*'):
+        if path.is_file() and path.suffix in {'.rs', '.py', '.sh', '.md', '.hex', '.toml', '.json'}:
+            validate_converter_secret(path.read_text())
+    for directory in ('src', 'tests', 'probes'):
+        for path in (crate / directory).rglob('*'):
+            if path.suffix not in {'.rs', '.py', '.sh'} or not path.is_file():
+                continue
+            lines = path.read_text().splitlines()
+            for index, line in enumerate(lines):
+                if re.search(r'(?i)(?:copied|adapted|translated) from', line):
+                    origin = ' '.join(lines[index:index + 3]).lower()
+                    if any(url in origin for url in DENIED_ORIGINS) or any(
+                            re.search(r'(?<![a-z0-9])' + re.escape(name) + r'(?![a-z0-9])', origin)
+                            for name in DENIED_CONVERTERS):
+                        raise ValueError('converter: d4949 copied origin: ' + str(path))
+
+
 def check_resolution(root):
     data = workspace_metadata(root)
     validate_json_features(data)
+    validate_converter_dependencies(data)
+    validate_converter_sources(root)
     toolkit = {"bboxy450-rt": "bbt-rt", "bboxy450-yarn": "bbt-yarn", "bboxy450-tlc": "bboxy450-tlc",
                "bboxy450-ui": "bbt-ui", "bboxy450-ui-core": "bbt-ui-model", "bboxy450-render": "bbt-render", "bboxy450-doc": "bbt-doc"}
     for name, directory in toolkit.items():
@@ -92,6 +170,7 @@ def check_resolution(root):
         if len(matches) != 1 or matches[0]['source'] is not None or Path(matches[0]['manifest_path']).resolve() != root / 'crates' / directory / 'Cargo.toml':
             raise ValueError(f'harness: {name} must resolve once to the in-tree path')
     print('harness: all seven toolkit dependencies resolve to in-tree paths', flush=True)
+    print('converter: upward dependency, d4949 package/provenance and secret-shape guards held', flush=True)
 
 
 def archive_generated_evidence(child, artifacts):

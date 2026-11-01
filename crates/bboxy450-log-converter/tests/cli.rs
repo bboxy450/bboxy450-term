@@ -12,6 +12,10 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-log-converter/blob/main/ATTRIBUTION.md
 
+#![allow(
+    clippy::disallowed_methods,
+    reason = "unattended CLI fixtures, never a UI turn"
+)]
 use std::process::Command;
 #[test]
 fn help_version_and_skeleton_status_are_honest() {
@@ -65,8 +69,11 @@ fn help_version_and_skeleton_status_are_honest() {
 fn provider_cli_aliases_keep_the_internal_tag() {
     use bboxy450_log_converter::ir::Provider;
     use std::str::FromStr;
-    assert_eq!(Provider::from_str("bboxy").unwrap(),Provider::Bboxy);
-    assert_eq!(Provider::from_str("bboxy450-harness").unwrap(),Provider::Bboxy);
-    assert_eq!(Provider::Bboxy.as_str(),"bboxy");
+    assert_eq!(Provider::from_str("bboxy").unwrap(), Provider::Bboxy);
+    assert_eq!(
+        Provider::from_str("bboxy450-harness").unwrap(),
+        Provider::Bboxy
+    );
+    assert_eq!(Provider::Bboxy.as_str(), "bboxy");
     assert!(Provider::from_str("bogus").is_err());
 }
