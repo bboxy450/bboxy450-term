@@ -799,7 +799,7 @@ test-shared-codex-cleanup:
 	@python3 -I -B scripts/test-shared-codex-cleanup.py
 
 .PHONY: test-harness-codex-native
-test-harness-codex-native: build test-capability-file
+test-harness-codex-native: build test-capability-file test-capability-scan
 	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --codex '$(CODEX_BIN)'
 	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --codex '$(CODEX_BIN)' --cold --shim
 
@@ -1894,3 +1894,12 @@ test-capability-file:
 .PHONY: test-capability-control
 test-capability-control:
 	@set -eu; . ./scripts/cache-env.sh; python3 -I -B scripts/test-capability-control.py '$(abspath $(TARGET_DIR))'
+
+.PHONY: test-capability-scan
+test-capability-scan:
+	@python3 -I -B scripts/test-capability-scan.py
+
+.PHONY: check-capability-file
+check-capability-file:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked -p bboxy450-harness-wake-up -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings

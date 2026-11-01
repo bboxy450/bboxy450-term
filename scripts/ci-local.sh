@@ -78,6 +78,10 @@ if [ "$after_tests" = false ]; then
     # test-harness-native, outside concurrent forking cases, as its own Make does.
     ledger unit sh scripts/quarantine-test.sh --workspace --locked -- --skip non_pty_spawn_does_not_keep_a_sibling_master_alive
 fi
+# This real exec-environment control restores and hashes its source before
+# returning; no other compilation runs while the broken variant is present.
+ledger integration make test-capability-scan TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
+ledger integration make test-capability-control TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger integration make test-harness-native TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger smoke sh scripts/ui-lint.sh
