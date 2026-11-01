@@ -157,6 +157,51 @@ fn notification(b: bool) -> Model {
     safe(&mut m, "ProcessedWasSubmitted", Var(4).le(Var(0)));
     m
 }
+// A namespace change invalidates the cached inode before reuse.
+fn inode_fence(b: bool) -> Model {
+    let mut m = model(
+        "InodeFence",
+        b,
+        &[
+            ("path_inode", 1, 0),
+            ("cached_inode", 1, 0),
+            ("changed", 1, 0),
+            ("watching", 1, 1),
+            ("bad", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "ReplacePathComponent",
+        Bool(true),
+        &[(0, Int(1).minus(Var(0))), (2, Int(1))],
+    );
+    action(
+        &mut m,
+        "WatchUnavailable",
+        Bool(true),
+        &[(3, Int(0)), (2, Int(1))],
+    );
+    let reuse = if b {
+        Bool(true)
+    } else {
+        eq(2, 0).and(eq(3, 1))
+    };
+    action(
+        &mut m,
+        "ReuseWrongInode",
+        reuse.clone().and(Var(0).eq(Var(1)).negate()),
+        &[(4, Int(1))],
+    );
+    action(
+        &mut m,
+        "RecheckPath",
+        reuse.negate(),
+        &[(1, Var(0)), (2, Int(0))],
+    );
+    no_bad(&mut m, 4);
+    m
+}
 // Owner writes have a monotonically increasing epoch, even when A returns.
 fn routing_cache(b: bool) -> Model {
     let mut m = model(
@@ -1701,7 +1746,7 @@ fn native_frame_observation(b: bool) -> Model {
 }
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 37] = [
+    let families: [fn(bool) -> Model; 38] = [
         seat_models::diagnostic_routing,
         native_surface_resize,
         crate_publication,
@@ -1726,6 +1771,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         notification,
         notification_models::recovery,
         notification_models::lifecycle,
+        inode_fence,
         routing_cache,
         workspace,
         plugin,

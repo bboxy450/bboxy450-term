@@ -18,6 +18,22 @@ use super::{Result, Store, invalid};
 #[cfg(test)]
 mod power_tests;
 
+#[cfg(target_os = "macos")]
+mod path_fence;
+#[cfg(not(target_os = "macos"))]
+mod path_fence {
+    pub(super) struct PathFence;
+    impl PathFence {
+        pub fn new(_: &std::path::Path, _: (u64, u64)) -> Option<Self> {
+            None
+        }
+        pub fn unchanged(&self) -> bool {
+            false
+        }
+    }
+}
+use path_fence::PathFence;
+
 const PREFIX_RANGE: &str = "SELECT key,value FROM kv WHERE key>=?1 AND key<?2 ORDER BY key";
 const PREFIX_TAIL: &str = "SELECT key,value FROM kv WHERE key>=?1 ORDER BY key";
 
@@ -54,6 +70,7 @@ struct Idle {
     path: PathBuf,
     /// (device, inode) of the database file when opened: a replaced file is never reused.
     file: (u64, u64),
+    fence: Option<PathFence>,
     db: Connection,
 }
 
@@ -67,6 +84,7 @@ fn identity(path: &Path) -> Option<(u64, u64)> {
 pub struct Lease {
     path: PathBuf,
     file: (u64, u64),
+    fence: Option<PathFence>,
     db: Option<Connection>,
 }
 
@@ -95,6 +113,7 @@ impl Drop for Lease {
             idle.push_back(Idle {
                 path: std::mem::take(&mut self.path),
                 file: self.file,
+                fence: self.fence.take(),
                 db,
             });
             (idle.len() > POOL).then(|| idle.pop_front())
@@ -105,21 +124,25 @@ impl Drop for Lease {
 
 pub(crate) fn open(path: &Path) -> Result<Lease> {
     bbt_rt::assert_not_ui_thread();
-    let file = identity(path);
     let reused = {
         let mut idle = IDLE.lock().unwrap_or_else(|e| e.into_inner());
         idle.iter()
             .rposition(|c| c.path == path)
             .and_then(|i| idle.remove(i))
     };
-    if let Some(c) = reused
-        && Some(c.file) == file
-    {
-        return Ok(Lease {
-            path: c.path,
-            file: c.file,
-            db: Some(c.db),
-        });
+    if let Some(mut c) = reused {
+        let unchanged = c.fence.as_ref().is_some_and(PathFence::unchanged);
+        if unchanged || Some(c.file) == identity(path) {
+            if !unchanged && c.fence.is_some() {
+                c.fence = PathFence::new(path, c.file);
+            }
+            return Ok(Lease {
+                path: c.path,
+                file: c.file,
+                fence: c.fence,
+                db: Some(c.db),
+            });
+        }
     }
     let db = Connection::open(path)?;
     db.busy_timeout(Duration::from_secs(2))?;
@@ -132,6 +155,7 @@ pub(crate) fn open(path: &Path) -> Result<Lease> {
     Ok(Lease {
         path: path.to_path_buf(),
         file,
+        fence: PathFence::new(path, file),
         db: Some(db),
     })
 }

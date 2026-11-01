@@ -595,3 +595,13 @@ frontend = "project"
 name = "BrokenRoutingCache"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "InodeFence"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenInodeFence"
+expected = "safety"
+frontend = "project"
