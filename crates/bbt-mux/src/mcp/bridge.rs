@@ -42,18 +42,10 @@ impl Config {
             .map_err(|_| bad())?
             .parse::<u64>()
             .map_err(|_| bad())?;
-        let cap = std::env::var("BBOXY_CAPABILITY").map_err(|_| bad())?;
-        if seat == Ulid::nil()
-            || generation == 0
-            || cap.len() != 64
-            || !cap.bytes().all(|b| b.is_ascii_hexdigit())
-        {
+        if seat == Ulid::nil() || generation == 0 {
             return Err(bad());
         }
-        let mut capability = [0; 32];
-        for (i, byte) in capability.iter_mut().enumerate() {
-            *byte = u8::from_str_radix(&cap[i * 2..i * 2 + 2], 16).map_err(|_| bad())?;
-        }
+        let capability = bboxy450_harness_wake_up::capability::from_env()?;
         Ok(Self {
             socket: socket.into(),
             seat,

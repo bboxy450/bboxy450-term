@@ -24,6 +24,9 @@ mod task_page_model;
 #[path = "report_models.rs"]
 mod report_models;
 
+#[path = "capability_models.rs"]
+mod capability_models;
+
 fn eq(i: usize, n: i64) -> Expr {
     Var(i).eq(Int(n))
 }
@@ -1830,6 +1833,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(plugin_models::cases());
     cases.extend(task_page_model::cases());
     cases.extend(report_models::cases());
+    cases.extend(capability_models::cases());
     cases
 }
 

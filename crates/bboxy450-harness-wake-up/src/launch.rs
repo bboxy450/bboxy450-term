@@ -12,8 +12,9 @@ use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 
 // Session discovery belongs to the launched client, never its parent harness.
-// Preserve HOME, auth, model settings and the caller's BBOXY admission variables.
-const PARENT_SESSION_ENV: [&str; 7] = [
+// Preserve HOME, auth, model settings and path-only BBOXY admission.
+const PARENT_SESSION_ENV: [&str; 8] = [
+    "BBOXY_CAPABILITY",
     "CODEX_THREAD_ID",
     "ICQ_CODEX_SOCKET",
     "CLAUDE_CODE_SESSION_ID",
@@ -497,12 +498,10 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
     spec.env
         .insert("BBOXY_SOCK".into(), context.socket.to_string_lossy().into());
     spec.env.insert(
-        "BBOXY_CAPABILITY".into(),
-        context
-            .capability
-            .iter()
-            .map(|b| format!("{b:02x}"))
-            .collect(),
+        "BBOXY_CAPABILITY_FILE".into(),
+        crate::capability::create(&overlay, &context.capability)?
+            .to_string_lossy()
+            .into_owned(),
     );
     spec.env
         .insert("TERM_PROGRAM".into(), "bboxy450-term".into());
@@ -607,10 +606,10 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
             // A private executable gives each thread its own MCP configuration,
             // without putting the capability in CLI flags or changing user config.
             let mcp = overlay.join("bboxy-seat");
-            let mut script = String::from("#!/bin/sh\n");
+            let mut script = String::from("#!/bin/sh\nunset BBOXY_CAPABILITY\n");
             for key in [
                 "BBOXY_SOCK",
-                "BBOXY_CAPABILITY",
+                "BBOXY_CAPABILITY_FILE",
                 "BBOXY_SEAT_ID",
                 "BBOXY_GENERATION",
                 "BBOXY_ROLE",
@@ -639,7 +638,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
                 "-c".into(),
                 "check_for_update_on_startup=false".into(),
                 "-c".into(),
-                "mcp_servers.bboxy.env_vars=[\"BBOXY_SOCK\",\"BBOXY_CAPABILITY\",\"BBOXY_SEAT_ID\",\"BBOXY_GENERATION\",\"BBOXY_RUN_DIR\"]".into(),
+                "mcp_servers.bboxy.env_vars=[\"BBOXY_SOCK\",\"BBOXY_CAPABILITY_FILE\",\"BBOXY_SEAT_ID\",\"BBOXY_GENERATION\",\"BBOXY_RUN_DIR\"]".into(),
             ]);
             notes.push("Codex skill text is in per-launch developer_instructions; a per-session skill path remains unverified");
             if record.hooks {
@@ -899,7 +898,7 @@ mod runtime_tests {
             if /usr/bin/printenv "$key" >/dev/null; then exit 91; fi
         done
         test "$HOME" = fixture-home && test "$CODEX_HOME" = fixture-codex &&
-        test "$OPENAI_API_KEY" = fixture-auth && test "$BBOXY_CAPABILITY" = fixture-admission || exit 92
+        test "$OPENAI_API_KEY" = fixture-auth && test "$BBOXY_CAPABILITY_FILE" = fixture-admission || exit 92
         printf '%s' "$$""#;
         let (program, args) = isolated_runtime("/bin/sh", vec!["-c".into(), script.into()]);
         let mut command = std::process::Command::new(program);
@@ -910,7 +909,7 @@ mod runtime_tests {
             .env("HOME", "fixture-home")
             .env("CODEX_HOME", "fixture-codex")
             .env("OPENAI_API_KEY", "fixture-auth")
-            .env("BBOXY_CAPABILITY", "fixture-admission")
+            .env("BBOXY_CAPABILITY_FILE", "fixture-admission")
             .stdout(std::process::Stdio::piped());
         for key in PARENT_SESSION_ENV {
             command.env(key, "parent-fixture");

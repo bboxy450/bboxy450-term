@@ -572,3 +572,14 @@ implementation_tests = ["crates/bbt-mux/src/logic/plugin_transport.rs", "crates/
 assumptions = "One admission with pending/terminal states, three activation generations and three root revisions including A-B-A, one ready result and one busy/free host mutex. Actions are atomic. Weak fairness is required for the deadline before a result is ready and for the group of owner completion/refusal actions after readiness. Plugin replies, blocking pool capacity, mutex release and owner loss are not fair or required for progress. Control reconciliation before acknowledgement is the activation linearization point. Real elapsed clocks, actual IO, cryptography, command quoting, supervisor effects and durable operation replay use runtime/process witnesses; no arbitrary Rust refinement or physical scheduling deadline proof."
 property = "Every admitted wrap eventually becomes terminal, including a held worker queue or absent reply. Late/duplicate completion after retirement cannot publish another plan. The broken control removes deadline fairness and must fail liveness. Real runtime witnesses bound held-pool admission, cancel queued work, retire a running late reply, reject an already-ready expired plan and refuse a held host mutex without waiting."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "SeatCapabilityFile"
+title = "Admission never enters exec environments and has its overlay lifetime"
+models = ["SeatCapabilityFile", "BrokenSeatCapabilityEnvironment", "BrokenSeatCapabilityCleanup"]
+controls = [{name="BrokenSeatCapabilityEnvironment",expected="safety"},{name="BrokenSeatCapabilityCleanup",expected="safety"}]
+sources = ["crates/bboxy450-harness-wake-up/src/capability.rs", "crates/bboxy450-harness-wake-up/src/launch.rs", "crates/bbt-supervisor/src/supervisor.rs", "crates/bbt-mux/src/mcp/bridge.rs", "crates/bbt-mux/src/adapters/hook.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/capability_file.rs", "scripts/e2e/capability_probe.py"]
+assumptions = "Three distinct generation incarnations, idle/live/stopping phases and one current/old-file marker. Publish a fully prepared private overlay, request stop, repeated consumer reads and process-exit cleanup are atomic owner actions. No fairness or liveness claim: a process can remain live/stopping. Unix permission/uid checks, O_EXCL/O_NOFOLLOW, parser bounds, actual process ancestry and old-credential authentication are implementation witnesses, not arbitrary Rust refinement."
+property = "The value never enters an exec environment; exactly the current overlay owns the file until process exit, and no old path remains after cleanup. Environment and omitted-cleanup controls violate their named safety invariants."
+checks = ["make test-formal", "make test-capability-file", "make test-harness-native", "make test"]

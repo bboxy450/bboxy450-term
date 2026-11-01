@@ -124,9 +124,9 @@ sources = ["crates/bbt-core/src/lib.rs"]
 [[crate]]
 name = "bboxy450-harness-wake-up"
 status = "contract-model"
-models = ["HarnessToken", "PluginHookGate"]
-scope = "Readiness, input ownership epoch and ambiguous outcome fence for one delivery, and the hook shim's bounded wait for a gated plugin decision (PluginHookGate); expiry, terminal modes, OS state and the per-harness exit-code veto use real guard and hook subprocess fixtures."
-sources = ["crates/bboxy450-harness-wake-up/src/guard.rs", "crates/bboxy450-harness-wake-up/src/hook.rs"]
+models = ["HarnessToken", "PluginHookGate", "SeatCapabilityFile"]
+scope = "Readiness, input ownership epoch and ambiguous outcome fence for one delivery, and the hook shim's bounded wait for a gated plugin decision (PluginHookGate); expiry, terminal modes, OS state and the per-harness exit-code veto use real guard and hook subprocess fixtures. Admission-file environment exclusion and overlay retirement are modeled; UID/mode/symlink/parser guards and real ancestry/authentication use native process fixtures."
+sources = ["crates/bboxy450-harness-wake-up/src/guard.rs", "crates/bboxy450-harness-wake-up/src/hook.rs", "crates/bboxy450-harness-wake-up/src/capability.rs", "crates/bboxy450-harness-wake-up/src/launch.rs"]
 
 [[crate]]
 name = "bboxy450-mermaid"

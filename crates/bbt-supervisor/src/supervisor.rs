@@ -2403,10 +2403,16 @@ impl Seat {
             // Explicit launch overrides and the user's later shell startup still win.
             // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
             command.env_remove("NO_COLOR");
+            // Admission travels by overlay file, including when this owner
+            // inherited an obsolete seat environment from an older launcher.
+            command.env_remove("BBOXY_CAPABILITY");
             command.env("TERM", "xterm-256color");
             command.env("COLORTERM", "truecolor");
             command.env("CLICOLOR", "1");
             for (key, value) in &spec.env {
+                if key == "BBOXY_CAPABILITY" {
+                    continue;
+                }
                 command.env(key, value);
             }
             command.env("BBOXY_SEAT_ID", spec.seat.to_string());

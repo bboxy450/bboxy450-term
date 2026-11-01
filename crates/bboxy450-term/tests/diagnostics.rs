@@ -18,6 +18,10 @@ use std::{
     time::{Duration, Instant},
 };
 
+fn capability_file(root: &Path) -> std::path::PathBuf {
+    let dir = tempfile::tempdir_in(root).unwrap().keep();
+    bbt_mux::adapters::capability::create(&dir, &[0x11; 32]).unwrap()
+}
 fn command(root: &Path) -> Command {
     let mut cmd = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"));
     cmd.env_clear()
@@ -153,7 +157,7 @@ fn optional_method_probes_do_not_journal_but_tool_errors_do() {
     let mut bridge = command(root.path())
         .arg("mcp")
         .env("BBOXY_SOCK", socket)
-        .env("BBOXY_CAPABILITY", "11".repeat(32))
+        .env("BBOXY_CAPABILITY_FILE", capability_file(root.path()))
         .env("BBOXY_SEAT_ID", "01M5WZKA3MZC8BRJ601TFF7FH1")
         .env("BBOXY_GENERATION", "1")
         .stdin(Stdio::piped())
@@ -435,7 +439,7 @@ fn cli_mcp_and_shim_failures_are_retained_redacted_filterable_and_acknowledged_o
     let mut mcp = command(root.path())
         .arg("mcp")
         .env("BBOXY_SOCK", root.path().join("not-an-endpoint.sock"))
-        .env("BBOXY_CAPABILITY", "11".repeat(32))
+        .env("BBOXY_CAPABILITY_FILE", capability_file(root.path()))
         .env("BBOXY_SEAT_ID", seat)
         .env("BBOXY_GENERATION", "1")
         .stdin(Stdio::piped())

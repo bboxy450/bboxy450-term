@@ -149,7 +149,7 @@ fn child(root: &Path) -> Owned {
             .env("HOME", "fixture-home")
             .env("CODEX_HOME", "fixture-codex")
             .env("OPENAI_API_KEY", "fixture-auth")
-            .env("BBOXY_CAPABILITY", "fixture-admission")
+            .env("BBOXY_CAPABILITY_FILE", "fixture-admission")
             .envs([
                 ("CODEX_THREAD_ID", "parent-thread"),
                 ("ICQ_CODEX_SOCKET", "parent-socket"),
@@ -226,7 +226,7 @@ fn a_ready_runtime_execs_the_client_in_the_same_pty_process() {
         "HOME=fixture-home",
         "CODEX_HOME=fixture-codex",
         "OPENAI_API_KEY=fixture-auth",
-        "BBOXY_CAPABILITY=fixture-admission",
+        "BBOXY_CAPABILITY_FILE=fixture-admission",
     ] {
         assert!(env.lines().any(|line| line == value), "lost {value}");
     }

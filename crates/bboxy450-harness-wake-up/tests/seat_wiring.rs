@@ -66,8 +66,14 @@ fn resumed_generation_gets_a_fresh_overlay_and_keeps_the_native_resume_path() {
         assert_eq!(resumed.env["BBOXY_GENERATION"], "2");
         assert_eq!(resumed.env["BBOXY_SOCK"], "/tmp/second.sock");
         assert_ne!(
-            first.env["BBOXY_CAPABILITY"],
-            resumed.env["BBOXY_CAPABILITY"]
+            bboxy450_harness_wake_up::capability::read(Path::new(
+                &first.env["BBOXY_CAPABILITY_FILE"]
+            ))
+            .unwrap(),
+            bboxy450_harness_wake_up::capability::read(Path::new(
+                &resumed.env["BBOXY_CAPABILITY_FILE"]
+            ))
+            .unwrap()
         );
         assert!(!resumed.env.contains_key("HOME"));
         assert!(!resumed.env.contains_key("CODEX_HOME"));

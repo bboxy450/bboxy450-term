@@ -26,7 +26,7 @@ def identity():
         "generation": os.environ["BBOXY_GENERATION"],
         "socket": os.environ["BBOXY_SOCK"],
         "role": os.environ["BBOXY_ROLE"],
-        "capability_present": bool(re.fullmatch(r"[0-9a-f]{64}", os.environ["BBOXY_CAPABILITY"])),
+        "capability_present": bool(re.fullmatch(r"[0-9a-f]{64}", Path(os.environ["BBOXY_CAPABILITY_FILE"]).read_text().strip())),
     }
 
 
@@ -176,7 +176,7 @@ else:
     assert skill.startswith(role_prompt + "\n\n")
     mcp = {"command": overrides["mcp_servers.bboxy.command"], "args": overrides["mcp_servers.bboxy.args"]}
     assert overrides["mcp_servers.bboxy.env_vars"] == [
-        "BBOXY_SOCK", "BBOXY_CAPABILITY", "BBOXY_SEAT_ID", "BBOXY_GENERATION", "BBOXY_RUN_DIR",
+        "BBOXY_SOCK", "BBOXY_CAPABILITY_FILE", "BBOXY_SEAT_ID", "BBOXY_GENERATION", "BBOXY_RUN_DIR",
     ]
     assert overrides["notify"] == [mcp["command"], "hook", "--agent", "codex-notify"]
     hooks = overrides["hooks"]
@@ -201,7 +201,7 @@ assert "{{ROLE_" not in skill
 assert json.dumps(os.environ["BBOXY_ROLE"], ensure_ascii=False) in skill
 assert skill.index("1. **Orient.") < skill.index("2. **Tasks.") < skill.index("3. **Messages.") < skill.index("4. **Artifacts.")
 assert "Storage does not prove model receipt" in skill
-assert os.environ["BBOXY_CAPABILITY"] not in skill
+assert Path(os.environ["BBOXY_CAPABILITY_FILE"]).read_text().strip() not in skill
 
 if kind == "codex":
     # Model the shared daemon's unrelated environment. The per-seat wrapper

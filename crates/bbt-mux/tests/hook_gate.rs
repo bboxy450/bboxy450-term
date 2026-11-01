@@ -120,18 +120,16 @@ struct Shim {
 /// Run the real hook shim (`adapters::hook::run_cli`) in a fresh session
 /// with the seat's private environment and `raw` on stdin.
 fn shim(seat: Ulid, run: &Path, socket: &Path, capability: [u8; 32], raw: &str) -> Shim {
+    let admission = tempfile::tempdir_in(run).unwrap();
+    let capability_file =
+        bboxy450_harness_wake_up::capability::create(admission.path(), &capability).unwrap();
     let mut child = Command::new(std::env::current_exe().unwrap());
     child
         .args(["--ignored", "--exact", "hook_shim_child", "--nocapture"])
         .env("BBOXY_SEAT_ID", seat.to_string())
         .env("BBOXY_SOCK", socket)
-        .env(
-            "BBOXY_CAPABILITY",
-            capability
-                .iter()
-                .map(|b| format!("{b:02x}"))
-                .collect::<String>(),
-        )
+        .env_remove("BBOXY_CAPABILITY")
+        .env("BBOXY_CAPABILITY_FILE", capability_file)
         .env("BBOXY_GENERATION", "1")
         .env("BBOXY_RUN_DIR", run)
         .env("BBOXY_HOOK_SOCKET_ONLY", "1")

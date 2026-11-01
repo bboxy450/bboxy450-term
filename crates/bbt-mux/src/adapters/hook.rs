@@ -64,14 +64,7 @@ pub fn decision(reply: &serde_json::Value) -> Result<Decision> {
 }
 fn frame(seat: Ulid, action: crate::seat_socket::Action) -> Result<(String, Vec<u8>)> {
     let path = std::env::var("BBOXY_SOCK")?;
-    let cap = std::env::var("BBOXY_CAPABILITY")?;
-    if cap.len() != 64 || !cap.bytes().all(|b| b.is_ascii_hexdigit()) {
-        return Err(invalid("invalid hook capability"));
-    }
-    let mut capability = [0; 32];
-    for (i, byte) in capability.iter_mut().enumerate() {
-        *byte = u8::from_str_radix(&cap[i * 2..i * 2 + 2], 16)?;
-    }
+    let capability = bboxy450_harness_wake_up::capability::from_env()?;
     let generation = std::env::var("BBOXY_GENERATION")?.parse()?;
     let request = crate::seat_socket::Request {
         version: 1,
@@ -87,5 +80,14 @@ fn frame(seat: Ulid, action: crate::seat_socket::Action) -> Result<(String, Vec<
 /// Private binary dispatch; parsing, OSC and the total deadline are the kit's.
 /// Returns the hook's exit code (2 is a plugin veto).
 pub fn run_cli(args: &[String]) -> i32 {
+    // Validate admission at every event start, even when the kit can emit OSC
+    // without falling back to the socket. Listing static hooks needs no seat.
+    if !args.first().is_some_and(|arg| arg == "--list") {
+        let started = Instant::now();
+        if let Err(error) = bboxy450_harness_wake_up::capability::from_env() {
+            SeatSocketSink.failed(args, &error.to_string(), started.elapsed());
+            return 0; // Keep the documented hook fail-open policy.
+        }
+    }
     bboxy450_harness_wake_up::hook::run_cli(args, &SeatSocketSink)
 }

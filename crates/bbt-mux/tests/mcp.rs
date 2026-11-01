@@ -2117,18 +2117,15 @@ fn mcp_installed_claude_and_codex_call_orient() {
         ] {
             command.env_remove(name);
         }
+        let admission = tempfile::tempdir_in(private_home.path()).unwrap();
+        let capability_file =
+            bboxy450_harness_wake_up::capability::create(admission.path(), &endpoint.capability)
+                .unwrap();
         command
             .env("BBOXY_SOCK", &endpoint.path)
             .env("BBOXY_SEAT_ID", seat.to_string())
             .env("BBOXY_GENERATION", endpoint.generation.to_string())
-            .env(
-                "BBOXY_CAPABILITY",
-                endpoint
-                    .capability
-                    .iter()
-                    .map(|b| format!("{b:02x}"))
-                    .collect::<String>(),
-            );
+            .env("BBOXY_CAPABILITY_FILE", capability_file);
         if program == "claude" {
             command
                 .args([
@@ -2149,7 +2146,7 @@ fn mcp_installed_claude_and_codex_call_orient() {
         } else {
             command.args(["exec","--ephemeral","--json","-s","read-only","-c","approval_policy=\"never\"","-c"])
                 .arg(format!("mcp_servers.bboxy.command={}",json!(exe)))
-                .args(["-c","mcp_servers.bboxy.args=[\"mcp\"]","-c","mcp_servers.bboxy.env_vars=[\"BBOXY_SOCK\",\"BBOXY_CAPABILITY\",\"BBOXY_SEAT_ID\",\"BBOXY_GENERATION\"]","-c","mcp_servers.bboxy.enabled_tools=[\"orient\"]"])
+                .args(["-c","mcp_servers.bboxy.args=[\"mcp\"]","-c","mcp_servers.bboxy.env_vars=[\"BBOXY_SOCK\",\"BBOXY_CAPABILITY_FILE\",\"BBOXY_SEAT_ID\",\"BBOXY_GENERATION\"]","-c","mcp_servers.bboxy.enabled_tools=[\"orient\"]"])
                 .arg(prompt);
         }
         let (status, out, err) = bounded_client(command, Duration::from_secs(120), &private_home);

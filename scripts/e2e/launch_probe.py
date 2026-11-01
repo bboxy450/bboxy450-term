@@ -114,7 +114,7 @@ else:
                        "PreCompact", "PostCompact"}
     assert values["notify"] == [wrapper, "hook", "--agent", "codex-notify"]
     assert values["mcp_servers.bboxy.env_vars"] == [
-        "BBOXY_SOCK", "BBOXY_CAPABILITY", "BBOXY_SEAT_ID", "BBOXY_GENERATION", "BBOXY_RUN_DIR"]
+        "BBOXY_SOCK", "BBOXY_CAPABILITY_FILE", "BBOXY_SEAT_ID", "BBOXY_GENERATION", "BBOXY_RUN_DIR"]
     assert values["mcp_servers.bboxy.default_tools_approval_mode"] == "approve"
     assert values["check_for_update_on_startup"] is False
     mcp = {"command": values["mcp_servers.bboxy.command"],
