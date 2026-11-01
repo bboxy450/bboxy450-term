@@ -65,14 +65,7 @@ fn flexible(element: c::Element, grow: f32) -> c::Item {
     }
 }
 fn icon(key: &str, name: &str, size: f32, color: ui::Color, alpha: f32) -> c::Element {
-    named(
-        key,
-        c::Element::Icon {
-            name: name.into(),
-            paint: paint(color, alpha),
-            size: ui::Length::Px(size),
-        },
-    )
+    named(key, super::harness::mark(name, size, paint(color, alpha)))
 }
 fn pill(
     key: &str,

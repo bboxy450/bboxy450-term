@@ -536,15 +536,10 @@ pub fn records(
                 .into(),
                 hooks: builtin.as_ref().is_some_and(|h| h.hooks),
                 command,
-                tile: match kind {
-                    "claude" => "#D97757",
-                    "codex" => "#1F2937",
-                    "pi" => "#7C3AED",
-                    "omp" => "#0EA5E9",
-                    _ => "#111827",
-                }
-                .into(),
-                icon: kind.into(),
+                tile: bbt_ui::modules::harness::tile(kind)
+                    .unwrap_or("#111827")
+                    .into(),
+                icon: bbt_ui::modules::harness::icon(kind).into(),
                 state_from: match builtin.as_ref().map(|h| h.state_source) {
                     Some(bbt_mux::adapters::StateSource::Reported) => "reported",
                     Some(bbt_mux::adapters::StateSource::Hooks) => "hooks",

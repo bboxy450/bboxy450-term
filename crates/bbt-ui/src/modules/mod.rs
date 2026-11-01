@@ -10,6 +10,7 @@ pub mod closed_strip;
 pub mod composer;
 pub mod e2e_checklist;
 pub mod graph_tab;
+pub mod harness;
 pub mod launcher;
 pub mod launcher_banner;
 pub mod link;

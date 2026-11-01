@@ -307,14 +307,7 @@ fn natural(e: c::Element) -> c::Item {
     }
 }
 fn icon(k: &str, name: &str, size: f32, co: ui::Color) -> c::Element {
-    named(
-        k,
-        c::Element::Icon {
-            name: name.into(),
-            paint: ui::Paint::solid(co),
-            size: ui::Length::Px(size),
-        },
-    )
+    named(k, super::harness::mark(name, size, ui::Paint::solid(co)))
 }
 fn surface(
     fill: ui::Color,
@@ -1091,7 +1084,7 @@ impl Build<'_> {
             .iter()
             .find(|h| h.harness == name)
             .map(|h| h.label.as_str())
-            .unwrap_or(name);
+            .unwrap_or(super::harness::label(name));
         let title = col(
             "",
             plain(None, [0.; 4], 0.),
@@ -1513,7 +1506,7 @@ impl Settings {
                 .iter()
                 .map(|(name, h)| {
                     (
-                        name.clone(),
+                        super::harness::label(name).into(),
                         format!(
                             "{} · role {} · wake {} · hooks {} · {}",
                             h.command, h.role, h.wake, h.hooks, h.state_from
@@ -2672,7 +2665,7 @@ impl Settings {
             "",
             plain(None, [0.; 4], 0.),
             4.,
-            ["claude", "codex", "pi", "omp", "zsh"]
+            super::harness::HARNESSES
                 .iter()
                 .map(|i| {
                     fixed(
@@ -3095,7 +3088,7 @@ impl Settings {
                     .into(),
                     txt(
                         &format!("{key}/label/text"),
-                        name,
+                        super::harness::label(name),
                         font(13., 500, false, ui::Color::Foreground),
                     )
                     .into(),

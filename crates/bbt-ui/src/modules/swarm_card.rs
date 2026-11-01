@@ -754,11 +754,11 @@ pub fn pending_row(p: &PendingSpawn, ctx: ui::Context) -> c::Element {
     let lum = fg[0] * 0.2126 + fg[1] * 0.7152 + fg[2] * 0.0722;
     let icon = named(
         "hicon",
-        c::Element::Icon {
-            name: super::seat_row::harness_icon(&p.harness),
-            size: ui::Length::Px(d.icon as f32),
-            paint: ui::Paint::solid(ui::Color::Rgba([lum, lum, lum, 0.55])),
-        },
+        super::harness::mark(
+            &p.harness,
+            d.icon as f32,
+            ui::Paint::solid(ui::Color::Rgba([lum, lum, lum, 0.55])),
+        ),
     );
     let mut title = match text(&p.name, d.font_small as f32, 400, false, ui::Color::Muted) {
         c::Element::Text(t) => t,

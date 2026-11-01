@@ -190,11 +190,11 @@ impl ClosedStrip {
             named(
                 "hicon",
                 c::Element::Filter {
-                    content: Box::new(c::Element::Icon {
-                        name: super::seat_row::harness_icon(&self.harness),
-                        paint: ui::Paint::solid(ui::Color::Muted),
-                        size: ui::Length::Px(d.icon as f32),
-                    }),
+                    content: Box::new(super::harness::mark(
+                        &self.harness,
+                        d.icon as f32,
+                        ui::Paint::solid(ui::Color::Muted),
+                    )),
                     saturation: 0.,
                     opacity: 0.5,
                 },

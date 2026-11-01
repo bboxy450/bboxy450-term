@@ -49,12 +49,12 @@
     throw new Error('unreachable: no free pool name within ' + tiers + ' tiers');
   }
 
-  const HARNESSES = ['claude', 'codex', 'pi', 'omp', 'zsh'];
+  const HARNESSES = ['claude', 'codex', 'pi', 'omp', 'bboxy450-harness', 'zsh'];
   // Starting defaults only: Settings controls each role's class and every harness's
   // available roles. Harness names never determine authority.
-  const DEFAULT_ROLE = { claude: 'oracle', codex: 'executor', pi: 'executor', omp: 'executor', zsh: 'shell' };
+  const DEFAULT_ROLE = { claude: 'oracle', codex: 'executor', pi: 'executor', omp: 'executor', 'bboxy450-harness': 'executor', zsh: 'shell' };
   // Demo cohorts only: a swarm with its oracle, so the lab shows every role mark.
-  const DEMO_ROLE = { claude: 'oracle', codex: 'executor', pi: 'executor', omp: 'executor', zsh: 'shell' };   // decision #262: a shell's role is shell
+  const DEMO_ROLE = { claude: 'oracle', codex: 'executor', pi: 'executor', omp: 'executor', 'bboxy450-harness': 'executor', zsh: 'shell' };   // decision #262: a shell's role is shell
   const STATES = ['active', 'idle', 'waiting', 'errored'];
   const GLYPH = { active: '●', idle: '○', waiting: '◐', errored: '✕' };
   const ROLE_MARK = { oracle: '♔', architect: '♖', executor: '♟', creativity: '♝', unsigned: '·' };
@@ -105,7 +105,7 @@
 
   // select: the native control keeps keyboard and the OS menu, but draws none of its own chrome; the caret is our chevdown icon
   function selectBox(optsArr, val, on) { const s = el('select', { onchange: e => on && on(e.target.value) }); for (const o of optsArr) s.append(el('option', { value: o, ...(o === val ? { selected: '' } : {}) }, o)); return el('span', { class: 'sel' }, s, harnessIcon('chevdown', 'caret')); }
-  function harnessIcon(name, extra) { return el('span', { class: 'hicon ' + (extra || ''), title: name, html: ICON_SVG[name] || ICON_SVG.zsh }); }
+  function harnessIcon(name, extra) { if (name === 'bboxy450-harness' || name === 'bboxy') return el('span', { class: 'hicon ' + (extra || ''), title: 'bboxy harness' }, el('img', { src: 'bboxy.png', style: 'width:100%;height:100%;border-radius:2px;object-fit:contain' })); return el('span', { class: 'hicon ' + (extra || ''), title: name, html: ICON_SVG[name] || ICON_SVG.zsh }); }
   function roleMark(role) { return el('span', { class: 'rmark', style: 'color:var(--role-' + (role || 'unsigned') + ')', title: role || 'unsigned' }, ROLE_MARK[role || 'unsigned']); }
   // Display only: ROLE stays visible before a shrinkable first name. Full names
   // and routing identities remain in the original records and name tooltips.
@@ -1222,6 +1222,7 @@
     { id: 'codex', label: 'Codex', sub: 'executor by default', harness: 'codex', role: 'executor', kind: 'Harness', tile: '#1F2937', section: 'Suggestions' },
     { id: 'pi', label: 'pi', sub: 'executor by default', harness: 'pi', role: 'executor', kind: 'Harness', tile: '#7C3AED', section: 'Harnesses' },
     { id: 'omp', label: 'omp', sub: 'executor by default', harness: 'omp', role: 'executor', kind: 'Harness', tile: '#0EA5E9', section: 'Harnesses' },
+    { id: 'bboxy450-harness', label: 'bboxy harness', sub: 'executor by default', harness: 'bboxy450-harness', role: 'executor', kind: 'Harness', tile: '#168BFF', section: 'Harnesses' },
     { id: 'zsh', label: 'zsh', sub: 'shell by default', harness: 'zsh', role: 'shell', kind: 'Shell', tile: '#111827', section: 'Shells' },
   ];
   // App title bar (design system › elements.title_bar): window dots · sidebar toggle (the fox ear) · the identity PNG · app name ·
@@ -1646,6 +1647,7 @@
       codex: { role: 'executor', wake: 'hook', hooks: true, command: 'codex', defaults: { args: '--sandbox workspace-write' }, tile: LT('codex'), icon: 'codex', stateFrom: 'hooks' },
       pi: { role: 'executor', wake: 'pty', hooks: false, command: 'pi', tile: LT('pi'), icon: 'pi', stateFrom: 'output cadence' },
       omp: { role: 'executor', wake: 'pty', hooks: false, command: 'omp', tile: LT('omp'), icon: 'omp', stateFrom: 'output cadence' },
+      'bboxy450-harness': { role: 'executor', wake: 'pty', hooks: false, command: 'bboxy450-harness seat', tile: LT('bboxy450-harness'), icon: 'bboxy', stateFrom: 'output cadence' },
     },
     // notifications (attention §3, decision #44), in the native field names (attention.rs Notifications): on by default; harnesses
     // listed in disabled_harnesses are silenced; optionally only while the window is not frontmost. A muted seat (⌘M) never notifies.
@@ -1685,7 +1687,7 @@
     const sections = ['Account', 'Cloud', 'Machines', 'Roles', 'Harnesses', 'Plugins', 'Knowledge', 'Appearance', 'Notifications', 'Messaging', 'Shortcuts'];
     const NAV_ICON = { Account: 'key', Cloud: 'cloud', Machines: 'ssh', Roles: 'roles', Harnesses: 'gear', Plugins: 'plug', Knowledge: 'book', Appearance: 'sun', Notifications: 'bell', Messaging: 'tray', Shortcuts: 'keys' };
     const SENDS = ['all channels · all DMs', 'own swarm · operator DM', 'operator DM only'], WAKES = ['socket', 'hook', 'mcp', 'pty'], STATE_FROM = ['osc7501', 'hooks', 'output cadence'];
-    const MARKS = ['♔', '♖', '♟', '♝', '♜', '♞', '♚'], ICONS = ['claude', 'codex', 'pi', 'omp', 'zsh'];
+    const MARKS = ['♔', '♖', '♟', '♝', '♜', '♞', '♚'], ICONS = HARNESSES;
     const HUES = [0, 30, 55, 95, 160, 190, 215, 250, 285, 325], hue = i => 'hsl(' + HUES[((i % HUES.length) + HUES.length) % HUES.length] + ' 85% 64%)';
     // marks the settings page alone needs; everything else comes from ICON_SVG
     const SVG = {
@@ -1950,7 +1952,7 @@
           row('Desktop notifications', 'a seat that needs your answer posts one; clicking it focuses the seat', toggle(on, setN('enabled')), on !== d.enabled, () => setN('enabled')(d.enabled)),
           row('Only in the background', 'none while this window is frontmost', toggle(v.only_when_not_frontmost, setN('only_when_not_frontmost'), !on), v.only_when_not_frontmost !== d.only_when_not_frontmost, () => setN('only_when_not_frontmost')(d.only_when_not_frontmost)),
           group('Per harness', 'off silences every seat of that harness'),
-          ...Object.keys(SET.harness).map(h => row(el('span', { class: 'nh' }, harnessIcon(SET.harness[h].icon || 'zsh'), h), null, toggle(hon(h), setH(h), !on), hon(h) !== hdef(h), rsH(h))),
+          ...Object.keys(SET.harness).map(h => row(el('span', { class: 'nh' }, harnessIcon(SET.harness[h].icon || 'zsh'), h === 'bboxy450-harness' ? 'bboxy harness' : h), null, toggle(hon(h), setH(h), !on), hon(h) !== hdef(h), rsH(h))),
           note('A muted seat (⌘M) never notifies and keeps the ordinary waiting rim.'),
         ]));
       }

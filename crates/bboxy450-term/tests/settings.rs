@@ -630,7 +630,7 @@ fn settings_projects_missing_identity_honestly_and_uses_the_backend_role_default
             .iter()
             .map(|(name, _)| name.as_str())
             .collect::<Vec<_>>(),
-        ["claude", "codex", "pi", "omp", "zsh", "bboxy450-harness"]
+        bboxy450_term::settings::roles::HARNESSES
     );
     for (kind, wake, source, hooks) in [
         ("claude", "socket", "reported", true),

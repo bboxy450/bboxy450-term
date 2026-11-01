@@ -1201,25 +1201,7 @@ fn input_modifiers(mods: ModifiersState) -> Modifiers {
         shift: mods.shift_key(),
     }
 }
-const LAUNCHABLES: [(&str, &str, &str, &str, &str); 5] = [
-    (
-        "claude",
-        "Claude",
-        "oracle by default",
-        "#D97757",
-        "Suggestions",
-    ),
-    (
-        "codex",
-        "Codex",
-        "executor by default",
-        "#1F2937",
-        "Suggestions",
-    ),
-    ("pi", "pi", "executor by default", "#7C3AED", "Harnesses"),
-    ("omp", "omp", "executor by default", "#0EA5E9", "Harnesses"),
-    ("zsh", "zsh", "shell by default", "#111827", "Shells"),
-];
+use bbt_ui::modules::harness::launchables;
 fn default_spawn(
     id: &str,
     modifiers: Modifiers,
@@ -1235,7 +1217,7 @@ fn default_spawn(
         Some(_) => return None,
         None => (id, None),
     };
-    for (kind, _, _, _, _) in LAUNCHABLES {
+    for (kind, _, _, _, _) in launchables() {
         let location = if id == kind {
             Some(bbt_proto::Where::Local)
         } else {
@@ -1866,7 +1848,7 @@ fn launcher_items(
 fn configure_machine_items(items: &mut Vec<bbt_ui::modules::launcher::Item>, machines: &std::collections::BTreeMap<String, bbt_ui::modules::settings::Machine>) {
     use bbt_ui::modules::launcher::Item;
     if machines.is_empty() { return; }
-    let local: Vec<_> = items.iter().filter(|item| LAUNCHABLES.iter().any(|(id, ..)| *id == item.id)).cloned().collect();
+    let local: Vec<_> = items.iter().filter(|item| launchables().any(|(id, ..)| id == item.id)).cloned().collect();
     if !items.iter().any(|item| item.id == "ssh") {
         items.push(Item { id: "ssh".into(), label: "SSH".into(), harness: "ssh".into(), kind: "Remote".into(), section: Some("Remote".into()), sub: "pick a machine, then a harness".into(), children: Some(vec![]), ..Default::default() });
     }
@@ -1931,8 +1913,7 @@ fn launcher_items_for(
         .collect()
     }
     let launchables = || {
-        LAUNCHABLES
-            .into_iter()
+        launchables()
             .map(|(id, label, sub, tile, section)| Item {
                 id: id.into(),
                 label: label.into(),
@@ -2137,7 +2118,7 @@ fn preset_launcher_items(
     preset: Option<bbt_proto::seat_state::Side>,
 ) -> Vec<bbt_ui::modules::launcher::Item> {
     if preset.is_some() {
-        items.retain(|it| LAUNCHABLES.iter().any(|(id, _, _, _, _)| *id == it.id));
+        items.retain(|it| launchables().any(|(id, _, _, _, _)| id == it.id));
         for item in &mut items {
             item.children = None;
             item.parameters = true;
@@ -2929,8 +2910,7 @@ impl App {
             ),
             ..Default::default()
         };
-        view.launch = LAUNCHABLES
-            .into_iter()
+        view.launch = launchables()
             .map(
                 |(harness, label, _, tile, _)| bbt_ui::modules::settings::Launch {
                     harness: harness.into(),
@@ -2941,9 +2921,9 @@ impl App {
             .collect();
         for (id, harness) in &mut view.values.harness {
             if let Some((_, _, _, tile, _)) =
-                LAUNCHABLES.iter().find(|(kind, _, _, _, _)| kind == id)
+                launchables().find(|(kind, _, _, _, _)| kind == id)
             {
-                harness.tile = (*tile).into();
+                harness.tile = tile.into();
             }
         }
         if let Some(model) = self.live_state.as_deref() {
@@ -12552,7 +12532,7 @@ mod default_spawn_tests {
 
     #[test]
     fn default_picks_are_keyed_by_id_and_leave_placement_and_navigation_deferred() {
-        for (kind, _, _, _, _) in LAUNCHABLES {
+        for (kind, _, _, _, _) in launchables() {
             assert!(
                 matches!(default_spawn(kind, Modifiers::default(), None), Some(live::UiMsg::Spawn { harness_kind, name: None, location: bbt_proto::Where::Local, .. }) if harness_kind == kind)
             );
@@ -13448,3 +13428,6 @@ mod ctl_ui_key_tests {
         ));
     }
 }
+
+#[cfg(test)]
+mod harness_branding_tests;

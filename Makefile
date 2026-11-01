@@ -101,6 +101,8 @@ help:
 	  'make test-plugin-skills          Canonical MCP instructions, descriptors and selected-provider fences' \
 	  'make check-plugin-skills         Strict plugin, mux and app all-target Clippy' \
 	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
+	  'make build-harness               Build the in-suite seat binary; add target/debug to PATH' \
+	  'make test-harness-branding       All harness menu/row labels, marks and omission control' \
 	  'make test-harness-native         Scripted harness seat, completed turn and bounded group cleanup' \
 	  'make test-capability-native      Capability file and real Codex shared-daemon environment scans' \
 	  'make init-submodules             Initialize and verify the pinned harness unattended' \
@@ -1903,3 +1905,25 @@ test-capability-scan:
 check-capability-file:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo clippy --locked -p bboxy450-harness-wake-up -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: build-harness test-harness-branding capture-harness-branding format-harness-branding
+build-harness: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; cargo build --locked -p bboxy450-harness --target-dir '$(TARGET_DIR)'
+
+test-harness-branding: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)' harness_branding -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' harness_branding -- --nocapture
+
+capture-harness-branding: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; BBOXY_BRANDING_CAPTURE='$(abspath $(TARGET_DIR))/harness-branding.png' cargo test --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)' harness_branding_tests::harness_branding_headless_menu -- --exact --nocapture
+
+format-harness-branding:
+	@rustfmt --edition 2024 --config skip_children=true crates/bbt-ui/src/modules/harness.rs crates/bbt-ui/src/modules/mod.rs crates/bbt-ui/src/modules/seat_row.rs crates/bbt-ui/src/modules/launcher.rs crates/bbt-ui/src/modules/settings.rs crates/bbt-ui/src/modules/settings/controller.rs crates/bbt-ui/src/modules/strip.rs crates/bbt-ui/src/modules/closed_strip.rs crates/bbt-ui/src/modules/swarm_card.rs crates/bbt-ui/src/modules/graph_tab.rs crates/bboxy450-term/src/settings.rs crates/bboxy450-term/src/settings/roles.rs crates/bboxy450-term/src/attention.rs crates/bboxy450-term/src/harness_branding_tests.rs crates/bbt-mux/src/adapters/mod.rs crates/bbt-mux/src/adapters/launch.rs
+
+.PHONY: test-harness-branding-control
+test-harness-branding-control: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; mkdir -p '$(TARGET_DIR)'; \
+	status=0; cargo test --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)' harness_branding_tests::harness_branding_broken_picker -- --ignored --exact --nocapture >'$(TARGET_DIR)/harness-branding-control.log' 2>&1 || status=$$?; \
+	cat '$(TARGET_DIR)/harness-branding-control.log'; test "$$status" = 101; \
+	grep -F 'broken picker omits bboxy450-harness' '$(TARGET_DIR)/harness-branding-control.log'; \
+	printf '%s\n' 'branding omission control: expected red 101'
