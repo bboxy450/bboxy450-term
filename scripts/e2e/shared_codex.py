@@ -2,6 +2,8 @@
 
 Every app action uses ctl. Native hook review is scripted only in this throwaway
 identity. No operator daemon, credentials, GUI input or external model is used.
+Success retires the private root; failure retains only bounded diagnostics once
+private owners have stopped. Unmarked legacy roots are never inferred to be ours.
 """
 # Copyright 2026 Boxy (bboxy450) and contributors.
 # SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
@@ -23,6 +25,145 @@ import sys
 import tempfile
 import threading
 import time
+import traceback
+
+
+OWNER_TAG = "bboxy450-term/scripts/e2e/shared_codex.py:1"
+DIAGNOSTICS = {
+    "app.log", "fixture-error.log", "requests.json", "seat-state.json",
+    "evidence.json", "message-evidence.jsonl", "identity-observation.json",
+    "owned-daemon-updater.json", "owned-logic-fault.json", "render-evidence.json",
+    "stream-evidence.json", "color-evidence.json", "cleanup-recovery.json",
+}
+DIAGNOSTIC_BYTES = 64 * 1024
+
+
+def pid_alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        pass
+    return True
+
+
+def owner_pids(root):
+    """Read only the known private producer records; malformed custody fails closed."""
+    paths = [root / "home/.codex/app-server-daemon" / name
+             for name in ("daemon.pid", "daemon-updater.pid")]
+    paths += sorted((root / "run").glob("*.owner.json"))
+    result = set()
+    for path in paths:
+        if not path.exists():
+            continue
+        if path.is_symlink() or path.stat().st_size > 1024 * 1024:
+            raise ValueError("invalid private owner record: " + str(path))
+        record = json.loads(path.read_text())
+        if not isinstance(record, dict):
+            raise ValueError("invalid private owner record: " + str(path))
+        process = record.get("process", {})
+        pid = record.get("pid") or (process.get("pid") if isinstance(process, dict) else None)
+        if type(pid) is not int or pid <= 1:
+            raise ValueError("invalid private owner PID: " + str(path))
+        result.add(pid)
+    return result
+
+
+def reclaim_roots(parent):
+    """Never infer ownership from a /tmp name alone, and never signal old owners."""
+    for root in parent.glob("bbt-shared-codex-*"):
+        try:
+            if root.is_symlink() or not root.is_dir():
+                continue
+            info = root.stat()
+            marker = root / "cleanup-owner.json"
+            if marker.is_symlink() or marker.stat().st_size > 1024 * 1024:
+                continue
+            record = json.loads(marker.read_text())
+            if not isinstance(record, dict):
+                continue
+            pids = record["owner_pids"]
+            if (record.get("script") != OWNER_TAG or record.get("root") != str(root.resolve())
+                    or record.get("inode") != info.st_ino or info.st_uid != os.getuid()
+                    or not isinstance(pids, list) or not pids
+                    or any(type(pid) is not int or pid <= 1 for pid in pids)):
+                continue
+            if any(pid_alive(pid) for pid in set(pids) | owner_pids(root)):
+                continue
+            # Concurrent reapers may remove the same dead root; no shared lock.
+            if root.stat().st_ino == info.st_ino and not root.is_symlink():
+                shutil.rmtree(root)
+        except (OSError, ValueError, KeyError, TypeError):
+            continue
+
+
+class FixtureRoot:
+    """The runner owns the root from birth through shutdown and bounded retention."""
+
+    def __init__(self, parent=Path("/tmp")):
+        reclaim_roots(parent)
+        self.root = Path(tempfile.mkdtemp(prefix="bbt-shared-codex-", dir=parent)).resolve()
+        self.pids = {os.getpid()}
+        self.children = []
+        self.closers = []
+        self.write_owner()
+
+    def write_owner(self):
+        record = dict(script=OWNER_TAG, root=str(self.root), inode=self.root.stat().st_ino,
+                      owner_pids=sorted(self.pids))
+        pending = self.root / "cleanup-owner.json.new"
+        pending.write_text(json.dumps(record) + "\n")
+        pending.replace(self.root / "cleanup-owner.json")
+
+    def record(self, pid):
+        self.pids.add(pid)
+        self.write_owner()
+
+    def track(self, child):
+        self.children.append(child)
+        self.record(child.pid)
+        return child
+
+    def retire(self, child):
+        assert child.poll() is not None
+        self.children.remove(child)
+        self.pids.discard(child.pid)
+        self.write_owner()
+
+    def finish(self, succeeded):
+        # Popen identity and wait/reap prevent signalling an unrelated reused PID.
+        for child in reversed(self.children):
+            if child.poll() is None:
+                child.terminate()
+                try:
+                    child.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    child.kill()
+                    child.wait(timeout=5)
+            self.pids.discard(child.pid)
+        for close in self.closers:
+            close()
+        self.pids.update(owner_pids(self.root))
+        self.write_owner()
+        live = [pid for pid in self.pids if pid != os.getpid() and pid_alive(pid)]
+        if live:
+            raise RuntimeError(f"private owners still alive; root retained: {live}: {self.root}")
+        if succeeded:
+            shutil.rmtree(self.root)
+            return
+        for entry in self.root.iterdir():
+            if entry.name == "cleanup-owner.json":
+                continue
+            if entry.name in DIAGNOSTICS and entry.is_file() and not entry.is_symlink():
+                with entry.open("rb") as log:
+                    log.seek(max(0, entry.stat().st_size - DIAGNOSTIC_BYTES))
+                    tail = log.read(DIAGNOSTIC_BYTES)
+                entry.write_bytes(tail)
+            elif entry.is_dir() and not entry.is_symlink():
+                shutil.rmtree(entry)
+            else:
+                entry.unlink()
 
 
 def wait(read, accept, label, seconds=35):
@@ -69,13 +210,45 @@ def main():
                         help="prove real Codex foreground colors despite inherited automation settings")
     parser.add_argument("--codex", help="Codex executable (defaults to PATH)")
     parser.add_argument("--shim", action="store_true", help="exercise a private forwarding shim")
+    parser.add_argument("--artifacts", type=Path,
+                        help="copy frames and stream bytes to an empty caller-owned directory")
     options = parser.parse_args()
     assert not options.native or options.stream_check, "--native requires --stream-check"
     binary = options.binary.resolve()
-    cold, render_check = options.cold, options.render_check
     codex = shutil.which(options.codex or "codex")
     assert binary.is_file() and codex, "build the app and install Codex first"
-    root = Path(tempfile.mkdtemp(prefix="bbt-shared-codex-", dir="/tmp")).resolve()
+    fixture = FixtureRoot()
+    try:
+        run_fixture(options, binary, codex, fixture)
+        if options.artifacts is not None:
+            export_artifacts(fixture.root, options.artifacts)
+        fixture.finish(True)
+    except BaseException:
+        (fixture.root / "fixture-error.log").write_text(traceback.format_exc())
+        fixture.finish(False)
+        raise
+
+
+def export_artifacts(root, destination):
+    if destination.is_symlink():
+        raise ValueError("artifact destination must not be a symlink")
+    destination = destination.resolve()
+    if destination.is_relative_to(root):
+        raise ValueError("artifact destination must be outside the disposable fixture")
+    if not destination.is_dir() or any(destination.iterdir()):
+        raise ValueError("artifact destination must be an existing empty directory")
+    for name in ("frames", "codex-stream.bin"):
+        if (root / name).is_symlink():
+            raise ValueError("unexpected artifact symlink: " + name)
+    # The caller owns the destination's lifetime, including partial-copy failure.
+    shutil.copytree(root / "frames", destination / "frames")
+    shutil.copyfile(root / "codex-stream.bin", destination / "codex-stream.bin")
+    print("Shared-daemon artifacts: " + str(destination), flush=True)
+
+
+def run_fixture(options, binary, codex, fixture):
+    root = fixture.root
+    cold, render_check = options.cold, options.render_check
     print("Private shared-daemon fixture: " + str(root), flush=True)
     home, work, run = (root / name for name in ("home", "work", "run"))
     for directory in [home / ".codex", work, root / "repository", root / "tmp"]:
@@ -182,6 +355,12 @@ def main():
     server = http.server.HTTPServer(("127.0.0.1", 0), Provider)
     worker = threading.Thread(target=server.serve_forever, daemon=True)
     worker.start()
+    def close_server():
+        server.shutdown()
+        server.server_close()
+        worker.join(timeout=3)
+        assert not worker.is_alive(), "private model server did not stop"
+    fixture.closers.append(close_server)
     config = home / ".codex/config.toml"
     config.write_text('model="fixture-model"\nmodel_provider="fixture"\n'
                       'check_for_update_on_startup=false\napproval_policy="never"\n'
@@ -195,11 +374,20 @@ def main():
     app = None
     daemon_started = False
     updater = None
-    succeeded = False
+    log = None
 
     def command(args, timeout=35, check=True):
-        result = subprocess.run(args, env=env, cwd=work, text=True,
-                                capture_output=True, timeout=timeout)
+        child = fixture.track(subprocess.Popen(args, env=env, cwd=work, text=True,
+                                              stdout=subprocess.PIPE, stderr=subprocess.PIPE))
+        try:
+            stdout, stderr = child.communicate(timeout=timeout)
+        except BaseException:
+            child.kill()
+            child.wait()
+            raise
+        finally:
+            fixture.retire(child)
+        result = subprocess.CompletedProcess(args, child.returncode, stdout, stderr)
         assert not check or result.returncode == 0, (args[1:4], result.returncode,
                                                     result.stdout[-2000:], result.stderr[-2000:])
         return result
@@ -304,6 +492,7 @@ def main():
         if path.exists():
             updater = json.loads(path.read_text())
             (root / "owned-daemon-updater.json").write_text(json.dumps(updater) + "\n")
+            fixture.record(updater["pid"])
 
     def delivered(sent, seat):
         message = sent["data"]["message"]["envelope"]["id"]
@@ -319,13 +508,14 @@ def main():
             started = json.loads(command([codex, "app-server", "daemon", "start"]).stdout)
             assert started["status"] == "started", started
             daemon_pid = started["pid"]
+            fixture.record(daemon_pid)
             record_updater()
         log = (root / "app.log").open("w")
-        app = subprocess.Popen([str(binary), *(["--native-frame-probe", str(probe)] if options.native else ["--headless"]),
+        app = fixture.track(subprocess.Popen([str(binary), *(["--native-frame-probe", str(probe)] if options.native else ["--headless"]),
                                 "--settings-config", str(root / "settings.toml"), "--ctl", "--unattended", "--test-account",
                                 str(root / "account"), "--run-dir", str(run), "--repository",
                                 str(root / "repository")], env=env, cwd=work,
-                               stdin=subprocess.DEVNULL, stdout=log, stderr=log)
+                               stdin=subprocess.DEVNULL, stdout=log, stderr=log))
         wait(lambda: ctl("app", "status", check=False),
              lambda value: value.get("data", {}).get("backend_ready") is True and
              value.get("data", {}).get("gui_ready") is True, "headless app ready")
@@ -334,6 +524,7 @@ def main():
             started = json.loads(command([codex, "app-server", "daemon", "start"]).stdout)
             assert started["status"] != "started", "the launch failed to start its daemon"
             daemon_pid = json.loads((home / ".codex/app-server-daemon/daemon.pid").read_text())["pid"]
+            fixture.record(daemon_pid)
             record_updater()
         b = spawn("B")
         if options.color_check:
@@ -487,40 +678,51 @@ def main():
             proof["color_observations"] = color_observations
         (root / "evidence.json").write_text(json.dumps(proof, indent=2) + "\n")
         print(json.dumps(proof), flush=True)
-        succeeded = True
     finally:
-        if app is not None and app.poll() is None:
-            (root / "requests.json").write_text(json.dumps(Provider.requests, indent=2) + "\n")
-            (root / "seat-state.json").write_text(json.dumps(ctl("seat", "ls", check=False), indent=2) + "\n")
-            ctl("app", "stop", check=False)
+        def stop_app():
+            if app is not None and app.poll() is None:
+                (root / "requests.json").write_text(json.dumps(Provider.requests, indent=2) + "\n")
+                (root / "seat-state.json").write_text(json.dumps(ctl("seat", "ls", check=False), indent=2) + "\n")
+                ctl("app", "stop", check=False)
+                try:
+                    app.wait(timeout=10)
+                except subprocess.TimeoutExpired:
+                    app.terminate()
+                    app.wait(timeout=5)
+            if app is not None and (run / "logic.owner.json").exists():
+                recovery = ctl("app", "start", "--headless", "--ctl", "--unattended",
+                               "--test-account", str(root / "account"))
+                (root / "cleanup-recovery.json").write_text(json.dumps(recovery) + "\n")
+                ctl("app", "stop")
+
+        def stop_daemon():
+            if daemon_started:
+                if updater is None:
+                    record_updater()
+                command([codex, "app-server", "daemon", "stop"])
+
+        def stop_updater():
+            if updater is not None:
+                # This PID was recorded from the manager started in this private HOME.
+                current = subprocess.run(["/bin/ps", "-ww", "-p", str(updater["pid"]), "-o", "lstart=", "-o", "command="],
+                                         capture_output=True, text=True).stdout.strip()
+                if current:
+                    assert current.startswith(updater["processStartTime"]), current
+                    assert str(home / ".codex/packages/app-server-daemon/") in current and "pid-update-loop" in current
+                    os.kill(updater["pid"], signal.SIGTERM)
+                    wait(lambda: pid_alive(updater["pid"]), lambda live: not live,
+                         "private updater exit", seconds=5)
+
+        failures = []
+        for stop in (stop_app, stop_daemon, stop_updater):
             try:
-                app.wait(timeout=10)
-            except subprocess.TimeoutExpired:
-                app.terminate()
-                app.wait(timeout=5)
-        if app is not None and (run / "logic.owner.json").exists():
-            recovery = ctl("app", "start", "--headless", "--ctl", "--unattended",
-                           "--test-account", str(root / "account"))
-            (root / "cleanup-owner.json").write_text(json.dumps(recovery) + "\n")
-            ctl("app", "stop")
-        if daemon_started:
-            if updater is None:
-                record_updater()
-            command([codex, "app-server", "daemon", "stop"])
-        if updater is not None:
-            # This PID was recorded from the manager we started in our new HOME.
-            current = subprocess.run(["/bin/ps", "-ww", "-p", str(updater["pid"]), "-o", "lstart=", "-o", "command="],
-                                     capture_output=True, text=True).stdout.strip()
-            if current:
-                assert current.startswith(updater["processStartTime"]), current
-                assert str(home / ".codex/packages/app-server-daemon/") in current and "pid-update-loop" in current
-                os.kill(updater["pid"], signal.SIGTERM)
-        server.shutdown()
-        server.server_close()
-        worker.join(timeout=3)
-        # Keep diagnostics/evidence; retire only this fixture's large package copy.
-        if succeeded:
-            shutil.rmtree(home / ".codex/packages", ignore_errors=True)
+                stop()
+            except Exception:
+                failures.append(traceback.format_exc())
+        if log is not None:
+            log.close()
+        if failures:
+            raise RuntimeError("private shutdown failed:\n" + "\n".join(failures))
 
 
 if __name__ == "__main__":

@@ -790,6 +790,10 @@ test-cli-error-isolation:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test headless notification_recording_requires_a_test_account_before_startup -- --exact
 
 .PHONY: test-harness-native
+.PHONY: test-shared-codex-cleanup
+test-shared-codex-cleanup:
+	@python3 -I -B scripts/test-shared-codex-cleanup.py
+
 test-harness-native: build
 	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --codex '$(CODEX_BIN)'
 	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --codex '$(CODEX_BIN)' --cold --shim

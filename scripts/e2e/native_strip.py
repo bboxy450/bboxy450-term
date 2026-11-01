@@ -220,34 +220,34 @@ def replay(binary, fixture, control=None, cycles=4, stress=False):
 def night(binary):
     """Fresh real local-Codex recording, native replay and causal GPU mutants."""
     root = Path(tempfile.mkdtemp(prefix="bbt-strip-night-", dir="/tmp")).resolve()
-    script = Path(__file__).resolve().with_name("shared_codex.py")
-    command = [sys.executable, "-I", "-B", str(script), str(binary), "--native", "--stream-check"]
-    with (root / "codex.log").open("w") as log:
-        run = subprocess.run(command, stdout=log, stderr=log, timeout=150)
-    output = (root / "codex.log").read_text()
-    assert run.returncode == 0, ("real native Codex failed", root, output[-3000:])
-    match = re.search(r"Private shared-daemon fixture: (.+)", output)
-    assert match, ("native Codex recording path missing", root)
-    recording = Path(match[1])
-    real = check(recording / "frames", minimum=64)
-    real.pop("samples")
-    fixture = recording / "codex-stream.bin"
-    data = fixture.read_bytes()
-    assert data.count(b"W") >= 8192 and data.count(b"\x1b[?2026h") >= 20, "incomplete real Codex fixture"
-    summary = dict(real_codex=real, fixture_bytes=len(data),
-                   synchronized_starts=data.count(b"\x1b[?2026h"),
-                   synchronized_ends=data.count(b"\x1b[?2026l"),
-                   line_erases=len(re.findall(rb"\x1b\[[012]?K", data)),
-                   replay=replay(binary, fixture, cycles=8, stress=True), broken_controls={})
-    for control in ("source", "copy", "final"):
-        try:
-            replay(binary, fixture, control=control)
-        except StripDetected as failure:
-            assert any(row["stage"] == control for row in failure.result["failures"]), failure
-            summary["broken_controls"][control] = dict(
-                rejected=True, frames=failure.result["frames"], failures=failure.result["failures"])
-        else:
-            raise AssertionError(("blank-strip broken control escaped", control))
+    with tempfile.TemporaryDirectory(prefix="recording-", dir=root) as directory:
+        recording = Path(directory)
+        script = Path(__file__).resolve().with_name("shared_codex.py")
+        command = [sys.executable, "-I", "-B", str(script), str(binary), "--native", "--stream-check",
+                   "--artifacts", str(recording)]
+        with (root / "codex.log").open("w") as log:
+            run = subprocess.run(command, stdout=log, stderr=log, timeout=150)
+        output = (root / "codex.log").read_text()
+        assert run.returncode == 0, ("real native Codex failed", root, output[-3000:])
+        real = check(recording / "frames", minimum=64)
+        real.pop("samples")
+        fixture = recording / "codex-stream.bin"
+        data = fixture.read_bytes()
+        assert data.count(b"W") >= 8192 and data.count(b"\x1b[?2026h") >= 20, "incomplete real Codex fixture"
+        summary = dict(real_codex=real, fixture_bytes=len(data),
+                       synchronized_starts=data.count(b"\x1b[?2026h"),
+                       synchronized_ends=data.count(b"\x1b[?2026l"),
+                       line_erases=len(re.findall(rb"\x1b\[[012]?K", data)),
+                       replay=replay(binary, fixture, cycles=8, stress=True), broken_controls={})
+        for control in ("source", "copy", "final"):
+            try:
+                replay(binary, fixture, control=control)
+            except StripDetected as failure:
+                assert any(row["stage"] == control for row in failure.result["failures"]), failure
+                summary["broken_controls"][control] = dict(
+                    rejected=True, frames=failure.result["frames"], failures=failure.result["failures"])
+            else:
+                raise AssertionError(("blank-strip broken control escaped", control))
     (root / "summary.json").write_text(json.dumps(summary, indent=2) + "\n")
     print("Native strip night: " + str(root), flush=True)
     print(json.dumps(summary), flush=True)
