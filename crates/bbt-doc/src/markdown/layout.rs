@@ -217,6 +217,28 @@ impl Markdown {
             ..Default::default()
         }
     }
+    /// Compose a previously prepared body. No lexing or IO occurs here.
+    pub fn highlighted_body_element(
+        &self,
+        highlights: &crate::highlight::Highlights,
+        ctx: ui::Context,
+        m: &dyn c::Measure,
+        width: f32,
+    ) -> c::Element {
+        let table_width = finite_width(width);
+        Render {
+            ctx,
+            m,
+            width: table_width.min(STYLE.spacing.doc_measure as f32),
+            table_width,
+            fragment_words: false,
+            diagrams: &[],
+            record_links: None,
+            scrolls: None,
+            provenance_expanded: false,
+            highlights: Some(highlights),
+        }.blocks(&self.blocks, "")
+    }
     /// Entire Markdown presentation, including generic YAML fields.
     pub fn element(&self, ctx: ui::Context, m: &dyn c::Measure, width: f32) -> c::Element {
         self.element_with_title(ctx, m, width, None)
@@ -240,6 +262,7 @@ impl Markdown {
             record_links: None,
             scrolls: None,
             provenance_expanded: false,
+            highlights: None,
         };
         let mut children = vec![];
         if !self.frontmatter.fields.is_empty() || self.frontmatter.error.is_some() {
@@ -282,6 +305,7 @@ impl Markdown {
             record_links: None,
             scrolls: None,
             provenance_expanded: false,
+            highlights: None,
         };
         r.blocks(self.display_blocks(title), "")
     }
@@ -305,6 +329,7 @@ impl Markdown {
             record_links: Some(links),
             scrolls: None,
             provenance_expanded: false,
+            highlights: None,
         }
         .blocks(self.display_blocks(title), "")
     }
@@ -329,6 +354,7 @@ impl Markdown {
             record_links: Some(links),
             scrolls: Some(scrolls),
             provenance_expanded: false,
+            highlights: None,
         };
         self.hosted_body(title, &r)
     }
@@ -353,6 +379,7 @@ impl Markdown {
             record_links: Some(links),
             scrolls: Some(control.horizontal()),
             provenance_expanded: control.provenance_expanded,
+            highlights: None,
         };
         self.hosted_body(title, &r)
     }
@@ -453,6 +480,7 @@ impl Markdown {
                     record_links: None,
                     scrolls: None,
                     provenance_expanded: false,
+                    highlights: None,
                 };
                 let extra: Vec<_> = self
                     .frontmatter
@@ -513,6 +541,7 @@ struct Render<'a> {
     record_links: Option<&'a ui::modules::document_modal::controller::RecordLinks>,
     scrolls: Option<&'a std::collections::BTreeMap<String, f32>>,
     provenance_expanded: bool,
+    highlights: Option<&'a crate::highlight::Highlights>,
 }
 #[derive(Clone)]
 enum Piece {
@@ -651,7 +680,7 @@ impl Render<'_> {
                     )
                 } else {
                     (
-                        self.code(key, text, 1.6),
+                        self.code_spans(key, text, 1.6, self.highlights.and_then(|h| h.spans(b))),
                         ui::TypeStep::Caption.pixels(),
                         ui::TypeStep::Caption.pixels(),
                     )
@@ -1137,12 +1166,37 @@ impl Render<'_> {
         )
     }
     fn code(&self, key: &str, value: &str, line_height: f32) -> c::Element {
+        self.code_spans(key, value, line_height, None)
+    }
+    fn code_spans(
+        &self,
+        key: &str,
+        value: &str,
+        line_height: f32,
+        spans: Option<&[crate::highlight::Span]>,
+    ) -> c::Element {
         let value = value.strip_suffix('\n').unwrap_or(value);
         let f = ui::Text {
             line_height,
             ..font(ui::TypeStep::Caption, 400, true, ui::Color::Foreground)
         };
         let mut literal = c::Text::new(value, f);
+        if let Some(spans) = spans {
+            let mut remaining = value.len();
+            literal.runs = spans.iter().filter_map(|span| {
+                let n = remaining.min(span.text.len());
+                remaining -= n;
+                (n > 0).then(|| c::TextRun {
+                    value: span.text[..n].into(),
+                    style: ui::Text {
+                        weight: if span.bold { 700 } else { 400 },
+                        italic: span.italic,
+                        paint: ui::Paint::solid(ui::Color::Rgba(span.color)),
+                        ..f
+                    },
+                })
+            }).collect();
+        }
         literal.wrap = false;
         literal.preserve_whitespace = true;
         let e = named(format!("{key}/text"), c::Element::Text(literal));

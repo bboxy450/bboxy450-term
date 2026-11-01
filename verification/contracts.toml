@@ -25,8 +25,8 @@ checks = ["make test-formal", "make test"]
 name = "AsyncRenderPreparation"
 title = "Background renderer preparation never mutates a retired owner"
 models = ["AsyncRenderPreparation", "BrokenAsyncRenderPreparation"]
-sources = ["crates/bboxy450-term/src/gpu.rs"]
-implementation_tests = ["crates/bboxy450-term/src/gpu.rs"]
+sources = ["crates/bboxy450-term/src/gpu.rs", "crates/bbt-doc/src/highlight.rs"]
+implementation_tests = ["crates/bboxy450-term/src/gpu.rs", "crates/bbt-doc/tests/highlight.rs"]
 assumptions = "One UI waiter, one pending worker and one completion; cancellation/delivery are atomic owner transitions. A blocking worker may outlive its waiter but owns no mutable UI context. Worker completion/fairness, native driver latency and GPU pixels are not proved. Bounded real-thread tests witness IO responsiveness and late result retirement."
 property = "No value installs after its UI waiter is dropped. The broken control installs a late result into the absent owner."
 checks = ["make test-formal", "make test"]
@@ -440,4 +440,44 @@ sources = ["crates/bboxy450-term/src/stall/load.rs", "crates/bbt-supervisor/src/
 implementation_tests = ["crates/bboxy450-term/src/stall/load.rs", "crates/bbt-supervisor/src/client/tests.rs", "crates/bbt-mux/src/logic/ring_batch_tests.rs", "crates/bbt-mux/tests/logic.rs", "crates/bbt-mux/tests/capture_fairness.rs", "crates/bbt-supervisor/tests/terminal_replies.rs"]
 assumptions = "Two seats, two ordered records each, one read/parse slot per seat; A starts with a held read and history may remain held. Admission, healthy read completion and publication are separate atomic actions, individually weakly fair when enabled. A bounded owner quantum may admit multiple seats; admission is progress even before publication, and seat-local Busy retry clocks eventually become ready. CPU lanes are acquired only after read completion, hold no dependency wait, and service finite page/record quanta fairly; their exact count and throughput are implementation/performance coverage. Typed provider-down admission parks the host and an up transition resumes its pending replay; the real capture_fairness reconnect witness checks this implementation mapping. A permanently failed dependency has no progress promise; B does. The broken control restores one shared head queue, so A prevents B admission and must fail liveness. Real attachment/view incarnation (including A-to-B-to-A), bytes/page/checkpoint limits, duplicate/refused replies, cancellation/restart and live-versus-replay effects use native/API/process witnesses and existing TransportCapture/CheckpointFence contracts. The model does not prove CPU deadlines, arbitrary Rust, filesystem/OS scheduling, the supervisor disk writer or whole-system refinement."
 property = "One bounded next-sequence slot per seat; publication never skips/reorders a record, and every healthy seat drains independently of a held peer/history read."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "StreamToView"
+title = "Ordered current-generation view deltas"
+models = ["StreamToView", "BrokenStreamToView"]
+sources = ["crates/bboxy450-term/tests/formal_contracts/toolkit_models.rs", "crates/bbt-ui/src/modules/transcript.rs"]
+implementation_tests = ["crates/bbt-ui/tests/toolkit.rs"]
+assumptions = "Three generation incarnations, three deltas, one captured completion. Capture, replace/drop, apply and retire are atomic owner transitions. Sequence gaps are explicit refusals requiring retry or a host snapshot; no network ordering, delivery fairness or unbounded buffer is assumed. Generation exhaustion refuses; byte payloads and transport use implementation tests."
+property = "Only the next sequence of the current active generation has an effect; duplicates, gaps and retired owners do not. Broken bypasses the AsyncRenderPreparation generation fence. The stream_to_view_orders_once_and_retires_dropped_and_aba_generations witness exercises real controller mutations."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "IncrementalMarkdown"
+title = "Stable-prefix Markdown cache identity"
+models = ["IncrementalMarkdown", "BrokenIncrementalMarkdown"]
+sources = ["crates/bboxy450-term/tests/formal_contracts/toolkit_models.rs", "crates/bbt-doc/src/markdown/streaming.rs", "crates/bbt-doc/src/markdown/parse.rs"]
+implementation_tests = ["crates/bbt-doc/tests/streaming.rs"]
+assumptions = "Three semantic prefix identities, three open-tail states and one cache bit. Append/cache invalidation are atomic parser-owner operations. Equality is abstract, as in RenderLinePlan; pulldown-cmark grammar, UTF-8 offsets, YAML and global forward-reference effects are tested by full-parse equivalence. Documents containing brackets conservatively invalidate the whole cache."
+property = "An available prefix cache always has the current semantic identity. Broken retains a stale identity when an append reopens a supposedly stable block. Real corpus tests compare every prefix after deterministic random appends and every single split, including fences and tables, against a full parse."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ScrollStick"
+title = "Retained manual offset and explicit tail following"
+models = ["ScrollStick", "BrokenScrollStick"]
+sources = ["crates/bboxy450-term/tests/formal_contracts/toolkit_models.rs", "crates/bbt-ui/src/modules/transcript.rs"]
+implementation_tests = ["crates/bbt-ui/tests/toolkit.rs"]
+assumptions = "One view, following bit, manual intent and offsets bounded 0..3. User scroll, jump and layout after content growth/shrink are atomic. The actual projection clamps but the requested intent survives temporary empty/shrunk content. Pixel shaping, wheel burst aggregation and multiple scoped views use the existing app chat_scroll tests."
+property = "Following layout shows the tail; manual intent survives every layout until an explicit user scroll or jump. Broken overwrites manual intent during layout. Real ScrollStick API witnesses cover growth, shrink, nonfinite input and explicit follow."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "DirtyWakeFrame"
+title = "Budget-deferred UI queue tail always gets another frame"
+models = ["DirtyWakeFrame", "BrokenDirtyWakeFrame"]
+sources = ["crates/bboxy450-term/tests/formal_contracts/toolkit_models.rs", "crates/bbt-rt/src/wake.rs", "crates/bbt-rt/src/queues.rs"]
+implementation_tests = ["crates/bbt-rt/tests/runtime.rs"]
+assumptions = "Three finite arrivals, one queue and one item serviced per frame. Arrival with dirty-mark and budgeted drain with complete_drain/re-mark are atomic owner actions. Fair event-loop service is required; real racing marks reuse DirtyWake. Frame wall-clock deadlines, weak memory and OS scheduling remain outside this projection."
+property = "Under weakly fair frame service every admitted arrival is consumed; the bounded-drain remainder retains frame demand. Broken drops the re-mark and fails liveness. Existing real queue witness a_budgeted_deferred_drain_rearms_its_tail_without_another_producer exercises both UiReceiver and ViewRing."
 checks = ["make test-formal", "make test"]

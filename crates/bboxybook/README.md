@@ -627,3 +627,15 @@ Retained upstream material keeps its original terms; earlier grants are not
 withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
 examples; [NOTICE](NOTICE) preserves factual upstream notices.
 Slop respectfully. Keep the credit attached.
+
+## Rich toolkit stories
+
+`make test-toolkit` runs append/highlighting/controller/editor tests and renders
+all 128 rich toolkit stories on headless Metal (16 states × 4 densities × 2
+themes). `make stories-toolkit` writes native PNGs through the normal
+`parity::replay_images` path to `target/bboxybook/toolkit`. These cases are also
+available via `BBOXYBOOK_GALLERY=toolkit bboxy450-book manifest` and can be replayed
+from that manifest. They cover streaming Markdown, prepared syntax, transcript
+follow/manual positions, open/folded diffs, every tool status, approval enabled/
+disabled choices and both completion triggers. Native images prove renderability;
+independent browser reference parity is not asserted for these new controls.

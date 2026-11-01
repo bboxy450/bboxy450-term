@@ -31,6 +31,7 @@ REQUIREMENT := identifier "com.bboxy450.term" and anchor apple generic and certi
 APP_VERSION = $(shell python3 -c 'import tomllib; a=tomllib.load(open("crates/bboxy450-term/Cargo.toml","rb"))["package"]["version"]; print(a if isinstance(a,str) else tomllib.load(open("Cargo.toml","rb"))["workspace"]["package"]["version"])')
 ARCHIVE = $(DIST_DIR)/$(APP)-$(APP_VERSION)-macos-$(shell uname -m).zip
 CI_LOG ?= $(abspath $(TARGET_DIR))/ci-local.log
+FORMAL_DIR ?= $(abspath $(TARGET_DIR))/formal
 CI_ARGS ?=
 CRATES_PUBLISHER_RECEIPT ?= $(HOME)/.local/state/bboxy450-term/crates-publisher.json
 export CARGO_PROFILE_DEV_DEBUG ?= 0
@@ -46,6 +47,9 @@ help:
 	  'make lock                       Refresh workspace lock metadata offline' \
 	  'make lock-online                Resolve added dependencies with the registry' \
 	  'make test                       Full local CI; no operator input' \
+	  'make push-branch                Push the current signed, tested branch for PR review' \
+	  'make test-toolkit               Document append, rich widgets, editor and headless stories' \
+	  'make stories-toolkit            Headless native rich widget PNG captures' \
 	  'make test-formal                Native Yarn checker + Java TLC graph/verdict parity' \
 	  'make check-formal-evidence      Verify the source-bound formal landing receipt' \
 	  'make test-formal-contracts      Project contracts and real API witnesses (native)' \
@@ -1659,3 +1663,30 @@ check-seat-ingestion:
 .PHONY: format-seat-ingestion
 format-seat-ingestion:
 	@rustfmt --edition 2024 --config skip_children=true crates/bbt-supervisor/src/client.rs crates/bbt-supervisor/src/client/wire.rs crates/bbt-supervisor/src/client/tests.rs crates/bbt-supervisor/src/supervisor.rs crates/bbt-supervisor/src/transport.rs crates/bbt-mux/src/provider/fake.rs crates/bbt-mux/src/provider/shared.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/src/logic/ingestion.rs crates/bbt-mux/src/logic/history.rs crates/bbt-mux/src/logic/ring_batch_tests.rs crates/bbt-mux/tests/logic.rs crates/bbt-mux/tests/common/capture_priority.rs crates/bboxy450-term/src/stall/load.rs crates/bboxy450-term/tests/formal_contracts/models.rs
+
+.PHONY: test-toolkit check-toolkit stories-toolkit
+test-toolkit:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-doc -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-book --test toolkit --target-dir '$(TARGET_DIR)'
+
+check-toolkit:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked -p bboxy450-doc -p bboxy450-ui -p bboxy450-book --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+stories-toolkit:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo run --locked -p bboxy450-book --target-dir '$(TARGET_DIR)' -- toolkit --out '$(TARGET_DIR)/bboxybook/toolkit'
+
+# A review branch handoff uses the same exact-source evidence as main, without
+# author landing or merging. The assigned branch is the only destination.
+.PHONY: push-branch
+push-branch:
+	@set -eu; test "$$(gh api user --jq .login)" = '$(PUSH_IDENTITY)'; \
+	test -z "$$(git status --porcelain)"; \
+	push_branch=$$(git symbolic-ref --short HEAD); test "$$push_branch" != main; \
+	git check-ref-format "refs/heads/$$push_branch"; \
+	python3 -I scripts/verify-signatures.py origin/main..HEAD; \
+	python3 -I scripts/formal.py --target '$(FORMAL_DIR)' --verify-evidence; \
+	grep -E "^ci-local: result $$(git rev-parse HEAD) (normal|extended) 0$$" '$(CI_LOG)' >/dev/null; \
+	GIT_TERMINAL_PROMPT=0 git push --set-upstream origin "HEAD:refs/heads/$$push_branch"

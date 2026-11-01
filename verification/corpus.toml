@@ -545,3 +545,43 @@ frontend = "project"
 name = "BrokenSeatIngestion"
 expected = "liveness"
 frontend = "project"
+
+[[model]]
+name = "StreamToView"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenStreamToView"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "IncrementalMarkdown"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenIncrementalMarkdown"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "ScrollStick"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenScrollStick"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "DirtyWakeFrame"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenDirtyWakeFrame"
+expected = "liveness"
+frontend = "project"

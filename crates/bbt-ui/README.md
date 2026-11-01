@@ -310,3 +310,34 @@ Retained upstream material keeps its original terms; earlier grants are not
 withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
 examples; [NOTICE](NOTICE) preserves factual upstream notices.
 Slop respectfully. Keep the credit attached.
+
+## Rich conversation controls
+
+- `modules::transcript::Transcript` composes keyed, prepared `Message` bodies.
+  A host supplies each body's `bbt_doc::Markdown::body_element` (or highlighted
+  equivalent), avoiding a UI → document dependency cycle. Cache completed bodies
+  and use the existing list windowing for long histories.
+- `StreamToView<T>` allocates nonreusable generation tokens. `apply` mutates only
+  the exact next sequence for the active token; duplicate/gap/retired results
+  are explicit. Retry gaps or replace from a host snapshot. Retain the controller
+  across replacements and call `retire` on drop.
+- `ScrollStick` starts following. Supply real user scroll offsets to
+  `user_scroll`; layout clamps only the projection. `jump_to_latest` restores
+  following without overwriting saved manual intent during growth/reflow.
+- `diff::Diff::parse` prepares unified hunks and old/new line numbers. `DiffView`
+  applies token colours (`color.ui.ok`, `color.state.errored`) and `Folds` per
+  hunk. Toggle a hunk from its `<key>/hunk/<index>/toggle` hit region; reset fold
+  state when replacing the diff source. Diff parsing runs on a host worker.
+- `tool_call::ToolCall` uses two `Accordion`s with independent argument/output
+  disclosure and a status chip. `toggle` accepts the named header hit regions.
+- `approval::Approval` skips disabled options and handles Up/Down/Home/End/Enter;
+  Enter returns the selected host action. It performs no approval or IO itself.
+
+`text_edit::Editor` now supports logical Up/Down with a retained UTF-16 column,
+word/line/document motions, selection extension, bounded undo/redo and input
+history with draft restoration. Hosts translate platform key events to Commands.
+IME preedit stays separate and blocks ordinary editing/history commands until
+commit or cancel. `completion()` captures `/` or `@` and its query/range;
+`CompletionPopover` renders host candidates using the shared keyboard choice
+control. Applying a completion rejects a stale query/selection/caret capture.
+Hosts fetch suggestions off-thread and own popup placement/focus/dismissal.
