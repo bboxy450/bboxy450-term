@@ -182,9 +182,7 @@ impl Job {
                         else {
                             unreachable!()
                         };
-                        Ok(serde_json::to_value(mcp::knowledge::fetch(
-                            source, locator,
-                        )?)?)
+                        Ok(mcp::knowledge::fetch_page(source, locator, &call)?)
                     }
                     "knowledge_search" => {
                         let mcp::knowledge::Request::Search(request) =

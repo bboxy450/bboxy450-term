@@ -56,8 +56,8 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
             "inputSchema":{"type":"object","properties":{},"required":[],"additionalProperties":false},
             "outputSchema":{"type":"object","additionalProperties":true},
             "annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}),
-        json!({"name":"knowledge_fetch","description":"Read a knowledge-root document by path, #N, ID or unambiguous slug, with exact frontmatter, Markdown, etag and confined resource links.",
-            "inputSchema":{"type":"object","properties":{"locator":{"type":"string","minLength":1,"maxLength":4096}},"required":["locator"],"additionalProperties":false},
+        json!({"name":"knowledge_fetch","description":"Read a knowledge-root document by path, #N, ID or unambiguous slug, with bounded frontmatter and UTF-8 body pages. Follow next as body_offset with the returned etag; truncated projections are explicitly flagged.",
+            "inputSchema":{"type":"object","properties":{"locator":{"type":"string","minLength":1,"maxLength":4096},"body_offset":{"type":"integer","minimum":0},"etag":{"type":"string","maxLength":4096}},"required":["locator"],"additionalProperties":false},
             "outputSchema":{"type":"object","additionalProperties":true},
             "annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}),
         json!({"name":"knowledge_search","description":"Search the current knowledge root using plain text and type:/status:/since: terms. Results are bounded pages; next is an opaque cursor for this query/root snapshot.",
@@ -80,6 +80,9 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
 #[serde(deny_unknown_fields)]
 struct Fetch {
     locator: String,
+    #[serde(default)]
+    body_offset: usize,
+    etag: Option<String>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -224,6 +227,26 @@ pub(crate) fn prepare(call: &Call) -> Result<Request, String> {
         }
         _ => Err("knowledge tool is unavailable".into()),
     }
+}
+
+pub(crate) fn fetch_page_args(call: &Call) -> Result<(usize, Option<String>), String> {
+    let args: Fetch = super::tools::parse(&call.args)?;
+    if args.etag.as_ref().is_some_and(|e| e.len() > 4096) {
+        return Err("etag exceeds bound".into());
+    }
+    Ok((args.body_offset, args.etag))
+}
+
+pub(crate) fn fetch_page(
+    source: &dyn DataSource,
+    locator: String,
+    call: &Call,
+) -> d::Result<Value> {
+    let (offset, etag) =
+        fetch_page_args(call).map_err(|e| d::CommandError::new("invalid_arguments", e))?;
+    let value = serde_json::to_value(fetch(source, locator)?)
+        .map_err(|e| d::CommandError::new("invalid_record", e.to_string()))?;
+    super::read_pages::body_page(value, offset, etag.as_deref())
 }
 
 pub(crate) fn fetch(source: &dyn DataSource, locator: String) -> d::Result<d::Record> {

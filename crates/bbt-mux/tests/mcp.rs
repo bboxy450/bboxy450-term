@@ -59,6 +59,13 @@ impl Fixture {
         Self::open(true, lose)
     }
     fn open(real: bool, lose: bool) -> Self {
+        Self::open_seeded(real, lose, |_, _| {})
+    }
+    fn open_seeded(
+        real: bool,
+        lose: bool,
+        seed: impl FnOnce(&std::path::Path, &SeatRecord),
+    ) -> Self {
         let temp = tempfile::tempdir().unwrap();
         let repository = temp.path().join("repository");
         std::fs::create_dir_all(repository.join(".bboxy/tasks")).unwrap();
@@ -82,6 +89,7 @@ impl Fixture {
             let number = number + 1;
             std::fs::write(repository.join(format!(".bboxy/tasks/{id}.md")),format!("---\nid: {id}\ntype: task\nnumber: {number}\ntitle: {title}\nstatus: running\nassignee: {seat}\nverify: 'true'\n---\nSynthetic fixture brief only.\n")).unwrap();
         }
+        seed(&repository, &own);
         let config = LogicConfig {
             run_dir: temp.path().join("run"),
             repository,
@@ -7620,4 +7628,345 @@ fn task_accept_requires_linked_report_to_exist_and_name_this_task() {
         json!({"task_path":"#1"}),
     ));
     assert_eq!(f.task_document().metadata["status"], "accepted");
+}
+
+// keeps: #769; complete signed message pages and SQLite receipt cursors.
+#[test]
+fn mcp_read_byte_pages_messages_and_receipts() {
+    let f = Fixture::new();
+    let mut expected = std::collections::BTreeMap::new();
+    for _ in 0..140 {
+        let id = Ulid::new();
+        let sent = data(f.mutate(
+            f.oracle.id,
+            id,
+            "message_send",
+            json!({"destination":format!("seats/{}/inbox",f.own.id),"text":"x".repeat(16384)}),
+        ));
+        expected.insert(id.to_string(), sent["message"]["envelope"].clone());
+    }
+    let mut after = json!(0);
+    let mut seen = std::collections::BTreeSet::new();
+    let mut originals = Vec::new();
+    loop {
+        let reply = f.call(
+            f.oracle.id,
+            Ulid::new(),
+            "message_list",
+            json!({"after":after,"limit":128}),
+        );
+        assert!(serde_json::to_vec(&reply).unwrap().len() < bbt_mux::mcp::MAX_RESULT);
+        let page = data(reply)["page"].clone();
+        for row in page["items"].as_array().unwrap() {
+            let id = row["envelope"]["id"].as_str().unwrap();
+            if let Some(envelope) = expected.get(id) {
+                assert!(seen.insert(id.to_owned()));
+                assert_eq!(&row["envelope"], envelope);
+                originals.push(row.clone());
+            }
+        }
+        if page["next"].is_null() {
+            break;
+        }
+        assert_ne!(after, page["next"]);
+        after = page["next"].clone();
+    }
+    assert_eq!(seen.len(), 140);
+    let control = json!({"page":{"items":&originals[..25],"next":25}});
+    assert!(serde_json::to_vec(&control).unwrap().len() < 512 * 1024);
+    assert!(
+        serde_json::to_vec(
+            &json!({"content":[{"text":control.to_string()}],"structuredContent":control})
+        )
+        .unwrap()
+        .len()
+            > 512 * 1024
+    );
+
+    let message = expected.keys().next().unwrap().parse::<Ulid>().unwrap();
+    let account =
+        SqliteStore::open(&f.config.run_dir.join(format!("swarm-{}", f.own.swarm))).unwrap();
+    let mut db = account.connection().unwrap();
+    let (rowid,raw):(i64,Vec<u8>)=db.query_row("SELECT d.rowid,d.data FROM msg_deliveries d JOIN msg_messages m ON m.seq=d.message WHERE m.id=?1 LIMIT 1",[message.to_string()],|r| Ok((r.get(0)?,r.get(1)?))).unwrap();
+    let template: Value = serde_json::from_slice(&raw).unwrap();
+    let tx = db.transaction().unwrap();
+    for n in 0..129 {
+        let mut receipt = template.clone();
+        receipt["agent"] = json!(format!("byte-fixture-{n}"));
+        receipt["evidence"] = json!("sender-stored");
+        receipt["wake"] = json!("none");
+        receipt["reason"] = json!("policy");
+        receipt.as_object_mut().unwrap().remove("until");
+        receipt["note"] = json!("x".repeat(if n == 128 { 2 * 1024 * 1024 } else { 16384 }));
+        tx.execute("INSERT INTO msg_deliveries SELECT message,recipient,?1,'sender-stored',class,held,eligible_ms,batch_key,attempt,?2 FROM msg_deliveries WHERE rowid=?3",rusqlite::params![format!("byte-fixture-{n}"),serde_json::to_vec(&receipt).unwrap(),rowid]).unwrap();
+    }
+    tx.commit().unwrap();
+    let total: i64 =db.query_row("SELECT COUNT(*) FROM msg_deliveries d JOIN msg_messages m ON m.seq=d.message WHERE m.id=?1",[message.to_string()],|r| r.get(0)).unwrap();
+    drop(db);
+    let mut after = json!(0);
+    let mut keys = std::collections::BTreeSet::new();
+    let mut truncated = 0;
+    loop {
+        let reply = f.call(
+            f.oracle.id,
+            Ulid::new(),
+            "message_receipts",
+            json!({"message":message,"after":after,"limit":128}),
+        );
+        assert!(serde_json::to_vec(&reply).unwrap().len() < bbt_mux::mcp::MAX_RESULT);
+        let page = data(reply)["page"].clone();
+        for row in page["items"].as_array().unwrap() {
+            assert!(keys.insert(json!([row["recipient"], row["agent"]]).to_string()));
+            truncated += usize::from(row["receipt_truncated"] == true);
+        }
+        if page["next"].is_null() {
+            break;
+        }
+        assert_ne!(after, page["next"]);
+        after = page["next"].clone();
+    }
+    assert_eq!(keys.len(), usize::try_from(total).unwrap());
+    assert_eq!(truncated, 1);
+}
+
+// keeps: #769; unchanged 128 KiB encoded capture budget stays below MAX_RESULT.
+#[test]
+#[ignore = "night: real boundary; explicit test-task-pages-history runs unattended"]
+fn mcp_history_byte_pages_reconstruct_two_mib() {
+    use base64::Engine;
+    let f = Fixture::real();
+    let target=f.spawn_fixture("zsh", "dd if=/dev/zero bs=32768 count=64 2>/dev/null | tr '\\000' x; printf '\\nHISTORY-BYTE-DONE\\n'; IFS= read -r line");
+    f.wait_screen(target.id, "HISTORY-BYTE-DONE");
+    let mut args = f.target(target.id);
+    args["limit_records"] = json!(128);
+    let mut output = Vec::new();
+    let mut all = Vec::new();
+    for n in 0..256 {
+        let reply = f.call(f.oracle.id, Ulid::new(), "history_read", args.clone());
+        assert!(serde_json::to_vec(&reply).unwrap().len() < bbt_mux::mcp::MAX_RESULT);
+        let page = data(reply);
+        assert!(page["gaps"].as_array().unwrap().is_empty());
+        for row in page["records"].as_array().unwrap() {
+            all.push(row.clone());
+            if row["kind"] == "output" {
+                output.extend(
+                    base64::engine::general_purpose::STANDARD
+                        .decode(row["bytes"].as_str().unwrap())
+                        .unwrap(),
+                );
+            }
+        }
+        if page["next"].is_null() {
+            break;
+        }
+        assert!(n < 255, "capture failed to finish");
+        args["cursor"] = page["next"].clone();
+    }
+    assert_eq!(
+        output.iter().filter(|b| **b == b'x').count(),
+        2 * 1024 * 1024
+    );
+    assert!(
+        output
+            .windows(b"HISTORY-BYTE-DONE".len())
+            .any(|s| s == b"HISTORY-BYTE-DONE")
+    );
+    let control = json!({"records":all,"next":null});
+    assert!(
+        serde_json::to_vec(
+            &json!({"content":[{"text":control.to_string()}],"structuredContent":control})
+        )
+        .unwrap()
+        .len()
+            > bbt_mux::mcp::MAX_RESULT
+    );
+}
+
+// keeps: #769; real admitted fetch reconstructs an immutable UTF-8 body.
+#[test]
+fn mcp_read_byte_pages_knowledge_fetch() {
+    let f = Fixture::new();
+    let id = Ulid::new();
+    let body = format!(
+        "{}{}FETCH-BYTE-END",
+        "é".repeat(600_000),
+        "\\\"\n".repeat(1000)
+    );
+    let metadata =
+        json!({"id":id,"type":"note","title":"byte fetch","history":"x".repeat(600_000)});
+    let text = format!("---\n{metadata}\n---\n{body}");
+    assert!(text.len() < 2 * 1024 * 1024);
+    let directory = f.config.repository.join(".bboxy/notes");
+    std::fs::create_dir_all(&directory).unwrap();
+    std::fs::write(directory.join("byte-fetch.md"), text).unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let mut page = loop {
+        let reply = f.call(
+            f.own.id,
+            Ulid::new(),
+            "knowledge_fetch",
+            json!({"locator":"notes/byte-fetch.md"}),
+        );
+        if reply["isError"] == false {
+            break data(reply);
+        }
+        assert!(Instant::now() < deadline, "{reply}");
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    let etag = page["etag"].clone();
+    let mut output = String::new();
+    let mut offset = 0;
+    loop {
+        assert_eq!(page["body_offset"], offset);
+        assert_eq!(page["frontmatter_truncated"], true);
+        output.push_str(page["body"].as_str().unwrap());
+        if page["next"].is_null() {
+            break;
+        }
+        offset = page["next"].as_u64().unwrap() as usize;
+        assert_eq!(offset, output.len());
+        let reply = f.call(
+            f.own.id,
+            Ulid::new(),
+            "knowledge_fetch",
+            json!({"locator":"notes/byte-fetch.md","body_offset":offset,"etag":etag}),
+        );
+        assert!(serde_json::to_vec(&reply).unwrap().len() < bbt_mux::mcp::MAX_RESULT);
+        page = data(reply);
+    }
+    assert_eq!(output, body);
+    let stale = f.call(
+        f.own.id,
+        Ulid::new(),
+        "knowledge_fetch",
+        json!({"locator":"notes/byte-fetch.md","body_offset":offset,"etag":"changed"}),
+    );
+    assert_eq!(stale["structuredContent"]["error"]["code"], "stale_body");
+    let boundary = f.call(
+        f.own.id,
+        Ulid::new(),
+        "knowledge_fetch",
+        json!({"locator":"notes/byte-fetch.md","body_offset":1,"etag":etag}),
+    );
+    assert_eq!(
+        boundary["structuredContent"]["error"]["code"],
+        "invalid_body_offset"
+    );
+}
+
+// keeps: #769; detail history cannot exceed the read envelope.
+#[test]
+fn mcp_read_byte_pages_task_detail_keeps_active_report() {
+    let f = Fixture::new();
+    let metadata = json!({"id":f.task,"type":"task","number":1,"title":"byte detail","status":"running","assignee":f.own.id,"verify":"true","verify_result":{"command":"true","exit_code":0},"report":{"summary":"active result"},"history":"x".repeat(300_000)});
+    std::fs::write(
+        f.config
+            .repository
+            .join(format!(".bboxy/tasks/{}.md", f.task)),
+        format!("---\n{metadata}\n---\nTask brief.\n"),
+    )
+    .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let reply = loop {
+        let reply = f.call(
+            f.own.id,
+            Ulid::new(),
+            "task_status",
+            json!({"task_id":f.task}),
+        );
+        if reply["isError"] == false {
+            break reply;
+        }
+        assert!(Instant::now() < deadline, "{reply}");
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    assert!(serde_json::to_vec(&reply).unwrap().len() < bbt_mux::mcp::MAX_RESULT);
+    let detail = data(reply);
+    assert_eq!(detail["metadata_truncated"], true);
+    assert_eq!(detail["metadata"]["report"]["summary"], "active result");
+    assert_eq!(detail["metadata"]["verify_result"]["exit_code"], 0);
+}
+
+// keeps: #769; every public document/execution graph follows byte-short pages.
+#[test]
+fn mcp_read_byte_pages_all_graphs_retain_the_full_corpus() {
+    let mut expected = std::collections::BTreeSet::new();
+    // Seed before the watcher starts: this checks read paging, not how quickly
+    // eighty separate filesystem mutations publish under a busy workspace run.
+    let f = Fixture::open_seeded(false, false, |repository, own| {
+        for n in 0..80 {
+            let id = Ulid::new();
+            expected.insert(id.to_string());
+            let metadata = json!({"id":id,"type":"task","number":1000+n,"title":"\0".repeat(512),"status":"open","assignee":own.id});
+            std::fs::write(
+                repository.join(format!(".bboxy/tasks/bytes-{n:03}.md")),
+                format!("---\n{metadata}\n---\n{}", "graph-byte ".repeat(3000)),
+            )
+            .unwrap();
+        }
+    });
+    let deadline = Instant::now() + Duration::from_secs(120);
+    loop {
+        let mut cursor = Value::Null;
+        let mut ready = std::collections::BTreeSet::new();
+        loop {
+            let reply = f.call(
+                f.oracle.id,
+                Ulid::new(),
+                "knowledge_search",
+                json!({"query":"graph-byte","cursor":cursor,"limit":128}),
+            );
+            assert_ne!(
+                reply["structuredContent"]["error"]["code"],
+                "response_bound"
+            );
+            if reply["isError"] != false {
+                break;
+            }
+            let page = data(reply);
+            for hit in page["items"].as_array().unwrap() {
+                ready.insert(hit["ref"]["id"].as_str().unwrap().to_owned());
+            }
+            cursor = page["next"].clone();
+            if cursor.is_null() {
+                break;
+            }
+        }
+        if ready == expected {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "corpus publication did not settle: {} of {}",
+            ready.len(),
+            expected.len()
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    for graph in ["execution", "task", "markdown"] {
+        let mut after = Value::Null;
+        let mut seen = std::collections::BTreeSet::new();
+        let mut pages = 0;
+        loop {
+            let reply = f.call(
+                f.oracle.id,
+                Ulid::new(),
+                "graph_read",
+                json!({"graph":graph,"after":after,"limit":128}),
+            );
+            assert!(serde_json::to_vec(&reply).unwrap().len() < bbt_mux::mcp::MAX_RESULT);
+            let page = data(reply);
+            for node in page["nodes"].as_array().unwrap() {
+                assert!(seen.insert(node["id"].as_str().unwrap().to_owned()));
+            }
+            pages += 1;
+            assert!(pages < 128);
+            if page["next"].is_null() {
+                break;
+            }
+            after = page["next"].clone();
+        }
+        assert!(pages > 1, "{graph} did not exercise a byte cut");
+        assert!(expected.is_subset(&seen), "{graph} omitted fixture tasks");
+    }
 }

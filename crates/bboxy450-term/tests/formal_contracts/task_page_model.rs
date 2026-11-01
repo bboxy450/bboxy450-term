@@ -4,13 +4,15 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! Ordered prefix paging with byte budget 2 and three bounded summaries.
+//! Ordered task prefixes and etag-bound UTF-8 body continuation.
 use super::*;
 
 pub(super) fn cases() -> Vec<(Model, &'static str)> {
     vec![
         (task_byte_page(false), "pass"),
         (task_byte_page(true), "safety"),
+        (fetch_body_page(false), "pass"),
+        (fetch_body_page(true), "safety"),
     ]
 }
 
@@ -58,6 +60,40 @@ fn task_byte_page(broken: bool) -> Model {
         &mut m,
         "NextIsLastEmittedId",
         implies(eq(3, 1), Var(0).eq(Var(1))),
+    );
+    m
+}
+
+fn fetch_body_page(broken: bool) -> Model {
+    let mut m = model(
+        "FetchBodyPage",
+        broken,
+        &[("offset", 7, 0), ("delivered", 7, 0)],
+    );
+    // UTF-8 boundaries of a three-character body with lengths 2, 1 and 4.
+    for (from, to) in [(0, 2), (2, 3), (3, 7)] {
+        action(
+            &mut m,
+            &format!("Emit{from}to{to}"),
+            eq(0, from),
+            &[
+                (0, Int(if broken && from == 0 { to + 1 } else { to })),
+                (1, Var(1).plus(Int(to - from))),
+            ],
+        );
+    }
+    // A caller that keeps following next schedules each enabled Emit fairly.
+    m.weak_fair.extend([vec![0], vec![1], vec![2]]);
+    m.responses.push(Response {
+        name: "BodyEventuallyComplete".into(),
+        request: Bool(true),
+        response: eq(0, 7),
+    });
+    safe(&mut m, "NoGapOrOverlap", Var(0).eq(Var(1)));
+    safe(
+        &mut m,
+        "Utf8Boundary",
+        eq(0, 0).or(eq(0, 2)).or(eq(0, 3)).or(eq(0, 7)),
     );
     m
 }

@@ -461,6 +461,11 @@ impl Journal {
             }
         } else {
             let value = dispatch();
+            let value = if call.tool == "history_read" {
+                super::read_pages::history_result(value)
+            } else {
+                value
+            };
             let value = if serde_json::to_vec(&value)?.len() > MAX_RESULT {
                 error(
                     call.op_id,

@@ -4065,7 +4065,7 @@ impl Worker {
         match tool::prepare(call) {
             Ok(tool::Request::Fetch(locator)) => {
                 let source = port.host.source(&port.index, &self.registry);
-                let value = match tool::fetch(&source, locator) {
+                let value = match tool::fetch_page(&source, locator, call) {
                     Ok(record) => tool::bounded(
                         call.op_id,
                         mcp::success(call.op_id, serde_json::to_value(record)?),
