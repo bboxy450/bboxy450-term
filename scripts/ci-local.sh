@@ -90,6 +90,8 @@ ledger integration make test-capability-scan TARGET_DIR="$BBOXY_CARGO_TARGET_DIR
 ledger integration make test-capability-control TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger integration make test-harness-native TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger integration make test-log-converter TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
+ledger integration make test-log-converter-controls TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
+ledger integration make test-log-converter-budget TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger integration make test-log-converter-native TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger smoke sh scripts/ui-lint.sh

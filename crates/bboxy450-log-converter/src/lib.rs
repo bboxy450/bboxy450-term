@@ -18,3 +18,7 @@
 
 pub mod bxl;
 pub mod ir;
+
+pub mod lower;
+pub mod parse;
+pub mod sanitize;

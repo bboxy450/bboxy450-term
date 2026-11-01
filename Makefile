@@ -1923,3 +1923,20 @@ check-log-converter-policy:
 .PHONY: test-log-converter-native
 test-log-converter-native:
 	@sh scripts/e2e/log-converter-native.sh
+# P3 pure parsing/sanitizing controls are canonical; the large allocator witness
+# and real-client probe remain full-ci-only (not presubmit).
+.PHONY: test-log-converter-claude test-log-converter-controls test-log-converter-budget test-log-converter-claude-native
+
+test-log-converter-claude:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-log-converter --target-dir '$(TARGET_DIR)' --test roundtrip --test determinism --test sanitize
+
+test-log-converter-controls:
+	@set -eu; . ./scripts/cache-env.sh; export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; python3 -I scripts/test-log-converter-controls.py
+
+test-log-converter-budget:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-log-converter --target-dir '$(TARGET_DIR)' --test claude_budget -- --ignored --nocapture
+
+test-log-converter-native: test-log-converter-claude-native
+
+test-log-converter-claude-native:
+	@set -eu; . ./scripts/cache-env.sh; cargo build --locked -p bboxy450-log-converter --target-dir '$(TARGET_DIR)' --example claude-roundtrip; python3 -I crates/bboxy450-log-converter/probes/claude_roundtrip.py '$(abspath $(TARGET_DIR))/debug/examples/claude-roundtrip'
