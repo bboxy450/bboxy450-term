@@ -1903,3 +1903,10 @@ test-capability-scan:
 check-capability-file:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo clippy --locked -p bboxy450-harness-wake-up -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: check-log-converter test-log-converter
+check-log-converter:
+	@set -eu; . ./scripts/cache-env.sh; cargo check --locked -p bboxy450-log-converter --all-targets
+
+test-log-converter:
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p bboxy450-log-converter
