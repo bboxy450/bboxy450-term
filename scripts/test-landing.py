@@ -198,7 +198,10 @@ if cfg.get("block")==args[0] and (not cfg.get("block_once") or not (state/"block
         target.mkdir(parents=True,exist_ok=True)
         (target/"warm-build-artifact").write_text("first attempt")
     (state/"blocked-once").write_text("blocked")
-    (state/"blocked.pid").write_text(str(os.getpid()))
+    pid_file=state/"blocked.pid"
+    pid_part=state/"blocked.pid.writing"
+    pid_part.write_text(str(os.getpid()))
+    pid_part.replace(pid_file)
     if cfg.get("test_started"):print("Running tests/fixture.rs (fixture-binary)\\nrunning 1 test",flush=True)
     signal.pause()
 if cfg.get("block_once") and cfg.get("block")==args[0]:
@@ -696,26 +699,76 @@ except Exception as error:
         self.assertEqual(record["verdict"], "red")
         self.assertNotIn('"clippy"', (self.repo.state / "cargo.jsonl").read_text())
 
-    def test_deadline_is_enforced_and_does_not_kill_an_unrelated_process(self):
-        # keeps: #323 §3 deadline; kill-only-own-pids. A real blocked child,
-        # not a wall-clock performance assertion or an arbitrary test sleep.
+    def deadline_fixture(self, *, parent_only=False):
+        # Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+        # keeps: #323 §3 and kill-only-own-pids. The fake build supplies its
+        # elapsed compile time after its real child is paused. Host scheduling
+        # cannot choose which clock expires. The wall clock only bounds a
+        # broken fixture that never reaches that observation.
         self.cut("crates/c/src/lib.rs")
         (self.repo.state / "behavior.json").write_text('{"block":"test"}')
-        (self.repo.state / "fixture.json").write_text('{"timeout_seconds":0.5}')
-        control = subprocess.Popen(["python3", "-c", "import signal; signal.pause()"])
+        marker = self.repo.state / "blocked.pid"
+        owned_pids = set()
+        ceiling = time.monotonic() + 45
+        original_clock = landing.TwoClocks
+        class ReportedBuild(original_clock):
+            def __init__(clock, started):
+                super().__init__(started)
+                clock.previous = marker.read_text() if marker.exists() else None
+            def expired(clock, ended, build_cap, run_bound):
+                observed = marker.read_text() if marker.exists() else None
+                if observed is not None and observed != clock.previous:
+                    owned_pids.add(int(observed))
+                    clock.event({"at": max(clock.at, ended), "phase": "compile"})
+                    clock.event({"at": clock.at + build_cap + 1, "phase": "other"})
+                    return super().expired(clock.at, build_cap, run_bound)
+                if ended > ceiling:
+                    raise AssertionError("fake build never entered its paused child")
+                return None
+        def alive(pid):
+            row = subprocess.run(["ps", "-ww", "-p", str(pid), "-o", "stat=", "-o", "command="],
+                                 text=True, capture_output=True, check=False).stdout.strip()
+            return bool(row) and not row.startswith("Z") and str(self.repo.bin / "cargo") in row
+        def parent_stop(child):
+            child.terminate()
+            child.wait(timeout=5)
+        control = subprocess.Popen([sys.executable, "-c", "import signal; signal.pause()"])
         try:
-            result = self.repo.presubmit()
-            self.assertEqual(result.returncode, 124, result.stdout + result.stderr)
-            self.assertIn("build_cap", result.stderr)
-            self.assertIsNone(control.poll())
+            with patch.dict(os.environ, self.repo.environment, clear=True), \
+                 patch.object(landing, "TwoClocks", ReportedBuild), \
+                 patch.object(landing, "repository", return_value=self.repo.root), \
+                 patch.object(landing, "stop_worker", parent_stop if parent_only else landing.stop_worker), \
+                 patch("sys.stdout", io.StringIO()):
+                code = landing.presubmit(self.repo.base)
+            rows = [json.loads(line) for line in (self.repo.state / "presubmit.log").read_text().splitlines()]
+            self.assertEqual(code, 124)
+            self.assertEqual(len(rows), 2)
+            self.assertEqual([row["attempt"] for row in rows], [0, 1])
+            self.assertEqual(rows[-1]["finding"], "recurring_build_cap")
+            record = rows[-1]
+            self.assertEqual(record["exit"], 124)
+            self.assertEqual(record["error"], "build_cap")
+            self.assertGreaterEqual(record["compile_seconds"], 1800)
+            self.assertIsNone(control.poll(), "unrelated process was killed")
+            self.assertEqual(len(owned_pids), 2, "both real build children must enter")
+            until = time.monotonic() + 3
+            while any(alive(pid) for pid in owned_pids) and time.monotonic() < until:
+                time.sleep(0.01)
+            self.assertFalse(any(alive(pid) for pid in owned_pids), "owned build child survived the deadline")
         finally:
             control.terminate()
             control.wait()
-        record = json.loads((self.repo.state / "presubmit.log").read_text().splitlines()[-1])
-        self.assertEqual(record["error"], "build_cap")
-        self.assertEqual(record["exit"], 124)
-        self.assertEqual(record["finding"], "recurring_build_cap")
-        self.assertEqual(len((self.repo.state / "presubmit.log").read_text().splitlines()), 2)
+            for owned in owned_pids:
+                if alive(owned):
+                    os.kill(owned, 15)  # exact PID created and recorded by this fixture
+
+    def test_deadline_is_enforced_and_does_not_kill_an_unrelated_process(self):
+        self.deadline_fixture()
+
+    def test_deadline_broken_control_detects_a_surviving_owned_child(self):
+        # Deliberately stop only the worker, leaving its paused build child.
+        with self.assertRaisesRegex(AssertionError, "owned build child survived"):
+            self.deadline_fixture(parent_only=True)
 
     def test_build_cap_retries_once_warm_with_the_same_target_and_then_passes(self):
         self.repo.remote()
