@@ -83,7 +83,7 @@ impl HarnessRecord {
             return Ok(Self {
                 kind: kind.into(),
                 name: if kind == "bboxy450-harness" {
-                    "bboxy harness"
+                    "Bboxy"
                 } else {
                     kind
                 }

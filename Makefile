@@ -1946,6 +1946,7 @@ build-harness: init-submodules
 
 test-harness-branding: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)' harness_branding -- --nocapture; \
+	cargo test --locked -p $(APP) --lib --target-dir '$(TARGET_DIR)' harness_branding -- --nocapture; \
 	cargo test --locked -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' harness_branding -- --nocapture
 
 capture-harness-branding: init-submodules
