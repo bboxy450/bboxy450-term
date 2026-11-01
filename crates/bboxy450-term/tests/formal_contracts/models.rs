@@ -1651,7 +1651,8 @@ fn native_frame_observation(b: bool) -> Model {
 }
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 35] = [
+    let families: [fn(bool) -> Model; 36] = [
+        seat_models::diagnostic_routing,
         native_surface_resize,
         crate_publication,
         native_frame_observation,

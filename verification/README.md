@@ -96,6 +96,7 @@ bboxy450-term --test formal_contracts shipped` rewrites them).
 | Current notification lifecycle | UI detach retains desktop/current episode; old context and captured clicks cannot target a newer A → B → A incarnation |
 | Original-operation recovery | Fresh lookup preserves unknown outcomes, never redispatches and confines results to the original seat/root |
 | Seat error diagnostics | Current authority/workspace and own-row filters fence pages; seat reads never acknowledge the operator |
+| Private error journals | Explicit test accounts and private backend bootstraps own diagnostics before inherited run selection; provider and ctl failures stay private |
 | Workspace reads | Root, revision and authority still match at publication, including A → B → A |
 | Plugin inspection | Source digest, approval and activation generation still match |
 | Plugin connections | A call result is delivered only from the current activation generation; disable closes the connection |

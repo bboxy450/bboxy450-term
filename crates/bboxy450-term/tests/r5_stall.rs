@@ -25,6 +25,7 @@ fn synthetic_runtime_contract_keeps_fifteen_encoded_panes_live_under_mixed_io() 
     let stdout = root.path().join("stdout.log");
     let stderr = root.path().join("stderr.log");
     let mut child = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+        .env("HOME", root.path()).env("BBOXY_RUN_DIR", root.path().join("fixture"))
         .args([
             "--stall-test",
             "--stall-headless",

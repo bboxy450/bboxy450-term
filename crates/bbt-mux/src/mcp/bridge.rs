@@ -213,6 +213,9 @@ impl Bridge {
     pub fn handle(&mut self, bytes: &[u8]) -> Option<Value> {
         let reply = self.handle_inner(bytes);
         if let Some(response) = &reply
+            // Unsupported optional methods are capability probes, not failed
+            // tool operations. Preserve their JSON-RPC response without noise.
+            && response["error"]["code"] != -32601
             && (response.get("error").is_some()
                 || response["result"]["isError"] == true
                 || response["result"]["kind"] == "Refused"

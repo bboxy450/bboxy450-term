@@ -98,6 +98,7 @@ seat=$("$BBT" ctl seat spawn zsh --place tab --cwd "$E2E_WORK" | python3 -I -c '
     let records = tempfile::tempdir().unwrap();
     let night = || {
         Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+            .env("HOME", records.path()).env("BBOXY_RUN_DIR", records.path().join("run"))
             .args(["e2e", "night", "--group", "terminal", "--scripts"])
             .arg(scripts.path())
             .arg("--records")

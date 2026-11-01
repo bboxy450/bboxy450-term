@@ -87,8 +87,13 @@ impl Fixture {
             scripted_hosts: true,
         }
     }
-    fn ctl(&self, args: &[&str]) -> (i32, Vec<Value>) {
+    fn command(&self) -> Command {
         let mut command = Command::new(BIN);
+        command.env("HOME", self.root.path()).env("BBOXY_RUN_DIR", &self.run);
+        command
+    }
+    fn ctl(&self, args: &[&str]) -> (i32, Vec<Value>) {
+        let mut command = self.command();
         if !self.scripted_hosts {
             command.env("BBOXY_TEST_SCRIPTED_HOSTS", "off");
         }
@@ -200,6 +205,7 @@ fn terminal_input_echo_frame_and_full_paste_use_a_private_account() {
     let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../scripts/e2e/T2.sh");
     let out = Command::new("sh").arg(script)
+        .env("HOME", f.root.path())
         .env("BBT", BIN).env("BBOXY_RUN_DIR", &f.run)
         .env("E2E_WORK", f.root.path().join("work"))
         .env("BBOXY_CTL_ISSUER", "test-account:t2")
@@ -395,7 +401,7 @@ fn notification_recording_requires_a_test_account_before_startup() {
     ]);
     assert_eq!(code, 2, "{reply:?}");
     assert!(!fixture.run.exists());
-    let direct = Command::new(BIN)
+    let direct = fixture.command()
         .args(["--headless", "--notifications", "record", "--run-dir"])
         .arg(&fixture.run)
         .env("BBOXY_TEST_CUSTODY", "memory")
@@ -867,7 +873,7 @@ fn t7_headless_close_receipts_restore_the_same_tab_and_extent() {
 #[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
 fn headless_smoke_uses_the_idle_probe_with_no_window_or_operator() {
     let f = Fixture::new();
-    let out = Command::new(BIN)
+    let out = f.command()
         .args(["--headless", "--smoke", "--run-dir"])
         .arg(&f.run)
         .current_dir(f.root.path())
@@ -937,7 +943,7 @@ fn idle_probe_rejects_an_external_lifecycle_wake() {
         .mode(0o600)
         .open(f.run.join("app.log"))
         .unwrap();
-    let mut child = Command::new(BIN)
+    let mut child = f.command()
         .args(["--headless", "--smoke", "--ctl", "--run-dir"])
         .arg(&f.run)
         .current_dir(f.root.path())
@@ -996,6 +1002,7 @@ fn stopping_an_unavailable_endpoint_is_named_and_never_uses_a_pid() {
 fn unattended_without_a_test_account_is_refused_before_native_custody() {
     let root = tempfile::tempdir().unwrap();
     let out = Command::new(BIN)
+        .env("HOME", root.path()).env("BBOXY_RUN_DIR", root.path().join("run"))
         .args(["--headless", "--unattended"])
         .env("BBOXY_TEST_CUSTODY", "memory")
         .current_dir(root.path())
@@ -1066,6 +1073,7 @@ fn unattended_idle_smoke_keeps_file_custody_without_a_window() {
     let root = tempfile::tempdir().unwrap();
     let account = root.path().join("account");
     let out = Command::new(BIN)
+        .env("HOME", root.path()).env("BBOXY_RUN_DIR", root.path().join("run"))
         .args([
             "--headless",
             "--smoke",
@@ -2376,7 +2384,7 @@ fn relaunch_after_app_death(replace_logic: bool) {
         "--timeout",
         "30000",
     ]);
-    let second = Command::new(BIN)
+    let second = fixture.command()
         .args(["--headless", "--ctl", "--unattended", "--test-account"])
         .arg(&account)
         .arg("--run-dir")
