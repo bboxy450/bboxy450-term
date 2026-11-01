@@ -129,18 +129,32 @@ pub(crate) fn in_login_shell(
         return;
     } // Already an integrated interactive login shell.
     let shell = user_login_shell();
-    fn wrap(program: &mut String, args: &mut Vec<String>, shell: &str) {
+    fn wrap(program: &mut String, args: &mut Vec<String>, shell: &str, kind: &str) {
         let executable = std::mem::replace(program, shell.into());
         let original = std::mem::take(args);
+        let missing = "bboxy harness is not installed on PATH. In a bboxy450-term checkout run make build-harness, then add target/debug to PATH.";
         if Path::new(shell)
             .file_name()
             .is_some_and(|name| name == "fish")
         {
-            *args = vec!["-ilc".into(), "exec $argv".into(), executable];
+            let script = if kind == "bboxy450-harness" {
+                format!(
+                    "type -q -- $argv[1]; or begin; printf '%s\\n' '{missing}' >&2; exit 127; end; exec $argv"
+                )
+            } else {
+                "exec $argv".into()
+            };
+            *args = vec!["-ilc".into(), script, executable];
         } else {
             *args = vec![
                 "-ilc".into(),
-                "exec \"$@\"".into(),
+                if kind == "bboxy450-harness" {
+                    format!(
+                        "command -v \"$1\" >/dev/null 2>&1 || {{ printf '%s\\n' '{missing}' >&2; exit 127; }}; exec \"$@\""
+                    )
+                } else {
+                    "exec \"$@\"".into()
+                },
                 "bboxy450-harness".into(),
                 executable,
             ];
@@ -161,10 +175,10 @@ pub(crate) fn in_login_shell(
         }
         env.entry("SHELL".into()).or_insert_with(|| shell.into());
     }
-    wrap(&mut spec.program, &mut spec.args, &shell);
+    wrap(&mut spec.program, &mut spec.args, &shell, kind);
     environment(&mut spec.env, home, zdotdir, &shell);
     if let Some(companion) = &mut spec.companion {
-        wrap(&mut companion.program, &mut companion.args, &shell);
+        wrap(&mut companion.program, &mut companion.args, &shell, kind);
         environment(&mut companion.env, home, zdotdir, &shell);
     }
 }
@@ -249,6 +263,35 @@ mod login_shell_tests {
         os::unix::fs::PermissionsExt,
         process::{Command, Stdio},
     };
+
+    #[test]
+    fn harness_branding_missing_binary_names_the_canonical_build() {
+        let root = tempfile::tempdir().unwrap();
+        let mut spec = LaunchSpec::new(
+            root.path().join("absent-bboxy-harness").to_string_lossy(),
+            root.path(),
+        );
+        in_login_shell(
+            &mut spec,
+            "bboxy450-harness",
+            root.path(),
+            Some(root.path()),
+        );
+        let output = std::process::Command::new(&spec.program)
+            .args(&spec.args)
+            .envs(&spec.env)
+            .stdin(std::process::Stdio::null())
+            .output()
+            .unwrap();
+        assert_eq!(output.status.code(), Some(127));
+        let reason = String::from_utf8_lossy(&output.stderr);
+        assert!(
+            reason.contains("bboxy harness is not installed on PATH"),
+            "{reason}"
+        );
+        assert!(reason.contains("make build-harness"), "{reason}");
+        assert!(reason.contains("add target/debug to PATH"), "{reason}");
+    }
 
     #[test]
     #[ignore = "night: real login-shell exec boundary; make test-boundaries runs it"]

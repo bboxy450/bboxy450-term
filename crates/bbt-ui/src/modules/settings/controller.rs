@@ -99,7 +99,7 @@ impl Patch {
                 command,
                 arguments,
             } => {
-                ["claude", "codex", "pi", "omp", "zsh"].contains(&harness.as_str())
+                crate::modules::harness::HARNESSES.contains(&harness.as_str())
                     && !command.is_empty()
                     && command.len() <= 4096
                     && !command.contains('\0')

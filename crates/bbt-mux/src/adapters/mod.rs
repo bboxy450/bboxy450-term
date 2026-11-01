@@ -82,14 +82,29 @@ impl HarnessRecord {
         if matches!(kind, "pi" | "omp" | "bboxy450-harness") {
             return Ok(Self {
                 kind: kind.into(),
-                name: kind.into(),
+                name: if kind == "bboxy450-harness" {
+                    "bboxy harness"
+                } else {
+                    kind
+                }
+                .into(),
                 command: if kind == "bboxy450-harness" {
                     vec![kind.into(), "seat".into()]
                 } else {
                     vec![kind.into()]
                 },
-                tile: "#7397d4".into(),
-                icon: kind.into(),
+                tile: if kind == "bboxy450-harness" {
+                    "#168BFF"
+                } else {
+                    "#7397d4"
+                }
+                .into(),
+                icon: if kind == "bboxy450-harness" {
+                    "bboxy"
+                } else {
+                    kind
+                }
+                .into(),
                 default_role: role_preset("executor")?,
                 wake_method: WakeMethod::Pty,
                 state_source: StateSource::Cadence,

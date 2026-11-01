@@ -201,8 +201,8 @@ sources = ["crates/bbt-ui-model/src/lib.rs", "crates/bboxy450-term/src/focus_ack
 name = "bboxy450-ui"
 status = "contract-model"
 models = ["TransportCapture", "FocusFrame", "WindowDurability", "SelectionGesture", "SidebarAccordions", "SidebarReveal", "StreamToView", "ScrollStick", "DirtyWakeFrame"]
-scope = "Host focus acknowledgement and durable UI-reply boundaries; editor history/completion, disclosure, control geometry and layout retain implementation tests, with no formal proof of all UI transitions."
-sources = ["crates/bbt-ui/src/text_selection.rs", "crates/bbt-ui/src/lib.rs", "crates/bbt-ui/src/modules/transcript.rs", "crates/bboxy450-term/src/focus_ack.rs", "crates/bboxy450-term/src/window_writes.rs"]
+scope = "Host focus acknowledgement and durable UI-reply boundaries; harness catalogue/brand parity and native PNG pixels (crates/bboxy450-term/src/harness_branding_tests.rs), editor history/completion, disclosure, control geometry and layout retain implementation tests, with no formal proof of all UI transitions."
+sources = ["crates/bbt-ui/src/modules/harness.rs", "crates/bbt-ui/src/text_selection.rs", "crates/bbt-ui/src/lib.rs", "crates/bbt-ui/src/modules/transcript.rs", "crates/bboxy450-term/src/focus_ack.rs", "crates/bboxy450-term/src/window_writes.rs"]
 
 [[crate]]
 name = "bboxy450-doc"

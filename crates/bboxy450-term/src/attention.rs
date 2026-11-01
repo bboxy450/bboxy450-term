@@ -92,7 +92,11 @@ impl Episodes {
         }
         let notification = Notification {
             id: NotificationId(seat.record.id.to_string()),
-            title: format!("{} · {}", seat.record.name, seat.record.harness_kind),
+            title: format!(
+                "{} · {}",
+                seat.record.name,
+                bbt_ui::modules::harness::label(&seat.record.harness_kind)
+            ),
             body: first_line(seat.state.detail.as_deref()).unwrap_or_else(|| {
                 match seat.state.activity {
                     Activity::Waiting(bbt_proto::WaitKind::Permission) => {
