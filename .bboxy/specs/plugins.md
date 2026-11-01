@@ -18,7 +18,7 @@ links:
   - { to: "[[events]]", rel: contract }
   - { to: "[[plugins-sota]]", rel: research }
 created: 2026-10-23T19:37:52Z
-updated: "2026-10-30T00:00:00Z"
+updated: "2026-11-01T13:15:36Z"
 ---
 # Plugins
 
@@ -169,3 +169,66 @@ The historical P-0–P-4 order above remains its original planning record. The o
 **Revision 2 (2026-10-23)** folds in Wren's red-team review of 16b4c98 (`.bboxy/comments/2026-10-23-plugins-*.md`, each answered by a `-reply` comment pinned to this revision's digest): host placement and the `bbt-plugin` kit crate, acceptance never crossing a contract, `--shape`, the system in tool names, the honest timeline with opt-in trace spans, MCP-style framing and MAJOR.MINOR versions, hook semantics per phase, the bare login seat, the trust model and scrubbed environment, trust records before any run, shape caching, trust tiers per contract, Jev as a probable reading. **Revision 3 (2026-10-23):** the operator closed the prefix (per app) and corrected the Jev reading, which becomes the `decision_model` contract; Wren's two follow-ups at a817a9d close (trust records only in the operator's store; the diagram matches the text); the research addendum landed.
 
 **Revision 4 (2026-10-24):** Seraph's review of revision 3 (18 comments, #213 to #230) folds in: a plugin is an MCP server; contracts as JSON Schema in `bbt-plugin` with a serialisation test in `bbt-proto`; `task_system` derived from the W2.5d tool schemas with `changes_since`, `external_id` and `etag`; the tier table (§1a) and hook ceilings (§1b); payload hook events as their own grant and the effective tier; the `block` grant's failure choice and audible skips; hooks on their own connection; the content-addressed binary copy at trust; the adapter-less login seat; the environment allowlist and data-directory cwd; ignore-unknown-fields and resource links for large results; `event_sink`, `data_source` and `decision_model` answered; the name parse and tool-name limit; P-0 acceptance written. Each comment has a `-reply`. Seraph's follow-up #250 closed four inconsistencies the revision introduced: the resource-link read is scoped (realpath inside the data directory, `O_NOFOLLOW`, 64 MiB cap), the diagram and §1 Isolation say MCP over stdio and resource links, and P-0's acceptance is the only one written.
+
+## Remaining-gap dispositions — #572, 2026-11-01
+
+The G1–G10 identifiers in this table refer to the architecture review in
+[[2026-10-30-plugin-sdk-rust]], not the Settings night promise identifiers.
+
+| Gap | Current mechanism and disposition |
+|---|---|
+| G1: only the selected data source could execute | `plugins/host.rs` owns live per-root connections and routes enabled contract calls. `mcp/plugin_tools.rs` exposes eligible methods and declared tools. `session` and `provider` remain the explicitly describe-only 0.1 contracts; their future execution methods are not promised as implemented. |
+| G2: fixed seat catalogue | Enabled, conformant plugins contribute role-filtered tools; host-only and host-owned arguments remain excluded (`mcp/plugin_tools.rs`, `plugins/registry.rs`). Transport `wrap` is host-only. |
+| G3: ignored hooks, auth, concurrent and trace | Hook dispatch, blocking policy, generation-bound overrun skips, setup/login cleanup, negotiated concurrency and bounded measured spans are implemented (`plugins/{hooks,hook_budget,setup,client,measure}.rs`). Settings shows measurements only when samples exist. |
+| G4: skills from only the selected provider | `mcp/skills.rs` gathers skills from every enabled, conformant plugin and retains origin/pin fences. |
+| G5: `provider_busy` | Deliberate bounded backpressure, not a missing implementation. Calls fail promptly and independent roots keep separate ownership. The inspected `knowledge.rs` retry branch recognizes `workspace_pending`; the legacy P9b requirement for `provider_busy` retries and retained-list behavior is not established by this cut and remains an explicit follow-up. |
+| G6: task inventory deadline | `mcp/work_items.rs::ProviderTasks` carries a shared read deadline and the same module pages admitted inventory and packs responses by serialized bytes. Native inventory and MCP tests witness bounded pages, scope and continuation. Arbitrary backend latency is not proved by the finite models. |
+| G7: no host callbacks | `plugins/host_api.rs` serves granted records, message and event requests while the connection reader continues; plugin messages have a signed plugin sender. `PluginHostApi` checks the request/reply progress abstraction. |
+| G8: single executable, Unix and one filename contract token | Retained v1 packaging/platform limits. Multi-file distributions and another platform require an explicit extension; this cut makes no such compatibility claim. The promised transport 1.0 contract is implemented with schema, SDK adapter/example, Settings fields and host-composed argv. |
+| G9: Python plugin implementations | SDK and host fixture plugins, including the private Harmony variant, are Rust. The existing Python E2E drivers orchestrate private app processes. |
+| G10: no SDK | `bbt-plugin-sdk` supplies contract DTOs, traits/adapters, examples, runtime and packaged good/broken runtime models. |
+
+Broader native-checker semantics and many-plugin model extensions remain in
+[[#505]]. Native/TLC agreement is finite-corpus evidence, not a claim that the
+native checker completely replaces TLC or proves arbitrary Rust programs.
+
+### Read-only Harmony probe
+
+`make test-harmony-pages` uses the SDK Harmony fixture with a private HOME and
+an external backing store: 133 tasks (129 active) plus two active non-task
+records. It traverses list/search limits 7, 32 and 128 without duplicate or
+missing task IDs, requires every nonterminal page to fill its requested limit,
+checks `status:active` and `status:running`, enforces the two-second budget on
+each RPC and compares backing bytes before/after. The active/running alias is
+limited to the Harmony variant; four real ordinary-fixture list/search controls keep the two statuses distinct.
+
+This cut does not repeat a current real-Harmony backend/account probe. That
+result remains explicitly unproven here; fixture evidence does not establish
+production backend performance or credentials. No real account is required by
+the test stack.
+
+### Settings night sweep
+
+G3 has its private native Settings night (`make test-settings-plugins`), including
+measured warning/skip and the untrusted no-execution control. G4 still lacks
+`scripts/e2e/G4.sh`: the real API test
+`knowledge::roots_tests::actual_root_swap_and_back_preserves_418_records_and_persists_one_root_instance`
+proves provider swap/back, record paths and bytes, and Settings registry tests
+cover current-scope projection. Native Settings interaction and the complete
+inode/mtime assertion remain unproven; the script map remains partial. G5's
+TOML-only theme rebuild/comparison night is also unimplemented and remains
+partial; it is a design-token verification gap, outside this transport cut.
+Named unavailable/refusal states in [[plugin-host]] are intentional runtime
+outcomes, including an absent measurement sample or an unavailable current
+connection, rather than claims that the implemented controls do not exist.
+
+
+### Configured plugin command preview
+
+`crates/bboxy450-term/src/spawn_params.rs::runs` currently returns the generic
+"Launch through the selected plugin transport" label for a plugin Via choice;
+`argv` leaves wrapping to the host. The real process witness proves the argv
+used at launch, but does not establish the configured-command preview promise
+in [[launch-defaults]] §1. That preview remains an explicit follow-up: it needs
+a bounded preview design consistent with host-only wrap authority and current
+root/activation checks. This cut does not label that promise complete.

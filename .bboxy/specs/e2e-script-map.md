@@ -8,7 +8,7 @@ links:
   - { to: "[[e2e-acceptance]]", rel: builds-on }
   - { to: "[[d316-pass-means-the-whole-promise]]", rel: decision }
 created: "2026-10-25T01:04:37Z"
-updated: "2026-10-30T23:24:00Z"
+updated: "2026-11-01T13:15:36Z"
 ---
 # e2e script map
 
@@ -577,6 +577,8 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 
 **Gaps at baseline afff4758:** Settings Knowledge/provider-switch actions and source/record read projection; ctl record fetch/search not implemented. Provider fixture credentials must be private/dummy.
 
+**Current disposition (#572, 2026-11-01):** The API witness `knowledge::roots_tests::actual_root_swap_and_back_preserves_418_records_and_persists_one_root_instance` checks swap/back, record paths/bytes and one persisted root instance. Settings registry tests check scope projection. `G4.sh`, the native Settings interaction and complete inode/mtime preservation assertion remain unproven; the row stays partial. See [[plugins]] remaining-gap dispositions. No real credentials are needed.
+
 **Baseline pointers:** ctl-cli.md:44,47; ctl.rs:251; knowledge data_source.
 
 ### G5
@@ -588,6 +590,8 @@ Baseline source shorthand: app filenames are under `crates/bboxy450-term/src/`; 
 **Required assertions:** Source diff is TOML-only (plus generated output), affected accent pixels change to specified value; unrelated geometry/terminal cells stable. No claim of live hot reload: this promise says no code change.
 
 **Gaps at baseline afff4758:** No missing live ctl verb for the data/build comparison; needs pinned-build fixture and deterministic UI state/clock. This read-only plan does not perform the edit/build.
+
+**Current disposition (#572, 2026-11-01):** `G5.sh` and its TOML-only comparison build/night remain unimplemented. This theme-verification follow-up is outside the transport cut; the row stays partial and untracked. See [[plugins]] remaining-gap dispositions.
 
 **Baseline pointers:** design/tokens.toml:19; ctl.rs:62; token build pipeline.
 

@@ -754,6 +754,12 @@ fn filtered<'a>(rows: &'a [Value], filters: &'a Value) -> impl Iterator<Item = &
             if k == "assignee" {
                 have.strip_prefix("seat:").unwrap_or(&have)
                     == want.strip_prefix("seat:").unwrap_or(&want)
+            } else if k == "status"
+                && KNOBS.get().is_some_and(|knobs| knobs.harmony)
+                && matches!(have.as_str(), "active" | "running")
+                && matches!(want.as_str(), "active" | "running")
+            {
+                true
             } else {
                 have == want
             }
