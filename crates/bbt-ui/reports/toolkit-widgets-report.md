@@ -20,7 +20,7 @@ AGENTS.md and the term KB schema are untouched. This is ordinary repository
 documentation, excluded from the UI crate package by `exclude = ["reports/"]`.
 
 The enclosing signed Git revision is the handoff candidate. The final full gate
-runs after this document is committed: `target/ci-rework.log` records its exact
+runs after this document is committed: `target/ci-ready.log` records its exact
 `ci-local: source` and `ci-local: result` lines; `task_report` records that result
 and the fresh formal receipt. Results below are actual completed development
 checks, not a predicted result for a future commit. Raw logs remain outside Git.
@@ -59,6 +59,17 @@ Green logs: `/tmp/e2-rework-test-toolkit-rework.log`,
 `/tmp/e2-rework-green-widgets.log` and `/tmp/e2-rework-green-models.log` also
 record the first green pass; the named test-toolkit logs include the stronger
 coverage and ledger-origin assertions added afterward.
+
+After the rework gate passed on signed `6ee43422`, GitHub reported a conflict
+with newer main `2e7a6791`. Read-only merge-tree inspection located only the
+adjacent module declarations and cases.extend calls in formal_contracts/models.rs.
+The follow-up commit moves this workstream's declaration and single append away
+from those shared insertion points, retaining the same model code and families
+array. No merge, rebase or history rewrite is performed. The final full gate is
+rerun on that signed handoff commit rather than treating the parent result as a
+new result. Parent evidence: `/tmp/e2-rework-ci-6ee43422.log`, normal exit 0;
+formal receipt SHA-256
+`b2c34d3109d3cb2f494d7e3519845ac43e82a89d3bad191628711125b43407d6`.
 
 ## Completed commands
 

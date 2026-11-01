@@ -18,9 +18,6 @@ mod seat_models;
 #[path = "plugin_models.rs"]
 mod plugin_models;
 
-#[path = "toolkit_models.rs"]
-mod toolkit_models;
-
 fn eq(i: usize, n: i64) -> Expr {
     Var(i).eq(Int(n))
 }
@@ -1699,6 +1696,8 @@ pub fn cases() -> Vec<(Model, &'static str)> {
             ]
         })
         .collect::<Vec<_>>();
+    // Toolkit registration stays away from concurrent module append sites.
+    cases.extend(toolkit_models::cases());
     cases.extend([
         (import_staging(false), "pass"),
         (import_staging(true), "safety"),
@@ -1707,7 +1706,6 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     ]);
     // Plugin-system families live beside their own contract module.
     cases.extend(plugin_models::cases());
-    cases.extend(toolkit_models::cases());
     cases
 }
 
@@ -1783,3 +1781,6 @@ fn native_surface_resize(b: bool) -> Model {
     safe(&mut m, "PresentedExtentMatchesTarget", eq(6, 0));
     m
 }
+
+#[path = "toolkit_models.rs"]
+mod toolkit_models;
