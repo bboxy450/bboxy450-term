@@ -171,7 +171,12 @@ pub fn resolve_with_catalog(
         FieldKey::Arguments,
         defaults
             .and_then(|d| d.arguments.as_ref())
-            .map_or(String::new(), |a| join(a)),
+            // Configured menu picks replace the complete command. Preserve a
+            // builtin subcommand such as `bboxy450-harness seat` in this field.
+            .map_or_else(
+                || builtin.as_ref().map_or(String::new(), |h| join(&h.command[1..])),
+                |a| join(a),
+            ),
         if defaults.is_some_and(|d| d.arguments.is_some()) {
             Source::LastChoice
         } else {
@@ -671,6 +676,8 @@ mod tests {
                             FieldKey::Arguments,
                             if has_last {
                                 "--literal 'two words'"
+                            } else if harness == "bboxy450-harness" {
+                                "seat"
                             } else {
                                 ""
                             }

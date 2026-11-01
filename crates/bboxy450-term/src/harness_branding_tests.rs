@@ -64,6 +64,21 @@ fn harness_branding_all_menu_surfaces_and_launch_keys() {
         let (_, label, _, color, _) = harness::launchables().find(|(id, ..)| *id == kind).unwrap();
         assert_eq!(item.label, label);
         assert_eq!(item.tile.as_deref(), Some(color));
+        let fields =
+            bboxy450_term::spawn_params::resolve(kind, &Default::default(), None, "/fixture");
+        let resolved =
+            bboxy450_term::spawn_params::Resolved::from_fields(&fields, "/fixture").unwrap();
+        let builtin = bbt_mux::adapters::HarnessRecord::builtin(kind).unwrap();
+        assert_eq!(
+            resolved.command, builtin.command[0],
+            "menu executable {kind}"
+        );
+        assert_eq!(
+            resolved.args,
+            builtin.command[1..],
+            "menu must preserve builtin subcommand {kind}"
+        );
+
         let mut controller = new_launcher(None, 0);
         controller.handle(LauncherCommand::Query(label.into()));
         assert!(
