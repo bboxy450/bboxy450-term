@@ -116,7 +116,7 @@ pub fn read(path: &Path) -> io::Result<[u8; 32]> {
         return Err(refused(Refusal::Malformed));
     }
     let mut capability = [0; 32];
-    for (out, pair) in capability.iter_mut().zip(bytes[..64].chunks_exact(2)) {
+    for (out, pair) in capability.iter_mut().zip(bytes[..64].as_chunks::<2>().0) {
         let hex = |byte: u8| {
             if byte <= b'9' {
                 byte - b'0'
