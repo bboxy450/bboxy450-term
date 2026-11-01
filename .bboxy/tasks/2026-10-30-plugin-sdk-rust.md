@@ -3,12 +3,25 @@ id: "01M66NR73B287NMCJCN34MR5Q1"
 type: "task"
 number: 377
 title: "Rust plugin SDK; GitKB data_source plugin and tooling in Rust; plugin architecture review"
-status: "running"
+status: "done"
 role: "oracle"
 owner: "Vesper Greywind"
 verify: "make test"
 created: "2026-10-30T15:09:46Z"
-updated: "2026-10-30T15:09:46Z"
+updated: "2026-11-01T01:45:00Z"
+reconciliation:
+- by: seat:01M6ABH71TVWGZ621NTD701PSH
+  disposition: implemented
+  evidence:
+  - https://github.com/bboxy450/bboxy450-term/issues/57
+  - https://github.com/bboxy450/bboxy450-term/issues/58
+  - https://github.com/bboxy450/bboxy450-term/issues/61
+  - https://github.com/bboxy450/bboxy450-term/commit/5819c315
+  - https://github.com/bboxy450/bboxy450-term/commit/98cdaf6b
+  fresh_accepted: false
+  kind: historical
+  previous_status: running
+  reason: "KB cleanup 2026-10-31 (Oracle Nyx Copperwing, operator-requested): GitHub #57/#58/#61 closed completed 2026-10-31; SDK trait per contract and Rust GitKB plugin on main. Unproven: Harmony probe and a final make test on the SDK branch"
 ---
 # Rust plugin SDK and GitKB plugin port
 
