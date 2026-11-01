@@ -125,7 +125,7 @@ class Repository:
         for name in ("MAKEFLAGS", "MFLAGS", "GNUMAKEFLAGS", "MAKEOVERRIDES", "MAKELEVEL",
                      "TARGET_DIR", "CI_LOG", "CI_ARGS", "CARGO_BUILD_BUILD_DIR"):
             self.environment.pop(name, None)
-        for name in ("landing.py", "formal.py", "presubmit.sh", "land.sh", "quarantine.py", "quarantine.sh", "quarantine-test.sh",
+        for name in ("landing.py", "formal.py", "harness-submodule.py", "presubmit.sh", "land.sh", "quarantine.py", "quarantine.sh", "quarantine-test.sh",
                      "main_watch.py", "main-watch.sh", "landing_recovery.py", "main-red-bounded.sh"):
             target = self.root / "scripts" / name
             target.parent.mkdir(exist_ok=True)
@@ -159,7 +159,7 @@ data={"source":sha,"dirty":False,"tlc":pins["tlc"],"java":next(iter(pins["java"]
 archive=formal.archive_evidence(target,root)
 print("formal: receipt "+json.dumps(formal.evidence_receipt(archive,root,require_clean=False),sort_keys=True))
 ''')
-        self.write("Makefile", 'test:\n\t@sh scripts/ci-local.sh > "$(CI_LOG)" 2>&1\n\ntest-formal:\n\t@python3 -I scripts/fixture-formal.py "$(TARGET_DIR)"\n')
+        self.write("Makefile", 'test:\n\t@sh scripts/ci-local.sh > "$(CI_LOG)" 2>&1\n\ntest-harness-native:\n\t@true\ntest-formal:\n\t@python3 -I scripts/fixture-formal.py "$(TARGET_DIR)"\n')
         self.write("scripts/ci-local.sh", '''#!/bin/sh
 set -eu
 sha=$(git rev-parse HEAD)
@@ -640,7 +640,7 @@ except Exception as error:
         self.assertIn("reports::committed_report_trailers_resolve_in_their_own_trees", result.stdout + result.stderr)
 
     def test_formal_failure_refuses_a_scoped_presubmit_before_cargo(self):
-        self.repo.write("Makefile", "test-formal:\n\t@exit 23\n")
+        self.repo.write("Makefile", "test-harness-native:\n\t@true\ntest-formal:\n\t@exit 23\n")
         self.cut("crates/c/src/lib.rs")
         result = self.repo.presubmit()
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -876,7 +876,7 @@ class GateReceiptTests(unittest.TestCase):
         log = repo.state / "actual-ci.log"
         log.write_text(result.stdout + result.stderr)
         self.assertEqual(landing.gate_proof(log, sha, repo.root)["tested_sha"], sha)
-        repo.write("Makefile", "test-formal:\n\t@exit 23\n")
+        repo.write("Makefile", "test-harness-native:\n\t@true\ntest-formal:\n\t@exit 23\n")
         formal_failed = repo.commit("Fixture failing formal gate")
         result = subprocess.run(["sh", "scripts/ci-local.sh"], cwd=repo.root,
                                 env=environment, text=True, capture_output=True, timeout=15)

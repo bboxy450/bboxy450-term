@@ -89,7 +89,7 @@ print("Model checking completed. No error has been found.")
 
     def test_frontend_inventory_keeps_project_contracts_out_of_standalone_checker(self):
         root = Path(__file__).resolve().parents[1]
-        rows = formal.tomllib.loads((root / "verification/corpus.toml").read_text())["model"]
+        rows = formal.corpus(root)
         # Standalone exports omit frontend labels because only checker cases remain.
         if not (root / "crates/bboxy450-term").exists():
             return

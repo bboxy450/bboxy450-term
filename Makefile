@@ -101,7 +101,10 @@ help:
 	  'make test-plugin-skills          Canonical MCP instructions, descriptors and selected-provider fences' \
 	  'make check-plugin-skills         Strict plugin, mux and app all-target Clippy' \
 	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
-	  'make test-harness-native         Real Codex shared daemon, local model, direct and forwarding shim' \
+	  'make test-harness-native         Scripted harness seat, completed turn and bounded group cleanup' \
+	  'make test-harness-codex-native   Real Codex shared daemon, local model, direct and forwarding shim' \
+	  'make init-submodules             Initialize and verify the pinned harness unattended' \
+	  'Fresh clone: git clone --recurse-submodules https://github.com/bboxy450/bboxy450-term' \
 	  'make test-harness-proxy          Codex proxy hook composition, seat policy and large catalogs' \
 	  'make test-wake-causes            Typed wake causes, legacy replay, MCP refusal and retained-logic refresh' \
 	  'make test-harness-fixture        Run an optional local executable HARNESS_FIXTURE against a private build' \
@@ -791,12 +794,12 @@ test-cli-error-isolation:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test diagnostics --test ctl --test ctl_report; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test headless notification_recording_requires_a_test_account_before_startup -- --exact
 
-.PHONY: test-harness-native
 .PHONY: test-shared-codex-cleanup
 test-shared-codex-cleanup:
 	@python3 -I -B scripts/test-shared-codex-cleanup.py
 
-test-harness-native: build
+.PHONY: test-harness-codex-native
+test-harness-codex-native: build
 	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --codex '$(CODEX_BIN)'
 	@python3 -I -B scripts/e2e/shared_codex.py '$(TARGET_DIR)/debug/$(APP)' --codex '$(CODEX_BIN)' --cold --shim
 
@@ -1524,12 +1527,15 @@ test-formal-contracts:
 format-formal-contracts:
 	@set -eu; . ./scripts/cache-env.sh; rustfmt --edition 2024 crates/bboxy450-term/tests/formal_contracts.rs crates/bboxy450-term/tests/formal_contracts/models.rs crates/bboxy450-term/tests/formal_contracts/witnesses.rs
 
-test-formal: test-yarn-model
+test-formal: init-submodules test-yarn-model
+	@python3 -I scripts/test-harness-submodule.py
 	@python3 -I scripts/test-formal.py
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo run --locked -p bboxy450-tlc --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
 	cargo run --locked -p bboxy450-yarn --features model --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
 	BBOXY_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/formal/models' cargo test --locked -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)'; \
+	FORMAL_OUT='$(abspath $(TARGET_DIR))/formal/harness' cargo test --locked -p bboxy450-harness --test formal_models --test formal_nonvacuity --test reactor_projection --target-dir '$(TARGET_DIR)'; \
+	python3 -I scripts/harness-submodule.py --models '$(abspath $(TARGET_DIR))/formal/harness' --target '$(abspath $(TARGET_DIR))/formal/models'; \
 	python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal'
 
 .PHONY: format-yarn-model
@@ -1821,3 +1827,34 @@ check-plugin-fixtures:
 test-harmony-pages:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-term-plugin-fixture --target-dir '$(TARGET_DIR)' --test harmony_pages -- --nocapture
+
+
+.PHONY: init-submodules
+init-submodules:
+	@python3 -I scripts/harness-submodule.py
+
+.PHONY: test-harness-native format-harness-embed
+test-harness-native: init-submodules
+	@python3 -I scripts/harness-submodule.py --check-resolution
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo build --locked -p bboxy450-harness --target-dir '$(TARGET_DIR)'; \
+	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' mcp_harness_seat_completes_and_closes_without_orphans -- --ignored --exact --nocapture
+
+format-harness-embed:
+	@rustfmt --edition 2024 crates/bbt-mux/src/adapters/mod.rs crates/bbt-mux/src/mcp/seats.rs crates/bbt-mux/tests/mcp.rs crates/bboxy450-term/src/settings/roles.rs crates/bbt-proto/src/gui/roles.rs
+
+.PHONY: fetch-harness check-harness-embed test-harness-standalone
+fetch-harness:
+	@set -eu; . ./scripts/cache-env.sh; cargo fetch --locked
+
+check-harness-embed:
+	@sh scripts/layering.sh
+	@sh scripts/brand.sh
+	@python3 -I scripts/license-packages.py --packages --package bboxy450-harness
+	@sh scripts/deps-licences.sh
+	@python3 -I scripts/test-harness-submodule.py
+	@python3 -I scripts/test-formal.py
+
+test-harness-standalone: init-submodules fetch-harness
+	@set -eu; . ./scripts/cache-env.sh; \
+	CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))/harness-standalone' python3 -I scripts/harness-submodule.py --standalone --target '$(abspath $(TARGET_DIR))/harness-standalone-artifacts'

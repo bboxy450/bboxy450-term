@@ -19,7 +19,7 @@ use crate::{
     registry::{Class, SeatRecord},
 };
 
-const APPROVED_PROFILES: [&str; 5] = ["zsh", "claude", "codex", "pi", "omp"];
+const APPROVED_PROFILES: [&str; 6] = ["zsh", "claude", "codex", "pi", "omp", "bboxy450-harness"];
 
 pub(crate) fn handles(name: &str) -> bool {
     mutation(name) || matches!(name, "screen_read" | "history_read" | "layout_read" | "ctl")

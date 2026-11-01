@@ -863,6 +863,9 @@ def presubmit_worker(base, result_path, recheck=None):
 
 
 def clean_source(root):
+    initializer = root / "scripts/harness-submodule.py"
+    if initializer.is_file():
+        checked([sys.executable, "-I", str(initializer)], root)
     if git("status", "--porcelain", "--untracked-files=no", cwd=root):
         raise Refusal("dirty_tracked_tree")
     untracked = git("ls-files", "--others", "--exclude-standard", "-z", cwd=root).split("\0")
@@ -1386,6 +1389,9 @@ def candidate_environment(root, sha):
             raise Refusal("slot_target_is_symlink")
         shutil.rmtree(target)
     target.mkdir()
+    initializer = tree / "scripts/harness-submodule.py"
+    if initializer.is_file():
+        checked([sys.executable, "-I", str(initializer)], tree)
     return tree, build_environment(tree, target=target)
 
 

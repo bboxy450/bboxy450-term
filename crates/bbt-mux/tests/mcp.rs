@@ -4858,7 +4858,15 @@ fn seat_orchestration_fixture() {
 }
 
 fn isolated_seat_fixture(mode: &str) {
-    let temp = tempfile::tempdir().unwrap();
+    // Darwin sockaddr_un is 104 bytes; this fixture owns a short private HOME.
+    let temp = if mode == "harness" {
+        tempfile::Builder::new()
+            .prefix("bhx-")
+            .tempdir_in("/tmp")
+            .unwrap()
+    } else {
+        tempfile::tempdir().unwrap()
+    };
     let mut command = std::process::Command::new(std::env::current_exe().unwrap());
     command
         .args([
@@ -4874,6 +4882,13 @@ fn isolated_seat_fixture(mode: &str) {
         .env("CODEX_HOME", temp.path().join("codex"))
         .env("BBOXY_TEST_CUSTODY", "memory")
         .env("BBOXY_MCP_SEAT_FIXTURE", mode);
+    if mode == "harness" {
+        command.env(
+            "BBOXY_HARNESS_TEST_BIN",
+            std::env::var_os("BBOXY_HARNESS_TEST_BIN")
+                .expect("make test-harness-native builds the harness"),
+        );
+    }
     // Leave the child time to report its own 120-second guard and clean up.
     let (status, stdout, stderr) = bounded_client(command, Duration::from_secs(240), &temp);
     assert!(
@@ -4882,6 +4897,14 @@ fn isolated_seat_fixture(mode: &str) {
         String::from_utf8_lossy(&stdout),
         String::from_utf8_lossy(&stderr)
     );
+    if mode == "harness" {
+        for line in String::from_utf8_lossy(&stderr)
+            .lines()
+            .filter(|line| line.starts_with("harness-native:"))
+        {
+            eprintln!("{line}");
+        }
+    }
 }
 
 // keeps: spec mcp-control-plane
@@ -4929,8 +4952,143 @@ fn mcp_seat_isolated_process() {
         "spawn" => seat_spawn_fixture(),
         "orchestrate" => seat_orchestration_fixture(),
         "native" => seat_native_fixture(),
+        "harness" => seat_harness_fixture(),
         _ => panic!("unknown fixture mode"),
     }
+}
+
+// keeps: harness interfaces/embed-seat.md §4/§6; HarnessEmbedLifecycle (imported).
+#[test]
+#[ignore = "real private PTY; make test-harness-native builds the pinned harness and runs this in full CI"]
+fn mcp_harness_seat_completes_and_closes_without_orphans() {
+    isolated_seat_fixture("harness");
+}
+
+fn seat_harness_fixture() {
+    use std::os::unix::fs::PermissionsExt;
+    let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+    let binary = PathBuf::from(std::env::var_os("BBOXY_HARNESS_TEST_BIN").unwrap());
+    assert!(binary.is_absolute() && binary.is_file());
+    let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../bboxy450-harness/tests/fixtures/sse/text.sse")
+        .canonicalize()
+        .unwrap();
+    let bin = home.join("bin");
+    std::fs::create_dir(&bin).unwrap();
+    let quote = |p: &std::path::Path| format!("'{}'", p.to_str().unwrap().replace('\'', "'\\''"));
+    // Only this disposable home sees the scripted-provider launcher. The adapter
+    // still launches its production argv [bboxy450-harness, seat]. No key/network.
+    let shim = bin.join("bboxy450-harness");
+    std::fs::write(
+        &shim,
+        format!(
+            "#!/bin/sh\nexec {} \"$@\" --scripted {} --sessions {}\n",
+            quote(&binary),
+            quote(&fixture),
+            quote(&home.join("sessions"))
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&shim, std::fs::Permissions::from_mode(0o700)).unwrap();
+    std::fs::write(
+        home.join(".zprofile"),
+        format!("export PATH={}:$PATH\n", quote(&bin)),
+    )
+    .unwrap();
+    let f = Fixture::real();
+    let baseline = f.registry().list().unwrap().len();
+    refused(f.mutate(f.oracle.id, Ulid::new(), "seat_spawn", json!({
+        "swarm_id": f.own.swarm, "approved_profile": "unknown-harness", "cwd": f._temp.path()
+    })), "unapproved spawn profile");
+    assert_eq!(f.registry().list().unwrap().len(), baseline);
+    let result = data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "seat_spawn",
+        json!({
+            "swarm_id": f.own.swarm, "approved_profile": "bboxy450-harness", "cwd": f._temp.path()
+        }),
+    ));
+    assert_eq!(result["status"], "applied", "{result}");
+    let seat: Ulid = serde_json::from_value(result["seat_id"].clone()).unwrap();
+    let pid = result["pid"].as_u64().unwrap() as i32;
+    // SAFETY: observe only the exact process spawned by this private fixture.
+    let pgid = unsafe { libc::getpgid(pid) };
+    assert!(pgid > 0);
+    f.wait_screen(seat, "session ");
+    let screen = f.screen(seat);
+    let first = screen.lines().next().unwrap();
+    let mut fields = first.split_whitespace();
+    assert_eq!(fields.next(), Some("session"), "{screen}");
+    let session: Ulid = fields.next().unwrap().parse().unwrap();
+    let role = f.registry().get(seat).unwrap().role;
+    assert_eq!(role.name, "executor");
+    assert_eq!(role.class, Class::Worker);
+    f.runtime
+        .block_on(f.client().gui_input(
+            seat,
+            1,
+            Ulid::new(),
+            b"complete one scripted turn\r".to_vec(),
+        ))
+        .unwrap();
+    f.wait_screen(seat, "Done.");
+    f.wait_screen(seat, "— EndTurn");
+    let start = Instant::now();
+    f.runtime
+        .block_on(f.client().close(
+            seat,
+            1,
+            Ulid::new(),
+            bbt_mux::registry::Position {
+                swarm: f.own.swarm,
+                tab: Ulid::new(),
+                split_path: vec![],
+                ratios: vec![],
+                layout_revision: 0,
+            },
+            0,
+        ))
+        .unwrap();
+    loop {
+        // SAFETY: pgid was recorded from this fixture's exact child before close.
+        let alive = unsafe { libc::kill(-pgid, 0) };
+        if alive == -1 && std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH) {
+            break;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(2),
+            "harness group {pgid} survived close"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    assert!(start.elapsed() < Duration::from_secs(2));
+    let observer = f.supervisor.as_ref().unwrap().connect().unwrap();
+    let bbt_supervisor::Reply::Seats { seats } = observer
+        .request(bbt_supervisor::Action::ListOwnedSeats)
+        .unwrap()
+    else {
+        panic!("seat metadata missing")
+    };
+    let exited = seats
+        .iter()
+        .find(|s| s.seat == seat)
+        .unwrap()
+        .exited
+        .as_ref()
+        .unwrap();
+    assert_eq!(exited.code, 0, "{exited:?}");
+    assert_eq!(exited.signal, None);
+    let log = std::fs::read_to_string(home.join(format!("sessions/{session}.jsonl"))).unwrap();
+    let closed: Value = serde_json::from_str(log.lines().last().unwrap()).unwrap();
+    assert_eq!(
+        closed["event"]["type"], "session_closed",
+        "close must be durable"
+    );
+    eprintln!(
+        "harness-native: first-line session ULID, completed scripted turn, exit 0 in {:?}, group ESRCH, unknown profile refused",
+        start.elapsed()
+    );
 }
 
 fn seat_spawn_fixture() {
