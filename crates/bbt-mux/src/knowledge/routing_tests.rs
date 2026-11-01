@@ -676,3 +676,55 @@ fn workspace_event_routes_default_swarms_and_only_proven_explicit_roots() {
             .unwrap()
     );
 }
+
+#[test]
+fn provenance_binding_cache_fences_generation_and_workspace_a_b_a() {
+    let mut f = Fixture::open();
+    let a = f.a.clone();
+    let actor = f.actor(&a);
+    f.ready(&actor);
+    let directory = object_dir(&f.worker.config.run_dir, &format!("seat-{}", a.id)).unwrap();
+    SqliteStore::open(&directory)
+        .unwrap()
+        .put("provenance_cwd", &serde_json::to_vec(&f.first).unwrap())
+        .unwrap();
+    let first = f.worker.provenance_binding(a.id, a.generation).unwrap();
+    assert_eq!(
+        f.worker.provenance_binding(a.id, a.generation),
+        Some(first.clone())
+    );
+    assert_eq!(f.worker.provenance_bindings.len(), 1);
+    for path in [f.second.clone(), f.first.clone()] {
+        f.worker
+            .registry
+            .update_swarm_workdir(a.swarm, Some(path.to_str().unwrap()))
+            .unwrap();
+        assert!(
+            f.worker.provenance_binding(a.id, a.generation).is_none(),
+            "pending root never uses cached binding"
+        );
+        f.ready(&actor);
+        let binding = f.worker.provenance_binding(a.id, a.generation).unwrap();
+        assert!(binding.revision > first.revision);
+        assert_eq!(
+            binding,
+            f.worker.workspaces.cache.current(a.swarm).unwrap().clone()
+        );
+    }
+    let returned = f.worker.provenance_binding(a.id, a.generation).unwrap();
+    assert_eq!(returned.root_id, first.root_id);
+    assert_ne!(returned.revision, first.revision);
+    // The requested generation is independently fenced, even before registry
+    // metadata changes. This models replacement of the view's process owner.
+    assert!(
+        f.worker
+            .provenance_binding(a.id, a.generation + 1)
+            .is_some()
+    );
+    assert_eq!(f.worker.provenance_bindings[&a.id].0, a.generation + 1);
+    assert_eq!(
+        f.worker.provenance_bindings.len(),
+        1,
+        "one cache entry per seat across restarts"
+    );
+}

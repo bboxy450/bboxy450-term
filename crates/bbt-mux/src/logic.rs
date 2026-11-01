@@ -2763,6 +2763,7 @@ struct Worker {
     // Scans and provenance updates use copy-on-write while an older read is active.
     workspaces: WorkspaceRouter,
     provenance_registered: BTreeSet<(Ulid, u64, String)>,
+    provenance_bindings: BTreeMap<Ulid, (u64, u64, RootBinding)>,
     workspace_reads: BTreeMap<String, Vec<PendingWorkspaceRead>>,
     knowledge_reads: BTreeMap<String, Arc<tokio::sync::Semaphore>>,
     knowledge_jobs: tokio::task::JoinSet<crate::knowledge::seat_reads::Completion>,
@@ -3016,6 +3017,7 @@ impl Worker {
             role_updates: tokio::task::JoinSet::new(),
             workspaces,
             provenance_registered: BTreeSet::new(),
+            provenance_bindings: BTreeMap::new(),
             workspace_reads: BTreeMap::new(),
             knowledge_reads: BTreeMap::new(),
             knowledge_jobs: tokio::task::JoinSet::new(),
@@ -5591,6 +5593,15 @@ impl Worker {
         )
     }
     fn provenance_binding(&mut self, seat: Ulid, generation: u64) -> Option<RootBinding> {
+        let epoch = self.registry.routing_epoch();
+        if let Some((cached_generation, cached_epoch, binding)) =
+            self.provenance_bindings.get(&seat)
+            && *cached_generation == generation
+            && *cached_epoch == epoch
+            && self.workspaces.port(binding.clone()).is_ok()
+        {
+            return Some(binding.clone());
+        }
         let record = self.registry.route(seat).ok()?;
         let port = self
             .workspaces
@@ -5617,9 +5628,17 @@ impl Worker {
                 );
             self.provenance_registered.insert(key);
         }
-        let _ = self
+        // Registration and the persisted messaging root are static for this
+        // seat generation and registry epoch. Cache successes only: failed IO
+        // must be retried, and current in-memory root/watch fences still apply.
+        if self
             .messaging
-            .bind_workspace(record.swarm, &port.binding.root_id);
+            .bind_workspace(record.swarm, &port.binding.root_id)
+            .is_ok()
+        {
+            self.provenance_bindings
+                .insert(seat, (generation, epoch, port.binding.clone()));
+        }
         Some(port.binding)
     }
     fn maintain_workspaces(&mut self) {

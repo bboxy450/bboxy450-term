@@ -217,6 +217,9 @@ fn routing_cache(b: bool) -> Model {
             ("load_epoch", 2, 0),
             ("load_route", 1, 0),
             ("loading", 1, 0),
+            ("generation", 1, 0),
+            ("cached_generation", 1, 0),
+            ("load_generation", 1, 0),
         ],
     );
     action(
@@ -225,8 +228,19 @@ fn routing_cache(b: bool) -> Model {
         Var(0).lt(Int(2)),
         &[(0, Var(0).plus(Int(1))), (1, Int(1).minus(Var(1)))],
     );
-    let hit = eq(4, 1).and(if b { Bool(true) } else { Var(2).eq(Var(0)) });
-    let current = Var(2).eq(Var(0)).and(Var(3).eq(Var(1)));
+    action(
+        &mut m,
+        "NewRequestedGeneration",
+        Bool(true),
+        &[(9, Int(1).minus(Var(9)))],
+    );
+    let hit = eq(4, 1)
+        .and(Var(10).eq(Var(9)))
+        .and(if b { Bool(true) } else { Var(2).eq(Var(0)) });
+    let current = Var(2)
+        .eq(Var(0))
+        .and(Var(3).eq(Var(1)))
+        .and(Var(10).eq(Var(9)));
     action(
         &mut m,
         "UseStaleRoute",
@@ -238,17 +252,24 @@ fn routing_cache(b: bool) -> Model {
         &mut m,
         "StartLoad",
         hit.negate().and(eq(8, 0)),
-        &[(6, Var(0)), (7, Var(1)), (8, Int(1))],
+        &[(6, Var(0)), (7, Var(1)), (8, Int(1)), (11, Var(9))],
     );
     action(
         &mut m,
         "CompleteLoad",
         eq(8, 1),
-        &[(2, Var(6)), (3, Var(7)), (4, Int(1)), (8, Int(0))],
+        &[
+            (2, Var(6)),
+            (3, Var(7)),
+            (4, Int(1)),
+            (8, Int(0)),
+            (10, Var(11)),
+        ],
     );
     no_bad(&mut m, 5);
     m
 }
+
 fn workspace(b: bool) -> Model {
     let mut m = model(
         "WorkspaceFence",
