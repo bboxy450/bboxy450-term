@@ -93,7 +93,7 @@ pub(super) fn project(out: &mut Records, model: Option<&crate::model::Model>) {
                 |detail| format!("reference fixture · {detail}"),
             ));
         }
-        out.plugin_notice = Some("Reference fixtures — these plugins and timings are examples. Plugin discovery, trust, enable and setup are unavailable in this build.".into());
+        out.plugin_notice = Some("Reference fixtures — these plugins and timings are examples. Workspace Settings uses the live plugin registry for discovery, trust, enable and setup.".into());
     }
     let snapshot = model.and_then(|model| model.e2e.as_ref());
     let (answering, read) = match snapshot {
@@ -119,7 +119,7 @@ pub(super) fn project(out: &mut Records, model: Option<&crate::model::Model>) {
             answering: answering.into(),
             digests: None,
             refused: Some(format!(
-                "Provider switching is unavailable in this build; the bundled provider remains active.{read}"
+                "No live Knowledge provider control is attached to this reference snapshot.{read}"
             )),
             pending: None,
         }],

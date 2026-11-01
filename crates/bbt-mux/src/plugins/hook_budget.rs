@@ -4,11 +4,6 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-// Copyright 2026 Boxy (bboxy450) and contributors.
-// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
-// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
-// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
-// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Generation-bound hook overruns. One bounded account record per candidate;
 //! restart preserves a skip, while re-enable or re-trust advances its generation.
 use super::{Registry, activation_key, failure, load, put};

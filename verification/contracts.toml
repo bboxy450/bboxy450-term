@@ -510,7 +510,7 @@ sources = ["crates/bbt-mux/src/plugins/hook_budget.rs", "crates/bbt-mux/src/plug
 implementation_tests = ["crates/bbt-mux/tests/plugin_host.rs", "scripts/e2e/G3.sh"]
 assumptions = "One event, three activation generations, one captured call and a counter bounded at three. Registry transactions and reset are atomic. Completion timing is abstracted to healthy/overrun; no scheduling fairness is required for safety. Restart preserves the account row. Multiple subscriptions, real clocks, bounded observational sample rings, SQLite durability and process cancellation use implementation and private app tests; no Rust refinement or timing proof is claimed."
 property = "Three consecutive measured overruns latch a skip; healthy completion clears only an unlatched counter. Re-enable/re-pin resets by generation, and a late completion cannot affect a new activation, including A-B-A. Broken controls remove generation/skip guards. G3 proves a ten-second SDK hook is cut at its declared budget, warned in Settings, and skipped after three overruns without blocking the UI."
-checks = ["make test-formal", "make test-settings-plugins"]
+checks = ["make test-formal", "make test"]
 
 [[contract]]
 name = "PluginTransportLaunch"
@@ -520,4 +520,4 @@ sources = ["crates/bbt-mux/src/logic/plugin_transport.rs", "crates/bbt-mux/src/p
 implementation_tests = ["crates/bbt-mux/tests/plugin_transport.rs", "crates/bboxy450-term/tests/remote_launch.rs"]
 assumptions = "One admitted launch, three activation generations and three workspace revisions (A-B-A uses distinct revisions). Wrap completion and owner launch may interleave with disable, re-enable and workspace changes. No fairness is needed for safety. Command/field values are captured immutable data; actual quoting, schema bounds, SDK stdio, two-second deadlines, process effects, source hashing and journal durability use implementation witnesses. OperationRecovery covers ambiguous native outcomes and duplicate operations. Explicit restart replays retained authorized argv; exact argv persistence and replay use the process witness."
 property = "Only a current captured root and enabled activation may launch a wrap result. The broken control removes the owner fence and must fail safety. The real SDK fixture proves fields to argv without network, a held wrap does not stall logic, disabling in flight prevents launch, and a repeated spawn operation returns the original seat."
-checks = ["make test-formal", "make test-plugin-transports"]
+checks = ["make test-formal", "make test"]

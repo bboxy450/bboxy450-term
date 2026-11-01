@@ -550,8 +550,7 @@ impl Controller {
             _ => vec![],
         }
     }
-    /// G3/G4's current host is a read-only reference. Never optimistically change
-    /// a fixture's enable bit or a root's provider when no runtime can do the act.
+    /// Only current runtime controls can mutate a plugin or provider.
     fn unavailable(&mut self, field: &Field, values: &Records) -> bool {
         if let Field::KnowledgeProvider(root) = field
             && values.knowledge_controls
@@ -571,22 +570,24 @@ impl Controller {
             return false;
         }
         let reason = match field {
+            Field::PluginEnable(_) if !values.plugin_controls =>
+                "Plugin controls need a current workspace registry connection".into(),
             Field::PluginEnable(name) => values
                 .plugins
                 .iter()
                 .find(|p| p.control_key() == name)
                 .and_then(|p| p.root.as_ref())
                 .map_or_else(
-                    || "Plugin enable/disable is unavailable in this build".into(),
+                    || "Trust and successfully check the plugin before enabling it".into(),
                     |root| format!("Cannot disable the provider of {root}"),
                 ),
-            Field::PluginTrust(_) => "Plugin trust is unavailable in this build".into(),
+            Field::PluginTrust(_) => "Trust needs a discovered executable and a current workspace registry connection".into(),
             Field::PluginGrant(..) => "Trust the plugin before changing its grants".into(),
             Field::PluginSetup(_) => {
                 "Plugin setup needs a trusted plugin whose shape declares auth".into()
             }
             Field::KnowledgeProvider(_) => {
-                "Provider swap is unavailable: the bundled provider remains active".into()
+                "Provider changes need a current Knowledge connection and a trusted, checked provider".into()
             }
             _ => return false,
         };

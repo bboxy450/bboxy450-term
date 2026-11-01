@@ -2988,7 +2988,7 @@ impl App {
             view.values.plugin_notice = Some("Plugin registry connection unavailable; retained observations cannot authorize a control.".into());
             for root in &mut view.values.knowledge.roots {
                 root.answering = "read connection unavailable".into();
-                root.refused = Some("Knowledge connection is unavailable; the retained view cannot confirm current reads. Provider switching is unavailable in this build.".into());
+                root.refused = Some("Knowledge connection is unavailable; the retained view cannot confirm current reads or authorize a provider change. Reconnect before changing providers.".into());
             }
         }
         view

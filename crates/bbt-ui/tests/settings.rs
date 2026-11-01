@@ -220,15 +220,15 @@ fn plugin_and_provider_controls_refuse_without_editing_the_supplied_snapshot() {
     for (field, reason) in [
         (
             Field::PluginEnable("active-provider".into()),
-            "provider of .bboxy",
+            "current workspace registry connection",
         ),
         (
             Field::PluginEnable("example".into()),
-            "enable/disable is unavailable",
+            "current workspace registry connection",
         ),
         (
             Field::PluginTrust("never-run".into()),
-            "trust is unavailable",
+            "Trust needs a discovered executable",
         ),
         (
             Field::PluginSetup("example".into()),
@@ -236,7 +236,7 @@ fn plugin_and_provider_controls_refuse_without_editing_the_supplied_snapshot() {
         ),
         (
             Field::KnowledgeProvider(".bboxy".into()),
-            "bundled provider remains active",
+            "current Knowledge connection",
         ),
     ] {
         control.focus = Focus::Control(field);

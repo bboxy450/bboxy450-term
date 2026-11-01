@@ -605,3 +605,23 @@ frontend = "project"
 name = "BrokenInodeFence"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "PluginHookBudget"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenPluginHookBudget"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "PluginTransportLaunch"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenPluginTransportLaunch"
+expected = "safety"
+frontend = "project"
