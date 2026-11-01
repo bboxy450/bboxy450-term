@@ -416,7 +416,8 @@ fn sweep(two_hosts: bool) {
     while !pending.is_empty() {
         assert!(
             Instant::now() < until,
-            "all independent seat readers must advance"
+            "all independent seat readers must advance ({} pending)",
+            pending.seats.len()
         );
         let before: u64 = worker.views.values().map(|v| v.sequence).sum();
         let mut progress = false;
@@ -426,6 +427,11 @@ fn sweep(two_hosts: bool) {
             after - before <= 2,
             "one parsed seat page/notification per turn"
         );
+        // Parsing runs on Tokio workers. Yield an idle owner turn instead of
+        // rescanning every view in a busy loop while those workers are pending.
+        if !progress {
+            std::thread::sleep(Duration::from_millis(1));
+        }
     }
     assert!(pending.is_empty(), "all deterministic pages must advance");
     for (&id, view) in &worker.views {
