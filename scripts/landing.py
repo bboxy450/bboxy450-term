@@ -437,14 +437,14 @@ def cargo_backed(check):
                                and Path(words[1]).name == "ui-lint.sh")))
 
 
-def checked(argv, root):
+def checked(argv, root, *, env=None):
     print("presubmit:", shlex.join(map(str, argv)), flush=True)
     names = {Path(str(arg)).name for arg in argv}
     stage = ("formal" if list(argv)[:2] == ["make", "test-formal"] else
              "tests" if "quarantine-test.sh" in names else
              "fixtures" if names & {"test-landing.py", "test-resource-ledger.py"} else
              "invariants_misc")
-    code = measured_command(list(map(str, argv)), root, _timing_path, stage=stage)
+    code = measured_command(list(map(str, argv)), root, _timing_path, stage=stage, env=env)
     if code:
         raise Refusal(f"check_failed ({code}): {argv[0]}", 1)
 
@@ -624,14 +624,24 @@ class TwoClocks:
         return None
 
 
-def records_checks(root, paths):
-    checked(["cargo", "test", "-p", "bboxy450-doc", "--locked", "--test", "corpus", "-q"], root)
-    checked(["cargo", "test", "-p", "bboxy450-mermaid", "--locked", "-q"], root)
+def records_checks(root, paths, *, env=None):
+    # Report only the path, never the matching bytes from a record.
+    secret = re.compile(r"(?i)(?:\b(?:key|token|secret|password)\s*:\s*[\"']?[a-f0-9]{32,}"
+                        r"|sk-[a-z0-9_-]{16,}|gh[pousr]_[a-z0-9]{20,}"
+                        r"|-----BEGIN (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY)")
+    tracked = set(git("ls-files", "-z", "--", *paths, cwd=root).split("\0")) if paths else set()
+    for name in paths:
+        # Inspect stored bytes rather than following a record symlink outside
+        # this repository. Deleted paths have no new content to scan.
+        if name in tracked and secret.search(git("show", "HEAD:" + name, cwd=root)):
+            raise Refusal("records secret scan failed: " + name)
+    checked(["cargo", "test", "-p", "bboxy450-doc", "--locked", "--test", "corpus", "-q"], root, env=env)
+    checked(["cargo", "test", "-p", "bboxy450-mermaid", "--locked", "-q"], root, env=env)
     if set(paths) & {".bboxy/specs/e2e-acceptance.md", "lab/web/e2e.js"}:
-        checked(["cargo", "test", "-p", "bboxy450-ui", "--locked", "--test", "e2e_checklist", "-q"], root)
-    for script in ("layering", "pending-flags", "kill-own-pids", "licenses", "brand",
+        checked(["cargo", "test", "-p", "bboxy450-ui", "--locked", "--test", "e2e_checklist", "-q"], root, env=env)
+    for script in ("layering", "pending-flags", "kill-own-pids", "generated-sources", "licenses", "brand",
                    "images", "cross-os", "never-block"):
-        checked(["sh", f"scripts/{script}.sh"], root)
+        checked(["sh", f"scripts/{script}.sh"], root, env=env)
 
 
 def command_tools(argv, root):
@@ -1158,6 +1168,24 @@ def refresh_formal(root, sha):
     return formal_receipt(result.stdout, sha, root)
 
 
+def records_gate_delta(root, source, sha):
+    """R5 compares trees, including renames and modes, never commit subjects."""
+    different = command(["git", "diff", "--quiet", source, sha, "--", ".", ":!.bboxy"],
+                        cwd=root, check=False)
+    if different.returncode:
+        raise Refusal("gate_log_source_mismatch: non-records tree delta")
+    if command(["git", "verify-commit", sha], cwd=root, check=False).returncode:
+        raise Refusal("gate_log_source_mismatch: unsigned rebased candidate")
+    delta = git("diff", "--no-renames", "--name-only", "-z", source, sha, "--", ".bboxy/", cwd=root)
+    paths = sorted(set(delta.split("\0")) - {""})
+    for name in paths:
+        named = command(["git", "grep", "-F", "-l", "-e", name, sha, "--",
+                         "crates", "scripts", "Makefile", "verification", "lab"], cwd=root, check=False)
+        if named.returncode != 1:
+            raise Refusal("gate_log_source_mismatch: record is named by code: " + name)
+    return paths
+
+
 def gate_proof(path, sha, root=None):
     path = Path(path).resolve(strict=True)
     digest = hashlib.sha256()
@@ -1175,13 +1203,40 @@ def gate_proof(path, sha, root=None):
             passed |= line == "ci-local: all gates passed"
             if line:
                 last = line
+    source, delta = sha, None
     if sources != [[sha, "normal"]]:
-        raise Refusal("gate_log_source_mismatch: expected exact candidate " + sha)
-    if (results != [[sha, "normal", "0"]] or not passed
-            or last != f"ci-local: result {sha} normal 0"):
+        if (len(sources) != 1 or len(sources[0]) != 2 or sources[0][1] != "normal"
+                or not re.fullmatch(r"[a-f0-9]{40}", sources[0][0]) or root is None):
+            raise Refusal("gate_log_source_mismatch: expected exact candidate " + sha)
+        source = sources[0][0]
+        delta = records_gate_delta(root, source, sha)
+    if (results != [[source, "normal", "0"]] or not passed
+            or last != f"ci-local: result {source} normal 0"):
         raise Refusal("gate_log_not_green: full normal gate completion required")
-    return {"gate_log": str(path), "gate_log_sha256": digest.hexdigest(),
-            "tested_sha": sha, "formal": formal_receipt(path.read_text(), sha, root)}
+    proof = {"gate_log": str(path), "gate_log_sha256": digest.hexdigest(), "tested_sha": sha}
+    if delta is None:
+        proof["formal"] = formal_receipt(path.read_text(), sha, root)
+    else:
+        try:
+            rows = [json.loads(line.removeprefix("formal: receipt ")) for line in path.read_text().splitlines()
+                    if line.startswith("formal: receipt ")]
+            if len(rows) != 1 or rows[0]["source"] != source:
+                raise ValueError("formal receipt does not identify tested source")
+            spec = importlib.util.spec_from_file_location("records_formal", Path(__file__).with_name("formal.py"))
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            # Validate the original receipt and all unchanged inputs before any gates.
+            current = module.evidence_receipt(Path(rows[0]["evidence"]).parent, Path(root), expected_source=source)
+            if {k: v for k, v in current.items() if k != "checkout"} != {
+                    k: v for k, v in rows[0].items() if k != "checkout"}:
+                raise ValueError("formal receipt differs from evidence")
+            check_root, check_environment = candidate_environment(root, sha)
+            records_checks(check_root, delta, env=check_environment)
+            proof["formal"] = module.records_rebase_receipt(rows[0], root, delta)
+        except (Refusal, ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError) as error:
+            raise Refusal("gate_log_source_mismatch: records rebase checks failed: " + str(error)) from error
+        proof.update(tested_sha=source, gate_log_source=source, records_delta=delta, records_checks_exit=0)
+    return proof
 
 
 def wide_check(root, data, gate_log=None, *, canonical=False):
@@ -1206,7 +1261,11 @@ def wide_check(root, data, gate_log=None, *, canonical=False):
     else:
         proof = gate_proof(gate_log, sha, root)
         code = 0
-        print("land: reusing full normal gate on exact candidate " + sha, flush=True)
+        if "gate_log_source" in proof:
+            print("land: reusing full normal gate from " + proof["gate_log_source"]
+                  + " after checked records rebase to " + sha, flush=True)
+        else:
+            print("land: reusing full normal gate on exact candidate " + sha, flush=True)
     if git("rev-parse", "HEAD", cwd=root) != sha:
         raise Refusal("candidate_changed_during_gate")
     clean_source(root)
@@ -1587,10 +1646,10 @@ def land(gate_log=None, full=False):
                 atomic_write(recheck, json.dumps(plan) + "\n")
                 print("land: incremental recheck:", " ".join(intersection), flush=True)
             candidate = git("rev-parse", "HEAD", cwd=root)
-            if tested is None or common_paths or recheck is not None:
+            if tested is None or common_paths or recheck is not None or gate_log:
                 started = time.monotonic()
-                if recheck is None and (full or data["tier"] == "wide" or (gate_log and tested is None)):
-                    proof = wide_check(root, data, gate_log if tested is None else None, canonical=full)
+                if gate_log or (recheck is None and (full or data["tier"] == "wide")):
+                    proof = wide_check(root, data, gate_log, canonical=full)
                     code = proof["exit"]
                 else:
                     code = command(["sh", "scripts/presubmit.sh", base,
@@ -1651,10 +1710,10 @@ def land(gate_log=None, full=False):
             landing = {"sha": sha, "base": base, "timestamp": now(), "author_key": signing_key, "author": email,
                        "tier": data["tier"], "affected": data["affected"],
                        "presubmit_seconds": spent, "retries": retry, "paths": data["paths"],
-                       "tested_sha": tested, "branch": branch,
+                       "tested_sha": proof.get("gate_log_source", tested), "branch": branch,
                        "incremental_rechecks": incremental_rechecks}
             landing["formal"] = formal
-            landing.update({k: proof[k] for k in ("gate_log", "gate_log_sha256", "compile_seconds",
+            landing.update({k: proof[k] for k in ("gate_log", "gate_log_sha256", "gate_log_source", "records_delta", "records_checks_exit", "compile_seconds",
                                                  "run_seconds", "test_seconds", "unclassified_seconds", "build_attempts",
                                                  "tests_started", "timing_basis", "stage_seconds", "formal_step_seconds",
                                                  "load_average_start", "load_average_end", "findings") if k in proof})
@@ -1711,7 +1770,7 @@ def main():
     p = sub.add_parser("land")
     proof = p.add_mutually_exclusive_group()
     proof.add_argument("--gate-log", type=Path,
-                       help="reuse full NORMAL CI on the exact candidate SHA, for any tier")
+                       help="reuse full NORMAL CI on the candidate SHA or a checked records-only rebase")
     proof.add_argument("--full", action="store_true",
                        help="run make test after rebasing, for any tier; retain incremental rechecks")
     args = parser.parse_args()

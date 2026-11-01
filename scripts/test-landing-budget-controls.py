@@ -7,6 +7,7 @@
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """Remove one d5002 guard, require its named failure, then restore and pass."""
 import hashlib
+import argparse
 import json
 from pathlib import Path
 import subprocess
@@ -27,7 +28,11 @@ def broad_fixtures(text):
 
 
 def main():
-    out = ROOT / "target/landing-budget-controls"
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--rule", action="append", default=[])
+    parser.add_argument("--out", type=Path)
+    args = parser.parse_args()
+    out = (args.out or ROOT / "target/landing-budget-controls").resolve()
     out.mkdir(parents=True, exist_ok=True)
     cases = [
         ("R0", "landing.py", "test-landing.py", "BudgetClockTests.test_missing_substep_is_unclassified_and_advisory",
@@ -57,6 +62,27 @@ def main():
          "900 second run bound was bypassed", lambda s: once(s,
           'if totals["run_seconds"] >= run_bound:', 'if False and totals["run_seconds"] >= run_bound:')),
     ]
+    cases += [
+        ("R5-exact-only", "landing.py", "test-landing.py", "LandTests.test_records_rebase_accepts_gate_and_runs_only_records_checks",
+         "records-only gate was refused", lambda s: once(s, 'delta = records_gate_delta(root, source, sha)',
+          'raise Refusal("gate_log_source_mismatch: deliberately exact-only")')),
+        ("R5-outside", "landing.py", "test-landing.py", "LandTests.test_records_gate_refuses_a_byte_outside_records",
+         "non-records delta was accepted", lambda s: once(s, 'if different.returncode:', 'if False:')),
+        ("R5-named", "landing.py", "test-landing.py", "LandTests.test_records_gate_refuses_a_record_named_by_code",
+         "code-named record was accepted", lambda s: once(s, 'if named.returncode != 1:', 'if False:')),
+        ("R5-checks", "landing.py", "test-landing.py", "LandTests.test_records_gate_refuses_failed_records_checks",
+         "failed records checks were accepted", lambda s: once(s, 'records_checks(check_root, delta, env=check_environment)', 'None  # deliberately omit records checks')),
+        ("R5-snapshot", "landing.py", "test-landing.py", "LandTests.test_records_rebase_accepts_gate_and_runs_only_records_checks",
+         "records-only gate was refused", lambda s: once(s, '            check_root, check_environment = candidate_environment(root, sha)',
+          '            check_root, check_environment = root, None')),
+        ("R5-secrets", "landing.py", "test-landing.py", "LandTests.test_records_gate_refuses_secret_like_changed_record",
+         "secret-like record was accepted", lambda s: once(s, 'if name in tracked and secret.search(', 'if False and secret.search(')),
+    ]
+    if args.rule:
+        unknown = set(args.rule) - {case[0] for case in cases}
+        if unknown:
+            parser.error("unknown rule: " + ", ".join(sorted(unknown)))
+        cases = [case for case in cases if case[0] in args.rule]
     records = []
     for name, source, suite, test, assertion, mutate in cases:
         file = ROOT / "scripts" / source

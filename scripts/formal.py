@@ -273,13 +273,17 @@ def source_dirty(root):
     return bool(tracked.strip() or untracked.strip())
 
 
-def evidence_receipt(target, root=ROOT, *, require_clean=True):
-    """Bind completed native/TLC results to the current source, scopes and model bytes."""
+def evidence_receipt(target, root=ROOT, *, require_clean=True, expected_source=None):
+    """Validate current-source evidence; R5 may name its checked prior source.
+
+    Even that explicit prior-source read must match every current input, tool
+    and model hash. Normal verification always requires the current HEAD.
+    """
     target, root = Path(target).resolve(), Path(root).resolve()
     path = target / "evidence.json"
     raw = path.read_bytes()
     data = json.loads(raw)
-    sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+    sha = expected_source or subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     if data["source"] != sha:
         raise ValueError("formal evidence source differs from current HEAD")
     if require_clean and (data.get("dirty") is not False or source_dirty(root)):
@@ -317,6 +321,26 @@ def evidence_receipt(target, root=ROOT, *, require_clean=True):
     return {"source": sha, "checkout": str(root), "evidence": str(path),
             "evidence_sha256": hashlib.sha256(raw).hexdigest(), "dirty": data["dirty"],
             "models": len(models), "crates": len(records), "contracts": len(contract_records)}
+
+
+def records_rebase_receipt(receipt, root, delta):
+    """Rebind unchanged verification inputs after the caller's R5 records gates."""
+    root = Path(root).resolve()
+    archive = Path(receipt["evidence"]).parent
+    checked = evidence_receipt(archive, root, expected_source=receipt["source"])
+    if {k: v for k, v in checked.items() if k != "checkout"} != {
+            k: v for k, v in receipt.items() if k != "checkout"}:
+        raise ValueError("formal receipt differs from evidence")
+    data = json.loads((archive / "evidence.json").read_text())
+    data["source"] = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+    data["records_rebase"] = {"gate_log_source": receipt["source"], "records_delta": delta,
+                              "records_checks_exit": 0, "evidence_sha256": receipt["evidence_sha256"]}
+    with tempfile.TemporaryDirectory(prefix="records-formal-") as temporary:
+        target = Path(temporary)
+        shutil.copytree(archive / "models", target / "models")
+        (target / "evidence.json").write_text(json.dumps(data, indent=2) + "\n")
+        destination = archive_evidence(target, root)
+    return evidence_receipt(destination, root)
 
 
 def archive_evidence(target, root=ROOT):
