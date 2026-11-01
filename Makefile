@@ -206,6 +206,7 @@ help:
 	  'make check-license-packages      Inspect all crate package lists; no compilation' \
 	  'make publish-release            Signed tag + GitHub app release (authorization required)' \
 	  'make push                       Push signed, tested HEAD to main (authorization required)' \
+	  'make land-full                  Run full make test after rebase, then land (authorization required)' \
 	  'make land                       Land this branch on main in one go (LAND.md; authorization required)' \
 	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... LAND_GATE_LOG=... BBOXY_CACHE_MODE=auto|off CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2 RUST_TEST_THREADS=2' \
 	  'GitKB: GITKB_BIN=... PLUGIN_WORKSPACE=/explicit/local/project'
@@ -700,13 +701,16 @@ push:
 # One-go landing (LAND.md): scripts/land.sh rebases, runs the gate, rechecks only
 # what overlaps when main moves, then pushes. A private Cargo build dir keeps other
 # worktrees' artifacts out; transient network/TLC-tool failures retry, nothing else.
-.PHONY: land
+.PHONY: land land-full
+land-full:
+	@$(MAKE) land LAND_ARGS=--full
+
 land:
 	@set -u; export CARGO_BUILD_BUILD_DIR="$${CARGO_BUILD_BUILD_DIR:-$(abspath $(TARGET_DIR))/private-build}"; \
 	mkdir -p '$(abspath $(TARGET_DIR))'; \
 	for attempt in 1 2 3; do \
 	  log='$(abspath $(TARGET_DIR))'/land-attempt-$$attempt.log; \
-	  sh scripts/land.sh $(if $(LAND_GATE_LOG),--gate-log '$(abspath $(LAND_GATE_LOG))',) > "$$log" 2>&1; rc=$$?; tail -n 3 "$$log"; \
+	  sh scripts/land.sh $(LAND_ARGS) $(if $(LAND_GATE_LOG),--gate-log '$(abspath $(LAND_GATE_LOG))',) > "$$log" 2>&1; rc=$$?; tail -n 3 "$$log"; \
 	  if [ $$rc -eq 0 ]; then exit 0; fi; \
 	  if tail -n 60 "$$log" | grep -qiE "$(LAND_TRANSIENT)"; then \
 	    printf 'land: transient failure (attempt %s, exit %s); retrying in 60 s\n' "$$attempt" "$$rc"; sleep 60; continue; \

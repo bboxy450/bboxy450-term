@@ -1,3 +1,6 @@
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# LicenseRef-Respectful-Slop-1.0-Draft; credit copied/adapted/translated reuse.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 # Copyright 2026 Boxy (bboxy450) and contributors.
 # SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
 # Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
@@ -150,7 +153,7 @@ data={"source":sha,"dirty":False,"tlc":pins["tlc"],"java":next(iter(pins["java"]
 archive=formal.archive_evidence(target,root)
 print("formal: receipt "+json.dumps(formal.evidence_receipt(archive,root,require_clean=False),sort_keys=True))
 ''')
-        self.write("Makefile", 'test-formal:\n\t@python3 -I scripts/fixture-formal.py "$(TARGET_DIR)"\n')
+        self.write("Makefile", 'test:\n\t@sh scripts/ci-local.sh > "$(CI_LOG)" 2>&1\n\ntest-formal:\n\t@python3 -I scripts/fixture-formal.py "$(TARGET_DIR)"\n')
         self.write("scripts/ci-local.sh", '''#!/bin/sh
 set -eu
 sha=$(git rev-parse HEAD)
@@ -1057,6 +1060,44 @@ class LandTests(unittest.TestCase):
         self.assertEqual(record["tested_sha"], sha)
         self.assertEqual(record["gate_log_sha256"], hashlib.sha256(proof.read_bytes()).hexdigest())
         self.assertEqual(record["tier"], "code")
+
+    def test_full_code_cut_runs_normal_make_after_initial_rebase(self):
+        old = self.cut()
+        self.repo.movement(".bboxy/other.md")
+        hook = json.loads((self.repo.state / "behavior.json").read_text())["hook"]
+        run("sh", hook, cwd=self.repo.root)
+        (self.repo.state / "behavior.json").unlink()
+        (self.repo.state / "fixture.json").write_text('{"timeout_seconds":0.0001}')
+        result = self.repo.land("--full")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        sha = self.repo.remote_head()
+        self.assertNotEqual(sha, old)
+        self.assertEqual(self.cargo_test_count(), 1)
+        record = json.loads((self.repo.state / "landings.log").read_text())
+        self.assertEqual(record["tier"], "code")
+        self.assertEqual(record["tested_sha"], sha)
+        self.assertEqual(record["formal"]["source"], sha)
+        proof = Path(record["gate_log"]).read_text()
+        self.assertIn(f"ci-local: source {sha} normal", proof)
+        self.assertEqual(proof.splitlines()[-1], f"ci-local: result {sha} normal 0")
+
+    def test_full_failed_make_cannot_push(self):
+        self.cut()
+        (self.repo.state / "behavior.json").write_text('{"fail":"test"}')
+        result = self.repo.land("--full")
+        self.assertEqual(result.returncode, 77, result.stdout + result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
+        self.assertFalse((self.repo.state / "landings.log").exists())
+
+    def test_full_disjoint_movement_reuses_rust_and_refreshes_formal(self):
+        self.cut()
+        self.repo.movement(".bboxy/other.md")
+        result = self.repo.land("--full")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.cargo_test_count(), 1)
+        record = json.loads((self.repo.state / "landings.log").read_text())
+        self.assertEqual(record["formal"]["source"], self.repo.remote_head())
+        self.assertNotEqual(record["tested_sha"], self.repo.remote_head())
 
     def test_scoped_stale_full_gate_cannot_supersede_a_run_timeout(self):
         sha = self.cut()

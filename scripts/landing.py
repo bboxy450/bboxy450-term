@@ -1,3 +1,6 @@
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# LicenseRef-Respectful-Slop-1.0-Draft; credit copied/adapted/translated reuse.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """The landing scripts' shared state and bounded command implementation (#323).
 
 Shell entry points keep the same contract on every worktree. All Git commands
@@ -1097,7 +1100,7 @@ def gate_proof(path, sha, root=None):
             "tested_sha": sha, "formal": formal_receipt(path.read_text(), sha, root)}
 
 
-def wide_check(root, data, gate_log=None):
+def wide_check(root, data, gate_log=None, *, canonical=False):
     sha = git("rev-parse", "HEAD", cwd=root)
     started = time.monotonic()
     if gate_log is None:
@@ -1106,10 +1109,14 @@ def wide_check(root, data, gate_log=None):
         gate_log = output / "commands.log"
         check_root, environment = candidate_environment(root, sha)
         environment["BBOXY_GATE_SLOT"] = "none"  # land/presubmit already owns it
-        print("land: wide cut; full normal CI, no presubmit deadline", flush=True)
-        with gate_log.open("w") as stream:
-            code = measured_command(["sh", "scripts/ci-local.sh"], check_root, output / "phases.jsonl",
+        print("land: full normal CI, no presubmit deadline", flush=True)
+        argv = (["make", "test", "CI_ARGS=", "TARGET_DIR=" + environment["BBOXY_CARGO_TARGET_DIR"],
+                 "CI_LOG=" + str(gate_log)] if canonical else ["sh", "scripts/ci-local.sh"])
+        with (output / "make.log" if canonical else gate_log).open("w") as stream:
+            code = measured_command(argv, check_root, output / "phases.jsonl",
                                     stream=stream, env=environment)
+        if not gate_log.exists():
+            gate_log.write_text((output / "make.log").read_text())
         print(gate_log.read_text(), end="", flush=True)
         proof = gate_proof(gate_log, sha, root) if code == 0 else {"gate_log": str(gate_log)}
     else:
@@ -1433,7 +1440,7 @@ def publishing_identity(root):
         raise Refusal("unapproved_github_identity: " + actor)
 
 
-def land(gate_log=None):
+def land(gate_log=None, full=False):
     root = repository()
     ledger_origin(root)
     clean_source(root)
@@ -1495,8 +1502,8 @@ def land(gate_log=None):
             candidate = git("rev-parse", "HEAD", cwd=root)
             if tested is None or common_paths or recheck is not None:
                 started = time.monotonic()
-                if recheck is None and (data["tier"] == "wide" or (gate_log and tested is None)):
-                    proof = wide_check(root, data, gate_log if tested is None else None)
+                if recheck is None and (full or data["tier"] == "wide" or (gate_log and tested is None)):
+                    proof = wide_check(root, data, gate_log if tested is None else None, canonical=full)
                     code = proof["exit"]
                 else:
                     code = command(["sh", "scripts/presubmit.sh", base,
@@ -1603,8 +1610,11 @@ def main():
     p.add_argument("result", type=Path)
     p.add_argument("--recheck", type=Path)
     p = sub.add_parser("land")
-    p.add_argument("--gate-log", type=Path,
-                   help="reuse full NORMAL CI on the exact candidate SHA, for any tier")
+    proof = p.add_mutually_exclusive_group()
+    proof.add_argument("--gate-log", type=Path,
+                       help="reuse full NORMAL CI on the exact candidate SHA, for any tier")
+    proof.add_argument("--full", action="store_true",
+                       help="run make test after rebasing, for any tier; retain incremental rechecks")
     args = parser.parse_args()
     if args.verb == "affected":
         result = affected(args.range)
@@ -1625,7 +1635,7 @@ def main():
     elif args.verb == "presubmit-worker":
         return presubmit_worker(args.base, args.result, args.recheck)
     elif args.verb == "land":
-        return land(args.gate_log)
+        return land(args.gate_log, args.full)
 
 
 if __name__ == "__main__":

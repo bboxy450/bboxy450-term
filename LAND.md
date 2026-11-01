@@ -11,6 +11,12 @@ head, an incremental recheck of only what overlaps if `main` moved meanwhile, th
 `git push origin HEAD:main`. It uses a private Cargo build dir and retries only transient
 network or TLC-tool failures. Push and merge still need the operator's authorization.
 
+Use `make land-full` when the brief requires the full normal `make test` gate.
+It runs that gate after the initial rebase, for any cut tier, then retains the
+same incremental rechecks and current-source formal receipt checks if main moves.
+`sh scripts/land.sh --full` is the equivalent entry point. A supplied
+`--gate-log` remains bound to its exact candidate; it cannot be combined with `--full`.
+
 ## Why this way: measured timings (2026-10-30 to 10-31)
 
 | Measured | Value |
