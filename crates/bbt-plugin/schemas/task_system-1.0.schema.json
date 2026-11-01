@@ -348,6 +348,11 @@
         },
         "verify_result": {
           "$ref": "#/$defs/TaskVerification"
+        },
+        "report": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
         }
       },
       "required": [

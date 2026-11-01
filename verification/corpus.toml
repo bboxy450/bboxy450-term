@@ -565,3 +565,13 @@ frontend = "project"
 name = "BrokenSeatIngestion"
 expected = "liveness"
 frontend = "project"
+
+[[model]]
+name = "ReportProvenance"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenReportProvenance"
+expected = "safety"
+frontend = "project"

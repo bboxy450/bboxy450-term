@@ -17,7 +17,10 @@ use serde_json::Value;
 use ulid::Ulid;
 
 pub(crate) enum Prepared {
-    Record(Box<d::WriteRequest>),
+    Record {
+        request: Box<d::WriteRequest>,
+        report_task: Option<d::RecordRef>,
+    },
     Task {
         plan: tasks::Plan,
         report: Option<String>,
@@ -81,6 +84,7 @@ pub(crate) fn prepare(
             Ok(Prepared::Commit(request))
         }
         tool::Request::Write(mut request) => {
+            let mut report_task = None;
             let current = request
                 .reference
                 .clone()
@@ -183,6 +187,68 @@ pub(crate) fn prepare(
                     }
                 }
             }
+            if request.frontmatter["type"] == "report" {
+                let path = request
+                    .reference
+                    .as_ref()
+                    .map(|r| r.path.as_str())
+                    .or(request.path.as_deref())
+                    .unwrap_or_default();
+                if current.is_some() {
+                    return Err(d::CommandError::new(
+                        "report_append_only",
+                        "reports are append-only; create a new report with supersedes",
+                    ));
+                }
+                bbt_doc::reports::validate(path, &request.frontmatter)
+                    .map_err(|e| d::CommandError::new("invalid_report", e))?;
+                let seat = actor
+                    .seat()
+                    .ok_or_else(|| rejected("report author requires a seat"))?;
+                if request.frontmatter["author"] != format!("seat:{}", seat.seat_id) {
+                    return Err(d::CommandError::new(
+                        "report_author_mismatch",
+                        "report author must be the authenticated seat",
+                    ));
+                }
+                let task = tool::fetch(
+                    source,
+                    request.frontmatter["task"]
+                        .as_str()
+                        .unwrap_or_default()
+                        .into(),
+                )?;
+                report_task = Some(task.reference.clone());
+                let document = crate::index::Document {
+                    id: task.reference.id,
+                    path: task.reference.path,
+                    metadata: task.frontmatter,
+                    body: task.body,
+                    digest: task.reference.digest,
+                    error: task.parse_error,
+                    links: Vec::new(),
+                };
+                tasks::authorize(&document, registry, actor)
+                    .map_err(|e| d::CommandError::new("report_task_denied", e))?;
+                if let Some(previous) = request.frontmatter["supersedes"].as_str() {
+                    let previous = tool::fetch(source, previous.into())?;
+                    if previous.frontmatter["type"] != "report" {
+                        return Err(rejected("supersedes must name a report"));
+                    }
+                    let previous_task = tool::fetch(
+                        source,
+                        previous.frontmatter["task"]
+                            .as_str()
+                            .unwrap_or_default()
+                            .into(),
+                    )?;
+                    if previous_task.reference.id != document.id
+                        || previous_task.reference.path != document.path
+                    {
+                        return Err(rejected("superseded report names a different task"));
+                    }
+                }
+            }
             if request.reference.is_none() {
                 match source.resolve(d::ResolveRequest {
                     locator: call.op_id.to_string(),
@@ -195,7 +261,10 @@ pub(crate) fn prepare(
                     }
                 }
             }
-            Ok(Prepared::Record(request))
+            Ok(Prepared::Record {
+                request,
+                report_task,
+            })
         }
         _ => Err(rejected("effect job cannot run a knowledge read")),
     }
@@ -211,7 +280,22 @@ pub(crate) fn apply(
     let mut statuses = Vec::new();
     let result = (|| -> d::Result<Value> {
         match prepared {
-            Prepared::Record(request) => {
+            Prepared::Record {
+                request,
+                report_task,
+            } => {
+                if let Some(reference) = report_task {
+                    source
+                        .fetch(d::FetchRequest {
+                            reference: reference.clone(),
+                        })
+                        .map_err(|e| {
+                            d::CommandError::new(
+                                "report_task_changed",
+                                format!("assigned task changed before report publication: {e}"),
+                            )
+                        })?;
+                }
                 let result = source.write(*request.clone(), context)?;
                 applied = true;
                 serde_json::to_value(result)
@@ -249,6 +333,19 @@ pub(crate) fn apply(
                     })
                     .collect::<d::Result<Vec<_>>>()?;
                 for (update, reference) in plan.writes.iter().zip(references) {
+                    if update.metadata["status"] == "accepted" {
+                        let document = crate::index::Document {
+                            id: update.metadata["id"].as_str().unwrap_or_default().into(),
+                            path: update.path.clone(),
+                            metadata: update.metadata.clone(),
+                            body: update.body.clone(),
+                            digest: String::new(),
+                            error: None,
+                            links: Vec::new(),
+                        };
+                        tasks::linked_report(&tasks::ProviderTasks(source, None), &document)
+                            .map_err(rejected)?;
+                    }
                     let request = d::WriteRequest {
                         path: reference.is_none().then(|| update.path.clone()),
                         reference,
@@ -313,5 +410,120 @@ pub(crate) fn apply(
         value,
         statuses,
         applied,
+    }
+}
+
+#[cfg(test)]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "private report publication fixtures"
+)]
+mod report_tests {
+    use super::*;
+    use crate::{
+        index::{Index, Update},
+        knowledge::BboxySource,
+        provenance::author::Author,
+        store::sqlite::SqliteStore,
+    };
+    use serde_json::json;
+
+    #[test]
+    fn publication_rechecks_assigned_task_and_linked_report() {
+        for change in ["none", "owner", "aba", "missing"] {
+            let temp = tempfile::tempdir().unwrap();
+            let root = temp.path().join(".bboxy");
+            std::fs::create_dir_all(root.join("tasks")).unwrap();
+            let seat = Ulid::from(10_u128);
+            let task_id = Ulid::from(11_u128).to_string();
+            let mut task = json!({"id":task_id,"number":1,"type":"task","status":"reported","assignee":format!("seat:{seat}")});
+            let write_task = |task: &Value| {
+                std::fs::write(
+                    root.join("tasks/work.md"),
+                    format!("---\n{task}\n---\nBrief"),
+                )
+                .unwrap()
+            };
+            write_task(&task);
+            let mut index = Index::open(
+                &root,
+                SqliteStore::open(&temp.path().join("store")).unwrap(),
+            )
+            .unwrap();
+            index.scan().unwrap();
+            let source = BboxySource::new(&index);
+            let guard = source
+                .resolve(d::ResolveRequest {
+                    locator: "#1".into(),
+                })
+                .unwrap();
+            let path = "reports/2026-10-31-work.md";
+            let metadata = json!({"id":Ulid::from(12_u128).to_string(),"type":"report","task":"#1","commits":[],"verify":{"command":"true","exit_code":0},"author":format!("seat:{seat}"),"created":"2026-10-31T00:00:00Z"});
+            let mut prepared = Prepared::Record {
+                request: Box::new(d::WriteRequest {
+                    reference: None,
+                    path: Some(path.into()),
+                    frontmatter: metadata,
+                    body: "Full evidence".into(),
+                    etag: None,
+                }),
+                report_task: Some(guard.clone()),
+            };
+            match change {
+                "owner" => {
+                    task["assignee"] = json!(format!("seat:{}", Ulid::from(13_u128)));
+                    write_task(&task);
+                }
+                "aba" => {
+                    task["updated"] = json!("second assignment back to A");
+                    write_task(&task);
+                }
+                "missing" => std::fs::remove_file(root.join("tasks/work.md")).unwrap(),
+                _ => (),
+            }
+            let key = ed25519_dalek::SigningKey::from_bytes(&[7; 32]);
+            let context = WriteContext {
+                author: Author::seat(seat, None, &key),
+            };
+            let call = Call {
+                op_id: Ulid::new(),
+                tool: "knowledge_write".into(),
+                args: json!({}),
+            };
+            let result = apply(&source, &mut prepared, &call, &context);
+            assert_eq!(
+                result.applied,
+                change == "none",
+                "{change}: {}",
+                result.value
+            );
+            assert_eq!(root.join(path).exists(), change == "none");
+            if change == "none" {
+                // A link valid at preparation must still exist at publication.
+                let mut accepted = task.clone();
+                accepted["status"] = json!("accepted");
+                accepted["report"] = json!({"report":"[[reports/2026-10-31-work]]"});
+                let mut acceptance = Prepared::Task {
+                    plan: tasks::Plan {
+                        writes: vec![Update {
+                            path: "tasks/work.md".into(),
+                            metadata: accepted,
+                            body: "Brief".into(),
+                            expected: Some(guard.digest),
+                        }],
+                        wakes: vec![],
+                        data: json!({}),
+                    },
+                    report: None,
+                };
+                std::fs::remove_file(root.join(path)).unwrap();
+                let result = apply(&source, &mut acceptance, &call, &context);
+                assert!(!result.applied, "{}", result.value);
+                assert_eq!(
+                    index.current("tasks/work.md").unwrap().unwrap().metadata["status"],
+                    "reported"
+                );
+            }
+        }
     }
 }

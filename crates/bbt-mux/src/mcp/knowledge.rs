@@ -47,9 +47,9 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
     definition["properties"]["frontmatter"]["properties"] = json!({"type":type_schema});
     definition["properties"]["frontmatter"]["required"] = json!(["type"]);
     let write_help = if actor.role.class == Class::Oracle {
-        "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.md; the Index returns its numbered final path. Tasks are created open; only open brief/verify/allowed_paths edits are generic. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools. Updates retain type, ref and etag."
+        "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.md; the Index returns its numbered final path. Reports are append-only at reports/YYYY-MM-DD-slug.md; corrections create a new report with supersedes. Tasks are created open; only open brief/verify/allowed_paths edits are generic. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools. Updates retain type, ref and etag."
     } else {
-        "Create/update e2e, comment, research, note and artifact records as your seat. For your assigned task preserve every other field and the body, changing only report.summary, report.commit and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools. Updates retain type, ref and etag."
+        "Create/update e2e, comment, research, note and artifact records as your seat. Create append-only reports at reports/YYYY-MM-DD-slug.md for your assigned task; corrections create a new report with supersedes. For your assigned task preserve every other field and the body, changing only report.summary, report.commit, report.report and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools. Updates retain type, ref and etag."
     };
     let mut tools = vec![
         json!({"name":"knowledge_status","description":"Inspect this swarm's selected knowledge provider, root and revision, available providers, plugin activation/check state and failures. Read-only; trust, check, enable and selection use operator controls.",
@@ -255,7 +255,7 @@ pub(crate) fn fetch(source: &dyn DataSource, locator: String) -> d::Result<d::Re
 }
 
 const WORKER_TYPES: &[&str] = &[
-    "e2e", "comment", "research", "note", "artifact", "task", "bug", "epic",
+    "e2e", "comment", "research", "note", "artifact", "report", "task", "bug", "epic",
 ];
 
 pub(crate) enum WritePlan {
@@ -292,6 +292,12 @@ pub(crate) fn write_plan(
             "record type is outside the caller's write table",
         ));
     }
+    if kind == "report" && current.is_some() {
+        return Err(denied(
+            "report_append_only",
+            "reports are append-only; create a new report with supersedes",
+        ));
+    }
     if matches!(kind, "task" | "bug" | "epic") {
         if actor.role.class == Class::Worker {
             let old = current.ok_or_else(|| {
@@ -306,12 +312,15 @@ pub(crate) fn write_plan(
             {
                 return Err(denied(
                     "task_field_protected",
-                    "only report.summary, report.commit and verify_result may change; the task brief is protected",
+                    "only report.summary, report.commit, report.report and verify_result may change; the task brief is protected",
                 ));
             }
             let mut args = json!({"task_path":old.reference.path,"summary":request.frontmatter["report"]["summary"]});
             if let Some(commit) = request.frontmatter["report"].get("commit") {
                 args["commit"] = commit.clone();
+            }
+            if let Some(report) = request.frontmatter["report"].get("report") {
+                args["report"] = report.clone();
             }
             if let Some(verification) = request.frontmatter.get("verify_result") {
                 args["verify_result"] = verification.clone();
@@ -436,6 +445,7 @@ fn task_report_remainder(metadata: &Value) -> d::Result<Value> {
             .ok_or_else(|| denied("task_field_protected", "report must be an object"))?;
         report.remove("summary");
         report.remove("commit");
+        report.remove("report");
         if report.is_empty() {
             object.remove("report");
         }

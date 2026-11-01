@@ -372,6 +372,7 @@ fn every_contract_dto_round_trips_through_its_schema() {
             signed_record: signed.clone(),
             summary: "done".into(),
             commit: Some("abc".into()),
+            report: None,
             verify_result: Some(verification),
         },
         s,

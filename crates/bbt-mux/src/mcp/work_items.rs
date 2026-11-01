@@ -50,6 +50,9 @@ mod inventory_tests;
 pub(crate) trait TaskDocuments {
     fn import_root(&self) -> Checked<std::path::PathBuf>;
     fn locate(&self, locator: &str) -> Checked<Document>;
+    fn record(&self, locator: &str) -> Checked<Document> {
+        self.locate(locator)
+    }
     /// [`TaskDocuments::locate`] bounded by `deadline` (local sources need no bound).
     fn locate_before(&self, locator: &str, _deadline: Instant) -> Checked<Document> {
         self.locate(locator)
@@ -58,6 +61,9 @@ pub(crate) trait TaskDocuments {
     fn documents(&self, registry: &Registry, actor: &Actor, args: &List) -> Checked<Vec<Document>>;
 }
 impl TaskDocuments for Index {
+    fn record(&self, locator: &str) -> Checked<Document> {
+        ProviderTasks(&crate::knowledge::BboxySource::new(self), None).record(locator)
+    }
     fn import_root(&self) -> Checked<std::path::PathBuf> {
         Ok(self.knowledge_root().to_owned())
     }
@@ -71,6 +77,15 @@ impl TaskDocuments for Index {
 }
 pub(crate) struct ProviderTasks<'a>(pub &'a dyn DataSource, pub Option<Ulid>);
 impl TaskDocuments for ProviderTasks<'_> {
+    fn record(&self, locator: &str) -> Checked<Document> {
+        let reference = self
+            .0
+            .resolve(d::ResolveRequest {
+                locator: locator.into(),
+            })
+            .map_err(|e| e.to_string())?;
+        self.fetch_record(reference, None)
+    }
     fn import_root(&self) -> Checked<std::path::PathBuf> {
         self.0.import_root().map_err(|error| error.to_string())
     }
@@ -233,6 +248,9 @@ impl TaskDocuments for ProviderTasks<'_> {
 impl ProviderTasks<'_> {
     fn fetch(&self, reference: d::RecordRef, deadline: Option<Instant>) -> Checked<Document> {
         let doc = self.fetch_record(reference, deadline)?;
+        if !is_task(&doc) {
+            return Err("record is not a task".into());
+        }
         task_state(doc.metadata["status"].as_str().unwrap_or_default())?;
         Ok(doc)
     }
@@ -270,9 +288,6 @@ impl ProviderTasks<'_> {
             error: record.parse_error,
             links: Vec::new(),
         };
-        if !is_task(&doc) {
-            return Err("record is not a task".into());
-        }
         Ok(doc)
     }
 }
@@ -401,8 +416,8 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     let mut definitions = vec![
         (
             "task_report",
-            "Report your assigned task; records evidence and wakes its delegator. Reporting never accepts a task.",
-            json!({"task_path":path,"summary":text,"commit":{"type":"string","maxLength":128},"verify_result":verification}),
+            "Report your assigned task with a summary and optional report locator for the committed full report. Stores the link and wakes its delegator; acceptance checks that the report exists and names this task.",
+            json!({"task_path":path,"summary":text,"commit":{"type":"string","maxLength":128},"report":path,"verify_result":verification}),
             vec!["task_path", "summary"],
         ),
         (
@@ -429,7 +444,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
             ("task_import_context", "Read the exact selected bundled knowledge root for an authenticated import; Oracle-class only, no other root is exposed.", json!({}), vec![]),
             ("task_delegate", "Assign a scoped task and send its signed brief. Omit role to use the target’s current role; an explicit role must be that exact role or an authorized legacy executor/oracle/creativity override.", json!({"task_path":path,"seat_id":id,"role":{"type":"string","minLength":1,"maxLength":128,"description":"The target's exact current role, or an authorized legacy executor/oracle/creativity override."}}), vec!["task_path","seat_id"]),
             ("task_reassign", "Move responsibility to an existing seat, releasing the old assignee and waking the new one.", json!({"task_path":path,"seat_id":id}), vec!["task_path","seat_id"]),
-            ("task_accept", "Accept only a reported task with matching verify command, recorded exit zero and evidence for every declared criterion.", json!({"task_path":path}), vec!["task_path"]),
+            ("task_accept", "Accept only a reported task with matching verify command, recorded exit zero, evidence for every declared criterion and a valid matching report when linked.", json!({"task_path":path}), vec!["task_path"]),
             ("task_reject", "Reject a scoped task with a recorded reason and wake its assignee.", json!({"task_path":path,"reason":text}), vec!["task_path","reason"]),
             ("task_reconcile", "Record an evidenced historical disposition as done, without fresh acceptance or historical wakes.", json!({"task_path":path,"disposition":{"enum":["implemented","superseded","cancelled"]},"reason":text,"evidence":{"type":"array","minItems":1,"maxItems":128,"items":text}}), vec!["task_path","disposition","reason","evidence"]),
             ("task_import", "Atomically import pinned local source records and audited dispositions into the exact selected knowledge root; no historical wakes.", json!({"expected_root":path,"manifest_path":path,"audit_path":path,"source_dir":path,"bundle_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"owner_seat":id}), vec!["expected_root","manifest_path","audit_path","source_dir","bundle_sha256","owner_seat"]),
@@ -489,6 +504,7 @@ pub(crate) struct Report {
     task_path: String,
     summary: String,
     commit: Option<String>,
+    report: Option<String>,
     verify_result: Option<Verification>,
 }
 #[derive(Deserialize)]
@@ -841,10 +857,16 @@ pub(crate) fn prepare(
             return Ok(Prepared::Read(list_page(&docs, limit, TASK_PAGE_BYTES)?));
         }
         "task_report" => {
-            let args: Report = tools::parse(&call.args)?;
+            let mut args: Report = tools::parse(&call.args)?;
             bounded(&args.summary, 16384, "summary")?;
             if let Some(commit) = &args.commit {
                 single_line(commit, 128, "commit")?;
+            }
+            if let Some(report) = &mut args.report {
+                bounded(report, 4096, "report")?;
+                if !(report.starts_with("[[") && report.ends_with("]]")) {
+                    *report = format!("[[{}]]", report.trim());
+                }
             }
             if let Some(result) = &args.verify_result {
                 result.validate()?;
@@ -873,8 +895,10 @@ pub(crate) fn prepare(
         }
         "task_accept" => {
             let args: TaskPath = tools::parse(&call.args)?;
+            let document = task(&args.task_path)?;
+            linked_report(index, &document)?;
             Effect::Task {
-                document: task(&args.task_path)?,
+                document,
                 action: Box::new(Action::Accept),
             }
         }
@@ -1259,6 +1283,9 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
             }
             doc.metadata["status"] = json!("reported");
             doc.metadata["report"] = json!({"summary":report.summary,"commit":report.commit,"reported_by":actor.reference(),"op_id":call.op_id});
+            if let Some(link) = &report.report {
+                doc.metadata["report"]["report"] = json!(link);
+            }
             if let Some(result) = &report.verify_result {
                 doc.metadata["verify_result"] = json!(result);
             } else {
@@ -1267,7 +1294,7 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
                     .unwrap()
                     .remove("verify_result");
             }
-            doc.body.push_str(&format!("\n\n## Report from {}\n\n{}\n\n```json\n{}\n```\n",actor.reference(),report.summary,serde_json::to_string_pretty(&json!({"op_id":call.op_id,"commit":report.commit,"verify_result":report.verify_result})).unwrap()));
+            doc.body.push_str(&format!("\n\n## Report from {}\n\n{}\n\n```json\n{}\n```\n",actor.reference(),report.summary,serde_json::to_string_pretty(&json!({"op_id":call.op_id,"commit":report.commit,"report":report.report,"verify_result":report.verify_result})).unwrap()));
             notices.push((
                 delegator,
                 "report",
@@ -1387,6 +1414,23 @@ fn clear_report(metadata: &mut Value) {
     for key in ["report", "verify_result", "rejection"] {
         map.remove(key);
     }
+}
+/// Recheck the actual linked record at admission and immediately before publication.
+pub(crate) fn linked_report(index: &impl TaskDocuments, document: &Document) -> Checked<()> {
+    if let Some(link) = document.metadata["report"]
+        .get("report")
+        .filter(|v| !v.is_null())
+    {
+        let report = index
+            .record(link.as_str().ok_or("report locator must be a string")?)
+            .map_err(|e| format!("linked report unavailable: {e}"))?;
+        bbt_doc::reports::validate(&report.path, &report.metadata)?;
+        let target = index.locate(bbt_doc::reports::locator(&report.metadata["task"])?)?;
+        if target.id != document.id || target.path != document.path {
+            return Err("linked report names a different task".into());
+        }
+    }
+    Ok(())
 }
 fn acceptance(doc: &Document) -> Checked<()> {
     let result: Verification = serde_json::from_value(doc.metadata["verify_result"].clone())

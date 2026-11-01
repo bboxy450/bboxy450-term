@@ -145,6 +145,8 @@ help:
 	  'make test-role-identity          ROLE-first seat, pane and message identity; check-role-identity / parity-role-identity' \
 	  'make test-app-overlays           Native/ctl menus, dialog input and persistent swarm rename' \
 	  'make test-seat-actions           Captured seat menus, scoped task assignment and exact-child kill' \
+	  'make test-kb-reports             Native immutable reports and committed-tree provenance gates' \
+	  'make check-kb-reports            Strict all-target lint for report paths' \
 	  'make test-task-contract          Exact native task catalogue and plugin schema alignment' \
 	  'make test-task-pages             Byte-bounded task pages, oversized rows and GUI pagination' \
 	  'make check-task-pages            Strict mux/app all-target Clippy' \
@@ -1691,3 +1693,19 @@ check-seat-ingestion:
 .PHONY: format-seat-ingestion
 format-seat-ingestion:
 	@rustfmt --edition 2024 --config skip_children=true crates/bbt-supervisor/src/client.rs crates/bbt-supervisor/src/client/wire.rs crates/bbt-supervisor/src/client/tests.rs crates/bbt-supervisor/src/supervisor.rs crates/bbt-supervisor/src/transport.rs crates/bbt-mux/src/provider/fake.rs crates/bbt-mux/src/provider/shared.rs crates/bbt-mux/src/logic.rs crates/bbt-mux/src/logic/ingestion.rs crates/bbt-mux/src/logic/history.rs crates/bbt-mux/src/logic/ring_batch_tests.rs crates/bbt-mux/tests/logic.rs crates/bbt-mux/tests/common/capture_priority.rs crates/bboxy450-term/src/stall/load.rs crates/bboxy450-term/tests/formal_contracts/models.rs
+
+.PHONY: test-kb-reports check-kb-reports
+test-kb-reports:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-doc --test corpus --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' report_document_; \
+	cargo test --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' task_accept_requires_linked_report_; \
+	cargo test --locked -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' knowledge::effects::report_tests::publication_rechecks_assigned_task_and_linked_report -- --exact; \
+	cargo test --locked -p $(APP) --lib --target-dir '$(TARGET_DIR)' ctl::tests::task_verbs_parse_typed_evidence_and_require_their_own_flags -- --exact
+
+check-kb-reports:
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-plugin -p bboxy450-doc -p bboxy450-term-proto -p bboxy450-term-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: format-kb-reports
+format-kb-reports:
+	rustfmt --edition 2024 --config skip_children=true crates/bbt-plugin/src/task_system.rs crates/bbt-plugin/tests/contract_dtos.rs crates/bbt-doc/src/reports.rs crates/bbt-doc/tests/corpus/reports.rs crates/bboxy450-term/src/ctl/task.rs crates/bboxy450-term/tests/formal_contracts/report_models.rs crates/bbt-doc/tests/corpus.rs crates/bbt-mux/src/index.rs crates/bbt-mux/src/knowledge/effects.rs crates/bbt-mux/src/mcp/knowledge.rs crates/bbt-mux/src/mcp/work_items.rs crates/bbt-mux/tests/mcp.rs crates/bbt-proto/src/messaging.rs crates/bboxy450-term/src/ctl.rs crates/bboxy450-term/src/knowledge.rs crates/bboxy450-term/tests/formal_contracts/models.rs

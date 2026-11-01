@@ -186,10 +186,10 @@ sources = ["crates/bbt-ui/src/text_selection.rs", "crates/bbt-ui/src/lib.rs", "c
 
 [[crate]]
 name = "bboxy450-doc"
-status = "implementation-tests"
-models = []
-scope = "Document layout and source rendering use fixture and parity tests; no model of document interaction is claimed."
-sources = ["crates/bbt-doc/src/lib.rs"]
+status = "contract-model"
+models = ["ReportProvenance"]
+scope = "ReportProvenance bounds the host ownership, immutable publication and linked acceptance contract for report documents; actual syntax, Git history resolution and filesystem behavior remain implementation-tested. Document layout and source rendering use fixture and parity tests; no model of document interaction is claimed."
+sources = ["crates/bbt-mux/src/knowledge/effects.rs", "crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-doc/src/reports.rs", "crates/bbt-doc/src/lib.rs"]
 
 [[crate]]
 name = "bboxy450-book"
