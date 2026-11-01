@@ -39,6 +39,22 @@ class SubmoduleTests(unittest.TestCase):
                         harness.initialize(root)
                     update.assert_not_called()
 
+    def test_generated_evidence_is_retained_but_tracked_evidence_is_never_moved(self):
+        with tempfile.TemporaryDirectory() as own:
+            child, artifacts = Path(own) / 'child', Path(own) / 'artifacts'
+            evidence = child / 'verification/evidence/hash'
+            evidence.mkdir(parents=True)
+            (evidence / 'evidence.json').write_text('{"graph_equal": true}')
+            with patch.object(subprocess, 'check_output', return_value=b'tracked/evidence'):
+                with self.assertRaisesRegex(ValueError, 'refuse to move tracked'):
+                    harness.archive_generated_evidence(child, artifacts)
+            self.assertTrue(evidence.is_dir())
+            self.assertFalse(artifacts.exists())
+            with patch.object(subprocess, 'check_output', return_value=b''):
+                harness.archive_generated_evidence(child, artifacts)
+            self.assertEqual((artifacts / 'formal-evidence/hash/evidence.json').read_text(), '{"graph_equal": true}')
+            self.assertFalse((child / 'verification/evidence').exists())
+
     def test_missing_control_duplicate_or_wrong_verdict_refuses_import(self):
         with tempfile.TemporaryDirectory() as own:
             root = Path(own)

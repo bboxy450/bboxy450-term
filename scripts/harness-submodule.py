@@ -63,6 +63,18 @@ def check_resolution(root):
     print('harness: all seven toolkit dependencies resolve to in-tree paths', flush=True)
 
 
+def archive_generated_evidence(child, artifacts):
+    evidence = child / 'verification/evidence'
+    if not evidence.exists():
+        return
+    # The gate started with a clean checkout. These untracked exports belong to
+    # this test invocation, not to the pinned source; retain them outside it.
+    if evidence.is_symlink() or subprocess.check_output(['git', 'ls-files', '--', 'verification/evidence'], cwd=child).strip():
+        raise ValueError('harness: refuse to move tracked or linked formal evidence')
+    shutil.copytree(evidence, artifacts / 'formal-evidence', dirs_exist_ok=True)
+    shutil.rmtree(evidence)
+
+
 def standalone(root, artifacts):
     child = root / MEMBER
     # These are test-owned outputs already tracked by the upstream repository.
@@ -81,7 +93,8 @@ def standalone(root, artifacts):
             if path.is_file():
                 shutil.copyfile(path, artifacts / name)
             path.write_bytes(content)
-        # The child's parity receipt stays next to its models in its target.
+        archive_generated_evidence(child, artifacts)
+        # The child's parity receipt also stays next to its models in its target.
         for path in (child / ".bboxy/runs").glob('*'):
             if path.is_file() and path.name not in names:
                 tracked = subprocess.check_output(['git', 'ls-files', '--', str(path.relative_to(child))], cwd=child)
