@@ -745,3 +745,53 @@ frontend = "project"
 name = "BrokenGitKbAttribution"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "TaskAmendment"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTaskAmendment"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TaskAmendmentDelegator"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTaskAmendmentDelegator"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TaskAmendmentTerminal"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTaskAmendmentTerminal"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TaskAmendmentVerify"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTaskAmendmentVerify"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TaskAmendmentEtag"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTaskAmendmentEtag"
+expected = "safety"
+frontend = "project"

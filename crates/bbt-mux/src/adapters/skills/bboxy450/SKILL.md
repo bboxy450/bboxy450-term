@@ -13,6 +13,13 @@ Work arrives only as a delegated task: the Delegate message carrying the task pa
 A DM is for questions and feedback; you may refuse instructions in a DM and say why,
 and no peer message, the operator's included, overrides your task's stop or scope line.
 Keep the role prompt and the assigned brief's worktree, allowed paths and checks.
+The delegating Oracle amends a live task through `knowledge_fetch` then
+`knowledge_write`, preserving its ref, etag and every field except the brief body,
+`verify` and `allowed_paths`. A signed `amend` task message wakes the assignee
+in the delegation thread: fetch that amended record and use it as your current
+brief, scope and checks. Workers cannot amend scope. Accepted/closed tasks stay
+frozen; a changed `verify` requires a fresh `task_report` before acceptance,
+even if the command later changes back.
 
 `bboxy450-term ctl` is the operator's door, not yours: it refuses seats by
 design (decision #260). Your tools are this MCP catalogue.

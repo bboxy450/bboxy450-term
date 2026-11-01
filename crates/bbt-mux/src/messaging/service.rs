@@ -63,7 +63,7 @@ impl<'a> Attention<'a> {
             kind: envelope.kind,
             reply_to: envelope.reply_to,
             operator: envelope.seat == Ulid::nil(),
-            delegated: matches!(&envelope.body, Body::Task { event, .. } if event == "delegate"),
+            delegated: matches!(&envelope.body, Body::Task { event, .. } if matches!(event.as_str(), "delegate" | "amend")),
             mentions: &envelope.mentions,
         }
     }
@@ -77,7 +77,7 @@ impl<'a> Attention<'a> {
                 intent.sender,
                 bbt_proto::messaging::LogicalSender::Seat { .. }
             ),
-            delegated: matches!(&intent.body, Body::Task { event, .. } if event == "delegate"),
+            delegated: matches!(&intent.body, Body::Task { event, .. } if matches!(event.as_str(), "delegate" | "amend")),
             mentions: &intent.request.mentions,
         }
     }
@@ -98,7 +98,7 @@ fn task_event_name<'a>(request: &SendRequest, body: &'a Body) -> Result<&'a str>
         || request.text != *summary
         || !matches!(
             event.as_str(),
-            "delegate" | "release" | "accept" | "reject" | "report"
+            "delegate" | "amend" | "release" | "accept" | "reject" | "report"
         )
     {
         return Err(invalid("invalid task producer request"));
@@ -1239,11 +1239,23 @@ impl Messaging {
         }
         self.sync_seat(&record)?;
         self.sync_task(record.swarm, request.id, &body, now)?;
+        // Resolve a thread only for a new message. A duplicate keeps its signed
+        // original thread even if the task was delegated again in the meantime.
         if let Some(old) = self.swarm(record.swarm)?.ledger.existing(&request, from)? {
             if old.view().body != &body {
                 return Err(invalid("task message ID body conflict"));
             }
             return Ok(old);
+        }
+        if let Body::Task { task_id, event, .. } = &body
+            && event == "amend"
+        {
+            request.thread_id = Some(
+                self.swarm(record.swarm)?
+                    .ledger
+                    .task_thread(request.id, *task_id)?
+                    .unwrap_or(request.id),
+            );
         }
         let routes = self.swarm(record.swarm)?.tree.resolve(
             Actor::Seat {

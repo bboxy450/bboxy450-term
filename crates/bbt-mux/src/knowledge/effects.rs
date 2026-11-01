@@ -23,7 +23,7 @@ pub(crate) enum Prepared {
     },
     Task {
         plan: tasks::Plan,
-        report: Option<String>,
+        record: Option<String>,
     },
     Commit(d::CommitRequest),
 }
@@ -64,7 +64,7 @@ pub(crate) fn prepare(
     if tasks::mutation(&call.tool) {
         return Ok(Prepared::Task {
             plan: task_plan(source, registry, swarm, actor, call)?,
-            report: None,
+            record: None,
         });
     }
     match tool::prepare(call).map_err(rejected)? {
@@ -121,7 +121,7 @@ pub(crate) fn prepare(
                         }
                         return Ok(Prepared::Task {
                             plan,
-                            report: Some(current.expect("checked report reference").reference.id),
+                            record: Some(current.expect("checked report reference").reference.id),
                         });
                     }
                 }
@@ -152,6 +152,15 @@ pub(crate) fn prepare(
                     };
                     tasks::authorize(&document, registry, actor)
                         .map_err(|reason| d::CommandError::new("task_field_protected", reason))?;
+                    if let Some(old) = &current
+                        && let Some(plan) =
+                            tasks::amendment(document, old, call).map_err(rejected)?
+                    {
+                        return Ok(Prepared::Task {
+                            plan,
+                            record: Some(old.reference.id.clone()),
+                        });
+                    }
                 }
             } else {
                 let Actor::Operator { device_id, .. } = actor else {
@@ -307,7 +316,7 @@ pub(crate) fn apply(
                 serde_json::to_value(result)
                     .map_err(|e| d::CommandError::new("unknown", e.to_string()))
             }
-            Prepared::Task { plan, report } => {
+            Prepared::Task { plan, record } => {
                 let references = plan
                     .writes
                     .iter()
@@ -367,7 +376,7 @@ pub(crate) fn apply(
                         statuses.push((id, status.to_owned()));
                     }
                 }
-                if let Some(id) = report {
+                if let Some(id) = record {
                     let reference = source.resolve(d::ResolveRequest {
                         locator: id.clone(),
                     })?;
@@ -514,7 +523,7 @@ mod report_tests {
                         wakes: vec![],
                         data: json!({}),
                     },
-                    report: None,
+                    record: None,
                 };
                 std::fs::remove_file(root.join(path)).unwrap();
                 let result = apply(&source, &mut acceptance, &call, &context);

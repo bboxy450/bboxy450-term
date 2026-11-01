@@ -523,6 +523,56 @@ property = "The next offset equals bytes already delivered and stays at a UTF-8 
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "TaskAmendment"
+title = "Live task amendments: worker authority"
+models = ["TaskAmendment", "BrokenTaskAmendment"]
+sources = ["crates/bbt-mux/src/mcp/knowledge.rs", "crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-mux/src/knowledge/effects.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/messaging/ledger/suppression.rs", "crates/bboxy450-term/tests/formal_contracts/task_amend_model.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/src/messaging/service/suppression_tests.rs"]
+assumptions = "One task with eight lifecycle states, four caller classes (worker, exact delegator, same-swarm other Oracle, foreign Oracle), two amendments and two verify commands including A-B-A; host verification/report revisions start at zero. Final authorization/digest validation and publication are atomic in this projection; filesystem races after the last check, SQL, restart durability, cryptography, source bytes and real delivery/readiness use API witnesses. Weak fairness applies only to delivery to a healthy admitted receiver; no custody recovery, native readiness or wall-clock deadline is assumed. Other lifecycle operations retain implementation tests and their existing contracts; no whole-Rust refinement claim."
+property = "Only the exact delegating Oracle in the task swarm changes a nonterminal brief; lifecycle, assignee, report and verify_result are preserved. Accepted/closed briefs and stale-etag writes have no effects. Every verify change advances a protected revision, so acceptance needs a fresh report even after A-B-A. Signed amendment wakes join the root-bound delegation thread and bypass receiver inbox-only conversation policy. This independent broken control removes the worker authority guard."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "TaskAmendmentDelegator"
+title = "Live task amendments: exact delegator ownership"
+models = ["TaskAmendmentDelegator", "BrokenTaskAmendmentDelegator"]
+sources = ["crates/bbt-mux/src/mcp/knowledge.rs", "crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-mux/src/knowledge/effects.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/messaging/ledger/suppression.rs", "crates/bboxy450-term/tests/formal_contracts/task_amend_model.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/src/messaging/service/suppression_tests.rs"]
+assumptions = "One task with eight lifecycle states, four caller classes (worker, exact delegator, same-swarm other Oracle, foreign Oracle), two amendments and two verify commands including A-B-A; host verification/report revisions start at zero. Final authorization/digest validation and publication are atomic in this projection; filesystem races after the last check, SQL, restart durability, cryptography, source bytes and real delivery/readiness use API witnesses. Weak fairness applies only to delivery to a healthy admitted receiver; no custody recovery, native readiness or wall-clock deadline is assumed. Other lifecycle operations retain implementation tests and their existing contracts; no whole-Rust refinement claim."
+property = "Only the exact delegating Oracle in the task swarm changes a nonterminal brief; lifecycle, assignee, report and verify_result are preserved. Accepted/closed briefs and stale-etag writes have no effects. Every verify change advances a protected revision, so acceptance needs a fresh report even after A-B-A. Signed amendment wakes join the root-bound delegation thread and bypass receiver inbox-only conversation policy. This independent broken control removes the exact delegator ownership guard."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "TaskAmendmentTerminal"
+title = "Live task amendments: terminal record freeze"
+models = ["TaskAmendmentTerminal", "BrokenTaskAmendmentTerminal"]
+sources = ["crates/bbt-mux/src/mcp/knowledge.rs", "crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-mux/src/knowledge/effects.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/messaging/ledger/suppression.rs", "crates/bboxy450-term/tests/formal_contracts/task_amend_model.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/src/messaging/service/suppression_tests.rs"]
+assumptions = "One task with eight lifecycle states, four caller classes (worker, exact delegator, same-swarm other Oracle, foreign Oracle), two amendments and two verify commands including A-B-A; host verification/report revisions start at zero. Final authorization/digest validation and publication are atomic in this projection; filesystem races after the last check, SQL, restart durability, cryptography, source bytes and real delivery/readiness use API witnesses. Weak fairness applies only to delivery to a healthy admitted receiver; no custody recovery, native readiness or wall-clock deadline is assumed. Other lifecycle operations retain implementation tests and their existing contracts; no whole-Rust refinement claim."
+property = "Only the exact delegating Oracle in the task swarm changes a nonterminal brief; lifecycle, assignee, report and verify_result are preserved. Accepted/closed briefs and stale-etag writes have no effects. Every verify change advances a protected revision, so acceptance needs a fresh report even after A-B-A. Signed amendment wakes join the root-bound delegation thread and bypass receiver inbox-only conversation policy. This independent broken control removes the terminal record freeze guard."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "TaskAmendmentVerify"
+title = "Live task amendments: verification revision freshness"
+models = ["TaskAmendmentVerify", "BrokenTaskAmendmentVerify"]
+sources = ["crates/bbt-mux/src/mcp/knowledge.rs", "crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-mux/src/knowledge/effects.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/messaging/ledger/suppression.rs", "crates/bboxy450-term/tests/formal_contracts/task_amend_model.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/src/messaging/service/suppression_tests.rs"]
+assumptions = "One task with eight lifecycle states, four caller classes (worker, exact delegator, same-swarm other Oracle, foreign Oracle), two amendments and two verify commands including A-B-A; host verification/report revisions start at zero. Final authorization/digest validation and publication are atomic in this projection; filesystem races after the last check, SQL, restart durability, cryptography, source bytes and real delivery/readiness use API witnesses. Weak fairness applies only to delivery to a healthy admitted receiver; no custody recovery, native readiness or wall-clock deadline is assumed. Other lifecycle operations retain implementation tests and their existing contracts; no whole-Rust refinement claim."
+property = "Only the exact delegating Oracle in the task swarm changes a nonterminal brief; lifecycle, assignee, report and verify_result are preserved. Accepted/closed briefs and stale-etag writes have no effects. Every verify change advances a protected revision, so acceptance needs a fresh report even after A-B-A. Signed amendment wakes join the root-bound delegation thread and bypass receiver inbox-only conversation policy. This independent broken control removes the verification revision freshness guard."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "TaskAmendmentEtag"
+title = "Live task amendments: etag freshness"
+models = ["TaskAmendmentEtag", "BrokenTaskAmendmentEtag"]
+sources = ["crates/bbt-mux/src/mcp/knowledge.rs", "crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-mux/src/knowledge/effects.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/messaging/ledger/suppression.rs", "crates/bboxy450-term/tests/formal_contracts/task_amend_model.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/src/messaging/service/suppression_tests.rs"]
+assumptions = "One task with eight lifecycle states, four caller classes (worker, exact delegator, same-swarm other Oracle, foreign Oracle), two amendments and two verify commands including A-B-A; host verification/report revisions start at zero. Final authorization/digest validation and publication are atomic in this projection; filesystem races after the last check, SQL, restart durability, cryptography, source bytes and real delivery/readiness use API witnesses. Weak fairness applies only to delivery to a healthy admitted receiver; no custody recovery, native readiness or wall-clock deadline is assumed. Other lifecycle operations retain implementation tests and their existing contracts; no whole-Rust refinement claim."
+property = "Only the exact delegating Oracle in the task swarm changes a nonterminal brief; lifecycle, assignee, report and verify_result are preserved. Accepted/closed briefs and stale-etag writes have no effects. Every verify change advances a protected revision, so acceptance needs a fresh report even after A-B-A. Signed amendment wakes join the root-bound delegation thread and bypass receiver inbox-only conversation policy. This independent broken control removes the etag freshness guard."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "ReportProvenance"
 title = "Immutable assigned-task reports and checked acceptance links"
 models = ["ReportProvenance", "BrokenReportProvenance"]

@@ -6862,7 +6862,8 @@ fn mcp_knowledge266_oracle_task_creation_and_open_brief_edits_do_not_delegate_or
     ));
     let claimed = data(knowledge_fetch(&f, f.oracle.id, "tasks/new.md"));
     let mut bad = knowledge_update_args(&claimed);
-    bad["body"] = json!("cannot edit claimed brief");
+    bad["body"] = json!("brief amendment cannot change lifecycle");
+    bad["frontmatter"]["status"] = json!("accepted");
     knowledge_denied(
         f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", bad),
         "task_field_protected",
@@ -6871,6 +6872,250 @@ fn mcp_knowledge266_oracle_task_creation_and_open_brief_edits_do_not_delegate_or
         data(knowledge_fetch(&f, f.oracle.id, "tasks/new.md"))["frontmatter"]["status"],
         "claimed"
     );
+}
+
+// Live amendments use the same authenticated write, task and delivery boundaries.
+#[test]
+fn mcp_task_amend_nonterminal_states_preserve_fields_and_wake_in_the_signed_task_thread() {
+    for state in ["claimed", "running", "reported", "rejected", "blocked"] {
+        let mut f = Fixture::new();
+        let mut metadata = f.task_metadata();
+        metadata["status"] = json!("open");
+        metadata["assignee"] = json!("none");
+        f.task_file(metadata);
+        let delegated = data(f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "task_delegate",
+            json!({"task_path":f.task_path(),"seat_id":f.own.id}),
+        ));
+        let inbox = data(f.call(f.own.id, Ulid::new(), "message_list", json!({})));
+        let thread = inbox["page"]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|m| m["envelope"]["id"] == delegated["message_ids"][0])
+            .unwrap()["envelope"]["thread_id"]
+            .clone();
+        let mut metadata = f.task_document().metadata;
+        metadata["status"] = json!(state);
+        metadata["report"] = json!({"summary":"preserved report"});
+        metadata["verify_result"] = verification("true", 0, json!([]));
+        f.task_file(metadata);
+        data(f.mutate(f.own.id, Ulid::new(), "attention_set", json!({
+            "destination":format!("seats/{}/inbox",f.own.id),"class":"conversation","mode":"inbox"
+        })));
+        let original = data(knowledge_fetch(&f, f.oracle.id, "#1"));
+        let mut args = knowledge_update_args(&original);
+        args["body"] = json!("Amended brief: new test path approved.");
+        args["frontmatter"]["verify"] = json!("true && true");
+        args["frontmatter"]["allowed_paths"] = json!(["fixture/**", "extra/tests/**"]);
+        let op = Ulid::new();
+        let result = f.mutate(f.oracle.id, op, "knowledge_write", args.clone());
+        let amended = data(result.clone())["record"].clone();
+        assert_eq!(amended["body"], args["body"], "{state}");
+        assert_eq!(amended["frontmatter"]["verify_revision"], 1);
+        for field in [
+            "status",
+            "assignee",
+            "delegated_by",
+            "report",
+            "verify_result",
+            "custom",
+        ] {
+            assert_eq!(
+                amended["frontmatter"][field], original["frontmatter"][field],
+                "{state}: {field}"
+            );
+        }
+        assert_item_signature(&f.task_document(), f.oracle.id);
+        assert_eq!(
+            f.mutate(f.oracle.id, op, "knowledge_write", args.clone()),
+            result
+        );
+        f.restart();
+        assert_eq!(f.mutate(f.oracle.id, op, "knowledge_write", args), result);
+        let current = data(f.call(
+            f.own.id,
+            Ulid::new(),
+            "task_status",
+            json!({"task_path":f.task_path()}),
+        ));
+        assert_eq!(current["body"], amended["body"]);
+        assert_eq!(
+            current["metadata"]["allowed_paths"],
+            amended["frontmatter"]["allowed_paths"]
+        );
+        let inbox = data(f.call(f.own.id, Ulid::new(), "message_list", json!({})));
+        let notices: Vec<_> = inbox["page"]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["envelope"]["body"]["event"] == "amend")
+            .collect();
+        assert_eq!(notices.len(), 1, "{state}: {inbox}");
+        let notice = &notices[0]["envelope"];
+        assert_eq!(notice["thread_id"], thread);
+        assert_eq!(notice["seat"], json!(f.oracle.id));
+        assert_eq!(notice["body"]["task_id"], json!(f.task));
+        let summary = notice["body"]["summary"].as_str().unwrap();
+        for changed in [
+            "brief changed",
+            "brief body",
+            "verify:",
+            "allowed_paths:",
+            "extra/tests/**",
+            "fresh report",
+        ] {
+            assert!(summary.contains(changed), "{summary}");
+        }
+        let envelope: bbt_mux::messaging::wire::Envelope =
+            serde_json::from_value(notice.clone()).unwrap();
+        envelope.verify_signature().unwrap();
+        let receipts = data(f.call(
+            f.oracle.id,
+            Ulid::new(),
+            "message_receipts",
+            json!({"message":notice["id"]}),
+        ));
+        assert!(
+            receipts["page"]["items"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|r| r["wake"] == "now"),
+            "{receipts}"
+        );
+    }
+}
+
+#[test]
+fn mcp_task_amend_rejects_workers_nondelegators_terminal_and_stale_etag() {
+    let f = Fixture::new();
+    f.task_file(f.task_metadata());
+    let record = data(knowledge_fetch(&f, f.oracle.id, "#1"));
+    let mut args = knowledge_update_args(&record);
+    args["body"] = json!("amended");
+    for actor in [f.own.id, f.peer.id, f.outside.id] {
+        knowledge_denied(
+            f.mutate(actor, Ulid::new(), "knowledge_write", args.clone()),
+            "task_field_protected",
+        );
+    }
+    for seat in [f.peer.id, f.outside.id] {
+        f.registry()
+            .update(seat, |r| {
+                r.role.class = Class::Oracle;
+                r.role.name = "architect".into();
+                Ok(())
+            })
+            .unwrap();
+        knowledge_denied(
+            f.mutate(seat, Ulid::new(), "knowledge_write", args.clone()),
+            "task_field_protected",
+        );
+    }
+    for (field, value) in [
+        ("status", json!("accepted")),
+        ("assignee", json!(format!("seat:{}", f.peer.id))),
+        ("delegated_by", json!(format!("seat:{}", f.peer.id))),
+        ("report", json!({"summary":"forged"})),
+        ("verify_result", verification("true", 0, json!([]))),
+        ("verify_revision", json!(0)),
+        ("custom", json!("forged")),
+    ] {
+        let mut forged = args.clone();
+        forged["frontmatter"][field] = value;
+        knowledge_denied(
+            f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", forged),
+            "task_field_protected",
+        );
+    }
+    assert_eq!(
+        data(knowledge_fetch(&f, f.oracle.id, "#1"))["etag"],
+        record["etag"]
+    );
+    let amended =
+        data(f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", args))["record"].clone();
+    let mut stale = knowledge_update_args(&amended);
+    stale["etag"] = record["etag"].clone();
+    stale["body"] = json!("stale amendment");
+    knowledge_denied(
+        f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", stale),
+        "etag_mismatch",
+    );
+    assert_eq!(
+        data(knowledge_fetch(&f, f.oracle.id, "#1"))["etag"],
+        amended["etag"]
+    );
+    for status in ["accepted", "done", "closed"] {
+        let mut metadata = f.task_metadata();
+        metadata["status"] = json!(status);
+        f.task_file(metadata);
+        let closed = data(knowledge_fetch(&f, f.oracle.id, "#1"));
+        let mut args = knowledge_update_args(&closed);
+        args["body"] = json!("cannot reopen closed task");
+        knowledge_denied(
+            f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", args),
+            "task_field_protected",
+        );
+        assert_eq!(
+            data(knowledge_fetch(&f, f.oracle.id, "#1"))["etag"],
+            closed["etag"]
+        );
+    }
+    // Even the exact delegator cannot cross the assignee's swarm boundary.
+    let mut metadata = f.task_metadata();
+    metadata["delegated_by"] = json!(format!("seat:{}", f.outside.id));
+    f.task_file(metadata);
+    let foreign = data(knowledge_fetch(&f, f.oracle.id, "#1"));
+    let mut args = knowledge_update_args(&foreign);
+    args["body"] = json!("cross swarm");
+    knowledge_denied(
+        f.mutate(f.outside.id, Ulid::new(), "knowledge_write", args),
+        "task_field_protected",
+    );
+}
+
+#[test]
+fn mcp_task_amend_verify_requires_a_fresh_report_even_after_a_b_a() {
+    let f = Fixture::new();
+    f.task_file(f.task_metadata());
+    data(f.report(verification("true", 0, json!([]))));
+    for command in ["true && true", "true"] {
+        let old = data(knowledge_fetch(&f, f.oracle.id, "#1"));
+        let mut args = knowledge_update_args(&old);
+        args["frontmatter"]["verify"] = json!(command);
+        let amended =
+            data(f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", args))["record"].clone();
+        assert_eq!(
+            amended["frontmatter"]["report"],
+            old["frontmatter"]["report"]
+        );
+        assert_eq!(
+            amended["frontmatter"]["verify_result"],
+            old["frontmatter"]["verify_result"]
+        );
+        refused(
+            f.mutate(
+                f.oracle.id,
+                Ulid::new(),
+                "task_accept",
+                json!({"task_path":f.task_path()}),
+            ),
+            "fresh report",
+        );
+    }
+    assert_eq!(f.task_document().metadata["verify_revision"], 2);
+    data(f.report(verification("true", 0, json!([]))));
+    assert_eq!(f.task_document().metadata["report"]["verify_revision"], 2);
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_accept",
+        json!({"task_path":f.task_path()}),
+    ));
+    assert_eq!(f.task_document().metadata["status"], "accepted");
 }
 
 // keeps: decision #266

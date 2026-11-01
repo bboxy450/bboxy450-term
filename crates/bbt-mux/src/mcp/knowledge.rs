@@ -53,7 +53,7 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
     definition["properties"]["frontmatter"]["properties"] = json!({"type":type_schema});
     definition["properties"]["frontmatter"]["required"] = json!(["type"]);
     let write_help = if actor.role.class == Class::Oracle {
-        "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.md; the Index returns its numbered final path. Reports are append-only at reports/YYYY-MM-DD-slug.md; corrections create a new report with supersedes. Tasks are created open; only open brief/verify/allowed_paths edits are generic. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools. Updates retain type, ref and etag."
+        "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.md; the Index returns its numbered final path. Reports are append-only at reports/YYYY-MM-DD-slug.md; corrections create a new report with supersedes. Tasks are created open; their delegating seat may amend only brief/verify/allowed_paths while nonterminal. Amendments wake the assignee in the task thread; changed verify requires a fresh report. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools. Updates retain type, ref and etag."
     } else {
         "Create/update e2e, comment, research, note and artifact records as your seat. Create append-only reports at reports/YYYY-MM-DD-slug.md for your assigned task; corrections create a new report with supersedes. For your assigned task preserve every other field and the body, changing only report.summary, report.commit, report.report and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools. Updates retain type, ref and etag."
     };
@@ -376,10 +376,15 @@ pub(crate) fn write_plan(
                     .expect("validated frontmatter")
                     .remove(field);
             }
-            if old.frontmatter["status"] != "open" || before != after {
+            if !matches!(
+                old.frontmatter["status"].as_str(),
+                Some("open" | "claimed" | "running" | "reported" | "rejected" | "blocked")
+            ) || old.frontmatter["delegated_by"] != format!("seat:{}", actor.seat_id)
+                || before != after
+            {
                 return Err(denied(
                     "task_field_protected",
-                    "only an open task's brief, verify and allowed_paths may be edited; use task_* for lifecycle and assignment",
+                    "only the delegating Oracle seat may amend a nonterminal task's brief, verify and allowed_paths; use task_* for lifecycle and assignment",
                 ));
             }
         } else {

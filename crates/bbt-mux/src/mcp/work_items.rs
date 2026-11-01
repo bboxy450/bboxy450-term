@@ -1375,7 +1375,7 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
                 return Err("closed task cannot be reported".into());
             }
             doc.metadata["status"] = json!("reported");
-            doc.metadata["report"] = json!({"summary":report.summary,"commit":report.commit,"reported_by":actor.reference(),"op_id":call.op_id});
+            doc.metadata["report"] = json!({"summary":report.summary,"commit":report.commit,"reported_by":actor.reference(),"op_id":call.op_id,"verify_revision":verify_revision(&doc.metadata)?});
             if let Some(link) = &report.report {
                 doc.metadata["report"]["report"] = json!(link);
             }
@@ -1508,6 +1508,80 @@ fn clear_report(metadata: &mut Value) {
         map.remove(key);
     }
 }
+
+/// Host-owned revisions prevent accepting an old report after verify changes A → B → A.
+/// Legacy tasks/reports start at revision zero; malformed revisions fail closed.
+fn verify_revision(metadata: &Value) -> Checked<u64> {
+    metadata.get("verify_revision").map_or(Ok(0), |revision| {
+        revision
+            .as_u64()
+            .ok_or_else(|| "invalid verify revision".into())
+    })
+}
+
+/// The knowledge write table and task swarm checks run before this plan is built.
+/// Reuse signed task publication, digest fencing and durable task wakes.
+pub(crate) fn amendment(
+    mut document: Document,
+    previous: &crate::knowledge::data_source::Record,
+    call: &Call,
+) -> Checked<Option<Plan>> {
+    let mut changes = Vec::new();
+    if document.body != previous.body {
+        changes.push("brief body".to_owned());
+    }
+    if document.metadata["verify"] != previous.frontmatter["verify"] {
+        document.metadata["verify_revision"] = json!(
+            verify_revision(&previous.frontmatter)?
+                .checked_add(1)
+                .ok_or("verify revision exhausted")?
+        );
+        changes.push(format!(
+            "verify: {} → {} (fresh report required)",
+            tools::clip(&previous.frontmatter["verify"].to_string(), 512),
+            tools::clip(&document.metadata["verify"].to_string(), 512)
+        ));
+    }
+    if document.metadata["allowed_paths"] != previous.frontmatter["allowed_paths"] {
+        changes.push(format!(
+            "allowed_paths: {} → {}",
+            tools::clip(&previous.frontmatter["allowed_paths"].to_string(), 2048),
+            tools::clip(&document.metadata["allowed_paths"].to_string(), 2048)
+        ));
+    }
+    if changes.is_empty() {
+        return Ok(None);
+    }
+    let task_id: Ulid = document.id.parse().map_err(|_| "invalid task ID")?;
+    let path = format!(".bboxy/{}", document.path);
+    let wakes = reference(&document, "assignee")?
+        .map(|seat| {
+            let to = Recipient::Seat(seat);
+            Wake {
+                id: wake_id(call.op_id, to, "amend"),
+                to,
+                task_id,
+                event: "amend".into(),
+                path: path.clone(),
+                summary: format!(
+                    "Task {task_id} brief changed: {path}\nChanged: {}.\nFetch the amended task record; it is your current brief, scope and verification.",
+                    changes.join("; ")
+                ),
+            }
+        })
+        .into_iter()
+        .collect();
+    Ok(Some(Plan {
+        data: json!({}),
+        writes: vec![Update {
+            path: document.path,
+            metadata: document.metadata,
+            body: document.body,
+            expected: Some(document.digest),
+        }],
+        wakes,
+    }))
+}
 /// Recheck the actual linked record at admission and immediately before publication.
 pub(crate) fn linked_report(index: &impl TaskDocuments, document: &Document) -> Checked<()> {
     if let Some(link) = document.metadata["report"]
@@ -1526,6 +1600,9 @@ pub(crate) fn linked_report(index: &impl TaskDocuments, document: &Document) -> 
     Ok(())
 }
 fn acceptance(doc: &Document) -> Checked<()> {
+    if verify_revision(&doc.metadata["report"])? != verify_revision(&doc.metadata)? {
+        return Err("task verify changed after reporting; a fresh report is required".into());
+    }
     let result: Verification = serde_json::from_value(doc.metadata["verify_result"].clone())
         .map_err(|_| "acceptance requires a recorded verify_result")?;
     result.validate()?;

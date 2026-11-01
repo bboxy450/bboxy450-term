@@ -121,6 +121,7 @@ bboxy450-term --test formal_contracts shipped` rewrites them).
 | Render line plans | Font and mask identities remain current; repacked coordinates are resolved later |
 | Async renderer setup | Dropping the UI waiter retires a late worker result |
 | Import staging | Internal staging spends no record numbers; a fair bounded retry eventually publishes after ordinary contention |
+| Live task amendments | Exact delegator, nonterminal state and current etag permit brief changes; protected verify revisions force fresh reports after A → B → A |
 | Historical reconciliation | Operator-root authority archives retired records without replacing accepted verification |
 
 `contracts.toml` records source and implementation-test paths, assumptions and
