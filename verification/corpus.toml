@@ -679,9 +679,14 @@ frontend = "project"
 [[model]]
 name = "SeatCapabilityFile"
 expected = "pass"
+frontend = "project"
+
 [[model]]
 name = "BrokenSeatCapabilityEnvironment"
 expected = "safety"
+frontend = "project"
+
 [[model]]
 name = "BrokenSeatCapabilityCleanup"
 expected = "safety"
+frontend = "project"
