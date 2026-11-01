@@ -21,7 +21,7 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::Duration;
 
-use bbt_plugin_fixture::Knobs;
+use crate::Knobs;
 use bbt_plugin_sdk::{Contract, Ctx, Init, Manifest, Plugin, Refusal, Skill};
 use regex::Regex;
 use serde_json::{Map, Value, json};

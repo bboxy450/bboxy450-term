@@ -6,7 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! A genuine SDK-served hook which attempts ten seconds of work. The host
 //! must enforce the declared budget, record the overrun and keep UI responsive.
-use bbt_plugin_fixture::Knobs;
+use crate::Knobs;
 use bbt_plugin_sdk::{Contract, Ctx, HookEvent, HookReply, Init, Manifest, Plugin, Refusal};
 use serde_json::{Value, json};
 use std::{fs::OpenOptions, io::Write, sync::OnceLock, time::Duration};

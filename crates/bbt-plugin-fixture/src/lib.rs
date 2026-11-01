@@ -16,6 +16,11 @@
 // Test-support IO and a nested Cargo build; never UI code.
 #![allow(clippy::disallowed_methods)]
 
+mod raw;
+mod reference;
+mod root;
+mod sdk_hook;
+
 use std::fs;
 use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
@@ -433,4 +438,19 @@ pub fn wait_for(path: &Path, limit: Duration) -> bool {
         std::thread::sleep(Duration::from_millis(5));
     }
     path.exists()
+}
+
+/// Run a private fixture variant. The handlers live in this library so changing
+/// compiled knobs rebuilds only the small executable, not the SDK servers.
+// Copied from bboxy450-term, crates/bbt-plugin-fixture/src/main.rs (8f4d688c).
+// Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+pub fn run_fixture(knobs: Knobs) {
+    match knobs.kind {
+        Kind::Reference => reference::main(&knobs),
+        Kind::Root => root::main(knobs),
+        Kind::SdkHook => sdk_hook::main(knobs),
+        Kind::Inspect => raw::inspect(&knobs),
+        Kind::Demux => raw::demux(),
+        Kind::Callback => raw::callback(),
+    }
 }

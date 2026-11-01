@@ -20,7 +20,7 @@ use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use bbt_plugin::contracts::Contract;
-use bbt_plugin_fixture::Knobs;
+use crate::Knobs;
 use serde_json::{Map, Value, json};
 
 const CASES: &str = include_str!("../../bbt-plugin/tests/fixtures/data_source/conformance.json");

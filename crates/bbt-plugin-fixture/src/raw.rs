@@ -15,7 +15,7 @@ use std::os::unix::fs::PermissionsExt;
 use std::os::unix::net::UnixStream;
 use std::path::Path;
 
-use bbt_plugin_fixture::Knobs;
+use crate::Knobs;
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 

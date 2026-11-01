@@ -95,6 +95,7 @@ help:
 	  'make test-document-provenance   Collapsed task evidence, retained clicks and source preservation' \
 	  'make test-harness-startup        Launch identity, shell configuration and shared wake regressions' \
 	  'make test-plugin-transports      SDK transport fields, native wrap/launch fences and Settings proof' \
+	  'make test-plugin-fixtures       Private compiled-knob fixture library, carriers and variants' \
 	  'make test-plugin-skills          Canonical MCP instructions, descriptors and selected-provider fences' \
 	  'make check-plugin-skills         Strict plugin, mux and app all-target Clippy' \
 	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
@@ -1795,3 +1796,7 @@ check-kb-reports:
 .PHONY: format-kb-reports
 format-kb-reports:
 	rustfmt --edition 2024 --config skip_children=true crates/bbt-plugin/src/task_system.rs crates/bbt-plugin/tests/contract_dtos.rs crates/bbt-doc/src/reports.rs crates/bbt-doc/tests/corpus/reports.rs crates/bboxy450-term/src/ctl/task.rs crates/bboxy450-term/tests/formal_contracts/report_models.rs crates/bbt-doc/tests/corpus.rs crates/bbt-mux/src/index.rs crates/bbt-mux/src/knowledge/effects.rs crates/bbt-mux/src/mcp/knowledge.rs crates/bbt-mux/src/mcp/work_items.rs crates/bbt-mux/tests/mcp.rs crates/bbt-proto/src/messaging.rs crates/bboxy450-term/src/ctl.rs crates/bboxy450-term/src/knowledge.rs crates/bboxy450-term/tests/formal_contracts/models.rs
+.PHONY: test-plugin-fixtures
+test-plugin-fixtures:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term-plugin-fixture --all-targets --target-dir '$(TARGET_DIR)'
