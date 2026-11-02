@@ -1,3 +1,9 @@
+# Copyright 2026 Boxy (bboxy450) and contributors.
+# SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+# Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """# keeps: spec landing.md §§6,8,12; invariant main-red-bounded.
 
 Real Git repositories and per-run signing keys, never the production remote or
@@ -837,7 +843,8 @@ if args==['build','-p','bboxy450-term','--locked']:
         commands = [json.loads(line.removeprefix("ci-command: "))
                     for line in result.stdout.splitlines() if line.startswith("ci-command: ")]
         self.assertEqual([command[1] for command in commands if command[0] == "make"],
-                         ["test-capability-scan", "test-capability-control", "test-harness-native", "test-formal"])
+                         ["test-capability-scan", "test-capability-control", "test-harness-native",
+                          "test-log-converter", "test-log-converter-native", "test-formal"])
         self.assertIn("scripts/invariants.sh --parity", (self.repo.state / "shell.log").read_text())
         return result.stdout, calls
 
