@@ -64,7 +64,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   seat attention <seat>                  read policy, defaults and pending digest summary
   seat attention <seat> <direct|destination> <conversation|event> <wake|inbox|digest|default>
   seat spawn <claude|codex|zsh> [--place right|down|tab|space] [--role oracle|architect|creativity|executor|shell]
-             [--name NAME] [--cwd DIR] [--swarm ID]
+             [--name NAME] [--cwd DIR] [--swarm ID] [--resume SESSION-ID]   claude/codex only
   seat screen <seat> [--human]            the visible screen, cursor and title
   seat type <seat> <text>                 types the text as written
   seat key <seat> <key>...                enter esc tab backspace space up down left right home end
@@ -563,6 +563,9 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "{USAGE_PREFIX}--grant and --tier apply only to plugin trust"
         ));
     }
+    if flags.contains_key("resume") && !matches!(&command, Command::Spawn { .. }) {
+        return Err(format!("{USAGE_PREFIX}--resume applies only to seat spawn"));
+    }
     if flags.contains_key("to") && !matches!(&command, Command::UiCompose { .. }) {
         return Err(format!("{USAGE_PREFIX}--to applies only to ui compose"));
     }
@@ -623,6 +626,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "owner-seat",
             "grant",
             "tier",
+            "resume",
         ]
         .contains(&k.as_str())
     }) {
@@ -2689,6 +2693,7 @@ mod tests {
                 swarm: None,
                 new_tab: false,
                 role: None,
+                resume: None,
             }
         );
         assert_eq!(
@@ -3113,5 +3118,38 @@ mod placement_parser_tests {
             parse_full(&args).unwrap().command,
             Command::Spawn { new_tab: false, .. }
         ));
+    }
+
+    // keeps: spec ctl-cli §1 — `seat spawn --resume` names the native session to resume
+    #[test]
+    fn seat_spawn_resume_carries_the_native_id_and_refuses_zsh_and_bad_ids() {
+        let args = |s: &str| s.split(' ').map(str::to_owned).collect::<Vec<_>>();
+        let id = "019a1b2c-3d4e-7f60-8a9b-0c1d2e3f4a5b";
+        for harness in ["claude", "codex"] {
+            for line in [format!("seat spawn {harness} --resume {id} --role oracle"), format!("spawn {harness} --resume {id}")] {
+                let Command::Spawn { resume, .. } = parse_full(&args(&line)).unwrap().command else {
+                    panic!("{line}: not a backend spawn")
+                };
+                assert_eq!(resume.as_deref(), Some(id), "{line}");
+            }
+        }
+        assert!(matches!(parse_full(&args("seat spawn claude")).unwrap().command,
+            Command::Spawn { resume: None, .. }));
+        let long = "a".repeat(129);
+        for bad in [
+            vec!["seat", "spawn", "zsh", "--resume", id],
+            vec!["spawn", "zsh", "--resume", id],
+            vec!["seat", "spawn", "claude", "--resume", ""],
+            vec!["seat", "spawn", "claude", "--resume", "a b"],
+            vec!["seat", "spawn", "codex", "--resume", "a\u{7}b"],
+            vec!["seat", "spawn", "codex", "--resume", &long],
+            vec!["seat", "spawn", "claude", "--resume", id, "--place", "tab"],
+            vec!["seat", "ls", "--resume", id],
+        ] {
+            let words: Vec<String> = bad.iter().map(|s| s.to_string()).collect();
+            let error = parse_full(&words).unwrap_err();
+            assert!(error.starts_with(USAGE_PREFIX) && error.contains("--resume"), "{bad:?}: {error}");
+        }
+        assert!(parse_full(&args(&format!("seat spawn codex --resume {}", "a".repeat(128)))).is_ok());
     }
 }

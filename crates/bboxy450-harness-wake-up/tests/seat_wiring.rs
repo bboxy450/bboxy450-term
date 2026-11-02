@@ -239,6 +239,9 @@ fn resumed_generation_gets_a_fresh_overlay_and_keeps_the_native_resume_path() {
             ]
         );
         assert!(!args.iter().any(|arg| arg == "--strict-mcp-config"));
+        // A resumed seat never also claims a fresh native session id.
+        assert!(!args.iter().any(|arg| arg == "--session-id"), "{kind}: {args:?}");
+        assert_eq!(resumed.harness_session_id.as_deref(), Some(session));
         first.cleanup().unwrap();
         assert!(resumed.overlay.is_dir());
         resumed.cleanup().unwrap();
