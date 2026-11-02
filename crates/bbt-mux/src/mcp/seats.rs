@@ -58,8 +58,8 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     if actor.role.class == Class::Oracle {
         defs.extend([
             ("seat_input_text","Paste literal text only through the live positive-readiness guard. submit explicitly chooses Enter; rejected input is not queued.",json!({"text":text,"submit":{"type":"boolean"}}),vec!["text","submit"]),
-            ("seat_spawn","Launch an approved builtin in your swarm through the per-seat wiring kit. Defaults to a new tab; optional tab_id names that new tab. No arbitrary commands, environment, privilege class or resume.",json!({"swarm_id":id,"approved_profile":{"enum":APPROVED_PROFILES},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id}),vec!["swarm_id","approved_profile","cwd"]),
-            ("seat_split","Launch an approved builtin beside an exact live seat in your swarm, even while the UI is detached. side is right or bottom (equal halves). tab_id optionally asserts the anchor tab.",json!({"swarm_id":id,"approved_profile":{"enum":APPROVED_PROFILES},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id,"side":{"enum":["right","bottom"]}}),vec!["swarm_id","approved_profile","cwd","side"]),
+            ("seat_spawn","Launch an approved builtin in your swarm through the per-seat wiring kit. Defaults to a new tab; optional tab_id names that new tab. resume names a native Claude session or Codex thread to continue. No arbitrary commands, environment or privilege class.",json!({"swarm_id":id,"approved_profile":{"enum":APPROVED_PROFILES},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id,"resume":{"type":"string","minLength":1,"maxLength":128}}),vec!["swarm_id","approved_profile","cwd"]),
+            ("seat_split","Launch an approved builtin beside an exact live seat in your swarm, even while the UI is detached. side is right or bottom (equal halves). tab_id optionally asserts the anchor tab. resume names a native Claude session or Codex thread to continue.",json!({"swarm_id":id,"approved_profile":{"enum":APPROVED_PROFILES},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id,"side":{"enum":["right","bottom"]},"resume":{"type":"string","minLength":1,"maxLength":128}}),vec!["swarm_id","approved_profile","cwd","side"]),
             ("seat_focus","Focus a seat in your swarm, acknowledging a completed frame. Unavailable while the UI is detached.",json!({}),vec![]),
             ("layout_read","Read your swarm's saved tab membership and durable seat placements, with exact process generations for orchestration. Saved membership can lag the attached UI.",json!({"after":id,"limit":{"type":"integer","minimum":1,"maximum":128}}),vec![]),
             ("seat_close","Close a seat in your swarm through the window's close control (60 s undo), even when its process has exited. Not your own seat. Unavailable while the UI is detached.",json!({}),vec![]),
@@ -191,6 +191,7 @@ pub(crate) struct Spawn {
     pub role: Option<String>,
     pub name: Option<String>,
     pub tab_id: Option<Ulid>,
+    pub resume: Option<String>,
     seat_id: Option<Ulid>,
     expected_process_generation: Option<Revision>,
     pub side: Option<bbt_proto::seat_state::Side>,
@@ -368,6 +369,17 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Request, String> {
             }
             if a.tab_id == Some(Ulid::nil()) {
                 return Err("tab_id must be nonnil".into());
+            }
+            if let Some(id) = &a.resume {
+                if !matches!(a.approved_profile.as_str(), "claude" | "codex") {
+                    return Err("resume applies to claude and codex".into());
+                }
+                if id.is_empty()
+                    || id.len() > 128
+                    || id.chars().any(|c| c.is_whitespace() || c.is_control())
+                {
+                    return Err("resume: a session id of 1 to 128 characters, no spaces or control characters".into());
+                }
             }
             if call.tool == "seat_split" {
                 if a.target().is_none() || a.seat_id == Some(Ulid::nil()) || a.side.is_none() {

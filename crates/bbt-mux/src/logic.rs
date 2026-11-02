@@ -5015,6 +5015,7 @@ impl Worker {
                     let (role, role_prompt) =
                         self.configured_role(&harness.kind, args.role.as_deref())?;
                     record.role = role;
+                    record.harness_session_id = args.resume.clone();
                     self.launch(
                         record,
                         harness,
@@ -5029,7 +5030,7 @@ impl Worker {
                                 .map(PathBuf::from)
                                 .ok_or_else(|| invalid("missing user home"))?,
                             user_zdotdir: std::env::var_os("ZDOTDIR").map(PathBuf::from),
-                            resume: false,
+                            resume: args.resume.is_some(),
                         },
                     )
                 })();

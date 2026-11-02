@@ -5424,6 +5424,20 @@ fn seat_spawn_fixture() {
             "tool schema",
         );
     }
+    let mut invalid = args.clone();
+    invalid["approved_profile"] = json!("zsh");
+    invalid["resume"] = json!("3dac58c8-f6a4-4fe6-9863-8c72a5216d5e");
+    refused(
+        f.mutate(f.oracle.id, Ulid::new(), "seat_spawn", invalid),
+        "resume applies to claude and codex",
+    );
+    let mut invalid = args.clone();
+    invalid["approved_profile"] = json!("claude");
+    invalid["resume"] = json!("two words");
+    refused(
+        f.mutate(f.oracle.id, Ulid::new(), "seat_spawn", invalid),
+        "resume: a session id",
+    );
     let mut invalid = args;
     invalid["approved_profile"] = json!("arbitrary");
     refused(

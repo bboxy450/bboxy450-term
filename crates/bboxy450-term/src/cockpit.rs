@@ -505,7 +505,7 @@ fn fixture_hosts_default() -> bool {
 // Provider status and matching source context must also reach retained owners (#78).
 // Original-operation recovery must reach a healthy retained logic owner (#74).
 // Own-seat diagnostic paging must reach a healthy retained logic owner (#75).
-const MCP_CONTROL_VERSION: u16 = 13;
+const MCP_CONTROL_VERSION: u16 = 14;
 /// The one-line private startup reply. Never log its capability.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LogicReady {
