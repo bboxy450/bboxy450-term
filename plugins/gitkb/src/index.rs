@@ -925,7 +925,9 @@ impl Index {
 
 /// Snapshot format version; a different version is ignored and rebuilt.
 /// 3: committed rows and prepared records carry the record's `updated_at`.
-const SNAPSHOT_VERSION: u64 = 3;
+/// 4: prepared records follow the review fixes' status mapping and stable
+/// workspace timestamps.
+const SNAPSHOT_VERSION: u64 = 4;
 const MAX_SNAPSHOT: u64 = 256 << 20;
 
 /// One file per root and kind (`index`, `edges`, `workspace`) in the
