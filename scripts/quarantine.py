@@ -194,7 +194,42 @@ def junit_tests(path, packages):
     return rows
 
 
-def nextest_run(root, cargo_args, target, api):
+def ignored_integration_suite(root, build, filters, api):
+    """Only a real, nonempty integration target skipped solely for #[ignore]."""
+    if filters:
+        return False
+    # Accept only the lean planner's integration-target grammar. In particular,
+    # a positional filter before `--` must not look like an ignored-only suite.
+    parser = argparse.ArgumentParser(add_help=False, exit_on_error=False)
+    parser.add_argument("-p", "--package", action="append")
+    parser.add_argument("--test", action="append")
+    parser.add_argument("--target-dir")
+    parser.add_argument("--locked", action="store_true")
+    parser.add_argument("--no-fail-fast", action="store_true")
+    try:
+        selection, unknown = parser.parse_known_args(build)
+    except argparse.ArgumentError:
+        return False
+    if unknown or not selection.test:
+        return False
+    listing = api.command(["cargo", "nextest", "list",
+                           *[arg for arg in build if arg != "--no-fail-fast"],
+                           "--message-format", "json"], cwd=root, check=False)
+    if listing.returncode:
+        return False
+    try:
+        suites = json.loads(listing.stdout)["rust-suites"]
+        cases = [case for suite in suites.values() for case in suite["testcases"].values()]
+        ignored = bool(cases) and all(case.get("kind") == "test" and case.get("ignored") is True and
+            case.get("filter-match", {}).get("reason") == "ignored" for case in cases)
+    except (KeyError, TypeError, ValueError, AttributeError):
+        return False
+    if ignored:
+        print(f"quarantine: all {len(cases)} selected tests are ignored; compiled only", flush=True)
+    return ignored
+
+
+def nextest_run(root, cargo_args, target, api, *, allow_ignored_only=False):
     """Every test binary of the selection runs concurrently; doctests run after, by cargo."""
     split = cargo_args.index("--") if "--" in cargo_args else len(cargo_args)
     build, filters = cargo_args[:split], cargo_args[split + 1:]
@@ -203,6 +238,8 @@ def nextest_run(root, cargo_args, target, api):
     argv = ["cargo", "nextest", "run", *build, *(["--", *filters] if filters else [])]
     print("quarantine: " + " ".join(argv), flush=True)
     code = subprocess.run(argv, cwd=root).returncode
+    if code == 4 and allow_ignored_only and ignored_integration_suite(root, build, filters, api):
+        code = 0
     packages = api.metadata(root)
     tests = junit_tests(junit, packages) if junit.exists() else []
     output = ""
@@ -231,13 +268,17 @@ def test(arguments, api):
     root = api.repository()
     if arguments and arguments[0] == "--":
         arguments = arguments[1:]
+    split = arguments.index("--") if "--" in arguments else len(arguments)
+    allow_ignored_only = "--allow-ignored-only" in arguments[:split]
+    arguments = [arg for arg in arguments[:split] if arg != "--allow-ignored-only"] + arguments[split:]
     cargo_args = list(arguments)
     split = cargo_args.index("--") if "--" in cargo_args else len(cargo_args)
     if "--no-fail-fast" not in cargo_args[:split]:
         cargo_args.insert(split, "--no-fail-fast")
     coverage = TestCoverage(root, cargo_args, api)
     if nextest(api):
-        code, coverage.tests, output = nextest_run(root, cargo_args, coverage.target, api)
+        code, coverage.tests, output = nextest_run(
+            root, cargo_args, coverage.target, api, allow_ignored_only=allow_ignored_only)
         if code == 0:
             coverage.passed()
             return 0

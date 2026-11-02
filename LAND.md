@@ -16,7 +16,10 @@ It runs `scripts/land-fast.sh` (`make push` is the same command):
    touched crate, nextest over its lib and bin tests (when its source changed) plus each
    changed integration-test file; `cargo check` of the dependents. A test-only change runs
    only that test. `.bboxy/` changes add the doc corpus test; model or `verification/`
-   changes add `make test-formal`. `LAND_MODE=wide make land` instead lints and tests the
+   changes add `make test-formal`. A nonempty integration target skipped entirely by
+   `#[ignore]` is metadata-checked and reported as compiled only; its native Make check
+   remains explicit. Empty filters and build/test failures still fail the gate.
+   `LAND_MODE=wide make land` instead lints and tests the
    whole affected set, doctests included.
 4. Push. If `main` moved, rebase, recheck the affected crates and push again (up to 5 times).
 
@@ -52,7 +55,10 @@ tests the affected crates in parallel. A red `main` is fixed forward by whoever 
    helper tools examples, not binaries.
 4. **Links in committed `.bboxy` records must resolve.** Never link to an untracked local
    record.
-5. **Keep at least 10 GiB free** before landing. Prune your own build dirs only.
+5. **Keep build headroom and bounded fixture space.** Recovery reserves 128 MiB plus
+   1 MiB per seat (132 MiB for the default four-seat run), checks retained file bytes
+   against that budget, and reports usage. It does not require a blanket 10 GiB free.
+   Prune your own build dirs only.
 6. **Every commit compiles on its own.** Run `cargo check --workspace --all-targets` per
    commit when you rebase several.
 7. If your default `rustc` is older than the workspace `rust-version`, export

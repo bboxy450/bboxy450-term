@@ -81,6 +81,8 @@ help:
 	  'make test-error-journal-control  Remove bootstrap isolation; require failure and restored pass' \
 	  'make build-recovery-test         Retain the exact-HEAD recovery test executable' \
 	  'make test-recovery-built         Run the retained recovery test after source/hash checks' \
+	  'make test-recovery-disk          Bounded disk usage, sparse growth control and private 4/50-seat recovery' \
+	  'make test-lean-ignored           Verified ignored-only suites; empty filters and failures remain errors' \
 	  'make test-gui-events             Durable GUI restart and event socket regressions' \
 	  'make test-chat-backlog           Exact direct subjects and retained no-effect wake receipt bounds' \
 	  'make test-scene-template         Live/fallback scene paint, pane and scoped-row equivalence' \
@@ -1506,7 +1508,19 @@ test-harmony-host-gitkb: build-gitkb-plugin
 	BBOXY_GITKB_ADAPTER='$(abspath $(GITKB_PLUGIN))' BBOXY_GITKB_BIN='$(GITKB_BIN)' \
 	cargo test --locked -p bboxy450-term-mux --test harmony_host --target-dir '$(TARGET_DIR)' real_gitkb_host_lifecycle -- --ignored --exact --nocapture
 
-.PHONY: build-recovery-test test-recovery-built
+.PHONY: build-recovery-test test-recovery-built test-recovery-disk test-lean-ignored
+test-lean-ignored:
+	@python3 -I scripts/test-landing.py IgnoredIntegrationTests QuarantineTests
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))' BBOXY_TEST_RUNNER=nextest sh scripts/quarantine-test.sh --allow-ignored-only --locked -p $(APP) --test swarm_workdir; \
+	if BBOXY_TEST_RUNNER=nextest sh scripts/quarantine-test.sh --allow-ignored-only --locked -p $(APP) --test swarm_workdir --target-dir '$(TARGET_DIR)' -E 'test(lean_missing_test_control)'; then exit 1; else code=$$?; test "$$code" -eq 4; fi; \
+	if BBOXY_TEST_RUNNER=nextest sh scripts/quarantine-test.sh --allow-ignored-only --locked -p $(APP) --test lean_missing_target_control --target-dir '$(TARGET_DIR)'; then exit 1; fi
+
+test-recovery-disk:
+	@set -eu; . ./scripts/cache-env.sh; \
+	R5G_SEATS=4 cargo nextest run --locked -p bboxy450-term-mux --test recovery --target-dir '$(TARGET_DIR)' --no-capture; \
+	R5G_SEATS=50 cargo nextest run --locked -p bboxy450-term-mux --test recovery --target-dir '$(TARGET_DIR)' -E 'test(checkpoint_bounded_recovery)' --no-capture
+
 build-recovery-test:
 	@set -eu; . ./scripts/cache-env.sh; \
 	test -z "$$(git status --porcelain)"; recovery_source=$$(git rev-parse HEAD); \

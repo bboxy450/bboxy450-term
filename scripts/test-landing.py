@@ -25,7 +25,7 @@ import shlex
 import sys
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from concurrent.futures import ThreadPoolExecutor
 
 sys.dont_write_bytecode = True
@@ -1770,6 +1770,77 @@ class LandTests(unittest.TestCase):
     def test_disjoint_pages_reuse_the_green(self):
         calls,plans=self._page_move(False)
         self.assertEqual(len(calls),1);self.assertEqual(plans,[])
+
+
+class IgnoredIntegrationTests(unittest.TestCase):
+    def invoke(self, cases, *, extra=(), prefix=(), allow=True, run_code=4, listing_code=0, malformed=False):
+        spec = importlib.util.spec_from_file_location("ignored_quarantine", SOURCE.with_name("quarantine.py"))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        api = Mock()
+        api.metadata.return_value = {}
+        payload = {"rust-suites": {"fixture::native": {"testcases": cases}}}
+        api.command.return_value = subprocess.CompletedProcess(
+            [], listing_code, "{" if malformed else json.dumps(payload), "")
+        with tempfile.TemporaryDirectory(prefix="ignored-integration-") as directory:
+            api.repository.return_value = Path(directory)
+            arguments = ["--locked", "-p", "fixture", "--test", "native", *extra]
+            if allow:
+                arguments.insert(0, "--allow-ignored-only")
+            arguments = [*prefix, *arguments]
+            with patch.object(module, "nextest", return_value=True), \
+                    patch.object(module.subprocess, "run", return_value=subprocess.CompletedProcess([], run_code)) as run, \
+                    patch.dict(os.environ, {"BBOXY_PRESUBMIT_COVERAGE": "", "BBOXY_PRESUBMIT_ATTEMPT": ""}), \
+                    contextlib.redirect_stdout(io.StringIO()) as output:
+                code = module.test(arguments, api)
+        return code, api.command, run.call_args[0][0], output.getvalue()
+
+    @staticmethod
+    def ignored():
+        return {"native_case": {"kind": "test", "ignored": True,
+                "filter-match": {"status": "mismatch", "reason": "ignored"}}}
+
+    def test_explicit_lean_opt_in_accepts_verified_ignored_target_without_forwarding_flag(self):
+        code, listing, argv, output = self.invoke(self.ignored())
+        self.assertEqual(code, 0)
+        self.assertNotIn("--allow-ignored-only", argv)
+        self.assertNotIn("--no-fail-fast", listing.call_args[0][0])
+        self.assertIn("all 1 selected tests are ignored; compiled only", output)
+
+    def test_normal_runner_keeps_no_tests_failure(self):
+        code, listing, _, _ = self.invoke(self.ignored(), allow=False)
+        self.assertEqual(code, 4)
+        listing.assert_not_called()
+
+    def test_target_override_can_precede_the_lean_opt_in(self):
+        code, _, argv, _ = self.invoke(self.ignored(), prefix=("--target-dir", "private-target"))
+        self.assertEqual(code, 0)
+        self.assertNotIn("--allow-ignored-only", argv)
+
+    def test_explicit_filters_cannot_be_mistaken_for_ignored_tests(self):
+        for extra in [("--", "missing_case"), ("missing_case",), ("-E", "test(missing_case)")]:
+            with self.subTest(extra=extra):
+                code, listing, _, _ = self.invoke(self.ignored(), extra=extra)
+                self.assertEqual(code, 4)
+                listing.assert_not_called()
+
+    def test_empty_or_filtered_metadata_keeps_no_tests_failure(self):
+        for cases in [{}, {"case": {"kind": "test", "ignored": False}},
+                      {"case": {"kind": "test", "ignored": True, "filter-match": {"reason": "expression"}}},
+                      {"case": {"kind": "bench", "ignored": True, "filter-match": {"reason": "ignored"}}}]:
+            with self.subTest(cases=cases):
+                self.assertEqual(self.invoke(cases)[0], 4)
+
+    def test_missing_or_malformed_listing_fails_closed(self):
+        self.assertEqual(self.invoke(self.ignored(), listing_code=101)[0], 4)
+        self.assertEqual(self.invoke(self.ignored(), malformed=True)[0], 4)
+
+    def test_build_and_test_failures_are_never_accepted_as_ignored(self):
+        for run_code in [100, 101]:
+            with self.subTest(run_code=run_code):
+                code, listing, _, _ = self.invoke(self.ignored(), run_code=run_code)
+                self.assertEqual(code, run_code)
+                listing.assert_not_called()
 
 
 class QuarantineTests(unittest.TestCase):

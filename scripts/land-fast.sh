@@ -49,7 +49,7 @@ lean_gate() {
                 case " $selection " in
                     *" --bins "*) run cargo build --locked -q -p "$name" --bins || exit 1 ;;
                 esac
-                run sh scripts/quarantine-test.sh --locked -p "$name" $selection || exit 1 ;;
+                run sh scripts/quarantine-test.sh --allow-ignored-only --locked -p "$name" $selection || exit 1 ;;
             check) run cargo check --locked -q $(printf -- '-p %s ' $name $selection) || exit 1 ;;
         esac
     done || return 1
