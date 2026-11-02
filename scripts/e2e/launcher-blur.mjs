@@ -29,7 +29,7 @@ let executable;
 for (const name of candidates) { try { await fs.access(name); executable = name; break; } catch {} }
 if (!executable) throw Error('Chrome is required for the independent approved blur reference');
 const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'l1-chrome-'));
-const browser = spawn(executable, ['--headless=new', '--remote-debugging-port=0',
+const browser = spawn(executable, ['--headless=new', '--use-mock-keychain', '--password-store=basic', '--remote-debugging-port=0',
   `--user-data-dir=${profile}`, '--no-first-run', '--no-default-browser-check',
   '--disable-extensions', '--disable-background-networking', '--disable-sync',
   '--password-store=basic', '--use-mock-keychain', '--hide-scrollbars',

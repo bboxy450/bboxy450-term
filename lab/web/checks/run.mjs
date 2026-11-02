@@ -24,7 +24,7 @@ const bin = (process.env.CHROME ? [process.env.CHROME] : ['/Applications/Google 
 if (!bin) { console.error('lab-check: no Chrome found (set CHROME)'); server.close(); process.exit(2); }
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const prof = mkdtempSync(join(tmpdir(), 'lab-check-'));
-const chrome = spawn(bin, ['--headless=new', '--disable-gpu', '--hide-scrollbars', '--remote-debugging-port=0', '--user-data-dir=' + prof, '--window-size=1280,900', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
+const chrome = spawn(bin, ['--headless=new', '--use-mock-keychain', '--password-store=basic', '--disable-gpu', '--hide-scrollbars', '--remote-debugging-port=0', '--user-data-dir=' + prof, '--window-size=1280,900', 'about:blank'], { stdio: ['ignore', 'ignore', 'pipe'] });
 const wsUrl = await new Promise((ok, bad) => { let s = ''; chrome.stderr.on('data', d => { s += d; const m = s.match(/DevTools listening on (ws:\S+)/); if (m) ok(m[1]); }); setTimeout(() => bad(new Error('Chrome did not start')), 15000); });
 const done = async code => { const gone = new Promise(r => chrome.once('exit', r)); try { chrome.kill(); } catch {} await Promise.race([gone, sleep(3000)]); server.close();
   try { rmSync(prof, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); } catch {} process.exit(code); };

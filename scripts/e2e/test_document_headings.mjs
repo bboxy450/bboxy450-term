@@ -21,7 +21,7 @@ let binary;
 for(const candidate of candidates){try{await fs.access(candidate);binary=candidate;break;}catch{}}
 assert(binary,'private headless Chrome is required');
 const profile=await fs.mkdtemp(path.join(os.tmpdir(),'lumen-document-heading-'));
-const browser=spawn(binary,['--headless=new','--disable-gpu','--no-first-run','--no-default-browser-check','--disable-extensions',`--user-data-dir=${profile}`,'--remote-debugging-port=0','about:blank'],{stdio:['ignore','ignore','pipe']});
+const browser=spawn(binary,['--headless=new','--use-mock-keychain','--password-store=basic','--disable-gpu','--no-first-run','--no-default-browser-check','--disable-extensions',`--user-data-dir=${profile}`,'--remote-debugging-port=0','about:blank'],{stdio:['ignore','ignore','pipe']});
 let stderr='',socket;
 browser.stderr.on('data',data=>{stderr=(stderr+data).slice(-8000);});
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
