@@ -937,6 +937,7 @@ fn mcp_seat_controls_enforce_catalogue_scope_generation_and_strict_arguments() {
         "seat_spawn",
         "seat_split",
         "seat_focus",
+        "seat_close",
         "layout_read",
         "ctl",
         "seat_mute",
@@ -2470,7 +2471,7 @@ fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_r
         .block_on(f.client().control_catalogue(oracle, 1))
         .unwrap();
     assert_eq!(worker["tools"].as_array().unwrap().len(), 28);
-    assert_eq!(admin["tools"].as_array().unwrap().len(), 48);
+    assert_eq!(admin["tools"].as_array().unwrap().len(), 49);
     for catalogue in [&worker, &admin] {
         let status = catalogue["tools"]
             .as_array()
@@ -4809,10 +4810,28 @@ fn mcp_oracle_controls_remain_seat_bound_through_the_ctl_alias() {
             json!({"seat_id":f.peer.id,"expected_process_generation":"2"}),
             "stale target",
         ),
+        (f.own.id, "seat_close", f.target(f.peer.id), "oracle-class authority"),
+        (
+            f.oracle.id,
+            "ctl",
+            json!({"command":"seat_close","arguments":f.target(f.outside.id)}),
+            "outside caller swarm",
+        ),
+        (
+            f.oracle.id,
+            "seat_close",
+            f.target(f.oracle.id),
+            "cannot close itself",
+        ),
     ] {
         refused(f.mutate(caller, Ulid::new(), tool, args), reason);
     }
     let no_window = f.mutate(f.oracle.id, Ulid::new(), "seat_focus", f.target(f.peer.id));
+    assert_eq!(
+        no_window["structuredContent"]["error"]["code"],
+        "unavailable"
+    );
+    let no_window = f.mutate(f.oracle.id, Ulid::new(), "seat_close", f.target(f.peer.id));
     assert_eq!(
         no_window["structuredContent"]["error"]["code"],
         "unavailable"

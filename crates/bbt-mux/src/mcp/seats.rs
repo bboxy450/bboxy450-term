@@ -31,6 +31,7 @@ pub(crate) fn mutation(name: &str) -> bool {
             | "seat_spawn"
             | "seat_split"
             | "seat_focus"
+            | "seat_close"
             | "seat_mute"
             | "seat_unmute"
             | "seat_interrupt"
@@ -61,6 +62,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
             ("seat_split","Launch an approved builtin beside an exact live seat in your swarm, even while the UI is detached. side is right or bottom (equal halves). tab_id optionally asserts the anchor tab.",json!({"swarm_id":id,"approved_profile":{"enum":APPROVED_PROFILES},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id,"side":{"enum":["right","bottom"]}}),vec!["swarm_id","approved_profile","cwd","side"]),
             ("seat_focus","Focus a seat in your swarm, acknowledging a completed frame. Unavailable while the UI is detached.",json!({}),vec![]),
             ("layout_read","Read your swarm's saved tab membership and durable seat placements, with exact process generations for orchestration. Saved membership can lag the attached UI.",json!({"after":id,"limit":{"type":"integer","minimum":1,"maximum":128}}),vec![]),
+            ("seat_close","Close a seat in your swarm through the window's close control (60 s undo), even when its process has exited. Not your own seat. Unavailable while the UI is detached.",json!({}),vec![]),
             ("seat_mute","Set current target mute policy once under the expected policy epoch and process generation.",json!({"expected_policy_epoch":revision}),vec!["expected_policy_epoch"]),
             ("seat_unmute","Clear mute under the current policy epoch; existing eligible held traffic resumes without replaying unknown attempts.",json!({"expected_policy_epoch":revision}),vec!["expected_policy_epoch"]),
             ("seat_interrupt","Send text through a verified native Now/steer endpoint. Unavailable harnesses are named; this never sends a PTY control key.",json!({"text":text}),vec!["text"]),
@@ -93,6 +95,7 @@ const CTL_COMMANDS: &[&str] = &[
     "seat_spawn",
     "seat_split",
     "seat_focus",
+    "seat_close",
     "seat_input_text",
     "seat_interrupt",
     "seat_mute",
@@ -232,6 +235,9 @@ pub(crate) enum Request {
     Focus {
         target: Target,
     },
+    Close {
+        target: Target,
+    },
     Screen {
         target: Target,
         cursor: Option<String>,
@@ -262,6 +268,7 @@ impl Request {
     pub fn target(&self) -> Option<Target> {
         match self {
             Self::Focus { target }
+            | Self::Close { target }
             | Self::Screen { target, .. }
             | Self::History { target, .. }
             | Self::Input { target, .. }
@@ -329,6 +336,12 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Request, String> {
         "seat_focus" => {
             let a: Focus = tools::parse(&call.args)?;
             Request::Focus {
+                target: Target::new(a.seat_id, a.expected_process_generation)?,
+            }
+        }
+        "seat_close" => {
+            let a: Focus = tools::parse(&call.args)?;
+            Request::Close {
                 target: Target::new(a.seat_id, a.expected_process_generation)?,
             }
         }
@@ -439,6 +452,9 @@ pub(crate) fn authorize(
         }
         if actor.role.class != Class::Oracle && (!request.is_read() || record.id != actor.seat_id) {
             return Err("workers read only their own seat".into());
+        }
+        if matches!(request, Request::Close { .. }) && record.id == actor.seat_id {
+            return Err("a seat cannot close itself".into());
         }
         if record.muted && matches!(request, Request::Input { .. } | Request::Interrupt { .. }) {
             return Err("muted target receives no MCP input or interrupt".into());

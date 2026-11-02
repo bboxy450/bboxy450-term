@@ -5113,7 +5113,7 @@ impl Worker {
             call.validate()?;
             let journal = self.control_journal(id)?;
             let target = match self.prepare_seat_control(&actor, &caller, &call) {
-                Ok(Request::Focus { target }) => target,
+                Ok(Request::Focus { target } | Request::Close { target }) => target,
                 other => {
                     let reason = other
                         .err()
@@ -5154,6 +5154,10 @@ impl Worker {
                 let check_actor = actor.clone();
                 let checked = tokio::task::spawn_blocking(move || seats::revalidate_focus(&run_dir,&check_actor,target,&harness)).await;
                 let result = match checked {
+                    Ok(Ok(())) if call.tool == "seat_close" => match captures.close(input_id,bbt_proto::SeatId::from_u128(target.seat.0),false).await {
+                        Ok(layout) => crate::mcp::success(call.op_id,serde_json::json!({"status":"applied","seat_id":target.seat,"process_generation":target.generation.to_string(),"layout":layout})),
+                        Err(reason) => crate::mcp::error(call.op_id,"unavailable",&reason),
+                    },
                     Ok(Ok(())) => match captures.focus(input_id,bbt_proto::SeatId::from_u128(target.seat.0)).await {
                         Ok(frame) => crate::mcp::success(call.op_id,serde_json::json!({"status":"applied","seat_id":target.seat,"process_generation":target.generation.to_string(),"frame":frame})),
                         Err(reason) => crate::mcp::error(call.op_id,"unavailable",&reason),
@@ -9994,7 +9998,7 @@ impl Worker {
                             && call.tool != "artifact_claim"
                         {
                             self.start_seat_effect(id, generation, call, reply);
-                        } else if call.tool == "seat_focus" {
+                        } else if matches!(call.tool.as_str(), "seat_focus" | "seat_close") {
                             self.start_control_focus(id, generation, call, reply);
                         } else if call.tool == "seat_interrupt" {
                             self.start_control_interrupt(id, generation, call, reply);
