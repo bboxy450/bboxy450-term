@@ -1,6 +1,7 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/bboxy450-usage",
   "crates/bboxy450-term-desktop-core",
   "crates/bboxy450-term-desktop-macos",
   "crates/bboxy450-term-desktop",

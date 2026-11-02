@@ -16,6 +16,7 @@ pub mod layout;
 pub mod model;
 pub mod tokens;
 pub mod transport;
+pub mod usage;
 
 pub use model::*;
 pub use tokens::{Density, STYLE, TOKENS, Theme};

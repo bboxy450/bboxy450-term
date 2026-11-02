@@ -38,6 +38,76 @@ fn layout(bar: TitleBar, width: f32) -> c::Layout {
         .layout(Rect::new(3., 7., width, 0.), context(), &Metrics)
         .unwrap()
 }
+
+#[test]
+fn usage_strip_renders_snapshot_hides_absent_accounts_and_retains_error_reason() {
+    use bbt_ui_model::usage::{UsageMetric, UsageStrip};
+    let metric = |label: &str, percent| UsageMetric {
+        label: label.into(),
+        percent,
+        stale: false,
+        reason: None,
+    };
+    let mut strip = UsageStrip {
+        machine: vec![
+            metric("CPU", Some(42)),
+            metric("MEM", Some(80)),
+            metric("DISK", Some(95)),
+        ],
+        providers: vec![
+            metric("claude", Some(58)),
+            UsageMetric {
+                label: "codex".into(),
+                percent: None,
+                stale: false,
+                reason: Some("Run `codex login`".into()),
+            },
+            UsageMetric {
+                stale: true,
+                ..metric("grok", Some(9))
+            },
+        ],
+    };
+    assert!(
+        strip
+            .accessible_label()
+            .contains("codex —: Run `codex login`")
+    );
+    let solve = |strip: &UsageStrip| {
+        TitleBar::default()
+            .element_with_usage(context(), strip)
+            .layout(Rect::new(3., 7., 1600., 0.), context(), &Metrics)
+            .unwrap()
+    };
+    let wide = solve(&strip);
+    let debug = format!("{wide:?}");
+    for text in [
+        "CPU 42%",
+        "MEM 80%",
+        "DISK 95%",
+        "claude 58% left",
+        "codex —",
+        "grok 9% left (stale)",
+        "Run `codex login`",
+    ] {
+        assert!(debug.contains(text), "{text}");
+    }
+    assert!(find(&wide, "bar/usage").rect.right() <= find(&wide, "bar/tbtn1").rect.x);
+    fn color(n: &c::Layout) -> [f32; 4] {
+        if let c::LayoutKind::Text { runs, .. } = &n.kind {
+            return runs[0].style.color;
+        }
+        color(&n.children[0])
+    }
+    let waiting = bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.state.waiting).0;
+    let errored = bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.state.errored).0;
+    assert_eq!(color(find(&wide, "bar/usage/MEM")), waiting);
+    assert_eq!(color(find(&wide, "bar/usage/DISK")), errored);
+    assert_eq!(color(find(&wide, "bar/usage/grok")), errored);
+    strip.providers.retain(|m| m.label != "grok");
+    let layout = solve(&strip);
+    assert!(!format!("{layout:?}").contains("bar/usage/grok"));
+}
 // keeps: spec gui-components §1.3
 #[test]
 fn narrow_bar_wraps_title_and_ellipsizes_crumb_without_shrinking_controls() {

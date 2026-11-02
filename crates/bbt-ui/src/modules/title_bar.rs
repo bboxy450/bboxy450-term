@@ -7,6 +7,7 @@
 //! Window chrome composed from retained L6 elements. The app owns all actions.
 use super::{seat_row::named, strip::plain};
 use crate::{self as ui, components as c};
+use bbt_ui_model::usage::{UsageMetric, UsageStrip};
 use bbt_ui_model::{STYLE, layout::Axis};
 
 #[derive(Debug, Clone)]
@@ -93,7 +94,36 @@ fn toggle(key: &str, icon: &str, selected: bool) -> c::Element {
     )
 }
 impl TitleBar {
+    /// Snapshot-only rendering. The app uses accessible_label for the hover description.
+    pub fn usage_element(&self, usage: &UsageStrip) -> c::Element {
+        let mut children = Vec::new();
+        for (provider, metrics) in [(false, &usage.machine), (true, &usage.providers)] {
+            if !children.is_empty() && !metrics.is_empty() {
+                children.push(label("bar/usage/divider", " │ ", 400, true, false).into());
+            }
+            for (index, metric) in metrics.iter().enumerate() {
+                if index != 0 {
+                    children.push(label("bar/usage/dot", " · ", 400, true, false).into());
+                }
+                children.push(usage_metric(metric, provider).into());
+            }
+        }
+        let stack = c::Element::Stack(c::Stack {
+            direction: Axis::Row,
+            gap: ui::Length::Px(0.),
+            align: c::Alignment::Center,
+            children,
+        });
+        let mut container = c::Box::new(plain(None, [0.; 4], 0.), vec![stack.into()]);
+        container.clip = true;
+        named("bar/usage", c::Element::Box(container))
+    }
+
     pub fn element(&self, ctx: ui::Context) -> c::Element {
+        self.element_with_usage(ctx, &UsageStrip::default())
+    }
+
+    pub fn element_with_usage(&self, ctx: ui::Context, usage: &UsageStrip) -> c::Element {
         let dots = (0..3)
             .map(|i| {
                 // .win i: 10px circles, with 6px gaps; no OS-native chrome.
@@ -195,8 +225,48 @@ impl TitleBar {
                 .into(),
             ],
         );
+        if !usage.machine.is_empty() || !usage.providers.is_empty() {
+            bar.children
+                .insert(bar.children.len() - 1, flexible(self.usage_element(usage)));
+        }
         bar.gap = ui::Length::Spacing(5);
         bar.cross_overflow = true;
         named("bar", c::Element::Box(bar))
     }
+}
+
+fn usage_metric(metric: &UsageMetric, provider: bool) -> c::Element {
+    let color = match metric.percent {
+        Some(left) if provider && left < 10 => ui::Color::Rgba(
+            bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.state.errored).0,
+        ),
+        Some(left) if provider && left <= 20 => ui::Color::Rgba(
+            bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.state.waiting).0,
+        ),
+        Some(used) if !provider && used >= 95 => ui::Color::Rgba(
+            bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.state.errored).0,
+        ),
+        Some(used) if !provider && used >= 80 => ui::Color::Rgba(
+            bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.state.waiting).0,
+        ),
+        _ => ui::Color::Muted,
+    };
+    let mut text = c::Text::new(
+        metric.text(provider),
+        ui::Text {
+            paint: ui::Paint::solid(color),
+            step: ui::TypeStep::Caption,
+            line_height: 1.4,
+            ..Default::default()
+        },
+    );
+    text.wrap = false;
+    // Description is retained alongside the metric's geometry for hover/accessibility consumers.
+    named(
+        format!("bar/usage/{}", metric.label),
+        named(
+            format!("usage-label:{}", metric.description(provider)),
+            c::Element::Text(text),
+        ),
+    )
 }

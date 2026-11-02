@@ -236,6 +236,7 @@ fn named_suffix<'a>(layout: &'a c::Layout, name: &str) -> Option<&'a c::Layout> 
 }
 
 pub struct Scene {
+    pub usage: bbt_ui_model::usage::UsageStrip,
     pub sidebar_scroll: f32,
     pub sidebar_width: f32,
     pub sidebar_layout: ui::modules::composer::SidebarLayout,
@@ -481,6 +482,7 @@ impl Scene {
             tasks: vec![],
             closed: vec![],
             layout_revision: 0,
+            usage: Default::default(),
             swarms: vec![],
             tree: Some(tree(&fixture["tree"])),
             starting: None,
@@ -518,6 +520,72 @@ impl Scene {
     /// Takes effect at the next layout: the gutter and the stage inset follow it.
     pub fn ui_context(&self) -> ui::Context {
         self.context
+    }
+
+    pub fn apply_usage(&mut self, update: bboxy450_usage::poller::Update) {
+        use bbt_ui_model::usage::UsageMetric;
+        match update {
+            bboxy450_usage::poller::Update::Machine(m) => {
+                self.usage.machine = [("CPU", m.cpu), ("MEM", m.memory), ("DISK", m.disk)]
+                    .into_iter()
+                    .map(|(label, percent)| UsageMetric {
+                        label: label.into(),
+                        percent,
+                        stale: false,
+                        reason: percent.is_none().then(|| {
+                            m.reason
+                                .clone()
+                                .unwrap_or_else(|| "Machine read unavailable".into())
+                        }),
+                    })
+                    .collect();
+            }
+            bboxy450_usage::poller::Update::Provider { id, reading } => {
+                self.usage.providers.retain(|m| m.label != id);
+                if let Some(r) = reading {
+                    self.usage.providers.push(UsageMetric {
+                        label: id.into(),
+                        percent: r.left,
+                        stale: r.stale,
+                        reason: r.reason,
+                    });
+                }
+                self.usage.providers.sort_by(|a, b| a.label.cmp(&b.label));
+            }
+        }
+        self.layout_cache.borrow_mut().take();
+    }
+
+    pub fn inherit_usage(&mut self, previous: &mut Self) {
+        self.usage = std::mem::take(&mut previous.usage);
+        self.layout_cache.borrow_mut().take();
+    }
+
+    pub fn usage_tooltip(&self, size: [f32; 2]) -> Vec<c::Paint> {
+        let mut style = ui::Style::new(ui::Preset::Modal);
+        style.overrides.padding = Some([ui::Length::Px(8.); 4]);
+        let text = c::Text::new(
+            format!(
+                "{}\nClick to refresh accounts",
+                self.usage.accessible_label()
+            ),
+            ui::Text::default(),
+        );
+        let element = c::Element::Box(c::Box::new(style, vec![c::Element::Text(text).into()]));
+        let width = (size[0] - 24.).clamp(1., 720.);
+        element
+            .layout(
+                Rect::new(
+                    (size[0] - width - 12.).max(0.),
+                    STYLE.spacing.title_bar as f32 + 4.,
+                    width,
+                    0.,
+                ),
+                self.context,
+                &self.metrics,
+            )
+            .map(|layout| c::paint(&layout, self.context))
+            .unwrap_or_default()
     }
     pub fn set_context(&mut self, context: ui::Context) {
         self.context = context;
@@ -611,6 +679,7 @@ impl Scene {
             tasks: vec![],
             closed: vec![],
             layout_revision: 0,
+            usage: Default::default(),
             swarms: vec![],
             tree: None,
             starting: None,
@@ -1513,7 +1582,7 @@ impl Scene {
                 },
                 ..Default::default()
             }
-            .element(ctx)
+            .element_with_usage(ctx, &self.usage)
             .layout(Rect::new(0., 0., size[0], title), ctx, &self.metrics)
             .map_err(|e| e.to_string())?,
             {

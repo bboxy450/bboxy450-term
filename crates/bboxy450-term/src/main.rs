@@ -34,6 +34,7 @@ mod spawn_gate;
 mod stall;
 mod swarm_folder;
 mod terminal_clipboard;
+mod usage_strip;
 
 use bboxy450_term::launcher::{
     CaretMove, Command as LauncherCommand, Controller as LauncherController,
@@ -79,6 +80,7 @@ use winit::{
 
 #[derive(Debug)]
 pub enum UiEvent {
+    Usage(bboxy450_usage::poller::Update),
     DocumentRetry(u64),
     TaskRetry(u64),
     SeatTaskRetry(bbt_mux::Ulid),
@@ -2179,6 +2181,7 @@ impl UiProxy {
     }
 }
 struct App {
+    usage_worker: Option<bboxy450_usage::poller::Worker>,
     proxy: UiProxy,
     inbox: UiInbox,
     wake_counters: std::cell::RefCell<stall::WakeCounters>,
@@ -2394,6 +2397,7 @@ impl App {
         Self {
             proxy,
             inbox,
+            usage_worker: None,
             wake_counters: Default::default(),
             logger,
             prepared,
@@ -5549,6 +5553,8 @@ impl App {
     fn install_gpu(&mut self) -> Result<(), String> {
         if let Some(result) = self.prepared.take() {
             let (mut gpu, scene) = result?;
+            let mut scene = scene;
+            scene.inherit_usage(&mut self.scene);
             self.scene = scene;
             self.apply_preferences();
             let size = self.window.as_ref().unwrap().inner_size();
@@ -8006,6 +8012,9 @@ impl App {
         ));
         pane_overlay.extend(self.scene.error_overlay(logical, self.unread_errors));
         pane_overlay.extend(self.paint_app_overlay());
+        if self.pointer_inside && self.titlebar.hit(self.pointer) == Some(desktop_window::Hit::Usage) {
+            pane_overlay.extend(self.scene.usage_tooltip(self.solved_size));
+        }
         if !live {
             ops.append(&mut pane_overlay);
         }
@@ -8226,6 +8235,10 @@ impl ApplicationHandler<UiEvent> for App {
             _ => bbt_rt::diagnostics::Phase::UserOther,
         });
         match event {
+            UiEvent::Usage(update) => {
+                self.scene.apply_usage(update);
+                self.request_redraw();
+            }
             UiEvent::SeatTaskRetry(op) => {
                 self.retry_seat_tasks(op);
             }
@@ -8749,11 +8762,15 @@ impl ApplicationHandler<UiEvent> for App {
             }
             WindowEvent::CursorLeft { .. } => self.pointer_left(),
             WindowEvent::CursorMoved { position, .. } => {
+                let was_usage = self.titlebar.hit(self.pointer) == Some(desktop_window::Hit::Usage);
                 let scale = self
                     .window
                     .as_ref()
                     .map_or(1., |window| window.scale_factor()) as f32;
                 self.pointer = [position.x as f32 / scale, position.y as f32 / scale];
+                if was_usage != (self.titlebar.hit(self.pointer) == Some(desktop_window::Hit::Usage)) {
+                    self.request_redraw();
+                }
                 self.titlebar.moved(self.pointer);
                 self.pointer_inside = true;
                 self.update_cursor();
@@ -10040,6 +10057,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     app.pacing = pacing;
     app.render_context = (!fake && !animate).then_some(render_context);
     app.stall = stall;
+    if !fake && !animate
+        && bboxy450_term::cockpit::Config::test_account_from_args(&args).is_ok_and(|account| account.is_none())
+    {
+        app.start_usage();
+    }
     if let Some(pair) = args.windows(2).find(|pair| pair[0] == "--settings") {
         app.open_settings(&pair[1]);
     }

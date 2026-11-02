@@ -313,3 +313,9 @@ models = [
 ]
 scope = "Pinned harness models and broken controls imported into the parent native/TLC parity run; its source inventory and multi-control contracts are validated from the submodule. HarnessEmbedLifecycle is the lifecycle model for the real parent seat-spawn witness. HTTP, terminal bytes and kernel process-group cleanup retain implementation tests."
 sources = ["crates/bboxy450-harness/verification/coverage.toml", "crates/bboxy450-harness/verification/contracts.toml", "crates/bboxy450-harness/tests/formal/models.rs", "crates/bbt-mux/tests/mcp.rs", "scripts/harness-submodule.py"]
+[[crate]]
+name = "bboxy450-usage"
+status = "contract-model"
+models = ["UsagePoller"]
+scope = "Three refresh attempts and account incarnations A/B/A, delayed/duplicate completion, deadline, and age-to-stale. Weak fairness of deadline service ensures pending polls retire, without fairness of network replies. Source API witnesses exercise the real generation fence, injected fetcher/reader and timeout. HTTP schemas, credential-source priority, bounded OS IO, machine counters and measured CPU cost remain implementation-only coverage. Account identity is observed at poll boundaries, not continuously; no OS cancellation or arbitrary Rust refinement claim."
+sources = ["crates/bboxy450-usage/src/poller.rs", "crates/bboxy450-usage/src/lib.rs", "crates/bboxy450-usage/src/machine.rs", "crates/bboxy450-usage/src/io.rs"]

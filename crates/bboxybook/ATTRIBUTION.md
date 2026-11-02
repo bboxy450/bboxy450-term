@@ -95,6 +95,7 @@ their own licenses and are not relicensed by this document.
 | `crates/bbt-render/tests/fonts/` | JetBrains Mono, OFL-1.1, including the accompanying `OFL.txt`. |
 | `crates/bbt-mermaid/tests/fixtures/docs/`, `state/` | Mermaid documentation examples, MIT; attribution and license in the fixture directory. The original import revision was not recorded; do not invent it. |
 | `crates/bboxy-firehose/reference/vendor/` | Pinned xterm.js assets, MIT; accompanying notices/provenance apply. Excluded from its Cargo package. |
+| `crates/bboxy450-usage/src/{claude,codex,grok}.rs`, provider abstraction and quota selection in `src/lib.rs`, and `tests/fixtures/*.json` | Translated from Tachyon (MIT), https://github.com/Gonzih/tachyon, `Sources/Tachyon/Providers/{Provider,ClaudeProvider,CodexProvider,GrokProvider}.swift`, `Model/UsageModel.swift`; JSON copied from `Tests/TachyonTests/ProviderDecodeTests.swift`. Rust workers/OS sampling and integration additions are bboxy450-owned. Original notice retained below and in `crates/bboxy450-usage/LICENSE-TACHYON`. |
 | Names, logos and identity images | Identity/trademark rights stay with their respective owners. Existing project-brand exclusions and upstream logo rights remain unchanged. No blanket ownership claim over harness logos. |
 
 For schemas, examples or design documents reused separately, identify the actual
@@ -127,3 +128,30 @@ are project-authored source under the policy above. Syntax highlighting uses
 [syntect](https://github.com/trishume/syntect), MIT, as an unchanged dependency
 with its pure Rust `fancy-regex` backend; no highlighter source was copied.
 Its embedded syntax and theme assets retain the dependency's upstream notices.
+
+## Tachyon translated provider portions and fixtures
+
+The following MIT notice applies to those translated portions and copied fixtures,
+not to independently written bboxy450 integration code. No endorsement is implied.
+
+MIT License
+
+Copyright (c) 2026 Maksim Soltan / Wild Honey on the Porch, LLC
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

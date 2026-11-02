@@ -1,0 +1,91 @@
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+// The project license applies to Rust integration additions; translated provider portions retain MIT.
+// Translated from Tachyon (MIT), Sources/Tachyon/Providers/ClaudeProvider.swift:
+// https://github.com/Gonzih/tachyon — Copyright (c) 2026 Maksim Soltan / Wild Honey on the Porch, LLC.
+// Full upstream notice: ../LICENSE-TACHYON. Changes: read-only Rust credential chain and bounded fetch.
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// Credit policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+use crate::*;
+
+pub struct Claude;
+fn parse(bytes: &[u8]) -> Result<Credential, Failure> {
+    let root = json(bytes).map_err(|_| Failure::Credentials)?;
+    let oauth = &root["claudeAiOauth"];
+    if number(&oauth["expiresAt"]).is_some_and(|expiry| expiry <= io::epoch_millis()) {
+        return Err(Failure::Auth);
+    }
+    Credential::new(
+        oauth["accessToken"]
+            .as_str()
+            .ok_or(Failure::Credentials)?
+            .into(),
+        None,
+    )
+}
+impl Provider for Claude {
+    fn id(&self) -> &'static str {
+        "claude"
+    }
+    fn login_hint(&self) -> &'static str {
+        "Run `claude` and sign in"
+    }
+    fn credential(&self, r: &dyn CredentialReader) -> Result<Presence, Failure> {
+        if let Some(token) = r
+            .env("CLAUDE_CODE_OAUTH_TOKEN")
+            .filter(|s| !s.trim().is_empty())
+        {
+            return Credential::new(token.trim().into(), None).map(Presence::Ready);
+        }
+        let mut keychain_error = None;
+        match r.keychain("Claude Code-credentials") {
+            Ok(Some(bytes)) => {
+                if let Ok(c) = parse(&bytes) {
+                    return Ok(Presence::Ready(c));
+                }
+            }
+            Err(e) => keychain_error = Some(e),
+            _ => {}
+        }
+        let dir = r.home().join(".claude");
+        match r.file(&dir.join(".credentials.json"))? {
+            Some(bytes) => parse(&bytes).map(Presence::Ready),
+            None if r.exists(&dir) => keychain_error.map_or(Ok(Presence::SignedOut), Err),
+            None => Ok(Presence::Missing),
+        }
+    }
+    fn request(&self, c: &Credential) -> Request {
+        let mut request = Request::bearer("https://api.anthropic.com/api/oauth/usage", c);
+        request.headers.extend([
+            ("anthropic-beta", "oauth-2025-04-20".into()),
+            ("User-Agent", "claude-cli/2.0.0 (external, cli)".into()),
+        ]);
+        request
+    }
+    fn decode(&self, body: &[u8]) -> Result<u8, Failure> {
+        let r = json(body)?;
+        let mut used = Vec::new();
+        let session = number(&r["five_hour"]["utilization"]);
+        used.extend(session);
+        let mut weekly = false;
+        if let Some(limits) = r["limits"].as_array() {
+            for limit in limits {
+                let kind = limit["kind"].as_str().unwrap_or_default();
+                if kind == "session" && session.is_none() {
+                    used.extend(number(&limit["percent"]));
+                } else if kind.starts_with("weekly") && limit["is_active"].as_bool() == Some(true) {
+                    used.extend(number(&limit["percent"]));
+                    weekly |= kind == "weekly_all";
+                }
+            }
+        }
+        if !weekly {
+            used.extend(number(&r["seven_day"]["utilization"]));
+        }
+        percent_left(used)
+    }
+}

@@ -207,6 +207,9 @@ impl App {
     }
 
     pub(super) fn pointer_left(&mut self) {
+        if self.titlebar.hit(self.pointer) == Some(crate::desktop_window::Hit::Usage) {
+            self.request_redraw();
+        }
         self.pointer_inside = false;
         self.update_cursor();
     }

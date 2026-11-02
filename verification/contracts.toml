@@ -2,6 +2,16 @@
 # Rust witnesses and existing implementation tests supplement these models, not refinement proofs.
 
 [[contract]]
+name = "UsagePoller"
+title = "Read-only account usage, current attempt publication and visible deadlines"
+models = ["UsagePoller", "BrokenUsagePoller"]
+sources = ["crates/bboxy450-usage/src/poller.rs", "crates/bboxy450-term/tests/formal_contracts/usage_models.rs"]
+implementation_tests = ["crates/bboxy450-usage/tests/providers.rs", "crates/bboxy450-usage/src/poller.rs", "crates/bboxy450-term/src/usage_strip.rs", "crates/bbt-ui/tests/title_bars.rs"]
+assumptions = "Three attempts; account names A/B/A; one captured reply delivered twice; owner transitions atomic; deadlines weakly fair, network replies and user refreshes need not be fair. The model allows late completions beyond the implementation's serial worker, to check the public generation fence. Refresh clears visible values before identity re-observation. Credentials are revalidated before publishing an HTTP response. Account changes between unobserved polls are not detected immediately. Actual wall clocks, thread scheduling, OS counters/Keychain, filesystem and HTTP parsing/limits remain implementation-only; no arbitrary Rust refinement claim."
+property = "Any visible number belongs to the current account and attempt, even after A/B/A, expiry and duplicate/late replies; each pending attempt eventually retires under fair deadline service. Age clears the current flag. Broken removes the epoch/pending/identity guard and publishes a delayed reply; the API witness rejects it. Blocking calls have a visible timeout and one retained outstanding call per independent worker; tests check that a timed-out call cannot create an unbounded replacement queue."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "DirtyWake"
 title = "Immediate dirty-set admission"
 models = ["DirtyWake", "BrokenDirtyWake"]

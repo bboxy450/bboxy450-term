@@ -26,6 +26,8 @@ mod report_models;
 
 #[path = "capability_models.rs"]
 mod capability_models;
+#[path = "usage_models.rs"]
+mod usage_models;
 
 #[path = "gitkb_models.rs"]
 mod gitkb_models;
@@ -1838,6 +1840,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(report_models::cases());
     cases.extend(capability_models::cases());
     cases.extend(gitkb_models::cases());
+    cases.extend(usage_models::cases());
     cases
 }
 
