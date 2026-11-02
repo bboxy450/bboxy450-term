@@ -574,11 +574,17 @@ fn close_request(
             .closes
             .undo_in(&model.ui, seat, now)
             .map(|_| live::UiMsg::UndoClose { seat })
+    } else if model.ui.tab_of(seat).is_none() && model.closes.pending(seat) {
+        // A repeated close of a seat already closing: name it, not MissingTab.
+        Err("a close is already pending or in grace; seat undo-close restores it".into())
     } else {
         scene
             .close_intent(model, seat, id, now)
             .map(live::UiMsg::Close)
-            .map_err(|reason| reason.to_string())
+            .map_err(|reason| match reason {
+                bbt_ui_model::EditError::MissingTab => "seat has no tab in this window".into(),
+                reason => reason.to_string(),
+            })
     }
 }
 

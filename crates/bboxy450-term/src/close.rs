@@ -191,6 +191,10 @@ impl State {
             })
         })
     }
+    /// A close for this seat is pending or in grace (its tab is already gone).
+    pub fn pending(&self, seat: ui::SeatId) -> bool {
+        self.entries.contains_key(&seat)
+    }
     pub fn register(&mut self, intent: Intent) -> Result<bool, &'static str> {
         if let Some(old) = self.entries.get(&intent.seat) {
             return if old.intent.operation == intent.operation {
@@ -776,7 +780,10 @@ mod tests {
         let (mut model, intent, record) = retained_fixture(4, 3, 9, 7, now);
         let swarm = ui::SwarmId::from_u128(4);
         let mut state = State::default();
+        let seat = intent.seat;
+        assert!(!state.pending(seat));
         state.register(intent).unwrap();
+        assert!(state.pending(seat));
         state.reconcile(std::slice::from_ref(&record), &mut model, now, 1000);
         let published = state.clone();
         assert!(Arc::ptr_eq(published.notices(), state.notices()));
