@@ -1,0 +1,36 @@
+data: {"choices": [{"index": 0, "delta": {"reasoning": "evict() takes max_by_key "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "over the clock, "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "which selects the "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "most recently touched "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "slot, the opposite "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "of LRU. Prove "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "it with the "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "tests before changing "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "it."}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "`evict` uses `max_by_key` "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "on the clock: "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "that evicts the "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "*newest* glyph. Running "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "the tests to "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "confirm."}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"tool_calls": [{"index": 0, "id": "x1", "type": "function", "function": {"name": "bash", "arguments": "{\"command\": \"sh test.sh\", \"timeout\": 60}"}}]}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls"}]}
+
+data: [DONE]
+

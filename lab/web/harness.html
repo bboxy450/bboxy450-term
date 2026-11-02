@@ -1,0 +1,65 @@
+<!doctype html>
+<!--
+Copyright 2026 Boxy (bboxy450) and contributors.
+SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+-->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>harness · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="harness.js"></script><script src="harness-demo.js"></script>
+</head><body><script>
+const el = Lab.el;
+const REAL = HARNESS_SESSIONS['glyph-atlas'];
+// Shapes from an unattended session (no approver attached): each denial is one card, not approval · call · error lines.
+let n = 0; const id = () => '01M6HX' + String(++n).padStart(20, '0');
+const env = (event, ts) => ({ v: { major: 0, minor: 4 }, session: 'S', epoch: 1, seq: n, at: n, ts_ms: ts, cause: null, event });
+function denied() {
+  n = 0; const T = id(), out = [];
+  out.push(env({ type: 'session_started', meta: { session: 'S', cwd: '~/src/bboxy450-term', profile: 'nemotron', fork: null, protocol: { major: 0, minor: 4 }, harness: '0.1.0', created_ms: 0 } }, 0));
+  out.push(env({ type: 'profile_changed', profile: 'nemotron', model: 'nvidia/nemotron-3.5-super-vl' }, 0));
+  const notice = (t, ts) => { const i = id(); out.push(env({ type: 'item_started', turn: null, item: i, kind: 'notice', parent: null, head: null }, ts), env({ type: 'item_completed', item: i, status: { status: 'completed' }, body: { kind: 'notice', level: 'info', text: t } }, ts)); };
+  notice('mcp bboxy ready · 54 tools', 5);
+  out.push(env({ type: 'turn_started', turn: T }, 100));
+  const u = id(); out.push(env({ type: 'item_started', turn: T, item: u, kind: 'user_message', parent: null, head: null }, 100), env({ type: 'item_completed', item: u, status: { status: 'completed' }, body: { kind: 'user_message', blocks: [{ type: 'text', text: 'ok are you up?' }] } }, 100));
+  const r = id(); out.push(env({ type: 'item_started', turn: T, item: r, kind: 'reasoning', parent: null, head: null }, 200), env({ type: 'item_completed', item: r, status: { status: 'completed' }, body: { kind: 'reasoning', summary: 'Checking I am responsive. Orient first, as instructed, to read my identity and assignments.', raw: null, provider_opaque: null } }, 1400));
+  const call = (name, kind, input, t0, why) => {
+    const c = id(), a = id();
+    out.push(env({ type: 'item_started', turn: T, item: c, kind: 'tool_call', parent: null, head: { kind: 'tool_call', call_id: c, name, tool_kind: kind } }, t0));
+    out.push(env({ type: 'item_started', turn: T, item: a, kind: 'approval', parent: c, head: null }, t0 + 2));
+    out.push(env({ type: 'item_completed', item: a, status: { status: 'completed' }, body: { kind: 'approval', subject: { tool_call: c, effect: 'exec', summary: name, paths: [], command: null }, options: ['allow', 'allow_always', 'deny'], decision: { decision: 'deny', reason: why }, by: { by: 'unattended' } } }, t0 + 3));
+    out.push(env({ type: 'item_completed', item: c, status: { status: 'failed', reason: why }, body: { kind: 'tool_call', call_id: c, name, tool_kind: kind, input_raw: JSON.stringify(input), output: [{ type: 'error', text: why }], locations: [], spill: null } }, t0 + 4));
+  };
+  call('mcp__bboxy__orient', 'other', {}, 1500, 'no approver attached; on_unattended=deny');
+  call('bash', 'execute', { command: 'git log --oneline -10 && git status' }, 1600, 'no approver attached; on_unattended=deny');
+  const m = id(); out.push(env({ type: 'item_started', turn: T, item: m, kind: 'agent_message', parent: null, head: null }, 1700), env({ type: 'item_completed', item: m, status: { status: 'completed' }, body: { kind: 'agent_message', markdown: 'I am up, but this seat has **no approver attached**, so `orient` and shell calls are denied. Attach a face or a policy rule and I will continue.' } }, 2500));
+  out.push(env({ type: 'turn_ended', turn: T, reason: { reason: 'end_turn' }, usage: { input_tokens: 20112, output_tokens: 174, cached_input_tokens: 0, reasoning_tokens: 61, cost_micros_usd: 0 } }, 2600));
+  return out;
+}
+function pending() {
+  const d = denied(); const cut = d.findIndex(e => e.event.type === 'item_started' && e.event.kind === 'approval');
+  const p = d.slice(0, cut + 1);
+  // the approval is still open: the card waits in amber with its options
+  const c = p[cut - 1].event.item, a = p[cut].event.item;
+  p.push(env({ type: 'item_completed', item: a, status: { status: 'completed' }, body: { kind: 'approval', subject: { tool_call: c, effect: 'exec', summary: 'mcp__bboxy__orient {}', paths: [], command: 'mcp__bboxy__orient {}' }, options: ['allow', 'allow_always', 'deny'], decision: null, by: null } }, 1503));
+  return p;
+}
+function frame(w, h) { return el('div', { style: '--seat:#2EE6A8;width:' + w + 'px;height:' + h + 'px;max-width:100%;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--surface);overflow:hidden' }); }
+let live = null; const FH = +new URLSearchParams(location.search).get('h') || 720;
+Lab.page({ title: 'harness', wide: true,
+  note: 'The rich bboxy face. bboxy450-harness envelopes (protocol Event/Item) fold into cards: one tool call is one card with its approval, terminal and diff inside; reasoning collapses to "Thought for"; usage drives the header meter. "live" replays a real scripted run of the harness binary (lab/web/harness/gen.sh) at reading pace. Click any card header to fold it.',
+  states: ['live', 'finished', 'running tool', 'denied unattended', 'approval pending', 'compact pane'],
+  render(s, body) {
+    if (live && s !== 'all') { live.stop(); live = null; }
+    const f = frame(s === 'compact pane' ? 520 : 760, s === 'compact pane' ? 520 : FH);
+    const v = Hx.view({ compact: s === 'compact pane', interactive: true });
+    f.append(v.node); body.append(f);
+    if (s === 'live' || s === 'compact pane') { const p = Hx.play(v, REAL, { loop: true }); if (s === 'live') live = p; return; }
+    let envs = s === 'denied unattended' ? denied() : s === 'approval pending' ? pending() : REAL;
+    if (s === 'running tool') { const k = REAL.findIndex(e => e.event.type === 'item_started' && e.event.kind === 'terminal'); envs = REAL.slice(0, k + 1); }
+    requestAnimationFrame(() => envs.forEach(e => v.apply(e)));
+  } });
+</script></body></html>
