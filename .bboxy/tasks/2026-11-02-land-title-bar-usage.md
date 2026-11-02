@@ -1,10 +1,12 @@
 ---
+artifacts:
+- '[[01M6EMV0KWMP16N1RJZE80CMNZ]]'
 assignee: seat:01M6EK48WKEEPDMMY07B3R82SK
 authorship:
   kind: seat
   process_generation: '1'
-  public_key: uf32RsAmZxd9Ki2nPj3bXKgGOQxKZTkkaymTCBOc2CM=
-  signer: seat:01M6CQB5DB5RA6QDF9N162NF8S
+  public_key: P1Y+4lhb0tN1Apt0rjbH9Nw90KVGEsXuGznqcSkr2XA=
+  signer: seat:01M6EK48WKEEPDMMY07B3R82SK
 created: 2026-11-02T16:58:26.008Z
 created_by: seat:01M6CQB5DB5RA6QDF9N162NF8S
 delegated_by: seat:01M6CQB5DB5RA6QDF9N162NF8S
@@ -12,17 +14,17 @@ id: 01M6EK5APZPAYV60TH8Q4Q15DE
 number: 3351
 provenance:
   digest: sha256:33e6a6cba27a5723860eeb86d88c992b30b6fccab36493071e77e900e77c63aa
-  frontmatter_digest: sha256:e4938f1e75034c4a19ccfea96f4003d6163e2209eaf6850ff25aaf0b475c2170
-  log: .bboxy/log/2026-11-02.jsonl#15085
-  sig: VYacmHUmiMMWWSHIUPSeBEc3tHYVnkN2fnLjGj9O1XqMhPp8IcU/BVUwyTLPt6/SxxhdBgCLAQef28u3gGNRDA==
-  signer: seat:01M6CQB5DB5RA6QDF9N162NF8S
+  frontmatter_digest: sha256:273f3f3b70290ce3b2e7bfa6f60a13f8acc4962d583aabab44303fe0ad6c76f2
+  log: .bboxy/log/2026-11-02.jsonl#17157
+  sig: //tMztKeOwMxWwh1e+agv9WI6O0CApbysls1NkgbSA8/XAJ7dJTGuMs+VJN7VhgTt8mDOk7XF9L5Tz6PN6FlBQ==
+  signer: seat:01M6EK48WKEEPDMMY07B3R82SK
 role: executor
 status: claimed
 swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
 title: Land the title-bar usage branch (#2197) from c5aa7df2
 type: task
-updated: 2026-11-02T17:00:55.872Z
-updated_by: seat:01M6CQB5DB5RA6QDF9N162NF8S
+updated: 2026-11-02T17:27:45.895Z
+updated_by: seat:01M6EK48WKEEPDMMY07B3R82SK
 verify: make test
 ---
 # Land the title-bar usage branch
