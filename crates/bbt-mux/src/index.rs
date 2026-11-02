@@ -333,6 +333,12 @@ impl Index {
     pub fn open(root: &Path, store: SqliteStore) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         std::fs::create_dir_all(root)?;
+        // Keep the activity log and artifact records out of the host repository.
+        const GITIGNORE: &[u8] = b"log/\nartifacts/\n";
+        let gitignore = root.join(".gitignore");
+        if std::fs::read(&gitignore).ok().as_deref() != Some(GITIGNORE) {
+            std::fs::write(&gitignore, GITIGNORE)?;
+        }
         let mut index = Self {
             root: root.canonicalize()?,
             activity: crate::store::events::EventLog::open(
