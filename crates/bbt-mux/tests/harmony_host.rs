@@ -1571,36 +1571,47 @@ async fn real_gitkb_host_lifecycle() {
     let task=success(call(&logic.client,oracle,"knowledge_write",json!({"path":"tasks/private-lifecycle.md","frontmatter":{"type":"task","title":"Native lifecycle","verify":"private check","acceptance":["persisted"]},"body":"Explicit private task intent"})).await)["record"].clone();
     let slug = task["slug"].as_str().unwrap().to_owned();
     assert!(!slug.is_empty());
-    // Review 5004 finding 3: GitKB stores only its native status. The host's
-    // open task is native backlog; claimed has no GitKB status, so delegation
-    // is refused with a typed error and nothing is written.
-    let native_task = native(&[
-        "show",
-        "--source",
-        "workspace",
-        "--raw-content",
-        "--json",
-        "--",
-        &slug,
-    ]);
-    assert_eq!(native_task["document"]["frontmatter"]["status"], "backlog");
-    assert!(
-        native_task["document"]["frontmatter"]
-            .get("bboxy_status")
-            .is_none()
+    // Review 5004 finding 3: GitKB stores one native status and no shadow
+    // field; every host state round-trips through it. Check it at each step
+    // of the delegated lifecycle.
+    let native_status = |expected: &str| {
+        let shown = native(&[
+            "show",
+            "--source",
+            "workspace",
+            "--raw-content",
+            "--json",
+            "--",
+            &slug,
+        ]);
+        let fm = &shown["document"]["frontmatter"];
+        assert_eq!(fm["status"], expected, "{fm:#}");
+        assert!(fm.get("bboxy_status").is_none(), "{fm:#}");
+    };
+    native_status("backlog");
+    success(
+        call(
+            &logic.client,
+            oracle,
+            "task_delegate",
+            json!({"task_path":slug,"seat_id":worker}),
+        )
+        .await,
     );
-    let refused = call(
-        &logic.client,
-        oracle,
-        "task_delegate",
-        json!({"task_path":slug,"seat_id":worker}),
-    )
-    .await;
-    assert_eq!(
-        refused["structuredContent"]["error"]["code"], "unmappable_status",
-        "{refused:#}"
+    native_status("claimed");
+    success(call(&logic.client,worker,"task_report",json!({"task_path":slug,"summary":"Native persisted","verify_result":{"command":"private check","exit_code":0,"evidence":[{"criterion":"persisted","reference":"canonical native workspace"}]}})).await);
+    native_status("reported");
+    success(
+        call(
+            &logic.client,
+            oracle,
+            "task_accept",
+            json!({"task_path":slug}),
+        )
+        .await,
     );
-    let unchanged = success(
+    native_status("accepted");
+    let accepted = success(
         call(
             &logic.client,
             oracle,
@@ -1609,10 +1620,10 @@ async fn real_gitkb_host_lifecycle() {
         )
         .await,
     );
-    assert_eq!(unchanged["metadata"]["status"], "open");
+    assert_eq!(accepted["metadata"]["status"], "accepted");
     let list_started = std::time::Instant::now();
     let assigned = success(call(&logic.client, worker, "task_list", json!({})).await);
-    assert_eq!(assigned["items"].as_array().unwrap().len(), 0);
+    assert_eq!(assigned["items"].as_array().unwrap().len(), 1);
     eprintln!(
         "real GitKB scoped task_list elapsed={:?}",
         list_started.elapsed()
@@ -1711,6 +1722,6 @@ async fn real_gitkb_host_lifecycle() {
     restarted.shutdown().unwrap();
     supervisor.shutdown().unwrap();
     eprintln!(
-        "real GitKB host: trust/check/enable/select, pinned root-scoped skill reads, typed create/update, proof kept out of the document, 16 KiB fetch pages, git-kb relationships, next-in-family create, native status with a typed unmappable delegate refusal, native commit, signed post-commit edit, restart all completed"
+        "real GitKB host: trust/check/enable/select, pinned root-scoped skill reads, typed create/update, proof kept out of the document, 16 KiB fetch pages, git-kb relationships, next-in-family create, slug delegate/report/accept on native status, native commit, signed post-commit edit, restart all completed"
     );
 }

@@ -116,19 +116,29 @@ GitKB and portable document semantics:
 
 | Host status | GitKB status |
 |---|---|
-| open | backlog (draft also reads as open) |
+| open | backlog |
+| claimed | claimed |
 | running | active |
+| reported | reported |
+| accepted | accepted |
+| rejected | rejected |
 | blocked | blocked |
 | done | completed |
 
-A host status outside the table (claimed, reported, accepted, rejected) has no
-GitKB status: a write carrying it is refused with `unmappable_status`, before
-any write. A legacy `bboxy_status` or `bboxy_signed_record` field in an older
-document is dropped unread; the native `status` alone is read. A proof is
-returned only for the exact version it signed, so another editor's change
-leaves no stale proof. Frontmatter mirrors the source YAML, so it can still
-show a `parent` whose target GitKB does not resolve; `relationships.parent`
-then is null, as in `git-kb show`.
+GitKB `status` is free text, so every host state has a native value: GitKB's
+own word where one exists, else the host state verbatim. `accepted` stays apart
+from `done` because the host tells them apart (an accepted verification is
+never replaced by reconciliation). Reads invert the table exactly, so every
+host state round-trips. `draft` and any status outside the table (for example
+`investigating`) read as `open`; the document keeps its raw value, also through
+an update that keeps the task open. Only a status the host itself does not
+know is refused, with `unmappable_status`, before any write. A legacy
+`bboxy_status` or `bboxy_signed_record` field in an older document is dropped
+unread; the native `status` alone is read. A proof is returned only for the
+exact version it signed, so another editor's change leaves no stale proof.
+Frontmatter mirrors the source YAML, so it can still show a `parent` whose
+target GitKB does not resolve; `relationships.parent` then is null, as in
+`git-kb show`.
 
 Seat tools beyond the contract: `plugin_tool_gitkb_create_next` (Oracle) runs
 `git-kb create task --next <family> --title <title> --json` and returns its

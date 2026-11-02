@@ -536,7 +536,7 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
     );
 
     // Lifecycle through GitKB's native status alone.
-    for status in ["running", "blocked", "done"] {
+    for status in ["claimed", "running", "reported", "accepted"] {
         let r = client.resolve(&task_slug);
         task = client.call("fetch", json!({ "ref": r }));
         let mut fm = task["frontmatter"].clone();
@@ -559,10 +559,10 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
         assert!(native.get("bboxy_signed_record").is_none());
         assert_eq!(
             native["status"],
-            match status {
-                "running" => "active",
-                "blocked" => "blocked",
-                _ => "completed",
+            if status == "running" {
+                "active"
+            } else {
+                status
             }
         );
         if status == "running" {
@@ -590,12 +590,15 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
     }
 
     // Filters.
-    let done = json!({"filter": {"type": "task", "status": "done"}});
+    let accepted = json!({"filter": {"type": "task", "status": "accepted"}});
     assert_eq!(
-        client.call("list", done)["items"].as_array().unwrap().len(),
+        client.call("list", accepted)["items"]
+            .as_array()
+            .unwrap()
+            .len(),
         1
     );
-    let narrowed = json!({"filter": {"type": "task", "status": "done", "swarm": "fixture-a",
+    let narrowed = json!({"filter": {"type": "task", "status": "accepted", "swarm": "fixture-a",
                                      "assignee": "seat:fixture"}});
     assert_eq!(
         client.call("list", narrowed)["items"]
@@ -677,7 +680,7 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
     );
     let committed = fx.source(&a, &task_slug, "committed");
     assert_eq!(committed["exists"], true);
-    assert_eq!(committed["document"]["frontmatter"]["status"], "completed");
+    assert_eq!(committed["document"]["frontmatter"]["status"], "accepted");
     assert_eq!(fx.source(&a, "notes/shared", "committed")["exists"], false);
     assert_eq!(other.resolve("notes/shared")["id"], sibling["id"]);
     other.refuse(
@@ -1546,7 +1549,7 @@ fn review_checks(fx: &mut Fixture) -> Vec<String> {
         Err(failure) => expect("2 create next in family", false, failure.clone()),
     }
 
-    // 3. One status vocabulary: native status only, mapped both ways.
+    // 3. One status vocabulary: one native status, every host state round-trips.
     let task = conn.call(
         "write",
         json!({"path": "tasks/status.md", "frontmatter": {"type": "task", "title": "Status",
@@ -1556,7 +1559,11 @@ fn review_checks(fx: &mut Fixture) -> Vec<String> {
     let mut current = task;
     for (host, gitkb) in [
         ("open", "backlog"),
+        ("claimed", "claimed"),
         ("running", "active"),
+        ("reported", "reported"),
+        ("rejected", "rejected"),
+        ("accepted", "accepted"),
         ("blocked", "blocked"),
         ("done", "completed"),
     ] {
@@ -1586,14 +1593,14 @@ fn review_checks(fx: &mut Fixture) -> Vec<String> {
         );
     }
     let mut fm = current["frontmatter"].clone();
-    fm["status"] = "claimed".into();
+    fm["status"] = "investigating".into();
     let refused = conn.result(
         "write",
         json!({"ref": reference(&current), "etag": current["etag"], "frontmatter": fm,
-               "body": current["body"], "signed_record": "review claimed"}),
+               "body": current["body"], "signed_record": "review unknown"}),
     );
     expect(
-        "3 unmappable status refused",
+        "3 a status the host does not know is refused",
         matches!(&refused, Err(Failure::Tool(v)) if v["code"] == "unmappable_status"),
         format!("{refused:?}"),
     );
@@ -1621,6 +1628,47 @@ fn review_checks(fx: &mut Fixture) -> Vec<String> {
         format!(
             "legacy {} drafted {}",
             legacy["frontmatter"]["status"], drafted["frontmatter"]["status"]
+        ),
+    );
+    // An unknown native status reads as open and stays raw in the document,
+    // also through an update that keeps the task open.
+    native_write(
+        fx,
+        &root,
+        "tasks/investigating",
+        "type: task\nstatus: investigating\n",
+        false,
+    );
+    let unknown = conn.resolve("tasks/investigating");
+    let unknown = conn.call("fetch", json!({"ref": unknown}));
+    let mut fm = unknown["frontmatter"].clone();
+    fm["title"] = "Investigating, retitled".into();
+    let kept = conn.result(
+        "write",
+        json!({"ref": reference(&unknown), "etag": unknown["etag"], "frontmatter": fm,
+               "body": unknown["body"], "signed_record": "review investigating"}),
+    );
+    let raw =
+        fx.source(&root, "tasks/investigating", "workspace")["document"]["frontmatter"]["status"]
+            .clone();
+    let open_items = slugs(
+        &conn.collect(
+            "list",
+            json!({"filter": {"type": "task", "status": "open"}}),
+        ),
+        "",
+    );
+    expect(
+        "3 an unknown native status reads open and stays raw",
+        unknown["frontmatter"]["status"] == "open"
+            && matches!(&kept, Ok(v) if v["record"]["frontmatter"]["status"] == "open" && v["lossy"] == false)
+            && raw == "investigating"
+            && ["tasks/investigating", "tasks/drafted"]
+                .iter()
+                .all(|s| open_items.iter().any(|o| o == s)),
+        format!(
+            "read {} kept {kept:?} raw {raw} open {open_items:?}",
+            unknown["frontmatter"]["status"]
         ),
     );
 

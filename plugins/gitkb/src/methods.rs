@@ -17,8 +17,8 @@ use serde_json::{Map, Value, json};
 
 use crate::index::portable_edge;
 use crate::native::{
-    TASK_STATUS, digest, native, native_statuses, number, portable, portable_to_native, random_hex,
-    shell_words, slug_path, spaced_json, yaml_key,
+    TASK_STATUS, digest, native, native_statuses, native_to_portable, number, portable,
+    portable_to_native, random_hex, shell_words, slug_path, spaced_json, yaml_key,
 };
 use crate::store::{
     Catalog, GitKb, PAGE_BYTES, PER_DOC_MS, RESERVE, Summary, reference, store_signed, truthy,
@@ -280,8 +280,10 @@ impl GitKb {
                 flags.extend(["--where".into(), format!("{field} = {value}")]);
             }
         }
-        if let Some(status) = wanted("status")? {
-            flags.extend(["--status".into(), native_statuses(&status).join(",")]);
+        if let Some(status) = wanted("status")?
+            && let Some(natives) = native_statuses(&status)
+        {
+            flags.extend(["--status".into(), natives.join(",")]);
         }
         let catalog = self.catalog(&flags)?;
         if !words.is_empty() {
@@ -708,6 +710,7 @@ impl GitKb {
         let body = body.as_str().unwrap_or("").to_owned();
         let reference = args.get("ref").filter(|r| truthy(r));
         let mut create_workspace = false;
+        let mut current_native = Value::Null;
         let slug;
         let generation: Value;
         if let Some(reference) = reference {
@@ -742,6 +745,7 @@ impl GitKb {
                 generation = old["etag"].clone();
             }
             fm.insert("id".into(), old["external_id"].clone());
+            current_native = old["gitkb"]["native_status"].clone();
         } else {
             let path = args
                 .get("path")
@@ -782,16 +786,21 @@ impl GitKb {
                     Refusal::new(
                         "unmappable_status",
                         format!(
-                            "task status {status} has no GitKB status; GitKB stores only {}",
+                            "task status {status} is not a host task state ({})",
                             TASK_STATUS
                                 .iter()
-                                .map(|(host, gitkb)| format!("{host}→{gitkb}"))
+                                .map(|(host, _)| *host)
                                 .collect::<Vec<_>>()
                                 .join(", ")
                         ),
                     )
                 })?;
-            fm.insert("status".into(), native_status.into());
+            // A native status outside the table reads as open; an update that
+            // keeps it open keeps the document's raw value.
+            let kept = current_native
+                .as_str()
+                .filter(|raw| native_to_portable(raw).is_none() && status == "open");
+            fm.insert("status".into(), kept.unwrap_or(native_status).into());
         }
         // Flow-style JSON values are YAML 1.2. Plain top-level keys also let
         // GitKB's exact ID/slug guard see the supplied identity before parsing.

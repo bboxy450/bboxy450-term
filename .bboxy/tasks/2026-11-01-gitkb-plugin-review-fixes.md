@@ -71,18 +71,22 @@ and inside `make check-gitkb-plugin`. Host e2e: `make test-harmony-host-gitkb`.
    `authority: local_provisional`, `sync_required: true`. Host e2e: seat tool
    `plugin_tool_gitkb_create_next` → `tasks/review-1`, `authority: local`.
 3. **Two status vocabularies.** Red: writes stored `bboxy_status` plus native
-   `status: draft|active|blocked|completed`; `claimed` was accepted; a legacy
-   `bboxy_status: claimed` read as `claimed`. Cause: baseline `methods.rs:784` and
-   `native.rs:33`. Fix: `native.rs` `TASK_STATUS` is the one table (open↔backlog,
-   running↔active, blocked↔blocked, done↔completed; draft reads as open), documented in
-   `plugins/gitkb/README.md`; `write` refuses anything else with `unmappable_status`
-   before writing; `project` drops `bboxy_status`/`bboxy_signed_record` unread; list and
-   search filter on native status only. Host: the typed code reaches the caller
-   (`plugins/source.rs`, `logic.rs` work-item write) instead of `unknown`.
-   Consequence: claimed, reported, accepted and rejected have no GitKB status, so
-   `task_delegate`/`task_report`/`task_accept`/`task_reject` on a GitKB root are refused
-   with `unmappable_status` (host e2e asserts the refused delegate and the task staying
-   open/`backlog`).
+   `status: draft|active|blocked|completed`, and a legacy `bboxy_status: claimed` read as
+   `claimed`. Cause: baseline `methods.rs:784` and `native.rs:33`. Fix (revised after
+   review: GitKB `status` is free text, `gitkb-types/src/document.rs:738`, so nothing is
+   unmappable): `native.rs` `TASK_STATUS` maps every host state to one native status,
+   GitKB's word where one exists (open→backlog, running→active, blocked→blocked,
+   done→completed) and the host state verbatim otherwise (claimed, reported, accepted,
+   rejected). `accepted` is not folded into `completed`: the host tells them apart
+   (`mcp/work_items.rs` reconcile refuses over `accepted` but rewrites `done` to `done`).
+   Reads invert the table exactly; `draft` and unknown statuses (`investigating`) read as
+   `open`, the document keeps the raw value, also through an update that keeps the task
+   open, and an `open` filter uses no native prefilter so those documents list. Only a
+   status outside the host enum is refused with `unmappable_status`. `project` drops
+   legacy `bboxy_status`/`bboxy_signed_record` unread. Documented in
+   `plugins/gitkb/README.md`. Green: all eight host states round-trip; host e2e runs
+   delegate → report → accept and checks native `backlog`, `claimed`, `reported`,
+   `accepted` with no `bboxy_status` at each step.
 4. **`id` means two things.** Not reproduced in results: every plugin result (write,
    fetch, resolve, list, search refs, graph nodes, changes) already had `id` = ULID,
    `external_id` = UUID, `slug` = path, and resolve accepted slug, path, ULID and UUID

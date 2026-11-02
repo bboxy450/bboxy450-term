@@ -17,30 +17,34 @@ use sha2::{Digest, Sha256};
 
 const ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
-/// The one task status table between the host (left) and GitKB (right),
-/// used both ways. Only GitKB's native `status` is stored; there is no
-/// shadow field. GitKB `draft` also reads as `open`. A host status outside
-/// the table (claimed, reported, accepted, rejected) has no GitKB status, so
-/// a write carrying it is refused with `unmappable_status`.
-pub const TASK_STATUS: [(&str, &str); 4] = [
+/// The one task status table: every host task state (left) and the GitKB
+/// status written for it (right), inverted exactly on read, so every host
+/// state round-trips. GitKB `status` is free text: GitKB's own word is used
+/// where one exists, and every other host state is written verbatim. The host
+/// tells `accepted` (verified, never reconciled over) from `done`, so they
+/// stay distinct. Only this native `status` is stored; there is no shadow
+/// field. On read, `draft` and any status outside the table (for example
+/// `investigating`) read as `open`, and the document keeps its raw value.
+pub const TASK_STATUS: [(&str, &str); 8] = [
     ("open", "backlog"),
+    ("claimed", "claimed"),
     ("running", "active"),
+    ("reported", "reported"),
+    ("accepted", "accepted"),
+    ("rejected", "rejected"),
     ("blocked", "blocked"),
     ("done", "completed"),
 ];
 
-/// GitKB task status → host status.
+/// GitKB task status → host status, `None` outside the table.
 pub fn native_to_portable(native: &str) -> Option<&'static str> {
-    if native == "draft" {
-        return Some("open");
-    }
     TASK_STATUS
         .iter()
         .find(|(_, gitkb)| *gitkb == native)
         .map(|(host, _)| *host)
 }
 
-/// Host status → GitKB task status.
+/// Host status → GitKB task status; `None` for a status the host does not know.
 pub fn portable_to_native(portable: &str) -> Option<&'static str> {
     TASK_STATUS
         .iter()
@@ -48,18 +52,18 @@ pub fn portable_to_native(portable: &str) -> Option<&'static str> {
         .map(|(_, gitkb)| *gitkb)
 }
 
-/// Every native status a portable filter value can select.
-pub fn native_statuses(status: &str) -> Vec<String> {
-    let mut all = vec![status.to_owned()];
-    for native in ["draft", "backlog", "active", "completed"] {
-        if native_to_portable(native) == Some(status) {
-            all.push(native.into());
-        }
+/// The native statuses a status filter selects, or `None` when no native
+/// prefilter is exact: `open` also covers `draft` and every unknown status.
+/// A value outside the host vocabulary is taken as a native status.
+pub fn native_statuses(status: &str) -> Option<Vec<String>> {
+    if status == "open" {
+        return None;
     }
-    all.push(portable_to_native(status).unwrap_or(status).into());
+    let mut all = vec![status.to_owned()];
+    all.extend(portable_to_native(status).map(str::to_owned));
     all.sort();
     all.dedup();
-    all
+    Some(all)
 }
 
 pub fn hex(bytes: &[u8]) -> String {
@@ -242,14 +246,15 @@ pub fn number(frontmatter: Option<&Map<String, Value>>, slug: &str) -> Result<Va
         .map_or(Value::Null, Value::from))
 }
 
-/// The host task status read from GitKB's native status alone; a native
-/// value outside the table reads unchanged.
+/// The host task status read from GitKB's native status alone: the table
+/// inverted; `draft`, a missing status and any status outside the table
+/// read as `open`.
 pub fn task_status(native_status: &Value) -> Value {
-    match native_status.as_str() {
-        Some(s) if !s.is_empty() => native_to_portable(s).map_or_else(|| s.into(), Value::from),
-        _ if native_status.is_null() || native_status == "" => "open".into(),
-        _ => native_status.clone(),
-    }
+    native_status
+        .as_str()
+        .and_then(native_to_portable)
+        .unwrap_or("open")
+        .into()
 }
 
 /// POSIX-shell word splitting (Python `shlex.split`), for search queries.
@@ -495,20 +500,31 @@ mod tests {
         assert_eq!(task_status(&json!("active")), "running");
         assert_eq!(task_status(&Value::Null), "open");
         assert_eq!(task_status(&json!("blocked")), "blocked");
-        assert_eq!(task_status(&json!("draft")), "open");
-        assert_eq!(task_status(&json!("Active")), "Active");
-        // The table round-trips both ways; draft reads as open.
-        for (host, gitkb) in TASK_STATUS {
-            assert_eq!(portable_to_native(host), Some(gitkb));
-            assert_eq!(native_to_portable(gitkb), Some(host));
+        // draft and unknown statuses read as open.
+        for other in ["draft", "investigating", "Active", ""] {
+            assert_eq!(task_status(&json!(other)), "open", "{other}");
         }
-        for unmapped in ["claimed", "reported", "accepted", "rejected", "active"] {
-            assert_eq!(portable_to_native(unmapped), None, "{unmapped}");
+        // Every host state round-trips losslessly through one native status.
+        let host = [
+            "open", "claimed", "running", "reported", "accepted", "rejected", "blocked", "done",
+        ];
+        for state in host {
+            let native = portable_to_native(state).unwrap();
+            assert_eq!(task_status(&json!(native)), state);
         }
-        assert_eq!(native_statuses("running"), ["active", "running"]);
-        assert_eq!(native_statuses("open"), ["backlog", "draft", "open"]);
-        assert_eq!(native_statuses("active"), ["active"]);
-        assert_eq!(native_statuses("claimed"), ["claimed"]);
+        assert_eq!(portable_to_native("open"), Some("backlog"));
+        assert_eq!(portable_to_native("running"), Some("active"));
+        assert_eq!(portable_to_native("done"), Some("completed"));
+        assert_eq!(portable_to_native("accepted"), Some("accepted"));
+        assert_eq!(portable_to_native("claimed"), Some("claimed"));
+        for unknown in ["bogus", "active", "completed", ""] {
+            assert_eq!(portable_to_native(unknown), None, "{unknown}");
+        }
+        assert_eq!(native_statuses("running").unwrap(), ["active", "running"]);
+        assert_eq!(native_statuses("open"), None);
+        assert_eq!(native_statuses("active").unwrap(), ["active"]);
+        assert_eq!(native_statuses("claimed").unwrap(), ["claimed"]);
+        assert_eq!(native_statuses("done").unwrap(), ["completed", "done"]);
     }
 
     #[test]
