@@ -2018,3 +2018,4 @@ details[open] > summary::before { transform: rotate(90deg); }
 .hx-pact button.pri { background: var(--hx-seat); color: var(--surface); border-color: transparent; }
 .hx-pact button:disabled { opacity: .4; cursor: default; }
 @keyframes hx-drop { from { opacity: 0; transform: translateY(-6px) scale(.98); } to { opacity: 1; transform: none; } }
+.hx-msg .dgfig { margin: 8px 0; }

@@ -62,11 +62,19 @@
     .replace(/(^|[^*\w])\*([^*\s][^*]*)\*/g, '$1<i>$2</i>')
     .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
     .replace(/(→|←)/g, '<span class="arw">$1</span>');
-  function markdown(src) {
-    const out = []; let list = null, code = null;
+  // figs collects closed ```mermaid fences; the caller swaps each placeholder for a diagram figure
+  function markdown(src, figs) {
+    const out = []; let list = null, code = null, lang = '';
     const flush = () => { if (list) { out.push('<' + list.tag + '>' + list.items.map(x => '<li>' + inline(x) + '</li>').join('') + '</' + list.tag + '>'); list = null; } };
     for (const line of src.split('\n')) {
-      if (line.startsWith('```')) { if (code) { out.push('<pre class="hx-code">' + code.map(highlight).join('\n') + '</pre>'); code = null; } else { flush(); code = []; } continue; }
+      if (line.startsWith('```')) {
+        if (code) {
+          if (lang === 'mermaid' && figs) { out.push('<div class="hx-mmd" data-i="' + figs.length + '"></div>'); figs.push(code.join('\n')); }
+          else out.push('<pre class="hx-code">' + code.map(highlight).join('\n') + '</pre>');
+          code = null;
+        } else { flush(); code = []; lang = line.slice(3).trim().split(/\s/)[0]; }
+        continue;
+      }
       if (code) { code.push(line); continue; }
       const h = line.match(/^(#{1,4}) (.*)/), ul = line.match(/^\s*[-*] (.*)/), ol = line.match(/^\s*\d+[.)] (.*)/);
       if (ul || ol) { const tag = ul ? 'ul' : 'ol'; if (list && list.tag !== tag) flush(); list = list || { tag, items: [] }; list.items.push((ul || ol)[1]); continue; }
@@ -348,8 +356,13 @@
       return el('div', { class: 'hx-user' }, el('div', { class: 'hx-who' }, 'you'), el('div', { class: 'hx-ubody', html: inline(text) }));
     }
     function agentMsg(it) {
-      const md = it.body ? it.body.markdown : it.text, live = !it.body;
-      const n = el('div', { class: 'hx-msg' + (live ? ' live' : ''), html: markdown(md) });
+      const md = it.body ? it.body.markdown : it.text, live = !it.body, figs = [];
+      const n = el('div', { class: 'hx-msg' + (live ? ' live' : ''), html: markdown(md, figs) });
+      // Mermaid draws natively in the lab's figure card (Drawing / Source), as bbt_doc does natively
+      for (const p of n.querySelectorAll('.hx-mmd')) {
+        const src = figs[+p.dataset.i];
+        p.replaceWith(window.C && C.diagramFigure ? C.diagramFigure(src) : el('pre', { class: 'hx-code', html: src.split('\n').map(highlight).join('\n') }));
+      }
       if (live) (n.lastElementChild || n).append(el('span', { class: 'hx-caret' }));
       return n;
     }
