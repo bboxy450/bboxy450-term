@@ -592,3 +592,33 @@ implementation_tests = ["crates/bboxy450-term/tests/capability_file.rs", "crates
 assumptions = "Three distinct generation incarnations, idle/live/stopping phases and one current/old-file marker. Publish a private overlay after exclusive mkdir and descriptor validation, abandon a failed launch plan, request stop, repeated consumer reads and process-exit cleanup are atomic owner actions. The live phase covers both prepared and running overlays. No fairness or liveness claim: a process can remain live/stopping. Unix permission/uid checks, O_EXCL/O_NOFOLLOW, parser bounds, actual process ancestry and old-credential authentication are implementation witnesses, not arbitrary Rust refinement."
 property = "Exactly the current overlay owns the file until process exit, and no old path remains after cleanup. The omitted-cleanup control retains an old-file marker and violates OverlayOwnsCapabilityFile. The process witnesses check failed Claude wiring cleanup, replacement/close removal, new generation files and server refusal of copied old credentials."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "GitKbIndexFreshness"
+title = "GitKB plugin: the catalog index and its snapshot are served only for the store signal their export read"
+models = ["GitKbIndexFreshness", "BrokenGitKbIndexFreshness"]
+sources = ["plugins/gitkb/src/index.rs", "plugins/gitkb/src/store.rs", "plugins/gitkb/models.rs"]
+implementation_tests = ["plugins/gitkb/src/index.rs", "plugins/gitkb/tests/conformance.rs"]
+assumptions = "Three store generations stand for store signals (stat identity, index.rs store_signal; generations only advance). One call at a time reads the signal and then is served or falls back; one background build at a time reads the signal, exports and re-checks; the process may restart at any point and keeps its snapshot. Build retries (ATTEMPTS), the Listed row layer, workspace preparation, wait budgets and the export's own consistency are implementation-tested."
+property = "The committed layer and the persisted snapshot are each labelled by the generation their export read (CommittedLabelIsItsContent, SnapshotLabelIsItsContent), so a call is served only content of the signal it read (ServedContentIsTheSignalTheCallRead); a store change during an export discards that export. The broken control publishes without the post-export re-check and must fail safety. Witnesses: index.rs snapshots_round_trip_only_for_their_root_signal_and_version, filtered_calls_wait_for_a_build_in_progress and store_signal_follows_manifest_replacement; conformance.rs external edits make old refs and cursors stale. Shipped as plugins/gitkb/models/GitKbIndexFreshness.tla."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "GitKbPaging"
+title = "GitKB plugin: snapshot-bound offset cursors end, with no record twice or skipped"
+models = ["GitKbPaging", "BrokenGitKbPaging"]
+sources = ["plugins/gitkb/src/methods.rs", "plugins/gitkb/src/store.rs", "plugins/gitkb/models.rs"]
+implementation_tests = ["plugins/gitkb/tests/conformance.rs", "crates/bbt-plugin-fixture/tests/doctor.rs"]
+assumptions = "Three records and one source change that inserts a record before them; pages examine one or two records; the host follows next until it is null or refused, weakly fair. Filters, the byte budget's exact cut, cursor expiry after 128 tokens and search ranking are implementation-tested."
+property = "Within one snapshot a walk sees each record at most once (NoRecordTwice) and, when next ends, every record (NoRecordSkipped); a cursor from another snapshot is refused stale_cursor; every walk ends or is refused (EveryWalkEnds). The broken control lets a page stop before examining any record and must fail liveness. Witnesses: conformance.rs paging and stale-cursor checks; the plugin doctor's page.limit, page.cursor and page.order checks on the plugin (make check-gitkb-plugin). Shipped as plugins/gitkb/models/GitKbPaging.tla."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "GitKbAttribution"
+title = "GitKB plugin: a git-kb child carries no other call's attribution, and index builds carry none"
+models = ["GitKbAttribution", "BrokenGitKbAttribution"]
+sources = ["plugins/gitkb/src/backend.rs", "plugins/gitkb/src/main.rs", "plugins/gitkb/src/index.rs", "plugins/gitkb/models.rs"]
+implementation_tests = ["plugins/gitkb/tests/conformance.rs", "crates/bbt-plugin-fixture/tests/doctor.rs"]
+assumptions = "Two seats; one call and one call child at a time, and one index child concurrently. Today the backend environment is scrubbed and extended only while binding the root, and no call writes attribution into it, so attribution reaches no child; per-child delivery of a call's own attribution is not on main. The scrubbed allowlist itself is implementation-tested."
+property = "A call's git-kb child carries no attribution or its own call's (ChildCarriesOnlyItsOwnCallsAttribution) and an index build's children carry none (IndexChildrenAreUnattributed). The broken control has a call write its attribution into the shared backend environment and must fail safety. Witnesses: backend.rs scrubbed environment; the plugin doctor's env.children control. Shipped as plugins/gitkb/models/GitKbAttribution.tla."
+checks = ["make test-formal", "make test"]

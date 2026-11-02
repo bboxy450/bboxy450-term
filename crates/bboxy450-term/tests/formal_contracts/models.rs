@@ -27,6 +27,9 @@ mod report_models;
 #[path = "capability_models.rs"]
 mod capability_models;
 
+#[path = "gitkb_models.rs"]
+mod gitkb_models;
+
 fn eq(i: usize, n: i64) -> Expr {
     Var(i).eq(Int(n))
 }
@@ -1834,6 +1837,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(task_page_model::cases());
     cases.extend(report_models::cases());
     cases.extend(capability_models::cases());
+    cases.extend(gitkb_models::cases());
     cases
 }
 

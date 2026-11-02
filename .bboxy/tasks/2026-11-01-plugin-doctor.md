@@ -130,22 +130,40 @@ doctor reports gaps on it by design; it is not a green control.
 
 ## GitKB plugin result
 
-`make plugin-doctor PLUGIN=target/plugins/bboxy450-term-data_source-gitkb
-DOCTOR_ARGS='--package plugins/gitkb --child git-kb'` (doctor-owned disposable
-root with the checker's fixture bootstrap, git-kb 0.2.19): 19 checks pass, exit 1.
+First run (`make plugin-doctor PLUGIN=target/plugins/bboxy450-term-data_source-gitkb
+DOCTOR_ARGS='--package plugins/gitkb --child git-kb'`, doctor-owned disposable root
+with the checker's fixture bootstrap, git-kb 0.2.19): 19 checks passed, exit 1.
 
-- error `models.present`: `plugins/gitkb` ships no `models/*.tla`. Its
-  lifecycle (index warm-up, workspace-pending, write then fetch) has no model.
+- error `models.present`: `plugins/gitkb` shipped no `models/*.tla`. Closed in the
+  second commit (below), per the coordinator's decision to keep the doctor strict.
 - warning `identity.stable`: two identical `data_source_fetch` calls of an
   uncommitted workspace document return different `gitkb.created_at`
   (e.g. `04:08:42.192488Z` vs `04:08:42.230471Z`); id, digest and etag are
-  stable. `store.rs` already drops GitKB 0.2.19's read-time `modified_at` from
-  catalog rows; `created_at` in the fetch extension has the same cause.
+  stable. Handed to the executor owning `plugins/gitkb/src/**` (`store.rs`
+  already drops git-kb 0.2.19's read-time `modified_at` from catalog rows).
 - not observable: `env.children` — the plugin starts its compile-time pinned
   absolute `git-kb`, so a PATH shim cannot see the child's environment.
 
-`make check-gitkb-plugin` now runs the doctor after the conformance test, so it
-fails until GitKB ships models. Making it advisory is a one-line change.
+## GitKB models (second commit)
+
+Coordinator, 2026-11-02: keep `make check-gitkb-plugin` strict and ship models.
+`plugins/gitkb/src/**` is untouched (another executor owns it). The Rust source is
+`plugins/gitkb/models.rs` (package root, outside `src/`, so it cannot change the
+plugin binary); exports in `plugins/gitkb/models/`; the gate module
+`crates/bboxy450-term/tests/formal_contracts/gitkb_models.rs` includes it, adds
+the cases with one `cases.extend` line and holds the drift test. Registered in
+`verification/corpus.toml`, `contracts.toml` (three contracts) and the GitKB
+crate's own `coverage.toml` entry (now `contract-model`).
+
+| Model | What the code does (cited in models.rs) | Broken control |
+|---|---|---|
+| `GitKbIndexFreshness` | layer and snapshot labelled by the signal read before export; re-check after export; save before publish; load only for the exact signal | publish without the post-export re-check: safety |
+| `GitKbPaging` | snapshot-bound offset cursors, at least one record examined per page, `stale_cursor` after a source change | page may stop before any record: liveness |
+| `GitKbAttribution` | children get the scrubbed backend env set only at bind; index builds clone it | a call writes its attribution into the shared env: safety |
+
+Today the plugin forwards no seat attribution to `git-kb` at all (that is the
+`atc-attribution` branch); the attribution model therefore proves only the
+isolation half, and the positive delivery is unmodelled until that lands.
 
 ## Decisions
 
@@ -174,3 +192,4 @@ fails until GitKB ships models. Making it advisory is a one-line change.
 
 - 2026-11-02: task written before code; scope and reuse plan above.
 - 2026-11-02: doctor, fixture controls, docs and Make targets; GitKB run recorded.
+- 2026-11-02: GitKB models shipped (second commit); `make check-gitkb-plugin` strict.
