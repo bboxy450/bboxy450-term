@@ -1,9 +1,13 @@
 #!/bin/sh
-# Regenerate site/real.js from this machine's sessions (Oracle transcript + one Codex rollout per Executor), then build.
+# Regenerate site/real.js from this machine's sessions (Oracle transcript, one Codex rollout per Executor and a
+# bboxy450-harness session), every one through the log converter's d4947 sanitizer, then build.
+# HARNESS_SESSION picks the harness pane (default: the newest session); SANITIZER is required, there is no fallback.
 set -eu
 cd "$(dirname "$0")/.."
+: "${SANITIZER:?set SANITIZER to the bboxy450-log-converter sanitize_text example binary}"
+HARNESS_SESSION=${HARNESS_SESSION:-$(ls -t "$HOME"/.bboxy450-harness/sessions/*.jsonl | head -1)}
 C=$HOME/.codex/sessions/2026/10
-python3 -I site/extract.py --claude "$HOME/.claude/projects/-Users-feral-mydev-bboxy450-term/3544d975-706b-4ce4-ba8c-d9734c0db856.jsonl" \
+python3 -I site/extract.py --sanitizer "$SANITIZER" --harness "$HARNESS_SESSION" --claude "$HOME/.claude/projects/-Users-feral-mydev-bboxy450-term/3544d975-706b-4ce4-ba8c-d9734c0db856.jsonl" \
   --codex Nyx=$C/21/rollout-2026-10-21T10-58-24-01a15f9d-4223-7d02-a39e-759d2f662562.jsonl \
   --codex Rook=$C/21/rollout-2026-10-21T10-57-55-01a15f9c-d3e3-7980-acf0-af93c2269774.jsonl \
   --codex Sable=$C/22/rollout-2026-10-22T08-28-41-01a1643a-8d2d-7371-8e07-8b6a0b4fae8c.jsonl \
