@@ -29,7 +29,8 @@ pub trait Provider: Send + Sync {
     fn login_hint(&self) -> &'static str;
     fn credential(&self, reader: &dyn CredentialReader) -> Result<Presence, Failure>;
     fn request(&self, credential: &Credential) -> Request;
-    fn decode(&self, body: &[u8]) -> Result<Window, Failure>;
+    /// Every window, worst first (`worst_first`).
+    fn decode(&self, body: &[u8]) -> Result<Vec<Window>, Failure>;
     fn fallback(&self, _reader: &dyn CredentialReader) -> Option<Reading> {
         None
     }
@@ -115,12 +116,22 @@ impl Failure {
     }
 }
 
+/// One window as the UI shows it (Tachyon popover row).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct WindowReading {
+    pub label: String,
+    pub used: u8,
+    pub projected: Option<u16>,
+    pub resets_at: Option<i64>,
+}
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Reading {
     /// Percent used of the worst active window.
     pub used: Option<u8>,
     /// Tachyon pace: percent this window reaches by its reset at the current rate.
     pub projected: Option<u16>,
+    /// Every window, worst first.
+    pub windows: Vec<WindowReading>,
     pub stale: bool,
     pub reason: Option<String>,
 }
@@ -131,12 +142,20 @@ impl Reading {
             ..Self::default()
         }
     }
-    pub fn from_window(window: Window, now: f64) -> Self {
+    pub fn from_windows(windows: &[Window], now: f64) -> Self {
+        let windows: Vec<_> = windows
+            .iter()
+            .map(|w| WindowReading {
+                label: w.label.clone(),
+                used: w.used.round() as u8,
+                projected: w.projected(now).map(|p| p.round().clamp(0., 999.) as u16),
+                resets_at: w.resets_at.map(|t| t as i64),
+            })
+            .collect();
         Self {
-            used: Some(window.used.round() as u8),
-            projected: window
-                .projected(now)
-                .map(|p| p.round().clamp(0., 999.) as u16),
+            used: windows.first().map(|w| w.used),
+            projected: windows.first().and_then(|w| w.projected),
+            windows,
             ..Self::default()
         }
     }
@@ -150,6 +169,9 @@ impl Reading {
         self.stale = self.used.is_some();
         // Tachyon: a stale reading never drives pace.
         self.projected = None;
+        for w in &mut self.windows {
+            w.projected = None;
+        }
         self.reason = Some(reason.into());
     }
 }
@@ -192,22 +214,20 @@ pub(crate) fn number(v: &Value) -> Option<f64> {
         .filter(|n| n.is_finite())
 }
 /// One limit window (Tachyon `UsageWindow`): percent used, reset instant and length, in seconds.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Window {
+    pub label: String,
     pub used: f64,
     pub resets_at: Option<f64>,
     pub seconds: Option<f64>,
 }
 impl Window {
-    pub fn new(used: f64) -> Self {
-        Self {
-            used,
-            resets_at: None,
-            seconds: None,
-        }
+    pub fn new(label: &str, used: f64) -> Self {
+        Self::timed(label, used, None, None)
     }
-    pub fn timed(used: f64, resets_at: Option<f64>, seconds: Option<f64>) -> Self {
+    pub fn timed(label: &str, used: f64, resets_at: Option<f64>, seconds: Option<f64>) -> Self {
         Self {
+            label: label.into(),
             used,
             resets_at,
             seconds,
@@ -225,17 +245,46 @@ impl Window {
         (elapsed >= 0.1).then(|| self.used / elapsed)
     }
 }
-/// Tachyon worst-active-window rule: the window closest to blocking the user.
-pub(crate) fn worst(windows: impl IntoIterator<Item = Window>) -> Result<Window, Failure> {
-    windows
+/// Tachyon `worstFirst`: the window closest to blocking the user moves to the front,
+/// the rest keep their order. Empty is a decode failure.
+pub fn worst_first(windows: impl IntoIterator<Item = Window>) -> Result<Vec<Window>, Failure> {
+    let mut windows: Vec<_> = windows
         .into_iter()
         .filter(|w| w.used.is_finite())
         .map(|w| Window {
             used: w.used.clamp(0., 100.),
             ..w
         })
-        .reduce(|a, b| if b.used > a.used { b } else { a })
-        .ok_or(Failure::Decode)
+        .collect();
+    let worst = (0..windows.len())
+        .reduce(|a, b| if windows[b].used > windows[a].used { b } else { a })
+        .ok_or(Failure::Decode)?;
+    let first = windows.remove(worst);
+    windows.insert(0, first);
+    Ok(windows)
+}
+/// "Resets Fri 8:00 AM", or "Resets at 11:40 AM" on the same local day (Tachyon popover).
+pub fn reset_label(resets_at: i64, now: i64) -> String {
+    fn local(t: i64) -> libc::tm {
+        // SAFETY: localtime_r writes only into the zeroed tm we own.
+        unsafe {
+            let mut tm: libc::tm = std::mem::zeroed();
+            libc::localtime_r(&(t as libc::time_t), &mut tm);
+            tm
+        }
+    }
+    let (at, today) = (local(resets_at), local(now));
+    let hour = match at.tm_hour % 12 {
+        0 => 12,
+        h => h,
+    };
+    let clock = format!("{hour}:{:02} {}", at.tm_min, if at.tm_hour < 12 { "AM" } else { "PM" });
+    if (at.tm_year, at.tm_yday) == (today.tm_year, today.tm_yday) {
+        format!("Resets at {clock}")
+    } else {
+        let day = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][at.tm_wday.rem_euclid(7) as usize];
+        format!("Resets {day} {clock}")
+    }
 }
 pub fn now() -> f64 {
     std::time::SystemTime::now()

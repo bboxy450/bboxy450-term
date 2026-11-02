@@ -66,15 +66,16 @@ impl Provider for Claude {
         ]);
         request
     }
-    fn decode(&self, body: &[u8]) -> Result<Window, Failure> {
+    fn decode(&self, body: &[u8]) -> Result<Vec<Window>, Failure> {
         const SESSION: Option<f64> = Some(5. * 3600.);
         const WEEK: Option<f64> = Some(7. * 86_400.);
         let r = json(body)?;
         let mut windows = Vec::new();
-        let window = |v: &Value, key: &str, seconds| {
-            number(&v[key]).map(|used| Window::timed(used, iso_seconds(&v["resets_at"]), seconds))
+        let window = |label: &str, v: &Value, key: &str, seconds| {
+            number(&v[key])
+                .map(|used| Window::timed(label, used, iso_seconds(&v["resets_at"]), seconds))
         };
-        let session = window(&r["five_hour"], "utilization", SESSION);
+        let session = window("Current session", &r["five_hour"], "utilization", SESSION);
         let has_session = session.is_some();
         windows.extend(session);
         let mut weekly = false;
@@ -82,16 +83,27 @@ impl Provider for Claude {
             for limit in limits {
                 let kind = limit["kind"].as_str().unwrap_or_default();
                 if kind == "session" && !has_session {
-                    windows.extend(window(limit, "percent", SESSION));
+                    windows.extend(window("Current session", limit, "percent", SESSION));
                 } else if kind.starts_with("weekly") && limit["is_active"].as_bool() == Some(true) {
-                    windows.extend(window(limit, "percent", WEEK));
+                    // weekly_all → "Weekly"; weekly_opus → "Weekly (Opus)".
+                    let label = match kind.strip_prefix("weekly_").filter(|s| *s != "all") {
+                        Some(model) => {
+                            let mut model = model.replace('_', " ");
+                            if let Some(first) = model.get_mut(..1) {
+                                first.make_ascii_uppercase();
+                            }
+                            format!("Weekly ({model})")
+                        }
+                        None => "Weekly".into(),
+                    };
+                    windows.extend(window(&label, limit, "percent", WEEK));
                     weekly |= kind == "weekly_all";
                 }
             }
         }
         if !weekly {
-            windows.extend(window(&r["seven_day"], "utilization", WEEK));
+            windows.extend(window("Weekly", &r["seven_day"], "utilization", WEEK));
         }
-        worst(windows)
+        worst_first(windows)
     }
 }

@@ -53,7 +53,7 @@ impl Provider for Codex {
         request.headers.push(("User-Agent", "codex-cli".into()));
         request
     }
-    fn decode(&self, body: &[u8]) -> Result<Window, Failure> {
+    fn decode(&self, body: &[u8]) -> Result<Vec<Window>, Failure> {
         let root = json(body)?;
         let now = now();
         let mut windows = Vec::new();
@@ -62,9 +62,12 @@ impl Provider for Codex {
                 let w = &limit[k];
                 let used = number(&w["used_percent"])?;
                 let seconds = number(&w["limit_window_seconds"]).filter(|s| *s > 0.);
-                let resets = number(&w["reset_at"])
-                    .or_else(|| number(&w["reset_after_seconds"]).filter(|s| *s > 0.).map(|s| now + s));
-                Some(Window::timed(used, resets, seconds))
+                let resets = number(&w["reset_at"]).or_else(|| {
+                    number(&w["reset_after_seconds"])
+                        .filter(|s| *s > 0.)
+                        .map(|s| now + s)
+                });
+                Some(Window::timed(&window_label(seconds, k), used, resets, seconds))
             }));
         };
         add(&root["rate_limit"]);
@@ -79,7 +82,7 @@ impl Provider for Codex {
                 }
             }
         }
-        worst(windows)
+        worst_first(windows)
     }
     fn fallback(&self, r: &dyn CredentialReader) -> Option<Reading> {
         // Like Tachyon, anonymous rollouts cannot be attributed to a signed-in account.
@@ -98,18 +101,30 @@ pub fn rollout(bytes: &[u8]) -> Option<Reading> {
         if p["type"] != "token_count" {
             continue;
         }
-        let used = ["primary", "secondary"]
-            .into_iter()
-            .filter_map(|k| number(&p["rate_limits"][k]["used_percent"]).map(Window::new));
-        if let Ok(worst) = worst(used) {
+        let windows = ["primary", "secondary"].into_iter().filter_map(|k| {
+            let w = &p["rate_limits"][k];
+            let seconds = number(&w["window_minutes"]).map(|m| m * 60.);
+            number(&w["used_percent"])
+                .map(|used| Window::timed(&window_label(seconds, k), used, number(&w["resets_at"]), seconds))
+        });
+        if let Ok(windows) = worst_first(windows) {
+            let mut reading = Reading::from_windows(&windows, now());
             // Stale, so no pace (Tachyon).
-            return Some(Reading {
-                used: Some(worst.used.round() as u8),
-                projected: None,
-                stale: true,
-                reason: Some("Historical rollout; account unverified".into()),
-            });
+            reading.stale("Historical rollout; account unverified");
+            return Some(reading);
         }
     }
     None
+}
+/// Tachyon `windowLabel`: name a window by its length, else by its slot.
+fn window_label(seconds: Option<f64>, slot: &str) -> String {
+    match seconds.map(|s| s.round() as i64) {
+        Some(18_000) => "5-hour".into(),
+        Some(604_800) => "Weekly".into(),
+        Some(86_400) => "Daily".into(),
+        Some(s) if s % 86_400 == 0 => format!("{}-day", s / 86_400),
+        Some(s) if s % 3600 == 0 => format!("{}-hour", s / 3600),
+        _ if slot.starts_with("primary") => "Primary".into(),
+        _ => "Secondary".into(),
+    }
 }

@@ -532,6 +532,7 @@ impl Scene {
                         label: label.into(),
                         percent,
                         projected: None,
+                        windows: Vec::new(),
                         stale: false,
                         reason: percent.is_none().then(|| {
                             m.reason
@@ -551,10 +552,24 @@ impl Scene {
                     self.usage.providers.retain(|m| m.label != id);
                     // An account with no reading (signed out, unreadable) is not shown.
                     if let Some(r) = reading.filter(|r| r.used.is_some()) {
+                        let now = bboxy450_usage::now() as i64;
+                        let windows = r
+                            .windows
+                            .iter()
+                            .map(|w| bbt_ui_model::usage::UsageWindow {
+                                label: w.label.clone(),
+                                percent: w.used,
+                                projected: w.projected,
+                                resets: w
+                                    .resets_at
+                                    .map(|t| bboxy450_usage::reset_label(t, now)),
+                            })
+                            .collect();
                         self.usage.providers.push(UsageMetric {
                             label: id.into(),
                             percent: r.used,
                             projected: r.projected,
+                            windows,
                             stale: r.stale,
                             reason: r.reason,
                         });
@@ -573,16 +588,13 @@ impl Scene {
 
     pub fn usage_tooltip(&self, size: [f32; 2]) -> Vec<c::Paint> {
         let mut style = ui::Style::new(ui::Preset::Modal);
-        style.overrides.padding = Some([ui::Length::Px(8.); 4]);
-        let text = c::Text::new(
-            format!(
-                "{}\nClick to refresh accounts",
-                self.usage.lines().join("\n")
-            ),
-            ui::Text::default(),
-        );
-        let element = c::Element::Box(c::Box::new(style, vec![c::Element::Text(text).into()]));
-        let width = (size[0] - 24.).clamp(1., 720.);
+        style.overrides.padding = Some([ui::Length::Px(16.); 4]);
+        // Tachyon-style breakdown: rings, per-window progress bars, resets and pace.
+        let width = (size[0] - 24.).clamp(1., 360.);
+        let element = c::Element::Box(c::Box::new(
+            style,
+            vec![bbt_ui::modules::title_bar::usage_breakdown(&self.usage, width - 32.).into()],
+        ));
         element
             .layout(
                 Rect::new(

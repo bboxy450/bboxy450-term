@@ -289,7 +289,7 @@ pub async fn fetch_reading(
     .await
     .unwrap_or(Err(Failure::Timeout));
     match result {
-        Ok(window) => Reading::from_window(window, crate::now()),
+        Ok(windows) => Reading::from_windows(&windows, crate::now()),
         Err(e) => error_reading(e, p),
     }
 }

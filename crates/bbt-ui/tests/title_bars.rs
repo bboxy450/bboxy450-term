@@ -46,6 +46,7 @@ fn usage_strip_renders_snapshot_hides_absent_accounts_and_retains_error_reason()
         label: label.into(),
         percent,
         projected: None,
+        windows: Vec::new(),
         stale: false,
         reason: None,
     };
@@ -65,6 +66,7 @@ fn usage_strip_renders_snapshot_hides_absent_accounts_and_retains_error_reason()
                 label: "codex".into(),
                 percent: None,
                 projected: None,
+                windows: Vec::new(),
                 stale: false,
                 reason: Some("Run `codex login`".into()),
             },
@@ -98,7 +100,7 @@ fn usage_strip_renders_snapshot_hides_absent_accounts_and_retains_error_reason()
         "DISK 95%",
         "Claude 40%",
         "Codex —",
-        "Grok 91% (stale)",
+        "Grok 91% used",
         "Run `codex login`",
     ] {
         assert!(debug.contains(text), "{text}");
@@ -114,13 +116,33 @@ fn usage_strip_renders_snapshot_hides_absent_accounts_and_retains_error_reason()
     let errored = bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.state.errored).0;
     assert_eq!(color(find(&wide, "bar/usage/MEM")), waiting);
     assert_eq!(color(find(&wide, "bar/usage/DISK")), errored);
-    let hex = |h: &str| bbt_ui_model::draw::Color::hex(h).0;
-    assert_eq!(color(find(&wide, "bar/usage/grok")), hex("#FF453A"));
-    assert_eq!(color(find(&wide, "bar/usage/claude")), hex("#FFD60A"));
+    // Tachyon bands color the rings: grok 91% red; claude 40% lifted to yellow by pace.
+    use bbt_ui::modules::title_bar::{band_color, usage_breakdown};
+    let rgba = |h: &str| Some(bbt_ui::Color::Rgba(bbt_ui_model::draw::Color::hex(h).0));
+    assert_eq!(band_color(&strip.providers[2]), rgba("#FF453A"));
+    assert_eq!(band_color(&strip.providers[0]), rgba("#FFD60A"));
+    for ring in ["bar/usage/claude/ring", "bar/usage/grok/ring"] {
+        assert!(debug.contains(ring), "{ring}");
+    }
     assert!(!debug.contains(" left"));
     strip.providers.retain(|m| m.label != "grok");
     let layout = solve(&strip);
     assert!(!format!("{layout:?}").contains("bar/usage/grok"));
+
+    // The hover breakdown lists each window with its reset, bar, used and pace.
+    strip.providers[0].windows = vec![bbt_ui_model::usage::UsageWindow {
+        label: "Weekly".into(),
+        percent: 40,
+        projected: Some(91),
+        resets: Some("Resets Fri 8:00 AM".into()),
+    }];
+    let breakdown = usage_breakdown(&strip, 300.)
+        .layout(Rect::new(0., 0., 300., 0.), context(), &Metrics)
+        .unwrap();
+    let text = format!("{breakdown:?}");
+    for want in ["Claude", "Weekly", "Resets Fri 8:00 AM", "40% Used", "At this pace, ~91% by reset", "Click to refresh accounts"] {
+        assert!(text.contains(want), "{want}");
+    }
 }
 // keeps: spec gui-components §1.3
 #[test]

@@ -62,7 +62,7 @@ fn ready(p: &dyn Provider, r: &dyn CredentialReader) -> Credential {
 
 #[test]
 fn tachyon_fixtures_select_worst_window_used() {
-    let used = |r: Result<Window, Failure>| r.map(|w| w.used.round() as u8);
+    let used = |r: Result<Vec<Window>, Failure>| r.map(|w| w[0].used.round() as u8);
     assert_eq!(
         used(Claude.decode(include_bytes!("fixtures/claude.json"))),
         Ok(36)
@@ -364,18 +364,23 @@ async fn worker_revalidates_credentials_before_publishing_an_inflight_reply() {
 #[test]
 fn tachyon_pace_projects_used_over_elapsed_window() {
     let w = Claude
-        .decode(br#"{"five_hour":{"utilization":40,"resets_at":"1970-01-01T05:00:00.250+00:00"}}"#)
+        .decode(br#"{"five_hour":{"utilization":40,"resets_at":"1970-01-01T05:00:00.250+00:00"},"seven_day":{"utilization":10}}"#)
         .unwrap();
-    assert_eq!(w.resets_at, Some(18000.25));
+    assert_eq!(w[0].resets_at, Some(18000.25));
+    assert_eq!(w[0].label, "Current session");
+    assert_eq!(w[1].label, "Weekly");
     // Half of the 5 h window elapsed at 40% used: ~80% by reset.
-    assert_eq!(Reading::from_window(w, 9000.25).projected, Some(80));
+    let r = Reading::from_windows(&w, 9000.25);
+    assert_eq!((r.used, r.projected, r.windows.len()), (Some(40), Some(80), 2));
     // Under 10% of the window elapsed: no pace yet.
-    assert_eq!(Reading::from_window(w, 1000.).projected, None);
+    assert_eq!(Reading::from_windows(&w, 1000.).projected, None);
     // On pace past the limit.
-    let hot = Window::timed(60., Some(18000.), Some(18000.));
-    assert_eq!(Reading::from_window(hot, 9000.).projected, Some(120));
+    let hot = [Window::timed("Weekly", 60., Some(18000.), Some(18000.))];
+    assert_eq!(Reading::from_windows(&hot, 9000.).projected, Some(120));
     // A stale reading never drives pace.
-    let mut stale = Reading::from_window(hot, 9000.);
+    let mut stale = Reading::from_windows(&hot, 9000.);
     stale.stale("Refresh due");
-    assert_eq!(stale.projected, None);
+    assert_eq!((stale.projected, stale.windows[0].projected), (None, None));
+    // Same local day says "at"; otherwise the weekday.
+    assert!(reset_label(9000, 8000).starts_with("Resets "));
 }

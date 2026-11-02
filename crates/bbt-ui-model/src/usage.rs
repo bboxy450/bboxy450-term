@@ -12,8 +12,32 @@ pub struct UsageMetric {
     pub percent: Option<u8>,
     /// Provider pace: percent this window reaches by its reset (Tachyon).
     pub projected: Option<u16>,
+    /// Provider windows, worst first, for the breakdown.
+    pub windows: Vec<UsageWindow>,
     pub stale: bool,
     pub reason: Option<String>,
+}
+/// One provider window in the breakdown (Tachyon popover row).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UsageWindow {
+    pub label: String,
+    pub percent: u8,
+    pub projected: Option<u16>,
+    /// "Resets Fri 8:00 AM"
+    pub resets: Option<String>,
+}
+impl UsageWindow {
+    /// The same Tachyon pace rules as the headline metric.
+    pub fn metric(&self) -> UsageMetric {
+        UsageMetric {
+            label: self.label.clone(),
+            percent: Some(self.percent),
+            projected: self.projected,
+            windows: Vec::new(),
+            stale: false,
+            reason: None,
+        }
+    }
 }
 impl UsageMetric {
     pub fn text(&self, provider: bool) -> String {
@@ -22,7 +46,9 @@ impl UsageMetric {
         if provider && let Some(first) = label.get_mut(..1) {
             first.make_ascii_uppercase();
         }
-        format!("{label} {number}{}", if self.stale { " (stale)" } else { "" })
+        // Staleness is not shown: the poller refreshes on a timer, and the reason line
+        // in the breakdown says when a value is historical.
+        format!("{label} {number}")
     }
     /// Tachyon: on pace to exhaust the window before it resets, with capacity left.
     pub fn pace_hot(&self) -> bool {
@@ -58,8 +84,9 @@ impl UsageMetric {
     }
     pub fn description(&self, provider: bool) -> String {
         let mut text = self.text(provider);
-        if provider && self.percent.is_some() {
-            text.push_str(" used");
+        if provider && let Some(p) = self.percent {
+            let name = text.split(' ').next().unwrap_or_default().to_string();
+            text = format!("{name} {p}% used");
             if let Some(caption) = self.pace_caption() {
                 text = format!("{text}, {caption}");
             }
