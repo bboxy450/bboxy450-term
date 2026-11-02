@@ -69,6 +69,7 @@ fn view(f: &Value) -> TitleBar {
         crumb: o["crumb"].as_str().unwrap_or("").into(),
         sidebar_open: o["sidebarOpen"] != false,
         blurred: o["blurred"] == true,
+        theme: "auto".into(),
     }
 }
 pub fn layout_case(case: &Case) -> Result<c::Layout> {

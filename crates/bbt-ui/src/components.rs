@@ -1163,6 +1163,14 @@ impl Element {
                 });
             }
             Self::Layers { base, overlays } => {
+                // SVG icons paint at whole-CSS-pixel origins (half up, as Chrome does) while
+                // vectors paint exactly. A composite with an icon overlay (a logo inside a
+                // ring or badge) snaps as one, so the icon stays centred on its vector base.
+                let rect = if overlays.iter().any(|p| matches!(p.content, Self::Icon { .. })) {
+                    Rect::new((rect.x + 0.5).floor(), (rect.y + 0.5).floor(), rect.w, rect.h)
+                } else {
+                    rect
+                };
                 let mut children = vec![base.layout_in(rect, pass)?];
                 for p in overlays {
                     let (size, _) = p.content.natural_in((rect.w - p.left).max(0.), pass)?;

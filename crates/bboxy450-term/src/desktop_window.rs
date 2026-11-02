@@ -148,13 +148,43 @@ fn near(a: [f32; 2], b: [f32; 2]) -> bool {
 }
 
 impl crate::App {
+    /// The title-bar theme button cycles the saved appearance setting
+    /// auto → light → dark → auto, through the same path as Settings.
+    fn cycle_theme(&mut self) {
+        let next = match self.preferences.preferences.appearance.theme.as_str() {
+            "light" => "dark",
+            "dark" => "auto",
+            _ => "light",
+        };
+        match self
+            .preferences
+            .edit(bbt_ui::modules::settings::controller::Patch::Theme(next.into()))
+        {
+            Ok(request) => match &self.preferences_io {
+                Some(io) => {
+                    if let Err(reason) = io.submit(request) {
+                        self.preferences.refused(reason);
+                    }
+                }
+                None => self
+                    .preferences
+                    .refused("Settings persistence is unavailable"),
+            },
+            Err(reason) => self.preferences.refused(reason),
+        }
+        self.apply_preferences();
+        self.request_redraw();
+    }
+
     /// Native mouse-down and ctl click use identical hit/gesture dispatch. Only the
     /// native caller may consume an NSEvent to begin a window drag.
     pub(super) fn titlebar_pressed(&mut self, at: [f32; 2], native_drag: bool) -> bool {
-        if matches!(
-            self.titlebar.hit(at),
-            None | Some(Hit::Sidebar | Hit::Theme)
-        ) {
+        if self.titlebar.hit(at) == Some(Hit::Theme) {
+            self.titlebar.click = None;
+            self.cycle_theme();
+            return true;
+        }
+        if matches!(self.titlebar.hit(at), None | Some(Hit::Sidebar)) {
             // Sidebar/theme are retained controls, so they can never be a
             // draggable background or the second half of a title-bar gesture.
             self.titlebar.click = None;

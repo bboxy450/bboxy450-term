@@ -121,7 +121,12 @@ fn usage_strip_renders_snapshot_hides_absent_accounts_and_retains_error_reason()
     let rgba = |h: &str| Some(bbt_ui::Color::Rgba(bbt_ui_model::draw::Color::hex(h).0));
     assert_eq!(band_color(&strip.providers[2]), rgba("#FF453A"));
     assert_eq!(band_color(&strip.providers[0]), rgba("#FFD60A"));
-    for ring in ["bar/usage/claude/ring", "bar/usage/grok/ring"] {
+    for ring in [
+        "bar/usage/claude/ring",
+        "bar/usage/grok/ring",
+        "bar/usage/claude/name",
+        "bar/usage/grok/name",
+    ] {
         assert!(debug.contains(ring), "{ring}");
     }
     assert!(!debug.contains(" left"));

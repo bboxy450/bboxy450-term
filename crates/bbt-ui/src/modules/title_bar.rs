@@ -20,6 +20,8 @@ pub struct TitleBar {
     pub crumb: String,
     pub sidebar_open: bool,
     pub blurred: bool,
+    /// Saved appearance theme: "auto", "light" or "dark". The button cycles it.
+    pub theme: String,
 }
 impl Default for TitleBar {
     fn default() -> Self {
@@ -28,6 +30,7 @@ impl Default for TitleBar {
             crumb: String::new(),
             sidebar_open: true,
             blurred: false,
+            theme: "auto".into(),
         }
     }
 }
@@ -220,19 +223,23 @@ impl TitleBar {
                 },
                 toggle(
                     "bar/tbtn1",
+                    // The icon shows the theme in effect; an explicit light or dark choice
+                    // is highlighted, auto (follow the system) is not.
                     if ctx.theme == ui::Theme::Dark {
-                        "sun"
-                    } else {
                         "moon"
+                    } else {
+                        "sun"
                     },
-                    false,
+                    self.theme != "auto",
                 )
                 .into(),
             ],
         );
         if !usage.machine.is_empty() || !usage.providers.is_empty() {
+            let at = bar.children.len() - 1;
+            bar.children.insert(at, flexible(self.usage_element(usage)));
             bar.children
-                .insert(bar.children.len() - 1, flexible(self.usage_element(usage)));
+                .insert(at + 1, label("bar/usage/end", "│", 400, true, false).into());
         }
         bar.gap = ui::Length::Spacing(5);
         bar.cross_overflow = true;
@@ -282,13 +289,30 @@ fn usage_metric(metric: &UsageMetric, provider: bool) -> c::Element {
     text.wrap = false;
     let text = c::Element::Text(text);
     let content = if provider {
+        // A small, tight harness name after the number says whose ring it is.
+        let mut name = metric.label.clone();
+        if let Some(first) = name.get_mut(..1) {
+            first.make_ascii_uppercase();
+        }
+        let mut tag = c::Text::new(
+            name,
+            ui::Text {
+                paint: ui::Paint::solid(ui::Color::Muted),
+                step: ui::TypeStep::Tiny,
+                weight: 500,
+                line_height: 1.2,
+                ..Default::default()
+            },
+        );
+        tag.wrap = false;
         c::Element::Stack(c::Stack {
             direction: Axis::Row,
-            gap: ui::Length::Px(4.),
+            gap: ui::Length::Px(3.),
             align: c::Alignment::Center,
             children: vec![
                 named(format!("bar/usage/{}/ring", metric.label), ring(metric, 16.)).into(),
                 text.into(),
+                named(format!("bar/usage/{}/name", metric.label), c::Element::Text(tag)).into(),
             ],
         })
     } else {

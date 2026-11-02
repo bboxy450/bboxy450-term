@@ -266,6 +266,8 @@ pub struct Scene {
     /// gutter between panes is R and the stage inset R/2, so changing it relayouts.
     rim: f32,
     context: ui::Context,
+    /// The saved appearance theme ("auto", "light" or "dark") for the title-bar button.
+    theme_setting: String,
     glow: bool,
     subtitle: bool,
     /// When each seat's focus swell started (rim-glow §7); it runs glow.swell_ms.
@@ -496,6 +498,7 @@ impl Scene {
             metrics: Metrics::default(),
             rim: TOKENS.glow.rim as f32,
             context: ui::Context::new(ui::Theme::Dark, ui::Density::Cozy),
+            theme_setting: "auto".into(),
             glow: true,
             subtitle: false,
             swells: HashMap::new(),
@@ -618,6 +621,7 @@ impl Scene {
         system: ui::Theme,
     ) {
         self.set_context(preferences.context(system));
+        self.theme_setting = preferences.appearance.theme.clone();
         self.set_rim(preferences.appearance.rim);
         self.glow = preferences.appearance.glow;
         self.subtitle = preferences.appearance.subtitle;
@@ -715,6 +719,7 @@ impl Scene {
             metrics: Metrics::default(),
             rim: TOKENS.glow.rim as f32,
             context: ui::Context::new(ui::Theme::Dark, ui::Density::Cozy),
+            theme_setting: "auto".into(),
             glow: true,
             subtitle: false,
             swells: HashMap::new(),
@@ -1602,6 +1607,7 @@ impl Scene {
                             },
                         )
                 },
+                theme: self.theme_setting.clone(),
                 ..Default::default()
             }
             .element_with_usage(ctx, &self.usage)
