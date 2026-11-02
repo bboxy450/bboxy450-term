@@ -161,6 +161,21 @@ fn ignored(relative: &Path) -> bool {
                 ".git"
                     | "target"
                     | "node_modules"
+                    // Generated build output and tool caches: rebuilt, not authored.
+                    | "dist"
+                    | ".svelte-kit"
+                    | ".next"
+                    | ".nuxt"
+                    | ".turbo"
+                    | ".vite"
+                    | ".parcel-cache"
+                    | "__pycache__"
+                    | ".pytest_cache"
+                    | ".mypy_cache"
+                    | ".ruff_cache"
+                    | ".venv"
+                    | ".gradle"
+                    | "DerivedData"
                     | ".gnupg"
                     | ".ssh"
                     | ".icq"
@@ -969,6 +984,14 @@ mod tests {
         ] {
             assert!(!ignored(Path::new(name)), "ordinary name hidden: {name}");
         }
+        for name in [
+            "clients/app/dist/assets/index-Bx1.js",
+            "web/.svelte-kit/output/a.js",
+            "tools/__pycache__/m.pyc",
+        ] {
+            assert!(ignored(Path::new(name)), "build output observed: {name}");
+        }
+        assert!(!ignored(Path::new("src/distance.rs")));
     }
     // keeps: regression unchanged_clipped_git_refs_produce_no_activity_for_ten_seconds
     // Completed scans, rather than elapsed silence, prove unchanged snapshots are quiet.

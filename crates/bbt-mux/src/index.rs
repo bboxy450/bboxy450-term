@@ -10,7 +10,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 use std::sync::{
-    Arc,
+    Arc, Mutex,
     atomic::{AtomicBool, Ordering},
 };
 
@@ -113,6 +113,22 @@ fn record_number(metadata: &Value) -> Option<u64> {
 struct FileState {
     len: u64,
     modified: std::time::SystemTime,
+}
+
+/// Inode, size, mtime and ctime of an unchanged file. A write, rename or
+/// in-place edit changes at least one, so a matching stamp needs no re-parse.
+type Stamp = (u64, u64, u64, i64, i64, i64, i64);
+fn file_stamp(metadata: &std::fs::Metadata) -> Stamp {
+    use std::os::unix::fs::MetadataExt;
+    (
+        metadata.dev(),
+        metadata.ino(),
+        metadata.len(),
+        metadata.mtime(),
+        metadata.mtime_nsec(),
+        metadata.ctime(),
+        metadata.ctime_nsec(),
+    )
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -308,6 +324,8 @@ pub struct Index {
     // A reopened index cold-reconciles its root. Persisted documents alone do
     // not prove that an on-disk file still has the same contents.
     file_states: BTreeMap<String, FileState>,
+    // Shared by clones of this root; each entry is checked against a fresh stat.
+    numbers: Arc<Mutex<BTreeMap<PathBuf, (Stamp, u64)>>>,
     #[cfg(test)]
     document_reads: usize,
 }
@@ -354,6 +372,7 @@ impl Index {
             documents: BTreeMap::new(),
             graphs: BTreeMap::new(),
             file_states: BTreeMap::new(),
+            numbers: Arc::default(),
             #[cfg(test)]
             document_reads: 0,
         };
@@ -703,24 +722,37 @@ impl Index {
     /// Numbers come from the current files, not the watcher's cached mirror.
     /// Keep every claimant. A collision occupies its number without poisoning
     /// unrelated lookups or guessing an available allocation below the maximum.
+    /// Every file is stat-ed per call; only a file whose stamp changed is parsed.
     fn record_numbers(&self) -> Result<BTreeMap<u64, Vec<String>>> {
         let mut paths = Vec::new();
         collect(&self.root, &mut paths)?;
         paths.sort_by(|a, b| a.0.cmp(&b.0));
+        let mut cache = self.numbers.lock().unwrap_or_else(|e| e.into_inner());
+        let mut fresh = BTreeMap::new();
         let mut numbers: BTreeMap<u64, Vec<String>> = BTreeMap::new();
-        for (path, _) in paths {
+        for (path, metadata) in paths {
             let relative = path
                 .strip_prefix(&self.root)
                 .ok()
                 .and_then(Path::to_str)
                 .ok_or_else(|| invalid("record path is not relative UTF-8"))?;
-            let doc = self
-                .current(relative)?
-                .ok_or_else(|| invalid("record disappeared during number scan"))?;
-            let number = record_number(&doc.metadata)
-                .ok_or_else(|| invalid(format!("{relative}: invalid or missing record number")))?;
+            let stamp = file_stamp(&metadata);
+            let number = match cache.get(&path) {
+                Some((cached, number)) if *cached == stamp => *number,
+                _ => {
+                    let doc = self
+                        .current(relative)?
+                        .ok_or_else(|| invalid("record disappeared during number scan"))?;
+                    record_number(&doc.metadata).ok_or_else(|| {
+                        invalid(format!("{relative}: invalid or missing record number"))
+                    })?
+                }
+            };
             numbers.entry(number).or_default().push(relative.to_owned());
+            fresh.insert(path, (stamp, number));
         }
+        // Removed files leave the cache, so it never outgrows the root.
+        *cache = fresh;
         Ok(numbers)
     }
     pub(crate) fn by_number(&self, number: u64) -> Result<Option<Document>> {
@@ -1382,6 +1414,42 @@ mod tests {
         assert_eq!(scan_and_ack(&mut index).len(), 2);
         assert!(index.documents.is_empty());
         assert!(index.file_states.is_empty());
+    }
+
+    #[test]
+    fn record_numbers_reuse_unchanged_files_and_see_same_length_edits() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join(".bboxy");
+        let state = temp.path().join("state");
+        let index = Index::open(&root, SqliteStore::open(&state).unwrap()).unwrap();
+        let a = root.join("a.md");
+        let b = root.join("b.md");
+        std::fs::write(&a, "---\nnumber: 1\n---\na").unwrap();
+        std::fs::write(&b, "---\nnumber: 2\n---\nb").unwrap();
+        stamp(&b, 10);
+        let numbers = index.record_numbers().unwrap();
+        assert_eq!(numbers.keys().copied().collect::<Vec<_>>(), [1, 2]);
+        assert_eq!(index.numbers.lock().unwrap().len(), 2);
+        // Same length and restored mtime: only the ctime records the edit.
+        std::fs::write(&b, "---\nnumber: 7\n---\nb").unwrap();
+        stamp(&b, 10);
+        let numbers = index.record_numbers().unwrap();
+        assert_eq!(numbers.keys().copied().collect::<Vec<_>>(), [1, 7]);
+        std::fs::remove_file(&a).unwrap();
+        assert_eq!(
+            index
+                .record_numbers()
+                .unwrap()
+                .keys()
+                .copied()
+                .collect::<Vec<_>>(),
+            [7]
+        );
+        assert_eq!(
+            index.numbers.lock().unwrap().len(),
+            1,
+            "removed files leave the cache"
+        );
     }
 
     #[test]

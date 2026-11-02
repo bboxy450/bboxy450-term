@@ -25,9 +25,16 @@ use crate::{
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::{BTreeMap, VecDeque};
+use std::time::{Duration, Instant};
 
 const OUTBOX: &str = "provenance/observation-outbox";
 const CURSOR: &str = "provenance/artifact-projection";
+// Artifact Markdown is an eventually consistent projection of the signed log.
+// A turn writes until this budget is spent, then rests REST_FACTOR times as
+// long (capped), so a burst catches up without holding the logic owner.
+const PROJECTION_BUDGET: Duration = Duration::from_millis(40);
+const REST_FACTOR: u32 = 4;
+const MAX_REST: Duration = Duration::from_secs(5);
 #[derive(Clone)]
 struct Entry {
     id: Ulid,
@@ -53,6 +60,7 @@ pub(crate) struct Engine {
     projection_cursor: u64,
     pending: Option<Pending>,
     holding: Option<bool>,
+    projection_due: Option<Instant>,
 }
 impl Engine {
     pub fn open(
@@ -85,6 +93,7 @@ impl Engine {
             projection_cursor,
             pending,
             holding: None,
+            projection_due: None,
         };
         for doc in index
             .documents
@@ -198,8 +207,9 @@ impl Engine {
         event.generation = change.attribution.generation;
         Some(Pending { event, change })
     }
-    /// One bounded catalog page, one observation and one artifact projection.
-    /// All hashes have already completed on the four bounded IO jobs.
+    /// One bounded catalog page, one observation and a budgeted, paced run of
+    /// artifact projections. All hashes have already completed on the four
+    /// bounded IO jobs.
     pub fn step(
         &mut self,
         index: &mut Index,
@@ -288,7 +298,10 @@ impl Engine {
             handle.block_on(bus.publish(index.activity_stream(), event))?;
             self.holding = Some(held);
         }
-        if let Some(key) = signer {
+        let started = Instant::now();
+        if let Some(key) = signer
+            && self.projection_due.is_none_or(|due| started >= due)
+        {
             let status = identity.status()?;
             let before_projection = self.projection_cursor;
             let rows = index.activity().after(self.projection_cursor, 128)?;
@@ -312,7 +325,10 @@ impl Engine {
                         changed = true;
                     }
                     self.projection_cursor = row.seq;
-                    break;
+                    if started.elapsed() >= PROJECTION_BUDGET {
+                        break;
+                    }
+                    continue;
                 }
                 self.projection_cursor = row.seq;
             }
@@ -320,6 +336,8 @@ impl Engine {
                 self.store
                     .put(CURSOR, &serde_json::to_vec(&self.projection_cursor)?)?;
             }
+            self.projection_due =
+                changed.then(|| Instant::now() + (started.elapsed() * REST_FACTOR).min(MAX_REST));
         } // No legitimate observer key: durable hold events remain, projection is pending.
         index.project_activity()?;
         Ok(changed)

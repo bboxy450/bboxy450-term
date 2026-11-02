@@ -825,3 +825,23 @@ frontend = "project"
 name = "BrokenWheelOwnership"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "RecordNumberCache"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenRecordNumberCache"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "ProjectionPacing"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenProjectionPacing"
+expected = "liveness"
+frontend = "project"

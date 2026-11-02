@@ -383,6 +383,26 @@ checks = ["make test-formal", "make test"]
 
 
 [[contract]]
+name = "RecordNumberCache"
+title = "Cached record numbers are served only for an unchanged file stamp"
+models = ["RecordNumberCache", "BrokenRecordNumberCache"]
+sources = ["crates/bbt-mux/src/index.rs", "crates/bboxy450-term/tests/formal_contracts/provenance_models.rs"]
+implementation_tests = ["crates/bbt-mux/src/index.rs"]
+assumptions = "One record file, numbers A/B/A/B over three edits. Every edit advances the stamp (device, inode, size, mtime and ctime with nanoseconds; ctime cannot be restored by a writer). A lookup stats, then hits or parses; edits interleave between the stat and the parse. The cache is shared by clones of one root under its mutex and keeps only files seen by the last scan. Directory traversal, YAML parsing, the OS write lock and filesystem timestamp granularity are implementation-tested, not modelled."
+property = "A hit returns the number of the file that was statted, and an entry labelled with the current stamp names the current number (HitReturnsTheStattedNumber, CurrentStampNamesCurrentNumber). The broken control's stamp ignores a same-length edit and must fail. Witness: index.rs record_numbers_reuse_unchanged_files_and_see_same_length_edits restores mtime after a same-length edit; removing ctime from the stamp fails it."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ProjectionPacing"
+title = "Paced artifact projection eventually drains a bounded backlog"
+models = ["ProjectionPacing", "BrokenProjectionPacing"]
+sources = ["crates/bbt-mux/src/provenance/engine.rs", "crates/bboxy450-term/tests/formal_contracts/provenance_models.rs"]
+implementation_tests = ["crates/bbt-mux/tests/provenance.rs", "crates/bbt-mux/src/logic.rs"]
+assumptions = "Two arrivals, one projection per turn and a two-tick rest. Rest expiry, projection and logic-owner steps are weakly fair; arrivals are not. A real turn projects rows until a 40 ms budget is spent, then rests four times its duration (at most 5 s); artifact Markdown is an eventually consistent projection of the signed activity log, and an interrupted batch is re-projected idempotently from its persisted cursor. Wall-clock costs, fsync and signing are implementation-tested."
+property = "Every backlog is eventually projected (BacklogEventuallyProjected). The rest is set only after a turn that wrote; the broken control renews it on every logic step and starves projection, which must fail liveness."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "HistoricalReconcile"
 title = "Historical closure has scoped authority and preserves fresh acceptance"
 models = ["HistoricalReconcile", "BrokenHistoricalReconcile"]

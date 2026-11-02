@@ -43,6 +43,9 @@ mod input_dedup_model;
 #[path = "wheel_model.rs"]
 mod wheel_model;
 
+#[path = "provenance_models.rs"]
+mod provenance_models;
+
 fn eq(i: usize, n: i64) -> Expr {
     Var(i).eq(Int(n))
 }
@@ -1859,6 +1862,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(gitkb_models::cases());
     cases.extend(usage_models::cases());
     cases.extend(launch_environment::cases());
+    cases.extend(provenance_models::cases());
     cases
 }
 
