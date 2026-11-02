@@ -13,19 +13,37 @@ delegated_by: seat:01M6CQB5DB5RA6QDF9N162NF8S
 id: 01M6EK5APZPAYV60TH8Q4Q15DE
 number: 3351
 provenance:
-  digest: sha256:33e6a6cba27a5723860eeb86d88c992b30b6fccab36493071e77e900e77c63aa
-  frontmatter_digest: sha256:273f3f3b70290ce3b2e7bfa6f60a13f8acc4962d583aabab44303fe0ad6c76f2
-  log: .bboxy/log/2026-11-02.jsonl#17157
-  sig: //tMztKeOwMxWwh1e+agv9WI6O0CApbysls1NkgbSA8/XAJ7dJTGuMs+VJN7VhgTt8mDOk7XF9L5Tz6PN6FlBQ==
+  digest: sha256:8d017669080ac812835fe44913075f2ff7f65989dfb09f6020ee2ebd53249542
+  frontmatter_digest: sha256:d80bddbe190e180fb7ad900abff10c42aedb6f5956883409dc5feebee0abf6dc
+  log: .bboxy/log/2026-11-02.jsonl#17171
+  sig: x7x1m8PjqFjIoROgRva5cfekfNIC3iX5BDFPHItfIeElCo1wdaFwLnbpY3L/AojGiclo/24YTRpI0dTMDdWpDw==
   signer: seat:01M6EK48WKEEPDMMY07B3R82SK
+report:
+  commit: 16ff21282931874016a8263a8540b9b2776426fd
+  op_id: 01M6EMW22Q8W282KM3DTG6H61H
+  report: '[[reports/2026-11-02-title-bar-usage-oracle-landing.md]]'
+  reported_by: seat:01M6EK48WKEEPDMMY07B3R82SK
+  summary: 'Landed by Oracle at 1aa0339b075a01adaec6800025bd43332192f83a; remote main confirmed. Per the Oracle''s stop decision, no further rebase, tests or landing were run. The single Executor make test was stopped with exit 143 during test-harness-native; full Java TLC/Yarn and final smoke were not reached. Gate log: /Users/feral/mydev/bboxy450-term-usage/target/ci-local.log, SHA256 d350c455bbabc18726a530c83e8e4745387808533bf848068596a9d22be877dd. Executor land.sh was not invoked, so its exit code is unavailable. Full report #3755 is committed in signed 16ff2128; worktree clean, reporting-only commit one ahead of origin/main.'
 role: executor
-status: claimed
+status: reported
 swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
 title: Land the title-bar usage branch (#2197) from c5aa7df2
 type: task
-updated: 2026-11-02T17:27:45.895Z
+updated: 2026-11-02T17:28:19.905Z
 updated_by: seat:01M6EK48WKEEPDMMY07B3R82SK
 verify: make test
+verify_result:
+  command: make test
+  evidence:
+  - criterion: Signed rebase and scoped records
+    reference: 'Report #3755; git rebase --continue exit 0, combined gitkb/usage model registrations retained, task copied byte-for-byte. Signed report commit 16ff21282931874016a8263a8540b9b2776426fd; approved key 9B07E849480C68328CA20684844ECC0587DE7AB0; clean worktree.'
+  - criterion: Single CPU-capped worktree gate
+    reference: 'pgrep count 0 before make test; target/ci-local.log:6,8 binds 7b2aa3c5 to /Users/feral/mydev/bboxy450-term-usage/target; line 5070 records Terminated: 15; make exit 143. Log SHA256 d350c455bbabc18726a530c83e8e4745387808533bf848068596a9d22be877dd.'
+  - criterion: Landed main and stop ruling
+    reference: git ls-remote origin refs/heads/main exit 0 at 2026-11-02T17:27:06Z returned 1aa0339b075a01adaec6800025bd43332192f83a. Oracle decision 01M6EMQHH0VEXV82QA4JPQ9M19 states Oracle pushed and stopped make test; no Executor land.sh invocation or exit code.
+  - criterion: Coverage limitations
+    reference: target/ci-local.log:98,137 workspace build/Clippy completed; workspace tests/doctests, usage tests, native project models and capability controls passed before interruption. No green ci-local result; full Java TLC/Yarn, final smoke and final invariant pass not reached. Landed source differs from the interrupted gate's source.
+  exit_code: 143
 ---
 # Land the title-bar usage branch
 
@@ -48,3 +66,38 @@ One attempt. If a test this branch touches fails, stop and report it with the lo
 
 ## Communication
 Quiet. One final `task_report`.
+
+
+## Report from seat:01M6EK48WKEEPDMMY07B3R82SK
+
+Landed by Oracle at 1aa0339b075a01adaec6800025bd43332192f83a; remote main confirmed. Per the Oracle's stop decision, no further rebase, tests or landing were run. The single Executor make test was stopped with exit 143 during test-harness-native; full Java TLC/Yarn and final smoke were not reached. Gate log: /Users/feral/mydev/bboxy450-term-usage/target/ci-local.log, SHA256 d350c455bbabc18726a530c83e8e4745387808533bf848068596a9d22be877dd. Executor land.sh was not invoked, so its exit code is unavailable. Full report #3755 is committed in signed 16ff2128; worktree clean, reporting-only commit one ahead of origin/main.
+
+```json
+{
+  "commit": "16ff21282931874016a8263a8540b9b2776426fd",
+  "op_id": "01M6EMW22Q8W282KM3DTG6H61H",
+  "report": "[[reports/2026-11-02-title-bar-usage-oracle-landing.md]]",
+  "verify_result": {
+    "command": "make test",
+    "evidence": [
+      {
+        "criterion": "Signed rebase and scoped records",
+        "reference": "Report #3755; git rebase --continue exit 0, combined gitkb/usage model registrations retained, task copied byte-for-byte. Signed report commit 16ff21282931874016a8263a8540b9b2776426fd; approved key 9B07E849480C68328CA20684844ECC0587DE7AB0; clean worktree."
+      },
+      {
+        "criterion": "Single CPU-capped worktree gate",
+        "reference": "pgrep count 0 before make test; target/ci-local.log:6,8 binds 7b2aa3c5 to /Users/feral/mydev/bboxy450-term-usage/target; line 5070 records Terminated: 15; make exit 143. Log SHA256 d350c455bbabc18726a530c83e8e4745387808533bf848068596a9d22be877dd."
+      },
+      {
+        "criterion": "Landed main and stop ruling",
+        "reference": "git ls-remote origin refs/heads/main exit 0 at 2026-11-02T17:27:06Z returned 1aa0339b075a01adaec6800025bd43332192f83a. Oracle decision 01M6EMQHH0VEXV82QA4JPQ9M19 states Oracle pushed and stopped make test; no Executor land.sh invocation or exit code."
+      },
+      {
+        "criterion": "Coverage limitations",
+        "reference": "target/ci-local.log:98,137 workspace build/Clippy completed; workspace tests/doctests, usage tests, native project models and capability controls passed before interruption. No green ci-local result; full Java TLC/Yarn, final smoke and final invariant pass not reached. Landed source differs from the interrupted gate's source."
+      }
+    ],
+    "exit_code": 143
+  }
+}
+```
