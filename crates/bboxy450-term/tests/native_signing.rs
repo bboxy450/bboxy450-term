@@ -227,6 +227,7 @@ fn native_bundle_fixture_child() {
         fs::write(p.join(name), format!("fixture {name}")).unwrap();
     }
     fs::write(p.join("target/debug/bboxy450-term"), "fixture binary").unwrap();
+    fs::write(p.join("target/debug/bboxy450-harness"), "fixture harness").unwrap();
     for (name, body) in [
         ("uname", "printf 'Darwin\\n'".to_string()),
         ("security", format!("printf 'lookup\\n' >> \"$FIXTURE_ROOT/lookups\"; test -z \"${{FIXTURE_NO_IDENTITY:-}}\" || exit 0; printf '%s\\n' {IDENTITY}")),
@@ -278,6 +279,11 @@ with (pathlib.Path(os.environ['FIXTURE_ROOT'])/'calls').open('a') as f:f.write(j
     assert!(
         p.join("target/debug/bboxy450-term.app/Contents/MacOS/bboxy450-term")
             .is_file()
+    );
+    assert!(
+        p.join("target/debug/bboxy450-term.app/Contents/MacOS/bboxy450-harness")
+            .is_file(),
+        "bundle ships the harness beside the app binary"
     );
     for name in [
         "LICENSE",
