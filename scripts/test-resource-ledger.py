@@ -277,7 +277,11 @@ class LedgerContracts(unittest.TestCase):
     def test_libproc_seconds_are_bracketed_by_self_rusage(self):
         import resource
         before = resource.getrusage(resource.RUSAGE_SELF)
-        row = ledger.processes()[os.getpid()]
+        # This units witness needs only self. Keep both real accounting reads
+        # without depending on a global ps walk under unrelated machine load.
+        identity = f'{os.getpid()} {os.getppid()} {os.getpgrp()}'
+        with patch.object(ledger, 'output', return_value=identity):
+            row = ledger.processes()[os.getpid()]
         after = resource.getrusage(resource.RUSAGE_SELF)
         measured = row['user'] + row['system']
         # getrusage's timeval is quantized to microseconds. This is a units
