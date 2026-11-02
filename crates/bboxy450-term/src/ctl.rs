@@ -563,7 +563,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "{USAGE_PREFIX}--grant and --tier apply only to plugin trust"
         ));
     }
-    if flags.contains_key("resume") && !matches!(&command, Command::Spawn { .. }) {
+    if flags.contains_key("resume") && !matches!(&command, Command::Spawn { .. } | Command::SpawnAt(_)) {
         return Err(format!("{USAGE_PREFIX}--resume applies only to seat spawn"));
     }
     if flags.contains_key("to") && !matches!(&command, Command::UiCompose { .. }) {
@@ -3135,6 +3135,14 @@ mod placement_parser_tests {
         }
         assert!(matches!(parse_full(&args("seat spawn claude")).unwrap().command,
             Command::Spawn { resume: None, .. }));
+        // A resumed seat can open in its own tab or space (the GUI owner places it).
+        for (place, expected) in [("tab", bbt_proto::gui::SpawnPlace::Tab), ("space", bbt_proto::gui::SpawnPlace::Space)] {
+            let line = format!("seat spawn claude --resume {id} --place {place}");
+            let Command::SpawnAt(pick) = parse_full(&args(&line)).unwrap().command else {
+                panic!("{line}: not a placed spawn")
+            };
+            assert_eq!((pick.resume.as_deref(), pick.place), (Some(id), expected), "{line}");
+        }
         let long = "a".repeat(129);
         for bad in [
             vec!["seat", "spawn", "zsh", "--resume", id],
@@ -3143,7 +3151,8 @@ mod placement_parser_tests {
             vec!["seat", "spawn", "claude", "--resume", "a b"],
             vec!["seat", "spawn", "codex", "--resume", "a\u{7}b"],
             vec!["seat", "spawn", "codex", "--resume", &long],
-            vec!["seat", "spawn", "claude", "--resume", id, "--place", "tab"],
+            vec!["seat", "spawn", "zsh", "--resume", id, "--place", "tab"],
+            vec!["seat", "spawn", "claude", "--resume", "a b", "--place", "tab"],
             vec!["seat", "ls", "--resume", id],
         ] {
             let words: Vec<String> = bad.iter().map(|s| s.to_string()).collect();

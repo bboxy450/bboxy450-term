@@ -355,6 +355,7 @@ mod spawn_pick_tests {
             cwd: "/fixture".into(),
             swarm: None,
             place: SpawnPlace::Right,
+            resume: None,
         };
         let request = UiRequest::Spawn(Box::new(pick.clone()));
         request.validate().unwrap();

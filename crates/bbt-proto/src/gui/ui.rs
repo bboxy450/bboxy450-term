@@ -156,6 +156,7 @@ impl UiRequest {
                     || pick.cwd.len() > 4096
                     || pick.name.as_ref().is_some_and(|name| name.len() > 1024)
                     || pick.role.as_ref().is_some_and(|role| role.len() > 128)
+                    || pick.resume.as_ref().is_some_and(|id| id.len() > 128)
                     || pick.swarm == Some(Ulid::nil()) =>
             {
                 Err("invalid_ui_spawn: invalid launch inputs")
@@ -349,6 +350,9 @@ pub struct UiSpawn {
     pub cwd: String,
     pub swarm: Option<Ulid>,
     pub place: SpawnPlace,
+    /// The native Claude session or Codex thread to resume.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resume: Option<String>,
 }
 
 /// The captured target of a spawn whose pane the reply's frame contains.

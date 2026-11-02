@@ -297,9 +297,6 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
     ["seat", "ls"] => Command::Seats,
     ["seat", "spawn", harness] => {
         let resume = resume(harness, flag("resume"))?;
-        if resume.is_some() && (flag("place").is_some() || flag("placement").is_some()) {
-            return Err(format!("{USAGE_PREFIX}--resume uses the default placement; drop --place"));
-        }
         if let Some(place) = flag("place").or(flag("placement")) {
             use bbt_proto::gui::{SpawnPlace, UiSpawn};
             let place = match place.as_str() {
@@ -310,7 +307,7 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
                 _ => return Err(format!("{USAGE_PREFIX}--place: expected right|down|tab|space")),
             };
             let pick = UiSpawn {
-                harness: harness.into(), name: flag("name"), role: flag("role"), swarm, place,
+                harness: harness.into(), name: flag("name"), role: flag("role"), swarm, place, resume,
                 cwd: flag("cwd").map(|path| std::path::absolute(path)
                     .map(|path|path.to_string_lossy().into_owned())
                     .map_err(|e|format!("{USAGE_PREFIX}--cwd: {e}"))).transpose()?.unwrap_or_default(),
