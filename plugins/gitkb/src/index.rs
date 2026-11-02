@@ -15,9 +15,10 @@
 //!
 //! Selection reproduces native 0.2.19 prefilter semantics measured on a
 //! private fixture: `--type`/`--status` lowercase their input and compare the
-//! listed row exactly; `--where field = value` compares the committed
-//! frontmatter for committed documents (even when a workspace file differs)
-//! and the workspace source for workspace-only documents. A document whose
+//! listed row exactly. `--where field = value` deliberately departs from
+//! native: it compares a document's workspace source whenever one exists
+//! (bboxy reads and writes that version, so an uncommitted task assignment
+//! must list), else the committed frontmatter. A document whose
 //! fields are unknown stays a candidate; the caller's exact or batched summary
 //! applies the authoritative filter, so the index only ever narrows.
 use std::collections::HashMap;
@@ -474,19 +475,24 @@ impl Listed {
         let mut out = Vec::new();
         for row in &self.rows {
             let slug = row["slug"].as_str().unwrap_or("");
+            // A checked-out document is read and written through its workspace
+            // version (bboxy's fetch and its task writes), so `--where` must
+            // filter on those fields; committed fields would hide an uncommitted
+            // assignment from the task list. Unreadable files use committed ones.
             let fields = if !query.needs_fields() {
                 None
-            } else if let Some(fields) = committed.and_then(|c| c.fields(slug, &row["id"])) {
-                Some(fields)
-            } else if committed.is_some_and(|c| c.docs.contains_key(slug))
-                || !stats.contains_key(slug)
-            {
-                None
             } else {
-                self.overlay
-                    .entry(slug.to_owned())
-                    .or_insert_with(|| workspace_fields(&workspace_root.join(format!("{slug}.md"))))
-                    .as_ref()
+                let workspace = if stats.contains_key(slug) {
+                    self.overlay
+                        .entry(slug.to_owned())
+                        .or_insert_with(|| {
+                            workspace_fields(&workspace_root.join(format!("{slug}.md")))
+                        })
+                        .as_ref()
+                } else {
+                    None
+                };
+                workspace.or_else(|| committed.and_then(|c| c.fields(slug, &row["id"])))
             };
             if query.admits(row, fields) {
                 out.push(row.clone());
@@ -1168,7 +1174,8 @@ mod tests {
             "---\nid: 01a1997b-4c91-7a12-9593-59543558aa31\nslug: tasks/w\ntitle: \"W\"\ntype: task\nstatus: active\nassignee: carol\nswarm: s9\n---\n\nbody w\n",
         )
         .unwrap();
-        // The workspace edit of a committed document: native ignores it.
+        // The workspace edit of a committed document: native ignores it; the
+        // selection honors it, since bboxy reads and writes this version.
         std::fs::write(
             dir.join("tasks/a.md"),
             "---\nid: 01a19974-88ad-7bf3-845a-b8dba67544e3\nslug: tasks/a\ntitle: A edited\ntype: task\nstatus: completed\nassignee: carol\nswarm: s9\n---\nbody a2\n",
@@ -1189,7 +1196,9 @@ mod tests {
         assert!(committed.skipped.is_empty());
         let root = workspace();
         let mut listed = Listed::new("s".into(), "w".into(), rows);
-        // Native `git-kb list` results for these flags, recorded on the fixture.
+        // Native `git-kb list` results for these flags, recorded on the fixture,
+        // except `--where` on tasks/a: its workspace edit (assignee carol, swarm
+        // s9) is what bboxy reads, so the selection filters on it.
         for (flags_text, native) in [
             (
                 &["--type", "task"][..],
@@ -1222,26 +1231,26 @@ mod tests {
                 &["--status", "draft,backlog,open"],
                 &["tasks/b", "tasks/f", "tasks/f2"],
             ),
-            (&["--where", "assignee = carol"], &["tasks/c", "tasks/w"]),
-            (&["--where", "assignee = alice"], &["tasks/a"]),
+            (&["--where", "assignee = carol"], &["tasks/a", "tasks/c", "tasks/w"]),
+            (&["--where", "assignee = alice"], &[]),
             (&["--where", "assignee = bob"], &["tasks/b"]),
             (&["--where", "assignee = Bob@x-y"], &["tasks/f", "tasks/f2"]),
             (
                 &["--where", "assignee = seat:01JABCDEFGHJKMNPQRSTVWXYZ0"],
                 &["tasks/d"],
             ),
-            (&["--where", "swarm = s9"], &["tasks/w"]),
+            (&["--where", "swarm = s9"], &["tasks/a", "tasks/w"]),
             (
                 &["--where", "bboxy_status = claimed"],
                 &["tasks/b", "tasks/f", "tasks/f2"],
             ),
             (
                 &["--type", "task", "--where", "assignee = carol"],
-                &["tasks/c", "tasks/w"],
+                &["tasks/a", "tasks/c", "tasks/w"],
             ),
             (
                 &["--status", "active", "--where", "assignee = carol"],
-                &["tasks/c", "tasks/w"],
+                &["tasks/a", "tasks/c", "tasks/w"],
             ),
             (
                 &[
