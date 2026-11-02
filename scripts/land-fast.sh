@@ -44,7 +44,12 @@ lean_gate() {
     printf '%s\n' "$plan" | while read -r kind name selection; do
         # shellcheck disable=SC2086
         case "$kind" in
-            test) run sh scripts/quarantine-test.sh --locked -p "$name" $selection || exit 1 ;;
+            test)
+                # Real-process tests run the crate's executable; build it as wide runs do.
+                case " $selection " in
+                    *" --bins "*) run cargo build --locked -q -p "$name" --bins || exit 1 ;;
+                esac
+                run sh scripts/quarantine-test.sh --locked -p "$name" $selection || exit 1 ;;
             check) run cargo check --locked -q $(printf -- '-p %s ' $name $selection) || exit 1 ;;
         esac
     done || return 1
