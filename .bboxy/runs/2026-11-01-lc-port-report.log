@@ -83,3 +83,30 @@ P0 and P2 source checkpoint (full workspace gate pending)
   original P1 inspiration/origin notices remain attached to the ported source.
 - This early checkpoint is pushed under the explicit dependency-unblocking
   instruction. Full make test and current-source formal evidence remain pending.
+
+Term-profile verification and CI fixture correction
+- make test-log-converter: exit 0 under term's optimized CI defaults and two
+  test threads. Executable-test totals from libtest: 42.94 s, below the 60 s
+  affected-test share. Whole target wall time 177.73 s includes initial
+  compilation and waiting for the build directory; those are build time.
+  Log: /tmp/lc-bxl-term-ci-profile-tests.log.
+- make test-log-converter-native: exit 0, including pinned upstream zstd -d/-t,
+  the standard seek table cross-check and the 100 MB raw-included ratio/readback
+  witness (47.90 s, full-run only), followed by all five P0 scripts.
+  Seven positive and six negative resume witnesses; no missing clients.
+  Log: /tmp/lc-bxl-term-native.log.
+- First full make test: exit 2. All 14 signature controls passed, then the
+  landing fixture's synthetic Makefile had no new converter targets. 139 of
+  140 fixtures passed; full CI stopped before workspace build. Failure log:
+  /tmp/lc-term-make-test-first-ci.log and /tmp/lc-term-make-test.log.
+- scripts/test-landing.py now includes both converter targets in its private
+  Makefile and verifies a native-converter failure cannot produce a green
+  receipt. The exact affected fixture passed: one test, 18.432 s, exit 0;
+  /tmp/lc-ci-fixture-fix.log. A fresh signed full-stack run is required.
+- Corrected a provenance mistake before handoff: pushed Report trailers named
+  this run log, but term requires a typed immutable report in each commit tree.
+  The delegated task and canonical initial build report now accompany the first
+  checkpoint and are inherited unchanged. No Rust/probe logic changed during
+  this correction. Old commits are retained by e6-log-converter-before-report-fix.
+  Replacement bases: c4a36ea6 -> 28cb6db3; aff296d4 -> c97f6d1a;
+  f7149868 -> c8ab7dd1. Each replacement is signed by the approved key.
