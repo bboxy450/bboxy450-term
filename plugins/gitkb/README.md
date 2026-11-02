@@ -190,7 +190,14 @@ deadline less 800 ms; it takes the backend path only when the build fails,
 finishes for another store signal, cannot finish in time or the call is
 cancelled, and whenever the store or workspace moves while rows refresh. A
 cold Harmony process answers the host's 126-call task list in 5.6 s from
-spawn (initialize 1.0 s, build ready 4.1 s later). Filters
+spawn (initialize 1.0 s, build ready 4.1 s later). Each finished build is
+saved to the plugin's private data directory (its cwd) as
+`gitkb-index-<root digest>.json`: a private file written and renamed into
+place, holding the format version, root, store signal and per-document
+fields. `initialize` loads it synchronously only for the same root, version
+and current store signal (Harmony: under a millisecond), so a respawned
+process, for example after the host closed its client on a refusal, serves
+filtered calls at once; anything else is ignored and rebuilt. Filters
 the index cannot prove equal (`since`, other fields, values with spaces or
 quotes, numbers and `true`/`false`/`null`) always take the backend path.
 `health.index` reports readiness, build and ready times, served and fallback

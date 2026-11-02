@@ -338,6 +338,10 @@ struct Shared {
     last_error: Option<String>,
     build_ms: Option<u64>,
     ready_ms: Option<u64>,
+    /// Snapshot loaded at initialize, its load time, saves and last failure.
+    loaded_us: Option<u64>,
+    saves: u64,
+    save_error: Option<String>,
 }
 
 /// The build state and the condition a finished build signals.
@@ -355,6 +359,9 @@ pub struct Index {
     enabled: bool,
     started: Instant,
     shared: Arc<Build>,
+    /// The plugin's private data directory, where the snapshot lives.
+    dir: Option<PathBuf>,
+    root_text: String,
     pub listed: Option<Listed>,
     pub served: u64,
     pub fallbacks: u64,
@@ -369,6 +376,8 @@ impl Index {
             enabled: false,
             started: Instant::now(),
             shared: Arc::default(),
+            dir: None,
+            root_text: String::new(),
             listed: None,
             served: 0,
             fallbacks: 0,
@@ -383,11 +392,25 @@ impl Index {
 
     /// Enable the index and start its first build. `BBOXY_GITKB_INDEX=off`
     /// in the plugin's own environment keeps every call on the backend path.
+    /// A snapshot in the plugin's private data directory (its cwd) for the
+    /// current store signal is loaded synchronously, so a respawned process
+    /// answers filtered calls at once; otherwise the build starts.
     pub fn start(&mut self, backend: &Backend, root: &Path) {
         self.enabled = std::env::var("BBOXY_GITKB_INDEX").as_deref() != Ok("off");
-        if let Some(signal) = self.enabled.then(|| store_signal(root)).flatten() {
-            self.committed(&signal, backend, root);
+        self.dir = Some(backend.cwd.clone());
+        self.root_text = root.display().to_string();
+        let Some(signal) = self.enabled.then(|| store_signal(root)).flatten() else {
+            return;
+        };
+        let began = Instant::now();
+        if let Some(committed) = load(&backend.cwd, &self.root_text, &signal) {
+            let mut state = lock(&self.shared);
+            state.loaded_us = Some(began.elapsed().as_micros() as u64);
+            state.ready_ms = Some(self.started.elapsed().as_millis() as u64);
+            state.committed = Some(Arc::new(committed));
+            return;
         }
+        self.committed(&signal, backend, root);
     }
 
     /// Committed fields fresh for `signal`; a stale or missing index starts
@@ -413,12 +436,25 @@ impl Index {
     fn spawn(&self, backend: Backend, root: PathBuf) {
         let shared = self.shared.clone();
         let started = self.started;
+        let dir = self.dir.clone();
+        let root_text = self.root_text.clone();
         let spawned = std::thread::Builder::new()
             .name("gitkb-index".into())
             .spawn(move || {
                 let began = Instant::now();
                 let result = build(backend, &root);
+                // Save before publishing, so a process torn down right after
+                // its build still leaves the snapshot for its successor.
+                let saved = match (&result, &dir) {
+                    (Ok((committed, _)), Some(dir)) => Some(save(dir, &root_text, committed)),
+                    _ => None,
+                };
                 let mut state = lock(&shared);
+                match saved {
+                    Some(Ok(())) => state.saves += 1,
+                    Some(Err(error)) => state.save_error = Some(error.to_string()),
+                    None => {}
+                }
                 state.building = false;
                 state.builds += 1;
                 match result {
@@ -491,6 +527,8 @@ impl Index {
             "last_error": state.last_error,
             "build_ms": state.build_ms,
             "ready_ms": state.ready_ms,
+            "snapshot": {"loaded_us": state.loaded_us, "saves": state.saves,
+                "save_error": state.save_error},
             "served": self.served,
             "fallbacks": self.fallbacks,
             "waits": self.waits,
@@ -499,6 +537,89 @@ impl Index {
             "indexed_signal": committed.map(|c| c.signal.clone()),
         })
     }
+}
+
+/// Snapshot format version; a different version is ignored and rebuilt.
+const SNAPSHOT_VERSION: u64 = 1;
+const MAX_SNAPSHOT: u64 = 256 << 20;
+
+/// One snapshot file per root in the plugin's private data directory.
+fn snapshot_path(dir: &Path, root: &str) -> PathBuf {
+    dir.join(format!("gitkb-index-{}.json", &digest(root)[..24]))
+}
+
+/// Write the committed layer atomically: a private new file renamed over
+/// the old one, so a reader sees the old or the new snapshot, never a part.
+pub fn save(dir: &Path, root: &str, committed: &Committed) -> std::io::Result<()> {
+    use std::io::Write;
+    let docs: Vec<Value> = committed
+        .docs
+        .iter()
+        .map(|(slug, (id, fields))| json!([slug, id, fields[0], fields[1], fields[2]]))
+        .collect();
+    let body = encoded(&json!({"version": SNAPSHOT_VERSION, "root": root,
+        "signal": committed.signal, "skipped": committed.skipped, "docs": docs}));
+    let path = snapshot_path(dir, root);
+    let temporary = dir.join(format!(
+        ".gitkb-index-{}.tmp",
+        crate::native::random_hex(12)
+    ));
+    let written = (|| {
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW)
+            .open(&temporary)?;
+        file.write_all(body.as_bytes())?;
+        file.sync_all()?;
+        std::fs::rename(&temporary, &path)
+    })();
+    if written.is_err() {
+        let _ = std::fs::remove_file(&temporary);
+    }
+    written
+}
+
+/// The snapshot for this root and exactly this store signal and version;
+/// anything else (absent, other signal, malformed, oversized, symlinked)
+/// is `None` and the index builds.
+pub fn load(dir: &Path, root: &str, signal: &str) -> Option<Committed> {
+    let mut file = std::fs::OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+        .open(snapshot_path(dir, root))
+        .ok()?;
+    let info = file.metadata().ok()?;
+    if !info.is_file() || info.len() > MAX_SNAPSHOT {
+        return None;
+    }
+    let mut bytes = Vec::new();
+    (&mut file)
+        .take(MAX_SNAPSHOT + 1)
+        .read_to_end(&mut bytes)
+        .ok()?;
+    let value: Value = serde_json::from_slice(&bytes).ok()?;
+    if value["version"] != SNAPSHOT_VERSION || value["root"] != root || value["signal"] != signal {
+        return None;
+    }
+    let rows = value["docs"].as_array()?;
+    if rows.len() > MAX_DOCS {
+        return None;
+    }
+    let mut docs = HashMap::with_capacity(rows.len());
+    for row in rows {
+        let [slug, id, a, s, b] = row.as_array()?.as_slice() else {
+            return None;
+        };
+        let fields = [a.clone(), s.clone(), b.clone()];
+        docs.insert(slug.as_str()?.to_owned(), (id.as_str()?.to_owned(), fields));
+    }
+    Some(Committed {
+        signal: signal.to_owned(),
+        docs,
+        skipped: value["skipped"].as_object().cloned().unwrap_or_default(),
+    })
 }
 
 /// Export committed state between two equal store signals; a commit during
@@ -858,6 +979,45 @@ mod tests {
         let began = Instant::now();
         assert!(index.wait_for("s2", ms(5000), || false).is_none());
         assert!((ms(90)..ms(2000)).contains(&began.elapsed()));
+    }
+
+    #[test]
+    fn snapshots_round_trip_only_for_their_root_signal_and_version() {
+        let (_, export, _) = fixture();
+        let committed = Committed::parse("s1".into(), export.as_bytes(), MAX_LINE).unwrap();
+        let dir = std::env::temp_dir().join(format!(
+            "bboxy-gitkb-snapshot-{}",
+            crate::native::random_hex(8)
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        assert!(load(&dir, "/kb", "s1").is_none(), "no snapshot yet");
+        save(&dir, "/kb", &committed).unwrap();
+        let loaded = load(&dir, "/kb", "s1").unwrap();
+        assert_eq!(loaded.signal, "s1");
+        assert_eq!(loaded.docs, committed.docs);
+        assert_eq!(loaded.skipped, committed.skipped);
+        assert!(load(&dir, "/kb", "s2").is_none(), "another store state");
+        assert!(load(&dir, "/other", "s1").is_none(), "another root");
+        // Replacing is atomic and leaves no temporary file behind.
+        let newer = Committed::parse("s2".into(), export.as_bytes(), MAX_LINE).unwrap();
+        save(&dir, "/kb", &newer).unwrap();
+        assert!(load(&dir, "/kb", "s1").is_none());
+        assert!(load(&dir, "/kb", "s2").is_some());
+        let names: Vec<String> = std::fs::read_dir(&dir)
+            .unwrap()
+            .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(names.len(), 1, "{names:?}");
+        let path = snapshot_path(&dir, "/kb");
+        let text = std::fs::read_to_string(&path).unwrap();
+        std::fs::write(&path, text.replace("\"version\":1", "\"version\":2")).unwrap();
+        assert!(load(&dir, "/kb", "s2").is_none(), "another format version");
+        std::fs::write(&path, "{not json").unwrap();
+        assert!(load(&dir, "/kb", "s2").is_none(), "malformed");
+        std::fs::remove_file(&path).unwrap();
+        std::os::unix::fs::symlink(dir.join("elsewhere"), &path).unwrap();
+        assert!(load(&dir, "/kb", "s2").is_none(), "symlink refused");
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     #[test]
