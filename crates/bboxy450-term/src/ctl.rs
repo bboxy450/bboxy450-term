@@ -1644,8 +1644,17 @@ fn diagnostic_endpoint(args: &[String]) -> Option<PathBuf> {
     endpoint
 }
 
+/// A usage refusal can carry the whole help page; the journal keeps its first line.
+fn journal_line(reason: &str) -> &str {
+    if reason.starts_with(USAGE_PREFIX) {
+        reason.lines().next().unwrap_or(reason)
+    } else {
+        reason
+    }
+}
+
 pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
-    if args.iter().any(|arg| arg == "--help" || arg == "-h") {
+    if args.iter().any(|arg| arg == "--help" || arg == "-h") || args == ["help"] {
         return print_line(format_args!("{USAGE}")).map(|_| ());
     }
     let parsed = parse_full(args);
@@ -1681,7 +1690,7 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
         {
             bbt_rt::error_journal::report_to(
                 root,
-                bbt_rt::error_journal::Failure::new("ctl", &failure_operation, reason),
+                bbt_rt::error_journal::Failure::new("ctl", &failure_operation, journal_line(reason)),
             );
         }
         return match result {
@@ -1733,7 +1742,7 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
         if let Some(root) = &failure_root {
             bbt_rt::error_journal::report_to(
                 root,
-                bbt_rt::error_journal::Failure::new("ctl", &failure_operation, &reason),
+                bbt_rt::error_journal::Failure::new("ctl", &failure_operation, journal_line(&reason)),
             );
         }
         let (op, fail) = operation_failure(op, &reason);
@@ -2201,6 +2210,14 @@ mod tests {
     use super::*;
     fn args(s: &str) -> Vec<String> {
         s.split(' ').map(Into::into).collect()
+    }
+    #[test]
+    fn journal_keeps_one_usage_line_and_whole_other_reasons() {
+        let page = parse_full(&args("help me")).unwrap_err();
+        assert!(page.starts_with(USAGE_PREFIX) && page.lines().count() > 1, "{page}");
+        assert_eq!(journal_line(&page), page.lines().next().unwrap());
+        let timeout = format!("{TIMEOUT_PREFIX}op\nmessage");
+        assert_eq!(journal_line(&timeout), timeout);
     }
     /// ctl-cli §1: one table, each verb once, each naming one real window action, and every
     /// verb in it parses.
