@@ -159,7 +159,7 @@ data={"source":sha,"dirty":False,"tlc":pins["tlc"],"java":next(iter(pins["java"]
 archive=formal.archive_evidence(target,root)
 print("formal: receipt "+json.dumps(formal.evidence_receipt(archive,root,require_clean=False),sort_keys=True))
 ''')
-        self.write("Makefile", 'test:\n\t@sh scripts/ci-local.sh > "$(CI_LOG)" 2>&1\n\ntest-harness-native:\n\t@true\ntest-formal:\n\t@python3 -I scripts/fixture-formal.py "$(TARGET_DIR)"\n')
+        self.write("Makefile", 'test:\n\t@sh scripts/ci-local.sh > "$(CI_LOG)" 2>&1\n\ntest-harness-native test-log-converter test-log-converter-native:\n\t@true\ntest-formal:\n\t@python3 -I scripts/fixture-formal.py "$(TARGET_DIR)"\n')
         self.write("scripts/ci-local.sh", '''#!/bin/sh
 set -eu
 sha=$(git rev-parse HEAD)
@@ -640,7 +640,7 @@ except Exception as error:
         self.assertIn("reports::committed_report_trailers_resolve_in_their_own_trees", result.stdout + result.stderr)
 
     def test_formal_failure_refuses_a_scoped_presubmit_before_cargo(self):
-        self.repo.write("Makefile", "test-harness-native:\n\t@true\ntest-formal:\n\t@exit 23\n")
+        self.repo.write("Makefile", "test-harness-native test-log-converter test-log-converter-native:\n\t@true\ntest-formal:\n\t@exit 23\n")
         self.cut("crates/c/src/lib.rs")
         result = self.repo.presubmit()
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -880,6 +880,8 @@ class GateReceiptTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertTrue(control_marker.is_file(), 'canonical CI must execute the capability control')
         self.assertIn('"make", "test-capability-control"', result.stdout)
+        self.assertIn('"make", "test-log-converter"', result.stdout)
+        self.assertIn('"make", "test-log-converter-native"', result.stdout)
         log = repo.state / "actual-ci.log"
         log.write_text(result.stdout + result.stderr)
         self.assertEqual(landing.gate_proof(log, sha, repo.root)["tested_sha"], sha)
@@ -893,7 +895,20 @@ class GateReceiptTests(unittest.TestCase):
         log.write_text(result.stdout + result.stderr)
         with self.assertRaisesRegex(landing.Refusal, 'gate_log_not_green'):
             landing.gate_proof(log, control_failed)
-        repo.write("Makefile", "test-harness-native:\n\t@true\ntest-formal:\n\t@exit 23\n" + scan_target + control_target)
+        native_failure = (normal_makefile + control_target).replace(
+            'test-harness-native test-log-converter test-log-converter-native:',
+            'test-harness-native test-log-converter:')
+        repo.write('Makefile', native_failure + '\ntest-log-converter-native:\n\t@exit 31\n')
+        native_failed = repo.commit('Fixture failing converter native gate')
+        result = subprocess.run(['sh', 'scripts/ci-local.sh'], cwd=repo.root,
+                                env=environment, text=True, capture_output=True, timeout=15)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('"make", "test-log-converter-native"', result.stdout)
+        self.assertNotIn('"make", "test-formal"', result.stdout)
+        log.write_text(result.stdout + result.stderr)
+        with self.assertRaisesRegex(landing.Refusal, 'gate_log_not_green'):
+            landing.gate_proof(log, native_failed)
+        repo.write("Makefile", "test-harness-native test-log-converter test-log-converter-native:\n\t@true\ntest-formal:\n\t@exit 23\n" + scan_target + control_target)
         formal_failed = repo.commit("Fixture failing formal gate")
         result = subprocess.run(["sh", "scripts/ci-local.sh"], cwd=repo.root,
                                 env=environment, text=True, capture_output=True, timeout=15)
