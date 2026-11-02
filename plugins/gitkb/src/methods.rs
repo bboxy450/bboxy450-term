@@ -15,6 +15,7 @@ use std::collections::BTreeSet;
 use bbt_plugin_sdk::{Refusal, encoded};
 use serde_json::{Map, Value, json};
 
+use crate::index::portable_edge;
 use crate::native::{
     digest, native, native_statuses, number, portable, portable_to_native, random_hex, shell_words,
     slug_path, spaced_json, yaml_key,
@@ -477,6 +478,57 @@ impl GitKb {
         Ok(json!({"items": items, "next": next}))
     }
 
+    /// Outgoing edges of these page members: committed-only members from the
+    /// committed layer, workspace-backed members from their per-document
+    /// native read made in the background at the same file stat, and any
+    /// other member from one native read of just those members.
+    pub fn member_edges(
+        &mut self,
+        catalog: &Catalog,
+        members: &[String],
+    ) -> Result<Vec<Value>, Refusal> {
+        let committed = self.index_committed();
+        let mut edges = Vec::new();
+        let mut unknown = Vec::new();
+        for slug in members {
+            let row = &catalog.rows[slug];
+            let known = if !self.index.enabled() {
+                None
+            } else if catalog.workspace(slug) {
+                self.index
+                    .prepared(slug, &row["workspace_stat"])
+                    .and_then(|record| {
+                        if record["clean"] == true {
+                            // A clean checkout: its committed relationships.
+                            let id = record["id"].as_str()?.to_owned();
+                            committed
+                                .as_ref()
+                                .filter(|c| c.doc(slug, &row["id"]).is_some())
+                                .map(|c| c.outgoing(&id).to_vec())
+                        } else {
+                            record["edges"].as_array().cloned()
+                        }
+                    })
+            } else {
+                committed
+                    .as_ref()
+                    .filter(|c| c.doc(slug, &row["id"]).is_some())
+                    .and_then(|c| {
+                        let id = portable(row["id"].as_str()?).ok()?;
+                        Some(c.outgoing(&id).to_vec())
+                    })
+            };
+            match known {
+                Some(known) => edges.extend(known),
+                None => unknown.push(slug.clone()),
+            }
+        }
+        if !unknown.is_empty() {
+            edges.extend(self.edges(&unknown, 1)?.0);
+        }
+        Ok(edges)
+    }
+
     fn edges(&mut self, slugs: &[String], depth: u64) -> Result<(Vec<Value>, Vec<Value>), Refusal> {
         if slugs.is_empty() {
             return Ok((Vec::new(), Vec::new()));
@@ -485,23 +537,12 @@ impl GitKb {
         let mut args = vec!["graph", "--json", "--depth", &depth, "--"];
         args.extend(slugs.iter().map(String::as_str));
         let result = self.cli(&args)?;
-        let mut edges = Vec::new();
-        for edge in result["edges"].as_array().into_iter().flatten() {
-            // Document edges only: GitKB also reports code-symbol targets
-            // (`code:path::symbol`), which have no portable record identity.
-            let (Ok(from), Ok(to)) = (
-                portable(edge["from"].as_str().unwrap_or("")),
-                portable(edge["to"].as_str().unwrap_or("")),
-            ) else {
-                continue;
-            };
-            edges.push(json!({
-                "from": from,
-                "to": to,
-                "rel": edge.get("rel_type").cloned().unwrap_or_else(|| "references".into()),
-                "weight": edge["weight"].as_f64().unwrap_or(1.0),
-            }));
-        }
+        let edges = result["edges"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(portable_edge)
+            .collect();
         let nodes = result["nodes"].as_array().cloned().unwrap_or_default();
         Ok((edges, nodes))
     }
@@ -529,6 +570,12 @@ impl GitKb {
             ));
         }
         let catalog = self.catalog(&[])?;
+        // Committed nodes come from the index: a cold process's first pages
+        // wait briefly for its build; a page whose wait ran out holds one
+        // node (each call examines at least one record), so the caller's next
+        // page meets the finished build instead of reading every record.
+        let building =
+            (self.wait_committed().is_none() && self.index.building()) || !self.wait_prepared();
         let typed = |slug: &String, kind: &str| catalog.rows[slug]["type"] == kind;
         let mut selected: BTreeSet<String> = catalog
             .rows
@@ -570,6 +617,7 @@ impl GitKb {
         let slugs: Vec<String> = selected.into_iter().collect();
         let key = encoded(&json!(["graph", scope]));
         let (mut offset, limit, _) = self.position(args, &key, &catalog.snapshot)?;
+        let limit = if building { 1 } else { limit };
         let swarm_filter: Map<String, Value> = if kind == "swarm" {
             [("swarm".to_owned(), scope["swarm"].clone())]
                 .into_iter()
@@ -614,12 +662,15 @@ impl GitKb {
                 }
             }
         }
-        let (edges, _) = self.edges(&members, 1)?;
         let ids: BTreeSet<&str> = nodes.iter().filter_map(|n| n["id"].as_str()).collect();
-        let outgoing: Vec<&Value> = edges
+        let edges = self.member_edges(&catalog, &members)?;
+        let mut outgoing: Vec<&Value> = edges
             .iter()
             .filter(|e| e["from"].as_str().is_some_and(|id| ids.contains(id)))
             .collect();
+        // One order for both sources: by source, target, relationship, weight.
+        outgoing.sort_by_key(|e| encoded(e));
+        outgoing.dedup();
         let next = if offset < slugs.len() {
             self.cursors
                 .token(json!({"key": key, "snapshot": catalog.snapshot, "offset": offset}))

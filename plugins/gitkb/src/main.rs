@@ -155,7 +155,7 @@ impl GitKb {
         }
         // The committed index builds on its own thread; calls before it is
         // ready use the backend path.
-        kb.index.start(&kb.backend, &kb.root);
+        kb.index.start(&kb.backend, &kb.root, &kb.workspace_path);
         Ok(kb)
     }
 

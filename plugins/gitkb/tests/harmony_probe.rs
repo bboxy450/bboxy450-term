@@ -9,7 +9,9 @@
 //! `make probe-gitkb-harmony PLUGIN_WORKSPACE=/explicit/project`, which
 //! supplies `BBOXY_GITKB_PLUGIN`, `PLUGIN_WORKSPACE` and `BBOXY_GITKB_EVIDENCE`.
 //! `BBOXY_GITKB_PROBE_RUNS` (1–10, default 3) sets fresh sessions; failures
-//! are recorded, never retried away.
+//! are recorded, never retried away. `BBOXY_GITKB_PROBE_ONLY=host` runs only
+//! the host Tasks read replays; `BBOXY_GITKB_PROBE_FETCH_ALL=1` compares every
+//! graph node with its fetch instead of the first 128.
 
 // A test process with no UI thread.
 #![allow(clippy::disallowed_methods)]
@@ -18,6 +20,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::time::{Duration, Instant};
 
+use bbt_plugin_sdk::encoded;
 use bbt_plugin_sdk::testkit::{self, Client};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
@@ -137,6 +140,14 @@ fn harmony_probe() {
     };
     let env = testkit::allowed_env();
     let base = std::env::temp_dir().canonicalize().unwrap();
+    // `BBOXY_GITKB_PROBE_ONLY=host` replays only the host task reads.
+    if std::env::var("BBOXY_GITKB_PROBE_ONLY").as_deref() == Ok("host") {
+        host_replays(&mut probe, &plugin, &backend, &root, &env, &base);
+        probe.evidence["result"] = "passed; host task reads only".into();
+        probe.save();
+        println!("{}", serde_json::to_string_pretty(&probe.evidence).unwrap());
+        return;
+    }
     for run in 1..=runs {
         probe.run = run;
         let data = base.join(format!(
@@ -179,6 +190,17 @@ fn harmony_probe() {
         }
         probe.save();
         assert!(ok, "native source parity failed");
+        // Full pages below need the background index and workspace records;
+        // cold-process pages are measured by the host task read replays.
+        let began = Instant::now();
+        loop {
+            let facts = client.call("health", json!({}), WAIT).unwrap()["index"].clone();
+            if facts["ready"] == true && facts["workspace"]["ms"].is_u64() {
+                break;
+            }
+            assert!(began.elapsed() < Duration::from_secs(60), "index not ready");
+            std::thread::sleep(Duration::from_millis(50));
+        }
         for (method, request) in [
             ("list", json!({"filter": {"type": "task"}, "limit": 32})),
             (
@@ -244,7 +266,8 @@ fn harmony_probe() {
     }
     let seats = task_list_simulation(&mut probe, &plugin, &backend, &root, &env, &base);
     cold_replays(&mut probe, &plugin, &root, &env, &base, &seats);
-    probe.evidence["result"] = "passed; fresh sessions, exact native source parity, status filters, full 32-node graph pages equal to fetch, all calls read-only and below 2 seconds, 126-call task list equal to the backend path, its repeated pass from the index below 2 seconds, cold-process task list below 6.5 seconds from spawn".into();
+    host_replays(&mut probe, &plugin, &backend, &root, &env, &base);
+    probe.evidence["result"] = "passed; fresh sessions, exact native source parity, status filters, full 32-node graph pages equal to fetch, all calls read-only and below 2 seconds, 126-call task list equal to the backend path, its repeated pass from the index below 2 seconds, cold-process task list below 6.5 seconds from spawn, host Tasks reads (wide graph inventory and 126 lists) cold and respawned with no call over the host deadline, nodes and lists equal to the backend path, edges equal to per-document native reads".into();
     probe.save();
     println!("{}", serde_json::to_string_pretty(&probe.evidence).unwrap());
 }
@@ -414,6 +437,365 @@ fn cold_task_list(
 const HOST_CALL: Duration = Duration::from_secs(2);
 /// The host task list's operation deadline, which also bounds each call.
 const OPERATION: Duration = Duration::from_secs(8);
+
+/// Calls timed against the host's budgets: each call gets
+/// min(HOST_CALL, OPERATION - time since the operation began).
+struct HostOperation {
+    began: Instant,
+    calls: usize,
+    overruns: usize,
+    slowest: Duration,
+}
+
+impl HostOperation {
+    fn new(began: Instant) -> Self {
+        Self {
+            began,
+            calls: 0,
+            overruns: 0,
+            slowest: Duration::ZERO,
+        }
+    }
+
+    fn call(&mut self, client: &mut Client, tool: &str, args: Value) -> Value {
+        let budget = HOST_CALL.min(OPERATION.saturating_sub(self.began.elapsed()));
+        let one = Instant::now();
+        let value = client.call(tool, args, WAIT).unwrap();
+        let elapsed = one.elapsed();
+        self.calls += 1;
+        self.slowest = self.slowest.max(elapsed);
+        if elapsed >= budget {
+            self.overruns += 1;
+        }
+        value
+    }
+
+    fn row(&self) -> Value {
+        json!({"total_ms": self.began.elapsed().as_millis() as u64, "calls": self.calls,
+            "host_deadline_overruns": self.overruns,
+            "slowest_call_ms": self.slowest.as_millis() as u64})
+    }
+}
+
+/// The host Tasks panel's two reads, as `ProviderTasks::documents` issues
+/// them: the wide unassigned inventory (graph Type task, bug and epic, limit
+/// 128, every page until `next` is null) and the narrow per-seat list (126
+/// calls). Each is one host operation with its own 8 s deadline; the
+/// process spawn and initialize count against the first.
+fn host_task_reads(
+    plugin: &Path,
+    root: &Path,
+    env: &[(String, String)],
+    dir: &Path,
+    seats: &[String],
+    index: bool,
+) -> (Value, Value) {
+    let mut env = env.to_vec();
+    if !index {
+        env.push(("BBOXY_GITKB_INDEX".into(), "off".into()));
+    }
+    let began = Instant::now();
+    let mut client = Client::spawn(plugin, dir, &env).unwrap();
+    client
+        .request(
+            "initialize",
+            json!({"protocolVersion": "2025-06-18", "root": root.display().to_string()}),
+            WAIT,
+        )
+        .unwrap();
+    let initialize_ms = began.elapsed().as_millis() as u64;
+    let _ = client.send(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+    let mut wide = HostOperation::new(began);
+    let mut pages = 0;
+    let mut nodes = Vec::new();
+    let mut edges = std::collections::BTreeSet::new();
+    let mut truncated = false;
+    let mut timeline = Vec::new();
+    for kind in ["task", "bug", "epic"] {
+        let mut request = json!({"scope": {"kind": "type", "graph": "markdown", "type": kind},
+            "limit": 128});
+        for _ in 0..64 {
+            let at = began.elapsed().as_millis() as u64;
+            let page = wide.call(&mut client, "data_source_graph", request.clone());
+            timeline.push(json!([kind, at, page["nodes"].as_array().unwrap().len()]));
+            pages += 1;
+            nodes.extend(page["nodes"].as_array().unwrap().iter().cloned());
+            edges.extend(page["edges"].as_array().unwrap().iter().map(encoded));
+            truncated |= page["edges_truncated"] == true;
+            let next = page["next"].clone();
+            if next.is_null() {
+                break;
+            }
+            request["cursor"] = next;
+        }
+    }
+    let wide_row = wide.row();
+    let mut narrow = HostOperation::new(Instant::now());
+    let mut lists = Vec::new();
+    for request in gui_requests(seats) {
+        let mut request = request;
+        let mut items = Vec::new();
+        loop {
+            let page = narrow.call(&mut client, "data_source_list", request.clone());
+            items.extend(page["items"].as_array().unwrap().iter().cloned());
+            if page["next"].is_null() {
+                break;
+            }
+            request["cursor"] = page["next"].clone();
+        }
+        lists.push(Value::Array(items));
+    }
+    let facts = client.call("health", json!({}), WAIT).unwrap()["index"].clone();
+    assert_eq!(client.close(Duration::from_secs(5)), Some(0));
+    let row = json!({"index": index, "initialize_ms": initialize_ms, "nodes": nodes.len(),
+        "edges": edges.len(), "edges_truncated": truncated, "pages": pages, "wide": wide_row,
+        "timeline": timeline, "narrow": narrow.row(),
+        "index_ready_ms": facts["ready_ms"], "snapshot": facts["snapshot"],
+        "workspace": facts["workspace"], "served": facts["served"], "fallbacks": facts["fallbacks"],
+        "waits": facts["waits"], "waited_ms": facts["waited_ms"]});
+    (json!({"nodes": nodes, "edges": edges, "lists": lists}), row)
+}
+
+/// Portable ULID text of a native UUID.
+fn portable(uuid: &str) -> Option<String> {
+    const ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+    let hex: String = uuid.chars().filter(|c| *c != '-').collect();
+    let n = u128::from_str_radix(&hex, 16).ok()?;
+    (hex.len() == 32).then(|| {
+        (0..26)
+            .rev()
+            .map(|i| ALPHABET[((n >> (5 * i)) & 31) as usize] as char)
+            .collect()
+    })
+}
+
+/// One document's outgoing document edges from a native per-document read
+/// (`graph --direction out` of that slug alone), in portable form.
+fn native_outgoing(
+    backend: &str,
+    root: &Path,
+    dir: &Path,
+    env: &[(String, String)],
+    slug: &str,
+    id: &str,
+) -> Vec<String> {
+    let output = Command::new(backend)
+        .args([
+            "--no-pager",
+            "--color",
+            "never",
+            "graph",
+            "--json",
+            "--depth",
+            "1",
+        ])
+        .args(["--direction", "out", "--", slug])
+        .current_dir(dir)
+        .env_clear()
+        .envs(env.iter().cloned())
+        .env("GITKB_ROOT", root)
+        .env("GITKB_WORKSPACE", "main")
+        .output()
+        .unwrap();
+    let value: Value = serde_json::from_slice(&output.stdout).unwrap();
+    value["edges"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|e| e["from"] == id)
+        .filter_map(|e| {
+            Some(encoded(&json!({"from": portable(e["from"].as_str()?)?,
+                "rel": e["rel_type"], "to": portable(e["to"].as_str()?)?, "weight": 1.0})))
+        })
+        .collect()
+}
+
+/// Graph Type pages of 16 nodes (the first 12 task pages, every bug and epic
+/// page): the index's nodes equal the backend path's, and its edges equal
+/// the union of per-document native reads of the page's nodes. The backend
+/// path's own edges come from one merged multi-document native read, which
+/// GitKB 0.2.19 answers with fewer edges (a document already reached from
+/// another is not expanded); those are counted, not required equal.
+fn page_parity(
+    plugin: &Path,
+    backend: &str,
+    root: &Path,
+    env: &[(String, String)],
+    indexed: &Path,
+    native: &Path,
+) -> Value {
+    let mut off = env.to_vec();
+    off.push(("BBOXY_GITKB_INDEX".into(), "off".into()));
+    let open = |dir: &Path, env: &[(String, String)]| {
+        let mut client = Client::spawn(plugin, dir, env).unwrap();
+        client
+            .request(
+                "initialize",
+                json!({"protocolVersion": "2025-06-18", "root": root.display().to_string()}),
+                WAIT,
+            )
+            .unwrap();
+        client
+    };
+    let (mut a, mut b) = (open(indexed, env), open(native, &off));
+    let (mut compared, mut nodes_equal, mut edges_true, mut backend_short) = (0, 0, 0, 0);
+    let mut first_difference = Value::Null;
+    for (kind, pages) in [("task", 12), ("bug", 64), ("epic", 64)] {
+        let request = json!({"scope": {"kind": "type", "graph": "markdown", "type": kind},
+            "limit": 16});
+        let (mut ra, mut rb) = (request.clone(), request);
+        for _ in 0..pages {
+            let pa = a.call("data_source_graph", ra.clone(), WAIT).unwrap();
+            let pb = b.call("data_source_graph", rb.clone(), WAIT).unwrap();
+            compared += 1;
+            nodes_equal += usize::from(pa["nodes"] == pb["nodes"]);
+            let set = |p: &Value| -> std::collections::BTreeSet<String> {
+                p["edges"].as_array().unwrap().iter().map(encoded).collect()
+            };
+            let truth: std::collections::BTreeSet<String> = pa["nodes"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .flat_map(|n| {
+                    native_outgoing(
+                        backend,
+                        root,
+                        indexed,
+                        env,
+                        n["ref"]["slug"].as_str().unwrap(),
+                        n["ref"]["external_id"].as_str().unwrap(),
+                    )
+                })
+                .collect();
+            let index_edges = set(&pa);
+            let same = index_edges == truth && pa["edges_truncated"] == false;
+            edges_true += usize::from(same);
+            backend_short += usize::from(set(&pb) != truth);
+            if !same && first_difference.is_null() {
+                first_difference = json!({"kind": kind, "page": compared,
+                    "only_index": index_edges.difference(&truth).take(3).collect::<Vec<_>>(),
+                    "only_native": truth.difference(&index_edges).take(3).collect::<Vec<_>>()});
+            }
+            if pa["next"].is_null() || pb["next"].is_null() {
+                break;
+            }
+            ra["cursor"] = pa["next"].clone();
+            rb["cursor"] = pb["next"].clone();
+        }
+    }
+    assert_eq!(a.close(Duration::from_secs(5)), Some(0));
+    assert_eq!(b.close(Duration::from_secs(5)), Some(0));
+    json!({"compared": compared, "nodes_equal": nodes_equal,
+        "edges_equal_per_document_native": edges_true,
+        "backend_pages_differing_from_per_document_native": backend_short,
+        "first_difference": first_difference})
+}
+
+/// Every node of every `graph all` page against its own fetch: frontmatter,
+/// identity, title, type and reference digest. Run with
+/// `BBOXY_GITKB_PROBE_FETCH_ALL=1`; otherwise the first 128 nodes.
+fn fetch_parity(plugin: &Path, root: &Path, env: &[(String, String)], dir: &Path) -> Value {
+    let all = std::env::var_os("BBOXY_GITKB_PROBE_FETCH_ALL").is_some();
+    let mut client = Client::spawn(plugin, dir, env).unwrap();
+    client
+        .request(
+            "initialize",
+            json!({"protocolVersion": "2025-06-18", "root": root.display().to_string()}),
+            WAIT,
+        )
+        .unwrap();
+    let mut request = json!({"scope": {"kind": "all", "graph": "markdown"}, "limit": 128});
+    let (mut compared, mut equal, mut committed, mut too_large) = (0, 0, 0, 0);
+    let mut differing = Vec::new();
+    loop {
+        let page = client
+            .call("data_source_graph", request.clone(), WAIT)
+            .unwrap();
+        for node in page["nodes"].as_array().unwrap() {
+            let record = match client.call("data_source_fetch", json!({"ref": node["ref"]}), WAIT) {
+                Ok(record) => record,
+                // A record above the 256 KiB result cap, or one whose image
+                // link is missing, cannot be fetched; count it by refusal.
+                Err(failure)
+                    if matches!(
+                        failure.code(),
+                        Some("response_too_large" | "resource_not_found")
+                    ) =>
+                {
+                    too_large += 1;
+                    continue;
+                }
+                Err(failure) => panic!("fetch {}: {failure:?}", node["ref"]),
+            };
+            compared += 1;
+            committed += usize::from(record["gitkb"]["source"]["kind"] == "committed");
+            if record["frontmatter"] == node["frontmatter"]
+                && record["id"] == node["id"]
+                && record["digest"] == node["ref"]["digest"]
+                && record["frontmatter"]["title"] == node["title"]
+                && record["frontmatter"]["type"] == node["type"]
+            {
+                equal += 1;
+            } else if differing.len() < 8 {
+                differing.push(sha256(node["ref"]["slug"].as_str().unwrap().as_bytes()));
+            }
+        }
+        if page["next"].is_null() || (!all && compared >= 128) {
+            break;
+        }
+        request["cursor"] = page["next"].clone();
+    }
+    assert_eq!(client.close(Duration::from_secs(5)), Some(0));
+    json!({"all": all, "compared": compared, "equal": equal, "committed_source": committed,
+        "unfetchable": too_large,
+        "differing_slug_sha256": differing})
+}
+
+/// The host reads replayed from a cold process with no snapshot, again
+/// after a respawn that loads it, and with the index off. All three must
+/// return identical pages; the indexed runs must have no call over the host
+/// deadline, and graph nodes must equal fetch.
+fn host_replays(
+    probe: &mut Probe,
+    plugin: &Path,
+    backend: &str,
+    root: &Path,
+    env: &[(String, String)],
+    base: &Path,
+) {
+    let data = base.join(format!("bboxy-harmony-host-{}", std::process::id()));
+    let seats: Vec<String> = (0..21).map(|_| random_ulid()).collect();
+    let dir = data.join("indexed");
+    let (cold, cold_row) = host_task_reads(plugin, root, env, &dir, &seats, true);
+    let (warm, warm_row) = host_task_reads(plugin, root, env, &dir, &seats, true);
+    let (native, native_row) = host_task_reads(plugin, root, env, &data.join("off"), &seats, false);
+    let parity = fetch_parity(plugin, root, env, &dir);
+    let pages = page_parity(plugin, backend, root, env, &dir, &data.join("off"));
+    // Node inventories and seat lists equal across all three runs; page
+    // boundaries (and so the 512-edge truncation) follow each run's timing,
+    // so edges are compared page by page at a fixed small page size.
+    let identical = cold["nodes"] == native["nodes"]
+        && warm["nodes"] == native["nodes"]
+        && cold["lists"] == native["lists"]
+        && warm["lists"] == native["lists"]
+        && pages["nodes_equal"] == pages["compared"]
+        && pages["edges_equal_per_document_native"] == pages["compared"];
+    probe.evidence["host_task_reads"] = json!({"identical": identical, "cold": cold_row,
+        "respawn_with_snapshot": warm_row, "backend": native_row, "fetch_parity": parity,
+        "page_parity": pages});
+    let passed = identical
+        && cold_row["wide"]["host_deadline_overruns"] == 0
+        && cold_row["narrow"]["host_deadline_overruns"] == 0
+        && warm_row["wide"]["host_deadline_overruns"] == 0
+        && warm_row["narrow"]["host_deadline_overruns"] == 0
+        && parity["equal"] == parity["compared"];
+    if !passed {
+        probe.evidence["result"] = "failed; host task reads".into();
+    }
+    probe.save();
+    let _ = std::fs::remove_dir_all(&data);
+    assert!(passed, "{}", probe.evidence["host_task_reads"]);
+}
 
 /// Cold-start replays: seat-like ids (`BBOXY_GITKB_PROBE_SEATS`, comma
 /// separated, else 21 random ULIDs: registry seat ids that no Harmony record

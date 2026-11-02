@@ -73,6 +73,18 @@ pub fn content_digest(root: &str, source: &Value, raw: &str) -> String {
     ])))
 }
 
+/// The committed-source digest: `[root, {"kind": "committed"}, native id,
+/// version]`. GitKB bumps a document's version on every commit of it, so a
+/// commit makes an old reference stale without reading its bytes.
+pub fn committed_digest(root: &str, id: &str, version: &Value) -> String {
+    digest(&encoded(&serde_json::json!([
+        root,
+        {"kind": "committed"},
+        id,
+        version
+    ])))
+}
+
 fn parse_uuid(text: &str) -> Option<u128> {
     let hexits: String = match text.len() {
         36 => {

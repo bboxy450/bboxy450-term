@@ -1131,6 +1131,7 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
         "batched and exact references agree",
         "real selected-only commit, unrelated pending source preserved",
         "catalog index equals the backend path; workspace and commit freshness",
+        "committed references digest id and version; an external commit makes them stale",
         "disposable native bootstrap",
         "scrubbed native process environment and private cwd",
         "backend hash pin on existing and new clients",
@@ -1175,8 +1176,17 @@ fn native_write(fx: &mut Fixture, root: &Path, slug: &str, fields: &str, update:
     let mut identity = String::new();
     let generation;
     if update {
+        // A cleared workspace has no document: the committed one supplies the
+        // identity, and the absent workspace generation guards the write.
         let source = fx.source(root, slug, "workspace");
-        identity = format!("id: {}\n", source["document"]["id"].as_str().unwrap());
+        let id = match source["document"]["id"].as_str() {
+            Some(id) => id.to_owned(),
+            None => fx.source(root, slug, "committed")["document"]["id"]
+                .as_str()
+                .unwrap()
+                .to_owned(),
+        };
+        identity = format!("id: {id}\n");
         generation = source["generation"].as_str().unwrap().to_owned();
         args.extend(["--if-generation", &generation]);
     }
@@ -1357,6 +1367,49 @@ fn index_checks(fx: &mut Fixture) -> Vec<Conn> {
     assert_eq!(after["indexed_signal"], after["store_signal"]);
     assert!(after["builds"].as_u64().unwrap() >= 2, "{after}");
     compare(&mut on, &mut off);
+
+    // A committed-only reference digests its native id and version: an
+    // external commit bumps the version, so the old reference goes stale,
+    // and index-served graph nodes carry the new committed reference.
+    fx.cli_text(&root, &["clear", "tasks/c", "--force"], None);
+    let old = on.resolve("tasks/c");
+    assert_eq!(
+        on.call("fetch", json!({ "ref": old }))["gitkb"]["source"]["kind"],
+        "committed"
+    );
+    native_write(
+        fx,
+        &root,
+        "tasks/c",
+        "type: task\nstatus: active\nassignee: carol\nswarm: s7\n",
+        true,
+    );
+    fx.cli(
+        &root,
+        &["commit", "--json", "-m", "External commit", "tasks/c"],
+        None,
+    );
+    fx.cli_text(&root, &["clear", "tasks/c", "--force"], None);
+    on.refuse("fetch", json!({ "ref": old }), "stale_ref");
+    off.refuse("fetch", json!({ "ref": old }), "stale_ref");
+    let new = on.resolve("tasks/c");
+    assert_ne!(new["digest"], old["digest"]);
+    assert_eq!(new, off.resolve("tasks/c"));
+    // A filtered read starts the rebuild for the new store state.
+    on.collect("list", carol.clone());
+    wait_ready(&mut on);
+    let graph = json!({"scope": {"kind": "type", "graph": "markdown", "type": "task"}});
+    let node = on.call("graph", graph)["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|n| n["ref"]["slug"] == "tasks/c")
+        .cloned()
+        .unwrap();
+    assert_eq!(node["ref"], new);
+    let record = on.call("fetch", json!({ "ref": new }));
+    assert_eq!(node["frontmatter"], record["frontmatter"]);
+    assert_eq!(record["frontmatter"]["swarm"], "s7");
     vec![on, off]
 }
 

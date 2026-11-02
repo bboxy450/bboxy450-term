@@ -107,7 +107,7 @@ GitKB and portable document semantics:
 | Full slug | First-class locator and relative `slug.md` path; updates retain native identity |
 | Native frontmatter number | Preserved; numbered family suffix is a fallback handle; collisions return candidates |
 | No numeric handle | `number: null`; no separate numbering ledger |
-| Explicit workspace or committed source | Source-aware digest and GitKB generation `etag`; no fallback from a deleted workspace |
+| Explicit workspace or committed source | Source-aware digest (committed: native id and version; workspace: bytes) and GitKB generation `etag`; no fallback from a deleted workspace |
 | Frontmatter and Markdown | Native parsed frontmatter/body preserved, with canonical metadata under `gitkb` |
 | Typed native graph relationships | Portable edges with native relationship names; unweighted native edges have weight 1 |
 | Native task status | Draft/backlog → open, active → running, completed → done |
@@ -146,10 +146,15 @@ examines at least one record, and keeps scanning past filtered-out records, so
 empty pages with a `next` cursor occur only when the budget ran out. Follow
 `next` through them as well.
 
-Committed-only records (no workspace file) are read in one batched
-`git-kb show --raw-content --json -- <slug>...` call; their raw bytes equal the
-committed source, so their references and digests equal an exact read's.
-Records with a workspace file use the exact source-aware read. A per-process
+A committed-source `RecordRef` digest is the SHA-256 of canonical
+`[root, {"kind": "committed"}, native id, version]`: GitKB bumps a document's
+version on every commit of it, so a commit makes an old reference stale
+without reading bytes. A workspace-source digest remains
+`[root, documentSource, raw bytes]`. Fetch and reference checks compute the same
+digests, so list, search and graph references equal an exact read's.
+Committed-only records (no workspace file) come from the index below, or from
+one batched `git-kb show --raw-content --json -- <slug>...` call. Records with a
+workspace file use the exact source-aware read. A per-process
 cache keyed by slug and the record's full catalog row (including the committed
 `modified_at` or the exact workspace file stat) reuses earlier summaries and
 exact graph records; `fetch`, `write`, `commit` and reference checks always read
@@ -198,11 +203,46 @@ build ready 2.97 s, slowest call 0.72 s), and a respawn that loaded the
 snapshot in 1.15 s (slowest call 0.11 s, no fallback). Each finished build is
 saved to the plugin's private data directory (its cwd) as
 `gitkb-index-<root digest>.json`: a private file written and renamed into
-place, holding the format version, root, store signal and per-document
-fields. `initialize` loads it synchronously only for the same root, version
-and current store signal (Harmony: under a millisecond), so a respawned
+place, holding the format version, root, store signal, each committed
+document (id, version, title, type, frontmatter, snippet) and the derived
+edges. `initialize` loads it synchronously only for the same root, version
+and current store signal (Harmony: 14 ms), so a respawned
 process, for example after the host closed its client on a refusal, serves
-filtered calls at once; anything else is ignored and rebuilt. Filters
+filtered calls at once; anything else is ignored and rebuilt.
+
+The same export also serves whole records. Export frontmatter is GitKB's
+parsed frontmatter plus graph-only relationship keys (`references`,
+`children`, `parent`, `in`, `depends_on`, `blocked_by`, `implements`,
+`blocks`); without those keys it equals `show --source committed`
+frontmatter, and id, version, title, type and body are equal too, for every
+one of Harmony's 3691 committed documents (measured). List and search
+summaries and graph nodes of committed-only records therefore need no read:
+they apply the exact read's projection to that frontmatter. Their outgoing
+graph edges are derived from the relationship keys: `references`,
+`children` (`parent_of`), `depends_on`, `implements` and `blocks` point from
+the document, and `in: {container: rank}` makes a `contains` edge from each
+container; code and commit targets are omitted as before. This equals
+GitKB's per-document `graph --direction out` read for every committed-only
+Harmony document. Workspace-backed records are read exactly in the
+background at initialize, 8 at a time, with their own per-document native
+edge read unless GitKB reports a clean, current checkout (then their
+committed edges apply); each is valid for the file stat it was read at, and
+saved as `gitkb-workspace-<root digest>.json`, so a respawn reads only files
+that changed. Until the committed layer and the workspace records are ready, a
+graph call waits up to 700 ms for them and then returns a one-node page. Page
+edges are sorted. The backend path still reads edges with one native call for
+a page's members, and GitKB 0.2.19 answers a multi-document read with fewer
+edges (a document already reached from another is not expanded): 15 of 16
+measured Harmony pages lack some per-document edges there.
+
+Harmony, the host's Tasks reads replayed from spawn (the wide unassigned
+inventory, graph Type task, bug and epic, 128 per page until the last, then
+the 126 per-seat lists), each call timed against the host's budget: cold with
+no snapshot, 6.2 s for the wide read (index ready 3.1 s, workspace records
+5.1 s) and 0 calls over the host deadline; respawned with snapshots, 1.19 s
+including the 0.76 s initialize (17 ms per 128-node page after the first,
+which refreshes the rows), and 0.28 s for the lists; the backend path takes
+16.3 s with 12 calls over the deadline. Filters
 the index cannot prove equal (`since`, other fields, values with spaces or
 quotes, numbers and `true`/`false`/`null`) always take the backend path.
 `health.index` reports readiness, build and ready times, served and fallback

@@ -94,11 +94,73 @@ pub fn store_signal(root: &Path) -> Option<String> {
     Some(digest(&encoded(&Value::Array(parts))))
 }
 
-/// Committed `--where` fields by slug, with the native id they belong to.
+/// Relationship keys in export frontmatter that GitKB's `show` keeps as
+/// graph edges, never as frontmatter. Measured on all 3691 committed Harmony
+/// documents: export frontmatter without these keys equals `show --source
+/// committed` document.frontmatter, and id, version, title, type and body
+/// are equal too.
+const RELATIONSHIP_KEYS: [&str; 8] = [
+    "references",
+    "children",
+    "parent",
+    "in",
+    "depends_on",
+    "blocked_by",
+    "implements",
+    "blocks",
+];
+const SNIPPET_CHARS: usize = 240;
+
+/// One committed document as `git-kb show --source committed` returns it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Doc {
+    pub id: String,
+    pub version: Value,
+    pub title: Value,
+    pub doc_type: Value,
+    pub frontmatter: Map<String, Value>,
+    /// The body's first 240 characters (list and search snippets).
+    pub snippet: String,
+    fields: Fields,
+}
+
+impl Doc {
+    fn new(
+        id: String,
+        version: Value,
+        title: Value,
+        doc_type: Value,
+        mut frontmatter: Map<String, Value>,
+        snippet: String,
+    ) -> Self {
+        frontmatter.retain(|k, _| !RELATIONSHIP_KEYS.contains(&k.as_str()));
+        let fields = WHERE_FIELDS.map(|f| frontmatter.get(f).cloned().unwrap_or(Value::Null));
+        Self {
+            id,
+            version,
+            title,
+            doc_type,
+            frontmatter,
+            snippet,
+            fields,
+        }
+    }
+
+    /// Complete enough to stand in for a committed read.
+    fn servable(&self) -> bool {
+        self.version.is_u64() && self.title.is_string() && self.doc_type.is_string()
+    }
+}
+
+/// Committed documents by slug: `--where` fields and what a committed read
+/// would return, from one export.
 #[derive(Debug)]
 pub struct Committed {
     pub signal: String,
-    docs: HashMap<String, (String, Fields)>,
+    docs: HashMap<String, Doc>,
+    /// Outgoing document edges by portable source id, derived from the
+    /// export's relationship keys (see `derive_edges`).
+    edges: HashMap<String, Vec<Value>>,
     /// Lines refused, by reason; their documents stay candidates.
     pub skipped: Map<String, Value>,
 }
@@ -110,6 +172,7 @@ impl Committed {
     pub fn parse(signal: String, reader: impl Read, max_line: usize) -> Result<Self, String> {
         let mut reader = BufReader::new(reader);
         let mut docs = HashMap::new();
+        let mut relations = HashMap::new();
         let mut duplicates = Vec::new();
         let mut skipped = Map::new();
         let mut count = |reason: &str| {
@@ -133,7 +196,8 @@ impl Committed {
                 continue;
             }
             match entry(&line) {
-                Some((slug, value)) => {
+                Some((slug, value, related)) => {
+                    relations.insert(slug.clone(), related);
                     if docs.insert(slug.clone(), value).is_some() {
                         duplicates.push(slug);
                         count("duplicate");
@@ -148,10 +212,13 @@ impl Committed {
         // A repeated slug has no single committed value: keep it a candidate.
         for slug in duplicates {
             docs.remove(&slug);
+            relations.remove(&slug);
         }
+        let edges = derive_edges(&docs, &relations);
         Ok(Self {
             signal,
             docs,
+            edges,
             skipped,
         })
     }
@@ -163,12 +230,24 @@ impl Committed {
     fn fields(&self, slug: &str, id: &Value) -> Option<&Fields> {
         self.docs
             .get(slug)
-            .filter(|(native, _)| id == native.as_str())
-            .map(|(_, fields)| fields)
+            .filter(|doc| id == doc.id.as_str())
+            .map(|doc| &doc.fields)
+    }
+
+    /// Outgoing document edges of the committed document `id` (portable).
+    pub fn outgoing(&self, id: &str) -> &[Value] {
+        self.edges.get(id).map_or(&[], Vec::as_slice)
+    }
+
+    /// The committed document at `slug` with native id `id`, when complete.
+    pub fn doc(&self, slug: &str, id: &Value) -> Option<&Doc> {
+        self.docs
+            .get(slug)
+            .filter(|doc| id == doc.id.as_str() && doc.servable())
     }
 }
 
-fn entry(line: &[u8]) -> Option<(String, (String, Fields))> {
+fn entry(line: &[u8]) -> Option<(String, Doc, Map<String, Value>)> {
     let outer: Value = serde_json::from_slice(line).ok()?;
     let slug = outer["slug"].as_str()?;
     let content: Value = serde_json::from_str(outer["content"].as_str()?).ok()?;
@@ -176,9 +255,89 @@ fn entry(line: &[u8]) -> Option<(String, (String, Fields))> {
         return None;
     }
     let id = content["id"].as_str()?;
-    let fm = content["frontmatter"].as_object()?;
-    let fields = WHERE_FIELDS.map(|f| fm.get(f).cloned().unwrap_or(Value::Null));
-    Some((slug.into(), (id.into(), fields)))
+    let fm = content["frontmatter"].as_object()?.clone();
+    let related: Map<String, Value> = fm
+        .iter()
+        .filter(|(k, _)| RELATIONSHIP_KEYS.contains(&k.as_str()))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    let snippet = content["content"]
+        .as_str()
+        .unwrap_or("")
+        .chars()
+        .take(SNIPPET_CHARS)
+        .collect();
+    let doc = Doc::new(
+        id.into(),
+        content["version"].clone(),
+        content["title"].clone(),
+        content["doc_type"].clone(),
+        fm,
+        snippet,
+    );
+    Some((slug.into(), doc, related))
+}
+
+/// Outgoing document edges as GitKB's per-document `graph --direction out`
+/// reports them, from the export's relationship keys: `references`,
+/// `children` (parent_of), `depends_on`, `implements` and `blocks` point
+/// from the document; `in: {container: rank}` makes a `contains` edge from
+/// each container. Only committed document targets are kept, as the
+/// portable graph omits code and commit targets. Measured on Harmony: equal
+/// to per-document native reads for every committed-only document (3691
+/// read; the 4 differences were all workspace-backed documents, whose edges
+/// are read natively instead).
+fn derive_edges(
+    docs: &HashMap<String, Doc>,
+    relations: &HashMap<String, Map<String, Value>>,
+) -> HashMap<String, Vec<Value>> {
+    let id = |slug: &Value| {
+        slug.as_str()
+            .and_then(|s| docs.get(s))
+            .map(|d| d.id.as_str())
+    };
+    let mut native: Vec<(String, String, &str)> = Vec::new();
+    for (slug, related) in relations {
+        let Some(from) = docs.get(slug).map(|d| d.id.clone()) else {
+            continue;
+        };
+        for (key, rel) in [
+            ("references", "references"),
+            ("children", "parent_of"),
+            ("depends_on", "depends_on"),
+            ("implements", "implements"),
+            ("blocks", "blocks"),
+        ] {
+            let targets = match &related.get(key) {
+                Some(Value::Array(items)) => items.iter().collect(),
+                Some(single @ Value::String(_)) => vec![*single],
+                _ => Vec::new(),
+            };
+            for target in targets {
+                if let Some(to) = id(target) {
+                    native.push((from.clone(), to.to_owned(), rel));
+                }
+            }
+        }
+        if let Some(Value::Object(containers)) = related.get("in") {
+            for container in containers.keys() {
+                if let Some(owner) = id(&Value::from(container.as_str())) {
+                    native.push((owner.to_owned(), from.clone(), "contains"));
+                }
+            }
+        }
+    }
+    let mut edges: HashMap<String, Vec<Value>> = HashMap::new();
+    for (from, to, rel) in native {
+        if let Some(edge) = portable_edge(&json!({"from": from, "to": to, "rel_type": rel})) {
+            let source = edge["from"].as_str().unwrap_or("").to_owned();
+            let list = edges.entry(source).or_default();
+            if !list.contains(&edge) {
+                list.push(edge);
+            }
+        }
+    }
+    edges
 }
 
 /// The `--where` fields of a workspace-only document, from its workspace
@@ -332,6 +491,65 @@ impl Listed {
     }
 }
 
+/// A native graph edge in portable form. Document edges only: GitKB also
+/// reports code-symbol targets (`code:path::symbol`), which have no
+/// portable record identity.
+pub fn portable_edge(edge: &Value) -> Option<Value> {
+    let (Ok(from), Ok(to)) = (
+        crate::native::portable(edge["from"].as_str().unwrap_or("")),
+        crate::native::portable(edge["to"].as_str().unwrap_or("")),
+    ) else {
+        return None;
+    };
+    Some(json!({
+        "from": from,
+        "to": to,
+        "rel": edge.get("rel_type").cloned().unwrap_or_else(|| "references".into()),
+        "weight": edge["weight"].as_f64().unwrap_or(1.0),
+    }))
+}
+
+/// Concurrent exact reads while preparing workspace records.
+const PREPARE_READS: usize = 8;
+
+/// One document's outgoing document edges from a native per-document read,
+/// which applies the workspace overlay.
+fn native_outgoing(
+    backend: &mut Backend,
+    ctx: &Ctx,
+    slug: &str,
+    record: &Value,
+) -> Option<Vec<Value>> {
+    let args = [
+        "graph",
+        "--json",
+        "--depth",
+        "1",
+        "--direction",
+        "out",
+        "--",
+        slug,
+    ];
+    let result = backend.cli(ctx, &args, None, false).ok()?;
+    let from = record["id"].as_str()?;
+    Some(
+        result["edges"]
+            .as_array()?
+            .iter()
+            .filter_map(portable_edge)
+            .filter(|e| e["from"] == from)
+            .collect(),
+    )
+}
+
+/// What a list summary or graph node needs of an exact record.
+fn trimmed(record: &Value) -> Value {
+    json!({"id": record["id"], "external_id": record["external_id"], "number": record["number"],
+        "slug": record["slug"], "path": record["path"], "digest": record["digest"],
+        "frontmatter": record["frontmatter"], "body": record["body"],
+        "gitkb": {"native_status": record["gitkb"]["native_status"]}})
+}
+
 /// Build state shared with the background thread.
 #[derive(Default)]
 struct Shared {
@@ -347,6 +565,13 @@ struct Shared {
     loaded_us: Option<u64>,
     saves: u64,
     save_error: Option<String>,
+    /// Exact workspace records and their native outgoing edges, by slug,
+    /// with the file stat they were read at.
+    prepared: HashMap<String, (Value, Value)>,
+    preparing: bool,
+    prepare_ms: Option<u64>,
+    prepared_reads: u64,
+    prepared_loaded: u64,
 }
 
 /// The build state and the condition a finished build signals.
@@ -367,6 +592,7 @@ pub struct Index {
     /// The plugin's private data directory, where the snapshot lives.
     dir: Option<PathBuf>,
     root_text: String,
+    workspace_path: PathBuf,
     pub listed: Option<Listed>,
     pub served: u64,
     pub fallbacks: u64,
@@ -383,6 +609,7 @@ impl Index {
             shared: Arc::default(),
             dir: None,
             root_text: String::new(),
+            workspace_path: PathBuf::new(),
             listed: None,
             served: 0,
             fallbacks: 0,
@@ -395,15 +622,43 @@ impl Index {
         self.enabled
     }
 
+    /// Wait up to `budget` while workspace records are being prepared;
+    /// whether preparation has finished.
+    pub fn wait_prepared(&self, budget: Duration, cancelled: impl Fn() -> bool) -> bool {
+        let deadline = Instant::now() + budget;
+        let mut state = lock(&self.shared);
+        loop {
+            if !state.preparing {
+                return true;
+            }
+            let left = deadline.saturating_duration_since(Instant::now());
+            if left.is_zero() || cancelled() {
+                return false;
+            }
+            state = self
+                .shared
+                .done
+                .wait_timeout(state, left.min(WAIT_SLICE))
+                .unwrap_or_else(|e| e.into_inner())
+                .0;
+        }
+    }
+
+    /// Whether the committed layer is being built.
+    pub fn building(&self) -> bool {
+        lock(&self.shared).building
+    }
+
     /// Enable the index and start its first build. `BBOXY_GITKB_INDEX=off`
     /// in the plugin's own environment keeps every call on the backend path.
     /// A snapshot in the plugin's private data directory (its cwd) for the
     /// current store signal is loaded synchronously, so a respawned process
     /// answers filtered calls at once; otherwise the build starts.
-    pub fn start(&mut self, backend: &Backend, root: &Path) {
+    pub fn start(&mut self, backend: &Backend, root: &Path, workspace_path: &Path) {
         self.enabled = std::env::var("BBOXY_GITKB_INDEX").as_deref() != Ok("off");
         self.dir = Some(backend.cwd.clone());
         self.root_text = root.display().to_string();
+        self.workspace_path = workspace_path.to_owned();
         let Some(signal) = self.enabled.then(|| store_signal(root)).flatten() else {
             return;
         };
@@ -413,9 +668,124 @@ impl Index {
             state.loaded_us = Some(began.elapsed().as_micros() as u64);
             state.ready_ms = Some(self.started.elapsed().as_millis() as u64);
             state.committed = Some(Arc::new(committed));
-            return;
+        } else {
+            self.committed(&signal, backend, root);
         }
-        self.committed(&signal, backend, root);
+        self.spawn_prepare(backend.clone());
+    }
+
+    /// The exact record prepared for `slug` at this workspace file stat.
+    pub fn prepared(&self, slug: &str, stat: &Value) -> Option<Value> {
+        lock(&self.shared)
+            .prepared
+            .get(slug)
+            .filter(|(at, _)| at == stat)
+            .map(|(_, record)| record.clone())
+    }
+
+    /// Read every workspace-backed record exactly in the background, several
+    /// at a time, reusing saved ones whose file stat is unchanged, and save
+    /// them, so a cold or respawned process lists workspace records without
+    /// a per-record read on the request path.
+    fn spawn_prepare(&self, backend: Backend) {
+        lock(&self.shared).preparing = true;
+        let shared = self.shared.clone();
+        let dir = self.dir.clone();
+        let root_text = self.root_text.clone();
+        let workspace = self.workspace_path.clone();
+        // Every exit clears `preparing`, or graph pages would stay one node.
+        let finished = |shared: &Build| {
+            lock(shared).preparing = false;
+            shared.done.notify_all();
+        };
+        let spawned = std::thread::Builder::new()
+            .name("gitkb-workspace".into())
+            .spawn(move || {
+                let began = Instant::now();
+                let Ok(stats) = crate::store::walk_workspace(&workspace, || false) else {
+                    finished(&shared);
+                    return;
+                };
+                let saved = dir
+                    .as_ref()
+                    .and_then(|dir| read_snapshot(dir, "workspace", &root_text))
+                    .and_then(|v| v["records"].as_object().cloned())
+                    .unwrap_or_default();
+                let mut prepared = HashMap::new();
+                let mut wanted = Vec::new();
+                for (slug, stat) in &stats {
+                    match saved.get(slug).and_then(Value::as_array).map(Vec::as_slice) {
+                        Some([at, record]) if at == stat => {
+                            prepared.insert(slug.clone(), (stat.clone(), record.clone()));
+                        }
+                        _ => wanted.push((slug.clone(), stat.clone())),
+                    }
+                }
+                let loaded = prepared.len() as u64;
+                lock(&shared).prepared.clone_from(&prepared);
+                let ctx = Ctx::detached(BUILD_BUDGET);
+                let per = wanted.len().div_ceil(PREPARE_READS).max(1);
+                let read: Vec<(String, Value, Value)> = std::thread::scope(|scope| {
+                    let handles: Vec<_> = wanted
+                        .chunks(per)
+                        .map(|part| {
+                            let mut backend = backend.clone();
+                            let (ctx, root) = (&ctx, &root_text);
+                            scope.spawn(move || {
+                                part.iter()
+                                    .filter_map(|(slug, stat)| {
+                                        let (record, clean) = crate::store::read_source_state(
+                                            &mut backend,
+                                            ctx,
+                                            root,
+                                            slug,
+                                            None,
+                                        )
+                                        .ok()?;
+                                        let mut prepared = trimmed(&record);
+                                        // A clean checkout has the committed
+                                        // relationships; others are read natively.
+                                        if clean {
+                                            prepared["clean"] = true.into();
+                                        } else {
+                                            prepared["edges"] =
+                                                native_outgoing(&mut backend, ctx, slug, &record)?
+                                                    .into();
+                                        }
+                                        Some((slug.clone(), stat.clone(), prepared))
+                                    })
+                                    .collect::<Vec<_>>()
+                            })
+                        })
+                        .collect();
+                    handles
+                        .into_iter()
+                        .flat_map(|h| h.join().unwrap_or_default())
+                        .collect()
+                });
+                let reads = read.len() as u64;
+                for (slug, stat, record) in read {
+                    prepared.insert(slug, (stat, record));
+                }
+                if let Some(dir) = &dir {
+                    let records: Map<String, Value> = prepared
+                        .iter()
+                        .map(|(slug, (stat, record))| (slug.clone(), json!([stat, record])))
+                        .collect();
+                    let _ =
+                        write_snapshot(dir, "workspace", &root_text, json!({"records": records}));
+                }
+                let mut state = lock(&shared);
+                state.prepared = prepared;
+                state.prepared_loaded = loaded;
+                state.prepared_reads = reads;
+                state.prepare_ms = Some(began.elapsed().as_millis() as u64);
+                drop(state);
+                finished(&shared);
+            });
+        if spawned.is_err() {
+            finished(&self.shared);
+        }
     }
 
     /// Committed fields fresh for `signal`; a stale or missing index starts
@@ -532,6 +902,8 @@ impl Index {
             "last_error": state.last_error,
             "build_ms": state.build_ms,
             "ready_ms": state.ready_ms,
+            "workspace": {"prepared": state.prepared.len(), "loaded": state.prepared_loaded,
+                "reads": state.prepared_reads, "ms": state.prepare_ms},
             "snapshot": {"loaded_us": state.loaded_us, "saves": state.saves,
                 "save_error": state.save_error},
             "served": self.served,
@@ -545,28 +917,25 @@ impl Index {
 }
 
 /// Snapshot format version; a different version is ignored and rebuilt.
-const SNAPSHOT_VERSION: u64 = 1;
+const SNAPSHOT_VERSION: u64 = 2;
 const MAX_SNAPSHOT: u64 = 256 << 20;
 
-/// One snapshot file per root in the plugin's private data directory.
-fn snapshot_path(dir: &Path, root: &str) -> PathBuf {
-    dir.join(format!("gitkb-index-{}.json", &digest(root)[..24]))
+/// One file per root and kind (`index`, `edges`, `workspace`) in the
+/// plugin's private data directory.
+fn snapshot_path(dir: &Path, kind: &str, root: &str) -> PathBuf {
+    dir.join(format!("gitkb-{kind}-{}.json", &digest(root)[..24]))
 }
 
-/// Write the committed layer atomically: a private new file renamed over
-/// the old one, so a reader sees the old or the new snapshot, never a part.
-pub fn save(dir: &Path, root: &str, committed: &Committed) -> std::io::Result<()> {
+/// Write `value` atomically: a private new file renamed over the old one, so
+/// a reader sees the old or the new snapshot, never a part.
+pub fn write_snapshot(dir: &Path, kind: &str, root: &str, value: Value) -> std::io::Result<()> {
     use std::io::Write;
-    let docs: Vec<Value> = committed
-        .docs
-        .iter()
-        .map(|(slug, (id, fields))| json!([slug, id, fields[0], fields[1], fields[2]]))
-        .collect();
-    let body = encoded(&json!({"version": SNAPSHOT_VERSION, "root": root,
-        "signal": committed.signal, "skipped": committed.skipped, "docs": docs}));
-    let path = snapshot_path(dir, root);
+    let mut value = value;
+    value["version"] = SNAPSHOT_VERSION.into();
+    value["root"] = root.into();
+    let body = encoded(&value);
     let temporary = dir.join(format!(
-        ".gitkb-index-{}.tmp",
+        ".gitkb-{kind}-{}.tmp",
         crate::native::random_hex(12)
     ));
     let written = (|| {
@@ -578,7 +947,7 @@ pub fn save(dir: &Path, root: &str, committed: &Committed) -> std::io::Result<()
             .open(&temporary)?;
         file.write_all(body.as_bytes())?;
         file.sync_all()?;
-        std::fs::rename(&temporary, &path)
+        std::fs::rename(&temporary, snapshot_path(dir, kind, root))
     })();
     if written.is_err() {
         let _ = std::fs::remove_file(&temporary);
@@ -586,14 +955,13 @@ pub fn save(dir: &Path, root: &str, committed: &Committed) -> std::io::Result<()
     written
 }
 
-/// The snapshot for this root and exactly this store signal and version;
-/// anything else (absent, other signal, malformed, oversized, symlinked)
-/// is `None` and the index builds.
-pub fn load(dir: &Path, root: &str, signal: &str) -> Option<Committed> {
+/// The snapshot of `kind` for this root and format version; absent,
+/// malformed, oversized and symlinked files are `None`.
+pub fn read_snapshot(dir: &Path, kind: &str, root: &str) -> Option<Value> {
     let mut file = std::fs::OpenOptions::new()
         .read(true)
         .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
-        .open(snapshot_path(dir, root))
+        .open(snapshot_path(dir, kind, root))
         .ok()?;
     let info = file.metadata().ok()?;
     if !info.is_file() || info.len() > MAX_SNAPSHOT {
@@ -605,7 +973,41 @@ pub fn load(dir: &Path, root: &str, signal: &str) -> Option<Committed> {
         .read_to_end(&mut bytes)
         .ok()?;
     let value: Value = serde_json::from_slice(&bytes).ok()?;
-    if value["version"] != SNAPSHOT_VERSION || value["root"] != root || value["signal"] != signal {
+    (value["version"] == SNAPSHOT_VERSION && value["root"] == root).then_some(value)
+}
+
+/// Save the committed layer.
+pub fn save(dir: &Path, root: &str, committed: &Committed) -> std::io::Result<()> {
+    let docs: Vec<Value> = committed
+        .docs
+        .iter()
+        .map(|(slug, d)| {
+            json!([
+                slug,
+                d.id,
+                d.version,
+                d.title,
+                d.doc_type,
+                d.frontmatter,
+                d.snippet
+            ])
+        })
+        .collect();
+    let edges: Vec<&Value> = committed.edges.values().flatten().collect();
+    write_snapshot(
+        dir,
+        "index",
+        root,
+        json!({"signal": committed.signal, "skipped": committed.skipped, "docs": docs,
+            "edges": edges}),
+    )
+}
+
+/// The committed layer saved for exactly this store signal, else `None`
+/// and the index builds.
+pub fn load(dir: &Path, root: &str, signal: &str) -> Option<Committed> {
+    let value = read_snapshot(dir, "index", root)?;
+    if value["signal"] != signal {
         return None;
     }
     let rows = value["docs"].as_array()?;
@@ -614,15 +1016,28 @@ pub fn load(dir: &Path, root: &str, signal: &str) -> Option<Committed> {
     }
     let mut docs = HashMap::with_capacity(rows.len());
     for row in rows {
-        let [slug, id, a, s, b] = row.as_array()?.as_slice() else {
+        let [slug, id, version, title, doc_type, fm, snippet] = row.as_array()?.as_slice() else {
             return None;
         };
-        let fields = [a.clone(), s.clone(), b.clone()];
-        docs.insert(slug.as_str()?.to_owned(), (id.as_str()?.to_owned(), fields));
+        let doc = Doc::new(
+            id.as_str()?.to_owned(),
+            version.clone(),
+            title.clone(),
+            doc_type.clone(),
+            fm.as_object()?.clone(),
+            snippet.as_str()?.to_owned(),
+        );
+        docs.insert(slug.as_str()?.to_owned(), doc);
+    }
+    let mut edges: HashMap<String, Vec<Value>> = HashMap::new();
+    for edge in value["edges"].as_array()? {
+        let from = edge["from"].as_str()?.to_owned();
+        edges.entry(from).or_default().push(edge.clone());
     }
     Some(Committed {
         signal: signal.to_owned(),
         docs,
+        edges,
         skipped: value["skipped"].as_object().cloned().unwrap_or_default(),
     })
 }
@@ -1013,15 +1428,96 @@ mod tests {
             .map(|e| e.unwrap().file_name().to_string_lossy().into_owned())
             .collect();
         assert_eq!(names.len(), 1, "{names:?}");
-        let path = snapshot_path(&dir, "/kb");
+        let path = snapshot_path(&dir, "index", "/kb");
         let text = std::fs::read_to_string(&path).unwrap();
-        std::fs::write(&path, text.replace("\"version\":1", "\"version\":2")).unwrap();
+        std::fs::write(&path, text.replace("\"version\":2", "\"version\":3")).unwrap();
         assert!(load(&dir, "/kb", "s2").is_none(), "another format version");
         std::fs::write(&path, "{not json").unwrap();
         assert!(load(&dir, "/kb", "s2").is_none(), "malformed");
         std::fs::remove_file(&path).unwrap();
         std::os::unix::fs::symlink(dir.join("elsewhere"), &path).unwrap();
         assert!(load(&dir, "/kb", "s2").is_none(), "symlink refused");
+        std::fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn committed_edges_follow_native_relationship_semantics() {
+        let line = |slug: &str, id: &str, fm: Value| {
+            let content = json!({"id": id, "slug": slug, "version": 1, "doc_type": "task",
+                "title": slug, "content": "", "frontmatter": fm});
+            format!(
+                "{}\n",
+                encoded(&json!({"slug": slug, "content": encoded(&content)}))
+            )
+        };
+        let a = "00000000-0000-0000-0000-00000000000a";
+        let b = "00000000-0000-0000-0000-00000000000b";
+        let c = "00000000-0000-0000-0000-00000000000c";
+        let text = [
+            line(
+                "a",
+                a,
+                json!({"references": ["b", "missing", "code:x::y"],
+                "children": ["c"], "blocks": "b", "blocked_by": ["c"]}),
+            ),
+            line(
+                "b",
+                b,
+                json!({"depends_on": ["a"], "implements": ["c"], "parent": "a"}),
+            ),
+            line("c", c, json!({"in": {"a": "a0"}})),
+        ]
+        .concat();
+        let committed = Committed::parse("s".into(), text.as_bytes(), MAX_LINE).unwrap();
+        let ulid = |id: &str| crate::native::portable(id).unwrap();
+        let edges = |id: &str| -> Vec<(String, String)> {
+            let mut out: Vec<(String, String)> = committed
+                .outgoing(&ulid(id))
+                .iter()
+                .map(|e| {
+                    (
+                        e["to"].as_str().unwrap().to_owned(),
+                        e["rel"].as_str().unwrap().to_owned(),
+                    )
+                })
+                .collect();
+            out.sort();
+            out
+        };
+        // references, children (parent_of), blocks and containers' `in`
+        // (contains) point outward; blocked_by and parent do not; unknown
+        // and non-document targets are dropped.
+        let mut want_a = vec![
+            (ulid(b), "references".to_owned()),
+            (ulid(c), "parent_of".to_owned()),
+            (ulid(b), "blocks".to_owned()),
+            (ulid(c), "contains".to_owned()),
+        ];
+        want_a.sort();
+        assert_eq!(edges(a), want_a);
+        let mut want_b = vec![
+            (ulid(a), "depends_on".to_owned()),
+            (ulid(c), "implements".to_owned()),
+        ];
+        want_b.sort();
+        assert_eq!(edges(b), want_b);
+        assert!(edges(c).is_empty());
+        // Relationship keys never reach the committed frontmatter.
+        let doc = committed.doc("a", &json!(a)).unwrap();
+        assert!(
+            doc.frontmatter
+                .keys()
+                .all(|k| !RELATIONSHIP_KEYS.contains(&k.as_str()))
+        );
+        // The snapshot keeps the edges.
+        let dir = std::env::temp_dir().join(format!(
+            "bboxy-gitkb-edges-{}",
+            crate::native::random_hex(8)
+        ));
+        std::fs::create_dir_all(&dir).unwrap();
+        save(&dir, "/kb", &committed).unwrap();
+        let loaded = load(&dir, "/kb", "s").unwrap();
+        assert_eq!(loaded.outgoing(&ulid(a)).len(), 4);
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
