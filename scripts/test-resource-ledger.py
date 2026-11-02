@@ -76,6 +76,7 @@ class LedgerContracts(unittest.TestCase):
         # parent's pipe keeps the command alive without a scheduling sleep.
         bootstrap = textwrap.dedent('''
             import importlib.util, os, signal, subprocess, sys
+            sys.dont_write_bytecode = True
             spec = importlib.util.spec_from_file_location('ledger', sys.argv[1])
             ledger = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(ledger)
