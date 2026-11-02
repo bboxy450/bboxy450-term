@@ -50,7 +50,7 @@ impl RoleCatalog {
             ("oracle", Oracle, "Supervise the swarm. Brief executors, verify evidence, and coordinate work.", "#F7C442", "♔"),
             ("architect", Oracle, "Define interfaces, specifications, invariants, and the evidence that verifies them.", "#A78BFA", "♜"),
             ("creativity", Worker, "Explore alternatives and supply creative possibilities within the assigned brief.", "#FF69B4", "♝"),
-            ("executor", Worker, "Implement scoped assignments, run verification, and report evidence to the Oracle.", "#43D9A3", "♟"),
+            ("executor", Worker, "Implement the scoped assignment and verify it. Work silently: send no acknowledgements, progress or status messages. Message once, only when blocked (the evidence and the exact decision needed) or when done (task_report with evidence).", "#43D9A3", "♟"),
             ("shell", Worker, "", "#7397D4", ""),
             ("solo", Oracle, "Own the whole task alone: research, plan, design, implement, verify with real evidence, and land. Do not delegate or spawn other seats unless the operator asks. Report files, commands, and results.", "#F7C442", "♚"),
         ].into_iter().map(|(name, class, prompt, color, mark)| (name.into(), RoleDefinition {

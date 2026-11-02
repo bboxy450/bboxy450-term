@@ -18,8 +18,8 @@ It runs `scripts/land-fast.sh` (`make push` is the same command):
    `verification/` changes add `make test-formal`.
 4. Push. If `main` moved, rebase, recheck the affected crates and push again (up to 5 times).
 
-Cargo runs under `nice -n 10` with 4 jobs (`BBOXY_CARGO_JOBS`) and 2 test threads, with the
-shared sccache and a private build dir, so live seats keep working.
+Cargo runs under `nice -n 10` with 4 jobs (`BBOXY_CARGO_JOBS`) and 2 test threads, reusing
+your worktree's warm `target/` and the shared sccache, so live seats keep working.
 
 `make land-full` is the full signed gate (`scripts/land.sh --full`): `make test` plus a
 formal receipt. Gate slots keep their checkout and target warm between landings, so only

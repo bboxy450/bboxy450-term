@@ -708,12 +708,11 @@ publish-release: release
 push: land
 
 # Landing (LAND.md). `make land` is the fast path: rebase, clippy and nextest for
-# the changed crates and their dependents, push (scripts/land-fast.sh), in a private
-# Cargo build dir. `make land-full` is the full signed gate.
+# the changed crates and their dependents, push (scripts/land-fast.sh), reusing the
+# worktree's own warm target. `make land-full` is the full signed gate.
 .PHONY: land land-full land-gate dispatch
 land: tools
-	@export CARGO_BUILD_BUILD_DIR="$${CARGO_BUILD_BUILD_DIR:-$(abspath $(TARGET_DIR))/private-build}"; \
-	sh scripts/land-fast.sh
+	@sh scripts/land-fast.sh
 
 land-full:
 	@$(MAKE) land-gate LAND_ARGS=--full
@@ -723,8 +722,7 @@ dispatch:
 	sh scripts/dispatch-codex.sh '$(BATCH)' '$(abspath $(BRIEF))'
 
 land-gate: tools
-	@set -u; export CARGO_BUILD_BUILD_DIR="$${CARGO_BUILD_BUILD_DIR:-$(abspath $(TARGET_DIR))/private-build}"; \
-	mkdir -p '$(abspath $(TARGET_DIR))'; \
+	@set -u; mkdir -p '$(abspath $(TARGET_DIR))'; \
 	for attempt in 1 2 3; do \
 	  log='$(abspath $(TARGET_DIR))'/land-attempt-$$attempt.log; \
 	  sh scripts/land.sh $(LAND_ARGS) $(if $(LAND_GATE_LOG),--gate-log '$(abspath $(LAND_GATE_LOG))',) > "$$log" 2>&1; rc=$$?; tail -n 3 "$$log"; \

@@ -54,10 +54,12 @@ documents in source and binary packages. Slop respectfully. Keep the credit atta
 
 Overrides live in `make help`: `PROFILE`, `TARGET_DIR`, `INSTALL_DIR`, `UNSIGNED_INSTALL_DIR`, `CI_LOG`. Build caches are selected by `scripts/cache-env.sh`; Make sources it. Never change global Cargo configuration for a task.
 
-**Rust workflow, every crate.** Tests run through cargo-nextest (`.config/nextest.toml`): binaries run concurrently, each test
+**Rust workflow, every crate.** `rust-toolchain.toml` pins the compiler for every worktree.
+Tests run through cargo-nextest (`.config/nextest.toml`): binaries run concurrently, each test
 is its own process, hung tests die after 5 min; doctests run after through `cargo test --doc`.
 `scripts/quarantine-test.sh` is the one entry point. sccache shares compiled dependencies
-between worktrees. Iteration builds use two Cargo jobs; `make land` uses four, niced, and two
+between worktrees. `.cargo/config.toml` keeps intermediates in the worktree's `target/`, overriding
+a machine-wide `build-dir`. Iteration builds use two Cargo jobs; `make land` uses four, niced, and two
 test threads; on a new machine any build/test/land target installs the tools first.
 While iterating, test one crate: `cargo nextest run -p <crate>` (add `-E 'test(name)'` to narrow).
 

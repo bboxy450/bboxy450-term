@@ -1,0 +1,9 @@
+# Project Cargo settings for every worktree and machine; they override a user's
+# global config. Intermediates stay in this worktree's target: a machine-wide
+# build-dir mixes worktrees' same-named crates (rust-lang/cargo#12516) and
+# serializes all builds on one lock. Make entry points add sccache
+# (scripts/cache-env.sh), which shares compiled dependencies between worktrees
+# and needs non-incremental builds.
+[build]
+build-dir = "target"
+incremental = false

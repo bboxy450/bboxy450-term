@@ -50,6 +50,10 @@ the current role, workspace and tool schemas. Rediscover after a plugin change.
    `author: seat:<id>` and `created`; the host supplies `id` and the Index assigns `number`.
    Reports are append-only; corrections create a new report with `supersedes:`.
 3. **Messages.** Use available `message_*` tools within the grants from `orient`.
+   Messages cost the whole machine. A Worker-class seat sends no acknowledgement,
+   plan, progress or status message: it messages once when blocked (evidence and
+   the exact decision needed) and once when done (`task_report`). Do not poll
+   peers or the operator; wait for the delegated task or a reply.
    DMs are the default for briefs, questions and handoffs. Channels carry shared
    decisions, roll calls and whole-workstream milestones. Check delivery with
    `message_receipts`: sender/recipient storage, native delivery and application

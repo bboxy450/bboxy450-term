@@ -18,6 +18,13 @@ bboxy_cache_env() {
     fi
     unset CARGO_TARGET_DIR CARGO_LOG CARGO_TERM_COLOR CARGO_TERM_PROGRESS_WHEN CARGO_TERM_PROGRESS_WIDTH
     export CARGO_BUILD_JOBS="${BBOXY_CARGO_JOBS:-2}" CARGO_INCREMENTAL=0
+    # A machine-wide build.build-dir mixes worktrees' same-named crates
+    # (rust-lang/cargo#12516) and serializes every build on one lock. Keep
+    # intermediates with this worktree's target; sccache shares dependencies.
+    if [ -z "${CARGO_BUILD_BUILD_DIR:-}" ]; then
+        CARGO_BUILD_BUILD_DIR=${BBOXY_CARGO_TARGET_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)/target}
+        export CARGO_BUILD_BUILD_DIR
+    fi
     # A full capacity-gated CI run cannot grow the optional shared cache. Do not
     # reconfigure or stop a live daemon: nested checks inherit this disposition.
     case "${BBOXY_CACHE_MODE:-auto}" in
