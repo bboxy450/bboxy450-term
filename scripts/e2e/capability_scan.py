@@ -22,9 +22,22 @@ from pathlib import Path
 import struct
 import subprocess
 import sys
+import time
 
 
 def process_snapshot(pid):
+    """Retry a transient exec-map EIO; persistent/unrelated failures stay fatal."""
+    deadline = time.monotonic() + 1
+    while True:
+        try:
+            return _process_snapshot_once(pid)
+        except OSError as error:
+            if error.errno != errno.EIO or time.monotonic() >= deadline:
+                raise
+            time.sleep(0.01)
+
+
+def _process_snapshot_once(pid):
     """Return argv and the exec environment/Apple region; no observer fallback."""
     if sys.platform != 'darwin':
         raise RuntimeError('native capability fixture requires Darwin process snapshots')
