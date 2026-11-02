@@ -185,12 +185,17 @@ A native commit renames a new manifest and tips into place; workspace writes,
 GitKB's `.kb/.cache` database is excluded because reads rewrite it. The row
 layer is also keyed by the exact workspace file stats. A changed store signal
 starts one background rebuild. While a build runs (including a cold process's
-first reads), a call that needs `--where` fields waits for it, up to its own
-deadline less 800 ms; it takes the backend path only when the build fails,
-finishes for another store signal, cannot finish in time or the call is
-cancelled, and whenever the store or workspace moves while rows refresh. A
-cold Harmony process answers the host's 126-call task list in 5.6 s from
-spawn (initialize 1.0 s, build ready 4.1 s later). Each finished build is
+first reads), a call that needs `--where` fields waits for it, at most 700 ms
+and never past its own deadline less 800 ms; it takes the backend path only
+when the build fails, finishes for another store signal, has not finished by
+then or the call is cancelled, and whenever the store or workspace moves
+while rows refresh. The host's per-call deadline is the declared 2 s,
+shortened to whatever its operation (an 8 s task list) has left, and the
+plugin cannot see that remainder; short waits keep each cold call near one
+second. A cold Harmony process answered the host's 126-call task list in
+4.0 s from spawn with no call over the host's deadline (initialize 0.74 s,
+build ready 2.97 s, slowest call 0.72 s), and a respawn that loaded the
+snapshot in 1.15 s (slowest call 0.11 s, no fallback). Each finished build is
 saved to the plugin's private data directory (its cwd) as
 `gitkb-index-<root digest>.json`: a private file written and renamed into
 place, holding the format version, root, store signal and per-document

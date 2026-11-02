@@ -44,6 +44,11 @@ const ATTEMPTS: usize = 3;
 /// Call budget kept back when a filtered call waits for a build: the row
 /// refresh, a backend fallback and the page fill must still fit.
 pub const WAIT_RESERVE: Duration = Duration::from_millis(800);
+/// Longest wait of one call. The host's per-call deadline is at most 2 s and
+/// shrinks to whatever its operation (an 8 s task list) has left, which the
+/// plugin cannot see; a short wait keeps each call, wait plus fallback, near
+/// one second, so a cold list stays within the operation's own deadline.
+pub const WAIT_CAP: Duration = Duration::from_millis(700);
 /// Longest single condition wait, so cancellation is noticed promptly.
 const WAIT_SLICE: Duration = Duration::from_millis(50);
 /// The frontmatter fields the adapter filters with `--where`.

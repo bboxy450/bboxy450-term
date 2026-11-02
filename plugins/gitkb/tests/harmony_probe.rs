@@ -368,30 +368,61 @@ fn cold_task_list(
         .unwrap();
     let initialize_ms = started.elapsed().as_millis() as u64;
     let _ = client.send(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+    // The host's per-call deadline (DataSourceProvider::call): the declared
+    // 2 s command timeout, capped by what the 8 s task-list operation has
+    // left. Every page is its own host call.
     let mut slowest = Duration::ZERO;
+    let mut overruns = 0;
     let mut results = Vec::new();
     for request in &requests {
-        let one = Instant::now();
-        results.push(all_pages(&mut client, request));
-        slowest = slowest.max(one.elapsed());
+        let mut items = Vec::new();
+        let mut request = request.clone();
+        loop {
+            let budget = HOST_CALL.min(OPERATION.saturating_sub(started.elapsed()));
+            let one = Instant::now();
+            let page = client
+                .call("data_source_list", request.clone(), WAIT)
+                .unwrap();
+            let elapsed = one.elapsed();
+            slowest = slowest.max(elapsed);
+            if elapsed >= budget {
+                overruns += 1;
+            }
+            items.extend(page["items"].as_array().unwrap().iter().cloned());
+            if page["next"].is_null() {
+                break;
+            }
+            request["cursor"] = page["next"].clone();
+        }
+        results.push(items);
     }
     let total = started.elapsed();
     let facts = client.call("health", json!({}), WAIT).unwrap()["index"].clone();
     assert_eq!(client.close(Duration::from_secs(5)), Some(0));
     let row = json!({"index": index, "initialize_ms": initialize_ms,
         "total_from_spawn_ms": total.as_millis() as u64,
-        "slowest_call_ms": slowest.as_millis() as u64,
+        "slowest_call_ms": slowest.as_millis() as u64, "host_deadline_overruns": overruns,
         "items": results.iter().map(Vec::len).sum::<usize>(),
-        "index_ready_ms": facts["ready_ms"], "served": facts["served"],
-        "fallbacks": facts["fallbacks"], "waits": facts["waits"], "waited_ms": facts["waited_ms"]});
+        "index_ready_ms": facts["ready_ms"], "snapshot": facts["snapshot"],
+        "served": facts["served"], "fallbacks": facts["fallbacks"], "waits": facts["waits"],
+        "waited_ms": facts["waited_ms"]});
     (results, row)
 }
 
+/// The host's fixed per-call budget for data_source list (ProviderConfig
+/// timeout and the declared command timeout, both 2 s).
+const HOST_CALL: Duration = Duration::from_secs(2);
+/// The host task list's operation deadline, which also bounds each call.
+const OPERATION: Duration = Duration::from_secs(8);
+
 /// Cold-start replays: seat-like ids (`BBOXY_GITKB_PROBE_SEATS`, comma
 /// separated, else 21 random ULIDs: registry seat ids that no Harmony record
-/// names) must finish within 6.5 s from spawn and equal the backend path; the
-/// replay's seats (real Harmony assignees included) are recorded only, as
-/// their first read includes each matching workspace record's exact read.
+/// names) must finish within 6.5 s from spawn and equal the backend path,
+/// with no call over the host's per-call deadline, both from an empty data
+/// directory and after a respawn that loads the saved snapshot (which must
+/// serve every filtered call without a fallback). The replay's seats (real
+/// Harmony assignees included) are recorded only, as their first read
+/// includes each matching workspace record's exact read.
 fn cold_replays(
     probe: &mut Probe,
     plugin: &Path,
@@ -413,17 +444,32 @@ fn cold_replays(
     while seats.len() < 21 {
         seats.push(random_ulid());
     }
-    let (indexed, on) = cold_task_list(plugin, root, env, &data.join("seats-on"), &seats, true);
+    // No snapshot: a fresh private data directory builds and saves one.
+    let seats_dir = data.join("seats-on");
+    let (indexed, on) = cold_task_list(plugin, root, env, &seats_dir, &seats, true);
+    // A respawn in the same data directory: the snapshot answers at once.
+    let (respawned, warm) = cold_task_list(plugin, root, env, &seats_dir, &seats, true);
     let (native, off) = cold_task_list(plugin, root, env, &data.join("seats-off"), &seats, false);
     let (_, real) = cold_task_list(plugin, root, env, &data.join("replay-on"), replay, true);
-    let identical = indexed.iter().zip(&native).filter(|(a, b)| a == b).count();
+    let identical = indexed
+        .iter()
+        .zip(&native)
+        .zip(&respawned)
+        .filter(|((a, b), c)| a == b && a == c)
+        .count();
     let total = on["total_from_spawn_ms"].as_u64().unwrap();
     probe.evidence["cold_task_list"] = json!({
         "seat_ids": if registry { "BBOXY_GITKB_PROBE_SEATS" } else { "random ULIDs" },
         "identical": identical, "compared": indexed.len(),
-        "indexed": on, "backend": off, "replay_seats_indexed": real,
+        "indexed": on, "respawn_with_snapshot": warm, "backend": off,
+        "replay_seats_indexed": real,
     });
-    let passed = identical == indexed.len() && total < 6_500;
+    let passed = identical == indexed.len()
+        && total < 6_500
+        && on["host_deadline_overruns"] == 0
+        && warm["host_deadline_overruns"] == 0
+        && warm["snapshot"]["loaded_us"].is_u64()
+        && warm["fallbacks"] == 0;
     if !passed {
         probe.evidence["result"] = "failed; cold task list".into();
     }

@@ -21,7 +21,7 @@ use bbt_plugin_sdk::{Ctx, MAX_RESULT, Refusal, encoded};
 use serde_json::{Map, Value, json};
 
 use crate::backend::Backend;
-use crate::index::{Index, Listed, Query, WAIT_RESERVE, store_signal};
+use crate::index::{Index, Listed, Query, WAIT_CAP, WAIT_RESERVE, store_signal};
 use crate::native::{
     content_digest, digest, embeds, file_uri, mime_type, number, portable, prefix, random_hex,
     sha256_hex, slug_path, task_status,
@@ -492,7 +492,11 @@ impl GitKb {
             // A build in progress (a cold process's first reads) usually
             // finishes sooner than the per-call backend path would add up:
             // wait for it within this call's budget, less a reserve.
-            let budget = self.ctx.remaining().saturating_sub(WAIT_RESERVE);
+            let budget = self
+                .ctx
+                .remaining()
+                .saturating_sub(WAIT_RESERVE)
+                .min(WAIT_CAP);
             let began = Instant::now();
             let ctx = self.ctx.clone();
             committed = self.index.wait_for(&signal, budget, || ctx.is_cancelled());
