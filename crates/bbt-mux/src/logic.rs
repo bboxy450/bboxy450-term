@@ -4811,6 +4811,7 @@ impl Worker {
         use crate::mcp::seats::{self, Request};
         use serde_json::json;
         match request {
+            Request::HarnessProfiles => harness_profiles(),
             Request::Layout {
                 swarm,
                 after,
@@ -5016,13 +5017,23 @@ impl Worker {
                         self.configured_role(&harness.kind, args.role.as_deref())?;
                     record.role = role;
                     record.harness_session_id = args.resume.clone();
+                    if let Some(name) = &args.harness_profile
+                        && !harness_profile_dir()?.join(format!("{name}.md")).is_file()
+                    {
+                        return Err(invalid("no such bboxy450-harness profile; see harness_profiles"));
+                    }
                     self.launch(
                         record,
                         harness,
                         crate::adapters::launch::LaunchOptions {
                             transport_argv: None,
                             via: None,
-                            env: vec![],
+                            // the harness seat starts on this profile (its own precedence: env first)
+                            env: args
+                                .harness_profile
+                                .clone()
+                                .map(|p| vec![("BBOXY450_HARNESS_PROFILE".into(), p)])
+                                .unwrap_or_default(),
                             cwd: args.cwd.canonicalize()?,
                             role_prompt,
                             executable: std::env::current_exe()?,
@@ -12183,3 +12194,43 @@ mod native_hook_tests {
 
 #[path = "logic/plugin_transport.rs"]
 mod plugin_transport;
+
+fn harness_profile_dir() -> Result<PathBuf> {
+    Ok(std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .ok_or_else(|| invalid("missing user home"))?
+        .join(".bboxy450-harness/profiles"))
+}
+/// The machine-global harness profiles, frontmatter fields only: never a key, an
+/// `api_key` command or an environment value.
+fn harness_profiles() -> std::result::Result<serde_json::Value, String> {
+    use serde_json::{Value, json};
+    let dir = harness_profile_dir().map_err(|e| e.to_string())?;
+    let mut out = vec![];
+    if let Ok(entries) = std::fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().is_none_or(|x| x != "md") {
+                continue;
+            }
+            let Ok(text) = std::fs::read_to_string(&path) else { continue };
+            let Some(header) = text.strip_prefix("---\n").and_then(|r| r.split_once("\n---")).map(|(h, _)| h) else { continue };
+            let Ok(meta) = serde_yaml::from_str::<Value>(header) else { continue };
+            let field = |k: &str| meta.get(k).and_then(Value::as_str).unwrap_or("").to_owned();
+            let acp = field("provider") == "acp-agent";
+            out.push(json!({
+                "name": path.file_stem().map(|s| s.to_string_lossy().into_owned()),
+                "kind": if acp { "acp-agent" } else { "model" },
+                "provider": field("provider"),
+                "model": field("model"),
+                "agent_command": meta.pointer("/agent/command").cloned().unwrap_or(Value::Null),
+                "agent_env_names": meta.pointer("/agent/env").and_then(Value::as_object).map(|m| m.keys().cloned().collect::<Vec<_>>()).unwrap_or_default(),
+            }));
+        }
+    }
+    out.sort_by_key(|p| p["name"].as_str().unwrap_or("").to_owned());
+    let default = std::env::var("BBOXY450_HARNESS_PROFILE").ok().filter(|s| !s.trim().is_empty()).or_else(|| {
+        std::fs::read_to_string(dir.parent()?.join("default-profile")).ok().map(|s| s.trim().to_owned()).filter(|s| !s.is_empty())
+    });
+    Ok(json!({ "profiles": out, "default": default, "directory": dir }))
+}

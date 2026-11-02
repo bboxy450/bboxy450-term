@@ -22,7 +22,11 @@ use crate::{
 const APPROVED_PROFILES: [&str; 6] = ["zsh", "claude", "codex", "pi", "omp", "bboxy450-harness"];
 
 pub(crate) fn handles(name: &str) -> bool {
-    mutation(name) || matches!(name, "screen_read" | "history_read" | "layout_read" | "ctl")
+    mutation(name)
+        || matches!(
+            name,
+            "screen_read" | "history_read" | "layout_read" | "harness_profiles" | "ctl"
+        )
 }
 pub(crate) fn mutation(name: &str) -> bool {
     matches!(
@@ -54,12 +58,18 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
             json!({"cursor":{"type":"string","maxLength":512},"limit_records":{"type":"integer","minimum":1,"maximum":128}}),
             vec![],
         ),
+        (
+            "harness_profiles",
+            "List bboxy450-harness profiles on this machine (~/.bboxy450-harness/profiles): name, kind (model or acp-agent), model, agent command and the names of agent environment variables, plus the default profile. Never keys or environment values. Spawn a harness seat on one with seat_spawn harness_profile; switch a live harness seat by sending `/profile NAME` with seat_input_text.",
+            json!({}),
+            vec![],
+        ),
     ];
     if actor.role.class == Class::Oracle {
         defs.extend([
             ("seat_input_text","Paste literal text only through the live positive-readiness guard. submit explicitly chooses Enter; rejected input is not queued.",json!({"text":text,"submit":{"type":"boolean"}}),vec!["text","submit"]),
-            ("seat_spawn","Launch an approved builtin in your swarm through the per-seat wiring kit. Defaults to a new tab; optional tab_id names that new tab. resume names a native Claude session or Codex thread to continue. No arbitrary commands, environment or privilege class.",json!({"swarm_id":id,"approved_profile":{"enum":APPROVED_PROFILES},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id,"resume":{"type":"string","minLength":1,"maxLength":128}}),vec!["swarm_id","approved_profile","cwd"]),
-            ("seat_split","Launch an approved builtin beside an exact live seat in your swarm, even while the UI is detached. side is right or bottom (equal halves). tab_id optionally asserts the anchor tab. resume names a native Claude session or Codex thread to continue.",json!({"swarm_id":id,"approved_profile":{"enum":APPROVED_PROFILES},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id,"side":{"enum":["right","bottom"]},"resume":{"type":"string","minLength":1,"maxLength":128}}),vec!["swarm_id","approved_profile","cwd","side"]),
+            ("seat_spawn","Launch an approved builtin in your swarm through the per-seat wiring kit. Defaults to a new tab; optional tab_id names that new tab. resume names a native Claude session or Codex thread to continue. harness_profile starts a bboxy450-harness seat on that profile (see harness_profiles). No arbitrary commands, environment or privilege class.",json!({"swarm_id":id,"approved_profile":{"enum":APPROVED_PROFILES},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id,"resume":{"type":"string","minLength":1,"maxLength":128},"harness_profile":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$"}}),vec!["swarm_id","approved_profile","cwd"]),
+            ("seat_split","Launch an approved builtin beside an exact live seat in your swarm, even while the UI is detached. side is right or bottom (equal halves). tab_id optionally asserts the anchor tab. resume names a native Claude session or Codex thread to continue.",json!({"swarm_id":id,"approved_profile":{"enum":APPROVED_PROFILES},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id,"side":{"enum":["right","bottom"]},"resume":{"type":"string","minLength":1,"maxLength":128},"harness_profile":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$"}}),vec!["swarm_id","approved_profile","cwd","side"]),
             ("seat_focus","Focus a seat in your swarm, acknowledging a completed frame. Unavailable while the UI is detached.",json!({}),vec![]),
             ("layout_read","Read your swarm's saved tab membership and durable seat placements, with exact process generations for orchestration. Saved membership can lag the attached UI.",json!({"after":id,"limit":{"type":"integer","minimum":1,"maximum":128}}),vec![]),
             ("seat_close","Close a seat in your swarm through the window's close control (60 s undo), even when its process has exited. Not your own seat. Unavailable while the UI is detached.",json!({}),vec![]),
@@ -69,7 +79,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
         ]);
     }
     defs.into_iter().map(|(name,description,mut properties,mut required)| {
-        if !matches!(name,"seat_spawn" | "layout_read") {
+        if !matches!(name,"seat_spawn" | "layout_read" | "harness_profiles") {
             properties["seat_id"]=id.clone();properties["expected_process_generation"]=revision.clone();
             required.extend(["seat_id","expected_process_generation"]);
         }
@@ -92,6 +102,7 @@ const CTL_COMMANDS: &[&str] = &[
     "layout_read",
     "screen_read",
     "history_read",
+    "harness_profiles",
     "seat_spawn",
     "seat_split",
     "seat_focus",
@@ -192,6 +203,8 @@ pub(crate) struct Spawn {
     pub name: Option<String>,
     pub tab_id: Option<Ulid>,
     pub resume: Option<String>,
+    /// A bboxy450-harness profile name; the seat starts on it.
+    pub harness_profile: Option<String>,
     seat_id: Option<Ulid>,
     expected_process_generation: Option<Revision>,
     pub side: Option<bbt_proto::seat_state::Side>,
@@ -228,6 +241,7 @@ struct Interrupt {
 }
 
 pub(crate) enum Request {
+    HarnessProfiles,
     Layout {
         swarm: Ulid,
         after: Option<Ulid>,
@@ -276,13 +290,16 @@ impl Request {
             | Self::Mute { target, .. }
             | Self::Interrupt { target, .. } => Some(*target),
             Self::Spawn(args) => args.target(),
-            Self::Layout { .. } => None,
+            Self::Layout { .. } | Self::HarnessProfiles => None,
         }
     }
     pub fn is_read(&self) -> bool {
         matches!(
             self,
-            Self::Layout { .. } | Self::Screen { .. } | Self::History { .. }
+            Self::Layout { .. }
+                | Self::Screen { .. }
+                | Self::History { .. }
+                | Self::HarnessProfiles
         )
     }
 }
@@ -310,6 +327,10 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Request, String> {
                 cursor: a.cursor,
                 limit: tools::page_limit(a.limit_records)?,
             }
+        }
+        "harness_profiles" => {
+            tools::parse::<tools::Empty>(&call.args)?;
+            Request::HarnessProfiles
         }
         "seat_input_text" => {
             let a: Input = tools::parse(&call.args)?;
@@ -379,6 +400,17 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Request, String> {
                     || id.chars().any(|c| c.is_whitespace() || c.is_control())
                 {
                     return Err("resume: a session id of 1 to 128 characters, no spaces or control characters".into());
+                }
+            }
+            if let Some(name) = &a.harness_profile {
+                if a.approved_profile != "bboxy450-harness" {
+                    return Err("harness_profile applies to bboxy450-harness".into());
+                }
+                if name.is_empty()
+                    || name.len() > 64
+                    || !name.bytes().all(|b| b.is_ascii_alphanumeric() || b"-_".contains(&b))
+                {
+                    return Err("harness_profile: 1 to 64 letters, digits, - or _".into());
                 }
             }
             if call.tool == "seat_split" {

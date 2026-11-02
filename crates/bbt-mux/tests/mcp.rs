@@ -1405,7 +1405,8 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     initialize(&mut bridge);
     let list = rpc(&mut bridge, 2, "tools/list", json!({}));
     let tools = list["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 28);
+    assert_eq!(tools.len(), 29);
+    assert!(tools.iter().any(|tool| tool["name"] == "harness_profiles"));
     assert!(tools.iter().any(|tool| tool["name"] == "knowledge_status"));
     assert!(
         tools
@@ -2470,8 +2471,8 @@ fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_r
         .runtime
         .block_on(f.client().control_catalogue(oracle, 1))
         .unwrap();
-    assert_eq!(worker["tools"].as_array().unwrap().len(), 28);
-    assert_eq!(admin["tools"].as_array().unwrap().len(), 49);
+    assert_eq!(worker["tools"].as_array().unwrap().len(), 29);
+    assert_eq!(admin["tools"].as_array().unwrap().len(), 50);
     for catalogue in [&worker, &admin] {
         let status = catalogue["tools"]
             .as_array()
