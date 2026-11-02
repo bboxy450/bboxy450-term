@@ -59,7 +59,7 @@ pub fn validate_role(_kind: &str, role: &Role) -> Result<()> {
 /// Standalone starting presets; runtime authority comes from the saved catalog.
 pub fn role_preset(name: &str) -> Result<Role> {
     let class = match name {
-        "oracle" | "architect" => Class::Oracle,
+        "oracle" | "architect" | "solo" => Class::Oracle,
         "creativity" | "executor" | "shell" => Class::Worker,
         _ => return Err(invalid("unknown_role_preset")),
     };

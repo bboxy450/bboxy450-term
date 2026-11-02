@@ -14,7 +14,7 @@ use bbt_ui::modules::settings::Role;
 use std::collections::BTreeMap;
 use toml_edit::{DocumentMut, Item, Value};
 
-pub const BUILTINS: [&str; 5] = ["oracle", "architect", "creativity", "executor", "shell"];
+pub const BUILTINS: [&str; 6] = ["oracle", "architect", "creativity", "executor", "shell", "solo"];
 pub use bbt_ui::modules::harness::HARNESSES;
 
 pub fn builtin() -> BTreeMap<String, RoleDefinition> {

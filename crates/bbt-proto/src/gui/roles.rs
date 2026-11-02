@@ -52,6 +52,7 @@ impl RoleCatalog {
             ("creativity", Worker, "Explore alternatives and supply creative possibilities within the assigned brief.", "#FF69B4", "♝"),
             ("executor", Worker, "Implement scoped assignments, run verification, and report evidence to the Oracle.", "#43D9A3", "♟"),
             ("shell", Worker, "", "#7397D4", ""),
+            ("solo", Oracle, "Own the whole task alone: research, plan, design, implement, verify with real evidence, and land. Do not delegate or spawn other seats unless the operator asks. Report files, commands, and results.", "#F7C442", "♚"),
         ].into_iter().map(|(name, class, prompt, color, mark)| (name.into(), RoleDefinition {
             class, prompt: prompt.into(), send: String::new(), color: color.into(), mark: mark.into(),
         })).collect();
@@ -69,7 +70,7 @@ impl RoleCatalog {
                 kind.into(),
                 HarnessRoles {
                     default_role: default.into(),
-                    available_roles: ["oracle", "architect", "creativity", "executor", "shell"]
+                    available_roles: ["oracle", "architect", "creativity", "executor", "shell", "solo"]
                         .into_iter()
                         .map(String::from)
                         .collect(),

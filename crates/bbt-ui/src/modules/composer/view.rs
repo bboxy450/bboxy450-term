@@ -30,6 +30,7 @@ fn stack(key: &str, style: ui::Style, axis: Axis, gap: f32, children: Vec<c::Ite
 fn mark(role: &str) -> &'static str {
     match role {
         "oracle" => "♔",
+        "solo" => "♚",
         "architect" => "♖",
         "executor" => "♟",
         "creativity" => "♝",

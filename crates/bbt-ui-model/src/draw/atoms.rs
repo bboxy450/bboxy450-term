@@ -68,6 +68,7 @@ impl Draw for RoleMark<'_> {
     fn draw(&self, r: Rect, ctx: &DrawCtx, out: &mut DrawList) {
         let (mark, color) = match self.0.name.as_str() {
             "oracle" => ("♔", TOKENS.color.role.oracle),
+            "solo" => ("♚", TOKENS.color.role.oracle),
             "creativity" => ("♝", TOKENS.color.role.creativity),
             _ => ("♟", TOKENS.color.role.executor),
         };

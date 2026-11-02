@@ -79,7 +79,7 @@ impl std::fmt::Debug for Text {
     }
 }
 pub(super) fn builtin(name: &str) -> bool {
-    ["oracle", "architect", "creativity", "executor", "shell"]
+    ["oracle", "architect", "creativity", "executor", "shell", "solo"]
         .iter()
         .any(|id| id.eq_ignore_ascii_case(name))
 }
