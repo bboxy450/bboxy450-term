@@ -3082,6 +3082,44 @@ mod tests {
     }
     use std::{os::unix::fs::PermissionsExt, time::Duration};
 
+    /// The app binary Cargo built for this test's profile:
+    /// `<target dir>/<profile>/bboxy450-term`. This unit test runs from
+    /// `<build dir>/<profile>/deps`. The build dir is the target dir unless
+    /// `CARGO_BUILD_BUILD_DIR` moves it (as `make land` does); the target dir
+    /// is Cargo's `CARGO_TARGET_DIR` or `CARGO_BUILD_TARGET_DIR`, else the
+    /// gate's `BBOXY_CARGO_TARGET_DIR` (which it passes as `--target-dir`),
+    /// else the workspace's `target`.
+    fn app_binary() -> PathBuf {
+        let exe = std::env::current_exe().unwrap();
+        let profile = exe.parent().and_then(Path::parent).unwrap();
+        let sibling = profile.join("bboxy450-term");
+        let Some(build) = std::env::var_os("CARGO_BUILD_BUILD_DIR").map(PathBuf::from) else {
+            return sibling;
+        };
+        let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let absolute = |dir: PathBuf| {
+            if dir.is_absolute() {
+                dir
+            } else {
+                workspace.join(dir)
+            }
+        };
+        let build = absolute(build).canonicalize().unwrap_or_default();
+        let canonical = profile.canonicalize().unwrap_or_default();
+        let Ok(relative) = canonical.strip_prefix(&build) else {
+            return sibling;
+        };
+        let target = [
+            "CARGO_TARGET_DIR",
+            "CARGO_BUILD_TARGET_DIR",
+            "BBOXY_CARGO_TARGET_DIR",
+        ]
+        .into_iter()
+        .find_map(|name| std::env::var_os(name).filter(|v| !v.is_empty()))
+        .map_or_else(|| workspace.join("target"), |dir| absolute(dir.into()));
+        target.join(relative).join("bboxy450-term")
+    }
+
     // keeps: spec c1-live-seats §2a
     #[test]
     fn queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication() {
@@ -3543,13 +3581,7 @@ mod tests {
             .await
             .unwrap();
         }
-        let binary = std::env::current_exe()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("bboxy450-term");
+        let binary = app_binary();
         assert!(
             binary.is_file(),
             "build the app before its real-process test"
@@ -3761,13 +3793,7 @@ mod tests {
         tokio::fs::create_dir_all(repository.join(".bboxy/tasks"))
             .await
             .unwrap();
-        let binary = std::env::current_exe()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("bboxy450-term");
+        let binary = app_binary();
         assert!(
             binary.is_file(),
             "build the app before its real-process test"
@@ -4268,13 +4294,7 @@ mod tests {
         )
         .await
         .unwrap();
-        let binary = std::env::current_exe()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("bboxy450-term");
+        let binary = app_binary();
         assert!(
             binary.is_file(),
             "build the app before its real-process scroll test"
@@ -4477,13 +4497,7 @@ mod tests {
         tokio::fs::write(shell_config.join(".zshrc"), "PROMPT='> '\nRPROMPT=''\n")
             .await
             .unwrap();
-        let binary = std::env::current_exe()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("bboxy450-term");
+        let binary = app_binary();
         assert!(
             binary.is_file(),
             "build the app binary before this real-process test"
