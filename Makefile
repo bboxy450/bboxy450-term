@@ -216,7 +216,7 @@ help:
 	  'make publish-release            Signed tag + GitHub app release (authorization required)' \
 	  'make push                       Push signed, tested HEAD to main (authorization required)' \
 	  'make land-full                  Run full make test after rebase, then land (authorization required)' \
-	  'make land                       Land this branch on main in one go (LAND.md; authorization required)' \
+	  'make land                       Fast land: check, test changed packages, push (LAND.md; authorization required)' \
 	  'make dispatch BATCH=x BRIEF=f   Headless Codex Executor on brief f in worktree ../<repo>-cx-x (Oracle only)' \
 	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... LAND_GATE_LOG=... BBOXY_CACHE_MODE=auto|off CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2 RUST_TEST_THREADS=2' \
 	  'GitKB: GITKB_BIN=... PLUGIN_WORKSPACE=/explicit/local/project'
@@ -708,18 +708,22 @@ push:
 	grep -E "^ci-local: result $$(git rev-parse HEAD) (normal|extended) 0$$" '$(CI_LOG)' >/dev/null; \
 	GIT_TERMINAL_PROMPT=0 git push origin HEAD:main
 
-# One-go landing (LAND.md): scripts/land.sh rebases, runs the gate, rechecks only
-# what overlaps when main moves, then pushes. A private Cargo build dir keeps other
-# worktrees' artifacts out; transient network/TLC-tool failures retry, nothing else.
-.PHONY: land land-full dispatch
+# Landing (LAND.md). `make land` is the fast path: rebase, workspace check, tests
+# for the changed packages, push (scripts/land-fast.sh). `make land-full` is the
+# full signed gate (scripts/land.sh --full). Both use a private Cargo build dir.
+.PHONY: land land-full land-gate dispatch
+land:
+	@export CARGO_BUILD_BUILD_DIR="$${CARGO_BUILD_BUILD_DIR:-$(abspath $(TARGET_DIR))/private-build}"; \
+	sh scripts/land-fast.sh
+
 land-full:
-	@$(MAKE) land LAND_ARGS=--full
+	@$(MAKE) land-gate LAND_ARGS=--full
 
 dispatch:
 	@test -n "$(BATCH)" -a -n "$(BRIEF)" || { echo 'usage: make dispatch BATCH=name BRIEF=path/to/brief.md'; exit 2; }
 	sh scripts/dispatch-codex.sh '$(BATCH)' '$(abspath $(BRIEF))'
 
-land:
+land-gate:
 	@set -u; export CARGO_BUILD_BUILD_DIR="$${CARGO_BUILD_BUILD_DIR:-$(abspath $(TARGET_DIR))/private-build}"; \
 	mkdir -p '$(abspath $(TARGET_DIR))'; \
 	for attempt in 1 2 3; do \

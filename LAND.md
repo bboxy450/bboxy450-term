@@ -6,39 +6,26 @@ One command, from your own branch in your own worktree:
 make land
 ```
 
-It runs `scripts/land.sh`: rebase on `origin/main`, the full signed gate on that exact
-head, an incremental recheck of only what overlaps if `main` moved meanwhile, then
-`git push origin HEAD:main`. It uses a private Cargo build dir and retries only transient
-network or TLC-tool failures. Push and merge still need the operator's authorization.
+It runs `scripts/land-fast.sh`:
 
-Use `make land-full` when the brief requires the full normal `make test` gate.
-It runs that gate after the initial rebase, for any cut tier, then retains the
-same incremental rechecks and current-source formal receipt checks if main moves.
-`sh scripts/land.sh --full` is the equivalent entry point. A supplied
-`--gate-log` remains bound to its exact candidate; it cannot be combined with `--full`.
+1. Rebase on `origin/main` (exit 78 on conflict).
+2. `cargo check --workspace --all-targets`, then clippy `-D warnings` and `cargo test`
+   for each package whose files changed. `.bboxy/` changes add the doc corpus test;
+   model or `verification/` changes add `make test-formal`.
+3. Push. If `main` moved, rebase, recompile the workspace and push again (up to 5 times).
 
-## Why this way: measured timings (2026-10-30 to 10-31)
+Cargo runs under `nice -n 10` on half the cores (`CARGO_BUILD_JOBS`) with a private build
+dir, so live seats keep working while you land.
 
-| Measured | Value |
-|---|---|
-| Time between landings on `main` (25 landing events) | median 33 min, a quarter under 24 min, shortest 3.6 min |
-| One full gate on this machine (`land.sh`, 7 runs) | median 24 min, p90 30 min, max 51 min |
-| Plain `make test` then `make push` | lost the race to a newer `main` 2 of 2 times |
+`make land-full` is the old full signed gate (`scripts/land.sh --full`). Use it when a
+brief asks for the full suite or a change touches shared core behaviour broadly.
 
-The gate takes about as long as `main` stays still, so "test, then push" usually fails
-its own ancestry check. `land.sh` keeps the tested result and rechecks only the overlap,
-so it converges.
+## Why fast by default
 
-What cost full reruns in that session, each now prevented:
-
-| Failure (runs lost) | Prevention |
-|---|---|
-| Rebase conflicts on shared lines (5) | Rule 1 |
-| Doctests "can't find crate" from other worktrees' artifacts (2) | `make land` sets a private `CARGO_BUILD_BUILD_DIR` |
-| Fixture plugins over a fixed 2 s budget under load (3) | Rust fixture plugins; test-only budgets. Quarantine only per `.bboxy/quarantine.md` |
-| DNS outage during the TLC download (1), TLC parse race (1) | Automatic transient retry |
-| Free disk below the 10 GiB recovery check (1) | Rule 5 |
-| Layering order (1), installed binary name (1), dangling record link (1) | Rules 2–4 |
+This laptop runs many seats at once (16 cores, load 7-10). The full gate took a median
+of 24 min (p90 30, max 51) while `main` moved every ~33 min, so agents sat in the gate and
+then raced. The fast gate compiles everything, tests what you changed, and leaves the full
+suite to `make land-full`. A red `main` is fixed forward by whoever broke it.
 
 ## Rules
 
@@ -64,7 +51,8 @@ What cost full reruns in that session, each now prevented:
 
 - **Exit 78, conflict:** resolve the rebase by keeping both sides (rule 1 makes this
   rare), then `make land` again.
-- **Exit 77, gate failed:** the log names the failing check. A real failure is yours to
+- **Exit 77, gate failed:** the output names the failing check. A real failure is yours to
   fix. A test that fails only under load and passes alone may be quarantined only per
   `.bboxy/quarantine.md` (owner, task, at most 7 days).
-- **Other:** `target/land-attempt-<n>.log` holds each attempt.
+- **Exit 75:** `main` kept moving; run `make land` again.
+- `make land-full` keeps its logs in `target/land-attempt-<n>.log`.

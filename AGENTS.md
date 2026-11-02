@@ -36,7 +36,7 @@ documents in source and binary packages. Slop respectfully. Keep the credit atta
 | `make package-crate CRATE=name` | Package/sign one crate without publishing |
 | `make publish-release` | Signed tag and GitHub app release; only on an authorized release brief |
 | `make push` | Verify the exact-HEAD CI result and signed commits, then fast-forward GitHub main; only when push is authorized |
-| `make land` | Land your branch on main in one go via `scripts/land.sh` (rebase, gate, overlap-only recheck, push); only when push is authorized. **Read [LAND.md](LAND.md) first** |
+| `make land` | Land your branch on main fast via `scripts/land-fast.sh` (rebase, workspace check, tests of changed packages, push); `make land-full` runs the full gate. Only when push is authorized. **Read [LAND.md](LAND.md) first** |
 
 Overrides live in `make help`: `PROFILE`, `TARGET_DIR`, `INSTALL_DIR`, `UNSIGNED_INSTALL_DIR`, `CI_LOG`. Build caches are selected by `scripts/cache-env.sh`; Make sources it. Keep two Cargo jobs and a worktree-local target. Never change global Cargo configuration for a task.
 
