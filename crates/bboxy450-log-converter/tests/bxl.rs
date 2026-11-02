@@ -211,3 +211,45 @@ fn duplicate_blob_hash_never_acknowledges_a_different_body() {
     }
     assert_eq!(count, 1);
 }
+
+#[test]
+fn a_cursor_after_whole_frame_delivery_never_replays_that_frame() {
+    let tmp = tempfile::tempdir().unwrap();
+    let (options, _clock) = options();
+    let mut writer = Writer::with_options(tmp.path(), &session(), options).unwrap();
+    writer.append(&[record(0), record(1)], None).unwrap();
+    writer.sync().unwrap();
+    writer.append(&[record(2), record(3)], None).unwrap();
+    writer.close().unwrap();
+    let mut reader = Reader::open(tmp.path()).unwrap();
+    let frame = reader.next_frame().unwrap().unwrap();
+    assert_eq!(
+        frame
+            .records
+            .iter()
+            .filter_map(Record::seq)
+            .collect::<Vec<_>>(),
+        vec![0, 1]
+    );
+    let cursor = reader.cursor();
+    assert_eq!(cursor.index_in_frame, frame.records.len());
+    let mut resumed = Reader::resume(tmp.path(), &cursor).unwrap();
+    let mut delivered = Vec::new();
+    while let Some(event) = resumed.next_event().unwrap() {
+        delivered.push(event.value().seq);
+    }
+    assert_eq!(delivered, vec![2, 3]);
+    // Broken control: reporting the old zero cursor replays an already delivered event.
+    let mut broken = cursor;
+    broken.index_in_frame = 0;
+    assert_eq!(
+        Reader::resume(tmp.path(), &broken)
+            .unwrap()
+            .next_event()
+            .unwrap()
+            .unwrap()
+            .value()
+            .seq,
+        0
+    );
+}

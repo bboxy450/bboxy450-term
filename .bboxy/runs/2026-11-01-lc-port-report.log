@@ -133,3 +133,15 @@ Extended CI phase verification and external blocker
   verified separately while the external startup-race fix proceeds. Such a
   tail run is not a normal full-CI receipt. After that fix lands, the required
   full make test must be rerun on the integrated signed head.
+
+Whole-frame cursor correction
+- Review found that next_frame returned every record but left index_in_frame at
+  zero. Saving and resuming that cursor could replay the delivered frame.
+- Reader now separates private frame prefetch from public whole-frame delivery:
+  record/event iteration starts at zero, while next_frame advances the cursor
+  past all returned records. Resume and seek keep their explicit saved indices.
+- A focused test checks two frames, resumes after the first, and requires only
+  the second frame's events. Its zero-index broken control replays event zero.
+  The existing NoGapNoDup model describes the unchanged intended contract;
+  this closes an implementation-witness gap. Full remaining-stage verification
+  is running and will build/test this correction before the formal tail.

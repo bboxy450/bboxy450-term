@@ -75,7 +75,16 @@ impl Reader {
         let dict = load_dictionary(root, header.dict_id)?;
         Ok((file, header, dict, len))
     }
+    /// Read the next whole frame, consuming every returned record in the cursor.
     pub fn next_frame(&mut self) -> Result<Option<Frame>> {
+        let frame = self.load_frame()?;
+        if let Some(frame) = &frame {
+            self.index_in_frame = frame.records.len();
+        }
+        Ok(frame)
+    }
+    // Record/event iteration prefetches a frame without consuming its records.
+    fn load_frame(&mut self) -> Result<Option<Frame>> {
         self.current.clear();
         loop {
             if self.sealed {
@@ -127,7 +136,7 @@ impl Reader {
                 self.index_in_frame += 1;
                 return Ok(Some(next));
             }
-            let Some(frame) = self.next_frame()? else {
+            let Some(frame) = self.load_frame()? else {
                 return Ok(None);
             };
             self.current = frame.records.into();
