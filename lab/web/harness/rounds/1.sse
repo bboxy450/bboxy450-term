@@ -1,0 +1,30 @@
+data: {"choices": [{"index": 0, "delta": {"reasoning": "Glyphs flickering once "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "the atlas fills "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "smells like eviction "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "picking the wrong "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "slot. Read the "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "atlas and find "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "every eviction site "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "before touching anything."}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "Flicker after the "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "atlas fills points "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "at eviction. Reading "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "the atlas first."}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"tool_calls": [{"index": 0, "id": "r1", "type": "function", "function": {"name": "read", "arguments": "{\"path\": \"src/lib.rs\"}"}}, {"index": 1, "id": "g1", "type": "function", "function": {"name": "grep", "arguments": "{\"pattern\": \"evict\", \"path\": \"src\"}"}}]}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls"}]}
+
+data: [DONE]
+

@@ -1,0 +1,14 @@
+data: {"choices": [{"index": 0, "delta": {"reasoning": "Re-run the suite "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "on the edited "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "source."}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": ""}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"tool_calls": [{"index": 0, "id": "x2", "type": "function", "function": {"name": "bash", "arguments": "{\"command\": \"sh test.sh\", \"timeout\": 60}"}}]}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {}, "finish_reason": "tool_calls"}]}
+
+data: [DONE]
+

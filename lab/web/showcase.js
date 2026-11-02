@@ -49,6 +49,8 @@
   // a page may supply real seats, tasks, transcripts and stream (window.REAL: the public site); the lab keeps its fixtures
   const REAL = window.REAL || {};
   for (const s of seats) { const r = (REAL.seats || {})[s.name]; if (r) Object.assign(s, r); }
+  // the built-in harness takes the big pane: its seat replays a real bboxy450-harness session through the rich face (harness.js)
+  if (window.Hx && (window.HARNESS_SESSIONS || {})['glyph-atlas']) Object.assign(seats[1], { harness: 'bboxy450-harness', role: 'executor', title: 'glyph flicker', hx: 'glyph-atlas', log: null });
   // grade follows the harness record's state source (Settings › Harnesses): osc7501 → reported, hooks → shim, output cadence → inferred
   const GRADE_OF = { osc7501: 'reported', hooks: 'shim', 'output cadence': 'inferred' };
   const gradeFor = h => { const rec = C.SET.harness[h]; return rec ? (GRADE_OF[rec.stateFrom] || (rec.hooks ? 'shim' : 'inferred')) : 'inferred'; };
@@ -66,7 +68,7 @@
         V(0.25, H(0.5, S(7), S(8)), V(0.33, H(0.5, S(9), S(10)), V(0.5, H(0.5, S(11), S(12)), H(0.5, S(13), S(14)))))));
     model = { spaces: [{ name: 'swarm', key: 'space-swarm', tabs: [{ name: 'all fifteen', shortcut: '⌘1', tree: stageTree, seats }] }] };
   } else {
-    stageTree = V(0.6, S(0), H(0.5, S(1), S(3)));
+    stageTree = S(1).hx ? V(0.6, S(1), H(0.5, S(0), S(3))) : V(0.6, S(0), H(0.5, S(1), S(3)));
     model = { spaces: [
       { name: 'term', key: 'space-term', tabs: [
         { name: 'core', shortcut: '⌘1', tree: stageTree, seats: [S(0), S(1), S(3)] },
@@ -715,7 +717,9 @@
   }
   const MAXLINES = 400;
   function paintTerm(seat) {
-    const term = main.querySelector('.pane[data-key="' + seat.key + '"] .term'); if (!term || !seat.replay) return;
+    const term = main.querySelector('.pane[data-key="' + seat.key + '"] .term'); if (!term) return;
+    if (seat.hxView) { const sc = seat.hxView.node.querySelector('.hx-scroll'), top = sc.scrollTop; term.classList.add('hx-pane'); term.replaceChildren(seat.hxView.node); sc.scrollTop = top; return; }
+    if (!seat.replay) return;
     const rp = seat.replay;
     const marks = [...term.querySelectorAll(':scope > .gap-mark')];   // history markers (gap, resumed) stay above the replay
     term.innerHTML = '';
@@ -764,6 +768,12 @@
   }
   function startReplay(seat, i) {
     if (seat.settings || seat.graph) return;
+    if (seat.hx) {   // structured envelopes, not lines: the seat's state follows the harness phase
+      seat.hxView = Hx.view({ compact: true, onPhase: ph => setState(seat, ph === 'idle' ? 'idle' : 'active') });
+      requestAnimationFrame(() => paintTerm(seat));
+      setTimeout(() => Hx.play(seat.hxView, HARNESS_SESSIONS[seat.hx], { loop: true }), 300 + i * 170);
+      return;
+    }
     const lines = fixtureFor(seat, i);
     const start = Math.floor(C.rng('start' + seat.key)() * lines.length);
     seat.replay = { lines, idx: start, buf: lines.slice(Math.max(0, start - 12), start), burst: 0, waiting: false, rnd: C.rng('replay' + seat.key), timer: null };

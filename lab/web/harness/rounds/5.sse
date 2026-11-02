@@ -1,0 +1,68 @@
+data: {"choices": [{"index": 0, "delta": {"reasoning": "Both tests pass. "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "Summarise the cause, "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "the fix and "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"reasoning": "the evidence."}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "## Fixed: the "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "atlas evicted its "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "newest glyph\n\n**Cause.** `Atlas::evict` "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "in `src/lib.rs` picked "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "the slot with "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "`max_by_key` on the "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "use clock, so "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "a full atlas "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "threw out the "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "glyph it had "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "*just* drawn. The "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "next frame missed "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "it, re-rasterised it, "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "and evicted again: "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "flicker.\n\n**Fix.** `max_by_key` \u2192 "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "`min_by_key`, so the "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "least recently used "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "glyph goes.\n\n**Evidence.**\n- before: "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "`keeps_recent_glyphs` failed with "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "*recently drawn 'a' "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "was evicted*\n- after: "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "`sh test.sh` \u2192 "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "2 passed, 0 "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "failed\n\nNo other eviction "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "site exists (`grep "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "evict src` \u2192 "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "one definition, one "}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {"content": "call)."}, "finish_reason": null}]}
+
+data: {"choices": [{"index": 0, "delta": {}, "finish_reason": "stop"}]}
+
+data: [DONE]
+
