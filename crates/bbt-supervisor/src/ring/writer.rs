@@ -66,6 +66,8 @@ struct Queue {
     durable_rounds: u64,
     debt_since: Option<std::time::Instant>,
     durable_capacity: usize,
+    #[cfg(test)]
+    manual_ticks: bool,
 }
 struct Timings {
     busy_ns: u64,
@@ -130,7 +132,18 @@ impl Default for Queue {
             durable_rounds: 0,
             debt_since: None,
             durable_capacity: DURABLE_BYTES as usize,
+            #[cfg(test)]
+            manual_ticks: false,
         }
+    }
+}
+impl Queue {
+    fn automatic_ticks(&self) -> bool {
+        #[cfg(test)]
+        if self.manual_ticks {
+            return false;
+        }
+        true
     }
 }
 struct Shared {
@@ -646,22 +659,27 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
     let mut rings: HashMap<Key, Tail> = HashMap::new();
     let mut next_flush = std::time::Instant::now() + TICK;
     loop {
-        let job = {
+        let (job, automatic_ticks) = {
             let mut q = shared.queue.lock().unwrap();
             if q.jobs.is_empty() && !q.stop {
-                q = shared
-                    .ready
-                    .wait_timeout(
-                        q,
-                        next_flush.saturating_duration_since(std::time::Instant::now()),
-                    )
-                    .unwrap()
-                    .0;
+                q = if q.automatic_ticks() {
+                    shared
+                        .ready
+                        .wait_timeout(
+                            q,
+                            next_flush.saturating_duration_since(std::time::Instant::now()),
+                        )
+                        .unwrap()
+                        .0
+                } else {
+                    shared.ready.wait(q).unwrap()
+                };
             }
             if q.stop && q.jobs.is_empty() {
                 break;
             }
-            q.jobs.pop_front()
+            let automatic_ticks = q.automatic_ticks();
+            (q.jobs.pop_front(), automatic_ticks)
         };
         let active_started = std::time::Instant::now();
         let active = job.is_some();
@@ -811,7 +829,7 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
             shared.queue.lock().unwrap().timings.busy_ns +=
                 active_started.elapsed().as_nanos() as u64;
         }
-        let force = {
+        let force = automatic_ticks && {
             let q = shared.queue.lock().unwrap();
             q.jobs.is_empty()
                 && q.jobs_in_flight == 0
@@ -820,7 +838,11 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
                     || q.debt_since
                         .is_some_and(|at| at.elapsed() >= DURABLE_INTERVAL))
         };
-        if std::time::Instant::now() >= next_flush || force {
+        #[cfg(test)]
+        let tick_requested = tick_reply.is_some();
+        #[cfg(not(test))]
+        let tick_requested = false;
+        if tick_requested || automatic_ticks && (std::time::Instant::now() >= next_flush || force) {
             let started = std::time::Instant::now();
             if let Some(journal) = journal.as_mut() {
                 if let Err(e) = commit_group(&mut rings, journal, &shared, force) {
@@ -840,7 +862,7 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
                                 && p.last_output
                                     .is_none_or(|at| at.elapsed() >= Duration::from_millis(200))
                         });
-                    if !globally_idle {
+                    if !automatic_ticks || !globally_idle {
                         None
                     } else {
                         rings.iter().find_map(|(&key, tail)| {
@@ -1129,6 +1151,9 @@ mod tests {
         let wake = Arc::new(Waker::new(poll.registry(), mio::Token(0)).unwrap());
         let temp = tempfile::tempdir().unwrap();
         let writer = CaptureWriter::start(wake, Some(&temp.path().join("journal"))).unwrap();
+        // Measure one explicit tick. Real elapsed time may otherwise trigger
+        // the separate idle projection, which also records an ordered commit.
+        writer.shared.queue.lock().unwrap().manual_ticks = true;
         let mut handles = Vec::new();
         for i in 0..2 {
             let seat = Ulid::new();
@@ -1151,6 +1176,22 @@ mod tests {
                 .unwrap();
             handles.push(handle);
         }
+        for handle in &handles {
+            let Reply::RingRecovery { status, .. } = handle
+                .request(Query::Recovery)
+                .unwrap()
+                .recv_timeout(Duration::from_secs(30))
+                .unwrap()
+                .unwrap()
+            else {
+                panic!()
+            };
+            assert_eq!(status.captured_sequence, 1);
+            assert_eq!(
+                status.committed_sequence, 0,
+                "append committed before explicit tick"
+            );
+        }
         tick(&writer);
         for handle in &handles {
             let Reply::RingRecovery { status, .. } = handle
@@ -1164,7 +1205,10 @@ mod tests {
             };
             assert_eq!(status.committed_sequence, 1);
             assert_eq!(status.capture.durable_commits, 0);
-            assert_eq!(status.capture.ordered_commits, 1);
+            assert_eq!(
+                status.capture.ordered_commits, 1,
+                "one tick ordered each seat exactly once"
+            );
         }
         drop(handles);
         drop(writer);
