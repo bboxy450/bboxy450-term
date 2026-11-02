@@ -333,7 +333,19 @@ fn real_corpus_links_numeric_handles_and_legacy_ledger_anchors_resolve() {
     let mut count = 0;
     let mut errors = vec![];
     for record in &records {
+        // Artifact records are machine-local and untracked (.bboxy/.gitignore), so a
+        // record's own artifact links need not resolve in a fresh checkout.
+        let artifacts = record
+            .markdown
+            .frontmatter
+            .fields
+            .get("artifacts")
+            .and_then(|value| serde_yaml::to_string(value).ok())
+            .unwrap_or_default();
         for target in link_targets(record.markdown) {
+            if target.starts_with("artifacts/") || artifacts.contains(&format!("[[{target}]]")) {
+                continue;
+            }
             let resolved = match resolve(records.iter().copied(), &target) {
                 Ok(resolved) => resolved,
                 Err(error) => {
