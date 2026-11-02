@@ -113,6 +113,12 @@ keep a landing to one pass.
 - Keep raw logs and fixture accounts outside Git. In `.bboxy/runs`, commit only a `.log`/`.json` command/exit/hash summary. Markdown under `.bboxy` is a numbered record and must follow its frontmatter format.
 - Preserve live work: window close/Cmd-Q detach; Cmd-Option-Q and `ctl app stop` explicitly stop backend owners. Cmd-Shift-Q belongs to macOS logout. Supervisor/PTYS remain independent of ordinary UI restart.
 
+## Autonomous operation
+
+Operator, 2026-11-02: "yes land it just merge it, auto merge, work autonomously, dont ask me for permissions". The same rule holds in bboxy450-harness.
+
+Never ask for permission. Verified work is landed (`make land`), merged and deployed by the agent that did it, then reported. Verification still decides: signed commits, the gates above, unattended tests. A red gate is fixed or reported, never bypassed. Ask only for what is physical or irreversible, say why, and keep everything else moving.
+
 ## Unattended operation
 
 Every unit, smoke, e2e and agent test runs with nobody at the machine. Use private accounts, homes, sockets and scripted controls. No operator Keychain prompt, login, click, pane authorization or physical probe may be required.
