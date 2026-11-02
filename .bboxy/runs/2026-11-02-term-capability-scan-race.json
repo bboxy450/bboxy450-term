@@ -1,0 +1,42 @@
+{
+  "command": "python3 -I scripts/test-capability-scan.py",
+  "consecutive_runs": 200,
+  "duration_seconds": 134.12,
+  "source_sha256": {
+    "scripts/test-capability-scan.py": "defa68948f6ac727b9afee032eb3f9b39dd9f96e65053fd2c9fb1dd7642b0e93",
+    "scripts/e2e/capability_scan.py": "8fbcb90ee0b7731eaa5d4f50c1cb83b8ea9bd5b03e75bbb52e7a144579bfdfb7"
+  },
+  "log": "target/capability-scan-200.log",
+  "log_sha256": "1c7a5a3b8ab22174e3ea4d2bffe7d664a2450bb4bdbcb64e1abd101db65410d8",
+  "all_exit_codes_zero": true,
+  "checks": [
+    {
+      "command": "python3 -I scripts/test-capability-scan.py",
+      "runs": 200,
+      "exit_code": 0
+    },
+    {
+      "command": "make test-licenses",
+      "exit_code": 2,
+      "reason": "fresh worktree pinned submodule not initialized",
+      "log": "target/capability-scan-licenses.log",
+      "log_sha256": "f6e0873529c92984dedfff4f235457f1452d1cc63f008f3a355e4dc8cea4fdbc"
+    },
+    {
+      "command": "make init-submodules",
+      "exit_code": 0
+    },
+    {
+      "command": "make test-licenses",
+      "exit_code": 0,
+      "log": "target/capability-scan-licenses-ready.log",
+      "log_sha256": "77cce52fbbc7a80707758faa092f458ae1c884cbe26afc885f94b1d61943f38f"
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "task": "tasks/2026-11-02-term-capability-scan-race.md",
+  "report": "reports/2026-11-02-term-capability-scan-race.md"
+}
