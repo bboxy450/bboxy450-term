@@ -1,6 +1,7 @@
 ---
 artifacts:
 - '[[01M6D19V63PD250TN3G7598HC2]]'
+- '[[01M6D8RXNAT839QCTMVAD1C40Q]]'
 assignee: seat:01M6CVHSYF1RWHXXBHGJ3V5Q7A
 authorship:
   kind: seat
@@ -13,17 +14,17 @@ delegated_by: seat:01M6CQB5DB5RA6QDF9N162NF8S
 id: 01M6CRYZ7V2KVDBFFWPEE4SWXS
 number: 2197
 provenance:
-  digest: sha256:29a7a5478b5fdd70b02b1a01cad7ca5736eba2b86b9ae602cdce01531bfa42e7
-  frontmatter_digest: sha256:a42d269f84dcee08df32f7e2d7f901750e0f565001ef7ecb7b783c45ab62c2d0
-  log: .bboxy/log/2026-11-02.jsonl#12730
-  sig: kzJsGLyyY54yGDPWJqC905mrvitnusyrX0rs2459CKSd9yGpjEFdiwALRahQTAigDDEn48/x5nrOwdbJaJZ+Ag==
+  digest: sha256:39e17792017ddba54e92da0ad13a6cd27792ec642d320ed8632896022c69835f
+  frontmatter_digest: sha256:9bce2d2aa706ae4a8fc460b7f885d003a28121359938f41c3bbfca468152c2b0
+  log: .bboxy/log/2026-11-02.jsonl#13947
+  sig: 1p78D8BXdbsdIeL6Aaah5LU3+0pBjJp5ZFzE4r6EBcZ/SmJcdUevGKcXsaVooVW5gsFq40VBBIAjuPgC5mqVDg==
   signer: seat:01M6CVHSYF1RWHXXBHGJ3V5Q7A
 role: executor
 status: claimed
 swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
 title: 'Title bar: machine health (CPU/mem/disk) and AI account usage left, via a new usage crate'
 type: task
-updated: 2026-11-02T02:27:08.569Z
+updated: 2026-11-02T04:37:40.071Z
 updated_by: seat:01M6CVHSYF1RWHXXBHGJ3V5Q7A
 verify: make test
 ---
