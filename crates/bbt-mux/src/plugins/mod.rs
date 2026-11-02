@@ -6,6 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Logic-owned plugin discovery, account trust and isolated conformance checks.
 
+pub mod attribution;
 mod check;
 mod client;
 pub(crate) mod control;

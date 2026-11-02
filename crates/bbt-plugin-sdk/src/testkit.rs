@@ -6,6 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Drive a built plugin executable over stdio, as the host does. Used by
 //! plugin conformance tests and read-only probes.
+use std::collections::BTreeMap;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
@@ -24,6 +25,17 @@ pub fn allowed_env() -> Vec<(String, String)> {
                 || k.starts_with("LC_")
         })
         .collect()
+}
+
+/// `tools/call` params for `tool` made on behalf of a seat lending `env`
+/// (request `_meta` `bboxy450/attribution`, see
+/// [`bbt_plugin::policy::ATTRIBUTION_META`]); no `_meta` when `env` is empty.
+pub fn attributed(tool: &str, args: Value, env: &BTreeMap<String, String>) -> Value {
+    let mut params = json!({"name": tool, "arguments": args});
+    if !env.is_empty() {
+        params["_meta"] = json!({ bbt_plugin::policy::ATTRIBUTION_META: { "env": env } });
+    }
+    params
 }
 
 /// Print and parse `--shape`.
@@ -149,7 +161,18 @@ impl Client {
     /// Call a tool and return its structured result, checking that the text
     /// content is the same JSON.
     pub fn call(&mut self, tool: &str, args: Value, wait: Duration) -> Result<Value, Failure> {
-        let result = self.request("tools/call", json!({"name": tool, "arguments": args}), wait)?;
+        self.call_attributed(tool, args, &Default::default(), wait)
+    }
+
+    /// [`Client::call`] on behalf of a seat lending `env`, as the host sends it.
+    pub fn call_attributed(
+        &mut self,
+        tool: &str,
+        args: Value,
+        env: &BTreeMap<String, String>,
+        wait: Duration,
+    ) -> Result<Value, Failure> {
+        let result = self.request("tools/call", attributed(tool, args, env), wait)?;
         let structured = result["structuredContent"].clone();
         if result["isError"] == true {
             return Err(Failure::Tool(structured));

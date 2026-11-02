@@ -41,6 +41,11 @@ pub enum Action {
     Call {
         #[serde(flatten)]
         call: crate::mcp::Call,
+        /// The seat harness's ATC session attribution, lent to the plugin
+        /// calls made for this call. The host validates it again and keeps it
+        /// in memory only; it is never journaled.
+        #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+        attribution: std::collections::BTreeMap<String, String>,
     },
     Messaging {
         request: crate::messaging::api::Request,
@@ -1847,7 +1852,7 @@ async fn session_inner(
                 let snapshot=client.snapshot(seat,generation).await?;
                 let result:Result<serde_json::Value>=match request.action {
                     Action::Catalogue=>client.control_catalogue(seat,generation).await,
-                    Action::Call{call}=>client.control_call(seat,generation,call).await,
+                    Action::Call{call,attribution}=>client.control_call_attributed(seat,generation,call,attribution).await,
                     Action::Messaging{request}=>client.messaging(seat,generation,request).await.and_then(|v|Ok(serde_json::to_value(v)?)),
                     Action::Hook{event}=>Ok(serde_json::json!({"kind":"HookObserved","status":client.hook(seat,generation,event).await?})),
                     Action::HookDecide{event,wait_ms}=>hook_decide(&client,seat,generation,event,wait_ms).await,

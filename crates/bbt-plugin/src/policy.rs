@@ -235,3 +235,143 @@ pub fn filter_environment<'a>(
         .map(|(key, value)| (key.to_owned(), value.to_owned()))
         .collect()
 }
+
+/// Request `_meta` key of a plugin call made on behalf of a seat:
+/// `{"bboxy450/attribution": {"env": {NAME: value}}}`. Absent on calls made
+/// by the operator or the host.
+pub const ATTRIBUTION_META: &str = "bboxy450/attribution";
+
+/// The only names a seat's harness lends to a plugin call: its ATC session
+/// and session-activity export settings, as read by `git-kb`. Never tokens,
+/// registry paths or shim internals.
+pub const ATTRIBUTION_ENV: &[&str] = &[
+    "SESSION_ACTIVITY_RESOURCE_ID",
+    "SESSION_ACTIVITY_RESOURCE_KIND",
+    "SESSION_ACTIVITY_PROVIDER",
+    "SESSION_ACTIVITY_CONTEXT_FILE",
+    "SESSION_ACTIVITY_SINK_COMMAND",
+    "SESSION_ACTIVITY_SINK_ARGS_JSON",
+    "ATC_SESSION_ID",
+    "GITKB_AGENT_ID",
+];
+
+/// Largest attribution value, and largest attribution (names plus values).
+pub const ATTRIBUTION_VALUE_BYTES: usize = 1024;
+pub const ATTRIBUTION_BYTES: usize = 4096;
+
+/// Seat attribution from `values`: allowlisted names only, each value
+/// nonempty, at most [`ATTRIBUTION_VALUE_BYTES`] and free of NUL and line
+/// breaks; `SESSION_ACTIVITY_SINK_ARGS_JSON` must be a JSON string array.
+/// Invalid values are dropped, and in [`ATTRIBUTION_ENV`] order a name that
+/// would take the total past [`ATTRIBUTION_BYTES`] is dropped.
+pub fn attribution_env<'a>(
+    values: impl IntoIterator<Item = (&'a str, &'a str)>,
+) -> std::collections::BTreeMap<String, String> {
+    let mut valid = std::collections::BTreeMap::new();
+    for (name, value) in values {
+        if ATTRIBUTION_ENV.contains(&name)
+            && !value.is_empty()
+            && value.len() <= ATTRIBUTION_VALUE_BYTES
+            && !value.contains(['\0', '\n', '\r'])
+            && (name != "SESSION_ACTIVITY_SINK_ARGS_JSON"
+                || serde_json::from_str::<Vec<String>>(value).is_ok())
+        {
+            valid.entry(name).or_insert(value);
+        }
+    }
+    let mut total = 0;
+    let mut env = std::collections::BTreeMap::new();
+    for name in ATTRIBUTION_ENV {
+        if let Some(value) = valid.get(name) {
+            if total + name.len() + value.len() > ATTRIBUTION_BYTES {
+                continue;
+            }
+            total += name.len() + value.len();
+            env.insert((*name).to_owned(), (*value).to_owned());
+        }
+    }
+    env
+}
+
+/// The validated attribution in a request's `_meta`, empty when absent.
+pub fn attribution_from_meta(
+    meta: &serde_json::Value,
+) -> std::collections::BTreeMap<String, String> {
+    let env = meta
+        .get(ATTRIBUTION_META)
+        .and_then(|value| value.get("env"))
+        .and_then(serde_json::Value::as_object);
+    attribution_env(
+        env.into_iter()
+            .flatten()
+            .filter_map(|(name, value)| Some((name.as_str(), value.as_str()?))),
+    )
+}
+
+/// The `_meta` object carrying `env`, or `None` when it is empty.
+pub fn attribution_meta(
+    env: &std::collections::BTreeMap<String, String>,
+) -> Option<serde_json::Value> {
+    (!env.is_empty()).then(|| serde_json::json!({ ATTRIBUTION_META: { "env": env } }))
+}
+
+#[cfg(test)]
+mod attribution_tests {
+    use super::*;
+
+    #[test]
+    fn attribution_keeps_only_valid_allowlisted_names_within_the_budget() {
+        let big = "x".repeat(ATTRIBUTION_VALUE_BYTES);
+        let env = attribution_env([
+            ("ATC_SESSION_ID", "xses-1"),
+            ("ATC_TOKEN", "secret"),
+            ("ATC_REGISTRY_PATH", "/private"),
+            ("PATH", "/bin"),
+            ("SESSION_ACTIVITY_PROVIDER", "claude\nx"),
+            ("SESSION_ACTIVITY_RESOURCE_KIND", ""),
+            ("SESSION_ACTIVITY_SINK_ARGS_JSON", "[\"a\",1]"),
+            ("SESSION_ACTIVITY_RESOURCE_ID", "a\0b"),
+            ("GITKB_AGENT_ID", &big),
+        ]);
+        assert_eq!(
+            env.into_iter().collect::<Vec<_>>(),
+            [
+                ("ATC_SESSION_ID".to_owned(), "xses-1".to_owned()),
+                ("GITKB_AGENT_ID".to_owned(), big.clone())
+            ]
+        );
+        let full: Vec<(&str, &str)> = ATTRIBUTION_ENV
+            .iter()
+            .map(|name| {
+                let value = if *name == "SESSION_ACTIVITY_SINK_ARGS_JSON" {
+                    "[\"activity\",\"record\",\"--json\"]"
+                } else {
+                    big.as_str()
+                };
+                (*name, value)
+            })
+            .collect();
+        let env = attribution_env(full);
+        // Three 1 KiB values fit in 4 KiB; later large ones are dropped,
+        // the short sink arguments still fit.
+        assert_eq!(
+            env.keys().map(String::as_str).collect::<Vec<_>>(),
+            [
+                "SESSION_ACTIVITY_PROVIDER",
+                "SESSION_ACTIVITY_RESOURCE_ID",
+                "SESSION_ACTIVITY_RESOURCE_KIND",
+                "SESSION_ACTIVITY_SINK_ARGS_JSON"
+            ]
+        );
+        assert!(env.iter().map(|(k, v)| k.len() + v.len()).sum::<usize>() <= ATTRIBUTION_BYTES);
+        let meta = attribution_meta(&attribution_env([("ATC_SESSION_ID", "s")])).unwrap();
+        assert_eq!(
+            meta,
+            serde_json::json!({"bboxy450/attribution":{"env":{"ATC_SESSION_ID":"s"}}})
+        );
+        assert_eq!(attribution_from_meta(&meta).len(), 1);
+        assert!(attribution_meta(&Default::default()).is_none());
+        let forged = serde_json::json!({"bboxy450/attribution":{"env":{"ATC_TOKEN":"t","ATC_SESSION_ID":7}}});
+        assert!(attribution_from_meta(&forged).is_empty());
+    }
+}

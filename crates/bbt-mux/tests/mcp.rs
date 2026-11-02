@@ -1860,6 +1860,7 @@ fn mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_
                     tool: "message_send".into(),
                     args: json!({"destination":format!("seats/{}/inbox",fixture.peer.id),"text":"must not execute"}),
                 },
+                attribution: Default::default(),
             },
         ] {
             let mut stream = UnixStream::connect(&endpoint.path).unwrap();

@@ -256,3 +256,16 @@ release. Its broken control removes timer fairness. Private runtime witnesses
 hold the blocking pool or host mutex, retire late/duplicate completion and keep
 status reads moving. Wall clocks, filesystems, signatures and journal durability
 remain implementation coverage, without a Rust refinement claim.
+
+## Seat attribution (task #5003, 2026-11-01)
+
+Both sides: the host (`bbt-mux` `mcp/bridge.rs`, `seat_socket.rs`, `plugins/attribution.rs`, `PluginHost::dispatch`, `DataSourceProvider::request_traced`) and plugins (`bboxy450-term-plugin-sdk` `Ctx::attribution`; the GitKB plugin's `git-kb` child).
+
+| Boundary | Agreement |
+|---|---|
+| Names | Exactly `SESSION_ACTIVITY_RESOURCE_ID`, `SESSION_ACTIVITY_RESOURCE_KIND`, `SESSION_ACTIVITY_PROVIDER`, `SESSION_ACTIVITY_CONTEXT_FILE`, `SESSION_ACTIVITY_SINK_COMMAND`, `SESSION_ACTIVITY_SINK_ARGS_JSON`, `ATC_SESSION_ID`, `GITKB_AGENT_ID` (`bbt_plugin::policy::ATTRIBUTION_ENV`): what `git-kb` reads to export document activity to ATC. Never tokens, registry paths or shim internals. |
+| Validation | `policy::attribution_env`: each value nonempty, at most 1 KiB, no NUL or line break; `SESSION_ACTIVITY_SINK_ARGS_JSON` a JSON string array; at most 4 KiB in all (a name that would exceed it is dropped). Applied by the bridge, again by the host, and by the SDK. |
+| Seat to host | `bboxy450-term mcp` captures the names from the environment its harness gave it, once at start, and sends them as `attribution` beside each `Action::Call` on the seat socket (absent when empty). |
+| Host | Kept per seat and process generation in the logic worker's memory, never journaled. Every plugin `tools/call` made for that seat (declared seat tools, data_source reads, and both phases of a document or task effect) carries `params._meta["bboxy450/attribution"] = {"env": {NAME: value}}`. Calls made by the operator, the host, hooks, checks or another seat carry none. |
+| Plugin | `Ctx::attribution()` returns the validated map for that call only, empty otherwise. Apply it to that call's own child processes, never to shared or background work. The GitKB plugin spawns one `git-kb` per command and adds the map to that child's environment only; its index builds use detached contexts and stay unattributed. |
+| Verification | `bbt-plugin` `policy` attribution test; bridge capture test; `plugins/attribution.rs` scope test; `tests/plugin_attribution.rs` (seat data_source reads and effect reads, seat tools, an unattributed seat, the operator, two seats); SDK runtime accessor test; GitKB `backend.rs` fake `git-kb` environment test; `tests/conformance.rs` `attribution_reaches_the_gitkb_activity_sink` (real `git-kb` commit to a capture sink). |

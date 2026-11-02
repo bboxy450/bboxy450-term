@@ -206,6 +206,9 @@ impl Backend {
         self.verify(ctx)?;
         let io = |e: std::io::Error| Refusal::new("backend_failed", format!("local IO: {e}"));
         // No shell, inherited GitKB root/workspace, repository cwd or credentials.
+        // The calling seat's attribution (ATC session, activity export) applies
+        // to this child only: every git-kb run is its own process, and index
+        // builds use detached contexts, so one seat's never reaches another's.
         let mut input = anonymous().map_err(io)?;
         if let Some(text) = stdin {
             input.write_all(text.as_bytes()).map_err(io)?;
@@ -220,6 +223,7 @@ impl Backend {
             .current_dir(cwd)
             .env_clear()
             .envs(self.env.iter().cloned())
+            .envs(ctx.attribution())
             .stdin(Stdio::from(input))
             .stdout(Stdio::from(out.try_clone().map_err(io)?))
             .stderr(Stdio::from(err.try_clone().map_err(io)?))
@@ -323,5 +327,96 @@ fn anonymous() -> std::io::Result<File> {
             Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => continue,
             Err(e) => return Err(e),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::BTreeMap;
+    use std::os::unix::fs::PermissionsExt;
+
+    fn env_of(file: &Path) -> BTreeMap<String, String> {
+        std::fs::read_to_string(file)
+            .unwrap()
+            .lines()
+            .filter_map(|line| line.split_once('='))
+            // The shell's own bookkeeping, not the spawned environment.
+            .filter(|(k, _)| !matches!(*k, "PWD" | "OLDPWD" | "SHLVL" | "_"))
+            .map(|(k, v)| (k.to_owned(), v.to_owned()))
+            .collect()
+    }
+
+    fn lent(seat: &str) -> BTreeMap<String, String> {
+        [
+            ("SESSION_ACTIVITY_RESOURCE_ID", format!("xses-{seat}")),
+            ("SESSION_ACTIVITY_RESOURCE_KIND", "external".into()),
+            ("SESSION_ACTIVITY_PROVIDER", "claude".into()),
+            ("SESSION_ACTIVITY_CONTEXT_FILE", format!("/s/{seat}.json")),
+            ("SESSION_ACTIVITY_SINK_COMMAND", "/opt/atc dir/atc".into()),
+            (
+                "SESSION_ACTIVITY_SINK_ARGS_JSON",
+                r#"["activity","record","--json"]"#.into(),
+            ),
+            ("ATC_SESSION_ID", format!("xses-{seat}")),
+            ("GITKB_AGENT_ID", format!("agent-{seat}")),
+            ("ATC_TOKEN", "must-not-pass".into()),
+            ("ATC_REGISTRY_PATH", "/must/not/pass".into()),
+        ]
+        .map(|(k, v)| (k.to_owned(), v))
+        .into()
+    }
+
+    // keeps: seat attribution — a write-shaped git-kb run carries exactly the
+    // calling seat's allowlisted attribution; an unattributed run carries none;
+    // two seats' runs on one reused backend never cross.
+    #[test]
+    fn git_kb_children_carry_exactly_their_own_calls_attribution() {
+        let dir = std::env::temp_dir()
+            .canonicalize()
+            .unwrap()
+            .join(format!("bboxy-gitkb-attribution-{}", random_hex(8)));
+        std::fs::create_dir(&dir).unwrap();
+        // A fake git-kb: record the environment under the last argument.
+        let fake = dir.join("git-kb");
+        let script = format!(
+            "#!/bin/sh\nfor a; do last=$a; done\nenv > '{}'/\"$last\".env\necho '{{}}'\n",
+            dir.display()
+        );
+        std::fs::write(&fake, &script).unwrap();
+        std::fs::set_permissions(&fake, std::fs::Permissions::from_mode(0o700)).unwrap();
+        let sha = hex(&Sha256::digest(script.as_bytes()));
+        let mut backend = Backend::new(fake.to_str().unwrap(), &sha, dir.clone()).unwrap();
+        backend.set_env("GITKB_ROOT", "/root");
+        backend.set_env("GITKB_WORKSPACE", "main");
+        let base: BTreeMap<String, String> = backend.env.iter().cloned().collect();
+        let ctx = |env: Option<BTreeMap<String, String>>| {
+            let ctx = Ctx::detached(Duration::from_secs(10));
+            env.map_or(ctx.clone(), |env| ctx.with_attribution(env))
+        };
+        for (name, attribution) in [
+            ("a", Some(lent("a"))),
+            ("none", None),
+            ("b", Some(lent("b"))),
+            ("again", None),
+        ] {
+            backend
+                .cli(
+                    &ctx(attribution.clone()),
+                    &["commit", "--json", "-m", "attributed", "--", name],
+                    None,
+                    false,
+                )
+                .unwrap();
+            let mut expected = base.clone();
+            if let Some(mut lent) = attribution {
+                lent.remove("ATC_TOKEN");
+                lent.remove("ATC_REGISTRY_PATH");
+                assert_eq!(lent.len(), 8, "every allowlisted name");
+                expected.extend(lent);
+            }
+            assert_eq!(env_of(&dir.join(format!("{name}.env"))), expected, "{name}");
+        }
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 }

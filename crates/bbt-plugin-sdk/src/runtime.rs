@@ -457,8 +457,11 @@ impl<P: Plugin> Worker<P> {
         let link = self.link.clone();
         let spans: Option<Arc<Mutex<Vec<Value>>>> = self.trace.then(Default::default);
         let traced = spans.clone();
+        let attribution = bbt_plugin::policy::attribution_from_meta(&params["_meta"]);
         let ctx = |limit| {
-            let ctx = Ctx::new(cancelled, limit).with_link(link);
+            let ctx = Ctx::new(cancelled, limit)
+                .with_link(link)
+                .with_attribution(attribution);
             match traced {
                 Some(spans) => ctx.with_spans(spans),
                 None => ctx,
@@ -581,7 +584,8 @@ mod tests {
         fn call_tool(&mut self, name: &str, args: Value, ctx: &Ctx) -> Result<Value, Refusal> {
             assert_eq!(name, "echo");
             Ok(
-                json!({"echo": args, "root": self.root, "remaining": ctx.remaining() > Duration::ZERO}),
+                json!({"echo": args, "root": self.root, "remaining": ctx.remaining() > Duration::ZERO,
+                       "attribution": ctx.attribution()}),
             )
         }
         fn initialize(init: Init, _ctx: &Ctx) -> Result<Self, Refusal> {
@@ -638,6 +642,47 @@ mod tests {
 
     fn call(id: u64, name: &str, args: Value) -> Value {
         json!({"jsonrpc":"2.0","id":id,"method":"tools/call","params":{"name":name,"arguments":args}})
+    }
+
+    // keeps: seat attribution — the call context exposes only validated,
+    // allowlisted names from request `_meta`, per call, never to the next call.
+    #[test]
+    fn call_context_exposes_only_the_allowlisted_attribution_of_its_own_call() {
+        let lent: std::collections::BTreeMap<String, String> = [
+            ("ATC_SESSION_ID", "xses-a"),
+            ("SESSION_ACTIVITY_PROVIDER", "claude"),
+            ("ATC_TOKEN", "secret-token"),
+            ("SESSION_ACTIVITY_SINK_ARGS_JSON", "not json"),
+        ]
+        .map(|(k, v)| (k.to_owned(), v.to_owned()))
+        .into();
+        let attributed = |id: u64, env| {
+            json!({"jsonrpc":"2.0","id":id,"method":"tools/call",
+                   "params":crate::testkit::attributed("tool_echo", json!({"text":"hi"}), env)})
+        };
+        let replies = session(&[
+            json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"root":"/r"}}),
+            attributed(2, &lent),
+            call(3, "tool_echo", json!({"text":"hi"})),
+        ]);
+        let by_id = |id: u64| {
+            replies.iter().find(|r| r["id"] == id).unwrap()["result"]["structuredContent"]
+                ["attribution"]
+                .clone()
+        };
+        assert_eq!(
+            by_id(2),
+            json!({"ATC_SESSION_ID":"xses-a","SESSION_ACTIVITY_PROVIDER":"claude"})
+        );
+        assert_eq!(by_id(3), json!({}));
+        let ctx = Ctx::detached(Duration::from_secs(1)).with_attribution(lent);
+        assert_eq!(ctx.attribution().len(), 2);
+        assert!(!ctx.attribution().contains_key("ATC_TOKEN"));
+        assert!(
+            Ctx::detached(Duration::from_secs(1))
+                .attribution()
+                .is_empty()
+        );
     }
 
     #[test]

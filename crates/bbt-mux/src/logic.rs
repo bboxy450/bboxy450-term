@@ -209,6 +209,7 @@ enum Command {
         Ulid,
         u64,
         crate::mcp::Call,
+        crate::plugins::attribution::Attribution,
         oneshot::Sender<Result<serde_json::Value>>,
     ),
     TaskImportAuthority(
@@ -1068,9 +1069,28 @@ impl LogicClient {
         generation: u64,
         call: crate::mcp::Call,
     ) -> Result<serde_json::Value> {
+        self.control_call_attributed(seat, generation, call, Default::default())
+            .await
+    }
+    /// [`LogicClient::control_call`] with the seat harness's ATC session
+    /// attribution, which the plugin calls made for it carry (never journaled).
+    pub async fn control_call_attributed(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        attribution: std::collections::BTreeMap<String, String>,
+    ) -> Result<serde_json::Value> {
+        let attribution = crate::plugins::attribution::admit(&attribution);
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::ControlCall(seat, generation, call, tx))
+            .send(Command::ControlCall(
+                seat,
+                generation,
+                call,
+                attribution,
+                tx,
+            ))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| {
@@ -2772,6 +2792,9 @@ struct Worker {
     knowledge_jobs: tokio::task::JoinSet<crate::knowledge::seat_reads::Completion>,
     diagnostic_jobs: tokio::task::JoinSet<DiagnosticCompletion>,
     diagnostic_pending: BTreeSet<Ulid>,
+    /// Each seat's latest ATC session attribution, by process generation.
+    /// In memory only: plugin calls for that seat carry it, nothing journals it.
+    seat_attribution: BTreeMap<Ulid, (u64, crate::plugins::attribution::Attribution)>,
     effect_jobs: tokio::task::JoinSet<knowledge_effects::Completion>,
     effect_roots: BTreeSet<String>,
     gui_knowledge_jobs: tokio::task::JoinSet<GuiKnowledgeCompletion>,
@@ -3026,6 +3049,7 @@ impl Worker {
             knowledge_jobs: tokio::task::JoinSet::new(),
             diagnostic_jobs: tokio::task::JoinSet::new(),
             diagnostic_pending: BTreeSet::new(),
+            seat_attribution: BTreeMap::new(),
             effect_jobs: tokio::task::JoinSet::new(),
             effect_roots: BTreeSet::new(),
             gui_knowledge_jobs: tokio::task::JoinSet::new(),
@@ -3954,6 +3978,7 @@ impl Worker {
                 return;
             }
         };
+        let attribution = self.attribution_of(actor.seat_id, actor.process_generation);
         let job = crate::knowledge::seat_reads::Job {
             host: port.host,
             index: port.index,
@@ -3968,8 +3993,10 @@ impl Worker {
             reply,
             permit,
         };
-        self.knowledge_jobs
-            .spawn_blocking_on(move || job.run(), &self.handle);
+        self.knowledge_jobs.spawn_blocking_on(
+            move || crate::plugins::attribution::scope(attribution, || job.run()),
+            &self.handle,
+        );
     }
     /// The seat's plugin tools from its swarm root's snapshot; none while
     /// that root is still mounting. Reads no plugin record, starts no process.
@@ -3980,6 +4007,18 @@ impl Worker {
                 crate::mcp::plugin_tools::catalogue(&port.host.plugin_host().seat_tools(), actor)
             })
             .unwrap_or_default()
+    }
+    /// The seat's attribution for plugin calls made for this process
+    /// generation; none for another generation, the operator or the host.
+    fn attribution_of(
+        &self,
+        seat: Ulid,
+        generation: u64,
+    ) -> crate::plugins::attribution::Attribution {
+        self.seat_attribution
+            .get(&seat)
+            .filter(|(current, _)| *current == generation)
+            .and_then(|(_, attribution)| attribution.clone())
     }
     /// A plugin seat tool on the seat's swarm root, under the per-root read
     /// permit, on blocking IO; completion is revalidated like a knowledge read.
@@ -4033,6 +4072,7 @@ impl Worker {
             ));
             return;
         };
+        let attribution = self.attribution_of(actor.seat_id, actor.process_generation);
         let job = crate::mcp::plugin_tools::Job {
             plugins: port.host.plugin_host().clone(),
             actor,
@@ -4043,8 +4083,10 @@ impl Worker {
             reply,
             permit,
         };
-        self.knowledge_jobs
-            .spawn_blocking_on(move || job.run(), &self.handle);
+        self.knowledge_jobs.spawn_blocking_on(
+            move || crate::plugins::attribution::scope(attribution, || job.run()),
+            &self.handle,
+        );
     }
     fn knowledge_call(
         &mut self,
@@ -9859,14 +9901,21 @@ impl Worker {
                         });
                         let _ = reply.send(result);
                     }
-                    Command::ControlCall(id, generation, call, reply) => {
+                    Command::ControlCall(id, generation, call, attribution, reply) => {
+                        // The seat's latest attribution, for the plugin IO this
+                        // and its later deferred work run on the seat's behalf.
+                        self.seat_attribution.insert(id, (generation, attribution));
                         let call = if call.tool == "ctl" {
                             match self.control_actor(id, generation).and_then(|(actor, _)| {
                                 crate::mcp::seats::canonical(&actor, &call).map_err(invalid)
                             }) {
                                 Ok(canonical) => canonical,
                                 Err(_) => {
-                                    let result = self.control_call(id, generation, call);
+                                    let attribution = self.attribution_of(id, generation);
+                                    let result =
+                                        crate::plugins::attribution::scope(attribution, || {
+                                            self.control_call(id, generation, call)
+                                        });
                                     let _ = reply.send(result);
                                     continue;
                                 }
@@ -9896,7 +9945,10 @@ impl Worker {
                         } else if crate::mcp::plugin_tools::handles(&call.tool) {
                             self.start_plugin_tool(id, generation, call, reply);
                         } else {
-                            let result = self.control_call(id, generation, call);
+                            let attribution = self.attribution_of(id, generation);
+                            let result = crate::plugins::attribution::scope(attribution, || {
+                                self.control_call(id, generation, call)
+                            });
                             let _ = reply.send(result);
                         }
                     }

@@ -86,6 +86,8 @@ pub(super) struct Context {
     call: Call,
     journal: Journal,
     reply: EffectReply,
+    /// The seat's attribution for both IO phases; none for the operator.
+    attribution: crate::plugins::attribution::Attribution,
 }
 pub(super) enum Completion {
     Prepared(Context, d::Result<Prepared>),
@@ -97,7 +99,12 @@ pub(super) enum Completion {
         effects::Applied,
     ),
 }
-fn io<T>(job: impl FnOnce() -> d::Result<T>) -> d::Result<T> {
+/// One IO phase, its plugin calls carrying the seat's `attribution`.
+fn io<T>(
+    attribution: crate::plugins::attribution::Attribution,
+    job: impl FnOnce() -> d::Result<T>,
+) -> d::Result<T> {
+    let job = || crate::plugins::attribution::scope(attribution, job);
     std::panic::catch_unwind(std::panic::AssertUnwindSafe(job)).unwrap_or_else(|_| {
         Err(d::CommandError::new(
             "unknown",
@@ -190,6 +197,10 @@ impl Worker {
             }
         };
         self.effect_roots.insert(port.binding.root_id.clone());
+        let attribution = match &actor {
+            Actor::Seat(seat) => self.attribution_of(seat.seat_id, seat.process_generation),
+            _ => None,
+        };
         let context = Context {
             port,
             revision,
@@ -197,11 +208,12 @@ impl Worker {
             call,
             journal,
             reply,
+            attribution,
         };
         let registry = self.registry.clone();
         self.effect_jobs.spawn_blocking_on(
             move || {
-                let result = io(|| {
+                let result = io(context.attribution.clone(), || {
                     let source = context.port.host.source_at(
                         &context.port.index,
                         &registry,
@@ -301,7 +313,7 @@ impl Worker {
                     let registry = self.registry.clone();
                     self.effect_jobs.spawn_blocking_on(
                         move || {
-                            let result = io(|| {
+                            let result = io(context.attribution.clone(), || {
                                 let author = match &context.actor {
                                     Actor::Seat(actor) => crate::provenance::author::Author::seat(
                                         actor.seat_id,

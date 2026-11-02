@@ -535,7 +535,12 @@ impl Server<'_> {
             .iter()
             .any(|t| format!("tool_{}", t["name"].as_str().unwrap_or("")) == name)
         {
-            return self.reply(req, json!({"structuredContent":{"tool":name,"args":args}}));
+            let mut value = json!({"tool":name,"args":args});
+            // Seat attribution, exactly as the host sent it in `_meta`.
+            if let Some(meta) = req["params"].get("_meta") {
+                value["meta"] = meta.clone();
+            }
+            return self.reply(req, json!({"structuredContent":value}));
         }
         if name == "health" {
             return self.health(req);

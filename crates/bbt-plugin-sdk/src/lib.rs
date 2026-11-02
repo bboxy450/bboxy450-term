@@ -110,6 +110,8 @@ pub struct Ctx {
     /// Present only when the trusted shape declares `trace` and the host
     /// asked for spans at `initialize`.
     spans: Option<Arc<std::sync::Mutex<Vec<Value>>>>,
+    /// The calling seat's attribution; empty for operator and host calls.
+    attribution: Arc<std::collections::BTreeMap<String, String>>,
 }
 
 impl Ctx {
@@ -121,7 +123,26 @@ impl Ctx {
             link: None,
             started,
             spans: None,
+            attribution: Arc::default(),
         }
+    }
+
+    /// This call's seat attribution, filtered by
+    /// [`bbt_plugin::policy::attribution_env`]; tests use it to inject one.
+    pub fn with_attribution(mut self, env: std::collections::BTreeMap<String, String>) -> Self {
+        self.attribution = Arc::new(bbt_plugin::policy::attribution_env(
+            env.iter().map(|(k, v)| (k.as_str(), v.as_str())),
+        ));
+        self
+    }
+
+    /// The environment the calling seat lends to this call (request `_meta`
+    /// `bboxy450/attribution`): only names in
+    /// [`bbt_plugin::policy::ATTRIBUTION_ENV`], validated; empty when the
+    /// operator or the host made the call. Apply it to a child process of
+    /// this call only, never to shared or background work.
+    pub fn attribution(&self) -> &std::collections::BTreeMap<String, String> {
+        &self.attribution
     }
 
     pub(crate) fn with_link(mut self, link: Arc<runtime::Link>) -> Self {

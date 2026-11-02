@@ -1446,3 +1446,134 @@ fn conformance() {
         std::fs::remove_dir_all(&fx.run).unwrap();
     }
 }
+
+/// A capture sink: each run stores its stdin payload and its environment.
+fn capture_sink(dir: &Path) -> PathBuf {
+    let sink = dir.join("activity-sink");
+    std::fs::create_dir_all(dir.join("captured")).unwrap();
+    std::fs::write(
+        &sink,
+        format!(
+            "#!/bin/sh\nf=$(mktemp '{0}/captured/run.XXXXXX')\ncat > \"$f.json\"\nenv > \"$f.env\"\necho \"$@\" > \"$f.args\"\n",
+            dir.display()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&sink, std::fs::Permissions::from_mode(0o700)).unwrap();
+    sink
+}
+
+/// Captured sink runs not seen before, as (payload, environment) pairs.
+fn captured(dir: &Path, seen: &mut BTreeSet<PathBuf>) -> Vec<(Value, String)> {
+    let mut runs = Vec::new();
+    let mut paths: Vec<_> = std::fs::read_dir(dir.join("captured"))
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|e| e == "json"))
+        .collect();
+    paths.sort();
+    for path in paths {
+        if seen.insert(path.clone()) {
+            let payload = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+            let env = std::fs::read_to_string(path.with_extension("env")).unwrap();
+            runs.push((payload, env));
+        }
+    }
+    runs
+}
+
+// keeps: seat attribution — a seat's write and commit through the plugin
+// export GitKB activity to that seat's ATC sink; an unattributed one exports none.
+#[test]
+#[ignore = "real GitKB fixtures; run with the check-gitkb-plugin environment and --exact attribution_reaches_the_gitkb_activity_sink"]
+fn attribution_reaches_the_gitkb_activity_sink() {
+    let mut fx = Fixture::new();
+    let root = fx.project("attributed");
+    let sink = capture_sink(&fx.run);
+    let lent = |seat: &str| -> std::collections::BTreeMap<String, String> {
+        [
+            ("SESSION_ACTIVITY_RESOURCE_ID", format!("xses-attr-{seat}")),
+            ("SESSION_ACTIVITY_RESOURCE_KIND", "external".into()),
+            ("SESSION_ACTIVITY_PROVIDER", format!("provider-{seat}")),
+            ("SESSION_ACTIVITY_SINK_COMMAND", sink.display().to_string()),
+            (
+                "SESSION_ACTIVITY_SINK_ARGS_JSON",
+                r#"["activity","record","--json"]"#.into(),
+            ),
+            ("ATC_SESSION_ID", format!("xses-attr-{seat}")),
+            ("GITKB_AGENT_ID", format!("agent-{seat}")),
+            ("ATC_TOKEN", "secret-token-must-not-pass".into()),
+        ]
+        .map(|(k, v)| (k.to_owned(), v))
+        .into()
+    };
+    let mut conn = fx.connect(&root, None, None, false).expect("initialize");
+    let mut seen = BTreeSet::new();
+    let mut evidence = Vec::new();
+    for (slug, seat) in [
+        ("notes/attr-a", Some("a")),
+        ("notes/attr-none", None),
+        ("notes/attr-b", Some("b")),
+    ] {
+        let env = seat.map(lent).unwrap_or_default();
+        let write = conn
+            .client
+            .call_attributed(
+                "data_source_write",
+                with_unknown(json!({"path": format!("{slug}.md"),
+                    "frontmatter": {"type": "note", "title": slug},
+                    "body": format!("# {slug}\n"),
+                    "signed_record": format!("fixture opaque host proof {slug}")})),
+                &env,
+                WAIT,
+            )
+            .unwrap_or_else(|f| panic!("write {slug}: {f:?}"));
+        let commit = conn
+            .client
+            .call_attributed(
+                "data_source_commit",
+                with_unknown(json!({"refs": [reference(&write["record"])],
+                    "message": format!("attributed commit {slug}")})),
+                &env,
+                LONG,
+            )
+            .unwrap_or_else(|f| panic!("commit {slug}: {f:?}"));
+        assert!(truthy(&commit["commit"]), "{commit}");
+        let runs = captured(&fx.run, &mut seen);
+        match seat {
+            None => assert!(runs.is_empty(), "an unattributed commit exported {runs:?}"),
+            Some(seat) => {
+                assert!(!runs.is_empty(), "the attributed commit exported nothing");
+                for (payload, env) in &runs {
+                    assert_eq!(payload["source"], "gitkb", "{payload}");
+                    assert_eq!(
+                        payload["resource_id"],
+                        format!("xses-attr-{seat}"),
+                        "{payload}"
+                    );
+                    assert_eq!(payload["provider"], format!("provider-{seat}"), "{payload}");
+                    assert!(!env.contains("secret-token"), "{env}");
+                    assert!(
+                        env.contains(&format!("ATC_SESSION_ID=xses-attr-{seat}\n")),
+                        "{env}"
+                    );
+                    assert!(
+                        env.contains(&format!("GITKB_AGENT_ID=agent-{seat}\n")),
+                        "{env}"
+                    );
+                    let other = if seat == "a" { "b" } else { "a" };
+                    assert!(!env.contains(&format!("attr-{other}")), "{env}");
+                }
+                evidence.extend(runs.into_iter().map(|(payload, _)| payload));
+            }
+        }
+    }
+    assert_eq!(conn.close(), Some(0));
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&json!({"sink_payloads": evidence})).unwrap()
+    );
+    if std::env::var_os("BBOXY_GITKB_RETAIN").is_none() {
+        std::fs::remove_dir_all(&fx.run).unwrap();
+    }
+}

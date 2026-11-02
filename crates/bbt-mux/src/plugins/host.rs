@@ -657,6 +657,12 @@ impl PluginHost {
                 .map_err(|_| error("provider_closed", "the hook lane is closed"))?,
         };
         trace.mark("admit");
+        // Read on this thread: the calling seat's scope, if any.
+        let params = crate::plugins::attribution::tools_call(
+            wire,
+            args,
+            &crate::plugins::attribution::current(),
+        );
         // A transport failure closes the connection; a plugin refusal does not.
         let outcome: Result<Value, (d::CommandError, bool)> = self.0.handle.block_on(async {
             let shared = connection
@@ -676,7 +682,7 @@ impl PluginHost {
                 ));
             }
             let outer = shared
-                .request("tools/call", json!({"name":wire,"arguments":args}), budget)
+                .request("tools/call", params, budget)
                 .await
                 .map_err(|reason| (refused(reason), true))?;
             trace.mark("plugin");

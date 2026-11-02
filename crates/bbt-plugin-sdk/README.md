@@ -140,6 +140,11 @@ ctx.span("scan");` times the step until the guard drops. Spans travel beside
 the result (`_meta.bboxy450.spans`) only when the host enabled trace at
 `initialize`; at most 32 per call, kept only inside the host's `plugin` phase.
 
+A call made for a seat may carry that seat's ATC session attribution
+(`_meta["bboxy450/attribution"]`). `ctx.attribution()` returns it, validated
+and limited to the names `git-kb` reads for activity export; it is empty for
+operator and host calls. Set it only on that call's own child processes.
+
 ### 8. Skills
 
 `Manifest::skill(Skill { name, description, content })` embeds a `SKILL.md`

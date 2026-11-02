@@ -914,7 +914,11 @@ impl Plugin for RootFixture {
         args: Value,
         ctx: &Ctx,
     ) -> Result<Value, Refusal> {
-        trace("call", json!({"method": method}));
+        let mut fields = json!({"method": method});
+        if !ctx.attribution().is_empty() {
+            fields["attribution"] = json!(ctx.attribution());
+        }
+        trace("call", fields);
         // A no-op unless the shape declares trace and the host enabled it.
         let _span = ctx.span(&format!("root.{method}"));
         if method == "fetch" {

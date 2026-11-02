@@ -148,7 +148,7 @@ fn optional_method_probes_do_not_journal_but_tool_errors_do() {
         let mut line = String::new();
         BufReader::new(&stream).read_line(&mut line).unwrap();
         let call: bbt_mux::seat_socket::Request = serde_json::from_str(&line).unwrap();
-        let bbt_mux::seat_socket::Action::Call { call } = call.action else {
+        let bbt_mux::seat_socket::Action::Call { call, .. } = call.action else {
             panic!("a pure probe reached the seat transport");
         };
         assert_eq!(call.tool, "knowledge_fetch");

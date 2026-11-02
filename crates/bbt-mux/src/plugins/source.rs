@@ -343,6 +343,8 @@ impl DataSourceProvider {
             }
         };
         trace.mark("authority");
+        // Read on this thread: the calling seat's scope, if any.
+        let attribution = crate::plugins::attribution::current();
         let result = self.handle.block_on(async {
             if slot.is_none() {
                 let initialize_limit = deadline
@@ -395,8 +397,9 @@ impl DataSourceProvider {
                 ));
             }
             let name = contract.wire_name(method).map_err(refused)?;
+            let params = crate::plugins::attribution::tools_call(&name, args, &attribution);
             let outer = client
-                .request("tools/call", json!({"name":name,"arguments":args}), budget)
+                .request("tools/call", params, budget)
                 .await
                 .map_err(refused)?;
             trace.mark("plugin");
