@@ -1874,6 +1874,27 @@ fn command_w_closes_only_the_focused_seat_and_undo_keeps_the_same_process() {
 #[test]
 #[ignore = "private ctl mute buttons, shortcut, retained policy and operator input; make test-seat-mute"]
 fn seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart() {
+    fn assert_chat_notice(fixture: &Fixture, text: &str) {
+        fn chat(node: &Value) -> Option<&Value> {
+            if node["kind"] == "named:conversation/chat-section" {
+                return Some(node);
+            }
+            node["children"].as_array()?.iter().find_map(chat)
+        }
+        let until = Instant::now() + Duration::from_secs(10);
+        loop {
+            let frame = fixture.ctl(&["ui", "layout"]);
+            let visible = frame["tree"].as_array().unwrap().iter().find_map(chat);
+            if visible.is_some_and(|node| node.to_string().contains(text)) {
+                return;
+            }
+            assert!(
+                Instant::now() < until,
+                "missing chat notice {text:?}: {frame}"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
     let mut fixture = Fixture::new();
     fixture.start();
     let swarm = fixture.ctl(&["ui", "layout"])["swarm"]
@@ -1884,6 +1905,21 @@ fn seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart()
     let second = fixture.spawn("claude", &swarm, None);
     fixture.ctl(&["ui", "focus", &first]);
     let before = fixture.ctl(&["seat", "ls"]);
+    let name = |seat: &str| {
+        before
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["record"]["id"] == seat)
+            .unwrap()["record"]["name"]
+            .as_str()
+            .unwrap()
+            .to_owned()
+    };
+    let first_muted = format!("{} muted", name(&first));
+    let first_unmuted = format!("{} unmuted", name(&first));
+    let second_muted = format!("{} muted", name(&second));
+    let second_unmuted = format!("{} unmuted", name(&second));
     let owners = fixture.owners();
     let muted = |fixture: &Fixture, seat: &str| {
         fixture
@@ -1902,9 +1938,11 @@ fn seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart()
         "muting another row never moves focus"
     );
     assert!(muted(&fixture, &second));
+    assert_chat_notice(&fixture, &second_muted);
     assert!(!muted(&fixture, &first));
     click_region(&fixture, &format!("pane-mute:{first}"));
     assert!(muted(&fixture, &first));
+    assert_chat_notice(&fixture, &first_muted);
     capture_navigation(&fixture, "seat-mute-controls");
     if let Some(directory) = std::env::var_os("BBOXY_SWARM_EVIDENCE") {
         fs::write(
@@ -1926,6 +1964,8 @@ fn seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart()
     fixture.ctl(&["ui", "key", "cmd-m"]);
     assert!(!muted(&fixture, &first));
     assert!(muted(&fixture, &second));
+    assert_chat_notice(&fixture, &first_unmuted);
+    capture_navigation(&fixture, "seat-unmute-chat-text");
     let mut old = fixture.app.take().unwrap();
     old.kill().unwrap();
     old.wait().unwrap();
@@ -1933,8 +1973,13 @@ fn seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart()
     assert_eq!(fixture.owners(), owners);
     assert!(!muted(&fixture, &first));
     assert!(muted(&fixture, &second));
+    assert_chat_notice(&fixture, &first_muted);
+    assert_chat_notice(&fixture, &first_unmuted);
+    assert_chat_notice(&fixture, &second_muted);
     click_region(&fixture, &format!("seat-mute:{second}"));
     assert!(!muted(&fixture, &second));
+    assert_chat_notice(&fixture, &second_unmuted);
+    capture_navigation(&fixture, "seat-mute-chat-restored");
     let after = fixture.ctl(&["seat", "ls"]);
     for seat in [&first, &second] {
         let identity = |rows: &Value| {

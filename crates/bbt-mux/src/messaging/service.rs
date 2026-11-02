@@ -1142,7 +1142,15 @@ impl Messaging {
             kind: message.view().kind,
             priority_class: message.view().priority_class,
             priority: message.view().priority,
-            text: message.view().body.text().unwrap_or_default().into(),
+            text: match message.view().body {
+                Body::Presence { event, name, .. } if event == "mute" || event == "unmute" => {
+                    format!(
+                        "{name} {}",
+                        if event == "mute" { "muted" } else { "unmuted" }
+                    )
+                }
+                body => body.text().unwrap_or_default().into(),
+            },
             ts_ms: message
                 .view()
                 .timestamp
@@ -3490,6 +3498,71 @@ mod reference_tests {
         registry.insert(&recipient).unwrap();
         let messaging = Messaging::open(root.path(), Arc::new(NoAuthor)).unwrap();
         (root, messaging, recipient)
+    }
+
+    #[test]
+    fn mute_notice_rows_show_action_live_and_after_reopen_without_rewriting_envelopes() {
+        use super::super::api::Response;
+        let (root, messaging, recipient) = recent_fixture();
+        drop(messaging);
+        let keys = Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[42; 32])));
+        let mut messaging = Messaging::open(root.path(), keys.clone()).unwrap();
+        let mut originals = Vec::new();
+        let mut expected = Vec::new();
+        for (index, muted) in [true, false, true].into_iter().enumerate() {
+            let id = messaging
+                .set_mute(
+                    Actor::Operator,
+                    recipient.id,
+                    muted,
+                    crate::adapters::State::Idle,
+                    1000 + index as u64 * 1000,
+                )
+                .unwrap()
+                .unwrap();
+            let text = format!(
+                "{} {}",
+                recipient.name,
+                if muted { "muted" } else { "unmuted" }
+            );
+            let row = messaging.operator_message_row(recipient.swarm, id).unwrap();
+            assert_eq!(
+                row.text, text,
+                "live presence row must have more than a timestamp"
+            );
+            assert_eq!(row.kind, MessageKind::Presence);
+            assert_eq!(row.ts_ms, 1000 + index as u64 * 1000);
+            let message = messaging
+                .swarm(recipient.swarm)
+                .unwrap()
+                .ledger
+                .by_id(id)
+                .unwrap();
+            originals.push(message.envelope().unwrap().clone());
+            expected.push(row);
+        }
+        drop(messaging);
+        let mut messaging = Messaging::open(root.path(), keys.clone()).unwrap();
+        let Response::Recent { rows, page, .. } = recent(
+            &mut messaging,
+            recipient.swarm,
+            Some(format!("swarms/{}/*", recipient.swarm)),
+            None,
+            128,
+        ) else {
+            panic!("recent presence rows");
+        };
+        assert_eq!(rows, expected, "retained rows use the same projection");
+        assert_eq!(page.items.len(), originals.len());
+        for (message, original) in page.items.iter().zip(originals) {
+            let envelope = message.envelope().unwrap();
+            assert_eq!(
+                *envelope, original,
+                "formatting must not rewrite signed history"
+            );
+            assert_eq!(envelope.body.text(), None);
+            keys.verify(envelope).unwrap();
+        }
     }
 
     #[test]

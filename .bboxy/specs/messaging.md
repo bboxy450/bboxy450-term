@@ -1,12 +1,26 @@
 ---
-id: "2C06HC6R5PF2S85MPFMY6AZ563"
-type: "spec"
-number: 71
-title: "Messaging — proposed architecture"
-created: "2026-10-21T18:57:39Z"
-updated: "2026-10-24T06:26:55Z"
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: dz6NmhXKbHy9Oj4XPzJo0/rAkWqtxM4tdPbxlsgDDG4=
+  signer: seat:01M6ER6V2ZYS7Z1K05TE6ZJTJD
+created: 2026-10-21T18:57:39Z
+created_by: seat:01M6ER6V2ZYS7Z1K05TE6ZJTJD
+id: 2C06HC6R5PF2S85MPFMY6AZ563
 links:
-  - { to: "[[d23-recipient-batching]]", rel: decision }
+- rel: decision
+  to: '[[d23-recipient-batching]]'
+number: 71
+provenance:
+  digest: sha256:0c34e483254069c23a214226597950379217ea75ee6745e12897d965c45c3b2d
+  frontmatter_digest: sha256:a961035d85930cceb61ab113d38a2b7c266770a25ddf2cff0249e8a356d33a5f
+  log: .bboxy/log/2026-11-02.jsonl#539
+  sig: L2e/FZmYiVGH+lWTfqeZqjLQCvpxdJIauroTxDruvoI70QAZmdP28fVGJ4bCwZUpAI/b9nlC4gHL6iWypKx0AA==
+  signer: seat:01M6ER6V2ZYS7Z1K05TE6ZJTJD
+title: Messaging — proposed architecture
+type: spec
+updated: 2026-11-02T18:31:20.304Z
+updated_by: seat:01M6ER6V2ZYS7Z1K05TE6ZJTJD
 ---
 # Messaging — proposed architecture
 
@@ -118,6 +132,8 @@ Persist accepted presence under the normal inbox rules, then update the derived 
 The same presence body carries terminal-authored `event:"mute"` / `event:"unmute"` notices, with `muted:true` / `false` and `policy_epoch` equal to the authorizing seat-grant epoch. The outer seat identifies the affected seat; the owning terminal publishes the notice with that seat's signature and the replacement device-signed seat grant proving its mute policy. Receivers require agreement with the current authorized grant and reject stale policy epochs; a seat's arbitrary text or signature alone cannot change swarm membership policy. Only the authenticated operator or delegated Oracle control path can request a transition. Audit the actual initiating controller separately.
 
 Commit the seat's mute flag, replacement grant and notice outbox entry as one policy transition. Each real transition creates one stable notice ID addressed to the whole swarm; repeated mute/unmute requests return the existing state rather than duplicate notices. Publish this terminal-generated control notice even though ordinary outbound swarm traffic is held. Swarm members display it in the stream; informational harness delivery follows their existing swarm/adapter policy, deduplicated by that same notice ID. Persistence/dispatch proves neither universal delivery nor model receipt.
+
+Native chat projects `event:"mute"` and `event:"unmute"` as `<presence name> muted` and `<presence name> unmuted`, beside the message's local timestamp. Both live rows and retained history use this projection, including notices stored before the formatting fix. The name comes from the signed presence body; formatting never rewrites the envelope, identity, timestamp or signature.
 
 The seat key signs a fixed-order tuple of every field except the signature, using a protocol-specific domain separator. Define the exact UTF-8 JSON tuple encoding and integer bounds in the wire implementation; transport route/TTL and receiver-local sequence are outside this signed body. Exchange the full signed grant chain when its digest is unknown, with bounded parsing and no priority elevation while verification is pending.
 

@@ -155,6 +155,7 @@ help:
 	  'make check-terminal-font         Strict all-target Clippy for terminal font paths' \
 	  'make test-close-shortcut         Cmd+W focused-seat close, retained PTYs and undo' \
 	  'make test-seat-mute              Seat buttons, Cmd+M, muted swarm isolation and operator control' \
+	  'make test-chat-mute-notices      Mute/unmute chat text, retained signed history and native frames' \
 	  'make test-live-feed              Scoped dock channels and exactly one arrival wake, no poll timer' \
 	  'make test-swarm-metadata         Persistent swarm names/cwd, legacy import and operator admission' \
 	  'make test-workspace-boundary     Scoped wire, root-bound replay and read-completion fences' \
@@ -1171,7 +1172,12 @@ test-new-swarm:
 format-new-swarm:
 	@rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/main.rs crates/bboxy450-term/src/navigation.rs crates/bboxy450-term/src/scene.rs crates/bboxy450-term/src/swarm_folder.rs crates/bboxy450-term/tests/swarm_workdir.rs
 
-.PHONY: test-seat-mute
+.PHONY: test-seat-mute test-chat-mute-notices
+test-chat-mute-notices:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib -E 'test(mute_notice_rows_show_action_live_and_after_reopen_without_rewriting_envelopes)'; \
+	BBOXY_SWARM_EVIDENCE='$(abspath $(TARGET_DIR))/chat-mute-notices' cargo nextest run --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir --run-ignored only -E 'test(seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart)'
+
 test-seat-mute:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test seat_rows; \
