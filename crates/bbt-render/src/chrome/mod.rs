@@ -70,6 +70,11 @@ impl ChromeRenderer {
     pub fn add_image(&mut self, image: &icons::Image) -> Result<()> {
         self.icons.add_bitmap(image)
     }
+    /// Mask cache counters for the frame log.
+    pub fn mask_stats(&self) -> (u64, u64) {
+        let s = self.text.stats();
+        (s.misses, s.shadow_requests)
+    }
     pub fn begin_frame(&mut self) {
         self.arenas.begin_frame();
     }
@@ -952,9 +957,10 @@ impl ChromeRenderer {
     }
 }
 
-/// Largest device-pixel extent a path takes through the mask atlas; the
-/// rasterizer's own budget is wider, with a stroke pad added there.
-const ATLAS_PATH_MAX: f32 = 2048.;
+/// Largest device-pixel extent a path takes through the mask atlas: icon
+/// sized. A larger path is rasterized on the CPU per distinct placement,
+/// which is the analytic pass's job.
+const ATLAS_PATH_MAX: f32 = 256.;
 
 /// A path as flat atlas instances (fill, then stroke), or itself when it is
 /// too large for a mask. An empty fill or a zero-width stroke emits nothing.

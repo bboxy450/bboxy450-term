@@ -22,8 +22,8 @@ mod headless;
 mod live;
 mod log;
 mod navigation;
-mod pointer_cursor;
 mod perf_fixture;
+mod pointer_cursor;
 mod scene;
 mod settings_destinations;
 mod settings_roles;
@@ -480,9 +480,14 @@ fn notification_foreground_admission(
 
 /// Logic publishes this label only after validating the signed test-run context.
 fn notification_test_account(selected: bool, identity: Option<&bbt_proto::GuiIdentity>) -> bool {
-    selected && identity.is_some_and(|identity| {
-        matches!(identity.state, bbt_proto::GuiIdentityState::LocalDev | bbt_proto::GuiIdentityState::Certified)
-            && identity.reason.as_deref()
+    selected
+        && identity.is_some_and(|identity| {
+            matches!(
+                identity.state,
+                bbt_proto::GuiIdentityState::LocalDev | bbt_proto::GuiIdentityState::Certified
+            ) && identity
+                .reason
+                .as_deref()
                 .and_then(|reason| reason.split(" · ").next())
                 .and_then(|label| label.strip_prefix("test-account:"))
                 .is_some_and(|run| {
@@ -515,12 +520,18 @@ mod notification_foreground_tests {
             "test-account:00000000000000000000000000",
         ] {
             identity.reason = Some(reason.into());
-            assert!(!notification_test_account(true, Some(&identity)), "{reason}");
+            assert!(
+                !notification_test_account(true, Some(&identity)),
+                "{reason}"
+            );
         }
         identity.reason = Some(format!("test-account:{}", bbt_mux::Ulid(1)));
         for state in [GuiIdentityState::Held, GuiIdentityState::Pending] {
             identity.state = state;
-            assert!(!notification_test_account(true, Some(&identity)), "{state:?}");
+            assert!(
+                !notification_test_account(true, Some(&identity)),
+                "{state:?}"
+            );
         }
     }
 
@@ -1309,9 +1320,15 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
         && shortcut == Some('v')
         && ((command && !mods.control_key() && !mods.shift_key())
             || (cfg!(not(target_os = "macos"))
-                && mods.control_key() && mods.shift_key() && !command))
+                && mods.control_key()
+                && mods.shift_key()
+                && !command))
     {
-        return if repeat { RoutedKey::Local } else { RoutedKey::TerminalPaste };
+        return if repeat {
+            RoutedKey::Local
+        } else {
+            RoutedKey::TerminalPaste
+        };
     }
     if command && !mods.alt_key() && !mods.control_key() {
         // Follow the active layout: plus can be a shifted '=' or an unshifted
@@ -1408,8 +1425,7 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
             };
         }
     }
-    if query.is_none() && mods.shift_key() && !command && !mods.alt_key() && !mods.control_key()
-    {
+    if query.is_none() && mods.shift_key() && !command && !mods.alt_key() && !mods.control_key() {
         let motion = match key {
             Key::Named(NamedKey::PageUp) => Some(ScrollKey::PageUp),
             Key::Named(NamedKey::PageDown) => Some(ScrollKey::PageDown),
@@ -1669,12 +1685,16 @@ fn route_settings(input: &keyboard::Input<'_>, modes: u64, editing: bool) -> Rou
 }
 fn route_document(input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
     use bbt_ui::modules::document_modal::controller::Action;
-    let mods=input.modifiers.state;
+    let mods = input.modifiers.state;
     if input.state.is_pressed() && !input.repeat && !mods.alt_key() && !mods.control_key() {
-        if mods.super_key() && keyboard::shortcut_key(input)==Some('c') {
-            return RoutedKey::Document(if mods.shift_key() {Action::CopyPath} else {Action::Copy});
+        if mods.super_key() && keyboard::shortcut_key(input) == Some('c') {
+            return RoutedKey::Document(if mods.shift_key() {
+                Action::CopyPath
+            } else {
+                Action::Copy
+            });
         }
-        if matches!(input.logical_key,Key::Named(NamedKey::Enter)) && !mods.shift_key() {
+        if matches!(input.logical_key, Key::Named(NamedKey::Enter)) && !mods.shift_key() {
             return RoutedKey::Document(Action::Feed);
         }
     }
@@ -1855,25 +1875,60 @@ fn launcher_items(
 
 // bboxy450-term — https://github.com/bboxy450/bboxy450-term
 // Retain source credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-fn configure_machine_items(items: &mut Vec<bbt_ui::modules::launcher::Item>, machines: &std::collections::BTreeMap<String, bbt_ui::modules::settings::Machine>) {
+fn configure_machine_items(
+    items: &mut Vec<bbt_ui::modules::launcher::Item>,
+    machines: &std::collections::BTreeMap<String, bbt_ui::modules::settings::Machine>,
+) {
     use bbt_ui::modules::launcher::Item;
-    if machines.is_empty() { return; }
-    let local: Vec<_> = items.iter().filter(|item| launchables().any(|(id, ..)| id == item.id)).cloned().collect();
+    if machines.is_empty() {
+        return;
+    }
+    let local: Vec<_> = items
+        .iter()
+        .filter(|item| launchables().any(|(id, ..)| id == item.id))
+        .cloned()
+        .collect();
     if !items.iter().any(|item| item.id == "ssh") {
-        items.push(Item { id: "ssh".into(), label: "SSH".into(), harness: "ssh".into(), kind: "Remote".into(), section: Some("Remote".into()), sub: "pick a machine, then a harness".into(), children: Some(vec![]), ..Default::default() });
+        items.push(Item {
+            id: "ssh".into(),
+            label: "SSH".into(),
+            harness: "ssh".into(),
+            kind: "Remote".into(),
+            section: Some("Remote".into()),
+            sub: "pick a machine, then a harness".into(),
+            children: Some(vec![]),
+            ..Default::default()
+        });
     }
     let root = items.iter_mut().find(|item| item.id == "ssh").unwrap();
     let hosts = root.children.get_or_insert_with(Vec::new);
     fn prefix(item: &mut Item, machine: &str) {
         item.id = format!("{machine}:{}", item.id);
         item.parameters = true;
-        if let Some(children) = &mut item.children { for child in children { prefix(child, machine); } }
+        if let Some(children) = &mut item.children {
+            for child in children {
+                prefix(child, machine);
+            }
+        }
     }
     for (id, machine) in machines {
-        if let Some(host) = hosts.iter_mut().find(|host| host.id == *id) { host.sub = machine.connect.clone(); continue; }
+        if let Some(host) = hosts.iter_mut().find(|host| host.id == *id) {
+            host.sub = machine.connect.clone();
+            continue;
+        }
         let mut choices = local.clone();
-        for choice in &mut choices { prefix(choice, id); }
-        hosts.push(Item { id: id.clone(), label: id.trim_start_matches("ssh:").into(), sub: machine.connect.clone(), harness: "ssh".into(), kind: "Machine".into(), children: Some(choices), ..Default::default() });
+        for choice in &mut choices {
+            prefix(choice, id);
+        }
+        hosts.push(Item {
+            id: id.clone(),
+            label: id.trim_start_matches("ssh:").into(),
+            sub: machine.connect.clone(),
+            harness: "ssh".into(),
+            kind: "Machine".into(),
+            children: Some(choices),
+            ..Default::default()
+        });
     }
 }
 
@@ -2253,7 +2308,7 @@ struct App {
     local_page_layout: Option<scene::LocalPageLayout>,
     document: documents::Host,
     document_return: Option<Stage>,
-    document_recipient: Option<(SeatId,u64)>,
+    document_recipient: Option<(SeatId, u64)>,
     document_layout: Option<scene::DocumentLayout>,
     app_overlays: app_overlays::Host,
     composer: ComposeController,
@@ -2628,9 +2683,22 @@ impl App {
     ) {
         if !self.document.open {
             self.document_return = self.focus.stage.clone();
-            self.document_recipient=self.focus.stage.as_ref().and_then(|s|s.focused)
-                .and_then(|seat|Some((seat,self.live_state.as_ref()?.ui.seats.get(&seat)?.process_generation)));
-
+            self.document_recipient =
+                self.focus
+                    .stage
+                    .as_ref()
+                    .and_then(|s| s.focused)
+                    .and_then(|seat| {
+                        Some((
+                            seat,
+                            self.live_state
+                                .as_ref()?
+                                .ui
+                                .seats
+                                .get(&seat)?
+                                .process_generation,
+                        ))
+                    });
         }
         match binding {
             Ok(scope) => self.document.show_scoped(target, scope),
@@ -2664,7 +2732,7 @@ impl App {
     }
     fn close_document(&mut self) {
         self.document.close();
-        self.document_recipient=None;
+        self.document_recipient = None;
         if let Some(stage) = self.document_return.take()
             && let Some(model) = &self.live_state
         {
@@ -2934,9 +3002,7 @@ impl App {
             )
             .collect();
         for (id, harness) in &mut view.values.harness {
-            if let Some((_, _, _, tile, _)) =
-                launchables().find(|(kind, _, _, _, _)| kind == id)
-            {
+            if let Some((_, _, _, tile, _)) = launchables().find(|(kind, _, _, _, _)| kind == id) {
                 harness.tile = tile.into();
             }
         }
@@ -4152,7 +4218,10 @@ impl App {
             self.focus.stage.as_ref(),
         ));
         if let Some(launcher) = &mut self.launcher {
-            configure_machine_items(&mut launcher.launcher.items, &self.preferences.preferences.machines);
+            configure_machine_items(
+                &mut launcher.launcher.items,
+                &self.preferences.preferences.machines,
+            );
             settings_roles::configure_items(
                 &mut launcher.launcher.items,
                 &self.preferences.preferences.role_catalog(),
@@ -4405,7 +4474,10 @@ impl App {
             .as_mut()
             .and_then(|l| l.launcher.params.as_mut())
         {
-            if bboxy450_term::spawn_params::refresh_transport_fields(&mut params.fields, &transports) {
+            if bboxy450_term::spawn_params::refresh_transport_fields(
+                &mut params.fields,
+                &transports,
+            ) {
                 params.refresh();
             }
             let home = std::env::var("HOME").unwrap_or_default();
@@ -4416,8 +4488,15 @@ impl App {
         }
     }
     fn launcher_machine(&self, id: &str) -> Option<(String, String)> {
-        if let Some((_, machine)) = bboxy450_term::spawn_params::machine_target(id, &self.preferences.preferences.machines) {
-            return Some((machine.clone(), self.preferences.preferences.machines[&machine].connect.clone()));
+        if let Some((_, machine)) =
+            bboxy450_term::spawn_params::machine_target(id, &self.preferences.preferences.machines)
+        {
+            return Some((
+                machine.clone(),
+                self.preferences.preferences.machines[&machine]
+                    .connect
+                    .clone(),
+            ));
         }
         let model = self.live_state.as_deref()?;
         let live::UiMsg::Spawn {
@@ -4475,14 +4554,25 @@ impl App {
                     connect: route,
                     ..Default::default()
                 });
-            bboxy450_term::spawn_params::with_machine_transports(fields, &defaults, &bboxy450_term::settings::registry::transports(model))
+            bboxy450_term::spawn_params::with_machine_transports(
+                fields,
+                &defaults,
+                &bboxy450_term::settings::registry::transports(model),
+            )
         } else {
             fields
         }
     }
     fn configured_launcher_target(&self, id: &str) -> Option<(String, Option<bbt_proto::SwarmId>)> {
-        if let Some((harness, _)) = bboxy450_term::spawn_params::machine_target(id, &self.preferences.preferences.machines) {
-            let (_, swarm, _) = bboxy450_term::launcher::captured_placement(id, Default::default(), self.live_state.as_deref(), self.launcher_stage.as_ref());
+        if let Some((harness, _)) =
+            bboxy450_term::spawn_params::machine_target(id, &self.preferences.preferences.machines)
+        {
+            let (_, swarm, _) = bboxy450_term::launcher::captured_placement(
+                id,
+                Default::default(),
+                self.live_state.as_deref(),
+                self.launcher_stage.as_ref(),
+            );
             return Some((harness, swarm));
         }
         match spawn_pick(
@@ -4543,7 +4633,12 @@ impl App {
             modifiers.command = !modifiers.alt;
             modifiers.shift = side == bbt_proto::seat_state::Side::Bottom;
         }
-        let (_, swarm, placement) = bboxy450_term::launcher::captured_placement(id, modifiers, model, self.launcher_stage.as_ref());
+        let (_, swarm, placement) = bboxy450_term::launcher::captured_placement(
+            id,
+            modifiers,
+            model,
+            self.launcher_stage.as_ref(),
+        );
         let op = bbt_mux::Ulid::new();
         let placement = Some(placement);
         let swarm = swarm.unwrap_or_else(|| bbt_proto::SwarmId::from_u128(bbt_mux::Ulid::new().0));
@@ -4747,7 +4842,9 @@ impl App {
             cfg!(debug_assertions),
             notification_test_account(
                 self.test_account,
-                self.live_state.as_ref().and_then(|model| model.identity.as_ref()),
+                self.live_state
+                    .as_ref()
+                    .and_then(|model| model.identity.as_ref()),
             ),
             self.recording_active(),
             self.window.is_some(),
@@ -4858,8 +4955,8 @@ impl App {
                 && !self.document.open
                 && self.launcher.is_none()
                 && !self.app_overlays.open())
-                .then(|| self.focus.stage.as_ref().and_then(|stage| stage.focused))
-                .flatten();
+            .then(|| self.focus.stage.as_ref().and_then(|stage| stage.focused))
+            .flatten();
             commands.desktop_context(bboxy450_term::cockpit::desktop::Context {
                 policy: policy.clone(),
                 frontmost: self.frontmost,
@@ -4948,7 +5045,9 @@ impl App {
                     Some((SeatId::from_u128(id.0), Instant::now(), Some(episode)));
                 self.apply_notification_click();
             }
-            Err(_) => self.logger.write("notification focus refused: invalid seat id"),
+            Err(_) => self
+                .logger
+                .write("notification focus refused: invalid seat id"),
         }
     }
     fn apply_notification_click(&mut self) {
@@ -4965,7 +5064,9 @@ impl App {
                 || (cfg!(debug_assertions)
                     && notification_test_account(
                         self.test_account,
-                        self.live_state.as_ref().and_then(|model| model.identity.as_ref()),
+                        self.live_state
+                            .as_ref()
+                            .and_then(|model| model.identity.as_ref()),
                     )
                     && std::env::args().any(|arg| arg == "--desktop-fixture")),
             expected,
@@ -5123,7 +5224,9 @@ impl App {
             self.close_seat(seat, bbt_mux::Ulid::new(), false);
         }
     }
-    fn queue(&mut self, message: live::UiMsg) { self.try_queue(message); }
+    fn queue(&mut self, message: live::UiMsg) {
+        self.try_queue(message);
+    }
     /// Local bounded admission only; transport/PTY completion remains asynchronous.
     fn try_queue(&mut self, mut message: live::UiMsg) -> bool {
         if self.closing || self.live_commands.is_none() {
@@ -5148,7 +5251,7 @@ impl App {
             .ui_collect
             .as_ref()
             .and_then(|_| UiEffect::from_message(&message, self.live_state.as_deref()));
-        let admitted=match queue_pending(&mut self.pending_commands, message) {
+        let admitted = match queue_pending(&mut self.pending_commands, message) {
             Err(kind) => {
                 self.admission_refusals.record(kind);
                 self.logger.write(self.admission_refusals.report());
@@ -5572,8 +5675,11 @@ impl App {
             // Configure before the IO preparer can submit to this queue. wgpu
             // refuses configuration if concurrent submission keeps it nonempty.
             if let Some(sender) = self.render_context.take() {
-                let theme = self.preferences.preferences.context(
-                    self.verify.theme.unwrap_or(self.system_theme)).theme;
+                let theme = self
+                    .preferences
+                    .preferences
+                    .context(self.verify.theme.unwrap_or(self.system_theme))
+                    .theme;
                 let _ = sender.send(live::RenderContext {
                     context: gpu.shared_context(),
                     scale: self.window.as_ref().unwrap().scale_factor() as f32,
@@ -5968,10 +6074,15 @@ impl App {
             if self.document.open || self.launcher.is_some() || self.local_tab.is_some() {
                 return false;
             }
-            let kitty = self.focus.stage.as_ref().and_then(|stage| stage.focused)
+            let kitty = self
+                .focus
+                .stage
+                .as_ref()
+                .and_then(|stage| stage.focused)
                 .and_then(|seat| self.live_state.as_ref()?.screens.get(&seat))
                 .is_some_and(|screen| kitty_owns_all_keys(screen.modes));
-            if !kitty && input.state.is_pressed()
+            if !kitty
+                && input.state.is_pressed()
                 && !input.repeat
                 && (matches!(input.logical_key, Key::Named(NamedKey::ContextMenu))
                     || (matches!(input.logical_key, Key::Named(NamedKey::F10))
@@ -6060,7 +6171,8 @@ impl App {
     }
     fn terminal_copy_shortcut(&self, input: &keyboard::Input<'_>) -> bool {
         terminal_copy_chord(input, || {
-            self.ui_selection.text().is_some() || (!self.document.open && self.terminal_copy_text().is_some())
+            self.ui_selection.text().is_some()
+                || (!self.document.open && self.terminal_copy_text().is_some())
         })
     }
     /// Choose a UI command without changing the physical keyboard lifecycle.
@@ -7447,7 +7559,10 @@ impl App {
                         let grid = model.frames.get(seat)?;
                         Some(bbt_proto::gui::UiHistoricalScreen {
                             top_row: history.top_row,
-                            lines: bboxy450_term::frame_observation::bounded_lines(source, &mut terminal_text),
+                            lines: bboxy450_term::frame_observation::bounded_lines(
+                                source,
+                                &mut terminal_text,
+                            ),
                             pixel_size: [grid.width, grid.height],
                         })
                     }),
@@ -7492,7 +7607,10 @@ impl App {
         );
         let layout = UiLayout {
             sidebar_sections: self.sidebar_section_positions(),
-            notification_frontmost: self.notification_foreground_allowed().is_ok().then_some(self.frontmost),
+            notification_frontmost: self
+                .notification_foreground_allowed()
+                .is_ok()
+                .then_some(self.frontmost),
             sidebar_open: self.scene.sidebar_open(),
             regions: self.interaction_regions(),
             test_clipboard: None,
@@ -7845,7 +7963,10 @@ impl App {
             let native = self.pacer.as_ref().is_some_and(DisplayLink::is_metal);
             self.pacer.take();
             if native {
-                self.gpu.as_mut().unwrap().resize_native(size.width, size.height)?;
+                self.gpu
+                    .as_mut()
+                    .unwrap()
+                    .resize_native(size.width, size.height)?;
             } else {
                 self.gpu.as_mut().unwrap().resize(size.width, size.height);
             }
@@ -7924,11 +8045,15 @@ impl App {
         let scale = self.window.as_ref().unwrap().scale_factor() as f32;
         let logical = [size.width as f32 / scale, size.height as f32 / scale];
         let start = Instant::now();
-        if let Some(prepared)=&self.document.prepared
-            && let Err(reason)=self.gpu.as_mut().unwrap().install_document_images(&prepared.images)
+        if let Some(prepared) = &self.document.prepared
+            && let Err(reason) = self
+                .gpu
+                .as_mut()
+                .unwrap()
+                .install_document_images(&prepared.images)
         {
             self.document.image_failed(reason);
-            self.document_layout=None;
+            self.document_layout = None;
         }
         let layouts = self.solve_ui(logical)?;
         let bounds = self.pane_bounds.clone();
@@ -8059,7 +8184,7 @@ impl App {
                 let gpu = self.gpu.as_ref().unwrap();
                 let (p, e) = (gpu.passes, gpu.last_split);
                 let ms = |d: Duration| d.as_secs_f64() * 1000.;
-                self.logger.write(format!("hitch frame={} phase={phase} {:.3}ms cpu={:.3}ms drain={:.3} layout={:.3} draw={:.3} encode={:.3} present_wait={:.3} chrome={:.3} cells={:.3} overlay={:.3} composite={:.3} submit={:.3} passes={} flat={} clear={} path={} group={} blur={} material={} cells_p={} copy={}",self.meter.total_frames(),ms(time),ms(phases.cpu()),ms(phases.drain),ms(phases.layout),ms(phases.draw),ms(phases.encode),ms(phases.present_wait),ms(e.chrome),ms(e.cells),ms(e.overlay),ms(e.composite),ms(e.submit),p.passes(),p.flat,p.clear,p.path,p.group,p.blur,p.material,p.cells,p.copy));
+                self.logger.write(format!("hitch frame={} phase={phase} {:.3}ms cpu={:.3}ms drain={:.3} layout={:.3} draw={:.3} encode={:.3} present_wait={:.3} chrome={:.3} cells={:.3} overlay={:.3} composite={:.3} submit={:.3} passes={} flat={} clear={} path={} group={} blur={} material={} cells_p={} copy={} mask_misses={} shadow_req={}",self.meter.total_frames(),ms(time),ms(phases.cpu()),ms(phases.drain),ms(phases.layout),ms(phases.draw),ms(phases.encode),ms(phases.present_wait),ms(e.chrome),ms(e.cells),ms(e.overlay),ms(e.composite),ms(e.submit),p.passes(),p.flat,p.clear,p.path,p.group,p.blur,p.material,p.cells,p.copy,e.mask_misses,e.shadow_requests));
             }
             // Under the meter, the render-pass mix of every 120th frame (R12-3 profiling).
             if self.overlay && self.meter.total_frames().is_multiple_of(120) {
@@ -9620,8 +9745,8 @@ fn screen_hash(screen: &bbt_proto::Screen) -> String {
 fn diagnostic_root(args: &[String]) -> Result<std::path::PathBuf, String> {
     // Validate private custody before choosing any fallback. In particular an
     // inherited seat run must never win over an explicit throwaway account.
-    let account = bboxy450_term::cockpit::Config::test_account_from_args(args)
-        .map_err(|e| e.to_string())?;
+    let account =
+        bboxy450_term::cockpit::Config::test_account_from_args(args).map_err(|e| e.to_string())?;
     if let Some(path) = args.windows(2).find(|p| p[0] == "--run-dir").map(|p| &p[1]) {
         return Ok(path.into());
     }
@@ -9660,7 +9785,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Private backends read their authoritative run from stdin. Let their
     // bootstrap configure the once-only producer, rather than pinning an
     // unrelated inherited run before that configuration has arrived.
-    if !hook_args.first().is_some_and(|arg| matches!(arg.as_str(), "supervisor" | "logic" | "desktop"))
+    if !hook_args
+        .first()
+        .is_some_and(|arg| matches!(arg.as_str(), "supervisor" | "logic" | "desktop"))
         && let Some(root) = &diagnostics_root
     {
         bbt_rt::error_journal::configure(root);
@@ -9755,9 +9882,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         return Ok(());
     }
-    let notification_test_account = bboxy450_term::cockpit::Config::test_account_from_args(&hook_args)
-        .map_err(|error| error as Box<dyn std::error::Error>)?
-        .is_some();
+    let notification_test_account =
+        bboxy450_term::cockpit::Config::test_account_from_args(&hook_args)
+            .map_err(|error| error as Box<dyn std::error::Error>)?
+            .is_some();
     bboxy450_term::cockpit::Config::repository_from_args(&hook_args)
         .map_err(|error| error as Box<dyn std::error::Error>)?;
     let record_notifications = notification_recording(&hook_args)?;
@@ -9947,8 +10075,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     app.pacing = pacing;
     app.render_context = (!fake && !animate).then_some(render_context);
     app.stall = stall;
-    if !fake && !animate
-        && bboxy450_term::cockpit::Config::test_account_from_args(&args).is_ok_and(|account| account.is_none())
+    if !fake
+        && !animate
+        && bboxy450_term::cockpit::Config::test_account_from_args(&args)
+            .is_ok_and(|account| account.is_none())
     {
         app.start_usage();
     }
@@ -12191,7 +12321,14 @@ mod launcher_host_tests {
             "readiness and native responses only emit an explicit focus intent"
         );
         assert!(matches!(
-            notification_target(seat, now, now + Duration::from_secs(30), Some(&model), true, None),
+            notification_target(
+                seat,
+                now,
+                now + Duration::from_secs(30),
+                Some(&model),
+                true,
+                None
+            ),
             NotificationTarget::Refused(_)
         ));
         model.ui.seats.get_mut(&seat).unwrap().lifecycle = bbt_ui_model::Lifecycle::ClosedRetained;
@@ -12219,7 +12356,10 @@ mod launcher_host_tests {
             notification_episode: Some(episode),
             attention: None,
             record: bbt_proto::registry::SeatRecord::new(
-                bbt_mux::Ulid(1), bbt_mux::Ulid(2), "fixture", "codex",
+                bbt_mux::Ulid(1),
+                bbt_mux::Ulid(2),
+                "fixture",
+                "codex",
             ),
             state: bbt_proto::SeatState {
                 generation,
@@ -12486,15 +12626,40 @@ mod default_spawn_tests {
     #[test]
     fn configured_machine_rows_launch_and_disable_without_a_provider_snapshot() {
         let mut items = launcher_items(None);
-        let machines = std::collections::BTreeMap::from([("ssh:fixture".into(), bbt_ui::modules::settings::Machine { connect: "user@fixture.invalid".into(), ..Default::default() })]);
+        let machines = std::collections::BTreeMap::from([(
+            "ssh:fixture".into(),
+            bbt_ui::modules::settings::Machine {
+                connect: "user@fixture.invalid".into(),
+                ..Default::default()
+            },
+        )]);
         configure_machine_items(&mut items, &machines);
-        let hosts = items.iter().find(|item| item.id == "ssh").unwrap().children.as_ref().unwrap();
+        let hosts = items
+            .iter()
+            .find(|item| item.id == "ssh")
+            .unwrap()
+            .children
+            .as_ref()
+            .unwrap();
         assert_eq!(hosts.len(), 1);
-        let codex = hosts[0].children.as_ref().unwrap().iter().find(|row| row.harness == "codex").unwrap();
+        let codex = hosts[0]
+            .children
+            .as_ref()
+            .unwrap()
+            .iter()
+            .find(|row| row.harness == "codex")
+            .unwrap();
         assert_eq!(codex.id, "ssh:fixture:codex");
         assert!(codex.parameters);
-        assert_eq!(bboxy450_term::spawn_params::machine_target(&codex.id, &machines), Some(("codex".into(), "ssh:fixture".into())));
-        settings_destinations::filter(&mut items, &std::collections::BTreeSet::from(["ssh:fixture".into()]), &[]);
+        assert_eq!(
+            bboxy450_term::spawn_params::machine_target(&codex.id, &machines),
+            Some(("codex".into(), "ssh:fixture".into()))
+        );
+        settings_destinations::filter(
+            &mut items,
+            &std::collections::BTreeSet::from(["ssh:fixture".into()]),
+            &[],
+        );
         assert!(!items.iter().any(|item| item.id == "ssh"));
     }
 
@@ -12708,17 +12873,32 @@ mod composer_host_tests {
     fn terminal_paste_shortcut_keeps_composer_routing_and_owns_repeat_and_release() {
         let mut input = chrome_input("cmd-v").unwrap();
         let mut keyboard = keyboard::State::default();
-        assert_eq!(route_input(&mut keyboard, &input, 31 << 18, None), RoutedKey::TerminalPaste);
-        assert_eq!(route_composer(&input, 0, ComposeField::Body), RoutedKey::ComposerPaste);
+        assert_eq!(
+            route_input(&mut keyboard, &input, 31 << 18, None),
+            RoutedKey::TerminalPaste
+        );
+        assert_eq!(
+            route_composer(&input, 0, ComposeField::Body),
+            RoutedKey::ComposerPaste
+        );
         input.repeat = true;
-        assert_eq!(route_input(&mut keyboard, &input, 31 << 18, None), RoutedKey::Local);
+        assert_eq!(
+            route_input(&mut keyboard, &input, 31 << 18, None),
+            RoutedKey::Local
+        );
         input.repeat = false;
         input.state = ElementState::Released;
         input.modifiers.state = ModifiersState::empty();
-        assert_eq!(route_input(&mut keyboard, &input, 31 << 18, None), RoutedKey::Local);
+        assert_eq!(
+            route_input(&mut keyboard, &input, 31 << 18, None),
+            RoutedKey::Local
+        );
         input.state = ElementState::Pressed;
         input.modifiers.state = ModifiersState::CONTROL;
-        assert!(!matches!(route_key(&input, 0, None), RoutedKey::TerminalPaste));
+        assert!(!matches!(
+            route_key(&input, 0, None),
+            RoutedKey::TerminalPaste
+        ));
     }
     #[test]
     fn image_paste_shortcut_is_owned_by_composer_and_repeat_is_suppressed() {
@@ -13062,37 +13242,80 @@ mod ctl_ui_key_tests {
     use super::*;
     #[test]
     fn document_feed_rejects_a_replaced_harness_and_unavailable_queue_without_closing() {
-        if crate::lazy_projection_tests::isolated_ui_case("ctl_ui_key_tests::document_feed_rejects_a_replaced_harness_and_unavailable_queue_without_closing") { return; }
+        if crate::lazy_projection_tests::isolated_ui_case(
+            "ctl_ui_key_tests::document_feed_rejects_a_replaced_harness_and_unavailable_queue_without_closing",
+        ) {
+            return;
+        }
         use bbt_ui::modules::document_modal::controller::Action;
-        let (mut app,_)=crate::lazy_projection_tests::fixture();
-        app.test_account=true;
-        let seat=SeatId::from_u128(1);
-        let record=bbt_proto::SeatRecord::new(bbt_mux::Ulid(1),bbt_mux::Ulid(90),"original harness","zsh");
-        let mut model=bboxy450_term::model::build_at(&[record],&bboxy450_term::grids::Grids::new(),&Default::default(),Instant::now(),1000);
-        model.screens.insert(seat,Arc::new(bbt_proto::Screen::from_term(&bbt_core::Term::new(40,10,0),String::new(),None,None)));
-        app.focus.stage=Some(model.ui.window.stage.clone());
-        app.live_state=Some(Arc::new(model));
-        app.open_document_bound("#1".into(),Ok(None));
-        let captured=app.document_recipient.unwrap();
-        let markdown=bbt_doc::parse("**exact body** 日本語\n");
-        app.document.error=None;
-        app.document.prepared=Some(Arc::new(bboxy450_term::documents::Prepared {
-            reference:bbt_mux::knowledge::data_source::RecordRef {id:"id".into(),number:Some(1),slug:"doc".into(),path:"notes/doc.md".into(),digest:"digest".into(),external_id:None,updated_at:None},
-            etag:Some("etag".into()),document:markdown.document("notes/doc.md"),markdown,targets:vec![],images:vec![],
+        let (mut app, _) = crate::lazy_projection_tests::fixture();
+        app.test_account = true;
+        let seat = SeatId::from_u128(1);
+        let record = bbt_proto::SeatRecord::new(
+            bbt_mux::Ulid(1),
+            bbt_mux::Ulid(90),
+            "original harness",
+            "zsh",
+        );
+        let mut model = bboxy450_term::model::build_at(
+            &[record],
+            &bboxy450_term::grids::Grids::new(),
+            &Default::default(),
+            Instant::now(),
+            1000,
+        );
+        model.screens.insert(
+            seat,
+            Arc::new(bbt_proto::Screen::from_term(
+                &bbt_core::Term::new(40, 10, 0),
+                String::new(),
+                None,
+                None,
+            )),
+        );
+        app.focus.stage = Some(model.ui.window.stage.clone());
+        app.live_state = Some(Arc::new(model));
+        app.open_document_bound("#1".into(), Ok(None));
+        let captured = app.document_recipient.unwrap();
+        let markdown = bbt_doc::parse("**exact body** 日本語\n");
+        app.document.error = None;
+        app.document.prepared = Some(Arc::new(bboxy450_term::documents::Prepared {
+            reference: bbt_mux::knowledge::data_source::RecordRef {
+                id: "id".into(),
+                number: Some(1),
+                slug: "doc".into(),
+                path: "notes/doc.md".into(),
+                digest: "digest".into(),
+                external_id: None,
+                updated_at: None,
+            },
+            etag: Some("etag".into()),
+            document: markdown.document("notes/doc.md"),
+            markdown,
+            targets: vec![],
+            images: vec![],
         }));
-        for generation in [captured.1+1,captured.1+2] {
-            Arc::make_mut(app.live_state.as_mut().unwrap()).ui.seats.get_mut(&seat).unwrap().process_generation=generation;
+        for generation in [captured.1 + 1, captured.1 + 2] {
+            Arc::make_mut(app.live_state.as_mut().unwrap())
+                .ui
+                .seats
+                .get_mut(&seat)
+                .unwrap()
+                .process_generation = generation;
             app.document_action(Action::Feed);
             assert!(app.document.open);
             assert!(app.document.notice.as_deref().unwrap().contains("changed"));
             assert!(app.pending_commands.is_empty());
         }
-        app.document_recipient=Some((seat,captured.1+2));
+        app.document_recipient = Some((seat, captured.1 + 2));
         app.document_action(Action::Feed);
         assert!(app.document.open);
         assert!(app.document.notice.as_deref().unwrap().contains("queue"));
         app.document_action(Action::Copy);
-        assert_eq!(app.private_clipboard.as_deref(),Some("**exact body** 日本語\n"));
+        assert_eq!(
+            app.private_clipboard.as_deref(),
+            Some("**exact body** 日本語\n")
+        );
         app.document_action(Action::Close);
         assert!(!app.document.open);
         assert!(app.document_recipient.is_none());

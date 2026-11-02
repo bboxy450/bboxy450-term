@@ -328,8 +328,13 @@ fn target(view: &wgpu::TextureView, scale: f32) -> ChromeTarget<'_> {
 }
 
 impl Gpu {
-    pub fn install_document_images(&mut self, images: &[std::sync::Arc<bbt_render::chrome::icons::Image>]) -> Result<(),String> {
-        for image in images { self.renderer.add_image(image).map_err(|e|e.to_string())?; }
+    pub fn install_document_images(
+        &mut self,
+        images: &[std::sync::Arc<bbt_render::chrome::icons::Image>],
+    ) -> Result<(), String> {
+        for image in images {
+            self.renderer.add_image(image).map_err(|e| e.to_string())?;
+        }
         Ok(())
     }
 
@@ -368,9 +373,12 @@ impl Gpu {
             .map_err(|e| e.to_string())?;
         let mut native_probe = native_probe::NativeProbe::from_args()?;
         let config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | if native_probe.is_some() {
-                wgpu::TextureUsages::COPY_SRC
-            } else { wgpu::TextureUsages::empty() },
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | if native_probe.is_some() {
+                    wgpu::TextureUsages::COPY_SRC
+                } else {
+                    wgpu::TextureUsages::empty()
+                },
             format,
             width: size[0].max(1),
             height: size[1].max(1),
@@ -440,13 +448,18 @@ impl Gpu {
     // Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
     pub fn resize_native(&mut self, width: u32, height: u32) -> Result<(), String> {
         debug_assert!(self.configured);
-        if width == 0 || height == 0 { return Ok(()); }
+        if width == 0 || height == 0 {
+            return Ok(());
+        }
         let layer = {
             // SAFETY: this UI owner configures the same layer bound by the
             // display link. No drawable is imported until its new extent matches.
             let surface = unsafe { self.surface.as_hal::<wgpu::hal::api::Metal>() }
                 .ok_or("native resize requires Metal")?;
-            let layer = surface.render_layer().try_lock().ok_or("Metal layer busy")?;
+            let layer = surface
+                .render_layer()
+                .try_lock()
+                .ok_or("Metal layer busy")?;
             layer.clone()
         };
         let mut extent = layer.drawableSize();
@@ -612,6 +625,14 @@ impl Gpu {
         let AcquiredFrame { frame, wait } = acquired;
         let encode = Instant::now();
         let mut split = EncodeSplit::default();
+        let (misses0, shadows0) = self.renderer.mask_stats();
+        if std::env::var_os("BBOXY_OVERLAY_DUMP").is_some()
+            && let Some(panes) = &panes
+        {
+            for op in &panes.overlay {
+                dump_overlay_op(op, 0);
+            }
+        }
         self.renderer.begin_frame();
         self.materials.begin_frame();
         let mut encoder = self
@@ -639,13 +660,21 @@ impl Gpu {
             .map_err(|e| e.to_string())?;
         split.chrome = encode.elapsed();
         let mut probe_sample = self.native_probe.as_ref().and_then(|probe| {
-            panes.as_ref().and_then(|panes| probe.begin(&self.renderer.context.device, panes, &self.target, scale, frame_id))
+            panes.as_ref().and_then(|panes| {
+                probe.begin(
+                    &self.renderer.context.device,
+                    panes,
+                    &self.target,
+                    scale,
+                    frame_id,
+                )
+            })
         });
         if let Some(sample) = &mut probe_sample {
             sample.surface(&self.surface, matches!(frame, Acquired::Metal { .. }));
         }
-        if let (Some(probe),Some(sample)) = (&self.native_probe,&probe_sample) {
-            probe.inject(sample,"source",&self.target,&mut encoder);
+        if let (Some(probe), Some(sample)) = (&self.native_probe, &probe_sample) {
+            probe.inject(sample, "source", &self.target, &mut encoder);
         }
         if let Some(panes) = panes {
             let at = Instant::now();
@@ -677,8 +706,8 @@ impl Gpu {
             }
             split.overlay = at.elapsed();
         }
-        if let (Some(probe),Some(sample)) = (&self.native_probe,&probe_sample) {
-            probe.inject(sample,"copy",&self.target,&mut encoder);
+        if let (Some(probe), Some(sample)) = (&self.native_probe, &probe_sample) {
+            probe.inject(sample, "copy", &self.target, &mut encoder);
         }
         let at = Instant::now();
         let surface_view = frame.texture().create_view(&Default::default());
@@ -700,9 +729,9 @@ impl Gpu {
             )
             .map_err(|e| e.to_string())?;
         split.composite = at.elapsed();
-        if let (Some(probe),Some(sample)) = (&mut self.native_probe,probe_sample) {
-            probe.inject(&sample,"final",frame.texture(),&mut encoder);
-            probe.record(sample,&self.target,frame.texture(),&mut encoder);
+        if let (Some(probe), Some(sample)) = (&mut self.native_probe, probe_sample) {
+            probe.inject(&sample, "final", frame.texture(), &mut encoder);
+            probe.record(sample, &self.target, frame.texture(), &mut encoder);
         }
         let at = Instant::now();
         // wgpu 30 prohibits mixing its encoding API with as_hal_mut. Native
@@ -742,6 +771,9 @@ impl Gpu {
         }
         gpu_end.commit();
         split.submit = at.elapsed();
+        let (misses1, shadows1) = self.renderer.mask_stats();
+        split.mask_misses = misses1.saturating_sub(misses0);
+        split.shadow_requests = shadows1.saturating_sub(shadows0);
         self.last_split = split;
         let encoded = encode.elapsed();
         let present = Instant::now();
@@ -758,6 +790,53 @@ pub struct EncodeSplit {
     pub overlay: Duration,
     pub composite: Duration,
     pub submit: Duration,
+    /// Mask atlas misses and shadow (atlas path) requests during this frame.
+    pub mask_misses: u64,
+    pub shadow_requests: u64,
+}
+
+/// BBOXY_OVERLAY_DUMP: name each overlay primitive on stderr (profiling only).
+fn dump_overlay_op(op: &Paint, depth: usize) {
+    use bbt_ui_model::draw::Prim;
+    let pad = "  ".repeat(depth);
+    match op {
+        Paint::Draw(list) | Paint::Underlay(list) => {
+            for p in &list.primitives {
+                match p {
+                    Prim::Path {
+                        points,
+                        origin,
+                        scale,
+                        ..
+                    } => eprintln!(
+                        "{pad}overlay Path points={} origin={origin:?} scale={scale}",
+                        points.len()
+                    ),
+                    Prim::PathShadow { points, origin, .. } => eprintln!(
+                        "{pad}overlay PathShadow points={} origin={origin:?}",
+                        points.len()
+                    ),
+                    Prim::Text { text, .. } => {
+                        eprintln!("{pad}overlay Text {:?}", &text[..text.len().min(24)])
+                    }
+                    other => eprintln!(
+                        "{pad}overlay {}",
+                        std::any::type_name_of_val(other)
+                            .rsplit("::")
+                            .next()
+                            .unwrap_or("prim")
+                    ),
+                }
+            }
+        }
+        Paint::Group { ops, .. } => {
+            eprintln!("{pad}overlay Group");
+            for op in ops {
+                dump_overlay_op(op, depth + 1);
+            }
+        }
+        other => eprintln!("{pad}overlay {}", std::any::type_name_of_val(other)),
+    }
 }
 
 impl CellTextures {
@@ -1006,8 +1085,13 @@ pub(crate) struct VerificationFrame {
     chrome: ChromeCache,
 }
 impl VerificationFrame {
-    pub fn install_document_images(&mut self, images: &[std::sync::Arc<bbt_render::chrome::icons::Image>]) -> Result<(),String> {
-        for image in images { self.renderer.add_image(image).map_err(|e|e.to_string())?; }
+    pub fn install_document_images(
+        &mut self,
+        images: &[std::sync::Arc<bbt_render::chrome::icons::Image>],
+    ) -> Result<(), String> {
+        for image in images {
+            self.renderer.add_image(image).map_err(|e| e.to_string())?;
+        }
         Ok(())
     }
 
