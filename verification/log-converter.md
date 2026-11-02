@@ -90,3 +90,11 @@ zstd dictionary ID, with an explicit missing-dictionary error. No real session
 content is committed. The root resolution guard checks converter dependency
 direction, banned packages/declared copied origins and secret shapes, with
 broken controls. Undeclared copying remains a source-review obligation.
+
+P4 adds implementation-only Codex witnesses in `tests/roundtrip.rs` and
+`tests/codex_determinism.rs`: byte/IR round trips, retained seals, raw ownership,
+RecordId joins, append-stable projection tags and broken empty-tag/raw-copy
+controls. Truncated/oversized lines and injected read failures exercise cursor
+recovery. This is a file parser checkpoint, not a durable watcher ack protocol;
+LcWatcher remains P7. The real CLI witness is ignored in ordinary Cargo tests
+and runs only through `make test-log-converter-native` with private homes/mocks.
