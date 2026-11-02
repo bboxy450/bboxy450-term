@@ -32,8 +32,10 @@ const CURSOR: &str = "provenance/artifact-projection";
 // Artifact Markdown is an eventually consistent projection of the signed log.
 // A turn writes until this budget is spent, then rests REST_FACTOR times as
 // long (capped), so a burst catches up without holding the logic owner.
-const PROJECTION_BUDGET: Duration = Duration::from_millis(40);
-const REST_FACTOR: u32 = 4;
+// 8 ms keeps a terminal keystroke behind at most one slice of this work on
+// the logic owner's thread; artifacts may trail the log by minutes.
+const PROJECTION_BUDGET: Duration = Duration::from_millis(8);
+const REST_FACTOR: u32 = 8;
 const MAX_REST: Duration = Duration::from_secs(5);
 #[derive(Clone)]
 struct Entry {

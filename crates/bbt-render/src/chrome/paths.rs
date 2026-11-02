@@ -363,16 +363,18 @@ impl Renderer {
         };
         // SVG paint order: fill first, then stroke. Their geometry is cached
         // independently; colour, scale and translation do not retessellate.
+        // Both draw in one render pass: source-over of the stroke onto the
+        // fill inside a pass equals two load/store passes.
+        let mut draws = Vec::with_capacity(2);
         for (color, stroke) in fill
             .iter()
             .map(|c| (*c, None))
             .chain(std::iter::once((*color, Some(stroke))))
         {
-            self.draw_geometry(
+            if let Some(draw) = self.prepare_geometry(
                 context,
                 arenas,
                 &target,
-                encoder,
                 PathPaint {
                     points,
                     stroke,
@@ -381,19 +383,50 @@ impl Renderer {
                     scale: *scale,
                 },
                 clips,
-            )?;
+            )? {
+                draws.push(draw);
+            }
+        }
+        if draws.is_empty() {
+            return Ok(());
+        }
+        let format = target.format.remove_srgb_suffix();
+        let view = target
+            .view
+            .texture()
+            .create_view(&wgpu::TextureViewDescriptor {
+                format: Some(format),
+                ..Default::default()
+            });
+        crate::passes::count(crate::passes::Kind::Path);
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("analytic path coverage"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            ..Default::default()
+        });
+        pass.set_pipeline(&self.pipelines[&format]);
+        for bindings in &draws {
+            pass.set_bind_group(0, bindings, &[]);
+            pass.draw(0..6, 0..1);
         }
         Ok(())
     }
-    fn draw_geometry(
+    fn prepare_geometry(
         &mut self,
         context: &crate::device::DeviceContext,
         arenas: &mut super::arena::Arenas,
         target: &ChromeTarget<'_>,
-        encoder: &mut wgpu::CommandEncoder,
         path: PathPaint<'_>,
         clips: &[Prim],
-    ) -> Result<()> {
+    ) -> Result<Option<wgpu::BindGroup>> {
         let PathPaint {
             points,
             stroke,
@@ -410,7 +443,7 @@ impl Renderer {
             };
             let count = edges.len() as u32;
             if count == 0 {
-                return Ok(());
+                return Ok(None);
             }
             if count > 65536 {
                 return Err("path edge budget exceeded".into());
@@ -493,31 +526,7 @@ impl Renderer {
                 },
             ],
         });
-        let view = target
-            .view
-            .texture()
-            .create_view(&wgpu::TextureViewDescriptor {
-                format: Some(format),
-                ..Default::default()
-            });
-        crate::passes::count(crate::passes::Kind::Path);
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("analytic path coverage"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &view,
-                depth_slice: None,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            ..Default::default()
-        });
-        pass.set_pipeline(pipeline);
-        pass.set_bind_group(0, &bindings, &[]);
-        pass.draw(0..6, 0..1);
-        Ok(())
+        Ok(Some(bindings))
     }
 }
 fn pipeline(device: &wgpu::Device, format: wgpu::TextureFormat) -> wgpu::RenderPipeline {

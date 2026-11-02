@@ -53,6 +53,9 @@ pub struct ChromeRenderer {
     pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
     group_pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
     group_depth: usize,
+    /// Isolated group layers kept across frames, so a frame with nine groups
+    /// does not allocate nine full-window textures. Keyed by size.
+    group_layers: Vec<wgpu::Texture>,
     paths: paths::Renderer,
     /// Headless material renders reuse one Pass (bind layout and pipelines) per target
     /// format; see materials::render_layered_to_rgba.
@@ -64,7 +67,9 @@ impl ChromeRenderer {
     /// A submission boundary: per-draw buffer slices may be reused from here on. Call it
     /// before encoding each submitted command buffer, never while one is being encoded.
     /// Register a worker-decoded immutable bitmap; the next draw uploads its dirty atlas region.
-    pub fn add_image(&mut self, image: &icons::Image) -> Result<()> { self.icons.add_bitmap(image) }
+    pub fn add_image(&mut self, image: &icons::Image) -> Result<()> {
+        self.icons.add_bitmap(image)
+    }
     pub fn begin_frame(&mut self) {
         self.arenas.begin_frame();
     }
@@ -117,6 +122,7 @@ impl ChromeRenderer {
             image_sampler,
             pipelines: HashMap::new(),
             group_pipelines: HashMap::new(),
+            group_layers: Vec::new(),
             group_depth: 0,
             paths: paths::Renderer::default(),
             material_pass: None,
@@ -156,6 +162,15 @@ impl ChromeRenderer {
     ) -> Result<()> {
         let clear = wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT);
         self.draw_with_load(list, target, encoder, clear)
+    }
+    /// A pooled full-window layer of exactly this size; other sizes are dropped
+    /// so a resize does not retain stale textures.
+    fn take_group_layer(&mut self, width: u32, height: u32) -> wgpu::Texture {
+        self.group_layers
+            .retain(|t| t.width() == width && t.height() == height);
+        self.group_layers
+            .pop()
+            .unwrap_or_else(|| group::texture(&self.context.device, width, height))
     }
     fn draw_with_load(
         &mut self,
@@ -218,7 +233,7 @@ impl ChromeRenderer {
                 for _ in &clips {
                     children.unclip();
                 }
-                let layer = group::texture(&self.context.device, width, height);
+                let layer = self.take_group_layer(width, height);
                 let layer_view = layer.create_view(&Default::default());
                 self.with_group_layer(|renderer| {
                     renderer.draw(
@@ -249,6 +264,9 @@ impl ChromeRenderer {
                     },
                     encoder,
                 )?;
+                // The composite reading this layer is already encoded; the next
+                // group in this frame may draw into it again.
+                self.group_layers.push(layer);
                 batch = DrawList {
                     primitives: clips.clone(),
                     ..Default::default()

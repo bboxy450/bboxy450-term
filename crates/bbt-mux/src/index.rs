@@ -726,33 +726,45 @@ impl Index {
     fn record_numbers(&self) -> Result<BTreeMap<u64, Vec<String>>> {
         let mut paths = Vec::new();
         collect(&self.root, &mut paths)?;
-        paths.sort_by(|a, b| a.0.cmp(&b.0));
         let mut cache = self.numbers.lock().unwrap_or_else(|e| e.into_inner());
-        let mut fresh = BTreeMap::new();
+        // The hot path is a root of thousands of unchanged files on the
+        // logic owner's thread: one stat each, no sort, no re-allocation of
+        // the cache, and the relative path is derived only on a miss.
         let mut numbers: BTreeMap<u64, Vec<String>> = BTreeMap::new();
+        let mut seen = std::collections::HashSet::with_capacity(paths.len());
         for (path, metadata) in paths {
+            let stamp = file_stamp(&metadata);
+            let number = match cache.get(&path) {
+                Some((cached, number)) if *cached == stamp => *number,
+                _ => {
+                    let relative = path
+                        .strip_prefix(&self.root)
+                        .ok()
+                        .and_then(Path::to_str)
+                        .ok_or_else(|| invalid("record path is not relative UTF-8"))?;
+                    let doc = self
+                        .current(relative)?
+                        .ok_or_else(|| invalid("record disappeared during number scan"))?;
+                    let number = record_number(&doc.metadata).ok_or_else(|| {
+                        invalid(format!("{relative}: invalid or missing record number"))
+                    })?;
+                    cache.insert(path.clone(), (stamp, number));
+                    number
+                }
+            };
             let relative = path
                 .strip_prefix(&self.root)
                 .ok()
                 .and_then(Path::to_str)
                 .ok_or_else(|| invalid("record path is not relative UTF-8"))?;
-            let stamp = file_stamp(&metadata);
-            let number = match cache.get(&path) {
-                Some((cached, number)) if *cached == stamp => *number,
-                _ => {
-                    let doc = self
-                        .current(relative)?
-                        .ok_or_else(|| invalid("record disappeared during number scan"))?;
-                    record_number(&doc.metadata).ok_or_else(|| {
-                        invalid(format!("{relative}: invalid or missing record number"))
-                    })?
-                }
-            };
             numbers.entry(number).or_default().push(relative.to_owned());
-            fresh.insert(path, (stamp, number));
+            seen.insert(path);
         }
         // Removed files leave the cache, so it never outgrows the root.
-        *cache = fresh;
+        cache.retain(|path, _| seen.contains(path));
+        for paths in numbers.values_mut() {
+            paths.sort();
+        }
         Ok(numbers)
     }
     pub(crate) fn by_number(&self, number: u64) -> Result<Option<Document>> {

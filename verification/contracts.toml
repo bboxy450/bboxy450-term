@@ -398,7 +398,7 @@ title = "Paced artifact projection eventually drains a bounded backlog"
 models = ["ProjectionPacing", "BrokenProjectionPacing"]
 sources = ["crates/bbt-mux/src/provenance/engine.rs", "crates/bboxy450-term/tests/formal_contracts/provenance_models.rs"]
 implementation_tests = ["crates/bbt-mux/tests/provenance.rs", "crates/bbt-mux/src/logic.rs"]
-assumptions = "Two arrivals, one projection per turn and a two-tick rest. Rest expiry, projection and logic-owner steps are weakly fair; arrivals are not. A real turn projects rows until a 40 ms budget is spent, then rests four times its duration (at most 5 s); artifact Markdown is an eventually consistent projection of the signed activity log, and an interrupted batch is re-projected idempotently from its persisted cursor. Wall-clock costs, fsync and signing are implementation-tested."
+assumptions = "Two arrivals, one projection per turn and a two-tick rest. Rest expiry, projection and logic-owner steps are weakly fair; arrivals are not. A real turn projects rows until an 8 ms budget is spent, then rests eight times its duration (at most 5 s); artifact Markdown is an eventually consistent projection of the signed activity log, and an interrupted batch is re-projected idempotently from its persisted cursor. Wall-clock costs, fsync and signing are implementation-tested."
 property = "Every backlog is eventually projected (BacklogEventuallyProjected). The rest is set only after a turn that wrote; the broken control renews it on every logic step and starves projection, which must fail liveness."
 checks = ["make test-formal", "make test"]
 
