@@ -4,10 +4,12 @@ from datetime import date, datetime, timedelta, timezone
 import json
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 import uuid
 import os
+import xml.etree.ElementTree as ElementTree
 
 
 class TestCoverage:
@@ -161,6 +163,70 @@ def retry_args(arguments, crate, test, api):
     return ["cargo", "test", *kept, "-p", crate, "--", "--exact", test]
 
 
+def nextest(api):
+    """cargo-nextest is the default runner; BBOXY_TEST_RUNNER=cargo selects libtest."""
+    runner = os.environ.get("BBOXY_TEST_RUNNER", "auto")
+    if runner not in ("auto", "nextest", "cargo"):
+        raise api.Refusal("BBOXY_TEST_RUNNER must be auto, nextest or cargo")
+    found = shutil.which("cargo-nextest") is not None
+    if runner == "nextest" and not found:
+        raise api.Refusal("cargo-nextest missing: run make tools")
+    return runner != "cargo" and found
+
+
+def junit_tests(path, packages):
+    """Coverage rows from nextest JUnit: binary ids are pkg, pkg::test, pkg::bin/name."""
+    rows = []
+    for suite in ElementTree.parse(path).getroot().iter("testsuite"):
+        package, _, rest = suite.get("name", "").partition("::")
+        kind, name = ("lib", None) if not rest else ("bin", rest[4:]) if rest.startswith("bin/") \
+            else (None, None) if "/" in rest else ("test", rest)
+        info = packages.get(package)
+        if kind is None or info is None:
+            continue
+        if name is None:
+            name = next((t["name"] for t in info["targets"] if set(t["kind"]) & {"lib", "proc-macro"}), package)
+        for case in suite.iter("testcase"):
+            failed = case.find("failure") is not None or case.find("error") is not None
+            skipped = case.find("skipped") is not None
+            rows.append({"package": package, "kind": kind, "target": name, "binary": suite.get("name"),
+                         "test": case.get("name"), "result": "FAILED" if failed else "ignored" if skipped else "ok"})
+    return rows
+
+
+def nextest_run(root, cargo_args, target, api):
+    """Every test binary of the selection runs concurrently; doctests run after, by cargo."""
+    split = cargo_args.index("--") if "--" in cargo_args else len(cargo_args)
+    build, filters = cargo_args[:split], cargo_args[split + 1:]
+    junit = Path(target) / "nextest" / "default" / "junit.xml"
+    junit.unlink(missing_ok=True)
+    argv = ["cargo", "nextest", "run", *build, *(["--", *filters] if filters else [])]
+    print("quarantine: " + " ".join(argv), flush=True)
+    code = subprocess.run(argv, cwd=root).returncode
+    packages = api.metadata(root)
+    tests = junit_tests(junit, packages) if junit.exists() else []
+    output = ""
+    selective = {"--test", "--lib", "--bin", "--bins", "--tests", "--example", "--examples"}
+    if not selective & set(build) and code in (0, 100):
+        chosen = [build[i + 1] for i, a in enumerate(build[:-1]) if a in ("-p", "--package")]
+        if "--workspace" in build or "--all" in build:
+            chosen = list(packages)
+        libraries = [n for n in chosen if n in packages and any(
+            set(t["kind"]) & {"lib", "proc-macro"} and t.get("doctest", True) for t in packages[n]["targets"])]
+        if libraries:
+            kept = [a for i, a in enumerate(build) if a not in ("-p", "--package", "--workspace", "--all")
+                    and (i == 0 or build[i - 1] not in ("-p", "--package"))]
+            doc = ["cargo", "test", "--doc", *kept, *[x for n in libraries for x in ("-p", n)],
+                   *(["--", *filters] if filters else [])]
+            print("quarantine: " + " ".join(doc), flush=True)
+            result = subprocess.run(doc, cwd=root, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            output = result.stdout
+            print(output, end="", flush=True)
+            if result.returncode:
+                return result.returncode, tests, output + "\ndoctest failed\n"
+    return code, tests, output
+
+
 def test(arguments, api):
     root = api.repository()
     if arguments and arguments[0] == "--":
@@ -170,6 +236,15 @@ def test(arguments, api):
     if "--no-fail-fast" not in cargo_args[:split]:
         cargo_args.insert(split, "--no-fail-fast")
     coverage = TestCoverage(root, cargo_args, api)
+    if nextest(api):
+        code, coverage.tests, output = nextest_run(root, cargo_args, coverage.target, api)
+        if code == 0:
+            coverage.passed()
+            return 0
+        failed = [row["test"] for row in coverage.tests if row["result"] == "FAILED"]
+        if code != 100 or not failed or "doctest failed" in output:
+            return code or 1
+        return retry_quarantined(failed, arguments, coverage, root, api, code)
     # One ordered stream preserves Cargo's binary headings alongside libtest's
     # per-binary durations; --no-fail-fast guarantees later suites still run.
     child = subprocess.Popen(["cargo", "test", *cargo_args], cwd=root, text=True,
@@ -186,15 +261,22 @@ def test(arguments, api):
         return 0
     failed = re.findall(r"(?m)^test (.+) \.\.\. FAILED$", result.stdout)
     counts = sum(map(int, re.findall(r"test result: FAILED\..*? (\d+) failed", result.stdout)))
-    entries = {row["test"]: row for row in rows(root) if not row["expired"]}
     if not failed or len(failed) != len(set(failed)) or counts != len(failed):
         return result.returncode
+    if re.search(r"could not compile|could not execute|doctest failed", result.stdout):
+        return result.returncode
+    return retry_quarantined(failed, arguments, coverage, root, api, result.returncode)
+
+
+def retry_quarantined(failed, arguments, coverage, root, api, code=1):
+    """Only listed, unexpired tests are retried, once each and alone; anything else fails."""
+    entries = {row["test"]: row for row in rows(root) if not row["expired"]}
+    if len(failed) != len(set(failed)):
+        return code
     for name in failed:
         if name not in entries:
             print("quarantine: unlisted or expired: " + name, file=sys.stderr)
-            return result.returncode
-    if re.search(r"could not compile|could not execute|doctest failed", result.stdout):
-        return result.returncode
+            return code
     for name in failed:
         retry = api.command(retry_args(arguments, entries[name]["crate"], name, api), cwd=root, check=False)
         print(retry.stdout + retry.stderr, end="", flush=True)

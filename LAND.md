@@ -6,26 +6,35 @@ One command, from your own branch in your own worktree:
 make land
 ```
 
-It runs `scripts/land-fast.sh`:
+It runs `scripts/land-fast.sh` (`make push` is the same command):
 
-1. Rebase on `origin/main` (exit 78 on conflict).
-2. `cargo check --workspace --all-targets`, then clippy `-D warnings` and `cargo test`
-   for each package whose files changed. `.bboxy/` changes add the doc corpus test;
-   model or `verification/` changes add `make test-formal`.
-3. Push. If `main` moved, rebase, recompile the workspace and push again (up to 5 times).
+1. Rebase on `origin/main` (exit 78 on conflict); refuse unsigned commits.
+2. Compute the affected set with `scripts/affected.sh`: crates whose files changed plus
+   every crate that depends on them. `Cargo.toml`, `Cargo.lock`, `.cargo/` and
+   `rust-toolchain.toml` select every crate; docs/lab-only diffs select none.
+3. One `cargo clippy -D warnings` and one `scripts/quarantine-test.sh` run over that set.
+   The test run is cargo-nextest: all affected test binaries run concurrently, a hung test
+   dies after 5 min, doctests follow. `.bboxy/` changes add the doc corpus test; model or
+   `verification/` changes add `make test-formal`.
+4. Push. If `main` moved, rebase, recheck the affected crates and push again (up to 5 times).
 
-Cargo runs under `nice -n 10` on half the cores (`CARGO_BUILD_JOBS`) with a private build
-dir, so live seats keep working while you land.
+Cargo runs under `nice -n 10` with 4 jobs (`BBOXY_CARGO_JOBS`) and 2 test threads, with the
+shared sccache and a private build dir, so live seats keep working.
 
-`make land-full` is the old full signed gate (`scripts/land.sh --full`). Use it when a
-brief asks for the full suite or a change touches shared core behaviour broadly.
+`make land-full` is the full signed gate (`scripts/land.sh --full`): `make test` plus a
+formal receipt. Gate slots keep their checkout and target warm between landings, so only
+changed crates rebuild; one slot runs at a time (`BBOXY_GATE_SLOTS`, at most 3) and other
+landings queue for it instead of failing (`BBOXY_GATE_WAIT=0` restores exit 75); it uses 4
+Cargo jobs (`BBOXY_GATE_JOBS`). Use it for
+a release, a toolchain change or when a brief asks for the full suite.
 
-## Why fast by default
+## Why diff-scoped by default
 
-This laptop runs many seats at once (16 cores, load 7-10). The full gate took a median
+This laptop runs many seats at once (16 cores, load 7-36). The full gate took a median
 of 24 min (p90 30, max 51) while `main` moved every ~33 min, so agents sat in the gate and
-then raced. The fast gate compiles everything, tests what you changed, and leaves the full
-suite to `make land-full`. A red `main` is fixed forward by whoever broke it.
+then raced. Measured cost was mostly compilation in a fresh, empty gate target (10-25 min)
+and test binaries run one after another (8-15 min). The diff-scoped gate builds warm and
+tests the affected crates in parallel. A red `main` is fixed forward by whoever broke it.
 
 ## Rules
 

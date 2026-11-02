@@ -194,7 +194,7 @@ checks through the existing scope mechanism, but reruns formal verification for
 the new source commit. No cached receipt from an old commit authorizes publication.
 
 Use `make check-formal-evidence` to validate existing evidence without rerunning
-the model checker. `make push` also runs this check. The evidence hash records a
+the model checker. `make land-full` also runs this check. The evidence hash records a
 script-produced result; it is not a proof of arbitrary Rust refinement or a
 replacement for signed commits, actual test execution and review.
 

@@ -2,6 +2,19 @@
 
 Read `~/.agents/AGENTS.md` first. Codex is an Executor. A direct operator request is the brief; implement its scope in your own worktree.
 
+## Quiet by default
+
+This is one machine shared by many seats; every message wakes a model and costs CPU.
+
+- **Executor:** no acknowledgements, plans, progress, status or "still working" messages.
+  Send exactly one message when blocked (evidence and the exact decision needed) and
+  one when done (`task_report` with the report locator). Silence means working.
+- **Solo:** owns one task end to end and lands it alone. It reports once, when landed or
+  blocked, and does not recruit seats.
+- **Oracle/Architect:** brief once, then wait for the report. Do not poll a working seat
+  or ask for status; read the worktree and `git log` instead.
+- Run one build or test at a time per seat, and only the checks the diff can affect.
+
 ## Respectful slopping — keep attribution attached
 
 Read [ATTRIBUTION.md](ATTRIBUTION.md) before copying, adapting, translating or
@@ -35,10 +48,18 @@ documents in source and binary packages. Slop respectfully. Keep the credit atta
 | `make release` | Identity-signed macOS ZIP, SHA256 and detached GPG signature |
 | `make package-crate CRATE=name` | Package/sign one crate without publishing |
 | `make publish-release` | Signed tag and GitHub app release; only on an authorized release brief |
-| `make push` | Verify the exact-HEAD CI result and signed commits, then fast-forward GitHub main; only when push is authorized |
-| `make land` | Land your branch on main fast via `scripts/land-fast.sh` (rebase, workspace check, tests of changed packages, push); `make land-full` runs the full gate. Only when push is authorized. **Read [LAND.md](LAND.md) first** |
+| `make land` = `make push` | Land your branch via `scripts/land-fast.sh`: rebase, signed-commit check, clippy and nextest for the changed crates plus every crate that depends on them, push. Only when push is authorized. **Read [LAND.md](LAND.md) first** |
+| `make land-full` | Full signed gate (`make test` + formal receipt) in a warm, queued gate slot; on a release, toolchain or explicit brief |
+| `make tools` | Install cargo-nextest and sccache once per machine |
 
-Overrides live in `make help`: `PROFILE`, `TARGET_DIR`, `INSTALL_DIR`, `UNSIGNED_INSTALL_DIR`, `CI_LOG`. Build caches are selected by `scripts/cache-env.sh`; Make sources it. Keep two Cargo jobs and a worktree-local target. Never change global Cargo configuration for a task.
+Overrides live in `make help`: `PROFILE`, `TARGET_DIR`, `INSTALL_DIR`, `UNSIGNED_INSTALL_DIR`, `CI_LOG`. Build caches are selected by `scripts/cache-env.sh`; Make sources it. Never change global Cargo configuration for a task.
+
+**Rust workflow, every crate.** Tests run through cargo-nextest (`.config/nextest.toml`): binaries run concurrently, each test
+is its own process, hung tests die after 5 min; doctests run after through `cargo test --doc`.
+`scripts/quarantine-test.sh` is the one entry point. sccache shares compiled dependencies
+between worktrees. Iteration builds use two Cargo jobs; `make land` uses four, niced, and two
+test threads; on a new machine any build/test/land target installs the tools first.
+While iterating, test one crate: `cargo nextest run -p <crate>` (add `-E 'test(name)'` to narrow).
 
 Signed installation never silently falls back to unsigned. `install-unsigned` uses an ad-hoc executable signature needed by arm64 macOS, with no Apple identity/Keychain access. It is a test install, not distribution signing. Notification authorization tests must use the appropriate signed build; ordinary smoke uses file custody and no OS prompt.
 
@@ -71,10 +92,10 @@ and record abstractions and unmodeled behavior in `verification/contracts.toml`.
 Pure parsing, geometry and performance still need their specialized tests.
 
 Landing requires a clean, current-source formal receipt as well as the Rust CI
-result. `scripts/land.sh` records its evidence hash and corpus counts and refreshes
-formal verification after a rebase, even when Rust checks can be reused. Missing,
-stale, incomplete or mismatched evidence blocks the push. `make check-formal-evidence`
-verifies the stored receipt; `make push` enforces it too. Land with `make land`;
+result. `make land-full` (`scripts/land.sh`) records its evidence hash and corpus counts and
+refreshes formal verification after a rebase. `make land` runs `make test-formal` when a
+model or `verification/` changes. `make check-formal-evidence` verifies the stored
+receipt. Land with `make land`;
 [LAND.md](LAND.md) has the procedure, the measured timings behind it and the rules that
 keep a landing to one pass.
 
@@ -82,9 +103,9 @@ keep a landing to one pass.
 
 - Read the task, `.bboxy/vision.md`, relevant specs/decisions/interfaces and the source/Git state before editing. `.bboxy/tasks/README.md` is the historical task board; GitHub issues track current release findings.
 - One writing worktree per Executor. Do not edit the shared checkout, stage broadly, stash, reset, or change someone else's work. Stage exact paths. Every commit is signed with its author's exact approved key and identity from `.bboxy/invariants/signed-main.md`; Boxy and Maksim are approved.
-- Run the Make targets appropriate to the change. Before handoff/push, `make test` must pass on the exact committed source. A real process-boundary change also runs `make test-boundaries`; UI geometry/reference changes require the existing parity check.
+- Run the Make targets appropriate to the change. Before push, `make land` runs the diff-scoped gate on the exact rebased source; run the full `make test` only for a release, a toolchain or `Cargo.lock` change, or when the brief asks. A real process-boundary change also runs `make test-boundaries`; UI geometry/reference changes require the existing parity check.
 - Use the push gate to inspect and reuse source-bound verification already completed. Run only a missing or stale required check once; do not run the entire suite separately and repeat it for the push. Report the actual coverage and any operator-authorized exception accurately.
-- **CPU is shared and scarce** (operator, 2026-11-01: several swarms and many workers on one machine). While iterating, run only the targeted tests for the crates you touch. Run full `make test` once, on the final committed source. Before starting it, count active runs with `pgrep -f ci-local.sh`, and start only when three or fewer are running. Recheck every few minutes. This is a cap, not a queue: nobody waits on a single holder. Verifiers reuse the author's exact-HEAD CI log instead of rerunning the suite.
+- **CPU is shared and scarce** (operator, 2026-11-01: several swarms and many workers on one machine). While iterating, run only the targeted tests for the crates you touch. When a full `make test` is required, run it once, on the final committed source. Before starting it, count active runs with `pgrep -f ci-local.sh`, and start only when three or fewer are running. Recheck every few minutes. This is a cap, not a queue: nobody waits on a single holder. Verifiers reuse the author's exact-HEAD CI log instead of rerunning the suite.
 - Write the full report in `.bboxy/reports/YYYY-MM-DD-slug.md`, commit it with the work and a `Report: [[reports/YYYY-MM-DD-slug]]` trailer, then call `task_report` with a one-paragraph summary and the `report` locator. Corrections create a new report with `supersedes:`.
 - Report commands and actual exits, paths/lines and mechanisms, what was skipped, the commit and worktree status. An agent report or dashboard label is not proof.
 - Keep raw logs and fixture accounts outside Git. In `.bboxy/runs`, commit only a `.log`/`.json` command/exit/hash summary. Markdown under `.bboxy` is a numbered record and must follow its frontmatter format.
@@ -110,9 +131,9 @@ The Oracle checks each of these itself, not from the Executor's report. A merge 
 
 - the change matches its written spec or ICD
 - formal verification is green: `make test-formal`, with any changed stateful contract carrying its updated model and a broken control
-- unit, integration and smoke tests are green under `make test`, run unattended
+- unit, integration and smoke tests for the affected crates are green under `make land` (`make land-full` when the brief requires the full suite), run unattended
 - the diff has been read
 - every commit is signed
-- the landing gates pass through `scripts/land.sh`
+- the landing gates pass through `make land`
 
 If any of these is missing, the PR goes back to its Executor. Crate releases follow the signed release order in `~/.agents/AGENTS.md`.

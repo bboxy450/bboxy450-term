@@ -361,7 +361,8 @@ def affected(range_spec, *, root=None):
                 dependencies[name].add(dep["name"])
     tier = "lab" if paths and all(p.startswith(("lab/", "design/", ".bboxy/"))
                                  for p in paths) else "code"
-    broad = [p for p in paths if p in ("Cargo.toml", "Cargo.lock") or p.startswith(".cargo/")]
+    broad = [p for p in paths if p in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml")
+             or p.startswith(".cargo/")]
     # Validation tools are shared for retry decisions, but are not Rust source
     # dependencies. Their fixture suite and the fast invariants check them.
     tooling = [p for p in paths if (p.startswith("scripts/") and not p.startswith("scripts/e2e/"))
@@ -1393,22 +1394,33 @@ def slot_guard(path, *, blocking=False):
             fcntl.flock(stream, fcntl.LOCK_UN)
 
 
-def remove_slot(path, root):
+def release_slot(path, root):
+    # Only ownership is released. The checkout and its Cargo target stay warm, so the
+    # next landing rebuilds only what changed since this slot's last candidate.
     if any(p.name not in {"pid", "owner.json", "tree", "target"} for p in path.iterdir()):
         raise Refusal("slot_has_unknown_files: " + str(path))
-    tree = path / "tree"
-    if tree.exists():
-        if tree.is_symlink() or common_repository(tree) != common_repository(root):
-            raise Refusal("slot_tree_is_not_this_repository")
-        git("worktree", "remove", "--force", str(tree), cwd=root)
-    target = path / "target"
-    if target.exists():
-        if target.is_symlink():
-            raise Refusal("slot_target_is_symlink")
-        shutil.rmtree(target)
+    # A foreign or symlinked tree/target is refused loudly by candidate_environment.
     (path / "pid").unlink(missing_ok=True)
     (path / "owner.json").unlink(missing_ok=True)
-    path.rmdir()
+
+
+def slot_limit():
+    """One gate at a time by default: a queued gate at full width beats three thrashing."""
+    try:
+        wanted = int(os.environ.get("BBOXY_GATE_SLOTS", "1"))
+    except ValueError:
+        raise Refusal("BBOXY_GATE_SLOTS must be 1, 2 or 3")
+    if wanted not in (1, 2, 3):
+        raise Refusal("BBOXY_GATE_SLOTS must be 1, 2 or 3")
+    return min(wanted, 3 if shutil.disk_usage(Path.home()).free >= 25 * 1024 ** 3 else 2)
+
+
+def gate_jobs():
+    """Cargo jobs for the gate slot; agents' own builds keep two."""
+    try:
+        return max(2, int(os.environ.get("BBOXY_GATE_JOBS") or 4))
+    except ValueError:
+        raise Refusal("BBOXY_GATE_JOBS must be an integer")
 
 
 def slot_notice(text):
@@ -1432,9 +1444,22 @@ class Slot:
         self.previous_environment = {}
 
     def __enter__(self):
+        waiting = False
+        while True:
+            try:
+                return self.acquire()
+            except Refusal as refusal:
+                if refusal.code != 75 or os.environ.get("BBOXY_GATE_WAIT") == "0":
+                    raise
+                if not waiting:
+                    waiting = True
+                    print(f"{self.label}: {refusal}; queued, waiting for a gate slot", flush=True)
+                time.sleep(5)
+
+    def acquire(self):
         directory = slot_directory()
         directory.mkdir(parents=True, exist_ok=True)
-        limit = 3 if shutil.disk_usage(Path.home()).free >= 25 * 1024 ** 3 else 2
+        limit = slot_limit()
         numbers = [self.preferred] if self.preferred is not None else range(1, limit + 1)
         for number in numbers:
             if number not in range(1, limit + 1):
@@ -1445,7 +1470,7 @@ class Slot:
             with slot_guard(path) as held:
                 if not held:
                     continue
-                if path.exists():
+                if (path / "pid").exists():
                     try:
                         pid = int((path / "pid").read_text())
                         if pid <= 0:
@@ -1453,13 +1478,15 @@ class Slot:
                         os.kill(pid, 0)
                         continue
                     except ProcessLookupError:
-                        try:
-                            remove_slot(path, self.root)
-                        except (OSError, Refusal):
-                            continue
+                        pass
                     except (ValueError, OSError):
                         continue
-                path.mkdir()
+                if path.exists():
+                    try:
+                        release_slot(path, self.root)
+                    except (OSError, Refusal):
+                        continue
+                path.mkdir(exist_ok=True)
                 owner = {"pid": os.getpid(), "token": self.token,
                          "repository": str(common_repository(self.root))}
                 atomic_write(path / "pid", str(os.getpid()) + "\n")
@@ -1488,7 +1515,7 @@ class Slot:
                 with slot_guard(self.path, blocking=True):
                     data = json.loads((self.path / "owner.json").read_text())
                     if data.get("token") == self.token and data.get("pid") == os.getpid():
-                        remove_slot(self.path, self.root)
+                        release_slot(self.path, self.root)
         except BaseException as cleanup_error:
             code = getattr(cleanup_error, "code", 1)
             raise
@@ -1536,16 +1563,20 @@ def candidate_environment(root, sha):
         git("checkout", "-f", sha, cwd=tree)
         git("clean", "-fdx", cwd=tree)
     else:
+        git("worktree", "prune", cwd=root)  # /tmp may have dropped a registered tree
         git("worktree", "add", "--detach", str(tree), sha, cwd=root)
-    if target.exists():
-        if target.is_symlink():
-            raise Refusal("slot_target_is_symlink")
-        shutil.rmtree(target)
-    target.mkdir()
+    if target.is_symlink():
+        raise Refusal("slot_target_is_symlink")
+    target.mkdir(exist_ok=True)  # warm: same path, so Cargo rebuilds only changed crates
     initializer = tree / "scripts/harness-submodule.py"
     if initializer.is_file():
         checked([sys.executable, "-I", str(initializer)], tree)
-    return tree, build_environment(tree, target=target)
+    environment = build_environment(tree, target=target)
+    # Intermediates live in the slot's own target, never a worktree's private build dir.
+    environment.pop("CARGO_BUILD_BUILD_DIR", None)
+    jobs = str(gate_jobs())
+    environment.update(CARGO_BUILD_JOBS=jobs, BBOXY_CARGO_JOBS=jobs)
+    return tree, environment
 
 
 def ci_local(arguments):

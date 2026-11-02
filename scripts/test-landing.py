@@ -18,6 +18,7 @@ import os
 import platform
 from pathlib import Path
 import subprocess
+import threading
 import shutil
 import tempfile
 import shlex
@@ -124,7 +125,9 @@ class Repository:
         self.state.mkdir()
         self.environment = dict(os.environ, BBOXY_LANDING_STATE_DIR=str(self.state),
                                 CARGO_TARGET_DIR=str(self.state / "target"),
-                                RUSTC_WRAPPER="", RUSTC_WORKSPACE_WRAPPER="")
+                                RUSTC_WRAPPER="", RUSTC_WORKSPACE_WRAPPER="",
+                                BBOXY_TEST_RUNNER="cargo",  # fixtures fake libtest output
+                                BBOXY_GATE_SLOTS="3", BBOXY_GATE_WAIT="0")
         self.environment.pop("BBOXY_CARGO_TARGET_DIR", None)
         # A parent make test may pass TARGET_DIR on its command line. GNU Make
         # exports those overrides through MAKEFLAGS; no private repository may
@@ -969,9 +972,10 @@ import json,os,pathlib,subprocess
 state=pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR'])
 target=pathlib.Path(os.environ['BBOXY_CARGO_TARGET_DIR'])
 assert 'CARGO_TARGET_DIR' not in os.environ
-assert not list(target.iterdir()), 'a candidate inherited an old target'
+previous=target/'candidate-artifact'
 row={'tree':str(pathlib.Path.cwd().resolve()),'target':str(target.resolve()),
-     'sha':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()}
+     'sha':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+     'warm':previous.read_text() if previous.exists() else None}
 with (state/'slot-calls.jsonl').open('a') as stream:stream.write(json.dumps(row)+'\\n')
 (target/'candidate-artifact').write_text(row['sha'])
 PY
@@ -990,7 +994,7 @@ printf 'ci-local: result %s normal 0\\n' "$sha"
         self.assertEqual(landing.gate_proof(log, sha, self.repo.root)["tested_sha"], sha)
         return json.loads((self.repo.state / "slot-calls.jsonl").read_text().splitlines()[-1])
 
-    def test_two_commits_reuse_slot_paths_with_empty_targets_and_keep_the_caller(self):
+    def test_two_commits_reuse_warm_slot_paths_and_keep_the_caller(self):
         unrelated = self.repo.state / "target/caller-artifact"
         unrelated.parent.mkdir()
         unrelated.write_text("retained")
@@ -1004,11 +1008,14 @@ printf 'ci-local: result %s normal 0\\n' "$sha"
         self.assertEqual(first["tree"], second["tree"])
         self.assertEqual(first["target"], second["target"])
         self.assertNotEqual(first["sha"], second["sha"])
+        self.assertEqual(second["warm"], first["sha"])  # the second candidate builds on the first's target
         self.assertEqual(unrelated.read_text(), "retained")
-        self.assertFalse(slot.exists())
-        self.assertNotIn(str(slot / "tree"), run("git", "worktree", "list", "--porcelain", cwd=self.repo.root))
+        # Release drops ownership only; the checkout and target stay warm for the next gate.
+        self.assertFalse((slot / "pid").exists())
+        self.assertTrue((slot / "target").is_dir())
+        self.assertIn(str(slot / "tree"), run("git", "worktree", "list", "--porcelain", cwd=self.repo.root))
 
-    def test_dead_owner_reclaims_its_known_tree_and_target(self):
+    def test_dead_owner_slot_is_reused_warm(self):
         dead = subprocess.Popen([sys.executable, "-c", "pass"])
         self.assertEqual(dead.wait(timeout=5), 0)
         slot = self.slots / "bboxy450-gate-slot-1"
@@ -1020,7 +1027,8 @@ printf 'ci-local: result %s normal 0\\n' "$sha"
         run("git", "worktree", "add", "--detach", str(slot / "tree"), self.repo.base, cwd=self.repo.root)
         row = self.gate(self.repo.base)
         self.assertEqual(row["tree"], str(slot / "tree"))
-        self.assertFalse(slot.exists())
+        self.assertEqual((slot / "target/old-artifact").read_text(), "retired")
+        self.assertFalse((slot / "pid").exists())
 
     def test_live_owner_and_held_transition_are_skipped_without_deletion(self):
         live = self.slots / "bboxy450-gate-slot-1"
@@ -1594,7 +1602,7 @@ class LandTests(unittest.TestCase):
         self.assertEqual(record["sha"], sha)
         self.assertEqual(record["author_key"], fixture_identity()[0].upper())
         self.assertEqual(record["affected"], ["c"])
-        self.assertFalse(list((self.repo.state / "slots").glob("bboxy450-gate-slot-*")))
+        self.assertFalse(list((self.repo.state / "slots").glob("bboxy450-gate-slot-*/pid")))
         self.assertTrue((self.repo.state / "announced" / (sha + ".json")).exists())
 
     def test_red_main_refuses_before_any_check_or_push(self):
@@ -1669,6 +1677,24 @@ class LandTests(unittest.TestCase):
         self.assertEqual(self.cargo_test_count(), 6)
         record = json.loads((self.repo.state / 'landings.log').read_text())
         self.assertEqual(record['incremental_rechecks'], 5)
+
+    def test_one_default_slot_queues_until_its_owner_exits(self):
+        self.cut()
+        slot = self.repo.state / "slots" / "bboxy450-gate-slot-1"
+        slot.mkdir(parents=True)
+        holder = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(4)"])
+        (slot / "pid").write_text(str(holder.pid))
+        reaper = threading.Thread(target=holder.wait)  # an unreaped zombie still answers kill(pid, 0)
+        reaper.start()
+        environment = dict(self.repo.environment)
+        for name in ("BBOXY_GATE_SLOTS", "BBOXY_GATE_WAIT"):
+            environment.pop(name)
+        result = subprocess.run(["sh", "scripts/land.sh"], cwd=self.repo.root, env=environment,
+                                capture_output=True, text=True, timeout=50)
+        reaper.join(timeout=5)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("queued, waiting for a gate slot", result.stdout)
+        self.assertFalse((self.repo.state / "slots" / "bboxy450-gate-slot-2").exists())
 
     def test_busy_slots_are_75_without_a_check(self):
         self.cut()
@@ -1761,6 +1787,24 @@ class QuarantineTests(unittest.TestCase):
     def listed(self, expires="2999-01-01"):
         with (self.repo.root / ".bboxy/quarantine.md").open("a") as stream:
             stream.write(f"| `fixture_test` | c | Fixture | [[#123]] | 2026-01-01 | {expires} | fixture proof |\n")
+
+    def test_nextest_junit_maps_binary_ids_to_coverage_rows(self):
+        spec = importlib.util.spec_from_file_location("fixture_quarantine", SOURCE.with_name("quarantine.py"))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        junit = self.repo.state / "junit.xml"
+        junit.write_text("""<testsuites>
+<testsuite name="c"><testcase name="tests::unit"/></testsuite>
+<testsuite name="c::ctl"><testcase name="once"><failure type="test failure"/></testcase>
+<testcase name="slow"><skipped/></testcase></testsuite>
+<testsuite name="c::bin/tool"><testcase name="main_test"/></testsuite>
+<testsuite name="c::example/demo"><testcase name="ignored_kind"/></testsuite>
+</testsuites>""")
+        packages = {"c": {"targets": [{"name": "c_lib", "kind": ["lib"]}]}}
+        rows = module.junit_tests(junit, packages)
+        self.assertEqual([(r["kind"], r["target"], r["test"], r["result"]) for r in rows],
+                         [("lib", "c_lib", "tests::unit", "ok"), ("test", "ctl", "once", "FAILED"),
+                          ("test", "ctl", "slow", "ignored"), ("bin", "tool", "main_test", "ok")])
 
     def test_add_runs_exact_test_links_task_and_expires_in_seven_days(self):
         result = self.repo.cli("quarantine", "add", "fixture_test", "--owner", "Fixture", "--task", "123")

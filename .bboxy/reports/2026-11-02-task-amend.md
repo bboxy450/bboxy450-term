@@ -1,6 +1,6 @@
 ---
 id: 01M6D6KATQDBKWFD87FN197GQY
-number: 5003
+number: 5189
 type: report
 title: "Delegating Oracle amendments to live tasks"
 task: "[[tasks/2026-11-01-oracle-amends-live-task]]"

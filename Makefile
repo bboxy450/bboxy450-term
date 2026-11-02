@@ -40,13 +40,16 @@ export CARGO_PROFILE_TEST_DEBUG ?= 0
 export CARGO_PROFILE_DEV_OPT_LEVEL ?= 1
 export CARGO_PROFILE_TEST_OPT_LEVEL ?= 1
 
-.PHONY: help build build-release compile lock test test-parity parity-swarm check test-boundaries test-swarm smoke bundle-files bundle bundle-unsigned install install-unsigned release package-crate publish-release push
+.PHONY: help tools build build-release compile lock test test-parity parity-swarm check test-boundaries test-swarm smoke bundle-files bundle bundle-unsigned install install-unsigned release package-crate publish-release push
 
 help:
 	@printf '%s\n' \
 	  'make build / build-release       Build the app (debug / optimized)' \
 	  'make lock                       Refresh workspace lock metadata offline' \
 	  'make lock-online                Resolve added dependencies with the registry' \
+	  'make tools                      Install the Rust workflow tools (cargo-nextest, sccache) once per machine' \
+	  'make land / make push           Diff-scoped gate (affected crates + dependents, nextest), then push' \
+	  'make land-full                  Full signed gate (make test in a warm, queued gate slot)' \
 	  'make test                       Full local CI; no operator input' \
 	  'make push-branch                Push the current signed, tested branch for PR review' \
 	  'make test-toolkit               Document append, rich widgets, editor and headless stories' \
@@ -214,12 +217,16 @@ help:
 	  'make test-licenses               License metadata, copies and unattended negative fixtures' \
 	  'make check-license-packages      Inspect all crate package lists; no compilation' \
 	  'make publish-release            Signed tag + GitHub app release (authorization required)' \
-	  'make push                       Push signed, tested HEAD to main (authorization required)' \
-	  'make land-full                  Run full make test after rebase, then land (authorization required)' \
-	  'make land                       Fast land: check, test changed packages, push (LAND.md; authorization required)' \
 	  'make dispatch BATCH=x BRIEF=f   Headless Codex Executor on brief f in worktree ../<repo>-cx-x (Oracle only)' \
 	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... LAND_GATE_LOG=... BBOXY_CACHE_MODE=auto|off CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2 RUST_TEST_THREADS=2' \
 	  'GitKB: GITKB_BIN=... PLUGIN_WORKSPACE=/explicit/local/project'
+
+# The Rust workflow every entry point uses: nextest runs tests, sccache shares
+# compiled dependencies between worktrees, rust-toolchain.toml pins the compiler.
+# Build, test and land targets bootstrap these once on a new machine.
+tools:
+	@command -v cargo-nextest >/dev/null || cargo install --locked cargo-nextest
+	@command -v sccache >/dev/null || { command -v brew >/dev/null && brew install sccache || cargo install --locked sccache; }
 
 build:
 	@$(MAKE) compile PROFILE=debug
@@ -234,11 +241,11 @@ lock:
 lock-online:
 	@set -eu; . ./scripts/cache-env.sh; cargo update --workspace
 
-compile:
+compile: tools
 	@set -eu; case '$(PROFILE)' in debug) flag='' ;; release) flag='--release' ;; *) echo 'PROFILE must be debug or release' >&2; exit 2 ;; esac; \
 	. ./scripts/cache-env.sh; cargo build --locked -p $(APP) --target-dir '$(TARGET_DIR)' $$flag
 
-test check: test-signatures
+test check: tools test-signatures
 	@set -eu; mkdir -p "$$(dirname '$(CI_LOG)')"; \
 	SIGNED_RANGE= BBOXY_GATE_SLOT=none BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))' sh scripts/ci-local.sh $(CI_ARGS) >'$(CI_LOG)' 2>&1 || { code=$$?; tail -60 '$(CI_LOG)'; exit $$code; }; \
 	tail -12 '$(CI_LOG)'; printf 'Full gate log: %s\n' '$(CI_LOG)'
@@ -696,23 +703,15 @@ publish-release: release
 	GIT_TERMINAL_PROMPT=0 git push 'https://github.com/$(RELEASE_REPO).git' "refs/tags/$$tag:refs/tags/$$tag"; \
 	gh release create "$$tag" --repo '$(RELEASE_REPO)' '$(ARCHIVE)' '$(ARCHIVE).sha256' '$(ARCHIVE).asc' --title '$(APP) $(APP_VERSION)' --notes "Source: https://github.com/bboxy450/bboxy450-term/commit/$$(git rev-parse HEAD)"
 
-# Harnesses: use this gate to check the existing source-bound evidence first.
-# Reuse valid results; run only missing/stale required checks once. Do not run
-# the entire suite separately and then repeat it merely because this is a push.
-push:
-	@printf '%s\n' 'push: reuse completed source-bound checks; run only missing/stale checks, never the entire suite twice.'
-	@set -eu; test "$$(gh api user --jq .login)" = '$(PUSH_IDENTITY)'; test -z "$$(git status --porcelain)"; \
-	git fetch origin main; git merge-base --is-ancestor origin/main HEAD; \
-	for revision in $$(git rev-list origin/main..HEAD); do git verify-commit "$$revision"; done; \
-	python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' --verify-evidence; \
-	grep -E "^ci-local: result $$(git rev-parse HEAD) (normal|extended) 0$$" '$(CI_LOG)' >/dev/null; \
-	GIT_TERMINAL_PROMPT=0 git push origin HEAD:main
+# One push path: `make push` is `make land`, the diff-scoped gate on the rebased
+# candidate. It never reruns the full suite; `make land-full` does, on request.
+push: land
 
-# Landing (LAND.md). `make land` is the fast path: rebase, workspace check, tests
-# for the changed packages, push (scripts/land-fast.sh). `make land-full` is the
-# full signed gate (scripts/land.sh --full). Both use a private Cargo build dir.
+# Landing (LAND.md). `make land` is the fast path: rebase, clippy and nextest for
+# the changed crates and their dependents, push (scripts/land-fast.sh), in a private
+# Cargo build dir. `make land-full` is the full signed gate.
 .PHONY: land land-full land-gate dispatch
-land:
+land: tools
 	@export CARGO_BUILD_BUILD_DIR="$${CARGO_BUILD_BUILD_DIR:-$(abspath $(TARGET_DIR))/private-build}"; \
 	sh scripts/land-fast.sh
 
@@ -723,7 +722,7 @@ dispatch:
 	@test -n "$(BATCH)" -a -n "$(BRIEF)" || { echo 'usage: make dispatch BATCH=name BRIEF=path/to/brief.md'; exit 2; }
 	sh scripts/dispatch-codex.sh '$(BATCH)' '$(abspath $(BRIEF))'
 
-land-gate:
+land-gate: tools
 	@set -u; export CARGO_BUILD_BUILD_DIR="$${CARGO_BUILD_BUILD_DIR:-$(abspath $(TARGET_DIR))/private-build}"; \
 	mkdir -p '$(abspath $(TARGET_DIR))'; \
 	for attempt in 1 2 3; do \

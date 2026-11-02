@@ -1,6 +1,6 @@
 ---
 id: 01M6CYWSB7BV9FT4VW1TSPDJK6
-number: 5003
+number: 5188
 type: report
 title: "Mode-aware wheel routing and private restart proof"
 task: "[[tasks/2026-11-01-wheel-scroll-dead]]"
