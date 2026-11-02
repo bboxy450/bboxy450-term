@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-11-01T13:00:00Z"
+updated: "2026-11-02T23:50:00Z"
 ---
 # ICD: app ↔ harness
 
@@ -44,6 +44,23 @@ Per [harness decision d4071](https://github.com/bboxy450/bboxy450-harness/blob/m
 | Launch permissions | add: no permission flag is passed to `bboxy450-harness`. Its own `Policy` governs, and approvals are answered in line mode (§2) or fall to `on_unattended` (default deny) |
 | Versioning | add: the app never writes `~/.bboxy450-harness`. The harness writes only its own sessions there |
 | Verified by | add, phase 1a (E4): `make test-harness-native` `bboxy450-harness` case covering spawn, a PTY line that becomes a turn, a guarded `seat_input_text` refused as `composer-readiness-missing` with zero PTY bytes and no retry, and seat close under the supervisor's 250 ms SIGHUP→SIGKILL. On close, every group reaches ESRCH within 2 s, the exit is recorded, and a manual `--resume` recovers. Phase 1b (readiness, session-id persistence, resume) is **unproven** and is not claimed by this row |
+
+## Phase 1b rich-pane amendment (proposed; signed off by the Oracle at landing, d4071)
+
+These additive rows come from the harness ICD [rich-pane v0.1 at b955eb1, second pass](https://github.com/bboxy450/bboxy450-harness/blob/main/.bboxy/interfaces/rich-pane.md) and replace the phase 1a "no automatic wake" rows for the `bboxy450-harness` kind. They are the whole Side A scope: launch, delivery, pane. Nothing else in #348 changes.
+
+| #348 row | Change |
+|---|---|
+| What crosses | add: for `bboxy450-harness`, the launch kit passes `--socket <abs path>` (a path in term's runtime directory, ≤ 96 bytes). The seat binds it (0600, peer uid) and rebinds it on every profile switch and resume. Over it: NDJSON `Subscribe`/`Hello`/`Envelope` (seat → app) and `OpEnvelope`/ack (app → seat), harness gateway §4. The app reads session blobs read-only from `~/.bboxy450-harness/sessions/<id>/blobs` |
+| States and lifecycle | replace phase 1a's "no automatic wake" for this kind: a harness seat's readiness is **admission**, not idleness: the logic owner holds a connection to the seat socket with `Hello` received and a frame (envelope or 15 s heartbeat) younger than 20 s. `Hello.meta.session` is persisted as `harness_session_id`; a restart resumes it (`seat --resume`). Socket states per seat: `Unbound`, `Connected{session, epoch, head}`, `Closed` (reconnect with backoff, ≤ 1 per 2 s). A profile switch is a new session on the same path |
+| Input and wake | add: a guarded `seat_input_text` to a harness seat becomes `OpEnvelope{op_id derived from the message id, UserTurn{Queue}}` over the seat socket, naming the `Hello` session. `Ack` → submitted; `Ack{duplicate}` → submitted, one effect; `Refused::Busy` → `not_submitted` `harness-busy` (retryable); `Refused::Closed`/`UnknownSession` → `harness-session-closed`; unbound or no `Hello` → `harness-socket-unavailable`; ack timeout 5 s → `unknown`, same `op_id` on resend. **Zero PTY bytes in every case**, never a PTY fallback. `guarded_input` dispatches on kind before the PTY arbiter |
+| Pane | add: a `bboxy450-harness` seat's pane has a face `Terminal \| HarnessRich`, a per-pane preference persisted with the layout, default `HarnessRich` once connected. The rich face renders the harness `HarnessView` (crate `bboxy450-harness`, feature `embedded`, git-pinned, toolkit crates patched to the in-tree paths; one copy, `cargo tree -d … \| grep -c bboxy450-` = 0) from a Unix-fed bridge, never on the UI thread. Keys go to the focused face only; the rich composer sends `UserTurn`, Stop sends `Interrupt`, approvals send `ResolveApproval`. Both faces are approvers; the second answer gets `AlreadyResolved` |
+| Budgets | add: all visible harness panes together: drain ≤ 0.3 ms and projection ≤ 0.6 ms per frame, taken from the Drain 1.5 / Projection 1.0 rows of `budgets.md`; hidden panes 0; IO and JSON parsing off the UI thread; memory ≤ 32 MiB per rich view (allocated, unmeasured) |
+| Lifecycle | add: window close / Cmd-Q drop the rich views and keep the seat process and the logic connection; Cmd-Option-Q / `ctl app stop` end the seat under the supervisor's 250 ms budget; a socket that vanishes puts the rich face in "session ended" and the Terminal face still shows the PTY |
+| Versioning | unchanged: the app never writes `~/.bboxy450-harness`. The socket path is the app's; the harness binds it |
+| Verified by | add, phase 1b: `make test-harness-native` rich case: spawn with `--socket`; `Hello` observed; `seat_input_text` → `Ack` → `TurnEnded` in the log; resend → `Ack{duplicate}` and one turn; socket removed → `harness-socket-unavailable`; a byte counter proves zero PTY bytes in every case; `/profile` → the same path answers a new session and a resend for the old message is `harness-session-closed`. Detach/reattach: durable seq list `1..=head`, dedup counter 0. R15 one-copy check. Pane parity: offscreen capture of a rich pane vs the harness native capture on the same fixture, `row_structure_mismatch` ≤ 0.01. Formal: harness model `HarnessSocketDelivery` (one turn per message id; stale session refused) with two broken controls. Until these land, every row above is **unproven** |
+
+Dependency direction (term → harness crate) is phase 1 only; the exit is harness decision d5977 (IR and transcript view move into this workspace after the parity pass).
 
 A change to this interface names both sides, the reason and the verification it needs, and lands only with both sides' owners agreeing. A question an Executor asks about this boundary is a missing line here: the answer is written into this table, not only sent.
 
