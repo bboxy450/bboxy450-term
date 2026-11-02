@@ -145,3 +145,57 @@ Whole-frame cursor correction
   The existing NoGapNoDup model describes the unchanged intended contract;
   this closes an implementation-witness gap. Full remaining-stage verification
   is running and will build/test this correction before the formal tail.
+
+Supplemental workspace verification completed on 1067033e
+- Workspace build and strict all-target default clippy: exit 0.
+- Workspace unit/integration/doc tests: exit 0. The one non-PTY inheritance
+  fixture was excluded from concurrent tests and passed separately in the
+  native harness target. Converter executable runtime: 40.72 s at two threads.
+- Capability scan and deliberately broken environment control: exit 0;
+  source hash restored. make test-harness-native: exit 0.
+- make test-log-converter: exit 0 (fmt, all-feature clippy, tests, guards).
+- make test-log-converter-native: exit 0; pinned zstd -d/-t and standard seek
+  table, 100 MB raw-included size/readback (15.73 s), all five P0 scripts,
+  seven positive resumes, six expected negatives, zero missing-client skips.
+- make test-formal: exit 0; all 209 native/Java graph/verdict pairs match,
+  33 crates and 85 contracts. LcAppendLog pass: 9476 states / 43265 edges;
+  torn-read control: 11114 / 50704; early-index: 11312 / 54342;
+  mixed-table: 15152 / 66177. Each control has the expected safety violation.
+- Formal source 1067033e, dirty=false, evidence SHA-256
+  da379dece34315c980e3cc3bfd79daad726b231bcedfdabbddc249524cb613f0;
+  retained common-Git archive .git/bboxy-formal-evidence/<that digest>/.
+  Fresh --verify-evidence: exit 0, including after owned-cache cleanup.
+- UI lint and isolated unattended headless smoke: exit 0.
+- Supplemental ci-local --after-tests: exit 1, checkpoint-bounded disk guard
+  only. Other 26 default invariants pass; 11 marked slow remain normal skips.
+  The guard saw 10679144448 free bytes, below 10 GiB. I removed only my
+  generated target cache: 117 older executable variants, target/plugin-fixtures
+  and 471 older rlib variants. No sources, peers or shared cache were touched.
+  Exact current recovery binary SHA-256 remained
+  a90e6d7314ecfdfe364cdfa7c9d4a448e8de6b16e0e336cf187a59f873fc5d99.
+  R5G_SEATS=4 RUST_TEST_THREADS=2 target/debug/deps/recovery-1f648b33642729d0
+  checkpoint_bounded_recovery --exact: exit 0, one test, 14.94 s.
+  Cleanup manifest /tmp/lc-own-target-cleanup.json; rerun stdout
+  /tmp/lc-checkpoint-after-cleanup.log. The original tail exit remains 1.
+- Current complete-range report-trailer guard: exit 0 on 1067033e. All six
+  implementation commits have G signatures from the approved key.
+- Supplemental stdout: /tmp/lc-term-rest-combined.log, assembled from numbered
+  chunks. One oversized workspace-test chunk was truncated during collection;
+  the file is not claimed as a complete raw transcript. Command statuses and
+  converter/formal results are retained.
+
+Required canonical make test is still exit 2 at the resource-ledger startup
+race on 503197ba (expected143, actual-15). This is not a green normal receipt
+for 1067033e. Oracle assigned E1c; resource-ledger source/tests are unchanged.
+Remote main was 86ce2653 at handoff and lacked the repair. Rebase with a
+heads-up and run normal make test after that fix lands. PR #91 remains draft;
+no merge or land.sh.
+
+Full immutable native reports, copied with issued metadata into this worktree:
+- [[reports/2026-11-02-lc-port-verification]] (#5137,
+  id 01M6D3SAEC3WEFAAP0WSVEV8TK), task #5096.
+- [[reports/2026-11-02-lc-p2-bxl-verification]] (#5139,
+  id 01M6D3ST0BVK0Q95N2H2W70AGH), task #5084.
+Both honestly record verify.command=make test, exit_code=2. The exact delegated
+P2 task accompanies its report so committed-tree task references resolve.
+The report-only signed handoff commit contains no product/model change.
