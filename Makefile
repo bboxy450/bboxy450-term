@@ -243,7 +243,7 @@ lock-online:
 
 compile: tools
 	@set -eu; case '$(PROFILE)' in debug) flag='' ;; release) flag='--release' ;; *) echo 'PROFILE must be debug or release' >&2; exit 2 ;; esac; \
-	. ./scripts/cache-env.sh; cargo build --locked -p $(APP) --target-dir '$(TARGET_DIR)' $$flag
+	. ./scripts/cache-env.sh; cargo build --locked -p $(APP) -p bboxy450-harness --target-dir '$(TARGET_DIR)' $$flag
 
 test check: tools test-signatures
 	@set -eu; mkdir -p "$$(dirname '$(CI_LOG)')"; \
@@ -585,6 +585,7 @@ bundle-files: check-licenses compile
 	mkdir -p '$(BUNDLE)/Contents/MacOS' '$(BUNDLE)/Contents/Resources'; \
 	cp packaging/macos/Info.plist '$(BUNDLE)/Contents/Info.plist'; \
 	cp '$(TARGET_DIR)/$(PROFILE)/$(APP)' '$(BUNDLE)/Contents/MacOS/$(APP)'; \
+	cp '$(TARGET_DIR)/$(PROFILE)/bboxy450-harness' '$(BUNDLE)/Contents/MacOS/bboxy450-harness'; \
 	cp LICENSE NOTICE ATTRIBUTION.md LICENSE-MIT LICENSE-APACHE packaging/macos/bboxy.icns '$(BUNDLE)/Contents/Resources/'; \
 	plutil -replace CFBundleShortVersionString -string '$(APP_VERSION)' '$(BUNDLE)/Contents/Info.plist'; \
 	plutil -replace CFBundleVersion -string "$$(git rev-list --count HEAD)" '$(BUNDLE)/Contents/Info.plist'; \

@@ -69,6 +69,15 @@ pub fn role_preset(name: &str) -> Result<Role> {
     })
 }
 
+/// The app bundle ships bboxy450-harness beside its own executable; prefer it to PATH.
+fn bundled_harness() -> Option<String> {
+    let path = std::env::current_exe()
+        .ok()?
+        .parent()?
+        .join("bboxy450-harness");
+    path.is_file().then(|| path.to_string_lossy().into_owned())
+}
+
 impl HarnessRecord {
     /// Standalone builtin preset resolution. The logic owner resolves runtime
     /// launches through its persisted operator role catalog.
@@ -84,7 +93,10 @@ impl HarnessRecord {
                 kind: kind.into(),
                 name: kind.into(),
                 command: if kind == "bboxy450-harness" {
-                    vec![kind.into(), "seat".into()]
+                    vec![
+                        bundled_harness().unwrap_or_else(|| kind.into()),
+                        "seat".into(),
+                    ]
                 } else {
                     vec![kind.into()]
                 },
