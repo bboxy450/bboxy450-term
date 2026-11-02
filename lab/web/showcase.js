@@ -769,7 +769,7 @@
   function startReplay(seat, i) {
     if (seat.settings || seat.graph) return;
     if (seat.hx) {   // structured envelopes, not lines: the seat's state follows the harness phase
-      seat.hxView = Hx.view({ compact: true, onPhase: ph => setState(seat, ph === 'idle' ? 'idle' : 'active') });
+      seat.hxView = Hx.view({ compact: true, profiles: Hx.DEMO_PROFILES, onOp: Hx.demoOps(() => seat.hxView), onPhase: ph => setState(seat, ph === 'idle' ? 'idle' : 'active') });
       requestAnimationFrame(() => paintTerm(seat));
       setTimeout(() => Hx.play(seat.hxView, HARNESS_SESSIONS[seat.hx], { loop: true }), 300 + i * 170);
       return;
