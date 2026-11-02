@@ -90,6 +90,7 @@ pub(super) fn start(
     if record_notifications {
         process.arg("--notifications").arg("record");
     }
+    bbt_mux::adapters::guard::environment::scrub_command(&mut process);
     let launched = SystemTime::now();
     let mut child = process.spawn().map_err(|e| format!("app start: {e}"))?;
     let pid = child.id();

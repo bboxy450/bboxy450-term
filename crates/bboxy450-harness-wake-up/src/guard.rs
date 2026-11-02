@@ -9,6 +9,9 @@
 use super::{Binding, Evidence, Session, State, WakeCause, WakeOutcome};
 use crate::{Result, Ulid, invalid};
 
+/// Caller-harness identity guard for process launch and adapter facades.
+pub mod environment;
+
 /// Maximum encoded literal paste, matching the existing host input bound.
 pub const MAX_INPUT_BYTES: usize = 64 * 1024;
 

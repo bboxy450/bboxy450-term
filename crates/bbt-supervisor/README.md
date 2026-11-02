@@ -107,3 +107,14 @@ Retained upstream material keeps its original terms; earlier grants are not
 withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
 examples; [NOTICE](NOTICE) preserves factual upstream notices.
 Slop respectfully. Keep the credit attached.
+
+## Launch environment removals
+
+For ordinary launches, callers may supply `BBOXY_LAUNCH_ENV_UNSET` in
+`LaunchSpec.env`: a space-separated list of exact variable names or prefixes
+ending in `*`. The host applies these rules to its captured inherited environment
+and explicit overrides, including companions, then removes the control value
+before exec. The caller owns the policy; the host embeds no program names.
+Only rule names enter the launch record, never inherited values. Bare terminals
+retain their existing exact-environment contract. Older hosts ignore this new
+control; restart an upgraded owner before relying on it.

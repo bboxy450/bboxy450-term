@@ -31,6 +31,8 @@ use tokio::{
 };
 
 pub mod desktop;
+#[cfg(test)]
+mod environment_tests;
 mod fixture_hosts;
 mod owners;
 mod shell_path;
@@ -1592,6 +1594,7 @@ fn child(config: &Config, entry: &str, launch_path: &std::ffi::OsStr) -> Result<
     if let Some(root) = &config.shell_config {
         command.env("ZDOTDIR", root);
     }
+    bbt_mux::adapters::guard::environment::scrub_command(command.as_std_mut());
     Ok(command
         .arg(entry)
         .stdin(Stdio::piped())

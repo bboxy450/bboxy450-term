@@ -78,3 +78,15 @@ questions, artifact paths and agent identity, without tool file contents or
 command output. The retained event stays limited to 64 KiB and the terminal OSC
 to 4096 bytes; larger retained events are still refused. This allows ordinary
 verbose tool hooks without enlarging the bus or terminal-frame limits.
+
+## Independent launch environments
+
+`guard::environment` owns the caller-session removal policy. Every launch plan
+passes its exact/prefix names through `BBOXY_LAUNCH_ENV_UNSET`; a supporting
+process host consumes that control after overrides and before exec. Native
+Codex runtime isolation uses the same rules and preserves its existing same-PID
+exec. `scrub_command` applies the policy to app/backend startup commands without
+mutating global environment state. PATH, homes, authentication, provider/model
+settings and an existing persistence preference remain available. No persistence
+override is set by the launcher. The night fixture's credential-free allowlist
+serves a different purpose and remains isolated.

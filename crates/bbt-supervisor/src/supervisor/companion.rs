@@ -53,6 +53,7 @@ impl Companion {
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null());
+        super::environment::scrub_command(&mut command);
         // The private tty is a lifetime guard, never input or output. Closing its
         // sole master on supervisor death hangs up this service's own group.
         // Keep the slave across exec: closing it loses the hangup association on

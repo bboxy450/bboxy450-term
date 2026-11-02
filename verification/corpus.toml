@@ -795,3 +795,23 @@ frontend = "project"
 name = "BrokenTaskAmendmentEtag"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "SeatLaunchEnvironment"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenSeatLaunchEnvironment"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BackendLaunchEnvironment"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenBackendLaunchEnvironment"
+expected = "safety"
+frontend = "project"

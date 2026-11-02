@@ -5,6 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use super::HarnessRecord;
+use crate::guard::environment;
 use crate::{Result, invalid};
 use std::collections::BTreeMap;
 use std::io::Write;
@@ -13,23 +14,19 @@ use std::path::{Path, PathBuf};
 
 // Session discovery belongs to the launched client, never its parent harness.
 // Preserve HOME, auth, model settings and path-only BBOXY admission.
-const PARENT_SESSION_ENV: [&str; 8] = [
-    "BBOXY_CAPABILITY",
-    "CODEX_THREAD_ID",
-    "ICQ_CODEX_SOCKET",
-    "CLAUDE_CODE_SESSION_ID",
-    "CLAUDE_CODE_MESSAGING_SOCKET",
-    "PI_SESSION_ID",
-    "PI_SESSION_FILE",
-    "ICQ_HARNESS_DESCRIPTOR",
-];
+fn parent_session_env() -> Vec<String> {
+    let mut keys = environment::removal_keys();
+    keys.push("BBOXY_CAPABILITY".into());
+    keys
+}
 
 fn isolated_runtime(program: &str, args: Vec<String>) -> (String, Vec<String>) {
     // env replaces itself with the native service (same PID). This also works
     // when an older, already-running supervisor inherited the parent's IDs.
-    let mut isolated = Vec::with_capacity(PARENT_SESSION_ENV.len() * 2 + args.len() + 2);
-    for key in PARENT_SESSION_ENV {
-        isolated.extend(["-u".into(), key.into()]);
+    let keys = parent_session_env();
+    let mut isolated = Vec::with_capacity(keys.len() * 2 + args.len() + 2);
+    for key in keys {
+        isolated.extend(["-u".into(), key]);
     }
     isolated.extend(["--".into(), program.into()]);
     isolated.extend(args);
@@ -486,6 +483,12 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
         runtime: None,
         shared_runtime: None,
     };
+    // The process host applies this data after explicit overrides. No inherited
+    // values, credentials or program-specific logic enter the host's protocol.
+    spec.env.insert(
+        environment::UNSET_RULES.into(),
+        environment::SESSION_RULES.into(),
+    );
     spec.env
         .insert("BBOXY_SEAT_ID".into(), context.id.to_string());
     spec.env
@@ -799,7 +802,7 @@ pub fn exec_when_ready(args: &[String]) -> Result<()> {
     )?;
     let mut command = std::process::Command::new(program);
     command.args(rest);
-    for key in PARENT_SESSION_ENV {
+    for key in parent_session_env() {
         command.env_remove(key);
     }
     Err(command.exec().into())
@@ -847,7 +850,7 @@ pub(super) fn ensure_codex_daemon(endpoint: &Path, program: &str) -> Result<()> 
             start.env_remove(key);
         }
     }
-    for key in PARENT_SESSION_ENV {
+    for key in parent_session_env() {
         start.env_remove(key);
     }
     let mut child = start.spawn()?;
@@ -909,7 +912,7 @@ mod runtime_tests {
             .env("OPENAI_API_KEY", "fixture-auth")
             .env("BBOXY_CAPABILITY_FILE", "fixture-admission")
             .stdout(std::process::Stdio::piped());
-        for key in PARENT_SESSION_ENV {
+        for key in parent_session_env() {
             command.env(key, "parent-fixture");
         }
         let child = command.spawn().unwrap();

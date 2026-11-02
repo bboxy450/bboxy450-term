@@ -27,6 +27,8 @@ use crate::transport::{BoundSocket, SocketPeer};
 #[cfg(target_os = "macos")]
 mod child_events;
 mod companion;
+/// Caller-selected environment removals for ordinary process launch.
+pub mod environment;
 
 const WAKE: Token = Token(0);
 const LISTENER: Token = Token(1);
@@ -2421,6 +2423,9 @@ impl Seat {
             }
             command.env("BBOXY_SEAT_ID", spec.seat.to_string());
             command.env("BBOXY_PROCESS_GENERATION", spec.generation.to_string());
+            // Apply the caller's removal data to this owner's exec snapshot,
+            // after overrides, without embedding program-specific policy.
+            environment::scrub_pty(&mut command);
         }
         let child = pair
             .slave

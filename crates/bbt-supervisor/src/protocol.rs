@@ -99,7 +99,10 @@ pub struct LaunchSpec {
     /// Absolute working directory selected by the caller.
     pub cwd: PathBuf,
     /// Explicit overrides only. The inherited environment is never recorded.
-    /// Explicit environment overrides for this process.
+    /// Ordinary launches may set `BBOXY_LAUNCH_ENV_UNSET` to space-separated
+    /// exact names or trailing-`*` prefixes. The host removes matching inherited
+    /// and overridden keys after applying these overrides, then consumes the
+    /// control itself. Bare launches retain their exact-environment contract.
     pub env: BTreeMap<String, String>,
     /// PTY cell and pixel dimensions.
     pub size: SeatSize,
