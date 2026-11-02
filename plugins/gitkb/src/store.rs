@@ -15,13 +15,13 @@ use std::fs::OpenOptions;
 use std::io::{Read, Write};
 use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt};
 use std::path::{Component, Path, PathBuf};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use bbt_plugin_sdk::{Ctx, MAX_RESULT, Refusal, encoded};
 use serde_json::{Map, Value, json};
 
 use crate::backend::Backend;
-use crate::index::{Index, Listed, Query, store_signal};
+use crate::index::{Index, Listed, Query, WAIT_RESERVE, store_signal};
 use crate::native::{
     content_digest, digest, embeds, file_uri, mime_type, number, portable, prefix, random_hex,
     sha256_hex, slug_path, task_status,
@@ -487,9 +487,20 @@ impl GitKb {
             return Ok(None);
         };
         // Always keep the committed layer warm; only `--where` needs it.
-        let committed = self.index.committed(&signal, &self.backend, &self.root);
+        let mut committed = self.index.committed(&signal, &self.backend, &self.root);
         if query.needs_fields() && committed.is_none() {
-            return Ok(None);
+            // A build in progress (a cold process's first reads) usually
+            // finishes sooner than the per-call backend path would add up:
+            // wait for it within this call's budget, less a reserve.
+            let budget = self.ctx.remaining().saturating_sub(WAIT_RESERVE);
+            let began = Instant::now();
+            let ctx = self.ctx.clone();
+            committed = self.index.wait_for(&signal, budget, || ctx.is_cancelled());
+            self.index.waits += 1;
+            self.index.waited_ms += began.elapsed().as_millis() as u64;
+            if committed.is_none() {
+                return Ok(None);
+            }
         }
         let stats = self.workspace_stats()?;
         let workspace = digest(&encoded(&Value::Object(stats.clone())));

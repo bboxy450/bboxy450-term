@@ -24,7 +24,7 @@ use std::collections::HashMap;
 use std::io::{BufRead, BufReader, Read};
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
-use std::sync::{Arc, Mutex, MutexGuard};
+use std::sync::{Arc, Condvar, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
 use bbt_plugin_sdk::{Ctx, encoded};
@@ -41,6 +41,11 @@ const MAX_DOCS: usize = 1_000_000;
 const MAX_OVERLAY: u64 = 1 << 20;
 const BUILD_BUDGET: Duration = Duration::from_secs(120);
 const ATTEMPTS: usize = 3;
+/// Call budget kept back when a filtered call waits for a build: the row
+/// refresh, a backend fallback and the page fill must still fit.
+pub const WAIT_RESERVE: Duration = Duration::from_millis(800);
+/// Longest single condition wait, so cancellation is noticed promptly.
+const WAIT_SLICE: Duration = Duration::from_millis(50);
 /// The frontmatter fields the adapter filters with `--where`.
 pub const WHERE_FIELDS: [&str; 3] = ["assignee", "swarm", "bboxy_status"];
 
@@ -335,17 +340,27 @@ struct Shared {
     ready_ms: Option<u64>,
 }
 
-fn lock(shared: &Mutex<Shared>) -> MutexGuard<'_, Shared> {
-    shared.lock().unwrap_or_else(|e| e.into_inner())
+/// The build state and the condition a finished build signals.
+#[derive(Default)]
+struct Build {
+    state: Mutex<Shared>,
+    done: Condvar,
+}
+
+fn lock(shared: &Build) -> MutexGuard<'_, Shared> {
+    shared.state.lock().unwrap_or_else(|e| e.into_inner())
 }
 
 pub struct Index {
     enabled: bool,
     started: Instant,
-    shared: Arc<Mutex<Shared>>,
+    shared: Arc<Build>,
     pub listed: Option<Listed>,
     pub served: u64,
     pub fallbacks: u64,
+    /// Filtered calls that waited for a build in progress, and for how long.
+    pub waits: u64,
+    pub waited_ms: u64,
 }
 
 impl Index {
@@ -357,6 +372,8 @@ impl Index {
             listed: None,
             served: 0,
             fallbacks: 0,
+            waits: 0,
+            waited_ms: 0,
         }
     }
 
@@ -419,12 +436,42 @@ impl Index {
                         state.last_error = Some(error);
                     }
                 }
+                drop(state);
+                shared.done.notify_all();
             });
         if spawned.is_err() {
             let mut state = lock(&self.shared);
             state.building = false;
             state.failures += 1;
             state.last_error = Some("index thread unavailable".into());
+        }
+    }
+
+    /// Wait up to `budget` for the build in progress to produce committed
+    /// fields fresh for `signal`. `None` when no build is running, it failed,
+    /// it finished for another signal, the budget ran out or `cancelled`.
+    pub fn wait_for(
+        &self,
+        signal: &str,
+        budget: Duration,
+        cancelled: impl Fn() -> bool,
+    ) -> Option<Arc<Committed>> {
+        let deadline = Instant::now() + budget;
+        let mut state = lock(&self.shared);
+        loop {
+            if let Some(committed) = state.committed.as_ref().filter(|c| c.signal == signal) {
+                return Some(committed.clone());
+            }
+            let left = deadline.saturating_duration_since(Instant::now());
+            if !state.building || left.is_zero() || cancelled() {
+                return None;
+            }
+            state = self
+                .shared
+                .done
+                .wait_timeout(state, left.min(WAIT_SLICE))
+                .unwrap_or_else(|e| e.into_inner())
+                .0;
         }
     }
 
@@ -446,6 +493,8 @@ impl Index {
             "ready_ms": state.ready_ms,
             "served": self.served,
             "fallbacks": self.fallbacks,
+            "waits": self.waits,
+            "waited_ms": self.waited_ms,
             "store_signal": signal,
             "indexed_signal": committed.map(|c| c.signal.clone()),
         })
@@ -760,6 +809,55 @@ mod tests {
         ] {
             assert_eq!(Query::parse(&flags(refused)), None, "{refused:?}");
         }
+    }
+
+    /// Finish the pretend build after `after`, as the build thread does.
+    fn finish(index: &Index, after: Duration, committed: Option<Committed>) {
+        let shared = index.shared.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(after);
+            let mut state = lock(&shared);
+            state.building = false;
+            state.committed = committed.map(Arc::new);
+            drop(state);
+            shared.done.notify_all();
+        });
+    }
+
+    #[test]
+    fn filtered_calls_wait_for_a_build_in_progress() {
+        let ms = Duration::from_millis;
+        let built = |signal: &str| Committed::parse(signal.into(), &b""[..], MAX_LINE).unwrap();
+        let index = Index::new();
+        // No build running: answer at once.
+        let began = Instant::now();
+        assert!(index.wait_for("s1", ms(5000), || false).is_none());
+        assert!(began.elapsed() < ms(100));
+        // A build that finishes within the budget is awaited.
+        lock(&index.shared).building = true;
+        finish(&index, ms(150), Some(built("s1")));
+        let began = Instant::now();
+        let got = index.wait_for("s1", ms(5000), || false).unwrap();
+        assert_eq!(got.signal, "s1");
+        assert!((ms(140)..ms(2000)).contains(&began.elapsed()));
+        // Finished for another signal: no wait.
+        let began = Instant::now();
+        assert!(index.wait_for("s2", ms(5000), || false).is_none());
+        assert!(began.elapsed() < ms(100));
+        // A build that cannot finish within the budget: wait the budget only.
+        lock(&index.shared).building = true;
+        let began = Instant::now();
+        assert!(index.wait_for("s2", ms(120), || false).is_none());
+        assert!((ms(120)..ms(1000)).contains(&began.elapsed()));
+        // Cancellation stops the wait.
+        let began = Instant::now();
+        assert!(index.wait_for("s2", ms(5000), || true).is_none());
+        assert!(began.elapsed() < ms(100));
+        // A failed build ends the wait when it finishes.
+        finish(&index, ms(100), None);
+        let began = Instant::now();
+        assert!(index.wait_for("s2", ms(5000), || false).is_none());
+        assert!((ms(90)..ms(2000)).contains(&began.elapsed()));
     }
 
     #[test]

@@ -184,8 +184,13 @@ A native commit renames a new manifest and tips into place; workspace writes,
 `rm` of a committed document and every read leave them unchanged (measured).
 GitKB's `.kb/.cache` database is excluded because reads rewrite it. The row
 layer is also keyed by the exact workspace file stats. A changed store signal
-starts one background rebuild; until it finishes, and whenever the store or
-workspace moves while rows refresh, the call takes the backend path. Filters
+starts one background rebuild. While a build runs (including a cold process's
+first reads), a call that needs `--where` fields waits for it, up to its own
+deadline less 800 ms; it takes the backend path only when the build fails,
+finishes for another store signal, cannot finish in time or the call is
+cancelled, and whenever the store or workspace moves while rows refresh. A
+cold Harmony process answers the host's 126-call task list in 5.6 s from
+spawn (initialize 1.0 s, build ready 4.1 s later). Filters
 the index cannot prove equal (`since`, other fields, values with spaces or
 quotes, numbers and `true`/`false`/`null`) always take the backend path.
 `health.index` reports readiness, build and ready times, served and fallback

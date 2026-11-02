@@ -242,8 +242,9 @@ fn harmony_probe() {
             .push(json!({"run": run, "process_exit": exit}));
         let _ = std::fs::remove_dir_all(&data);
     }
-    task_list_simulation(&mut probe, &plugin, &backend, &root, &env, &base);
-    probe.evidence["result"] = "passed; fresh sessions, exact native source parity, status filters, full 32-node graph pages equal to fetch, all calls read-only and below 2 seconds, 126-call task list equal to the backend path, its repeated pass from the index below 2 seconds".into();
+    let seats = task_list_simulation(&mut probe, &plugin, &backend, &root, &env, &base);
+    cold_replays(&mut probe, &plugin, &root, &env, &base, &seats);
+    probe.evidence["result"] = "passed; fresh sessions, exact native source parity, status filters, full 32-node graph pages equal to fetch, all calls read-only and below 2 seconds, 126-call task list equal to the backend path, its repeated pass from the index below 2 seconds, cold-process task list below 6.5 seconds from spawn".into();
     probe.save();
     println!("{}", serde_json::to_string_pretty(&probe.evidence).unwrap());
 }
@@ -324,6 +325,113 @@ fn all_pages(client: &mut Client, request: &Value) -> Vec<Value> {
     panic!("task list paging did not finish");
 }
 
+/// The host's narrow-path requests: each seat × (`seat:<id>`, bare id) ×
+/// (task, bug, epic), at the host's page size.
+fn gui_requests(seats: &[String]) -> Vec<Value> {
+    let requests: Vec<Value> = seats
+        .iter()
+        .flat_map(|id| [format!("seat:{id}"), id.clone()])
+        .flat_map(|selector| {
+            ["task", "bug", "epic"].map(|kind| {
+                json!({"filter": {"type": kind, "assignee": selector.clone()}, "limit": 128})
+            })
+        })
+        .collect();
+    assert_eq!(requests.len(), 126);
+    requests
+}
+
+/// The GUI's first task list from a COLD process: wall time from spawn
+/// through initialize and all 126 calls, issued at once with no readiness
+/// wait, as the Tasks panel's startup read does.
+fn cold_task_list(
+    plugin: &Path,
+    root: &Path,
+    env: &[(String, String)],
+    dir: &Path,
+    seats: &[String],
+    index: bool,
+) -> (Vec<Vec<Value>>, Value) {
+    let mut env = env.to_vec();
+    if !index {
+        env.push(("BBOXY_GITKB_INDEX".into(), "off".into()));
+    }
+    let requests = gui_requests(seats);
+    let started = Instant::now();
+    let mut client = Client::spawn(plugin, dir, &env).unwrap();
+    client
+        .request(
+            "initialize",
+            json!({"protocolVersion": "2025-06-18", "root": root.display().to_string()}),
+            WAIT,
+        )
+        .unwrap();
+    let initialize_ms = started.elapsed().as_millis() as u64;
+    let _ = client.send(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+    let mut slowest = Duration::ZERO;
+    let mut results = Vec::new();
+    for request in &requests {
+        let one = Instant::now();
+        results.push(all_pages(&mut client, request));
+        slowest = slowest.max(one.elapsed());
+    }
+    let total = started.elapsed();
+    let facts = client.call("health", json!({}), WAIT).unwrap()["index"].clone();
+    assert_eq!(client.close(Duration::from_secs(5)), Some(0));
+    let row = json!({"index": index, "initialize_ms": initialize_ms,
+        "total_from_spawn_ms": total.as_millis() as u64,
+        "slowest_call_ms": slowest.as_millis() as u64,
+        "items": results.iter().map(Vec::len).sum::<usize>(),
+        "index_ready_ms": facts["ready_ms"], "served": facts["served"],
+        "fallbacks": facts["fallbacks"], "waits": facts["waits"], "waited_ms": facts["waited_ms"]});
+    (results, row)
+}
+
+/// Cold-start replays: seat-like ids (`BBOXY_GITKB_PROBE_SEATS`, comma
+/// separated, else 21 random ULIDs: registry seat ids that no Harmony record
+/// names) must finish within 6.5 s from spawn and equal the backend path; the
+/// replay's seats (real Harmony assignees included) are recorded only, as
+/// their first read includes each matching workspace record's exact read.
+fn cold_replays(
+    probe: &mut Probe,
+    plugin: &Path,
+    root: &Path,
+    env: &[(String, String)],
+    base: &Path,
+    replay: &[String],
+) {
+    let data = base.join(format!("bboxy-harmony-cold-{}", std::process::id()));
+    let supplied: Vec<String> = std::env::var("BBOXY_GITKB_PROBE_SEATS")
+        .unwrap_or_default()
+        .split(',')
+        .filter(|s| !s.is_empty())
+        .map(str::to_owned)
+        .collect();
+    let registry = !supplied.is_empty();
+    let mut seats = supplied;
+    seats.truncate(21);
+    while seats.len() < 21 {
+        seats.push(random_ulid());
+    }
+    let (indexed, on) = cold_task_list(plugin, root, env, &data.join("seats-on"), &seats, true);
+    let (native, off) = cold_task_list(plugin, root, env, &data.join("seats-off"), &seats, false);
+    let (_, real) = cold_task_list(plugin, root, env, &data.join("replay-on"), replay, true);
+    let identical = indexed.iter().zip(&native).filter(|(a, b)| a == b).count();
+    let total = on["total_from_spawn_ms"].as_u64().unwrap();
+    probe.evidence["cold_task_list"] = json!({
+        "seat_ids": if registry { "BBOXY_GITKB_PROBE_SEATS" } else { "random ULIDs" },
+        "identical": identical, "compared": indexed.len(),
+        "indexed": on, "backend": off, "replay_seats_indexed": real,
+    });
+    let passed = identical == indexed.len() && total < 6_500;
+    if !passed {
+        probe.evidence["result"] = "failed; cold task list".into();
+    }
+    probe.save();
+    let _ = std::fs::remove_dir_all(&data);
+    assert!(passed, "{}", probe.evidence["cold_task_list"]);
+}
+
 /// The GUI task list's narrow path: 21 seats × (`seat:<id>`, bare id) ×
 /// (task, bug, epic) filtered lists, twice per session: once the index is
 /// ready, then with the backend path (`BBOXY_GITKB_INDEX=off`). Every result
@@ -338,7 +446,7 @@ fn task_list_simulation(
     root: &Path,
     env: &[(String, String)],
     base: &Path,
-) {
+) -> Vec<String> {
     let data = base.join(format!("bboxy-harmony-tasklist-{}", std::process::id()));
     std::fs::create_dir_all(&data).unwrap();
     let real = real_assignees(backend, root, &data, env);
@@ -346,16 +454,7 @@ fn task_list_simulation(
     while seats.len() < 21 {
         seats.push(random_ulid());
     }
-    let requests: Vec<Value> = seats
-        .iter()
-        .flat_map(|id| [format!("seat:{id}"), id.clone()])
-        .flat_map(|selector| {
-            ["task", "bug", "epic"].map(|kind| {
-                json!({"filter": {"type": kind, "assignee": selector.clone()}, "limit": 128})
-            })
-        })
-        .collect();
-    assert_eq!(requests.len(), 126);
+    let requests = gui_requests(&seats);
     let initialize = json!({"protocolVersion": "2025-06-18", "root": root.display().to_string()});
     let session = |index: bool| {
         let mut env = env.to_vec();
@@ -444,6 +543,7 @@ fn task_list_simulation(
     probe.save();
     let _ = std::fs::remove_dir_all(&data);
     assert!(passed, "{}", probe.evidence["task_list_simulation"]);
+    seats
 }
 
 /// Graph pages with a continuation hold `limit` (32) nodes within the call

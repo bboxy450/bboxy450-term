@@ -1247,6 +1247,16 @@ fn index_checks(fx: &mut Fixture) -> Vec<Conn> {
     let mut off_env = fx.env.clone();
     off_env.push(("BBOXY_GITKB_INDEX".into(), "off".into()));
     let mut on = fx.connect(&root, None, None, false).unwrap();
+    // A cold process's first filtered read waits for the build in progress
+    // instead of taking the per-call backend path.
+    let carol_task = json!({"filter": {"type": "task", "assignee": "carol"}});
+    assert_eq!(
+        slugs(&on.collect("list", carol_task.clone()), ""),
+        ["tasks/c", "tasks/w"]
+    );
+    let cold = index_facts(&mut on);
+    assert_eq!(cold["fallbacks"], 0, "{cold}");
+    assert_eq!(cold["served"], 1, "{cold}");
     let mut off = fx.connect(&root, None, Some(off_env), false).unwrap();
     assert_eq!(index_facts(&mut off)["enabled"], false);
     let ready = wait_ready(&mut on);
@@ -1331,7 +1341,9 @@ fn index_checks(fx: &mut Fixture) -> Vec<Conn> {
     );
     let committed = index_facts(&mut on);
     assert_ne!(committed["store_signal"], written["store_signal"]);
-    let fallbacks = committed["fallbacks"].as_u64().unwrap();
+    // The next filtered call starts the rebuild and waits for it within its
+    // budget instead of falling back.
+    let count = |facts: &Value, key: &str| facts[key].as_u64().unwrap();
     let listed = on.collect("list", carol.clone());
     assert_eq!(listed, off.collect("list", carol.clone()));
     assert_eq!(
@@ -1339,7 +1351,9 @@ fn index_checks(fx: &mut Fixture) -> Vec<Conn> {
         ["tasks/a", "tasks/c", "tasks/w", "tasks/x"]
     );
     let after = wait_ready(&mut on);
-    assert!(after["fallbacks"].as_u64().unwrap() > fallbacks, "{after}");
+    assert_eq!(count(&after, "fallbacks"), count(&committed, "fallbacks"));
+    assert_eq!(count(&after, "waits"), count(&committed, "waits") + 1);
+    assert!(count(&after, "served") > count(&committed, "served"));
     assert_eq!(after["indexed_signal"], after["store_signal"]);
     assert!(after["builds"].as_u64().unwrap() >= 2, "{after}");
     compare(&mut on, &mut off);
