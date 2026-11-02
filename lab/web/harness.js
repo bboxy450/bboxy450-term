@@ -36,6 +36,11 @@
     send: svg('<path d="M8 13V3M3.5 7.5 8 3l4.5 4.5"/>'),
     branch: svg('<circle cx="4.5" cy="3.5" r="1.5"/><circle cx="4.5" cy="12.5" r="1.5"/><circle cx="11.5" cy="5.5" r="1.5"/><path d="M4.5 5v6M11.5 7c0 2.5-3 2.5-7 4"/>'),
     plan: svg('<path d="M6 4h7.5M6 8h7.5M6 12h7.5"/><circle cx="3" cy="4" r=".6"/><circle cx="3" cy="8" r=".6"/><circle cx="3" cy="12" r=".6"/>'),
+    stop: svg('<rect x="4" y="4" width="8" height="8" rx="1.5" fill="currentColor" stroke="none"/>'),
+    clock: svg('<circle cx="8" cy="8" r="6"/><path d="M8 4.75V8l2.25 1.5"/>'),
+    retry: svg('<path d="M13 8a5 5 0 1 1-1.5-3.55"/><path d="M13 2.5v3h-3"/>'),
+    loop: svg('<path d="M3 7a4.5 4.5 0 0 1 8.2-2.5M13 9a4.5 4.5 0 0 1-8.2 2.5"/><path d="M11.5 2v2.75H8.75M4.5 14v-2.75h2.75"/>'),
+    plug: svg('<path d="M6 2v3M10 2v3M4.5 5h7v2.5a3.5 3.5 0 0 1-7 0zM8 11v3"/>'),
   };
   const icon = (name, cls) => el('span', { class: 'hx-i ' + (cls || ''), html: ICON[name] || ICON.other });
 
@@ -170,12 +175,28 @@
     openai: { label: 'OpenAI', mark: 'O', color: '#10A37F', endpoint: 'https://api.openai.com/v1', auth: { kind: 'env', ref: 'OPENAI_API_KEY' }, model: 'gpt-5.1' },
     local: { label: 'Local', mark: 'L', color: '#9AA3C7', endpoint: 'http://localhost:11434/v1', auth: { kind: 'none' }, model: 'qwen3-coder' },
   };
+  // An ACP-agent profile (kind acp-agent, provider acp-agent) runs another agent behind the harness over ACP; its tile
+  // is the agent's, picked by the first word of agent.command. The agent authenticates itself: the harness holds no key.
+  PROVIDERS['acp-agent'] = { label: 'ACP agent', mark: '⌁', color: '#2EE6A8', endpoint: '', auth: { kind: 'none' }, model: '', agent: 'claude-agent-acp' };
+  const AGENTS = {
+    'claude-agent-acp': { label: 'Claude Agent', mark: 'C', color: '#D97757' },
+    'codex-acp': { label: 'Codex', mark: 'Cx', color: '#10A37F' },
+    opencode: { label: 'opencode', mark: 'oc', color: '#5B6178' },
+    'pi-acp': { label: 'pi', mark: 'π', color: '#FF4FA3' },
+    omp: { label: 'oh-my-pi', mark: 'ω', color: '#B07BFF' },
+    goose: { label: 'Goose', mark: 'G', color: '#C98A1B' },
+  };
   const AUTH_SAY = { keychain: 'Keychain', env: 'env', command: 'command', login: 'login', none: 'no key' };
-  const provOf = p => PROVIDERS[p.provider] || { label: p.provider || 'custom', mark: '?', color: '#9AA3C7' };
-  const provMark = p => { const P = provOf(p); return el('span', { class: 'hx-pm', style: '--pc:' + P.color }, P.mark); };
+  const isAgent = p => p.kind === 'acp-agent' || p.provider === 'acp-agent';
+  const agentOf = cmd => { const c = (Array.isArray(cmd) ? cmd[0] : String(cmd || '').split(/\s/)[0]) || ''; return AGENTS[c] || { label: c || 'agent', mark: (c[0] || '·').toUpperCase(), color: '#2EE6A8' }; };
+  const provOf = p => isAgent(p) ? agentOf(p.agent_command) : PROVIDERS[p.provider] || { label: p.provider || 'custom', mark: '?', color: '#9AA3C7' };
+  const provMark = (p, cls) => { const P = provOf(p); return el('span', { class: 'hx-pm' + (isAgent(p) ? ' agent' : '') + (cls ? ' ' + cls : ''), style: '--pc:' + P.color }, P.mark); };
+  // "acp:claude-agent-acp · claude-haiku-5-5" (profile_changed.model of an ACP session) → { agent, model }
+  const acpModel = m => { const x = /^acp:([^·]+?)\s*(?:·\s*(.*))?$/.exec(m || ''); return x ? { agent: x[1].trim(), model: x[2] || '' } : null; };
   // the frontmatter a new profile writes; the key itself never enters the file
   function profileYaml(f) {
     const a = f.auth || {};
+    if (f.provider === 'acp-agent') return ['---', 'name: ' + f.name, 'provider: acp-agent', 'agent:', '  command: [' + (f.agent || 'claude-agent-acp').split(/\s+/).join(', ') + ']', f.model ? 'model: ' + f.model : null, 'on_unattended: deny', '---'].filter(Boolean).join('\n');
     return ['---', 'name: ' + f.name, 'model: ' + f.model, 'endpoint: ' + (f.endpoint || '""'), 'provider: ' + f.provider,
       a.kind === 'keychain' ? 'api_key: "!security find-generic-password -s ' + a.ref + ' -w"' : a.kind === 'command' ? 'api_key: "!' + a.ref + '"' : null,
       a.kind === 'env' ? 'api_key_env: ' + a.ref : null, 'on_unattended: deny', 'auto_compact: true', '---'].filter(Boolean).join('\n');
@@ -187,27 +208,32 @@
     const search = el('input', { class: 'hx-pq', placeholder: 'Switch profile…', oninput: e => { q = e.target.value.toLowerCase(); draw(); }, onkeydown: e => { if (e.key === 'Escape') close(); if (e.key === 'Enter') { const r = rowsEl.querySelector('.hx-prow:not(.off)'); if (r) r.click(); } } });
     const rowsEl = el('div', { class: 'hx-prows' });
     function row(p) {
-      const P = provOf(p), off = !!P.unsupported || (p.auth && p.auth.ok === false), on = p.name === cur;
-      const a = p.auth || {};
-      return el('button', { type: 'button', class: 'hx-prow' + (on ? ' on' : '') + (off ? ' off' : ''), title: P.unsupported || (a.ok === false ? AUTH_SAY[a.kind] + ' ' + (a.ref || '') + ' not found' : p.endpoint || ''),
+      const agent = isAgent(p), P = provOf(p), off = !!P.unsupported || (p.auth && p.auth.ok === false), on = p.name === cur;
+      const a = p.auth || {}, cmd = (p.agent_command || []).join(' ');
+      // model rows: model id + provider; agent rows: the command the harness spawns + the model it asks the agent for
+      const sub = agent ? el('small', {}, el('span', { class: 'p' }, '$ '), cmd || 'agent', p.model ? ' · ' + p.model : '') : el('small', {}, p.model, el('span', { class: 'pv' }, ' · ' + P.label));
+      const auth = agent ? el('span', { class: 'hx-auth na', title: (p.agent_env_names || []).length ? 'agent env: ' + p.agent_env_names.join(', ') : 'the agent signs itself in' }, (p.agent_env_names || []).length ? 'env ' + p.agent_env_names.length : 'own login')
+        : el('span', { class: 'hx-auth ' + (P.unsupported ? 'na' : a.ok === false ? 'bad' : 'ok') }, P.unsupported ? 'not supported' : (a.ok === false ? 'missing ' : '') + AUTH_SAY[a.kind || 'none']);
+      return el('button', { type: 'button', class: 'hx-prow' + (on ? ' on' : '') + (off ? ' off' : ''), title: P.unsupported || (a.ok === false ? AUTH_SAY[a.kind] + ' ' + (a.ref || '') + ' not found' : agent ? P.label + ' over ACP' : p.endpoint || ''),
         onclick: () => { if (off || on) return; close(); opts.onOp && opts.onOp({ type: 'set_profile', profile: p.name }, p); } },
         provMark(p),
-        el('span', { class: 'hx-pn' }, el('b', {}, p.name, p.default ? el('span', { class: 'hx-def', title: 'default-profile' }, 'default') : null), el('small', {}, p.model)),
+        el('span', { class: 'hx-pn' }, el('b', {}, p.name, p.default ? el('span', { class: 'hx-def', title: 'default-profile' }, 'default') : null), sub),
         el('span', { class: 'hx-sp' }),
         p.context_tokens ? el('span', { class: 'hx-ctx' }, kfmt(p.context_tokens)) : null,
-        el('span', { class: 'hx-auth ' + (P.unsupported ? 'na' : a.ok === false ? 'bad' : 'ok') }, P.unsupported ? 'not supported' : (a.ok === false ? 'missing ' : '') + AUTH_SAY[a.kind || 'none']),
+        auth,
         el('span', { class: 'hx-pck' }, on ? icon('check') : null));
     }
     function draw() {
       rowsEl.replaceChildren();
-      const hit = p => !q || (p.name + ' ' + p.model + ' ' + provOf(p).label).toLowerCase().includes(q);
+      const hit = p => !q || (p.name + ' ' + p.model + ' ' + provOf(p).label + ' ' + (p.agent_command || []).join(' ')).toLowerCase().includes(q);
       if (cur && !list.some(p => p.name === cur)) rowsEl.append(el('div', { class: 'hx-prow on off' }, el('span', { class: 'hx-pm', style: '--pc:#9AA3C7' }, '·'), el('span', { class: 'hx-pn' }, el('b', {}, cur), el('small', {}, (st.model || '') + ' · not in profiles/')), el('span', { class: 'hx-sp' }), el('span', { class: 'hx-pck' }, icon('check'))));
-      for (const [key, P] of Object.entries(PROVIDERS)) {
-        const ps = list.filter(p => p.provider === key && hit(p)); if (!ps.length) continue;
-        rowsEl.append(el('div', { class: 'hx-pgrp' }, P.label), ...ps.map(row));
-      }
-      const rest = list.filter(p => !PROVIDERS[p.provider] && hit(p));
-      if (rest.length) rowsEl.append(el('div', { class: 'hx-pgrp' }, 'Custom'), ...rest.map(row));
+      // two kinds, agents first: an ACP agent is a whole other harness, a model is a brain for this one
+      const agents = list.filter(p => isAgent(p) && hit(p)), models = list.filter(p => !isAgent(p) && hit(p));
+      const order = Object.keys(PROVIDERS), rank = p => { const i = order.indexOf(p.provider); return i < 0 ? order.length : i; };
+      models.sort((x, y) => rank(x) - rank(y));
+      if (agents.length) rowsEl.append(el('div', { class: 'hx-pgrp' }, icon('plug'), 'ACP agents', el('span', { class: 'n' }, agents.length)), ...agents.map(row));
+      if (models.length) rowsEl.append(el('div', { class: 'hx-pgrp' }, icon('think'), 'Models', el('span', { class: 'n' }, models.length)), ...models.map(row));
+      if (!agents.length && !models.length) rowsEl.append(el('div', { class: 'hx-pnone' }, 'No profile matches “' + q + '”'));
     }
     draw();
     box.append(search, rowsEl, el('div', { class: 'hx-pfoot' },
@@ -217,7 +243,7 @@
     return box;
   }
   function newProfile(opts, close) {
-    const f = { provider: 'openrouter', name: '', model: '', endpoint: '', auth: null };
+    const f = { provider: 'openrouter', name: '', model: '', endpoint: '', agent: '', auth: null };
     const box = el('div', { class: 'hx-pmenu hx-pnew', onclick: e => e.stopPropagation() });
     const pre = el('pre', { class: 'hx-yaml' });
     const tabs = el('div', { class: 'hx-ptabs' });
@@ -225,8 +251,9 @@
     const fields = el('div', { class: 'hx-pfs' });
     function paint() {
       const P = PROVIDERS[f.provider];
-      const ff = { ...f, name: f.name || f.provider, model: f.model || P.model, endpoint: f.endpoint || P.endpoint, auth: P.auth };
-      tabs.replaceChildren(...Object.entries(PROVIDERS).map(([k, X]) => el('button', { type: 'button', class: 'hx-pt' + (k === f.provider ? ' on' : ''), style: '--pc:' + X.color, onclick: () => { f.provider = k; f.endpoint = ''; f.model = ''; build(); } }, X.label)));
+      const ff = { ...f, name: f.name || f.provider, model: f.model || P.model, endpoint: f.endpoint || P.endpoint, auth: P.auth, agent: f.agent || P.agent };
+      if (f.provider === 'acp-agent') { ff.kind = 'acp-agent'; ff.agent_command = ff.agent.split(/\s+/); ff.name = f.name || ff.agent_command[0].replace(/-acp$/, '') + '-acp'; }
+      tabs.replaceChildren(...Object.entries(PROVIDERS).map(([k, X]) => el('button', { type: 'button', class: 'hx-pt' + (k === f.provider ? ' on' : ''), style: '--pc:' + X.color, onclick: () => { f.provider = k; f.endpoint = ''; f.model = ''; f.agent = ''; build(); } }, X.label)));
       pre.textContent = P.unsupported ? P.unsupported : '# ~/.bboxy450-harness/profiles/' + ff.name + '.md\n' + profileYaml(ff);
       pre.classList.toggle('na', !!P.unsupported);
       save.disabled = !!P.unsupported;
@@ -235,7 +262,8 @@
     const save = el('button', { type: 'button', class: 'pri', onclick: () => { const ff = paint(); close(); opts.onOp && opts.onOp({ type: 'create_profile', profile: ff }, ff); } }, 'Save & switch');
     function build() {
       const P = PROVIDERS[f.provider];
-      fields.replaceChildren(field('Name', 'name', f.provider), field('Model', 'model', P.model), P.unsupported ? null : field('Endpoint', 'endpoint', P.endpoint),
+      const acp = f.provider === 'acp-agent';
+      fields.replaceChildren(field('Name', 'name', acp ? 'claude-acp' : f.provider), acp ? field('Agent', 'agent', P.agent) : null, field('Model', 'model', acp ? 'the agent\u2019s own default' : P.model), P.unsupported || acp ? null : field('Endpoint', 'endpoint', P.endpoint),
         P.auth.kind === 'none' || P.unsupported ? null : el('div', { class: 'hx-pf' }, el('span', {}, 'Key'), el('span', { class: 'hx-keysrc' }, icon('shield'), AUTH_SAY[P.auth.kind] + ' ', el('code', {}, P.auth.ref), el('small', {}, ' · read when the profile loads, never written here'))));
       paint();
     }
@@ -251,7 +279,7 @@
     let s = fresh();
     const nodes = new Map();
     const head = el('div', { class: 'hx-head' }), feed = el('div', { class: 'hx-feed' }), scroller = el('div', { class: 'hx-scroll' }, feed);
-    const comp = composer(opts);
+    const comp = composer(opts, { profiles: () => opts.profiles || [], openProfiles: () => { if (!menu) toggleMenu(); } });
     const node = el('div', { class: 'hx' + (opts.compact ? ' compact' : '') }, head, scroller, comp);
     let stick = true;
     scroller.addEventListener('scroll', () => { stick = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40; });
@@ -303,6 +331,12 @@
             break;
           }
           if (e.body.kind === 'file_change' && t) t.edits++;
+          if (e.body.kind === 'agent_message' && t) {
+            const k = lineKey(e.body.markdown); t.said = t.said || new Set();
+            if (k && !t.loop && t.said.has(k)) { startLoop(t, it); touch(it.id); drawLoop(t.loop); break; }
+            if (t.loop && t.loop.items.includes(it.id)) { touch(it.id); drawLoop(t.loop); break; }
+            t.said.add(k);
+          }
           const parent = toolOf(it);
           if (parent && (it.kind === 'terminal' || it.kind === 'file_change')) touch(parent.id); else touch(it.id);
           break;
@@ -321,6 +355,8 @@
 
     // ---------- blocks ----------
     function mount(id) {
+      const it0 = item(id), lt = it0 && s.turns.get(it0.turn), L = lt && lt.loop;
+      if (L && /^(agent_message|reasoning|tool_call|notice)$/.test(it0.kind)) { const n = build(id); if (!n) return; nodes.set(id, n); L.items.push(id); L.body.append(n); drawLoop(L); return; }
       const n = build(id); if (!n) return;
       n.classList.add('hx-in'); nodes.set(id, n);
       // consecutive tool calls started in one round sit on a shared rail: they ran together
@@ -367,11 +403,11 @@
       return n;
     }
     function thought(it) {
-      const text = it.body ? it.body.summary || it.body.raw || '' : it.text, live = !it.body;
+      const text = (it.body ? it.body.summary || it.body.raw || '' : it.text).trim(), live = !it.body;
       const n = el('div', { class: 'hx-think' + (live ? ' live' : '') + (it.open ? ' open' : '') });
       const took = (it.t1 || 0) - (it.t0 || 0);
       const label = live ? el('span', { class: 'hx-shimmer' }, 'Thinking') : took >= 100 ? el('span', {}, 'Thought for ', el('b', {}, ms(took))) : el('b', {}, 'Thought');
-      const gist = text.split(/(?<=[.!?])\s/)[0];
+      const gist = text.replace(/\*\*|__|`/g, '').split(/(?<=[.!?])\s|\n/)[0];
       n.append(el('button', { class: 'hx-tk', type: 'button', onclick: () => { it.open = !it.open; touch(it.id); } }, icon('think', 'spin-slow'), label, live ? null : el('span', { class: 'hx-gist' }, gist), live ? null : icon('chev', 'chev')));
       if (live || it.open) n.append(el('div', { class: 'hx-tbody' }, text, live ? el('span', { class: 'hx-caret' }) : null));
       return n;
@@ -380,7 +416,9 @@
     function describe(it) {
       const b = it.body || {}, h = it.head || {}, name = b.name || h.name || '?', kind = b.tool_kind || h.tool_kind || 'other';
       const a = parse(b.input_raw || it.input || '{}');
-      const outText = (b.output || []).filter(o => o.type === 'text' || o.type === 'error').map(o => o.text).join('\n');
+      // ACP agents fence their output (```console … ```) or leave a placeholder for output only their own terminal saw
+      const outText = (b.output || []).filter(o => o.type === 'text' || o.type === 'error').map(o => o.text).join('\n')
+        .replace(/^```[\w-]*\n([\s\S]*?)\n?```$/, '$1').replace(/^\[terminal [^\]]+\]$/, '').replace(/^\(no output\)$/, '');
       const mcp = name.match(/^mcp__(.+?)__(.+)$/);
       if (mcp) return { kind: 'other', verb: mcp[2].replace(/_/g, ' '), target: mcp[1], a, outText, chip: 'mcp' };
       switch (name) {
@@ -389,7 +427,11 @@
         case 'bash': return { kind: 'execute', verb: 'Run', target: a.command, a, outText, mono: true };
         case 'exec': return { kind: 'execute', verb: 'Run', target: [a.program, ...(a.args || [])].join(' '), a, outText, mono: true };
         case 'edit': case 'write': case 'apply_patch': return { kind: 'edit', verb: name === 'write' ? 'Write' : 'Edit', target: short(a.path || (a.edits && a.edits[0] && a.edits[0].path)), a, outText };
-        default: return { kind, verb: name, target: '', a, outText };
+        case 'Terminal': return { kind: 'execute', verb: 'Run', target: a.command || '', a, outText, mono: true, note: a.description };
+        default:
+          // an agent tool named by its command line ("ls -la") is a Run of that line; a phrase ("List files") is the verb itself
+          if (kind === 'execute' && !a.command && /^[\w./-]+(\s+[-\w./]+)+$/.test(name)) return { kind, verb: 'Run', target: name, a, outText, mono: true, quiet: !outText };
+          return { kind, verb: name, target: a.command || a.path || '', a, outText, mono: !!a.command };
       }
     }
     function approvalBadge(ap) {
@@ -404,7 +446,7 @@
       const D = describe(it), b = it.body, term = it.terminal, ch = it.change;
       const denied = it.approval && it.approval.body && it.approval.body.decision && it.approval.body.decision.decision === 'deny';
       const asking = it.approval && !(it.approval.body && it.approval.body.decision);
-      const st = it.status === 'running' ? (asking ? 'ask' : 'run') : denied ? 'deny' : it.status === 'completed' ? 'done' : 'fail';
+      const st = it.status === 'running' ? (asking ? 'ask' : 'run') : denied ? 'deny' : it.status === 'completed' ? 'done' : it.status === 'interrupted' || it.status === 'cancelled' ? 'stop' : 'fail';
       const exit = term && term.body ? term.body.exit : null;
       let meta = D.meta || '';
       if (D.kind === 'execute' && exit != null) meta = 'exit ' + exit;
@@ -423,17 +465,20 @@
         meta ? el('span', { class: 'hx-meta' + (exit ? ' bad' : exit === 0 ? ' good' : '') }, meta) : null,
         approvalBadge(it.approval),
         el('span', { class: 'hx-dur' }, it.t1 ? ms(it.t1 - it.t0) : ''),
-        el('span', { class: 'hx-st' }, st === 'run' ? el('i', { class: 'hx-dots' }, el('i'), el('i'), el('i')) : st === 'ask' ? icon('shield') : icon(st === 'done' ? 'check' : 'x')));
+        el('span', { class: 'hx-st' }, st === 'run' ? el('i', { class: 'hx-dots' }, el('i'), el('i'), el('i')) : st === 'ask' ? icon('shield') : icon(st === 'done' ? 'check' : st === 'stop' ? 'stop' : 'x')));
       n.append(th);
       // a rebuild must not replay entrance motion: the status pops once per status, the body opens once
       if (it._popped === st) th.querySelector('.hx-st').classList.add('noanim'); it._popped = st;
       if (!open) { it._opened = false; return n; }
       const body = el('div', { class: 'hx-tb' });
-      if (st === 'ask') { const ap = it.approval.body || {}; body.append(el('div', { class: 'hx-askbar' }, el('span', {}, 'Allow ', el('b', {}, (ap.subject && ap.subject.effect) || 'this'), '?'), el('span', { class: 'hx-sp' }), ...((ap.options || ['allow', 'allow_always', 'deny']).map((o, i) => el('button', { type: 'button', class: i === 0 ? 'pri' : o === 'deny' ? 'no' : '' }, { allow: 'Allow', allow_always: 'Always', deny: 'Deny' }[o] || o, el('span', { class: 'k' }, String(i + 1))))))); }
+      if (st === 'ask') { const ap = it.approval.body || {}, sub = ap.subject || {};
+        // what exactly is being allowed, verbatim: the command or the call, never only its effect class
+        if (sub.command || sub.summary) body.append(el('div', { class: 'hx-asubj' }, el('span', { class: 'p' }, sub.command ? '$' : '›'), sub.command || sub.summary, (sub.paths || []).length ? el('span', { class: 'hx-where' }, ' · ' + sub.paths.map(short).join(', ')) : null));
+        body.append(el('div', { class: 'hx-askbar' }, el('span', {}, 'Allow ', el('b', {}, (ap.subject && ap.subject.effect) || 'this'), '?'), el('span', { class: 'hx-sp' }), ...((ap.options || ['allow', 'allow_always', 'deny']).map((o, i) => el('button', { type: 'button', class: i === 0 ? 'pri' : o === 'deny' ? 'no' : '' }, { allow: 'Allow', allow_always: 'Always', deny: 'Deny' }[o] || o, el('span', { class: 'k' }, String(i + 1))))))); }
       else if (st === 'deny') body.append(el('div', { class: 'hx-err' }, (it.approval.body.decision.reason || it.reason || 'denied')));
       else if (D.kind === 'execute') {
         const out = term && term.live ? term.live : D.outText;
-        body.append(el('div', { class: 'hx-term' }, el('div', { class: 'hx-cmd' }, el('span', { class: 'p' }, '$'), D.target), out ? termOut(out) : st === 'run' ? el('div', { class: 'hx-out dim' }, el('span', { class: 'hx-caret' })) : null));
+        body.append(el('div', { class: 'hx-term' }, el('div', { class: 'hx-cmd' }, el('span', { class: 'p' }, '$'), D.target), out ? termOut(out) : st === 'run' ? el('div', { class: 'hx-out dim' }, el('span', { class: 'hx-caret' })) : el('div', { class: 'hx-out dim' }, D.quiet ? 'output stayed in the agent\u2019s own terminal' : 'no output')));
       } else if (D.kind === 'edit') {
         const u = ch && ch.body ? ch.body.unified : D.outText.startsWith('---') ? D.outText : '';
         if (u) body.append(diffView(u)); else if (D.outText) body.append(el('div', { class: it.status === 'failed' ? 'hx-err' : 'hx-out' }, D.outText));
@@ -471,16 +516,47 @@
       return el('div', { class: 'hx-plan' }, el('div', { class: 'hx-ph' }, icon('plan'), 'Plan', el('span', { class: 'hx-sp' }), entries.filter(x => x.status === 'completed').length + '/' + entries.length),
         ...entries.map(x => el('div', { class: 'pe ' + x.status }, el('i'), x.text)));
     }
+    // The turn receipt. end_turn is a quiet green line; a stop the user asked for (interrupted, cancelled) is neutral;
+    // anything else is red, says what happened in words, and offers the two ways out: try again, or another profile.
+    const STOP_SAY = { max_tokens: 'Hit the output limit', max_rounds: 'Stopped at the round limit', interrupted: 'Interrupted', cancelled: 'Cancelled', unknown: 'Stopped' };
+    const CLASS_SAY = { transient: 'Connection dropped', rate_limited: 'Rate limited', auth: 'Not signed in', bad_request: 'Request refused', malformed: 'Unreadable reply', mid_stream: 'Reply cut off', config: 'Profile misconfigured', store: 'Could not save the session', tool: 'Tool failed', internal: 'Harness error', cancelled: 'Cancelled' };
     function turnEnd(turn) {
-      const t = s.turns.get(turn) || {}, r = (t.reason && t.reason.reason) || 'end_turn', u = t.usage || {};
-      const ok = r === 'end_turn';
-      return el('div', { class: 'hx-end ' + (ok ? 'ok' : 'bad') },
-        el('span', { class: 'hx-endmark' }, icon(ok ? 'check' : 'x')),
-        el('b', {}, ok ? 'Done' : r.replace(/_/g, ' ')),
+      const t = s.turns.get(turn) || {}, R = t.reason || {}, r = R.reason || 'end_turn', u = t.usage || {};
+      const ok = r === 'end_turn', soft = r === 'interrupted' || r === 'cancelled';
+      const title = ok ? 'Done' : r === 'error' ? CLASS_SAY[R.class] || 'Failed' : STOP_SAY[r] || r.replace(/_/g, ' ');
+      const L = t.loop, plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+      const n = el('div', { class: 'hx-end ' + (ok ? 'ok' : soft ? 'soft' : 'bad') },
+        el('span', { class: 'hx-endmark' }, icon(ok ? 'check' : soft ? 'stop' : 'x')),
+        el('b', {}, title),
         el('span', {}, ms((t.t1 || 0) - (t.t0 || 0))),
-        el('span', {}, t.rounds + ' rounds'), el('span', {}, t.tools + ' tools'), t.edits ? el('span', {}, t.edits + ' edit' + (t.edits === 1 ? '' : 's')) : null,
+        t.rounds ? el('span', {}, plural(t.rounds, 'round')) : null, t.tools ? el('span', {}, plural(t.tools, 'tool')) : null, t.edits ? el('span', {}, plural(t.edits, 'edit')) : null,
         u.input_tokens ? el('span', {}, kfmt(u.input_tokens) + ' in · ' + kfmt(u.output_tokens) + ' out') : null,
-        t.reason && t.reason.message ? el('span', { class: 'why' }, t.reason.message) : null);
+        u.cost_micros_usd ? el('span', {}, '$' + (u.cost_micros_usd / 1e6).toFixed(u.cost_micros_usd < 1e4 ? 4 : 2)) : null,
+        L ? el('span', { class: 'warn' }, icon('loop'), plural(L.items.filter(id => (item(id) || {}).kind === 'agent_message').length, 'repeated reply') + ' folded') : null);
+      if (!ok && !soft) n.append(el('span', { class: 'why' }, R.message || 'The turn ended without an answer.'),
+        el('span', { class: 'hx-eact' }, el('button', { type: 'button', class: 'pri', onclick: () => opts.onOp && opts.onOp({ type: 'retry', turn }) }, icon('retry'), 'Retry'),
+          el('button', { type: 'button', onclick: e => { e.stopPropagation(); toggleMenu(); } }, 'Switch profile')));
+      return n;
+    }
+
+    // ---------- runaway loop: an agent answering the same thing again in one turn ----------
+    // The second reply whose first line matches an earlier one in the turn opens a loop card; everything the agent does
+    // after that in the turn folds into it. The first answer stays in the transcript; the repeats stay one click away.
+    const lineKey = md => String(md || '').trim().split('\n')[0].toLowerCase().replace(/[^a-z ]+/g, '').replace(/\s+/g, ' ').trim().slice(0, 48);
+    function startLoop(t, it) {
+      const L = { id: 'loop:' + it.turn, items: [], open: false };
+      L.head = el('button', { type: 'button', class: 'hx-lh', onclick: () => { L.open = !L.open; L.node.classList.toggle('open', L.open); } });
+      L.body = el('div', { class: 'hx-lb' });
+      L.node = el('div', { class: 'hx-loop hx-in' }, L.head, L.body);
+      t.loop = L; nodes.set(L.id, L.node);
+      const old = nodes.get(it.id); if (old) old.replaceWith(L.node); else feed.append(L.node);
+      L.items.push(it.id); if (old) L.body.append(old);
+      drawLoop(L);
+    }
+    function drawLoop(L) {
+      const c = k => L.items.filter(id => (item(id) || {}).kind === k).length;
+      const bits = [[c('agent_message'), 'reply', 'replies'], [c('reasoning'), 'thought', 'thoughts'], [c('tool_call'), 'tool call', 'tool calls']].filter(x => x[0]).map(x => x[0] + ' ' + (x[0] === 1 ? x[1] : x[2]));
+      L.head.replaceChildren(el('span', { class: 'hx-ki loop' }, icon('loop')), el('b', {}, 'The agent kept repeating itself'), el('span', { class: 'hx-gist' }, bits.join(' · ')), el('span', { class: 'hx-sp' }), el('span', { class: 'hx-chip' }, 'folded'), icon('chev', 'chev'));
     }
 
     // ---------- header: identity, live phase, meter ----------
@@ -490,18 +566,21 @@
         if (it.status !== 'running') continue;
         if (it.kind === 'reasoning') return ['think', 'Thinking'];
         if (it.kind === 'agent_message') return ['write', 'Writing'];
-        if (it.kind === 'tool_call') { const D = describe(it); return ['tool', D.verb + ' ' + (D.target || '')]; }
+        if (it.kind === 'tool_call') { const D = describe(it); return it.approval && !(it.approval.body && it.approval.body.decision) ? ['ask', 'Waiting for you · ' + D.verb] : ['tool', D.verb + ' ' + (D.target || '')]; }
       }
       return s.turn ? ['think', 'Working'] : ['idle', 'Ready'];
     }
     function drawHead() {
-      const [ph, say] = phaseNow(); node.dataset.phase = ph;
+      const [ph, say] = phaseNow(); node.dataset.phase = ph; comp.hx.sync(ph);
+      const acp = acpModel(s.model);
       if (opts.onPhase) opts.onPhase(ph);
       const u = s.usage;
       head.replaceChildren(...[
         el('span', { class: 'hx-mark' }, el('img', { src: 'bboxy.png', alt: '' })),
         el('span', { class: 'hx-name' }, 'bboxy'),
-        s.model || s.profile ? el('button', { type: 'button', class: 'hx-model' + (menu ? ' on' : ''), title: 'Switch profile', onclick: e => { e.stopPropagation(); toggleMenu(); } }, el('i'), el('span', { class: 'hx-mt' }, s.profile && s.profile !== s.model ? s.profile + ' · ' + s.model : s.model || s.profile), icon('chev', 'down')) : null,
+        s.model || s.profile ? el('button', { type: 'button', class: 'hx-model' + (menu ? ' on' : '') + (acp ? ' acp' : ''), title: 'Switch profile', onclick: e => { e.stopPropagation(); toggleMenu(); } },
+          ...(acp ? [provMark({ kind: 'acp-agent', agent_command: acp.agent.split(/\s+/) }, 'sm'), el('span', { class: 'hx-mt' }, s.profile || acp.agent, acp.model ? el('span', { class: 'dim' }, ' · ' + acp.model) : null), el('span', { class: 'hx-kind' }, 'ACP')]
+            : [el('i'), el('span', { class: 'hx-mt' }, s.profile && s.profile !== s.model ? s.profile + ' · ' + s.model : s.model || s.profile)]), icon('chev', 'down')) : null,
         cwd() ? el('span', { class: 'hx-cwd' }, icon('branch'), cwd().split('/').pop()) : null,
         el('span', { class: 'hx-sp' }),
         el('span', { class: 'hx-phase ' + ph }, el('i'), say.length > 48 ? say.slice(0, 47) + '…' : say),
@@ -515,13 +594,95 @@
     node.addEventListener('click', () => { if (menu) toggleMenu(false); });
     function reset() { s = fresh(); nodes.clear(); feed.replaceChildren(); if (menu) toggleMenu(false); drawHead(); }
     drawHead();
-    return { node, apply, reset, setProfiles(list) { opts.profiles = list; }, openProfiles() { if (!menu) toggleMenu(); }, get state() { return s; } };
+    return { node, apply, reset, setProfiles(list) { opts.profiles = list; }, openProfiles() { if (!menu) toggleMenu(); }, compose(o) { comp.hx.set(o); }, get state() { return s; } };
   }
 
-  function composer(opts) {
-    const input = el('div', { class: 'hx-input', contenteditable: opts.interactive ? 'true' : 'false', 'data-ph': 'Ask bboxy, @ a file, / a command' });
-    return el('div', { class: 'hx-comp' }, el('div', { class: 'hx-box' }, input,
-      el('div', { class: 'hx-tools' }, el('span', { class: 'hx-chip' }, '@ context'), el('span', { class: 'hx-chip' }, 'queue'), el('span', { class: 'hx-sp' }), el('span', { class: 'hx-hint' }, 'esc interrupt'), el('span', { class: 'hx-send' }, icon('send')))));
+  // ---------- composer ----------
+  // One rounded box. Its look follows two inputs: the session phase (idle, running, waiting on an approval) and the
+  // local edit state (focused, has text). The "/" menu and the queued follow-ups hang above it, anchored to its top edge.
+  //   comp.hx.set({ focus, text, queued, menu: 'slash' | null, sel })   comp.hx.sync(phase)
+  const COMMANDS = [
+    { cmd: '/interrupt', say: 'Stop the running turn', key: 'esc', icon: 'stop' },
+    { cmd: '/stop', say: 'Close this session', icon: 'x' },
+    { cmd: '/profiles', say: 'Open the profile switcher', icon: 'plug' },
+  ];
+  const PH = { idle: 'Ask bboxy, @ a file, / a command', focus: 'Ask bboxy, @ a file, / a command', typing: '', run: 'Queue a follow-up…', ask: 'Answer the approval above' };
+  const HINT = { idle: '', focus: '', typing: '⏎ send · ⇧⏎ newline', run: 'esc interrupt', ask: '1 allow · 2 always · 3 deny' };
+  const tokens = t => esc(t).replace(/^(\/[a-z]+)/, '<span class="tok cmd">$1</span>').replace(/(^|\s)(@[\w./-]+)/g, '$1<span class="tok at">$2</span>');
+  function slashChoices(query, profiles) {
+    return [...COMMANDS, ...profiles.map(p => ({ cmd: '/profile ' + p.name, say: isAgent(p) ? (p.agent_command || []).join(' ') + (p.model ? ' · ' + p.model : '') : p.model, profile: p }))]
+      .filter(c => c.cmd.slice(1).startsWith(query));
+  }
+  function slashMenu(query, sel, profiles, choose) {
+    const hits = slashChoices(query, profiles); if (!hits.length) return null;
+    const row = (c, i) => el('button', { type: 'button', class: 'hx-crow' + (i === sel ? ' sel' : ''), onmousedown: e => { e.preventDefault(); choose(c); } },
+      c.profile ? provMark(c.profile, 'sm') : el('span', { class: 'hx-ct' }, icon(c.icon)),
+      el('span', { class: 'hx-cc' }, el('b', {}, c.cmd.slice(0, query.length + 1)), c.cmd.slice(query.length + 1)),
+      el('span', { class: 'hx-cd' }, c.say || ''),
+      c.key ? el('kbd', {}, c.key) : c.profile && isAgent(c.profile) ? el('span', { class: 'hx-kind' }, 'ACP') : null);
+    const cmds = hits.filter(c => !c.profile), profs = hits.filter(c => c.profile);
+    let k = 0;
+    // at most eight rows show; the list scrolls and keeps the selected row in view
+    const rows = el('div', { class: 'hx-crows' },
+      cmds.length ? el('div', { class: 'hx-pgrp' }, 'Commands') : null, ...cmds.map(c => row(c, k++)),
+      profs.length ? el('div', { class: 'hx-pgrp' }, 'Switch profile') : null, ...profs.map(c => row(c, k++)));
+    requestAnimationFrame(() => { const r = rows.querySelector('.sel'); if (r && r.scrollIntoView) r.scrollIntoView({ block: 'nearest' }); });
+    return el('div', { class: 'hx-cmenu', role: 'listbox' }, rows,
+      el('div', { class: 'hx-cfoot' }, el('kbd', {}, '↑'), el('kbd', {}, '↓'), ' select', el('kbd', {}, '⏎'), ' run', el('kbd', {}, 'esc'), ' close', el('span', { class: 'hx-sp' }), hits.length + (hits.length === 1 ? ' match' : ' matches')));
+  }
+  function composer(opts, api) {
+    const st = { focus: false, text: '', queued: [], menu: null, sel: 0, phase: 'idle' };
+    const input = el('div', { class: 'hx-input', contenteditable: opts.interactive ? 'true' : 'false', spellcheck: 'false' });
+    const hint = el('span', { class: 'hx-hint' }), send = el('button', { type: 'button', class: 'hx-send' }), qchip = el('span', { class: 'hx-chip' });
+    const box = el('div', { class: 'hx-box' }, el('i', { class: 'hx-sweep' }), input,
+      el('div', { class: 'hx-tools' }, el('span', { class: 'hx-chip' }, '@ context'), qchip, el('span', { class: 'hx-sp' }), hint, send));
+    const menuHost = el('div', { class: 'hx-cmenu-host' }), queue = el('div', { class: 'hx-queue' });
+    const node = el('div', { class: 'hx-comp' }, menuHost, queue, box);
+    const query = () => /^\/[^\n]*$/.test(st.text) ? st.text.slice(1) : null;
+    const choices = () => query() == null ? [] : slashChoices(query(), api.profiles());
+    function choose(c) {
+      st.text = ''; st.menu = null; input.textContent = '';
+      if (c.profile) opts.onOp && opts.onOp({ type: 'set_profile', profile: c.profile.name }, c.profile);
+      else if (c.cmd === '/profiles') api.openProfiles();
+      paint();
+    }
+    function paint() {
+      const state = st.phase === 'ask' ? 'ask' : st.phase !== 'idle' ? 'run' : st.text ? 'typing' : st.focus ? 'focus' : 'idle';
+      node.dataset.state = state; box.dataset.focus = st.focus ? 'true' : 'false';
+      input.dataset.ph = PH[state];
+      hint.textContent = st.text && state === 'run' ? '⏎ queue · esc interrupt' : HINT[state];
+      const stop = state === 'run' && !st.text;
+      send.className = 'hx-send' + (st.text ? ' ready' : '') + (stop ? ' stop' : '');
+      send.title = stop ? 'Interrupt (esc)' : state === 'run' ? 'Queue' : 'Send';
+      send.replaceChildren(icon(stop ? 'stop' : 'send'));
+      qchip.textContent = st.queued.length ? 'queue · ' + st.queued.length : 'queue'; qchip.classList.toggle('on', !!st.queued.length);
+      queue.replaceChildren(...st.queued.map((t, i) => el('div', { class: 'hx-qi' }, icon('clock'), el('span', { class: 't' }, t), el('span', { class: 'w' }, i ? 'after #' + i : 'after this turn'),
+        el('button', { type: 'button', class: 'x', title: 'Drop', onclick: () => { st.queued.splice(i, 1); paint(); } }, icon('x')))));
+      const m = st.menu === 'slash' && query() != null ? slashMenu(query(), st.sel, api.profiles(), choose) : null;
+      menuHost.replaceChildren(...(m ? [m] : []));
+    }
+    input.addEventListener('focus', () => { st.focus = true; paint(); });
+    input.addEventListener('blur', () => { st.focus = false; st.menu = null; paint(); });
+    input.addEventListener('input', () => { st.text = input.textContent; st.menu = query() != null ? 'slash' : null; st.sel = 0; paint(); });
+    input.addEventListener('keydown', e => {
+      const hits = choices();
+      if (st.menu && hits.length) {
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); st.sel = (st.sel + (e.key === 'ArrowDown' ? 1 : hits.length - 1)) % hits.length; paint(); return; }
+        if (e.key === 'Enter') { e.preventDefault(); choose(hits[st.sel]); return; }
+        if (e.key === 'Escape') { e.preventDefault(); st.menu = null; paint(); return; }
+      }
+      if (e.key === 'Enter' && !e.shiftKey && st.text.trim()) {
+        e.preventDefault();
+        if (st.phase !== 'idle') st.queued.push(st.text.trim()); else opts.onOp && opts.onOp({ type: 'send', text: st.text.trim() });
+        st.text = ''; input.textContent = ''; paint();
+      }
+    });
+    node.hx = {
+      set(o) { Object.assign(st, o); if ('text' in o) input.innerHTML = tokens(st.text); if (o.menu) st.menu = o.menu; paint(); },
+      sync(phase) { if (phase === st.phase) return; st.phase = phase; paint(); },
+    };
+    paint();
+    return node;
   }
 
   // ---------- replay ----------
@@ -565,7 +726,14 @@
 
   // demo profiles for the lab and the public showcase: the shapes of a real profiles/ directory, no machine's actual config
   const DEMO_PROFILES = [
-    { name: 'sonnet', provider: 'openrouter', model: 'anthropic/claude-sonnet-5-5', endpoint: 'https://openrouter.ai/api/v1', auth: { kind: 'env', ref: 'OPENROUTER_API_KEY', ok: true }, context_tokens: 1000000, default: true },
+    // ACP agents: the shapes harness_profiles reports on a real machine (kind, agent command, env names; never values)
+    { name: 'claude-acp', kind: 'acp-agent', provider: 'acp-agent', model: 'claude-haiku-5-5', agent_command: ['claude-agent-acp'], agent_env_names: [] },
+    { name: 'codex-acp', kind: 'acp-agent', provider: 'acp-agent', model: '', agent_command: ['codex-acp'], agent_env_names: [] },
+    { name: 'opencode-acp', kind: 'acp-agent', provider: 'acp-agent', model: '', agent_command: ['opencode', 'acp'], agent_env_names: [] },
+    { name: 'pi-acp', kind: 'acp-agent', provider: 'acp-agent', model: 'claude-haiku-5-5', agent_command: ['pi-acp'], agent_env_names: ['ANTHROPIC_API_KEY'] },
+    { name: 'omp-acp', kind: 'acp-agent', provider: 'acp-agent', model: '', agent_command: ['omp', 'acp'], agent_env_names: [] },
+    { name: 'goose-acp', kind: 'acp-agent', provider: 'acp-agent', model: '', agent_command: ['goose', 'acp'], agent_env_names: [] },
+    { name: 'sonnet', kind: 'model', provider: 'openrouter', model: 'anthropic/claude-sonnet-5-5', endpoint: 'https://openrouter.ai/api/v1', auth: { kind: 'env', ref: 'OPENROUTER_API_KEY', ok: true }, context_tokens: 1000000, default: true },
     { name: 'nemotron', provider: 'openrouter', model: 'nvidia/nemotron-3.5-super-vl:free', endpoint: 'https://openrouter.ai/api/v1', auth: { kind: 'env', ref: 'OPENROUTER_API_KEY', ok: true }, context_tokens: 262144 },
     { name: 'opus', provider: 'anthropic', model: 'claude-opus-5-5', endpoint: 'https://api.anthropic.com/v1', auth: { kind: 'keychain', ref: 'bboxy450-harness-anthropic', ok: true }, context_tokens: 1000000 },
     { name: 'haiku', provider: 'anthropic', model: 'claude-haiku-5-5', endpoint: 'https://api.anthropic.com/v1', auth: { kind: 'keychain', ref: 'bboxy450-harness-anthropic', ok: true }, context_tokens: 200000 },
@@ -579,9 +747,11 @@
     return (op, p) => {
       const v = getView();
       if (op.type === 'create_profile' && !list.some(x => x.name === p.name)) list.push({ ...p, auth: { ...p.auth, ok: p.auth.kind !== 'env' } });
-      v.apply({ v: { major: 0, minor: 4 }, session: '', epoch: 1, seq: null, at: 0, ts_ms: Date.now(), cause: null, event: { type: 'profile_changed', profile: p.name, model: p.model } });
+      if (op.type !== 'set_profile' && op.type !== 'create_profile') return;
+      const model = isAgent(p) ? 'acp:' + (p.agent_command || ['agent'])[0] + (p.model ? ' · ' + p.model : '') : p.model;
+      v.apply({ v: { major: 0, minor: 4 }, session: '', epoch: 1, seq: null, at: 0, ts_ms: Date.now(), cause: null, event: { type: 'profile_changed', profile: p.name, model } });
     };
   }
 
-  window.Hx = { view, play, markdown, diffView, highlight, PROVIDERS, DEMO_PROFILES, demoOps, profileYaml };
+  window.Hx = { view, play, markdown, diffView, highlight, PROVIDERS, AGENTS, DEMO_PROFILES, demoOps, profileYaml, composer, slashMenu };
 })();

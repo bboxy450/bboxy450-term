@@ -10,7 +10,7 @@ Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>harness · bboxy450-term lab</title>
 <link rel="stylesheet" href="lab.css">
-<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="harness.js"></script><script src="harness-demo.js"></script>
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="harness.js"></script><script src="harness-demo.js"></script><script src="harness-acp.js"></script>
 </head><body><script>
 const el = Lab.el;
 const REAL = HARNESS_SESSIONS['glyph-atlas'];
@@ -47,20 +47,66 @@ function pending() {
   p.push(env({ type: 'item_completed', item: a, status: { status: 'completed' }, body: { kind: 'approval', subject: { tool_call: c, effect: 'exec', summary: 'mcp__bboxy__orient {}', paths: [], command: 'mcp__bboxy__orient {}' }, options: ['allow', 'allow_always', 'deny'], decision: null, by: null } }, 1503));
   return p;
 }
+// a provider error the harness classified: the same 404 the omp agent pasted into its reply, as a real error ending
+function errored() {
+  const src = HARNESS_SESSIONS['acp:omp'], cut = src.findIndex(e => e.event.type === 'item_started' && e.event.kind === 'agent_message');
+  const out = src.slice(0, cut).map(e => e.event.type === 'profile_changed' ? { ...e, event: { type: 'profile_changed', profile: 'minimax', model: 'minimax/minimax-m3.1-flash:free' } } : e);
+  const turn = out.find(e => e.event.type === 'turn_started').event.turn, t = out[out.length - 1].ts_ms + 1800;
+  out.push(env({ type: 'turn_ended', turn, reason: { reason: 'error', class: 'bad_request', message: 'openrouter 404 · The free launch period for MiniMax M3.1 Flash ended on Oct 22, 2026; the :free variant is retired. Use minimax/minimax-m3.1-flash.' }, usage: null }, t));
+  return out;
+}
+// the user pressed esc while the tests ran: the turn ends neutral, not red
+function interrupted() {
+  const k = REAL.findIndex(e => e.event.type === 'item_started' && e.event.kind === 'terminal'), cut = REAL.slice(0, k + 1);
+  const tool = cut[k].event.parent, turn = REAL.find(e => e.event.type === 'turn_started').event.turn, t = cut[k].ts_ms + 900;
+  cut.push(env({ type: 'item_completed', item: tool, status: { status: 'interrupted' }, body: REAL.find(e => e.event.type === 'item_completed' && e.event.item === tool).event.body }, t));
+  cut.push(env({ type: 'turn_ended', turn, reason: { reason: 'interrupted' }, usage: null }, t + 5));
+  return cut;
+}
+// a live gateway streams the call's input before its terminal starts; the stored log keeps it only on completion
+const withInput = cut => { const out = []; for (const e of cut) { out.push(e); if (e.event.type === 'item_started' && e.event.kind === 'tool_call') { const done = REAL.find(x => x.event.type === 'item_completed' && x.event.item === e.event.item); if (done && done.event.body.input_raw) out.push({ ...e, event: { type: 'item_delta', item: e.event.item, delta: { type: 'tool_input', append: done.event.body.input_raw } } }); } } return out; };
+const running = () => { const k = REAL.findIndex(e => e.event.type === 'item_started' && e.event.kind === 'terminal'); return withInput(REAL.slice(0, k + 1)); };
+const TYPED = 'also check @src/atlas.rs for the same off-by-one';
+const COMPOSE = {
+  'composer · idle': [REAL, {}],
+  'composer · focused': [REAL, { focus: true }],
+  'composer · typing': [REAL, { focus: true, text: TYPED }],
+  'composer · running': [null, { queued: ['then run clippy on the whole workspace'] }],
+  'slash menu': [REAL, { focus: true, text: '/pro', menu: 'slash', sel: 1 }],
+};
+const ACP = { 'acp · claude': 'acp:claude-acp', 'acp · codex': 'acp:codex-acp', 'acp · pi': 'acp:pi', 'acp · opencode loop': 'acp:opencode', 'acp · omp': 'acp:omp', 'mermaid': 'mermaid' };
+// every composer state on one board, composer only: the native composer's 1:1 target
+function board(body) {
+  const rows = [['idle', 'idle', {}], ['focused', 'idle', { focus: true }], ['typing', 'idle', { focus: true, text: TYPED }], ['running · queued follow-up', 'tool', { queued: ['then run clippy on the whole workspace'] }],
+    ['running · typing a follow-up', 'tool', { focus: true, text: 'and the release profile' }], ['approval pending', 'ask', {}], ['"/" menu', 'idle', { focus: true, text: '/pro', menu: 'slash', sel: 0 }]];
+  const wrap = el('div', { style: 'display:flex;flex-direction:column;gap:14px;width:760px;max-width:100%' });
+  for (const [label, phase, o] of rows) {
+    const opts = { interactive: true, profiles: Hx.DEMO_PROFILES };
+    const c = Hx.composer(opts, { profiles: () => opts.profiles, openProfiles() {} });
+    const hx = el('div', { class: 'hx', 'data-phase': phase, style: '--seat:#2EE6A8;height:auto;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--surface)' + (o.menu ? ';padding-top:340px' : '') }, c);
+    c.hx.sync(phase); c.hx.set(o);
+    wrap.append(el('div', { class: 'label', style: 'font:600 11px var(--font-mono);color:var(--fg-dim);margin-bottom:-8px' }, label), hx);
+  }
+  body.append(wrap);
+}
 function frame(w, h) { return el('div', { style: '--seat:#2EE6A8;width:' + w + 'px;height:' + h + 'px;max-width:100%;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--surface);overflow:hidden' }); }
 let live = null; const FH = +new URLSearchParams(location.search).get('h') || 720;
 Lab.page({ title: 'harness', wide: true,
-  note: 'The rich bboxy face. bboxy450-harness envelopes (protocol Event/Item) fold into cards: one tool call is one card with its approval, terminal and diff inside; reasoning collapses to "Thought for"; usage drives the header meter. "live" replays a real scripted run of the harness binary (lab/web/harness/gen.sh) at reading pace. Click any card header to fold it.',
-  states: ['live', 'finished', 'profiles', 'new profile', 'running tool', 'denied unattended', 'approval pending', 'compact pane'],
+  note: 'Native target: harness-spec.md (sizes, tokens, motion, flat fallbacks). The rich bboxy face. bboxy450-harness envelopes (protocol Event/Item) fold into cards: one tool call is one card with its approval, terminal and diff inside; reasoning collapses to "Thought for"; usage drives the header meter. "live" replays a real scripted run of the harness binary (lab/web/harness/gen.sh) at reading pace. Click any card header to fold it.',
+  states: ['live', 'finished', 'composer states', 'composer · idle', 'composer · focused', 'composer · typing', 'composer · running', 'slash menu', 'profiles', 'new profile', 'running tool', 'approval pending', 'denied unattended', 'error', 'interrupted',
+    'acp · claude', 'acp · codex', 'acp · pi', 'acp · opencode loop', 'acp · omp', 'mermaid', 'compact pane'],
   render(s, body) {
     if (live && s !== 'all') { live.stop(); live = null; }
+    if (s === 'composer states') return board(body);
     const f = frame(s === 'compact pane' ? 520 : 760, s === 'compact pane' ? 520 : FH);
     let v; v = Hx.view({ compact: s === 'compact pane', interactive: true, profiles: Hx.DEMO_PROFILES, onOp: Hx.demoOps(() => v) });
     f.append(v.node); body.append(f);
     if (s === 'live' || s === 'compact pane') { const p = Hx.play(v, REAL, { loop: true }); if (s === 'live') live = p; return; }
     if (s === 'profiles' || s === 'new profile') { REAL.forEach(e => v.apply(e)); requestAnimationFrame(() => { v.openProfiles(); if (s === 'new profile') v.node.querySelector('.hx-padd').click(); }); return; }
-    let envs = s === 'denied unattended' ? denied() : s === 'approval pending' ? pending() : REAL;
-    if (s === 'running tool') { const k = REAL.findIndex(e => e.event.type === 'item_started' && e.event.kind === 'terminal'); envs = REAL.slice(0, k + 1); }
+    if (COMPOSE[s]) { const [envs, o] = COMPOSE[s]; requestAnimationFrame(() => { (envs || running()).forEach(e => v.apply(e)); v.compose(o); }); return; }
+    if (ACP[s]) { requestAnimationFrame(() => HARNESS_SESSIONS[ACP[s]].forEach(e => v.apply(e))); return; }
+    let envs = s === 'denied unattended' ? denied() : s === 'approval pending' ? pending() : s === 'error' ? errored() : s === 'interrupted' ? interrupted() : REAL;
+    if (s === 'running tool') envs = running();
     requestAnimationFrame(() => envs.forEach(e => v.apply(e)));
   } });
 </script></body></html>
