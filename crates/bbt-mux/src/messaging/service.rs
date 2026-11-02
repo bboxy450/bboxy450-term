@@ -1143,7 +1143,11 @@ impl Messaging {
             priority_class: message.view().priority_class,
             priority: message.view().priority,
             text: message.view().body.text().unwrap_or_default().into(),
-            ts: message.view().timestamp,
+            ts_ms: message
+                .view()
+                .timestamp
+                .checked_mul(1000)
+                .ok_or_else(|| invalid("message timestamp exceeds millisecond range"))?,
             receipts,
         })
     }

@@ -338,6 +338,131 @@ impl Drop for Fixture {
         }
     }
 }
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn chat_timestamp_from_real_service_matches_envelope_across_gui_and_mcp() {
+    use bbt_proto::messaging::SendRequest;
+
+    bboxy450_term::local_time::initialize();
+    let mut f = Fixture::new().await;
+    let channel = format!("swarms/{}", f.own.swarm);
+    let mut message = SendRequest::text(channel.clone(), "Timestamp fixture");
+    message.kind = MessageKind::Decision;
+    let id = message.id;
+    let GuiReply::Messaging {
+        response: Response::Stored { message: stored },
+        ..
+    } = f
+        .action(
+            id,
+            GuiAction::Messaging {
+                id,
+                swarm_id: f.scope,
+                request: Request::Send { message },
+            },
+        )
+        .await
+    else {
+        panic!("real service stores the signed message")
+    };
+    let envelope = stored.envelope().expect("signed fixture envelope");
+    let seconds = envelope.timestamp;
+    let expected_ms = seconds * 1000;
+    let expected_time = bboxy450_term::local_time::hm(expected_ms);
+    assert_ne!(expected_time, "—");
+
+    let row = f
+        .logic()
+        .client
+        .gui_message_row(f.own.swarm, id)
+        .await
+        .unwrap();
+    let view = messaging::message_view(&row, &Default::default());
+    assert_eq!(view.ts, Some(expected_ms));
+    assert_eq!(view.time, expected_time);
+    // The existing row JSON remains seconds for old GUI/ctl consumers.
+    assert_eq!(serde_json::to_value(&row).unwrap()["ts"], seconds);
+
+    let op = Ulid::new();
+    let GuiReply::Messaging {
+        response: Response::Recent { page, rows, .. },
+        ..
+    } = f
+        .action(
+            op,
+            GuiAction::Messaging {
+                id: op,
+                swarm_id: f.scope,
+                request: Request::Recent {
+                    channel: Some(channel.clone()),
+                    before: None,
+                    limit: 128,
+                },
+            },
+        )
+        .await
+    else {
+        panic!("GUI recent readback")
+    };
+    let row = rows
+        .iter()
+        .find(|row| row.id == id)
+        .expect("canonical GUI row");
+    assert_eq!(
+        messaging::message_view(row, &Default::default()).time,
+        expected_time
+    );
+    assert_eq!(
+        page.items
+            .iter()
+            .find(|message| message.view().id == id)
+            .unwrap()
+            .envelope()
+            .unwrap()
+            .timestamp,
+        seconds
+    );
+    let mut history = messaging::History::default();
+    history.select(f.scope);
+    // A fresh canonical read can precede bus publication. Drive the actual
+    // history response path, which also admits rows without a bus position.
+    let mut results = Results::default();
+    for command in history.commands() {
+        f.command(command, &mut results).await;
+    }
+    assert!(history.replies(&results));
+    assert!(history.entries(&Default::default(), &Default::default(), &[]).iter()
+        .any(|entry| matches!(entry, Entry::Message { data, .. }
+            if data.message_ids.contains(&id.to_string()) && data.ts == Some(expected_ms) && data.time == expected_time)));
+
+    // MCP message_list and ctl both expose Request::List's retained envelope,
+    // whose seconds and signed bytes must remain unchanged.
+    let listed = f
+        .logic()
+        .client
+        .control_call(
+            f.own.id,
+            f.own.generation,
+            bbt_mux::mcp::Call {
+                op_id: Ulid::new(),
+                tool: "message_list".into(),
+                args: serde_json::json!({"channel": channel, "limit": 128}),
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(listed["isError"], false, "{listed}");
+    let listed: Response = serde_json::from_value(listed["structuredContent"].clone()).unwrap();
+    let Response::Messages { page } = listed else {
+        panic!("MCP messages")
+    };
+    let listed = page
+        .items
+        .iter()
+        .find(|message| message.view().id == id)
+        .unwrap();
+    assert_eq!(listed.envelope().unwrap(), envelope);
+}
+
 // keeps: spec l9-messaging-tasks §5
 #[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

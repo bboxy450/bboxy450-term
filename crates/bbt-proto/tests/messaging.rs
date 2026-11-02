@@ -12,6 +12,34 @@ use serde_json::{Value, json};
 const ID: &str = "00000000000000000000000001";
 
 #[test]
+fn message_rows_preserve_legacy_json_seconds_with_explicit_rust_milliseconds() {
+    use bbt_proto::messaging::MessageRow;
+
+    let mut value = json!({
+        "id": ID, "bus": null,
+        "author": {"kind": "operator", "id": "fixture", "name": "Fixture"},
+        "kind": "text", "priority_class": "oracle", "priority": 0,
+        "text": "sent earlier", "ts": 0,
+        "receipts": {"delivered": 0, "acked": 0, "held": 0}
+    });
+    for seconds in [0, 1, 1_793_211_000, u64::MAX / 1000] {
+        value["ts"] = seconds.into();
+        let row: MessageRow = serde_json::from_value(value.clone()).unwrap();
+        assert_eq!(row.ts_ms, seconds * 1000);
+        assert_eq!(serde_json::to_value(row).unwrap(), value);
+    }
+    value["ts"] = u64::MAX.into();
+    assert!(serde_json::from_value::<MessageRow>(value.clone()).is_err());
+    value["ts"] = 1.into();
+    let mut row: MessageRow = serde_json::from_value(value).unwrap();
+    row.ts_ms += 1;
+    assert!(
+        serde_json::to_value(row).is_err(),
+        "legacy seconds cannot silently lose precision"
+    );
+}
+
+#[test]
 fn historical_task_actions_are_additive_and_accept_still_has_no_bypass_fields() {
     use bbt_proto::messaging::TaskRequest;
     for value in [

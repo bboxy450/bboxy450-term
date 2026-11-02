@@ -3345,7 +3345,7 @@ mod tests {
                 priority_class: bbt_proto::registry::Class::Worker,
                 priority: 0,
                 text: format!("arrival in {channel}"),
-                ts: 1000,
+                ts_ms: 1_000_000,
                 receipts: ReceiptSummary::default(),
             };
             GuiEventRecord::Event(Box::new(GuiEventEnvelope {

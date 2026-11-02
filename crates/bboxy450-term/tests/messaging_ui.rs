@@ -1035,8 +1035,72 @@ fn projected_message(scope: SwarmId, sequence: u64) -> bbt_proto::messaging::Mes
         priority_class: bbt_proto::registry::Class::Worker,
         priority: 8,
         text: "shared projection".into(),
-        ts: 1000,
+        ts_ms: 1_000_000,
         receipts: ReceiptSummary::default(),
+    }
+}
+
+#[test]
+fn chat_timestamps_an_hour_apart_keep_their_sent_times_in_views_and_history() {
+    use bboxy450_term::{local_time, messaging};
+    use bbt_ui::modules::stream_dock::Entry;
+
+    local_time::initialize();
+    let scope = SwarmId::from_u128(1);
+    // Retained W2.4 JSON uses seconds, including for messages from earlier days.
+    let sent: jiff::Timestamp = "2026-10-28T18:06:00Z".parse().unwrap();
+    let seconds = sent.as_second() as u64;
+    let rows: Vec<_> = [seconds, seconds + 3600]
+        .into_iter()
+        .enumerate()
+        .map(|(index, timestamp)| {
+            let mut json =
+                serde_json::to_value(projected_message(scope, index as u64 + 1)).unwrap();
+            json["ts"] = timestamp.into();
+            serde_json::from_value::<bbt_proto::messaging::MessageRow>(json).unwrap()
+        })
+        .collect();
+    let model = Default::default();
+    let times: Vec<_> = rows
+        .iter()
+        .map(|row| messaging::message_view(row, &model).time)
+        .collect();
+    assert_ne!(
+        times[0], times[1],
+        "an hour cannot collapse to the same minute"
+    );
+    let expected: Vec<_> = [seconds, seconds + 3600]
+        .map(|timestamp| local_time::hm(timestamp * 1000))
+        .into();
+    assert_eq!(times, expected);
+
+    let mut history = messaging::History::default();
+    history.select(scope);
+    for row in &rows {
+        history.row(row, Some("operator/inbox"), u64::MAX);
+    }
+    for entries in [
+        messaging::message_entries(
+            &rows,
+            &Default::default(),
+            &Default::default(),
+            scope,
+            &model,
+            None,
+        ),
+        history.entries(&model, &Default::default(), &[]),
+    ] {
+        let times: Vec<_> = entries
+            .iter()
+            .filter_map(|entry| match entry {
+                Entry::Message { data, .. } => Some(data.time.clone()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            times, expected,
+            "projection time must never replace sent time"
+        );
     }
 }
 
