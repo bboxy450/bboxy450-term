@@ -13,7 +13,7 @@ use std::time::{Duration, Instant};
 use bbt_plugin::{
     Refusal,
     contracts::Contract,
-    shape::{PluginName, SCHEMA, Shape},
+    shape::{PluginName, Shape},
 };
 use serde::Serialize;
 use serde_json::{Value, json};
@@ -85,33 +85,10 @@ async fn descriptor(account: &mut FixtureAccount, report: &mut CheckReport) -> R
     Ok(())
 }
 
-/// Pure descriptor checks shared by the fixture checker and production trust.
+/// Pure descriptor checks shared by the fixture checker, production trust and
+/// the SDK's plugin doctor (`bbt_plugin::shape::parse_descriptor`).
 pub(super) fn parse_descriptor(value: Value, name: &PluginName) -> Result<Shape, Refusal> {
-    validate(
-        &serde_json::from_str(SCHEMA).expect("bundled shape schema"),
-        &value,
-        "invalid_shape",
-    )?;
-    let shape: Shape = serde_json::from_value(value).map_err(|e| failure("invalid_shape", e))?;
-    shape.validate(name)?;
-    for system in &shape.systems {
-        let contract = Contract::named(&system.contract)?;
-        for command in &system.commands {
-            if contract.method_schema(&command.name, false).is_none()
-                || contract.method_schema(&command.name, true).is_none()
-            {
-                return Err(failure(
-                    "unknown_method",
-                    format!("{} {}", system.contract, command.name),
-                ));
-            }
-            jsonschema::validator_for(&command.args)
-                .map_err(|e| failure("invalid_argument_schema", e))?;
-            jsonschema::validator_for(&command.result)
-                .map_err(|e| failure("invalid_result_schema", e))?;
-        }
-    }
-    Ok(shape)
+    bbt_plugin::shape::parse_descriptor(value, name).map_err(|e| failure(&e.code, e.message))
 }
 
 async fn tools(client: &mut Client) -> Result<BTreeMap<String, Value>, Refusal> {
@@ -159,23 +136,9 @@ async fn tools(client: &mut Client) -> Result<BTreeMap<String, Value>, Refusal> 
 }
 
 fn typed_data_result(method: &str, value: &Value) -> Result<(), Refusal> {
-    use bbt_plugin::data_source as d;
-    fn decode<T: serde::de::DeserializeOwned>(value: &Value) -> Result<(), Refusal> {
-        serde_json::from_value::<T>(value.clone())
-            .map(|_| ())
-            .map_err(|e| failure("result_type_mismatch", e))
-    }
-    match method {
-        "resolve" => decode::<d::RecordRef>(value),
-        "fetch" => decode::<d::Record>(value),
-        "search" => decode::<d::Page<d::SearchHit>>(value),
-        "list" => decode::<d::Page<d::RecordRef>>(value),
-        "links" => decode::<d::Links>(value),
-        "graph" => decode::<d::GraphPage>(value),
-        "write" => decode::<d::WriteResult>(value),
-        "changes_since" => decode::<d::Changes>(value),
-        _ => Err(failure("unknown_method", method)),
-    }
+    Contract::DataSource
+        .decode_result(method, value)
+        .map_err(|e| failure(&e.code, e.message))
 }
 
 async fn data_call(

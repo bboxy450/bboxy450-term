@@ -319,6 +319,38 @@ pub struct Shape {
     pub host_api: Vec<String>,
 }
 
+/// Parse and validate a `--shape` descriptor exactly as the host does at trust
+/// and in `plugin check`: the bundled [`SCHEMA`], [`Shape::validate`], known
+/// contract methods and compiling argument and result schemas.
+pub fn parse_descriptor(value: Value, name: &PluginName) -> Result<Shape, Refusal> {
+    let compile = |schema: &Value, code: &str| {
+        jsonschema::validator_for(schema).map_err(|e| Refusal::new(code, e.to_string()))
+    };
+    let schema: Value = serde_json::from_str(SCHEMA).expect("bundled shape schema");
+    compile(&schema, "invalid_json_schema")?
+        .validate(&value)
+        .map_err(|e| Refusal::new("invalid_shape", e.to_string()))?;
+    let shape: Shape =
+        serde_json::from_value(value).map_err(|e| Refusal::new("invalid_shape", e.to_string()))?;
+    shape.validate(name)?;
+    for system in &shape.systems {
+        let contract = Contract::named(&system.contract)?;
+        for command in &system.commands {
+            if contract.method_schema(&command.name, false).is_none()
+                || contract.method_schema(&command.name, true).is_none()
+            {
+                return Err(Refusal::new(
+                    "unknown_method",
+                    format!("{} {}", system.contract, command.name),
+                ));
+            }
+            compile(&command.args, "invalid_argument_schema")?;
+            compile(&command.result, "invalid_result_schema")?;
+        }
+    }
+    Ok(shape)
+}
+
 impl Shape {
     /// Validate fixed contract identity and policy before any MCP method runs.
     pub fn validate(&self, name: &PluginName) -> Result<Tier, Refusal> {

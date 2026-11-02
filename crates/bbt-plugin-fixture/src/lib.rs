@@ -16,6 +16,7 @@
 // Test-support IO and a nested Cargo build; never UI code.
 #![allow(clippy::disallowed_methods)]
 
+pub mod doctor;
 mod raw;
 mod reference;
 mod root;
@@ -57,6 +58,9 @@ pub enum Kind {
     Demux,
     /// Asks the host `host/<tool name>` while serving each call.
     Callback,
+    /// The plugin doctor's red/green controls: `fault` names the doctor
+    /// check it breaks (see `doctor.rs`); no fault is the clean plugin.
+    Doctor,
 }
 
 /// Every behaviour knob. Absent fields keep the reference behaviour.
@@ -452,5 +456,6 @@ pub fn run_fixture(knobs: Knobs) {
         Kind::Inspect => raw::inspect(&knobs),
         Kind::Demux => raw::demux(),
         Kind::Callback => raw::callback(),
+        Kind::Doctor => doctor::main(&knobs),
     }
 }

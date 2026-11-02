@@ -24,6 +24,7 @@ use std::vec;
 use std::vec::Vec;
 
 pub mod build;
+pub mod parse;
 
 /// An exact state, in model variable order.
 pub type State = Vec<i64>;

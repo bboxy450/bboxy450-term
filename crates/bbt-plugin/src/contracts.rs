@@ -149,6 +149,47 @@ impl Contract {
         standalone_schema(&schema, selected)
     }
 
+    /// Decode `value` as the typed result DTO of `method`; the host's checker
+    /// and the SDK's plugin doctor both use it after schema validation.
+    pub fn decode_result(self, method: &str, value: &Value) -> Result<(), Refusal> {
+        use crate::{
+            data_source as d, decision_model as dm, event_sink as es, provider as pv,
+            repo_graph as rg, session as ss, task_system as ts, transport as tr,
+        };
+        fn decode<T: serde::de::DeserializeOwned>(value: &Value) -> Result<(), Refusal> {
+            serde_json::from_value::<T>(value.clone())
+                .map(|_| ())
+                .map_err(|e| Refusal::new("result_type_mismatch", e.to_string()))
+        }
+        match (self, method) {
+            (Self::DataSource, "resolve") => decode::<d::RecordRef>(value),
+            (Self::DataSource, "fetch") => decode::<d::Record>(value),
+            (Self::DataSource, "search") => decode::<d::Page<d::SearchHit>>(value),
+            (Self::DataSource, "list") => decode::<d::Page<d::RecordRef>>(value),
+            (Self::DataSource, "links") => decode::<d::Links>(value),
+            (Self::DataSource, "graph") => decode::<d::GraphPage>(value),
+            (Self::DataSource, "write") => decode::<d::WriteResult>(value),
+            (Self::DataSource, "commit") => decode::<d::CommitResult>(value),
+            (Self::DataSource, "changes_since") => decode::<d::Changes>(value),
+            (Self::RepoGraph, "changes_since") => decode::<rg::Changes>(value),
+            (Self::TaskSystem, "changes_since") => decode::<ts::Changes>(value),
+            (Self::TaskSystem, "list") => decode::<ts::TaskPage>(value),
+            (Self::TaskSystem, _) if self.methods().contains(&method) => {
+                decode::<ts::TaskRecord>(value)
+            }
+            (Self::RepoGraph, "describe") => decode::<rg::DescribeResult>(value),
+            (Self::Session, "describe") => decode::<ss::DescribeResult>(value),
+            (Self::Provider, "describe") => decode::<pv::DescribeResult>(value),
+            (Self::DecisionModel, "choose") => decode::<dm::ChooseResult>(value),
+            (Self::EventSink, "deliver") => decode::<es::DeliverResult>(value),
+            (Self::Transport, "wrap") => decode::<tr::WrapResult>(value),
+            _ => Err(Refusal::new(
+                "unknown_method",
+                format!("{} {method}", self.name()),
+            )),
+        }
+    }
+
     /// The sole JSON Schema document for this contract and version.
     pub fn schema(self) -> &'static str {
         match self {

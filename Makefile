@@ -190,7 +190,9 @@ help:
 	  'make test-settings-role-picker   Private complete-click Settings default role and launch regression' \
 	  'make check-settings-role-picker  Strict all-target Clippy for Settings picker crates and dependents' \
 	  'make build-gitkb-plugin          Build the Rust GitKB provider, pin the installed CLI' \
-	  'make check-gitkb-plugin          Unattended real GitKB private-fixture conformance' \
+	  'make check-gitkb-plugin          Unattended real GitKB private-fixture conformance, then plugin-doctor' \
+	  'make plugin-doctor PLUGIN=path   Offline smoke test of a plugin binary or package: lists gaps (JSON=1 for CI)' \
+	  'make plugin-doctor-test          Doctor red/green fixtures, SDK example doctor tests, model parser' \
 	  'make probe-gitkb-harmony         Read-only Harmony resolution and paging timings' \
 	  'make test-harmony-host           Focused plugin, knowledge and Harmony host checks' \
 	  'make test-harmony-host-integration  Focused host integration without mux library suite' \
@@ -1453,6 +1455,7 @@ check-gitkb-plugin: build-gitkb-plugin
 	BBOXY_GITKB_EVIDENCE='$(abspath $(TARGET_DIR))/gitkb-plugin-check.json' \
 	BBOXY_GITKB_TRACE_TARGET='$(abspath $(TARGET_DIR))/gitkb-traced' \
 	cargo test --locked -p $(GITKB_CRATE) --target-dir '$(TARGET_DIR)' --test conformance -- --ignored --exact conformance --nocapture
+	@$(MAKE) plugin-doctor PLUGIN='$(GITKB_PLUGIN)' DOCTOR_ARGS='--package plugins/gitkb --child git-kb'
 
 .PHONY: probe-gitkb-harmony
 probe-gitkb-harmony: build-gitkb-plugin
@@ -1822,6 +1825,29 @@ check-kb-reports:
 .PHONY: format-kb-reports
 format-kb-reports:
 	rustfmt --edition 2024 --config skip_children=true crates/bbt-plugin/src/task_system.rs crates/bbt-plugin/tests/contract_dtos.rs crates/bbt-doc/src/reports.rs crates/bbt-doc/tests/corpus/reports.rs crates/bboxy450-term/src/ctl/task.rs crates/bboxy450-term/tests/formal_contracts/report_models.rs crates/bbt-doc/tests/corpus.rs crates/bbt-mux/src/index.rs crates/bbt-mux/src/knowledge/effects.rs crates/bbt-mux/src/mcp/knowledge.rs crates/bbt-mux/src/mcp/work_items.rs crates/bbt-mux/tests/mcp.rs crates/bbt-proto/src/messaging.rs crates/bboxy450-term/src/ctl.rs crates/bboxy450-term/src/knowledge.rs crates/bboxy450-term/tests/formal_contracts/models.rs
+# The plugin doctor (crates/bbt-plugin-sdk/src/doctor): offline, no app.
+# PLUGIN is an executable or a package directory; DOCTOR_ARGS passes
+# --root/--scratch/--child/--models. Java TLC runs when `make test-formal`
+# has fetched its pinned tools into FORMAL_DIR.
+PLUGIN ?=
+JSON ?=
+DOCTOR_ARGS ?=
+DOCTOR = $(TARGET_DIR)/debug/examples/bboxy450-term-plugin-doctor
+DOCTOR_ENV = BBOXY450_JAVA='$(firstword $(wildcard $(FORMAL_DIR)/tools/java-*/Contents/Home/bin/java $(FORMAL_DIR)/tools/java-*/bin/java))' BBOXY450_TLC_JAR='$(wildcard $(FORMAL_DIR)/tools/tla2tools.jar)'
+.PHONY: plugin-doctor plugin-doctor-test
+plugin-doctor:
+	@test -n '$(PLUGIN)' || { echo 'PLUGIN is required: a plugin executable or package directory' >&2; exit 2; }
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo build --locked --quiet -p bboxy450-term-plugin-sdk --example bboxy450-term-plugin-doctor --target-dir '$(TARGET_DIR)'; \
+	$(DOCTOR_ENV) '$(DOCTOR)' '$(abspath $(PLUGIN))' $(if $(JSON),--json) $(DOCTOR_ARGS)
+
+plugin-doctor-test:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-tlc --lib parse --target-dir '$(TARGET_DIR)'; \
+	$(DOCTOR_ENV) cargo test --locked -p bboxy450-term-plugin-sdk --lib --examples --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-plugin-sdk --doc --target-dir '$(TARGET_DIR)'; \
+	$(DOCTOR_ENV) cargo test --locked -p bboxy450-term-plugin-fixture --test doctor --target-dir '$(TARGET_DIR)'
+
 .PHONY: test-plugin-fixtures check-plugin-fixtures
 test-plugin-fixtures:
 	@set -eu; . ./scripts/cache-env.sh; \

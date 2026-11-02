@@ -9,11 +9,41 @@
 //! cancellation, deadlines, limits and refusal encoding. Contract types and
 //! schemas come from `bboxy450-plugin`, so the host and plugins share one
 //! definition of every contract.
+//!
+//! # Test your plugin against bboxy450
+//!
+//! The [`doctor`] runs a built plugin through the host contract offline (no
+//! app) and lists concrete gaps: check id, evidence and fix. From a test,
+//! [`testkit::doctor`] fails with that list on any error-severity gap. In a
+//! plugin package's `tests/doctor.rs` the binary is
+//! `env!("CARGO_BIN_EXE_<name>")`, and `Options::package(env!("CARGO_MANIFEST_DIR"))`
+//! also checks the package's name rules and shipped `models/*.tla`:
+//!
+//! ```should_panic
+//! use bbt_plugin_sdk::{doctor::Options, testkit};
+//! // A binary that is not there is a gap list, and the helper fails the test.
+//! let binary = std::path::Path::new("target/debug/bboxy450-term-data_source-missing");
+//! testkit::doctor(binary, &Options::default());
+//! ```
+//!
+//! The same checks without failing, to read the gaps yourself:
+//!
+//! ```
+//! use bbt_plugin_sdk::doctor::{self, Options};
+//! let report = doctor::run(std::path::Path::new("not-a-plugin"), &Options::default());
+//! assert!(!report.is_clean());
+//! assert_eq!(report.of("shape.name")[0].check, "shape.name");
+//! println!("{}", report.human());
+//! ```
+//!
+//! From the command line: `make plugin-doctor PLUGIN=<binary-or-package>`
+//! (`JSON=1` for CI). The SDK README's "Smoke-test your plugin" has the details.
 
 // A plugin is its own process with no UI thread; blocking stdio is its job.
 #![allow(clippy::disallowed_methods)]
 
 pub mod contracts;
+pub mod doctor;
 #[cfg(feature = "model")]
 pub mod models;
 mod runtime;
