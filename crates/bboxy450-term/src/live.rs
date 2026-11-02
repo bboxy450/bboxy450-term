@@ -1591,7 +1591,12 @@ async fn run_with_control(
                                 let next=status.roots.first().map(|r|r.revision);
                                 if previous.is_none() || next>=previous {
                                     if previous != next { knowledge_watch.source_changed(); }
+                                    let changed=model.knowledge_roots.as_deref()!=Some(&status) || model.knowledge_scope!=scope;
                                     let current=Arc::make_mut(&mut model);current.knowledge_roots=Some(Arc::new(status));current.knowledge_scope=scope;
+                                    // A status this owner queued itself (scope bind or a
+                                    // knowledge-provider event) has no pending operation
+                                    // result, so operation_reply would not publish it.
+                                    if changed { updates.publish(model.clone()); }
                                 }
                                 operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::KnowledgeControl);
                             }
@@ -3733,6 +3738,177 @@ mod tests {
         eprintln!(
             "PASS A3: one live record per promise; screen == ctl JSON; terminal group + global summary; doc/task wakes amber -> red -> green; provider fault red; close/reopen recovers; children reaped"
         );
+    }
+
+    /// The real provider-change path: `ctl knowledge reset` bumps the root's
+    /// revision, logic publishes `activity/knowledge-provider`, this IO owner
+    /// re-reads the status and must PUBLISH it (an internally queued status
+    /// has no pending operation result to publish it), and the Tasks section
+    /// then re-reads on the changed revision.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "real-process provider event integration owns its runtime and child processes"
+    )]
+    async fn knowledge_provider_events_publish_the_status_and_reread_tasks() {
+        use serde_json::Value;
+        let root = tempfile::Builder::new()
+            .prefix("provider-event-")
+            .tempdir()
+            .unwrap();
+        let repository = root.path().join("repository");
+        let run_dir = root.path().join("run");
+        tokio::fs::create_dir_all(repository.join(".bboxy/tasks"))
+            .await
+            .unwrap();
+        let binary = std::env::current_exe()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join("bboxy450-term");
+        assert!(
+            binary.is_file(),
+            "build the app before its real-process test"
+        );
+        let executable = root.path().join("test-app");
+        tokio::fs::write(
+            &executable,
+            format!(
+                "#!/bin/sh\nBBOXY_TEST_CUSTODY=memory exec '{}' \"$@\"\n",
+                binary.to_string_lossy().replace('\'', "'\\''")
+            ),
+        )
+        .await
+        .unwrap();
+        tokio::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o700))
+            .await
+            .unwrap();
+        let session = Session::start(cockpit::Config {
+            executable,
+            socket: run_dir.join("mux.sock"),
+            run_dir: run_dir.clone(),
+            repository: repository.clone(),
+            shell_config: None,
+            ctl: true,
+            test_account: None,
+        })
+        .await
+        .unwrap();
+        eprintln!(
+            "provider-event owned supervisor={} logic={}",
+            session.supervisor.id().unwrap(),
+            session.logic.id().unwrap()
+        );
+        let context = Arc::new(DeviceContext::new().await.unwrap());
+        let (updates, publication) = publications();
+        let (sender, commands) = command_channel();
+        let (render, rendering) = oneshot::channel();
+        render
+            .send(RenderContext {
+                context,
+                scale: 1.,
+                theme: bbt_ui_model::tokens::Theme::Dark,
+            })
+            .ok()
+            .unwrap();
+        let task_updates = updates.clone();
+        let io = tokio::spawn(async move {
+            run(
+                task_updates,
+                commands,
+                Logger::new(),
+                session,
+                repository,
+                rendering,
+                |_| {},
+                |_| {},
+            )
+            .await
+        });
+        let ctl = |args: Vec<String>| {
+            let binary = binary.clone();
+            let run_dir = run_dir.clone();
+            tokio::task::spawn_blocking(move || {
+                let output = std::process::Command::new(binary)
+                    .arg("ctl")
+                    .args(args)
+                    .env("BBOXY_RUN_DIR", run_dir)
+                    .output()
+                    .unwrap();
+                let text = String::from_utf8(output.stdout).unwrap();
+                let line = text.lines().next().unwrap_or("{}").to_owned();
+                serde_json::from_str::<Value>(&line).unwrap()
+            })
+        };
+        let mut current = Arc::new(Model::default());
+        until(&updates, &publication, &mut current, |m| {
+            matches!(
+                m.events.state(),
+                bboxy450_term::model::EventLaneState::Active
+            )
+        })
+        .await;
+        let status = ctl(vec!["knowledge".into(), "status".into()])
+            .await
+            .unwrap();
+        let root_id = status["data"]["status"]["roots"][0]["id"]
+            .as_str()
+            .unwrap_or_else(|| panic!("{status}"))
+            .to_owned();
+        let mut records = bboxy450_term::messaging::Records::default();
+        records.select(bbt_proto::SwarmId::from_u128(7));
+        // Answer the selection's startup reads so a later read is not deduplicated.
+        let mut results = bboxy450_term::messaging::Results::default();
+        for command in records.commands() {
+            if let UiMsg::Task { id, .. } = command {
+                results.push(
+                    id,
+                    bboxy450_term::messaging::Reply::Task(
+                        bbt_proto::messaging::TaskResponse::Items {
+                            items: vec![],
+                            next: None,
+                        },
+                    ),
+                );
+            }
+        }
+        records.replies(&results);
+        for (pass, reread) in [(1u64, false), (2, true)] {
+            let reset = ctl(vec!["knowledge".into(), "reset".into(), root_id.clone()])
+                .await
+                .unwrap();
+            assert_eq!(reset["ok"], true, "{reset}");
+            until(&updates, &publication, &mut current, |m| {
+                m.knowledge_roots
+                    .as_ref()
+                    .and_then(|s| s.roots.first())
+                    .is_some_and(|r| r.revision >= pass)
+            })
+            .await;
+            assert_eq!(
+                records.knowledge(current.knowledge_roots.as_deref()),
+                reread,
+                "pass {pass}: first observation records, a change re-reads"
+            );
+        }
+        assert!(
+            records.commands().iter().any(|c| matches!(
+                c,
+                UiMsg::Task {
+                    request: bbt_proto::messaging::TaskRequest::List { .. },
+                    ..
+                }
+            )),
+            "the provider change queued a Tasks read"
+        );
+        sender.shutdown();
+        tokio::time::timeout(Duration::from_secs(30), io)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
     }
 
     fn lines(screen: &bbt_proto::Screen) -> Vec<String> {

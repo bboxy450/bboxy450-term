@@ -677,6 +677,20 @@ fn knowledge_provider_changes_reread_the_tasks_section() {
         "revision changed"
     );
     assert!(swarm_list(&records.commands()).is_some());
+
+    // A status first seen while a refused read is on screen re-reads too.
+    let mut records = Records::default();
+    records.select(SwarmId::from_u128(80));
+    let first = records.commands();
+    replies.push(
+        op_id(swarm_list(&first).unwrap()),
+        Reply::Refused("rejected: refused".into()),
+    );
+    assert!(records.replies(&replies));
+    assert!(records.issue.is_some());
+    assert!(records.knowledge(Some(&status("gitkb", 4))));
+    assert_eq!(records.issue, None);
+    assert!(swarm_list(&records.commands()).is_some());
 }
 
 /// A busy provider connection is transient: the Tasks panel retries within the

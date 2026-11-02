@@ -1409,7 +1409,9 @@ impl Records {
         if self.knowledge_seen.as_ref() == Some(&seen) {
             return false;
         }
-        if self.knowledge_seen.replace(seen).is_none() {
+        // The first status after a swarm selection only records it, unless a
+        // refused read is on screen: then the provider may have healed.
+        if self.knowledge_seen.replace(seen).is_none() && !self.read_issue {
             return false;
         }
         self.retries = 0;
