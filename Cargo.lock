@@ -470,14 +470,14 @@ dependencies = [
 name = "bboxy450-log-converter"
 version = "0.1.1"
 dependencies = [
+ "base64 0.22.1",
+ "bboxy450-tlc",
  "blake3",
  "ciborium",
  "libc",
  "notify",
  "regex",
  "rustix 1.1.5",
-"base64 0.22.1",
-"bboxy450-tlc",
  "serde",
  "serde_json",
  "tempfile",

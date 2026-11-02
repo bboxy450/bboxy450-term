@@ -804,7 +804,7 @@ class CiPhaseTests(unittest.TestCase):
     def phase(self, after_tests):
         self.repo.write("scripts/ci-local.sh", (SOURCE / "ci-local.sh").read_text())
         makefile = (self.repo.root / "Makefile").read_text()
-        for target in ("test-capability-scan", "test-capability-control", "test-log-converter-controls", "test-log-converter-budget", "test-log-converter-native"):
+        for target in ("test-capability-scan", "test-capability-control", "test-log-converter", "test-log-converter-controls", "test-log-converter-budget", "test-log-converter-native"):
             makefile += (f"\n{target}:\n"
                          f'\t@printf "{target}\\n" >> "$$BBOXY_LANDING_STATE_DIR/phase-calls"\n')
         self.repo.write("Makefile", makefile)
@@ -839,7 +839,7 @@ if args==['build','-p','bboxy450-term','--locked']:
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = [json.loads(line) for line in (self.repo.state / "phase-cargo").read_text().splitlines()]
         self.assertEqual((self.repo.state / "phase-calls").read_text().splitlines(),
-                         ["test-capability-scan", "test-capability-control", "test-log-converter-controls", "test-log-converter-budget", "test-log-converter-native", "ui-lint", "smoke"])
+                         ["test-capability-scan", "test-capability-control", "test-log-converter", "test-log-converter-controls", "test-log-converter-budget", "test-log-converter-native", "ui-lint", "smoke"])
         commands = [json.loads(line.removeprefix("ci-command: "))
                     for line in result.stdout.splitlines() if line.startswith("ci-command: ")]
         self.assertEqual([command[1] for command in commands if command[0] == "make"],

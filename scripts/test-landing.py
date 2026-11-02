@@ -867,7 +867,7 @@ class GateReceiptTests(unittest.TestCase):
         control_target = '\ntest-capability-control:\n\t@touch ' + shlex.quote(str(control_marker)) + '\n'
         scan_target = '\ntest-capability-scan:\n\t@true\n'
         converter_targets = ''.join('\n' + target + ':\n\t@true\n' for target in
-            ('test-log-converter-controls', 'test-log-converter-budget', 'test-log-converter-native'))
+            ('test-log-converter', 'test-log-converter-controls', 'test-log-converter-budget', 'test-log-converter-native'))
         normal_makefile = (repo.root / 'Makefile').read_text() + scan_target + converter_targets
         repo.write('Makefile', normal_makefile + control_target)
         repo.write("scripts/ui-lint.sh", "#!/bin/sh\nexit 0\n")

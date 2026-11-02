@@ -51,5 +51,5 @@ fn same_ir_clock_and_flush_schedule_produce_identical_segments_and_indices() {
     }
 }
 
-#[path="support/claude_determinism.rs"]
+#[path = "support/claude_determinism.rs"]
 mod claude;
