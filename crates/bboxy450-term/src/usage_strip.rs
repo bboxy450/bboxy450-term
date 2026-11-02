@@ -73,4 +73,26 @@ mod tests {
         let installed = prepared.layout([1600., 900.], false).unwrap();
         assert!(format!("{installed:?}").contains("CPU 42%"));
     }
+
+    #[test]
+    fn theme_button_label_names_the_saved_choice_and_the_next_one() {
+        let mut scene = crate::scene::Scene::live();
+        let mut preferences = bboxy450_term::settings::Preferences::default();
+        for (saved, want) in [
+            ("auto", "Theme: Auto (system is light)\nClick for Light"),
+            ("light", "Theme: Light\nClick for Dark"),
+            ("dark", "Theme: Dark\nClick for Auto"),
+        ] {
+            preferences.appearance.theme = saved.into();
+            scene.set_appearance(&preferences, bbt_ui::Theme::Light);
+            // Text paints one run per word; join them back into the visible label.
+            let paints = format!("{:?}", scene.theme_tooltip([1600., 900.]));
+            let shown: String = paints
+                .split("text: \"")
+                .skip(1)
+                .filter_map(|run| run.split('"').next())
+                .collect();
+            assert_eq!(shown, want.replace('\n', ""), "{saved}");
+        }
+    }
 }

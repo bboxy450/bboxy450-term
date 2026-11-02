@@ -8016,8 +8016,16 @@ impl App {
         ));
         pane_overlay.extend(self.scene.error_overlay(logical, self.unread_errors));
         pane_overlay.extend(self.paint_app_overlay());
-        if self.pointer_inside && self.titlebar.hit(self.pointer) == Some(desktop_window::Hit::Usage) {
-            pane_overlay.extend(self.scene.usage_tooltip(self.solved_size));
+        if self.pointer_inside {
+            match self.titlebar.hit(self.pointer) {
+                Some(desktop_window::Hit::Usage) => {
+                    pane_overlay.extend(self.scene.usage_tooltip(self.solved_size))
+                }
+                Some(desktop_window::Hit::Theme) => {
+                    pane_overlay.extend(self.scene.theme_tooltip(self.solved_size))
+                }
+                _ => {}
+            }
         }
         if !live {
             ops.append(&mut pane_overlay);
@@ -8767,13 +8775,21 @@ impl ApplicationHandler<UiEvent> for App {
             }
             WindowEvent::CursorLeft { .. } => self.pointer_left(),
             WindowEvent::CursorMoved { position, .. } => {
-                let was_usage = self.titlebar.hit(self.pointer) == Some(desktop_window::Hit::Usage);
+                let tip = |hit| {
+                    matches!(
+                        hit,
+                        Some(desktop_window::Hit::Usage | desktop_window::Hit::Theme)
+                    )
+                    .then_some(hit)
+                    .flatten()
+                };
+                let was_tip = tip(self.titlebar.hit(self.pointer));
                 let scale = self
                     .window
                     .as_ref()
                     .map_or(1., |window| window.scale_factor()) as f32;
                 self.pointer = [position.x as f32 / scale, position.y as f32 / scale];
-                if was_usage != (self.titlebar.hit(self.pointer) == Some(desktop_window::Hit::Usage)) {
+                if was_tip != tip(self.titlebar.hit(self.pointer)) {
                     self.request_redraw();
                 }
                 self.titlebar.moved(self.pointer);

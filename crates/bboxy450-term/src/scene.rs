@@ -612,6 +612,36 @@ impl Scene {
             .map(|layout| c::paint(&layout, self.context))
             .unwrap_or_default()
     }
+    /// Hover label for the title-bar theme button: the saved choice and what a click picks.
+    pub fn theme_tooltip(&self, size: [f32; 2]) -> Vec<c::Paint> {
+        let now = if self.context.theme == ui::Theme::Dark { "dark" } else { "light" };
+        let (current, next) = match self.theme_setting.as_str() {
+            "light" => ("Light".to_string(), "Dark"),
+            "dark" => ("Dark".to_string(), "Auto"),
+            _ => (format!("Auto (system is {now})"), "Light"),
+        };
+        let mut style = ui::Style::new(ui::Preset::Modal);
+        style.overrides.padding = Some([ui::Length::Px(8.), ui::Length::Px(12.), ui::Length::Px(8.), ui::Length::Px(12.)]);
+        let text = c::Text::new(
+            format!("Theme: {current}\nClick for {next}"),
+            ui::Text::default(),
+        );
+        let element = c::Element::Box(c::Box::new(style, vec![c::Element::Text(text).into()]));
+        let width = 220f32.min(size[0] - 24.).max(1.);
+        element
+            .layout(
+                Rect::new(
+                    (size[0] - width - 12.).max(0.),
+                    STYLE.spacing.title_bar as f32 + 4.,
+                    width,
+                    0.,
+                ),
+                self.context,
+                &self.metrics,
+            )
+            .map(|layout| c::paint(&layout, self.context))
+            .unwrap_or_default()
+    }
     pub fn set_context(&mut self, context: ui::Context) {
         self.context = context;
     }
