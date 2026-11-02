@@ -37,17 +37,17 @@ pub fn families() -> [fn(bool) -> Model; 3] {
 /// names generation `g`; 0 is none. A label is what the code keys a layer by;
 /// a content is the generation its export really read.
 ///
-/// - A call reads the signal (`store.rs:467`) and is served the committed
-///   layer only when its label equals it (`index.rs:800`, `store.rs:471`);
+/// - A call reads the signal (`store.rs:517`) and is served the committed
+///   layer only when its label equals it (`index.rs:807`, `store.rs:521`);
 ///   otherwise it falls back to the backend path and starts one background
-///   build when none runs (`index.rs:803-807`).
-/// - A build reads the signal before the export (`index.rs:1052`), exports
-///   (`index.rs:1053-1055`) and publishes only when the signal is unchanged
-///   (`index.rs:1056`), otherwise discards and retries (`index.rs:1057-1058`;
+///   build when none runs (`index.rs:810-814`).
+/// - A build reads the signal before the export (`index.rs:1066`), exports
+///   (`index.rs:1067-1069`) and publishes only when the signal is unchanged
+///   (`index.rs:1070`), otherwise discards and retries (`index.rs:1071-1072`;
 ///   ATTEMPTS bounds retries, abstracted here). It saves the snapshot before
-///   publishing (`index.rs:819-823`, `index.rs:842`).
+///   publishing (`index.rs:826-830`, `index.rs:849`).
 /// - A restarted process keeps the snapshot and loads it only for exactly the
-///   current signal (`index.rs:666`, `index.rs:1008-1010`).
+///   current signal (`index.rs:672`, `index.rs:1019-1021`).
 ///
 /// The broken control publishes without the post-export re-check: a commit
 /// during the export labels older content with a newer signal, or newer
@@ -158,13 +158,13 @@ pub fn index_freshness(broken: bool) -> Model {
 
 /// `GitKbPaging` (or its broken control): `list`/`search`/`graph` pages over
 /// one catalog snapshot. The cursor stores the query key, the snapshot and an
-/// offset (`methods.rs:311-317`); a later page continues only for the same
-/// key and snapshot, else refuses `stale_cursor` (`methods.rs:185-190`).
+/// offset (`methods.rs:308-314`); a later page continues only for the same
+/// key and snapshot, else refuses `stale_cursor` (`methods.rs:187-192`).
 /// `fill` examines at least one record before the time reserve may stop it
-/// (`methods.rs:222`) and advances the offset past every examined record
-/// (`methods.rs:237`; a page cut by the byte budget returns before advancing
-/// past the item it could not admit, `methods.rs:232`). Every page mints a
-/// fresh token (`store.rs:362-371`).
+/// (`methods.rs:224`) and advances the offset past every examined record
+/// (`methods.rs:239`; a page cut by the byte budget returns before advancing
+/// past the item it could not admit, `methods.rs:234`). Every page mints a
+/// fresh token (`store.rs:412-421`).
 ///
 /// Three records a, b, c; one source change inserts record n before them
 /// (positions shift by one). Pages examine one or two records (any limit of
@@ -273,17 +273,19 @@ pub fn paging(broken: bool) -> Model {
 
 /// `GitKbAttribution` (or its broken control): what reaches a `git-kb`
 /// child's environment. Every child is spawned with `env_clear()` and the
-/// backend's own list (`backend.rs:219-222`), which starts scrubbed
-/// (`backend.rs:55-65`, `backend.rs:72`) and is extended only while binding
+/// backend's own list (`backend.rs:222-225`), which starts scrubbed
+/// (`backend.rs:55-65`, `backend.rs:79`) and is extended only while binding
 /// the root, before any call (`main.rs:93`, `main.rs:152` via `set_env`,
 /// `backend.rs:84-87`). Index builds and workspace preparation run on clones
-/// of that backend with detached contexts (`index.rs:674`, `index.rs:806`,
-/// `index.rs:726`, `index.rs:1048`).
+/// of that backend with detached contexts (`index.rs:680`, `index.rs:813`,
+/// `index.rs:732`, `index.rs:1062`).
 ///
-/// Today no call writes its seat attribution into that list, so a call's
-/// attribution reaches no child at all; the model's properties are the ones
-/// a per-call delivery must keep: a call's child carries no attribution or
-/// its own call's, and an index child carries none. Two seats A and B (1, 2).
+/// No call writes its seat attribution into that list: a call's attribution
+/// reaches only its own child, added per spawn from its context
+/// (`backend.rs:226`), and a detached context carries none. The model's
+/// properties are the ones that per-call delivery must keep: a call's child
+/// carries no attribution or its own call's, and an index child carries none.
+/// Two seats A and B (1, 2).
 ///
 /// The broken control has a call write its attribution into the shared
 /// backend environment (a `set_env` while serving it): the next call's child
