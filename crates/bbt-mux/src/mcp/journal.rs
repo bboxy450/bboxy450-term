@@ -9,6 +9,10 @@
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 use ulid::Ulid;
 
 use super::{Call, MAX_RESULT, Principal, error};
@@ -18,6 +22,9 @@ use crate::store::{Result, digest, events::Draft, sqlite::SqliteStore};
 pub(crate) struct Journal {
     store: SqliteStore,
     root: Option<RootContext>,
+    // Shared by every clone: set after an audit commits, so the publisher
+    // opens only databases that may hold unpublished audits.
+    audit_pending: Arc<AtomicBool>,
 }
 #[derive(Clone)]
 struct RootContext {
@@ -73,7 +80,11 @@ enum Mode {
 
 impl Journal {
     pub fn new(store: SqliteStore) -> Self {
-        Self { store, root: None }
+        Self {
+            store,
+            root: None,
+            audit_pending: Arc::new(AtomicBool::new(true)),
+        }
     }
     /// Root IDs come only from the backend's admitted workspace, never tool args.
     /// Operation keys remain global so a cwd change cannot repeat an old effect.
@@ -84,6 +95,7 @@ impl Journal {
                 id: root_id.into(),
                 startup: startup_root_id.into(),
             }),
+            audit_pending: self.audit_pending.clone(),
         }
     }
     pub(crate) fn root_id(&self) -> Option<&str> {
@@ -256,6 +268,7 @@ impl Journal {
             ],
         )?;
         tx.commit()?;
+        self.audit_pending.store(true, Ordering::Release);
         Ok(result)
     }
 
@@ -402,6 +415,7 @@ impl Journal {
             ],
         )?;
         tx.commit()?;
+        self.audit_pending.store(true, Ordering::Release);
         Ok(result)
     }
 
@@ -543,6 +557,7 @@ impl Journal {
             ],
         )?;
         tx.commit()?;
+        self.audit_pending.store(true, Ordering::Release);
         Ok((result, fresh))
     }
 
@@ -769,6 +784,27 @@ impl Journal {
         )?;
         tx.commit()?;
         Ok(())
+    }
+
+    /// Unpublished audits, or none without touching the database when no audit
+    /// committed since the last drain. A drained batch shorter than `limit`
+    /// clears the flag; a later commit sets it again.
+    pub fn pending_if_any(&self, limit: usize) -> Result<Vec<Draft>> {
+        if !self.audit_pending.swap(false, Ordering::AcqRel) {
+            return Ok(Vec::new());
+        }
+        let events = self.pending(limit).inspect_err(|_| {
+            self.audit_pending.store(true, Ordering::Release);
+        })?;
+        if events.len() >= limit.min(128) {
+            self.audit_pending.store(true, Ordering::Release);
+        }
+        Ok(events)
+    }
+
+    /// Keep the journal in the next publication pass after a failed publish.
+    pub fn mark_pending(&self) {
+        self.audit_pending.store(true, Ordering::Release);
     }
 
     pub fn pending(&self, limit: usize) -> Result<Vec<Draft>> {
@@ -1599,6 +1635,41 @@ mod tests {
         assert_eq!(events[1].payload["outcome"], "replay");
         reopened.published(events[0].id).unwrap();
         assert_eq!(reopened.pending(128).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn idle_journal_is_not_opened_until_an_audit_commits_or_a_publish_fails() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = SqliteStore::open(temp.path()).unwrap();
+        let journal = Journal::new(store.clone());
+        let clone = journal.with_root("root-A", "startup");
+        assert!(journal.pending_if_any(32).unwrap().is_empty());
+        // Written behind the journal's back: an idle journal does not read it.
+        let event = Draft::new("seat/fixture/control", "mcp", json!({"call":1}));
+        store
+            .put(
+                &format!("control/audit/{}", event.id),
+                &serde_json::to_vec(&event).unwrap(),
+            )
+            .unwrap();
+        assert!(journal.pending_if_any(32).unwrap().is_empty());
+        // A failed publish (or any clone's commit) marks the shared flag.
+        clone.mark_pending();
+        assert_eq!(journal.pending_if_any(32).unwrap().len(), 1);
+        assert!(journal.pending_if_any(32).unwrap().is_empty());
+        // A full batch keeps the journal in the next pass.
+        for n in 0..3 {
+            let event = Draft::new("seat/fixture/control", "mcp", json!({"call":n}));
+            store
+                .put(
+                    &format!("control/audit/{}", event.id),
+                    &serde_json::to_vec(&event).unwrap(),
+                )
+                .unwrap();
+        }
+        journal.mark_pending();
+        assert_eq!(journal.pending_if_any(2).unwrap().len(), 2);
+        assert_eq!(journal.pending_if_any(2).unwrap().len(), 2);
     }
 
     // keeps: spec mcp-control-plane

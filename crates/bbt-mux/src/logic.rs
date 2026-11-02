@@ -3306,11 +3306,18 @@ impl Worker {
             }
             self.operator_journal.published(event_id)?;
         }
+        // One database per seat: only journals with a committed, unpublished
+        // audit are opened, so a large registry does not cycle the shared pool.
         for (id, journal) in &self.control_journals {
-            for event in journal.pending(32)? {
+            for event in journal.pending_if_any(32)? {
                 let event_id = event.id;
-                self.publish(&format!("seat-{id}"), event)?;
-                journal.published(event_id)?;
+                let published = self
+                    .publish(&format!("seat-{id}"), event)
+                    .and_then(|_| journal.published(event_id));
+                if let Err(error) = published {
+                    journal.mark_pending();
+                    return Err(error);
+                }
             }
         }
         Ok(())
