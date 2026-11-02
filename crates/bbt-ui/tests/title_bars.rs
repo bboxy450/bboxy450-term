@@ -241,3 +241,36 @@ fn old_titlebar_is_a_component_delegate() {
         assert!(!body.contains(forbidden));
     }
 }
+#[test]
+fn breakdown_rows_span_the_width() {
+    use bbt_ui::modules::title_bar::usage_breakdown;
+    use bbt_ui_model::usage::{UsageMetric, UsageStrip, UsageWindow};
+    let strip = UsageStrip {
+        machine: vec![],
+        providers: vec![UsageMetric {
+            label: "claude".into(),
+            percent: Some(40),
+            projected: Some(91),
+            windows: vec![UsageWindow {
+                label: "Weekly".into(),
+                percent: 40,
+                projected: Some(91),
+                resets: Some("Resets Fri 8:00 AM".into()),
+            }],
+            stale: false,
+            reason: None,
+        }],
+    };
+    let l = usage_breakdown(&strip, 300.)
+        .layout(Rect::new(0., 0., 300., 0.), context(), &Metrics)
+        .unwrap();
+    // The reset text ends at the right edge, like Tachyon's popover.
+    fn text_right(n: &c::Layout, want: &str) -> Option<f32> {
+        if format!("{:?}", n.kind).contains(want) && n.children.is_empty() {
+            return Some(n.rect.right());
+        }
+        n.children.iter().find_map(|c| text_right(c, want))
+    }
+    let right = text_right(&l, "Resets Fri 8:00 AM").unwrap();
+    assert!((right - 300.).abs() < 1., "resets ends at {right}");
+}

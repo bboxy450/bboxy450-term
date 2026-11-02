@@ -466,10 +466,12 @@ fn spread(left: c::Element, right: Option<c::Element>) -> c::Element {
 }
 
 fn column(gap: f32, children: Vec<c::Item>) -> c::Element {
+    // Stretch, so each "label · · · resets" row spans the width and its right side
+    // sits flush right, as in Tachyon's popover.
     c::Element::Stack(c::Stack {
         direction: Axis::Column,
         gap: ui::Length::Px(gap),
-        align: c::Alignment::Start,
+        align: c::Alignment::Stretch,
         children,
     })
 }
