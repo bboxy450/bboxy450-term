@@ -707,7 +707,10 @@ mod tests {
         assert_eq!(pixel(20, 16), [255, 128, 128, 255]);
         assert_eq!(pixel(50, 16), [0, 0, 255, 255]);
         assert_eq!(a, renderer.render_to_rgba(&list, 64, 32, 1.).unwrap());
-        assert_eq!(renderer.paths.geometry.len(), 1);
+        // A small path is a flat atlas instance, never an analytic pass.
+        assert_eq!(renderer.paths.geometry.len(), 0);
+        let quads = renderer.text.stats().shadow_quads;
+        assert_eq!(quads, 2, "one stroke quad per frame, two frames");
         let Prim::Path { origin, color, .. } = &mut list.primitives[2] else {
             unreachable!()
         };
@@ -715,10 +718,36 @@ mod tests {
         *color = Color::BLACK;
         renderer.render_to_rgba(&list, 64, 32, 1.).unwrap();
         assert_eq!(
+            renderer.text.stats().atlas_entries,
+            1,
+            "paint and whole-pixel translation share one mask"
+        );
+    }
+    // keeps: spec renderer §4.4a — exact geometry beyond the mask budget keeps its pass
+    #[test]
+    fn a_path_wider_than_the_mask_budget_keeps_the_analytic_pass() {
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let mut list = DrawList::default();
+        list.rect(Rect::new(0., 0., 64., 32.), 0., Color::WHITE);
+        list.push(path(
+            vec![
+                PathCommand::Move([0., 16.]),
+                PathCommand::Line([3000., 16.]),
+            ],
+            PathStroke {
+                width: 4.,
+                ..Default::default()
+            },
+        ));
+        let a = renderer.render_to_rgba(&list, 64, 32, 1.).unwrap();
+        let pixel = |x: usize, y: usize| &a[(y * 64 + x) * 4..(y * 64 + x + 1) * 4];
+        assert_eq!(pixel(20, 16), [255, 128, 128, 255]);
+        assert_eq!(
             renderer.paths.geometry.len(),
             1,
-            "paint and translation do not retessellate"
+            "analytic geometry retained"
         );
+        assert_eq!(renderer.text.stats().shadow_quads, 0);
     }
     // keeps: spec renderer §4.4a — finite exact path geometry, ordered paint and retained uploads
     #[test]

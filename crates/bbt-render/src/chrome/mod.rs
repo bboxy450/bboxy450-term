@@ -19,7 +19,7 @@ mod text_cache;
 mod text_glyphs;
 use crate::{RenderError, Result, device::DeviceContext};
 use bbt_ui_model::{
-    draw::{Color, DrawList, Prim},
+    draw::{Color, DrawList, PathCommand, PathStroke, Prim, TextShadow},
     layout::Rect,
 };
 use pipeline::Instance;
@@ -180,6 +180,28 @@ impl ChromeRenderer {
         load: wgpu::LoadOp<wgpu::Color>,
     ) -> Result<()> {
         list.validate().map_err(RenderError::from)?;
+        // A small path (an icon) is one or two flat instances sampling the
+        // shared mask atlas, exactly like an unblurred path shadow: no render
+        // pass of its own and no split of the surrounding flat batch. Only a
+        // path too large for a mask keeps the analytic pass.
+        let rewritten;
+        let list = if list
+            .primitives
+            .iter()
+            .any(|p| matches!(p, Prim::Path { .. }))
+        {
+            rewritten = DrawList {
+                primitives: list
+                    .primitives
+                    .iter()
+                    .flat_map(|p| atlas_path(p, target.scale))
+                    .collect(),
+                ..list.clone()
+            };
+            &rewritten
+        } else {
+            list
+        };
         if !list
             .primitives
             .iter()
@@ -930,6 +952,80 @@ impl ChromeRenderer {
     }
 }
 
+/// Largest device-pixel extent a path takes through the mask atlas; the
+/// rasterizer's own budget is wider, with a stroke pad added there.
+const ATLAS_PATH_MAX: f32 = 2048.;
+
+/// A path as flat atlas instances (fill, then stroke), or itself when it is
+/// too large for a mask. An empty fill or a zero-width stroke emits nothing.
+fn atlas_path(primitive: &Prim, device_scale: f32) -> Vec<Prim> {
+    let Prim::Path {
+        origin,
+        scale,
+        points,
+        stroke,
+        color,
+        fill,
+    } = primitive
+    else {
+        return vec![primitive.clone()];
+    };
+    let mut lo = [f32::INFINITY; 2];
+    let mut hi = [f32::NEG_INFINITY; 2];
+    let mut see = |p: [f32; 2]| {
+        for i in 0..2 {
+            lo[i] = lo[i].min(p[i]);
+            hi[i] = hi[i].max(p[i]);
+        }
+    };
+    for command in points.iter() {
+        match *command {
+            PathCommand::Move(p) | PathCommand::Line(p) => see(p),
+            PathCommand::Cubic(ps) => ps.into_iter().for_each(&mut see),
+        }
+    }
+    let s = scale * device_scale;
+    let pad = stroke.width * s * 2. + 2.;
+    let extent = [
+        (hi[0] - lo[0]) * s + pad * 2.,
+        (hi[1] - lo[1]) * s + pad * 2.,
+    ];
+    if points.is_empty()
+        || !s.is_finite()
+        || s <= 0.
+        || extent.iter().any(|v| !v.is_finite() || *v > ATLAS_PATH_MAX)
+    {
+        return vec![primitive.clone()];
+    }
+    let shadow = |color: Color, filled: bool| Prim::PathShadow {
+        origin: *origin,
+        scale: *scale,
+        points: points.clone(),
+        stroke: if filled {
+            PathStroke {
+                width: 0.,
+                ..stroke.clone()
+            }
+        } else {
+            stroke.clone()
+        },
+        filled,
+        shadow: TextShadow {
+            color,
+            blur_radius: 0.,
+            offset: [0.; 2],
+        },
+    };
+    let mut out = Vec::with_capacity(2);
+    if let Some(fill) = fill {
+        out.push(shadow(*fill, true));
+    }
+    if stroke.width > 0. {
+        out.push(shadow(*color, false));
+    }
+    out
+}
+
 fn clear(view: &wgpu::TextureView, color: wgpu::Color, encoder: &mut wgpu::CommandEncoder) {
     crate::passes::count(crate::passes::Kind::Clear);
     let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -1028,9 +1124,10 @@ mod tests {
                 1.,
             ]);
             list.rect(Rect::new(x, y, 4., 4.), 1., c);
-            // A path ends the flat batch, so every rect is its own draw: 800 draws, each
+            // A group ends the flat batch, so every rect is its own draw: 800 draws, each
             // with its own uniform and instance (or clip) slice, in one submission.
-            list.push(Prim::Path {
+            let mut inner = DrawList::default();
+            inner.push(Prim::Path {
                 origin: [x + 1., y + 1.],
                 scale: 1.,
                 points: std::sync::Arc::from([
@@ -1040,6 +1137,12 @@ mod tests {
                 stroke: PathStroke::default(),
                 color: Color([c.0[2], c.0[0], c.0[1], 1.]),
                 fill: None,
+            });
+            list.push(Prim::Group {
+                primitives: inner.primitives,
+                opacity: 1.,
+                saturation: 1.,
+                mask: None,
             });
         }
         let mut fallback = ChromeRenderer::new(vec![]).unwrap();
@@ -1053,9 +1156,14 @@ mod tests {
             grown.iter().all(|&c| c > 64 * 1024),
             "the frame outgrew both first arenas mid-frame: {grown:?}"
         );
-        // The next frame rewinds into the grown arenas and still matches.
+        // Growth may settle over two frames (a group's composite uniform lands
+        // after its layer); from then on each frame rewinds into the same
+        // arenas and still matches.
         assert_eq!(arenas.render_to_rgba(&list, 240, 64, 1.).unwrap(), expected);
-        assert_eq!(arenas.arenas.capacity(), grown);
+        let settled = arenas.arenas.capacity();
+        assert!(settled.iter().zip(&grown).all(|(s, g)| s >= g));
+        assert_eq!(arenas.render_to_rgba(&list, 240, 64, 1.).unwrap(), expected);
+        assert_eq!(arenas.arenas.capacity(), settled);
     }
     // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
