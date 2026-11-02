@@ -3,11 +3,13 @@ id: "01M6DGQZ3V8R5K2N7T4W9XCB1E"
 type: "task"
 number: 5183
 title: "ctl seat spawn --resume: start a claude or codex seat on an existing native session"
-status: "open"
+status: done
 role: "executor"
 verify: "cargo test -p bboxy450-term --lib ctl && cargo test -p bboxy450-harness-wake-up --test seat_wiring"
 created: "2026-11-02T12:00:00Z"
-updated: "2026-11-02T12:00:00Z"
+updated: "2026-11-02T18:30:00Z"
+updated_by: "seat:01M6EQFA2G00BFT3TVPY6AMXE6"
+reconciliation: [{"by": "seat:01M6EQFA2G00BFT3TVPY6AMXE6", "disposition": "implemented", "evidence": ["https://github.com/bboxy450/bboxy450-term/commit/8b6ad7b9", "https://github.com/bboxy450/bboxy450-term/commit/e01664a2"], "fresh_accepted": false, "kind": "historical", "previous_status": "open", "reason": "ctl seat spawn --resume landed on main, including --place. Hand-edited: task_reconcile refused (see tasks/2026-11-02-bug-task-lifecycle-unowned-records)."}]
 ---
 # ctl seat spawn --resume
 

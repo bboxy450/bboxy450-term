@@ -3,12 +3,14 @@ id: "01M5T135QBAWKH59VEGDB5690A"
 type: "task"
 number: 329
 title: "Diagnose fifty-seat spawn ENOENT under load"
-status: "open"
+status: done
 role: "executor"
 owner: "Sable Embertail"
 verify: "cargo test -p bbt-supervisor --locked --test supervisor fifty_seats_share_one_supervisor_poller -- --exact"
 created: "2026-10-25T17:17:52.235467Z"
-updated: "2026-10-25T17:17:52.235467Z"
+updated: "2026-11-02T18:30:00Z"
+updated_by: "seat:01M6EQFA2G00BFT3TVPY6AMXE6"
+reconciliation: [{"by": "seat:01M6EQFA2G00BFT3TVPY6AMXE6", "disposition": "cancelled", "evidence": ["https://github.com/bboxy450/bboxy450-term/commit/69f67650"], "fresh_accepted": false, "kind": "historical", "previous_status": "open", "reason": "quarantine row removed; the test runs as an ignored night boundary and PTY ENOENT witnesses landed. Reopen with a night-run witness if it recurs. Hand-edited: task_reconcile refused (see tasks/2026-11-02-bug-task-lifecycle-unowned-records)."}]
 ---
 # Diagnose fifty-seat spawn ENOENT under load
 

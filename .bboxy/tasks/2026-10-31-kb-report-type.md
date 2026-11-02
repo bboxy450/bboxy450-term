@@ -10,20 +10,15 @@ created_by: seat:01M6ABH71TVWGZ621NTD701PSH
 delegated_by: seat:01M6ABH71TVWGZ621NTD701PSH
 id: 01M6AGA8G9C5MXP3WTTN5QBY5M
 number: 631
-provenance:
-  digest: sha256:8b16d2ff6db071e6acfb264c7a5fdb02a6b56d4c80746ffe7237df2bcee3d856
-  frontmatter_digest: sha256:bb22c7a58d360aaec3d567818ffdc399a5cabce8bc9db3f8f91703addc193df9
-  log: .bboxy/log/2026-11-01.jsonl#677
-  sig: c2lnMcbJ8eotuO56JnKQRgV2aFGcgjXjWYJolFrnbLbAo5uLaDpbKHfMcdiTG0Smdcmma+XNVLDjUceimQdWDQ==
-  signer: seat:01M6ABH71TVWGZ621NTD701PSH
 role: executor
-status: claimed
+status: done
 swarm: 01M649102FBS60QWNPZS5VAGF9
 title: 'Built-in KB: report document type, linked from commits by wikilink'
 type: task
-updated: 2026-11-01T02:51:51.867Z
-updated_by: seat:01M6ABH71TVWGZ621NTD701PSH
+updated: "2026-11-02T18:30:00Z"
+updated_by: "seat:01M6EQFA2G00BFT3TVPY6AMXE6"
 verify: make test-task-contract && make test
+reconciliation: [{"by": "seat:01M6EQFA2G00BFT3TVPY6AMXE6", "disposition": "implemented", "evidence": ["https://github.com/bboxy450/bboxy450-term/commit/ee6b7d5e"], "fresh_accepted": false, "kind": "historical", "previous_status": "claimed", "reason": "immutable KB reports with task and commit provenance landed on main. Hand-edited: task_reconcile refused (see tasks/2026-11-02-bug-task-lifecycle-unowned-records)."}]
 ---
 # Built-in KB: `report` document type with commit provenance
 

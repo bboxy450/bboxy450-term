@@ -7,15 +7,15 @@ created_by: "seat:01M6AC3D2ECK4W3F8495PAQTS3"
 delegated_by: "seat:01M6AC3D2ECK4W3F8495PAQTS3"
 id: "01M6CTJVCGKPXXHE43XR7JA1Y3"
 number: 5119
-provenance: {"digest":"sha256:eebea6a836ca43baa8387e20450e30aa6804b6ce4f51b98fb243fa02cb116a3b","frontmatter_digest":"sha256:26b5fdcd41fd6457e58626dc975ec87391d9aed54ec66410f6ff00941c5d8bc0","log":".bboxy/log/2026-11-02.jsonl#33806","sig":"bi/jWAtClPy6OoN/sk4tV2Lq62DonKHeqqmoKB/mUyvE6V0j1MPlOPAHbbhna9P1UtLAPCtSpLsiuTKVdbzoDg==","signer":"seat:01M6AC3D2ECK4W3F8495PAQTS3"}
 role: "executor"
-status: "claimed"
+status: done
 swarm: "01M6ABW0CX6MY0D5WGCSQ3ADTG"
 title: "E1i: fix flaky test-capability-scan (process snapshot EIO race) on bboxy450-term main"
 type: "task"
-updated: "2026-11-02T00:29:48.905Z"
-updated_by: "seat:01M6AC3D2ECK4W3F8495PAQTS3"
+updated: "2026-11-02T18:30:00Z"
+updated_by: "seat:01M6EQFA2G00BFT3TVPY6AMXE6"
 verify: "make test"
+reconciliation: [{"by": "seat:01M6EQFA2G00BFT3TVPY6AMXE6", "disposition": "implemented", "evidence": ["https://github.com/bboxy450/bboxy450-term/commit/f7becb1e", "https://github.com/bboxy450/bboxy450-term/commit/9a6cffa6"], "fresh_accepted": false, "kind": "historical", "previous_status": "claimed", "reason": "capability scan child readiness and transient EIO fixed on main. Hand-edited: task_reconcile refused (see tasks/2026-11-02-bug-task-lifecycle-unowned-records)."}]
 ---
 
 ROLE: EXECUTOR. Repo bboxy450/bboxy450-term. Worktree: `git -C ~/mydev/bboxy450-term worktree add ~/mydev/bboxy450-term-capscan -b capability-scan-race origin/main`. Open a PR. Do not merge or run land.sh. Do this after or alongside #5117; both block every landing.

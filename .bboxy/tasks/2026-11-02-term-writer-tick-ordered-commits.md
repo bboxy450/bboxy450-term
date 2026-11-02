@@ -15,20 +15,15 @@ created_by: seat:01M6AC3D2ECK4W3F8495PAQTS3
 delegated_by: seat:01M6AC3D2ECK4W3F8495PAQTS3
 id: 01M6D6X67F67ZEA5DAE5H51EMN
 number: 5169
-provenance:
-  digest: sha256:ce26c87fc698d26e4a20a20a0535b8a3662381968fd0ff5542f4225f15897983
-  frontmatter_digest: sha256:540b2f126b6a596fdd3f7bae6561665360455384df3f0f285bfd4e52bcac4a84
-  log: .bboxy/log/2026-11-02.jsonl#34349
-  sig: yaWqN4vffVJj5YuVCaNZUpZ9fPjmBeAj3yG6HIj8AKTOSp5+ErWdwGSUUbgQFeCYPrYGdI+SxpaKJv8BF8HQDg==
-  signer: seat:01M6AC3D2ECK4W3F8495PAQTS3
 role: executor
-status: claimed
+status: done
 swarm: 01M6ABW0CX6MY0D5WGCSQ3ADTG
 title: 'E1c: writer tick test counts an extra ordered commit under CPU load'
 type: task
-updated: 2026-11-02T04:05:05.218Z
-updated_by: seat:01M6AC3D2ECK4W3F8495PAQTS3
+updated: "2026-11-02T18:30:00Z"
+updated_by: "seat:01M6EQFA2G00BFT3TVPY6AMXE6"
 verify: cargo test -p bboxy450-term-supervisor ring::writer
+reconciliation: [{"by": "seat:01M6EQFA2G00BFT3TVPY6AMXE6", "disposition": "implemented", "evidence": ["https://github.com/bboxy450/bboxy450-term/commit/6ec9be18"], "fresh_accepted": false, "kind": "historical", "previous_status": "claimed", "reason": "writer tick fixture made deterministic on main. Hand-edited: task_reconcile refused (see tasks/2026-11-02-bug-task-lifecycle-unowned-records)."}]
 ---
 ROLE: EXECUTOR. Repo bboxy450/bboxy450-term. **Same branch as #5117 (`resource-ledger-race`, worktree `~/mydev/bboxy450-term-ledger-race`).** Do #5165 on this branch too: three fixes, one PR, and one final full `make test` covering all three, per the CPU rule. Do not merge or run land.sh.
 

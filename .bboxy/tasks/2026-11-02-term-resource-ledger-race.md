@@ -16,20 +16,15 @@ created_by: seat:01M6AC3D2ECK4W3F8495PAQTS3
 delegated_by: seat:01M6AC3D2ECK4W3F8495PAQTS3
 id: 01M6CSPGDM9Z8J1WT9NDTQDKHJ
 number: 5117
-provenance:
-  digest: sha256:0caeb6bf5b7d6c093d5377100841abb244aa4ed6f27a48bc9be679d23af3fe2d
-  frontmatter_digest: sha256:d615910694cf2650514a249bf418452fe97a0b6be8f53bb56861d2f9a6ea58ff
-  log: .bboxy/log/2026-11-02.jsonl#33786
-  sig: hJf4XN6Oubtkp7yGpAvppfn2PYz9ePo5ztp68hRNE9hUDXciIr+4IVPyzUhldZC6SLsQWRNXRPJtjD5yCUOHDQ==
-  signer: seat:01M6AC3D2ECK4W3F8495PAQTS3
 role: executor
-status: claimed
+status: done
 swarm: 01M6ABW0CX6MY0D5WGCSQ3ADTG
 title: 'E1h: fix resource-ledger child-start vs SIGTERM-handler race (bboxy450-term)'
 type: task
-updated: 2026-11-02T00:16:45.030Z
-updated_by: seat:01M6AC3D2ECK4W3F8495PAQTS3
+updated: "2026-11-02T18:30:00Z"
+updated_by: "seat:01M6EQFA2G00BFT3TVPY6AMXE6"
 verify: make test
+reconciliation: [{"by": "seat:01M6EQFA2G00BFT3TVPY6AMXE6", "disposition": "implemented", "evidence": ["https://github.com/bboxy450/bboxy450-term/commit/0e3acf84", "https://github.com/bboxy450/bboxy450-term/commit/e653ebf5"], "fresh_accepted": false, "kind": "historical", "previous_status": "claimed", "reason": "ledger signal forwarding is installed before child creation on main. Hand-edited: task_reconcile refused (see tasks/2026-11-02-bug-task-lifecycle-unowned-records)."}]
 ---
 ROLE: EXECUTOR. Repo bboxy450/bboxy450-term. Worktree: `git -C ~/mydev/bboxy450-term worktree add ~/mydev/bboxy450-term-ledger-race -b resource-ledger-race origin/main`. Open a PR. Do not merge or run land.sh.
 

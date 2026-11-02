@@ -14,20 +14,15 @@ created_by: seat:01M6AC3D2ECK4W3F8495PAQTS3
 delegated_by: seat:01M6AC3D2ECK4W3F8495PAQTS3
 id: 01M6D69Z3N4FFA8Q886BFRFN3G
 number: 5165
-provenance:
-  digest: sha256:beab2de9204fb12df250d537c1a88cb17a4d5cc5045de01a6f21168ac333e9a1
-  frontmatter_digest: sha256:c565725ac78db6a6711b9f4df094098e4e90d6d424b4ee1fd46ce9ea262b702e
-  log: .bboxy/log/2026-11-02.jsonl#34296
-  sig: FjdAY7G5s47OAlUOdcW7P7/5rK7/D4Xso2TBdQcGU0rGMB6i6ZC0E/UjX96+gNSm8pn92jCrCP489IkVinSBBA==
-  signer: seat:01M6AC3D2ECK4W3F8495PAQTS3
 role: executor
-status: claimed
+status: done
 swarm: 01M6ABW0CX6MY0D5WGCSQ3ADTG
 title: 'E1c: plugin_host test parses a partially written hook-log line (flaky EOF)'
 type: task
-updated: 2026-11-02T03:54:36.576Z
-updated_by: seat:01M6AC3D2ECK4W3F8495PAQTS3
+updated: "2026-11-02T18:30:00Z"
+updated_by: "seat:01M6EQFA2G00BFT3TVPY6AMXE6"
 verify: cargo test -p bboxy450-term-mux --test plugin_host
+reconciliation: [{"by": "seat:01M6EQFA2G00BFT3TVPY6AMXE6", "disposition": "implemented", "evidence": ["https://github.com/bboxy450/bboxy450-term/commit/6ec9be18"], "fresh_accepted": false, "kind": "historical", "previous_status": "claimed", "reason": "hook-log framing fixture made deterministic on main. Hand-edited: task_reconcile refused (see tasks/2026-11-02-bug-task-lifecycle-unowned-records)."}]
 ---
 ROLE: EXECUTOR. Repo bboxy450/bboxy450-term. Start after #5117 is reported. Worktree: `git -C ~/mydev/bboxy450-term worktree add ~/mydev/bboxy450-term-hooklog -b plugin-hook-log-partial origin/main`. Open a PR. Do not merge or run land.sh.
 

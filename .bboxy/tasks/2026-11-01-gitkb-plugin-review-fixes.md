@@ -3,11 +3,13 @@ id: "01M6D1ZREJPSFM7CAPMGFTR773"
 type: "task"
 number: 5004
 title: "gitkb plugin: fix the eight findings of the git-kb CLI side-by-side review"
-status: "open"
+status: done
 role: "executor"
 verify: "cargo test -p bboxy450-term-data_source-gitkb && make land"
 created: "2026-11-02T02:40:00Z"
-updated: "2026-11-02T02:40:00Z"
+updated: "2026-11-02T18:30:00Z"
+updated_by: "seat:01M6EQFA2G00BFT3TVPY6AMXE6"
+reconciliation: [{"by": "seat:01M6EQFA2G00BFT3TVPY6AMXE6", "disposition": "implemented", "evidence": ["https://github.com/bboxy450/bboxy450-term/commit/4f79d79f", "https://github.com/bboxy450/bboxy450-term/commit/7e2b83e3", "https://github.com/bboxy450/bboxy450-term/commit/c9bfb417"], "fresh_accepted": false, "kind": "historical", "previous_status": "open", "reason": "git-kb side-by-side review findings fixed on main. Hand-edited: task_reconcile refused (see tasks/2026-11-02-bug-task-lifecycle-unowned-records)."}]
 ---
 # gitkb plugin review fixes
 

@@ -6,15 +6,15 @@ created_by: "seat:01M6ABH71TVWGZ621NTD701PSH"
 delegated_by: "seat:01M6ABH71TVWGZ621NTD701PSH"
 id: "01M6AD972977NZH976NK2GSD43"
 number: 572
-provenance: {"digest": "sha256:66ebff15d2ac457bc45bfeb359bd2a3b12b56d58541bb44a6af8270a7f4fbf13", "frontmatter_digest": "sha256:97961f17643b382639568f8cb5bcff08f77dc1fc0b11ab577faa9853ca5deb0a", "log": ".bboxy/log/2026-11-01.jsonl#321", "sig": "NEEmeCqI4vU2+Azpq+Fr2Rl9/ta9ipGtEyxY4ONCCs8rFrTJzPMB9d6wk216qTtu033GPOy39MHO/rouukEAAg==", "signer": "seat:01M6ABH71TVWGZ621NTD701PSH"}
 role: "executor"
-status: "claimed"
+status: done
 swarm: "01M649102FBS60QWNPZS5VAGF9"
 title: "Plugins continue: land #31, ship the #84 transport contract, close #377's unproven checks"
 type: "task"
-updated: "2026-11-01T01:58:48.276Z"
-updated_by: "seat:01M6ABH71TVWGZ621NTD701PSH"
+updated: "2026-11-02T18:30:00Z"
+updated_by: "seat:01M6EQFA2G00BFT3TVPY6AMXE6"
 verify: "make test-settings-plugins test-formal-contracts && make test"
+reconciliation: [{"by": "seat:01M6EQFA2G00BFT3TVPY6AMXE6", "disposition": "implemented", "evidence": ["https://github.com/bboxy450/bboxy450-term/commit/c1af68b6", "https://github.com/bboxy450/bboxy450-term/commit/4fa1b876", "https://github.com/bboxy450/bboxy450-term/commit/6ff474a1"], "fresh_accepted": false, "kind": "historical", "previous_status": "claimed", "reason": "#31, #84 and the #377 close landed; remaining model work moved to #505. Hand-edited: task_reconcile refused (see tasks/2026-11-02-bug-task-lifecycle-unowned-records)."}]
 ---
 # Plugins continue — close every remaining plugin-system gap
 

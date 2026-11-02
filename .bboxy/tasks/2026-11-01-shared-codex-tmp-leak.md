@@ -16,20 +16,15 @@ created_by: seat:01M6ABH71TVWGZ621NTD701PSH
 delegated_by: seat:01M6ABH71TVWGZ621NTD701PSH
 id: 01M6BCX3AZFSSZS5GQVATE2Y2J
 number: 1796
-provenance:
-  digest: sha256:c8b93b237771a636bdd7d50c5c9c399c5521b788af3103ab40a5e6bc678c1a8c
-  frontmatter_digest: sha256:1dd31d889dce109809a521f4dfd1c5d16c78dad9f47cf0c73f2c6ae7ae7f2cfa
-  log: .bboxy/log/2026-11-01.jsonl#7348
-  sig: nIfopsUC5crt//RZgH3uKSI9JRfs5z+3KaFnXg9gImJnoMbL6KEj7aJknOx8+i2MDu5SY1WIEd2WNXHR/WTlDw==
-  signer: seat:01M6ABH71TVWGZ621NTD701PSH
 role: executor
-status: claimed
+status: done
 swarm: 01M649102FBS60QWNPZS5VAGF9
 title: shared_codex e2e must not leak its /tmp fixture root
 type: task
-updated: 2026-11-01T11:11:26.056Z
-updated_by: seat:01M6ABH71TVWGZ621NTD701PSH
+updated: "2026-11-02T18:30:00Z"
+updated_by: "seat:01M6EQFA2G00BFT3TVPY6AMXE6"
 verify: make test
+reconciliation: [{"by": "seat:01M6EQFA2G00BFT3TVPY6AMXE6", "disposition": "implemented", "evidence": ["https://github.com/bboxy450/bboxy450-term/commit/9030e565"], "fresh_accepted": false, "kind": "historical", "previous_status": "claimed", "reason": "shared Codex fixture roots are retired by their owner on main. Hand-edited: task_reconcile refused (see tasks/2026-11-02-bug-task-lifecycle-unowned-records)."}]
 ---
 # shared_codex e2e must not leak its /tmp fixture root
 

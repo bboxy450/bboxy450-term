@@ -7,15 +7,15 @@ created_by: "seat:01M6AC3D2ECK4W3F8495PAQTS3"
 delegated_by: "seat:01M6AC3D2ECK4W3F8495PAQTS3"
 id: "01M6D61A7QD3S4A53S90P2NAWN"
 number: 5162
-provenance: {"digest":"sha256:2d10c6313a19d458b252d2b3753e790738bbdc807bf7cafe9637fe4b497ea6dd","frontmatter_digest":"sha256:cd8958e8d979fb3198b1ae1980c46e2c4e3a77b5e1b59821141a6645e57555ad","log":".bboxy/log/2026-11-02.jsonl#34274","sig":"YkRxIrFOdFDoNIXyzIMUt0QXFvxVmuqR3teYbOnnsSfyPuv03Ofu4BzjDhEOu26yCFUroSVWMN6is6mHMm0gCQ==","signer":"seat:01M6AC3D2ECK4W3F8495PAQTS3"}
 role: "executor"
-status: "claimed"
+status: done
 swarm: "01M6ABW0CX6MY0D5WGCSQ3ADTG"
 title: "E7: make ring_batch progress tests turn-bounded, not wall-clock (CPU-load flake)"
 type: "task"
-updated: "2026-11-02T03:51:02.688Z"
-updated_by: "seat:01M6AC3D2ECK4W3F8495PAQTS3"
+updated: "2026-11-02T18:30:00Z"
+updated_by: "seat:01M6EQFA2G00BFT3TVPY6AMXE6"
 verify: "cargo test -p bboxy450-term-mux --lib logic::ring_batch_tests"
+reconciliation: [{"by": "seat:01M6EQFA2G00BFT3TVPY6AMXE6", "disposition": "implemented", "evidence": ["https://github.com/bboxy450/bboxy450-term/commit/3ec66dbe", "https://github.com/bboxy450/bboxy450-term/commit/3f025918"], "fresh_accepted": false, "kind": "historical", "previous_status": "claimed", "reason": "ring_batch progress tests are bounded by runnable owner turns on main. Hand-edited: task_reconcile refused (see tasks/2026-11-02-bug-task-lifecycle-unowned-records)."}]
 ---
 
 ROLE: EXECUTOR. Repo bboxy450/bboxy450-term. Start after #5119 is reported. Worktree: `git -C ~/mydev/bboxy450-term worktree add ~/mydev/bboxy450-term-ringbatch -b ring-batch-turn-bound origin/main`. Open a PR. Do not merge or run land.sh.

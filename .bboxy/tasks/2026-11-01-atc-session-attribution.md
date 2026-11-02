@@ -3,11 +3,13 @@ id: "01M6D1RHA9RW5WFF8J1APMFVCH"
 type: "task"
 number: 5003
 title: "ATC session attribution for GitKB plugin calls made by a seat"
-status: "active"
+status: done
 role: "executor"
 verify: "make land"
 created: "2026-11-01T18:00:00Z"
-updated: "2026-11-02T03:10:00Z"
+updated: "2026-11-02T18:30:00Z"
+updated_by: "seat:01M6EQFA2G00BFT3TVPY6AMXE6"
+reconciliation: [{"by": "seat:01M6EQFA2G00BFT3TVPY6AMXE6", "disposition": "implemented", "evidence": ["https://github.com/bboxy450/bboxy450-term/commit/a0037704"], "fresh_accepted": false, "kind": "historical", "previous_status": "active", "reason": "seat ATC session attribution lent to GitKB plugin calls on main. Hand-edited: task_reconcile refused (see tasks/2026-11-02-bug-task-lifecycle-unowned-records)."}]
 ---
 # ATC session attribution for GitKB plugin calls
 
