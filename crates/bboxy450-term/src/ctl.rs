@@ -1887,6 +1887,12 @@ fn run_verb(
             ..
         } = &parsed.command
         {
+            // This read bypasses the door, so refuse a seat here as the door would: an
+            // unfiltered read acknowledges the operator's journal. Seats use MCP
+            // diagnostic_errors, which reads only their own rows.
+            if std::env::var_os("BBOXY_SEAT_ID").is_some() {
+                return Err(bbt_mux::ctl_door::REFUSAL.into());
+            }
             let root = endpoint_file
                 .parent()
                 .ok_or("diagnostics run directory unavailable")?;

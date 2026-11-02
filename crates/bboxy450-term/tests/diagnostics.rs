@@ -501,3 +501,33 @@ fn cli_mcp_and_shim_failures_are_retained_redacted_filterable_and_acknowledged_o
     assert_eq!(all["acknowledged"], true);
     assert_eq!(errors(root.path(), &[])["unread_before"], 0);
 }
+
+// keeps: decision #260 — ctl is the operator's door; a seat never acknowledges its journal.
+#[test]
+fn seat_debug_errors_is_refused_and_leaves_the_operator_journal_unread() {
+    let root = tempfile::tempdir().unwrap();
+    std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+    let server = Server::start(root.path().into(), |_| {}).unwrap();
+    server
+        .ready()
+        .recv_timeout(Duration::from_secs(60))
+        .unwrap()
+        .unwrap();
+    let ctl = command(root.path())
+        .args(["ctl", "seat", "ls"])
+        .output()
+        .unwrap();
+    assert_eq!(ctl.status.code(), Some(4));
+    wait_rows(root.path(), |rows| rows.len() == 1);
+    let seat = command(root.path())
+        .args(["ctl", "debug", "errors"])
+        .env("BBOXY_SEAT_ID", "01M5WZKA3MZC8BRJ601TFF7FH1")
+        .output()
+        .unwrap();
+    assert_eq!(seat.status.code(), Some(1));
+    let reply: Value = serde_json::from_slice(&seat.stdout).unwrap();
+    assert_eq!(reply["error"]["kind"], "ancestry_refused", "{reply}");
+    let all = errors(root.path(), &[]);
+    assert!(all["unread_before"].as_u64().unwrap() >= 1, "{all}");
+    assert_eq!(all["acknowledged"], true);
+}
