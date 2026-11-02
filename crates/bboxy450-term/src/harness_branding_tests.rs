@@ -212,6 +212,21 @@ fn harness_branding_settings_and_seat_surfaces() {
             .collect(),
         ..Default::default()
     };
+    view.section = "Harnesses".into();
+    // Match the Settings viewport inside the parity scene's 14px outer inset.
+    let narrow = view
+        .element(ctx, &metrics, 1218., 640.)
+        .layout(Rect::new(0., 0., 1218., 640.), ctx, &metrics)
+        .unwrap();
+    let title = nodes(&narrow)
+        .into_iter()
+        .find(|node| matches!(&node.kind, c::LayoutKind::Text { runs, .. } if runs.iter().map(|run| run.text.as_str()).collect::<String>() == "bboxy450-harness"))
+        .expect("canonical harness card title");
+    assert!(
+        title.rect.h >= 32.5,
+        "the full canonical card title must wrap instead of truncating: {:?}",
+        title.rect
+    );
     for section in ["Harnesses", "Notifications"] {
         view.section = section.into();
         let layout = solve(view.element(ctx, &metrics, 1400., 1800.));
