@@ -68,7 +68,7 @@ impl Provider for Grok {
         }
         request
     }
-    fn decode(&self, body: &[u8]) -> Result<u8, Failure> {
+    fn decode(&self, body: &[u8]) -> Result<Window, Failure> {
         let root = json(body)?;
         let c = &root["config"];
         let known = [
@@ -87,6 +87,6 @@ impl Provider for Grok {
             Some(v) => number(v).ok_or(Failure::Decode)?,
             None => 0.,
         };
-        percent_left([used])
+        worst([Window::new(used)])
     }
 }

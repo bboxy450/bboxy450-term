@@ -52,7 +52,13 @@ mod tests {
         // A signed-out account is hidden, not shown as "grok —".
         assert_eq!(scene.usage.providers.len(), 1);
         assert!(scene.usage.accessible_label().contains("CPU 42%"));
-        assert!(scene.usage.accessible_label().contains("Claude 58% left"));
+        assert!(scene.usage.accessible_label().contains("Claude 58% used"));
+        // A refresh in flight keeps the last value instead of blinking out.
+        scene.apply_usage(Update::Provider {
+            id: "claude",
+            reading: Some(Reading::error("Refreshing usage")),
+        });
+        assert!(scene.usage.accessible_label().contains("Claude 58% used"));
         assert!(!scene.usage.accessible_label().contains("rok"));
         scene.apply_usage(Update::Provider {
             id: "claude",

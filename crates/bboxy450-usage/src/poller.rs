@@ -289,7 +289,7 @@ pub async fn fetch_reading(
     .await
     .unwrap_or(Err(Failure::Timeout));
     match result {
-        Ok(left) => Reading::current(left),
+        Ok(window) => Reading::from_window(window, crate::now()),
         Err(e) => error_reading(e, p),
     }
 }
@@ -309,7 +309,7 @@ mod tests {
         let first = s.begin(a).unwrap();
         let second = s.begin(b).unwrap();
         assert!(!s.complete(first, a, Reading::current(88)));
-        assert_eq!(s.reading.as_ref().unwrap().left, None);
+        assert_eq!(s.reading.as_ref().unwrap().used, None);
         assert!(s.complete(second, b, Reading::current(12)));
         assert!(!s.complete(second, b, Reading::current(99)));
         s.expire();
@@ -318,7 +318,7 @@ mod tests {
         assert!(!s.complete(first, a, Reading::current(88)));
         s.expire();
         assert!(!s.complete(third, a, Reading::current(88)));
-        assert_eq!(s.reading.as_ref().unwrap().left, None);
+        assert_eq!(s.reading.as_ref().unwrap().used, None);
     }
 
     #[tokio::test]

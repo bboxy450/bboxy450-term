@@ -45,6 +45,7 @@ fn usage_strip_renders_snapshot_hides_absent_accounts_and_retains_error_reason()
     let metric = |label: &str, percent| UsageMetric {
         label: label.into(),
         percent,
+        projected: None,
         stale: false,
         reason: None,
     };
@@ -55,16 +56,21 @@ fn usage_strip_renders_snapshot_hides_absent_accounts_and_retains_error_reason()
             metric("DISK", Some(95)),
         ],
         providers: vec![
-            metric("claude", Some(58)),
+            // 40% used but on pace to run out: Tachyon lifts green to yellow.
+            UsageMetric {
+                projected: Some(120),
+                ..metric("claude", Some(40))
+            },
             UsageMetric {
                 label: "codex".into(),
                 percent: None,
+                projected: None,
                 stale: false,
                 reason: Some("Run `codex login`".into()),
             },
             UsageMetric {
                 stale: true,
-                ..metric("grok", Some(9))
+                ..metric("grok", Some(91))
             },
         ],
     };
@@ -72,6 +78,11 @@ fn usage_strip_renders_snapshot_hides_absent_accounts_and_retains_error_reason()
         strip
             .accessible_label()
             .contains("Codex —: Run `codex login`")
+    );
+    assert!(
+        strip
+            .accessible_label()
+            .contains("Claude 40% used, at this pace, limit before reset")
     );
     let solve = |strip: &UsageStrip| {
         TitleBar::default()
@@ -85,9 +96,9 @@ fn usage_strip_renders_snapshot_hides_absent_accounts_and_retains_error_reason()
         "CPU 42%",
         "MEM 80%",
         "DISK 95%",
-        "Claude 58% left",
+        "Claude 40%",
         "Codex —",
-        "Grok 9% left (stale)",
+        "Grok 91% (stale)",
         "Run `codex login`",
     ] {
         assert!(debug.contains(text), "{text}");
@@ -103,7 +114,10 @@ fn usage_strip_renders_snapshot_hides_absent_accounts_and_retains_error_reason()
     let errored = bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.state.errored).0;
     assert_eq!(color(find(&wide, "bar/usage/MEM")), waiting);
     assert_eq!(color(find(&wide, "bar/usage/DISK")), errored);
-    assert_eq!(color(find(&wide, "bar/usage/grok")), errored);
+    let hex = |h: &str| bbt_ui_model::draw::Color::hex(h).0;
+    assert_eq!(color(find(&wide, "bar/usage/grok")), hex("#FF453A"));
+    assert_eq!(color(find(&wide, "bar/usage/claude")), hex("#FFD60A"));
+    assert!(!debug.contains(" left"));
     strip.providers.retain(|m| m.label != "grok");
     let layout = solve(&strip);
     assert!(!format!("{layout:?}").contains("bar/usage/grok"));

@@ -61,29 +61,30 @@ fn ready(p: &dyn Provider, r: &dyn CredentialReader) -> Credential {
 }
 
 #[test]
-fn tachyon_fixtures_select_worst_window_and_convert_used_to_left() {
+fn tachyon_fixtures_select_worst_window_used() {
+    let used = |r: Result<Window, Failure>| r.map(|w| w.used.round() as u8);
     assert_eq!(
-        Claude.decode(include_bytes!("fixtures/claude.json")),
-        Ok(64)
+        used(Claude.decode(include_bytes!("fixtures/claude.json"))),
+        Ok(36)
     );
-    assert_eq!(Codex.decode(include_bytes!("fixtures/codex.json")), Ok(0));
+    assert_eq!(used(Codex.decode(include_bytes!("fixtures/codex.json"))), Ok(100));
     let config: serde_json::Value =
         serde_json::from_slice(include_bytes!("fixtures/grok-config.json")).unwrap();
     assert_eq!(
-        Grok.decode(&serde_json::to_vec(&serde_json::json!({"config":config})).unwrap()),
-        Ok(70)
-    );
-    assert_eq!(
-        Claude.decode(br#"{"five_hour":{"utilization":10},"seven_day":{"utilization":70}}"#),
+        used(Grok.decode(&serde_json::to_vec(&serde_json::json!({"config":config})).unwrap())),
         Ok(30)
     );
     assert_eq!(
-        Claude.decode(br#"{"limits":[{"kind":"session","percent":62,"is_active":true}]}"#),
-        Ok(38)
+        used(Claude.decode(br#"{"five_hour":{"utilization":10},"seven_day":{"utilization":70}}"#)),
+        Ok(70)
     );
     assert_eq!(
-        Grok.decode(br#"{"config":{"subscriptionTier":"premium"}}"#),
-        Ok(100)
+        used(Claude.decode(br#"{"limits":[{"kind":"session","percent":62,"is_active":true}]}"#)),
+        Ok(62)
+    );
+    assert_eq!(
+        used(Grok.decode(br#"{"config":{"subscriptionTier":"premium"}}"#)),
+        Ok(0)
     );
     assert_eq!(
         Grok.decode(br#"{"config":{"creditUsagePercent":"bad"}}"#),
@@ -191,7 +192,7 @@ async fn fetch_errors_and_auth_hints_are_sanitized() {
                 calls: AtomicUsize::new(0),
             };
             let r = poller::fetch_reading(p.as_ref(), &fetch, &c, Duration::from_secs(1)).await;
-            assert_eq!(r.left, None);
+            assert_eq!(r.used, None);
             assert!(!format!("{r:?}").contains("never-in-output"));
             if status == 401 || status == 403 {
                 assert_eq!(r.reason.as_deref(), Some(p.login_hint()));
@@ -219,7 +220,7 @@ fn rollout_fallback_is_explicitly_historical() {
 {"payload":{"type":"other","rate_limits":{"primary":{"used_percent":99}}}}
 "#;
     let reading = codex::rollout(fixture).unwrap();
-    assert_eq!(reading.left, Some(40));
+    assert_eq!(reading.used, Some(60));
     assert!(reading.stale);
     assert!(reading.reason.unwrap().contains("account unverified"));
 }
@@ -253,7 +254,7 @@ async fn workers_hide_missing_providers_and_manual_refresh_reads_again() {
                 u,
                 poller::Update::Provider {
                     id: "codex",
-                    reading: Some(Reading { left: Some(0), .. })
+                    reading: Some(Reading { used: Some(100), .. })
                 }
             )
         }) {
@@ -352,10 +353,29 @@ async fn worker_revalidates_credentials_before_publishing_an_inflight_reply() {
             _ => None,
         })
         .unwrap();
-    assert_eq!(reading.left, None);
+    assert_eq!(reading.used, None);
     assert_eq!(
         reading.reason.as_deref(),
         Some("Account changed; refresh required")
     );
     assert!(!format!("{updates:?}").contains("account-A"));
+}
+
+#[test]
+fn tachyon_pace_projects_used_over_elapsed_window() {
+    let w = Claude
+        .decode(br#"{"five_hour":{"utilization":40,"resets_at":"1970-01-01T05:00:00.250+00:00"}}"#)
+        .unwrap();
+    assert_eq!(w.resets_at, Some(18000.25));
+    // Half of the 5 h window elapsed at 40% used: ~80% by reset.
+    assert_eq!(Reading::from_window(w, 9000.25).projected, Some(80));
+    // Under 10% of the window elapsed: no pace yet.
+    assert_eq!(Reading::from_window(w, 1000.).projected, None);
+    // On pace past the limit.
+    let hot = Window::timed(60., Some(18000.), Some(18000.));
+    assert_eq!(Reading::from_window(hot, 9000.).projected, Some(120));
+    // A stale reading never drives pace.
+    let mut stale = Reading::from_window(hot, 9000.);
+    stale.stale("Refresh due");
+    assert_eq!(stale.projected, None);
 }

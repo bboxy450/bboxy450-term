@@ -66,26 +66,32 @@ impl Provider for Claude {
         ]);
         request
     }
-    fn decode(&self, body: &[u8]) -> Result<u8, Failure> {
+    fn decode(&self, body: &[u8]) -> Result<Window, Failure> {
+        const SESSION: Option<f64> = Some(5. * 3600.);
+        const WEEK: Option<f64> = Some(7. * 86_400.);
         let r = json(body)?;
-        let mut used = Vec::new();
-        let session = number(&r["five_hour"]["utilization"]);
-        used.extend(session);
+        let mut windows = Vec::new();
+        let window = |v: &Value, key: &str, seconds| {
+            number(&v[key]).map(|used| Window::timed(used, iso_seconds(&v["resets_at"]), seconds))
+        };
+        let session = window(&r["five_hour"], "utilization", SESSION);
+        let has_session = session.is_some();
+        windows.extend(session);
         let mut weekly = false;
         if let Some(limits) = r["limits"].as_array() {
             for limit in limits {
                 let kind = limit["kind"].as_str().unwrap_or_default();
-                if kind == "session" && session.is_none() {
-                    used.extend(number(&limit["percent"]));
+                if kind == "session" && !has_session {
+                    windows.extend(window(limit, "percent", SESSION));
                 } else if kind.starts_with("weekly") && limit["is_active"].as_bool() == Some(true) {
-                    used.extend(number(&limit["percent"]));
+                    windows.extend(window(limit, "percent", WEEK));
                     weekly |= kind == "weekly_all";
                 }
             }
         }
         if !weekly {
-            used.extend(number(&r["seven_day"]["utilization"]));
+            windows.extend(window(&r["seven_day"], "utilization", WEEK));
         }
-        percent_left(used)
+        worst(windows)
     }
 }

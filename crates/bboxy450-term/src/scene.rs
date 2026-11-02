@@ -531,6 +531,7 @@ impl Scene {
                     .map(|(label, percent)| UsageMetric {
                         label: label.into(),
                         percent,
+                        projected: None,
                         stale: false,
                         reason: percent.is_none().then(|| {
                             m.reason
@@ -541,17 +542,25 @@ impl Scene {
                     .collect();
             }
             bboxy450_usage::poller::Update::Provider { id, reading } => {
-                self.usage.providers.retain(|m| m.label != id);
-                // An account with no reading (signed out, unreadable) is not shown.
-                if let Some(r) = reading.filter(|r| r.left.is_some()) {
-                    self.usage.providers.push(UsageMetric {
-                        label: id.into(),
-                        percent: r.left,
-                        stale: r.stale,
-                        reason: r.reason,
-                    });
+                // An in-flight refresh keeps the last value instead of blinking out.
+                let refreshing = reading.as_ref().is_some_and(|r| {
+                    r.used.is_none()
+                        && r.reason.as_deref().is_some_and(|s| s.starts_with("Refreshing"))
+                });
+                if !refreshing {
+                    self.usage.providers.retain(|m| m.label != id);
+                    // An account with no reading (signed out, unreadable) is not shown.
+                    if let Some(r) = reading.filter(|r| r.used.is_some()) {
+                        self.usage.providers.push(UsageMetric {
+                            label: id.into(),
+                            percent: r.used,
+                            projected: r.projected,
+                            stale: r.stale,
+                            reason: r.reason,
+                        });
+                    }
+                    self.usage.providers.sort_by(|a, b| a.label.cmp(&b.label));
                 }
-                self.usage.providers.sort_by(|a, b| a.label.cmp(&b.label));
             }
         }
         self.layout_cache.borrow_mut().take();

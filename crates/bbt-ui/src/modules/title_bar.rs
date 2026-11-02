@@ -237,13 +237,15 @@ impl TitleBar {
 }
 
 fn usage_metric(metric: &UsageMetric, provider: bool) -> c::Element {
-    let color = match metric.percent {
-        Some(left) if provider && left < 10 => ui::Color::Rgba(
-            bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.state.errored).0,
-        ),
-        Some(left) if provider && left <= 20 => ui::Color::Rgba(
-            bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.state.waiting).0,
-        ),
+    // Providers use Tachyon's bands, half-open: [0,50) green · [50,70) yellow ·
+    // [70,90) orange · [90,100] red, lifted one band when on pace to run out.
+    let band = |hex: &str| ui::Color::Rgba(bbt_ui_model::draw::Color::hex(hex).0);
+    let color = match (provider, metric.band_percent()) {
+        (true, Some(p)) if p < 50 => band("#30D158"),
+        (true, Some(p)) if p < 70 => band("#FFD60A"),
+        (true, Some(p)) if p < 90 => band("#FF9F0A"),
+        (true, Some(_)) => band("#FF453A"),
+        _ => match metric.percent {
         Some(used) if !provider && used >= 95 => ui::Color::Rgba(
             bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.state.errored).0,
         ),
@@ -251,6 +253,7 @@ fn usage_metric(metric: &UsageMetric, provider: bool) -> c::Element {
             bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.state.waiting).0,
         ),
         _ => ui::Color::Muted,
+        },
     };
     let mut text = c::Text::new(
         metric.text(provider),

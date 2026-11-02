@@ -29,7 +29,7 @@ pub trait Provider: Send + Sync {
     fn login_hint(&self) -> &'static str;
     fn credential(&self, reader: &dyn CredentialReader) -> Result<Presence, Failure>;
     fn request(&self, credential: &Credential) -> Request;
-    fn decode(&self, body: &[u8]) -> Result<u8, Failure>;
+    fn decode(&self, body: &[u8]) -> Result<Window, Failure>;
     fn fallback(&self, _reader: &dyn CredentialReader) -> Option<Reading> {
         None
     }
@@ -117,14 +117,26 @@ impl Failure {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Reading {
-    pub left: Option<u8>,
+    /// Percent used of the worst active window.
+    pub used: Option<u8>,
+    /// Tachyon pace: percent this window reaches by its reset at the current rate.
+    pub projected: Option<u16>,
     pub stale: bool,
     pub reason: Option<String>,
 }
 impl Reading {
-    pub fn current(left: u8) -> Self {
+    pub fn current(used: u8) -> Self {
         Self {
-            left: Some(left.min(100)),
+            used: Some(used.min(100)),
+            ..Self::default()
+        }
+    }
+    pub fn from_window(window: Window, now: f64) -> Self {
+        Self {
+            used: Some(window.used.round() as u8),
+            projected: window
+                .projected(now)
+                .map(|p| p.round().clamp(0., 999.) as u16),
             ..Self::default()
         }
     }
@@ -135,7 +147,9 @@ impl Reading {
         }
     }
     pub fn stale(&mut self, reason: &str) {
-        self.stale = self.left.is_some();
+        self.stale = self.used.is_some();
+        // Tachyon: a stale reading never drives pace.
+        self.projected = None;
         self.reason = Some(reason.into());
     }
 }
@@ -177,11 +191,80 @@ pub(crate) fn number(v: &Value) -> Option<f64> {
         .or_else(|| v.as_str()?.parse().ok())
         .filter(|n| n.is_finite())
 }
-pub(crate) fn percent_left(used: impl IntoIterator<Item = f64>) -> Result<u8, Failure> {
-    let used = used
+/// One limit window (Tachyon `UsageWindow`): percent used, reset instant and length, in seconds.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Window {
+    pub used: f64,
+    pub resets_at: Option<f64>,
+    pub seconds: Option<f64>,
+}
+impl Window {
+    pub fn new(used: f64) -> Self {
+        Self {
+            used,
+            resets_at: None,
+            seconds: None,
+        }
+    }
+    pub fn timed(used: f64, resets_at: Option<f64>, seconds: Option<f64>) -> Self {
+        Self {
+            used,
+            resets_at,
+            seconds,
+        }
+    }
+    /// Tachyon pace: used ÷ elapsed fraction of the window, only once 10% has elapsed and
+    /// the reset is in the future and within one window length.
+    pub fn projected(&self, now: f64) -> Option<f64> {
+        let (seconds, resets) = (self.seconds?, self.resets_at?);
+        let remaining = resets - now;
+        if !(remaining.is_finite() && remaining > 0. && remaining < seconds) {
+            return None;
+        }
+        let elapsed = 1. - remaining / seconds;
+        (elapsed >= 0.1).then(|| self.used / elapsed)
+    }
+}
+/// Tachyon worst-active-window rule: the window closest to blocking the user.
+pub(crate) fn worst(windows: impl IntoIterator<Item = Window>) -> Result<Window, Failure> {
+    windows
         .into_iter()
-        .filter(|n| n.is_finite())
-        .reduce(f64::max)
-        .ok_or(Failure::Decode)?;
-    Ok((100. - used.clamp(0., 100.)).round() as u8)
+        .filter(|w| w.used.is_finite())
+        .map(|w| Window {
+            used: w.used.clamp(0., 100.),
+            ..w
+        })
+        .reduce(|a, b| if b.used > a.used { b } else { a })
+        .ok_or(Failure::Decode)
+}
+pub fn now() -> f64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0., |d| d.as_secs_f64())
+}
+/// RFC 3339 instant ("2026-11-06T16:00:00.123+00:00" or "...Z") to unix seconds.
+pub(crate) fn iso_seconds(v: &Value) -> Option<f64> {
+    let s = v.as_str()?;
+    let n = |r: std::ops::Range<usize>| s.get(r)?.parse::<i64>().ok();
+    let (y, mo, d, h, mi, se) = (n(0..4)?, n(5..7)?, n(8..10)?, n(11..13)?, n(14..16)?, n(17..19)?);
+    let rest = s.get(19..)?;
+    let frac_end = rest.find(|c: char| c != '.' && !c.is_ascii_digit()).unwrap_or(rest.len());
+    let frac = rest[..frac_end].parse::<f64>().unwrap_or(0.);
+    let offset = match &rest[frac_end..] {
+        "" | "Z" | "z" => 0,
+        tz => {
+            let sign = if tz.starts_with('-') { -1 } else { 1 };
+            let oh = tz.get(1..3)?.parse::<i64>().ok()?;
+            let om = tz.get(tz.len() - 2..)?.parse::<i64>().ok()?;
+            sign * (oh * 3600 + om * 60)
+        }
+    };
+    // Days from civil (Howard Hinnant).
+    let (y, m) = if mo <= 2 { (y - 1, mo + 9) } else { (y, mo - 3) };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let doy = (153 * m + 2) / 5 + d - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146_097 + doe - 719_468;
+    Some((days * 86_400 + h * 3600 + mi * 60 + se - offset) as f64 + frac)
 }

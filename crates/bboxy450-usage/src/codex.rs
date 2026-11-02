@@ -53,15 +53,19 @@ impl Provider for Codex {
         request.headers.push(("User-Agent", "codex-cli".into()));
         request
     }
-    fn decode(&self, body: &[u8]) -> Result<u8, Failure> {
+    fn decode(&self, body: &[u8]) -> Result<Window, Failure> {
         let root = json(body)?;
-        let mut used = Vec::new();
+        let now = now();
+        let mut windows = Vec::new();
         let mut add = |limit: &Value| {
-            used.extend(
-                ["primary_window", "secondary_window"]
-                    .iter()
-                    .filter_map(|k| number(&limit[k]["used_percent"])),
-            );
+            windows.extend(["primary_window", "secondary_window"].iter().filter_map(|k| {
+                let w = &limit[k];
+                let used = number(&w["used_percent"])?;
+                let seconds = number(&w["limit_window_seconds"]).filter(|s| *s > 0.);
+                let resets = number(&w["reset_at"])
+                    .or_else(|| number(&w["reset_after_seconds"]).filter(|s| *s > 0.).map(|s| now + s));
+                Some(Window::timed(used, resets, seconds))
+            }));
         };
         add(&root["rate_limit"]);
         if let Some(extra) = root["additional_rate_limits"].as_array() {
@@ -75,7 +79,7 @@ impl Provider for Codex {
                 }
             }
         }
-        percent_left(used)
+        worst(windows)
     }
     fn fallback(&self, r: &dyn CredentialReader) -> Option<Reading> {
         // Like Tachyon, anonymous rollouts cannot be attributed to a signed-in account.
@@ -96,10 +100,12 @@ pub fn rollout(bytes: &[u8]) -> Option<Reading> {
         }
         let used = ["primary", "secondary"]
             .into_iter()
-            .filter_map(|k| number(&p["rate_limits"][k]["used_percent"]));
-        if let Ok(left) = percent_left(used) {
+            .filter_map(|k| number(&p["rate_limits"][k]["used_percent"]).map(Window::new));
+        if let Ok(worst) = worst(used) {
+            // Stale, so no pace (Tachyon).
             return Some(Reading {
-                left: Some(left),
+                used: Some(worst.used.round() as u8),
+                projected: None,
                 stale: true,
                 reason: Some("Historical rollout; account unverified".into()),
             });
