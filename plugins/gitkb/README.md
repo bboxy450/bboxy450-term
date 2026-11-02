@@ -158,6 +158,43 @@ no workspace file, so a listing shows its committed reference and an exact fetch
 then answers `not_found`; detecting it needs `git-kb status`, which costs about a
 second on a large KB.
 
+Catalogs, filtered or not, come from an in-memory index once it is ready,
+instead of one `git-kb list` per call. `initialize` starts a background thread that
+runs `git-kb export --format jsonl` (all committed documents; 4.0 s and 61 MB
+for Harmony's 3691) and keeps only each document's native id and its
+`assignee`, `swarm` and `bboxy_status` values. Output is capped at 1 GiB,
+lines at 64 MiB and documents at one million; malformed and duplicate lines
+are counted under `health.index.skipped` and those documents stay
+candidates. One unfiltered native `git-kb list` supplies the exact catalog
+rows (title order, type, status, ids), so index-built catalogs have the same
+rows and snapshots as the backend path. The index reproduces native 0.2.19
+prefilter semantics measured on a private fixture: `--type` and `--status`
+lowercase their input and compare the row exactly; `--where` compares the
+committed frontmatter of committed documents, even when their workspace file
+differs, and the workspace source of workspace-only documents. A document
+whose values are unknown stays a candidate. Items, summaries and `RecordRef`
+digests still come from the batched or exact reads above, which apply the
+authoritative filter, so a committed value is never served for a
+workspace-backed record.
+
+Freshness: the committed layer is valid for one store signal, the (device,
+inode, size, modification and change times) of `.kb/store`, its
+`manifest.json`, `documents`, `commits`, `refs` and `refs/document-tips.json`.
+A native commit renames a new manifest and tips into place; workspace writes,
+`rm` of a committed document and every read leave them unchanged (measured).
+GitKB's `.kb/.cache` database is excluded because reads rewrite it. The row
+layer is also keyed by the exact workspace file stats. A changed store signal
+starts one background rebuild; until it finishes, and whenever the store or
+workspace moves while rows refresh, the call takes the backend path. Filters
+the index cannot prove equal (`since`, other fields, values with spaces or
+quotes, numbers and `true`/`false`/`null`) always take the backend path.
+`health.index` reports readiness, build and ready times, served and fallback
+counts and both signals. `BBOXY_GITKB_INDEX=off` in the plugin's own
+environment (not forwarded by the host) disables the index, for comparison.
+`make check-gitkb-plugin` compares index and backend results on a fixture,
+and `make probe-gitkb-harmony` replays the host task list's 126 filtered
+calls against both.
+
 Status filters match the portable status (`running`) or the native one
 (`active`), so `status:active` and `type:task status:running` both select active
 tasks. Graph edges to non-document targets, such as GitKB code-symbol

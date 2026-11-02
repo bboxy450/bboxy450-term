@@ -21,6 +21,7 @@ use bbt_plugin_sdk::{Ctx, MAX_RESULT, Refusal, encoded};
 use serde_json::{Map, Value, json};
 
 use crate::backend::Backend;
+use crate::index::{Index, Listed, Query, store_signal};
 use crate::native::{
     content_digest, digest, embeds, file_uri, mime_type, number, portable, prefix, random_hex,
     sha256_hex, slug_path, task_status,
@@ -347,6 +348,8 @@ pub struct GitKb {
     /// Exact reads within one call.
     pub call_records: HashMap<String, Value>,
     cache: HashMap<String, Cached>,
+    /// The catalog index; disabled until `bind` starts it.
+    pub index: Index,
 }
 
 impl GitKb {
@@ -362,6 +365,7 @@ impl GitKb {
             cursors: Cursors::default(),
             call_records: HashMap::new(),
             cache: HashMap::new(),
+            index: Index::new(),
         }
     }
 
@@ -442,46 +446,105 @@ impl GitKb {
         Ok(result)
     }
 
+    /// The catalog for these `git-kb list` flags: from the index when it can
+    /// answer them for the current store and workspace, else from the backend.
     pub fn catalog(&mut self, flags: &[String]) -> Result<Catalog, Refusal> {
-        let mut args = vec!["list", "--json", "--sort", "title", "--asc"];
-        args.extend(flags.iter().map(String::as_str));
-        let rows = self.cli(&args)?;
-        let Value::Array(rows) = rows else {
-            return Err(Refusal::new(
-                "backend_protocol_error",
-                "GitKB list is not an array",
-            ));
-        };
-        let stats = self.workspace_stats()?;
-        let mut catalog = Catalog {
-            rows: Map::new(),
-            snapshot: String::new(),
-            order: Vec::new(),
-        };
-        for mut row in rows {
-            let Some(slug) = row["slug"].as_str().map(str::to_owned) else {
-                return Err(Refusal::new(
-                    "backend_protocol_error",
-                    "GitKB list row has no slug",
-                ));
-            };
-            let stat = stats.get(&slug).cloned().unwrap_or(Value::Null);
-            if let Value::Object(fields) = &mut row {
-                if !stat.is_null() {
-                    // GitKB 0.2.19 reparses workspace modified_at as read time.
-                    // Exact file stats fence that source; committed timestamps stay.
-                    fields.remove("modified_at");
-                }
-                fields.insert("workspace_stat".into(), stat);
-            }
-            if catalog.rows.insert(slug.clone(), row).is_none() {
-                catalog.order.push(slug);
-            }
+        if let Some(catalog) = self.indexed(flags)? {
+            self.index.served += 1;
+            return Ok(catalog);
         }
-        catalog.seal();
-        Ok(catalog)
+        if self.index.enabled() {
+            self.index.fallbacks += 1;
+        }
+        let rows = self.native_rows(flags)?;
+        let stats = self.workspace_stats()?;
+        assemble(rows, &stats)
     }
 
+    fn native_rows(&mut self, flags: &[String]) -> Result<Vec<Value>, Refusal> {
+        let mut args = vec!["list", "--json", "--sort", "title", "--asc"];
+        args.extend(flags.iter().map(String::as_str));
+        match self.cli(&args)? {
+            Value::Array(rows) => Ok(rows),
+            _ => Err(Refusal::new(
+                "backend_protocol_error",
+                "GitKB list is not an array",
+            )),
+        }
+    }
+
+    /// The index answer, or `None` for the backend path: unsupported flags,
+    /// no store signal, committed fields not yet fresh, or a store or
+    /// workspace that changed while the unfiltered listing was refreshed.
+    fn indexed(&mut self, flags: &[String]) -> Result<Option<Catalog>, Refusal> {
+        if !self.index.enabled() {
+            return Ok(None);
+        }
+        let Some(query) = Query::parse(flags) else {
+            return Ok(None);
+        };
+        let Some(signal) = store_signal(&self.root) else {
+            return Ok(None);
+        };
+        // Always keep the committed layer warm; only `--where` needs it.
+        let committed = self.index.committed(&signal, &self.backend, &self.root);
+        if query.needs_fields() && committed.is_none() {
+            return Ok(None);
+        }
+        let stats = self.workspace_stats()?;
+        let workspace = digest(&encoded(&Value::Object(stats.clone())));
+        let fresh = |listed: &Listed| listed.signal == signal && listed.workspace == workspace;
+        if !self.index.listed.as_ref().is_some_and(fresh) {
+            self.index.listed = None;
+            let rows = self.native_rows(&[])?;
+            if self.workspace_stats()? != stats
+                || store_signal(&self.root).as_deref() != Some(signal.as_str())
+            {
+                return Ok(None);
+            }
+            self.index.listed = Some(Listed::new(signal, workspace, rows));
+        }
+        let Some(listed) = self.index.listed.as_mut() else {
+            return Ok(None);
+        };
+        let rows = listed.select(&query, committed.as_deref(), &self.workspace_path, &stats);
+        assemble(rows, &stats).map(Some)
+    }
+}
+
+/// Catalog rows with exact workspace file stats; a workspace-backed row
+/// drops GitKB's read-time `modified_at`.
+fn assemble(rows: Vec<Value>, stats: &Map<String, Value>) -> Result<Catalog, Refusal> {
+    let mut catalog = Catalog {
+        rows: Map::new(),
+        snapshot: String::new(),
+        order: Vec::new(),
+    };
+    for mut row in rows {
+        let Some(slug) = row["slug"].as_str().map(str::to_owned) else {
+            return Err(Refusal::new(
+                "backend_protocol_error",
+                "GitKB list row has no slug",
+            ));
+        };
+        let stat = stats.get(&slug).cloned().unwrap_or(Value::Null);
+        if let Value::Object(fields) = &mut row {
+            if !stat.is_null() {
+                // GitKB 0.2.19 reparses workspace modified_at as read time.
+                // Exact file stats fence that source; committed timestamps stay.
+                fields.remove("modified_at");
+            }
+            fields.insert("workspace_stat".into(), stat);
+        }
+        if catalog.rows.insert(slug.clone(), row).is_none() {
+            catalog.order.push(slug);
+        }
+    }
+    catalog.seal();
+    Ok(catalog)
+}
+
+impl GitKb {
     /// The exact source-aware record: the workspace source, else committed
     /// when the workspace does not participate. Explicit workspace reads
     /// never fall back.

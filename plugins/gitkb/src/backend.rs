@@ -13,7 +13,7 @@ use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, ExitStatus, Stdio};
 use std::time::{Duration, Instant};
 
 use bbt_plugin_sdk::{Ctx, Refusal};
@@ -42,6 +42,7 @@ fn identity(path: &Path) -> std::io::Result<Identity> {
     ]))
 }
 
+#[derive(Clone)]
 pub struct Backend {
     pub path: PathBuf,
     sha256: String,
@@ -140,77 +141,8 @@ impl Backend {
         stdin: Option<&str>,
         allow_text: bool,
     ) -> Result<Value, Refusal> {
-        self.verify(ctx)?;
         let io = |e: std::io::Error| Refusal::new("backend_failed", format!("local IO: {e}"));
-        // No shell, inherited GitKB root/workspace, repository cwd or credentials.
-        let mut input = anonymous().map_err(io)?;
-        if let Some(text) = stdin {
-            input.write_all(text.as_bytes()).map_err(io)?;
-        }
-        input.seek(SeekFrom::Start(0)).map_err(io)?;
-        let mut out = anonymous().map_err(io)?;
-        let mut err = anonymous().map_err(io)?;
-        ctx.check()?;
-        let mut child = Command::new(&self.path)
-            .args(["--no-pager", "--color", "never"])
-            .args(args)
-            .current_dir(cwd)
-            .env_clear()
-            .envs(self.env.iter().cloned())
-            .stdin(Stdio::from(input))
-            .stdout(Stdio::from(out.try_clone().map_err(io)?))
-            .stderr(Stdio::from(err.try_clone().map_err(io)?))
-            .spawn()
-            .map_err(io)?;
-        let size = |f: &File| f.metadata().map(|m| m.len()).unwrap_or(0);
-        let started = Instant::now();
-        let status = loop {
-            if let Some(status) = child.try_wait().map_err(io)? {
-                break status;
-            }
-            let failure = if ctx.is_cancelled() {
-                Some("cancelled")
-            } else if ctx.remaining().is_zero() {
-                Some("deadline_exceeded")
-            } else if size(&out).max(size(&err)) > MAX_BACKEND {
-                Some("backend_response_too_large")
-            } else {
-                None
-            };
-            if let Some(code) = failure {
-                let _ = child.kill();
-                let _ = child.wait();
-                let operation = if args[0] == "workspace" && args.len() > 1 {
-                    format!("{} {}", args[0], args[1])
-                } else {
-                    args[0].to_owned()
-                };
-                let hint = if ["workspace write", "commit", "checkout", "init"]
-                    .contains(&operation.as_str())
-                {
-                    "; a write may have applied, inspect its source before retrying"
-                } else {
-                    ""
-                };
-                return Err(Refusal::new(
-                    code,
-                    format!("{operation} backend stopped{hint}"),
-                ));
-            }
-            // Short polls first: most GitKB calls finish in tens of ms.
-            let pause = if started.elapsed() < Duration::from_millis(50) {
-                1
-            } else {
-                5
-            };
-            std::thread::sleep(Duration::from_millis(pause).min(ctx.remaining()));
-        };
-        if size(&out).max(size(&err)) > MAX_BACKEND {
-            return Err(Refusal::new(
-                "backend_response_too_large",
-                "GitKB output exceeded 32 MiB",
-            ));
-        }
+        let (status, mut out, mut err) = self.spawn(ctx, cwd, args, stdin, MAX_BACKEND)?;
         let stdout = read_all(&mut out).map_err(io)?;
         let parsed = serde_json::from_slice::<Value>(&stdout).ok();
         let exit = status.code().unwrap_or(-1);
@@ -258,6 +190,109 @@ impl Backend {
                 "GitKB did not return JSON",
             )),
         }
+    }
+
+    /// Run `git-kb --no-pager --color never <args>` with stdout and stderr in
+    /// private unlinked files, each capped at `cap` bytes, killing it on
+    /// cancellation, deadline or overflow.
+    fn spawn(
+        &mut self,
+        ctx: &Ctx,
+        cwd: &Path,
+        args: &[&str],
+        stdin: Option<&str>,
+        cap: u64,
+    ) -> Result<(ExitStatus, File, File), Refusal> {
+        self.verify(ctx)?;
+        let io = |e: std::io::Error| Refusal::new("backend_failed", format!("local IO: {e}"));
+        // No shell, inherited GitKB root/workspace, repository cwd or credentials.
+        let mut input = anonymous().map_err(io)?;
+        if let Some(text) = stdin {
+            input.write_all(text.as_bytes()).map_err(io)?;
+        }
+        input.seek(SeekFrom::Start(0)).map_err(io)?;
+        let out = anonymous().map_err(io)?;
+        let err = anonymous().map_err(io)?;
+        ctx.check()?;
+        let mut child = Command::new(&self.path)
+            .args(["--no-pager", "--color", "never"])
+            .args(args)
+            .current_dir(cwd)
+            .env_clear()
+            .envs(self.env.iter().cloned())
+            .stdin(Stdio::from(input))
+            .stdout(Stdio::from(out.try_clone().map_err(io)?))
+            .stderr(Stdio::from(err.try_clone().map_err(io)?))
+            .spawn()
+            .map_err(io)?;
+        let size = |f: &File| f.metadata().map(|m| m.len()).unwrap_or(0);
+        let started = Instant::now();
+        let status = loop {
+            if let Some(status) = child.try_wait().map_err(io)? {
+                break status;
+            }
+            let failure = if ctx.is_cancelled() {
+                Some("cancelled")
+            } else if ctx.remaining().is_zero() {
+                Some("deadline_exceeded")
+            } else if size(&out).max(size(&err)) > cap {
+                Some("backend_response_too_large")
+            } else {
+                None
+            };
+            if let Some(code) = failure {
+                let _ = child.kill();
+                let _ = child.wait();
+                let operation = if args[0] == "workspace" && args.len() > 1 {
+                    format!("{} {}", args[0], args[1])
+                } else {
+                    args[0].to_owned()
+                };
+                let hint = if ["workspace write", "commit", "checkout", "init"]
+                    .contains(&operation.as_str())
+                {
+                    "; a write may have applied, inspect its source before retrying"
+                } else {
+                    ""
+                };
+                return Err(Refusal::new(
+                    code,
+                    format!("{operation} backend stopped{hint}"),
+                ));
+            }
+            // Short polls first: most GitKB calls finish in tens of ms.
+            let pause = if started.elapsed() < Duration::from_millis(50) {
+                1
+            } else {
+                5
+            };
+            std::thread::sleep(Duration::from_millis(pause).min(ctx.remaining()));
+        };
+        if size(&out).max(size(&err)) > cap {
+            return Err(Refusal::new(
+                "backend_response_too_large",
+                format!("GitKB output exceeded {} MiB", cap >> 20),
+            ));
+        }
+        Ok((status, out, err))
+    }
+
+    /// Run a read-only command whose stdout may exceed [`MAX_BACKEND`], up to
+    /// `cap` bytes, and return that stdout rewound for streaming parses.
+    pub fn cli_output(&mut self, ctx: &Ctx, args: &[&str], cap: u64) -> Result<File, Refusal> {
+        let io = |e: std::io::Error| Refusal::new("backend_failed", format!("local IO: {e}"));
+        let cwd = self.cwd.clone();
+        let (status, mut out, _) = self.spawn(ctx, &cwd, args, None, cap)?;
+        if !status.success() {
+            let exit = status.code().unwrap_or(-1);
+            return Err(Refusal::new(
+                "backend_failed",
+                format!("GitKB refused {} (exit {exit})", args[0]),
+            )
+            .with("backend_exit", exit));
+        }
+        out.seek(SeekFrom::Start(0)).map_err(io)?;
+        Ok(out)
     }
 }
 

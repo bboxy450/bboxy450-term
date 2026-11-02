@@ -16,6 +16,7 @@
 #![allow(clippy::disallowed_methods)]
 
 mod backend;
+mod index;
 mod methods;
 mod native;
 mod store;
@@ -152,6 +153,9 @@ impl GitKb {
         if init.fixture {
             kb.bootstrap_fixture()?;
         }
+        // The committed index builds on its own thread; calls before it is
+        // ready use the backend path.
+        kb.index.start(&kb.backend, &kb.root);
         Ok(kb)
     }
 
@@ -285,10 +289,16 @@ impl Plugin for GitKb {
         }
     }
 
-    fn health(&mut self, _ctx: &Ctx) -> Result<Value, Refusal> {
+    fn health(&mut self, ctx: &Ctx) -> Result<Value, Refusal> {
+        self.ctx = ctx.clone();
+        let signal = index::store_signal(&self.root);
+        let stats = self.workspace_stats()?;
+        let mut index = self.index.facts(signal.as_deref());
+        index["workspace_signal"] =
+            native::digest(&bbt_plugin_sdk::encoded(&Value::Object(stats))).into();
         Ok(
             json!({"healthy": true, "root": self.root_text, "workspace": self.workspace,
-            "backend": pin()}),
+            "backend": pin(), "index": index}),
         )
     }
 }

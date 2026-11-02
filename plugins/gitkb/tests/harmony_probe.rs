@@ -242,9 +242,208 @@ fn harmony_probe() {
             .push(json!({"run": run, "process_exit": exit}));
         let _ = std::fs::remove_dir_all(&data);
     }
-    probe.evidence["result"] = "passed; fresh sessions, exact native source parity, status filters, full 32-node graph pages equal to fetch, all calls read-only and below 2 seconds".into();
+    task_list_simulation(&mut probe, &plugin, &backend, &root, &env, &base);
+    probe.evidence["result"] = "passed; fresh sessions, exact native source parity, status filters, full 32-node graph pages equal to fetch, all calls read-only and below 2 seconds, 126-call task list equal to the backend path, its repeated pass from the index below 2 seconds".into();
     probe.save();
     println!("{}", serde_json::to_string_pretty(&probe.evidence).unwrap());
+}
+
+/// Distinct plain assignee values, most frequent first, from one read-only
+/// native export. Only counts and hashes reach the evidence.
+fn real_assignees(
+    backend: &str,
+    root: &Path,
+    data: &Path,
+    env: &[(String, String)],
+) -> Vec<String> {
+    let output = Command::new(backend)
+        .args([
+            "--no-pager",
+            "--color",
+            "never",
+            "export",
+            "--format",
+            "jsonl",
+        ])
+        .current_dir(data)
+        .env_clear()
+        .envs(env.iter().cloned())
+        .env("GITKB_ROOT", root)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "native export failed");
+    let mut counts = std::collections::BTreeMap::<String, usize>::new();
+    for line in output
+        .stdout
+        .split(|b| *b == b'\n')
+        .filter(|l| !l.is_empty())
+    {
+        let outer: Value = serde_json::from_slice(line).unwrap();
+        let content: Value = serde_json::from_str(outer["content"].as_str().unwrap()).unwrap();
+        if let Some(assignee) = content["frontmatter"]["assignee"].as_str()
+            && assignee
+                .bytes()
+                .all(|b| b.is_ascii_alphanumeric() || b"_.:@/+-".contains(&b))
+        {
+            *counts.entry(assignee.to_owned()).or_default() += 1;
+        }
+    }
+    let mut ranked: Vec<(usize, String)> = counts.into_iter().map(|(a, n)| (n, a)).collect();
+    ranked.sort_by(|a, b| b.0.cmp(&a.0).then_with(|| a.1.cmp(&b.1)));
+    ranked.into_iter().map(|(_, a)| a).collect()
+}
+
+/// A random portable ULID (first character at most 7).
+fn random_ulid() -> String {
+    const ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
+    let mut bytes = [0u8; 26];
+    std::fs::File::open("/dev/urandom")
+        .and_then(|mut f| std::io::Read::read_exact(&mut f, &mut bytes))
+        .unwrap();
+    bytes
+        .iter()
+        .enumerate()
+        .map(|(i, b)| ALPHABET[(*b as usize) % if i == 0 { 8 } else { 32 }] as char)
+        .collect()
+}
+
+/// Every page of one list request.
+fn all_pages(client: &mut Client, request: &Value) -> Vec<Value> {
+    let mut items = Vec::new();
+    let mut request = request.clone();
+    for _ in 0..64 {
+        let page = client
+            .call("data_source_list", request.clone(), WAIT)
+            .unwrap();
+        items.extend(page["items"].as_array().unwrap().iter().cloned());
+        if page["next"].is_null() {
+            return items;
+        }
+        request["cursor"] = page["next"].clone();
+    }
+    panic!("task list paging did not finish");
+}
+
+/// The GUI task list's narrow path: 21 seats × (`seat:<id>`, bare id) ×
+/// (task, bug, epic) filtered lists, twice per session: once the index is
+/// ready, then with the backend path (`BBOXY_GITKB_INDEX=off`). Every result
+/// must be identical. The first pass also performs each matching record's
+/// first summary read (an exact read per workspace-backed record, unchanged
+/// by the index); the repeated pass, which reuses those, must finish within
+/// two seconds from the index.
+fn task_list_simulation(
+    probe: &mut Probe,
+    plugin: &Path,
+    backend: &str,
+    root: &Path,
+    env: &[(String, String)],
+    base: &Path,
+) {
+    let data = base.join(format!("bboxy-harmony-tasklist-{}", std::process::id()));
+    std::fs::create_dir_all(&data).unwrap();
+    let real = real_assignees(backend, root, &data, env);
+    let mut seats: Vec<String> = real.iter().take(10).cloned().collect();
+    while seats.len() < 21 {
+        seats.push(random_ulid());
+    }
+    let requests: Vec<Value> = seats
+        .iter()
+        .flat_map(|id| [format!("seat:{id}"), id.clone()])
+        .flat_map(|selector| {
+            ["task", "bug", "epic"].map(|kind| {
+                json!({"filter": {"type": kind, "assignee": selector.clone()}, "limit": 128})
+            })
+        })
+        .collect();
+    assert_eq!(requests.len(), 126);
+    let initialize = json!({"protocolVersion": "2025-06-18", "root": root.display().to_string()});
+    let session = |index: bool| {
+        let mut env = env.to_vec();
+        if !index {
+            env.push(("BBOXY_GITKB_INDEX".into(), "off".into()));
+        }
+        let dir = data.join(if index { "on" } else { "off" });
+        let mut client = Client::spawn(plugin, &dir, &env).unwrap();
+        let started = Instant::now();
+        client
+            .request("initialize", initialize.clone(), WAIT)
+            .unwrap();
+        let initialize_ms = started.elapsed().as_millis() as u64;
+        let _ = client.send(&json!({"jsonrpc": "2.0", "method": "notifications/initialized"}));
+        let mut facts = Value::Null;
+        while index && facts["ready"] != true {
+            facts = client.call("health", json!({}), WAIT).unwrap()["index"].clone();
+            if facts["ready"] == true {
+                break;
+            }
+            assert!(
+                started.elapsed() < Duration::from_secs(60),
+                "index not ready: {facts}"
+            );
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        let ready_wall_ms = started.elapsed().as_millis() as u64;
+        // Two passes: the first also reads each matching record's summary
+        // (exact reads for workspace-backed records); the second reuses them.
+        let mut passes = Vec::new();
+        let mut results = Vec::new();
+        let mut first: Vec<Vec<Value>> = Vec::new();
+        for _ in 0..2 {
+            first = std::mem::take(&mut results);
+            let (mut slowest, mut empty_ms, mut matched_ms) = (Duration::ZERO, 0u128, 0u128);
+            let begin = Instant::now();
+            for request in &requests {
+                let one = Instant::now();
+                let items = all_pages(&mut client, request);
+                let elapsed = one.elapsed();
+                slowest = slowest.max(elapsed);
+                if items.is_empty() {
+                    empty_ms += elapsed.as_millis();
+                } else {
+                    matched_ms += elapsed.as_millis();
+                }
+                results.push(items);
+            }
+            passes.push(json!({"total_ms": begin.elapsed().as_millis() as u64,
+                "slowest_call_ms": slowest.as_millis() as u64,
+                "empty_calls": results.iter().filter(|r| r.is_empty()).count(),
+                "empty_calls_ms": empty_ms as u64, "matched_calls_ms": matched_ms as u64}));
+        }
+        assert_eq!(first, results, "a repeated task list changed");
+        let after = client.call("health", json!({}), WAIT).unwrap()["index"].clone();
+        assert_eq!(client.close(Duration::from_secs(5)), Some(0));
+        let row = json!({
+            "index": index, "initialize_ms": initialize_ms, "ready_wall_ms": ready_wall_ms,
+            "index_ready_ms": facts["ready_ms"], "index_build_ms": facts["build_ms"],
+            "indexed_documents": facts["documents"], "skipped": facts["skipped"],
+            "calls": requests.len(), "passes": passes,
+            "items": results.iter().map(Vec::len).sum::<usize>(),
+            "served": after["served"], "fallbacks": after["fallbacks"],
+        });
+        (results, row)
+    };
+    let (indexed, on_row) = session(true);
+    let (native, off_row) = session(false);
+    let indexed_total = Duration::from_millis(on_row["passes"][1]["total_ms"].as_u64().unwrap());
+    let identical = indexed.iter().zip(&native).filter(|(a, b)| a == b).count();
+    let selectors: Vec<String> = seats
+        .iter()
+        .map(|s| sha256(s.as_bytes())[..12].into())
+        .collect();
+    probe.evidence["task_list_simulation"] = json!({
+        "seats": seats.len(), "real_assignees": seats.iter().filter(|s| real.contains(s)).count(),
+        "seat_sha256_prefixes": selectors, "identical": identical, "compared": requests.len(),
+        "indexed": on_row, "backend": off_row,
+    });
+    let passed = identical == requests.len()
+        && indexed_total < Duration::from_secs(2)
+        && on_row["served"].as_u64().unwrap_or(0) >= 2 * requests.len() as u64;
+    if !passed {
+        probe.evidence["result"] = "failed; task list simulation".into();
+    }
+    probe.save();
+    let _ = std::fs::remove_dir_all(&data);
+    assert!(passed, "{}", probe.evidence["task_list_simulation"]);
 }
 
 /// Graph pages with a continuation hold `limit` (32) nodes within the call

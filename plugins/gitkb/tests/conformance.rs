@@ -973,6 +973,9 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
                "signed_record": "fixture committed update"}),
     );
 
+    // Catalog index: identical results to the backend path, and freshness.
+    conns.extend(index_checks(fx));
+
     // Traced backend with a hostile environment proves child env and cwd.
     let trace = fx.run.join("backend-trace.tsv");
     let wrapper = fx.run.join("traced-git-kb");
@@ -1021,6 +1024,9 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
         .connect(&a, Some(&traced_plugin), Some(hostile), false)
         .unwrap();
     traced.resolve("notes/shared");
+    // The background export also runs through the traced backend; let it
+    // finish so no backend start can race the pin check below.
+    wait_ready(&mut traced);
     let rows: Vec<Vec<String>> = std::fs::read_to_string(&trace)
         .unwrap()
         .lines()
@@ -1124,6 +1130,7 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
         "committed/workspace source transition",
         "batched and exact references agree",
         "real selected-only commit, unrelated pending source preserved",
+        "catalog index equals the backend path; workspace and commit freshness",
         "disposable native bootstrap",
         "scrubbed native process environment and private cwd",
         "backend hash pin on existing and new clients",
@@ -1134,6 +1141,209 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
 
 fn truthy(value: &Value) -> bool {
     !(value.is_null() || value == "" || value == false)
+}
+
+/// The plugin's index facts from `health`.
+fn index_facts(conn: &mut Conn) -> Value {
+    conn.client.call("health", json!({}), WAIT).unwrap()["index"].clone()
+}
+
+/// Poll `health` until the committed index matches the current store.
+fn wait_ready(conn: &mut Conn) -> Value {
+    for _ in 0..400 {
+        let facts = index_facts(conn);
+        if facts["ready"] == true {
+            return facts;
+        }
+        std::thread::sleep(Duration::from_millis(25));
+    }
+    panic!("index did not become ready: {}", index_facts(conn));
+}
+
+/// A native workspace write through the real CLI (another editor).
+fn native_write(fx: &mut Fixture, root: &Path, slug: &str, fields: &str, update: bool) {
+    let mut args = vec![
+        "workspace",
+        "write",
+        slug,
+        "--stdin",
+        "--origin-id",
+        "index-fixture-editor",
+        "--json",
+        "--create-if-missing",
+    ];
+    let mut identity = String::new();
+    let generation;
+    if update {
+        let source = fx.source(root, slug, "workspace");
+        identity = format!("id: {}\n", source["document"]["id"].as_str().unwrap());
+        generation = source["generation"].as_str().unwrap().to_owned();
+        args.extend(["--if-generation", &generation]);
+    }
+    let raw = format!("---\n{identity}slug: {slug}\ntitle: {slug}\n{fields}---\nbody {slug}\n");
+    fx.cli(root, &args, Some(&raw));
+}
+
+/// Index-served filters equal the backend path (`BBOXY_GITKB_INDEX=off`),
+/// including the native semantics for a committed document edited in its
+/// workspace and a workspace-only document; workspace writes change only
+/// the workspace signal, commits change the store signal and fall back
+/// until the rebuild.
+fn index_checks(fx: &mut Fixture) -> Vec<Conn> {
+    let root = fx.project("root-index");
+    for (slug, fields) in [
+        ("tasks/a", "type: task\nstatus: active\nassignee: alice\n"),
+        (
+            "tasks/b",
+            "type: task\nstatus: draft\nassignee: bob\nbboxy_status: claimed\n",
+        ),
+        ("tasks/c", "type: task\nstatus: active\nassignee: carol\n"),
+        (
+            "tasks/d",
+            "type: task\nstatus: Active\nassignee: seat:01JABCDEFGHJKMNPQRSTVWXYZ0\n",
+        ),
+        (
+            "tasks/e",
+            "type: task\nstatus: active\nassignee: '123'\nswarm: x y\n",
+        ),
+        ("bugs/h", "type: bug\nstatus: active\nassignee: bob\n"),
+        ("notes/n", "type: note\nstatus: draft\nassignee: carol\n"),
+    ] {
+        native_write(fx, &root, slug, fields, false);
+    }
+    fx.cli(
+        &root,
+        &[
+            "commit",
+            "--json",
+            "-m",
+            "Index fixture",
+            "--",
+            "tasks/a",
+            "tasks/b",
+            "tasks/c",
+            "tasks/d",
+            "tasks/e",
+            "bugs/h",
+            "notes/n",
+        ],
+        None,
+    );
+    // Committed alice, workspace carol: native filters use the committed value.
+    native_write(
+        fx,
+        &root,
+        "tasks/a",
+        "type: task\nstatus: completed\nassignee: carol\nswarm: s9\n",
+        true,
+    );
+    native_write(
+        fx,
+        &root,
+        "tasks/w",
+        "type: task\nstatus: active\nassignee: carol\nswarm: s9\n",
+        false,
+    );
+    let mut off_env = fx.env.clone();
+    off_env.push(("BBOXY_GITKB_INDEX".into(), "off".into()));
+    let mut on = fx.connect(&root, None, None, false).unwrap();
+    let mut off = fx.connect(&root, None, Some(off_env), false).unwrap();
+    assert_eq!(index_facts(&mut off)["enabled"], false);
+    let ready = wait_ready(&mut on);
+    assert_eq!(ready["documents"], 7, "{ready}");
+    let filters = || {
+        let mut all = vec![
+            json!({"type": "task"}),
+            json!({"assignee": "carol"}),
+            json!({"swarm": "s9"}),
+            json!({"swarm": "x y"}),
+            json!({"type": "task", "status": "running"}),
+            json!({"status": "active"}),
+            json!({"type": "task", "status": "open"}),
+            json!({"type": "task", "status": "claimed"}),
+            json!({"type": "task", "status": "completed"}),
+            json!({"type": "task", "status": "claimed", "assignee": "bob"}),
+        ];
+        for assignee in [
+            "alice",
+            "carol",
+            "bob",
+            "123",
+            "seat:01JABCDEFGHJKMNPQRSTVWXYZ0",
+            "01JABCDEFGHJKMNPQRSTVWXYZ0",
+            "seat:01JZZZZZZZZZZZZZZZZZZZZZZZ",
+        ] {
+            for kind in ["task", "bug", "epic"] {
+                all.push(json!({"type": kind, "assignee": assignee}));
+            }
+        }
+        all
+    };
+    let compare = |on: &mut Conn, off: &mut Conn| {
+        for filter in filters() {
+            let request = json!({ "filter": filter });
+            let served = index_facts(on)["served"].as_u64().unwrap();
+            let indexed = on.collect("list", request.clone());
+            assert_eq!(indexed, off.collect("list", request.clone()), "{filter}");
+            let search = json!({"query": "body type:task", "filter": filter});
+            assert_eq!(
+                on.collect("search", search.clone()),
+                off.collect("search", search),
+                "{filter}"
+            );
+            // Values native parsing might type or split use the backend.
+            let indexed = filter["swarm"] != "x y" && filter["assignee"] != "123";
+            let now = index_facts(on)["served"].as_u64().unwrap();
+            assert_eq!(now > served, indexed, "{filter}");
+        }
+        let graph = json!({"scope": {"kind": "type", "graph": "markdown", "type": "task"}});
+        assert_eq!(on.call("graph", graph.clone()), off.call("graph", graph));
+    };
+    compare(&mut on, &mut off);
+    let carol = json!({"filter": {"type": "task", "assignee": "carol"}});
+    assert_eq!(
+        slugs(&on.collect("list", carol.clone()), ""),
+        ["tasks/c", "tasks/w"]
+    );
+
+    // A workspace write changes the workspace signal, not the store signal.
+    let before = index_facts(&mut on);
+    native_write(
+        fx,
+        &root,
+        "tasks/x",
+        "type: task\nstatus: active\nassignee: carol\n",
+        false,
+    );
+    let written = index_facts(&mut on);
+    assert_eq!(written["store_signal"], before["store_signal"]);
+    assert_ne!(written["workspace_signal"], before["workspace_signal"]);
+    assert_eq!(written["ready"], true);
+    assert_eq!(
+        slugs(&on.collect("list", carol.clone()), ""),
+        ["tasks/c", "tasks/w", "tasks/x"]
+    );
+    // A commit changes the store signal; filters fall back until the rebuild.
+    fx.cli(
+        &root,
+        &["commit", "--json", "-m", "Commit workspace edit", "tasks/a"],
+        None,
+    );
+    let committed = index_facts(&mut on);
+    assert_ne!(committed["store_signal"], written["store_signal"]);
+    let fallbacks = committed["fallbacks"].as_u64().unwrap();
+    let listed = on.collect("list", carol.clone());
+    assert_eq!(listed, off.collect("list", carol.clone()));
+    assert_eq!(
+        slugs(&listed, ""),
+        ["tasks/a", "tasks/c", "tasks/w", "tasks/x"]
+    );
+    let after = wait_ready(&mut on);
+    assert!(after["fallbacks"].as_u64().unwrap() > fallbacks, "{after}");
+    assert_eq!(after["indexed_signal"], after["store_signal"]);
+    assert!(after["builds"].as_u64().unwrap() >= 2, "{after}");
+    compare(&mut on, &mut off);
+    vec![on, off]
 }
 
 #[test]
