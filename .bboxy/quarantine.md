@@ -20,3 +20,4 @@ against cargo's `test <name> ... FAILED` line.
 
 | Test | Crate | Owner | Task | Since | Expires | Evidence |
 |---|---|---|---|---|---|---|
+| seat_plugin_calls_carry_their_own_attribution_and_operator_calls_none | bboxy450-term-mux | Vesper Greywind | flaky under full `make land` load on 2026-11-02; alone `cargo test -p bboxy450-term-mux --test plugin_attribution` 2 passed | 2026-11-02 | 2026-11-09 | land gate fail then solo pass, worktree bboxy450-term-rich-harness |
