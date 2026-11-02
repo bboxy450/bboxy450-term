@@ -19,11 +19,11 @@ impl UsageMetric {
             || "—".into(),
             |p| format!("{p}%{}", if provider { " left" } else { "" }),
         );
-        format!(
-            "{} {number}{}",
-            self.label,
-            if self.stale { " (stale)" } else { "" }
-        )
+        let mut label = self.label.clone();
+        if provider && let Some(first) = label.get_mut(..1) {
+            first.make_ascii_uppercase();
+        }
+        format!("{label} {number}{}", if self.stale { " (stale)" } else { "" })
     }
     pub fn description(&self, provider: bool) -> String {
         let text = self.text(provider);
@@ -40,11 +40,20 @@ pub struct UsageStrip {
 }
 impl UsageStrip {
     pub fn accessible_label(&self) -> String {
-        self.machine
-            .iter()
-            .map(|m| m.description(false))
-            .chain(self.providers.iter().map(|m| m.description(true)))
-            .collect::<Vec<_>>()
-            .join(" · ")
+        self.lines().join(" · ")
+    }
+    /// One line for the machine, one for the accounts; empty groups are skipped.
+    pub fn lines(&self) -> Vec<String> {
+        [(false, &self.machine), (true, &self.providers)]
+            .into_iter()
+            .filter(|(_, metrics)| !metrics.is_empty())
+            .map(|(provider, metrics)| {
+                metrics
+                    .iter()
+                    .map(|m| m.description(provider))
+                    .collect::<Vec<_>>()
+                    .join(" · ")
+            })
+            .collect()
     }
 }

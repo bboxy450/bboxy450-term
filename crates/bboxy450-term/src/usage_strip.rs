@@ -49,19 +49,16 @@ mod tests {
             id: "codex",
             reading: None,
         });
-        assert_eq!(scene.usage.providers.len(), 2);
+        // A signed-out account is hidden, not shown as "grok —".
+        assert_eq!(scene.usage.providers.len(), 1);
         assert!(scene.usage.accessible_label().contains("CPU 42%"));
-        assert!(
-            scene
-                .usage
-                .accessible_label()
-                .contains("grok —: Run `grok` to sign in")
-        );
+        assert!(scene.usage.accessible_label().contains("Claude 58% left"));
+        assert!(!scene.usage.accessible_label().contains("rok"));
         scene.apply_usage(Update::Provider {
             id: "claude",
             reading: None,
         });
-        assert_eq!(scene.usage.providers.len(), 1);
+        assert_eq!(scene.usage.providers.len(), 0);
         let mut prepared = crate::scene::Scene::live();
         let _ = prepared.layout([1600., 900.], false).unwrap();
         prepared.inherit_usage(&mut scene);

@@ -71,7 +71,7 @@ fn usage_strip_renders_snapshot_hides_absent_accounts_and_retains_error_reason()
     assert!(
         strip
             .accessible_label()
-            .contains("codex —: Run `codex login`")
+            .contains("Codex —: Run `codex login`")
     );
     let solve = |strip: &UsageStrip| {
         TitleBar::default()
@@ -85,9 +85,9 @@ fn usage_strip_renders_snapshot_hides_absent_accounts_and_retains_error_reason()
         "CPU 42%",
         "MEM 80%",
         "DISK 95%",
-        "claude 58% left",
-        "codex —",
-        "grok 9% left (stale)",
+        "Claude 58% left",
+        "Codex —",
+        "Grok 9% left (stale)",
         "Run `codex login`",
     ] {
         assert!(debug.contains(text), "{text}");

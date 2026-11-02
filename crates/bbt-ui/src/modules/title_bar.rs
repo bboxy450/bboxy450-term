@@ -98,19 +98,20 @@ impl TitleBar {
     pub fn usage_element(&self, usage: &UsageStrip) -> c::Element {
         let mut children = Vec::new();
         for (provider, metrics) in [(false, &usage.machine), (true, &usage.providers)] {
+            // Edge spaces in a label are trimmed, so spacing comes from the stack gap.
             if !children.is_empty() && !metrics.is_empty() {
-                children.push(label("bar/usage/divider", " │ ", 400, true, false).into());
+                children.push(label("bar/usage/divider", "│", 400, true, false).into());
             }
             for (index, metric) in metrics.iter().enumerate() {
                 if index != 0 {
-                    children.push(label("bar/usage/dot", " · ", 400, true, false).into());
+                    children.push(label("bar/usage/dot", "·", 400, true, false).into());
                 }
                 children.push(usage_metric(metric, provider).into());
             }
         }
         let stack = c::Element::Stack(c::Stack {
             direction: Axis::Row,
-            gap: ui::Length::Px(0.),
+            gap: ui::Length::Px(6.),
             align: c::Alignment::Center,
             children,
         });

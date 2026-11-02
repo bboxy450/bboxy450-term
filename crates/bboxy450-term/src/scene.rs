@@ -542,7 +542,8 @@ impl Scene {
             }
             bboxy450_usage::poller::Update::Provider { id, reading } => {
                 self.usage.providers.retain(|m| m.label != id);
-                if let Some(r) = reading {
+                // An account with no reading (signed out, unreadable) is not shown.
+                if let Some(r) = reading.filter(|r| r.left.is_some()) {
                     self.usage.providers.push(UsageMetric {
                         label: id.into(),
                         percent: r.left,
@@ -567,7 +568,7 @@ impl Scene {
         let text = c::Text::new(
             format!(
                 "{}\nClick to refresh accounts",
-                self.usage.accessible_label()
+                self.usage.lines().join("\n")
             ),
             ui::Text::default(),
         );
