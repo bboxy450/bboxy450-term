@@ -51,13 +51,14 @@ function frame(w, h) { return el('div', { style: '--seat:#2EE6A8;width:' + w + '
 let live = null; const FH = +new URLSearchParams(location.search).get('h') || 720;
 Lab.page({ title: 'harness', wide: true,
   note: 'The rich bboxy face. bboxy450-harness envelopes (protocol Event/Item) fold into cards: one tool call is one card with its approval, terminal and diff inside; reasoning collapses to "Thought for"; usage drives the header meter. "live" replays a real scripted run of the harness binary (lab/web/harness/gen.sh) at reading pace. Click any card header to fold it.',
-  states: ['live', 'finished', 'running tool', 'denied unattended', 'approval pending', 'compact pane'],
+  states: ['live', 'finished', 'profiles', 'new profile', 'running tool', 'denied unattended', 'approval pending', 'compact pane'],
   render(s, body) {
     if (live && s !== 'all') { live.stop(); live = null; }
     const f = frame(s === 'compact pane' ? 520 : 760, s === 'compact pane' ? 520 : FH);
-    const v = Hx.view({ compact: s === 'compact pane', interactive: true });
+    let v; v = Hx.view({ compact: s === 'compact pane', interactive: true, profiles: Hx.DEMO_PROFILES, onOp: Hx.demoOps(() => v) });
     f.append(v.node); body.append(f);
     if (s === 'live' || s === 'compact pane') { const p = Hx.play(v, REAL, { loop: true }); if (s === 'live') live = p; return; }
+    if (s === 'profiles' || s === 'new profile') { REAL.forEach(e => v.apply(e)); requestAnimationFrame(() => { v.openProfiles(); if (s === 'new profile') v.node.querySelector('.hx-padd').click(); }); return; }
     let envs = s === 'denied unattended' ? denied() : s === 'approval pending' ? pending() : REAL;
     if (s === 'running tool') { const k = REAL.findIndex(e => e.event.type === 'item_started' && e.event.kind === 'terminal'); envs = REAL.slice(0, k + 1); }
     requestAnimationFrame(() => envs.forEach(e => v.apply(e)));

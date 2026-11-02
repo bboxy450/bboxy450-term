@@ -151,6 +151,91 @@
     return box;
   }
 
+  // ---------- profiles: the machine-global config, ~/.bboxy450-harness/profiles/<name>.md + default-profile ----------
+  // A profile record is what a face may see: never a key, only where the key comes from and whether it resolved.
+  // { name, provider, model, endpoint, auth: { kind: keychain|env|command|login|none, ref, ok }, context_tokens, default, note }
+  const PROVIDERS = {
+    openrouter: { label: 'OpenRouter', mark: 'OR', color: '#7C6CFF', endpoint: 'https://openrouter.ai/api/v1', auth: { kind: 'env', ref: 'OPENROUTER_API_KEY' }, model: 'anthropic/claude-sonnet-5-5' },
+    anthropic: { label: 'Anthropic API', mark: 'A', color: '#D97757', endpoint: 'https://api.anthropic.com/v1', auth: { kind: 'keychain', ref: 'bboxy450-harness-anthropic' }, model: 'claude-opus-5-5' },
+    'anthropic-subscription': { label: 'Anthropic subscription', mark: 'A', color: '#D97757', endpoint: '', auth: { kind: 'login', ref: 'Claude Code login' }, model: 'claude-opus-5-5',
+      unsupported: 'Claude Pro/Max sign-in belongs to Anthropic’s own apps. The harness speaks API keys; a subscription profile needs Claude Code as its backend, which is not built yet.' },
+    openai: { label: 'OpenAI', mark: 'O', color: '#10A37F', endpoint: 'https://api.openai.com/v1', auth: { kind: 'env', ref: 'OPENAI_API_KEY' }, model: 'gpt-5.1' },
+    local: { label: 'Local', mark: 'L', color: '#9AA3C7', endpoint: 'http://localhost:11434/v1', auth: { kind: 'none' }, model: 'qwen3-coder' },
+  };
+  const AUTH_SAY = { keychain: 'Keychain', env: 'env', command: 'command', login: 'login', none: 'no key' };
+  const provOf = p => PROVIDERS[p.provider] || { label: p.provider || 'custom', mark: '?', color: '#9AA3C7' };
+  const provMark = p => { const P = provOf(p); return el('span', { class: 'hx-pm', style: '--pc:' + P.color }, P.mark); };
+  // the frontmatter a new profile writes; the key itself never enters the file
+  function profileYaml(f) {
+    const a = f.auth || {};
+    return ['---', 'name: ' + f.name, 'model: ' + f.model, 'endpoint: ' + (f.endpoint || '""'), 'provider: ' + f.provider,
+      a.kind === 'keychain' ? 'api_key: "!security find-generic-password -s ' + a.ref + ' -w"' : a.kind === 'command' ? 'api_key: "!' + a.ref + '"' : null,
+      a.kind === 'env' ? 'api_key_env: ' + a.ref : null, 'on_unattended: deny', 'auto_compact: true', '---'].filter(Boolean).join('\n');
+  }
+  function profileMenu(st, opts, close) {
+    const list = opts.profiles || [], cur = st.profile;
+    const box = el('div', { class: 'hx-pmenu', role: 'menu', onclick: e => e.stopPropagation() });
+    let q = '';
+    const search = el('input', { class: 'hx-pq', placeholder: 'Switch profile…', oninput: e => { q = e.target.value.toLowerCase(); draw(); }, onkeydown: e => { if (e.key === 'Escape') close(); if (e.key === 'Enter') { const r = rowsEl.querySelector('.hx-prow:not(.off)'); if (r) r.click(); } } });
+    const rowsEl = el('div', { class: 'hx-prows' });
+    function row(p) {
+      const P = provOf(p), off = !!P.unsupported || (p.auth && p.auth.ok === false), on = p.name === cur;
+      const a = p.auth || {};
+      return el('button', { type: 'button', class: 'hx-prow' + (on ? ' on' : '') + (off ? ' off' : ''), title: P.unsupported || (a.ok === false ? AUTH_SAY[a.kind] + ' ' + (a.ref || '') + ' not found' : p.endpoint || ''),
+        onclick: () => { if (off || on) return; close(); opts.onOp && opts.onOp({ type: 'set_profile', profile: p.name }, p); } },
+        provMark(p),
+        el('span', { class: 'hx-pn' }, el('b', {}, p.name, p.default ? el('span', { class: 'hx-def', title: 'default-profile' }, 'default') : null), el('small', {}, p.model)),
+        el('span', { class: 'hx-sp' }),
+        p.context_tokens ? el('span', { class: 'hx-ctx' }, kfmt(p.context_tokens)) : null,
+        el('span', { class: 'hx-auth ' + (P.unsupported ? 'na' : a.ok === false ? 'bad' : 'ok') }, P.unsupported ? 'not supported' : (a.ok === false ? 'missing ' : '') + AUTH_SAY[a.kind || 'none']),
+        el('span', { class: 'hx-pck' }, on ? icon('check') : null));
+    }
+    function draw() {
+      rowsEl.replaceChildren();
+      const hit = p => !q || (p.name + ' ' + p.model + ' ' + provOf(p).label).toLowerCase().includes(q);
+      if (cur && !list.some(p => p.name === cur)) rowsEl.append(el('div', { class: 'hx-prow on off' }, el('span', { class: 'hx-pm', style: '--pc:#9AA3C7' }, '·'), el('span', { class: 'hx-pn' }, el('b', {}, cur), el('small', {}, (st.model || '') + ' · not in profiles/')), el('span', { class: 'hx-sp' }), el('span', { class: 'hx-pck' }, icon('check'))));
+      for (const [key, P] of Object.entries(PROVIDERS)) {
+        const ps = list.filter(p => p.provider === key && hit(p)); if (!ps.length) continue;
+        rowsEl.append(el('div', { class: 'hx-pgrp' }, P.label), ...ps.map(row));
+      }
+      const rest = list.filter(p => !PROVIDERS[p.provider] && hit(p));
+      if (rest.length) rowsEl.append(el('div', { class: 'hx-pgrp' }, 'Custom'), ...rest.map(row));
+    }
+    draw();
+    box.append(search, rowsEl, el('div', { class: 'hx-pfoot' },
+      el('button', { type: 'button', class: 'hx-padd', onclick: () => { box.replaceWith(newProfile(opts, close)); } }, '+ New profile'),
+      el('span', { class: 'hx-sp' }), el('code', { title: 'machine-global: every seat and face reads it' }, '~/.bboxy450-harness/profiles')));
+    requestAnimationFrame(() => search.focus());
+    return box;
+  }
+  function newProfile(opts, close) {
+    const f = { provider: 'openrouter', name: '', model: '', endpoint: '', auth: null };
+    const box = el('div', { class: 'hx-pmenu hx-pnew', onclick: e => e.stopPropagation() });
+    const pre = el('pre', { class: 'hx-yaml' });
+    const tabs = el('div', { class: 'hx-ptabs' });
+    const field = (label, key, ph) => el('label', { class: 'hx-pf' }, el('span', {}, label), el('input', { value: f[key], placeholder: ph || '', oninput: e => { f[key] = e.target.value; paint(); } }));
+    const fields = el('div', { class: 'hx-pfs' });
+    function paint() {
+      const P = PROVIDERS[f.provider];
+      const ff = { ...f, name: f.name || f.provider, model: f.model || P.model, endpoint: f.endpoint || P.endpoint, auth: P.auth };
+      tabs.replaceChildren(...Object.entries(PROVIDERS).map(([k, X]) => el('button', { type: 'button', class: 'hx-pt' + (k === f.provider ? ' on' : ''), style: '--pc:' + X.color, onclick: () => { f.provider = k; f.endpoint = ''; f.model = ''; build(); } }, X.label)));
+      pre.textContent = P.unsupported ? P.unsupported : '# ~/.bboxy450-harness/profiles/' + ff.name + '.md\n' + profileYaml(ff);
+      pre.classList.toggle('na', !!P.unsupported);
+      save.disabled = !!P.unsupported;
+      return ff;
+    }
+    const save = el('button', { type: 'button', class: 'pri', onclick: () => { const ff = paint(); close(); opts.onOp && opts.onOp({ type: 'create_profile', profile: ff }, ff); } }, 'Save & switch');
+    function build() {
+      const P = PROVIDERS[f.provider];
+      fields.replaceChildren(field('Name', 'name', f.provider), field('Model', 'model', P.model), P.unsupported ? null : field('Endpoint', 'endpoint', P.endpoint),
+        P.auth.kind === 'none' || P.unsupported ? null : el('div', { class: 'hx-pf' }, el('span', {}, 'Key'), el('span', { class: 'hx-keysrc' }, icon('shield'), AUTH_SAY[P.auth.kind] + ' ', el('code', {}, P.auth.ref), el('small', {}, ' · read when the profile loads, never written here'))));
+      paint();
+    }
+    build();
+    box.append(el('div', { class: 'hx-pnh' }, el('b', {}, 'New profile'), el('span', { class: 'hx-sp' }), el('button', { type: 'button', class: 'hx-px', onclick: close }, '×')), tabs, fields, pre, el('div', { class: 'hx-pact' }, el('span', { class: 'hx-sp' }), el('button', { type: 'button', onclick: close }, 'Cancel'), save));
+    return box;
+  }
+
   // ---------- the fold ----------
   function fresh() { return { meta: null, model: '', profile: '', items: new Map(), blocks: [], usage: { in: 0, out: 0, cached: 0, reasoning: 0, cost: 0 }, turns: new Map(), closed: false, phase: null }; }
   function view(opts) {
@@ -170,7 +255,11 @@
       const e = env.event, ts = env.ts_ms != null ? env.ts_ms : Date.now();
       switch (e.type) {
         case 'session_started': s.meta = e.meta; s.profile = e.meta.profile || ''; break;
-        case 'profile_changed': s.profile = e.profile; s.model = e.model; break;
+        case 'profile_changed': {
+          const was = s.profile; s.profile = e.profile; s.model = e.model;
+          if (was && was !== e.profile && s.blocks.length) { const k = 'sw:' + s.blocks.length; s.switches = s.switches || {}; s.switches[k] = { from: was, to: e.profile, model: e.model }; s.blocks.push({ id: k }); mount(k); }
+          break;
+        }
         case 'turn_started': s.turns.set(e.turn, { t0: ts, rounds: 0, tools: 0, edits: 0 }); s.turn = e.turn; break;
         case 'item_started': {
           const it = { id: e.item, kind: e.kind, turn: e.turn, parent: e.parent, head: e.head, status: 'running', body: null, text: '', live: '', t0: ts, t1: null };
@@ -236,6 +325,7 @@
     function touch(id) { const old = nodes.get(id); if (!old) return; const n = build(id); if (!n) return; nodes.set(id, n); old.replaceWith(n); }
     function build(id) {
       if (id.startsWith('end:')) return turnEnd(id.slice(4));
+      if (id.startsWith('sw:')) { const w = s.switches[id], p = (opts.profiles || []).find(x => x.name === w.to) || { provider: '' }; return el('div', { class: 'hx-switch' }, el('i'), provMark(p), el('span', {}, 'Switched to ', el('b', {}, w.to), ' · ', w.model), el('i')); }
       const it = item(id); if (!it) return null;
       switch (it.kind) {
         case 'user_message': return userMsg(it);
@@ -398,15 +488,21 @@
       head.replaceChildren(...[
         el('span', { class: 'hx-mark' }, el('img', { src: 'bboxy.png', alt: '' })),
         el('span', { class: 'hx-name' }, 'bboxy'),
-        s.model || s.profile ? el('span', { class: 'hx-model' }, el('i'), s.model || s.profile) : null,
+        s.model || s.profile ? el('button', { type: 'button', class: 'hx-model' + (menu ? ' on' : ''), title: 'Switch profile', onclick: e => { e.stopPropagation(); toggleMenu(); } }, el('i'), el('span', { class: 'hx-mt' }, s.profile && s.profile !== s.model ? s.profile + ' · ' + s.model : s.model || s.profile), icon('chev', 'down')) : null,
         cwd() ? el('span', { class: 'hx-cwd' }, icon('branch'), cwd().split('/').pop()) : null,
         el('span', { class: 'hx-sp' }),
         el('span', { class: 'hx-phase ' + ph }, el('i'), say.length > 48 ? say.slice(0, 47) + '…' : say),
         u.in ? el('span', { class: 'hx-meter', title: kfmt(u.in) + ' input · ' + kfmt(u.cached) + ' cached · ' + kfmt(u.out) + ' output' + (u.cost ? ' · $' + (u.cost / 1e6).toFixed(4) : '') }, el('span', { class: 'bar' }, el('i', { style: 'width:' + Math.min(100, u.in / 2000) + '%' })), kfmt(u.in + u.out)) : null].filter(Boolean));
     }
-    function reset() { s = fresh(); nodes.clear(); feed.replaceChildren(); drawHead(); }
+    let menu = null;
+    function toggleMenu(force) {
+      if (menu || force === false) { if (menu) menu.remove(); menu = null; drawHead(); return; }
+      menu = profileMenu(s, opts, () => toggleMenu(false)); node.append(menu); drawHead();
+    }
+    node.addEventListener('click', () => { if (menu) toggleMenu(false); });
+    function reset() { s = fresh(); nodes.clear(); feed.replaceChildren(); if (menu) toggleMenu(false); drawHead(); }
     drawHead();
-    return { node, apply, reset, get state() { return s; } };
+    return { node, apply, reset, setProfiles(list) { opts.profiles = list; }, openProfiles() { if (!menu) toggleMenu(); }, get state() { return s; } };
   }
 
   function composer(opts) {
@@ -454,5 +550,25 @@
     return { stop() { stopped = true; clearTimeout(timer); } };
   }
 
-  window.Hx = { view, play, markdown, diffView, highlight };
+  // demo profiles for the lab and the public showcase: the shapes of a real profiles/ directory, no machine's actual config
+  const DEMO_PROFILES = [
+    { name: 'sonnet', provider: 'openrouter', model: 'anthropic/claude-sonnet-5-5', endpoint: 'https://openrouter.ai/api/v1', auth: { kind: 'env', ref: 'OPENROUTER_API_KEY', ok: true }, context_tokens: 1000000, default: true },
+    { name: 'nemotron', provider: 'openrouter', model: 'nvidia/nemotron-3.5-super-vl:free', endpoint: 'https://openrouter.ai/api/v1', auth: { kind: 'env', ref: 'OPENROUTER_API_KEY', ok: true }, context_tokens: 262144 },
+    { name: 'opus', provider: 'anthropic', model: 'claude-opus-5-5', endpoint: 'https://api.anthropic.com/v1', auth: { kind: 'keychain', ref: 'bboxy450-harness-anthropic', ok: true }, context_tokens: 1000000 },
+    { name: 'haiku', provider: 'anthropic', model: 'claude-haiku-5-5', endpoint: 'https://api.anthropic.com/v1', auth: { kind: 'keychain', ref: 'bboxy450-harness-anthropic', ok: true }, context_tokens: 200000 },
+    { name: 'max', provider: 'anthropic-subscription', model: 'claude-opus-5-5', endpoint: '', auth: { kind: 'login', ref: 'Claude Code login' } },
+    { name: 'gpt', provider: 'openai', model: 'gpt-5.1', endpoint: 'https://api.openai.com/v1', auth: { kind: 'env', ref: 'OPENAI_API_KEY', ok: false } },
+    { name: 'qwen-local', provider: 'local', model: 'qwen3-coder', endpoint: 'http://localhost:11434/v1', auth: { kind: 'none', ok: true }, context_tokens: 131072 },
+  ];
+  // a face without a gateway (lab, site) answers its own ops the way the harness would: SetProfile → ProfileChanged
+  function demoOps(getView, list) {
+    list = list || DEMO_PROFILES;
+    return (op, p) => {
+      const v = getView();
+      if (op.type === 'create_profile' && !list.some(x => x.name === p.name)) list.push({ ...p, auth: { ...p.auth, ok: p.auth.kind !== 'env' } });
+      v.apply({ v: { major: 0, minor: 4 }, session: '', epoch: 1, seq: null, at: 0, ts_ms: Date.now(), cause: null, event: { type: 'profile_changed', profile: p.name, model: p.model } });
+    };
+  }
+
+  window.Hx = { view, play, markdown, diffView, highlight, PROVIDERS, DEMO_PROFILES, demoOps, profileYaml };
 })();
