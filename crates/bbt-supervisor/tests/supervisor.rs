@@ -12,7 +12,7 @@ use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
 
-use bbt_supervisor::protocol::{MAX_INPUT_BYTES, VERSION};
+use bbt_supervisor::protocol::{MAX_INPUT_BYTES, MAX_INPUT_IDS, VERSION};
 use bbt_supervisor::transport::{read_frame, write_frame};
 use bbt_supervisor::*;
 
@@ -61,6 +61,95 @@ fn status(client: &Client, attachment: &Attachment, input_id: Ulid) -> InputRece
         Reply::Input { receipt } => receipt,
         reply => panic!("unexpected {reply:?}"),
     }
+}
+
+#[test]
+fn bounded_input_receipts_keep_a_long_lived_pty_writable() {
+    let supervisor = Supervisor::start(Config::default()).unwrap();
+    let client = supervisor.connect().unwrap();
+    let mut spec = shell();
+    spec.args = vec![
+        "-f".into(),
+        "-c".into(),
+        format!(
+            "stty -echo; printf 'READY\\n'; n=0; \
+             while IFS= read -r line; do (( n++ )); \
+             if (( n > {MAX_INPUT_IDS} )); then printf 'COUNT:%s:%s\\n' $n $line; fi; done"
+        ),
+    ];
+    let info = client.spawn(spec).unwrap();
+    let attachment = client.attach(info.seat, info.generation).unwrap();
+    output_until(&client, info.seat, b"READY\r\n");
+    let mut ids = Vec::new();
+    for _ in 0..=MAX_INPUT_IDS {
+        let id = Ulid::new();
+        let mut receipt = client.input(&attachment, id, b"x\n").unwrap();
+        let deadline = Instant::now() + DEADLINE;
+        while receipt.state == InputState::Pending {
+            assert!(Instant::now() < deadline, "input {id} stayed pending");
+            std::thread::sleep(Duration::from_millis(1));
+            receipt = status(&client, &attachment, id);
+        }
+        assert_eq!(receipt.state, InputState::PtyWritten);
+        ids.push(id);
+    }
+    let count = MAX_INPUT_IDS + 1;
+    output_until(
+        &client,
+        info.seat,
+        format!("COUNT:{count}:x\r\n").as_bytes(),
+    );
+
+    // Replaying an old retained receipt must not move it to the back of the FIFO.
+    assert_eq!(
+        client.input(&attachment, ids[1], b"x\n").unwrap().state,
+        InputState::PtyWritten
+    );
+    let latest = *ids.last().unwrap();
+    let receipt = status(&client, &attachment, latest);
+    assert_eq!(client.input(&attachment, latest, b"x\n").unwrap(), receipt);
+    assert_eq!(
+        client
+            .input(&attachment, latest, b"different\n")
+            .unwrap_err()
+            .code,
+        FailureCode::InputConflict
+    );
+    let missing = |id| {
+        client
+            .request(Action::InputStatus {
+                seat: info.seat,
+                generation: info.generation,
+                input_id: id,
+            })
+            .unwrap_err()
+            .code
+    };
+    assert_eq!(missing(ids[0]), FailureCode::NotFound);
+    client
+        .input(&attachment, Ulid::new(), b"barrier\n")
+        .unwrap();
+    output_until(
+        &client,
+        info.seat,
+        format!("COUNT:{}:barrier\r\n", count + 1).as_bytes(),
+    );
+    assert_eq!(missing(ids[1]), FailureCode::NotFound);
+    assert_eq!(
+        status(&client, &attachment, ids[2]).state,
+        InputState::PtyWritten
+    );
+
+    // The evicted ID is a new operation, including when its bytes differ.
+    client.input(&attachment, ids[0], b"evicted\n").unwrap();
+    output_until(
+        &client,
+        info.seat,
+        format!("COUNT:{}:evicted\r\n", count + 2).as_bytes(),
+    );
+    eprintln!(
+        "{count} distinct inputs reached one PTY; retained retries/conflicts and FIFO eviction checked"
+    );
 }
 
 // keeps: spec mux-daemon.md — Ownership and failure boundaries

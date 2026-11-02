@@ -6,7 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! One actor owns the PTY masters, child handles, sequence counters and writers.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::io::{self, Read};
 use std::os::fd::RawFd;
 use std::path::PathBuf;
@@ -32,7 +32,6 @@ const WAKE: Token = Token(0);
 const LISTENER: Token = Token(1);
 const CHANNEL_CAPACITY: usize = 128;
 const MAX_CLIENTS: usize = 8;
-const MAX_INPUT_IDS: usize = 4096;
 const TICK: Duration = Duration::from_millis(20);
 const CALL_TIMEOUT: Duration = Duration::from_secs(10);
 const OUTPUT_DELAY: Duration = Duration::from_millis(2);
@@ -1070,6 +1069,8 @@ impl Client {
     }
 
     /// Submit one idempotently identified byte sequence under the attachment.
+    /// Retry only within the bounded receipt window (`protocol::MAX_INPUT_IDS`);
+    /// submitting an evicted terminal ID writes a new operation.
     ///
     /// # Errors
     /// Returns stale leases, invalid/oversized/conflicting input or request failures; inspect unknown writes.
@@ -2001,10 +2002,12 @@ impl Actor {
                 input_id,
             } => {
                 let seat = self.seat_mut(seat, generation)?;
-                let record = seat
-                    .inputs
-                    .get(&input_id)
-                    .ok_or_else(|| Failure::new(FailureCode::NotFound, "input id not accepted"))?;
+                let record = seat.inputs.get(&input_id).ok_or_else(|| {
+                    Failure::new(
+                        FailureCode::NotFound,
+                        "input id not retained or never accepted",
+                    )
+                })?;
                 Ok(Reply::Input {
                     receipt: record.receipt.clone(),
                 })
@@ -2360,6 +2363,7 @@ struct Seat {
     output_since: Option<Instant>,
     pending_write: Option<PendingWrite>,
     inputs: HashMap<Ulid, StoredInput>,
+    input_order: VecDeque<Ulid>,
     input_epoch: u64,
     last_input_ms: u64,
     operator_draft: bool,
@@ -2451,6 +2455,7 @@ impl Seat {
             output_since: None,
             pending_write: None,
             inputs: HashMap::new(),
+            input_order: VecDeque::new(),
             input_epoch: 0,
             last_input_ms: 0,
             operator_draft: false,
@@ -2607,12 +2612,7 @@ impl Seat {
                 "a previous input is still in flight",
             ));
         }
-        if self.inputs.len() >= MAX_INPUT_IDS {
-            return Err(Failure::new(
-                FailureCode::Limit,
-                "input deduplication capacity reached; ids are never silently evicted",
-            ));
-        }
+        self.make_input_room()?;
         let receipt = InputReceipt {
             input_id: id,
             state: InputState::Pending,
@@ -2630,6 +2630,7 @@ impl Seat {
             self.operator_draft = !matches!(bytes.last(), Some(b'\r' | b'\n' | 3));
         }
         self.inputs.insert(id, StoredInput { digest, receipt });
+        self.input_order.push_back(id);
         let guard = guarded.then(|| self.input_context());
         self.pending_write = Some(PendingWrite {
             id,
@@ -2640,6 +2641,32 @@ impl Seat {
         self.write_ready = true;
         self.write_pending();
         Ok(self.inputs[&id].receipt.clone())
+    }
+
+    fn make_input_room(&mut self) -> Result<(), Failure> {
+        while self.inputs.len() >= MAX_INPUT_IDS {
+            // Insertion order, not replay order: retained retries never shorten
+            // another input's retry window. An active write is never retired.
+            let oldest_terminal = self.input_order.iter().position(|id| {
+                !self
+                    .pending_write
+                    .as_ref()
+                    .is_some_and(|write| write.id == *id)
+                    && matches!(
+                        self.inputs[id].receipt.state,
+                        InputState::PtyWritten | InputState::PartialUnknown
+                    )
+            });
+            let Some(index) = oldest_terminal else {
+                return Err(Failure::new(
+                    FailureCode::Limit,
+                    "input deduplication capacity is full of non-terminal receipts",
+                ));
+            };
+            let id = self.input_order.remove(index).unwrap();
+            self.inputs.remove(&id);
+        }
+        Ok(())
     }
 
     fn input_context(&self) -> crate::protocol::InputContext {
@@ -3189,6 +3216,94 @@ fn admit_recovered_generation(config: &Config, spec: &LaunchSpec) -> Result<(), 
     Err(stale(
         "no valid committed predecessor for process generation",
     ))
+}
+
+#[cfg(test)]
+mod input_receipt_tests {
+    use super::*;
+
+    #[test]
+    fn eviction_retires_oldest_terminal_receipts_and_preserves_pending() {
+        let poll = Poll::new().unwrap();
+        let spec = LaunchSpec::new("/bin/cat", std::env::current_dir().unwrap());
+        let mut seat = Seat::spawn(spec, Token(2), poll.registry()).unwrap();
+        for n in 1..=MAX_INPUT_IDS {
+            let id = Ulid::from(n as u128);
+            seat.inputs.insert(
+                id,
+                StoredInput {
+                    digest: [0; 32],
+                    receipt: InputReceipt {
+                        input_id: id,
+                        state: InputState::PtyWritten,
+                        bytes_written: 1,
+                        bytes_total: 1,
+                    },
+                },
+            );
+            seat.input_order.push_back(id);
+        }
+        let partial = Ulid::from(1_u128);
+        let pending = Ulid::from(2_u128);
+        seat.inputs.get_mut(&partial).unwrap().receipt.state = InputState::PartialUnknown;
+        seat.inputs.get_mut(&pending).unwrap().receipt.state = InputState::Pending;
+        seat.pending_write = Some(PendingWrite {
+            id: pending,
+            bytes: b"x".to_vec(),
+            deadline: Instant::now() + Duration::from_secs(5),
+            guard: None,
+        });
+        seat.make_input_room().unwrap();
+        assert!(!seat.inputs.contains_key(&partial));
+        assert_eq!(seat.inputs.len(), MAX_INPUT_IDS - 1);
+        assert_eq!(seat.input_order.len(), seat.inputs.len());
+
+        // Refill, then retire the next terminal entry even with a pending head.
+        seat.inputs.insert(
+            partial,
+            StoredInput {
+                digest: [0; 32],
+                receipt: InputReceipt {
+                    input_id: partial,
+                    state: InputState::PtyWritten,
+                    bytes_written: 1,
+                    bytes_total: 1,
+                },
+            },
+        );
+        seat.input_order.push_back(partial);
+        seat.make_input_room().unwrap();
+        assert!(!seat.inputs.contains_key(&Ulid::from(3_u128)));
+        assert_eq!(seat.input_order.front(), Some(&pending));
+        assert_eq!(seat.inputs[&pending].receipt.state, InputState::Pending);
+        assert_eq!(seat.pending_write.as_ref().unwrap().id, pending);
+        assert_eq!(seat.inputs.len(), MAX_INPUT_IDS - 1);
+        assert_eq!(seat.input_order.len(), seat.inputs.len());
+
+        // Defensive Limit branch: even a synthetic all-pending map is neither
+        // silently retired nor allowed to exceed its bound.
+        let extra = Ulid::from(3_u128);
+        seat.inputs.insert(
+            extra,
+            StoredInput {
+                digest: [0; 32],
+                receipt: InputReceipt {
+                    input_id: extra,
+                    state: InputState::Pending,
+                    bytes_written: 0,
+                    bytes_total: 1,
+                },
+            },
+        );
+        seat.input_order.push_back(extra);
+        for stored in seat.inputs.values_mut() {
+            stored.receipt.state = InputState::Pending;
+        }
+        let order = seat.input_order.clone();
+        assert_eq!(seat.make_input_room().unwrap_err().code, FailureCode::Limit);
+        assert_eq!(seat.inputs.len(), MAX_INPUT_IDS);
+        assert_eq!(seat.input_order, order);
+    }
 }
 
 #[cfg(test)]

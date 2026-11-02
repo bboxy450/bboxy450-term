@@ -17,6 +17,9 @@ use ulid::Ulid;
 pub const VERSION: u16 = 1;
 /// Maximum accepted PTY input or aggregate launch-configuration bytes.
 pub const MAX_INPUT_BYTES: usize = 64 * 1024;
+/// Maximum retained input receipts per process generation. Oldest terminal
+/// receipts are evicted when admitting a new ID; a pending write is retained.
+pub const MAX_INPUT_IDS: usize = 4096;
 /// Maximum original PTY bytes in one output chunk.
 pub const OUTPUT_CHUNK_BYTES: usize = 16 * 1024;
 /// One replay prefetch stays below the private socket's single-frame reserve.
@@ -317,7 +320,9 @@ pub enum Action {
         /// Opaque serialized model/parser checkpoint bytes.
         checkpoint: Vec<u8>,
     },
-    /// Submit idempotently identified PTY bytes.
+    /// Submit idempotently identified PTY bytes within the bounded receipt window.
+    /// Retries must be immediate: after a terminal ID is evicted, submitting it
+    /// again is new input and may write the bytes again, even if they differ.
     Input {
         /// Current generation-bound writer attachment.
         attachment: Attachment,
@@ -342,7 +347,7 @@ pub enum Action {
         /// Supervisor context that must still match at guarded admission.
         expected: InputContext,
     },
-    /// Read the latest receipt for an existing input identifier.
+    /// Read the latest retained receipt; an evicted ID returns `NotFound`.
     InputStatus {
         /// Opaque process identity owned by this supervisor.
         seat: Ulid,
@@ -466,6 +471,8 @@ pub enum InputState {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 /// Observed disposition of one idempotently identified PTY input operation.
+/// Deduplication and conflict detection apply only while the ID is retained
+/// (at most `MAX_INPUT_IDS` receipts). An evicted ID is accepted as new input.
 pub struct InputReceipt {
     /// Stable caller-selected identity used to deduplicate PTY input.
     pub input_id: Ulid,

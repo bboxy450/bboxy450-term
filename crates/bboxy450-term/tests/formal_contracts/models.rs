@@ -32,6 +32,9 @@ mod usage_models;
 #[path = "gitkb_models.rs"]
 mod gitkb_models;
 
+#[path = "input_dedup_model.rs"]
+mod input_dedup_model;
+
 fn eq(i: usize, n: i64) -> Expr {
     Var(i).eq(Int(n))
 }
@@ -1828,6 +1831,10 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         .collect::<Vec<_>>();
     // Toolkit registration stays away from concurrent module append sites.
     cases.extend(toolkit_models::cases());
+    cases.extend([
+        (input_dedup_model::input_dedup_eviction(false), "pass"),
+        (input_dedup_model::input_dedup_eviction(true), "liveness"),
+    ]);
     cases.extend([
         (import_staging(false), "pass"),
         (import_staging(true), "safety"),

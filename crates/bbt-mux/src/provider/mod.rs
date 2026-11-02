@@ -162,15 +162,26 @@ impl Connections {
         Ok(Self { providers, links })
     }
     pub fn request(&mut self, host: &HostId, action: Action) -> Result<Reply> {
-        self.link(host)?
-            .lock()
-            .map_err(|_| invalid("supervisor link owner stopped"))?
-            .request(action)
-            .inspect_err(|e| {
-                bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new(
-                    "provider", "request", e,
-                ));
-            })
+        let input_seat = match &action {
+            Action::Input { attachment, .. }
+            | Action::GuardedInput { attachment, .. }
+            | Action::InputContext { attachment } => Some(attachment.seat),
+            Action::InputStatus { seat, .. } => Some(*seat),
+            _ => None,
+        };
+        let result = (|| {
+            self.link(host)?
+                .lock()
+                .map_err(|_| invalid("supervisor link owner stopped"))?
+                .request(action)
+        })();
+        result.inspect_err(|e| {
+            let mut failure = bbt_rt::error_journal::Failure::new("provider", "request", e);
+            if let Some(seat) = input_seat {
+                failure = failure.seat(seat);
+            }
+            bbt_rt::error_journal::report(failure);
+        })
     }
     pub(crate) fn link(&self, host: &HostId) -> Result<SharedLink> {
         self.links

@@ -101,6 +101,16 @@ expected = "safety"
 frontend = "checker"
 
 [[model]]
+name = "InputDedupEviction"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenInputDedupEviction"
+expected = "liveness"
+frontend = "project"
+
+[[model]]
 name = "SimultaneousUpdates"
 expected = "pass"
 frontend = "checker"

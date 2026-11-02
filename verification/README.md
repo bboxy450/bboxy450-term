@@ -101,6 +101,7 @@ bboxy450-term --test formal_contracts shipped` rewrites them).
 | Plugin inspection | Source digest, approval and activation generation still match |
 | Plugin connections | A call result is delivered only from the current activation generation; disable closes the connection |
 | Harness readiness | Input ownership and single-use proof remain current; unknown outcomes fence retries |
+| Supervisor input receipts | Oldest terminal receipts retire within a bounded retry window; pending writes survive and fresh inputs progress beyond capacity; removing eviction fails liveness |
 | Local messaging custody | Delivery progresses without assuming signing custody recovers |
 | Message suppression | Events, muted recipients and resolved/superseded receipts never wake |
 | Retained process ownership | UI detach preserves owners; explicit stop checks process birth |
