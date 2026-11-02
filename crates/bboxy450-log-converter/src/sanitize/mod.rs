@@ -351,21 +351,88 @@ impl Sanitizer {
             .replace_all(&out, |c: &regex::Captures<'_>| fake_token(&c[0]))
             .into_owned();
         out = patterns()[11].replace_all(&out, "$1<host>").into_owned();
-        out = patterns()[10].replace_all(&out, "$1<host>").into_owned();
-        out = patterns()[7].replace_all(&out, "<ip>").into_owned();
-        out = patterns()[8].replace_all(&out, "<host>").into_owned();
-        out = patterns()[9]
+        out = patterns()[10]
             .replace_all(&out, |c: &regex::Captures<'_>| -> String {
+                let authority = c[0][c[1].len()..].to_ascii_lowercase();
+                let name = authority
+                    .rsplit('@')
+                    .next()
+                    .unwrap_or("")
+                    .split(':')
+                    .next()
+                    .unwrap_or("");
+                let name = name.trim_end_matches(|ch: char| {
+                    !(ch.is_ascii_alphanumeric() || ch == '.' || ch == '-')
+                });
+                if !authority.contains('@') && is_public_host(name) {
+                    c[0].into()
+                } else {
+                    format!("{}<host>", &c[1])
+                }
+            })
+            .into_owned();
+        out = patterns()[7].replace_all(&out, "<ip>").into_owned();
+        // A dotted name ending in a source-file extension is a file, not a host.
+        out = patterns()[8]
+            .replace_all(&out, |c: &regex::Captures<'_>| -> String {
+                let name = c[0].split(':').next().unwrap_or("").to_ascii_lowercase();
+                let last = name.rsplit('.').next().unwrap_or("");
+                let public = is_public_host(&name);
+                let reverse_dns = ["com.", "org.", "io.", "dev."]
+                    .iter()
+                    .any(|p| name.starts_with(p));
+                if FILE_EXTENSIONS.contains(&last) || public || reverse_dns {
+                    c[0].into()
+                } else {
+                    "<host>".into()
+                }
+            })
+            .into_owned();
+        // A colon run glued to an identifier (`Op::UserTurn`, `InProc::send`) is a path, not an address.
+        let hay = &out;
+        let ipv6 = patterns()[9]
+            .replace_all(hay, |c: &regex::Captures<'_>| -> String {
+                let m = c.get(0).expect("whole match");
+                let before = hay[..m.start()].chars().next_back();
+                let after = hay[m.end()..].chars().next();
+                let glued = before.is_some_and(|ch| ch.is_alphanumeric() || ch == '_')
+                    || after.is_some_and(|ch| ch.is_alphabetic() || ch == '_');
                 let candidate = c[0].trim_matches(['[', ']']);
-                if candidate.parse::<std::net::Ipv6Addr>().is_ok() {
+                if !glued && candidate.parse::<std::net::Ipv6Addr>().is_ok() {
                     "<ip>".into()
                 } else {
                     c[0].into()
                 }
             })
             .into_owned();
-        out
+        ipv6
     }
+}
+const FILE_EXTENSIONS: &[&str] = &[
+    "rs", "md", "js", "ts", "tsx", "jsx", "py", "toml", "json", "jsonl", "jsonc", "yaml", "yml",
+    "sh", "txt", "lock", "css", "html", "log", "tla", "cfg", "c", "h", "go", "swift", "png", "svg",
+    "zip", "plist", "asc", "sha256", "crate", "app", "dmg", "gz", "tar", "pdf", "jpg", "icns",
+    "xml",
+];
+// Public services named in our own sessions. d4947 hides private hosts; these are not private.
+const PUBLIC_HOSTS: &[&str] = &[
+    "github.com",
+    "githubusercontent.com",
+    "crates.io",
+    "docs.rs",
+    "bboxy450.lol",
+    "openrouter.ai",
+    "anthropic.com",
+    "claude.ai",
+    "openai.com",
+    "cloudflare.com",
+    "apple.com",
+    "rust-lang.org",
+];
+fn is_public_host(name: &str) -> bool {
+    PUBLIC_HOSTS
+        .iter()
+        .any(|h| name == *h || name.ends_with(&format!(".{h}")))
 }
 fn patterns() -> &'static Vec<Regex> {
     static P: OnceLock<Vec<Regex>> = OnceLock::new();
