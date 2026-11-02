@@ -1,3 +1,9 @@
+# Copyright 2026 Boxy (bboxy450) and contributors.
+# SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+# Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """Observational stage accounting (#333). Accounting errors never veto a command.
 
 macOS time(1) supplies waited-for descendant rusage. Ten-second libproc samples
@@ -437,11 +443,15 @@ def attempt(stage, method, *args):
 
 
 def run(stage, argv):
-    accounting = begin(stage, Path.cwd())
-    wrapped = attempt(accounting, 'wrap', argv) or argv
-    child = subprocess.Popen(wrapped, **(attempt(accounting, 'popen_options') or {}))
-    attempt(accounting, 'attach', child.pid)
+    child = None
+    pending_signals = []
     def forward(sig, frame):
+        if child is None:
+            # Popen can be interrupted after spawning but before publishing its
+            # handle. Retain each signal until that command can receive it.
+            if sig not in pending_signals:
+                pending_signals.append(sig)
+            return
         # time(1) adds one parent. Signal only descendants of this recorded
         # command, never its inherited group (which can contain the caller).
         try:
@@ -457,6 +467,12 @@ def run(stage, argv):
                 pass
     for sig in (signal.SIGINT, signal.SIGTERM):
         signal.signal(sig, forward)
+    accounting = begin(stage, Path.cwd())
+    wrapped = attempt(accounting, 'wrap', argv) or argv
+    child = subprocess.Popen(wrapped, **(attempt(accounting, 'popen_options') or {}))
+    attempt(accounting, 'attach', child.pid)
+    for sig in pending_signals:
+        forward(sig, None)
     code = child.wait()
     attempt(accounting, 'finish', code)
     return code if code >= 0 else 128 - code

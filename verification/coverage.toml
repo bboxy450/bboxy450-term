@@ -2,6 +2,16 @@
 # contract-model means a bounded design contract, never a proof of arbitrary Rust.
 # implementation-tests entries make remaining formal coverage explicit.
 
+[[implementation_only]]
+name = "ResourceLedgerSignalForwarding"
+sources = ["scripts/resource-ledger.py"]
+tests = ["scripts/test-resource-ledger.py"]
+models = []
+scope = "The ledger wrapper has no existing lifecycle model; real POSIX signal delivery, deferred pre-child signals, descendant forwarding and exit normalization are implementation-tested, not formally proved."
+bounds = "32 forced immediately-after-spawn signals and 8 pre-child signals per suite; no sleeps as timing; 30-second hang guards only. Pending signals are deduplicated to SIGINT and SIGTERM."
+broken_control = "Move handler registration after Popen and attach; the named spawn-window assertion must observe -15 instead of 143."
+checks = ["python3 -I scripts/test-resource-ledger.py", "make test"]
+
 [[crate]]
 name = "bboxy450-term-desktop-core"
 status = "contract-model"

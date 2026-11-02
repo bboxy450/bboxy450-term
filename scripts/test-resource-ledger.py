@@ -1,13 +1,21 @@
+# Copyright 2026 Boxy (bboxy450) and contributors.
+# SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+# Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """Resource accounting must preserve workload behavior and honest attribution."""
 import importlib.util
 import json
 import os
 import select
 import signal
+import shutil
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import textwrap
 import unittest
 from unittest.mock import patch, Mock
 
@@ -63,6 +71,78 @@ class CacheEnvTests(unittest.TestCase):
 
 
 class LedgerContracts(unittest.TestCase):
+    def signal_at_spawn_boundary(self, position, iterations):
+        # Hold Popen's return until a real signal has reached the wrapper. The
+        # parent's pipe keeps the command alive without a scheduling sleep.
+        bootstrap = textwrap.dedent('''
+            import importlib.util, os, signal, subprocess, sys
+            spec = importlib.util.spec_from_file_location('ledger', sys.argv[1])
+            ledger = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(ledger)
+            reader, position = int(sys.argv[2]), sys.argv[3]
+            real_spawn = subprocess.Popen
+            def spawn(*args, **options):
+                ledger.subprocess.Popen = real_spawn
+                options['pass_fds'] = (reader,)
+                if position == 'before':
+                    os.kill(os.getpid(), signal.SIGTERM)
+                child = real_spawn(*args, **options)
+                if position == 'after':
+                    os.kill(os.getpid(), signal.SIGTERM)
+                return child
+            ledger.subprocess.Popen = spawn
+            ledger.begin = lambda *args: None
+            command = [sys.executable, '-I', '-c',
+                       'import os,sys;os.read(int(sys.argv[1]),1)', str(reader)]
+            sys.exit(ledger.run('unit', command))
+        ''')
+        for iteration in range(iterations):
+            reader, writer = os.pipe()
+            wrapper = None
+            try:
+                wrapper = subprocess.Popen(
+                    [sys.executable, '-I', '-c', bootstrap, str(SOURCE), str(reader), position],
+                    pass_fds=(reader,), stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+                code = wrapper.wait(timeout=30)  # hang guard, not a timing verdict
+                self.assertEqual(code, 143,
+                                 f'spawn-window signal took default action: {position}, iteration {iteration}')
+            finally:
+                os.close(writer)  # releases a child orphaned by the broken wrapper
+                os.close(reader)
+                if wrapper is not None:
+                    if wrapper.poll() is None:
+                        wrapper.kill()
+                    wrapper.communicate(timeout=30)
+
+    def test_signal_immediately_after_spawn_is_forwarded_many_times(self):
+        self.signal_at_spawn_boundary('after', 32)
+
+    def test_signal_before_child_exists_is_forwarded(self):
+        self.signal_at_spawn_boundary('before', 8)
+
+    def test_installing_handlers_after_spawn_is_detected(self):
+        registration = ('    for sig in (signal.SIGINT, signal.SIGTERM):\n'
+                        '        signal.signal(sig, forward)\n')
+        original = SOURCE.read_text()
+        self.assertEqual(original.count(registration), 1)
+        late = original.replace(registration, '', 1).replace(
+            "    attempt(accounting, 'attach', child.pid)\n",
+            "    attempt(accounting, 'attach', child.pid)\n" + registration, 1)
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for path in (Path(__file__), SOURCE.with_name('inference-ledger.py'),
+                         SOURCE.with_name('wake-ledger.py')):
+                shutil.copy2(path, root / path.name)
+            (root / SOURCE.name).write_text(late)
+            result = subprocess.run(
+                [sys.executable, '-I', str(root / Path(__file__).name),
+                 'LedgerContracts.test_signal_immediately_after_spawn_is_forwarded_many_times'],
+                capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+        self.assertIn('AssertionError: -15 != 143 : spawn-window signal took default action',
+                      result.stderr)
+
     def test_unavailable_store_runs_command_once_and_preserves_exit_and_output(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
