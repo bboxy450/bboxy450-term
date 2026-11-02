@@ -32,6 +32,7 @@ members = [
   "crates/bboxybook",
   "crates/bboxy450-term",
   "crates/bboxy450-harness",
+  "crates/bboxy450-log-converter",
   "crates/bboxy-firehose",
 ]
 

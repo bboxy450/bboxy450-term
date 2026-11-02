@@ -313,3 +313,10 @@ models = [
 ]
 scope = "Pinned harness models and broken controls imported into the parent native/TLC parity run; its source inventory and multi-control contracts are validated from the submodule. HarnessEmbedLifecycle is the lifecycle model for the real parent seat-spawn witness. HTTP, terminal bytes and kernel process-group cleanup retain implementation tests."
 sources = ["crates/bboxy450-harness/verification/coverage.toml", "crates/bboxy450-harness/verification/contracts.toml", "crates/bboxy450-harness/tests/formal/models.rs", "crates/bbt-mux/tests/mcp.rs", "scripts/harness-submodule.py"]
+
+[[crate]]
+name = "bboxy450-log-converter"
+status = "contract-model"
+models = ["LcAppendLog", "BrokenLcAppendLogTornRead", "BrokenLcAppendLogEarlyIndex", "BrokenLcAppendLogMixedTable"]
+scope = "LcAppendLog: three frames with two events each, two readers, one rotation, crash/recovery, atomic index rename and a parked seek-table reader. Per-reader weak fairness. No Rust/filesystem refinement or kernel power-loss guarantee; CBOR, zstd and parsing are implementation-tested. See verification/log-converter.md."
+sources = ["crates/bboxy450-log-converter/src/bxl/mod.rs", "crates/bboxy450-log-converter/src/bxl/writer.rs", "crates/bboxy450-log-converter/src/bxl/reader.rs", "crates/bboxy450-log-converter/src/bxl/frame.rs", "crates/bboxy450-log-converter/src/bxl/wire.rs", "crates/bboxy450-log-converter/src/ir/mod.rs", "crates/bboxy450-log-converter/src/ir/cbor.rs", "crates/bboxy450-log-converter/src/ir/keys.rs"]

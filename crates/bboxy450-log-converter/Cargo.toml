@@ -1,0 +1,40 @@
+# Copyright 2026 Boxy (bboxy450) and contributors.
+# SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+# Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+# Copied from bboxy450-log-converter Cargo.toml at bb87743; adapted to workspace metadata.
+# Copyright 2026 Boxy (bboxy450) and contributors.
+# SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+# Project: bboxy450-log-converter — https://github.com/bboxy450/bboxy450-log-converter
+# License: https://github.com/bboxy450/bboxy450-log-converter/blob/main/LICENSE
+# Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+# Policy: https://github.com/bboxy450/bboxy450-log-converter/blob/main/ATTRIBUTION.md
+[package]
+name = "bboxy450-log-converter"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+description = "Common IR and cross-harness conversion for Claude Code, Codex and bboxy450-harness logs"
+repository.workspace = true
+license-file = "LICENSE"
+
+[features]
+default = []
+
+[dependencies]
+blake3 = "1"
+ciborium = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+ulid = { version = "1", features = ["serde"] }
+
+zstd = "=0.14.3"
+notify = "=8.2.0"
+twox-hash = { version = "=2.1.5", default-features = false, features = ["std", "xxhash64"] }
+
+[dev-dependencies]
+tempfile = "3"
+bboxy450-tlc = "0.1.1"

@@ -20,6 +20,54 @@ spec.loader.exec_module(harness)
 
 
 class SubmoduleTests(unittest.TestCase):
+    def test_converter_secret_shapes_fail_without_exposing_values(self):
+        harness.validate_converter_secret('synthetic public fixture')
+        for seed in ['sk-' + 'x' * 24, 'ghp_' + 'x' * 32,
+                     'api_key=' + 'a' * 64, '-----BEGIN ' + 'RSA PRIVATE KEY-----']:
+            with self.assertRaisesRegex(ValueError, 'value suppressed') as error:
+                harness.validate_converter_secret(seed)
+            self.assertNotIn(seed, str(error.exception))
+
+    def test_real_resolution_includes_converter_direction_and_d4949(self):
+        harness.check_resolution(Path(__file__).resolve().parent.parent)
+
+    def test_converter_upward_and_banned_transitive_dependency_controls(self):
+        def graph(name, source=None):
+            return {'packages': [{'id': 'lc', 'name': harness.CONVERTER},
+                                 {'id': 'middle', 'name': 'synthetic-helper'},
+                                 {'id': 'bad', 'name': name, 'source': source}],
+                    'resolve': {'nodes': [{'id': 'lc', 'dependencies': ['middle']},
+                                          {'id': 'middle', 'dependencies': ['bad']},
+                                          {'id': 'bad', 'dependencies': []}]}}
+        self.assertEqual(len(harness.validate_converter_dependencies(graph('serde'))), 3)
+        for name in ['bbt-mux', 'bboxy450-term-mux', 'bboxy450-term', 'bboxy450-harness']:
+            with self.assertRaisesRegex(ValueError, 'forbidden upward dependency'):
+                harness.validate_converter_dependencies(graph(name))
+        for name in harness.DENIED_CONVERTERS:
+            with self.assertRaisesRegex(ValueError, 'd4949 denied dependency'):
+                harness.validate_converter_dependencies(graph(name))
+        with self.assertRaisesRegex(ValueError, 'd4949 denied dependency'):
+            harness.validate_converter_dependencies(graph('innocent-alias', 'git+https://github.com/ctxrs/ctx'))
+
+    def test_converter_copied_code_and_target_alias_controls(self):
+        with tempfile.TemporaryDirectory() as own:
+            root = Path(own)
+            crate = root / 'crates' / harness.CONVERTER
+            (crate / 'src').mkdir(parents=True)
+            manifest = crate / 'Cargo.toml'
+            manifest.write_text('[package]\nname="bboxy450-log-converter"\n')
+            source = crate / 'src/lib.rs'
+            source.write_text('// Inspired by ctx; independently implemented.\n')
+            harness.validate_converter_sources(root)
+            for verb in ['Copied', 'Adapted', 'Translated']:
+                source.write_text('// ' + verb + ' from ctx\n// https://github.com/ctxrs/ctx\n')
+                with self.assertRaisesRegex(ValueError, 'd4949 copied origin'):
+                    harness.validate_converter_sources(root)
+            source.write_text('')
+            manifest.write_text('[target.\'cfg(unix)\'.dev-dependencies]\nrenamed={package="casr", version="1"}\n')
+            with self.assertRaisesRegex(ValueError, 'd4949 denied manifest dependency'):
+                harness.validate_converter_sources(root)
+
     def test_real_parent_json_features_are_isolated_and_acp_is_rejected(self):
         root = Path(__file__).resolve().parent.parent
         harness.check_json_features(root)

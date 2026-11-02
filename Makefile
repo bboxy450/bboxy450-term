@@ -104,6 +104,8 @@ help:
 	  'make build-harness               Build the in-suite seat binary; add target/debug to PATH' \
 	  'make test-harness-branding       All harness menu/row labels, marks and omission control' \
 	  'make test-harness-native         Scripted harness seat, completed turn and bounded group cleanup' \
+	  'make test-log-converter          Converter IR/bxl unit tests, fmt, Clippy and dependency guards' \
+	  'make test-log-converter-native   P0 resume probes, pinned zstd compatibility and 100 MB corpus' \
 	  'make test-capability-native      Capability file and real Codex shared-daemon environment scans' \
 	  'make init-submodules             Initialize and verify the pinned harness unattended' \
 	  'Fresh clone: git clone --recurse-submodules https://github.com/bboxy450/bboxy450-term' \
@@ -1547,6 +1549,7 @@ test-formal:
 	python3 -I scripts/formal-stage.py tlc-verify -- cargo run --locked -p bboxy450-tlc --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
 	python3 -I scripts/formal-stage.py yarn-verify -- cargo run --locked -p bboxy450-yarn --features model --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
 	BBOXY_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/formal/models' python3 -I scripts/formal-stage.py contracts -- cargo test --locked -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)'; \
+	BBOXY_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/formal/models' python3 -I scripts/formal-stage.py converter-contracts -- cargo test --locked -p bboxy450-log-converter --test formal_models --target-dir '$(TARGET_DIR)'; \
 	FORMAL_OUT='$(abspath $(TARGET_DIR))/formal/harness' python3 -I scripts/formal-stage.py harness-native -- cargo test --locked -p bboxy450-harness --test formal_models --test formal_nonvacuity --test reactor_projection --target-dir '$(TARGET_DIR)'; \
 	python3 -I scripts/formal-stage.py harness-export -- python3 -I scripts/harness-submodule.py --models '$(abspath $(TARGET_DIR))/formal/harness' --target '$(abspath $(TARGET_DIR))/formal/models'; \
 	python3 -I scripts/formal-stage.py java-parity -- python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' $(if $(filter 1,$(FORMAL_REUSE)),--reuse,)
@@ -1962,3 +1965,20 @@ test-harness-branding-control: init-submodules
 	cat '$(TARGET_DIR)/harness-branding-control.log'; test "$$status" = 101; \
 	grep -F 'broken picker omits bboxy450-harness' '$(TARGET_DIR)/harness-branding-control.log'; \
 	printf '%s\n' 'branding omission control: expected red 101'
+
+.PHONY: check-log-converter test-log-converter check-log-converter-policy
+check-log-converter:
+	@set -eu; . ./scripts/cache-env.sh; cargo check --locked -p bboxy450-log-converter --all-targets
+
+test-log-converter: check-log-converter-policy
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo fmt -p bboxy450-log-converter -- --check; \
+	cargo clippy --locked -p bboxy450-log-converter --all-targets --all-features -- -D warnings; \
+	cargo test --locked -p bboxy450-log-converter
+
+check-log-converter-policy:
+	@python3 -I scripts/harness-submodule.py --check-resolution
+
+.PHONY: test-log-converter-native
+test-log-converter-native:
+	@sh scripts/e2e/log-converter-native.sh

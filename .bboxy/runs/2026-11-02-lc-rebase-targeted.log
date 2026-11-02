@@ -1,0 +1,28 @@
+# Copyright 2026 Boxy (bboxy450) and contributors.
+# SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+Authority: Oracle follow-up 01M6DHH92TQK8CRXD26HACG8E0.
+Scope: rebase PR91; targeted converter checks only; send SHA, then mark ready.
+Old head: 082ca4aeaa1e48ef4a2b80490637130b4afa3e6c.
+New base: 0ab3930cf5bfd028c5d63e440fe3448973b16b5f (contains 3f025918).
+Rebased/tested head: c66e9c45b1c17bf0348e194a3a8e2e3915ada390.
+All 7 rebased commits: G, approved key 9B07E849480C68328CA20684844ECC0587DE7AB0.
+Converter tree diff against prior branch: empty.
+Conflicts resolved: preserve main branding/formal-stage/reuse wiring and GitKB
+registries, add converter exporter/targets/controls; preserve landing fixture
+formal stages while adding native converter target names.
+Static Python AST and TOML parse: 0; 148 unique models,63 contracts,33 crates.
+Command: make test-log-converter
+Exit: 0
+Coverage: dependency/provenance/secrets guard, fmt, all-target/all-feature Clippy,
+34 Rust test functions including 68-case golden and 4 native append-log models.
+Zero failures; 2 full-only witnesses intentionally ignored.
+Default two threads; executable test time 33.64s.
+Complete output: /tmp/lc-rebase-targeted-20261102.log
+Output SHA256: fb148749026b0a97ee8aeda1a9c937288b15fba0fdff12baa8de575ca500a0d0
+Full gate/Java/native-client/100MB runs: not run in this follow-up as instructed.
+Oracle owns the single full gate on the combined #91+#95+P3 candidate.
+Old receipts remain historical, not relabelled to this rebased head.
+Report: [[reports/2026-11-02-lc-rebase-targeted-verification]] (#5192).
+No merge, release or land.sh.

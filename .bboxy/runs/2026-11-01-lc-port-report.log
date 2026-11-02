@@ -1,0 +1,201 @@
+LC-port #5096 — initial compiling workspace checkpoint
+Worktree: /Users/feral/mydev/bboxy450-term-log-converter
+Branch: log-converter; no merge or land.sh.
+Authority: delegated task 2026-11-01-lc-port-into-term and Oracle early-push message 01M6CPY9ZQFVNZYVQW5EDZD4PZ.
+
+Ported P1 source/IR and 68-case CBOR goldens from retired repo bb87743b.
+Logic retained; headers now start with the term policy and retain original origin notices.
+Workspace version/repository metadata inherited. Public harness label and provider aliases match d5089.
+Crate uses ordinary dependencies only; it imports no application or harness crate.
+The standalone formal.py was not copied; formal inventory integration follows.
+
+Commands:
+- make lock — exit 0, six new packages; no unrelated dependency upgrades.
+- make check-log-converter — exit 0; all crate targets compile inside the initialized pinned-harness workspace.
+
+This is the explicitly authorized early checkpoint for P3/P4 consumers.
+Full make test has NOT run at this checkpoint. P0, shared gate integration and P2 follow on this branch.
+The report will be extended with full verification and copied to the requested harness KB log at handoff.
+
+RecordId dependency checkpoint
+- Authority: lc-ir §2 and Oracle messages 01M6CQBBW5WC8WPS0SDB668Y53 /
+  01M6CQFWQK3SGEP9A01E4QH2TK. RecordId is the five-field EventId framing
+  with empty role_tag; references compute directly from the native key.
+- Event.record added at CBOR key 8; existing field numbers retained.
+  Event.parent and Compaction.replaced_through now carry RecordId.
+- Deliberately regenerated all 68 fixed golden cases: 66 event cases changed
+  for the new required record field. Session and the standalone mixed-key
+  ordering vector are unchanged. Existing EventId bytes are unchanged.
+- cargo test --locked -p bboxy450-log-converter: exit 0; 11 compatibility,
+  one 68-case golden, two CLI tests. Log: /tmp/lc-record-id-tests.log.
+- Stateless multi-event/single-event parent joins pass. Broken control that
+  guesses a block-0 parent misses the single empty-tag event, as specified.
+- Workspace inventory added; full make test still pending at this checkpoint.
+
+P0 and P2 source checkpoint (full workspace gate pending)
+- P0 logic copied from retired-repo 7945ad92 into C/probes. Only origin
+  headers, workspace paths, README commands and policy-header wiring changed.
+  The pure witness/isolation controls are C/tests/probe_checks.rs.
+- scripts/e2e/log-converter-native.sh drives the real clients from full
+  ci-local only, with labelled missing-client SKIP. It never joins presubmit.
+  Original P0-only native run: exit 0, all five scripts exit 0, seven positive
+  resume witnesses, six expected negative controls, zero SKIP. Every positive
+  requires CLI exit 0 and prior-turn content in captured mock model input.
+  Log: /tmp/lc-port-native.log (synthetic temporary fixtures only).
+- Root cargo-metadata resolution guard now traverses the converter's complete
+  graph and rejects upward app/harness edges, d4949 packages and renamed or
+  platform manifest aliases. Declared copied/adapted/translated banned origins
+  are rejected; independent-inspiration credit is allowed. Secret-shape findings
+  suppress values. Ten Python controls pass, including the preserved real ACP /
+  serde_json-preserve_order rejection. /tmp/lc-bxl-dependency-controls.log.
+- C/src/bxl implements canonical IR frames, per-log nonblocking writer ownership,
+  one bounded worker lane, per-frame fsync, data-before-index atomic sidecar
+  rename, bounded reader/tail, cursor resume, recovery, seal/rotation, standard
+  seek tables, dictionary-ID/missing checks, streaming blob deduplication and
+  Decoded forwarding. Existing keys are retained through typed forwarding.
+  Recovery/seek conservatively scan; no constant-time seek claim is made.
+- Default crate tests: exit 0. P2 witnesses: 7 bxl API tests, 2 torn/checksum,
+  3 tail/process, 2 size/rotation, 2 future-format/dictionary, 1 determinism,
+  1 native-model corpus, and 1 P0 control. Existing 11 compatibility, 68-case
+  golden and 2 CLI cases also pass. Two full-run-only witnesses are explicitly
+  ignored by ordinary cargo tests (upstream zstd CLI and 100 MB corpus).
+  Log: /tmp/lc-bxl-term-tests.log. This unoptimized development run is not the
+  d5002 runtime measurement; the term CI profile measurement is still running.
+- All-target/all-feature crate clippy: exit 0 after scoping term's UI-only
+  blocking-IO lint exceptions to converter IO and unattended test fixtures.
+  Log: /tmp/lc-bxl-term-clippy.log.
+- LcAppendLog plus three real broken transitions join term's corpus, contracts,
+  coverage and native exporter. Root formal.py accepts a named control list,
+  preserving old pairs; omitted controls fail. Fifteen formal infrastructure
+  tests pass. Java parity in this workspace is not yet claimed.
+- Source notices, all 33 workspace license inventories, and layering: exit 0.
+  C includes the canonical license/notice/attribution and prior-license copies.
+- Pinned zstd 1.5.7 build initially hit a 180 s tool-setup guard under load.
+  The build-only guard is now 600 s and owns a process group for timeout cleanup.
+  Compatibility remains mandatory; no timeout is counted as passing evidence.
+- Full ci-local native target includes pinned zstd -d/-t and a 100 MB raw-included
+  size test. Neither runs in presubmit. Actual results are pending here.
+- verification/log-converter.md records model bounds, fairness, source mappings,
+  filesystem assumptions and implementation-only coverage. No Rust/kernel
+  refinement, full TLC completeness or real-service validation is claimed.
+  P9 dictionaries and later-phase parse/watch/switch work remain out of scope.
+- Root ATTRIBUTION and its other-crate mirrors are outside #5096 allowed paths;
+  original P1 inspiration/origin notices remain attached to the ported source.
+- This early checkpoint is pushed under the explicit dependency-unblocking
+  instruction. Full make test and current-source formal evidence remain pending.
+
+Term-profile verification and CI fixture correction
+- make test-log-converter: exit 0 under term's optimized CI defaults and two
+  test threads. Executable-test totals from libtest: 42.94 s, below the 60 s
+  affected-test share. Whole target wall time 177.73 s includes initial
+  compilation and waiting for the build directory; those are build time.
+  Log: /tmp/lc-bxl-term-ci-profile-tests.log.
+- make test-log-converter-native: exit 0, including pinned upstream zstd -d/-t,
+  the standard seek table cross-check and the 100 MB raw-included ratio/readback
+  witness (47.90 s, full-run only), followed by all five P0 scripts.
+  Seven positive and six negative resume witnesses; no missing clients.
+  Log: /tmp/lc-bxl-term-native.log.
+- First full make test: exit 2. All 14 signature controls passed, then the
+  landing fixture's synthetic Makefile had no new converter targets. 139 of
+  140 fixtures passed; full CI stopped before workspace build. Failure log:
+  /tmp/lc-term-make-test-first-ci.log and /tmp/lc-term-make-test.log.
+- scripts/test-landing.py now includes both converter targets in its private
+  Makefile and verifies a native-converter failure cannot produce a green
+  receipt. The exact affected fixture passed: one test, 18.432 s, exit 0;
+  /tmp/lc-ci-fixture-fix.log. A fresh signed full-stack run is required.
+- Corrected a provenance mistake before handoff: pushed Report trailers named
+  this run log, but term requires a typed immutable report in each commit tree.
+  The delegated task and canonical initial build report now accompany the first
+  checkpoint and are inherited unchanged. No Rust/probe logic changed during
+  this correction. Old commits are retained by e6-log-converter-before-report-fix.
+  Replacement bases: c4a36ea6 -> 28cb6db3; aff296d4 -> c97f6d1a;
+  f7149868 -> c8ab7dd1. Each replacement is signed by the approved key.
+
+Extended CI phase verification and external blocker
+- On signed 503197ba, all 140 fast landing fixtures passed (151.011 s).
+  The full make test then exited 2 at the unchanged resource-ledger signal
+  fixture: scripts/test-resource-ledger.py:222 expected 143, observed -15.
+  The child starts before wrapper SIGTERM handlers are installed. No signal
+  was sent by this seat's attempted run cancellation; its guarded PID lookup
+  found the already-exited make process before any signal operation.
+  /tmp/lc-term-make-test-second-ci.log retains the failure.
+- The Oracle assigned that startup race to E1c separately and explicitly told
+  this seat not to change it. It remains the known full-gate blocker; no full
+  success is claimed. Resource-ledger source/tests are untouched here.
+- scripts/test-landing-recovery.py now expects both full-run converter targets
+  in the actual ci-command sequence. All 46 extended recovery tests passed,
+  exit 0 in 315.396 s: /tmp/lc-landing-recovery.log. Its source has the term header.
+- The complete branch-range committed-tree report guard passed at 503197ba:
+  SIGNED_RANGE=origin/main..HEAD cargo test --locked -p bboxy450-doc --test corpus
+  reports::committed_report_trailers_resolve_in_their_own_trees -- --exact.
+  Exit 0, one test, 2.53 s: /tmp/lc-port-report-range.log.
+- Remaining workspace build/clippy/unit/formal/native/smoke stages will be
+  verified separately while the external startup-race fix proceeds. Such a
+  tail run is not a normal full-CI receipt. After that fix lands, the required
+  full make test must be rerun on the integrated signed head.
+
+Whole-frame cursor correction
+- Review found that next_frame returned every record but left index_in_frame at
+  zero. Saving and resuming that cursor could replay the delivered frame.
+- Reader now separates private frame prefetch from public whole-frame delivery:
+  record/event iteration starts at zero, while next_frame advances the cursor
+  past all returned records. Resume and seek keep their explicit saved indices.
+- A focused test checks two frames, resumes after the first, and requires only
+  the second frame's events. Its zero-index broken control replays event zero.
+  The existing NoGapNoDup model describes the unchanged intended contract;
+  this closes an implementation-witness gap. Full remaining-stage verification
+  is running and will build/test this correction before the formal tail.
+
+Supplemental workspace verification completed on 1067033e
+- Workspace build and strict all-target default clippy: exit 0.
+- Workspace unit/integration/doc tests: exit 0. The one non-PTY inheritance
+  fixture was excluded from concurrent tests and passed separately in the
+  native harness target. Converter executable runtime: 40.72 s at two threads.
+- Capability scan and deliberately broken environment control: exit 0;
+  source hash restored. make test-harness-native: exit 0.
+- make test-log-converter: exit 0 (fmt, all-feature clippy, tests, guards).
+- make test-log-converter-native: exit 0; pinned zstd -d/-t and standard seek
+  table, 100 MB raw-included size/readback (15.73 s), all five P0 scripts,
+  seven positive resumes, six expected negatives, zero missing-client skips.
+- make test-formal: exit 0; all 209 native/Java graph/verdict pairs match,
+  33 crates and 85 contracts. LcAppendLog pass: 9476 states / 43265 edges;
+  torn-read control: 11114 / 50704; early-index: 11312 / 54342;
+  mixed-table: 15152 / 66177. Each control has the expected safety violation.
+- Formal source 1067033e, dirty=false, evidence SHA-256
+  da379dece34315c980e3cc3bfd79daad726b231bcedfdabbddc249524cb613f0;
+  retained common-Git archive .git/bboxy-formal-evidence/<that digest>/.
+  Fresh --verify-evidence: exit 0, including after owned-cache cleanup.
+- UI lint and isolated unattended headless smoke: exit 0.
+- Supplemental ci-local --after-tests: exit 1, checkpoint-bounded disk guard
+  only. Other 26 default invariants pass; 11 marked slow remain normal skips.
+  The guard saw 10679144448 free bytes, below 10 GiB. I removed only my
+  generated target cache: 117 older executable variants, target/plugin-fixtures
+  and 471 older rlib variants. No sources, peers or shared cache were touched.
+  Exact current recovery binary SHA-256 remained
+  a90e6d7314ecfdfe364cdfa7c9d4a448e8de6b16e0e336cf187a59f873fc5d99.
+  R5G_SEATS=4 RUST_TEST_THREADS=2 target/debug/deps/recovery-1f648b33642729d0
+  checkpoint_bounded_recovery --exact: exit 0, one test, 14.94 s.
+  Cleanup manifest /tmp/lc-own-target-cleanup.json; rerun stdout
+  /tmp/lc-checkpoint-after-cleanup.log. The original tail exit remains 1.
+- Current complete-range report-trailer guard: exit 0 on 1067033e. All six
+  implementation commits have G signatures from the approved key.
+- Supplemental stdout: /tmp/lc-term-rest-combined.log, assembled from numbered
+  chunks. One oversized workspace-test chunk was truncated during collection;
+  the file is not claimed as a complete raw transcript. Command statuses and
+  converter/formal results are retained.
+
+Required canonical make test is still exit 2 at the resource-ledger startup
+race on 503197ba (expected143, actual-15). This is not a green normal receipt
+for 1067033e. Oracle assigned E1c; resource-ledger source/tests are unchanged.
+Remote main was 86ce2653 at handoff and lacked the repair. Rebase with a
+heads-up and run normal make test after that fix lands. PR #91 remains draft;
+no merge or land.sh.
+
+Full immutable native reports, copied with issued metadata into this worktree:
+- [[reports/2026-11-02-lc-port-verification]] (#5137,
+  id 01M6D3SAEC3WEFAAP0WSVEV8TK), task #5096.
+- [[reports/2026-11-02-lc-p2-bxl-verification]] (#5139,
+  id 01M6D3ST0BVK0Q95N2H2W70AGH), task #5084.
+Both honestly record verify.command=make test, exit_code=2. The exact delegated
+P2 task accompanies its report so committed-tree task references resolve.
+The report-only signed handoff commit contains no product/model change.

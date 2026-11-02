@@ -622,3 +622,15 @@ implementation_tests = ["plugins/gitkb/tests/conformance.rs", "crates/bbt-plugin
 assumptions = "Two seats; one call and one call child at a time, and one index child concurrently. Today the backend environment is scrubbed and extended only while binding the root, and no call writes attribution into it, so attribution reaches no child; per-child delivery of a call's own attribution is not on main. The scrubbed allowlist itself is implementation-tested."
 property = "A call's git-kb child carries no attribution or its own call's (ChildCarriesOnlyItsOwnCallsAttribution) and an index build's children carry none (IndexChildrenAreUnattributed). The broken control has a call write its attribution into the shared backend environment and must fail safety. Witnesses: backend.rs scrubbed environment; the plugin doctor's env.children control. Shipped as plugins/gitkb/models/GitKbAttribution.tla."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "LcAppendLog"
+models = ["LcAppendLog", "BrokenLcAppendLogTornRead", "BrokenLcAppendLogEarlyIndex", "BrokenLcAppendLogMixedTable"]
+controls = ["BrokenLcAppendLogTornRead", "BrokenLcAppendLogEarlyIndex", "BrokenLcAppendLogMixedTable"]
+sources = ["crates/bboxy450-log-converter/src/bxl/writer.rs", "crates/bboxy450-log-converter/src/bxl/reader.rs", "crates/bboxy450-log-converter/src/bxl/frame.rs", "crates/bboxy450-log-converter/src/bxl/mod.rs", "crates/bboxy450-log-converter/src/bxl/wire.rs", "crates/bboxy450-log-converter/tests/formal/append_log.rs", "crates/bboxy450-log-converter/tests/formal/export.rs", "crates/bboxy450-log-converter/tests/formal_models.rs"]
+implementation_tests = ["crates/bboxy450-log-converter/tests/bxl.rs", "crates/bboxy450-log-converter/tests/torn.rs", "crates/bboxy450-log-converter/tests/tail.rs", "crates/bboxy450-log-converter/tests/compat.rs", "crates/bboxy450-log-converter/tests/size.rs"]
+assumptions = "One owning writer per log; complete bytes survive this local-filesystem abstraction; recovery syncs complete frames. Weak fairness per reader action group; arbitrary OS IO/power loss is not proven."
+bounds = "Three frames with two dense events each, two readers, one rotation; two seek-table halves and a parked reader."
+property = "NoTornRead, IndexNeverPastDurable, IndexSound, SyncedSurvives, RecoveryIdempotent; TailCatchesUp under explicit weak fairness."
+checks = ["make test-formal", "make test"]
+title = "Append-only durable log and concurrent tail readers"

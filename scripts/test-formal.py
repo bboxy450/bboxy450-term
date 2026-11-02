@@ -115,6 +115,15 @@ print("Model checking completed. No error has been found.")
             self.assertEqual(len(formal.contracts(root, {"Boundary", "BrokenBoundary"})), 1)
             with self.assertRaisesRegex(ValueError, "pair"):
                 formal.contracts(root, {"Boundary"})
+            multi = record.replace('models=["Boundary","BrokenBoundary"]',
+                                   'models=["Boundary","BrokenFirst","BrokenSecond","BrokenThird"]\n'
+                                   'controls=["BrokenFirst","BrokenSecond","BrokenThird"]')
+            path.write_text(multi)
+            complete = {"Boundary", "BrokenFirst", "BrokenSecond", "BrokenThird"}
+            self.assertEqual(len(formal.contracts(root, complete)), 1)
+            for missing in complete:
+                with self.assertRaisesRegex(ValueError, "pair"):
+                    formal.contracts(root, complete - {missing})
             path.write_text(record + record)
             with self.assertRaisesRegex(ValueError, "duplicate"):
                 formal.contracts(root, {"Boundary", "BrokenBoundary"})
