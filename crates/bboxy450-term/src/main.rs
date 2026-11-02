@@ -8151,6 +8151,9 @@ impl App {
                 }
                 let layout = self.ui_layout(logical, &layouts, document_observation);
                 self.present_ui(self.meter.total_frames(), layout);
+                // An effect can settle during painting (a sidebar animation ending) with
+                // no backend wake to drain; poll here so its frame target is still set.
+                self.poll_ui_frame(self.meter.total_frames());
             }
             if !self.app_ready_sent
                 && !self.backend_lost
