@@ -1,0 +1,27 @@
+{
+  "command": "make test",
+  "exit_code": 2,
+  "source": "3d9316d4ae846f71b4e77a7c2dbd79f6ff372c0c",
+  "log": "target/ci-local-disk-refusal.log",
+  "log_sha256": "0723ce0e22f4f5d82521db6b55cd296cd11f24fa5c4c25d0007900d5f6f8de65",
+  "failure": {
+    "invariant": "checkpoint-bounded",
+    "test": "checkpoint_bounded_recovery",
+    "reference": "crates/bbt-mux/tests/recovery.rs:329",
+    "free_bytes": 10010890240,
+    "required_free_bytes": 10737418240
+  },
+  "passed": [
+    "workspace build",
+    "strict all-target Clippy",
+    "workspace tests and doctests",
+    "capability scan",
+    "native environment leak control",
+    "native harness",
+    "205 native/TLC models / 32 crates / 84 contracts",
+    "headless smoke",
+    "26 other active invariants"
+  ],
+  "current_free_bytes": 36175417344,
+  "formal_evidence_sha256": "bc8d549968956e506751f55daab770931106bf7d5057de917c077f62fb85e369"
+}
