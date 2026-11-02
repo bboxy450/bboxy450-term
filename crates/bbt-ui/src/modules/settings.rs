@@ -1092,7 +1092,7 @@ impl Build<'_> {
             vec![
                 named(
                     format!("{k}/hname"),
-                    txt(
+                    wrap(
                         "",
                         label,
                         ui::Text {
