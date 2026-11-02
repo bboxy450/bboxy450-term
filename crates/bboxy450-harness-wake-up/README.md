@@ -72,7 +72,7 @@ Slop respectfully. Keep the credit attached.
 
 ## Hook input bounds
 
-A hook has one shared 50 ms deadline. Raw CLI/stdin JSON is limited to 2 MiB,
+A hook has one shared 50 ms deadline. Raw CLI/stdin JSON is limited to 16 MiB,
 then projected to the original status/provenance fields: task descriptions,
 questions, artifact paths and agent identity, without tool file contents or
 command output. The retained event stays limited to 64 KiB and the terminal OSC
