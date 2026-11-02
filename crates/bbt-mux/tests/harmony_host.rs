@@ -1450,6 +1450,43 @@ async fn real_gitkb_host_lifecycle() {
     let reference: d::RecordRef = serde_json::from_value(created.clone()).unwrap();
     assert!(reference.external_id.is_some());
     assert_ne!(reference.id, reference.external_id.clone().unwrap());
+    let native = |args: &[&str]| -> Value {
+        let output = Command::new(&backend)
+            .current_dir(&repo)
+            .env_clear()
+            .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+            .env("HOME", &home)
+            .env("TMPDIR", &native_temp)
+            .env("GITKB_ROOT", &repo)
+            .env("GITKB_WORKSPACE", "main")
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "native {args:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        serde_json::from_slice(&output.stdout).unwrap()
+    };
+    // Review 5004 finding 1: the signed write kept its proof out of the
+    // GitKB document and kept the seat attribution in it.
+    let raw = native(&[
+        "show",
+        "--source",
+        "workspace",
+        "--raw-content",
+        "--json",
+        "--",
+        &reference.slug,
+    ]);
+    let source_bytes = raw["rawContent"].as_str().unwrap();
+    assert!(
+        !source_bytes.contains("bboxy_signed_record") && !source_bytes.contains("signature"),
+        "{source_bytes}"
+    );
+    assert!(raw["document"]["frontmatter"]["authorship"].is_object());
+    assert!(raw["document"]["frontmatter"]["updated_by"].is_string());
     let mut front = created["frontmatter"].clone();
     front["title"] = json!("Updated native custom type");
     success(call(&logic.client,oracle,"knowledge_write",json!({"ref":reference,"etag":created["etag"],"frontmatter":front,"body":"Updated native document"})).await);
@@ -1480,29 +1517,90 @@ async fn real_gitkb_host_lifecycle() {
             .len(),
         1
     );
+    // Review 5004 findings 5 and 7: a 50 KB body comes back in 16 KiB pages,
+    // and fetch carries the relationships `git-kb show --json` reports.
+    let large = "0123456789abcdef\n".repeat(3100);
+    success(call(&logic.client,oracle,"knowledge_write",json!({"path":"notes/fifty.md","frontmatter":{"type":"note","title":"Fifty","parent":reference.slug},"body":large})).await);
+    let (mut args, mut pages, mut restored) = (json!({"locator":"notes/fifty"}), 0, String::new());
+    let first_page = loop {
+        let page = success(call(&logic.client, oracle, "knowledge_fetch", args.clone()).await);
+        pages += 1;
+        restored.push_str(page["body"].as_str().unwrap());
+        assert_eq!(page["truncated"], !page["next"].is_null());
+        assert!(page["body"].as_str().unwrap().len() <= 16 * 1024);
+        if pages == 1 {
+            args["etag"] = page["etag"].clone();
+        }
+        let next = page["next"].clone();
+        if next.is_null() {
+            break page;
+        }
+        args["body_offset"] = next;
+    };
+    assert_eq!(restored, large);
+    assert!(pages >= 4, "{pages} pages");
+    let shown = native(&["show", "--json", "--", "notes/fifty"])["documents"][0].clone();
+    let expected = json!({"references":shown["references"],"depends_on":shown["depends_on"],
+        "blocks":shown["blocks"],"parent":shown["parent"]});
+    assert_eq!(first_page["relationships"], expected);
+    assert_eq!(first_page["relationships"]["parent"], reference.slug);
+    // Review 5004 findings 2 and 8, through the plugin's seat tools.
+    let next = success(
+        call(
+            &logic.client,
+            oracle,
+            "plugin_tool_gitkb_create_next",
+            json!({"family":"tasks/review","title":"Next in family"}),
+        )
+        .await,
+    );
+    assert_eq!(next["result"]["slug"], "tasks/review-1");
+    assert_eq!(next["result"]["authority"], "local");
+    assert!(next["result"].get("sync_required").is_some());
+    let sync = call(
+        &logic.client,
+        worker,
+        "plugin_tool_gitkb_sync_status",
+        json!({"pathspec":"tasks/review-1"}),
+    )
+    .await;
+    assert_eq!(
+        sync["structuredContent"]["error"]["code"], "remote_unconfigured",
+        "{sync:#}"
+    );
     let task=success(call(&logic.client,oracle,"knowledge_write",json!({"path":"tasks/private-lifecycle.md","frontmatter":{"type":"task","title":"Native lifecycle","verify":"private check","acceptance":["persisted"]},"body":"Explicit private task intent"})).await)["record"].clone();
     let slug = task["slug"].as_str().unwrap().to_owned();
     assert!(!slug.is_empty());
-    success(
-        call(
-            &logic.client,
-            oracle,
-            "task_delegate",
-            json!({"task_path":slug,"seat_id":worker}),
-        )
-        .await,
+    // Review 5004 finding 3: GitKB stores only its native status. The host's
+    // open task is native backlog; claimed has no GitKB status, so delegation
+    // is refused with a typed error and nothing is written.
+    let native_task = native(&[
+        "show",
+        "--source",
+        "workspace",
+        "--raw-content",
+        "--json",
+        "--",
+        &slug,
+    ]);
+    assert_eq!(native_task["document"]["frontmatter"]["status"], "backlog");
+    assert!(
+        native_task["document"]["frontmatter"]
+            .get("bboxy_status")
+            .is_none()
     );
-    success(call(&logic.client,worker,"task_report",json!({"task_path":slug,"summary":"Native persisted","verify_result":{"command":"private check","exit_code":0,"evidence":[{"criterion":"persisted","reference":"canonical native workspace"}]}})).await);
-    success(
-        call(
-            &logic.client,
-            oracle,
-            "task_accept",
-            json!({"task_path":slug}),
-        )
-        .await,
+    let refused = call(
+        &logic.client,
+        oracle,
+        "task_delegate",
+        json!({"task_path":slug,"seat_id":worker}),
+    )
+    .await;
+    assert_eq!(
+        refused["structuredContent"]["error"]["code"], "unmappable_status",
+        "{refused:#}"
     );
-    let accepted = success(
+    let unchanged = success(
         call(
             &logic.client,
             oracle,
@@ -1511,10 +1609,10 @@ async fn real_gitkb_host_lifecycle() {
         )
         .await,
     );
-    assert_eq!(accepted["metadata"]["status"], "accepted");
+    assert_eq!(unchanged["metadata"]["status"], "open");
     let list_started = std::time::Instant::now();
     let assigned = success(call(&logic.client, worker, "task_list", json!({})).await);
-    assert_eq!(assigned["items"].as_array().unwrap().len(), 1);
+    assert_eq!(assigned["items"].as_array().unwrap().len(), 0);
     eprintln!(
         "real GitKB scoped task_list elapsed={:?}",
         list_started.elapsed()
@@ -1613,6 +1711,6 @@ async fn real_gitkb_host_lifecycle() {
     restarted.shutdown().unwrap();
     supervisor.shutdown().unwrap();
     eprintln!(
-        "real GitKB host: trust/check/enable/select, pinned root-scoped skill reads, typed create/update, slug delegate/report/accept, native commit, signed post-commit edit, restart all completed"
+        "real GitKB host: trust/check/enable/select, pinned root-scoped skill reads, typed create/update, proof kept out of the document, 16 KiB fetch pages, git-kb relationships, next-in-family create, native status with a typed unmappable delegate refusal, native commit, signed post-commit edit, restart all completed"
     );
 }

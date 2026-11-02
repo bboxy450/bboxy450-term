@@ -135,10 +135,16 @@ fn seat_tools(entry: &Entry, record: &TrustRecord) -> Vec<SeatTool> {
             ) else {
                 continue;
             };
+            // Which identifiers a data_source method accepts (review 5004 finding 4).
+            let identifiers = if contract == Contract::DataSource {
+                " resolve takes a locator: a slug, a path ending .md, #N, the id (bboxy ULID) or the external_id (the provider's native ID); the other methods take the ref resolve returns. In every result id is the bboxy ULID, external_id the native ID and slug the path without .md."
+            } else {
+                ""
+            };
             tools.push(SeatTool {
                 name: seat,
                 description: format!(
-                    "{} {} from the {} plugin.",
+                    "{} {} from the {} plugin.{identifiers}",
                     contract.name(),
                     command.name,
                     name.provider

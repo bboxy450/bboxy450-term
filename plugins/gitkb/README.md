@@ -110,14 +110,31 @@ GitKB and portable document semantics:
 | Explicit workspace or committed source | Source-aware digest (committed: native id and version; workspace: bytes) and GitKB generation `etag`; no fallback from a deleted workspace |
 | Frontmatter and Markdown | Native parsed frontmatter/body preserved, with canonical metadata under `gitkb` |
 | Typed native graph relationships | Portable edges with native relationship names; unweighted native edges have weight 1 |
-| Native task status | Draft/backlog → open, active → running, completed → done |
-| Host lifecycle status | Native extension `bboxy_status`; outward portable `status` |
-| Host-signed write intent | Exact opaque `bboxy_signed_record` string; dedicated `signed_record` result field |
+| Native task status | The one table below, both ways; only native `status` is stored |
+| Host-signed write intent | Kept outside the KB in the plugin data dir (`signed/`), per document id and version digest; returned as `signed_record` |
+| Resolved relationships | `relationships`: `references`, `depends_on`, `blocks`, `parent` as `git-kb show <slug> --json` reports them |
 
-The proof and native lifecycle extension are removed from ordinary outward
-frontmatter after projection, so repeated task transitions do not recursively
-nest proofs. The host must verify its proof and acceptance evidence. A native
-completed task does not become host-accepted merely because it completed.
+| Host status | GitKB status |
+|---|---|
+| open | backlog (draft also reads as open) |
+| running | active |
+| blocked | blocked |
+| done | completed |
+
+A host status outside the table (claimed, reported, accepted, rejected) has no
+GitKB status: a write carrying it is refused with `unmappable_status`, before
+any write. A legacy `bboxy_status` or `bboxy_signed_record` field in an older
+document is dropped unread; the native `status` alone is read. A proof is
+returned only for the exact version it signed, so another editor's change
+leaves no stale proof. Frontmatter mirrors the source YAML, so it can still
+show a `parent` whose target GitKB does not resolve; `relationships.parent`
+then is null, as in `git-kb show`.
+
+Seat tools beyond the contract: `plugin_tool_gitkb_create_next` (Oracle) runs
+`git-kb create task --next <family> --title <title> --json` and returns its
+`slug`, `authority` and `sync_required` unchanged. `plugin_tool_gitkb_sync_status`
+runs read-only `git-kb sync status <remote> <pathspec> --json` against the KB's
+only configured remote or the named configured one, never assuming `origin`.
 
 Writes use `git-kb workspace write --stdin --if-generation`; creation uses its
 atomic `--create-if-missing` path. Updates to committed-only records first use
@@ -171,7 +188,7 @@ Catalogs, filtered or not, come from an in-memory index once it is ready,
 instead of one `git-kb list` per call. `initialize` starts a background thread that
 runs `git-kb export --format jsonl` (all committed documents; 4.0 s and 61 MB
 for Harmony's 3691) and keeps only each document's native id and its
-`assignee`, `swarm` and `bboxy_status` values. Output is capped at 1 GiB,
+`assignee`, `swarm` and legacy `bboxy_status` values. Output is capped at 1 GiB,
 lines at 64 MiB and documents at one million; malformed and duplicate lines
 are counted under `health.index.skipped` and those documents stay
 candidates. One unfiltered native `git-kb list` supplies the exact catalog

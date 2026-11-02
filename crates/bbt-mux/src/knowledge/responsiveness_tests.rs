@@ -564,6 +564,26 @@ async fn workspace_held_scan_keeps_input_chat_and_other_root_live_and_excludes_w
         refused["structuredContent"]["error"]["code"],
         "workspace_pending"
     );
+    // keeps: review 5004 finding 6 — a pending refusal says when to retry.
+    assert_eq!(refused["structuredContent"]["error"]["retry_after_ms"], 100);
+    // A seat call waits for the workspace within its wait, then still answers
+    // pending with the hint; it never admits the effect meanwhile.
+    let started = std::time::Instant::now();
+    let waited = logic
+        .client
+        .control_call_within(seat, 1, call.clone(), Duration::from_millis(300))
+        .await
+        .unwrap();
+    assert!(
+        started.elapsed() >= Duration::from_millis(200),
+        "{:?}",
+        started.elapsed()
+    );
+    assert_eq!(
+        waited["structuredContent"]["error"]["code"],
+        "workspace_pending"
+    );
+    assert_eq!(waited["structuredContent"]["error"]["retry_after_ms"], 100);
     assert!(!first.join(".bboxy/notes/after-scan.md").exists());
     let store = SqliteStore::open(&object_dir(&run, &format!("seat-{seat}")).unwrap()).unwrap();
     assert!(
@@ -573,23 +593,21 @@ async fn workspace_held_scan_keeps_input_chat_and_other_root_live_and_excludes_w
             .is_none(),
         "transient scan refusal admitted effect"
     );
-    held.release();
-    let applied = tokio::time::timeout(Duration::from_secs(5), async {
-        loop {
-            let value = logic
-                .client
-                .control_call(seat, 1, call.clone())
-                .await
-                .unwrap();
-            if value["structuredContent"]["error"]["code"] == "workspace_pending" {
-                tokio::time::sleep(Duration::from_millis(20)).await;
-                continue;
-            }
-            break value;
-        }
+    // A call already waiting when the workspace opens applies once.
+    let waiting =
+        logic
+            .client
+            .control_call_within(seat, 1, call.clone(), crate::logic::SEAT_PENDING_WAIT);
+    let opening = async {
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        held.release();
+    };
+    let (applied, ()) = tokio::time::timeout(Duration::from_secs(5), async {
+        tokio::join!(waiting, opening)
     })
     .await
     .unwrap();
+    let applied = applied.unwrap();
     assert_ne!(applied["isError"], true, "{applied}");
     assert!(first.join(".bboxy/notes/after-scan.md").is_file());
     assert!(!second.join(".bboxy/notes/after-scan.md").exists());

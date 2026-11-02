@@ -57,6 +57,7 @@ impl Stub {
                     etag: "a".repeat(64),
                     resources: Vec::new(),
                     parse_error: None,
+                    relationships: None,
                 },
             );
         }

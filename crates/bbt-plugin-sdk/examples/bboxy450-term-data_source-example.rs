@@ -100,6 +100,7 @@ impl Notes {
             etag: digest,
             resources: Vec::new(),
             parse_error: None,
+            relationships: None,
         })
     }
 

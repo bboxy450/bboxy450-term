@@ -1081,21 +1081,64 @@ impl LogicClient {
         call: crate::mcp::Call,
         attribution: std::collections::BTreeMap<String, String>,
     ) -> Result<serde_json::Value> {
-        let attribution = crate::plugins::attribution::admit(&attribution);
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send(Command::ControlCall(
-                seat,
-                generation,
-                call,
-                attribution,
-                tx,
-            ))
+        self.control_call_attributed_within(seat, generation, call, attribution, Duration::ZERO)
             .await
-            .map_err(|_| self.unavailable("logic stopped"))?;
-        rx.await.map_err(|_| {
-            self.unavailable("control outcome unavailable; query the original operation ID")
-        })?
+    }
+    /// [`Self::control_call`], resending a `workspace_pending` refusal every
+    /// [`PENDING_RETRY_MS`] while `wait` lasts.
+    pub async fn control_call_within(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        wait: Duration,
+    ) -> Result<serde_json::Value> {
+        self.control_call_attributed_within(seat, generation, call, Default::default(), wait)
+            .await
+    }
+    /// [`Self::control_call_attributed`], resending a `workspace_pending`
+    /// refusal every [`PENDING_RETRY_MS`] while `wait` lasts. Every such
+    /// refusal precedes admission, so a resend never repeats an effect. A
+    /// reply still pending when `wait` runs out carries `retry_after_ms`.
+    pub async fn control_call_attributed_within(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        attribution: std::collections::BTreeMap<String, String>,
+        wait: Duration,
+    ) -> Result<serde_json::Value> {
+        let attribution = crate::plugins::attribution::admit(&attribution);
+        let deadline = Instant::now() + wait;
+        let retry = Duration::from_millis(PENDING_RETRY_MS);
+        loop {
+            let (tx, rx) = oneshot::channel();
+            self.tx
+                .send(Command::ControlCall(
+                    seat,
+                    generation,
+                    call.clone(),
+                    attribution.clone(),
+                    tx,
+                ))
+                .await
+                .map_err(|_| self.unavailable("logic stopped"))?;
+            let mut value = rx.await.map_err(|_| {
+                self.unavailable("control outcome unavailable; query the original operation ID")
+            })??;
+            let error = &value["structuredContent"]["error"];
+            if error["code"] != "workspace_pending" {
+                return Ok(value);
+            }
+            if Instant::now() + retry > deadline {
+                if error["retry_after_ms"].is_null() {
+                    value["structuredContent"]["error"]["retry_after_ms"] = PENDING_RETRY_MS.into();
+                    value["content"][0]["text"] = value["structuredContent"].to_string().into();
+                }
+                return Ok(value);
+            }
+            tokio::time::sleep(retry).await;
+        }
     }
     /// Only the operator's admitted GUI/ctl endpoint supplies Settings snapshots.
     /// The acknowledgement follows durable cache storage and Worker adoption.
@@ -2242,6 +2285,13 @@ struct PendingLogin {
 
 /// The seat row kind of a plugin login: a bare PTY, never a harness seat.
 pub const PLUGIN_LOGIN_HARNESS: &str = "plugin-login";
+
+/// How long a seat call waits for its workspace to open before it answers
+/// `workspace_pending`; inside the seat bridge's 10 s socket timeout, with
+/// the rest left for the call itself.
+pub const SEAT_PENDING_WAIT: Duration = Duration::from_secs(4);
+/// The resend interval while waiting, and the `retry_after_ms` hint after.
+pub const PENDING_RETRY_MS: u64 = 100;
 
 struct ViewState {
     info: SeatInfo,
@@ -4492,7 +4542,9 @@ impl Worker {
             .iter()
             .map(|w| format!(".bboxy/{}", w.path))
             .collect();
+        let mut first = true;
         for (update, reference) in plan.writes.into_iter().zip(references) {
+            let first_write = std::mem::replace(&mut first, false);
             let artifact = (update.metadata["type"] == "artifact").then(|| update.metadata.clone());
             let task_status = (update.metadata["type"] == "task").then(|| {
                 (
@@ -4509,7 +4561,11 @@ impl Worker {
                 body: update.body,
                 etag: None,
             };
-            if source.write(request, &context).is_err() {
+            if let Err(error) = source.write(request, &context) {
+                // Refused before any write: the provider cannot store this status.
+                if error.code == "unmappable_status" && first_write {
+                    return crate::mcp::error(call.op_id, &error.code, &error.message);
+                }
                 return crate::mcp::error(
                     call.op_id,
                     "unknown",

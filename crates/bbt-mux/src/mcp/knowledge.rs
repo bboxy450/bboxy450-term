@@ -14,6 +14,12 @@ use super::{Call, SeatActor};
 use crate::knowledge::{DataSource, data_source as d};
 use crate::registry::Class;
 
+/// What every knowledge result's identifiers mean (review 5004 finding 4).
+const IDENTIFIERS: &str = "Identifiers: id is the bboxy ULID, external_id the provider's native ID (the GitKB UUID), slug the root-relative path without .md.";
+/// The locator forms that address one document.
+const LOCATOR: &str =
+    "A locator is a slug, a path ending .md, #N, the id (ULID) or the external_id.";
+
 pub(crate) fn handles(tool: &str) -> bool {
     matches!(
         tool,
@@ -51,16 +57,19 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
     } else {
         "Create/update e2e, comment, research, note and artifact records as your seat. Create append-only reports at reports/YYYY-MM-DD-slug.md for your assigned task; corrections create a new report with supersedes. For your assigned task preserve every other field and the body, changing only report.summary, report.commit, report.report and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools. Updates retain type, ref and etag."
     };
+    let write_help = format!(
+        "{write_help} Create takes path (slug.md); update takes the ref a fetch or search returned. {IDENTIFIERS}"
+    );
     let mut tools = vec![
         json!({"name":"knowledge_status","description":"Inspect this swarm's selected knowledge provider, root and revision, available providers, plugin activation/check state and failures. Read-only; trust, check, enable and selection use operator controls.",
             "inputSchema":{"type":"object","properties":{},"required":[],"additionalProperties":false},
             "outputSchema":{"type":"object","additionalProperties":true},
             "annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}),
-        json!({"name":"knowledge_fetch","description":"Read a knowledge-root document by path, #N, ID or unambiguous slug, with bounded frontmatter and UTF-8 body pages. Follow next as body_offset with the returned etag; truncated projections are explicitly flagged.",
+        json!({"name":"knowledge_fetch","description":format!("Read a knowledge-root document. {LOCATOR} The body comes in pages of at most 16 KiB: while truncated is true, call again with next as body_offset and the returned etag. Other truncated projections are flagged. GitKB records also carry relationships (references, depends_on, blocks, parent) as git-kb show reports them. {IDENTIFIERS}"),
             "inputSchema":{"type":"object","properties":{"locator":{"type":"string","minLength":1,"maxLength":4096},"body_offset":{"type":"integer","minimum":0},"etag":{"type":"string","maxLength":4096}},"required":["locator"],"additionalProperties":false},
             "outputSchema":{"type":"object","additionalProperties":true},
             "annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}),
-        json!({"name":"knowledge_search","description":"Search the current knowledge root using plain text and type:/status:/since: terms. Results are bounded pages; next is an opaque cursor for this query/root snapshot.",
+        json!({"name":"knowledge_search","description":format!("Search the current knowledge root using plain text and type:/status:/since: terms. Results are bounded pages; next is an opaque cursor for this query/root snapshot. Each item's ref addresses its document. {IDENTIFIERS}"),
             "inputSchema":{"type":"object","properties":{"query":{"type":"string","maxLength":4096},"cursor":{"type":"string","maxLength":16384},"limit":{"type":"integer","minimum":1,"maximum":128}},"required":["query"],"additionalProperties":false},
             "outputSchema":{"type":"object","additionalProperties":true},
             "annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}),
@@ -69,7 +78,7 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
             "annotations":{"readOnlyHint":false,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}),
     ];
     if actor.role.class == Class::Oracle {
-        tools.push(json!({"name":"knowledge_commit","description":"Commit only the explicitly named documents through this swarm's selected source. Requires Oracle authority; never pushes.",
+        tools.push(json!({"name":"knowledge_commit","description":format!("Commit only the explicitly named documents through this swarm's selected source. Each of locators: {LOCATOR} Requires Oracle authority; never pushes. {IDENTIFIERS}"),
             "inputSchema":{"type":"object","additionalProperties":false,"properties":{"op_id":{"type":"string"},"locators":{"type":"array","minItems":1,"maxItems":32,"items":{"type":"string","minLength":1,"maxLength":4096}},"message":{"type":"string","minLength":1,"maxLength":4096}},"required":["op_id","locators","message"]},
             "outputSchema":{"type":"object","additionalProperties":true},"annotations":{"readOnlyHint":false,"idempotentHint":true,"destructiveHint":false,"openWorldHint":false}}));
     }
@@ -539,5 +548,49 @@ pub(crate) fn bounded(op: crate::Ulid, value: Value, applied: bool) -> Value {
             "response_bound",
             "knowledge result exceeds the MCP response bound",
         ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::messaging::wire::IssuerKind;
+    use crate::registry::Role;
+
+    // keeps: review 5004 finding 4 — every knowledge tool says which identifiers it takes.
+    #[test]
+    fn every_knowledge_tool_names_the_identifiers_it_accepts() {
+        let actor = SeatActor {
+            seat_id: crate::Ulid::from(1_u128),
+            process_generation: 1,
+            swarm_id: crate::Ulid::from(2_u128),
+            role: Role {
+                name: "oracle".into(),
+                class: Class::Oracle,
+            },
+            grant_epoch: 1,
+            issuer_kind: IssuerKind::LocalDev,
+        };
+        let tools = catalogue(&actor);
+        for name in [
+            "knowledge_fetch",
+            "knowledge_search",
+            "knowledge_write",
+            "knowledge_commit",
+        ] {
+            let tool = tools.iter().find(|t| t["name"] == name).unwrap();
+            let text = tool["description"].as_str().unwrap();
+            for term in ["ULID", "external_id", "slug"] {
+                assert!(
+                    text.contains(term),
+                    "{name} description lacks {term}: {text}"
+                );
+            }
+        }
+        let fetch = tools
+            .iter()
+            .find(|t| t["name"] == "knowledge_fetch")
+            .unwrap();
+        assert!(fetch["description"].as_str().unwrap().contains("truncated"));
     }
 }

@@ -300,6 +300,32 @@ impl Backend {
     }
 }
 
+impl Backend {
+    /// Run a read-only status command and return its exit code with the JSON
+    /// object it printed: stdout, else the object after any log lines on
+    /// stderr (GitKB reports failures there). Nothing else from stderr is kept.
+    pub fn cli_report(&mut self, ctx: &Ctx, args: &[&str]) -> Result<(i32, Value), Refusal> {
+        let io = |e: std::io::Error| Refusal::new("backend_failed", format!("local IO: {e}"));
+        let cwd = self.cwd.clone();
+        let (status, mut out, mut err) = self.spawn(ctx, &cwd, args, None, MAX_BACKEND)?;
+        let object = |bytes: Vec<u8>| -> Option<Value> {
+            let text = String::from_utf8_lossy(&bytes).into_owned();
+            let at = if text.starts_with('{') {
+                0
+            } else {
+                text.find("\n{")? + 1
+            };
+            serde_json::from_str::<Value>(&text[at..])
+                .ok()
+                .filter(Value::is_object)
+        };
+        let value = object(read_all(&mut out).map_err(io)?)
+            .or_else(|| read_all(&mut err).ok().and_then(object))
+            .ok_or_else(|| Refusal::new("backend_protocol_error", "GitKB did not return JSON"))?;
+        Ok((status.code().unwrap_or(-1), value))
+    }
+}
+
 fn read_all(file: &mut File) -> std::io::Result<Vec<u8>> {
     file.seek(SeekFrom::Start(0))?;
     let mut bytes = Vec::new();

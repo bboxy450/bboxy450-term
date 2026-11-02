@@ -17,24 +17,35 @@ use sha2::{Digest, Sha256};
 
 const ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
-/// GitKB task status → portable status.
+/// The one task status table between the host (left) and GitKB (right),
+/// used both ways. Only GitKB's native `status` is stored; there is no
+/// shadow field. GitKB `draft` also reads as `open`. A host status outside
+/// the table (claimed, reported, accepted, rejected) has no GitKB status, so
+/// a write carrying it is refused with `unmappable_status`.
+pub const TASK_STATUS: [(&str, &str); 4] = [
+    ("open", "backlog"),
+    ("running", "active"),
+    ("blocked", "blocked"),
+    ("done", "completed"),
+];
+
+/// GitKB task status → host status.
 pub fn native_to_portable(native: &str) -> Option<&'static str> {
-    Some(match native {
-        "draft" | "backlog" => "open",
-        "active" => "running",
-        "completed" => "done",
-        _ => return None,
-    })
+    if native == "draft" {
+        return Some("open");
+    }
+    TASK_STATUS
+        .iter()
+        .find(|(_, gitkb)| *gitkb == native)
+        .map(|(host, _)| *host)
 }
 
-/// Portable status → GitKB task status.
+/// Host status → GitKB task status.
 pub fn portable_to_native(portable: &str) -> Option<&'static str> {
-    Some(match portable {
-        "open" => "draft",
-        "claimed" | "running" | "reported" | "rejected" => "active",
-        "accepted" | "done" => "completed",
-        _ => return None,
-    })
+    TASK_STATUS
+        .iter()
+        .find(|(host, _)| *host == portable)
+        .map(|(_, gitkb)| *gitkb)
 }
 
 /// Every native status a portable filter value can select.
@@ -231,11 +242,9 @@ pub fn number(frontmatter: Option<&Map<String, Value>>, slug: &str) -> Result<Va
         .map_or(Value::Null, Value::from))
 }
 
-/// The portable task status projected from native frontmatter.
-pub fn task_status(bboxy_status: Option<&Value>, native_status: &Value) -> Value {
-    if let Some(status) = bboxy_status {
-        return status.clone();
-    }
+/// The host task status read from GitKB's native status alone; a native
+/// value outside the table reads unchanged.
+pub fn task_status(native_status: &Value) -> Value {
     match native_status.as_str() {
         Some(s) if !s.is_empty() => native_to_portable(s).map_or_else(|| s.into(), Value::from),
         _ if native_status.is_null() || native_status == "" => "open".into(),
@@ -483,17 +492,23 @@ mod tests {
 
     #[test]
     fn status_projection_and_native_selection() {
-        assert_eq!(task_status(None, &json!("active")), "running");
-        assert_eq!(
-            task_status(Some(&json!("claimed")), &json!("active")),
-            "claimed"
-        );
-        assert_eq!(task_status(None, &Value::Null), "open");
-        assert_eq!(task_status(None, &json!("blocked")), "blocked");
+        assert_eq!(task_status(&json!("active")), "running");
+        assert_eq!(task_status(&Value::Null), "open");
+        assert_eq!(task_status(&json!("blocked")), "blocked");
+        assert_eq!(task_status(&json!("draft")), "open");
+        assert_eq!(task_status(&json!("Active")), "Active");
+        // The table round-trips both ways; draft reads as open.
+        for (host, gitkb) in TASK_STATUS {
+            assert_eq!(portable_to_native(host), Some(gitkb));
+            assert_eq!(native_to_portable(gitkb), Some(host));
+        }
+        for unmapped in ["claimed", "reported", "accepted", "rejected", "active"] {
+            assert_eq!(portable_to_native(unmapped), None, "{unmapped}");
+        }
         assert_eq!(native_statuses("running"), ["active", "running"]);
         assert_eq!(native_statuses("open"), ["backlog", "draft", "open"]);
         assert_eq!(native_statuses("active"), ["active"]);
-        assert_eq!(native_statuses("accepted"), ["accepted", "completed"]);
+        assert_eq!(native_statuses("claimed"), ["claimed"]);
     }
 
     #[test]

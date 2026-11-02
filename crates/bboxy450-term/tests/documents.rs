@@ -41,6 +41,7 @@ fn resolve_fetch_and_numbered_links_use_the_provider_record_without_a_signature_
         etag: "etag".into(),
         resources: vec![],
         parse_error: None,
+        relationships: None,
     };
     assert!(host.apply(&result(&mut reader, op, json!(record))));
     let prepared = host.prepared.as_ref().unwrap();
@@ -70,6 +71,7 @@ fn the_provenance_card_displays_test_account_attribution_without_certifying_meta
             etag: "etag".into(),
             resources: vec![],
             parse_error: None,
+            relationships: None,
         };
         let reply = result(&mut reader, id, json!(record));
         let Response::Fetched(prepared) = &reply.response else {
@@ -159,6 +161,7 @@ fn oversize_and_stale_results_refuse_instead_of_clipping_or_picking_another_file
         etag: "".into(),
         resources: vec![],
         parse_error: None,
+        relationships: None,
     };
     assert!(
         matches!(&result(&mut reader,id,json!(record)).response,Response::Failed(s) if s.starts_with("response_too_large:"))
@@ -172,6 +175,7 @@ fn oversize_and_stale_results_refuse_instead_of_clipping_or_picking_another_file
         etag: "".into(),
         resources: vec![],
         parse_error: None,
+        relationships: None,
     };
     assert!(
         matches!(&result(&mut reader,id,json!(record)).response,Response::Failed(s) if s.starts_with("stale_reference:"))
@@ -414,6 +418,7 @@ fn scoped_document_chain_retains_flat_root_evidence_and_rejects_cross_root_colli
         etag: "same".into(),
         resources: vec![],
         parse_error: None,
+        relationships: None,
     };
     host.apply(&result(
         &mut reader,
@@ -458,6 +463,7 @@ fn observation_source_requires_the_exact_ready_ref_etag_workspace_and_provider_e
         etag: "provider-etag".into(),
         resources: vec![],
         parse_error: None,
+        relationships: None,
     };
     let reply = result(
         &mut reader,
@@ -659,7 +665,7 @@ fn captured_image_roots_and_superseded_reads_keep_bitmap_bytes_local() {
     let a=root([255,0,0,255]);let b=root([0,0,255,255]);
     let mut reader=Reader::default();
     let record=d::Record { reference:reference(1),frontmatter:json!({"type":"note","number":1}),
-        body:"![[proof.png]] ![[proof.png]] ![escape](../proof.png)".into(),etag:"etag".into(),resources:vec![],parse_error:None };
+        body:"![[proof.png]] ![[proof.png]] ![escape](../proof.png)".into(),etag:"etag".into(),resources:vec![],parse_error:None,relationships:None };
     let first=Ulid::new();
     reader.image_root(a.path().canonicalize().unwrap());
     reader.admit(first,Read::Fetch(reference(1))).unwrap();

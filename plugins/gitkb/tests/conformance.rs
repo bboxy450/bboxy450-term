@@ -445,7 +445,8 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
             .as_array()
             .unwrap()
             .len(),
-        9
+        11,
+        "nine data_source methods plus create_next and sync_status"
     );
 
     // Unsigned write refusal; create with native fields.
@@ -470,9 +471,15 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
         raw["document"]["frontmatter"]["nested"],
         json!({"preserved": [1, true, "x"]})
     );
+    // The host proof stays in the plugin data dir, never in the document.
+    assert!(
+        raw["document"]["frontmatter"]
+            .get("bboxy_signed_record")
+            .is_none()
+    );
     assert_eq!(
-        raw["document"]["frontmatter"]["bboxy_signed_record"],
-        one["signed_record"]
+        one["signed_record"],
+        "fixture opaque host proof notes/shared"
     );
     assert!(one["frontmatter"].get("bboxy_signed_record").is_none());
 
@@ -528,8 +535,8 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
         "stale_cursor",
     );
 
-    // Lifecycle with native bboxy_status/status.
-    for status in ["claimed", "running", "reported", "accepted"] {
+    // Lifecycle through GitKB's native status alone.
+    for status in ["running", "blocked", "done"] {
         let r = client.resolve(&task_slug);
         task = client.call("fetch", json!({ "ref": r }));
         let mut fm = task["frontmatter"].clone();
@@ -548,16 +555,16 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
         assert_eq!(task["external_id"], "01563e3a-b5d3-d676-4c61-efb99302bd5c");
         let actual = fx.source(&a, &task_slug, "workspace");
         let native = &actual["document"]["frontmatter"];
-        assert_eq!(native["bboxy_status"], status);
+        assert!(native.get("bboxy_status").is_none());
+        assert!(native.get("bboxy_signed_record").is_none());
         assert_eq!(
             native["status"],
-            if status == "accepted" {
-                "completed"
-            } else {
-                "active"
+            match status {
+                "running" => "active",
+                "blocked" => "blocked",
+                _ => "completed",
             }
         );
-        assert_eq!(native["bboxy_signed_record"], proof.as_str());
         if status == "running" {
             // Status filters accept the portable or the native value.
             for filter in [
@@ -583,15 +590,12 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
     }
 
     // Filters.
-    let accepted = json!({"filter": {"type": "task", "status": "accepted"}});
+    let done = json!({"filter": {"type": "task", "status": "done"}});
     assert_eq!(
-        client.call("list", accepted)["items"]
-            .as_array()
-            .unwrap()
-            .len(),
+        client.call("list", done)["items"].as_array().unwrap().len(),
         1
     );
-    let narrowed = json!({"filter": {"type": "task", "status": "accepted", "swarm": "fixture-a",
+    let narrowed = json!({"filter": {"type": "task", "status": "done", "swarm": "fixture-a",
                                      "assignee": "seat:fixture"}});
     assert_eq!(
         client.call("list", narrowed)["items"]
@@ -673,10 +677,7 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
     );
     let committed = fx.source(&a, &task_slug, "committed");
     assert_eq!(committed["exists"], true);
-    assert_eq!(
-        committed["document"]["frontmatter"]["bboxy_status"],
-        "accepted"
-    );
+    assert_eq!(committed["document"]["frontmatter"]["status"], "completed");
     assert_eq!(fx.source(&a, "notes/shared", "committed")["exists"], false);
     assert_eq!(other.resolve("notes/shared")["id"], sibling["id"]);
     other.refuse(
@@ -1428,6 +1429,387 @@ fn index_checks(fx: &mut Fixture) -> Vec<Conn> {
     vec![on, off]
 }
 
+/// A portable ULID, a native canonical UUID and a slug, as every result uses them.
+fn identity_ok(item: &Value) -> bool {
+    let ulid = item["id"].as_str().is_some_and(|id| {
+        id.len() == 26
+            && id
+                .bytes()
+                .all(|b| b"0123456789ABCDEFGHJKMNPQRSTVWXYZ".contains(&b))
+    });
+    let uuid = item["external_id"]
+        .as_str()
+        .is_some_and(|id| id.len() == 36 && id.matches('-').count() == 4);
+    ulid && uuid && item["slug"].is_string()
+}
+
+/// `git-kb show <slug> --json` relationships.
+fn native_relationships(fx: &mut Fixture, root: &Path, slug: &str) -> Value {
+    let doc = fx.cli(root, &["show", slug, "--json"], None)["documents"][0].clone();
+    json!({"references": doc["references"], "depends_on": doc["depends_on"],
+           "blocks": doc["blocks"], "parent": doc["parent"]})
+}
+
+/// The git-kb CLI side-by-side review (task 5004): one check per finding,
+/// each reporting RED with its evidence instead of stopping the run.
+fn review_checks(fx: &mut Fixture) -> Vec<String> {
+    let root = fx.project("review");
+    let mut conn = fx.connect(&root, None, None, false).unwrap();
+    let mut red = Vec::new();
+    let mut expect = |finding: &str, ok: bool, evidence: String| {
+        eprintln!(
+            "finding {finding}: {} {evidence}",
+            if ok { "GREEN" } else { "RED" }
+        );
+        if !ok {
+            red.push(format!("{finding}: {evidence}"));
+        }
+    };
+
+    // 1. The signed record stays out of the document.
+    let created = conn.call(
+        "write",
+        json!({"path": "notes/signed.md", "frontmatter": {"type": "note", "title": "Signed",
+               "authorship": {"kind": "seat"}}, "body": "first\n",
+               "signed_record": "review proof one"}),
+    );
+    let record = created["record"].clone();
+    let raw = fx.source(&root, "notes/signed", "workspace");
+    let native = raw["document"]["frontmatter"].clone();
+    expect(
+        "1 no bboxy_signed_record in the document",
+        native.get("bboxy_signed_record").is_none()
+            && !raw["rawContent"]
+                .as_str()
+                .unwrap()
+                .contains("review proof one"),
+        format!("native frontmatter {native}"),
+    );
+    expect(
+        "1 seat attribution kept",
+        native["authorship"] == json!({"kind": "seat"}),
+        format!("authorship {}", native["authorship"]),
+    );
+    let fetched = conn.call("fetch", json!({"ref": reference(&record)}));
+    expect(
+        "1 fetch returns the proof for this version",
+        fetched["signed_record"] == "review proof one",
+        format!("signed_record {}", fetched["signed_record"]),
+    );
+    // Another editor changes only the body and keeps every frontmatter line.
+    let source = raw["rawContent"]
+        .as_str()
+        .unwrap()
+        .replace("first\n", "edited\n");
+    let generation = raw["generation"].as_str().unwrap().to_owned();
+    fx.cli(
+        &root,
+        &[
+            "workspace",
+            "write",
+            "notes/signed",
+            "--stdin",
+            "--origin-id",
+            "review-editor",
+            "--if-generation",
+            &generation,
+            "--json",
+        ],
+        Some(&source),
+    );
+    let edited = conn.resolve("notes/signed");
+    let after = conn.call("fetch", json!({"ref": edited}));
+    expect(
+        "1 a CLI edit leaves no stale proof",
+        after.get("signed_record").is_none(),
+        format!("signed_record after CLI edit {}", after["signed_record"]),
+    );
+
+    // 2. Next numbered slug in a family, with the CLI's allocation fields.
+    let next = conn
+        .client
+        .call(
+            "tool_create_next",
+            json!({"family": "tasks/demo", "title": "First"}),
+            WAIT,
+        )
+        .map_err(|f| format!("{f:?}"));
+    match &next {
+        Ok(next) => expect(
+            "2 create next in family",
+            next["slug"] == "tasks/demo-1"
+                && next["authority"] == "local"
+                && next.get("sync_required").is_some()
+                && identity_ok(&next["ref"]),
+            format!("{next}"),
+        ),
+        Err(failure) => expect("2 create next in family", false, failure.clone()),
+    }
+
+    // 3. One status vocabulary: native status only, mapped both ways.
+    let task = conn.call(
+        "write",
+        json!({"path": "tasks/status.md", "frontmatter": {"type": "task", "title": "Status",
+               "status": "open"}, "body": "s\n", "signed_record": "review status"}),
+    )["record"]
+        .clone();
+    let mut current = task;
+    for (host, gitkb) in [
+        ("open", "backlog"),
+        ("running", "active"),
+        ("blocked", "blocked"),
+        ("done", "completed"),
+    ] {
+        let mut fm = current["frontmatter"].clone();
+        fm["status"] = host.into();
+        let written = conn.result(
+            "write",
+            json!({"ref": reference(&current), "etag": current["etag"], "frontmatter": fm,
+                   "body": current["body"], "signed_record": format!("review {host}")}),
+        );
+        let Ok(written) = written else {
+            expect("3 status round trip", false, format!("{host}: {written:?}"));
+            continue;
+        };
+        current = written["record"].clone();
+        let native =
+            fx.source(&root, "tasks/status", "workspace")["document"]["frontmatter"].clone();
+        expect(
+            "3 status round trip",
+            current["frontmatter"]["status"] == host
+                && native["status"] == gitkb
+                && native.get("bboxy_status").is_none(),
+            format!(
+                "{host}: read {} native {native}",
+                current["frontmatter"]["status"]
+            ),
+        );
+    }
+    let mut fm = current["frontmatter"].clone();
+    fm["status"] = "claimed".into();
+    let refused = conn.result(
+        "write",
+        json!({"ref": reference(&current), "etag": current["etag"], "frontmatter": fm,
+               "body": current["body"], "signed_record": "review claimed"}),
+    );
+    expect(
+        "3 unmappable status refused",
+        matches!(&refused, Err(Failure::Tool(v)) if v["code"] == "unmappable_status"),
+        format!("{refused:?}"),
+    );
+    native_write(
+        fx,
+        &root,
+        "tasks/legacy",
+        "type: task\nstatus: active\nbboxy_status: claimed\n",
+        false,
+    );
+    native_write(
+        fx,
+        &root,
+        "tasks/drafted",
+        "type: task\nstatus: draft\n",
+        false,
+    );
+    let legacy = conn.resolve("tasks/legacy");
+    let legacy = conn.call("fetch", json!({"ref": legacy}));
+    let drafted = conn.resolve("tasks/drafted");
+    let drafted = conn.call("fetch", json!({"ref": drafted}));
+    expect(
+        "3 legacy bboxy_status reads through native status",
+        legacy["frontmatter"]["status"] == "running" && drafted["frontmatter"]["status"] == "open",
+        format!(
+            "legacy {} drafted {}",
+            legacy["frontmatter"]["status"], drafted["frontmatter"]["status"]
+        ),
+    );
+
+    // 4. id is the ULID, external_id the UUID, slug the path, in every result.
+    let listed = conn.collect("list", json!({}));
+    let searched = conn.collect("search", json!({"query": "Signed"}));
+    let graph = conn.call(
+        "graph",
+        json!({"scope": {"kind": "all", "graph": "markdown"}}),
+    );
+    let changes = conn.call("changes_since", json!({"cursor": "0"}));
+    let mut results: Vec<Value> = vec![
+        record.clone(),
+        fetched.clone(),
+        conn.resolve("notes/signed"),
+    ];
+    results.extend(listed);
+    results.extend(searched.iter().map(|hit| hit["ref"].clone()));
+    results.extend(
+        graph["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|n| n["ref"].clone()),
+    );
+    let bad: Vec<&Value> = results.iter().filter(|r| !identity_ok(r)).collect();
+    let nodes_ok = graph["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|n| n["id"] == n["ref"]["id"]);
+    expect(
+        "4 identifiers consistent in every result",
+        bad.is_empty() && nodes_ok && changes["changed"] == json!([]),
+        format!("{} results, inconsistent {bad:?}", results.len()),
+    );
+    for locator in [
+        "notes/signed",
+        "notes/signed.md",
+        record["id"].as_str().unwrap(),
+        record["external_id"].as_str().unwrap(),
+    ] {
+        expect(
+            "4 slug and ULID both address a doc",
+            conn.resolve(locator)["id"] == record["id"],
+            locator.to_owned(),
+        );
+    }
+
+    // 7. Fetch relationships equal `git-kb show <slug> --json`.
+    native_write(
+        fx,
+        &root,
+        "tasks/parent",
+        "type: task\nstatus: active\n",
+        false,
+    );
+    native_write(
+        fx,
+        &root,
+        "tasks/child",
+        "type: task\nstatus: active\nparent: tasks/parent\ndepends_on: [tasks/status]\n",
+        false,
+    );
+    native_write(
+        fx,
+        &root,
+        "tasks/orphan",
+        "type: task\nstatus: active\nparent: tasks/missing-2092\n",
+        false,
+    );
+    fx.cli(
+        &root,
+        &[
+            "commit",
+            "--json",
+            "-m",
+            "review relationships",
+            "--",
+            "tasks/parent",
+            "tasks/child",
+            "tasks/orphan",
+            "tasks/status",
+        ],
+        None,
+    );
+    for slug in [
+        "tasks/child",
+        "tasks/orphan",
+        "tasks/parent",
+        "tasks/status",
+    ] {
+        let expected = native_relationships(fx, &root, slug);
+        let r = conn.resolve(slug);
+        let fetched = conn.call("fetch", json!({"ref": r}));
+        expect(
+            "7 fetch relationships equal git-kb show",
+            fetched["relationships"] == expected,
+            format!(
+                "{slug}: plugin {} git-kb {expected}",
+                fetched["relationships"]
+            ),
+        );
+    }
+
+    // 8. A read-only sync check reads the remote from the KB config.
+    let none = conn.client.call(
+        "tool_sync_status",
+        json!({"pathspec": "tasks/demo-1"}),
+        WAIT,
+    );
+    expect(
+        "8 no configured remote is refused, never origin",
+        matches!(&none, Err(Failure::Tool(v)) if v["code"] == "remote_unconfigured"),
+        format!("{none:?}"),
+    );
+    fx.cli_text(
+        &root,
+        &["remote", "add", "review", "http://127.0.0.1:9/none/kb"],
+        None,
+    );
+    let one = conn.client.call(
+        "tool_sync_status",
+        json!({"pathspec": "tasks/demo-1"}),
+        LONG,
+    );
+    expect(
+        "8 sync status for a pathspec",
+        matches!(&one, Ok(v) if v["remote"] == "review"
+            && v["command"] == json!(["sync", "status", "review", "tasks/demo-1", "--json"])
+            && v["status"].is_object()),
+        format!("{one:?}"),
+    );
+    // 2. A remote-reserved family offline falls back to a provisional slug.
+    let mut config = std::fs::read_to_string(root.join(".kb/config.toml")).unwrap();
+    config = config.replace("families = []\n", "");
+    config.push_str(
+        "\n[[slug_authority.families]]\nprefix = \"tasks/prov\"\nremote = \"review\"\n\
+         reservation = \"try\"\noffline_fallback = \"provisional\"\n",
+    );
+    std::fs::write(root.join(".kb/config.toml"), config).unwrap();
+    let provisional = conn.client.call(
+        "tool_create_next",
+        json!({"family": "tasks/prov", "title": "Offline"}),
+        LONG,
+    );
+    expect(
+        "2 provisional allocation keeps the CLI's authority and sync_required",
+        matches!(&provisional, Ok(v) if v["slug"] == "tasks/prov-1"
+            && v["authority"] == "local_provisional" && v["sync_required"] == true),
+        format!("{provisional:?}"),
+    );
+    fx.cli_text(
+        &root,
+        &["remote", "add", "second", "http://127.0.0.1:9/none/kb2"],
+        None,
+    );
+    let two = conn.client.call(
+        "tool_sync_status",
+        json!({"pathspec": "tasks/demo-1"}),
+        WAIT,
+    );
+    let unknown = conn.client.call(
+        "tool_sync_status",
+        json!({"pathspec": "tasks/demo-1", "remote": "origin"}),
+        WAIT,
+    );
+    expect(
+        "8 several remotes need an explicit configured one",
+        matches!(&two, Err(Failure::Tool(v)) if v["code"] == "remote_required")
+            && matches!(&unknown, Err(Failure::Tool(v)) if v["code"] == "unknown_remote"),
+        format!("{two:?} / {unknown:?}"),
+    );
+    assert_eq!(conn.close(), Some(0));
+    red
+}
+
+#[test]
+#[ignore = "real GitKB fixtures; run through make check-gitkb-plugin"]
+fn review() {
+    let mut fx = Fixture::new();
+    eprintln!("private fixture: {}", fx.run.display());
+    let red = review_checks(&mut fx);
+    assert!(red.is_empty(), "review findings still red: {red:#?}");
+    if std::env::var_os("BBOXY_GITKB_RETAIN").is_none() {
+        std::fs::remove_dir_all(&fx.run).unwrap();
+    }
+}
+
 #[test]
 #[ignore = "real GitKB fixtures; run through make check-gitkb-plugin"]
 fn conformance() {
@@ -1435,7 +1817,12 @@ fn conformance() {
     let retain = std::env::var_os("BBOXY_GITKB_RETAIN").is_some();
     eprintln!("private fixture: {}", fx.run.display());
     let mut conns = Vec::new();
-    let checks = check(&mut fx, &mut conns);
+    let mut checks = check(&mut fx, &mut conns);
+    let red = review_checks(&mut fx);
+    assert!(red.is_empty(), "review findings red: {red:#?}");
+    checks.push(
+        "git-kb CLI review: signed record, next slug, status table, ids, relationships, sync",
+    );
     for conn in conns {
         assert_eq!(conn.close(), Some(0), "plugin exits cleanly on stdin EOF");
     }

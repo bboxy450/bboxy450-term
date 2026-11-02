@@ -55,6 +55,7 @@ fn record(n: u128, kind: &str, assignee: Option<Value>) -> d::Record {
         etag: format!("etag-{n}"),
         resources: vec![],
         parse_error: None,
+        relationships: None,
     }
 }
 impl Corpus {

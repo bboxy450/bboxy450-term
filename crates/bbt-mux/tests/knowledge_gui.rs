@@ -53,6 +53,7 @@ impl DataSource for Source {
             etag: "a".repeat(64),
             resources: vec![],
             parse_error: None,
+            relationships: None,
         })
     }
     fn list(&self, _: d::ListRequest) -> d::Result<d::Page<d::RecordRef>> {

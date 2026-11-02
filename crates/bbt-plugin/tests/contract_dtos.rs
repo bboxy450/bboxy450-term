@@ -120,6 +120,7 @@ fn every_contract_dto_round_trips_through_its_schema() {
         etag: "e1".into(),
         resources: Vec::new(),
         parse_error: None,
+        relationships: None,
     };
     let page = |items| ds::Page { items, next: None };
     let changes = ds::ChangesRequest {

@@ -154,6 +154,12 @@
             "string",
             "null"
           ]
+        },
+        "relationships": {
+          "type": [
+            "object",
+            "null"
+          ]
         }
       },
       "required": [

@@ -640,6 +640,10 @@ impl DataSource for DataSourceProvider {
             serde_json::to_value(&request).map_err(|e| error("invalid_request", e.to_string()))?;
         args["signed_record"] = json!(signed_record);
         let value: Value = self.request("write", args).map_err(|reason| {
+            // A status the provider cannot store is refused before any write.
+            if reason.code == "unmappable_status" {
+                return reason;
+            }
             error(
                 "write_not_confirmed",
                 format!(
@@ -671,9 +675,8 @@ impl DataSource for DataSourceProvider {
                     reference: result.record.reference.clone(),
                 },
             )?;
-            if fetched["signed_record"].as_str() != Some(&signed_record)
-                && fetched["frontmatter"]["bboxy_signed_record"].as_str() != Some(&signed_record)
-            {
+            // Providers keep the proof outside the document and return it on fetch.
+            if fetched["signed_record"].as_str() != Some(&signed_record) {
                 return Err(error(
                     "signed_record_mismatch",
                     "stored proof differs from the admitted write",

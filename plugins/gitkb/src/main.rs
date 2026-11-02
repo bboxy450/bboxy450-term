@@ -23,7 +23,7 @@ mod store;
 
 use std::path::{Path, PathBuf};
 
-use bbt_plugin_sdk::{Contract, Ctx, Init, Manifest, Plugin, Refusal, Skill};
+use bbt_plugin_sdk::{Contract, Ctx, Init, Manifest, Plugin, Refusal, RoleClass, Skill};
 use serde_json::{Value, json};
 
 use backend::Backend;
@@ -249,7 +249,43 @@ impl Plugin for GitKb {
         .identity("provider", "gitkb")
         .identity("backend", pin())
         .signed_writer()
-        .fixture_bootstrap();
+        .fixture_bootstrap()
+        .tool(
+            "create_next",
+            "Create the next numbered GitKB task in a family (git-kb create task --next). \
+             Takes a family slug prefix such as tasks/harmony and a title. Returns the CLI's \
+             slug, authority and sync_required unchanged, and ref: id is the bboxy ULID, \
+             external_id the GitKB UUID, slug the path without .md.",
+            json!({"type": "object", "additionalProperties": false, "required": ["family", "title"],
+                "properties": {
+                    "family": {"type": "string", "minLength": 1, "maxLength": 4096,
+                        "description": "Numbered family slug prefix, for example tasks/harmony"},
+                    "title": {"type": "string", "minLength": 1, "maxLength": 4096}}}),
+            json!({"type": "object", "required": ["slug", "authority", "sync_required", "ref"],
+                "properties": {"slug": {"type": "string"}, "authority": {"type": "string"},
+                    "sync_required": {"type": ["boolean", "null"]}, "ref": {"type": "object"}}}),
+            RoleClass::Oracle,
+        )
+        .tool_timeout("create_next", 15_000)
+        .tool(
+            "sync_status",
+            "Read-only GitKB remote sync health for one pathspec (git-kb sync status <remote> \
+             <pathspec> --json). The remote is the KB's only configured remote, or the named \
+             configured one; origin is never assumed. Never pushes, pulls or repairs. Returns \
+             the CLI's JSON as status, with its exit code.",
+            json!({"type": "object", "additionalProperties": false, "required": ["pathspec"],
+                "properties": {
+                    "pathspec": {"type": "string", "minLength": 1, "maxLength": 4096,
+                        "description": "A GitKB pathspec such as tasks/harmony-2119 or tasks/*"},
+                    "remote": {"type": "string", "minLength": 1, "maxLength": 256,
+                        "description": "A remote this KB configures; required when it has several"}}}),
+            json!({"type": "object", "required": ["remote", "pathspec", "command", "exit", "status"],
+                "properties": {"remote": {"type": "string"}, "pathspec": {"type": "string"},
+                    "command": {"type": "array"}, "exit": {"type": "integer"},
+                    "status": {"type": "object"}}}),
+            RoleClass::Worker,
+        )
+        .tool_timeout("sync_status", 15_000);
         if let Ok(skill) = skill() {
             manifest = manifest.skill(skill);
         }
@@ -276,7 +312,7 @@ impl Plugin for GitKb {
                     .get("ref")
                     .ok_or_else(|| Refusal::new("invalid_arguments", "missing argument ref"))?;
                 let record = self.check_ref(reference)?;
-                self.resources(record)
+                self.fetch(record)
             }
             "list" => self.listing(&args, false),
             "search" => self.listing(&args, true),
@@ -286,6 +322,16 @@ impl Plugin for GitKb {
             "changes_since" => self.changes(&args),
             "commit" => self.commit(&args),
             _ => Err(Refusal::new("unknown_method", method.to_owned())),
+        }
+    }
+
+    fn call_tool(&mut self, name: &str, args: Value, ctx: &Ctx) -> Result<Value, Refusal> {
+        self.ctx = ctx.clone();
+        self.call_records.clear();
+        match name {
+            "create_next" => self.create_next(&args),
+            "sync_status" => self.sync_status(&args),
+            _ => Err(Refusal::new("unknown_tool", name.to_owned())),
         }
     }
 

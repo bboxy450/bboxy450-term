@@ -145,6 +145,11 @@ pub struct Record {
     /// Broken source remains addressable and visible, never silently omitted.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parse_error: Option<String>,
+    /// The provider's resolved relationships, when it has them (GitKB:
+    /// `references`, `depends_on`, `blocks` and `parent` as `git-kb show`
+    /// reports them). Additive in 1.0; absent for providers without a graph.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub relationships: Option<Value>,
 }
 
 /// Named command error; transport/protocol errors are not command results.

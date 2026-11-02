@@ -230,8 +230,21 @@ pub(crate) fn graph_page(mut value: Value) -> Value {
     value
 }
 
-pub(crate) fn body_page(mut value: Value, offset: usize, etag: Option<&str>) -> d::Result<Value> {
-    let body = value["body"].as_str().unwrap_or_default().to_owned();
+/// Body bytes one fetch page returns by default; `next` continues the body.
+pub(crate) const BODY_PAGE: usize = 16 * 1024;
+
+/// One body page: at most [`BODY_PAGE`] bytes from `offset`, cut on a UTF-8
+/// boundary, and less when the record's other fields leave less room.
+/// `truncated` says more body follows at `next`; `body_truncated` says this
+/// page is not the whole body.
+pub(crate) fn body_page(value: Value, offset: usize, etag: Option<&str>) -> d::Result<Value> {
+    let mut page = envelope_page(value, offset, etag)?;
+    page["truncated"] = json!(!page["next"].is_null());
+    Ok(page)
+}
+
+fn envelope_page(mut value: Value, offset: usize, etag: Option<&str>) -> d::Result<Value> {
+    let mut body = value["body"].as_str().unwrap_or_default().to_owned();
     if offset > body.len() || !body.is_char_boundary(offset) {
         return Err(d::CommandError::new(
             "invalid_body_offset",
@@ -244,9 +257,15 @@ pub(crate) fn body_page(mut value: Value, offset: usize, etag: Option<&str>) -> 
             "continuation requires the unchanged record etag",
         ));
     }
+    let mut end = body.len().min(offset + BODY_PAGE);
+    while !body.is_char_boundary(end) {
+        end -= 1;
+    }
+    let rest = end < body.len();
+    body.truncate(end);
     value["body_offset"] = json!(offset);
-    value["body_truncated"] = json!(offset > 0);
-    value["next"] = Value::Null;
+    value["body_truncated"] = json!(offset > 0 || rest);
+    value["next"] = if rest { json!(end) } else { Value::Null };
     value["body"] = json!(&body[offset..]);
     if fits(&value) {
         return Ok(value);
@@ -294,12 +313,9 @@ pub(crate) fn body_page(mut value: Value, offset: usize, etag: Option<&str>) -> 
         }
     }
     value["body"] = json!(&body[offset..low]);
-    value["next"] = if low < body.len() {
-        json!(low)
-    } else {
-        Value::Null
-    };
-    value["body_truncated"] = json!(offset > 0 || low < body.len());
+    let more = low < body.len() || rest;
+    value["next"] = if more { json!(low) } else { Value::Null };
+    value["body_truncated"] = json!(offset > 0 || more);
     if low == offset && low < body.len() {
         return Err(d::CommandError::new(
             "invalid_record",
@@ -422,6 +438,41 @@ mod tests {
         assert_eq!(
             body_page(record, 2, Some("revision-b")).unwrap_err().code,
             "stale_body"
+        );
+    }
+
+    // keeps: review 5004 finding 5 — fetch pages a 50 KB body by default.
+    #[test]
+    fn fetch_pages_bodies_by_default_with_an_explicit_truncated_flag() {
+        let body = "ab😀\n".repeat(50 * 1024 / 7 + 1);
+        assert!(body.len() >= 50 * 1024);
+        let record = json!({"id":Ulid::new(),"path":"notes/fifty.md","etag":"e1","frontmatter":{"title":"fifty"},"body":body,"resources":[]});
+        let (mut offset, mut restored, mut pages) = (0, String::new(), 0);
+        loop {
+            let page = body_page(record.clone(), offset, (offset > 0).then_some("e1")).unwrap();
+            pages += 1;
+            let part = page["body"].as_str().unwrap();
+            assert!(part.len() <= 16 * 1024, "page of {} bytes", part.len());
+            restored.push_str(part);
+            assert_eq!(page["truncated"], !page["next"].is_null());
+            assert_eq!(page["body_truncated"], pages > 1 || !page["next"].is_null());
+            let Some(next) = page["next"].as_u64() else {
+                break;
+            };
+            assert_eq!(next as usize, offset + part.len());
+            offset = next as usize;
+        }
+        assert_eq!(restored, body);
+        assert!(pages >= body.len().div_ceil(16 * 1024), "{pages} pages");
+        let small = body_page(
+            json!({"etag":"e","frontmatter":{},"body":"short","resources":[]}),
+            0,
+            None,
+        )
+        .unwrap();
+        assert_eq!(
+            (small["truncated"].clone(), small["next"].clone()),
+            (json!(false), Value::Null)
         );
     }
 

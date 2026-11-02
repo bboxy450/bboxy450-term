@@ -916,6 +916,7 @@ impl DataSource for BboxySource<'_> {
             etag: doc.digest,
             resources,
             parse_error: doc.error,
+            relationships: None,
         })
     }
 

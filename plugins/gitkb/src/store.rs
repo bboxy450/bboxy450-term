@@ -54,16 +54,6 @@ impl Catalog {
         self.snapshot = digest(&encoded(&Value::Object(self.rows.clone())));
     }
 
-    pub fn merge(&mut self, other: Catalog) {
-        for slug in other.order {
-            if !self.rows.contains_key(&slug) {
-                self.order.push(slug.clone());
-            }
-            self.rows.insert(slug.clone(), other.rows[&slug].clone());
-        }
-        self.seal();
-    }
-
     pub fn workspace(&self, slug: &str) -> bool {
         self.rows
             .get(slug)
@@ -125,7 +115,7 @@ impl Summary {
         let kind = doc["type"].clone();
         let native_status = doc["status"].clone();
         let status = if kind == "task" {
-            task_status(extras.and_then(|fm| fm.get("bboxy_status")), &native_status)
+            task_status(&native_status)
         } else {
             native_status.clone()
         };
@@ -229,13 +219,14 @@ pub struct Projected {
     pub frontmatter: Map<String, Value>,
     pub native_status: Value,
     pub number: Value,
-    pub signed_record: Option<Value>,
 }
 
 /// The one frontmatter projection for exact and batched reads: graph-derived
 /// keys dropped, identity, slug, title and type from the document, the task
-/// status mapped, the number and signed record lifted. `doc` supplies `slug`
-/// and `title`; `slug` is the requested slug used for the number fallback.
+/// status read from the native status alone, the number lifted. The legacy
+/// in-document `bboxy_status` and `bboxy_signed_record` are dropped unread.
+/// `doc` supplies `slug` and `title`; `slug` is the requested slug used for
+/// the number fallback.
 pub fn project(
     id: &str,
     slug: &str,
@@ -250,12 +241,12 @@ pub fn project(
     fm.insert("title".into(), doc["title"].clone());
     fm.insert("type".into(), kind.clone());
     let native_status = fm.get("status").cloned().unwrap_or(Value::Null);
+    fm.remove("bboxy_status");
+    fm.remove("bboxy_signed_record");
     if fm["type"] == "task" {
-        let bboxy = fm.remove("bboxy_status");
-        fm.insert("status".into(), task_status(bboxy.as_ref(), &native_status));
+        fm.insert("status".into(), task_status(&native_status));
     }
     let number = number(Some(&fm), slug)?;
-    let signed_record = fm.remove("bboxy_signed_record");
     if !number.is_null() {
         fm.insert("number".into(), number.clone());
     }
@@ -263,8 +254,62 @@ pub fn project(
         frontmatter: fm,
         native_status,
         number,
-        signed_record,
     })
+}
+
+/// The private file holding the host proof for one document version: the
+/// plugin data dir, keyed by native identity and version digest. The proof
+/// never enters the shared KB, and another editor's change (a new digest)
+/// leaves it unread rather than stale.
+fn signed_path(data: &Path, id: &str, digest: &str) -> PathBuf {
+    data.join("signed")
+        .join(crate::native::digest(&format!("{id}\n{digest}")))
+}
+
+/// The host proof recorded for this document version, if any.
+pub fn load_signed(data: &Path, id: &str, digest: &str) -> Option<String> {
+    let mut text = String::new();
+    OpenOptions::new()
+        .read(true)
+        .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+        .open(signed_path(data, id, digest))
+        .ok()?
+        .take(MAX_RESULT as u64)
+        .read_to_string(&mut text)
+        .ok()?;
+    Some(text)
+}
+
+/// Record the host proof for this document version (owner-only files).
+pub fn store_signed(data: &Path, id: &str, digest: &str, proof: &str) -> Result<(), Refusal> {
+    let failed = || {
+        Refusal::new(
+            "signed_record_unstored",
+            "the host proof could not be kept in the plugin data directory",
+        )
+    };
+    let directory = data.join("signed");
+    let _ = std::fs::DirBuilder::new().mode(0o700).create(&directory);
+    if directory
+        .symlink_metadata()
+        .map_or(true, |m| m.file_type().is_symlink() || !m.is_dir())
+    {
+        return Err(failed());
+    }
+    let path = signed_path(data, id, digest);
+    let partial = directory.join(format!(".{}", random_hex(12)));
+    OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .mode(0o600)
+        .custom_flags(libc::O_NOFOLLOW)
+        .open(&partial)
+        .and_then(|mut file| file.write_all(proof.as_bytes()))
+        .and_then(|()| std::fs::rename(&partial, &path))
+        .map_err(|_| {
+            let _ = std::fs::remove_file(&partial);
+            failed()
+        })
 }
 
 /// `Option<String>` fields of GitKB's typed `Frontmatter`; null is omitted.
@@ -595,7 +640,6 @@ pub fn read_source_state(
         frontmatter: fm,
         native_status,
         number,
-        signed_record,
     } = project(
         &id,
         slug,
@@ -627,8 +671,8 @@ pub fn read_source_state(
                   "version": doc["version"], "created_at": doc["created_at"],
                   "modified_at": doc["modified_at"], "raw_content": raw},
     });
-    if let Some(signed) = signed_record {
-        record["signed_record"] = signed;
+    if let Some(signed) = load_signed(&backend.cwd, native_id, &digest) {
+        record["signed_record"] = signed.into();
     }
     if !updated_at.is_null() {
         record["updated_at"] = updated_at;
@@ -1238,8 +1282,8 @@ mod tests {
         let doc = &show["document"];
         let mut fm = doc["frontmatter"].as_object().unwrap().clone();
         let native_status = fm["status"].clone();
-        let bboxy = fm.remove("bboxy_status");
-        fm.insert("status".into(), task_status(bboxy.as_ref(), &native_status));
+        fm.remove("bboxy_status");
+        fm.insert("status".into(), task_status(&native_status));
         fm.insert("title".into(), doc["title"].clone());
         fm.insert("type".into(), doc["doc_type"].clone());
         let slug = doc["slug"].as_str().unwrap();
@@ -1358,7 +1402,8 @@ mod tests {
         let native = native_frontmatter(batch["rawContent"].as_str().unwrap()).unwrap();
         let from_batch = project(&id, "notes/a", &batch, &batch["type"], native).unwrap();
         assert_eq!(from_batch.frontmatter, from_exact.frontmatter);
-        assert_eq!(from_exact.frontmatter["status"], "claimed");
+        // A legacy bboxy_status shadow reads through the native status alone.
+        assert_eq!(from_exact.frontmatter["status"], "running");
         assert_eq!(from_exact.frontmatter["number"], 77);
         assert!(!from_exact.frontmatter.contains_key("bboxy_status"));
     }
@@ -1414,18 +1459,36 @@ mod tests {
             .unwrap()
             .unwrap();
         let filter = |v: Value| v.as_object().unwrap().clone();
-        assert!(task.matches(&filter(json!({"type": "task", "status": "claimed"}))));
+        // The legacy bboxy_status shadow is not read: native active is running.
+        assert!(!task.matches(&filter(json!({"type": "task", "status": "claimed"}))));
         assert!(task.matches(&filter(json!({"status": "active"}))));
+        assert!(task.matches(&filter(json!({"type": "task", "status": "running"}))));
         assert!(task.matches(&filter(
             json!({"type": "task", "status": "", "swarm": "s1"})
         )));
-        assert!(!task.matches(&filter(json!({"status": "running"}))));
+        assert!(!task.matches(&filter(json!({"status": "open"}))));
         assert!(!task.matches(&filter(json!({"swarm": "s2"}))));
         assert!(!task.matches(&filter(json!({"type": "note"}))));
-        let mut running = task.clone();
-        running.status = "running".into();
-        assert!(running.matches(&filter(json!({"type": "task", "status": "running"}))));
-        assert!(running.matches(&filter(json!({"type": "task", "status": "active"}))));
+    }
+
+    #[test]
+    fn signed_proofs_are_kept_per_document_version_outside_the_kb() {
+        use std::os::unix::fs::PermissionsExt;
+        let data = std::env::temp_dir().join(format!("bboxy-gitkb-signed-{}", random_hex(8)));
+        std::fs::create_dir(&data).unwrap();
+        let id = "01a18d68-6fe0-7d03-92fd-8b75477fbe85";
+        assert_eq!(load_signed(&data, id, "d1"), None);
+        store_signed(&data, id, "d1", "proof one").unwrap();
+        assert_eq!(load_signed(&data, id, "d1").as_deref(), Some("proof one"));
+        // Another version or another document never sees it.
+        assert_eq!(load_signed(&data, id, "d2"), None);
+        assert_eq!(load_signed(&data, "other", "d1"), None);
+        let mode = std::fs::metadata(signed_path(&data, id, "d1"))
+            .unwrap()
+            .permissions()
+            .mode();
+        assert_eq!(mode & 0o077, 0);
+        std::fs::remove_dir_all(&data).unwrap();
     }
 
     #[test]
