@@ -110,3 +110,26 @@ Term-profile verification and CI fixture correction
   this correction. Old commits are retained by e6-log-converter-before-report-fix.
   Replacement bases: c4a36ea6 -> 28cb6db3; aff296d4 -> c97f6d1a;
   f7149868 -> c8ab7dd1. Each replacement is signed by the approved key.
+
+Extended CI phase verification and external blocker
+- On signed 503197ba, all 140 fast landing fixtures passed (151.011 s).
+  The full make test then exited 2 at the unchanged resource-ledger signal
+  fixture: scripts/test-resource-ledger.py:222 expected 143, observed -15.
+  The child starts before wrapper SIGTERM handlers are installed. No signal
+  was sent by this seat's attempted run cancellation; its guarded PID lookup
+  found the already-exited make process before any signal operation.
+  /tmp/lc-term-make-test-second-ci.log retains the failure.
+- The Oracle assigned that startup race to E1c separately and explicitly told
+  this seat not to change it. It remains the known full-gate blocker; no full
+  success is claimed. Resource-ledger source/tests are untouched here.
+- scripts/test-landing-recovery.py now expects both full-run converter targets
+  in the actual ci-command sequence. All 46 extended recovery tests passed,
+  exit 0 in 315.396 s: /tmp/lc-landing-recovery.log. Its source has the term header.
+- The complete branch-range committed-tree report guard passed at 503197ba:
+  SIGNED_RANGE=origin/main..HEAD cargo test --locked -p bboxy450-doc --test corpus
+  reports::committed_report_trailers_resolve_in_their_own_trees -- --exact.
+  Exit 0, one test, 2.53 s: /tmp/lc-port-report-range.log.
+- Remaining workspace build/clippy/unit/formal/native/smoke stages will be
+  verified separately while the external startup-race fix proceeds. Such a
+  tail run is not a normal full-CI receipt. After that fix lands, the required
+  full make test must be rerun on the integrated signed head.
