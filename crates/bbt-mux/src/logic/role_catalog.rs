@@ -26,7 +26,7 @@ impl CatalogStore {
     /// A malformed cache is an explicit role-admission refusal, never authority
     /// inferred from a display name or a silent builtin fallback.
     pub(super) fn load(&self) -> Result<RoleCatalog> {
-        let catalog = match self.0.get(KEY)? {
+        let mut catalog = match self.0.get(KEY)? {
             None => RoleCatalog::builtin(),
             Some(bytes) => {
                 if bytes.len() > 768 * 1024 {
@@ -39,6 +39,10 @@ impl CatalogStore {
                 saved.catalog
             }
         };
+        // A cache saved before a builtin existed gains it; saved roles keep their edits.
+        for (name, role) in RoleCatalog::builtin().roles {
+            catalog.roles.entry(name).or_insert(role);
+        }
         catalog.validate().map_err(invalid)?;
         // Missing cache bytes are compatible with pre-catalog builtin seats,
         // but cannot silently orphan a retained custom role after data loss.

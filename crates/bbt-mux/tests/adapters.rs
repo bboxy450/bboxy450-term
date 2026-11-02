@@ -615,6 +615,7 @@ fn harness_defaults_follow_the_role_contract_and_validate_authority() {
             ("architect", Class::Oracle),
             ("creativity", Class::Worker),
             ("executor", Class::Worker),
+            ("qa", Class::Worker),
             ("shell", Class::Worker),
         ] {
             assert_eq!(

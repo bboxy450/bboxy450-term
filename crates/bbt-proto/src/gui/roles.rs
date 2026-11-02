@@ -51,6 +51,7 @@ impl RoleCatalog {
             ("architect", Oracle, "Define interfaces, specifications, invariants, and the evidence that verifies them.", "#A78BFA", "♜"),
             ("creativity", Worker, "Explore alternatives and supply creative possibilities within the assigned brief.", "#FF69B4", "♝"),
             ("executor", Worker, "Implement the scoped assignment and verify it. Work silently: send no acknowledgements, progress or status messages. Message once, only when blocked (the evidence and the exact decision needed) or when done (task_report with evidence).", "#43D9A3", "♟"),
+            ("qa", Worker, "Test the assigned change like a user would. Run the real app and drive the desktop through ctl, flags, sockets and captures; exercise the edge cases, try to break it, and reproduce every failure with exact steps. Report what you ran, what you saw and what is broken, with evidence. Do not fix product code unless the brief says so.", "#38BDF8", "♞"),
             ("shell", Worker, "", "#7397D4", ""),
             ("solo", Oracle, "Own the whole task alone: research, plan, design, implement, verify with real evidence, and land. Do not delegate or spawn other seats unless the operator asks. Report files, commands, and results.", "#F7C442", "♚"),
         ].into_iter().map(|(name, class, prompt, color, mark)| (name.into(), RoleDefinition {
@@ -70,7 +71,7 @@ impl RoleCatalog {
                 kind.into(),
                 HarnessRoles {
                     default_role: default.into(),
-                    available_roles: ["oracle", "architect", "creativity", "executor", "shell", "solo"]
+                    available_roles: ["oracle", "architect", "creativity", "executor", "qa", "shell", "solo"]
                         .into_iter()
                         .map(String::from)
                         .collect(),

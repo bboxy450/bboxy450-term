@@ -70,6 +70,7 @@ impl Draw for RoleMark<'_> {
             "oracle" => ("♔", TOKENS.color.role.oracle),
             "solo" => ("♚", TOKENS.color.role.oracle),
             "creativity" => ("♝", TOKENS.color.role.creativity),
+            "qa" => ("♞", TOKENS.color.role.executor),
             _ => ("♟", TOKENS.color.role.executor),
         };
         out.text(
