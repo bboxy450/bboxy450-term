@@ -344,6 +344,37 @@ def native_input_crates(root, paths, packages):
     return consumers
 
 
+def lean(range_spec, *, root=None):
+    """Lean land plan: one line per touched crate with its test selection, then the
+    dependents that only need to compile. A crate whose source changed runs its lib
+    and bin tests; a changed integration-test file adds that test target."""
+    root = Path(root or repository()).resolve()
+    result = affected(range_spec, root=root)
+    paths = {(root / p).resolve() for p in changed_paths(range_spec, cwd=root)}
+    packages = metadata(root)
+    lines = []
+    for name in result["touched"]:
+        package = packages[name]
+        base = Path(package["manifest_path"]).parent.resolve()
+        targets = package["targets"]
+        tests = sorted(t["name"] for t in targets
+                       if "test" in t["kind"] and Path(t["src_path"]).resolve() in paths)
+        source = any(p.is_relative_to(base) and not p.is_relative_to(base / "tests")
+                     for p in paths)
+        selection = []
+        if source or not tests:
+            selection += ["--lib"] if any(set(t["kind"]) & {"lib", "proc-macro"} for t in targets) else []
+            selection += ["--bins"] if any("bin" in t["kind"] for t in targets) else []
+        for test in tests:
+            selection += ["--test", test]
+        if selection:
+            lines.append(" ".join(["test", name, *selection]))
+    check = sorted(set(result["affected"]) - set(result["touched"]))
+    if check:
+        lines.append(" ".join(["check", *check]))
+    return lines
+
+
 def affected(range_spec, *, root=None):
     root = Path(root or repository()).resolve()
     paths = changed_paths(range_spec, cwd=root)
@@ -1798,6 +1829,8 @@ def main():
     p = sub.add_parser("affected")
     p.add_argument("range", nargs="?", default="origin/main..HEAD")
     p.add_argument("--crates", action="store_true")
+    p = sub.add_parser("lean")
+    p.add_argument("range", nargs="?", default="origin/main..HEAD")
     sub.add_parser("state-dir")
     sub.add_parser("parity-dir")
     p = sub.add_parser("check-is-cargo")
@@ -1821,6 +1854,8 @@ def main():
     if args.verb == "affected":
         result = affected(args.range)
         print(" ".join(result["affected"]) if args.crates else json.dumps(result))
+    elif args.verb == "lean":
+        print("\n".join(lean(args.range)))
     elif args.verb == "state-dir":
         print(state_directory())
     elif args.verb == "parity-dir":

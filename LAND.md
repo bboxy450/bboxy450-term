@@ -9,13 +9,15 @@ make land
 It runs `scripts/land-fast.sh` (`make push` is the same command):
 
 1. Rebase on `origin/main` (exit 78 on conflict); refuse unsigned commits.
-2. Compute the affected set with `scripts/affected.sh`: crates whose files changed plus
-   every crate that depends on them. `Cargo.toml`, `Cargo.lock`, `.cargo/` and
-   `rust-toolchain.toml` select every crate; docs/lab-only diffs select none.
-3. One `cargo clippy -D warnings` and one `scripts/quarantine-test.sh` run over that set.
-   The test run is cargo-nextest: all affected test binaries run concurrently, a hung test
-   dies after 5 min, doctests follow. `.bboxy/` changes add the doc corpus test; model or
-   `verification/` changes add `make test-formal`.
+2. Compute the plan with `scripts/landing.py lean`: the crates whose files changed
+   ("touched") and every crate that depends on them. `Cargo.toml`, `Cargo.lock`, `.cargo/`
+   and `rust-toolchain.toml` touch every crate; docs/lab-only diffs touch none.
+3. **Lean gate (default):** `cargo clippy -D warnings` over the touched crates; for each
+   touched crate, nextest over its lib and bin tests (when its source changed) plus each
+   changed integration-test file; `cargo check` of the dependents. A test-only change runs
+   only that test. `.bboxy/` changes add the doc corpus test; model or `verification/`
+   changes add `make test-formal`. `LAND_MODE=wide make land` instead lints and tests the
+   whole affected set, doctests included.
 4. Push. If `main` moved, rebase, recheck the affected crates and push again (up to 5 times).
 
 Cargo runs under `nice -n 10` with 4 jobs (`BBOXY_CARGO_JOBS`) and 2 test threads, reusing

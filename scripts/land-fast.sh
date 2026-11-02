@@ -2,11 +2,11 @@
 # Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
 # LicenseRef-Respectful-Slop-1.0-Draft; credit copied/adapted/translated reuse.
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-# Fast landing (LAND.md): rebase, test only what the diff can break, push.
-# The affected set is the changed crates plus every crate that depends on them
-# (scripts/affected.sh); Cargo.toml/Cargo.lock/toolchain changes select all.
-# One clippy and one nextest run cover the whole set, niced on half the cores
-# with the shared sccache. The full gate stays available as `make land-full`.
+# Lean landing (LAND.md), the default: rebase, lint and test the crates the diff
+# touches (their lib/bin tests, plus each changed integration-test file), compile-
+# check every crate that depends on them, push. LAND_MODE=wide also tests every
+# dependent (scripts/affected.sh); Cargo.toml/Cargo.lock/toolchain changes select
+# all. Niced, shared sccache. The full gate stays available as `make land-full`.
 set -eu
 export GIT_TERMINAL_PROMPT=0
 cd "$(git rev-parse --show-toplevel)"
@@ -29,10 +29,31 @@ crates=$(sh scripts/affected.sh origin/main..HEAD --crates)
 packages=''
 for crate in $crates; do packages="$packages -p $crate"; done
 echo "land: affected: ${crates:-none}"
+LAND_MODE=${LAND_MODE:-lean}
+case "$LAND_MODE" in lean|wide) ;; *) echo "land: LAND_MODE must be lean or wide" >&2; exit 2 ;; esac
 
 # `gate || ...` suspends `set -e` inside the function: every check returns explicitly.
+lean_gate() {
+    plan=$(python3 -I scripts/landing.py lean origin/main..HEAD) || return 1
+    echo "land: lean plan:"; printf '%s\n' "$plan" | sed 's/^/  /'
+    touched=$(printf '%s\n' "$plan" | awk '$1=="test"{printf " -p %s", $2}')
+    if [ -n "$touched" ]; then
+        # shellcheck disable=SC2086
+        run cargo clippy --locked -q $touched --all-targets -- -D warnings || return 1
+    fi
+    printf '%s\n' "$plan" | while read -r kind name selection; do
+        # shellcheck disable=SC2086
+        case "$kind" in
+            test) run sh scripts/quarantine-test.sh --locked -p "$name" $selection || exit 1 ;;
+            check) run cargo check --locked -q $(printf -- '-p %s ' $name $selection) || exit 1 ;;
+        esac
+    done || return 1
+}
+
 gate() {
-    if [ -n "$packages" ]; then
+    if [ "$LAND_MODE" = lean ]; then
+        lean_gate || return 1
+    elif [ -n "$packages" ]; then
         # shellcheck disable=SC2086
         run cargo clippy --locked -q $packages --all-targets -- -D warnings || return 1
         # nextest runs every affected test binary concurrently, then doctests.
