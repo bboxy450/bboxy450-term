@@ -804,6 +804,7 @@ class CiPhaseTests(unittest.TestCase):
     def phase(self, after_tests):
         self.repo.write("scripts/ci-local.sh", (SOURCE / "ci-local.sh").read_text())
         makefile = (self.repo.root / "Makefile").read_text()
+        makefile = makefile.replace('test-harness-native test-log-converter test-log-converter-native:', 'test-harness-native:')
         for target in ("test-capability-scan", "test-capability-control", "test-log-converter", "test-log-converter-controls", "test-log-converter-budget", "test-log-converter-native"):
             makefile += (f"\n{target}:\n"
                          f'\t@printf "{target}\\n" >> "$$BBOXY_LANDING_STATE_DIR/phase-calls"\n')
