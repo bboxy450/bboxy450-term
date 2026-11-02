@@ -348,6 +348,9 @@ fn real_corpus_links_numeric_handles_and_legacy_ledger_anchors_resolve() {
             }
             let resolved = match resolve(records.iter().copied(), &target) {
                 Ok(resolved) => resolved,
+                // Artifact records are machine-local since bcf574f5 (.bboxy/.gitignore):
+                // a link to one resolves only where that record exists on disk.
+                Err(_) if machine_local_artifact(&target) => continue,
                 Err(error) => {
                     errors.push(format!("{}: [[{target}]]: {error}", record.path));
                     continue;
@@ -434,4 +437,13 @@ fn licence_map_fixtures_keep_escaped_aliases_and_custom_term_refusals() {
         "{stdout}\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
+}
+
+/// `artifacts/<ULID>` or a bare ULID: the form of an untracked artifact record link.
+fn machine_local_artifact(target: &str) -> bool {
+    let id = target.strip_prefix("artifacts/").unwrap_or(target);
+    id.len() == 26
+        && id
+            .chars()
+            .all(|c| c.is_ascii_digit() || (c.is_ascii_uppercase() && !"ILOU".contains(c)))
 }
