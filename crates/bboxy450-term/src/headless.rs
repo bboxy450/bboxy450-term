@@ -109,7 +109,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
         sink.clone(),
         logger.clone(),
         run_dir,
-        args.iter().any(|v| v == "--ctl"),
+        !args.iter().any(|v| v == "--no-ctl"),
         rendering,
     );
     let signals = sink.clone();

@@ -4,7 +4,7 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! The operator's `ctl` door on `gui.sock` (decision #260, invariant #261). Off by default:
+//! The operator's `ctl` door on `gui.sock` (decision #260, invariant #261). The app opens it by default (operator, 2026-11-02; `--no-ctl` closes it);
 //! with `ctl` closed nothing is written and the window is the only client. Opening it
 //! writes `run_dir/gui.endpoint` (path, capability, generation; mode 0600; removed when the
 //! door closes) and installs a peer policy on the listener: the window keeps its door, a

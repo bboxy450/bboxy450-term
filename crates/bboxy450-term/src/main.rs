@@ -2562,7 +2562,7 @@ impl App {
             capture_pending: true,
             ctl_captures: Vec::new(),
             ctl_focus: Default::default(),
-            ui_observe: args.iter().any(|arg| arg == "--ctl"),
+            ui_observe: !args.iter().any(|arg| arg == "--no-ctl"),
             frame_observations: Default::default(),
             ui_frame: None,
             ui_wait: None,
@@ -9992,8 +9992,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 args.windows(2)
                     .find(|pair| pair[0] == "--run-dir")
                     .map(|pair| std::path::PathBuf::from(&pair[1])),
-                // The operator's ctl door (decision #260): opt-in, closed by default.
-                args.iter().any(|arg| arg == "--ctl"),
+                // The operator's ctl door (decision #260): on by default since 2026-11-02 (operator); --no-ctl closes it.
+                !args.iter().any(|arg| arg == "--no-ctl"),
                 rendering,
             )),
         )
