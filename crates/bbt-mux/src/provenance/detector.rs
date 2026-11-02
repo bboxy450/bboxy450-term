@@ -166,6 +166,7 @@ fn ignored(relative: &Path) -> bool {
                     | ".icq"
                     | ".claude"
                     | ".codex"
+                    | ".cache"
             )
     }) || parts
         .windows(2)
