@@ -134,6 +134,20 @@ and inside `make check-gitkb-plugin`. Host e2e: `make test-harmony-host-gitkb`.
    `authentication error: unauthorized` (expired login on this machine; a successful
    status is unproven here).
 
+Doctor follow-up: **unstable `gitkb.created_at`.** Red (`review_checks` "doctor"):
+two identical fetches of a workspace-only note, 1.1 s apart, returned different
+`created_at` and `modified_at` (`04:20:00.718826Z` then `04:20:01.918839Z`), and a
+committed document's clean checkout returned read time instead of its committed
+`created_at`. Cause: `git-kb show --source workspace --raw-content --json` (0.2.19)
+reports both timestamps as read time, and `store.rs` `read_source_state` copied
+`document.created_at`/`modified_at`. Fix: `read_source_state` takes both from the
+workspace source's `availableDocumentSources[].modifiedAt` (the file timestamp,
+stable between reads); `methods.rs` `stable_created` sets `created_at` from
+`show --source committed` when the document has a committed revision, on fetch and
+the write readback only, so list and search pay no extra read. Green: equal values
+across identical fetches for both documents, and the checkout's `created_at` equals
+the committed one.
+
 Unchanged and rechecked: scoped commits (`commit` still refuses another document;
 conformance and host e2e commit exactly the named slugs), human commit authorship
 (native config user), search parity (conformance compares index and backend search).

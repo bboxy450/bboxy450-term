@@ -681,6 +681,20 @@ pub fn read_source_state(
         record["gitkb"]["workspace_generation"] = workspace_generation;
     }
     record["frontmatter"] = Value::Object(fm);
+    if record["gitkb"]["source"]["kind"] == "workspace" {
+        // GitKB 0.2.19 parses a workspace source's created_at and modified_at
+        // as read time. Use the workspace file's own timestamp instead: stable
+        // between reads. `GitKb::stable_created` swaps in the committed
+        // created_at where the document has one.
+        let file_time = result["availableDocumentSources"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .find(|s| s["documentSource"]["kind"] == "workspace")
+            .map_or(Value::Null, |s| s["modifiedAt"].clone());
+        record["gitkb"]["created_at"] = file_time.clone();
+        record["gitkb"]["modified_at"] = file_time;
+    }
     let clean = result["availableDocumentSources"]
         .as_array()
         .into_iter()

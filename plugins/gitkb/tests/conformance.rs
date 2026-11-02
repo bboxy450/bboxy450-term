@@ -1774,6 +1774,57 @@ fn review_checks(fx: &mut Fixture) -> Vec<String> {
         );
     }
 
+    // Doctor: identical fetches of a workspace record keep its timestamps;
+    // a committed document's checkout carries the committed created_at.
+    for slug in ["notes/signed", "tasks/child"] {
+        let r = conn.resolve(slug);
+        let first = conn.call("fetch", json!({"ref": r}));
+        std::thread::sleep(Duration::from_millis(1100));
+        let second = conn.call("fetch", json!({"ref": r}));
+        let times = |v: &Value| {
+            (
+                v["gitkb"]["created_at"].clone(),
+                v["gitkb"]["modified_at"].clone(),
+            )
+        };
+        let source = first["gitkb"]["source"]["kind"].clone();
+        expect(
+            "doctor identical workspace fetches keep created_at and modified_at",
+            source == "workspace"
+                && times(&first) == times(&second)
+                && first["gitkb"]["created_at"].is_string(),
+            format!(
+                "{slug} {source}: {:?} then {:?}",
+                times(&first),
+                times(&second)
+            ),
+        );
+    }
+    let committed = fx.cli(
+        &root,
+        &[
+            "show",
+            "--source",
+            "committed",
+            "--raw-content",
+            "--json",
+            "--",
+            "tasks/child",
+        ],
+        None,
+    )["document"]["created_at"]
+        .clone();
+    let r = conn.resolve("tasks/child");
+    let checkout = conn.call("fetch", json!({"ref": r}));
+    expect(
+        "doctor a checkout carries the committed created_at",
+        checkout["gitkb"]["created_at"] == committed,
+        format!(
+            "plugin {} committed {committed}",
+            checkout["gitkb"]["created_at"]
+        ),
+    );
+
     // 8. A read-only sync check reads the remote from the KB config.
     let none = conn.client.call(
         "tool_sync_status",

@@ -840,6 +840,7 @@ impl GitKb {
         store_signed(&self.backend.cwd, id, version, &signed)?;
         record["signed_record"] = signed.clone().into();
         record["relationships"] = self.relationships(&slug)?;
+        self.stable_created(&mut record)?;
         let lossy = record["body"] != body
             || requested
                 .iter()
@@ -853,7 +854,36 @@ impl GitKb {
         let slug = record["slug"].as_str().unwrap_or("").to_owned();
         let mut record = self.resources(record)?;
         record["relationships"] = self.relationships(&slug)?;
+        self.stable_created(&mut record)?;
         Ok(record)
+    }
+
+    /// A workspace record of a committed document carries the committed
+    /// `created_at`, never GitKB's read time; a workspace-only document keeps
+    /// its workspace file timestamp (`read_source_state`).
+    fn stable_created(&mut self, record: &mut Value) -> Result<(), Refusal> {
+        if record["gitkb"]["source"]["kind"] != "workspace"
+            || record["gitkb"]["committed_revision"].is_null()
+        {
+            return Ok(());
+        }
+        let slug = record["slug"].as_str().unwrap_or("").to_owned();
+        let committed = self.cli(&[
+            "show",
+            "--source",
+            "committed",
+            "--raw-content",
+            "--json",
+            "--",
+            &slug,
+        ])?;
+        if committed["exists"] == true
+            && committed["document"]["id"] == record["external_id"]
+            && committed["document"]["created_at"].is_string()
+        {
+            record["gitkb"]["created_at"] = committed["document"]["created_at"].clone();
+        }
+        Ok(())
     }
 
     /// `references`, `depends_on`, `blocks` and `parent` exactly as
