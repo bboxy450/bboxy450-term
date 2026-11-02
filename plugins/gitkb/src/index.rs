@@ -1444,8 +1444,8 @@ mod tests {
         assert_eq!(names.len(), 1, "{names:?}");
         let path = snapshot_path(&dir, "index", "/kb");
         let text = std::fs::read_to_string(&path).unwrap();
-        assert!(text.contains("\"version\":3"));
-        std::fs::write(&path, text.replace("\"version\":3", "\"version\":4")).unwrap();
+        assert!(text.contains("\"version\":4"));
+        std::fs::write(&path, text.replace("\"version\":4", "\"version\":5")).unwrap();
         assert!(load(&dir, "/kb", "s2").is_none(), "another format version");
         std::fs::write(&path, "{not json").unwrap();
         assert!(load(&dir, "/kb", "s2").is_none(), "malformed");
