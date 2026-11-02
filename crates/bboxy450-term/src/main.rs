@@ -8056,7 +8056,10 @@ impl App {
             phases.encode = encode;
             phases.present_wait = wait;
             if let Some((phase, time)) = self.meter.record(Instant::now(), phases) {
-                self.logger.write(format!("hitch frame={} phase={phase} {:.3}ms cpu={:.3}ms drain={:.3} layout={:.3} draw={:.3} encode={:.3} present_wait={:.3}",self.meter.total_frames(),time.as_secs_f64()*1000.,phases.cpu().as_secs_f64()*1000.,phases.drain.as_secs_f64()*1000.,phases.layout.as_secs_f64()*1000.,phases.draw.as_secs_f64()*1000.,phases.encode.as_secs_f64()*1000.,phases.present_wait.as_secs_f64()*1000.));
+                let gpu = self.gpu.as_ref().unwrap();
+                let (p, e) = (gpu.passes, gpu.last_split);
+                let ms = |d: Duration| d.as_secs_f64() * 1000.;
+                self.logger.write(format!("hitch frame={} phase={phase} {:.3}ms cpu={:.3}ms drain={:.3} layout={:.3} draw={:.3} encode={:.3} present_wait={:.3} chrome={:.3} cells={:.3} overlay={:.3} composite={:.3} submit={:.3} passes={} flat={} clear={} path={} group={} blur={} material={} cells_p={} copy={}",self.meter.total_frames(),ms(time),ms(phases.cpu()),ms(phases.drain),ms(phases.layout),ms(phases.draw),ms(phases.encode),ms(phases.present_wait),ms(e.chrome),ms(e.cells),ms(e.overlay),ms(e.composite),ms(e.submit),p.passes(),p.flat,p.clear,p.path,p.group,p.blur,p.material,p.cells,p.copy));
             }
             // Under the meter, the render-pass mix of every 120th frame (R12-3 profiling).
             if self.overlay && self.meter.total_frames().is_multiple_of(120) {

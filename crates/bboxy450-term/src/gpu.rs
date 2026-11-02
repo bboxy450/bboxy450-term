@@ -250,6 +250,8 @@ pub struct Gpu {
     materials: m::Pass,
     /// Render passes and copies encoded by the last draw (profiling; see bbt_render::passes).
     pub passes: bbt_render::passes::Counts,
+    /// The last frame's encode breakdown, read with `passes` after a hitch.
+    pub last_split: EncodeSplit,
     target: wgpu::Texture,
     backdrop: wgpu::Texture,
     cells: CellTextures,
@@ -401,6 +403,7 @@ impl Gpu {
                 renderer,
                 materials,
                 passes: Default::default(),
+                last_split: EncodeSplit::default(),
                 target,
                 backdrop,
                 cells: CellTextures::default(),
@@ -608,6 +611,7 @@ impl Gpu {
     ) -> Result<Option<(Duration, Duration)>, String> {
         let AcquiredFrame { frame, wait } = acquired;
         let encode = Instant::now();
+        let mut split = EncodeSplit::default();
         self.renderer.begin_frame();
         self.materials.begin_frame();
         let mut encoder = self
@@ -633,6 +637,7 @@ impl Gpu {
                 &mut encoder,
             )
             .map_err(|e| e.to_string())?;
+        split.chrome = encode.elapsed();
         let mut probe_sample = self.native_probe.as_ref().and_then(|probe| {
             panes.as_ref().and_then(|panes| probe.begin(&self.renderer.context.device, panes, &self.target, scale, frame_id))
         });
@@ -643,6 +648,7 @@ impl Gpu {
             probe.inject(sample,"source",&self.target,&mut encoder);
         }
         if let Some(panes) = panes {
+            let at = Instant::now();
             self.cells.draw(
                 &mut self.renderer,
                 &self.target,
@@ -650,6 +656,8 @@ impl Gpu {
                 scale,
                 &mut encoder,
             )?;
+            split.cells = at.elapsed();
+            let at = Instant::now();
             if !panes.overlay.is_empty() {
                 encode_ops(
                     &mut self.renderer,
@@ -667,10 +675,12 @@ impl Gpu {
                 )
                 .map_err(|e| e.to_string())?;
             }
+            split.overlay = at.elapsed();
         }
         if let (Some(probe),Some(sample)) = (&self.native_probe,&probe_sample) {
             probe.inject(sample,"copy",&self.target,&mut encoder);
         }
+        let at = Instant::now();
         let surface_view = frame.texture().create_view(&Default::default());
         self.renderer
             .composite_group_clearing(
@@ -689,10 +699,12 @@ impl Gpu {
                 &mut encoder,
             )
             .map_err(|e| e.to_string())?;
+        split.composite = at.elapsed();
         if let (Some(probe),Some(sample)) = (&mut self.native_probe,probe_sample) {
             probe.inject(&sample,"final",frame.texture(),&mut encoder);
             probe.record(sample,&self.target,frame.texture(),&mut encoder);
         }
+        let at = Instant::now();
         // wgpu 30 prohibits mixing its encoding API with as_hal_mut. Native
         // queue markers bracket the submission (including staging uploads),
         // yielding a conservative GPU span without inspecting private state.
@@ -729,11 +741,23 @@ impl Gpu {
             gpu_end.addCompletedHandler(RcBlock::as_ptr(&completed));
         }
         gpu_end.commit();
+        split.submit = at.elapsed();
+        self.last_split = split;
         let encoded = encode.elapsed();
         let present = Instant::now();
         frame.present(&self.renderer.context)?;
         Ok(Some((encoded, wait + present.elapsed())))
     }
+}
+
+/// Where one frame's encode time went, for the hitch log (CPU-side, before present).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct EncodeSplit {
+    pub chrome: Duration,
+    pub cells: Duration,
+    pub overlay: Duration,
+    pub composite: Duration,
+    pub submit: Duration,
 }
 
 impl CellTextures {
