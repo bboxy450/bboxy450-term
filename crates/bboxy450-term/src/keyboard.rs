@@ -292,6 +292,35 @@ pub fn encode(input: &Input<'_>, modes: u64) -> Option<Vec<u8>> {
     };
     encode_protocol(&key, modes)
 }
+/// Encode Alternate Scroll cursor controls through the shared key adapter.
+/// Only application-cursor mode applies to these cursor controls.
+pub fn alternate_scroll(up: bool, application: bool) -> Vec<u8> {
+    let (named, physical) = if up {
+        (NamedKey::ArrowUp, KeyCode::ArrowUp)
+    } else {
+        (NamedKey::ArrowDown, KeyCode::ArrowDown)
+    };
+    encode(
+        &Input {
+            logical_key: Key::Named(named),
+            unmodified_key: Key::Named(named),
+            physical_key: PhysicalKey::Code(physical),
+            text: None,
+            text_all_modifiers: None,
+            location: winit::keyboard::KeyLocation::Standard,
+            state: ElementState::Pressed,
+            repeat: false,
+            modifiers: Default::default(),
+        },
+        if application {
+            u64::from(bbt_core::term::TermMode::APP_CURSOR.bits())
+        } else {
+            0
+        },
+    )
+    .expect("cursor control is encodable")
+}
+
 /// The adapter's one call into the neutral encoder, shared by the window's keys and the
 /// operator's named keys (`ctl seat key`, #270).
 fn encode_protocol(key: &protocol::Input<'_>, modes: u64) -> Option<Vec<u8>> {

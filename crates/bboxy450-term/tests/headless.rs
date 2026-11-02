@@ -2444,3 +2444,23 @@ impl Drop for CrashOwners {
         }
     }
 }
+
+// keeps: WheelOwnership (actual shared native wheel, file account, PTY and UI restart).
+#[test]
+#[ignore = "night: real GUI/process boundary, test-policy #327 B2"]
+fn native_wheel_modes_survive_frontend_restart() {
+    let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/wheel.py");
+    let output = Command::new("python3")
+        .args(["-I", "-B"])
+        .arg(script)
+        .arg(BIN)
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    print!("{}", String::from_utf8_lossy(&output.stdout));
+}

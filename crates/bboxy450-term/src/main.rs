@@ -35,6 +35,7 @@ mod stall;
 mod swarm_folder;
 mod terminal_clipboard;
 mod usage_strip;
+mod wheel;
 
 use bboxy450_term::launcher::{
     CaretMove, Command as LauncherCommand, Controller as LauncherController,
@@ -123,6 +124,7 @@ pub enum UiEvent {
     SmokeDeadline,
     VerifyGridDeadline,
     VerifyScrollTop,
+    VerifyWheel,
     VerifyClose,
     VerifyFailed(String),
     Capture,
@@ -2200,7 +2202,8 @@ struct App {
     pane_sizes: BTreeMap<SeatId, (u64, u16, u16)>,
     pane_bounds: Vec<(SeatId, Rect)>,
     focus_bounds: Vec<(SeatId, Rect)>,
-    scroll_wheel: Option<(SeatId, f64)>,
+    scroll_wheel: Option<wheel::Intent>,
+    wheel_log_at: Option<Instant>,
     focus: FocusState,
     notifications: Option<bboxy450_term::notifications::Worker>,
     frontmost: bool,
@@ -2414,6 +2417,7 @@ impl App {
             pane_bounds: vec![],
             focus_bounds: vec![],
             scroll_wheel: None,
+            wheel_log_at: None,
             focus: FocusState::default(),
             notifications: None,
             frontmost: false,
@@ -8464,6 +8468,7 @@ impl ApplicationHandler<UiEvent> for App {
                     self.capture_now(ask, step);
                 }
             }
+            UiEvent::VerifyWheel => self.verify_wheel(),
             UiEvent::VerifyScrollTop => {
                 self.logger.write(format!(
                     "scroll verification start: frame={}",
@@ -8863,154 +8868,7 @@ impl ApplicationHandler<UiEvent> for App {
                     self.launcher_command(LauncherCommand::Hover(index));
                 }
             }
-            WindowEvent::MouseWheel { .. } if self.app_overlays.open() => {}
-            WindowEvent::MouseWheel { delta, .. } if self.launcher.is_some() => {
-                let dy = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => -y * 28.,
-                    MouseScrollDelta::PixelDelta(p) => {
-                        -p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
-                    }
-                };
-                self.scroll_launcher(dy);
-            }
-            WindowEvent::MouseWheel { delta, .. } if self.document.open => {
-                let [mut dx, mut dy] = match delta {
-                    MouseScrollDelta::LineDelta(x, y) => [-x * 28., -y * 28.],
-                    MouseScrollDelta::PixelDelta(p) => {
-                        let scale = self.window.as_ref().map_or(1., |w| w.scale_factor() as f32);
-                        [-p.x as f32 / scale, -p.y as f32 / scale]
-                    }
-                };
-                if self.modifiers.shift_key() && dx == 0. {
-                    dx = dy;
-                    dy = 0.;
-                }
-                if let Some(layout) = &self.document_layout {
-                    let horizontal = layout.regions.horizontal_at(self.pointer).cloned();
-                    let extent = layout.regions.extent;
-                    let root_dx = if horizontal.as_ref().is_some_and(|r| r.root) {
-                        dx
-                    } else {
-                        0.
-                    };
-                    let mut changed = self.document.scroll.scroll([root_dx, dy], extent);
-                    if let Some(region) = horizontal.filter(|r| !r.root) {
-                        changed |= self.document.scroll.pan(&region.key, dx, region.max);
-                    }
-                    if changed {
-                        self.document_layout = None;
-                        self.request_redraw();
-                    }
-                }
-            }
-            WindowEvent::MouseWheel { delta, .. }
-                if self.launcher.is_none()
-                    && self.sidebar_viewport.is_some_and(|(r, _)| {
-                        self.pointer[0] >= r.x
-                            && self.pointer[0] < r.right()
-                            && self.pointer[1] >= r.y
-                            && self.pointer[1] < r.bottom()
-                    }) =>
-            {
-                let dy = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => -y * 28.,
-                    MouseScrollDelta::PixelDelta(p) => {
-                        -p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
-                    }
-                };
-                self.scroll_sidebar(dy);
-            }
-            WindowEvent::MouseWheel { delta, .. }
-                if self.launcher.is_none()
-                    && self
-                        .local_page_layout
-                        .as_ref()
-                        .is_some_and(|p| p.contains(self.pointer)) =>
-            {
-                let delta = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => -y * 28.,
-                    MouseScrollDelta::PixelDelta(p) => {
-                        -p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
-                    }
-                };
-                self.local_scroll(delta);
-            }
-            WindowEvent::MouseWheel { .. }
-                if self.launcher.is_none()
-                    && self
-                        .local_page_layout
-                        .as_ref()
-                        .is_some_and(|p| p.focuses(self.pointer)) => {}
-            WindowEvent::MouseWheel { delta, .. }
-                if self.launcher.is_none()
-                    && self.conversation_layout.as_ref().is_some_and(|layout| {
-                        let r = layout.regions.body;
-                        self.pointer[0] >= r.x
-                            && self.pointer[0] < r.right()
-                            && self.pointer[1] >= r.y
-                            && self.pointer[1] < r.bottom()
-                    }) =>
-            {
-                let dy = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => -y * 28.,
-                    MouseScrollDelta::PixelDelta(p) => {
-                        -p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
-                    }
-                };
-                self.scroll_composer_body(dy);
-            }
-            WindowEvent::MouseWheel { delta, .. }
-                if self.launcher.is_none()
-                    && self.conversation_layout.as_ref().is_some_and(|layout| {
-                        layout.actions.contains("conversation/rows", self.pointer)
-                            || layout.actions.contains("conversation/tasks", self.pointer)
-                    }) =>
-            {
-                let dy = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => y * 28.,
-                    MouseScrollDelta::PixelDelta(p) => {
-                        p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
-                    }
-                };
-                let tasks = self.conversation_layout.as_ref().is_some_and(|layout| {
-                    layout.actions.contains("conversation/tasks", self.pointer)
-                });
-                let _ = self.scroll_sidebar_section(tasks, -dy);
-            }
-            WindowEvent::MouseWheel { delta, .. } if self.launcher.is_none() => {
-                if let Some((seat, rect)) = self.focus_bounds.iter().find(|(_, rect)| {
-                    self.pointer[0] >= rect.x
-                        && self.pointer[0] < rect.right()
-                        && self.pointer[1] >= rect.y
-                        && self.pointer[1] < rect.bottom()
-                }) {
-                    let seat = *seat;
-                    let rows = self
-                        .live_state
-                        .as_ref()
-                        .and_then(|model| model.screens.get(&seat))
-                        .map_or(1, |screen| screen.rows.max(1));
-                    let lines = match delta {
-                        MouseScrollDelta::LineDelta(_, y) => f64::from(y),
-                        MouseScrollDelta::PixelDelta(position) => {
-                            let scale = self.window.as_ref().map_or(1., |w| w.scale_factor());
-                            position.y / (f64::from(rect.h) / rows as f64 * scale).max(1.)
-                        }
-                    };
-                    if lines.is_finite() {
-                        let remainder = self.scroll_wheel.get_or_insert((seat, 0.));
-                        if remainder.0 != seat {
-                            *remainder = (seat, 0.);
-                        }
-                        remainder.1 += lines;
-                        let whole = remainder.1.trunc() as i64;
-                        remainder.1 -= whole as f64;
-                        if whole != 0 {
-                            self.scroll_pane(seat, ScrollRequest::lines(whole));
-                        }
-                    }
-                }
-            }
+            WindowEvent::MouseWheel { delta, .. } => self.mouse_wheel(delta),
             WindowEvent::MouseInput {
                 state: ElementState::Pressed,
                 button: MouseButton::Left,
@@ -9397,6 +9255,7 @@ Debug and verification only, never for normal use:
   --theme light|dark   terminal palette for live verification (default: dark)
   --grid-size COLSxROWS fit one live pane by resizing the real window; 10s deadline
   --grid-hash          write actual visible-screen hashes to PNG's .grid.json
+  --wheel-after SECS   private test-account wheel up in each visible pane
   --scroll-top-after SECS scroll panes to the capture's first row (0..300)
   --quit-after SECS    close this verification instance cleanly (0..300)
   BBOXY_VERIFY_INPUT   env: bytes typed into each new seat once, \\n sent as Return
@@ -9417,6 +9276,7 @@ struct Verify {
     grid_ready: bool,
     capture_started: bool,
     scroll_after: Option<Duration>,
+    wheel_after: Option<Duration>,
     quit_after: Option<Duration>,
     scroll_due: bool,
     scrolled: std::collections::BTreeSet<(SeatId, u64)>,
@@ -9476,6 +9336,7 @@ impl Verify {
             grid_size,
             grid_hash: args.iter().any(|arg| arg == "--grid-hash"),
             scroll_after: seconds("--scroll-top-after")?,
+            wheel_after: seconds("--wheel-after")?,
             quit_after: seconds("--quit-after")?,
             ..Default::default()
         })
@@ -9498,6 +9359,7 @@ impl App {
             }
             for (after, event) in [
                 (self.verify.scroll_after, UiEvent::VerifyScrollTop),
+                (self.verify.wheel_after, UiEvent::VerifyWheel),
                 (self.verify.quit_after, UiEvent::VerifyClose),
             ] {
                 if let Some(after) = after {

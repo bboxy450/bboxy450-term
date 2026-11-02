@@ -203,6 +203,12 @@ fn command_channel() -> (CommandSender, Commands) {
     )
 }
 
+#[cfg(test)]
+pub(super) fn disconnected_commands() -> CommandSender {
+    // The UI admission fixture retains its bounded intents while disconnected.
+    command_channel().0
+}
+
 pub fn start(
     updates: Arc<Latest<Arc<Model>>>,
     proxy: EventLoopProxy<UiEvent>,

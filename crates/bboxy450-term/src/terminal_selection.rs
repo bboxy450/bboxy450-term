@@ -113,7 +113,7 @@ impl Display {
             && self.historical_row == other.historical_row
     }
     pub fn allows_selection(&self, _shift: bool) -> bool {
-        // The host currently owns pointer gestures; it does not forward mouse reports.
+        // The host owns selection gestures; wheel reports have a separate mode-aware route.
         // Enabling a TUI mouse mode must not leave that gesture with no owner.
         true
     }

@@ -712,3 +712,13 @@ implementation_tests = ["crates/bboxy450-term/src/cockpit/environment_tests.rs",
 assumptions = "The same bounded exec-snapshot model as SeatLaunchEnvironment: one caller bit, fresh/retained/absent owner and three seat births, with arbitrary caller A-B-A and owner restart. Startup scrub and exec are one command snapshot before the backend starts. No fairness is needed for safety. An owner started outside app cleanup may be dirty; the independent seat boundary covers that case when the host supports the removal-rule protocol. User configuration and actual OS environment behavior remain process witnesses."
 property = "A freshly started backend never inherits caller harness session identity. The broken control removes the backend scrub while leaving the seat scrub intact and must fail FreshBackendHasNoCallerMarker. The private backend witness runs the actual cockpit child launcher for supervisor, logic and desktop from a polluted parent and verifies that the parent itself was not mutated."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "WheelOwnership"
+title = "Wheel events have an owner under live terminal modes"
+models = ["WheelOwnership", "BrokenWheelOwnership"]
+sources = ["crates/bboxy450-term/src/wheel.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/keyboard.rs", "crates/bboxy450-term/tests/formal_contracts/wheel_model.rs"]
+implementation_tests = ["crates/bboxy450-term/src/wheel.rs", "crates/bboxy450-term/tests/headless.rs"]
+assumptions = "One pointer pane; mouse, alternate-scroll, Shift, historical-view, overlay and current-screen identity bits. Each environment toggle and wheel dispatch is atomic; toggles explore A-B-A changes. No scheduling fairness or PTY/OS progress is assumed. Alternate includes both ALT_SCREEN and ALTERNATE_SCROLL enabled. The source generation fence is abstracted as current_screen. Exact SGR/UTF-8/legacy bytes, fractional deltas, geometry, bounded output, queue refusal, process restart and real application offset use implementation/process witnesses. Input delivery, deduplication and retries retain their existing contracts; no arbitrary Rust refinement is claimed."
+property = "A current live program receives mouse or alternate-scroll input unless Shift or a historical viewport selects host history; a covering surface owns the wheel first. A stale screen refuses explicitly. Broken restores unconditional host-history routing and must violate NoInvalidEffect."
+checks = ["make test-formal", "make test"]

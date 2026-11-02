@@ -40,6 +40,9 @@ mod gitkb_models;
 #[path = "input_dedup_model.rs"]
 mod input_dedup_model;
 
+#[path = "wheel_model.rs"]
+mod wheel_model;
+
 fn eq(i: usize, n: i64) -> Expr {
     Var(i).eq(Int(n))
 }
@@ -1783,7 +1786,7 @@ fn native_frame_observation(b: bool) -> Model {
 }
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 38] = [
+    let families: [fn(bool) -> Model; 39] = [
         seat_models::diagnostic_routing,
         native_surface_resize,
         crate_publication,
@@ -1798,6 +1801,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         graph_query_cursors,
         document_feed,
         native_input,
+        wheel_model::wheel_ownership,
         sidebar_reveal,
         async_render_preparation,
         render_line_plan,

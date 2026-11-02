@@ -815,3 +815,13 @@ frontend = "project"
 name = "BrokenBackendLaunchEnvironment"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "WheelOwnership"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenWheelOwnership"
+expected = "safety"
+frontend = "project"
