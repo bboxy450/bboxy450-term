@@ -50,6 +50,8 @@ pub(super) fn fixed(production: Duration) -> Duration {
 pub(super) struct Stderr {
     pub text: String,
     pub truncated: bool,
+    /// The child's own failing exit status, when it ended before the host stopped it.
+    pub exit: Option<String>,
 }
 
 pub(super) struct Client {
@@ -134,6 +136,7 @@ impl Client {
             Stderr {
                 text: String::from_utf8_lossy(&bytes).into_owned(),
                 truncated,
+                exit: None,
             }
         });
         Ok(Self {
@@ -428,10 +431,16 @@ impl Client {
 
     pub async fn shutdown(mut self) -> Stderr {
         self.input.take();
-        if timeout(Duration::from_millis(100), self.child.wait())
-            .await
-            .is_err()
+        let mut exit = None;
+        let waited = timeout(Duration::from_millis(100), self.child.wait()).await;
+        if let Ok(Ok(status)) = &waited
+            && !status.success()
         {
+            // A plugin that died mid-call left only plugin_eof; name its cause.
+            let _ = failure("plugin_exit", format!("plugin process {status}"));
+            exit = Some(status.to_string());
+        }
+        if waited.is_err() {
             if self.child.try_wait().ok().flatten().is_none() {
                 // This is the PID of our own unreaped direct child, never a name lookup.
                 unsafe {
@@ -447,7 +456,7 @@ impl Client {
             }
         }
         let mut capture = self.stderr.take().expect("one stderr capture");
-        match timeout(Duration::from_millis(100), &mut capture).await {
+        let mut captured = match timeout(Duration::from_millis(100), &mut capture).await {
             Ok(Ok(captured)) => captured,
             _ => {
                 capture.abort();
@@ -456,7 +465,9 @@ impl Client {
                     ..Default::default()
                 }
             }
-        }
+        };
+        captured.exit = exit;
+        captured
     }
 }
 
@@ -891,6 +902,34 @@ mod tests {
                 .as_bytes(),
             signed.as_bytes()
         );
+    }
+
+    // keeps: spec plugins — a plugin that dies mid-call names its own exit status.
+    #[tokio::test]
+    async fn a_plugin_that_exits_mid_call_reports_its_exit_status() {
+        set_test_budget(CALL_BUDGET);
+        let files = tempfile::tempdir().unwrap();
+        let source = files.path().join("bboxy450-term-data_source-eof");
+        Knobs::reference().fault("eof").install(&source);
+        let mut account = FixtureAccount::prepare(&source).unwrap();
+        let mut descriptor = Client::spawn(&account, true).unwrap();
+        let shape = descriptor.shape().await;
+        descriptor.shutdown().await;
+        account
+            .cache_shape(serde_json::from_value(shape.unwrap()).unwrap())
+            .unwrap();
+        let mut client = Client::spawn(&account, false).unwrap();
+        let refusal = async {
+            client.initialize(&account).await?;
+            client
+                .call("data_source_list", json!({}), CALL_BUDGET)
+                .await
+        }
+        .await
+        .unwrap_err();
+        assert_eq!(refusal.code, "plugin_eof");
+        let captured = client.shutdown().await;
+        assert_eq!(captured.exit.as_deref(), Some("exit status: 3"));
     }
 
     // Test-chosen: room for a fresh fixture copy's first exec under load.
