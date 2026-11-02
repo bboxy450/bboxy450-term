@@ -985,10 +985,15 @@ pub enum TaskRequest {
     List {
         #[serde(default, skip_serializing_if = "is_false")]
         unassigned: bool,
+        /// Operator only: the swarm's page merged with the account's open
+        /// unassigned tasks, one most-recently-changed-first list.
+        #[serde(default, skip_serializing_if = "is_false")]
+        include_unassigned: bool,
         swarm_id: Option<Ulid>,
         status: Option<String>,
         assignee: Option<String>,
-        after: Option<Ulid>,
+        /// The opaque `next` of the previous page; continues with older tasks.
+        after: Option<String>,
         limit: Option<usize>,
     },
     Status {
@@ -1105,7 +1110,8 @@ pub enum TaskResponse {
     },
     Items {
         items: Vec<TaskCard>,
-        next: Option<Ulid>,
+        /// Opaque recent-first cursor, passed back as `List::after`.
+        next: Option<String>,
     },
     Item {
         item: TaskDoc,

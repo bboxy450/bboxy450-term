@@ -93,6 +93,7 @@ impl Notes {
                 path: relative,
                 digest: digest.clone(),
                 external_id: None,
+                updated_at: None,
             },
             frontmatter: Value::Object(frontmatter),
             body,

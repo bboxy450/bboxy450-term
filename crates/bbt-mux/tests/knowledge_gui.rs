@@ -28,6 +28,7 @@ impl Source {
             path: "e2e/one.md".into(),
             digest: "a".repeat(64),
             external_id: None,
+            updated_at: None,
         }
     }
     fn forbidden<T>(&self) -> d::Result<T> {

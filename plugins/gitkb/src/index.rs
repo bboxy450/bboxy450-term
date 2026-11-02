@@ -121,6 +121,8 @@ pub struct Doc {
     pub frontmatter: Map<String, Value>,
     /// The body's first 240 characters (list and search snippets).
     pub snippet: String,
+    /// GitKB's committed `modified_at`: the record's `updated_at`.
+    pub modified_at: Value,
     fields: Fields,
 }
 
@@ -132,6 +134,7 @@ impl Doc {
         doc_type: Value,
         mut frontmatter: Map<String, Value>,
         snippet: String,
+        modified_at: Value,
     ) -> Self {
         frontmatter.retain(|k, _| !RELATIONSHIP_KEYS.contains(&k.as_str()));
         let fields = WHERE_FIELDS.map(|f| frontmatter.get(f).cloned().unwrap_or(Value::Null));
@@ -142,6 +145,7 @@ impl Doc {
             doc_type,
             frontmatter,
             snippet,
+            modified_at,
             fields,
         }
     }
@@ -274,6 +278,7 @@ fn entry(line: &[u8]) -> Option<(String, Doc, Map<String, Value>)> {
         content["doc_type"].clone(),
         fm,
         snippet,
+        content["modified_at"].clone(),
     );
     Some((slug.into(), doc, related))
 }
@@ -546,6 +551,7 @@ fn native_outgoing(
 fn trimmed(record: &Value) -> Value {
     json!({"id": record["id"], "external_id": record["external_id"], "number": record["number"],
         "slug": record["slug"], "path": record["path"], "digest": record["digest"],
+        "updated_at": record["updated_at"],
         "frontmatter": record["frontmatter"], "body": record["body"],
         "gitkb": {"native_status": record["gitkb"]["native_status"]}})
 }
@@ -730,7 +736,7 @@ impl Index {
                         .chunks(per)
                         .map(|part| {
                             let mut backend = backend.clone();
-                            let (ctx, root) = (&ctx, &root_text);
+                            let (ctx, root, workspace) = (&ctx, &root_text, &workspace);
                             scope.spawn(move || {
                                 part.iter()
                                     .filter_map(|(slug, stat)| {
@@ -738,6 +744,7 @@ impl Index {
                                             &mut backend,
                                             ctx,
                                             root,
+                                            workspace,
                                             slug,
                                             None,
                                         )
@@ -917,7 +924,8 @@ impl Index {
 }
 
 /// Snapshot format version; a different version is ignored and rebuilt.
-const SNAPSHOT_VERSION: u64 = 2;
+/// 3: committed rows and prepared records carry the record's `updated_at`.
+const SNAPSHOT_VERSION: u64 = 3;
 const MAX_SNAPSHOT: u64 = 256 << 20;
 
 /// One file per root and kind (`index`, `edges`, `workspace`) in the
@@ -989,7 +997,8 @@ pub fn save(dir: &Path, root: &str, committed: &Committed) -> std::io::Result<()
                 d.title,
                 d.doc_type,
                 d.frontmatter,
-                d.snippet
+                d.snippet,
+                d.modified_at
             ])
         })
         .collect();
@@ -1016,7 +1025,9 @@ pub fn load(dir: &Path, root: &str, signal: &str) -> Option<Committed> {
     }
     let mut docs = HashMap::with_capacity(rows.len());
     for row in rows {
-        let [slug, id, version, title, doc_type, fm, snippet] = row.as_array()?.as_slice() else {
+        let [slug, id, version, title, doc_type, fm, snippet, modified_at] =
+            row.as_array()?.as_slice()
+        else {
             return None;
         };
         let doc = Doc::new(
@@ -1026,6 +1037,7 @@ pub fn load(dir: &Path, root: &str, signal: &str) -> Option<Committed> {
             doc_type.clone(),
             fm.as_object()?.clone(),
             snippet.as_str()?.to_owned(),
+            modified_at.clone(),
         );
         docs.insert(slug.as_str()?.to_owned(), doc);
     }
@@ -1430,7 +1442,8 @@ mod tests {
         assert_eq!(names.len(), 1, "{names:?}");
         let path = snapshot_path(&dir, "index", "/kb");
         let text = std::fs::read_to_string(&path).unwrap();
-        std::fs::write(&path, text.replace("\"version\":2", "\"version\":3")).unwrap();
+        assert!(text.contains("\"version\":3"));
+        std::fs::write(&path, text.replace("\"version\":3", "\"version\":4")).unwrap();
         assert!(load(&dir, "/kb", "s2").is_none(), "another format version");
         std::fs::write(&path, "{not json").unwrap();
         assert!(load(&dir, "/kb", "s2").is_none(), "malformed");

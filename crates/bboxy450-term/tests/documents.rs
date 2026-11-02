@@ -15,6 +15,7 @@ fn reference(n: u64) -> d::RecordRef {
         path: format!("notes/record-{n}.md"),
         digest: format!("digest-{n}"),
         external_id: None,
+        updated_at: None,
     }
 }
 fn result(reader: &mut Reader, id: Ulid, value: serde_json::Value) -> std::sync::Arc<Reply> {

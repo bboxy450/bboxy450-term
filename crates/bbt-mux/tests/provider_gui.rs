@@ -1288,6 +1288,7 @@ fn seat_controls_case() {
             }),
             request: bbt_proto::messaging::TaskRequest::List {
                 unassigned: true,
+                include_unassigned: false,
                 swarm_id: None,
                 status: Some("open".into()),
                 assignee: None,

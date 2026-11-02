@@ -24,8 +24,8 @@ use serde_json::{Map, Value, json};
 use crate::backend::Backend;
 use crate::index::{Committed, Doc, Index, Listed, Query, WAIT_CAP, WAIT_RESERVE, store_signal};
 use crate::native::{
-    committed_digest, content_digest, digest, embeds, file_uri, mime_type, number, portable,
-    prefix, random_hex, sha256_hex, slug_path, task_status,
+    committed_digest, committed_updated_at, content_digest, digest, embeds, file_updated_at,
+    file_uri, mime_type, number, portable, prefix, random_hex, sha256_hex, slug_path, task_status,
 };
 
 /// Time left for the reply when a page stops filling.
@@ -135,14 +135,15 @@ impl Summary {
             value => value.clone(),
         };
         Ok(Some(Self {
-            reference: json!({
+            reference: reference(&json!({
                 "id": portable(id)?,
                 "external_id": id,
                 "number": number(extras, slug)?,
                 "slug": slug,
                 "path": format!("{slug}.md"),
                 "digest": committed_digest(root, id, &doc["version"]),
-            }),
+                "updated_at": committed_updated_at(&doc["modified_at"]),
+            })),
             title: doc["title"].clone(),
             kind,
             status,
@@ -168,14 +169,15 @@ impl Summary {
         )?;
         let fm = &projected.frontmatter;
         let summary = Self {
-            reference: json!({
+            reference: reference(&json!({
                 "id": id,
                 "external_id": doc.id,
                 "number": projected.number,
                 "slug": slug,
                 "path": format!("{slug}.md"),
                 "digest": committed_digest(root, &doc.id, &doc.version),
-            }),
+                "updated_at": committed_updated_at(&doc.modified_at),
+            })),
             title: fm["title"].clone(),
             kind: fm["type"].clone(),
             status: fm.get("status").cloned().unwrap_or(Value::Null),
@@ -215,6 +217,9 @@ pub fn reference(record: &Value) -> Value {
     let mut out = Map::new();
     for key in ["id", "external_id", "number", "slug", "path", "digest"] {
         out.insert(key.into(), record[key].clone());
+    }
+    if !record["updated_at"].is_null() {
+        out.insert("updated_at".into(), record["updated_at"].clone());
     }
     Value::Object(out)
 }
@@ -515,10 +520,11 @@ pub fn read_source(
     backend: &mut Backend,
     ctx: &Ctx,
     root_text: &str,
+    workspace: &Path,
     slug: &str,
     requested: Option<&str>,
 ) -> Result<Value, Refusal> {
-    read_source_state(backend, ctx, root_text, slug, requested).map(|(record, _)| record)
+    read_source_state(backend, ctx, root_text, workspace, slug, requested).map(|(record, _)| record)
 }
 
 /// `read_source`, plus whether GitKB reports the workspace source as a
@@ -527,6 +533,7 @@ pub fn read_source_state(
     backend: &mut Backend,
     ctx: &Ctx,
     root_text: &str,
+    workspace: &Path,
     slug: &str,
     requested: Option<&str>,
 ) -> Result<(Value, bool), Refusal> {
@@ -599,10 +606,16 @@ pub fn read_source_state(
     let source = result["documentSource"].clone();
     // Committed sources digest their native id and version, so batched
     // and indexed references need no bytes; workspace sources digest bytes.
-    let digest = if source == json!({"kind": "committed"}) {
-        committed_digest(root_text, native_id, &doc["version"])
+    let (digest, updated_at) = if source == json!({"kind": "committed"}) {
+        (
+            committed_digest(root_text, native_id, &doc["version"]),
+            committed_updated_at(&doc["modified_at"]),
+        )
     } else {
-        content_digest(root_text, &source, raw)
+        (
+            content_digest(root_text, &source, raw),
+            file_updated_at(&workspace.join(format!("{slug}.md"))),
+        )
     };
     let mut record = json!({
         "id": id, "external_id": native_id, "number": number, "slug": slug,
@@ -616,6 +629,9 @@ pub fn read_source_state(
     });
     if let Some(signed) = signed_record {
         record["signed_record"] = signed;
+    }
+    if !updated_at.is_null() {
+        record["updated_at"] = updated_at;
     }
     if truthy(&workspace_generation) {
         record["gitkb"]["workspace_generation"] = workspace_generation;
@@ -747,6 +763,7 @@ impl GitKb {
             &mut self.backend,
             &self.ctx,
             &self.root_text,
+            &self.workspace_path,
             &slug,
             requested,
         )?;
@@ -922,7 +939,7 @@ impl GitKb {
             return;
         }
         let per = wanted.len().div_ceil(PARALLEL_READS);
-        let (ctx, root) = (&self.ctx, &self.root_text);
+        let (ctx, root, workspace) = (&self.ctx, &self.root_text, &self.workspace_path);
         let results: Vec<(String, Result<Value, Refusal>)> = std::thread::scope(|scope| {
             let handles: Vec<_> = wanted
                 .chunks(per)
@@ -931,7 +948,8 @@ impl GitKb {
                     scope.spawn(move || {
                         part.iter()
                             .map(|slug| {
-                                let record = read_source(&mut backend, ctx, root, slug, None);
+                                let record =
+                                    read_source(&mut backend, ctx, root, workspace, slug, None);
                                 (slug.clone(), record)
                             })
                             .collect::<Vec<_>>()
@@ -1209,6 +1227,7 @@ mod tests {
                 "created_at": "2026-10-30T15:23:14Z", "modified_at": "2026-10-30T15:23:14Z"}});
         let batch = json!({"id": "01a18d68-6fe0-7d03-92fd-8b75477fbe85", "slug": "notes/a",
             "type": "task", "title": "A", "status": "active", "assignee": null, "content": "# A\n", "version": 1,
+            "modified_at": "2026-10-30T15:23:14+00:00",
             "frontmatter": {"bboxy_status": "claimed", "number": 77, "swarm": "s1"},
             "rawContent": raw});
         (exact, batch)
@@ -1229,9 +1248,12 @@ mod tests {
             "external_id": doc["id"], "number": number(Some(&fm), slug).unwrap(),
             "slug": slug, "path": format!("{slug}.md"),
             "digest": committed_digest(root, doc["id"].as_str().unwrap(), &doc["version"]),
+            "updated_at": committed_updated_at(&doc["modified_at"]),
             "frontmatter": fm, "body": doc["content"], "gitkb": {"native_status": native_status},
         })
     }
+    /// `2026-10-30T15:23:14Z`, the fixture's committed `modified_at`.
+    const MODIFIED_MS: u64 = 1_793_373_794_000;
 
     #[test]
     fn batch_reference_digest_equals_exact_read() {
@@ -1242,6 +1264,8 @@ mod tests {
             .unwrap();
         assert_eq!(summary.reference, reference(&record));
         assert_eq!(summary.reference["number"], 77);
+        // `show` says `…Z`, the batch `…+00:00`: one instant, one updated_at.
+        assert_eq!(summary.reference["updated_at"], MODIFIED_MS);
         let from_exact = Summary::from_record(&record);
         assert_eq!(summary.status, from_exact.status);
         assert_eq!(summary.native_status, from_exact.native_status);
@@ -1271,7 +1295,7 @@ mod tests {
         fm["parent"] = json!("notes/p");
         let content = json!({"id": doc["id"], "slug": "notes/a", "version": doc["version"],
             "doc_type": doc["doc_type"], "title": doc["title"], "content": doc["content"],
-            "frontmatter": fm});
+            "frontmatter": fm, "modified_at": doc["modified_at"]});
         let line = format!(
             "{}\n",
             encoded(&json!({"slug": "notes/a", "content": encoded(&content)}))
@@ -1280,6 +1304,7 @@ mod tests {
         let entry = committed.doc("notes/a", &doc["id"]).unwrap();
         let (summary, frontmatter) = Summary::from_index("/kb", "notes/a", entry).unwrap();
         assert_eq!(summary.reference, reference(&record));
+        assert_eq!(summary.reference["updated_at"], MODIFIED_MS);
         let from_exact = Summary::from_record(&record);
         for (a, b) in [
             (&summary.status, &from_exact.status),
@@ -1302,9 +1327,10 @@ mod tests {
         .unwrap()
         .frontmatter;
         assert_eq!(frontmatter, Value::Object(exact_fm));
-        // A later commit bumps the version and so the digest.
+        // A later commit bumps the version and so the digest, and its time.
         let mut next = content.clone();
         next["version"] = json!(2);
+        next["modified_at"] = json!("2026-10-31T00:00:00.000001Z");
         let line = format!(
             "{}\n",
             encoded(&json!({"slug": "notes/a", "content": encoded(&next)}))
@@ -1313,6 +1339,7 @@ mod tests {
         let entry = bumped.doc("notes/a", &doc["id"]).unwrap();
         let (moved, _) = Summary::from_index("/kb", "notes/a", entry).unwrap();
         assert_ne!(moved.reference["digest"], summary.reference["digest"]);
+        assert_eq!(moved.reference["updated_at"], 1_793_404_800_000_u64);
     }
 
     #[test]

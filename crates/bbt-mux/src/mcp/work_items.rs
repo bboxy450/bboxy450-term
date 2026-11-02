@@ -57,8 +57,48 @@ pub(crate) trait TaskDocuments {
     fn locate_before(&self, locator: &str, _deadline: Instant) -> Checked<Document> {
         self.locate(locator)
     }
-    /// Return an authorized page plus one lookahead, with no unrelated body reads.
-    fn documents(&self, registry: &Registry, actor: &Actor, args: &List) -> Checked<Vec<Document>>;
+    /// Return an authorized page plus one lookahead, most recently changed
+    /// first, with no unrelated body reads.
+    fn documents(
+        &self,
+        registry: &Registry,
+        actor: &Actor,
+        args: &List,
+    ) -> Checked<Vec<(Recency, Document)>>;
+}
+
+/// A task's place in the recent-first inventory: when it last changed
+/// (`RecordRef::updated_at`, else the creation time its ULID carries), then
+/// its unique ID. Larger is newer; pages descend, so `next` is exact.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct Recency(u64, Ulid);
+impl Recency {
+    fn of(reference: &d::RecordRef) -> Checked<Self> {
+        let id = reference
+            .id
+            .parse::<Ulid>()
+            .map_err(|_| "invalid task reference ID")?;
+        Ok(Self(reference.updated_at.unwrap_or(id.timestamp_ms()), id))
+    }
+    /// The opaque `next` cursor: `<updated ms>:<ULID>`.
+    fn cursor(self) -> String {
+        format!("{}:{}", self.0, self.1)
+    }
+    /// A `next` cursor, or a bare task ULID (its creation time and ID).
+    fn parse(text: &str) -> Checked<Self> {
+        let invalid = || "after must be a task_list next cursor".to_owned();
+        match text.split_once(':') {
+            Some((at, id)) if !at.is_empty() && at.bytes().all(|b| b.is_ascii_digit()) => Ok(Self(
+                at.parse().map_err(|_| invalid())?,
+                id.parse().map_err(|_| invalid())?,
+            )),
+            Some(_) => Err(invalid()),
+            None => {
+                let id: Ulid = text.parse().map_err(|_| invalid())?;
+                Ok(Self(id.timestamp_ms(), id))
+            }
+        }
+    }
 }
 impl TaskDocuments for Index {
     fn record(&self, locator: &str) -> Checked<Document> {
@@ -70,7 +110,12 @@ impl TaskDocuments for Index {
     fn locate(&self, locator: &str) -> Checked<Document> {
         locate_index(self, locator)
     }
-    fn documents(&self, registry: &Registry, actor: &Actor, args: &List) -> Checked<Vec<Document>> {
+    fn documents(
+        &self,
+        registry: &Registry,
+        actor: &Actor,
+        args: &List,
+    ) -> Checked<Vec<(Recency, Document)>> {
         let source = crate::knowledge::BboxySource::new(self);
         ProviderTasks(&source, None).documents(registry, actor, args)
     }
@@ -108,7 +153,12 @@ impl TaskDocuments for ProviderTasks<'_> {
         })?;
         self.fetch(reference, Some(deadline))
     }
-    fn documents(&self, registry: &Registry, actor: &Actor, args: &List) -> Checked<Vec<Document>> {
+    fn documents(
+        &self,
+        registry: &Registry,
+        actor: &Actor,
+        args: &List,
+    ) -> Checked<Vec<(Recency, Document)>> {
         if self
             .1
             .is_some_and(|scope| args.swarm_id.is_some_and(|swarm| swarm != scope))
@@ -121,6 +171,7 @@ impl TaskDocuments for ProviderTasks<'_> {
             .or_else(|| actor.seat().map(|seat| seat.swarm_id));
         let assignee = args.assignee.as_deref().map(seat_reference).transpose()?;
         let limit = tools::page_limit(args.limit)?;
+        let after = args.cursor()?;
         let deadline = Instant::now() + TASK_LIST_BUDGET;
         let mut candidates = BTreeMap::new();
         // Native imports retain unassigned tasks with a scoped delegator. Their
@@ -129,6 +180,7 @@ impl TaskDocuments for ProviderTasks<'_> {
         let native_inventory =
             assignee.is_none() && actor.class() == Class::Oracle && self.0.import_root().is_ok();
         if args.unassigned
+            || args.include_unassigned
             || assignee == Some(None)
             || scope.is_none() && assignee.is_none()
             || native_inventory
@@ -174,7 +226,7 @@ impl TaskDocuments for ProviderTasks<'_> {
                             && is_task(&metadata)
                             && metadata.metadata["status"].as_str().is_some();
                         if !complete || listed(&metadata, registry, actor, args, assignee, scope) {
-                            task_candidate(&mut candidates, reference, args.after)?;
+                            task_candidate(&mut candidates, reference, after)?;
                         }
                     }
                     cursor = page.next;
@@ -217,7 +269,7 @@ impl TaskDocuments for ProviderTasks<'_> {
                             };
                             let page = within(deadline, || self.0.list_until(request, deadline))?;
                             for reference in page.items {
-                                task_candidate(&mut candidates, reference, args.after)?;
+                                task_candidate(&mut candidates, reference, after)?;
                             }
                             cursor = page.next;
                             let Some(next) = &cursor else { break };
@@ -232,11 +284,17 @@ impl TaskDocuments for ProviderTasks<'_> {
                 }
             }
         }
+        // Rank from references alone, then fetch only what the page needs.
+        let mut ranked = candidates
+            .into_values()
+            .map(|reference| Ok((Recency::of(&reference)?, reference)))
+            .collect::<Checked<Vec<_>>>()?;
+        ranked.sort_unstable_by_key(|(rank, _)| std::cmp::Reverse(*rank));
         let mut result = Vec::new();
-        for reference in candidates.into_values() {
+        for (rank, reference) in ranked {
             let document = self.fetch_record(reference, Some(deadline))?;
             if listed(&document, registry, actor, args, assignee, scope) {
-                result.push(document);
+                result.push((rank, document));
                 if result.len() > limit {
                     break;
                 }
@@ -316,13 +374,11 @@ fn within<T>(deadline: Instant, read: impl FnOnce() -> d::Result<T>) -> Checked<
 fn task_candidate(
     candidates: &mut BTreeMap<String, d::RecordRef>,
     reference: d::RecordRef,
-    after: Option<Ulid>,
+    after: Option<Recency>,
 ) -> Checked<()> {
-    let id = reference
-        .id
-        .parse::<Ulid>()
-        .map_err(|_| "invalid task reference ID")?;
-    if after.is_some_and(|after| id <= after) {
+    // `after` continues with strictly older tasks.
+    let rank = Recency::of(&reference)?;
+    if after.is_some_and(|after| rank >= after) {
         return Ok(());
     }
     if let Some(old) = candidates.insert(reference.id.clone(), reference.clone())
@@ -344,47 +400,62 @@ fn listed(
     assignee: Option<Option<Ulid>>,
     scope: Option<Ulid>,
 ) -> bool {
+    let open_unassigned = || {
+        doc.error.is_none()
+            && doc.metadata["status"] == "open"
+            && matches!(reference(doc, "assignee"), Ok(None))
+    };
     is_task(doc)
         // Historical task/bug/epic Markdown can predate the native lifecycle.
         // Keep it addressable as knowledge, without poisoning the entire task page
         // or inventing an actionable state. Direct reads/transitions stay strict.
         // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
         && task_state(doc.metadata["status"].as_str().unwrap_or_default()).is_ok()
-        && !scope.is_some_and(|scope| {
-            doc.metadata["swarm"]
-                .as_str()
-                .is_some_and(|value| value != scope.to_string())
-        })
-        && if args.unassigned {
-            doc.error.is_none()
-                && doc.metadata["status"] == "open"
-                && matches!(reference(doc, "assignee"), Ok(None))
-        } else {
-            authorize(doc, registry, actor).is_ok()
-        }
-        && (args.unassigned
-            || scope.is_none_or(|swarm| {
-                reference(doc, "assignee")
-                    .ok()
-                    .flatten()
-                    .and_then(|seat| registry.get(seat).ok())
-                    .is_some_and(|seat| seat.swarm == swarm)
-                    || assignee == Some(None) && actor.seat().is_some()
-                    || actor.class() == Class::Oracle
-                        && reference(doc, "assignee").ok() == Some(None)
-                        && (doc.metadata["swarm"] == json!(swarm)
-                            || reference(doc, "delegated_by")
-                                .ok()
-                                .flatten()
-                                .and_then(|seat| registry.get(seat).ok())
-                                .is_some_and(|seat| seat.swarm == swarm))
-            }))
         && args
             .status
             .as_ref()
             .is_none_or(|status| doc.metadata["status"] == *status)
+        // The operator's one view: the swarm's assigned and delegated work
+        // (delegation never leaves a swarm) plus the account's open unassigned tasks.
+        && (args.include_unassigned && open_unassigned()
+            || scoped(doc, registry, actor, args, assignee, scope, open_unassigned))
+}
+
+fn scoped(
+    doc: &Document,
+    registry: &Registry,
+    actor: &Actor,
+    args: &List,
+    assignee: Option<Option<Ulid>>,
+    scope: Option<Ulid>,
+    open_unassigned: impl Fn() -> bool,
+) -> bool {
+    !scope.is_some_and(|scope| {
+        doc.metadata["swarm"]
+            .as_str()
+            .is_some_and(|value| value != scope.to_string())
+    }) && if args.unassigned {
+        open_unassigned()
+    } else {
+        authorize(doc, registry, actor).is_ok()
+    } && (args.unassigned
+        || scope.is_none_or(|swarm| {
+            reference(doc, "assignee")
+                .ok()
+                .flatten()
+                .and_then(|seat| registry.get(seat).ok())
+                .is_some_and(|seat| seat.swarm == swarm)
+                || assignee == Some(None) && actor.seat().is_some()
+                || actor.class() == Class::Oracle
+                    && reference(doc, "assignee").ok() == Some(None)
+                    && (doc.metadata["swarm"] == json!(swarm)
+                        || reference(doc, "delegated_by")
+                            .ok()
+                            .flatten()
+                            .and_then(|seat| registry.get(seat).ok())
+                            .is_some_and(|seat| seat.swarm == swarm))
+        }))
         && assignee.is_none_or(|id| reference(doc, "assignee").ok() == Some(id))
-        && args.after.is_none_or(|id| doc.id > id.to_string())
 }
 
 pub(crate) fn handles(tool: &str) -> bool {
@@ -428,8 +499,8 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
         ),
         (
             "task_list",
-            "Page lean task summaries assigned to seats in the captured swarm; workers see only their current assignments. Follow next with after; task_status reads bodies and full metadata. Pages are bounded by bytes and item count. Only the account operator may request the read-only open unassigned inventory.",
-            json!({"unassigned":{"type":"boolean"},"swarm_id":id,"status":{"type":"string","maxLength":32},"assignee":{"type":"string","maxLength":64},"after":id,"limit":{"type":"integer","minimum":1,"maximum":128}}),
+            "Page lean task summaries assigned to seats in the captured swarm, most recently changed first (ties by newer ID); workers see only their current assignments. Pass next back as after to continue with strictly older tasks; task_status reads bodies and full metadata. Pages are bounded by bytes and item count. Only the account operator may request the read-only open unassigned inventory, alone (unassigned) or merged into the swarm's page (include_unassigned).",
+            json!({"unassigned":{"type":"boolean"},"include_unassigned":{"type":"boolean"},"swarm_id":id,"status":{"type":"string","maxLength":32},"assignee":{"type":"string","maxLength":64},"after":{"type":"string","pattern":"^(?:[0-9]{1,20}:)?[0-7][0-9A-HJKMNP-TV-Z]{25}$"},"limit":{"type":"integer","minimum":1,"maximum":128}}),
             vec![],
         ),
         (
@@ -474,11 +545,18 @@ struct Status {
 pub(crate) struct List {
     #[serde(default)]
     unassigned: bool,
+    #[serde(default)]
+    include_unassigned: bool,
     swarm_id: Option<Ulid>,
     status: Option<String>,
     assignee: Option<String>,
-    after: Option<Ulid>,
+    after: Option<String>,
     limit: Option<usize>,
+}
+impl List {
+    fn cursor(&self) -> Checked<Option<Recency>> {
+        self.after.as_deref().map(Recency::parse).transpose()
+    }
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -826,6 +904,18 @@ pub(crate) fn prepare(
                     );
                 }
             }
+            if args.include_unassigned {
+                if !matches!(actor, Actor::Operator { .. }) {
+                    return Err("unassigned task inventory requires the account operator".into());
+                }
+                if args.unassigned || args.assignee.is_some() {
+                    return Err(
+                        "include_unassigned merges the swarm's page; omit unassigned and assignee"
+                            .into(),
+                    );
+                }
+            }
+            let after = args.cursor()?;
             if args
                 .swarm_id
                 .is_some_and(|id| actor.seat().is_some_and(|seat| id != seat.swarm_id))
@@ -842,18 +932,19 @@ pub(crate) fn prepare(
             let limit = tools::page_limit(args.limit)?;
             let mut docs = index.documents(registry, actor, &args)?;
             // Provider selection is an IO optimization, never read authority.
-            docs.retain(|doc| {
-                listed(
-                    doc,
-                    registry,
-                    actor,
-                    &args,
-                    assignee,
-                    args.swarm_id
-                        .or_else(|| actor.seat().map(|seat| seat.swarm_id)),
-                )
+            docs.retain(|(rank, doc)| {
+                after.is_none_or(|after| *rank < after)
+                    && listed(
+                        doc,
+                        registry,
+                        actor,
+                        &args,
+                        assignee,
+                        args.swarm_id
+                            .or_else(|| actor.seat().map(|seat| seat.swarm_id)),
+                    )
             });
-            docs.sort_by(|a, b| a.id.cmp(&b.id));
+            docs.sort_by_key(|(rank, _)| std::cmp::Reverse(*rank));
             return Ok(Prepared::Read(list_page(&docs, limit, TASK_PAGE_BYTES)?));
         }
         "task_report" => {
@@ -1158,17 +1249,17 @@ fn list_projection(doc: &Document) -> Value {
 
 // Origin: bboxy450-term — https://github.com/bboxy450/bboxy450-term
 // Keep reuse credit attached: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-fn list_page(docs: &[Document], limit: usize, byte_bound: usize) -> Checked<Value> {
+fn list_page(docs: &[(Recency, Document)], limit: usize, byte_bound: usize) -> Checked<Value> {
     // MCP carries JSON twice: structuredContent and an escaped text copy. Count
     // both, reserving a full cursor even for the eventual terminal page.
     let mut bytes = serde_json::to_vec(&super::success(
         Ulid::nil(),
-        json!({"items":[],"next":Ulid::nil()}),
+        json!({"items":[],"next":Recency(u64::MAX, Ulid::nil()).cursor()}),
     ))
     .map_err(|e| e.to_string())?
     .len();
     let mut items = Vec::new();
-    for doc in docs.iter().take(limit) {
+    for (_, doc) in docs.iter().take(limit) {
         let item = list_projection(doc);
         let encoded = serde_json::to_string(&item).map_err(|e| e.to_string())?;
         let item_bytes = encoded.len()
@@ -1185,7 +1276,7 @@ fn list_page(docs: &[Document], limit: usize, byte_bound: usize) -> Checked<Valu
     }
     // Every bounded summary fits by itself; never skip the item that cut a page.
     debug_assert!(docs.is_empty() || !items.is_empty());
-    let next = (items.len() < docs.len()).then(|| &docs[items.len() - 1].id);
+    let next = (items.len() < docs.len()).then(|| docs[items.len() - 1].0.cursor());
     Ok(json!({"items":items,"next":next}))
 }
 fn task_state(state: &str) -> Checked<()> {

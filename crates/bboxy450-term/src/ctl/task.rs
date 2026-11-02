@@ -182,10 +182,11 @@ pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, S
             loop {
                 let TaskResponse::Items { items, next } = client.task(TaskRequest::List {
                     unassigned: false,
+                    include_unassigned: false,
                     swarm_id: None,
                     status: None,
                     assignee: None,
-                    after,
+                    after: after.clone(),
                     limit: Some(PAGE),
                 })?
                 else {
@@ -193,7 +194,7 @@ pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, S
                 };
                 cards.extend(items);
                 match next {
-                    Some(next) if Some(next) != after => after = Some(next),
+                    Some(next) if after.as_ref() != Some(&next) => after = Some(next),
                     _ => break,
                 }
             }
@@ -265,10 +266,11 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
             loop {
                 let TaskResponse::Items { items, next } = client.task(TaskRequest::List {
                     unassigned,
+                    include_unassigned: false,
                     swarm_id: None,
                     status: status.clone(),
                     assignee: assignee.clone(),
-                    after,
+                    after: after.clone(),
                     limit: Some(PAGE),
                 })?
                 else {
@@ -276,7 +278,7 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
                 };
                 cards.extend(items);
                 match next {
-                    Some(next) if Some(next) != after => after = Some(next),
+                    Some(next) if after.as_ref() != Some(&next) => after = Some(next),
                     _ => break,
                 }
             }

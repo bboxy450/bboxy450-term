@@ -196,6 +196,12 @@ fn unassigned_inventory_is_optional_and_keeps_existing_task_list_bytes() {
             .unwrap(),
         inventory
     );
+    let merged = json!({"op":"list","include_unassigned":true,"swarm_id":ID,"status":null,"assignee":null,"after":format!("1793498400000:{ID}"),"limit":20});
+    assert_eq!(
+        serde_json::to_value(serde_json::from_value::<TaskRequest>(merged.clone()).unwrap())
+            .unwrap(),
+        merged
+    );
 }
 
 fn attention_receipt() -> Value {

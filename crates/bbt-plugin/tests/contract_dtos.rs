@@ -111,6 +111,7 @@ fn every_contract_dto_round_trips_through_its_schema() {
         path: "seven.md".into(),
         digest: DIGEST.into(),
         external_id: None,
+        updated_at: ds::timestamp_millis("2026-11-01T02:00:00.123Z"),
     };
     let record = ds::Record {
         reference: reference.clone(),
@@ -295,7 +296,7 @@ fn every_contract_dto_round_trips_through_its_schema() {
         true,
         &ts::TaskPage {
             items: vec![task()],
-            next: Some(ULID.into()),
+            next: Some(format!("1793498400000:{ULID}")),
         },
         s,
     );
@@ -611,4 +612,33 @@ fn the_signed_envelope_stays_strict() {
     let mut value = serde_json::to_value(envelope()).unwrap();
     value["extra"] = json!(1);
     assert!(serde_json::from_value::<es::Envelope>(value).is_err());
+}
+
+#[test]
+fn updated_at_is_optional_and_timestamps_parse_to_epoch_millis() {
+    let old =
+        json!({"id": ULID, "number": 7, "slug": "seven", "path": "seven.md", "digest": DIGEST});
+    let reference: ds::RecordRef = serde_json::from_value(old.clone()).unwrap();
+    assert_eq!(reference.updated_at, None);
+    assert_eq!(
+        serde_json::to_value(&reference).unwrap(),
+        old,
+        "absent stays absent"
+    );
+    for (text, millis) in [
+        ("1970-01-01T00:00:00Z", Some(0)),
+        ("2026-11-01T02:00:00Z", Some(1_793_498_400_000)),
+        ("2026-11-01T02:00:00.123Z", Some(1_793_498_400_123)),
+        ("2026-11-02T02:33:57.383724Z", Some(1_793_586_837_383)),
+        ("2026-11-02T02:33:57.383724+00:00", Some(1_793_586_837_383)),
+        ("2026-11-01T04:00:00+02:00", Some(1_793_498_400_000)),
+        ("2024-02-29T00:00:00Z", Some(1_709_164_800_000)),
+        ("1969-12-31T23:59:59Z", None),
+        ("2026-13-01T00:00:00Z", None),
+        ("2026-11-01", None),
+        ("2026-11-01T02:00:00", None),
+        ("2026-11-01T02:00:00.Z", None),
+    ] {
+        assert_eq!(ds::timestamp_millis(text), millis, "{text}");
+    }
 }

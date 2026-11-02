@@ -39,6 +39,76 @@ pub struct RecordRef {
     pub digest: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub external_id: Option<String>,
+    /// When the record last changed, in milliseconds since the Unix epoch.
+    /// Additive in 1.0: a provider that omits it leaves hosts to order the
+    /// record by its id. It is never injected into frontmatter.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub updated_at: Option<u64>,
+}
+
+/// Milliseconds since the Unix epoch of an RFC 3339 timestamp
+/// (`2026-11-01T02:00:00Z`, `…T02:00:00.123456+00:00`), for providers that
+/// keep last-changed times as text. `None` for anything else or before 1970.
+pub fn timestamp_millis(text: &str) -> Option<u64> {
+    let b = text.as_bytes();
+    let digits = |range: std::ops::Range<usize>| -> Option<i64> {
+        let part = b.get(range)?;
+        part.iter().all(u8::is_ascii_digit).then_some(())?;
+        std::str::from_utf8(part).ok()?.parse().ok()
+    };
+    if b.len() < 20
+        || b[4] != b'-'
+        || b[7] != b'-'
+        || !matches!(b[10], b'T' | b't' | b' ')
+        || b[13] != b':'
+        || b[16] != b':'
+    {
+        return None;
+    }
+    let (year, month, day) = (digits(0..4)?, digits(5..7)?, digits(8..10)?);
+    let (hour, minute, second) = (digits(11..13)?, digits(14..16)?, digits(17..19)?);
+    if !(1..=12).contains(&month)
+        || !(1..=31).contains(&day)
+        || hour > 23
+        || minute > 59
+        || second > 60
+    {
+        return None;
+    }
+    let mut at = 19;
+    let mut millis = 0;
+    if b[at] == b'.' {
+        let start = at + 1;
+        at = start;
+        while b.get(at).is_some_and(u8::is_ascii_digit) {
+            at += 1;
+        }
+        if at == start {
+            return None;
+        }
+        let fraction = &text[start..at.min(start + 3)];
+        millis = fraction.parse::<i64>().ok()? * 10_i64.pow(3 - fraction.len() as u32);
+    }
+    let offset = match &b[at..] {
+        [b'Z' | b'z'] => 0,
+        [sign @ (b'+' | b'-'), _, _, b':', _, _] => {
+            let minutes = digits(at + 1..at + 3)? * 60 + digits(at + 4..at + 6)?;
+            if *sign == b'+' { minutes } else { -minutes }
+        }
+        _ => return None,
+    };
+    // Adapted from Howard Hinnant, "chrono-Compatible Low-Level Date
+    // Algorithms", `days_from_civil`,
+    // https://howardhinnant.github.io/date_algorithms.html#days_from_civil
+    // (public domain).
+    let y = if month <= 2 { year - 1 } else { year };
+    let era = y.div_euclid(400);
+    let yoe = y - era * 400;
+    let doy = (153 * ((month + 9) % 12) + 2) / 5 + day - 1;
+    let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
+    let days = era * 146_097 + doe - 719_468;
+    let seconds = days * 86_400 + hour * 3_600 + minute * 60 + second - offset * 60;
+    u64::try_from(seconds * 1_000 + millis).ok()
 }
 
 /// MCP-compatible resource metadata. The bundled provider's data directory is

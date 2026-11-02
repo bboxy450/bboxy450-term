@@ -753,7 +753,15 @@ fn reference(doc: &Document) -> d::RecordRef {
         path: doc.path.clone(),
         digest: doc.digest.clone(),
         external_id: None,
+        updated_at: updated_at(&doc.metadata),
     }
+}
+/// Native records change through `updated` (stamped by every authored
+/// write), falling back to `created`.
+fn updated_at(frontmatter: &Value) -> Option<u64> {
+    ["updated", "created"]
+        .iter()
+        .find_map(|field| frontmatter[*field].as_str().and_then(d::timestamp_millis))
 }
 fn title(doc: &Document) -> String {
     doc.metadata["title"]
@@ -1180,6 +1188,7 @@ impl DataSource for BboxySource<'_> {
                     digest: hash.into(),
                     number: row.event.payload["frontmatter"]["number"].as_u64(),
                     external_id: None,
+                    updated_at: updated_at(&row.event.payload["frontmatter"]),
                 };
                 if serde_json::to_vec(&changed).map_err(command_io)?.len()
                     + serde_json::to_vec(&reference).map_err(command_io)?.len()

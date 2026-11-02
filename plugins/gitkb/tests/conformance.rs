@@ -657,6 +657,11 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
 
     // Explicit native commit writes only the selected task.
     let task_ref = client.resolve(&task_slug);
+    assert!(task_ref["updated_at"].is_u64(), "{task_ref}");
+    assert_eq!(
+        scoped["nodes"][0]["ref"]["updated_at"],
+        task_ref["updated_at"]
+    );
     let commit = client.call(
         "commit",
         json!({"refs": [task_ref], "message": "Commit only selected fixture task"}),
@@ -781,6 +786,16 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
     // Links.
     let current_ref = client.resolve("notes/shared");
     let current = client.call("fetch", json!({ "ref": current_ref }));
+    // updated_at: epoch milliseconds, equal on every path, advanced by a write.
+    assert!(old["updated_at"].is_u64(), "{old}");
+    assert!(
+        current_ref["updated_at"].as_u64() > old["updated_at"].as_u64(),
+        "a write advances updated_at: {old} then {current_ref}"
+    );
+    assert_eq!(current["updated_at"], current_ref["updated_at"]);
+    let listed = client.collect("list", json!({"filter": {"type": "note"}}));
+    let listed = listed.iter().find(|r| r["slug"] == "notes/shared").unwrap();
+    assert_eq!(listed["updated_at"], current_ref["updated_at"]);
     let linked = client.call(
         "write",
         json!({"ref": reference(&current), "etag": current["etag"], "frontmatter": current["frontmatter"],

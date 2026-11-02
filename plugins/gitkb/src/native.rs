@@ -85,6 +85,26 @@ pub fn committed_digest(root: &str, id: &str, version: &Value) -> String {
     ])))
 }
 
+/// A committed record's `updated_at`: GitKB's `modified_at`, which every
+/// commit of the document advances (`list`, `export` and `show` agree).
+pub fn committed_updated_at(modified_at: &Value) -> Value {
+    modified_at
+        .as_str()
+        .and_then(bbt_plugin_sdk::timestamp_millis)
+        .map_or(Value::Null, Value::from)
+}
+
+/// A workspace record's `updated_at`: its file's modification time. GitKB
+/// reports read time as a workspace document's `modified_at`.
+pub fn file_updated_at(path: &Path) -> Value {
+    std::fs::symlink_metadata(path)
+        .ok()
+        .and_then(|info| info.modified().ok())
+        .and_then(|at| at.duration_since(std::time::UNIX_EPOCH).ok())
+        .and_then(|since| u64::try_from(since.as_millis()).ok())
+        .map_or(Value::Null, Value::from)
+}
+
 fn parse_uuid(text: &str) -> Option<u128> {
     let hexits: String = match text.len() {
         36 => {

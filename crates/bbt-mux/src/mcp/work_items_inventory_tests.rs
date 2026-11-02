@@ -48,6 +48,7 @@ fn record(n: u128, kind: &str, assignee: Option<Value>) -> d::Record {
             slug: format!("tasks/doc-{n}"),
             path: format!("tasks/doc-{n}.md"),
             digest: format!("digest-{n}"),
+            updated_at: None,
         },
         frontmatter,
         body: format!("Intent for document {n}"),
@@ -384,7 +385,9 @@ fn task_list_byte_pages_cover_large_bodies_and_reject_uncut_control() {
         if page["next"].is_null() {
             break;
         }
-        assert_eq!(page["next"], *items.last().unwrap().get("id").unwrap());
+        // No updated_at here: the cursor is the last item's ULID time and ID.
+        let last = items.last().unwrap()["id"].as_str().unwrap();
+        assert_eq!(page["next"], format!("0:{last}"));
         assert_ne!(page["next"], after);
         after = page["next"].clone();
         assert!(pages < 160);
@@ -393,11 +396,17 @@ fn task_list_byte_pages_cover_large_bodies_and_reject_uncut_control() {
     assert_eq!(
         ids,
         (1..=160)
+            .rev()
             .map(|n| Ulid::from(n as u128).to_string())
-            .collect::<Vec<_>>()
+            .collect::<Vec<_>>(),
+        "newest first, every task once"
     );
 
-    let full = f.read(&actor, "task_status", json!({"task_id":ids[0]}));
+    let full = f.read(
+        &actor,
+        "task_status",
+        json!({"task_id":ids.last().unwrap()}),
+    );
     assert_eq!(full["body"], f.source.rows[0].body);
     assert_eq!(full["body_truncated"], false);
     assert_eq!(full["metadata"], f.source.rows[0].frontmatter);
@@ -448,7 +457,8 @@ fn task_inventory_large_corpus_pushes_scope_and_fetches_only_page_and_lookahead(
     let started = Instant::now();
     let page = f.read(&Fixture::actor(&f.oracle), "task_list", json!({"limit":2}));
     assert_eq!(page["items"].as_array().unwrap().len(), 2);
-    assert_eq!(page["next"], Ulid::from(20_002_u128).to_string());
+    assert_eq!(page["next"], format!("0:{}", Ulid::from(20_002_u128)));
+    assert_eq!(page["items"][0]["id"], Ulid::from(20_003_u128).to_string());
     let calls = f.source.calls.lock().unwrap();
     assert!((2..=3).contains(&calls.fetches.len()));
     assert_eq!(
@@ -519,6 +529,7 @@ fn native_inventory_keeps_scoped_unassigned_tasks_without_foreign_body_reads() {
     assert_eq!(
         ids,
         (20_001_u128..=20_006)
+            .rev()
             .map(|id| Ulid::from(id).to_string())
             .collect::<Vec<_>>()
     );
@@ -562,7 +573,7 @@ fn task_inventory_unassigned_classifies_bulk_metadata_without_unrelated_bodies()
     let started = Instant::now();
     let page = f.read(&actor, "task_list", json!({"unassigned":true,"limit":2}));
     assert_eq!(page["items"].as_array().unwrap().len(), 2);
-    assert_eq!(page["next"], Ulid::from(20_005_u128).to_string());
+    assert_eq!(page["next"], format!("0:{}", Ulid::from(20_005_u128)));
     let calls = f.source.calls.lock().unwrap();
     assert!((2..=3).contains(&calls.fetches.len()));
     assert!(calls.lists.is_empty());
@@ -635,7 +646,7 @@ fn task_inventory_unscoped_operator_uses_metadata_not_per_seat_queries() {
         panic!("expected read")
     };
     assert_eq!(page["items"].as_array().unwrap().len(), 2);
-    assert_eq!(page["next"], Ulid::from(10_002_u128).to_string());
+    assert_eq!(page["next"], format!("0:{}", Ulid::from(20_002_u128)));
     let calls = f.source.calls.lock().unwrap();
     assert!(calls.lists.is_empty());
     assert!(calls.graphs > 0 && calls.graphs <= 10);
@@ -818,4 +829,164 @@ fn task_list_replay_recheck_stops_at_the_same_overall_deadline() {
         calls.deadlines.iter().all(|at| *at == calls.deadlines[0]),
         "every replay fetch shares the one deadline"
     );
+}
+
+/// Rows whose changed times deliberately disagree with their ID order,
+/// including ties that only the ID breaks.
+fn changed_rows(f: &Fixture) -> Vec<d::Record> {
+    [
+        (1, 30),
+        (2, 10),
+        (3, 30),
+        (4, 20),
+        (5, 50),
+        (6, 10),
+        (7, 40),
+        (8, 20),
+        (9, 30),
+    ]
+    .into_iter()
+    .map(|(n, at)| {
+        let mut row = record(n, "task", Some(json!(format!("seat:{}", f.worker.id))));
+        row.reference.updated_at = Some(at);
+        row
+    })
+    .collect()
+}
+fn page_ids(f: &Fixture, actor: &Actor, args: Value) -> (Vec<u128>, Value) {
+    let page = f.read(actor, "task_list", args);
+    let ids = page["items"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|item| item["id"].as_str().unwrap().parse::<Ulid>().unwrap().0)
+        .collect();
+    (ids, page["next"].clone())
+}
+
+// keeps: task_list lists the most recently changed tasks first (updated_at,
+// then ID) and `after` continues exactly with strictly older ones, through
+// the per-seat provider path and the native wide path; a change moves a task
+// to the top.
+#[test]
+fn task_list_pages_most_recently_changed_first_exactly() {
+    for native in [false, true] {
+        let mut f = Fixture::new();
+        f.source.native = native;
+        f.source.list_page_size = 3;
+        f.source.rows = changed_rows(&f);
+        let actor = Fixture::actor(&f.oracle);
+        let (mut seen, mut after, mut pages) = (Vec::new(), Value::Null, 0);
+        loop {
+            let (ids, next) = page_ids(&f, &actor, json!({"limit":2,"after":after}));
+            assert!(!ids.is_empty() && ids.len() <= 2);
+            seen.extend(ids);
+            pages += 1;
+            if next.is_null() {
+                break;
+            }
+            let last = seen.last().unwrap();
+            let at = f.source.rows[*last as usize - 1]
+                .reference
+                .updated_at
+                .unwrap();
+            assert_eq!(next, format!("{at}:{}", Ulid(*last)), "native={native}");
+            after = next;
+        }
+        assert_eq!(seen, [5, 7, 9, 3, 1, 8, 4, 6, 2], "native={native}");
+        assert_eq!(pages, 5);
+        // An update to the oldest change moves it to the top.
+        f.source.rows[1].reference.updated_at = Some(99);
+        f.source.rows[1].reference.digest = "digest-2-updated".into();
+        let (ids, _) = page_ids(&f, &actor, json!({"limit":2}));
+        assert_eq!(ids, [2, 5], "native={native}");
+    }
+}
+
+// keeps: the operator's one Tasks view merges the swarm's assigned and
+// delegated tasks with the account's open unassigned ones, recent first.
+#[test]
+fn task_list_include_unassigned_merges_one_recent_first_operator_view() {
+    let mut f = Fixture::new();
+    let operator = Actor::Operator {
+        device_id: Ulid::new(),
+        door: Door::Gui,
+        issued_by: None,
+    };
+    let mut rows = vec![
+        record(1, "task", Some(json!(format!("seat:{}", f.worker.id)))),
+        record(2, "task", None),
+        record(3, "task", Some(json!(format!("seat:{}", f.peer.id)))),
+        record(4, "task", Some(json!(format!("seat:{}", f.foreign.id)))),
+        record(5, "task", None),
+    ];
+    rows[2].frontmatter["delegated_by"] = json!(format!("seat:{}", f.oracle.id));
+    rows[4].frontmatter["status"] = json!("blocked");
+    for (row, at) in rows.iter_mut().zip([40, 50, 30, 60, 70]) {
+        row.reference.updated_at = Some(at);
+    }
+    f.source.rows = rows;
+    let swarm = f.oracle.swarm;
+    let (ids, next) = page_ids(
+        &f,
+        &operator,
+        json!({"include_unassigned":true,"swarm_id":swarm,"limit":2}),
+    );
+    // The foreign swarm's task and a blocked unassigned task stay out.
+    assert_eq!(ids, [2, 1]);
+    let (rest, end) = page_ids(
+        &f,
+        &operator,
+        json!({"include_unassigned":true,"swarm_id":swarm,"limit":2,"after":next}),
+    );
+    assert_eq!(rest, [3]);
+    assert!(end.is_null());
+    for refused in [
+        json!({"include_unassigned":true,"unassigned":true}),
+        json!({"include_unassigned":true,"assignee":f.worker.id}),
+    ] {
+        let tasks = ProviderTasks(&f.source, Some(swarm));
+        let call = Call {
+            op_id: Ulid::new(),
+            tool: "task_list".into(),
+            args: refused,
+        };
+        assert!(prepare(&tasks, &f.registry, &operator, &call).is_err());
+    }
+    let tasks = ProviderTasks(&f.source, Some(swarm));
+    let call = Call {
+        op_id: Ulid::new(),
+        tool: "task_list".into(),
+        args: json!({"include_unassigned":true}),
+    };
+    let error = prepare(&tasks, &f.registry, &Fixture::actor(&f.oracle), &call)
+        .err()
+        .expect("only the account operator merges the unassigned inventory");
+    assert!(error.contains("account operator"), "{error}");
+}
+
+#[test]
+fn task_list_after_accepts_its_cursor_or_a_bare_id_and_refuses_others() {
+    let id = Ulid::from_parts(1_793_498_400_000, 7);
+    assert_eq!(
+        Recency::parse(&format!("12:{id}")).unwrap(),
+        Recency(12, id)
+    );
+    assert_eq!(
+        Recency::parse(&id.to_string()).unwrap(),
+        Recency(1_793_498_400_000, id)
+    );
+    assert_eq!(
+        Recency::parse(&Recency(12, id).cursor()).unwrap(),
+        Recency(12, id)
+    );
+    for bad in [
+        "#1",
+        ":x",
+        "12:",
+        "x:01M6AD23JS424P4FGVQCQFEDZT",
+        "-1:01M6AD23JS424P4FGVQCQFEDZT",
+    ] {
+        assert!(Recency::parse(bad).is_err(), "{bad}");
+    }
 }

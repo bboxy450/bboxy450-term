@@ -241,6 +241,10 @@ impl Fixture {
     }
     async fn task_refresh(&mut self, records: &mut Records, results: &mut Results) {
         records.refresh();
+        self.task_refresh_more(records, results).await;
+    }
+    /// Settle the reads already queued, such as a scrolled-in older page.
+    async fn task_refresh_more(&mut self, records: &mut Records, results: &mut Results) {
         tokio::time::timeout(Duration::from_secs(30), async {
             loop {
                 // Drive the same transient-read timer as the native/headless UI.
@@ -299,14 +303,18 @@ async fn task_list_large_board_renders_through_the_real_gui_socket() {
     records.select(f.scope);
     let mut results = Results::default();
     f.task_refresh(&mut records, &mut results).await;
+    assert_eq!(
+        records.tasks().len(),
+        messaging::TASK_PAGE.min(f.board_size)
+    );
+    // Scrolling pages older tasks in until the board is complete.
+    while records.task_next.is_some() {
+        records.more_tasks();
+        f.task_refresh_more(&mut records, &mut results).await;
+    }
     assert!(records.issue.is_none(), "{:?}", records.issue);
     assert_eq!(records.omitted, 0);
-    assert_eq!(
-        records.tasks().len() + records.unassigned().len(),
-        f.board_size
-    );
-    assert!(records.task_next.is_none());
-    assert!(records.unassigned_next.is_none());
+    assert_eq!(records.tasks().len(), f.board_size);
     assert_eq!(
         records
             .entries(&Default::default(), None)
@@ -404,21 +412,16 @@ async fn composed_decision_and_task_delegation_cross_the_real_gui_boundary() {
 
     let mut records = Records::default();
     records.select(f.scope);
-    for command in records.commands() {
-        f.command(command, &mut results).await;
-    }
-    records.replies(&results);
-    assert!(
-        records.tasks().is_empty(),
-        "an unassigned task is not in a swarm inventory"
-    );
+    // The swarm-scoped read retries while the workspace opens.
+    f.task_refresh(&mut records, &mut results).await;
     let unassigned = records
-        .unassigned()
+        .tasks()
         .iter()
         .find(|card| card.id == f.task)
-        .expect("operator read-only inventory");
+        .expect("the operator's one view includes open unassigned tasks")
+        .clone();
     assert!(unassigned.assignee.is_none());
-    let attachment = messaging::task_attachment(unassigned);
+    let attachment = messaging::task_attachment(&unassigned);
     let refused = f
         .logic()
         .client
@@ -502,18 +505,16 @@ async fn composed_decision_and_task_delegation_cross_the_real_gui_boundary() {
             .receipts
             .is_some_and(|r| r.delivered > 0)
     );
-    records.refresh();
-    for command in records.commands() {
-        f.command(command, &mut results).await;
-    }
-    records.replies(&results);
-    assert!(
-        records.unassigned().is_empty(),
-        "delegation removes it from the unscoped inventory"
+    f.task_refresh(&mut records, &mut results).await;
+    assert_eq!(
+        records.tasks().front().map(|card| card.id),
+        Some(f.task),
+        "the delegated task is the most recent change, at the top"
     );
     let card = records
         .task(f.task)
         .expect("shared TaskCard read after delegation");
+    assert!(card.assignee.is_some() && card.delegated_by.is_some());
     let (task_row, verify) = messaging::task_row(card);
     assert_eq!(task_row.state, "claimed");
     assert_eq!(verify, None);

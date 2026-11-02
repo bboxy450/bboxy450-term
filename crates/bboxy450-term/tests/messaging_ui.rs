@@ -352,7 +352,8 @@ fn task_views_keep_canonical_status_and_require_the_actual_zero_exit_report() {
     let view = task_item(&card, &bboxy450_term::model::Model::default());
     assert_eq!(view.state, "claimed");
     assert_eq!(view.assignee, "seat:missing");
-    assert_eq!(view.delegated_by.as_deref(), Some("operator:actual-device"));
+    // The card names who delegated it; the device identity stays on the record.
+    assert_eq!(view.delegated_by.as_deref(), Some("operator"));
     assert_eq!(task_attachment(&card).path, card.path);
     assert!(!task_row(&card).0.may_accept);
     card.status = "reported".into();
@@ -427,30 +428,30 @@ fn read_pages_capture_scope_keep_actual_next_and_ignore_old_scope_replies() {
     let swarm = SwarmId::from_u128(52);
     records.select(swarm);
     let commands = records.commands();
-    assert_eq!(commands.len(), 4);
+    assert_eq!(commands.len(), 3, "one Tasks read and two tree reads");
     let task = commands
         .iter()
         .find(|c| matches!(c, UiMsg::Task { .. }))
         .unwrap();
     assert!(
-        matches!(task,UiMsg::Task {request:TaskRequest::List {swarm_id:Some(id),limit:Some(128),..},..} if id.0==52)
+        matches!(task,UiMsg::Task {request:TaskRequest::List {unassigned:false,include_unassigned:true,swarm_id:Some(id),status:None,limit:Some(20),..},..} if id.0==52)
     );
     for c in &commands {
         if let UiMsg::Messaging { swarm_id, .. } = c {
             assert_eq!(*swarm_id, swarm);
         }
     }
-    let next = Ulid::new();
+    let next = format!("1793498400000:{}", Ulid::new());
     let mut replies = Results::default();
     replies.push(
         op_id(task),
         Reply::Task(TaskResponse::Items {
             items: vec![task_card(Ulid::new())],
-            next: Some(next),
+            next: Some(next.clone()),
         }),
     );
     assert!(records.replies(&replies));
-    assert_eq!(records.task_next, Some(next));
+    assert_eq!(records.task_next, Some(next.clone()));
     records.more_tasks();
     let more = records.commands();
     assert!(more.iter().any(
@@ -468,6 +469,7 @@ fn task_byte_pages_render_every_row_of_a_large_board() {
     let mut records = Records::default();
     records.select(SwarmId::from_u128(52));
     let mut results = Results::default();
+    let cursor = |page: u128| format!("{}:{}", 90 - page * 30, Ulid::from(90 - page * 30));
     for page in 0_u128..3 {
         let request = records
             .commands()
@@ -475,12 +477,13 @@ fn task_byte_pages_render_every_row_of_a_large_board() {
             .find(|command| {
                 matches!(command, UiMsg::Task {
                 request: TaskRequest::List { unassigned: false, after, .. }, ..
-            } if *after == (page > 0).then(|| Ulid::from(page * 30)))
+            } if *after == (page > 0).then(|| cursor(page)))
             })
-            .expect("Tasks follows the exact last-emitted ID even for a short byte page");
-        let cards = (page * 30 + 1..=page * 30 + 30)
-            .map(|id| {
-                let mut card = task_card(Ulid::from(id));
+            .expect("Tasks follows the exact last-emitted cursor even for a short byte page");
+        // Newest first: each page continues with strictly older tasks.
+        let cards = (page * 30..page * 30 + 30)
+            .map(|n| {
+                let mut card = task_card(Ulid::from(90 - n));
                 card.status = "open".into();
                 card
             })
@@ -489,7 +492,7 @@ fn task_byte_pages_render_every_row_of_a_large_board() {
             op_id(&request),
             Reply::Task(TaskResponse::Items {
                 items: cards,
-                next: (page < 2).then(|| Ulid::from((page + 1) * 30)),
+                next: (page < 2).then(|| cursor(page + 1)),
             }),
         );
         assert!(records.replies(&results));
@@ -497,6 +500,11 @@ fn task_byte_pages_render_every_row_of_a_large_board() {
         records.more_tasks();
     }
     assert_eq!(records.tasks().len(), 90);
+    assert_eq!(
+        records.tasks().iter().map(|t| t.id).collect::<Vec<_>>(),
+        (1..=90).rev().map(Ulid::from).collect::<Vec<_>>(),
+        "the view keeps the provider's newest-first order across pages"
+    );
     assert!(records.task_next.is_none());
     assert_eq!(records.omitted, 0);
     assert_eq!(
@@ -507,6 +515,139 @@ fn task_byte_pages_render_every_row_of_a_large_board() {
             .count(),
         90
     );
+}
+
+// The operator's Tasks view: 20 recent tasks first, more on scroll, at most 500.
+#[test]
+fn task_view_reads_twenty_recent_pages_more_and_stops_at_five_hundred() {
+    use bboxy450_term::messaging::{Records, TASK_PAGE, TASK_VIEW};
+    use bbt_proto::messaging::{TaskRequest, TaskResponse};
+    assert_eq!((TASK_PAGE, TASK_VIEW), (20, 500));
+    let mut records = Records::default();
+    records.select(SwarmId::from_u128(54));
+    let mut results = Results::default();
+    let mut pages = 0_u128;
+    loop {
+        let commands = records.commands();
+        let Some(request) = swarm_list(&commands) else {
+            break;
+        };
+        assert!(matches!(
+            request,
+            UiMsg::Task {
+                request: TaskRequest::List {
+                    include_unassigned: true,
+                    limit: Some(20),
+                    ..
+                },
+                ..
+            }
+        ));
+        let cards = (0..20)
+            .map(|n| {
+                let mut card = task_card(Ulid::from(10_000 - pages * 20 - n));
+                card.status = "open".into();
+                card
+            })
+            .collect();
+        results.push(
+            op_id(request),
+            Reply::Task(TaskResponse::Items {
+                items: cards,
+                next: Some(format!("page-{pages}")),
+            }),
+        );
+        assert!(records.replies(&results));
+        pages += 1;
+        records.more_tasks();
+        assert!(pages <= 25, "paging must stop at the view cap");
+    }
+    assert_eq!(pages, 25);
+    assert_eq!(records.tasks().len(), 500);
+    assert!(records.task_next.is_none(), "a full view requests no more");
+    assert_eq!(records.tasks().front().unwrap().id, Ulid::from(10_000));
+}
+
+// Assigned, delegated and unassigned tasks share one recent-first list; an
+// update moves its task to the top on the next read.
+#[test]
+fn task_view_merges_assigned_delegated_unassigned_and_updates_move_to_top() {
+    use bboxy450_term::messaging::Records;
+    use bbt_proto::messaging::TaskResponse;
+    let mut records = Records::default();
+    records.select(SwarmId::from_u128(55));
+    let (assigned, delegated, unassigned) = (Ulid::from(1), Ulid::from(2), Ulid::from(3));
+    let card = |id, assignee: Option<&str>, by: Option<&str>, status: &str| {
+        let mut card = task_card(id);
+        card.assignee = assignee.map(Into::into);
+        card.delegated_by = by.map(Into::into);
+        card.status = status.into();
+        card
+    };
+    let assigned_card = card(
+        assigned,
+        Some("seat:01M6AD23JS424P4FGVQCQFEDZT"),
+        None,
+        "running",
+    );
+    let delegated_card = card(
+        delegated,
+        Some("seat:01M6AD23JS424P4FGVQCQFEDZT"),
+        Some("operator:device"),
+        "claimed",
+    );
+    let unassigned_card = card(unassigned, None, None, "open");
+    let mut results = Results::default();
+    let first = records.commands();
+    results.push(
+        op_id(swarm_list(&first).unwrap()),
+        Reply::Task(TaskResponse::Items {
+            items: vec![
+                unassigned_card.clone(),
+                delegated_card.clone(),
+                assigned_card.clone(),
+            ],
+            next: None,
+        }),
+    );
+    assert!(records.replies(&results));
+    let order = |records: &Records| records.tasks().iter().map(|t| t.id).collect::<Vec<_>>();
+    assert_eq!(order(&records), vec![unassigned, delegated, assigned]);
+    let rows: Vec<_> = records
+        .entries(&Default::default(), None)
+        .into_iter()
+        .filter_map(|entry| match entry {
+            bbt_ui::modules::stream_dock::Entry::Task { data, delegate } => Some((data, delegate)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(rows.len(), 3, "one list, no separate unassigned section");
+    assert!(rows.iter().all(|(_, delegate)| *delegate));
+    assert_eq!(rows[0].0.assignee, "");
+    assert_eq!(rows[1].0.delegated_by.as_deref(), Some("operator"));
+    assert_eq!(rows[2].0.state, "running");
+
+    // The assigned task is updated: the next first-page read lists it first.
+    records.task_notice(Some(assigned));
+    let read = records.commands();
+    results.push(
+        op_id(swarm_list(&read).unwrap()),
+        Reply::Task(TaskResponse::Items {
+            items: vec![
+                card(
+                    assigned,
+                    Some("seat:01M6AD23JS424P4FGVQCQFEDZT"),
+                    None,
+                    "reported",
+                ),
+                unassigned_card,
+                delegated_card,
+            ],
+            next: None,
+        }),
+    );
+    assert!(records.replies(&results));
+    assert_eq!(order(&records), vec![assigned, unassigned, delegated]);
 }
 /// The swarm's task-list read in `commands`, if any.
 fn swarm_list(commands: &[UiMsg]) -> Option<&UiMsg> {

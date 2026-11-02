@@ -3386,7 +3386,6 @@ impl App {
             self.task_records
                 .tasks()
                 .iter()
-                .chain(self.task_records.unassigned())
                 .map(messaging::task_attachment)
                 .chain(self.message_history.artifacts().cloned())
                 .collect(),
@@ -10667,7 +10666,7 @@ mod verification_tests {
             reads.extend(records.commands());
             reads
         });
-        assert_eq!(backlog.len(), 7); // cursor, page, message list, four record reads
+        assert_eq!(backlog.len(), 6); // cursor, page, message list, three record reads
         assert!(matches!(backlog[0], live::UiMsg::EventCursor { .. }));
         assert!(matches!(
             backlog[1],
@@ -12958,6 +12957,7 @@ mod composer_host_tests {
             id: bbt_mux::Ulid::new(),
             request: bbt_proto::messaging::TaskRequest::List {
                 unassigned: false,
+                include_unassigned: false,
                 swarm_id: None,
                 status: None,
                 assignee: None,
@@ -13185,7 +13185,7 @@ mod ctl_ui_key_tests {
         let markdown=bbt_doc::parse("**exact body** 日本語\n");
         app.document.error=None;
         app.document.prepared=Some(Arc::new(bboxy450_term::documents::Prepared {
-            reference:bbt_mux::knowledge::data_source::RecordRef {id:"id".into(),number:Some(1),slug:"doc".into(),path:"notes/doc.md".into(),digest:"digest".into(),external_id:None},
+            reference:bbt_mux::knowledge::data_source::RecordRef {id:"id".into(),number:Some(1),slug:"doc".into(),path:"notes/doc.md".into(),digest:"digest".into(),external_id:None,updated_at:None},
             etag:Some("etag".into()),document:markdown.document("notes/doc.md"),markdown,targets:vec![],images:vec![],
         }));
         for generation in [captured.1+1,captured.1+2] {

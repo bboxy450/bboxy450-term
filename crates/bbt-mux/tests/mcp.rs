@@ -770,6 +770,7 @@ fn gui_operator_dm_replays_once_and_tasks_share_mcp_verification() {
     assert_eq!(document.metadata["authorship"]["kind"], "local-dev");
     let listed = f.gui_task(TaskRequest::List {
         unassigned: false,
+        include_unassigned: false,
         swarm_id: Some(f.own.swarm),
         status: Some("accepted".into()),
         assignee: None,
@@ -4242,6 +4243,72 @@ fn mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_onl
     );
     assert!(f.task_document().metadata.get("verify_result").is_none());
     assert!(accept().to_string().contains("recorded verify_result"));
+}
+
+// keeps: spec mcp-control-plane — task_list over the native provider is most
+// recently changed first (frontmatter `updated`, then ID), `after` pages
+// exactly, and a transition moves its task to the top.
+#[test]
+fn mcp_task_list_is_most_recently_changed_first_and_a_transition_moves_it_to_the_top() {
+    let f = Fixture::new();
+    f.task_file(f.task_metadata());
+    let mut metadata = f.task_metadata();
+    metadata["updated"] = json!("2026-10-01T00:00:00Z");
+    f.task_file(metadata.clone());
+    // Newer IDs changed earlier: ID order alone would list them backwards.
+    let mut pair = [Ulid::new(), Ulid::new()];
+    pair.sort();
+    let [newer, newest] = pair;
+    for (id, number, updated) in [
+        (newer, 2, "2026-10-03T00:00:00Z"),
+        (newest, 3, "2026-10-02T00:00:00.500Z"),
+    ] {
+        let mut other = metadata.clone();
+        other["id"] = json!(id);
+        other["number"] = json!(number);
+        other["updated"] = json!(updated);
+        std::fs::write(
+            f.config.repository.join(format!(".bboxy/tasks/{id}.md")),
+            format!(
+                "---\n{}---\nBrief.\n",
+                serde_yaml::to_string(&other).unwrap()
+            ),
+        )
+        .unwrap();
+    }
+    let list = |after: &Value| {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let page = data(f.call(
+                f.oracle.id,
+                Ulid::new(),
+                "task_list",
+                json!({"limit":2,"after":after}),
+            ));
+            if after.is_null() && page["next"].is_null() && Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(20)); // The index has not seen every file yet.
+                continue;
+            }
+            return page;
+        }
+    };
+    let ids = |page: &Value| -> Vec<String> {
+        page["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|item| item["id"].as_str().unwrap().to_owned())
+            .collect()
+    };
+    let first = list(&Value::Null);
+    assert_eq!(ids(&first), [newer.to_string(), newest.to_string()]);
+    let rest = list(&first["next"]);
+    assert_eq!(ids(&rest), [f.task.to_string()]);
+    assert!(rest["next"].is_null());
+    // The oldest change is reported now: it moves to the top.
+    data(f.report(verification("true", 0, json!([]))));
+    let moved = list(&Value::Null);
+    assert_eq!(ids(&moved)[0], f.task.to_string());
 }
 
 // keeps: spec mcp-control-plane

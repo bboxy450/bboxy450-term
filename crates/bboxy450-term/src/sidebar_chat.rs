@@ -238,8 +238,8 @@ mod tests {
             .collect();
         app.task_records.select(bbt_proto::SwarmId::from_u128(1));
         let _ = app.task_records.commands(); // Admit initial reads before measuring pagination.
-        let next = bbt_mux::Ulid(99);
-        app.task_records.task_next = Some(next);
+        let next = format!("99:{}", bbt_mux::Ulid(99));
+        app.task_records.task_next = Some(next.clone());
         app.solve_ui([1200., 1000.]).unwrap();
         let (_, chat_max) = scroll_position(
             &app.conversation_layout.as_ref().unwrap().layout,

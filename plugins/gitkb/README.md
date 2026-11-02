@@ -151,7 +151,11 @@ A committed-source `RecordRef` digest is the SHA-256 of canonical
 version on every commit of it, so a commit makes an old reference stale
 without reading bytes. A workspace-source digest remains
 `[root, documentSource, raw bytes]`. Fetch and reference checks compute the same
-digests, so list, search and graph references equal an exact read's.
+digests, so list, search and graph references equal an exact read's. Every
+reference also carries `updated_at` in epoch milliseconds: a committed source's
+GitKB `modified_at` (which each commit advances; `list`, `export` and `show`
+agree), a workspace source's file modification time (GitKB reports read time
+as a workspace `modified_at`). Index snapshots are format 3 for it.
 Committed-only records (no workspace file) come from the index below, or from
 one batched `git-kb show --raw-content --json -- <slug>...` call. Records with a
 workspace file use the exact source-aware read. A per-process

@@ -35,6 +35,7 @@ impl Stub {
                 path: format!("tasks/{id}.md"),
                 digest: "a".repeat(64),
                 external_id: None,
+                updated_at: None,
             };
             let mut metadata = json!({"id":reference.id,"number":id,"type":"task","title":format!("from provider {id}"),"status":"open"});
             if let Some(assignee) = assignee {
