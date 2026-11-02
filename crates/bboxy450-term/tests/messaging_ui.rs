@@ -508,6 +508,177 @@ fn task_byte_pages_render_every_row_of_a_large_board() {
         90
     );
 }
+/// The swarm's task-list read in `commands`, if any.
+fn swarm_list(commands: &[UiMsg]) -> Option<&UiMsg> {
+    use bbt_proto::messaging::TaskRequest;
+    commands.iter().find(|c| {
+        matches!(
+            c,
+            UiMsg::Task {
+                request: TaskRequest::List {
+                    unassigned: false,
+                    ..
+                },
+                ..
+            }
+        )
+    })
+}
+
+/// A Tasks read over its budget (a cold knowledge provider still indexing)
+/// is retried once after a short backoff with the last good list kept; a
+/// second overrun in the same episode is reported, still keeping the list.
+#[test]
+fn deadline_exceeded_task_reads_retry_once_and_keep_the_last_good_list() {
+    use bboxy450_term::messaging::{DEADLINE_BACKOFF, Records};
+    use bbt_proto::messaging::TaskResponse;
+    let overrun = "rejected: deadline_exceeded: task_list exceeded its 8 s budget";
+    let mut records = Records::default();
+    records.select(SwarmId::from_u128(78));
+    let mut replies = Results::default();
+    let task = Ulid::new();
+    let first = records.commands();
+    replies.push(
+        op_id(swarm_list(&first).unwrap()),
+        Reply::Task(TaskResponse::Items {
+            items: vec![task_card(task)],
+            next: None,
+        }),
+    );
+    assert!(records.replies(&replies));
+
+    records.task_notice(None);
+    let read = records.commands();
+    replies.push(
+        op_id(swarm_list(&read).unwrap()),
+        Reply::Refused(overrun.into()),
+    );
+    assert!(records.replies(&replies));
+    assert_eq!(records.tasks().len(), 1, "the last good list stays");
+    assert_eq!(
+        records.issue, None,
+        "the first overrun is retried, not shown"
+    );
+    let (epoch, delay) = records.take_retry().expect("an overrun schedules a retry");
+    assert_eq!(delay, DEADLINE_BACKOFF);
+    assert!(
+        swarm_list(&records.commands()).is_none(),
+        "no read before the backoff"
+    );
+    assert!(records.retry_ready(epoch));
+    let retry = records.commands();
+    replies.push(
+        op_id(swarm_list(&retry).expect("the retried read")),
+        Reply::Refused(overrun.into()),
+    );
+    assert!(records.replies(&replies));
+    assert_eq!(records.issue.as_deref(), Some(overrun), "retried once only");
+    assert!(records.take_retry().is_none());
+    assert_eq!(
+        records.tasks().len(),
+        1,
+        "a reported overrun keeps the list"
+    );
+
+    // A good read ends the episode: the next overrun is retried again.
+    records.task_notice(None);
+    let read = records.commands();
+    let replacement = Ulid::new();
+    replies.push(
+        op_id(swarm_list(&read).unwrap()),
+        Reply::Task(TaskResponse::Items {
+            items: vec![task_card(replacement)],
+            next: None,
+        }),
+    );
+    assert!(records.replies(&replies));
+    assert_eq!(records.issue, None);
+    records.task_notice(None);
+    let read = records.commands();
+    replies.push(
+        op_id(swarm_list(&read).unwrap()),
+        Reply::Refused(overrun.into()),
+    );
+    assert!(records.replies(&replies));
+    assert_eq!(records.issue, None);
+    assert!(records.take_retry().is_some());
+}
+
+/// A knowledge provider selection or revision change for the workspace's
+/// root re-reads the Tasks section and drops the issue a refused read left;
+/// an unchanged status and the first observation do not.
+#[test]
+fn knowledge_provider_changes_reread_the_tasks_section() {
+    use bboxy450_term::messaging::Records;
+    use bbt_proto::gui::{KnowledgeProvider, KnowledgeRoot, KnowledgeStatus};
+    use bbt_proto::messaging::TaskResponse;
+    let status = |provider: &str, revision: u64| KnowledgeStatus {
+        roots: vec![KnowledgeRoot {
+            id: "root-a".into(),
+            path: "/fixture".into(),
+            provider: KnowledgeProvider {
+                id: provider.into(),
+                name: provider.into(),
+                sha256: None,
+            },
+            revision,
+            records: None,
+            process: None,
+            refusal: None,
+        }],
+        offered: vec![],
+    };
+    let mut records = Records::default();
+    records.select(SwarmId::from_u128(79));
+    let mut replies = Results::default();
+    let first = records.commands();
+    assert!(
+        !records.knowledge(Some(&status("native", 1))),
+        "first observation"
+    );
+    // The startup read was refused by a selection that raced it.
+    let changed = "rejected: provider_changed: activation changed during selection";
+    replies.push(
+        op_id(swarm_list(&first).unwrap()),
+        Reply::Refused(changed.into()),
+    );
+    assert!(records.replies(&replies));
+    while let Some((epoch, _)) = records.take_retry() {
+        records.retry_ready(epoch);
+    }
+    let retried = records.commands();
+    let retried = swarm_list(&retried).expect("provider_changed is transient");
+    replies.push(op_id(retried), Reply::Refused("rejected: refused".into()));
+    assert!(records.replies(&replies));
+    assert!(records.issue.is_some());
+    assert!(!records.knowledge(Some(&status("native", 1))), "unchanged");
+    assert!(swarm_list(&records.commands()).is_none());
+    assert!(
+        records.knowledge(Some(&status("gitkb", 2))),
+        "selection changed"
+    );
+    assert_eq!(records.issue, None, "the stale refusal is dropped");
+    let reread = records.commands();
+    let task = Ulid::new();
+    replies.push(
+        op_id(swarm_list(&reread).expect("the Tasks section is read again")),
+        Reply::Task(TaskResponse::Items {
+            items: vec![task_card(task)],
+            next: None,
+        }),
+    );
+    assert!(records.replies(&replies));
+    assert_eq!(
+        records.tasks().iter().map(|t| t.id).collect::<Vec<_>>(),
+        vec![task]
+    );
+    assert!(
+        records.knowledge(Some(&status("gitkb", 3))),
+        "revision changed"
+    );
+    assert!(swarm_list(&records.commands()).is_some());
+}
+
 /// A busy provider connection is transient: the Tasks panel retries within the
 /// workspace_pending bound and keeps its last good list instead of showing 0.
 #[test]

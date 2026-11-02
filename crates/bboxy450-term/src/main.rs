@@ -5820,6 +5820,10 @@ impl App {
                 .and_then(provider_revision);
             let current_provider = state.knowledge_roots.as_deref().and_then(provider_revision);
             let root_changed = previous_provider.is_some() && previous_provider != current_provider;
+            // The status the knowledge-provider event refreshes: a changed
+            // provider selection or revision re-reads the Tasks section.
+            self.task_records
+                .knowledge(state.knowledge_roots.as_deref());
             if root_changed && self.document.open {
                 self.document.unavailable(
                     "document_source_changed: provider changed; open the record again",

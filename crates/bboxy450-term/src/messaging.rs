@@ -1159,6 +1159,9 @@ fn send(
     }
 }
 
+/// Delay before the one retry of a task read refused `deadline_exceeded`.
+pub const DEADLINE_BACKOFF: std::time::Duration = std::time::Duration::from_millis(500);
+
 /// Read-through task/tree snapshots for the selected swarm. These are bounded
 /// display caches; the backend journal, bus positions and read marks stay authority.
 #[derive(Default)]
@@ -1173,6 +1176,11 @@ pub struct Records {
     retries: u8,
     /// `issue` came from a refused read, so the next good read clears it.
     read_issue: bool,
+    /// Reads already retried once after `deadline_exceeded` in this episode.
+    deadline_retried: Vec<Read>,
+    /// Knowledge roots last seen as (root, provider, revision, refused); a
+    /// change re-reads.
+    knowledge_seen: Option<Vec<(String, String, u64, bool)>>,
     pending: BTreeMap<Ulid, RecordRequest>,
     waiting: VecDeque<Read>,
     tasks: VecDeque<wire::TaskCard>,
@@ -1218,6 +1226,7 @@ impl Records {
         self.retry_delay = None;
         self.retry_started = None;
         self.retries = 0;
+        self.deadline_retried.clear();
         self.pending.retain(|_, request| {
             request.read.is_none() || matches!(request.read, Some(Read::Tree(..)))
         });
@@ -1375,6 +1384,43 @@ impl Records {
         for path in ["channels", "groups"] {
             self.enqueue(Read::Tree(path.into(), None));
         }
+    }
+    /// Observe the workspace's knowledge roots. When a root's provider
+    /// selection or revision changes (or its refusal clears or appears) after
+    /// the first observation, the Tasks section is read again and the issue a
+    /// refused read left (such as `provider_changed`) is dropped. Returns
+    /// whether a re-read was queued.
+    pub fn knowledge(&mut self, status: Option<&bbt_proto::gui::KnowledgeStatus>) -> bool {
+        let Some(status) = status else {
+            return false;
+        };
+        let seen: Vec<_> = status
+            .roots
+            .iter()
+            .map(|root| {
+                (
+                    root.id.clone(),
+                    root.provider.id.clone(),
+                    root.revision,
+                    root.refusal.is_some(),
+                )
+            })
+            .collect();
+        if self.knowledge_seen.as_ref() == Some(&seen) {
+            return false;
+        }
+        if self.knowledge_seen.replace(seen).is_none() {
+            return false;
+        }
+        self.retries = 0;
+        self.retry_started = None;
+        self.deadline_retried.clear();
+        if std::mem::take(&mut self.read_issue) {
+            self.issue = None;
+        }
+        self.enqueue(Read::Tasks(None));
+        self.enqueue(Read::Unassigned(None));
+        true
     }
     pub fn task_notice(&mut self, id: Option<Ulid>) {
         self.enqueue(Read::Tasks(None));
@@ -1583,11 +1629,37 @@ impl Records {
             // A mounting workspace and a busy provider connection are transient.
             // Neither refusal carries retry_after_ms on this string reply; both
             // hosts declare 100 ms. The last good list stays on screen.
+            // A read that raced a provider activation change is refused
+            // provider_changed; the same read under the new provider is valid.
+            let transient = |reason: &str| {
+                let reason = reason.strip_prefix("rejected: ").unwrap_or(reason);
+                reason.starts_with("workspace_pending")
+                    || reason.starts_with("provider_busy")
+                    || reason.starts_with("provider_changed")
+            };
+            // A task read over its budget (a cold provider still indexing) is
+            // retried once per episode after a short backoff; the last good
+            // list stays on screen. A second overrun is reported.
+            if let (Some(read), Reply::Refused(reason)) = (&p.read, &row.reply)
+                && matches!(read, Read::Tasks(_) | Read::Unassigned(_))
+                && reason
+                    .strip_prefix("rejected: ")
+                    .unwrap_or(reason)
+                    .starts_with("deadline_exceeded")
+                && !self.deadline_retried.contains(read)
+            {
+                self.deadline_retried.push(read.clone());
+                self.enqueue(read.clone());
+                if !self.retry_blocked {
+                    self.retry_blocked = true;
+                    self.retry_delay = Some(DEADLINE_BACKOFF);
+                }
+                changed = true;
+                continue;
+            }
             if let (Some(read), Reply::Refused(reason)) = (&p.read, &row.reply)
                 && !matches!(read, Read::Tree(..))
-                && (reason.starts_with("workspace_pending")
-                    || reason.starts_with("provider_busy")
-                    || reason.starts_with("rejected: provider_busy"))
+                && transient(reason)
             {
                 let now = std::time::Instant::now();
                 let began = self.retry_started.get_or_insert(now);
@@ -1604,10 +1676,13 @@ impl Records {
                     continue;
                 }
             }
-            if p.read.is_some() && !matches!(row.reply, Reply::Refused(_)) {
+            if let Some(read) = &p.read
+                && !matches!(row.reply, Reply::Refused(_))
+            {
                 // The bound covers one transient episode, not the session.
                 self.retries = 0;
                 self.retry_started = None;
+                self.deadline_retried.retain(|retried| retried != read);
                 if std::mem::take(&mut self.read_issue) {
                     self.issue = None;
                 }
