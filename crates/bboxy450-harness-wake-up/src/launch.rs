@@ -540,7 +540,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
                 "--mcp-config".into(),
                 overlay.join("mcp.json").to_string_lossy().into(),
             ]);
-            notes.push("bboxy450-harness: native socket admission, never PTY fallback");
+            notes.push("bboxy450-harness: native socket admission, OSC and process-bound session logs report activity; never PTY fallback");
         }
         "claude" => {
             if spec.args.iter().any(|a| a == "--bare") {

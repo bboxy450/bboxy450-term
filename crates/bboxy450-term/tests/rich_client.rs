@@ -191,10 +191,16 @@ while True:
                 ..Default::default()
             };
             let mut view = HarnessView::default();
-            capture_frame(&mut view, &mut state, [1120, 820], None, false)
-                .unwrap()
-                .actions
-                .clone()
+            capture_frame(&mut view, &mut state, &{
+                let mut options =
+                    bboxy450_harness::frontends::gui::options::Options::parse(Vec::<String>::new()).unwrap();
+                options.capture = Some([1120, 820]);
+                options.no_chrome = true;
+                options
+            })
+            .unwrap()
+            .actions
+            .clone()
         })
         .await
     });

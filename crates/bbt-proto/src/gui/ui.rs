@@ -492,6 +492,17 @@ pub enum UiTarget {
     Docs(String),
 }
 
+/// Bounded rich face evidence; the replay cursor never grants input authority.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UiRichObservation {
+    pub face: super::PaneFace,
+    pub ready: bool,
+    pub cursor: Option<super::RichCursor>,
+    pub retained_items: usize,
+    pub paint_count: usize,
+    pub error: Option<String>,
+}
+
 /// The GUI's solved tree, not a reconstruction by logic or ctl.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UiLayout {
@@ -529,6 +540,9 @@ pub struct UiLayout {
     /// Debug/headless private-fixture document facts from this produced frame.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub document_observation: Option<UiDocumentObservation>,
+    /// Private test-account facts from the actual rich subscriber consumed for this frame.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub rich_observation: std::collections::BTreeMap<Ulid, UiRichObservation>,
     pub panes: Vec<UiPane>,
     pub tree: Vec<UiLayoutNode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

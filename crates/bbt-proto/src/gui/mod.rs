@@ -195,6 +195,7 @@ mod tests {
                         grade,
                         title: "zsh".into(),
                         detail: None,
+                        stale: false,
                         turn_open: false,
                         observed_ms: 3,
                         subagents: vec![],

@@ -7600,30 +7600,40 @@ impl App {
                     scroll: model
                         .scroll
                         .position(*seat, model.history.get(seat).map(Arc::as_ref)),
-                    rendered: model.prepared_screens.get(seat).and_then(|source| {
-                        self.frame_observations
-                            .read(*seat, source, &mut terminal_text)
-                            .map(|mut rendered| {
-                                rendered.pixel_size =
-                                    model.frames.get(seat).map(|grid| [grid.width, grid.height]);
-                                rendered
+                    rendered: model
+                        .prepared_screens
+                        .get(seat)
+                        .filter(|_| !self.rich_face(*seat))
+                        .and_then(|source| {
+                            self.frame_observations
+                                .read(*seat, source, &mut terminal_text)
+                                .map(|mut rendered| {
+                                    rendered.pixel_size = model
+                                        .frames
+                                        .get(seat)
+                                        .map(|grid| [grid.width, grid.height]);
+                                    rendered
+                                })
+                        }),
+                    historical: model
+                        .history
+                        .get(seat)
+                        .filter(|_| !self.rich_face(*seat))
+                        .and_then(|history| {
+                            let source = model.prepared_screens.get(seat)?;
+                            if !Arc::ptr_eq(&source.screen, &history.screen) {
+                                return None;
+                            }
+                            let grid = model.frames.get(seat)?;
+                            Some(bbt_proto::gui::UiHistoricalScreen {
+                                top_row: history.top_row,
+                                lines: bboxy450_term::frame_observation::bounded_lines(
+                                    source,
+                                    &mut terminal_text,
+                                ),
+                                pixel_size: [grid.width, grid.height],
                             })
-                    }),
-                    historical: model.history.get(seat).and_then(|history| {
-                        let source = model.prepared_screens.get(seat)?;
-                        if !Arc::ptr_eq(&source.screen, &history.screen) {
-                            return None;
-                        }
-                        let grid = model.frames.get(seat)?;
-                        Some(bbt_proto::gui::UiHistoricalScreen {
-                            top_row: history.top_row,
-                            lines: bboxy450_term::frame_observation::bounded_lines(
-                                source,
-                                &mut terminal_text,
-                            ),
-                            pixel_size: [grid.width, grid.height],
-                        })
-                    }),
+                        }),
                 })
             })
             .collect();
@@ -7721,6 +7731,7 @@ impl App {
             }),
             document: self.document.open.then(|| self.document.target.clone()),
             document_observation,
+            rich_observation: self.rich_observation(),
             panes,
             tree,
             spawned: None,
@@ -12681,6 +12692,7 @@ mod launcher_host_tests {
                 grade: bbt_proto::Grade::Shim,
                 title: String::new(),
                 detail: None,
+                stale: false,
                 turn_open: true,
                 observed_ms: 10,
                 subagents: vec![],

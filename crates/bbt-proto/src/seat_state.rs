@@ -45,9 +45,15 @@ pub struct SeatState {
     pub grade: Grade,
     pub title: String,
     pub detail: Option<String>,
+    /// The last explicit activity remains visible after its freshness expires.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub stale: bool,
     pub turn_open: bool,
     pub observed_ms: u64,
     pub subagents: Vec<SubagentRow>,
+}
+fn is_false(value: &bool) -> bool {
+    !value
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SubagentRow {

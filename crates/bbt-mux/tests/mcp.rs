@@ -8,6 +8,8 @@
 
 use bbt_mux::messaging::wire::EnvelopeExt;
 mod common;
+#[path = "mcp/harness_status.rs"]
+mod harness_status;
 #[path = "common/record_supervisor.rs"]
 mod record_supervisor;
 #[path = "mcp/launch.rs"]
@@ -5059,8 +5061,11 @@ fn mcp_seat_isolated_process() {
         "spawn" => seat_spawn_fixture(),
         "orchestrate" => seat_orchestration_fixture(),
         "native" => seat_native_fixture(),
-        "harness" => seat_harness_fixture(false),
-        "harness-owner" => seat_harness_fixture(true),
+        "harness" => seat_harness_fixture(false, None),
+        "harness-owner" => seat_harness_fixture(true, None),
+        "harness-status" => seat_harness_fixture(false, Some(false)),
+        "harness-status-log" => seat_harness_fixture(false, Some(true)),
+        "harness-status-phase" => harness_status::run(),
         _ => panic!("unknown fixture mode"),
     }
 }
@@ -5070,6 +5075,15 @@ fn mcp_seat_isolated_process() {
 #[ignore = "real private PTY; make test-harness-native builds the pinned harness and runs this in full CI"]
 fn mcp_harness_seat_completes_and_closes_without_orphans() {
     isolated_seat_fixture("harness");
+}
+
+// keeps: app-harness #348; HarnessReportedStatus. Both runs use a real, quiet
+// 20-second tool. JSON mode deliberately suppresses the harness OSC reporter.
+#[test]
+#[ignore = "real private PTY and scripted tool; make test-harness-native"]
+fn mcp_harness_seat_status_survives_quiet_tool() {
+    isolated_seat_fixture("harness-status");
+    isolated_seat_fixture("harness-status-log");
 }
 
 // Only exact process groups created and recorded by this private fixture.
@@ -5092,7 +5106,7 @@ fn mcp_harness_seat_owner_close_retires_hup_ignoring_tool_and_recovers() {
     isolated_seat_fixture("harness-owner");
 }
 
-fn seat_harness_fixture(owner_close: bool) {
+fn seat_harness_fixture(owner_close: bool, quiet: Option<bool>) {
     use std::os::unix::fs::PermissionsExt;
     let home = PathBuf::from(std::env::var_os("HOME").unwrap());
     let binary = PathBuf::from(std::env::var_os("BBOXY_HARNESS_TEST_BIN").unwrap());
@@ -5108,10 +5122,17 @@ fn seat_harness_fixture(owner_close: bool) {
     // still launches its production argv [bboxy450-harness, seat]. No key/network.
     let shim = bin.join("bboxy450-harness");
     let tool_pid_path = home.join("tool-pid");
-    let command = format!(
-        "trap '' HUP; trap '' TERM; printf '%s\\n' \"$$\" > {0}.tmp; mv {0}.tmp {0}; sleep 600",
-        quote(&tool_pid_path)
-    );
+    let command = if quiet.is_some() {
+        format!(
+            "printf '%s\\n' \"$$\" > {0}.tmp; mv {0}.tmp {0}; sleep 22",
+            quote(&tool_pid_path)
+        )
+    } else {
+        format!(
+            "trap '' HUP; trap '' TERM; printf '%s\\n' \"$$\" > {0}.tmp; mv {0}.tmp {0}; sleep 600",
+            quote(&tool_pid_path)
+        )
+    };
     let tool_call = json!({"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"owned-hup-tool","type":"function","function":{"name":"bash","arguments":serde_json::to_string(&json!({"command":command})).unwrap()}}]},"finish_reason":null}]});
     std::fs::write(home.join("tool.sse"), format!("data: {tool_call}\n\ndata: {{\"choices\":[{{\"index\":0,\"delta\":{{}},\"finish_reason\":\"tool_calls\"}}]}}\n\ndata: [DONE]\n\n")).unwrap();
     let fixture_mcp = binary.parent().unwrap().join("mcp-fixture");
@@ -5127,6 +5148,11 @@ fn seat_harness_fixture(owner_close: bool) {
         serde_json::to_string(&home).unwrap(),
         if owner_close { "True" } else { "False" }
     );
+    script.push_str(&format!(
+        "QUIET={}\nJSON={}\n",
+        if quiet.is_some() { "True" } else { "False" },
+        if quiet == Some(true) { "True" } else { "False" }
+    ));
     script.push_str(r#"import json, os, sys
 from pathlib import Path
 args = sys.argv[1:]
@@ -5140,11 +5166,15 @@ private = Path(HOME, 'fixture-mcp.json')
 private.write_text(json.dumps(config))
 private.chmod(0o600)
 args[index] = str(private)
-args.extend(['--scripted', FIXTURE, '--sessions', str(Path(HOME, 'sessions'))])
+args.extend(['--scripted', FIXTURE])
 if OWNER:
     # Fixture-only authority for its owned tool; the production argv above has
     # no permission selector and is asserted separately by the launch-kit test.
     args.extend(['--scripted', str(Path(HOME, 'tool.sse')), '--yolo'])
+if QUIET:
+    args.extend(['--scripted', str(Path(HOME, 'tool.sse')), '--scripted', FIXTURE, '--yolo'])
+if JSON:
+    args.append('--json')
 os.execv(BINARY, [BINARY, *args])
 "#);
     std::fs::write(&shim, script).unwrap();
@@ -5154,7 +5184,7 @@ os.execv(BINARY, [BINARY, *args])
         format!("export PATH={}:$PATH\n", quote(&bin)),
     )
     .unwrap();
-    let f = Fixture::real();
+    let mut f = Fixture::real();
     let baseline = f.registry().list().unwrap().len();
     refused(f.mutate(f.oracle.id, Ulid::new(), "seat_spawn", json!({
         "swarm_id": f.own.swarm, "approved_profile": "unknown-harness", "cwd": f._temp.path()
@@ -5175,12 +5205,28 @@ os.execv(BINARY, [BINARY, *args])
     let pgid = unsafe { libc::getpgid(pid) };
     assert!(pgid > 0);
     let mut groups = OwnedHarnessGroups(vec![pgid]);
-    f.wait_screen(seat, "session ");
-    let screen = f.screen(seat);
-    let first = screen.lines().next().unwrap();
-    let mut fields = first.split_whitespace();
-    assert_eq!(fields.next(), Some("session"), "{screen}");
-    let session: Ulid = fields.next().unwrap().parse().unwrap();
+    f.wait_screen(
+        seat,
+        if quiet == Some(true) {
+            "session_started"
+        } else {
+            "session "
+        },
+    );
+    let sessions = home.join(".bboxy450-harness/sessions");
+    let logs: Vec<_> = std::fs::read_dir(&sessions)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|ext| ext == "jsonl"))
+        .collect();
+    assert_eq!(logs.len(), 1, "private session discovery");
+    let session: Ulid = logs[0]
+        .file_stem()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .parse()
+        .unwrap();
     let role = f.registry().get(seat).unwrap().role;
     assert_eq!(role.name, "executor");
     assert_eq!(role.class, Class::Worker);
@@ -5220,7 +5266,9 @@ os.execv(BINARY, [BINARY, *args])
         admitted["structuredContent"]["native_id"],
         message.to_string()
     );
-    f.wait_screen(seat, "Done.");
+    if quiet != Some(true) {
+        f.wait_screen(seat, "Done.");
+    }
     let duplicate = f.mutate(
         f.oracle.id,
         message,
@@ -5234,6 +5282,9 @@ os.execv(BINARY, [BINARY, *args])
             .unwrap()
             .contains("duplicate=true")
     );
+    if quiet != Some(true) {
+        f.wait_screen(seat, "✓ Done");
+    }
     assert_eq!(
         f.input_attempts.load(std::sync::atomic::Ordering::SeqCst),
         attempts,
@@ -5271,18 +5322,23 @@ os.execv(BINARY, [BINARY, *args])
     }
     let until = Instant::now() + Duration::from_secs(8);
     let events: Vec<Value> = loop {
-        let events: Vec<Value> =
-            std::fs::read_to_string(home.join(format!("sessions/{session}.jsonl")))
-                .unwrap()
-                .lines()
-                .map(|l| serde_json::from_str(l).unwrap())
-                .collect();
-        let ended = events.iter().find(|e| {
-            e["event"]["type"] == "turn_queued" && e["cause"] == json!(message)
-        }).is_some_and(|queued| events.iter().any(|e| {
-            e["event"]["type"] == "turn_ended" && e["event"]["turn"] == queued["event"]["turn"]
-        }));
-        if ended { break events; }
+        let events: Vec<Value> = std::fs::read_to_string(sessions.join(format!("{session}.jsonl")))
+            .unwrap()
+            .lines()
+            .map(|l| serde_json::from_str(l).unwrap())
+            .collect();
+        let ended = events
+            .iter()
+            .find(|e| e["event"]["type"] == "turn_queued" && e["cause"] == json!(message))
+            .is_some_and(|queued| {
+                events.iter().any(|e| {
+                    e["event"]["type"] == "turn_ended"
+                        && e["event"]["turn"] == queued["event"]["turn"]
+                })
+            });
+        if ended {
+            break events;
+        }
         assert!(Instant::now() < until, "native causal turn did not end");
         std::thread::sleep(Duration::from_millis(20));
     };
@@ -5336,7 +5392,7 @@ os.execv(BINARY, [BINARY, *args])
     let mcp_pgid = unsafe { libc::getpgid(mcp_pid) };
     assert!(mcp_pgid > 0 && mcp_pgid != pgid);
     groups.0.push(mcp_pgid);
-    let log_path = home.join(format!("sessions/{session}.jsonl"));
+    let log_path = sessions.join(format!("{session}.jsonl"));
     let completed: Vec<Value> = std::fs::read_to_string(&log_path)
         .unwrap()
         .lines()
@@ -5344,6 +5400,151 @@ os.execv(BINARY, [BINARY, *args])
         .filter(|event| event["event"]["type"] == "item_completed")
         .collect();
     assert!(!completed.is_empty());
+    if quiet.is_some() {
+        let consumer =
+            bboxy450_harness_wake_up::rich::Connection::start(socket.clone(), f.runtime.handle());
+        let turn = f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "seat_input_text",
+            f.input_args(seat, "run a quiet tool", true),
+        );
+        assert_eq!(turn["isError"], false, "{turn}");
+        let until = Instant::now() + Duration::from_secs(10);
+        while !tool_pid_path.is_file() {
+            assert!(
+                Instant::now() < until,
+                "quiet tool did not start: {}",
+                f.screen(seat)
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        let started = Instant::now();
+        let read = |f: &Fixture| {
+            data(f.call(
+                f.oracle.id,
+                Ulid::new(),
+                "seat_get",
+                json!({"seat_id":seat}),
+            ))
+        };
+        // Allow the independent log reader one publication interval.
+        let until = Instant::now() + Duration::from_secs(2);
+        loop {
+            let status = read(&f);
+            if status["adapter"]["detail"]
+                .as_str()
+                .is_some_and(|detail| detail.starts_with("bash"))
+            {
+                break;
+            }
+            assert!(Instant::now() < until, "tool detail not reported: {status}");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        let native_head = std::fs::read_to_string(&log_path)
+            .unwrap()
+            .lines()
+            .last()
+            .map(|l| serde_json::from_str::<Value>(l).unwrap())
+            .unwrap();
+        let mut liveness_checked = false;
+        let mut samples = 0;
+        let mut restarted = false;
+        while started.elapsed() < Duration::from_secs(22) {
+            if !liveness_checked && started.elapsed() >= Duration::from_secs(21) {
+                let hello = consumer
+                    .client
+                    .hello()
+                    .expect("durable-only term consumer expired during the quiet tool");
+                assert_eq!(hello.session, session);
+                assert!(hello.last_frame.elapsed() < Duration::from_secs(12));
+                let last: Value = serde_json::from_str(
+                    std::fs::read_to_string(&log_path)
+                        .unwrap()
+                        .lines()
+                        .last()
+                        .unwrap(),
+                )
+                .unwrap();
+                assert_eq!(
+                    last["seq"], native_head["seq"],
+                    "transport Status fabricated semantic progress"
+                );
+                assert_eq!(
+                    last["ts_ms"], native_head["ts_ms"],
+                    "transport Status freshened native event time"
+                );
+                eprintln!(
+                    "harness-native: durable_only_live_ms={} frame_age_ms={} semantic_seq={}",
+                    started.elapsed().as_millis(),
+                    hello.last_frame.elapsed().as_millis(),
+                    last["seq"]
+                );
+                liveness_checked = true;
+            }
+            if quiet == Some(false) && !restarted && started.elapsed() >= Duration::from_secs(8) {
+                f.restart();
+                restarted = true;
+            }
+            let status = read(&f);
+            let adapter = &status["adapter"];
+            // A tool may finish just before the poll which crosses 20 seconds.
+            if adapter["state"] == "idle" {
+                assert!(
+                    started.elapsed() >= Duration::from_millis(19_800),
+                    "early idle: {status}"
+                );
+                break;
+            }
+            assert_eq!(adapter["state"], "active", "{status}");
+            assert_eq!(adapter["grade"], "reported", "{status}");
+            if quiet == Some(true) {
+                assert_eq!(adapter["source"], "sessions_file", "{status}");
+            } else {
+                assert!(
+                    matches!(adapter["source"].as_str(), Some("7501" | "sessions_file")),
+                    "{status}"
+                );
+            }
+            assert!(
+                adapter["detail"]
+                    .as_str()
+                    .is_some_and(|detail| detail.starts_with("bash")),
+                "{status}"
+            );
+            samples += 1;
+            std::thread::sleep(Duration::from_millis(200));
+        }
+        assert!(
+            liveness_checked,
+            "the actual term consumer must cross its 20s freshness deadline"
+        );
+        assert!(
+            samples >= 80,
+            "insufficient quiet interval samples: {samples}"
+        );
+        let until = Instant::now() + Duration::from_secs(5);
+        loop {
+            let status = read(&f);
+            if status["adapter"]["state"] == "idle"
+                && (quiet != Some(true) || status["adapter"]["source"] == "sessions_file")
+            {
+                assert_eq!(status["adapter"]["detail"], Value::Null);
+                assert_eq!(status["adapter"]["grade"], "reported");
+                break;
+            }
+            assert!(
+                Instant::now() < until,
+                "turn did not become reported idle: {status}"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        eprintln!(
+            "harness-native: quiet_tool_ms={} samples={samples} osc_suppressed={}",
+            started.elapsed().as_millis(),
+            quiet == Some(true)
+        );
+    }
     if owner_close {
         f.runtime
             .block_on(f.client().gui_input(

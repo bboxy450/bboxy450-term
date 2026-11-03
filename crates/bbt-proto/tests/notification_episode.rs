@@ -45,22 +45,27 @@ fn old_seat_omits_the_additive_key_and_current_episode_round_trips() {
             grade: bbt_proto::Grade::Shim,
             title: String::new(),
             detail: None,
+            stale: false,
             turn_open: true,
             observed_ms: 1,
             subagents: Vec::new(),
         },
     };
-    let legacy = serde_json::to_value(&seat).unwrap();
+    let mut legacy = serde_json::to_value(&seat).unwrap();
     assert!(legacy.get("notification_episode").is_none());
+    legacy["state"].as_object_mut().unwrap().remove("stale");
     let mut decoded: GuiSeat = serde_json::from_value(legacy).unwrap();
     assert_eq!(decoded.notification_episode, None);
+    assert!(!decoded.state.stale);
     let key = NotificationEpisode {
         epoch: Ulid(9),
         generation: 1,
         ordinal: 4,
     };
     decoded.notification_episode = Some(key);
+    decoded.state.stale = true;
     let roundtrip: GuiSeat =
         serde_json::from_slice(&serde_json::to_vec(&decoded).unwrap()).unwrap();
     assert_eq!(roundtrip.notification_episode, Some(key));
+    assert!(roundtrip.state.stale);
 }

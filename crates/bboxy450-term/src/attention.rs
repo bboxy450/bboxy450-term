@@ -230,6 +230,7 @@ mod tests {
                 grade: Grade::Shim,
                 title: String::new(),
                 detail: Some("\n  Allow this action?\nprivate second line".into()),
+                stale: false,
                 turn_open: true,
                 observed_ms: 10,
                 subagents: vec![],

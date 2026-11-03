@@ -1051,3 +1051,23 @@ frontend = "project"
 name = "BrokenRichCancelFence"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "HarnessReportedStatus"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenHarnessReportedStatus"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "HarnessStatusExpiry"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenHarnessStatusExpiry"
+expected = "safety"
+frontend = "project"

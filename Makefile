@@ -120,6 +120,8 @@ help:
 	  'make test-rich-pane              Private rich keyboard/IME, layout persistence and offscreen parity' \
 	  'make bench-budgets               Four-view actual drain/composition p99; load and heap UNMEASURED' \
 	  'make check-rich-host             Strict all-target lint for the rich host boundary' \
+	  'make test-harness-status-control Quiet-tool cadence mutation must fail, then restored pass' \
+	  'make test-rich-app-detach         Real App detach/reopen during a native harness turn' \
 	  'make test-capability-native      Capability file and real Codex shared-daemon environment scans' \
 	  'make init-submodules             Initialize and verify the pinned harness unattended' \
 	  'Fresh clone: git clone --recurse-submodules https://github.com/bboxy450/bboxy450-term' \
@@ -1971,11 +1973,11 @@ init-submodules:
 test-harness-native: init-submodules
 	@python3 -I scripts/harness-submodule.py --check-resolution
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-harness-wake-up --test rich_socket --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-harness-wake-up --test rich_socket --test harness_status --target-dir '$(TARGET_DIR)'; \
 	cargo build --locked -p bboxy450-harness --features test-fixtures --target-dir '$(TARGET_DIR)'; \
 	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' mcp_harness_seat_ -- --ignored --nocapture; \
 	cargo test --locked -p bboxy450-harness --test seat_process --target-dir '$(TARGET_DIR)' non_pty_spawn_does_not_keep_a_sibling_master_alive -- --exact; \
-	$(MAKE) test-rich-controls test-rich-cancel-control test-rich-pane bench-budgets TARGET_DIR='$(TARGET_DIR)'
+	$(MAKE) test-rich-controls test-rich-cancel-control test-rich-pane bench-budgets test-rich-app-detach TARGET_DIR='$(TARGET_DIR)'
 
 format-harness-embed:
 	@rustfmt --edition 2024 crates/bboxy450-harness-wake-up/src/launch.rs crates/bbt-mux/src/adapters/mod.rs crates/bbt-mux/src/mcp/seats.rs crates/bbt-mux/tests/mcp.rs crates/bboxy450-term/src/settings/roles.rs crates/bbt-proto/src/gui/roles.rs
@@ -2078,7 +2080,7 @@ test-rich-controls:
 .PHONY: check-rich-host
 check-rich-host: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo clippy --locked -p bboxy450-harness-wake-up -p bboxy450-term-mux -p bboxy450-term-proto -p bboxy450-ui-core -p bboxy450-term --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+	cargo clippy --locked -p bboxy450-harness-wake-up -p bboxy450-term-mux -p bboxy450-term-proto -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-term --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
 .PHONY: test-rich-cancel-control
 test-rich-cancel-control: init-submodules
@@ -2089,3 +2091,13 @@ test-rich-cancel-control: init-submodules
 bench-budgets: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	BBOXY_RICH_BUDGET_OUT='$(abspath $(TARGET_DIR))/rich-budgets' cargo test --locked -p bboxy450-term --bin bboxy450-term --target-dir '$(TARGET_DIR)' rich_faces::budget_verification::rich_four_view_aggregate_budget -- --ignored --exact --nocapture --test-threads=1
+
+.PHONY: test-harness-status-control test-rich-app-detach
+test-harness-status-control: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo build --locked -p bboxy450-harness --features test-fixtures --target-dir '$(TARGET_DIR)'; \
+	python3 -I scripts/test-harness-status-control.py '$(abspath $(TARGET_DIR))'
+
+test-rich-app-detach: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p $(APP) --test swarm_workdir --target-dir '$(TARGET_DIR)' rich_detach::rich_app_detach_during_native_turn_retains_owner_and_replays -- --ignored --exact --nocapture

@@ -261,6 +261,7 @@ impl App {
                 page: None,
                 document: None,
                 document_observation: None,
+                rich_observation: Default::default(),
                 panes: Vec::new(),
                 tree: Vec::new(),
                 spawned: None,

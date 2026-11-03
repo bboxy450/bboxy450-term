@@ -9,6 +9,30 @@ use bboxy450_term::rich_pane::{Input, Pane};
 use bbt_proto::gui::PaneFace;
 use bbt_ui_model::draw::{Color, DrawList, TextStyle};
 impl App {
+    pub(super) fn rich_observation(
+        &self,
+    ) -> std::collections::BTreeMap<bbt_mux::Ulid, bbt_proto::gui::UiRichObservation> {
+        if !self.test_account {
+            return Default::default();
+        }
+        self.pane_bounds
+            .iter()
+            .filter_map(|(id, _)| {
+                let pane = self.rich_panes.get(id)?;
+                Some((
+                    bbt_mux::Ulid(id.0.0),
+                    bbt_proto::gui::UiRichObservation {
+                        face: PaneFace::HarnessRich,
+                        ready: pane.snapshot.ready,
+                        cursor: self.rich_cursors.get(&bbt_mux::Ulid(id.0.0)).copied(),
+                        retained_items: pane.snapshot.retained_items,
+                        paint_count: pane.painted().len(),
+                        error: pane.snapshot.error.clone(),
+                    },
+                ))
+            })
+            .collect()
+    }
     pub(super) fn rich_face(&self, seat: SeatId) -> bool {
         self.pane_faces
             .get(&bbt_mux::Ulid(seat.0.0))
@@ -459,7 +483,15 @@ mod verification {
         };
         let mut view = HarnessView::default();
         let size = [1120, 820];
-        let frame = capture_frame(&mut view, &mut state, size, None, false).unwrap();
+        let frame = capture_frame(&mut view, &mut state, &{
+            let mut options =
+                bboxy450_harness::frontends::gui::options::Options::parse(Vec::<String>::new())
+                    .unwrap();
+            options.capture = Some(size);
+            options.no_chrome = true;
+            options
+        })
+        .unwrap();
         let mut native =
             ChromeRenderer::new(bboxy450_harness::frontends::gui::assets::icons()).unwrap();
         let standalone = m::render_composed_to_rgba(

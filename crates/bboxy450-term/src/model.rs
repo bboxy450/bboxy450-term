@@ -2347,6 +2347,7 @@ mod tests {
                 grade: ui::Grade::Reported,
                 title: "permission".into(),
                 detail: None,
+                stale: false,
                 turn_open: true,
                 observed_ms: 100,
                 subagents: vec![],

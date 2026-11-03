@@ -9,6 +9,9 @@
 use Expr::{Bool, Int, Var};
 use bboxy450_tlc::{Action, Expr, Invariant, Model, Response, Variable};
 
+#[path = "harness_status_model.rs"]
+mod harness_status_model;
+
 #[path = "notification_models.rs"]
 mod notification_models;
 
@@ -1881,6 +1884,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(event_log_model::cases());
     cases.extend(logic_worker_model::cases());
     cases.extend(projection_writer_model::cases());
+    cases.extend(harness_status_model::cases());
     cases
 }
 

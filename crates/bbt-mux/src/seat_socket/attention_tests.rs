@@ -57,6 +57,7 @@ fn waiting() -> GuiSeat {
             grade: bbt_proto::Grade::Shim,
             title: String::new(),
             detail: Some("Which workspace?".into()),
+            stale: false,
             turn_open: true,
             observed_ms: 1,
             subagents: Vec::new(),

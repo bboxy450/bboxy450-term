@@ -933,6 +933,7 @@ impl Scene {
                     .flatten();
                 row.activity = seat.activity;
                 row.grade = seat.grade;
+                row.stale = model.states.get(id).is_some_and(|state| state.stale);
                 row.muted = seat.muted;
                 row.may_mute = self.live;
                 row.deferred = model.messaging_deferred.get(id).cloned();
@@ -3313,6 +3314,7 @@ mod depth_tests {
                 grade: Grade::Shim,
                 title: String::new(),
                 detail: Some("Your answer is needed".into()),
+                stale: false,
                 turn_open: true,
                 observed_ms: 10,
                 subagents: vec![],

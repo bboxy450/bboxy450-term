@@ -2388,6 +2388,9 @@ impl ViewState {
     }
 }
 
+#[path = "logic/harness_status.rs"]
+mod harness_status;
+
 struct ViewState {
     info: SeatInfo,
     adapter: Session,
@@ -6301,6 +6304,31 @@ impl Worker {
                     }),
             },
         )?;
+        // Preserve explicit evidence across logic reattachment to the same
+        // supervisor-owned generation. Old reports confer no input readiness.
+        if !bare
+            && let Some(bytes) = SqliteStore::open(&directory)?.get("reported_adapter")?
+            && let Ok((generation, reported)) =
+                serde_json::from_slice::<(u64, crate::adapters::Status)>(&bytes)
+            && generation == info.generation
+            && reported.grade == crate::adapters::Grade::Reported
+        {
+            adapter.apply(crate::adapters::Observation {
+                sequence: reported.sequence,
+                generation,
+                observed_ms: reported.observed_ms,
+                source: reported.source.clone(),
+                grade: reported.grade,
+                state: reported.state,
+                waiting_kind: reported.waiting_kind,
+                agent_id: None,
+                title: None,
+                detail: reported.detail.clone(),
+                clear: false,
+                resolves: reported.state != crate::adapters::State::Waiting,
+            });
+            adapter.status = reported;
+        }
         // A plugin login's OSC frames are never observed.
         for (sequence, params) in live_frames.into_iter().filter(|_| !bare) {
             adapter.on_osc(&params, sequence, now_ms());
@@ -8605,6 +8633,28 @@ impl Worker {
             let before = view.adapter.status.clone();
             let mut live_wait = false;
             if view.adapter.status.source != "exit" {
+                if view.adapter.record.kind == "bboxy450-harness"
+                    && view
+                        .native_reader
+                        .as_ref()
+                        .is_none_or(|reader| reader.task.is_finished())
+                    && let Some(home) = std::env::var_os("HOME")
+                {
+                    let binding = view.adapter.binding.clone();
+                    let reader_binding = binding.clone();
+                    let client = self.client.clone();
+                    let root = PathBuf::from(home).join(".bboxy450-harness");
+                    let task = self.handle.spawn(harness_status::run(
+                        client,
+                        binding,
+                        root,
+                        view.rich_socket.clone(),
+                    ));
+                    view.native_reader = Some(NativeReader {
+                        binding: reader_binding,
+                        task,
+                    });
+                }
                 if view.adapter.record.kind == "claude" {
                     let root = std::env::var_os("CLAUDE_CONFIG_DIR")
                         .map(PathBuf::from)
@@ -9259,6 +9309,13 @@ impl Worker {
             })
     }
     fn publish_adapter(&self, id: Ulid, status: crate::adapters::Status) -> Result<()> {
+        if status.grade == crate::adapters::Grade::Reported {
+            let root = object_dir(&self.config.run_dir, &format!("seat-{id}"))?;
+            SqliteStore::open(&root)?.put(
+                "reported_adapter",
+                &serde_json::to_vec(&(self.views[&id].generation, &status))?,
+            )?;
+        }
         self.publish(
             &format!("seat-{id}"),
             Draft::new(
@@ -9491,6 +9548,7 @@ impl Worker {
                 grade: gui_grade(status.grade),
                 title,
                 detail: status.detail.clone(),
+                stale: status.source == "stale",
                 turn_open: status.turn_open,
                 observed_ms: status.observed_ms,
                 subagents,
@@ -11292,6 +11350,7 @@ impl Worker {
                                 Ok(view.adapter.status.clone())
                             });
                         if let (Some(before), Ok(status)) = (&before, &result) {
+                            self.persist_native_session(id)?;
                             let promoted =
                                 self.sync_adapter_attention(id, before, status, live_wait)?;
                             if !status.same_value(before) || promoted {

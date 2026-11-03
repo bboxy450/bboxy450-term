@@ -238,6 +238,7 @@ fn captured_episode_identity_survives_rebuild_but_not_a_to_b_to_a() {
             grade: Grade::Shim,
             title: String::new(),
             detail: Some("Answer?".into()),
+            stale: false,
             turn_open: true,
             observed_ms: 0,
             subagents: vec![],

@@ -209,6 +209,7 @@ threading.Event().wait()
                 grade: bbt_proto::Grade::Shim,
                 title: String::new(),
                 detail: None,
+                stale: false,
                 turn_open: false,
                 observed_ms: 0,
                 subagents: vec![],

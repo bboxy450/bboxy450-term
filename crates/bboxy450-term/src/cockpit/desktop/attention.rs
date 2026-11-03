@@ -586,6 +586,7 @@ mod tests {
                 grade: Grade::Shim,
                 title: String::new(),
                 detail: Some("Answer this?".into()),
+                stale: false,
                 turn_open: true,
                 observed_ms: 10,
                 subagents: vec![],

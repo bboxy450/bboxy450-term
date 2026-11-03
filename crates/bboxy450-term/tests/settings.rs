@@ -863,6 +863,7 @@ fn settings_persisted_policy_drives_attention_and_keeps_focus_and_mute_suppressi
                 grade: Grade::Shim,
                 title: String::new(),
                 detail: None,
+                stale: false,
                 turn_open: true,
                 observed_ms: 10,
                 subagents: vec![],
