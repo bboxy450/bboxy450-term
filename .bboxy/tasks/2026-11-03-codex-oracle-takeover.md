@@ -61,6 +61,14 @@ allowed_paths:
 - /Users/feral/mydev/bboxy450-harness-wt-architect/target/release/build/**
 - /Users/feral/mydev/bboxy450-harness-wt-architect/target/release/deps/**
 - /Users/feral/mydev/bboxy450-harness-wt-architect/target/release/.fingerprint/**
+- /Users/feral/mydev/bboxy450-harness-codex-recovery/target/debug/incremental/**
+- /Users/feral/mydev/bboxy450-harness-codex-recovery/target/debug/build/**
+- /Users/feral/mydev/bboxy450-harness-codex-recovery/target/debug/deps/**
+- /Users/feral/mydev/bboxy450-harness-codex-recovery/target/debug/.fingerprint/**
+- /Users/feral/mydev/bboxy450-harness-codex-recovery/target/release/incremental/**
+- /Users/feral/mydev/bboxy450-harness-codex-recovery/target/release/build/**
+- /Users/feral/mydev/bboxy450-harness-codex-recovery/target/release/deps/**
+- /Users/feral/mydev/bboxy450-harness-codex-recovery/target/release/.fingerprint/**
 verify: python3 -I /tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/verify.py
 acceptance:
 - Fresh MCP account/resource usage recorded
@@ -68,7 +76,7 @@ acceptance:
 - Obsolete seats retired; replacement Codex workers have signed scoped tasks; unfinished work preserved
 - Lifecycle, source preservation, closures and gaps retained as evidence
 id: 01M6HCH1SJHDSB6SDAC2ZF1BXX
-updated: 2026-11-03T20:28:55.134Z
+updated: 2026-11-03T20:51:01.223Z
 created: 2026-11-03T19:00:13.435Z
 number: 15244
 created_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
@@ -79,11 +87,11 @@ authorship:
   public_key: B3hFSjBIE1Nnj7mw9Eg9pqyRpYHF/GQaKXPyV1KAod0=
   process_generation: '1'
 provenance:
-  digest: sha256:f84cf41cada84e410c4c88ef6717172961bf1d326937e96ba483b28eb5155481
-  frontmatter_digest: sha256:f26f6283fe5c5e8aa97f8ea87c4c26e15d4c0590507c718232a53c8d9d592985
+  digest: sha256:5b78e44aaa4002e5bac9036d724a78f6136f089d824e6c235e025fe33905c00b
+  frontmatter_digest: sha256:9c74485bb68e2cb361eb4784d4cc71bf334082d04eb11b3a0f006b466923c285
   signer: seat:01M6H97SAX3GN1BYB4YG76P3P0
-  sig: 0rFih6MMZUtyrMYPqpE/J661BuAqrmtTvwW5+utYIt9lqsp/c4xYuwjh/xYxqkdigsp4Ycct9mP4KOxHzD2jDQ==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#99227
+  sig: sUdxnMn0n175o+UKaD7J8BQRCysAU+CImx3rzRN7cm1OhjHUbBEHVe/ryQXas8emYZ0VBysQIKgCNYlA926+Bg==
+  log: .bboxy/log/2026-11-03.part-86213.jsonl#100768
 ---
 ROLE: ORACLE.
 
@@ -116,3 +124,5 @@ Operator's Codex-only policy also applies to newly opened standalone/harness ses
 Disk disposition: there are no additional clean, fully merged worktrees with remaining compiler caches. The operator's cleanup authorization permits reclaiming the retired harness workers' rebuildable Cargo caches while retaining their unfinished source trees, original refs, logs, captures, formal receipts and packaged apps. In these exact retired worktrees: /Users/feral/mydev/bboxy450-harness-quiet, /Users/feral/mydev/bboxy450-harness-heartbeat, /Users/feral/mydev/bboxy450-harness-agent-turns, /Users/feral/mydev/bboxy450-harness-capture-chrome, /Users/feral/mydev/bboxy450-harness-land, /Users/feral/mydev/bboxy450-harness-wt-architect, first prove no process holds the cache paths with lsof; then remove only target/{debug,release}/{incremental,build,deps,.fingerprint}. Do not follow symlinks, touch any active Codex worktree, remove other target contents, delete source or claim unrun verification. Retain an actual before/after manifest and disk reading.
 
 Continuation after standalone delivery: verified and published ea75307 implementation plus af65c6c report/summary, signed local install and installed private native startup smoke all exited zero; normal launch observed alive on codex-exec. Retired standalone worker/report-recovery seats after preserving and reconciling the original completed report. The freed third productive slot now recovers the explicit outstanding two-pass native visual work from ORACLE-HANDOFF.md via [[tasks/2026-11-03-codex-native-visual]], own worktree /Users/feral/mydev/bboxy450-harness-codex-visual. Scope is the carried terminal one-line fold/diff ellipsis defects and two native audit passes; no baseline/threshold/reference changes. Socket and rich-host assignments continue. The resumed-native-thread MCP old-seat identity defect is recorded as a gap; do not bypass identity or edit capabilities. Intermediate signed operational report is [[reports/2026-11-03-codex-oracle-takeover-interim]] (#17033), committed at 5e8e0583a9df8e780c6a80befbfd107ab64b86cd; parent product remains open.
+
+Cleanup continuation: disk use returned to 94% during the new builds. The own recovery worker/report-recovery seats are closed_retained and af65c6c is published; its source tree and raw/formal evidence remain retained because the host watches the root directory. The operator's existing cleanup authorization permits removing only this retired worker's rebuildable target/{debug,release}/{incremental,build,deps,.fingerprint} caches after a fresh exact-path lsof check, clean Git/main ancestry proof and no-symlink check. Keep target/recovery, target/formal, verification/evidence, captures, packages and all source/refs. No whole-worktree deletion while its root is held; no active Codex worktree or global cache/config changes.
