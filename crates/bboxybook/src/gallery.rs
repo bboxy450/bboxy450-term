@@ -380,6 +380,7 @@ pub fn parity_cases() -> Vec<Case> {
     out.extend(crate::perf::cases());
     out.extend(crate::documents::cases());
     out.extend(crate::paths::cases());
+    out.extend(crate::startup::cases());
     out
 }
 

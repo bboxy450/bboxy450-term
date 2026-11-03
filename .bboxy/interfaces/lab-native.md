@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-26T16:18:20Z"
+updated: "2026-11-03T21:25:00Z"
 ---
 # ICD: lab ↔ native renderer
 
@@ -28,3 +28,26 @@ updated: "2026-10-26T16:18:20Z"
 A change to this interface names both sides, the reason and the verification it needs, and lands only with both sides' owners agreeing. A question an Executor asks about this boundary is a missing line here: the answer is written into this table, not only sent.
 
 Owner: Corvin Duskmantle <ARCHITECT>.
+
+## Startup checklist
+
+`lab/web/startup.html` previews the app's public startup observations. Its four
+ordered steps are supervisor connection, runtime start, signed-history verification
+and cockpit attachment. The current phase marks exactly one active row; prior
+stages are complete and later stages remain pending. Supervisor adoption stays
+on step one. Reconnection starts at step one; a runtime refresh starts at step
+two. A sticky failure marks the current row failed and retains the exact error,
+available history counts and log paths. Retry clears that progress through the
+existing startup state machine. Phase time is labelled as time on this step.
+No aggregate percentage or estimated duration is invented; the history bar uses
+only reported verified/total counts, with no bar for a zero total.
+
+Both sides receive `bbt_ui::modules::startup::Startup` display data. The web
+constructor builds its own UI tree; Boxybook exports the public data on that
+tree, then calls the production native composition instead of replaying web
+child positions. Neutral native action-name wrappers are omitted from geometry
+diagnostics. `make parity-startup` runs the existing strict geometry/pixel policy
+for all ten states, four densities and both themes. `make test-startup-modal`
+checks live phase projection, sticky failure/retry, the full checklist and
+wrapped diagnostics at 320 and 560 logical pixels. Backend and input lifecycles
+are unchanged.

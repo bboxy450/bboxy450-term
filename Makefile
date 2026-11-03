@@ -46,6 +46,9 @@ help:
 	@printf '%s\n' \
 	  'make build / build-release       Build the app (debug / optimized)' \
 	  'make privacy-1password          Open persistent macOS access settings for the signed installed app' \
+	  'make parity-startup             Boxybook startup checklist web/native preview and geometry comparison' \
+	  'make preview-startup-web        Capture startup design states in an isolated web preview' \
+	  'make test-startup-modal         Focused startup checklist layout and observation tests' \
 	  'make lock                       Refresh workspace lock metadata offline' \
 	  'make lock-online                Resolve added dependencies with the registry' \
 	  'make bump-harness [REV=sha]      Move and stage the harness submodule and changed lockfile (default origin/main)' \
@@ -640,6 +643,25 @@ privacy-1password:
 	@printf '%s\n' 'Add the selected bboxy450-term.app to Full Disk Access and enable it once.' \
 	  'This macOS grant persists across app restarts and identity-signed updates.' \
 	  'Restart bboxy450-term and any existing harness backend after enabling it.'
+
+.PHONY: parity-startup test-startup-modal preview-startup-web
+preview-startup-web:
+	@node crates/bboxybook/preview-startup.mjs '$(TARGET_DIR)/startup-web'
+
+parity-startup: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	sh scripts/lab-check.sh startup.html; \
+	cargo build --locked -p bboxy450-book --target-dir '$(TARGET_DIR)'; \
+	mkdir -p '$(TARGET_DIR)/startup-preview'; \
+	BBOXYBOOK_GALLERY=startup '$(TARGET_DIR)/debug/bboxy450-book' manifest > '$(TARGET_DIR)/startup-preview/requested.json'; \
+	node crates/bboxybook/capture.mjs '$(TARGET_DIR)/startup-preview' '$(TARGET_DIR)/startup-preview/requested.json'; \
+	'$(TARGET_DIR)/debug/bboxy450-book' render --all --out '$(TARGET_DIR)/startup-preview/native' --manifest '$(TARGET_DIR)/startup-preview/cases.json'; \
+	'$(TARGET_DIR)/debug/bboxy450-book' compare --strict-geometry --out '$(TARGET_DIR)/startup-preview' --manifest '$(TARGET_DIR)/startup-preview/cases.json'
+
+test-startup-modal: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked -p bboxy450-book --test startup --target-dir '$(TARGET_DIR)'; \
+	cargo nextest run --locked -p $(APP) --bin $(APP) --lib --target-dir '$(TARGET_DIR)' -E 'test(startup_modal)'
 
 install-unsigned: PROFILE=debug
 install-unsigned: bundle-unsigned

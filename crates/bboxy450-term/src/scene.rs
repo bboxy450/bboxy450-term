@@ -2395,6 +2395,15 @@ impl Scene {
         let width = 480_f32.min((size[0] - 24.).max(1.));
         modal.style.overrides.width = Some(ui::Length::Px(width));
         let element = modal.element(self.ui_context());
+        self.app_dialog_element_layout(element, size, width)
+    }
+    pub fn app_dialog_element_layout(
+        &self,
+        element: c::Element,
+        size: [f32; 2],
+        preferred_width: f32,
+    ) -> Result<c::Layout, String> {
+        let width = preferred_width.min((size[0] - 24.).max(1.));
         let natural = element
             .layout(
                 Rect::new(0., 0., width, 0.),

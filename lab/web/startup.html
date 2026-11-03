@@ -1,0 +1,21 @@
+<!doctype html>
+<!-- Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+     LicenseRef-Respectful-Slop-1.0-Draft; see ATTRIBUTION.md for source credit. -->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Startup checklist · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<style>
+.startup-card .ui-text,.startup-card .ui-stack{min-width:0;overflow-wrap:anywhere}
+.startup-card .ui-text{text-wrap:pretty}
+.startup-card .ui-btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.startup-card .ui-btn:active{transform:translateY(1px)}
+</style>
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="ui.js"></script><script src="startup.js"></script>
+</head><body><script>
+Lab.page({title:'Startup checklist',wide:true,note:'Actual startup phases and public observations from the existing startup tests. Every step stays visible; only signed-history counts produce a progress bar. Retry resets this preview. The native side uses the production Startup component.',
+states:Object.keys(STARTUP_STATES),render(state,body){
+ const preview=Lab.el('div',{class:'startup-preview',style:'display:flex;justify-content:center;padding:32px 16px;min-height:560px'});
+ const host=Lab.el('div',{style:'margin-top:0px;width:560px;max-width:100%'},startupModal(STARTUP_STATES[state]));
+ preview.append(UI.themeScope(Lab.prefs.theme,UI.densityScope(Lab.prefs.density,host)));body.append(preview);
+}});
+</script></body></html>

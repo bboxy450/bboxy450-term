@@ -139,6 +139,7 @@
         throw Error('unrecorded UI component');
       }
       const result={kind:call.kind,rect:bounds(node)};
+      if(node.bboxyStartup)result.startup=node.bboxyStartup;
       if(call.kind==='text')Object.assign(result,textDiag(node),{value:call.args[0],options:call.args[1]||{}});
       else if(call.kind==='box'){result.style=call.style;result.children=call.children.map(exportUi);}
       else if(call.kind==='group'){result.options=call.args[0]||{};result.children=call.args.slice(1).map(exportUi);}
@@ -741,9 +742,9 @@
     }):[];
     const squares=[...root.querySelectorAll('.ui-sq')].map((node,index)=>{const input=materials[index];const css=getComputedStyle(node);return {...input,glow:glowFor(node),rect:bounds(node),radii:radii(css),color:color(input.params.color||'var(--accent)',node),tint:color(input.params.tint==='none (Style fill)'?'transparent':input.params.tint||'transparent',node)};});
     const boxes=styles.filter(c=>c.node.isConnected&&root.contains(c.node)).map(({style,node})=>{
-      const css=getComputedStyle(node),text=node.querySelector('.ui-text'),tc=getComputedStyle(text);
+      const css=getComputedStyle(node),text=node.querySelector('.ui-text'),tc=text?getComputedStyle(text):null;
       return {style,glow:glowFor(node),rect:bounds(node),computed:{fill:color(css.backgroundColor,node),radii:radii(css),padding:[css.paddingTop,css.paddingRight,css.paddingBottom,css.paddingLeft].map(parseFloat),border_width:parseFloat(css.borderTopWidth)},
-        text:{value:text.innerText,rect:bounds(text),font_diagnostics:textDiag(text).font_diagnostics,size:parseFloat(tc.fontSize),color:color(tc.color,text),weight:Number(tc.fontWeight)}};
+        text:text?{value:text.innerText,rect:bounds(text),font_diagnostics:textDiag(text).font_diagnostics,size:parseFloat(tc.fontSize),color:color(tc.color,text),weight:Number(tc.fontWeight)}:null};
     });
     return JSON.parse(JSON.stringify({ version: 1, layer:window.bboxyAtomFixture?'atoms':window.bboxyComponentFixture?'components':undefined, component, atoms, calls: serialized, materials:squares, styles:boxes }, (key, value) => {
       if (typeof value === 'function') return { $callback: true };
