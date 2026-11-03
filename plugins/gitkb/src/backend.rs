@@ -25,6 +25,10 @@ use crate::native::{hex, random_hex};
 /// Largest accepted stdout or stderr of one backend call.
 pub const MAX_BACKEND: u64 = 32 * 1024 * 1024;
 
+/// The pinned digest and file identity last verified, kept in the plugin's
+/// private data directory so a new process need not hash the binary again.
+const VERIFIED_RECORD: &str = "backend-verified";
+
 /// Cheap file identity: a change means the binary must be hashed again.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Identity([i64; 7]);
@@ -100,6 +104,14 @@ impl Backend {
             return Ok(());
         }
         self.verified = None;
+        // An earlier process of this plugin hashed this exact file: a 400 MB
+        // binary takes seconds under load, beyond the host's per-call deadline.
+        let record = self.cwd.join(VERIFIED_RECORD);
+        let line = format!("{} {:?}\n", self.sha256, before.0);
+        if std::fs::read_to_string(&record).is_ok_and(|saved| saved == line) {
+            self.verified = Some(before);
+            return Ok(());
+        }
         ctx.check()?;
         let mut file = File::open(&self.path).map_err(|_| changed())?;
         let mut hasher = Sha256::new();
@@ -116,6 +128,18 @@ impl Backend {
         let after = identity(&self.path).map_err(|_| changed())?;
         if hex(&hasher.finalize()) != self.sha256 || after != before {
             return Err(changed());
+        }
+        // Best effort: without the record the next process hashes again.
+        let partial = self.cwd.join(format!("{VERIFIED_RECORD}.{}", random_hex(8)));
+        let saved = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .open(&partial)
+            .and_then(|mut file| file.write_all(line.as_bytes()))
+            .and_then(|()| std::fs::rename(&partial, &record));
+        if saved.is_err() {
+            let _ = std::fs::remove_file(&partial);
         }
         self.verified = Some(after);
         Ok(())
@@ -391,6 +415,40 @@ mod tests {
         ]
         .map(|(k, v)| (k.to_owned(), v))
         .into()
+    }
+
+    // keeps: one hash per binary, not per process — a second backend in the
+    // same data directory trusts the record; a changed binary is hashed again.
+    #[test]
+    fn a_verified_backend_is_not_hashed_again_by_the_next_process() {
+        let dir = std::env::temp_dir()
+            .canonicalize()
+            .unwrap()
+            .join(format!("bboxy-gitkb-verified-{}", random_hex(8)));
+        std::fs::create_dir(&dir).unwrap();
+        let fake = dir.join("git-kb");
+        std::fs::write(&fake, "#!/bin/sh\necho '{}'\n").unwrap();
+        let sha = hex(&Sha256::digest(b"#!/bin/sh\necho '{}'\n"));
+        let ctx = Ctx::detached(Duration::from_secs(10));
+        Backend::new(fake.to_str().unwrap(), &sha, dir.clone())
+            .unwrap()
+            .verify(&ctx)
+            .unwrap();
+        assert!(dir.join(VERIFIED_RECORD).is_file());
+        // A cancelled context refuses any hashing, so only the record passes.
+        let cancelled = Ctx::detached(Duration::ZERO);
+        Backend::new(fake.to_str().unwrap(), &sha, dir.clone())
+            .unwrap()
+            .verify(&cancelled)
+            .expect("the record verifies without hashing");
+        // A rewritten binary has a new identity and digest: backend_changed.
+        std::fs::write(&fake, "#!/bin/sh\necho changed\n").unwrap();
+        let error = Backend::new(fake.to_str().unwrap(), &sha, dir.clone())
+            .unwrap()
+            .verify(&ctx)
+            .unwrap_err();
+        assert_eq!(error.code, "backend_changed");
+        std::fs::remove_dir_all(&dir).unwrap();
     }
 
     // keeps: seat attribution — a write-shaped git-kb run carries exactly the
