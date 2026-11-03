@@ -185,7 +185,7 @@
     "path": ".bboxy/reports/2026-11-03-codex-oracle-takeover-interim.md"
   },
   "task": "01M6HCH1SJHDSB6SDAC2ZF1BXX",
-  "at": 1793737432.248372,
+  "at": 1793744148.916801,
   "operational_exit_code": 0,
   "product_complete": false,
   "raw_evidence_directory": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0",
@@ -197,5 +197,126 @@
     "log": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/installed-harness-smoke.log",
     "source": "ea753072c7ec2a0a278e5086ef21458efa0a08f0"
   },
-  "source_preservation_manifest_sha256": "50e9e26e6e8db1f77cb1358dfcf062c138bc348b1da4a2ae23dbe1e895d49689"
+  "source_preservation_manifest_sha256": "50e9e26e6e8db1f77cb1358dfcf062c138bc348b1da4a2ae23dbe1e895d49689",
+  "resource_priority": {
+    "at": 1793743998.022517,
+    "disk": {
+      "total_bytes": 494384795648,
+      "used_bytes": 464055017472,
+      "free_bytes": 30329778176,
+      "used_percent": 93.87
+    },
+    "last_mcp_usage": {
+      "at_utc": "2026-11-03 22:03:35 UTC",
+      "age_at_sampling_seconds": 2,
+      "cpu_percent": 49,
+      "memory_percent": 63,
+      "disk_percent": 95,
+      "claude_weekly_used_percent": 98,
+      "claude_current_session_used_percent": 2,
+      "codex_weekly_used_percent": 73
+    },
+    "current_mcp_usage": "unavailable: read_response WouldBlock, no current inference value claimed",
+    "retirement": {
+      "socket": "accepted, close applied 01M6HQ42B098EVSHA93W737795; Codex process cwd now absent; lifecycle read unavailable",
+      "visual": "historical superseded, close applied 01M6HQ43K8XEGWFHM71SBEQ6ZC; Codex process cwd now absent; source snapshot preserved; lifecycle read unavailable"
+    },
+    "unmanaged_claude": {
+      "pid": 34411,
+      "scope": "outside permitted MCP control, not terminated"
+    },
+    "delivery_decision": "one current-swarm productive host executor; optional visual changes deferred and archived, no baseline adoption",
+    "cleanup": "no new deletion until exact scope amendment and exit/open-file observations available"
+  },
+  "combined_harness_landed": {
+    "at": 1793743206.569995,
+    "head": "2fb78a017992f73468b6fa9fe5edbc48ba27f05c",
+    "base": "af65c6cf82d9dde6314b1771b9314061b0e24212",
+    "signed_commits": 10,
+    "canonical_source": "49fced5d8ae280ce2330258a62b0710063cb261c",
+    "canonical_exit_code": 0,
+    "input_hashes_verified": 273,
+    "commands_exit_zero": 21,
+    "report_only_changes": [
+      ".bboxy/reports/2026-11-03-codex-rich-socket-integrated.md"
+    ],
+    "formal_check_exit_code": 0,
+    "formal_sha256": "5a0fd20f72fe9cfe2c4b50a69c9050dc4aa0a8c4bd3a2c743bca2eca6ccc6eaa",
+    "models": 112,
+    "contracts": 38,
+    "report_sha256": "2e8765bed7ccb0ae29eeac0ac9dc9f61602c8eae7dee96ecc33183317cf3639f",
+    "worktree_clean": true,
+    "remote_identity": "bboxy450",
+    "remote_main_before": "af65c6cf82d9dde6314b1771b9314061b0e24212",
+    "published_by_this_step": true,
+    "push_exit_code": 0,
+    "task_accept_op": "01M6HQ40KSN7G5MBF8XV3JWWR1"
+  },
+  "combined_harness_install": {
+    "at": 1793744102.648427,
+    "bundle": "/Users/feral/Applications/bboxy450-harness.app",
+    "source": "2fb78a017992f73468b6fa9fe5edbc48ba27f05c",
+    "signature_exit_code": 0,
+    "team": "UQB3368A84",
+    "binary_sha256": "a0bad4b18880e674e56865935dbb59fcb209302b005c6cda7bb122d899c9679d",
+    "smoke_command": [
+      "python3",
+      "-I",
+      "scripts/smoke-app.py",
+      "/Users/feral/Applications/bboxy450-harness.app",
+      "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/installed-combined-smoke"
+    ],
+    "smoke_exit_code": 0,
+    "smoke_seconds": 0.7276558876037598,
+    "smoke_log_sha256": "7a109538e6ee0b2654af5586f11c57c4d3aa7163f9f9de9f4406dac218967aaf",
+    "presentation": "private replay and hidden native-window/surface/frame only; no visible-presentation claim",
+    "make_install": {
+      "exit_code": 0,
+      "seconds": 88.24327611923218
+    }
+  },
+  "deferred_visual": {
+    "at": 1793743951.881848,
+    "worktree": "/Users/feral/mydev/bboxy450-harness-codex-visual",
+    "head": "af65c6cf82d9dde6314b1771b9314061b0e24212",
+    "files": {
+      "ATTRIBUTION.md": {
+        "sha256": "c3e6ad7c688286356bb9a6daa898d4273af99adf9427c66c4446acbb04614f1e",
+        "bytes": 6170
+      },
+      "Makefile": {
+        "sha256": "5c6c6032c6f31867deba9e2b1e0e7b8dfec05005619056b02e20e9aee7785b3d",
+        "bytes": 9887
+      },
+      "scripts/native-visual-pass.py": {
+        "sha256": "fe9049d53799634338772b9d0c6f1d211369d18829ba129883f762d856bed326",
+        "bytes": 8646
+      },
+      "src/frontends/gui/face.rs": {
+        "sha256": "49498f4261bc46c71377cfe5edf6209f3225628bf2d75bcf972233c1832c204f",
+        "bytes": 87718
+      },
+      "src/frontends/gui/face_rows.rs": {
+        "sha256": "999861ff9839823dec0ab24fe5bf2b55ce83288da6cb1cbf9a62396a18d3a24a",
+        "bytes": 50161
+      },
+      "tests/gui_render.rs": {
+        "sha256": "40b306435a306bd5bef504159f1c9313b25c84f3dd8fa570af3d42d793d23b89",
+        "bytes": 83166
+      }
+    },
+    "archive_sha256": "2216fd2186400855c0ee3c4bfc7a3973c1831e6b1f7ad0044c8e22f8920b4cde",
+    "diff_sha256": "49f185972884839a38979d471b200be4bb5324a4ce1bc52c0de0dd2a66d05485",
+    "disposition": "deferred, source preserved; no acceptance or baseline adoption",
+    "reconcile_op": "01M6HQ42GSWYXABDNCB78SPHD7",
+    "close_op": "01M6HQ43K8XEGWFHM71SBEQ6ZC"
+  },
+  "host_final_brief": {
+    "observed_at": 1793744078.749631,
+    "source": "canonical task Markdown (MCP reads unavailable)",
+    "state": "claimed",
+    "updated": "2026-11-03T22:08:04.816Z",
+    "brief_write_op": "01M6HQ8Z90B1F3X3Y9QNMVH0J0",
+    "delegation": "claimed state and signed task observed; delivery receipt unverified while MCP unavailable"
+  }
 }
