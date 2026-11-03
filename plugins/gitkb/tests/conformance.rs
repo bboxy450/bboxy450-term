@@ -1275,7 +1275,9 @@ fn index_checks(fx: &mut Fixture) -> Vec<Conn> {
     );
     let mut off_env = fx.env.clone();
     off_env.push(("BBOXY_GITKB_INDEX".into(), "off".into()));
-    let mut on = fx.connect(&root, None, None, false).unwrap();
+    let mut on_env = fx.env.clone();
+    on_env.push(("BBOXY_GITKB_INDEX".into(), "on".into()));
+    let mut on = fx.connect(&root, None, Some(on_env), false).unwrap();
     // A cold process's first filtered read waits for the build in progress
     // instead of taking the per-call backend path.
     let carol_task = json!({"filter": {"type": "task", "assignee": "carol"}});

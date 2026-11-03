@@ -2344,6 +2344,13 @@ pub const SEAT_PENDING_WAIT: Duration = Duration::from_secs(4);
 /// The resend interval while waiting, and the `retry_after_ms` hint after.
 pub const PENDING_RETRY_MS: u64 = 100;
 
+/// Concurrent knowledge and task reads one root admits before provider_busy.
+#[cfg(not(test))]
+const KNOWLEDGE_READS_PER_ROOT: usize = 16;
+/// Unit tests hold a small number of reads to reach the same refusal.
+#[cfg(test)]
+const KNOWLEDGE_READS_PER_ROOT: usize = 2;
+
 /// Pause before reading a seat's ring again after an I/O refusal.
 const RING_REFUSAL_RETRY: Duration = Duration::from_secs(2);
 
@@ -5759,7 +5766,9 @@ impl Worker {
     fn knowledge_permits(&mut self, root: &str) -> Arc<tokio::sync::Semaphore> {
         self.knowledge_reads
             .entry(root.to_owned())
-            .or_insert_with(|| Arc::new(tokio::sync::Semaphore::new(2)))
+            // Reads wait for one of the root's provider connections within their
+            // own deadline (plugins/source.rs); this only bounds blocked threads.
+            .or_insert_with(|| Arc::new(tokio::sync::Semaphore::new(KNOWLEDGE_READS_PER_ROOT)))
             .clone()
     }
     fn seat_workspace(&mut self, actor: &crate::mcp::SeatActor) -> Result<WorkspacePort> {

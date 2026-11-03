@@ -661,13 +661,16 @@ impl Index {
         lock(&self.shared).building
     }
 
-    /// Enable the index and start its first build. `BBOXY_GITKB_INDEX=off`
-    /// in the plugin's own environment keeps every call on the backend path.
+    /// Start the index only with `BBOXY_GITKB_INDEX=on` in the plugin's own
+    /// environment. By default every call goes straight to `git-kb` (filtered
+    /// `list`/`show`, ~0.1-1.4 s on Harmony), as GitKB Desktop does: no
+    /// background 61 MB export per process and no snapshot files on disk, and
+    /// a new process starts in ~0.1 s instead of ~0.8 s (measured 2026-11-03).
     /// A snapshot in the plugin's private data directory (its cwd) for the
     /// current store signal is loaded synchronously, so a respawned process
     /// answers filtered calls at once; otherwise the build starts.
     pub fn start(&mut self, backend: &Backend, root: &Path, workspace_path: &Path) {
-        self.enabled = std::env::var("BBOXY_GITKB_INDEX").as_deref() != Ok("off");
+        self.enabled = std::env::var("BBOXY_GITKB_INDEX").as_deref() == Ok("on");
         self.dir = Some(backend.cwd.clone());
         self.root_text = root.display().to_string();
         self.workspace_path = workspace_path.to_owned();
