@@ -231,6 +231,28 @@ Operator: "output can be tighter and tidier, too noisy right now". This applies 
   end ok), tools and edits. No rounds count. The failed receipt keeps its red rule, reason and actions.
 - **Rhythm:** feed gap 8.
 
+## Seat status in term
+
+Operator, 2026-11-03: "harness should report its active status to term correctly, we should know that its working via logs and acp".
+A harness seat's pane rim, sidebar row and `seat_get` show what the harness says it is doing, never a guess from output cadence.
+
+| Harness truth | Term state | Rim | Sidebar detail (≤ 48 chars) |
+|---|---|---|---|
+| turn open, model streaming or thinking | active | Active | `Thinking` or `Writing` |
+| turn open, tool running | active | Active | the tool head: `Run sh test.sh`, `Edit src/lib.rs`, `Read README.md` |
+| turn open, ACP agent streaming | active | Active | `claude-agent-acp · Writing` (agent name, then phase) |
+| approval pending | waiting (permission) | Waiting, amber | `Allow? Run rm -rf target` |
+| turn ended ok | idle | Idle | none |
+| turn ended with error | errored | Errored | the error class line: `Rate limited`, `Auth failed` |
+
+- **Sources, in order:**
+  - OSC 7501 from `bboxy450-harness seat`, re-sent every 2s while a turn is open (heartbeat);
+  - the seat's harness session log, read as Claude's sessions file is;
+  - process exit.
+  - Cadence is never used once the harness has reported.
+- **Staleness:** with no heartbeat or log line for 60s while a turn is open, the detail adds `· no word for 1m` and the rim
+  dims. The state is not flipped to idle.
+
 ## What never reaches the transcript
 
 Operator, 2026-11-03, on a screenful of "SYSTEM Native · agent_message_chunk · 129 bytes" cards: "this is very verbose".
