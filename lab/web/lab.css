@@ -2132,3 +2132,12 @@ details[open] > summary::before { transform: rotate(90deg); }
 .hx-echips .hx-echip:nth-child(2) { animation: hx-lift .42s .12s cubic-bezier(.2,.8,.2,1) both; }
 .hx-echips .hx-echip:nth-child(3) { animation: hx-lift .42s .18s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes hx-halo { 0%, 100% { opacity: .25; transform: scale(.96); } 50% { opacity: .8; transform: scale(1.04); } }
+/* composer alive rim (glow.js): the rim replaces the sweep and the focus ring; the border stays constant */
+.hx-rimwrap { max-width: 860px; margin: 0 auto; }
+.hx-box.rimmed { --seat: var(--hx-seat); border-color: color-mix(in srgb, var(--hx-seat) 35%, var(--hx-hair)); box-shadow: none !important; }
+.hx-box.rimmed .hx-sweep { display: none; }
+.hx-zoom { position: absolute; top: 12px; left: 50%; transform: translate(-50%, -4px); padding: 4px 12px; border-radius: 999px; background: var(--hx-card-hi); border: 1px solid var(--hx-hair); color: var(--fg); font: 600 12px/1.4 var(--font-mono); opacity: 0; pointer-events: none; transition: opacity .15s ease, transform .17s cubic-bezier(.2,.8,.2,1); }
+.hx-zoom.on { opacity: 1; transform: translate(-50%, 0); }
+/* markdown tool output: the message renderer inside the tool card, on the card's inset surface */
+.hx-mdout { margin: 0; padding: 8px 12px 10px; border-radius: 8px; background: color-mix(in srgb, var(--bg, #000) 35%, transparent); border: 1px solid var(--hx-hair); max-height: 420px; overflow: auto; font-size: 13px; }
+.hx-tbody.hx-msg { font-size: 12.5px; color: var(--fg-dim); }

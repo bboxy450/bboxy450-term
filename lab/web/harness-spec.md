@@ -14,6 +14,7 @@ This spec is the 1:1 target for the native bboxy450-harness GUI (`src/frontends/
 
 | State slug | Shows |
 |---|---|
+| `standalone-window` | the app window: the term's title bar, no OS chrome, Cmd+= / Cmd+- zoom |
 | `empty-session` | the face before the first message: mark, question, sub-line, three chips |
 | `composer-states` | every composer state on one board, composer only (the p2 target) |
 | `composer-idle` · `composer-focused` · `composer-typing` · `composer-running` | the full face with that composer state |
@@ -88,10 +89,12 @@ The radius scale is 4 (tags), 5–7 (tiles), 8 (buttons, inner blocks), 11 (card
 - Typed tokens: a leading `/command` is mono 0.95em, weight 650, in `seat`. An `@path` is a mono 0.9em pill
   (padding `0 5`, radius 5, fill `seat-14`, text seat 80% over fg).
 - `queue` chip with N queued follow-ups reads `queue · N` in `seat`, with border `seat-40` and fill `seat-10`.
-- **Running sweep:** a 2px line on the box's top edge. On web it is a 40%-wide seat highlight that slides left to right
-  over 1.6s ease-in-out and repeats.
-  **Flat fallback:** a 2px solid seat bar, 40% of the box width, moved by x-offset each frame. Without per-frame paint,
-  use a static 2px `seat-55` line across the full top edge.
+- **Alive rim (replaces the top-edge sweep and the focus ring):** the composer box wears the term's pane rim, the same
+  shader. Web uses `glow.js` `Glow.attach(wrap, …, { box, live: true, block: true })`. Native uses `bbt_ui::Style::new(Preset::PaneGlow)`
+  with `overrides.rim = Some(ui::Rim { activity, swell, focused, seed, .. })`, as `bbt_ui::modules::pane` does (spec `rim-glow`).
+  - Activity: `run` → Active, `ask` → Waiting (amber), error → Errored, everything else → Idle.
+  - Focus fires the swell (`Glow.swell` / `Rim.swell`). The border stays constant at `seat-35`; all motion lives in the rim.
+  - **Flat fallback:** the static `seat-55` border.
 - **Flat fallback, focus ring:** draw a second rounded rect 3px outside the box (radius 16) filled `seat-14` under the
   box. Do not use a blurred shadow. The send glow is dropped.
 
@@ -211,6 +214,38 @@ The radius scale is 4 (tags), 5–7 (tiles), 8 (buttons, inner blocks), 11 (card
 - `usage: null` → no meter and no token figures. The receipt shows duration and counts only.
 - A `notice` at warn level (for example "the agent does not offer model …") is a 6px `ask` dot and 11.5 `fg-dim` text,
   never a card.
+
+## Standalone window (`standalone-window`)
+
+The standalone app is the term's window, not an OS window.
+
+- Create the window with `with_decorations(false)`, as `bboxy450-term` `main.rs` does. There is no OS title bar and no system-drawn chrome.
+- Draw the term's own title bar, `bbt_ui::modules::title_bar::TitleBar` (web `C.titleBar`):
+  - window dots, the bboxy mark, title `bboxy450-harness`, crumb `profile · cwd leaf`, and the theme button;
+  - no sidebar toggle.
+  - Dragging the bar calls `window.drag_window()`. A double click follows the system preference (Fill/Zoom/Minimize) through
+    the `bboxy450-term-desktop` window helpers, as in term `desktop_window.rs`.
+- The app menu comes from the term's platform-free `bboxy450-term-desktop-core` menu model and actions, installed through
+  `bboxy450-term-desktop` `MenuBar` the way term `desktop_menu.rs` does. Shortcuts dispatch the same actions as the keyboard.
+- **Global text zoom:**
+  - Cmd+= or Cmd++ zooms in, Cmd+- zooms out, and Cmd+0 resets.
+  - The scale runs 90% to 160% in 10% steps. It applies to every text size and line height in the face, and the layout reflows.
+  - The scroll position stays anchored to the top visible block.
+  - The scale persists in the harness settings.
+  - A centred mono pill showing `110%` drops in at the top of the feed (170ms) and fades out after 900ms.
+
+## Markdown everywhere
+
+Every prose body uses the term's renderer, `bbt_doc` (`Markdown` / `StreamingMarkdown`, mermaid figures with Drawing/Source).
+Only terminal output stays raw mono.
+
+- Agent messages: already rendered this way.
+- Expanded reasoning: markdown at 12.5px in `fg-dim`. While live, it is plain text with a caret.
+- Read of a `.md`/`.markdown`/`.mdx` file: rendered markdown with line numbers stripped, in an inset panel
+  (radius 8, `hair` border, max-height 420, scrolls).
+- Any other tool output that is markdown renders the same way, unless the tool failed. Markdown means a ``` fence, or at least two
+  lines that start with a heading, list item, table row or quote.
+- Mermaid fences anywhere in these bodies draw as native figures.
 
 ## Refinement pass 2 (2026-11-02)
 

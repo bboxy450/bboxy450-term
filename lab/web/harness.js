@@ -420,14 +420,22 @@
       const text = it.body ? it.body.blocks.filter(b => b.type === 'text').map(b => b.text).join('\n') : '';
       return el('div', { class: 'hx-user' }, el('div', { class: 'hx-who' }, 'you'), el('div', { class: 'hx-ubody', html: inline(text) }));
     }
-    function agentMsg(it) {
-      const md = it.body ? it.body.markdown : it.text, live = !it.body, figs = [];
-      const n = el('div', { class: 'hx-msg' + (live ? ' live' : ''), html: markdown(md, figs) });
+    // every prose body (agent text, reasoning, markdown tool output) goes through the one renderer, as bbt_doc does natively
+    function mdNode(md, cls) {
+      const figs = [], n = el('div', { class: cls, html: markdown(md, figs) });
       // Mermaid draws natively in the lab's figure card (Drawing / Source), as bbt_doc does natively
       for (const p of n.querySelectorAll('.hx-mmd')) {
         const src = figs[+p.dataset.i];
         p.replaceWith(window.C && C.diagramFigure ? C.diagramFigure(src) : el('pre', { class: 'hx-code', html: src.split('\n').map(highlight).join('\n') }));
       }
+      return n;
+    }
+    // tool output is markdown when it comes from a .md file or carries markdown structure (a fence, or two headings/lists/table rows)
+    const MD_LINE = /^(#{1,6} |\s*[-*+] |\s*\d+\. |\|.*\|\s*$|> )/;
+    const looksMd = t => /^```/m.test(t) || t.split('\n').filter(l => MD_LINE.test(l)).length >= 2;
+    function agentMsg(it) {
+      const md = it.body ? it.body.markdown : it.text, live = !it.body;
+      const n = mdNode(md, 'hx-msg' + (live ? ' live' : ''));
       if (live) (n.lastElementChild || n).append(el('span', { class: 'hx-caret' }));
       return n;
     }
@@ -438,7 +446,8 @@
       const label = live ? el('span', { class: 'hx-shimmer' }, 'Thinking') : took >= 100 ? el('span', {}, 'Thought for ', el('b', {}, ms(took))) : el('b', {}, 'Thought');
       const gist = text.replace(/\*\*|__|`/g, '').split(/(?<=[.!?])\s|\n/)[0];
       n.append(el('button', { class: 'hx-tk', type: 'button', onclick: () => { it.open = !it.open; touch(it.id); } }, icon('think', 'spin-slow'), label, live ? null : el('span', { class: 'hx-gist' }, gist), live ? null : icon('chev', 'chev')));
-      if (live || it.open) n.append(el('div', { class: 'hx-tbody' }, text, live ? el('span', { class: 'hx-caret' }) : null));
+      if (live) n.append(el('div', { class: 'hx-tbody' }, text, el('span', { class: 'hx-caret' })));
+      else if (it.open) n.append(mdNode(text, 'hx-tbody hx-msg'));
       return n;
     }
 
@@ -511,6 +520,8 @@
       } else if (D.kind === 'edit') {
         const u = ch && ch.body ? ch.body.unified : D.outText.startsWith('---') ? D.outText : '';
         if (u) body.append(diffView(u)); else if (D.outText) body.append(el('div', { class: it.status === 'failed' ? 'hx-err' : 'hx-out' }, D.outText));
+      } else if (D.verb === 'Read' && D.outText && /\.(md|markdown|mdx)$/i.test(D.a.path || D.target || '')) {
+        body.append(mdNode(D.outText.split('\n').map(l => l.replace(/^\d+: ?/, '')).join('\n'), 'hx-msg hx-mdout'));
       } else if (D.verb === 'Read' && D.outText) {
         const rows = D.outText.split('\n').filter(Boolean).map(l => l.replace(/^\d+: ?/, ''));
         const all = it.all, cut = all ? rows : rows.slice(0, 14);
@@ -522,7 +533,8 @@
           const m = l.match(/^(.*?):(\d+):(.*)$/); if (!m) return '<div class="h"><span class="f">' + esc(short(l)) + '</span></div>';
           return '<div class="h"><span class="f">' + esc(short(m[1])) + '<span class="ln">:' + m[2] + '</span></span><span class="x">' + (re ? esc(m[3].trim()).replace(re, '<mark>$1</mark>') : esc(m[3].trim())) + '</span></div>';
         }).join('') }));
-      } else if (D.outText) body.append(el('div', { class: it.status === 'failed' ? 'hx-err' : 'hx-out' }, D.outText.length > 1600 ? D.outText.slice(0, 1600) + '…' : D.outText));
+      } else if (D.outText && it.status !== 'failed' && looksMd(D.outText)) body.append(mdNode(D.outText, 'hx-msg hx-mdout'));
+      else if (D.outText) body.append(el('div', { class: it.status === 'failed' ? 'hx-err' : 'hx-out' }, D.outText.length > 1600 ? D.outText.slice(0, 1600) + '…' : D.outText));
       else if (it.status === 'failed') body.append(el('div', { class: 'hx-err' }, it.reason || 'failed'));
       if (body.childNodes.length) { if (it._opened) body.classList.add('noanim'); it._opened = true; n.append(body); }
       return n;
@@ -667,7 +679,10 @@
     const box = el('div', { class: 'hx-box' }, el('i', { class: 'hx-sweep' }), input,
       el('div', { class: 'hx-tools' }, el('span', { class: 'hx-chip' }, '@ context'), qchip, el('span', { class: 'hx-sp' }), hint, send));
     const menuHost = el('div', { class: 'hx-cmenu-host' }), queue = el('div', { class: 'hx-queue' });
-    const node = el('div', { class: 'hx-comp' }, menuHost, queue, box);
+    // the alive rim: the same shader the term's panes wear (glow.js, spec rim-glow), live off box.dataset.rimState; the top sweep is only the fallback
+    const rimWrap = el('div', { class: 'glow-wrap hx-rimwrap' }, box);
+    if (window.Glow && window.C) { box.classList.add('rimmed'); window.Glow.attach(rimWrap, { key: 'composer' }, { box, live: true, block: true }); }
+    const node = el('div', { class: 'hx-comp' }, menuHost, queue, rimWrap);
     const query = () => /^\/[^\n]*$/.test(st.text) ? st.text.slice(1) : null;
     const choices = () => query() == null ? [] : slashChoices(query(), api.profiles());
     function choose(c) {
@@ -679,6 +694,7 @@
     function paint() {
       const state = st.phase === 'ask' ? 'ask' : st.phase !== 'idle' ? 'run' : st.text ? 'typing' : st.focus ? 'focus' : 'idle';
       node.dataset.state = state; box.dataset.focus = st.focus ? 'true' : 'false';
+      box.dataset.rimState = state === 'run' ? 'active' : state === 'ask' ? 'waiting' : 'idle'; box.classList.toggle('focused', st.focus);
       input.dataset.ph = PH[state];
       hint.textContent = st.text && state === 'run' ? '⏎ queue · esc interrupt' : HINT[state];
       const stop = state === 'run' && !st.text;
@@ -691,7 +707,7 @@
       const m = st.menu === 'slash' && query() != null ? slashMenu(query(), st.sel, api.profiles(), choose) : null;
       menuHost.replaceChildren(...(m ? [m] : []));
     }
-    input.addEventListener('focus', () => { st.focus = true; paint(); });
+    input.addEventListener('focus', () => { st.focus = true; if (window.Glow) window.Glow.swell(rimWrap); paint(); });
     input.addEventListener('blur', () => { st.focus = false; st.menu = null; paint(); });
     input.addEventListener('input', () => { st.text = input.textContent; st.menu = query() != null ? 'slash' : null; st.sel = 0; paint(); });
     input.addEventListener('keydown', e => {

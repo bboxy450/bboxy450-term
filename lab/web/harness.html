@@ -10,7 +10,7 @@ Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>harness · bboxy450-term lab</title>
 <link rel="stylesheet" href="lab.css">
-<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="harness.js"></script><script src="harness-demo.js"></script><script src="harness-acp.js"></script>
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script><script src="harness.js"></script><script src="harness-demo.js"></script><script src="harness-acp.js"></script>
 </head><body><script>
 const el = Lab.el;
 const REAL = HARNESS_SESSIONS['glyph-atlas'];
@@ -91,13 +91,31 @@ function board(body) {
 }
 function frame(w, h) { return el('div', { style: '--seat:#2EE6A8;width:' + w + 'px;height:' + h + 'px;max-width:100%;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--surface);overflow:hidden' }); }
 let live = null; const FH = +new URLSearchParams(location.search).get('h') || 720;
+// The standalone app window: OS decorations off, the term's own title bar (C.titleBar, bbt_ui::modules::title_bar) and
+// global text zoom on Cmd+= / Cmd+- / Cmd+0 (90 to 160%, 10% steps), shown by a pill that fades after 900ms.
+let zoomKey = null;
+function standalone(body) {
+  const f = frame(760, FH); f.style.display = 'flex'; f.style.flexDirection = 'column';
+  let v; v = Hx.view({ interactive: true, profiles: Hx.DEMO_PROFILES, onOp: Hx.demoOps(() => v) });
+  const bar = C.titleBar({ title: 'bboxy450-harness', crumb: 'claude-acp · acpdemo', theme: 'dark' });
+  bar.querySelector('.tbtn:not(.theme)')?.remove(); bar.style.borderRadius = '0'; bar.style.border = '0'; bar.style.borderBottom = 'var(--hair-w) solid var(--line)';
+  const pill = el('div', { class: 'hx-zoom' }), host = el('div', { style: 'flex:1;min-height:0;display:flex;position:relative' }, v.node, pill);
+  v.node.style.flex = '1'; f.append(bar, host); body.append(f);
+  let z = 1, t = 0;
+  const set = n => { z = Math.round(Math.min(1.6, Math.max(0.9, n)) * 10) / 10; v.node.style.zoom = z; pill.textContent = Math.round(z * 100) + '%'; pill.classList.add('on'); clearTimeout(t); t = setTimeout(() => pill.classList.remove('on'), 900); };
+  if (zoomKey) removeEventListener('keydown', zoomKey);
+  zoomKey = e => { if (!(e.metaKey || e.ctrlKey) || !f.isConnected) return; if (e.key === '=' || e.key === '+') set(z + 0.1); else if (e.key === '-') set(z - 0.1); else if (e.key === '0') set(1); else return; e.preventDefault(); };
+  addEventListener('keydown', zoomKey);
+  requestAnimationFrame(() => HARNESS_SESSIONS['acp:claude-acp'].forEach(e => v.apply(e)));
+}
 Lab.page({ title: 'harness', wide: true,
   note: 'Native target: harness-spec.md (sizes, tokens, motion, flat fallbacks). The rich bboxy face. bboxy450-harness envelopes (protocol Event/Item) fold into cards: one tool call is one card with its approval, terminal and diff inside; reasoning collapses to "Thought for"; usage drives the header meter. "live" replays a real scripted run of the harness binary (lab/web/harness/gen.sh) at reading pace. Click any card header to fold it.',
-  states: ['live', 'empty session', 'finished', 'composer states', 'composer · idle', 'composer · focused', 'composer · typing', 'composer · running', 'slash menu', 'profiles', 'new profile', 'running tool', 'approval pending', 'denied unattended', 'error', 'interrupted',
+  states: ['live', 'standalone window', 'empty session', 'finished', 'composer states', 'composer · idle', 'composer · focused', 'composer · typing', 'composer · running', 'slash menu', 'profiles', 'new profile', 'running tool', 'approval pending', 'denied unattended', 'error', 'interrupted',
     'acp · claude', 'acp · codex', 'acp · pi', 'acp · opencode loop', 'acp · omp', 'mermaid', 'compact pane'],
   render(s, body) {
     if (live && s !== 'all') { live.stop(); live = null; }
     if (s === 'composer states') return board(body);
+    if (s === 'standalone window') return standalone(body);
     const f = frame(s === 'compact pane' ? 520 : 760, s === 'compact pane' ? 520 : FH);
     let v; v = Hx.view({ compact: s === 'compact pane', interactive: true, profiles: Hx.DEMO_PROFILES, onOp: Hx.demoOps(() => v) });
     f.append(v.node); body.append(f);
