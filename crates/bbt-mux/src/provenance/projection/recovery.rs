@@ -9,6 +9,8 @@ use super::*;
 use std::time::{Duration, Instant};
 
 pub(super) const REBUILD: &str = "provenance/jsonl/rebuild/v1";
+pub(super) const STARTING: &str = "provenance/jsonl/recovery-starting/v1";
+const TRIGGER: &str = "provenance/jsonl/recovery-trigger/v1";
 const TEMPORARY: &str = ".projection-rebuild-v1";
 const RECOVERY_PAGE: usize = 16;
 const BUDGET: Duration = Duration::from_millis(8);
@@ -21,19 +23,28 @@ struct Recovery {
 }
 
 impl Recovery {
-    fn valid(&self, directory: &Path, events: &EventLog) -> Result<bool> {
+    fn invalid_reason(&self, directory: &Path, events: &EventLog) -> Result<Option<Value>> {
         let temporary = directory.join(TEMPORARY);
         if !temporary
             .symlink_metadata()
             .is_ok_and(|m| m.is_dir() && !m.file_type().is_symlink())
-            || self.projection.cursor > self.head
-            || self.head > events.last_sequence()?
-            || self.published > self.projection.files.len()
+        {
+            return Ok(Some(
+                json!({"reason":"recovery_directory_missing_or_invalid"}),
+            ));
+        }
+        let head = events.last_sequence()?;
+        if self.projection.cursor > self.head || self.head > head {
+            return Ok(Some(json!({"reason":"recovery_cursor_head_mismatch",
+                "cursor":self.projection.cursor, "recovery_head":self.head, "head":head})));
+        }
+        if self.published > self.projection.files.len()
             || (self.published != 0 && self.projection.cursor != self.head)
         {
-            return Ok(false);
+            return Ok(Some(json!({"reason":"recovery_publication_invalid",
+                "published":self.published, "parts":self.projection.files.len()})));
         }
-        self.projection.valid_at(events, |name, position| {
+        self.projection.invalid_at(events, |name, position| {
             if position < self.published {
                 directory.join(name)
             } else {
@@ -74,20 +85,88 @@ impl Recovery {
     }
 }
 
+/// Persist and emit one compact trigger per transition, including interrupted
+/// rebuild cleanup. No document/envelope contents or untrusted hash bytes.
+pub(super) fn enter(
+    root: &Path,
+    store: &SqliteStore,
+    events: &EventLog,
+    reason: Value,
+) -> Result<Projection> {
+    if store.get(STARTING)?.is_none() {
+        let mut reason = reason;
+        reason["root_id"] = json!(crate::store::digest(
+            root.canonicalize()?.as_os_str().as_encoded_bytes()
+        ));
+        reason["transition"] = json!(ulid::Ulid::new().to_string());
+        reason["observed_ms"] = json!(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)?
+                .as_millis()
+        );
+        let bytes = serde_json::to_vec(&reason)?;
+        let recorded = {
+            let mut connection = store.connection()?;
+            let transaction = connection.transaction()?;
+            // Owner and admitted provider IO can encounter the same damage.
+            // Only one caller records the transition before paged cleanup.
+            let recorded = transaction.execute(
+                "INSERT INTO kv VALUES(?1,?2) ON CONFLICT(key) DO NOTHING",
+                rusqlite::params![STARTING, bytes],
+            )? != 0;
+            if recorded {
+                transaction.execute(
+                    "INSERT INTO kv VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                    rusqlite::params![TRIGGER, bytes],
+                )?;
+            }
+            transaction.commit()?;
+            recorded
+        };
+        if recorded {
+            eprintln!("ProjectionRecovery: {}", String::from_utf8_lossy(&bytes));
+        }
+    }
+    step(root, store, events)
+}
+
 /// Each call verifies at most 16 canonical rows, then appends until 8 ms has
 /// elapsed (at least one row), or publishes at most 16 completed part files.
 /// There is no joined background job: shutdown abandons a durable page cursor.
 pub(super) fn step(root: &Path, store: &SqliteStore, events: &EventLog) -> Result<Projection> {
     let directory = directory(root)?;
     let saved = store.get(REBUILD)?;
-    let saved = saved.and_then(|bytes| serde_json::from_slice::<Recovery>(&bytes).ok());
+    let starting = store.get(STARTING)?.is_some();
+    let saved = match saved {
+        Some(bytes) if !starting => match serde_json::from_slice::<Recovery>(&bytes) {
+            Ok(saved) => {
+                if let Some(mut reason) = saved.invalid_reason(&directory, events)? {
+                    reason["phase"] = json!("recovery");
+                    return enter(root, store, events, reason);
+                }
+                Some(saved)
+            }
+            Err(_) => {
+                return enter(
+                    root,
+                    store,
+                    events,
+                    json!({"reason":"recovery_state_invalid"}),
+                );
+            }
+        },
+        _ => None,
+    };
     let mut recovery = match saved {
-        Some(saved) if saved.valid(&directory, events)? => saved,
-        _ => {
+        Some(saved) => saved,
+        None => {
             let Some(state) = Recovery::start(&directory, events)? else {
                 return Ok(Projection::default());
             };
             store.put(REBUILD, &serde_json::to_vec(&state)?)?;
+            store
+                .connection()?
+                .execute("DELETE FROM kv WHERE key=?1", [STARTING])?;
             state
         }
     };
@@ -345,6 +424,160 @@ mod tests {
             );
             assert!(f.store.get(REBUILD).unwrap().is_some());
             f.assert_rows(&f.finish());
+        }
+    }
+    // keeps: spec provenance
+    #[test]
+    fn recovery_records_distinct_triggers_once_per_transition() {
+        for expected in [
+            "state_missing",
+            "state_invalid",
+            "cursor_head_mismatch",
+            "empty_cursor_hash_mismatch",
+            "cursor_hash_mismatch",
+            "file_missing",
+            "file_length_mismatch",
+            "file_mtime_mismatch",
+            "append_already_exists",
+        ] {
+            let f = Fixture::new();
+            let mut projection = f.finish();
+            let directory = directory(&f.root).unwrap();
+            let name = projection.files.keys().next().unwrap().clone();
+            let file = directory.join(&name);
+            match expected {
+                "state_missing" => {
+                    f.store
+                        .connection()
+                        .unwrap()
+                        .execute("DELETE FROM kv WHERE key=?1", [STATE])
+                        .unwrap();
+                }
+                "state_invalid" => f.store.put(STATE, b"{private-invalid-json").unwrap(),
+                "file_missing" => std::fs::remove_file(&file).unwrap(),
+                "file_length_mismatch" => OpenOptions::new()
+                    .append(true)
+                    .open(&file)
+                    .unwrap()
+                    .write_all(b"{partial")
+                    .unwrap(),
+                "file_mtime_mismatch" => {
+                    let (length, modified) = stamp(&file).unwrap();
+                    File::options()
+                        .write(true)
+                        .open(&file)
+                        .unwrap()
+                        .set_modified(
+                            std::time::UNIX_EPOCH
+                                + Duration::from_nanos(
+                                    (modified as u64).saturating_sub(1_000_000_000),
+                                ),
+                        )
+                        .unwrap();
+                    assert_eq!(stamp(&file).unwrap().0, length);
+                }
+                reason => {
+                    match reason {
+                        "cursor_head_mismatch" => projection.cursor = 41,
+                        "empty_cursor_hash_mismatch" => projection.cursor = 0,
+                        "cursor_hash_mismatch" => projection.hash = "private-wrong-hash".into(),
+                        "append_already_exists" => projection = Projection::default(),
+                        _ => unreachable!(),
+                    }
+                    f.store
+                        .put(STATE, &serde_json::to_vec(&projection).unwrap())
+                        .unwrap();
+                }
+            }
+            super::super::step(&f.root, &f.store, &f.events).unwrap();
+            let trigger = f.store.get(TRIGGER).unwrap().unwrap();
+            let reason: Value = serde_json::from_slice(&trigger).unwrap();
+            assert_eq!(reason["reason"], expected);
+            assert!(!String::from_utf8_lossy(&trigger).contains("private-"));
+            if expected.starts_with("file_") {
+                assert_eq!(reason["part"], name);
+                assert!(reason["expected"]["length"].is_u64());
+                if expected != "file_missing" {
+                    assert!(reason["observed"].is_object());
+                }
+            }
+            f.assert_rows(&f.finish());
+            assert_eq!(
+                f.store.get(TRIGGER).unwrap().unwrap(),
+                trigger,
+                "no per-page diagnostic"
+            );
+            if expected == "state_invalid" {
+                f.store.put(STATE, b"{invalid-again").unwrap();
+                super::super::step(&f.root, &f.store, &f.events).unwrap();
+                assert_ne!(
+                    f.store.get(TRIGGER).unwrap().unwrap(),
+                    trigger,
+                    "a later recovery must receive a new transition"
+                );
+                f.assert_rows(&f.finish());
+            }
+        }
+    }
+
+    // keeps: spec provenance
+    #[test]
+    fn torn_recovery_retains_original_stamp_through_paged_cleanup() {
+        let f = Fixture::new();
+        super::super::step(&f.root, &f.store, &f.events).unwrap();
+        let state: Recovery =
+            serde_json::from_slice(&f.store.get(REBUILD).unwrap().unwrap()).unwrap();
+        let temporary = f.root.join("log").join(TEMPORARY);
+        let name = state.projection.files.keys().next().unwrap();
+        OpenOptions::new()
+            .append(true)
+            .open(temporary.join(name))
+            .unwrap()
+            .write_all(b"{torn")
+            .unwrap();
+        // Force more than one cleanup page; the trigger must retain the torn
+        // stamp even after that file has been removed by the first page.
+        for n in 0..40 {
+            std::fs::write(temporary.join(format!("orphan-{n}")), b"").unwrap();
+        }
+        super::super::step(&f.root, &f.store, &f.events).unwrap();
+        let bytes = f.store.get(TRIGGER).unwrap().unwrap();
+        let trigger: Value = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(trigger["reason"], "file_length_mismatch");
+        assert_eq!(trigger["phase"], "recovery");
+        assert_eq!(trigger["part"], *name);
+        assert!(
+            trigger["observed"]["length"].as_u64().unwrap()
+                > trigger["expected"]["length"].as_u64().unwrap()
+        );
+        for _ in 0..3 {
+            super::super::step(&f.root, &f.store, &f.events).unwrap();
+        }
+        assert_eq!(f.store.get(TRIGGER).unwrap().unwrap(), bytes);
+        f.assert_rows(&f.finish());
+    }
+    // keeps: spec provenance
+    #[test]
+    fn invalid_recovery_state_and_head_have_distinct_triggers() {
+        for expected in ["recovery_state_invalid", "recovery_cursor_head_mismatch"] {
+            let f = Fixture::new();
+            super::super::step(&f.root, &f.store, &f.events).unwrap();
+            if expected == "recovery_state_invalid" {
+                f.store.put(REBUILD, b"{invalid").unwrap();
+            } else {
+                let mut saved: Recovery =
+                    serde_json::from_slice(&f.store.get(REBUILD).unwrap().unwrap()).unwrap();
+                saved.head = 41;
+                f.store
+                    .put(REBUILD, &serde_json::to_vec(&saved).unwrap())
+                    .unwrap();
+            }
+            super::super::step(&f.root, &f.store, &f.events).unwrap();
+            let bytes = f.store.get(TRIGGER).unwrap().unwrap();
+            let trigger: Value = serde_json::from_slice(&bytes).unwrap();
+            assert_eq!(trigger["reason"], expected);
+            f.assert_rows(&f.finish());
+            assert_eq!(f.store.get(TRIGGER).unwrap().unwrap(), bytes);
         }
     }
 }

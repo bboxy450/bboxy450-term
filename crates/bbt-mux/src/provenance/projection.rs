@@ -14,6 +14,7 @@ use std::{
 };
 
 use serde::{Deserialize, Serialize};
+use serde_json::{Value, json};
 
 use crate::store::{
     Events, Result, Store,
@@ -108,26 +109,44 @@ impl Projection {
             .find(|(_, part)| part.day == day && part.first <= sequence && sequence <= part.last)
             .map(|(name, _)| format!(".bboxy/log/{name}#{sequence}")))
     }
+    #[cfg(test)]
     fn valid(&self, directory: &Path, events: &EventLog) -> Result<bool> {
-        self.valid_at(events, |name, _| directory.join(name))
+        Ok(self
+            .invalid_at(events, |name, _| directory.join(name))?
+            .is_none())
     }
-    fn valid_at(
+    fn invalid_at(
         &self,
         events: &EventLog,
         mut path: impl FnMut(&str, usize) -> PathBuf,
-    ) -> Result<bool> {
+    ) -> Result<Option<Value>> {
         if self.files.len() > 4096 {
-            return Ok(false);
+            return Ok(Some(
+                json!({"reason":"part_budget", "observed":self.files.len(), "expected_max":4096}),
+            ));
         }
-        if (self.cursor == 0 && !self.hash.is_empty()) || self.cursor > events.last_sequence()? {
-            return Ok(false);
+        let head = events.last_sequence()?;
+        if self.cursor > head {
+            return Ok(Some(
+                json!({"reason":"cursor_head_mismatch", "cursor":self.cursor, "head":head}),
+            ));
         }
-        if self.cursor != 0
-            && events
-                .at(self.cursor)?
-                .is_none_or(|row| row.hash().ok().as_deref() != Some(&self.hash))
-        {
-            return Ok(false);
+        if self.cursor == 0 && !self.hash.is_empty() {
+            return Ok(Some(
+                json!({"reason":"empty_cursor_hash_mismatch", "cursor":0}),
+            ));
+        }
+        if self.cursor != 0 {
+            let Some(row) = events.at(self.cursor)? else {
+                return Ok(Some(
+                    json!({"reason":"cursor_row_missing", "cursor":self.cursor}),
+                ));
+            };
+            if row.hash()?.as_str() != self.hash {
+                return Ok(Some(
+                    json!({"reason":"cursor_hash_mismatch", "cursor":self.cursor}),
+                ));
+            }
         }
         for (position, (name, part)) in self.files.iter().enumerate() {
             let expected = format!("{}.jsonl", part.day);
@@ -142,13 +161,41 @@ impl Projection {
                 })
                 || (name != &expected && name != &split)
             {
-                return Ok(false);
+                return Ok(Some(
+                    json!({"reason":"invalid_part_name", "position":position}),
+                ));
             }
-            if stamp(&path(name, position)).ok() != Some((part.length, part.modified_ns)) {
-                return Ok(false);
-            }
+            let expected =
+                json!({"length":part.length, "modified_ns":part.modified_ns.to_string()});
+            let observed = match stamp(&path(name, position)) {
+                Ok((length, modified_ns)) => (length, modified_ns),
+                Err(error) => {
+                    let reason = if error
+                        .downcast_ref::<std::io::Error>()
+                        .is_some_and(|e| e.kind() == std::io::ErrorKind::NotFound)
+                    {
+                        "file_missing"
+                    } else {
+                        "file_unavailable"
+                    };
+                    return Ok(Some(
+                        json!({"reason":reason, "part":name, "expected":expected}),
+                    ));
+                }
+            };
+            let reason = if observed.0 != part.length {
+                "file_length_mismatch"
+            } else if observed.1 != part.modified_ns {
+                "file_mtime_mismatch"
+            } else {
+                continue;
+            };
+            return Ok(Some(
+                json!({"reason":reason, "part":name, "expected":expected,
+                "observed":{"length":observed.0, "modified_ns":observed.1.to_string()}}),
+            ));
         }
-        Ok(true)
+        Ok(None)
     }
     fn append(
         &mut self,
@@ -217,17 +264,17 @@ impl Projection {
 /// before the cursor commit restarts the damaged page's temporary projection.
 pub(crate) fn step(root: &Path, store: &SqliteStore, events: &EventLog) -> Result<Projection> {
     let directory = directory(root)?;
-    if store.get(recovery::REBUILD)?.is_some() {
+    if store.get(recovery::REBUILD)?.is_some() || store.get(recovery::STARTING)?.is_some() {
         return recovery::step(root, store, events);
     }
     let Some(bytes) = store.get(STATE)? else {
-        return recovery::step(root, store, events);
+        return recovery::enter(root, store, events, json!({"reason":"state_missing"}));
     };
     let Ok(mut state) = serde_json::from_slice::<Projection>(&bytes) else {
-        return recovery::step(root, store, events);
+        return recovery::enter(root, store, events, json!({"reason":"state_invalid"}));
     };
-    if !state.valid(&directory, events)? {
-        return recovery::step(root, store, events);
+    if let Some(reason) = state.invalid_at(events, |name, _| directory.join(name))? {
+        return recovery::enter(root, store, events, reason);
     }
     let rows = events.after(state.cursor, PAGE)?;
     if rows.is_empty() {
@@ -239,7 +286,18 @@ pub(crate) fn step(root: &Path, store: &SqliteStore, events: &EventLog) -> Resul
                 .downcast_ref::<std::io::Error>()
                 .is_some_and(|e| e.kind() == std::io::ErrorKind::AlreadyExists)
             {
-                return recovery::step(root, store, events);
+                let day = day(store, row.event.ts)?;
+                let part = if state.files.values().any(|part| part.day == day) {
+                    format!("{day}.part-{}.jsonl", row.seq)
+                } else {
+                    format!("{day}.jsonl")
+                };
+                return recovery::enter(
+                    root,
+                    store,
+                    events,
+                    json!({"reason":"append_already_exists", "sequence":row.seq, "part":part}),
+                );
             }
             return Err(error);
         }

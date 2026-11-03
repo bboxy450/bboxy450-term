@@ -7,7 +7,10 @@
 //! Owned-process witness: retained history must never own the request worker.
 #![allow(clippy::disallowed_methods)] // Private process/SQLite fixture.
 use super::*;
-use crate::store::events::{Envelope, EventLog};
+use crate::store::{
+    Events,
+    events::{Envelope, EventLog},
+};
 use std::process::{Command, Stdio};
 
 const ROWS: u64 = 4096;
@@ -140,6 +143,66 @@ fn recovery_child() {
         std::thread::sleep(Duration::from_millis(2));
     }
     let client = logic.client.clone();
+    let write = std::env::var_os("BBOXY_HOL_WRITE").is_some().then(|| {
+        let client = client.clone();
+        rt.spawn(async move {
+            let started = Instant::now();
+            let call = crate::mcp::Call {
+                op_id: Ulid::new(),
+                tool: "knowledge_write".into(),
+                args: serde_json::json!({"path":"notes/during-recovery.md",
+                    "frontmatter":{"type":"note", "title":"Recovery witness"},
+                    "body":"Private unattended recovery write witness."}),
+            };
+            let result = tokio::time::timeout(MCP, async {
+                loop {
+                    let value = client.control_call(seat, 1, call.clone()).await?;
+                    // Only an explicit pre-admission refusal may be retried.
+                    // Unknown/admitted outcomes are never redispatched.
+                    if value["structuredContent"]["error"]["code"] != "workspace_pending" {
+                        return Ok::<_, crate::store::Error>(value);
+                    }
+                    tokio::time::sleep(Duration::from_millis(10)).await;
+                }
+            })
+            .await;
+            println!(
+                "HOL admitted write reply elapsed={:?} result={result:?}",
+                started.elapsed()
+            );
+            (started.elapsed(), result)
+        })
+    });
+    let events = EventLog::open(&directory).unwrap();
+    if let Some(write) = &write {
+        // This is a real admitted document effect, not merely a queued call.
+        // Query the same stream until its signed preparation is durable before
+        // submitting concurrent owner requests.
+        let admitted_at = Instant::now();
+        loop {
+            if events
+                .after(ROWS, 1024)
+                .unwrap()
+                .iter()
+                .any(|row| row.event.subject.ends_with("/write_prepared"))
+            {
+                break;
+            }
+            assert!(
+                !write.is_finished(),
+                "write returned before its signed preparation"
+            );
+            assert!(
+                admitted_at.elapsed() < MCP,
+                "write never retained an admitted intent"
+            );
+            std::thread::sleep(Duration::from_millis(2));
+        }
+        assert!(
+            in_flight(&knowledge),
+            "write must run during large recovery"
+        );
+    }
     let hello_at = Instant::now();
     let (hello, mcp) = rt.block_on(async {
         tokio::join!(
@@ -164,6 +227,71 @@ fn recovery_child() {
         hello.is_ok(),
         mcp.is_ok()
     );
+    let mut retained_write = None;
+    if let Some(write) = write {
+        let (elapsed, result) = rt.block_on(write).unwrap();
+        println!("HOL knowledge_write elapsed={elapsed:?} result={result:?}");
+        let value = result
+            .expect("knowledge_write exceeded existing MCP deadline")
+            .expect("knowledge_write transport failed");
+        let rows = events.after(ROWS, 1024).unwrap();
+        let prepared = rows
+            .iter()
+            .find(|row| row.event.subject.ends_with("/write_prepared"))
+            .expect("signed durable write intent");
+        prepared.verify().unwrap();
+        assert_eq!(prepared.event.seat, Some(seat));
+        assert_eq!(prepared.event.generation, Some(1));
+        let destination = knowledge.join("notes/during-recovery.md");
+        if value["isError"] == false {
+            assert!(destination.is_file(), "write success requires publication");
+            let document = std::fs::read_to_string(destination).unwrap();
+            assert!(document.contains("Private unattended recovery write witness."));
+            assert!(
+                rows.iter()
+                    .any(|row| row.event.subject.ends_with("/written")
+                        && row.event.payload["prepared"] == prepared.event.id.to_string()),
+                "write success requires its completed event"
+            );
+        } else {
+            let error = &value["structuredContent"]["error"];
+            assert!(
+                matches!(
+                    error["code"].as_str(),
+                    Some("write_not_confirmed" | "unknown")
+                ),
+                "must reach application, not fail admission: {value}"
+            );
+            assert_eq!(value["structuredContent"]["status"], "unknown");
+            assert!(
+                error["message"]
+                    .as_str()
+                    .unwrap()
+                    .contains("inspect the original operation"),
+                "explicit unknown outcome must identify recovery by original operation: {value}"
+            );
+            // Unknown can follow publication if its final projection fails.
+            // Describe the observed file/completion separately from the reply.
+            let completed = rows.iter().any(|row| {
+                row.event.subject.ends_with("/written")
+                    && row.event.payload["prepared"] == prepared.event.id.to_string()
+            });
+            println!(
+                "HOL unknown outcome document_present={} written_event={completed}",
+                destination.exists()
+            );
+            if destination.exists() {
+                assert!(
+                    std::fs::read_to_string(&destination)
+                        .unwrap()
+                        .contains("Private unattended recovery write witness.")
+                );
+            } else {
+                assert!(!completed, "completed event without its document");
+            }
+        }
+        retained_write = Some(prepared.clone());
+    }
     // This also measures the old synchronous recovery if a deadline fired;
     // joining it is bounded externally by the parent, never by the operator.
     let shutdown_at = Instant::now();
@@ -223,19 +351,41 @@ fn recovery_child() {
         "HOL durable cursor resumed from {before}; second shutdown={:?}",
         shutdown_at.elapsed()
     );
+    if let Some(prepared) = retained_write {
+        assert_eq!(
+            events.at(prepared.seq).unwrap(),
+            Some(prepared),
+            "restart must retain the exact signed write intent"
+        );
+    }
     supervisor.shutdown().unwrap();
 }
 
 // keeps: invariant no-chokepoints; spec mux-daemon
 #[test]
 fn logic_worker_recovery_yields_to_requests_and_shutdown() {
+    run_child(false);
+}
+
+// keeps: invariant no-chokepoints; spec provenance; spec mcp-control-plane
+#[test]
+fn logic_worker_recovery_yields_during_admitted_knowledge_write() {
+    run_child(true);
+}
+
+fn run_child(write: bool) {
     let root = tempfile::Builder::new()
         .prefix("bbt-hol-")
         .tempdir_in("/tmp")
         .unwrap();
     let log_path = root.path().join("child.log");
     let log = std::fs::File::create(&log_path).unwrap();
-    let mut child = Command::new(std::env::current_exe().unwrap())
+    let mut command = Command::new(std::env::current_exe().unwrap());
+    command.env_remove("BBOXY_HOL_WRITE");
+    if write {
+        command.env("BBOXY_HOL_WRITE", "1");
+    }
+    let mut child = command
         .args([
             "--exact",
             "logic::hol_tests::recovery_child",
