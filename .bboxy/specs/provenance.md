@@ -4,7 +4,7 @@ type: "spec"
 number: 111
 title: "Provenance — decided"
 created: "2026-10-21T22:41:36Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-11-03T22:50:00Z"
 links:
   - { to: "[[d30-artifact-provenance-scope]]", rel: decision }
 ---
@@ -35,6 +35,8 @@ Written only by the terminal. `derived_from` must be complete for `accepted`. Me
 ## 2. Activity log (P2, now unsigned lines + signed checkpoints; later signed lines)
 
 `.bboxy/log/<date>.jsonl`, one PROV-shaped activity per status transition, per artifact event, per delegate/report/accept: `{seq, prev_hash, ts, activity, agent: seat, used: [...], generated: [...], task, commit?, verify_result?}`, hash-chained. Daily checkpoint: Merkle root of the day signed, now by the operator's primary via `gpg --detach-sign`, later by the device key automatically. Export shape is Rekor v2 tiles; Rekor v2's filesystem backend means a local tile log is a real instance of the model, so export is a later step, not a redesign.
+
+Recovery (2026-11-03): the signed SQLite stream is authoritative; JSONL is a repairable view. Append and repair process at most 128 rows per call, yielding after the 8 ms work budget is spent. Changed files are synced once per page before committing its cursor. Repair stages verified rows against a fixed head, persists its temporary directory and cursor across turns/restarts, and exposes references only after complete replacement. A damaged staged file restarts repair from canonical bytes. The logic owner serves cockpit/control requests between recovery turns; filesystem sync latency is outside the work budget.
 
 ## 3. Commits (P3: option A now, option B later)
 

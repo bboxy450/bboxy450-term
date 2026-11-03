@@ -881,3 +881,13 @@ frontend = "project"
 name = "BrokenProjectionPacing"
 expected = "liveness"
 frontend = "project"
+
+[[model]]
+name = "JsonlRepair"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenJsonlRepair"
+expected = "safety"
+frontend = "project"

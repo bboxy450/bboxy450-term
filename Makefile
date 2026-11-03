@@ -1716,6 +1716,12 @@ test-live-feed:
 	cat '$(TARGET_DIR)/live-feed.log'; \
 	grep -F 'test result: ok. 1 passed; 0 failed;' '$(TARGET_DIR)/live-feed.log' >/dev/null
 
+.PHONY: test-jsonl-recovery
+test-jsonl-recovery:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib -E 'test(provenance::projection::tests)'; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts models::provenance_models::jsonl_repair_yields_and_publishes -- --exact
+
 .PHONY: test-task-import-observer test-task-import-observer-causal test-task-import-observer-mutant check-task-import-observer
 test-task-import-observer: test-task-migration
 	@set -eu; . ./scripts/cache-env.sh; \
