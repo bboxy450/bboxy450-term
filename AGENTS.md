@@ -129,6 +129,13 @@ Drive this app through its flags, `ctl`, sockets and captures. Never inject OS k
 
 **Track work in the built-in bboxy task system** (`.bboxy/tasks/`, through the bboxy MCP `knowledge_*`/`task_*` tools or `ctl task`), never in GitKB tasks, even when a seat's swarm selects a GitKB knowledge provider. Create tasks only through `knowledge_write`, `task_delegate` or `ctl task create`, never as hand-written Markdown: the tools set a native status (`open`…`done`) and an owner, which `task_*` lifecycle requires. A task left without an owner is closed by the operator (`ctl task reconcile`); a legacy status goes through `task_import`. Use GitHub for handoffs. **GitKB, ATC and ICQ are retired as workflow tools; never invoke `git-kb` for this repository's tasks or notes.** Only the GitKB plugin and its tests call it. `scripts/land.sh` runs the signed landing gates and records its receipt locally, without messaging. Use it when the brief requires it; use the Make targets above for build/test/install work. Do not recruit, assign, merge or publish outside that brief.
 
+**Close out landed work at once** (operator, 2026-11-02). After an Executor's work lands, the Oracle does three things straight away:
+- marks its task `accepted` (or `done`) with the landing commit and the verification evidence;
+- closes the Executor's seat with MCP `seat_close`;
+- removes its worktree with `git worktree remove` and `git worktree prune`.
+
+Before removing a worktree, check that every commit on it is on main (`git cherry origin/main HEAD`, matching subjects for rebased cuts), that only generated outputs are dirty, and that no process has it open (`lsof`). Keep a seat or worktree only while it still has assigned work. Finished seats and stale worktrees are clutter and use disk.
+
 The Oracle verifies landed code and logs; the Architect owns interface/spec consistency; Creativity owns the reference lab. Design gaps are written into the relevant spec/interface, not answered only in a message. Operator instructions outrank defaults.
 
 ## Oracle merge and publish authorization (operator, 2026-10-31)
