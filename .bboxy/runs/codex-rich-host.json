@@ -336,5 +336,164 @@
     "source_equivalence_to": "e82b1784355f2158828c5387ce23409695843e7e",
     "worktree_status": " M crates/bboxy450-harness",
     "five_commit_signatures": "G, approved Boxy fingerprint"
+  },
+  "latest_source": "d41992424bf73853ef906c9612d2e12167082a1b",
+  "cancel_correction": {
+    "created": "2026-11-03T21:23:32.785660+00:00",
+    "source": "d41992424bf73853ef906c9612d2e12167082a1b",
+    "harness_candidate": "d5e7249a01bf4830c79979aa7a8e2f17753be83b",
+    "commands": [
+      {
+        "command": "BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make test-harness-native",
+        "exit_code": 0,
+        "log": "/tmp/codex-rich-cancel-native.log",
+        "sha256": "47999bd7691e99fbb5f34e6f9782aaa14da30a60b9c4c08dd5033651202643ef"
+      },
+      {
+        "command": "BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make test-formal",
+        "exit_code": 0,
+        "log": "/tmp/codex-rich-cancel-formal.log",
+        "sha256": "963fb5e9d264e7a3a6fd60f58aac0ef2877ff3bed408d8ea338bf056c336d05a"
+      },
+      {
+        "command": "BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make test-boundaries",
+        "exit_code": 0,
+        "log": "/tmp/codex-rich-cancel-boundaries.log",
+        "sha256": "1862d770da23f4b2b6faf0793cf1d3cc60e829b4d3f155f3a05e40195df10d33"
+      },
+      {
+        "command": "BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make check-rich-host",
+        "exit_code": 0,
+        "log": "/tmp/codex-rich-cancel-lint.log",
+        "sha256": "8ff430322dd5da1b71344872ce09dee9f720ad6c9fdacf6f10d3f07942d66948"
+      },
+      {
+        "command": "make test-licenses",
+        "exit_code": 0,
+        "log": "/tmp/codex-rich-cancel-licenses.log",
+        "sha256": "20a211c4fcbbe73101f042cef62ced52b2e897a47bc918c39c526ee8ec3445e3"
+      },
+      {
+        "command": "BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make test-parity",
+        "exit_code": 2,
+        "log": "/tmp/codex-rich-cancel-parity.log",
+        "sha256": "6778dce4904286544c5c7217d668f49cc9e17c677721ae4c9571229a8e27cc21"
+      },
+      {
+        "command": "make check-formal-evidence",
+        "exit_code": 2,
+        "log": "/tmp/codex-rich-cancel-receipt.log",
+        "sha256": "d2a712748934d3a654f1141c9468727d43b24bc8e38fd864140aeb8f57d0c5ea"
+      }
+    ],
+    "formal": {
+      "source": "d41992424bf73853ef906c9612d2e12167082a1b",
+      "dirty": true,
+      "evidence_sha256": "cde003aa2deaaed3aa86f950298876183567eeedbb783878639b4a7d413a6cde",
+      "models": 286,
+      "crates": 34,
+      "contracts": 117,
+      "cancel_models": [
+        {
+          "name": "RichCancelFence",
+          "expected": "pass",
+          "states": 96,
+          "edges": 352,
+          "tlc_exit": 0,
+          "graph_equal": true
+        },
+        {
+          "name": "BrokenRichCancelFence",
+          "expected": "safety",
+          "states": 144,
+          "edges": 504,
+          "tlc_exit": 12,
+          "graph_equal": true
+        }
+      ]
+    },
+    "causal_control": {
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "bboxy450-term",
+        "--test",
+        "rich_client",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-codex-rich/target",
+        "delayed_cancel_cannot_deny_a_new_approval",
+        "--",
+        "--exact",
+        "--nocapture"
+      ],
+      "exit_code": 101,
+      "assertion": "stale cancel crossed identity fence: session",
+      "source_sha256": "9e78f8acae4dbc888e4bde43ae12095f820189f8daf87e37a615b754f4e53652",
+      "source_restored": true,
+      "log": "/Users/feral/mydev/bboxy450-term-codex-rich/target/rich-cancel-control/broken.log",
+      "log_sha256": "3f499f181ecba9bfc847cef14c4fd8d3b3dac111d3245d4dc32420d68db409fc"
+    },
+    "process_cases": [
+      "session",
+      "epoch",
+      "generation"
+    ],
+    "predicate_cases": [
+      "matching",
+      "unready",
+      "retired",
+      "absent",
+      "session_mismatch",
+      "epoch_mismatch",
+      "generation_mismatch"
+    ],
+    "offscreen": {
+      "four_visible_views_composition_p99_ms": 0.033958,
+      "harness": "d5e7249a01bf4830c79979aa7a8e2f17753be83b",
+      "memory_allocation_mib": 32,
+      "memory_measured": false,
+      "row_structure_mismatch": 0.0,
+      "ui_drain_allocation_ms": 0.3,
+      "ui_projection_allocation_ms": 0.6,
+      "under_load": "UNMEASURED"
+    },
+    "machine_gate": {
+      "created": "2026-11-03T21:21:22.505882+00:00",
+      "exit_code": 0,
+      "pids": [
+        "73621",
+        "73625"
+      ],
+      "active_runs": 2
+    },
+    "unblock": "Published combined B1/B2 plus recovered standalone harness pin, and signed task amendment allowing its gitlink.",
+    "artifact_claim": {
+      "artifact_id": "01M6HMRXN8JZ9V0YM7RKG4DQ1P",
+      "op_id": "01M6HMRXN8JZ9V0YM7RKG4DQ1P",
+      "status": "accepted",
+      "grade": "reported"
+    },
+    "report_operations": [
+      {
+        "op_id": "01M6HMQFVMABKDPSC5KK2S7JTQ",
+        "status": "rejected",
+        "code": "invalid_report",
+        "reason": "created timestamp required",
+        "effect_admitted": false
+      },
+      {
+        "op_id": "01M6HMQY9Z4SRXG7MRZM2C66TQ",
+        "status": "applied"
+      }
+    ]
+  },
+  "latest_report": {
+    "path": "reports/2026-11-03-codex-rich-host-cancel-fence.md",
+    "id": "01M6HMQY9Z4SRXG7MRZM2C66TQ",
+    "number": 18711,
+    "sha256": "5d76bfd6c93a6b13cdc28cdbcc65124f5f3af75a2dd19aab9f06ad2940871dde",
+    "supersedes": "reports/2026-11-03-codex-rich-host.md"
   }
 }
