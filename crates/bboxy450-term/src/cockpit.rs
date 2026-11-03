@@ -47,7 +47,7 @@ pub fn frontend_running(run_dir: &std::path::Path) -> Result<Option<bool>> {
     owners::frontend_running(run_dir)
 }
 
-const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
+const STARTUP_TIMEOUT: Duration = Duration::from_secs(180);
 const GUI_WRITE_CAPACITY: usize = 64;
 
 /// App-defined, bounded UI-to-IO messages. A full sender returns ownership to
@@ -768,29 +768,32 @@ async fn logic_main() -> Result<()> {
         repository: bootstrap.config.repository,
         ring: Default::default(),
     };
+    let emit = |stream: &str, verified, total, restoring| {
+        use std::io::Write;
+        let record = startup::ProgressLine {
+            startup_progress: startup::HistoryProgress {
+                stream: stream.into(),
+                verified,
+                total,
+                restoring,
+            },
+        };
+        if let Ok(bytes) = serde_json::to_vec(&record) {
+            let mut output = std::io::stdout().lock();
+            let _ = output
+                .write_all(&bytes)
+                .and_then(|_| output.write_all(b"\n"))
+                .and_then(|_| output.flush());
+        }
+    };
     let logic = Logic::start_custodied_with_progress(
         connection,
         logic_config,
         store,
         bootstrap.fixture_hosts,
         bbt_rt::handle(),
-        &mut |stream, verified, total| {
-            use std::io::Write;
-            let record = startup::ProgressLine {
-                startup_progress: startup::HistoryProgress {
-                    stream: stream.into(),
-                    verified,
-                    total,
-                },
-            };
-            if let Ok(bytes) = serde_json::to_vec(&record) {
-                let mut output = std::io::stdout().lock();
-                let _ = output
-                    .write_all(&bytes)
-                    .and_then(|_| output.write_all(b"\n"))
-                    .and_then(|_| output.flush());
-            }
-        },
+        &mut |stream, verified, total| emit(stream, verified, total, false),
+        &mut |operation, completed, total| emit(operation, completed, total, true),
     )?;
     if bootstrap.recover_seats {
         logic.client.recover_seats().await?;
@@ -1165,9 +1168,12 @@ impl Session {
         });
         let progress = self.progress.clone();
         self.recovery = Some(tokio::spawn(async move {
-            tokio::time::timeout(STARTUP_TIMEOUT, reattach(config, endpoint, watches, progress))
-                .await
-                .map_err(|_| invalid("GUI reattach timed out"))?
+            tokio::time::timeout(
+                STARTUP_TIMEOUT,
+                reattach(config, endpoint, watches, progress),
+            )
+            .await
+            .map_err(|_| invalid("GUI reattach timed out"))?
         }));
     }
     fn restart_if_ready(&mut self) {
@@ -1516,7 +1522,7 @@ async fn start_logic(
     let mut endpoint: LogicReady = loop {
         let line = tokio::time::timeout_at(deadline, read_line(&mut output))
             .await
-            .map_err(|_| invalid("logic startup timed out: no progress for 30 s"))??
+            .map_err(|_| invalid("logic startup timed out: no progress for 180 s"))??
             .ok_or_else(|| invalid("logic exited during startup"))?;
         if let Ok(record) = serde_json::from_slice::<startup::ProgressLine>(&line) {
             let p = record.startup_progress;
@@ -1525,10 +1531,18 @@ async fn start_logic(
             }
             if p.advances(last_progress.as_ref()) {
                 deadline = tokio::time::Instant::now() + STARTUP_TIMEOUT;
-                progress(Phase::VerifyingHistory {
-                    stream: p.stream.clone(),
-                    verified: p.verified,
-                    total: p.total,
+                progress(if p.restoring {
+                    Phase::RestoringState {
+                        operation: p.stream.clone(),
+                        completed: p.verified,
+                        total: p.total,
+                    }
+                } else {
+                    Phase::VerifyingHistory {
+                        stream: p.stream.clone(),
+                        verified: p.verified,
+                        total: p.total,
+                    }
                 });
                 last_progress = Some(p);
             }

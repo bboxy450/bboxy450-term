@@ -11,6 +11,12 @@ use bbt_ui::{
 use bbt_ui_model::layout::Rect;
 
 fn inspect(layout: &c::Layout, text: &mut Vec<String>, actions: &mut Vec<String>) {
+    if (layout.rect.w - 28.).abs() < 0.01 && (layout.rect.h - 28.).abs() < 0.01
+        && let [child] = layout.children.as_slice()
+        && matches!(child.kind, c::LayoutKind::Text { .. }) {
+        assert!((child.rect.x + child.rect.w / 2. - layout.rect.x - 14.).abs() < 0.1, "badge horizontal center");
+        assert!((child.rect.y + child.rect.h / 2. - layout.rect.y - 14.).abs() < 0.1, "badge vertical center");
+    }
     if let c::LayoutKind::Text { runs, .. } = &layout.kind {
         text.push(runs.iter().map(|r| r.text.as_str()).collect());
     }
@@ -45,7 +51,7 @@ fn startup_checklist_keeps_every_step_actions_and_wrapped_diagnostics_in_bounds(
                         let data = Startup {
                             title: "Opening your cockpit".into(), description: "Your sessions appear when each check is complete.".into(),
                             elapsed_secs: 3, active_step: active,
-                            history: (active == 2).then(|| History { stream: "account".into(), verified: 25, total: 100 }),
+                            history: (active == 2).then(|| History { stream: "account".into(), verified: 25, total: 100, operation: None }),
                             details: vec![], error: failed.then(|| "History signature failed while verifying a retained account stream. Startup is paused until the signed history can be verified. The records and the diagnostic paths below remain available for inspection.".into()),
                             logs: if failed { vec![
                                 ["App log".into(), "/tmp/bboxy-startup/private-account-with-a-long-descriptive-directory-name/run/app.log".into()],
@@ -110,6 +116,7 @@ fn startup_history_zero_and_over_reported_totals_have_finite_layout() {
                 stream: "account".into(),
                 verified,
                 total,
+                operation: None,
             }),
             details: vec![],
             error: None,
@@ -127,5 +134,8 @@ fn startup_history_zero_and_over_reported_totals_have_finite_layout() {
             .unwrap();
         inspect(&layout, &mut vec![], &mut vec![]);
         assert!(layout.rect.h.is_finite());
+        let mut text=vec![];
+        inspect(&layout,&mut text,&mut vec![]);
+        assert!(!text.iter().any(|s|s.contains("0 of 0")));
     }
 }

@@ -19,7 +19,9 @@
     failed,
     'long failure': {...failed, error: 'History signature failed while verifying a retained account stream. Startup is paused until the signed history can be verified. The records and the diagnostic paths below remain available for inspection.', logs: [['App log', '/tmp/bboxy-startup/private-account-with-a-long-descriptive-directory-name/run/app.log'], ['Runtime log', '/tmp/bboxy-startup/private-account-with-a-long-descriptive-directory-name/run/logic.log']]},
   };
-  const steps = ['Connect to supervisor', 'Start session runtime', 'Verify signed history', 'Attach cockpit'];
+  STARTUP_STATES['restoring workspaces']={...normal,active_step:3,history:{stream:'',verified:0,total:0,operation:'Loading workspace records'}};
+  STARTUP_STATES['restoring sessions']={...normal,active_step:3,history:{stream:'',verified:2,total:5,operation:'Restoring saved sessions'}};
+  const steps = ['Connect to supervisor', 'Start session runtime', 'Verify signed history', 'Restore sessions and attach cockpit'];
   const text = (s, step='body', color, weight=400) => UI.Text(String(s), {step, color, weight});
   const stack = (dir, gap, ...children) => UI.Stack({dir, gap, align: dir === 'row' ? 'center' : 'stretch'}, ...children);
   const surface = (fill, padding, radius, ...children) => {
@@ -34,15 +36,18 @@
       const current = index === active, done = index < active;
       const color = current ? ink : done ? 'var(--accent)' : 'var(--fg-dim)';
       const mark = surface(tint(color, 12), 0, 8, text(done ? '✓' : current && data.error ? '!' : index+1, 'body', color, 600));
-      Object.assign(mark.style, {width:'28px',height:'28px',alignItems:'center',flexShrink:'0'});
+      Object.assign(mark.style, {width:'28px',height:'28px',flexDirection:'row',alignItems:'center',flexShrink:'0'});
+      Object.assign(mark.firstElementChild.style,{flex:'1',textAlign:'center'});
       const status = done ? 'Done' : current && data.error ? 'Failed' : current ? 'In progress' : 'Pending';
       const header = stack('row', 12, mark, text(label, 'body', current || done ? 'var(--fg)' : 'var(--fg-dim)', current ? 600 : 400), UI.Spacer(), text(status, 'caption', color, current ? 600 : 400));
       header.lastElementChild.style.flexShrink = '0';
       const contents = [header];
-      if (index === 2 && data.history) {
+      if (index === active && data.history) {
         const h = data.history;
-        const progress = [text(`${h.verified} of ${h.total} records`, 'heading', 'var(--fg)', 600), text(`Stream · ${h.stream}`, 'caption', 'var(--fg-dim)')];
-        if (h.total > 0) {
+        const title=h.operation?(h.total>0?`${h.verified} of ${h.total} items`:h.operation):(h.total===0?'Checkpoint is current':`${h.verified} new records verified`);
+        const detail=h.operation?(h.total>0?h.operation:'Waiting for this operation to finish'):`Last checked stream · ${h.stream}`;
+        const progress = [text(title, 'heading', 'var(--fg)', 600), text(detail, 'caption', 'var(--fg-dim)')];
+        if (h.operation && h.total > 0) {
           const fraction = Math.max(0, Math.min(1, h.verified / h.total));
           const pieces=[];
           for (const [share, color] of [[fraction, ink], [1-fraction, 'transparent']]) if (share > 0) {

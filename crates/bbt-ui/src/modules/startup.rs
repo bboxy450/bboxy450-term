@@ -13,7 +13,7 @@ pub const STEPS: [&str; 4] = [
     "Connect to supervisor",
     "Start session runtime",
     "Verify signed history",
-    "Attach cockpit",
+    "Restore sessions and attach cockpit",
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -21,6 +21,8 @@ pub struct History {
     pub stream: String,
     pub verified: u64,
     pub total: u64,
+    #[serde(default)]
+    pub operation: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -121,6 +123,11 @@ impl Startup {
                 b.style.overrides.width = Some(ui::Length::Px(28.));
                 b.style.overrides.height = Some(ui::Length::Px(28.));
                 b.align = c::Alignment::Center;
+                b.direction = Axis::Row;
+                b.children[0].extent = c::Extent::Fill;
+                if let c::Element::Text(t) = &mut b.children[0].element {
+                    t.align = c::Alignment::Center;
+                }
             }
             let status = if done {
                 "Done"
@@ -156,24 +163,44 @@ impl Startup {
                 ],
             );
             let mut contents = vec![header];
-            if index == 2
+            if index == active
                 && let Some(history) = &self.history
             {
                 let mut progress = vec![
                     text(
-                        format!("{} of {} records", history.verified, history.total),
+                        if let Some(operation) = &history.operation {
+                            if history.total == 0 {
+                                operation.clone()
+                            } else {
+                                format!("{} of {} items", history.verified, history.total)
+                            }
+                        } else if history.total == 0 {
+                            "Checkpoint is current".into()
+                        } else {
+                            format!("{} new records verified", history.verified)
+                        },
                         ui::TypeStep::Title,
                         ui::Color::Foreground,
                         600,
                     ),
                     text(
-                        format!("Stream · {}", history.stream),
+                        history
+                            .operation
+                            .clone()
+                            .filter(|_| history.total > 0)
+                            .unwrap_or_else(|| {
+                                if history.operation.is_some() {
+                                    "Waiting for this operation to finish".into()
+                                } else {
+                                    format!("Last checked stream · {}", history.stream)
+                                }
+                            }),
                         ui::TypeStep::Caption,
                         ui::Color::Muted,
                         400,
                     ),
                 ];
-                if history.total > 0 {
+                if history.operation.is_some() && history.total > 0 {
                     let fraction =
                         (history.verified as f64 / history.total as f64).clamp(0., 1.) as f32;
                     let mut track = surface(ui::Paint::solid(ui::Color::Surface2), 0., 2., vec![]);

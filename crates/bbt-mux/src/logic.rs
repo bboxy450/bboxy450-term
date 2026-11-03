@@ -1959,6 +1959,7 @@ impl Logic {
         fixture_hosts: bool,
         handle: &tokio::runtime::Handle,
         progress: &mut dyn FnMut(&str, u64, u64),
+        recovery_progress: &mut dyn FnMut(&str, u64, u64),
     ) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         let providers: Vec<Box<dyn Provider>> = if fixture_hosts {
@@ -1988,6 +1989,7 @@ impl Logic {
             handle,
             Default::default(),
             progress,
+            recovery_progress,
         )
     }
     /// Production construction: custody may be pending while PTYs, the GUI
@@ -2066,6 +2068,7 @@ impl Logic {
             handle,
             plugins,
             &mut |_, _, _| {},
+            &mut |_, _, _| {},
         )
     }
     fn start_with_custody(
@@ -2132,8 +2135,10 @@ impl Logic {
             handle,
             Default::default(),
             &mut |_, _, _| {},
+            &mut |_, _, _| {},
         )
     }
+    #[allow(clippy::too_many_arguments, reason = "bootstrap keeps verification and restoration observations separate")]
     fn start_inner_with_plugins(
         providers: Vec<Box<dyn Provider>>,
         config: LogicConfig,
@@ -2142,6 +2147,7 @@ impl Logic {
         handle: &tokio::runtime::Handle,
         plugins: crate::plugins::HostConfig,
         progress: &mut dyn FnMut(&str, u64, u64),
+        recovery_progress: &mut dyn FnMut(&str, u64, u64),
     ) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         let custodied = !matches!(&identity, IdentityMode::Explicit(_));
@@ -2200,7 +2206,9 @@ impl Logic {
         let stop = Arc::new(StopSignal::default());
         let stopping = stop.clone();
         let runtime = handle.clone();
-        let (ready_tx, ready_rx) = std::sync::mpsc::sync_channel(1);
+        let (ready_tx, ready_rx) = std::sync::mpsc::sync_channel::<
+            std::result::Result<Option<(String, u64, u64)>, String>,
+        >(1);
         let worker_client = client.clone();
         let reporter = client.clone();
         let thread = std::thread::Builder::new()
@@ -2220,6 +2228,9 @@ impl Logic {
                     identity,
                     bus_window,
                     plugins,
+                    &mut |operation, completed, total| {
+                        let _ = ready_tx.send(Ok(Some((operation.into(), completed, total))));
+                    },
                 ) {
                     Ok(worker) => worker,
                     Err(error) => {
@@ -2229,7 +2240,7 @@ impl Logic {
                     }
                 };
                 worker.plugin_signing = Some(plugin_signing);
-                let _ = ready_tx.send(Ok(()));
+                let _ = ready_tx.send(Ok(None));
                 let execution = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     let result = worker.run(&mut rx, stopping);
                     let seal = worker.seal_active_hold();
@@ -2257,13 +2268,18 @@ impl Logic {
                 let _ = worker.handle.block_on(worker.bus.shutdown());
                 result
             })?;
-        let ready = match ready_rx.recv_timeout(Duration::from_secs(30)) {
-            Ok(ready) => ready,
-            Err(error) => {
-                // Preserve the startup deadline; the detached owner will exit
-                // when startup returns, even if its idle timer cannot run.
-                stop.request();
-                return Err(error.into());
+        let ready = loop {
+            match ready_rx.recv_timeout(Duration::from_secs(180)) {
+                Ok(Ok(Some((operation, completed, total)))) => {
+                    recovery_progress(&operation, completed, total)
+                }
+                Ok(result) => break result.map(|_| ()),
+                Err(error) => {
+                    // Preserve the startup deadline; the detached owner will exit
+                    // when startup returns, even if its idle timer cannot run.
+                    stop.request();
+                    return Err(error.into());
+                }
             }
         };
         match ready {
@@ -3071,6 +3087,7 @@ impl Worker {
             identity,
             bus_window,
             Default::default(),
+            &mut |_, _, _| {},
         )
     }
     #[allow(
@@ -3086,7 +3103,9 @@ impl Worker {
         identity: crate::identity::IdentityRuntime,
         bus_window: Option<Ulid>,
         plugin_config: crate::plugins::HostConfig,
+        progress: &mut dyn FnMut(&str, u64, u64),
     ) -> Result<Self> {
+        progress("Loading session registry", 0, 0);
         let connections = Connections::open(providers)?;
         let account = SqliteStore::open(&object_dir(&config.run_dir, "account")?)?;
         let registry = Registry::new(account.clone());
@@ -3126,6 +3145,7 @@ impl Worker {
                 .map_err(|error| invalid(error.to_string()))?;
         }
         let plugins = crate::plugins::control::Control::new(plugin_registry.clone());
+        progress("Loading workspace records", 0, 0);
         let workspaces = WorkspaceRouter::new(
             Workspaces::open(WorkspaceConfig {
                 startup_repository: config.repository.clone(),
@@ -3151,6 +3171,7 @@ impl Worker {
         std::fs::DirBuilder::new()
             .mode(0o700)
             .create(&endpoint_root)?;
+        progress("Restoring messages", 0, 0);
         let mut messaging = crate::messaging::Messaging::open(&config.run_dir, identity.keys())?;
         messaging.startup_workspace(workspaces.cache.startup().root_id())?;
         messaging.operator_reference(identity.observed_operator_device()?)?;
@@ -3241,26 +3262,40 @@ impl Worker {
             parsers: Default::default(),
             ingestion_ready: Arc::default(),
         };
-        for (host, info) in worker.connections.owned_seats()? {
+        let seats = worker.connections.owned_seats()?;
+        let seat_count = seats.len() as u64;
+        progress("Restoring saved sessions", 0, seat_count);
+        for (index, (host, info)) in seats.into_iter().enumerate() {
             // Several fixture links can wrap one local supervisor. Recover a
             // seat only through the link selected by its durable location.
             if worker.host_for_seat(info.seat)? == host {
                 worker.attach(info, false)?;
             }
+            if index % 32 == 0 || index as u64 + 1 == seat_count {
+                progress("Restoring saved sessions", index as u64 + 1, seat_count);
+            }
         }
         let startup = worker.workspaces.cache.startup().root_id().to_owned();
         let swarms = worker.workspaces.bound_swarms(&worker.registry, &startup)?;
-        for (task, status) in worker.workspaces.cache.startup().index.task_states() {
+        let tasks: Vec<_> = worker.workspaces.cache.startup().index.task_states().collect();
+        let task_count = tasks.len() as u64;
+        progress("Restoring task state", 0, task_count);
+        for (index, (task, status)) in tasks.into_iter().enumerate() {
             worker
                 .messaging
                 .task_state_root(&startup, &swarms, task, status, now_ms())?;
+            if index % 32 == 0 || index as u64 + 1 == task_count {
+                progress("Restoring task state", index as u64 + 1, task_count);
+            }
         }
+        progress("Restoring pending deliveries", 0, 0);
         worker.publish_root_outbox(&startup)?;
         // Recover audit outboxes after a logic crash, even without a new call.
         for record in worker.registry.list()? {
             worker.control_journal(record.id)?;
         }
         worker.publish_control_audits()?;
+        progress("Checking identity", 0, 0);
         worker.refresh_identity()?;
         Ok(worker)
     }
@@ -5914,7 +5949,8 @@ impl Worker {
                         eprintln!("ProvenancePending [{root}]: {reason}");
                         backoff.reason = reason;
                     }
-                    backoff.delay = (backoff.delay * 2).clamp(PROVENANCE_RETRY_MIN, PROVENANCE_RETRY_MAX);
+                    backoff.delay =
+                        (backoff.delay * 2).clamp(PROVENANCE_RETRY_MIN, PROVENANCE_RETRY_MAX);
                     backoff.next = Some(now + backoff.delay);
                     false
                 }
@@ -10159,7 +10195,11 @@ impl Worker {
                         self.start_gui_swarm(*action, origin, reply);
                     }
                     Command::GuiSpawn(id, spec, door, reply) => {
-                        if spec.via.as_ref().is_some_and(|via| via.kind.starts_with("plugin:")) {
+                        if spec
+                            .via
+                            .as_ref()
+                            .is_some_and(|via| via.kind.starts_with("plugin:"))
+                        {
                             self.start_plugin_transport(id, spec, door, reply);
                         } else {
                             let result = self.gui_spawn(id, spec, door);
@@ -12233,7 +12273,12 @@ mod identity_retry_clock_tests {
         assert_eq!(payload["origin"]["seq"], conflicting.seq);
         assert_eq!(payload["origin"]["source"], conflicting.event.source);
         assert_eq!(payload["detail"]["artifact"], serde_json::json!(artifact));
-        assert!(payload["error"].as_str().unwrap().contains("duplicate record number"));
+        assert!(
+            payload["error"]
+                .as_str()
+                .unwrap()
+                .contains("duplicate record number")
+        );
         // The raw trail is the exact retained envelope, whatever its shape.
         let raw = serde_json::to_vec(&conflicting).unwrap();
         assert_eq!(payload["raw"]["bytes"], raw.len());
@@ -12411,7 +12456,9 @@ fn usage_snapshot(run_dir: &std::path::Path) -> std::result::Result<serde_json::
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_secs() as i64);
-    let age = value["sampled_at"].as_i64().map(|at| now.saturating_sub(at));
+    let age = value["sampled_at"]
+        .as_i64()
+        .map(|at| now.saturating_sub(at));
     value["available"] = serde_json::json!(true);
     value["age_seconds"] = serde_json::json!(age);
     Ok(value)
@@ -12457,9 +12504,19 @@ fn harness_profiles() -> std::result::Result<serde_json::Value, String> {
             if path.extension().is_none_or(|x| x != "md") {
                 continue;
             }
-            let Ok(text) = std::fs::read_to_string(&path) else { continue };
-            let Some(header) = text.strip_prefix("---\n").and_then(|r| r.split_once("\n---")).map(|(h, _)| h) else { continue };
-            let Ok(meta) = serde_yaml::from_str::<Value>(header) else { continue };
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            let Some(header) = text
+                .strip_prefix("---\n")
+                .and_then(|r| r.split_once("\n---"))
+                .map(|(h, _)| h)
+            else {
+                continue;
+            };
+            let Ok(meta) = serde_yaml::from_str::<Value>(header) else {
+                continue;
+            };
             let field = |k: &str| meta.get(k).and_then(Value::as_str).unwrap_or("").to_owned();
             let acp = field("provider") == "acp-agent";
             out.push(json!({
@@ -12473,8 +12530,14 @@ fn harness_profiles() -> std::result::Result<serde_json::Value, String> {
         }
     }
     out.sort_by_key(|p| p["name"].as_str().unwrap_or("").to_owned());
-    let default = std::env::var("BBOXY450_HARNESS_PROFILE").ok().filter(|s| !s.trim().is_empty()).or_else(|| {
-        std::fs::read_to_string(dir.parent()?.join("default-profile")).ok().map(|s| s.trim().to_owned()).filter(|s| !s.is_empty())
-    });
+    let default = std::env::var("BBOXY450_HARNESS_PROFILE")
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+        .or_else(|| {
+            std::fs::read_to_string(dir.parent()?.join("default-profile"))
+                .ok()
+                .map(|s| s.trim().to_owned())
+                .filter(|s| !s.is_empty())
+        });
     Ok(json!({ "profiles": out, "default": default, "directory": dir }))
 }

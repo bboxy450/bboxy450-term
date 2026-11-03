@@ -19,7 +19,7 @@ fn view(modal: &cockpit::startup::Modal, elapsed_secs: u64) -> ui::modules::star
         | Phase::Failed(_) => 0,
         Phase::StartingLogic | Phase::RefreshingLogic(_) => 1,
         Phase::VerifyingHistory { .. } => 2,
-        Phase::AttachingGui => 3,
+        Phase::AttachingGui | Phase::RestoringState { .. } => 3,
     };
     let mut details = vec![];
     if let Phase::AdoptingSupervisor(pid) = modal.phase {
@@ -67,6 +67,19 @@ fn view(modal: &cockpit::startup::Modal, elapsed_secs: u64) -> ui::modules::star
                 stream: stream.clone(),
                 verified: *verified,
                 total: *total,
+                operation: None,
+            })
+        } else if let Phase::RestoringState {
+            operation,
+            completed,
+            total,
+        } = &modal.phase
+        {
+            Some(History {
+                stream: String::new(),
+                verified: *completed,
+                total: *total,
+                operation: Some(operation.clone()),
             })
         } else {
             None

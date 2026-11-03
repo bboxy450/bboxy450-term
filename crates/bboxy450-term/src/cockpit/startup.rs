@@ -17,6 +17,11 @@ pub enum Phase {
         verified: u64,
         total: u64,
     },
+    RestoringState {
+        operation: String,
+        completed: u64,
+        total: u64,
+    },
     AttachingGui,
     Reconnecting {
         attempt: u32,
@@ -37,10 +42,17 @@ pub(super) struct HistoryProgress {
     pub stream: String,
     pub verified: u64,
     pub total: u64,
+    #[serde(default)]
+    pub restoring: bool,
 }
 impl HistoryProgress {
     pub(super) fn advances(&self, previous: Option<&Self>) -> bool {
-        previous.is_none_or(|last| last.stream != self.stream || self.verified > last.verified)
+        previous.is_none_or(|last| {
+            last.restoring != self.restoring
+                || last.stream != self.stream
+                || self.verified > last.verified
+                || self.total != last.total
+        })
     }
 }
 
@@ -122,6 +134,7 @@ impl Modal {
                 total,
             } => format!("Logic verifying history {verified}/{total} · {stream}"),
             Phase::AttachingGui => "Attaching GUI".into(),
+            Phase::RestoringState { operation, .. } => operation.clone(),
             Phase::Reconnecting { attempt, reason } => {
                 format!("Reconnecting (attempt {attempt}) · {reason}")
             }
@@ -194,5 +207,10 @@ mod tests {
         assert!(later.advances(Some(&record.startup_progress)));
         later.verified = 0;
         assert!(!later.advances(Some(&record.startup_progress)));
+        later.restoring = true;
+        assert!(later.advances(Some(&record.startup_progress)));
+        later.stream = "Loading workspace records".into();
+        later.total = 0;
+        assert!(later.advances(Some(&record.startup_progress)));
     }
 }

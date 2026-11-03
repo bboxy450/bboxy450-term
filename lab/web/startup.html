@@ -12,7 +12,7 @@
 </style>
 <script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="ui.js"></script><script src="startup.js"></script>
 </head><body><script>
-Lab.page({title:'Startup checklist',wide:true,note:'Actual startup phases and public observations from the existing startup tests. Every step stays visible; only signed-history counts produce a progress bar. Retry resets this preview. The native side uses the production Startup component.',
+Lab.page({title:'Startup checklist',wide:true,note:'Actual startup phases and public observations from the existing startup tests. Every step stays visible. Checkpoint results describe the last checked stream; only known restoration totals produce a progress bar. Retry resets this preview. The native side uses the production Startup component.',
 states:Object.keys(STARTUP_STATES),render(state,body){
  const preview=Lab.el('div',{class:'startup-preview',style:'display:flex;justify-content:center;padding:32px 16px;min-height:560px'});
  const host=Lab.el('div',{style:'margin-top:0px;width:560px;max-width:100%'},startupModal(STARTUP_STATES[state]));

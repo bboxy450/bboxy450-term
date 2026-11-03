@@ -19,6 +19,8 @@ pub fn cases() -> Vec<Case> {
         "refreshing runtime",
         "failed",
         "long failure",
+        "restoring workspaces",
+        "restoring sessions",
     ] {
         for density in gallery::DENSITIES {
             for theme in gallery::THEMES {
