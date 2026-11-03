@@ -1008,7 +1008,7 @@ expected = "pass"
 frontend = "project"
 
 [[model]]
-name = "BrokenRichHostDuplicate"
+name = "BrokenRichHost"
 expected = "safety"
 frontend = "project"
 
@@ -1025,4 +1025,19 @@ frontend = "project"
 [[model]]
 name = "BrokenRichHostRouting"
 expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "RichHostIdentity"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "RichHostDetach"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "RichHostRouting"
+expected = "pass"
 frontend = "project"

@@ -31,7 +31,7 @@ fn host(control: u8) -> Model {
         ],
     );
     m.name = match control {
-        1 => "BrokenRichHostDuplicate",
+        1 => "BrokenRichHost",
         2 => "BrokenRichHostIdentity",
         3 => "BrokenRichHostDetach",
         4 => "BrokenRichHostRouting",
@@ -99,7 +99,12 @@ fn host(control: u8) -> Model {
     m
 }
 pub fn cases() -> Vec<(Model, &'static str)> {
-    (0..=4)
-        .map(|c| (host(c), if c == 0 { "pass" } else { "safety" }))
-        .collect()
+    let mut cases = vec![(host(0), "pass"), (host(1), "safety")];
+    for control in 2..=4 {
+        let broken = host(control);
+        let mut good = host(0);
+        good.name = broken.name.strip_prefix("Broken").unwrap().into();
+        cases.extend([(good, "pass"), (broken, "safety")]);
+    }
+    cases
 }
