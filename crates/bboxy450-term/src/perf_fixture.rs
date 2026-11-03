@@ -301,6 +301,8 @@ pub fn run() -> Result<serde_json::Value, String> {
                 bounds: &bounds,
                 focused: sample.model.ui.window.stage.focused,
                 overlay,
+                retained: None,
+                overlay_after: vec![],
             },
             frame,
             450.,

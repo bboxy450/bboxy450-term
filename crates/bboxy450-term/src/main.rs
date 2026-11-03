@@ -8134,32 +8134,44 @@ impl App {
         pane_overlay.extend(self.paint_terminal_selection());
         let (document_paints, document_observation) =
             self.document_paint(self.meter.total_frames() + 1);
-        pane_overlay.extend(self.scene.foreground_with_document(
+        // The conversation dock is painted between the pane foreground and the
+        // rims; it travels as its own retained list so the GPU can keep it in
+        // a layer while it is unchanged (gpu::draw_overlay).
+        let retained = self
+            .conversation_layout
+            .as_ref()
+            .map(|layout| layout.painted().clone());
+        let mut overlay_after = self.scene.foreground_with_document(
             logical,
             self.launcher_layout.as_ref(),
             overlay.as_ref(),
-            self.conversation_layout.as_ref(),
+            None,
             document_paints,
             rims,
-        ));
-        pane_overlay.push(bbt_ui::components::Paint::Draw(
+        );
+        overlay_after.push(bbt_ui::components::Paint::Draw(
             self.ui_selection.paint(self.scene.text_metrics()),
         ));
-        pane_overlay.extend(self.scene.error_overlay(logical, self.unread_errors));
-        pane_overlay.extend(self.paint_app_overlay());
+        overlay_after.extend(self.scene.error_overlay(logical, self.unread_errors));
+        overlay_after.extend(self.paint_app_overlay());
         if self.pointer_inside {
             match self.titlebar.hit(self.pointer) {
                 Some(desktop_window::Hit::Usage) => {
-                    pane_overlay.extend(self.scene.usage_tooltip(self.solved_size))
+                    overlay_after.extend(self.scene.usage_tooltip(self.solved_size))
                 }
                 Some(desktop_window::Hit::Theme) => {
-                    pane_overlay.extend(self.scene.theme_tooltip(self.solved_size))
+                    overlay_after.extend(self.scene.theme_tooltip(self.solved_size))
                 }
                 _ => {}
             }
         }
+        let mut retained = retained;
         if !live {
             ops.append(&mut pane_overlay);
+            if let Some(list) = retained.take() {
+                ops.extend(list.iter().cloned());
+            }
+            ops.append(&mut overlay_after);
         }
         phases.draw = start.elapsed();
         if let Some((encode, wait)) = self.gpu.as_mut().unwrap().draw(
@@ -8173,6 +8185,8 @@ impl App {
                 bounds: &self.pane_bounds,
                 focused: self.scene.focused(),
                 overlay: pane_overlay,
+                retained,
+                overlay_after,
             }),
         )? {
             self.redraw_pending.set(false);
@@ -8184,7 +8198,7 @@ impl App {
                 let gpu = self.gpu.as_ref().unwrap();
                 let (p, e) = (gpu.passes, gpu.last_split);
                 let ms = |d: Duration| d.as_secs_f64() * 1000.;
-                self.logger.write(format!("hitch frame={} phase={phase} {:.3}ms cpu={:.3}ms drain={:.3} layout={:.3} draw={:.3} encode={:.3} present_wait={:.3} chrome={:.3} cells={:.3} overlay={:.3} composite={:.3} submit={:.3} passes={} flat={} clear={} path={} group={} blur={} material={} cells_p={} copy={} mask_misses={} shadow_req={}",self.meter.total_frames(),ms(time),ms(phases.cpu()),ms(phases.drain),ms(phases.layout),ms(phases.draw),ms(phases.encode),ms(phases.present_wait),ms(e.chrome),ms(e.cells),ms(e.overlay),ms(e.composite),ms(e.submit),p.passes(),p.flat,p.clear,p.path,p.group,p.blur,p.material,p.cells,p.copy,e.mask_misses,e.shadow_requests));
+                self.logger.write(format!("hitch frame={} phase={phase} {:.3}ms cpu={:.3}ms drain={:.3} layout={:.3} draw={:.3} encode={:.3} present_wait={:.3} chrome={:.3} cells={:.3} overlay={:.3} composite={:.3} submit={:.3} passes={} flat={} clear={} path={} group={} blur={} material={} cells_p={} copy={} mask_misses={} shadow_req={} retained={:?}",self.meter.total_frames(),ms(time),ms(phases.cpu()),ms(phases.drain),ms(phases.layout),ms(phases.draw),ms(phases.encode),ms(phases.present_wait),ms(e.chrome),ms(e.cells),ms(e.overlay),ms(e.composite),ms(e.submit),p.passes(),p.flat,p.clear,p.path,p.group,p.blur,p.material,p.cells,p.copy,e.mask_misses,e.shadow_requests,e.retained));
             }
             // Under the meter, the render-pass mix of every 120th frame (R12-3 profiling).
             if self.overlay && self.meter.total_frames().is_multiple_of(120) {

@@ -383,6 +383,8 @@ fn replay(control: Control, scale: u32) -> Result<(usize, usize), String> {
                             )],
                             focused: Some(seat),
                             overlay: vec![],
+                            retained: None,
+                            overlay_after: vec![],
                         },
                         scale as f32,
                         &mut encoder,

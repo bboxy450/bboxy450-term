@@ -558,6 +558,8 @@ pub fn run(args: &[String]) -> Result<(), String> {
                                 bounds: &app.pane_bounds,
                                 focused: app.scene.focused(),
                                 overlay: foreground,
+                                retained: None,
+                                overlay_after: vec![],
                             },
                             submitted,
                             app.clock_frame.time_ms,
