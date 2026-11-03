@@ -17,8 +17,15 @@ use std::time::Duration;
 pub struct RecordLink(Arc<(Mutex<BTreeMap<Ulid, Seat>>, Condvar)>);
 struct Seat {
     info: SeatInfo,
+    spec: bbt_mux::LaunchSpec,
     attachment: Attachment,
     checkpoint: Option<Vec<u8>>,
+}
+impl RecordLink {
+    #[allow(dead_code)] // Only launch-contract consumers inspect process plans.
+    pub fn launch_spec(&self, seat: Ulid) -> bbt_mux::LaunchSpec {
+        self.0.0.lock().unwrap()[&seat].spec.clone()
+    }
 }
 impl Seat {
     fn status(&self) -> bbt_mux::ring::Status {
@@ -74,6 +81,7 @@ impl SupervisorConnection for RecordLink {
                             writer_lease: Ulid::new(),
                         },
                         checkpoint: None,
+                        spec,
                     },
                 );
                 Ok(Reply::Spawned { info })

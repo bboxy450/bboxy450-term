@@ -10,6 +10,8 @@ use bbt_mux::messaging::wire::EnvelopeExt;
 mod common;
 #[path = "common/record_supervisor.rs"]
 mod record_supervisor;
+#[path = "mcp/launch.rs"]
+mod launch_tests;
 use record_supervisor::RecordLink;
 use std::io::{Cursor, Read, Write};
 use std::os::unix::net::UnixStream;

@@ -5095,48 +5095,37 @@ impl Worker {
             },
             Request::Spawn(args) => {
                 let result = (|| -> Result<SeatInfo> {
-                    let harness = HarnessRecord::builtin(&args.approved_profile)?;
-                    let mut record = SeatRecord::new(
+                    let placement = Some(self.control_placement(&args, id)?);
+                    let (record, harness, mut options) = self.prepare_spawn(
                         id,
-                        args.swarm_id,
-                        args.name
-                            .clone()
-                            .map(Ok)
-                            .unwrap_or_else(|| self.default_seat_name(args.swarm_id))?,
-                        harness.kind.clone(),
-                    );
-                    record.launch_placement = Some(self.control_placement(&args, id)?);
-                    let (role, role_prompt) =
-                        self.configured_role(&harness.kind, args.role.as_deref())?;
-                    record.role = role;
-                    record.harness_session_id = args.resume.clone();
+                        bbt_proto::SpawnSpec {
+                            swarm: bbt_proto::SwarmId::from_u128(args.swarm_id.0),
+                            harness_kind: args.approved_profile,
+                            name: args.name,
+                            role: args.role,
+                            cwd: args.cwd.to_string_lossy().into_owned(),
+                            location: bbt_proto::Where::Local,
+                            resume: args.resume,
+                            placement,
+                            via: None,
+                            command: None,
+                            args: vec![],
+                            env: vec![],
+                        },
+                    )?;
                     if let Some(name) = &args.harness_profile
                         && !harness_profile_dir()?.join(format!("{name}.md")).is_file()
                     {
-                        return Err(invalid("no such bboxy450-harness profile; see harness_profiles"));
+                        return Err(invalid(
+                            "no such bboxy450-harness profile; see harness_profiles",
+                        ));
                     }
-                    self.launch(
-                        record,
-                        harness,
-                        crate::adapters::launch::LaunchOptions {
-                            transport_argv: None,
-                            via: None,
-                            // the harness seat starts on this profile (its own precedence: env first)
-                            env: args
-                                .harness_profile
-                                .clone()
-                                .map(|p| vec![("BBOXY450_HARNESS_PROFILE".into(), p)])
-                                .unwrap_or_default(),
-                            cwd: args.cwd.canonicalize()?,
-                            role_prompt,
-                            executable: std::env::current_exe()?,
-                            user_home: std::env::var_os("HOME")
-                                .map(PathBuf::from)
-                                .ok_or_else(|| invalid("missing user home"))?,
-                            user_zdotdir: std::env::var_os("ZDOTDIR").map(PathBuf::from),
-                            resume: args.resume.is_some(),
-                        },
-                    )
+                    if let Some(profile) = args.harness_profile {
+                        options
+                            .env
+                            .push(("BBOXY450_HARNESS_PROFILE".into(), profile));
+                    }
+                    self.launch(record, harness, options)
                 })();
                 match result {
                     Ok(info) => crate::mcp::success(
@@ -9664,7 +9653,7 @@ impl Worker {
         };
         let (retained, fresh) = self.operator_journal.admit(&principal, &call)?;
         let result = if fresh {
-            let result = match self.prepare_gui_spawn(spec) {
+            let result = match self.prepare_spawn(Ulid::new(), spec) {
                 Ok((record, harness, options)) => match self.launch(record, harness, options) {
                     Ok(info) => crate::mcp::success(id, serde_json::json!({"seat":info.seat})),
                     // Admission is durable before the native effect. A lost
@@ -9699,8 +9688,11 @@ impl Worker {
         Ok(first_available_seat_name(swarm, &self.registry.list()?))
     }
 
-    fn prepare_gui_spawn(
+    /// Every admitted door supplies a SpawnSpec here. Authority and operation
+    /// journals stay with the door; seat identity, role and launch inputs do not.
+    fn prepare_spawn(
         &self,
+        seat: Ulid,
         spec: bbt_proto::SpawnSpec,
     ) -> Result<(
         SeatRecord,
@@ -9781,19 +9773,28 @@ impl Worker {
         }
         if let Some(via) = &spec.via {
             if via.kind.starts_with("plugin:") {
-                bbt_proto::TransportSpec::inner_command(
-                    &spec.cwd, &harness.command, &spec.env,
-                ).map_err(invalid)?;
+                bbt_proto::TransportSpec::inner_command(&spec.cwd, &harness.command, &spec.env)
+                    .map_err(invalid)?;
             } else {
-                via.argv(&spec.cwd, &harness.command, &spec.env).map_err(invalid)?;
+                via.argv(&spec.cwd, &harness.command, &spec.env)
+                    .map_err(invalid)?;
             }
         }
+        let cwd = if spec.via.is_none() && spec.location == bbt_proto::Where::Local {
+            let path = Path::new(&spec.cwd);
+            if !path.is_absolute() || !path.is_dir() {
+                return Err(invalid("cwd must be an explicit absolute directory"));
+            }
+            path.canonicalize()?
+        } else {
+            spec.cwd.into()
+        };
         let swarm = Ulid::from(spec.swarm.0.0);
         let name = match spec.name {
             Some(name) => name,
             None => self.default_seat_name(swarm)?,
         };
-        let mut record = SeatRecord::new(Ulid::new(), swarm, name, harness.kind.clone());
+        let mut record = SeatRecord::new(seat, swarm, name, harness.kind.clone());
         record.location = match spec.location {
             bbt_proto::Where::Local => crate::registry::Location::Local,
             bbt_proto::Where::Ssh { host } => crate::registry::Location::Ssh { host },
@@ -9813,7 +9814,7 @@ impl Worker {
                 transport_argv: None,
                 via: spec.via,
                 env: spec.env,
-                cwd: spec.cwd.into(),
+                cwd,
                 role_prompt,
                 executable: std::env::current_exe()?,
                 user_home: std::env::var_os("HOME")

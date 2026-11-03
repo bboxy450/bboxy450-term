@@ -76,7 +76,7 @@ impl Worker {
             }
         };
         let prepared = (|| -> Result<_> {
-            let (record, harness, options) = self.prepare_gui_spawn(spec)?;
+            let (record, harness, options) = self.prepare_spawn(Ulid::new(), spec)?;
             let port = self.workspaces.select(&self.registry, record.swarm, None)?;
             let host = port.host.plugin_host().clone();
             Ok((record, harness, options, port.binding, host))

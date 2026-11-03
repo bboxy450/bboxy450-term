@@ -724,6 +724,16 @@ property = "The bounded FIFO keeps the newest two admitted receipts, never evict
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "CodexMcpReadiness"
+title = "Every Codex launch waits for its own bboxy tool catalog"
+models = ["CodexMcpReadiness", "BrokenCodexMcpReadiness"]
+sources = ["crates/bboxy450-harness-wake-up/src/launch.rs", "crates/bbt-mux/src/logic.rs", "crates/bboxy450-term/tests/formal_contracts/launch_readiness.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp/launch.rs"]
+assumptions = "Three launch doors, two generations and one catalog readiness value. Launch, connect, failure, start and restart are atomic; delayed old-generation completions and duplicate retained operations may interleave. No fairness or eventual dependency recovery is assumed. The model abstracts Codex's required-server startup contract; native Codex implementation, physical startup latency, user config filtering and remote services are outside the projection."
+property = "A session starts only with the current generation's catalog. Restart requires fresh readiness; failure cannot start a session. The broken control restores optional startup and starts before the catalog is ready. The API witness captures real launch plans from GUI, ctl, MCP and its ctl alias, checks fresh/resume settings and replay, and authenticates orient plus the required tool catalog with each generated admission file."
+checks = ["make test-formal", "make land"]
+
+[[contract]]
 name = "SeatLaunchEnvironment"
 title = "Caller harness session identity never crosses backend or seat exec"
 models = ["SeatLaunchEnvironment", "BrokenSeatLaunchEnvironment"]

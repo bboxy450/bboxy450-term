@@ -33,6 +33,8 @@ mod capability_models;
 mod usage_models;
 #[path = "launch_environment.rs"]
 mod launch_environment;
+#[path = "launch_readiness.rs"]
+mod launch_readiness;
 
 #[path = "gitkb_models.rs"]
 mod gitkb_models;
@@ -1865,6 +1867,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(gitkb_models::cases());
     cases.extend(usage_models::cases());
     cases.extend(launch_environment::cases());
+    cases.extend(launch_readiness::cases());
     cases.extend(provenance_models::cases());
     cases.extend(event_log_model::cases());
     cases
