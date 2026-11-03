@@ -185,7 +185,7 @@
     "path": ".bboxy/reports/2026-11-03-codex-oracle-takeover-interim.md"
   },
   "task": "01M6HCH1SJHDSB6SDAC2ZF1BXX",
-  "at": 1793744148.916801,
+  "at": 1793745218.256167,
   "operational_exit_code": 0,
   "product_complete": false,
   "raw_evidence_directory": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0",
@@ -318,5 +318,150 @@
     "updated": "2026-11-03T22:08:04.816Z",
     "brief_write_op": "01M6HQ8Z90B1F3X3Y9QNMVH0J0",
     "delegation": "claimed state and signed task observed; delivery receipt unverified while MCP unavailable"
+  },
+  "current_delivery": {
+    "at": 1793745218090,
+    "usage": {
+      "machine": {
+        "cpu": 71,
+        "memory": 65,
+        "disk": 94,
+        "reason": null
+      },
+      "providers": {
+        "grok": {
+          "used": null,
+          "projected": null,
+          "stale": false,
+          "reason": "Run `grok` to sign in",
+          "windows": []
+        },
+        "claude": {
+          "used": 98,
+          "projected": 161,
+          "stale": false,
+          "reason": null,
+          "windows": [
+            {
+              "label": "Weekly",
+              "used": 98,
+              "projected": 161,
+              "resets_at": 1793980799
+            },
+            {
+              "label": "Current session",
+              "used": 2,
+              "projected": 7,
+              "resets_at": 1793757599
+            }
+          ]
+        },
+        "codex": {
+          "used": 74,
+          "projected": 181,
+          "stale": false,
+          "reason": null,
+          "windows": [
+            {
+              "label": "Weekly",
+              "used": 74,
+              "projected": 181,
+              "resets_at": 1794102377
+            }
+          ]
+        }
+      },
+      "sampled_at": 1793744677,
+      "available": true,
+      "age_seconds": 0,
+      "scope": {
+        "seat": "01M6H97SAX3GN1BYB4YG76P3P0",
+        "role": "oracle",
+        "class": "oracle"
+      },
+      "op_id": "01M6HR7AWFEPBQSBRTQZN95B1Y"
+    },
+    "producer": {
+      "seat": "01M6HRD7KZD5Q336S88VRS5HJX",
+      "task": "01M6HRGGBFA6Z97D4TPDSZWPK8",
+      "path": "tasks/2026-11-03-codex-agent-context.md",
+      "worktree": "/Users/feral/mydev/bboxy450-harness-pane-b12",
+      "branch": "codex-launch-parity-20261103",
+      "delegation": {
+        "status": "accepted",
+        "task_id": "01M6HRGGBFA6Z97D4TPDSZWPK8",
+        "path": ".bboxy/tasks/2026-11-03-codex-agent-context.md",
+        "task_status": "claimed",
+        "message_ids": [
+          "6VSZAD1KY281C8C6SE7A6CVP2K"
+        ],
+        "op_id": "01M6HRGGNCV2C5BGCMX88A5F24"
+      },
+      "receipt": {
+        "kind": "receipts",
+        "page": {
+          "items": [
+            {
+              "message_sequence": 627,
+              "message": "6VSZAD1KY281C8C6SE7A6CVP2K",
+              "sender": "01M6H97SAX3GN1BYB4YG76P3P0",
+              "recipient": "01M6HRD7KZD5Q336S88VRS5HJX",
+              "agent": null,
+              "evidence": "native-queued",
+              "note": "native admission only; model consumption unverified",
+              "held": null,
+              "arrivals": [
+                {
+                  "path": "seats/01M6HRD7KZD5Q336S88VRS5HJX/inbox",
+                  "links": [],
+                  "paused": false,
+                  "batch_ms": 0,
+                  "coalesce": false
+                }
+              ],
+              "received_ms": 1793744980587,
+              "eligible_ms": 1793744980587,
+              "batch_key": "seats/01M6HRD7KZD5Q336S88VRS5HJX/inbox",
+              "class": "oracle",
+              "attempt": "01M6HRGJNHZX10CX670BW4J2RQ",
+              "native_id": "01a1a388-4ab8-7c01-a6b7-61c61dff2718",
+              "relayed_via_main": false,
+              "wake": "now"
+            }
+          ],
+          "next": null
+        },
+        "scope": {
+          "seat": "01M6H97SAX3GN1BYB4YG76P3P0",
+          "role": "oracle",
+          "class": "oracle"
+        },
+        "op_id": "01M6HRH10ZT3FVNJMWGKKHSMBD"
+      }
+    },
+    "host_task": "01M6HCYDWBAX2FDYGMSPB12HRN",
+    "host_scope_amend_op": "01M6HRPH3E701ZS4EGDZZ22HS2",
+    "root_scope_amend_op": "01M6HRHQ4ACD051QM1430ZB1R1",
+    "duplicate_task_records": {
+      "ids": [
+        "01M6HRD5XR91MD7MH557R77N5Y",
+        "01M6HREVGM5DB1KQ1P4CZ20VWH"
+      ],
+      "disposition": "preserved, lifecycle preflight ambiguous/conflicting; no source/task-system bypass, only new unique task productive"
+    },
+    "product_complete": false
+  },
+  "visual_cache_cleanup": {
+    "at": 1793745051.715034,
+    "worktree": "/Users/feral/mydev/bboxy450-harness-codex-visual",
+    "authority": "visual-cache-current-authority.json",
+    "allocated_bytes_removed": 2547884032,
+    "free_bytes_before": 30391160832,
+    "free_bytes_after": 32796717056,
+    "source_archive_sha256": "2216fd2186400855c0ee3c4bfc7a3973c1831e6b1f7ad0044c8e22f8920b4cde",
+    "source_head": "af65c6cf82d9dde6314b1771b9314061b0e24212",
+    "status_unchanged": true,
+    "source_hashes_unchanged": true,
+    "other_worktrees_untouched": true
   }
 }

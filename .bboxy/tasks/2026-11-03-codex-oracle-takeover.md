@@ -69,6 +69,14 @@ allowed_paths:
 - /Users/feral/mydev/bboxy450-harness-codex-recovery/target/release/build/**
 - /Users/feral/mydev/bboxy450-harness-codex-recovery/target/release/deps/**
 - /Users/feral/mydev/bboxy450-harness-codex-recovery/target/release/.fingerprint/**
+- /Users/feral/mydev/bboxy450-harness-codex-visual/target/debug/incremental/**
+- /Users/feral/mydev/bboxy450-harness-codex-visual/target/debug/build/**
+- /Users/feral/mydev/bboxy450-harness-codex-visual/target/debug/deps/**
+- /Users/feral/mydev/bboxy450-harness-codex-visual/target/debug/.fingerprint/**
+- /Users/feral/mydev/bboxy450-harness-codex-visual/target/release/incremental/**
+- /Users/feral/mydev/bboxy450-harness-codex-visual/target/release/build/**
+- /Users/feral/mydev/bboxy450-harness-codex-visual/target/release/deps/**
+- /Users/feral/mydev/bboxy450-harness-codex-visual/target/release/.fingerprint/**
 verify: python3 -I /tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/verify.py
 acceptance:
 - Fresh MCP account/resource usage recorded
@@ -76,7 +84,7 @@ acceptance:
 - Obsolete seats retired; replacement Codex workers have signed scoped tasks; unfinished work preserved
 - Lifecycle, source preservation, closures and gaps retained as evidence
 id: 01M6HCH1SJHDSB6SDAC2ZF1BXX
-updated: 2026-11-03T20:51:01.223Z
+updated: 2026-11-03T22:30:18.729Z
 created: 2026-11-03T19:00:13.435Z
 number: 15244
 created_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
@@ -87,11 +95,11 @@ authorship:
   public_key: B3hFSjBIE1Nnj7mw9Eg9pqyRpYHF/GQaKXPyV1KAod0=
   process_generation: '1'
 provenance:
-  digest: sha256:5b78e44aaa4002e5bac9036d724a78f6136f089d824e6c235e025fe33905c00b
-  frontmatter_digest: sha256:9c74485bb68e2cb361eb4784d4cc71bf334082d04eb11b3a0f006b466923c285
+  digest: sha256:0248ef28e749fa6df10bf1a21818a8664bd27d7151d5eb3113016aa3acb99e60
+  frontmatter_digest: sha256:4f0f957803dae88ae1ea25e5892b32af7b21db1ce85d97d6781155a4928e862e
   signer: seat:01M6H97SAX3GN1BYB4YG76P3P0
-  sig: sUdxnMn0n175o+UKaD7J8BQRCysAU+CImx3rzRN7cm1OhjHUbBEHVe/ryQXas8emYZ0VBysQIKgCNYlA926+Bg==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#100768
+  sig: QrS0QI9g1Qvwr9PrbcIQnIA7vTxHjqKeyHPiqW+Wn5My3UEMqN5OOK3CUxj6cX1pRRDDRiqdZubnVDr5zN+NCw==
+  log: .bboxy/log/2026-11-03.part-86213.jsonl#106991
 ---
 ROLE: ORACLE.
 
@@ -126,3 +134,10 @@ Disk disposition: there are no additional clean, fully merged worktrees with rem
 Continuation after standalone delivery: verified and published ea75307 implementation plus af65c6c report/summary, signed local install and installed private native startup smoke all exited zero; normal launch observed alive on codex-exec. Retired standalone worker/report-recovery seats after preserving and reconciling the original completed report. The freed third productive slot now recovers the explicit outstanding two-pass native visual work from ORACLE-HANDOFF.md via [[tasks/2026-11-03-codex-native-visual]], own worktree /Users/feral/mydev/bboxy450-harness-codex-visual. Scope is the carried terminal one-line fold/diff ellipsis defects and two native audit passes; no baseline/threshold/reference changes. Socket and rich-host assignments continue. The resumed-native-thread MCP old-seat identity defect is recorded as a gap; do not bypass identity or edit capabilities. Intermediate signed operational report is [[reports/2026-11-03-codex-oracle-takeover-interim]] (#17033), committed at 5e8e0583a9df8e780c6a80befbfd107ab64b86cd; parent product remains open.
 
 Cleanup continuation: disk use returned to 94% during the new builds. The own recovery worker/report-recovery seats are closed_retained and af65c6c is published; its source tree and raw/formal evidence remain retained because the host watches the root directory. The operator's existing cleanup authorization permits removing only this retired worker's rebuildable target/{debug,release}/{incremental,build,deps,.fingerprint} caches after a fresh exact-path lsof check, clean Git/main ancestry proof and no-symlink check. Keep target/recovery, target/formal, verification/evidence, captures, packages and all source/refs. No whole-worktree deletion while its root is held; no active Codex worktree or global cache/config changes.
+Operator steering, 2026-11-03 22:24 UTC: the standalone native GUI in image1 is the required embedded harness face; image2 is explicitly the pre-restart term build, not proof that the pending rich code failed. Rebuild, install and verify the new term UI autonomously without requiring the operator to restart it; preserve the supervised agents/session owners through any normal GUI detach/reattach. Every spawn path (direct/native, harness exec profile, harness ACP backend/front end) must deliver equivalent role/name/task/workspace prompts, admitted MCP/tool context, intended model/approval flags and session identity. Compare provider-specific flag semantics, not incompatible literal argv. IR is the rendering boundary: same shared HarnessView/toolkit and same envelopes; no terminal text parsing or second renderer. Process fixtures must prove downstream context/tools actually arrive, including resume/profile change; never launch a real Claude provider or spend inference to prove this. Preserve file-based capability custody/redaction and per-seat grants; no global configs/credentials or cross-seat capability copying.
+
+One newly discovered critical gap is harness src/gateway/host.rs ACP actor loading, which omits LaunchOptions, and src/backend/acp_agent.rs session/new currently emits mcpServers:[] while send_prompt does not include the launch prompt. Delegate a second bounded Codex executor to fix and prove that launch boundary in the now-finished clean socket worktree, reusing its warm target to avoid duplicate disk use; preserve pane/b1-b2 and published2fb78a0. Host continues independent integration then consumes the new verified published pin for one final combined gate. No optional cohorts.
+
+Resource disposition: the operator prioritizes delivery speed and disk/inference. Optional visual task17271 is historically superseded (operation01M6HQ42GSWYXABDNCB78SPHD7), not accepted as implemented; its closed seat's unfinished six files, diff and hashes are preserved in own evidence deferred-visual-source.{zip,json,diff}. No baseline adoption occurs, so the two-pass requirement remains conditional on any later adoption, not a blocker to this delivery. Socket task15249 is accepted and published2fb78a0; canonical make install plus installed private native startup smoke and strict approved signature passed. Current only productive delivery assignments are rich-host and the bounded launch-context fix. Remove only the exact deferred visual target/{debug,release}/{incremental,build,deps,.fingerprint} caches after fresh MCP closed_retained/actual exit, no-symlink and exact-path lsof checks, preserving every source byte, raw log/capture and evidence. Never delete the reused socket target or active host caches. Keep a before/after disk and retained-evidence hash manifest. Oracle's verify instrument may reflect this honest deferred/no-adoption disposition while still enforcing two passes for any adoption. Product completion still requires actual installed rich term and launch-context evidence; no unverified acceptance.
+
+Task locator correction: the single active launch-context assignment is [[tasks/2026-11-03-codex-agent-context]], task01M6HRGGBFA6Z97D4TPDSZWPK8, seat01M6HRD7KZD5Q336S88VRS5HJX. Two earlier same-brief records01M6HRD5XR91MD7MH557R77N5Y and01M6HREVGM5DB1KQ1P4CZ20VWH remain preserved because normalized nested/canonical paths make lifecycle preflight ambiguous/conflicting even with an ID lookup (rejected operations01M6HREW73HS0HSBN4T8352DKY/01M6HREWVJ7W9GBRES55FWDPG2/01M6HRFDYBR7KF7Q6CEE8BT0SM/01M6HRFEDEZGS62EF0MABER34F; no effects). They are not additional productive assignments; no shell record rewrite or deletion is authorized as a bypass. Record the gap; do not expand this delivery to task-system implementation repair.

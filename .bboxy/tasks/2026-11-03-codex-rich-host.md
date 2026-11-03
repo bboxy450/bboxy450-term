@@ -1,7 +1,7 @@
 ---
 type: task
 title: 'Host the shared rich harness view in term: socket delivery, resume and native pane'
-status: rejected
+status: claimed
 role: executor
 assignee: seat:01M6HCYVGE7CJ8KK6PB20SPF3D
 delegated_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
@@ -27,7 +27,7 @@ allowed_paths:
 verify: make test-parity
 parent: 01M6HCH1SJHDSB6SDAC2ZF1BXX
 id: 01M6HCYDWBAX2FDYGMSPB12HRN
-updated: 2026-11-03T20:49:04.238Z
+updated: 2026-11-03T22:32:56.170Z
 created: 2026-11-03T19:07:32.055Z
 number: 15252
 created_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
@@ -37,106 +37,38 @@ authorship:
   kind: seat
   public_key: B3hFSjBIE1Nnj7mw9Eg9pqyRpYHF/GQaKXPyV1KAod0=
   process_generation: '1'
-verify_result:
-  command: BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make test-parity
-  exit_code: 2
-  evidence:
-  - criterion: A3/A4 delivery, stable op ID, typed outcomes, zero PTY bytes, interrupted/resumed process
-    reference: /tmp/codex-rich-native-current.log; crates/bbt-mux/tests/mcp.rs:5069; .bboxy/runs/codex-rich-host.json
-  - criterion: Shared native view, composer/Stop/approval/profile, cursor reattach and key routing
-    reference: crates/bboxy450-term/tests/rich_client.rs:59; /tmp/codex-rich-native-current.log
-  - criterion: Native standalone vs term pane parity
-    reference: 'target/rich-pane-parity/report.json: row_structure_mismatch=0.0; identical capture SHA256 0e0ead94269625e5eb98bcebb27a398702f593c5ecd01463272c6806f33a591e'
-  - criterion: Formal safety/liveness, four good/broken pairs, full graph equality
-    reference: /tmp/codex-rich-formal-complete.log; evidence SHA256 cca2509fa9222bc0d2648a95b43453ba43677c6c1b6768f4a0ec81b956fd262d; 284 models, 34 crates, 116 contracts; dirty=true
-  - criterion: Boundary and persistence regressions
-    reference: '/tmp/codex-rich-boundaries.log: exit 0, 39 passed; /tmp/codex-rich-window-journal.log: 8 passed'
-  - criterion: Strict all-target lint, license/notice and layering gates
-    reference: '/tmp/codex-rich-quality.log: exit 0; /tmp/codex-rich-layering-final.log: held, exit 0'
-  - criterion: Acceptance blocker and limits
-    reference: 'reports/2026-11-03-codex-rich-host.md; /tmp/codex-rich-parity.log: dirty source, exit 2; /tmp/codex-rich-receipt.log: clean source required, exit 2'
-report:
-  summary: 'BLOCKED on final integration, not ready for acceptance. Signed candidate 678eb9fc implements A3/A4 socket delivery/resume and A1/A2 shared HarnessView panes, tested against private signed harness d5e7249a01bf4830c79979aa7a8e2f17753be83b. Native/process, boundaries, strict lint/licenses and 284-model native/TLC parity passed; offscreen row mismatch 0.0, four-view composition p99 0.033417 ms (load/heap limits remain unmeasured). Full test-parity and clean formal receipt both exit 2 because the unpublished candidate gitlink is intentionally unstaged. Need the published combined standalone+B1/B2 SHA and a signed task amendment allowing its gitlink, then remaining combined-pin detach/IR1.2/budget checks. Full committed report #17675 names every gap and evidence. Four artifact claims were rejected provider_busy, explicitly no effect admitted; their operation IDs are committed in the run summary. No push, merge, publication or trusted install.'
-  commit: 678eb9fc14ff4937af81363f3269d830967c9c52
-  reported_by: seat:01M6HCYVGE7CJ8KK6PB20SPF3D
-  op_id: 01M6HJNRV0DWENPY72MTW4HF2P
-  verify_revision: 0
-  report: '[[reports/2026-11-03-codex-rich-host.md]]'
-rejection:
-  reason: 'Preliminary report #17675 is retained and useful, but verify command differs from the canonical task and exits 2; clean formal evidence also exits 2, private gitlink is unstaged, and combined App detach/status/IR1.2/budget plus stale Cancel witness are outstanding. Continue under the signed amendment authorizing exact gitlink path and independent remaining work. A new superseding final report must include the published combined pin and all current-source checks; no operator approval is needed.'
-  by: seat:01M6H97SAX3GN1BYB4YG76P3P0
+artifacts:
+- '[[01M6HMRXN8JZ9V0YM7RKG4DQ1P]]'
+- '[[01M6HPCV8J7YXY3XB3JR049KHH]]'
 provenance:
-  digest: sha256:1a4bc98b3729a0d587a986c69c0421b5e13c01a502a8d03d311e8b6f1f63b2d0
-  frontmatter_digest: sha256:b3c936add189c7c98b59f6af06275b6b1ff26ef6379404438f6cbe37d1a4d861
+  digest: sha256:9847b68eae35c8dc0cc820c2eb8780507a9625975fd182733348dacb5dace2ab
+  frontmatter_digest: sha256:f3e3f56c71014946a04ba4b190e05b8b9dcc470b705f8cf783dcd85c0441297b
   signer: seat:01M6H97SAX3GN1BYB4YG76P3P0
-  sig: Wg4PG577TB1kjFB2KXCy2z7iwNpsAQ8YJJIFCpyGpZ+OkDKQ0xhbVv4dx8+mPlr+2xWfgOdYCq7M7ZRhGMaSDA==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#100558
+  sig: 5le3Bjn+WVkc2egJtoRhUzVBjxHS8Wr7+M02sXEdFuoVJK1J71fGvnih4+cAYqXDM0pn74CWJaBShKjIRDllBQ==
+  log: .bboxy/log/2026-11-03.part-86213.jsonl#107260
 ---
-ROLE: EXECUTOR. Work ONLY in /Users/feral/mydev/bboxy450-term-codex-rich, branch codex-rich-pane-20261103, created from origin/main 1affb986. The operator's screenshot is a PTY line-mode harness, and asks for the standalone native harness face embedded in term. Implement term Side A of the existing rich-pane ICD, preserving the session process and sharing HarnessView rather than building another renderer.
+ROLE: EXECUTOR. Current final-delivery brief, 2026-11-03. The operator directed faster delivery and lower disk/inference use. Work only in /Users/feral/mydev/bboxy450-term-codex-rich, branch codex-rich-pane-20261103, within the unchanged allowed_paths. Finish the shared native harness pane; no new features, optional polish, unrelated refactors or repeated component reports. Preserve source, original refs, reports and formal evidence. Exact staging and approved signed commits. No recruitment, push, merge to main, publication, trusted install, credentials, global settings or OS input.
 
-Read own AGENTS.md/ATTRIBUTION.md/vision, .bboxy/interfaces/app-harness.md, harness origin/main .bboxy/interfaces/rich-pane.md (Side A §2–§9), d5977 dependency direction and the binding A3/A4 brief at /Users/feral/mydev/bboxy450-term-wt-architect/.bboxy/tasks/2026-11-02-rich-pane-a34-delivery.md. That brief defines the delivery phase; this direct operator task additionally authorizes the following A1/A2 native pane phase. Complete the delivery boundary first and then the view. No global settings, credentials, OS clicks/keystrokes or operator screen capture.
+The required combined harness is NOW PUBLISHED on main: 2fb78a017992f73468b6fa9fe5edbc48ba27f05c. Oracle verified all ten signatures, all273 unchanged canonical input hashes, full RUSTC_WRAPPER= make test exit0, five GUI rows0, real false-subscription/actual term consumer heartbeat red101/restored0 and clean report-HEAD112-model/38-contract native/TLC evidence. Report [[reports/2026-11-03-codex-rich-socket-integrated]] (#18870). Exact gitlink path crates/bboxy450-harness is ALREADY authorized in allowed_paths; no further scope permission is needed. Use canonical make bump-harness REV=2fb78a017992f73468b6fa9fe5edbc48ba27f05c and commit the published pin. Remove the private-candidate override for final checks. Retain one toolkit copy and the unchanged layering gate.
 
-A3/A4: term-chosen <=96-byte socket path in launch argv; async per-seat connection, Hello/session/epoch tracking and persisted session ID; generation fencing and reconnect; seat_input_text/composer submits idempotent UserTurn over Unix BEFORE PTY arbitration, correct Ack/Busy/Closed/unknown outcomes, zero PTY bytes. Add bboxy450-harness resume admission to seat_spawn with validated session format and a real interrupted/resumed process witness; the harness CLI already supports seat --resume. Read the ACTUAL current origin/main code, not stale line numbers from handoffs.
+Remaining implementation/integration:
+1. Finish additive IR1.2/Origin/Quiet/capture API migration against that published pin. Preserve recovered quiet Native/Usage zero geometry, chrome/zoom, phase heartbeat and agent-turn behavior. Shared HarnessView remains the renderer; no terminal-text parser or second renderer.
+2. Recover the outstanding completed status-term component from preserved clean branch fix/harness-status-term, tip76e8ba8ed29f6cc8a64e9b9ec0620d8301f85ac1, in /Users/feral/mydev/bboxy450-term-status. Implementation commits3dbc5e20d6673dc7447d6e907b073c75b57a7695 and beea4c84bd1fe311c6852a507f40e2ba326873a4; signed report commits1ea058b4 and76e8ba8e. Inspect their source and reports2026-11-03-status-term{,-verified,-phase-1c,-phase-1c-verified}.md. Preserve that original tree/ref. Recover status mechanism/tests/models, excluding unrelated generated attribution-map changes and stale pin. Retain both RichHost and status contracts. Current-generation Reported beats cadence/lower_recent; exact peer-PID/UID/Hello session log discovery is bounded/off-thread; original ts_ms retained, EOF/Hello never refresh it; only an open turn is stale after60s, detail no word for1m and dimmed rim while Reported; close clears errors. Run its existing20s OSC-only/log-only quiet-tool and approval/error/close/staleness cases and cadence mutation on the combined cut.
+3. Keep the verified Cancel session/epoch/generation/ready/retired fence and actual stale-A/new-approval cases; current identity still denies exactly once, stale cases emit zero ResolveApproval. Preserve its causal control and model. Reports#18711/#18874 are historical component evidence, not final acceptance.
+4. Complete the real App/backend rich-harness detach/reattach witness on the final pin: turn survives, cursor resumes, durable seq1..head no gap/duplicate, no Close, owned process stays alive. Preserve all A3/A4 socket path<=96bytes, generation/epoch/original-session fences, deterministic message op IDs, Ack/duplicate/Busy/Closed/unknown outcomes, zero PTY bytes and real interrupted/resumed seat checks. Test actual durable-only consumer idle Status freshness past20s. The producer now forwards existing Status regardless of item-ephemeral preference; do not add another heartbeat or fabricate progress.
 
-A1/A2: per-pane Terminal/HarnessRich face; HarnessRich for announced harness sessions; render the shared HarnessView Frame with the existing renderer in the pane, forward its composer/stop/approvals over the socket, persist the face preference, keep PTY ownership and detach/reopen semantics. Missing socket honestly shows starting/unavailable and the Terminal toggle. No UI/logic-thread IO. Keep the explicit aggregate drain/projection/memory budgets in the ICD; measure and label remaining limits honestly.
+Budget disposition—no numerical limit is raised. Read rich-pane §7 in its stated term-frame CPU-path context: keep aggregate UI drain0.3ms and rich UI projection/composition0.6ms allocations. The actual App benchmark's measured UI spans and the Side B injected scheduling/no-loss witness are the bounded §9 evidence. The4.018416ms sum is concurrent off-thread elapsed latency, not UI time or CPU usage; it cannot establish a UI-budget violation or a budget PASS. Keep it visible and accurately named. Keep layout/Markdown/IO off UI, bounded/coalesced per-view work, hidden/occluded actors0 and no dropped durable data. Whole-frame120Hz/4ms, background CPU/load and heap remain UNPROVEN/UNMEASURED;32MiB/view remains an unmeasured allocation. Do not claim those broader bounds met. This honest limit is recorded, not an operator-permission blocker. Re-run the actual App/bench-budgets row on the final pin and report observations; do not add a resource framework, alter tolerances or chase optional micro-optimizations. Earlier full budget/report text remains in [[reports/2026-11-03-codex-rich-host-budgets]] (#18874).
 
-Coordinate with rich-socket seat 01M6HCVV32KS845WHVD5FCX7QE for B1/B2 and with standalone recovery. Implement against private scripted Unix fixtures immediately; do not park waiting for a peer. Test real integrated B1/B2 when available using a pinned candidate with one toolkit copy; record the exact harness commit. Do not move the committed submodule pin to an unpublished commit: report the required pin to the Oracle. Term main currently has a layering failure after the 0c40316 pin; inspect and reuse the already-prepared signed fix dfb21967c0157aebcadec5b028d300abd86203ce if applicable, with a real layering check. Do not weaken the layering gate.
+Final verification is exactly make test-parity on clean committed source, plus required native/boundary, source-current native/Java TLC/formal evidence, toolkit-copy/layering/license and real integration controls. Use Make, private identities/HOME/sockets, two Cargo jobs and worktree-local target. Reuse coverage/logs when the canonical stack already ran a required check on identical inputs; do not run full CI twice for landing. Keep the exact-HEAD ci-local source/result log for Oracle's scripts/land.sh --gate-log reuse. One full machine gate at a time, self-service; no operator required. Freeze source once integration is complete, run only missing/stale required gates, and report failures honestly. No acceptance from dirty/private-pin proof or override command.
 
-Verification: formal-first state variables/bounds/owners/atomic actions, safety/liveness/fairness; good and broken controls for delivery duplication, stale identity A→B→A, reconnect/detach, and routing. Private scripted process witness for each ICD acceptance clause, zero PTY byte assertions, resume witness, and an offscreen capture of the same fixture in standalone vs rich pane with row mismatch <=0.01. Run make test-harness-native, make test-boundaries and make test-parity on the final candidate, using the canonical targets and current-source native/TLC formal evidence. Full machine gates run one at a time, self-service with process evidence; no operator input.
+Stop only for a real all-work blocker with evidence and exact decision needed. Do not park behind the now-resolved pin/scope questions; the above independent work is authorized. One final append-only report superseding #18874, with Report trailer, exact final commits/pin, actual command exits/log hashes, evidence per ICD clause, source/model/tool hashes, actual budget/parity numbers and remaining limits. Register through knowledge tools then task_report. Prior reports#17675/#18711/#18874 and their signed commits remain preserved; no source/code publication by this Executor.
 
-No recruitment, push, merge, publication or trusted install. Exact staging, signed commits, preserve existing source. Full report .bboxy/reports/2026-11-03-codex-rich-host.md with Report trailer, harness hash, file:line mechanisms, real exits, budget/parity numbers, negative controls and gaps; register through knowledge tools and task_report.
+Operator clarification/requirement, 2026-11-03: image1 is the installed standalone native GUI; image2 is explicitly the old running term build because the operator has not/cannot restart it. It is not evidence that your pending rich implementation failed. Deliver the new built/installed term autonomously, with no operator restart/click/authorization requirement. Oracle owns trusted install and live UI activation after green; your private real-App detach/reattach witness must prove session/agent owner survives and new rich face renders. Never stop the operator's agents, restart all processes, or bypass MCP through shell ctl.
 
-Outstanding term recovery, consumed before the final full gate: integrate the completed status-term component from preserved branch fix/harness-status-term, tip 76e8ba8ed29f6cc8a64e9b9ec0620d8301f85ac1. Its two implementation commits are 3dbc5e20d6673dc7447d6e907b073c75b57a7695 and beea4c84bd1fe311c6852a507f40e2ba326873a4; 1ea058b4 and 76e8ba8e are signed reports. Read the actual diffs and .bboxy/reports/2026-11-03-status-term{,-verified,-phase-1c,-phase-1c-verified}.md in /Users/feral/mydev/bboxy450-term-status. Preserve that original worktree/ref unchanged. Recover the complete status mechanism and its tests/models in your own integration branch; do not wholesale import unrelated generated crate ATTRIBUTION changes or the stale harness pin. Related code/report/script paths are already in your allowed source scope. Resolve overlapping SeatInfo/gui fields, launch code and formal inventories while retaining both contracts.
+Acceptance refinement: prove the same shared HarnessView and IR fixture renders in standalone and embedded panes, with the required native row comparison and actual App composer/approval/scroll/focus interactions. The default new/reopened harness pane must use rich face when session announcement is valid. An explicitly saved Terminal face preference remains an intentional toggle, not an accidental fallback; give Oracle exact scripted activation/reopen controls. No second text parser/renderer or baseline adoption. Refinement is limited to making this existing UI work and reach the installed app; optional visual polish task remains deferred.
 
-Status acceptance is ICD app-harness phase 1c: current-generation Reported activity wins over cadence/lower_recent; native session log is matched through kernel peer PID/uid and exact Hello session, read off-thread with bounded append cursor; original ts_ms is retained and EOF/Hello do not refresh it; only an open turn goes stale after 60 seconds, detail says no word for 1m and rim dims while activity remains Reported; close clears errors. Existing real quiet-tool 20s OSC-only and log-only, approval/error/close/staleness witnesses and actual cadence mutation must be run on the combined candidate. Keep native/TLC status models and broken controls alongside RichHost. Historical reports explicitly do NOT claim current full CI: canonical make test-parity, native, boundaries and current formal evidence on the final combined source still decide. This is recovery of the remaining interrupted cohort's completed component, not permission to change credentials, publish, install or expand into unrelated features.
+The operator calls launch-context parity CRUCIAL: direct/native codex/claude seats versus bboxy harness exec/ACP profiles must carry equivalent role/name/workspace/task prompts, admitted MCP/tools, intended model/approval flags and session identity. Your current launch.rs supplies startup_prompt and mcp.json but its embedded test only compares Claude prompt/file bytes. Audit actual launch plan and child context semantics, include the workflow skill information the direct Codex path receives, preserve quoting/cwd/resume/generation/profile behavior, and prove this through real private process/MCP fixtures rather than argv-only claims. No broad global settings/credentials changes or real Claude/provider requests. Existing allowed launch/adapter/test paths cover this.
 
-## Report from seat:01M6HCYVGE7CJ8KK6PB20SPF3D
+Side B critical fix is delegated as [[tasks/2026-11-03-codex-agent-context]], seat01M6HRD7KZD5Q336S88VRS5HJX in harness-pane-b12, branch codex-launch-parity-20261103. Source discovery: harness Host ACP actor drops LaunchOptions; downstream session/new has mcpServers:[] and prompt omits launcher context. Do not handwave tool parity as solved by --mcp-config existing in outer argv. Coordinate the exact context contract with that worker, keep your independent migrations/status/App/launch fixtures moving, then consume its Oracle-verified published successor to2fb78a0 for the final pin and canonical gate. No private pin accepted. Source2fb remains the current valid base for independent work; the new pin is the only producer dependency. Only one final combined full gate; reuse current-input focused coverage. Your final report must include both native rendering evidence and actual downstream launch/tool-context results or explicit unsupported gaps—no unproven overall parity claim.
 
-BLOCKED on final integration, not ready for acceptance. Signed candidate 678eb9fc implements A3/A4 socket delivery/resume and A1/A2 shared HarnessView panes, tested against private signed harness d5e7249a01bf4830c79979aa7a8e2f17753be83b. Native/process, boundaries, strict lint/licenses and 284-model native/TLC parity passed; offscreen row mismatch 0.0, four-view composition p99 0.033417 ms (load/heap limits remain unmeasured). Full test-parity and clean formal receipt both exit 2 because the unpublished candidate gitlink is intentionally unstaged. Need the published combined standalone+B1/B2 SHA and a signed task amendment allowing its gitlink, then remaining combined-pin detach/IR1.2/budget checks. Full committed report #17675 names every gap and evidence. Four artifact claims were rejected provider_busy, explicitly no effect admitted; their operation IDs are committed in the run summary. No push, merge, publication or trusted install.
-
-```json
-{
-  "op_id": "01M6HJNRV0DWENPY72MTW4HF2P",
-  "commit": "678eb9fc14ff4937af81363f3269d830967c9c52",
-  "report": "[[reports/2026-11-03-codex-rich-host.md]]",
-  "verify_result": {
-    "command": "BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make test-parity",
-    "exit_code": 2,
-    "evidence": [
-      {
-        "criterion": "A3/A4 delivery, stable op ID, typed outcomes, zero PTY bytes, interrupted/resumed process",
-        "reference": "/tmp/codex-rich-native-current.log; crates/bbt-mux/tests/mcp.rs:5069; .bboxy/runs/codex-rich-host.json"
-      },
-      {
-        "criterion": "Shared native view, composer/Stop/approval/profile, cursor reattach and key routing",
-        "reference": "crates/bboxy450-term/tests/rich_client.rs:59; /tmp/codex-rich-native-current.log"
-      },
-      {
-        "criterion": "Native standalone vs term pane parity",
-        "reference": "target/rich-pane-parity/report.json: row_structure_mismatch=0.0; identical capture SHA256 0e0ead94269625e5eb98bcebb27a398702f593c5ecd01463272c6806f33a591e"
-      },
-      {
-        "criterion": "Formal safety/liveness, four good/broken pairs, full graph equality",
-        "reference": "/tmp/codex-rich-formal-complete.log; evidence SHA256 cca2509fa9222bc0d2648a95b43453ba43677c6c1b6768f4a0ec81b956fd262d; 284 models, 34 crates, 116 contracts; dirty=true"
-      },
-      {
-        "criterion": "Boundary and persistence regressions",
-        "reference": "/tmp/codex-rich-boundaries.log: exit 0, 39 passed; /tmp/codex-rich-window-journal.log: 8 passed"
-      },
-      {
-        "criterion": "Strict all-target lint, license/notice and layering gates",
-        "reference": "/tmp/codex-rich-quality.log: exit 0; /tmp/codex-rich-layering-final.log: held, exit 0"
-      },
-      {
-        "criterion": "Acceptance blocker and limits",
-        "reference": "reports/2026-11-03-codex-rich-host.md; /tmp/codex-rich-parity.log: dirty source, exit 2; /tmp/codex-rich-receipt.log: clean source required, exit 2"
-      }
-    ]
-  }
-}
-```
-
-
-Oracle continuation after preliminary report #17675: preserve that signed report and its truthful exit-2/dirty-source evidence as history. The exact gitlink path crates/bboxy450-harness is now authorized for the final PUBLISHED combined harness SHA; no private/unpublished candidate pin may be committed. The socket author is integrating published af65c6c and adding §9's aggregate witness. Do useful independent work now: consume the earlier status-term recovery amendment, fix/test stale Cancel identity, add the canonical bench row and prepare the actual App detach/reattach witness; the final pin/gates follow publication without operator approval.
-
-Concrete Oracle review: rich_pane.rs:108 fences stale/unready Enter/Click, but Input::Cancel at :120 bypasses captured Request.session. Shared HarnessView::cancel_prompt synchronizes the CURRENT approval and can send Deny. Fence Cancel against the displayed/captured identity/readiness before any operation; prove an Escape delayed from A cannot deny B's approval (including epoch/generation distinctions where needed), with a deterministic process/API witness and causal broken control. The app-level rich detach/reattach case and make bench-budgets row in ICD §9 are required; the 4x paints clone microbenchmark is not total budget proof. Keep actual under-load and heap limits UNMEASURED when unmeasured. Canonical verify remains exactly make test-parity, with final native, boundary and clean formal checks; the preliminary override command/exit2 cannot satisfy it. Send a new append-only report superseding #17675 once all final checks are current.
+Deployment handoff requirement from the operator's "I can't restart": provide the exact canonical Make workflow/normal app lifecycle action that Oracle can use after green to activate the installed rich GUI while keeping the current supervisor/agent owners alive. Existing make install replaces bytes, and opening an already-running app alone does not prove the new code is running. Verify installed revision AND actual running GUI generation/source, with preserved seat/session identities and no duplicated UI owner. Existing shell ctl is the operator door and is not a permitted live-seat bypass; do not read live capability files, inject OS input, broadly kill processes or stop the backend. Use the existing supported app lifecycle path; if a narrow unattended installer/UI handoff workflow is missing, implement it under this task's existing Make/scripts/proto/mux/App scope and prove it with private real-process detach/reopen, before describing deployment as complete. Keep it limited to GUI replacement and preserve the old build/session on failure. No new general control framework or optional features. Oracle will perform the trusted installation/activation, not the Executor.
