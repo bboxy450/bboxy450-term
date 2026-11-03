@@ -19,7 +19,7 @@ id: 01M6HGCSS1W74GRFPQW3V7RAVY
 status: claimed
 delegated_by: seat:01M6HF0S1BAJKHWT2N426W7328
 swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-03T20:08:55.292Z
+updated: 2026-11-03T20:21:30.097Z
 created: 2026-11-03T20:07:48.593Z
 number: 16417
 created_by: seat:01M6HF0S1BAJKHWT2N426W7328
@@ -32,11 +32,11 @@ authorship:
 assignee: seat:01M6HGCVKFA0E7CEGE8E7Q5D5P
 verify_revision: 1
 provenance:
-  digest: sha256:908fba1ddea06486292abf71fd5d804ab99d0dbcdb4ef52cd7a6cf59f031798a
-  frontmatter_digest: sha256:9c01429720d1e35565de49733df9de88fc0a1d04f54e0f33b55a31e535140338
+  digest: sha256:16f4fd5976be99b0e57f411b6d3a0204b969e9059e3bf084b3d4bfbe739cfbfb
+  frontmatter_digest: sha256:a076641d7e88b0663ad0fb63d381e96acc605ff574b1dfa967e63583f312e4ad
   signer: seat:01M6HF0S1BAJKHWT2N426W7328
-  sig: WS7mFPHozhKoJH67u7WYqtSprQ6rOS8HPbPD+n5daTWmyAmkMa+11CBmJf4xAC3GpijBbrOma7mgR6mSGu58Cg==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#95407
+  sig: c/vX0jFWkT3hr5i8jUqpY9J910CQJrqomwDwatskyIixr3unnkoGlFB+p3iNf+Bxa3oqQIHPf9skZ9i6uQcYCQ==
+  log: .bboxy/log/2026-11-03.part-86213.jsonl#98129
 ---
 # Restore the startup modal's input gates without weakening existing assertions
 
@@ -53,3 +53,8 @@ Startup-modal 1affb986 introduced the extra keyboard route and initially-visible
 Run the four focused regressions and the startup model test first. The existing main-green run is still running: do not write its worktree or repeat its full suite. A separate real bboxy Executor repairs the unrelated malformed startup-modal report under #16394; do not duplicate that patch. Add a canonical `make test-startup-input-regressions` target in Makefile for these four regressions, the startup model test, and any added focused modal admission regression. Run that focused target on your final signed source. Do NOT wait for #16394 to land: it cannot land until your fixes are integrated. Once focused checks pass, commit and task_report the implementation to this Oracle; #16394's Executor is the designated integrator and will cherry-pick your signed cut, run the full make test on the combined source, and land it. Do not run another full make test or independently push this branch. Keep final task reporting honest: focused target is your verify; full integration is #16394's obligation. No gate waivers, exclusions or operator input. Use existing Make targets, two Cargo jobs/worktree-local target. Full make test/test-formal currently use `/Users/feral/mydev/.bboxy-fulltest.lock`; release only your own claim. Targeted checks need no lock.
 
 Your implementation is authorized for the integration landing through #16394; send the signed commit/report instead of independently landing. Copy this task record unchanged into the branch. Allocate your full report number through knowledge_write/Index, then copy the signed report into this worktree at .bboxy/reports/2026-11-03-startup-modal-input-regressions.md. Signed commit + Report trailer and task_report to this Oracle with actual commands/exits, source lines, remaining gaps and worktree state. Preserve origin headers.
+
+
+## Upstream changed during your run (2026-11-03 20:21 UTC)
+
+origin/main now includes signed 6f2eddce82536857f7a8561e65c9f8269b2e3c29, `Repair startup-modal regressions blocking the launch fix gate` (committed 12:11:52 PST after this task began). It already consolidates the native keyboard arm and attaches all three cursor fixtures. Rebase onto current origin/main immediately, keeping only justified additional normalized-input/repeat/IME correctness and the stronger focused modal regression/Make target. Do not duplicate or reimplement the four upstream fixes, and do not repeat a baseline full suite. Read the actual 6f2eddce diff: its startup gate is in the physical KeyboardInput arm; your normalized key_input/ime_input guard may cover a distinct real ctl seam, which must be demonstrated by your added test before retaining it. If no meaningful residual change remains, report the upstream commit and focused evidence instead of creating redundant code. #16394 remains the sole integration lander for any real residual cut. Notify it/the Oracle of your signed result through task_report as already instructed.

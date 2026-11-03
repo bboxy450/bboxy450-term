@@ -7067,6 +7067,9 @@ impl App {
     }
     // Shared by the winit callback and the private ctl normalized-input seam.
     fn ime_input(&mut self, event: Ime) {
+        if self.startup.visible {
+            return;
+        }
         match event {
             event if self.app_overlays.open() => match event {
                 Ime::Preedit(text, cursor) => {
@@ -7134,6 +7137,28 @@ impl App {
         }
     }
     fn key_input(&mut self, input: &keyboard::Input<'_>) -> Option<RoutedKey> {
+        if self.startup.visible {
+            // Startup owns the normalized key and its repeat/release lifecycle,
+            // including keys still held when the backend attaches.
+            self.keyboard.consumed(input.physical_key, input.state);
+            if input.state.is_pressed() && !input.repeat {
+                let mods = input.modifiers.state;
+                if mods.super_key()
+                    && !mods.shift_key()
+                    && keyboard::shortcut_key(input) == Some('q')
+                {
+                    return Some(if mods.alt_key() {
+                        RoutedKey::HardQuit
+                    } else {
+                        RoutedKey::Quit
+                    });
+                }
+                if input.logical_key == Key::Named(NamedKey::Enter) {
+                    self.retry_startup();
+                }
+            }
+            return None;
+        }
         if self.overlay_key(input) {
             self.keyboard.consumed(input.physical_key, input.state);
             return None;
@@ -9145,23 +9170,6 @@ impl ApplicationHandler<UiEvent> for App {
             } => self.overlay_right_click(self.pointer),
             WindowEvent::Ime(event) => self.ime_input(event),
             WindowEvent::KeyboardInput { event, .. } => {
-                if self.startup.visible {
-                    if event.state.is_pressed() && !event.repeat {
-                        if self.modifiers.super_key()
-                            && !self.modifiers.shift_key()
-                            && event.logical_key == Key::Character("q".into())
-                        {
-                            if self.modifiers.alt_key() {
-                                self.request_shutdown(event_loop);
-                            } else {
-                                self.request_close(event_loop);
-                            }
-                        } else if event.logical_key == Key::Named(NamedKey::Enter) {
-                            self.retry_startup();
-                        }
-                    }
-                    return;
-                }
                 if event.state == ElementState::Pressed {
                     self.cancel_ui(
                         "ui_frame_refused: physical keyboard input superseded this request",
@@ -9171,6 +9179,7 @@ impl ApplicationHandler<UiEvent> for App {
                 // Verification-only resize exercises the real OS Resized event
                 // on borderless windows whose native edge is hard to grab.
                 if event.state.is_pressed()
+                    && !self.startup.visible
                     && self.capture.is_some()
                     && self.modifiers.super_key()
                     && self.modifiers.shift_key()
@@ -9192,6 +9201,7 @@ impl ApplicationHandler<UiEvent> for App {
                 // The existing --capture path can be refreshed after an
                 // interactive verification scene (no readback on the UI).
                 if event.state.is_pressed()
+                    && !self.startup.visible
                     && self.capture.is_some()
                     && self.modifiers.super_key()
                     && self.modifiers.shift_key()
@@ -10469,6 +10479,160 @@ mod lazy_projection_tests {
             messaging::Status::Unknown(_)
         ));
         assert!(!app.composer_client.retry().is_empty());
+    }
+    #[test]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "private home and isolated UI registration"
+    )]
+    fn startup_modal_owns_normalized_keys_and_cursors_until_attachment() {
+        const CHILD: &str = "BBOXY_STARTUP_INPUT_TEST_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let home = tempfile::tempdir().unwrap();
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", "lazy_projection_tests::startup_modal_owns_normalized_keys_and_cursors_until_attachment", "--nocapture", "--test-threads=1"])
+                .env(CHILD, "1")
+                .env("HOME", home.path())
+                .env("ZDOTDIR", home.path())
+                .env("CODEX_HOME", home.path().join(".codex"))
+                .env("CLAUDE_CONFIG_DIR", home.path().join(".claude"))
+                .output().unwrap();
+            assert!(
+                output.status.success(),
+                "{}\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return;
+        }
+        let (mut app, _) = fixture();
+        app.test_account = true;
+        let seat = SeatId::from_u128(1);
+        let record =
+            bbt_proto::SeatRecord::new(bbt_mux::Ulid(1), bbt_mux::Ulid(90), "covered seat", "zsh");
+        let mut model = bboxy450_term::model::build_at(
+            &[record],
+            &bboxy450_term::grids::Grids::new(),
+            &Default::default(),
+            Instant::now(),
+            1000,
+        );
+        model.identity = Some(bbt_proto::GuiIdentity {
+            state: bbt_proto::GuiIdentityState::LocalDev,
+            private_test_run: Some(bbt_mux::Ulid(99)),
+            reason: None,
+        });
+        let mut term = bbt_core::Term::new(40, 2, 0);
+        term.advance(b"\x1b[>11u");
+        model.screens.insert(
+            seat,
+            Arc::new(bbt_proto::Screen::from_term(
+                &term,
+                String::new(),
+                None,
+                None,
+            )),
+        );
+        app.scene.set_model(&model, &model.ui.window.stage);
+        app.focus.stage = Some(model.ui.window.stage.clone());
+        app.live_state = Some(Arc::new(model));
+        app.solve_ui([1200., 900.]).unwrap();
+        app.live_commands = Some(live::disconnected_commands());
+        let pending = app.pending_commands.len();
+        let rect = app.navigation_regions[0].1;
+        let covered = [rect.x + rect.w / 2., rect.y + rect.h / 2.];
+        assert!(
+            app.startup.visible,
+            "real headless cold start must remain modal"
+        );
+        assert_eq!(app.cursor_at(covered), bbt_ui::cursor::Cursor::Default);
+        use bbt_proto::gui::{UiInput, UiKeyEvent, UiRequest};
+        let key = |event| UiInput::Key {
+            logical: "a".into(),
+            physical: "KeyA".into(),
+            unmodified: "a".into(),
+            text: Some("a".into()),
+            text_all_modifiers: Some("a".into()),
+            event,
+            modifiers: Default::default(),
+            location: "Standard".into(),
+        };
+        let inject = |app: &mut App, input| {
+            app.apply_ui(bbt_mux::Ulid(100), UiRequest::Input(vec![input]))
+                .unwrap();
+        };
+        // Exercise ctl's admitted normalized-input API, which never visits winit.
+        inject(&mut app, key(UiKeyEvent::Press));
+        assert_eq!(app.pending_commands.len(), pending);
+        assert!(app.key_input(&chrome_input("cmd-t").unwrap()).is_none());
+        assert!(app.launcher.is_none());
+        let mut quit = test_key(
+            &Key::Character("q".into()),
+            PhysicalKey::Code(KeyCode::KeyQ),
+            None,
+            ModifiersState::SUPER,
+            false,
+        );
+        assert_eq!(app.key_input(&quit), Some(RoutedKey::Quit));
+        quit.modifiers.state.insert(ModifiersState::ALT);
+        assert_eq!(app.key_input(&quit), Some(RoutedKey::HardQuit));
+        quit.repeat = true;
+        assert!(app.key_input(&quit).is_none());
+        quit.state = ElementState::Released;
+        assert!(app.key_input(&quit).is_none());
+
+        app.startup.fail("private startup failure".into());
+        app.startup.attached();
+        assert!(
+            app.startup.visible,
+            "attachment cannot clear a sticky failure"
+        );
+        assert_eq!(app.cursor_at(covered), bbt_ui::cursor::Cursor::Default);
+        app.paint_startup_modal().unwrap();
+        fn region(layout: &bbt_ui::components::Layout, key: &str) -> Option<Rect> {
+            if matches!(&layout.kind, bbt_ui::components::LayoutKind::Named(name) if name == key) {
+                return Some(layout.rect);
+            }
+            layout.children.iter().find_map(|child| region(child, key))
+        }
+        for key in ["startup/quit", "startup/retry"] {
+            let rect = region(app.startup_layout.as_ref().unwrap(), key).unwrap();
+            let at = [rect.x + rect.w / 2., rect.y + rect.h / 2.];
+            assert_eq!(app.startup_action_at(at), Some(key));
+            assert_eq!(app.cursor_at(at), bbt_ui::cursor::Cursor::Pointer);
+        }
+        app.composer
+            .handle(ComposeCommand::Focus(ComposeField::Body));
+        inject(
+            &mut app,
+            UiInput::Commit {
+                text: "covered text".into(),
+            },
+        );
+        assert!(app.composer.view.text.is_empty());
+        app.composer.handle(ComposeCommand::Blur);
+        let mut enter = chrome_input("enter").unwrap();
+        enter.repeat = true;
+        assert!(app.key_input(&enter).is_none());
+        assert!(app.startup.error.is_some());
+        enter.repeat = false;
+        assert!(app.key_input(&enter).is_none());
+        assert!(app.startup.error.is_none());
+        assert!(app.startup.visible, "Retry remains modal until attachment");
+        assert_eq!(app.pending_commands.len(), pending);
+        app.startup.attached();
+        assert!(!app.startup.visible);
+        assert_eq!(app.cursor_at(covered), bbt_ui::cursor::Cursor::Pointer);
+        inject(&mut app, key(UiKeyEvent::Repeat));
+        inject(&mut app, key(UiKeyEvent::Release));
+        assert!(
+            app.pending_commands.len() == pending,
+            "modal-owned repeats/releases must not leak after attachment"
+        );
+        inject(&mut app, key(UiKeyEvent::Press));
+        assert!(
+            matches!(app.pending_commands.back(), Some(live::UiMsg::Input { bytes, .. }) if bytes == b"\x1b[97u")
+        );
     }
     pub(super) fn fixture() -> (App, Arc<Latest<Arc<bboxy450_term::model::Model>>>) {
         struct QuietWake;

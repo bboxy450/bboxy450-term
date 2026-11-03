@@ -99,6 +99,7 @@ help:
 	  'make test-decision-graph         Typed decision edges in the private native Graph' \
 	  'make parity-decision-graph       Existing native Graph/reference parity gate' \
 	  'make test-keyboard-input         Headless normalized native Kitty input and navigation' \
+	  'make test-startup-input-regressions Single key adapter, attached cursors and cold/failure input gates' \
 	  'make test-documents-night        Full native D1/D2/D3/D4 private document assertions' \
 	  'make test-documents-activation   Independent document wire refresh with retained native sessions' \
 	  'make parity-documents           Existing strict document gallery geometry gate' \
@@ -459,6 +460,12 @@ parity-decision-graph:
 	PARITY_OUT='$(TARGET_DIR)/parity-decision-graph' sh scripts/parity.sh --cases "$$graph_cases"
 
 .PHONY: test-keyboard-input
+.PHONY: test-startup-input-regressions
+test-startup-input-regressions: tools
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP) \
+	  -E 'test(keyboard_adapter_uses_neutral_core_and_live_modes) | test(arbitrary_dialog_traps_keys_and_resolves_only_its_control_cursors) | test(pointer_cursor_follows_real_controls_overlay_order_resize_and_layout_changes) | test(selection_pointer_owns_mouse_mode_and_command_link_uses_displayed_frame) | test(startup_modal_tracks_progress_failure_retry_and_reattach) | test(startup_modal_owns_normalized_keys_and_cursors_until_attachment)'
+
 test-keyboard-input: build
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib keyboard; \
