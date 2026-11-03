@@ -46,11 +46,15 @@ allowed_paths:
 - .bboxy/decisions/d18864-per-root-projection-writer-ownership.md
 - .bboxy/reports/2026-11-03-logic-recovery-write-route-witness-*.md
 - crates/bboxy450-term/src/startup_modal.rs
+- lab/web/harness-acp.js
+- lab/web/harness-demo.js
+- lab/web/harness/gen.sh
+- lab/web/harness/gen-acp.sh
 id: 01M6HGAE1XXGRJ58SFATHX9R18
 status: claimed
 delegated_by: seat:01M6HF0S1BAJKHWT2N426W7328
 swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-03T22:34:10.705Z
+updated: 2026-11-03T22:45:16.374Z
 created: 2026-11-03T20:06:30.913Z
 number: 16404
 created_by: seat:01M6HF0S1BAJKHWT2N426W7328
@@ -63,11 +67,11 @@ authorship:
 assignee: seat:01M6HGAF8KJMA0860GJ6VYM9E2
 verify_revision: 1
 provenance:
-  digest: sha256:66c743559225e10dd705108490187df6bd8de52799d33f3eff273e746d4593d4
-  frontmatter_digest: sha256:693abb837e51ecb178db34acd33404b2c4b20c48a71c2ddd923f7f355e3939de
+  digest: sha256:ca62c533b398c5520aea6f317f3768de25fd3c6dddbc555aba0b16e9f07387c4
+  frontmatter_digest: sha256:9b3b3905ac5f781e7a99815ff3c2f59db9bcbee7d2b24ac0272fe64d01ded48f
   signer: seat:01M6HF0S1BAJKHWT2N426W7328
-  sig: jbvknMvzZvMQAdf86/MZwf42074OrHWSXDea6f6K9Ik7jdPcwuAmpUSwzhsrBDIbb54j3LjGdHMQKrEXXpcFCg==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#107392
+  sig: CQ7TcNu+rt8/g+pdjwA/Uuvl/AtfWbgtoBotYboteclPRM8WN+vx9hHlhYpuaWOg+tojlYkIW9FCYz0Q5ei/BA==
+  log: .bboxy/log/2026-11-03.part-86213.jsonl#107670
 ---
 # Integrated logic recovery, real write witnesses, and projection ownership
 
@@ -134,3 +138,12 @@ The full report must contain real outcomes. If the final landing's outcome canno
 Oracle verified the canonical --full failure on signed 8011ef8b: startup_modal.rs:107 defines cfg(test) mod tests before region() and impl App; workspace -D warnings therefore rejects items_after_test_module. You are authorized to edit ONLY this item's order in crates/bboxy450-term/src/startup_modal.rs: move the existing test module intact to the end (or place existing production items before it). Preserve every test assertion, production statement and origin notice. Do not add a lint allow, alter behavior/style/geometry, or weaken a test. No new test/model is needed for this mechanical ordering fix. If fresh main already has the equivalent signed repair, consume it instead of duplicating it.
 
 Check the affected existing test and strict lint, then resume sh scripts/land.sh --full for the genuinely changed candidate, retaining valid canonical reuse/incremental checks. This is one newly evidenced failure, not authorization for an unchanged repeat or another standalone broad make test. All ownership/boundary/formal/landing requirements and resource limits remain.
+
+
+## Truthful generated-fixture header repair (2026-11-03)
+
+Oracle verified sh scripts/generated-sources.sh exits 1 solely because the two harness asset first lines name the generator but no additional repository source/reference. Metadata-only edits are authorized in lab/web/harness-acp.js, lab/web/harness-demo.js and the corresponding header-emitting string/comments in lab/web/harness/gen.sh and gen-acp.sh. Leave scripts/generated-sources.sh unchanged.
+
+For demo, name actual repository inputs lab/web/harness/demo and lab/web/harness/rounds/*.sse in the generated header. For ACP, keep the real external-session-log origin explicit: those payloads are not repository fixture files. The existing envelope definition crates/bboxy450-harness/src/protocol/mod.rs is a truthful schema/reference path; label it as a schema reference, not as the recorded session-data input. Do not invent a raw-log repository path, repeat the generator path to trick the count, or imply that current protocol source recreates the old recordings. Match the four files' header emission and retain canonical origin/credit policy metadata.
+
+Do not regenerate either session asset or run the generators to create new sessions. Compare payload bytes after the first newline to the signed pre-change files and assert exact equality. Run sh -n on both generators and sh scripts/generated-sources.sh (must exit 0); report these actual checks. No behavior, session bytes, script execution flow, external logs or guard logic may change. This scoped metadata fix goes into the next real candidate before the canonical full/records-only gate sequence; no waiver or unchanged baseline repeat is authorized.
