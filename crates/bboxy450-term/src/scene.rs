@@ -105,6 +105,10 @@ pub struct ConversationLayout {
     pub available_height: f32,
     pub actions: ui::modules::stream_dock::Regions,
     context: ui::Context,
+    /// The painted list, built once per layout. A layout is replaced, never
+    /// edited, when chat content, size or context changes, so its paint is
+    /// fixed; repainting the whole tree each frame cost ~18 ms of every frame.
+    painted: std::cell::OnceCell<std::sync::Arc<Vec<c::Paint>>>,
 }
 pub struct DocumentLayout {
     pub layout: c::Layout,
@@ -167,7 +171,12 @@ impl LocalPageLayout {
 }
 impl ConversationLayout {
     pub fn paint(&self) -> Vec<c::Paint> {
-        c::paint(&self.layout, self.context)
+        self.painted().as_ref().clone()
+    }
+    /// The retained paint list; clones share its primitives' text and icons.
+    pub fn painted(&self) -> &std::sync::Arc<Vec<c::Paint>> {
+        self.painted
+            .get_or_init(|| std::sync::Arc::new(c::paint(&self.layout, self.context)))
     }
 }
 pub struct LauncherLayout {
@@ -549,7 +558,9 @@ impl Scene {
                 // An in-flight refresh keeps the last value instead of blinking out.
                 let refreshing = reading.as_ref().is_some_and(|r| {
                     r.used.is_none()
-                        && r.reason.as_deref().is_some_and(|s| s.starts_with("Refreshing"))
+                        && r.reason
+                            .as_deref()
+                            .is_some_and(|s| s.starts_with("Refreshing"))
                 });
                 if !refreshing {
                     self.usage.providers.retain(|m| m.label != id);
@@ -563,9 +574,7 @@ impl Scene {
                                 label: w.label.clone(),
                                 percent: w.used,
                                 projected: w.projected,
-                                resets: w
-                                    .resets_at
-                                    .map(|t| bboxy450_usage::reset_label(t, now)),
+                                resets: w.resets_at.map(|t| bboxy450_usage::reset_label(t, now)),
                             })
                             .collect();
                         self.usage.providers.push(UsageMetric {
@@ -614,14 +623,23 @@ impl Scene {
     }
     /// Hover label for the title-bar theme button: the saved choice and what a click picks.
     pub fn theme_tooltip(&self, size: [f32; 2]) -> Vec<c::Paint> {
-        let now = if self.context.theme == ui::Theme::Dark { "dark" } else { "light" };
+        let now = if self.context.theme == ui::Theme::Dark {
+            "dark"
+        } else {
+            "light"
+        };
         let (current, next) = match self.theme_setting.as_str() {
             "light" => ("Light".to_string(), "Dark"),
             "dark" => ("Dark".to_string(), "Auto"),
             _ => (format!("Auto (system is {now})"), "Light"),
         };
         let mut style = ui::Style::new(ui::Preset::Modal);
-        style.overrides.padding = Some([ui::Length::Px(8.), ui::Length::Px(12.), ui::Length::Px(8.), ui::Length::Px(12.)]);
+        style.overrides.padding = Some([
+            ui::Length::Px(8.),
+            ui::Length::Px(12.),
+            ui::Length::Px(8.),
+            ui::Length::Px(12.),
+        ]);
         let text = c::Text::new(
             format!("Theme: {current}\nClick for {next}"),
             ui::Text::default(),
@@ -2098,6 +2116,7 @@ impl Scene {
             tasks_height,
             available_height: available,
             actions,
+            painted: std::cell::OnceCell::new(),
         })
     }
     pub fn conversation_position(
@@ -3648,6 +3667,31 @@ mod launcher_tests {
             Some(ui::modules::stream_dock::Action::Accept(
                 "real-task-id".into()
             ))
+        );
+    }
+
+    // keeps: a conversation layout paints once; every frame reuses that list
+    #[test]
+    fn conversation_layout_paints_once_and_frames_share_the_list() {
+        let scene = Scene::new();
+        let size = [1600., 960.];
+        let conversation = scene
+            .conversation_layout(size, &ui::modules::composer::Conversation::default())
+            .unwrap();
+        let first = conversation.painted().clone();
+        assert!(std::sync::Arc::ptr_eq(&first, conversation.painted()));
+        assert_eq!(conversation.paint(), *first);
+        assert_eq!(
+            *first,
+            c::paint(&conversation.layout, conversation.context),
+            "the retained list is the tree's paint"
+        );
+        let rebuilt = scene
+            .conversation_layout(size, &ui::modules::composer::Conversation::default())
+            .unwrap();
+        assert!(
+            !std::sync::Arc::ptr_eq(&first, rebuilt.painted()),
+            "a new layout paints itself"
         );
     }
 

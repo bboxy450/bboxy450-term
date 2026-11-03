@@ -723,6 +723,42 @@ mod tests {
             "paint and whole-pixel translation share one mask"
         );
     }
+    // keeps: spec renderer §4.4a — an icon rasterizes once per placement, not per frame
+    #[test]
+    fn repeated_frames_of_the_same_icons_do_not_rasterize_again() {
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let mut list = DrawList::default();
+        list.rect(Rect::new(0., 0., 128., 32.), 0., Color::WHITE);
+        for i in 0..8 {
+            let mut icon = path(
+                vec![
+                    PathCommand::Move([2., 2.]),
+                    PathCommand::Line([14., 2.]),
+                    PathCommand::Line([8., 14.]),
+                    PathCommand::Line([2., 2.]),
+                ],
+                PathStroke::default(),
+            );
+            if let Prim::Path { origin, fill, .. } = &mut icon {
+                *origin = [i as f32 * 16., 8.];
+                *fill = Some(Color([0., 0., 1., 1.]));
+            }
+            list.push(icon);
+        }
+        renderer.render_to_rgba(&list, 128, 32, 2.).unwrap();
+        let after_first = renderer.text.stats();
+        assert_eq!(after_first.shadow_requests, 16, "fill and stroke per icon");
+        assert_eq!(
+            after_first.misses, 2,
+            "one fill mask and one stroke mask, shared"
+        );
+        for _ in 0..3 {
+            renderer.render_to_rgba(&list, 128, 32, 2.).unwrap();
+        }
+        let later = renderer.text.stats();
+        assert_eq!(later.misses, 2, "later frames hit the atlas");
+        assert_eq!(renderer.paths.geometry.len(), 0);
+    }
     // keeps: spec renderer §4.4a — exact geometry beyond the mask budget keeps its pass
     #[test]
     fn a_path_wider_than_the_mask_budget_keeps_the_analytic_pass() {

@@ -629,9 +629,11 @@ impl Gpu {
         if std::env::var_os("BBOXY_OVERLAY_DUMP").is_some()
             && let Some(panes) = &panes
         {
+            let mut counts = std::collections::BTreeMap::new();
             for op in &panes.overlay {
-                dump_overlay_op(op, 0);
+                dump_overlay_op(op, &mut counts);
             }
+            eprintln!("overlay prims {counts:?}");
         }
         self.renderer.begin_frame();
         self.materials.begin_frame();
@@ -795,47 +797,35 @@ pub struct EncodeSplit {
     pub shadow_requests: u64,
 }
 
-/// BBOXY_OVERLAY_DUMP: name each overlay primitive on stderr (profiling only).
-fn dump_overlay_op(op: &Paint, depth: usize) {
+/// BBOXY_OVERLAY_DUMP: count overlay primitives by kind on stderr, once per
+/// frame (profiling only). Per-primitive printing costs more than a frame.
+fn dump_overlay_op(op: &Paint, counts: &mut std::collections::BTreeMap<&'static str, usize>) {
     use bbt_ui_model::draw::Prim;
-    let pad = "  ".repeat(depth);
     match op {
         Paint::Draw(list) | Paint::Underlay(list) => {
             for p in &list.primitives {
-                match p {
-                    Prim::Path {
-                        points,
-                        origin,
-                        scale,
-                        ..
-                    } => eprintln!(
-                        "{pad}overlay Path points={} origin={origin:?} scale={scale}",
-                        points.len()
-                    ),
-                    Prim::PathShadow { points, origin, .. } => eprintln!(
-                        "{pad}overlay PathShadow points={} origin={origin:?}",
-                        points.len()
-                    ),
-                    Prim::Text { text, .. } => {
-                        eprintln!("{pad}overlay Text {:?}", &text[..text.len().min(24)])
-                    }
-                    other => eprintln!(
-                        "{pad}overlay {}",
-                        std::any::type_name_of_val(other)
-                            .rsplit("::")
-                            .next()
-                            .unwrap_or("prim")
-                    ),
-                }
+                let kind = match p {
+                    Prim::Path { .. } => "Path",
+                    Prim::PathShadow { .. } => "PathShadow",
+                    Prim::Text { .. } => "Text",
+                    Prim::TextShadow { .. } => "TextShadow",
+                    Prim::Rect { .. } => "Rect",
+                    Prim::Icon { .. } => "Icon",
+                    Prim::Image { .. } => "Image",
+                    Prim::Group { .. } => "Group",
+                    Prim::Clip { .. } | Prim::Unclip => "Clip",
+                    _ => "Other",
+                };
+                *counts.entry(kind).or_default() += 1;
             }
         }
         Paint::Group { ops, .. } => {
-            eprintln!("{pad}overlay Group");
+            *counts.entry("PaintGroup").or_default() += 1;
             for op in ops {
-                dump_overlay_op(op, depth + 1);
+                dump_overlay_op(op, counts);
             }
         }
-        other => eprintln!("{pad}overlay {}", std::any::type_name_of_val(other)),
+        _ => *counts.entry("PaintOther").or_default() += 1,
     }
 }
 
