@@ -73,7 +73,7 @@ impl Companion {
                 Ok(())
             });
         }
-        let child = bbt_rt::qos::with_default_qos(|| command.spawn()).map_err(super::pty_error)?;
+        let child = bbt_rt::qos::with_seat_qos(|| command.spawn()).map_err(super::pty_error)?;
         drop(slave);
         Ok(Some(Self {
             info: CompanionInfo {

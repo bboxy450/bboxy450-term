@@ -4,11 +4,11 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! Scheduling class for the terminal path. The threads that carry PTY bytes to
-//! the screen run user-interactive, so a parallel build cannot starve them.
-//! A process inherits the class of the thread that spawns it, so every seat,
-//! companion, daemon and plugin is spawned at default class: their builds run
-//! below the terminal path, never beside it.
+//! Scheduling classes. The threads that carry PTY bytes to the screen run
+//! user-interactive, so a parallel build cannot starve them. A process inherits
+//! the class of the thread that spawns it: seats and the daemons that run their
+//! tools are spawned user-initiated (above background work, below the terminal
+//! path), and plugins at default.
 
 /// Mark the calling thread user-interactive (macOS; a no-op elsewhere).
 pub fn interactive_thread() {
@@ -19,30 +19,43 @@ pub fn interactive_thread() {
     }
 }
 
+/// Run `spawn` at the seat class (user-initiated): a seat and every process it
+/// starts outrank background work but not the terminal path.
+pub fn with_seat_qos<T>(spawn: impl FnOnce() -> T) -> T {
+    #[cfg(target_os = "macos")]
+    return with_class(libc::qos_class_t::QOS_CLASS_USER_INITIATED, spawn);
+    #[cfg(not(target_os = "macos"))]
+    spawn()
+}
+
 /// Run `spawn` at default class and restore the caller's class afterwards, so
 /// a process started inside it does not inherit an interactive class.
 pub fn with_default_qos<T>(spawn: impl FnOnce() -> T) -> T {
     #[cfg(target_os = "macos")]
-    {
-        let mut class = libc::qos_class_t::QOS_CLASS_UNSPECIFIED;
-        let mut relative = 0;
-        // SAFETY: both out-pointers are valid locals; the calls touch only the
-        // calling thread's own QoS.
-        unsafe {
-            libc::pthread_get_qos_class_np(libc::pthread_self(), &mut class, &mut relative);
-            libc::pthread_set_qos_class_self_np(libc::qos_class_t::QOS_CLASS_DEFAULT, 0);
-        }
-        let result = spawn();
-        if class as u32 != libc::qos_class_t::QOS_CLASS_UNSPECIFIED as u32 {
-            // SAFETY: as above.
-            unsafe {
-                libc::pthread_set_qos_class_self_np(class, relative);
-            }
-        }
-        result
-    }
+    return with_class(libc::qos_class_t::QOS_CLASS_DEFAULT, spawn);
     #[cfg(not(target_os = "macos"))]
     spawn()
+}
+
+/// Run `spawn` at `target`, then restore the calling thread's own class.
+#[cfg(target_os = "macos")]
+fn with_class<T>(target: libc::qos_class_t, spawn: impl FnOnce() -> T) -> T {
+    let mut class = libc::qos_class_t::QOS_CLASS_UNSPECIFIED;
+    let mut relative = 0;
+    // SAFETY: both out-pointers are valid locals; the calls touch only the
+    // calling thread's own QoS.
+    unsafe {
+        libc::pthread_get_qos_class_np(libc::pthread_self(), &mut class, &mut relative);
+        libc::pthread_set_qos_class_self_np(target, 0);
+    }
+    let result = spawn();
+    if class as u32 != libc::qos_class_t::QOS_CLASS_UNSPECIFIED as u32 {
+        // SAFETY: as above.
+        unsafe {
+            libc::pthread_set_qos_class_self_np(class, relative);
+        }
+    }
+    result
 }
 
 /// The calling thread's class, for tests.
@@ -82,6 +95,16 @@ mod tests {
                 current()
             });
             assert_eq!(child_class, libc::qos_class_t::QOS_CLASS_DEFAULT as u32);
+            let seat_class = with_seat_qos(|| {
+                std::process::Command::new("/usr/bin/true")
+                    .status()
+                    .unwrap();
+                current()
+            });
+            assert_eq!(
+                seat_class,
+                libc::qos_class_t::QOS_CLASS_USER_INITIATED as u32
+            );
             assert_eq!(
                 current(),
                 libc::qos_class_t::QOS_CLASS_USER_INTERACTIVE as u32,

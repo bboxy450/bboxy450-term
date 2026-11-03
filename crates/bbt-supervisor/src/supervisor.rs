@@ -2429,8 +2429,9 @@ impl Seat {
             // after overrides, without embedding program-specific policy.
             environment::scrub_pty(&mut command);
         }
-        // The actor thread is interactive; the seat and its builds are not.
-        let child = bbt_rt::qos::with_default_qos(|| pair.slave.spawn_command(command))
+        // The actor thread is interactive; the seat and its builds run one class
+        // lower (user-initiated), above background work.
+        let child = bbt_rt::qos::with_seat_qos(|| pair.slave.spawn_command(command))
             .map_err(|error| spawn_error(&spec, "spawn_command", tty.as_deref(), error))?;
         drop(pair.slave);
         let pid = child
