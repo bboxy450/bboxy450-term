@@ -114,9 +114,12 @@ impl App {
     }
     pub(super) fn rich_drain(&mut self) {
         let start = Instant::now();
+        self.rich_drain_with_clock(|| start.elapsed());
+    }
+    fn rich_drain_with_clock(&mut self, mut elapsed: impl FnMut() -> Duration) {
         let ids: Vec<_> = self.rich_panes.keys().copied().collect();
         for i in 0..ids.len() {
-            if start.elapsed() >= Duration::from_micros(300) {
+            if elapsed() >= Duration::from_micros(300) {
                 self.request_redraw(); // Deferred dirty views need another frame even while idle.
                 break;
             }
@@ -438,7 +441,7 @@ mod verification {
     }
     #[test]
     #[ignore = "private offscreen Metal capture; make test-rich-pane"]
-    fn rich_native_parity_and_budget() {
+    fn rich_native_parity_and_composition_microbench() {
         bbt_rt::handle().block_on(bboxy450_harness::runtime::blocking(parity_capture));
     }
     fn parity_capture() {
@@ -526,7 +529,9 @@ mod verification {
                         0.299 * f64::from(p[0]) + 0.587 * f64::from(p[1]) + 0.114 * f64::from(p[2])
                     };
                     let ground = gray(&row[..4]);
-                    row.as_chunks::<4>().0.iter()
+                    row.as_chunks::<4>()
+                        .0
+                        .iter()
                         .step_by(4)
                         .filter(|p| (gray(*p) - ground).abs() > 24.)
                         .count()
@@ -552,7 +557,7 @@ mod verification {
         }
         samples.sort_by(f64::total_cmp);
         let p99 = samples[197];
-        let report = serde_json::json!({"row_structure_mismatch":mismatch,"four_visible_views_composition_p99_ms":p99,"ui_drain_allocation_ms":0.3,"ui_projection_allocation_ms":0.6,"memory_allocation_mib":32,"memory_measured":false,"under_load":"UNMEASURED","harness":std::env::var("BBOXY_HARNESS_CANDIDATE").ok()});
+        let report = serde_json::json!({"measurement":"four-copy Frame-to-Paint conversion microbenchmark","whole_frame_budget_verdict":"UNPROVEN","row_structure_mismatch":mismatch,"four_visible_views_composition_p99_ms":p99,"ui_drain_allocation_ms":0.3,"ui_projection_allocation_ms":0.6,"memory_allocation_mib":32,"memory_measured":false,"under_load":"UNMEASURED","harness":std::env::var("BBOXY_HARNESS_CANDIDATE").ok()});
         std::fs::write(
             output.join("report.json"),
             serde_json::to_vec_pretty(&report).unwrap(),
@@ -561,3 +566,7 @@ mod verification {
         eprintln!("rich-pane: {report}");
     }
 }
+
+#[cfg(test)]
+#[path = "rich_faces/budgets.rs"]
+mod budget_verification;

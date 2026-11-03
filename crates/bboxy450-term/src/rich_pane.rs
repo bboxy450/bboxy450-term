@@ -20,7 +20,7 @@ use std::{
     path::PathBuf,
     sync::{
         Arc,
-        atomic::{AtomicBool, Ordering},
+        atomic::{AtomicBool, AtomicU64, Ordering},
     },
     time::{Duration, Instant},
 };
@@ -89,6 +89,7 @@ pub struct Pane {
     commands: mpsc::Sender<Request>,
     task: tokio::task::JoinHandle<()>,
     retired: Arc<AtomicBool>,
+    published_inputs: Arc<AtomicU64>,
 }
 impl Drop for Pane {
     fn drop(&mut self) {
@@ -114,6 +115,8 @@ impl Pane {
         let socket = path.clone();
         let retired = Arc::new(AtomicBool::new(false));
         let worker_retired = retired.clone();
+        let published_inputs = Arc::new(AtomicU64::new(0));
+        let worker_published = published_inputs.clone();
         let task=bbt_rt::handle().spawn(async move {
             let notify=Arc::new(Notify::new());
             let mut bridge=Bridge::new(Arc::new(Signal(notify.clone())));
@@ -125,6 +128,7 @@ impl Pane {
                 tokio::select!{biased;cmd=input.recv()=>{let Some(cmd)=cmd else{return;};batch.push(cmd);},_=notify.notified()=>{}}
                 while batch.len()<64 {match input.try_recv(){Ok(cmd)=>batch.push(cmd),Err(_)=>break}}
                 let retired=worker_retired.clone();
+                let published=worker_published.clone();
                 let prepared=bboxy450_harness::runtime::blocking(move || {
                     bridge.drain(Duration::from_micros(300));
                     for request in batch {
@@ -169,6 +173,7 @@ impl Pane {
                     };
                     let snapshot=Snapshot{generation,completed_inputs,notice:view.notice.clone(),retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
                     out.publish(snapshot);
+                    published.store(completed_inputs, Ordering::Release);
                     (bridge,view,rect,out,completed_inputs)
                 }).await;
                 let (b,v,r,o,c)=prepared;bridge=b;view=v;rect=r;out=o;completed_inputs=c;
@@ -184,6 +189,7 @@ impl Pane {
             commands,
             task,
             retired,
+            published_inputs,
         }
     }
     pub fn send(&self, input: Input) -> bool {
@@ -197,6 +203,11 @@ impl Pane {
                 }),
             })
             .is_ok()
+    }
+    /// Observe completed command publication without consuming the Latest slot.
+    /// Used by unattended diagnostics to coordinate a pending-frame witness.
+    pub fn published_inputs(&self) -> u64 {
+        self.published_inputs.load(Ordering::Acquire)
     }
     pub fn resize(&mut self, rect: Rect) {
         if self.rect != rect && self.send(Input::Size(rect)) {
