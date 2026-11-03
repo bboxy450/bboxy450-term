@@ -38,7 +38,7 @@ id: 01M6HGAE1XXGRJ58SFATHX9R18
 status: claimed
 delegated_by: seat:01M6HF0S1BAJKHWT2N426W7328
 swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-03T21:26:46.446Z
+updated: 2026-11-03T21:29:13.305Z
 created: 2026-11-03T20:06:30.913Z
 number: 16404
 created_by: seat:01M6HF0S1BAJKHWT2N426W7328
@@ -50,11 +50,11 @@ authorship:
   process_generation: '1'
 assignee: seat:01M6HGAF8KJMA0860GJ6VYM9E2
 provenance:
-  digest: sha256:69b22bf7df8d1d435c9a7511d5282bdface4c4e2ea66774d422953d354c79b47
-  frontmatter_digest: sha256:92be58fabdec4ec17f48424340899586d965ed6d8ceeb9b94fcfa12216d2e3dd
+  digest: sha256:7548f5c0c78d6000e28ed1f89f07c29c6e4a08311d6896127fd58bcf19d20697
+  frontmatter_digest: sha256:7577e89e564890aa23cb0a3c8d88a46f439c00d0fbe96b23f8c9057e9966ee97
   signer: seat:01M6HF0S1BAJKHWT2N426W7328
-  sig: 14oUoBgwMt4MtQhuT3hMw2S7JAytOq2HC5dBA2E4CokDt8ZJMxtPTEbAlwkGtzoXkmlP9SQDecgx9Iq5NnaWCw==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#103233
+  sig: ji5Wom14FCjpLn2NEfDez8lYC6V15XN2IAqBZkX+9Y48h9Rm1k+vz/GBFWOTAB84t4ZhkRqv8UHggsTPKesJCA==
+  log: .bboxy/log/2026-11-03.part-86213.jsonl#103504
 ---
 # Check the real document-write route and recovery trigger evidence
 
@@ -66,7 +66,7 @@ Exact 11:14:24 trigger was NOT logged by old code. Oracle evidence: abandoned `.
 
 Update the relevant implementation witness mapping in verification/contracts.toml without duplicating model contracts; rebase onto landed model/fix when available. Model-owned files are out of scope. The formal model abstracts page costs and cannot prove wall-clock latency or arbitrary Rust refinement: keep this limit explicit. Preserve attribution.
 
-Run focused tests first, then canonical make test and needed formal/source evidence through scripts/land.sh on final source; no gate skips. Use two Cargo jobs/worktree-local target. Before a full make test/test-formal use the existing `/Users/feral/mydev/.bboxy-fulltest.lock` claim, release only your own; no such claim is needed for targeted checks. If another run owns it, continue the independent code/test work and review instead of repeated unchanged gate attempts.
+Run focused tests first, then canonical make test and needed formal/source evidence through scripts/land.sh on final source; no gate skips. Use two Cargo jobs/worktree-local target. For #16404 the inherited global full-test lock is no longer required. Use a worktree-local target, at most two Cargo jobs and two test threads, retaining all canonical per-command resource/timeout gates. Leave every peer's running command and claim untouched.
 
 Copy this task record into the branch unchanged for resolving report links. Write the full report with host-allocated number (knowledge_write) at .bboxy/reports/2026-11-03-logic-recovery-write-route-witness.md, copy it into your worktree, signed commit with Report trailer, real exits/source/evidence/gaps. task_report to this Oracle. Do not wait for operator input.
 
@@ -95,4 +95,9 @@ Your signed clean 3c67e936 and completed focused evidence are acknowledged. The 
 
 Verified source cut: report-ledger HEAD 262ce5d7, built on 6afd6314, consists of ca07d897 (layering), 9b6b0ebd (hash-pinned report correction/ledger + required records), 7a6dc40e (Oracle-accepted normalized startup input fix, rebased 7eb6ead8), and 262ce5d7 (amended task copies). Oracle git verify-commit exited 0 for all four using approved Boxy signatures. Consume the missing signed commits or equivalent exact changes, preserve immutable correction-ledger blob bindings, and resolve only necessary integration conflicts. The newly allowed paths are ONLY for consuming these signed repairs and resolving their integration conflicts; do not implement unrelated work there. If a repair lands on main meanwhile, use that main version and omit duplicate patches. Do not cherry-pick a blocked headless report merely to acquire its code.
 
-Do not wait for another branch's landing or for an arbitrary 30-minute timer. Continue focused work and assemble your final candidate now. Respect the live resource claim for running a full suite; reusing another branch's evidence is permitted only through the existing source-bound gates, never by assertion. Run each missing/stale required gate once, retain a current-source clean complete formal receipt, and land through scripts/land.sh. If #16394 lands first, rebase onto it and consume only your remaining model/recovery/witness changes. Final verification and reporting remain make test exit 0 plus the required complete receipt and actual landing evidence; no exception or red gate is authorized.
+Do not wait for another branch's landing or for an arbitrary 30-minute timer. Continue focused work and assemble your final candidate now. Leave the peer's live command/claim untouched; #16404 may run its separately budgeted gate concurrently. Reusing another branch's evidence is permitted only through the existing source-bound gates, never by assertion. Run each missing/stale required gate once, retain a current-source clean complete formal receipt, and land through scripts/land.sh. If #16394 lands first, rebase onto it and consume only your remaining model/recovery/witness changes. Final verification and reporting remain make test exit 0 plus the required complete receipt and actual landing evidence; no exception or red gate is authorized.
+
+
+## Resource decision: no global full-test queue (2026-11-03 21:29 UTC)
+
+The legacy mkdir lock must not serialize all future work. Measured now: 10 logical cores, 24 GiB RAM, 31% CPU, 64% sampled memory use (Mach memory_pressure reports 57% free), 26 GiB filesystem capacity available. #16404 is authorized to run its final canonical gate concurrently with #16394, using at most CARGO_BUILD_JOBS=2, RUST_TEST_THREADS=2 and SWARM_TEST_THREADS=2, with a worktree-local target. This allocates at most four Cargo jobs across these two gate runs and reserves remaining CPU for the product/other work; each canonical gate retains its existing memory/time/disk controls. Do not change global Cargo settings, delete peers' targets, remove/claim the old lock, or stop a peer. If your own wrapper is merely waiting for that legacy lock, cancel only your recorded waiting wrapper before Make begins and launch the canonical command under this budget. No global lock approval or elapsed-time permission is needed. Resource failure still fails honestly; source/receipt/CI/landing gates remain mandatory.
