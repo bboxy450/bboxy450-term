@@ -283,7 +283,36 @@
     const node = el('div', { class: 'hx' + (opts.compact ? ' compact' : '') }, head, scroller, comp);
     let stick = true;
     scroller.addEventListener('scroll', () => { stick = scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 40; });
-    const follow = () => { if (stick) scroller.scrollTop = scroller.scrollHeight; };
+    // follow the tail with a critically damped glide (~180ms), never a jump; a new target retargets mid-glide
+    let glide = 0, vel = 0;
+    const follow = () => {
+      if (!stick || glide) return;
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) { scroller.scrollTop = scroller.scrollHeight; return; }
+      let t0 = performance.now();
+      const step = now => {
+        const dt = Math.min(0.05, (now - t0) / 1000), w = 2 * Math.PI / 0.18; t0 = now;
+        const gap = scroller.scrollHeight - scroller.clientHeight - scroller.scrollTop;
+        vel += (w * w * gap - 2 * w * vel) * dt; scroller.scrollTop += vel * dt;
+        if (!stick || Math.abs(gap) < 0.5 && Math.abs(vel) < 4) { if (stick) scroller.scrollTop = scroller.scrollHeight; glide = 0; vel = 0; return; }
+        glide = requestAnimationFrame(step);
+      };
+      glide = requestAnimationFrame(step);
+    };
+    // the empty session: the mark, one question, three ways in; it leaves on the first block
+    function empty() {
+      const was = feed.querySelector(':scope > .hx-empty');
+      if (s.blocks.length) { if (was) was.remove(); return; }
+      const acp = acpModel(s.model), who = acp ? (s.profile || acp.agent) + (acp.model ? ' · ' + acp.model : '') : s.model || s.profile;
+      const key = who + '|' + cwd();
+      if (was && was.dataset.key === key) return;
+      if (was) { was.querySelector('.hx-es')?.remove(); if (who || cwd()) was.querySelector('.hx-et').after(el('div', { class: 'hx-es' }, who || '', who && cwd() ? ' in ' : '', cwd() ? '~/' + cwd().split('/').pop() : '')); was.dataset.key = key; return; }
+      const chip = (label, o) => el('button', { type: 'button', class: 'hx-echip', onclick: e => { e.stopPropagation(); comp.hx.set(Object.assign({ focus: true }, o)); } }, label);
+      feed.append(el('div', { class: 'hx-empty', 'data-key': key },
+        el('span', { class: 'hx-emark' }, el('img', { src: 'bboxy.png', alt: '' })),
+        el('div', { class: 'hx-et' }, 'What are we building?'),
+        who || cwd() ? el('div', { class: 'hx-es' }, who || '', who && cwd() ? ' in ' : '', cwd() ? '~/' + cwd().split('/').pop() : '') : null,
+        el('div', { class: 'hx-echips' }, chip('/ commands', { text: '/', menu: 'slash', sel: 0 }), chip('@ a file', { text: '@' }), chip('Describe a change', { text: '' }))));
+    }
 
     function item(id) { return s.items.get(id); }
     function toolOf(it) { return it && it.parent ? item(it.parent) : null; }
@@ -572,6 +601,7 @@
     }
     function drawHead() {
       const [ph, say] = phaseNow(); node.dataset.phase = ph; comp.hx.sync(ph);
+      empty();
       const acp = acpModel(s.model);
       if (opts.onPhase) opts.onPhase(ph);
       const u = s.usage;

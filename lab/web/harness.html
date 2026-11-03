@@ -93,7 +93,7 @@ function frame(w, h) { return el('div', { style: '--seat:#2EE6A8;width:' + w + '
 let live = null; const FH = +new URLSearchParams(location.search).get('h') || 720;
 Lab.page({ title: 'harness', wide: true,
   note: 'Native target: harness-spec.md (sizes, tokens, motion, flat fallbacks). The rich bboxy face. bboxy450-harness envelopes (protocol Event/Item) fold into cards: one tool call is one card with its approval, terminal and diff inside; reasoning collapses to "Thought for"; usage drives the header meter. "live" replays a real scripted run of the harness binary (lab/web/harness/gen.sh) at reading pace. Click any card header to fold it.',
-  states: ['live', 'finished', 'composer states', 'composer · idle', 'composer · focused', 'composer · typing', 'composer · running', 'slash menu', 'profiles', 'new profile', 'running tool', 'approval pending', 'denied unattended', 'error', 'interrupted',
+  states: ['live', 'empty session', 'finished', 'composer states', 'composer · idle', 'composer · focused', 'composer · typing', 'composer · running', 'slash menu', 'profiles', 'new profile', 'running tool', 'approval pending', 'denied unattended', 'error', 'interrupted',
     'acp · claude', 'acp · codex', 'acp · pi', 'acp · opencode loop', 'acp · omp', 'mermaid', 'compact pane'],
   render(s, body) {
     if (live && s !== 'all') { live.stop(); live = null; }
@@ -103,6 +103,7 @@ Lab.page({ title: 'harness', wide: true,
     f.append(v.node); body.append(f);
     if (s === 'live' || s === 'compact pane') { const p = Hx.play(v, REAL, { loop: true }); if (s === 'live') live = p; return; }
     if (s === 'profiles' || s === 'new profile') { REAL.forEach(e => v.apply(e)); requestAnimationFrame(() => { v.openProfiles(); if (s === 'new profile') v.node.querySelector('.hx-padd').click(); }); return; }
+    if (s === 'empty session') { requestAnimationFrame(() => HARNESS_SESSIONS['acp:claude-acp'].filter(e => /^(session_started|profile_changed)$/.test(e.event.type)).forEach(e => v.apply(e))); return; }
     if (COMPOSE[s]) { const [envs, o] = COMPOSE[s]; requestAnimationFrame(() => { (envs || running()).forEach(e => v.apply(e)); v.compose(o); }); return; }
     if (ACP[s]) { requestAnimationFrame(() => HARNESS_SESSIONS[ACP[s]].forEach(e => v.apply(e))); return; }
     let envs = s === 'denied unattended' ? denied() : s === 'approval pending' ? pending() : s === 'error' ? errored() : s === 'interrupted' ? interrupted() : REAL;

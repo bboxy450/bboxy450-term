@@ -14,6 +14,7 @@ This spec is the 1:1 target for the native bboxy450-harness GUI (`src/frontends/
 
 | State slug | Shows |
 |---|---|
+| `empty-session` | the face before the first message: mark, question, sub-line, three chips |
 | `composer-states` | every composer state on one board, composer only (the p2 target) |
 | `composer-idle` · `composer-focused` · `composer-typing` · `composer-running` | the full face with that composer state |
 | `slash-menu` | the "/" completion menu over the composer, typed `/pro` (the p3 target) |
@@ -211,17 +212,69 @@ The radius scale is 4 (tags), 5–7 (tiles), 8 (buttons, inner blocks), 11 (card
 - A `notice` at warn level (for example "the agent does not offer model …") is a 6px `ask` dot and 11.5 `fg-dim` text,
   never a card.
 
+## Empty session (`empty-session`)
+
+Shown while the session has no blocks. It leaves when the first block mounts.
+
+- Layout: centred column, 12% of the scroll height from the top, gap 8.
+- Mark: `bboxy.png` 52px round. A 1px `seat-45` halo ring sits 6px outside it and breathes (see Motion).
+- Title: "What are we building?", 17/600 `fg`.
+- Sub-line: `profile · model in ~/<cwd leaf>`, 12 `fg-dim`. Omit the parts that are unknown.
+- Chips: `/ commands` (opens the "/" menu), `@ a file` (inserts `@`), `Describe a change` (focuses the composer).
+  Pill radius, 12px text, padding 5/11, `card` fill and a `hair` border. Hover: `card-hi` fill, `seat-55` border, `fg` text.
+- Never draw the old top-left "Send a message to begin." line.
+
 ## Motion
 
-Every motion has a still end state. Under reduced motion, or when native cannot animate, draw the end state.
+Operator, 2026-11-02, on the native app: "almost good, more animation more smoothness and we would be good to go".
+Native renders through bbt_ui on the GPU, so **native animates**. The flat column below is only for reduced motion and
+for a missed frame budget. It is not the default.
 
-| Motion | Web | Native flat |
-|---|---|---|
-| block enters | 0.32s rise 6px + fade, cubic-bezier(.2,.8,.2,1) | fade 0.2s, or none |
-| menu opens | 0.16–0.18s lift/drop 6px + scale .98 → 1 | appear at once |
-| status disc pops | 0.35s scale .2 → 1, overshoot | appear at once |
-| running sweep | 1.6s ease-in-out, loop | stepped bar, or a static `seat-55` line |
-| tool run border | conic orbit 1.6s linear | static `seat-55` border |
-| phase dot / ask badge | opacity pulse 1.1–1.2s | steady |
-| send press | scale .92 at 0.12s | none |
-| caret | 1s step blink | 1s step blink |
+### Clock rules
+
+- One animation clock per window. Any active tween or loop calls `request_redraw` for the next frame.
+  When every tween has settled and no loop is visible, stop redrawing. An idle window costs no frames.
+- A tween is `(from, to, t0, duration, curve)` keyed by element id. A new target in mid-flight retargets
+  from the current value. Never snap back to `from`.
+- Every value that changes on screen goes through a tween: opacity, offset, scale, colour, height, scroll position
+  and caret position. A value that changes without a row in this table is a defect.
+- Curves:
+  - `out` = cubic-bezier(.2,.8,.2,1), for entrances and glides;
+  - `std` = cubic-bezier(.4,0,.2,1), for colour and state changes;
+  - `pop` = cubic-bezier(.34,1.56,.64,1), for overshoot.
+- Reduced motion (the OS setting, or `BBOXY_REDUCED_MOTION=1`) draws end states and keeps only the caret blink.
+
+### Table
+
+| Motion | Duration · curve | What moves | Reduced / flat |
+|---|---|---|---|
+| block enters | 320ms `out` | rise 6px, opacity 0 → 1, scale .995 → 1 | end state |
+| streaming text | 140ms `out` per chunk | each new chunk's glyphs fade 0 → 1; settled text never re-fades | end state |
+| tail follow | critically damped, ~180ms | scroll offset glides to the bottom; a new chunk retargets mid-glide. It stops following when the user scrolls up more than 40px | jump |
+| block grows | 200ms `out` | a card's height tweens as content arrives or folds, and blocks below it slide | jump |
+| fold / unfold | 200ms `out` | body height plus opacity; the chevron rotates 0 → 90° | jump |
+| empty session | 420ms `out`, chips staggered 60ms | rise 6px plus fade; the halo breathes 3.2s ease-in-out (opacity .25–.8, scale .96–1.04) | static ring at .5 |
+| composer focus | 200ms `std` | border `hair` → `seat`, ring opacity 0 → 1 | end state |
+| composer height | 160ms `out` | the box grows and shrinks with its lines; the feed above shifts at the same time | jump |
+| send button | 200ms `std` | fill and icon colour across idle → ready → stop; the icon crossfades arrow ↔ square | end state |
+| send press | 120ms `std` | scale .92 and back | none |
+| caret | 80ms `out` move, 1s step blink | slides to the new column instead of jumping; it stays solid while typing and blinks after 500ms idle | blink only |
+| menu open / close | 170ms `out` / 120ms `std` | open: drop 6px, scale .98 → 1, fade in. Close: fade out | appear / vanish |
+| menu selection | 120ms `std` | the `sel` highlight slides between rows, never jumps | jump |
+| hover | 150ms `std` | row, chip and button fills | end state |
+| header chip change | 200ms `std` | profile/model text crossfades; the width tweens | end state |
+| phase change | 200ms `std` | the phase label crossfades and the dot colour tweens | end state |
+| status disc | 350ms `pop` | scale .2 → 1 | appear |
+| running sweep | 1.6s ease-in-out, loop | a 40%-wide `seat` highlight crosses the composer top edge | static `seat-55` line |
+| tool run border | 1.6s linear, loop | conic orbit around the running tool card | static `seat-55` border |
+| thinking | 1.4s, loop | sheen across the "Thinking" label; three dots bounce, staggered 160ms | static label |
+| phase dot / ask badge | 1.1–1.2s pulse | opacity 1 → .35 → 1 | steady |
+| receipt | 320ms `out` | the receipt line rises in; numbers count up over 400ms | end state |
+
+The page plays block enter, tail follow, empty session, menus, hover, send, sweep, orbit and thinking. Streaming-chunk
+fade, caret glide, height tweens and the sliding menu selection are specified here only; build them from this table.
+
+### Frame budget
+
+Hold 60fps (16.6ms) at 1000 blocks. Animate only what is visible. Offscreen blocks take their end state. Loops pause
+while the window is occluded. If two frames in a row miss the budget, fall back to the flat column until the next idle.
