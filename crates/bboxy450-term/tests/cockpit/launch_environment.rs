@@ -145,9 +145,18 @@ fn caller_harness_markers_never_cross_any_profile_or_companion_exec() {
 fn dirty_parent_supervisor_child() {
     let root = tempfile::tempdir().unwrap();
     let spy = root.path().join("environment-spy");
+    // Companion stdin is null. Keep both spies alive on a private FIFO until
+    // supervisor shutdown; an early companion exit would hang up the seat.
+    assert!(
+        Command::new("/usr/bin/mkfifo")
+            .arg(root.path().join("environment-spy.hold"))
+            .status()
+            .unwrap()
+            .success()
+    );
     fs::write(
         &spy,
-        "#!/bin/sh\n/usr/bin/env -0 > \"$1.tmp\"\n/bin/mv \"$1.tmp\" \"$1\"\nexec /bin/cat\n",
+        "#!/bin/sh\n/usr/bin/env -0 > \"$1.tmp\"\n/bin/mv \"$1.tmp\" \"$1\"\nexec /bin/cat \"$0.hold\"\n",
     )
     .unwrap();
     fs::set_permissions(&spy, fs::Permissions::from_mode(0o700)).unwrap();
