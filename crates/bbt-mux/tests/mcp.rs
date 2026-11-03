@@ -5078,7 +5078,7 @@ fn mcp_harness_seat_completes_and_closes_without_orphans() {
 }
 
 // keeps: app-harness #348; HarnessReportedStatus. Both runs use a real, quiet
-// 20-second tool. JSON mode deliberately suppresses the harness OSC reporter.
+// tool beyond 20 seconds. Relocated logs prove OSC alone; JSON mode proves log alone.
 #[test]
 #[ignore = "real private PTY and scripted tool; make test-harness-native"]
 fn mcp_harness_seat_status_survives_quiet_tool() {
@@ -5124,8 +5124,11 @@ fn seat_harness_fixture(owner_close: bool, quiet: Option<bool>) {
     let tool_pid_path = home.join("tool-pid");
     let command = if quiet.is_some() {
         format!(
-            "printf '%s\\n' \"$$\" > {0}.tmp; mv {0}.tmp {0}; sleep 22",
-            quote(&tool_pid_path)
+            "bash -c {}",
+            quote(std::path::Path::new(&format!(
+                "printf '%s\\n' \"$$\" > {0}.tmp; mv {0}.tmp {0}; sleep 22",
+                quote(&tool_pid_path)
+            ))),
         )
     } else {
         format!(
@@ -5173,6 +5176,10 @@ if OWNER:
     args.extend(['--scripted', str(Path(HOME, 'tool.sse')), '--yolo'])
 if QUIET:
     args.extend(['--scripted', str(Path(HOME, 'tool.sse')), '--scripted', FIXTURE, '--yolo'])
+if QUIET and not JSON:
+    # The production log observer cannot find this native CLI override.
+    # The engine still records its log; status must come only from OSC.
+    args.extend(['--sessions', str(Path(HOME, 'osc-only-sessions'))])
 if JSON:
     args.append('--json')
 os.execv(BINARY, [BINARY, *args])
@@ -5213,7 +5220,11 @@ os.execv(BINARY, [BINARY, *args])
             "session "
         },
     );
-    let sessions = home.join(".bboxy450-harness/sessions");
+    let sessions = if quiet == Some(false) {
+        home.join("osc-only-sessions")
+    } else {
+        home.join(".bboxy450-harness/sessions")
+    };
     let logs: Vec<_> = std::fs::read_dir(&sessions)
         .unwrap()
         .map(|e| e.unwrap().path())
@@ -5434,12 +5445,20 @@ os.execv(BINARY, [BINARY, *args])
             let status = read(&f);
             if status["adapter"]["detail"]
                 .as_str()
-                .is_some_and(|detail| detail.starts_with("bash"))
+                .is_some_and(|detail| detail.contains("bash"))
             {
                 break;
             }
             assert!(Instant::now() < until, "tool detail not reported: {status}");
             std::thread::sleep(Duration::from_millis(20));
+        }
+        if quiet == Some(false) {
+            assert!(
+                !home
+                    .join(format!(".bboxy450-harness/sessions/{session}.jsonl"))
+                    .exists(),
+                "OSC-only fixture must leave the observer's log path absent"
+            );
         }
         let native_head = std::fs::read_to_string(&log_path)
             .unwrap()
@@ -5501,15 +5520,12 @@ os.execv(BINARY, [BINARY, *args])
             if quiet == Some(true) {
                 assert_eq!(adapter["source"], "sessions_file", "{status}");
             } else {
-                assert!(
-                    matches!(adapter["source"].as_str(), Some("7501" | "sessions_file")),
-                    "{status}"
-                );
+                assert!(adapter["source"] == "7501", "{status}");
             }
             assert!(
                 adapter["detail"]
                     .as_str()
-                    .is_some_and(|detail| detail.starts_with("bash")),
+                    .is_some_and(|detail| detail.contains("bash")),
                 "{status}"
             );
             samples += 1;
