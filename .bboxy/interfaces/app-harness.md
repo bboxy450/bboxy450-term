@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-11-02T23:50:00Z"
+updated: "2026-11-03T14:30:00Z"
 ---
 # ICD: app ↔ harness
 
@@ -67,3 +67,14 @@ A change to this interface names both sides, the reason and the verification it 
 Owner: Corvin Duskmantle <ARCHITECT>.
 
 Capability-file amendment (#4503, Side A): implements harness seat-capability-delivery §§1–5 under the Oracle's task #4505, following d4071; this PR presents the #348 rows for the Oracle's signature. This prevents passive exposure in process environments, not active same-uid reads of the path. Native daemon ownership and protocol authority remain unchanged.
+
+## Phase 1c status amendment (2026-11-03, operator: "the harness should report its active status to term correctly, via logs and ACP")
+
+Display contract: `lab/web/harness-spec.md` §"Seat status in term" (7fdb71ac). Wire contract: harness [embed-seat p7](https://github.com/bboxy450/bboxy450-harness/blob/main/.bboxy/interfaces/embed-seat.md). Additive rows for the `bboxy450-harness` kind; nothing else in #348 changes. Being built by the status-term and status-harness seats; signed off by the Oracle at landing (d4071).
+
+| #348 row | Change |
+|---|---|
+| States and lifecycle | replace, for this kind, phase 1a's "State is `Cadence`, grade Inferred": state is **Reported** from, in order, OSC 7501 (`bboxy450-harness seat`, re-sent every 2 s with a phase `msg` while a turn is open), the seat's session log `~/.bboxy450-harness/sessions/<harness_session_id>.jsonl` read tail-only (`turn_started` → working, `turn_ended` → idle or error, an `Approval` item started and not completed → blocked, `session_closed` → idle; `ts_ms` is the observed time), and process exit. A Reported state holds for its generation against cadence; only another Reported observation, exit, or the 60 s staleness timeout replaces it. Staleness (no 7501 frame and no log line for 60 s while a turn is open) ends the hold and shows `· no word for 1m` with a dimmed rim; it never flips the state to idle. Cadence is never used once the harness has reported. The 5 s `lower_recent` window of `observe.rs` does not apply to this kind |
+| Timing | add: 7501 heartbeat every 2 s while a turn is open; a phase change reports at once; staleness 60 s |
+| Versioning | unchanged: the app reads the session log read-only and never writes `~/.bboxy450-harness` |
+| Verified by | add, phase 1c: `make test-harness-native`: a seat turn shows `active` with the tool head within 2.5 s, `waiting (permission)` on an approval and `idle` at the end, from 7501 alone and from the log alone; a cadence observation during a Reported hold changes nothing; a seat silent for 60 s during a turn reads stale without flipping; broken control: cadence allowed to replace a Reported state must fail. Harness side: `tests/seat_golden.rs` heartbeat bytes and model `HarnessSeatReport` with the "no heartbeat while a turn is open" control. **unproven** until these land |
