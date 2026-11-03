@@ -42,16 +42,25 @@ class CacheEnvTests(unittest.TestCase):
             if nested:
                 shell += '. "$1" || exit $?; '
             shell += 'printf "%s|%s|%s|%s|%s" "$RUSTC_WRAPPER" "$RUSTC_WORKSPACE_WRAPPER" "$CARGO_BUILD_JOBS" "$BBOXY_CARGO_TARGET_DIR" "$BBOXY_CACHE_MODE"'
+            environment = dict(os.environ, PATH=str(root)+':'+os.environ['PATH'],
+                CACHE_TEST_MARKER=str(marker), BBOXY_CACHE_MODE=mode,
+                CARGO_TARGET_DIR='private-target', RUSTC_WRAPPER='stale-wrapper',
+                RUSTC_WORKSPACE_WRAPPER='stale-workspace-wrapper')
+            environment.pop('BBOXY_CARGO_JOBS', None)
+            environment.pop('CARGO_BUILD_JOBS', None)
             result = subprocess.run(['/bin/sh', '-c', shell, 'cache-test', str(source)],
-                cwd=root, capture_output=True, text=True,
-                env=dict(os.environ, PATH=str(root)+':'+os.environ['PATH'],
-                    CACHE_TEST_MARKER=str(marker), BBOXY_CACHE_MODE=mode,
-                    CARGO_TARGET_DIR='private-target', RUSTC_WRAPPER='stale-wrapper',
-                    RUSTC_WORKSPACE_WRAPPER='stale-workspace-wrapper'))
+                cwd=root, capture_output=True, text=True, env=environment)
             return result, marker.exists(), str(root.resolve() / 'private-target')
 
     def test_off_clears_wrappers_and_never_contacts_shared_cache(self):
         result, contacted, target = self.source('off')
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, '||2|'+target+'|off')
+        self.assertFalse(contacted)
+
+    def test_off_ignores_inherited_job_settings(self):
+        with patch.dict(os.environ, BBOXY_CARGO_JOBS='4', CARGO_BUILD_JOBS='8'):
+            result, contacted, target = self.source('off')
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual(result.stdout, '||2|'+target+'|off')
         self.assertFalse(contacted)
