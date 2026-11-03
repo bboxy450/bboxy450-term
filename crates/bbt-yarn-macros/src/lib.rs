@@ -21,6 +21,16 @@ use syn::{
     Attribute, Block, Error, Expr, Ident, LitInt, LitStr, Pat, Result, Token, braced, bracketed,
 };
 
+mod protocol;
+
+// New bboxy450 protocol frontend; Respectful Slop License 1.0-Draft applies.
+/// Generates a pure finite reducer and, with Yarn's `model` feature, its model.
+#[proc_macro]
+#[cfg(not(test))]
+pub fn protocol(input: TokenStream) -> TokenStream {
+    protocol::expand(input.into()).into()
+}
+
 const MAX_DRAIN: usize = 4096;
 
 /// Expands the selected K0 implementation: direct core polling with an owned

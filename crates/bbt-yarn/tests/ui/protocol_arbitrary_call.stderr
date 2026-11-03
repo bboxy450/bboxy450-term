@@ -1,0 +1,5 @@
+error: PRO001 unsupported protocol expression or arbitrary call. Repair: use finite values, ==, !=, &&, ||, !, Some, is_none, contains, with or without.
+  --> tests/ui/protocol_arbitrary_call.rs:10:112
+   |
+10 |     mod Opaque { state { value: bool = false; } events { Ping; } on Ping { case all when true => { set value = arbitrary(); } } }
+   |                                                                                                                ^^^^^^^^^

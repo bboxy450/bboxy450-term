@@ -51,6 +51,22 @@ expected = "pass"
 frontend = "yarn"
 
 [[model]]
+# Project-owned protocol contract, exported by the Yarn example.
+name = "LatestResult"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenLatestResult"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "ProtocolLanguage"
+expected = "pass"
+frontend = "yarn"
+
+[[model]]
 name = "Counter"
 expected = "pass"
 frontend = "checker"

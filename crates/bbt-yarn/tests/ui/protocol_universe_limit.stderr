@@ -1,0 +1,5 @@
+error: PRO010 guard universe exceeds 65536: parameters [set: Set<Id> (131072)] × guard state []; 131072 valuations, all declared values without reachability/invariant pruning. Repair: reduce domain sizes, event parameters or guard state reads; partial checking is refused.
+  --> tests/ui/protocol_universe_limit.rs:10:129
+   |
+10 | ...te { value: bool = false; } events { Ping(set: Set<Id>); } on Ping(set) { case all when true => { preserve value; } } }
+   |                                                                  ^^^^

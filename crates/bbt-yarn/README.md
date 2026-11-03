@@ -161,6 +161,94 @@ compile-fail fixtures include the ordinary ownership error `E0382` and the
 negative controls demonstrate raw-runtime bypass, erased constraints and allowed
 doc-comment rationale; they are not proofs of application-wide safety.
 
+## Pure finite protocols
+
+`protocol!` is an item macro; its module name is an ASCII identifier starting
+with a letter, as required by TLA+ export. One declaration generates a module containing
+`State`, `Event`, `Effect`, `RejectReason`, `IgnoreReason`, `Decision` and
+`step(&State, Event) -> Decision<State, Effect>`. State fields are private;
+read-only getters expose their finite values, and `Default` uses the declared
+initial values. The reducer executes no effects.
+
+```rust
+bbt_yarn::protocol! {
+    pub mod Flag {
+        state { enabled: bool = false; }
+        events { Set(value: bool); }
+        effects { Changed(value: bool); }
+        on Set(value) {
+            case change when enabled != value => {
+                set enabled = value;
+                emit Changed(value);
+            }
+            case same when enabled == value => {
+                preserve enabled;
+                ignore Unchanged;
+            }
+        }
+    }
+}
+let Flag::Decision::Accepted { next, effects } =
+    Flag::step(&Flag::State::default(), Flag::Event::Set(true)) else { panic!() };
+assert!(next.enabled());
+assert_eq!(effects, [Flag::Effect::Changed(true)]);
+```
+
+Declare finite domains with `domain Id { A, B }`. State, event and effect types
+are `bool`, a declared domain, `Option<Domain>` or `Set<Domain>`. Values include
+`Id::A`, `Some(id)`, `None`, `Set::empty()` and state/event names. The expression
+language is exactly `==`, `!=`, `&&`, `||`, `!`, parentheses, `.is_none()`, and
+set `.contains(id)`, `.with(id)`, `.without(id)`. Sets are immutable values;
+`with`/`without` return updated sets. Empty sets and `None` require a typed
+context. Calls to arbitrary Rust functions, arithmetic, loops and other types
+are compile errors with stable `PRO` diagnostics and repair hints.
+
+Each event has exactly one `on Event(bindings)` block with named
+`case name when <bool> => { ... }` cases. Event and effect variants use positional
+values in generated Rust, such as `Event::Submit(Id::A)` and
+`Effect::Fetch(Id::A)`. Each case must `set field = expression;` or
+`preserve field, other;` for every field, exactly once. All assignment right-hand
+sides **and emitted arguments read the pre-state**, regardless of statement
+order. Assignments take effect simultaneously; effects retain declaration order.
+`reject Reason;` and `ignore Reason;` require preserving all fields and prohibit
+`set` and `emit`. Their decisions carry only a generated reason, so the caller
+retains its input state and emits nothing.
+
+State predicates use `#[invariant(id = "RESULT-001")] fn result_is_current() {
+visible.is_none() || visible == desired }` inside the declaration. This generates
+`result_is_current(&State) -> bool` and the identically named model property ID.
+Duplicate IDs, missing field initializers, missing event arms, unaccounted fields
+and overlapping/incomplete guard partitions are compile errors. Guard checking
+enumerates every declared event-parameter value crossed with every value of
+state fields read by any guard for that event, including short-circuit operands.
+It does not assume invariants or restrict the universe to reachable states.
+Diagnostics identify that universe. Domains have 1..=63 variants; universes over
+65,536 valuations fail with a repair hint, never pass by partial exploration.
+
+With Yarn's `model` feature, the same declaration also provides `model()`,
+`State::model_values()` and `action_event(action_index)`. Domain values use
+zero-based ordinals, `None` is -1, booleans are 0/1, and sets use one Boolean
+variable per domain member. Model actions retain rejected/ignored self-loops.
+`model().check(limit)` checks all reachable states or returns an error if the
+limit is exceeded. It adds no environmental fairness or liveness assertion.
+The feature is selected on the Yarn dependency; consumers need no feature named
+`model`. Ordinary reducers work with `--no-default-features --features macros`
+and use `core` plus `alloc` for returned effect vectors.
+
+[LatestResult](tests/protocol.rs) is the full submit/complete/cancel example:
+21 reachable states satisfy RESULT-001, and all 105 edges replay against the
+reducer. Removing the freshness fence yields `Submit(A), Submit(B), Complete(A)`;
+replaying that native counterexample violates the generated invariant function.
+The same declarations feed the existing TLA+ exporter/Java TLC parity path in
+`make test-formal`, comparing all states, labeled edges and verdicts. Results
+cover exactly the declared finite state/event universe and atomic pure steps.
+**Effect execution, async adapters and domains larger than declared are
+unmodeled.** This is not verification of arbitrary Rust or a complete TLA+ frontend.
+
+Inspired by [Verus state_machine!](https://verus-lang.github.io/verus/state_machines/)
+(explicit pre-state transitions) and [machine-check](https://github.com/onderjan/machine-check)
+(a constrained Rust-facing language). Independently implemented; no source copied.
+
 ## Native verification and TLA+ export
 
 Enable the optional `model` feature for the hosted, pure Rust explicit-state
@@ -187,7 +275,7 @@ claim execution on other platforms or bare-metal targets.
 
 ## Feature flags
 
-- `macros` (default): re-export `reactor!` and its retained comparison backends.
+- `macros` (default): re-export `protocol!`, `reactor!` and its retained comparison backends.
 - `tokio` (default): Tokio channel, one-shot, cancellation and deadline adapters.
 - `model` (opt-in): hosted native finite-state checking and TLA+ export; requires std.
 - `--no-default-features`: the `no_std` core without Tokio or the proc macro.

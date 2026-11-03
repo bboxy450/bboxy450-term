@@ -27,6 +27,20 @@ nonempty readiness masks. The projection assumes terminating handlers. It does
 not translate arbitrary Rust, prove cancellation/waker correctness or turn an
 arbitration-count bound into a wall-clock latency claim.
 
+`protocol!` adds a closed application-state language. One declaration generates
+private finite state, events/effects, a pure simultaneous reducer, invariant
+functions and symbolic model expressions. `tests/protocol.rs` supplies the exact
+LatestResult declarations to both reducer tests and the Yarn exporter: 21 states,
+105 enabled edges, and a freshness-broken control replayed as
+`Submit(A), Submit(B), Complete(A)`. Every reachable state and edge is compared
+with generated Rust, including rejected/ignored self-loops. ProtocolLanguage
+adds exhaustive language-value/edge witnesses. These models enter the same Java
+TLC graph/verdict gate as the scheduling corpus. Effect execution, async adapters
+and domains larger than declared remain outside the checked scope. Guard
+completeness enumerates all declared parameter and guard-read state values,
+without invariant or reachability pruning, and refuses universes over 65,536.
+See `crates/bbt-yarn/README.md` for the grammar and limits.
+
 The native checker accepts an explicit expression/action representation: finite
 integer domains, integer/Boolean literals, equality, comparisons, arithmetic,
 Boolean operations, `IF-THEN-ELSE`, bounded `\A`/`\E` over integer ranges

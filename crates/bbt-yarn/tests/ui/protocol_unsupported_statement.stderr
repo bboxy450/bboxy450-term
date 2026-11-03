@@ -1,0 +1,5 @@
+error: PRO001 unsupported protocol syntax. Repair: use the documented finite protocol grammar.
+  --> tests/ui/protocol_unsupported_statement.rs:10:100
+   |
+10 |     mod Opaque { state { value: bool = false; } events { Ping; } on Ping { case all when true => { while value {} } } }
+   |                                                                                                    ^^^^^

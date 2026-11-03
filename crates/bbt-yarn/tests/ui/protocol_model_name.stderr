@@ -1,0 +1,5 @@
+error: PRO008 protocol module name is not a TLA+ identifier. Repair: use an ASCII module name starting with a letter.
+  --> tests/ui/protocol_model_name.rs:10:9
+   |
+10 |     mod _Invalid { state { value: bool = false; } events { Flip; } on Flip { case all when true => { preserve value; } } }
+   |         ^^^^^^^^

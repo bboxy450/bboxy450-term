@@ -13,7 +13,6 @@
 // from examples/integration tests that belong to this package.
 extern crate self as bbt_yarn;
 
-#[cfg(all(feature = "tokio", not(target_os = "none")))]
 extern crate alloc;
 
 #[cfg(feature = "model")]
@@ -28,8 +27,32 @@ pub mod reactor;
 /// Persistent, selection-loss-preserving reactor sources.
 pub mod source;
 
+/// Pure finite protocol decisions and domain sets.
+pub mod protocol;
+
 #[cfg(feature = "macros")]
 pub use bbt_yarn_macros::reactor;
+
+/// Declares a finite protocol, its pure reducer and optional formal model.
+#[cfg(feature = "macros")]
+pub use bbt_yarn_macros::protocol;
+
+// Select at the dependency's feature boundary, not the consuming crate's cfg.
+/// Implementation detail for protocol macro expansion.
+#[doc(hidden)]
+#[cfg(feature = "model")]
+#[macro_export]
+macro_rules! __yarn_protocol_model {
+    ($($item:item)*) => { $($item)* };
+}
+
+/// Implementation detail for protocol macro expansion.
+#[doc(hidden)]
+#[cfg(not(feature = "model"))]
+#[macro_export]
+macro_rules! __yarn_protocol_model {
+    ($($item:item)*) => {};
+}
 
 /// Projects the same reactor grammar into a finite scheduling model.
 #[cfg(all(feature = "macros", feature = "model"))]

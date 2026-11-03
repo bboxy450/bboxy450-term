@@ -1,0 +1,5 @@
+error: PRO004 case `all` neither sets nor preserves field `second`. Repair: set or explicitly preserve every field, including reject/ignore cases.
+  --> tests/ui/protocol_missing_update.rs:10:103
+   |
+10 |     mod Missing { state { first: bool = false; second: bool = true; } events { Ping; } on Ping { case all when true => { set first =...
+   |                                                                                                       ^^^

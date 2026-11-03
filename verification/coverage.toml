@@ -130,16 +130,16 @@ sources = ["plugins/gitkb/src/main.rs", "plugins/gitkb/src/backend.rs", "plugins
 [[crate]]
 name = "bboxy450-yarn-macros"
 status = "contract-model"
-models = ["YarnReactor"]
-scope = "Shared reactor parser/validator feeds the scheduling projection; macro expansion correctness still requires Rust runtime and compile-fail tests."
-sources = ["crates/bbt-yarn-macros/src/lib.rs"]
+models = ["YarnReactor", "LatestResult", "BrokenLatestResult", "ProtocolLanguage"]
+scope = "Shared reactor scheduling parser, plus the closed protocol language's typed AST feeding a pure Rust reducer and symbolic model. Protocol guards exhaustively partition all event parameter and guard-read state values (at most 65,536 valuations; no invariant/reachability pruning). Compile-fail controls cover missing events/updates/init, overlapping/incomplete guards, duplicate invariant ids, unsupported operations/types and resource limits. Effects, async adapters and domains larger than declared remain unmodeled; no arbitrary Rust or complete frontend refinement claim."
+sources = ["crates/bbt-yarn-macros/src/lib.rs", "crates/bbt-yarn-macros/src/protocol.rs"]
 
 [[crate]]
 name = "bboxy450-yarn"
 status = "contract-model"
-models = ["YarnReactor", "FairResponse", "WeakFairFlicker", "StutteringIsNotFairProgress"]
-scope = "Finite reactor scheduling and native checker semantics; arbitrary handler bodies and executor wake behavior remain outside the model."
-sources = ["crates/bbt-yarn/src/model.rs"]
+models = ["YarnReactor", "FairResponse", "WeakFairFlicker", "StutteringIsNotFairProgress", "LatestResult", "BrokenLatestResult", "ProtocolLanguage"]
+scope = "Finite reactor scheduling and native checker semantics, plus protocol application-state transitions over declared finite domains. LatestResult has 21 reachable states and all 105 action edges replay the generated Rust step. ProtocolLanguage exercises Boolean/domain/Option/Set state, event/effect values and simultaneous updates. Effect execution, async adapters, domains larger than declared, arbitrary handler bodies and executor wake behavior remain outside these models."
+sources = ["crates/bbt-yarn/src/model.rs", "crates/bbt-yarn/src/protocol.rs", "crates/bbt-yarn/tests/protocol.rs", "crates/bbt-yarn/tests/protocol_runtime.rs", "crates/bbt-yarn/examples/verify.rs"]
 
 [[crate]]
 name = "bboxy450-term-core"

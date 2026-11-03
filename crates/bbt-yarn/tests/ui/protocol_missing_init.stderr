@@ -1,0 +1,5 @@
+error: PRO003 field `value` has no initial value. Repair: add `= <finite initial value>` to the field.
+  --> tests/ui/protocol_missing_init.rs:10:27
+   |
+10 |     mod Missing { state { value: bool; } events { Ping; } on Ping { case all when true => { preserve value; } } }
+   |                           ^^^^^

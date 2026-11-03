@@ -1,0 +1,5 @@
+error: PRO005 event `Ping` guards do not cover (0 matching cases); checked universe: parameters [id: Id (2)] × guard state [ready: bool (2)]; 4 valuations, all declared values without reachability/invariant pruning. Repair: partition this entire finite universe into exactly one case per valuation.
+  --> tests/ui/protocol_uncovered.rs:10:99
+   |
+10 |     mod Uncovered { domain Id { A, B } state { ready: bool = false; } events { Ping(id: Id); } on Ping(id) { case first when ready &...
+   |                                                                                                   ^^^^
