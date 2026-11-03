@@ -284,11 +284,13 @@ fn process_tree(
     }
     // Only numeric pid/ppid columns are read, never argv or environment. The
     // bounded result is filtered to this app before any bytes cross the wire.
-    let mut child = Command::new("/bin/ps")
-        .args(["-axo", "pid=,ppid="])
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .spawn()?;
+    let mut child = bbt_rt::qos::with_default_qos(|| {
+        Command::new("/bin/ps")
+            .args(["-axo", "pid=,ppid="])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()
+    })?;
     let mut bytes = Vec::new();
     child
         .stdout

@@ -195,7 +195,8 @@ impl CommandRunner {
         let (program, args) = argv
             .split_first()
             .ok_or_else(|| io::Error::new(io::ErrorKind::InvalidInput, "empty command argv"))?;
-        let mut child = Command::new(program)
+        let mut command = Command::new(program);
+        command
             .args(args)
             .current_dir(cwd)
             .envs(env)
@@ -203,8 +204,9 @@ impl CommandRunner {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .process_group(0)
-            .kill_on_drop(true)
-            .spawn()?;
+            .kill_on_drop(true);
+        // Runtime workers are interactive; a command must not inherit that.
+        let mut child = crate::qos::with_default_qos(|| command.spawn())?;
         let pid = child.id().expect("new child has a PID");
         task.0.pid.store(pid, Ordering::Release);
         let stdout = child.stdout.take().expect("piped stdout");

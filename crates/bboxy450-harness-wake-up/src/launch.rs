@@ -506,10 +506,6 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
     spec.env
         .insert("TERM_PROGRAM".into(), "bboxy450-term".into());
     spec.env.insert(
-        "ATC_MACHINE_CONFIG".into(),
-        atc_machine_config(&overlay)?.to_string_lossy().into_owned(),
-    );
-    spec.env.insert(
         "TERM_PROGRAM_VERSION".into(),
         env!("CARGO_PKG_VERSION").into(),
     );
@@ -837,34 +833,6 @@ fn serve_shared_codex(args: &[String]) -> Result<()> {
     ))
 }
 
-/// ATC's shim, with its overlay enabled, runs the harness on a pseudo-terminal
-/// of its own and copies every byte to and from the seat's PTY so it can draw
-/// its overlay on top. bboxy draws its own chrome, so seats point ATC at this
-/// launch's machine configuration with the overlay off: the shim runs the
-/// harness directly on the seat's PTY. A valid file is required; a missing one
-/// lets ATC rediscover a legacy overlay service. Format: atc machine_config.rs.
-fn atc_machine_config(overlay: &Path) -> Result<PathBuf> {
-    use std::io::Write as _;
-    use std::os::unix::fs::OpenOptionsExt as _;
-    let path = overlay.join("atc-machine.toml");
-    let mut file = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .mode(0o600)
-        .open(&path)?;
-    file.write_all(ATC_MACHINE_CONFIG.as_bytes())?;
-    Ok(path)
-}
-const ATC_MACHINE_CONFIG: &str = "schema_version = 1
-managed_by = \"atc\"
-
-[overlay]
-enabled = false
-terminal_title = false
-trigger_hex = \"1b5f41544307\"
-shortcut = \"cmd-shift-k\"
-";
-
 /// Spawn at the seat QoS class (user-initiated). A macOS process inherits its
 /// spawning thread's class; the shared Codex daemon runs the Codex seats'
 /// tools and builds, so they share the seats' class: above background work,
@@ -1155,18 +1123,6 @@ mod embed_tests {
         };
         let harness = plan(&record, &context).unwrap();
         let claude = plan(&HarnessRecord::builtin("claude").unwrap(), &context).unwrap();
-        // ATC's shim runs the harness on the seat's PTY, overlay off.
-        for launch in [&harness, &claude] {
-            let atc = Path::new(&launch.env["ATC_MACHINE_CONFIG"]);
-            assert_eq!(atc, launch.overlay.join("atc-machine.toml"));
-            let text = std::fs::read_to_string(atc).unwrap();
-            assert!(text.contains("managed_by = \"atc\"") && text.contains("enabled = false"));
-            use std::os::unix::fs::PermissionsExt as _;
-            assert_eq!(
-                std::fs::metadata(atc).unwrap().permissions().mode() & 0o777,
-                0o600
-            );
-        }
         let argument = |args: &[String], flag: &str| {
             args.windows(2).find(|p| p[0] == flag).unwrap()[1].clone()
         };
@@ -1186,9 +1142,8 @@ mod embed_tests {
             argument(&harness.args, "--mcp-config"),
             harness.overlay.join("mcp.json").to_str().unwrap()
         );
-        assert_eq!(std::fs::read_dir(&harness.overlay).unwrap().count(), 3);
+        assert_eq!(std::fs::read_dir(&harness.overlay).unwrap().count(), 2);
         assert!(harness.overlay.join("capability").is_file());
-        assert!(harness.overlay.join("atc-machine.toml").is_file());
         assert_eq!(
             std::fs::metadata(&harness.overlay)
                 .unwrap()

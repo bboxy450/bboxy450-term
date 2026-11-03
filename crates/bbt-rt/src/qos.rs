@@ -8,15 +8,22 @@
 //! user-interactive, so a parallel build cannot starve them. A process inherits
 //! the class of the thread that spawns it: seats and the daemons that run their
 //! tools are spawned user-initiated (above background work, below the terminal
-//! path), and plugins at default.
+//! path), and plugins and helper commands at default.
+//!
+//! macOS has QoS classes. Linux has none; it gets the same order from the
+//! thread's nice value, which a forked child inherits: the terminal path asks
+//! for nice -5 (granted only with CAP_SYS_NICE or a raised RLIMIT_NICE), and
+//! everything spawned runs at nice 0, never inheriting the terminal path's.
 
-/// Mark the calling thread user-interactive (macOS; a no-op elsewhere).
+/// Mark the calling thread user-interactive.
 pub fn interactive_thread() {
     #[cfg(target_os = "macos")]
     // SAFETY: changes only the calling thread's own QoS class; no pointers.
     unsafe {
         libc::pthread_set_qos_class_self_np(libc::qos_class_t::QOS_CLASS_USER_INTERACTIVE, 0);
     }
+    #[cfg(target_os = "linux")]
+    linux::set_nice(linux::INTERACTIVE);
 }
 
 /// Run `spawn` at the seat class (user-initiated): a seat and every process it
@@ -24,7 +31,9 @@ pub fn interactive_thread() {
 pub fn with_seat_qos<T>(spawn: impl FnOnce() -> T) -> T {
     #[cfg(target_os = "macos")]
     return with_class(libc::qos_class_t::QOS_CLASS_USER_INITIATED, spawn);
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "linux")]
+    return linux::with_nice(0, spawn);
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     spawn()
 }
 
@@ -33,7 +42,9 @@ pub fn with_seat_qos<T>(spawn: impl FnOnce() -> T) -> T {
 pub fn with_default_qos<T>(spawn: impl FnOnce() -> T) -> T {
     #[cfg(target_os = "macos")]
     return with_class(libc::qos_class_t::QOS_CLASS_DEFAULT, spawn);
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "linux")]
+    return linux::with_nice(0, spawn);
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     spawn()
 }
 
@@ -56,6 +67,45 @@ fn with_class<T>(target: libc::qos_class_t, spawn: impl FnOnce() -> T) -> T {
         }
     }
     result
+}
+
+/// Linux nice is per thread: `PRIO_PROCESS` with a thread id sets one thread.
+#[cfg(target_os = "linux")]
+mod linux {
+    pub const INTERACTIVE: i32 = -5;
+
+    fn tid() -> libc::id_t {
+        // SAFETY: gettid takes no arguments and cannot fail.
+        unsafe { libc::syscall(libc::SYS_gettid) as libc::id_t }
+    }
+
+    /// Best effort: lowering nice below the current value needs privilege.
+    pub fn set_nice(nice: i32) {
+        // SAFETY: affects only the calling thread's own priority.
+        unsafe {
+            libc::setpriority(libc::PRIO_PROCESS, tid(), nice);
+        }
+    }
+
+    pub fn nice() -> i32 {
+        // SAFETY: reads only the calling thread's own priority. -1 is also the
+        // error value; a thread this module never lowered reads >= 0 anyway.
+        unsafe { libc::getpriority(libc::PRIO_PROCESS, tid()) }
+    }
+
+    /// Spawn at `target` when the thread runs below it (only a privileged
+    /// interactive thread does), then restore; otherwise spawn as is, so an
+    /// unprivileged thread never raises a nice it could not lower again.
+    pub fn with_nice<T>(target: i32, spawn: impl FnOnce() -> T) -> T {
+        let own = nice();
+        if own >= target {
+            return spawn();
+        }
+        set_nice(target);
+        let result = spawn();
+        set_nice(own);
+        result
+    }
 }
 
 /// The calling thread's class, for tests.
@@ -110,6 +160,25 @@ mod tests {
                 libc::qos_class_t::QOS_CLASS_USER_INTERACTIVE as u32,
                 "the terminal thread keeps its class after a spawn"
             );
+        })
+        .join()
+        .unwrap();
+    }
+}
+
+#[cfg(all(test, target_os = "linux"))]
+mod linux_tests {
+    use super::*;
+
+    #[test]
+    fn spawns_run_at_nice_zero_and_the_terminal_thread_keeps_its_own() {
+        std::thread::spawn(|| {
+            interactive_thread();
+            let own = linux::nice();
+            assert!(own <= 0, "the terminal path is never below nice 0: {own}");
+            assert_eq!(with_seat_qos(linux::nice), own.max(0));
+            assert_eq!(with_default_qos(linux::nice), own.max(0));
+            assert_eq!(linux::nice(), own, "the terminal thread keeps its nice");
         })
         .join()
         .unwrap();
