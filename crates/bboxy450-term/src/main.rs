@@ -32,6 +32,7 @@ mod sidebar_chat;
 mod sidebar_vertical;
 mod spawn_gate;
 mod stall;
+mod startup_modal;
 mod swarm_folder;
 mod terminal_clipboard;
 mod usage_strip;
@@ -117,6 +118,11 @@ pub enum UiEvent {
     BackendStopped(Result<(), String>),
     BackendLost(String),
     BackendReady,
+    Startup {
+        phase: bboxy450_term::cockpit::startup::Phase,
+        run_dir: std::path::PathBuf,
+    },
+    StartupFailed(String),
     BackendInfo {
         generation: u64,
         custody_backend: String,
@@ -2364,6 +2370,9 @@ struct App {
     cursor_icon: std::cell::Cell<bbt_ui::cursor::Cursor>,
     query_dragging: bool,
     backend_lost: bool,
+    startup: bboxy450_term::cockpit::startup::Modal,
+    startup_layout: Option<bbt_ui::components::Layout>,
+    startup_tick: Instant,
     app_generation: u64,
     app_custody: String,
     app_ready_sent: bool,
@@ -2587,6 +2596,12 @@ impl App {
             cursor_icon: Default::default(),
             query_dragging: false,
             backend_lost: false,
+            startup: bboxy450_term::cockpit::startup::Modal::new(
+                Instant::now(),
+                !fake && !animate && !args.iter().any(|arg| arg == "--stall-test"),
+            ),
+            startup_layout: None,
+            startup_tick: Instant::now(),
             app_generation: 0,
             app_custody: "unknown".into(),
             app_ready_sent: false,
@@ -8165,6 +8180,7 @@ impl App {
                 _ => {}
             }
         }
+        overlay_after.extend(self.paint_startup_modal()?);
         let mut retained = retained;
         if !live {
             ops.append(&mut pane_overlay);
@@ -8357,6 +8373,10 @@ impl ApplicationHandler<UiEvent> for App {
         let _callback = bbt_rt::diagnostics::callback(bbt_rt::diagnostics::Phase::AboutToWait);
         self.apply_notification_click();
         self.sync_role_settings();
+        if self.startup.visible && Instant::now() >= self.startup_tick {
+            self.startup_tick = Instant::now() + Duration::from_secs(1);
+            self.request_redraw();
+        }
         let pending = self.custody.wake_at();
         if let Some(message) = self.custody.next(Instant::now(), !self.backend_lost) {
             self.queue(message);
@@ -8373,6 +8393,7 @@ impl ApplicationHandler<UiEvent> for App {
                 .into_iter()
                 .chain(self.custody.wake_at())
                 .chain(self.role_settings.wake_at())
+                .chain(self.startup.visible.then_some(self.startup_tick))
                 .min()
                 .map_or(ControlFlow::Wait, ControlFlow::WaitUntil),
         );
@@ -8420,6 +8441,15 @@ impl ApplicationHandler<UiEvent> for App {
             }
             UiEvent::SwarmMetadataReply { op, result } => self.overlay_metadata_reply(op, result),
             UiEvent::DesktopAction(action, scancode) => {
+                if self.startup.visible
+                    && !matches!(
+                        action,
+                        bboxy450_term_desktop::Action::CloseWindow
+                            | bboxy450_term_desktop::Action::HardQuit
+                    )
+                {
+                    return;
+                }
                 self.consume_desktop_font_key(action, scancode);
                 if let Some(hard) = self.desktop_action(action) {
                     if hard {
@@ -8798,6 +8828,16 @@ impl ApplicationHandler<UiEvent> for App {
             UiEvent::Quit => event_loop.exit(),
             UiEvent::SmokeDeadline => self.fail(self.idle_quiet.deadline_error(), event_loop),
             UiEvent::BackendStopped(result) => {
+                if !self.closing
+                    && let Err(error) = &result
+                {
+                    self.logger
+                        .write(format!("backend startup failed: {error}"));
+                    self.startup.fail(error.clone());
+                    self.backend_lost = true;
+                    self.request_redraw();
+                    return;
+                }
                 if self.admission_refusals.input != 0 || self.admission_refusals.spawn != 0 {
                     let mut report = self.admission_refusals.report();
                     if let Err(error) = result {
@@ -8823,6 +8863,15 @@ impl ApplicationHandler<UiEvent> for App {
                 self.logger
                     .write(format!("backend lost; retaining last pane frame: {reason}"));
                 self.backend_lost = true;
+                if !self.startup.visible {
+                    self.startup.update(
+                        bboxy450_term::cockpit::startup::Phase::Reconnecting {
+                            attempt: 1,
+                            reason: reason.clone(),
+                        },
+                        Instant::now(),
+                    );
+                }
                 self.overlay_backend_lost();
                 self.command_retry.cancel();
                 self.custody.next(Instant::now(), false);
@@ -8833,11 +8882,22 @@ impl ApplicationHandler<UiEvent> for App {
             }
             UiEvent::BackendReady => {
                 self.backend_lost = false;
+                self.startup.attached();
                 self.sync_role_settings();
                 self.scene.backend_ready();
                 self.conversation_reads(false);
                 self.task_reads();
                 self.flush_commands();
+                self.request_redraw();
+            }
+            UiEvent::Startup { phase, run_dir } => {
+                self.startup.run_dir = Some(run_dir);
+                self.startup.update(phase, Instant::now());
+                self.request_redraw();
+            }
+            UiEvent::StartupFailed(reason) => {
+                self.startup.fail(reason);
+                self.backend_lost = true;
                 self.request_redraw();
             }
             UiEvent::BackendInfo {
@@ -8851,6 +8911,43 @@ impl ApplicationHandler<UiEvent> for App {
     }
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
         let _callback = stall::window_callback(&event);
+        if self.startup.visible {
+            match &event {
+                WindowEvent::MouseInput {
+                    state: ElementState::Pressed,
+                    button: MouseButton::Left,
+                    ..
+                } => {
+                    match self.startup_action_at(self.pointer) {
+                        Some("startup/quit") => self.request_close(event_loop),
+                        Some("startup/retry") => self.retry_startup(),
+                        _ => {}
+                    }
+                    return;
+                }
+                WindowEvent::KeyboardInput { event, .. } => {
+                    if event.state.is_pressed() && !event.repeat {
+                        if self.modifiers.super_key()
+                            && !self.modifiers.shift_key()
+                            && event.logical_key == Key::Character("q".into())
+                        {
+                            if self.modifiers.alt_key() {
+                                self.request_shutdown(event_loop);
+                            } else {
+                                self.request_close(event_loop);
+                            }
+                        } else if event.logical_key == Key::Named(NamedKey::Enter) {
+                            self.retry_startup();
+                        }
+                    }
+                    return;
+                }
+                WindowEvent::MouseWheel { .. }
+                | WindowEvent::MouseInput { .. }
+                | WindowEvent::Ime(_) => return,
+                _ => {}
+            }
+        }
         if self.smoke && !self.cadence_test {
             if let WindowEvent::Occluded(occluded) = &event {
                 // A locked display can toggle occlusion throughout the night.
@@ -8946,6 +9043,9 @@ impl ApplicationHandler<UiEvent> for App {
                 self.titlebar.moved(self.pointer);
                 self.pointer_inside = true;
                 self.update_cursor();
+                if self.startup.visible {
+                    return;
+                }
                 if self.overlay_hover(self.pointer) {
                     return;
                 }

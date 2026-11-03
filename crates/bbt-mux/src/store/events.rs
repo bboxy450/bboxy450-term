@@ -122,6 +122,17 @@ impl EventLog {
         Ok(Self::open_counted(directory)?.0)
     }
 
+    /// Startup verification is bounded by the checkpoint, so progress reports
+    /// the verified suffix once rather than streaming retained history.
+    pub(crate) fn open_with_progress(
+        directory: &Path,
+        progress: &mut dyn FnMut(u64, u64),
+    ) -> Result<Self> {
+        let (log, verified) = Self::open_counted(directory)?;
+        progress(verified, verified);
+        Ok(log)
+    }
+
     fn open_counted(directory: &Path) -> Result<(Self, u64)> {
         bbt_rt::assert_not_ui_thread();
         std::fs::create_dir_all(directory)?;

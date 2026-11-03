@@ -260,6 +260,19 @@ pub fn run(args: &[String]) -> Result<(), String> {
                     UiEvent::BackendReady => {
                         backend = true;
                         app.backend_lost = false;
+                        app.startup.attached();
+                        dirty = true;
+                    }
+                    UiEvent::Startup { phase, run_dir } => {
+                        app.startup.run_dir = Some(run_dir);
+                        app.startup.update(phase, Instant::now());
+                        dirty = true;
+                    }
+                    UiEvent::StartupFailed(reason) => {
+                        app.startup.fail(reason);
+                        backend = false;
+                        app.backend_lost = true;
+                        dirty = true;
                     }
                     UiEvent::BackendLost(reason) => {
                         backend = false;
@@ -551,6 +564,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         ));
                         foreground.extend(app.scene.error_overlay(size, app.unread_errors));
                         foreground.extend(app.paint_app_overlay());
+                        foreground.extend(app.paint_startup_modal()?);
                         gpu.draw_layers_notifying(
                             base,
                             crate::gpu::Panes {

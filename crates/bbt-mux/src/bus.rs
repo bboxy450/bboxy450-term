@@ -851,6 +851,13 @@ impl Broker {
         self.issued_by = issued_by;
     }
     pub fn open(root: &Path, key: SigningKey) -> Result<Self> {
+        Self::open_with_progress(root, key, &mut |_, _, _| {})
+    }
+    pub(crate) fn open_with_progress(
+        root: &Path,
+        key: SigningKey,
+        progress: &mut dyn FnMut(&str, u64, u64),
+    ) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         std::fs::create_dir_all(root)?;
         let catalog = SqliteStore::open(&object_dir(root, "bus")?)?;
@@ -877,15 +884,25 @@ impl Broker {
             .map(|e| e.file_name().to_string_lossy().to_string())
             .collect();
         for stream in streams {
-            broker.ensure_stream(&stream)?;
+            broker.ensure_stream_with_progress(&stream, progress)?;
         }
         Ok(broker)
     }
     fn ensure_stream(&mut self, name: &str) -> Result<()> {
+        self.ensure_stream_with_progress(name, &mut |_, _, _| {})
+    }
+    fn ensure_stream_with_progress(
+        &mut self,
+        name: &str,
+        progress: &mut dyn FnMut(&str, u64, u64),
+    ) -> Result<()> {
         if self.streams.contains_key(name) {
             return Ok(());
         }
-        let log = EventLog::open(&object_dir(&self.root, name)?)?;
+        let log = EventLog::open_with_progress(
+            &object_dir(&self.root, name)?,
+            &mut |verified, total| progress(name, verified, total),
+        )?;
         let mut stream = Stream {
             name: name.into(),
             log,

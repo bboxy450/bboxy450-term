@@ -1951,6 +1951,45 @@ enum IdentityMode {
     Prepared(Box<crate::identity::IdentityRuntime>),
 }
 impl Logic {
+    /// App bootstrap observations; callbacks run on the non-UI bootstrap owner.
+    pub fn start_custodied_with_progress(
+        connection: impl SupervisorConnection + 'static,
+        config: LogicConfig,
+        store: Option<Arc<dyn crate::identity::DeviceKeyStore + Send + Sync>>,
+        fixture_hosts: bool,
+        handle: &tokio::runtime::Handle,
+        progress: &mut dyn FnMut(&str, u64, u64),
+    ) -> Result<Self> {
+        bbt_rt::assert_not_ui_thread();
+        let providers: Vec<Box<dyn Provider>> = if fixture_hosts {
+            let registry =
+                Registry::new(SqliteStore::open(&object_dir(&config.run_dir, "account")?)?);
+            let owners = registry
+                .list()?
+                .into_iter()
+                .map(|seat| (seat.id, HostId::from(&seat.location)));
+            crate::provider::shared::fixture_providers(
+                connection,
+                owners,
+                Arc::new(crate::provider::fake::RealClock::default()),
+            )?
+        } else {
+            vec![Box::new(LocalProvider::new(connection))]
+        };
+        let mut seed = [0; 32];
+        getrandom::fill(&mut seed)?;
+        let key = SigningKey::from_bytes(&seed);
+        seed.fill(0);
+        Self::start_inner_with_plugins(
+            providers,
+            config,
+            key,
+            IdentityMode::Custodied(store),
+            handle,
+            Default::default(),
+            progress,
+        )
+    }
     /// Production construction: custody may be pending while PTYs, the GUI
     /// and public history remain live. No caller substitutes a fresh issuer.
     pub fn start_custodied(
@@ -2026,6 +2065,7 @@ impl Logic {
             IdentityMode::Custodied(Some(store)),
             handle,
             plugins,
+            &mut |_, _, _| {},
         )
     }
     fn start_with_custody(
@@ -2084,7 +2124,15 @@ impl Logic {
         identity: IdentityMode,
         handle: &tokio::runtime::Handle,
     ) -> Result<Self> {
-        Self::start_inner_with_plugins(providers, config, key, identity, handle, Default::default())
+        Self::start_inner_with_plugins(
+            providers,
+            config,
+            key,
+            identity,
+            handle,
+            Default::default(),
+            &mut |_, _, _| {},
+        )
     }
     fn start_inner_with_plugins(
         providers: Vec<Box<dyn Provider>>,
@@ -2093,6 +2141,7 @@ impl Logic {
         identity: IdentityMode,
         handle: &tokio::runtime::Handle,
         plugins: crate::plugins::HostConfig,
+        progress: &mut dyn FnMut(&str, u64, u64),
     ) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         let custodied = !matches!(&identity, IdentityMode::Explicit(_));
@@ -2125,7 +2174,7 @@ impl Logic {
         };
         let key = ready.unwrap_or(key);
         let plugin_signing = key.clone();
-        let mut broker = Broker::open(&config.run_dir, key.clone())?;
+        let mut broker = Broker::open_with_progress(&config.run_dir, key.clone(), progress)?;
         broker.set_issued_by(identity.issued_by().map(str::to_owned));
         if let Some(run) = bus_window {
             broker.identity_signer(key, Some(run));

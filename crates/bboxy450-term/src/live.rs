@@ -94,6 +94,7 @@ pub struct CommandSender {
     workspace: tokio::sync::watch::Sender<Option<KnowledgeContext>>,
     context: tokio::sync::watch::Sender<Option<bboxy450_term::settings::ContextUpdate>>,
     desktop: tokio::sync::watch::Sender<Option<cockpit::desktop::Context>>,
+    startup_retry: Arc<tokio::sync::Notify>,
     // UI loss detaches even when the queue and retained retry slot are full.
     // Only an explicit hard-quit signal stops the backend owners.
     _stop: oneshot::Sender<CloseMode>,
@@ -113,6 +114,9 @@ struct KnowledgeDemand {
     notify: tokio::sync::Notify,
 }
 impl CommandSender {
+    pub fn retry_startup(&self) {
+        self.startup_retry.notify_one();
+    }
     pub fn detach(self, state: Option<bbt_proto::gui::WindowState>) {
         let _ = self._stop.send(CloseMode::Detach(state.map(Box::new)));
     }
@@ -169,6 +173,7 @@ impl std::ops::Deref for CommandSender {
     }
 }
 struct Commands {
+    startup_retry: Arc<tokio::sync::Notify>,
     messages: mpsc::Receiver<UiMsg>,
     stop: oneshot::Receiver<CloseMode>,
     knowledge: Arc<KnowledgeDemand>,
@@ -177,6 +182,7 @@ struct Commands {
     desktop: tokio::sync::watch::Receiver<Option<cockpit::desktop::Context>>,
 }
 fn command_channel() -> (CommandSender, Commands) {
+    let startup_retry = Arc::new(tokio::sync::Notify::new());
     let (sender, messages) = mpsc::channel(COMMAND_CAPACITY);
     let (context, contexts) = tokio::sync::watch::channel(None);
     let (desktop, desktop_contexts) = tokio::sync::watch::channel(None);
@@ -185,6 +191,7 @@ fn command_channel() -> (CommandSender, Commands) {
     let knowledge = Arc::new(KnowledgeDemand::default());
     (
         CommandSender {
+            startup_retry: startup_retry.clone(),
             sender,
             knowledge: knowledge.clone(),
             workspace,
@@ -193,6 +200,7 @@ fn command_channel() -> (CommandSender, Commands) {
             _stop: stop,
         },
         Commands {
+            startup_retry,
             messages,
             stop: stopped,
             knowledge,
@@ -239,14 +247,62 @@ pub fn start_with_sink(
     ctl: bool,
     rendering: oneshot::Receiver<RenderContext>,
 ) -> CommandSender {
-    let (sender, commands) = command_channel();
+    let (sender, mut commands) = command_channel();
     bbt_rt::handle().spawn(async move {
         let result = async {
-            let mut config = cockpit::Config::discover(run_dir)?;
-            config.ctl = ctl;
+            let args: Vec<_> = std::env::args().collect();
+            let startup_run = run_dir
+                .clone()
+                .or_else(|| {
+                    cockpit::Config::test_account_from_args(&args)
+                        .ok()
+                        .flatten()
+                        .map(|root| root.join("run"))
+                })
+                .or_else(|| {
+                    bbt_mux::transport::default_socket_path()
+                        .ok()
+                        .and_then(|socket| socket.parent().map(Path::to_path_buf))
+                });
+            if let Some(run_dir) = startup_run {
+                events(UiEvent::Startup {
+                    phase: cockpit::startup::Phase::StartingSupervisor,
+                    run_dir,
+                });
+            }
+            let (config, session) = loop {
+                let started = tokio::select! {
+                  result = async {
+                    let mut config = cockpit::Config::discover(run_dir.clone())?;
+                    config.ctl = ctl;
+                    let progress_events = events.clone();
+                    let progress_run = config.run_dir.clone();
+                    let progress: cockpit::startup::Progress = Arc::new(move |phase| {
+                        progress_events(UiEvent::Startup {
+                            phase,
+                            run_dir: progress_run.clone(),
+                        });
+                    });
+                    let session = Session::start_with_progress(config.clone(), progress).await?;
+                    Ok::<_, bbt_mux::store::Error>((config, session))
+                  } => result,
+                  _ = &mut commands.stop => return Ok(()),
+                };
+                match started {
+                    Ok(ready) => break ready,
+                    Err(error) => {
+                        logger.write(format!("cockpit startup failed: {error}"));
+                        events(UiEvent::StartupFailed(error.to_string()));
+                        // Failure remains visible; retry/quit never require a backend socket.
+                        tokio::select! {
+                            _ = commands.startup_retry.notified() => {},
+                            _ = &mut commands.stop => return Ok(()),
+                        }
+                    }
+                }
+            };
             let cwd = config.repository.clone();
             let desktop_config = config.clone();
-            let session = Session::start(config).await?;
             // Desktop setup is best effort and runs beside the IO owner. It
             // never gates backend readiness, messaging or the frame loop.
             let desktop_events = events.clone();
@@ -255,9 +311,12 @@ pub fn start_with_sink(
                 session.desktop_supervisor.clone(),
                 move |message| {
                     desktop_events(match message {
-                        cockpit::desktop::Message::Action(action) => UiEvent::DesktopAction(action, None),
-                        cockpit::desktop::Message::NotificationClicked { id, episode } =>
-                            UiEvent::DesktopNotification { id, episode },
+                        cockpit::desktop::Message::Action(action) => {
+                            UiEvent::DesktopAction(action, None)
+                        }
+                        cockpit::desktop::Message::NotificationClicked { id, episode } => {
+                            UiEvent::DesktopNotification { id, episode }
+                        }
                     });
                 },
             );
@@ -1315,6 +1374,7 @@ async fn run_with_control(
         let writer_ready = session.writer_ready();
         let result:Result<()>=async {
             tokio::select! {
+                _=commands.startup_retry.notified()=> { session.retry_startup(); },
                 changed=commands.workspace.changed()=> {
                     if changed.is_ok() && let Some(context)=commands.workspace.borrow_and_update().clone() {
                         let previous = knowledge_watch.scope();

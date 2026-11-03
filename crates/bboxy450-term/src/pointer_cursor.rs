@@ -26,6 +26,13 @@ fn native(cursor: Cursor) -> winit::window::CursorIcon {
 
 impl App {
     pub(super) fn cursor_at(&self, at: [f32; 2]) -> Cursor {
+        if self.startup.visible {
+            return if self.startup_action_at(at).is_some() {
+                Cursor::Pointer
+            } else {
+                Cursor::Default
+            };
+        }
         if self.app_overlays.open() {
             return self.app_overlays.cursor(at);
         }

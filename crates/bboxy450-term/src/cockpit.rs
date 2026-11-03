@@ -36,8 +36,10 @@ mod environment_tests;
 mod fixture_hosts;
 mod owners;
 mod shell_path;
+pub mod startup;
 use owners::ManagedChild as Child;
 pub use owners::{Exit as ProcessExit, Process};
+use startup::{Phase, Progress};
 
 /// A read-only lock observation for ctl's local launcher, not backend discovery.
 pub fn frontend_running(run_dir: &std::path::Path) -> Result<Option<bool>> {
@@ -766,25 +768,39 @@ async fn logic_main() -> Result<()> {
         repository: bootstrap.config.repository,
         ring: Default::default(),
     };
-    let logic = if bootstrap.fixture_hosts {
-        Logic::start_custodied_with_fixture_store(
-            connection,
-            logic_config,
-            store,
-            bbt_rt::handle(),
-        )?
-    } else if let Some(store) = store {
-        Logic::start_custodied_with_store(connection, logic_config, store, bbt_rt::handle())?
-    } else {
-        Logic::start_custodied(connection, logic_config, bbt_rt::handle())?
-    };
+    let logic = Logic::start_custodied_with_progress(
+        connection,
+        logic_config,
+        store,
+        bootstrap.fixture_hosts,
+        bbt_rt::handle(),
+        &mut |stream, verified, total| {
+            use std::io::Write;
+            let record = startup::ProgressLine {
+                startup_progress: startup::HistoryProgress {
+                    stream: stream.into(),
+                    verified,
+                    total,
+                },
+            };
+            if let Ok(bytes) = serde_json::to_vec(&record) {
+                let mut output = std::io::stdout().lock();
+                let _ = output
+                    .write_all(&bytes)
+                    .and_then(|_| output.write_all(b"\n"))
+                    .and_then(|_| output.flush());
+            }
+        },
+    )?;
     if bootstrap.recover_seats {
         logic.client.recover_seats().await?;
     }
     let observer_supervisor = bootstrap.supervisor.pid;
-    logic.client.set_attention_observer_guard(std::sync::Arc::new(move |pid| {
-        desktop::admit_observer(&observer_config, pid, observer_supervisor)
-    }));
+    logic
+        .client
+        .set_attention_observer_guard(std::sync::Arc::new(move |pid| {
+            desktop::admit_observer(&observer_config, pid, observer_supervisor)
+        }));
     // The operator's ctl door, only when asked for (decision #260, invariant #261): the
     // window is logic's parent, and the supervisor names whose descendants are seats.
     let door = if bootstrap.config.ctl {
@@ -868,6 +884,8 @@ pub struct Session {
     supervisor_exited: bool,
     logic_exited: bool,
     disconnected: bool,
+    progress: Progress,
+    reconnect_attempt: u32,
 }
 struct StartedSupervisor {
     child: Child,
@@ -907,8 +925,12 @@ impl Drop for Session {
 }
 impl Session {
     /// Spawn both private processes and connect their admitted GUI endpoint.
-    pub async fn start(mut config: Config) -> Result<Self> {
+    pub async fn start(config: Config) -> Result<Self> {
+        Self::start_with_progress(config, std::sync::Arc::new(|_| {})).await
+    }
+    pub async fn start_with_progress(mut config: Config, progress: Progress) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
+        progress(Phase::StartingSupervisor);
         // Refuse before any custody or child process opens, including direct callers.
         config.repository = checked_repository(&config.repository)?;
         if let Some(directory) = &config.test_account {
@@ -942,6 +964,7 @@ impl Session {
                 .ok_or_else(|| invalid("live supervisor has no matching private run owner record; no second supervisor started"))?;
                 let mut ready = record.ready.clone();
                 ready.pid = record.process.pid();
+                progress(Phase::AdoptingSupervisor(ready.pid));
                 (
                     Process::adopted(&config, "supervisor", record),
                     None,
@@ -967,6 +990,9 @@ impl Session {
                 || record.ready.launch_path_fingerprint.as_deref()
                     != Some(shell_path::fingerprint(&launch_path).as_str())
         }) {
+            progress(Phase::RefreshingLogic(
+                "Control service, launch environment or GUI schema changed".into(),
+            ));
             let record = existing.take().unwrap();
             let mut old_logic = Process::adopted(&config, "logic", record);
             // Refresh logic only: the supervisor retains every live PTY and process.
@@ -978,15 +1004,18 @@ impl Session {
         let (mut logic, logic_control, endpoint, io) = if let Some(record) = existing {
             let mut endpoint = record.ready.clone();
             let mut process = Process::adopted(&config, "logic", record);
+            progress(Phase::AttachingGui);
             match attach_gui(&config, &mut endpoint, true).await {
                 Ok(io) => (process, None, endpoint, io),
                 Err(error) => {
+                    progress(Phase::RefreshingLogic(error.to_string()));
                     eprintln!(
                         "logic endpoint unavailable: {error}; refreshing logic, retaining supervisor and seats"
                     );
                     stop_logic_for_refresh(&mut process, &mut None).await?;
                     let owner =
-                        start_logic(&config, &supervisor_ready, false, &launch_path).await?;
+                        start_logic(&config, &supervisor_ready, false, &launch_path, &progress)
+                            .await?;
                     (
                         Process::Child(owner.child),
                         owner.control,
@@ -996,7 +1025,8 @@ impl Session {
                 }
             }
         } else {
-            let owner = start_logic(&config, &supervisor_ready, false, &launch_path).await?;
+            let owner =
+                start_logic(&config, &supervisor_ready, false, &launch_path, &progress).await?;
             (
                 Process::Child(owner.child),
                 owner.control,
@@ -1029,6 +1059,8 @@ impl Session {
             supervisor_exited: false,
             logic_exited: false,
             disconnected: false,
+            progress,
+            reconnect_attempt: 0,
         })
     }
 
@@ -1053,7 +1085,7 @@ impl Session {
                 _ => {}
             }
         } else if self.io.disconnected || self.io.outgoing.is_closed() {
-            self.gui_lost();
+            self.gui_lost("GUI writer closed".into());
         }
         result
     }
@@ -1071,7 +1103,7 @@ impl Session {
                 }
                 Err(error) if error.is::<Busy>() => return Ok(true),
                 Err(error) => {
-                    self.gui_lost();
+                    self.gui_lost(error.to_string());
                     return Err(error);
                 }
             }
@@ -1117,7 +1149,7 @@ impl Session {
     }
     /// Only the GUI connection was lost. Logic owns every seat's hooks and MCP,
     /// so reattach to it; it is replaced only when reattachment fails (#79).
-    fn gui_lost(&mut self) {
+    fn gui_lost(&mut self, reason: String) {
         self.close_io();
         if self.logic_exited || self.supervisor_exited || self.recovery.is_some() {
             return;
@@ -1126,8 +1158,14 @@ impl Session {
         let endpoint = self.endpoint.clone();
         let watches = self.watches.clone();
         self.reattaching = true;
+        self.reconnect_attempt += 1;
+        (self.progress)(Phase::Reconnecting {
+            attempt: self.reconnect_attempt,
+            reason,
+        });
+        let progress = self.progress.clone();
         self.recovery = Some(tokio::spawn(async move {
-            tokio::time::timeout(STARTUP_TIMEOUT, reattach(config, endpoint, watches))
+            tokio::time::timeout(STARTUP_TIMEOUT, reattach(config, endpoint, watches, progress))
                 .await
                 .map_err(|_| invalid("GUI reattach timed out"))?
         }));
@@ -1142,15 +1180,26 @@ impl Session {
         let ready = self.supervisor_ready.clone();
         let replace_supervisor = self.supervisor_exited;
         let watches = self.watches.clone();
+        let progress = self.progress.clone();
         self.recovery = Some(tokio::spawn(async move {
             tokio::time::sleep(Duration::from_millis(100)).await;
-            tokio::time::timeout(
-                STARTUP_TIMEOUT,
-                recover(config, ready, replace_supervisor, watches, launch_path),
+            recover(
+                config,
+                ready,
+                replace_supervisor,
+                watches,
+                launch_path,
+                progress,
             )
             .await
-            .map_err(|_| invalid("recovery startup timed out"))?
         }));
+    }
+    /// Retry a failed recovery without abandoning retained owners or watches.
+    pub fn retry_startup(&mut self) {
+        if self.recovery_failed {
+            self.recovery_failed = false;
+            self.restart_if_ready();
+        }
     }
     async fn next_event(&mut self) -> Result<Event> {
         loop {
@@ -1167,6 +1216,7 @@ impl Session {
                     self.supervisor_exited = true;
                     if let Some(task) = self.recovery.take() { task.abort(); }
                     self.reattaching = false;
+                    (self.progress)(Phase::Reconnecting { attempt: self.reconnect_attempt.saturating_add(1), reason: "Supervisor exited".into() });
                     self.disconnect()?;
                     self.restart_if_ready();
                     Ok(Event::Exited {process:"supervisor",status:status?})
@@ -1177,13 +1227,14 @@ impl Session {
                     self.io.disconnected = true;
                     self.io.reader_task.abort();
                     self.io.writer_task.abort();
+                    (self.progress)(Phase::RefreshingLogic("Logic exited".into()));
                     self.restart_if_ready();
                     Ok(Event::Exited {process:"logic",status:status?})
                 }
                 result=async { self.recovery.as_mut().unwrap().await }, if self.recovery.is_some() => {
                     self.recovery = None;
                     let reattached = std::mem::take(&mut self.reattaching);
-                    match result.map_err(|error| invalid(format!("recovery task stopped: {error}")))? {
+                    match result.unwrap_or_else(|error| Err(invalid(format!("recovery task stopped: {error}")))) {
                         Ok(recovered) => {
                             if let Some(supervisor) = recovered.supervisor {
                                 self.supervisor = Process::Child(supervisor.child);
@@ -1214,6 +1265,7 @@ impl Session {
                         }
                         // Fall back to replacing logic; restart follows its observed exit.
                         Err(error) if reattached => {
+                            (self.progress)(Phase::RefreshingLogic(format!("GUI reattach failed: {error}")));
                             if !self.logic_exited {
                                 self.logic.start_kill()?;
                             }
@@ -1221,13 +1273,14 @@ impl Session {
                         }
                         Err(error) => {
                             self.recovery_failed = true;
+                            (self.progress)(Phase::Failed(format!("Recovery failed: {error}")));
                             Ok(Event::Disconnected(format!("recovery failed: {error}")))
                         }
                     }
                 }
                 ready=writer_ready, if writer_blocked && !self.disconnected => { ready?; continue; }
                 event=self.io.event(), if !self.disconnected => {
-                    if matches!(event,Event::Disconnected(_)) { self.gui_lost(); }
+                    if let Event::Disconnected(reason) = &event { self.gui_lost(reason.clone()); }
                     Ok(event)
                 }
                 else => std::future::pending().await,
@@ -1383,7 +1436,11 @@ async fn attach_gui_mode(
     let stream = UnixStream::connect(endpoint.root.join("gui.sock")).await?;
     let mut io = GuiIo::new(stream, endpoint.capability);
     let id = bbt_mux::Ulid::new();
-    io.try_send(GuiAction::GuiHello { id, claim, observer })?;
+    io.try_send(GuiAction::GuiHello {
+        id,
+        claim,
+        observer,
+    })?;
     tokio::time::timeout(STARTUP_TIMEOUT, async {
         loop {
             match io.event().await {
@@ -1435,7 +1492,9 @@ async fn start_logic(
     ready: &SupervisorReady,
     recover_seats: bool,
     launch_path: &std::ffi::OsStr,
+    progress: &Progress,
 ) -> Result<StartedLogic> {
+    progress(Phase::StartingLogic);
     let mut child = child(config, "logic", launch_path)?;
     let fixture_hosts = fixture_hosts::enabled(
         std::env::args().any(|arg| arg == "--smoke"),
@@ -1452,11 +1511,32 @@ async fn start_logic(
     )
     .await?;
     let mut output = BufReader::new(child.stdout.take().unwrap());
-    let line = tokio::time::timeout(STARTUP_TIMEOUT, read_line(&mut output))
-        .await
-        .map_err(|_| invalid("logic startup timed out waiting for its readiness line"))??
-        .ok_or_else(|| invalid("logic exited during startup"))?;
-    let mut endpoint: LogicReady = serde_json::from_slice(&line)?;
+    let mut deadline = tokio::time::Instant::now() + STARTUP_TIMEOUT;
+    let mut last_progress: Option<startup::HistoryProgress> = None;
+    let mut endpoint: LogicReady = loop {
+        let line = tokio::time::timeout_at(deadline, read_line(&mut output))
+            .await
+            .map_err(|_| invalid("logic startup timed out: no progress for 30 s"))??
+            .ok_or_else(|| invalid("logic exited during startup"))?;
+        if let Ok(record) = serde_json::from_slice::<startup::ProgressLine>(&line) {
+            let p = record.startup_progress;
+            if p.verified > p.total {
+                return Err(invalid("invalid logic startup progress"));
+            }
+            if p.advances(last_progress.as_ref()) {
+                deadline = tokio::time::Instant::now() + STARTUP_TIMEOUT;
+                progress(Phase::VerifyingHistory {
+                    stream: p.stream.clone(),
+                    verified: p.verified,
+                    total: p.total,
+                });
+                last_progress = Some(p);
+            }
+            continue;
+        }
+        break serde_json::from_slice(&line)?;
+    };
+    progress(Phase::AttachingGui);
     let io = attach_gui(config, &mut endpoint, true).await?;
     let control = child.stdin.take();
     Ok(StartedLogic {
@@ -1472,8 +1552,10 @@ async fn recover(
     replace_supervisor: bool,
     watches: BTreeMap<SeatId, View>,
     launch_path: std::ffi::OsString,
+    progress: Progress,
 ) -> Result<Recovered> {
     let supervisor = if replace_supervisor {
+        progress(Phase::StartingSupervisor);
         Some(start_supervisor(&config, &launch_path).await?)
     } else {
         None
@@ -1481,8 +1563,14 @@ async fn recover(
     let ready = supervisor
         .as_ref()
         .map_or(&ready, |supervisor| &supervisor.ready);
-    let mut logic = start_logic(&config, ready, replace_supervisor, &launch_path).await?;
-    let (seats, watches) = catalogue(&mut logic.io, &mut logic.endpoint, watches).await?;
+    let mut logic =
+        start_logic(&config, ready, replace_supervisor, &launch_path, &progress).await?;
+    let (seats, watches) = tokio::time::timeout(
+        STARTUP_TIMEOUT,
+        catalogue(&mut logic.io, &mut logic.endpoint, watches),
+    )
+    .await
+    .map_err(|_| invalid("GUI catalogue timed out"))??;
     Ok(Recovered {
         supervisor,
         logic: Some((logic.child, logic.control)),
@@ -1496,7 +1584,9 @@ async fn reattach(
     config: Config,
     mut endpoint: LogicReady,
     watches: BTreeMap<SeatId, View>,
+    progress: Progress,
 ) -> Result<Recovered> {
+    progress(Phase::AttachingGui);
     let mut io = attach_gui(&config, &mut endpoint, true).await?;
     let (seats, watches) = catalogue(&mut io, &mut endpoint, watches).await?;
     Ok(Recovered {

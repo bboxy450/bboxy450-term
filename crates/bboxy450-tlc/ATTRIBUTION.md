@@ -126,6 +126,11 @@ release workflows include the license and attribution documents with binaries.
 
 ## Prepared rich toolkit content
 
+The cockpit startup modal, lifecycle observations and additive history-verification
+progress records in `crates/bboxy450-term/src/{startup_modal.rs,cockpit/startup.rs}`
+and their mux integration are project-authored; keep the canonical source and
+absolute policy URL above attached to reused extracts.
+
 Streaming Markdown, transcript/diff/tool/approval controls and editor extensions
 are project-authored source under the policy above. Syntax highlighting uses
 [syntect](https://github.com/trishume/syntect), MIT, as an unchanged dependency
