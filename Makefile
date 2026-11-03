@@ -45,6 +45,7 @@ export CARGO_PROFILE_TEST_OPT_LEVEL ?= 1
 help:
 	@printf '%s\n' \
 	  'make build / build-release       Build the app (debug / optimized)' \
+	  'make privacy-1password          Open persistent macOS access settings for the signed installed app' \
 	  'make lock                       Refresh workspace lock metadata offline' \
 	  'make lock-online                Resolve added dependencies with the registry' \
 	  'make bump-harness [REV=sha]      Move and stage the harness submodule and changed lockfile (default origin/main)' \
@@ -630,6 +631,15 @@ endef
 
 install: bundle
 	@$(call install_bundle,$(INSTALL_DIR))
+
+.PHONY: privacy-1password
+privacy-1password:
+	@codesign --verify --strict -R '= $(REQUIREMENT)' '$(INSTALL_DIR)/$(APP).app'
+	@open -R '$(INSTALL_DIR)/$(APP).app'
+	@open 'x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles'
+	@printf '%s\n' 'Add the selected bboxy450-term.app to Full Disk Access and enable it once.' \
+	  'This macOS grant persists across app restarts and identity-signed updates.' \
+	  'Restart bboxy450-term and any existing harness backend after enabling it.'
 
 install-unsigned: PROFILE=debug
 install-unsigned: bundle-unsigned
