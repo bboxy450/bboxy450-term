@@ -390,6 +390,17 @@ fn held_seat_does_not_block_other_seat() {
     }
     assert_eq!(worker.views[&Ulid::from(1u128)].sequence, 0);
     assert_eq!(worker.views[&Ulid::from(2u128)].sequence, 2);
+    // An I/O refusal is transient: once its retry time passes the same seat
+    // reads its ring again and catches up, instead of freezing for good.
+    calls.lock().unwrap().hold = None;
+    worker.views.get_mut(&Ulid::from(1u128)).unwrap().ring_retry_at = Instant::now();
+    let until = Instant::now() + Duration::from_secs(2);
+    while worker.views[&Ulid::from(1u128)].sequence < 2 {
+        worker.ingest_one(&mut pending, &mut false).unwrap();
+        assert!(Instant::now() < until, "seat stayed frozen after an I/O refusal");
+        std::thread::yield_now();
+    }
+    assert!(worker.views[&Ulid::from(1u128)].ring_refusal.is_none());
 }
 
 fn sweep(two_hosts: bool) {

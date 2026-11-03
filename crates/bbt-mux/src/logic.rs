@@ -2295,6 +2295,19 @@ pub const SEAT_PENDING_WAIT: Duration = Duration::from_secs(4);
 /// The resend interval while waiting, and the `retry_after_ms` hint after.
 pub const PENDING_RETRY_MS: u64 = 100;
 
+/// Pause before reading a seat's ring again after an I/O refusal.
+const RING_REFUSAL_RETRY: Duration = Duration::from_secs(2);
+
+impl ViewState {
+    /// Ring reads stop after a definitive refusal; an I/O refusal holds them
+    /// only until its retry time.
+    fn ring_held(&self) -> bool {
+        self.ring_refusal.as_ref().is_some_and(|refusal| {
+            refusal.code != crate::FailureCode::Io || Instant::now() < self.ring_retry_at
+        })
+    }
+}
+
 struct ViewState {
     info: SeatInfo,
     adapter: Session,
@@ -7946,7 +7959,7 @@ impl Worker {
     fn ring_read(&self, id: Ulid, through: u64) -> Option<bbt_supervisor::protocol::RingRead> {
         let view = self.views.get(&id)?;
         if view.sequence >= through
-            || view.ring_refusal.is_some()
+            || view.ring_held()
             || (view.checkpoint_paused
                 && view.checkpoint_requested
                 && view.checkpoint_pending.is_none())
@@ -8140,17 +8153,28 @@ impl Worker {
             .and_then(|page| page.page(&read));
         match result {
             None => Ok(None),
-            Some(Ok(history)) => Ok(Some(history)),
+            Some(Ok(history)) => {
+                self.views.get_mut(&id).unwrap().ring_refusal = None;
+                Ok(Some(history))
+            }
             Some(Err(error)) => {
                 if let Some(pages) = self.ring_pages.get_mut(&host) {
                     pages.remove(&id);
                 }
                 if error.code != crate::FailureCode::Busy {
-                    eprintln!(
-                        "ring read refused: seat={id} generation={} code={:?}",
-                        read.attachment.generation, error.code
-                    );
-                    self.views.get_mut(&id).unwrap().ring_refusal = Some(error);
+                    let view = self.views.get_mut(&id).unwrap();
+                    if view.ring_refusal.is_none() {
+                        eprintln!(
+                            "ring read refused: seat={id} generation={} code={:?}",
+                            read.attachment.generation, error.code
+                        );
+                    }
+                    // An I/O refusal can be transient (logic recovering under
+                    // load). Holding it forever froze the seat's view: no later
+                    // output and no exit ever reached logic. Definitive codes
+                    // (NotFound, StaleGeneration, Limit, ...) stay held.
+                    view.ring_refusal = Some(error);
+                    view.ring_retry_at = Instant::now() + RING_REFUSAL_RETRY;
                 }
                 Ok(None)
             }
@@ -9911,7 +9935,7 @@ impl Worker {
         };
         if let Some(view) = self.views.get(&key.1) {
             pending_events.parsed(&key, view.sequence);
-            pending_events.seats.get_mut(&key).unwrap().ring_blocked = view.ring_refusal.is_some();
+            pending_events.seats.get_mut(&key).unwrap().ring_blocked = view.ring_held();
         }
         pending_events.finish(key, complete);
         Ok(())
