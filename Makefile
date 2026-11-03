@@ -1726,7 +1726,7 @@ test-live-feed:
 .PHONY: test-jsonl-recovery
 test-jsonl-recovery:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib -E 'test(provenance::projection::tests)'; \
+	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib -E 'test(provenance::projection)'; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts models::provenance_models::jsonl_repair_yields_and_publishes -- --exact
 
 .PHONY: test-task-import-observer test-task-import-observer-causal test-task-import-observer-mutant check-task-import-observer

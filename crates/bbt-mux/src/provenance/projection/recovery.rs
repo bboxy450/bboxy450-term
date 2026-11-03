@@ -175,6 +175,7 @@ pub(super) fn step(root: &Path, store: &SqliteStore, events: &EventLog) -> Resul
     if recovery.projection.cursor < recovery.head {
         // Verify SQL sequence/hash/prev AND envelope signature in the same
         // bounded read. This replaces recover's separate full-chain scan.
+        let mut touched = BTreeSet::new();
         for _ in 0..RECOVERY_PAGE {
             if recovery.projection.cursor >= recovery.head {
                 break;
@@ -186,14 +187,16 @@ pub(super) fn step(root: &Path, store: &SqliteStore, events: &EventLog) -> Resul
                 .verified_page(recovery.projection.cursor, &recovery.projection.hash, 1)?
                 .pop()
                 .ok_or_else(|| invalid("activity projection canonical rows unavailable"))?;
-            recovery
-                .projection
-                .append(&temporary, store, &row, PART_BYTES)?;
+            touched.insert(
+                recovery
+                    .projection
+                    .append(&temporary, store, &row, PART_BYTES)?,
+            );
             if started.elapsed() >= BUDGET {
                 break;
             }
         }
-        File::open(&temporary)?.sync_all()?;
+        sync_page(&temporary, touched)?;
         store.put(REBUILD, &serde_json::to_vec(&recovery)?)?;
         if recovery.projection.cursor < recovery.head {
             // No partial rebuild is advertised as a published projection.
@@ -223,6 +226,7 @@ pub(super) fn step(root: &Path, store: &SqliteStore, events: &EventLog) -> Resul
         }
     }
     recovery.published += count;
+    File::open(&temporary)?.sync_all()?;
     File::open(&directory)?.sync_all()?;
     if recovery.published < recovery.projection.files.len() {
         store.put(REBUILD, &serde_json::to_vec(&recovery)?)?;
@@ -333,6 +337,90 @@ mod tests {
         let projection = f.finish();
         f.assert_rows(&projection);
         assert!(f.store.get(REBUILD).unwrap().is_none());
+    }
+
+    // keeps: spec provenance
+    #[test]
+    fn legacy_state_repair_restarts_staging_and_interrupted_publication() {
+        for (staged, published) in [(16, 0), (40, 7)] {
+            let mut f = Fixture::new();
+            let directory = directory(&f.root).unwrap();
+            let legacy = directory.join(format!(".projection-{}", crate::Ulid::new()));
+            std::fs::create_dir(&legacy).unwrap();
+            let mut projection = Projection::default();
+            let mut touched = BTreeSet::new();
+            for row in f.events.after(0, staged).unwrap() {
+                touched.insert(projection.append(&legacy, &f.store, &row, 1).unwrap());
+            }
+            sync_page(&legacy, touched).unwrap();
+            for name in projection.files.keys().take(published) {
+                std::fs::rename(legacy.join(name), directory.join(name)).unwrap();
+            }
+            File::open(&legacy).unwrap().sync_all().unwrap();
+            File::open(&directory).unwrap().sync_all().unwrap();
+            let retained: BTreeMap<_, _> = std::fs::read_dir(&legacy)
+                .unwrap()
+                .map(|entry| {
+                    let entry = entry.unwrap();
+                    (entry.file_name(), std::fs::read(entry.path()).unwrap())
+                })
+                .collect();
+            let mut state = serde_json::to_value(&projection).unwrap();
+            state["repair"] = json!({"directory":legacy.file_name().unwrap().to_str().unwrap().trim_start_matches(".projection-"), "head":40});
+            let bytes = serde_json::to_vec(&state).unwrap();
+            f.store.put(STATE, &bytes).unwrap();
+            // A deserialized legacy staged cursor never becomes a public one.
+            let hidden: Projection = serde_json::from_slice(&bytes).unwrap();
+            assert_eq!(hidden.cursor(), 0);
+            let last = f.events.at(40).unwrap().unwrap();
+            assert!(hidden.reference(&last, &f.store).unwrap().is_none());
+            assert_eq!(
+                super::super::step(&f.root, &f.store, &f.events)
+                    .unwrap()
+                    .cursor(),
+                0
+            );
+            let reason = f.store.get(TRIGGER).unwrap().unwrap();
+            assert_eq!(
+                serde_json::from_slice::<Value>(&reason).unwrap()["reason"],
+                "legacy_repair_state"
+            );
+            let saved = f.store.get(REBUILD).unwrap().unwrap();
+            let cursor = serde_json::from_slice::<Value>(&saved).unwrap()["projection"]["cursor"]
+                .as_u64()
+                .unwrap();
+            assert!((1..=RECOVERY_PAGE as u64).contains(&cursor));
+            assert_eq!(f.store.get(STATE).unwrap().unwrap(), bytes);
+            drop(f.store);
+            f.store = SqliteStore::open(&f._temp.path().join("index")).unwrap();
+            assert_eq!(
+                super::super::step(&f.root, &f.store, &f.events)
+                    .unwrap()
+                    .cursor(),
+                0
+            );
+            assert_eq!(f.store.get(TRIGGER).unwrap().unwrap(), reason);
+            let complete = f.finish();
+            f.assert_rows(&complete);
+            assert!(complete.reference(&last, &f.store).unwrap().is_some());
+            assert!(
+                serde_json::from_slice::<Value>(&f.store.get(STATE).unwrap().unwrap())
+                    .unwrap()
+                    .get("repair")
+                    .is_none()
+            );
+            let remaining: BTreeMap<_, _> = std::fs::read_dir(&legacy)
+                .unwrap()
+                .map(|entry| {
+                    let entry = entry.unwrap();
+                    (entry.file_name(), std::fs::read(entry.path()).unwrap())
+                })
+                .collect();
+            assert_eq!(
+                remaining, retained,
+                "unknown legacy trees must remain untouched"
+            );
+        }
     }
 
     // keeps: spec provenance

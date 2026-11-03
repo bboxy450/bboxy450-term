@@ -6,11 +6,12 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! JSONL is a recoverable view of the signed SQLite stream, never its authority.
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fs::{File, OpenOptions},
     io::Write,
     os::unix::fs::OpenOptionsExt,
     path::{Path, PathBuf},
+    time::{Duration, Instant},
 };
 
 use serde::{Deserialize, Serialize};
@@ -26,6 +27,7 @@ use crate::store::{
 const STATE: &str = "provenance/jsonl/v1";
 const PART_BYTES: u64 = 64 * 1024 * 1024;
 const PAGE: usize = 128;
+const BUDGET: Duration = Duration::from_millis(8);
 
 mod recovery;
 
@@ -63,6 +65,9 @@ pub(crate) struct Projection {
     cursor: u64,
     hash: String,
     files: BTreeMap<String, Part>,
+    // Upstream 2e481e4f staged this cursor in STATE. Detect, never publish it.
+    #[serde(default, rename = "repair", skip_serializing)]
+    legacy_repair: Option<Value>,
 }
 #[derive(Serialize, Deserialize)]
 struct Part {
@@ -122,7 +127,11 @@ fn day(store: &SqliteStore, timestamp: u64) -> Result<String> {
 
 impl Projection {
     pub(crate) fn cursor(&self) -> u64 {
-        self.cursor
+        if self.legacy_repair.is_some() {
+            0
+        } else {
+            self.cursor
+        }
     }
     /// The physical daily part containing a canonical stream sequence.
     pub(crate) fn reference(
@@ -130,6 +139,9 @@ impl Projection {
         envelope: &Envelope,
         store: &SqliteStore,
     ) -> Result<Option<String>> {
+        if self.legacy_repair.is_some() {
+            return Ok(None);
+        }
         let day = day(store, envelope.event.ts)?;
         let sequence = envelope.seq;
         Ok(self
@@ -149,6 +161,9 @@ impl Projection {
         events: &EventLog,
         mut path: impl FnMut(&str, usize) -> PathBuf,
     ) -> Result<Option<Value>> {
+        if self.legacy_repair.is_some() {
+            return Ok(Some(json!({"reason":"legacy_repair_state"})));
+        }
         if self.files.len() > 4096 {
             return Ok(Some(
                 json!({"reason":"part_budget", "observed":self.files.len(), "expected_max":4096}),
@@ -232,7 +247,7 @@ impl Projection {
         store: &SqliteStore,
         envelope: &Envelope,
         limit: u64,
-    ) -> Result<()> {
+    ) -> Result<PathBuf> {
         envelope.verify()?;
         if envelope.seq != self.cursor + 1 || envelope.prev != self.hash {
             return Err(invalid("activity projection sequence or hash gap"));
@@ -266,7 +281,6 @@ impl Projection {
             return Err(invalid("activity projection is not a regular file"));
         }
         file.write_all(&bytes)?;
-        file.sync_all()?;
         let (length, modified_ns) = stamp(&path)?;
         self.files
             .entry(name)
@@ -284,8 +298,18 @@ impl Projection {
             });
         self.cursor = envelope.seq;
         self.hash = envelope.hash()?;
-        Ok(())
+        Ok(path)
     }
+}
+
+/// Adapted from bboxy450-term 2e481e4f projection batching; keep file contents
+/// durable before directory entries and the corresponding SQLite cursor.
+fn sync_page(directory: &Path, touched: BTreeSet<PathBuf>) -> Result<()> {
+    for path in touched {
+        File::open(path)?.sync_all()?;
+    }
+    File::open(directory)?.sync_all()?;
+    Ok(())
 }
 
 /// Append at most one bounded page; callers keep their cursor and yield between
@@ -309,28 +333,39 @@ pub(crate) fn step(root: &Path, store: &SqliteStore, events: &EventLog) -> Resul
     if rows.is_empty() {
         return Ok(state);
     }
+    let started = Instant::now();
+    let mut touched = BTreeSet::new();
     for row in rows {
-        if let Err(error) = state.append(&directory, store, &row, PART_BYTES) {
-            if error
-                .downcast_ref::<std::io::Error>()
-                .is_some_and(|e| e.kind() == std::io::ErrorKind::AlreadyExists)
-            {
-                let day = day(store, row.event.ts)?;
-                let part = if state.files.values().any(|part| part.day == day) {
-                    format!("{day}.part-{}.jsonl", row.seq)
-                } else {
-                    format!("{day}.jsonl")
-                };
-                return recovery::enter(
-                    root,
-                    store,
-                    events,
-                    json!({"reason":"append_already_exists", "sequence":row.seq, "part":part}),
-                );
+        match state.append(&directory, store, &row, PART_BYTES) {
+            Ok(path) => {
+                touched.insert(path);
             }
-            return Err(error);
+            Err(error) => {
+                if error
+                    .downcast_ref::<std::io::Error>()
+                    .is_some_and(|e| e.kind() == std::io::ErrorKind::AlreadyExists)
+                {
+                    let day = day(store, row.event.ts)?;
+                    let part = if state.files.values().any(|part| part.day == day) {
+                        format!("{day}.part-{}.jsonl", row.seq)
+                    } else {
+                        format!("{day}.jsonl")
+                    };
+                    return recovery::enter(
+                        root,
+                        store,
+                        events,
+                        json!({"reason":"append_already_exists", "sequence":row.seq, "part":part}),
+                    );
+                }
+                return Err(error);
+            }
+        }
+        if started.elapsed() >= BUDGET {
+            break;
         }
     }
+    sync_page(&directory, touched)?;
     store.put(STATE, &serde_json::to_vec(&state)?)?;
     Ok(state)
 }
@@ -341,6 +376,85 @@ mod tests {
     use crate::store::events::Draft;
     use ed25519_dalek::SigningKey;
     use serde_json::json;
+
+    // Adapted from bboxy450-term 2e481e4f: same yield/restart/signature/visibility
+    // properties, reading the canonical separate rebuild record.
+    fn catch_up(root: &Path, store: &SqliteStore, events: &EventLog) -> Projection {
+        for _ in 0..1024 {
+            let state = step(root, store, events).unwrap();
+            if store.get(recovery::REBUILD).unwrap().is_none()
+                && state.cursor() == events.last_sequence().unwrap()
+            {
+                return state;
+            }
+        }
+        panic!("projection did not drain");
+    }
+
+    #[test]
+    fn repair_yields_and_resumes_its_durable_cursor_before_publishing() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join(".bboxy");
+        std::fs::create_dir(&root).unwrap();
+        let index = temp.path().join("index");
+        let store = SqliteStore::open(&index).unwrap();
+        let events = EventLog::open(&index).unwrap();
+        let key = SigningKey::from_bytes(&[72; 32]);
+        let mut last = None;
+        for _ in 0..(PAGE * 3) {
+            last = Some(
+                events
+                    .append(Draft::new("fixture", "test", json!({})), &key)
+                    .unwrap(),
+            );
+        }
+        let first = step(&root, &store, &events).unwrap();
+        let pending = |store: &SqliteStore| -> u64 {
+            let bytes = store.get(recovery::REBUILD).unwrap().unwrap();
+            serde_json::from_slice::<Value>(&bytes).unwrap()["projection"]["cursor"]
+                .as_u64()
+                .unwrap()
+        };
+        assert!((1..=PAGE as u64).contains(&pending(&store)));
+        assert_eq!(first.cursor(), 0);
+        assert!(
+            first
+                .reference(last.as_ref().unwrap(), &store)
+                .unwrap()
+                .is_none()
+        );
+        use std::os::unix::fs::MetadataExt;
+        let temporary = root.join("log/.projection-rebuild-v1");
+        let directory = std::fs::metadata(&temporary).unwrap().ino();
+        let cursor = pending(&store);
+        drop(store);
+        drop(events);
+        let store = SqliteStore::open(&index).unwrap();
+        let events = EventLog::open(&index).unwrap();
+        let resumed = step(&root, &store, &events).unwrap();
+        assert_eq!(std::fs::metadata(&temporary).unwrap().ino(), directory);
+        assert_eq!(resumed.cursor(), 0);
+        assert!(pending(&store) > cursor && pending(&store) <= cursor + PAGE as u64);
+        let complete = catch_up(&root, &store, &events);
+        assert!(
+            complete
+                .reference(last.as_ref().unwrap(), &store)
+                .unwrap()
+                .is_some()
+        );
+        let mut count = 0;
+        for name in complete.files.keys() {
+            let text = std::fs::read_to_string(root.join("log").join(name)).unwrap();
+            for line in text.lines() {
+                let row: Envelope = serde_json::from_str(line).unwrap();
+                row.verify().unwrap();
+                count += 1;
+                assert_eq!(row.seq, count);
+            }
+        }
+        assert_eq!(count, (PAGE * 3) as u64);
+        assert!(!temporary.exists());
+    }
 
     // keeps: spec provenance
     #[test]

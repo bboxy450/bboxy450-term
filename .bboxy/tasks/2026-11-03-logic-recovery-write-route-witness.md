@@ -50,11 +50,13 @@ allowed_paths:
 - lab/web/harness-demo.js
 - lab/web/harness/gen.sh
 - lab/web/harness/gen-acp.sh
+- .bboxy/specs/provenance.md
+- .bboxy/decisions/d19427-canonical-paged-jsonl-recovery-integration.md
 id: 01M6HGAE1XXGRJ58SFATHX9R18
 status: claimed
 delegated_by: seat:01M6HF0S1BAJKHWT2N426W7328
 swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-03T22:45:16.374Z
+updated: 2026-11-03T22:51:00.394Z
 created: 2026-11-03T20:06:30.913Z
 number: 16404
 created_by: seat:01M6HF0S1BAJKHWT2N426W7328
@@ -67,11 +69,11 @@ authorship:
 assignee: seat:01M6HGAF8KJMA0860GJ6VYM9E2
 verify_revision: 1
 provenance:
-  digest: sha256:ca62c533b398c5520aea6f317f3768de25fd3c6dddbc555aba0b16e9f07387c4
-  frontmatter_digest: sha256:9b3b3905ac5f781e7a99815ff3c2f59db9bcbee7d2b24ac0272fe64d01ded48f
+  digest: sha256:64418192a8322cb8ac3d3f178cf99083efbf226e85ce8c779dd82aa1e43e8b9f
+  frontmatter_digest: sha256:ccbebf56634545e8bd76c37c9c46fdfda426818c8dadc9b236b354fb1d820632
   signer: seat:01M6HF0S1BAJKHWT2N426W7328
-  sig: CQ7TcNu+rt8/g+pdjwA/Uuvl/AtfWbgtoBotYboteclPRM8WN+vx9hHlhYpuaWOg+tojlYkIW9FCYz0Q5ei/BA==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#107670
+  sig: 6CGramR0/aCLmdX4EMIzbePidEP2LPTRWyuNtr63yZHUjzZg/cp1iaQldBIVHnH9oxHYL73S0kmuefcBqefpBA==
+  log: .bboxy/log/2026-11-03.part-86213.jsonl#107870
 ---
 # Integrated logic recovery, real write witnesses, and projection ownership
 
@@ -147,3 +149,10 @@ Oracle verified sh scripts/generated-sources.sh exits 1 solely because the two h
 For demo, name actual repository inputs lab/web/harness/demo and lab/web/harness/rounds/*.sse in the generated header. For ACP, keep the real external-session-log origin explicit: those payloads are not repository fixture files. The existing envelope definition crates/bboxy450-harness/src/protocol/mod.rs is a truthful schema/reference path; label it as a schema reference, not as the recorded session-data input. Do not invent a raw-log repository path, repeat the generator path to trick the count, or imply that current protocol source recreates the old recordings. Match the four files' header emission and retain canonical origin/credit policy metadata.
 
 Do not regenerate either session asset or run the generators to create new sessions. Compare payload bytes after the first newline to the signed pre-change files and assert exact equality. Run sh -n on both generators and sh scripts/generated-sources.sh (must exit 0); report these actual checks. No behavior, session bytes, script execution flow, external logs or guard logic may change. This scoped metadata fix goes into the next real candidate before the canonical full/records-only gate sequence; no waiver or unchanged baseline repeat is authorized.
+
+
+## Persistence conflict decision after upstream 2e481e4f
+
+Follow [[decisions/d19427-canonical-paged-jsonl-recovery-integration]] (copy this signed decision unchanged). Retain our separate durable rebuild and bounded staged publication as the canonical mechanism; integrate upstream page-batched file fsync and compatible JsonlRepair tests/model. Upstream final publication still loops every part in one call, whereas our publication/cleanup are paged and have additional crash/SQL-chain controls. Keep unrelated upstream cockpit/bootstrap behavior.
+
+Explicitly detect/migrate old STATE.repair into the canonical bounded path, with interrupted legacy-state tests; do not silently ignore a staged cursor. Preserve file-content-sync -> directory durability -> cursor commit ordering, SQL/envelope verification, hidden unpublished references, ownership guards and all crash/negative controls. Do not keep two active recovery algorithms. Align provenance spec and JsonlRepair contract/native witness with the selected implementation rather than deleting the upstream property. Model/Makefile/projection paths are already scoped; the provenance spec and decision copy are now additionally authorized. Resolve the inspectable rebase under this decision, run focused migration/recovery checks including make test-jsonl-recovery, then unchanged boundary witnesses and the final canonical full/incremental landing loop. No unchanged baseline rerun or waiver.
