@@ -14,6 +14,7 @@ This spec is the 1:1 target for the native bboxy450-harness GUI (`src/frontends/
 
 | State slug | Shows |
 |---|---|
+| `finished` | the tight transcript: a full real run with quiet heads, folded successes and a one-line receipt |
 | `standalone-window` | the app window: the term's title bar, no OS chrome, Cmd+= / Cmd+- zoom |
 | `empty-session` | the face before the first message: mark, question, sub-line, three chips |
 | `composer-states` | every composer state on one board, composer only (the p2 target) |
@@ -214,6 +215,21 @@ The radius scale is 4 (tags), 5–7 (tiles), 8 (buttons, inner blocks), 11 (card
 - `usage: null` → no meter and no token figures. The receipt shows duration and counts only.
 - A `notice` at warn level (for example "the agent does not offer model …") is a 6px `ask` dot and 11.5 `fg-dim` text,
   never a card.
+
+## Tight transcript (2026-11-03)
+
+Operator: "output can be tighter and tidier, too noisy right now". This applies to every state. Same information, less chrome:
+
+- **Tool head:** `exit N` only when N ≠ 0. No `auto` badge when a rule allowed the call; show `allowed`, `always` or `denied` only
+  when a person or the unattended policy decided. The duration only from 1s. Head padding 6/10.
+- **Tool body:** never repeat the command the head already names. No `$ cmd` line, and no `exit 0` line.
+- **Fold by default:** a completed, successful command opens only when its output is 6 lines or fewer. Running, asking,
+  failed and edit cards stay open. Reads stay folded as before. One click opens any of them.
+- **Short thoughts (under 1s):** no "Thought" label, just the 12px dim gist line after the spinner icon. The chevron shows on
+  hover only. "Thought for N" stays for 1s and over.
+- **Receipt:** no card. A hairline rule above one 11.5px line: check mark, title, then the duration (from 1s, or always when the turn did not
+  end ok), tools and edits. No rounds count. The failed receipt keeps its red rule, reason and actions.
+- **Rhythm:** feed gap 8.
 
 ## Standalone window (`standalone-window`)
 

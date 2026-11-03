@@ -2145,3 +2145,14 @@ details[open] > summary::before { transform: rotate(90deg); }
 .hx-msg .hx-table th { text-align: left; font-weight: 650; background: var(--hx-card-hi); }
 .hx-msg .hx-table th, .hx-msg .hx-table td { padding: 5px 10px; border-bottom: 1px solid var(--hx-hair); }
 .hx-msg .hx-table tr:last-child td { border-bottom: 0; }
+/* tight transcript (operator 2026-11-03: "output can be tighter and tidier, too noisy"): less chrome, same information */
+.hx-feed { gap: 8px; }
+.hx-think { font-size: 12px; }
+.hx-think .hx-tk { gap: 6px; padding: 0; }
+.hx-think:not(.open):not(.live) .chev { opacity: 0; }
+.hx-think:not(.open):not(.live):hover .chev { opacity: .6; }
+.hx-th { padding: 6px 10px; }
+.hx-end, .hx-end.soft { background: none; border: 0; border-top: 1px solid var(--hx-hair); border-radius: 0; padding: 8px 2px 2px; gap: 4px 10px; }
+.hx-end.bad { background: none; border: 0; border-top: 1px solid color-mix(in srgb, var(--hx-bad) 35%, transparent); border-radius: 0; }
+.hx-end .hx-endmark { transform: scale(.85); }
+.hx-end b { font-size: 12px; }

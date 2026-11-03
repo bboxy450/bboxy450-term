@@ -451,7 +451,7 @@
       const text = (it.body ? it.body.summary || it.body.raw || '' : it.text).trim(), live = !it.body;
       const n = el('div', { class: 'hx-think' + (live ? ' live' : '') + (it.open ? ' open' : '') });
       const took = (it.t1 || 0) - (it.t0 || 0);
-      const label = live ? el('span', { class: 'hx-shimmer' }, 'Thinking') : took >= 100 ? el('span', {}, 'Thought for ', el('b', {}, ms(took))) : el('b', {}, 'Thought');
+      const label = live ? el('span', { class: 'hx-shimmer' }, 'Thinking') : took >= 1000 ? el('span', {}, 'Thought for ', el('b', {}, ms(took))) : null;
       const gist = text.replace(/\*\*|__|`/g, '').split(/(?<=[.!?])\s|\n/)[0];
       n.append(el('button', { class: 'hx-tk', type: 'button', onclick: () => { it.open = !it.open; touch(it.id); } }, icon('think', 'spin-slow'), label, live ? null : el('span', { class: 'hx-gist' }, gist), live ? null : icon('chev', 'chev')));
       if (live) n.append(el('div', { class: 'hx-tbody' }, text, el('span', { class: 'hx-caret' })));
@@ -486,7 +486,8 @@
       const who = by.by === 'rule' ? 'rule ' + by.id : by.by === 'face' ? by.name : by.by === 'unattended' ? 'unattended' : by.by || '';
       if (!d) return el('span', { class: 'hx-ap ask' }, icon('shield'), 'needs approval');
       if (d.decision === 'deny') return el('span', { class: 'hx-ap deny', title: (d.reason || 'denied') + (who ? ' · ' + who : '') }, icon('shieldx'), by.by === 'unattended' ? 'denied · no approver' : 'denied');
-      return el('span', { class: 'hx-ap ok', title: 'allowed by ' + who }, icon('shield'), by.by === 'rule' ? 'auto' : d.decision === 'allow_always' ? 'always' : 'allowed');
+      if (by.by === 'rule') return null;   // tight: a rule allowing a call is the normal case, not news
+      return el('span', { class: 'hx-ap ok', title: 'allowed by ' + who }, icon('shield'), d.decision === 'allow_always' ? 'always' : 'allowed');
     }
     function tool(it) {
       const D = describe(it), b = it.body, term = it.terminal, ch = it.change;
@@ -495,9 +496,10 @@
       const st = it.status === 'running' ? (asking ? 'ask' : 'run') : denied ? 'deny' : it.status === 'completed' ? 'done' : it.status === 'interrupted' || it.status === 'cancelled' ? 'stop' : 'fail';
       const exit = term && term.body ? term.body.exit : null;
       let meta = D.meta || '';
-      if (D.kind === 'execute' && exit != null) meta = 'exit ' + exit;
+      if (D.kind === 'execute' && exit) meta = 'exit ' + exit;   // tight: success says nothing, the check mark already did
       const stat = ch && ch.body ? diffStat(ch.body.unified) : D.kind === 'edit' && D.outText.startsWith('---') ? diffStat(D.outText) : null;
-      const autoOpen = st === 'ask' || st === 'fail' || D.kind === 'execute' || D.kind === 'edit' || (D.verb === 'Search' && D.outText.split('\n').filter(Boolean).length <= 6);
+      const outLines = ((term && term.live) || D.outText || '').split('\n').filter(Boolean).length;
+      const autoOpen = st === 'ask' || st === 'fail' || st === 'run' || (D.kind === 'execute' && outLines <= 6) || D.kind === 'edit' || (D.verb === 'Search' && D.outText.split('\n').filter(Boolean).length <= 6);
       const open = it.open == null ? autoOpen : it.open;
       const n = el('div', { class: 'hx-tool ' + st + (open ? ' open' : ''), 'data-kind': D.kind });
       const th = el('button', { class: 'hx-th', type: 'button', onclick: () => { it.open = !open; touch(it.id); } },
@@ -510,7 +512,7 @@
         stat ? el('span', { class: 'hx-stat' }, el('b', { class: 'add' }, '+' + stat.add), el('b', { class: 'del' }, '−' + stat.del)) : null,
         meta ? el('span', { class: 'hx-meta' + (exit ? ' bad' : exit === 0 ? ' good' : '') }, meta) : null,
         approvalBadge(it.approval),
-        el('span', { class: 'hx-dur' }, it.t1 ? ms(it.t1 - it.t0) : ''),
+        el('span', { class: 'hx-dur' }, it.t1 && it.t1 - it.t0 >= 1000 ? ms(it.t1 - it.t0) : ''),
         el('span', { class: 'hx-st' }, st === 'run' ? el('i', { class: 'hx-dots' }, el('i'), el('i'), el('i')) : st === 'ask' ? icon('shield') : icon(st === 'done' ? 'check' : st === 'stop' ? 'stop' : 'x')));
       n.append(th);
       // a rebuild must not replay entrance motion: the status pops once per status, the body opens once
@@ -524,7 +526,7 @@
       else if (st === 'deny') body.append(el('div', { class: 'hx-err' }, (it.approval.body.decision.reason || it.reason || 'denied')));
       else if (D.kind === 'execute') {
         const out = term && term.live ? term.live : D.outText;
-        body.append(el('div', { class: 'hx-term' }, el('div', { class: 'hx-cmd' }, el('span', { class: 'p' }, '$'), D.target), out ? termOut(out) : st === 'run' ? el('div', { class: 'hx-out dim' }, el('span', { class: 'hx-caret' })) : el('div', { class: 'hx-out dim' }, D.quiet ? 'output stayed in the agent\u2019s own terminal' : 'no output')));
+        body.append(el('div', { class: 'hx-term' }, out ? termOut(out) : st === 'run' ? el('div', { class: 'hx-out dim' }, el('span', { class: 'hx-caret' })) : el('div', { class: 'hx-out dim' }, D.quiet ? 'output stayed in the agent\u2019s own terminal' : 'no output')));
       } else if (D.kind === 'edit') {
         const u = ch && ch.body ? ch.body.unified : D.outText.startsWith('---') ? D.outText : '';
         if (u) body.append(diffView(u)); else if (D.outText) body.append(el('div', { class: it.status === 'failed' ? 'hx-err' : 'hx-out' }, D.outText));
@@ -577,8 +579,8 @@
       const n = el('div', { class: 'hx-end ' + (ok ? 'ok' : soft ? 'soft' : 'bad') },
         el('span', { class: 'hx-endmark' }, icon(ok ? 'check' : soft ? 'stop' : 'x')),
         el('b', {}, title),
-        el('span', {}, ms((t.t1 || 0) - (t.t0 || 0))),
-        t.rounds ? el('span', {}, plural(t.rounds, 'round')) : null, t.tools ? el('span', {}, plural(t.tools, 'tool')) : null, t.edits ? el('span', {}, plural(t.edits, 'edit')) : null,
+        (t.t1 || 0) - (t.t0 || 0) >= 1000 || !ok ? el('span', {}, ms((t.t1 || 0) - (t.t0 || 0))) : null,
+        t.tools ? el('span', {}, plural(t.tools, 'tool')) : null, t.edits ? el('span', {}, plural(t.edits, 'edit')) : null,
         u.input_tokens ? el('span', {}, kfmt(u.input_tokens) + ' in · ' + kfmt(u.output_tokens) + ' out') : null,
         u.cost_micros_usd ? el('span', {}, '$' + (u.cost_micros_usd / 1e6).toFixed(u.cost_micros_usd < 1e4 ? 4 : 2)) : null,
         L ? el('span', { class: 'warn' }, icon('loop'), plural(L.items.filter(id => (item(id) || {}).kind === 'agent_message').length, 'repeated reply') + ' folded') : null);
