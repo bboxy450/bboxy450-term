@@ -796,6 +796,7 @@ async fn logic_main() -> Result<()> {
         &mut |operation, completed, total| emit(operation, completed, total, true),
     )?;
     if bootstrap.recover_seats {
+        emit("Resuming saved sessions", 0, 0, true);
         logic.client.recover_seats().await?;
     }
     let observer_supervisor = bootstrap.supervisor.pid;
@@ -806,6 +807,7 @@ async fn logic_main() -> Result<()> {
         }));
     // The operator's ctl door, only when asked for (decision #260, invariant #261): the
     // window is logic's parent, and the supervisor names whose descendants are seats.
+    emit("Opening control endpoint", 0, 0, true);
     let door = if bootstrap.config.ctl {
         let peers = bbt_mux::ctl_door::Peers {
             supervisor: bootstrap.supervisor.pid,
