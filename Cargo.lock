@@ -371,6 +371,8 @@ dependencies = [
  "bboxy450-doc",
  "bboxy450-render",
  "bboxy450-rt",
+ "bboxy450-term-desktop 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bboxy450-term-desktop-core 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "bboxy450-tlc",
  "bboxy450-ui",
  "bboxy450-ui-core",
@@ -527,7 +529,7 @@ dependencies = [
  "bboxy450-render",
  "bboxy450-rt",
  "bboxy450-term-core",
- "bboxy450-term-desktop",
+ "bboxy450-term-desktop 0.1.1",
  "bboxy450-term-mux",
  "bboxy450-term-plugin-fixture",
  "bboxy450-term-plugin-sdk",
@@ -591,8 +593,19 @@ dependencies = [
 name = "bboxy450-term-desktop"
 version = "0.1.1"
 dependencies = [
- "bboxy450-term-desktop-core",
- "bboxy450-term-desktop-macos",
+ "bboxy450-term-desktop-core 0.1.1",
+ "bboxy450-term-desktop-macos 0.1.1",
+ "raw-window-handle",
+]
+
+[[package]]
+name = "bboxy450-term-desktop"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ff6b2bb3532fb9244d411c1e46e68b8a10070011dfa2982755bd24d15d71d8aa"
+dependencies = [
+ "bboxy450-term-desktop-core 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bboxy450-term-desktop-macos 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "raw-window-handle",
 ]
 
@@ -605,10 +618,33 @@ dependencies = [
 ]
 
 [[package]]
+name = "bboxy450-term-desktop-core"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c712e0f932e53da4003b6d66682be3e52e34c6ce1e914c92bd67ab4c46a0b409"
+dependencies = [
+ "serde",
+]
+
+[[package]]
 name = "bboxy450-term-desktop-macos"
 version = "0.1.1"
 dependencies = [
- "bboxy450-term-desktop-core",
+ "bboxy450-term-desktop-core 0.1.1",
+ "dispatch2",
+ "objc2 0.6.5",
+ "objc2-app-kit 0.3.2",
+ "objc2-foundation 0.3.2",
+ "raw-window-handle",
+]
+
+[[package]]
+name = "bboxy450-term-desktop-macos"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0712e3822c7089b37f17e361e3bfcf9785220977eab874026312533b4db1d939"
+dependencies = [
+ "bboxy450-term-desktop-core 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "dispatch2",
  "objc2 0.6.5",
  "objc2-app-kit 0.3.2",
