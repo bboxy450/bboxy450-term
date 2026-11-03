@@ -343,6 +343,8 @@ models = [
   "HarnessSeatShutdown",
   "BrokenHarnessSeatShutdownBlockedOutput",
   "BrokenHarnessSeatShutdownSingleKill",
+  "HarnessTextZoom",
+  "BrokenHarnessTextZoom",
 ]
 scope = "Pinned workspace harness models and broken controls imported into the parent native/TLC parity run. Its source inventory and multi-control contracts are validated from the submodule. HarnessEmbedLifecycle is the lifecycle model for the real parent seat-spawn witness. HTTP, terminal bytes, kernel process-group cleanup, profile parsing and bundle construction retain implementation tests."
 sources = ["crates/bboxy450-harness/verification/coverage.toml", "crates/bboxy450-harness/verification/contracts.toml", "crates/bboxy450-harness/tests/formal/models.rs", "crates/bbt-mux/tests/mcp.rs", "scripts/harness-submodule.py", "scripts/bump-harness.py"]
