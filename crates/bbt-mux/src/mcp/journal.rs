@@ -18,6 +18,14 @@ use ulid::Ulid;
 use super::{Call, MAX_RESULT, Principal, error};
 use crate::store::{Result, digest, events::Draft, sqlite::SqliteStore};
 
+// ACP-agent enables insertion-ordered JSON maps upstream. Preserve the existing
+// journal's sorted argument bytes so reordered retries and retained ops agree.
+fn args_digest(args: &Value) -> Result<String> {
+    let mut canonical = args.clone();
+    canonical.sort_all_objects();
+    Ok(digest(&serde_json::to_vec(&canonical)?))
+}
+
 #[derive(Clone)]
 pub(crate) struct Journal {
     store: SqliteStore,
@@ -187,7 +195,7 @@ impl Journal {
         Ok(Some(
             if old.actor.same_authority(actor)
                 && old.tool == call.tool
-                && old.args_digest == digest(&serde_json::to_vec(&call.args)?)
+                && old.args_digest == args_digest(&call.args)?
                 && self.accepts_root(old.root_id.as_deref())
             {
                 old.result
@@ -255,7 +263,7 @@ impl Journal {
         let event = audit(
             actor,
             call,
-            &digest(&serde_json::to_vec(&call.args)?),
+            &args_digest(&call.args)?,
             &result,
             replay,
             false,
@@ -378,7 +386,7 @@ impl Journal {
         let admitted: Entry = serde_json::from_slice(&admitted)?;
         if admitted.actor != actor
             || admitted.tool != call.tool
-            || admitted.args_digest != digest(&serde_json::to_vec(&call.args)?)
+            || admitted.args_digest != args_digest(&call.args)?
             || !self.accepts_root(admitted.root_id.as_deref())
         {
             return Err(crate::store::invalid(
@@ -388,7 +396,7 @@ impl Journal {
         let entry = Entry {
             actor: actor.clone(),
             tool: call.tool.clone(),
-            args_digest: digest(&serde_json::to_vec(&call.args)?),
+            args_digest: args_digest(&call.args)?,
             result: result.clone(),
             root_id: self.root_id().map(str::to_owned),
             native_unlock: admitted.native_unlock,
@@ -432,7 +440,7 @@ impl Journal {
         retained_allowed: impl FnOnce(&Value) -> bool,
         native: Option<(String, crate::identity::unlock::Reference)>,
     ) -> Result<(Value, bool)> {
-        let hash = digest(&serde_json::to_vec(&call.args)?);
+        let hash = args_digest(&call.args)?;
         let key = format!("control/op/{}", call.op_id);
         // The lookup and result publication use the same write transaction, so
         // overlapping logic owners cannot return two results for one op_id.
@@ -872,6 +880,17 @@ mod tests {
     use crate::messaging::wire::IssuerKind;
     use crate::registry::{Class, Role};
     use crate::store::Store;
+
+    #[test]
+    fn argument_digest_keeps_legacy_sorted_bytes_for_nested_reordered_json() {
+        let a: Value = serde_json::from_str(r#"{"z":2,"a":[{"z":1,"a":0}]}"#).unwrap();
+        let b: Value = serde_json::from_str(r#"{"a":[{"a":0,"z":1}],"z":2}"#).unwrap();
+        let expected = digest(br#"{"a":[{"a":0,"z":1}],"z":2}"#);
+        assert_eq!(args_digest(&a).unwrap(), expected);
+        assert_eq!(args_digest(&b).unwrap(), expected);
+        let changed: Value = serde_json::from_str(r#"{"a":[{"a":0,"z":3}],"z":2}"#).unwrap();
+        assert_ne!(args_digest(&changed).unwrap(), expected);
+    }
 
     fn effect_fixture() -> (tempfile::TempDir, SqliteStore, Actor, Call) {
         let temp = tempfile::tempdir().unwrap();

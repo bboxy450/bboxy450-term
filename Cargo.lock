@@ -460,6 +460,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "bboxy450-keychain-macos"
+version = "0.1.1"
+dependencies = [
+ "core-foundation 0.10.1",
+ "security-framework-sys",
+]
+
+[[package]]
 name = "bboxy450-keychain-windows"
 version = "0.1.1"
 dependencies = [
@@ -724,10 +732,9 @@ dependencies = [
 name = "bboxy450-usage"
 version = "0.1.1"
 dependencies = [
- "core-foundation 0.10.1",
+ "bboxy450-keychain-macos",
  "libc",
  "reqwest",
- "security-framework-sys",
  "serde_json",
  "sha2 0.10.9",
  "tokio",

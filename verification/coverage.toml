@@ -44,6 +44,13 @@ scope = "Retained owner lifecycle contract at the app boundary; native window im
 sources = ["crates/bboxy450-term-desktop/src/lib.rs", "crates/bboxy450-term/src/cockpit/owners.rs"]
 
 [[crate]]
+name = "bboxy450-keychain-macos"
+status = "implementation-tests"
+models = []
+scope = "Read-only query construction, denied/missing status mapping and byte bounds have pure tests that never read a live Keychain. The query always refuses authentication UI. OS authorization, latency and credential contents remain implementation-only gaps; ownership and timeout stay with UsagePoller. No OS authorization model or arbitrary Rust proof is claimed."
+sources = ["crates/bboxy450-keychain-macos/src/lib.rs"]
+
+[[crate]]
 name = "bboxy450-keychain-windows"
 status = "implementation-tests"
 models = []
@@ -312,9 +319,33 @@ models = [
   "BrokenHarnessMcpLostChild",
   "HarnessFoldedCard",
   "BrokenHarnessFoldedCard",
+  "HarnessAcpAgentTurn",
+  "BrokenHarnessAcpAgentTurn",
+  "BrokenHarnessMcpServerD",
+  "BrokenHarnessMcpServerE",
+  "HarnessProviderStream",
+  "BrokenHarnessProviderRetry",
+  "BrokenHarnessProviderFinish",
+  "BrokenHarnessProviderEnding",
+  "HarnessAgentPath",
+  "BrokenHarnessAgentPathDuplicateProbe",
+  "BrokenHarnessAgentPathNoDeadline",
+  "BrokenHarnessAgentPathChildEnv",
+  "HarnessSeatReport",
+  "BrokenHarnessSeatReportState",
+  "BrokenHarnessSeatReportProbe",
+  "BrokenHarnessAcpAgentGrace",
+  "HarnessNativeUsage",
+  "BrokenHarnessNativeUsage",
+  "HarnessNativeSpill",
+  "BrokenHarnessNativeSpill",
+  "BrokenHarnessNativeUsageScopes",
+  "HarnessSeatShutdown",
+  "BrokenHarnessSeatShutdownBlockedOutput",
+  "BrokenHarnessSeatShutdownSingleKill",
 ]
-scope = "Pinned harness models and broken controls imported into the parent native/TLC parity run; its source inventory and multi-control contracts are validated from the submodule. HarnessEmbedLifecycle is the lifecycle model for the real parent seat-spawn witness. HTTP, terminal bytes and kernel process-group cleanup retain implementation tests."
-sources = ["crates/bboxy450-harness/verification/coverage.toml", "crates/bboxy450-harness/verification/contracts.toml", "crates/bboxy450-harness/tests/formal/models.rs", "crates/bbt-mux/tests/mcp.rs", "scripts/harness-submodule.py"]
+scope = "Pinned workspace harness models and broken controls imported into the parent native/TLC parity run. Its source inventory and multi-control contracts are validated from the submodule. HarnessEmbedLifecycle is the lifecycle model for the real parent seat-spawn witness. HTTP, terminal bytes, kernel process-group cleanup, profile parsing and bundle construction retain implementation tests."
+sources = ["crates/bboxy450-harness/verification/coverage.toml", "crates/bboxy450-harness/verification/contracts.toml", "crates/bboxy450-harness/tests/formal/models.rs", "crates/bbt-mux/tests/mcp.rs", "scripts/harness-submodule.py", "scripts/bump-harness.py"]
 [[crate]]
 name = "bboxy450-usage"
 status = "contract-model"

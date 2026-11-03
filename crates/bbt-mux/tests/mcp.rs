@@ -5187,7 +5187,7 @@ os.execv(BINARY, [BINARY, *args])
         ))
         .unwrap();
     f.wait_screen(seat, "Done.");
-    f.wait_screen(seat, "— EndTurn");
+    f.wait_screen(seat, "✓ Done"); // The pinned harness's completed-turn status row.
     assert_eq!(
         f.input_attempts.load(std::sync::atomic::Ordering::SeqCst),
         attempts,

@@ -47,6 +47,7 @@ help:
 	  'make build / build-release       Build the app (debug / optimized)' \
 	  'make lock                       Refresh workspace lock metadata offline' \
 	  'make lock-online                Resolve added dependencies with the registry' \
+	  'make bump-harness [REV=sha]      Move and stage the harness submodule and changed lockfile (default origin/main)' \
 	  'make tools                      Install the Rust workflow tools (cargo-nextest, sccache) once per machine' \
 	  'make land / make push           Diff-scoped gate (affected crates + dependents, nextest), then push' \
 	  'make land-full                  Full signed gate (make test in a warm, queued gate slot)' \
@@ -243,6 +244,10 @@ lock:
 .PHONY: lock-online
 lock-online:
 	@set -eu; . ./scripts/cache-env.sh; cargo update --workspace
+
+.PHONY: bump-harness
+bump-harness:
+	@set -eu; . ./scripts/cache-env.sh; python3 -I scripts/bump-harness.py '$(REV)'
 
 compile: tools
 	@set -eu; case '$(PROFILE)' in debug) flag='' ;; release) flag='--release' ;; *) echo 'PROFILE must be debug or release' >&2; exit 2 ;; esac; \
@@ -594,6 +599,7 @@ bundle-files: check-licenses compile
 	plutil -replace CFBundleVersion -string "$$(git rev-list --count HEAD)" '$(BUNDLE)/Contents/Info.plist'; \
 	revision=$$(git rev-parse HEAD); git diff --quiet HEAD -- || revision="$$revision-dirty"; \
 	plutil -insert BBOXYSourceRevision -string "$$revision" '$(BUNDLE)/Contents/Info.plist'; \
+	plutil -insert BBOXYHarnessRevision -string "$$(git -C crates/bboxy450-harness rev-parse HEAD)" '$(BUNDLE)/Contents/Info.plist'; \
 	plutil -lint '$(BUNDLE)/Contents/Info.plist'
 
 bundle: bundle-files

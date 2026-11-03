@@ -232,8 +232,8 @@ fn native_bundle_fixture_child() {
         ("uname", "printf 'Darwin\\n'".to_string()),
         ("security", format!("printf 'lookup\\n' >> \"$FIXTURE_ROOT/lookups\"; test -z \"${{FIXTURE_NO_IDENTITY:-}}\" || exit 0; printf '%s\\n' {IDENTITY}")),
         ("cargo", "exit 0".into()),
-        ("plutil", "exit 0".into()),
-        ("git", "case \"$1\" in rev-list) printf '17\\n' ;; rev-parse) printf 'fixture-revision\\n' ;; diff) exit 0 ;; *) exit 2 ;; esac".into()),
+        ("plutil", "if [ \"$1\" = -insert ] && [ \"$2\" = BBOXYHarnessRevision ]; then test \"$4\" = fixture-harness-revision || exit 31; printf '%s' \"$4\" > \"$FIXTURE_ROOT/harness-revision\"; fi".into()),
+        ("git", "case \"$1\" in rev-list) printf '17\\n' ;; rev-parse) printf 'fixture-revision\\n' ;; -C) test \"$2\" = crates/bboxy450-harness && test \"$3\" = rev-parse && test \"$4\" = HEAD || exit 2; printf 'fixture-harness-revision\\n' ;; diff) exit 0 ;; *) exit 2 ;; esac".into()),
     ] {
         executable(&p.join("tools").join(name), &format!("#!/bin/sh\n{body}\n"));
     }
@@ -284,6 +284,10 @@ with (pathlib.Path(os.environ['FIXTURE_ROOT'])/'calls').open('a') as f:f.write(j
         p.join("target/debug/bboxy450-term.app/Contents/MacOS/bboxy450-harness")
             .is_file(),
         "bundle ships the harness beside the app binary"
+    );
+    assert_eq!(
+        fs::read_to_string(p.join("harness-revision")).unwrap(),
+        "fixture-harness-revision"
     );
     for name in [
         "LICENSE",

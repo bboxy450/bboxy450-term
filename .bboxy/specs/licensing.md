@@ -16,7 +16,7 @@ links:
   - { to: "[[yarn]]", rel: spec }
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
 created: 2026-10-23T16:26:37Z
-updated: "2026-10-30T19:35:00Z"
+updated: "2026-11-03T02:43:15Z"
 ---
 # Licensing
 
@@ -84,11 +84,13 @@ The app segment is an explicit classification, not inferred by a script.
 | Terminal app | `bboxy450-term`, `bboxy450-term-core`, `bboxy450-term-mux`, `bboxy450-term-proto`, `bboxy450-term-firehose`, `bboxy450-term-desktop-core`, `bboxy450-term-desktop-macos`, `bboxy450-term-desktop`, `bboxy450-term-plugin-sdk`, `bboxy450-term-plugin-fixture`, `bboxy450-term-data_source-gitkb` | App, terminal engine, seat orchestration/wire, terminal load generator, and terminal desktop integration. |
 | Generic | `bboxy450-usage`, `bboxy450-rt`, `bboxy450-tlc`, `bboxy450-yarn`, `bboxy450-yarn-macros`, `bboxy450-mermaid`, `bboxy450-ui-core`, `bboxy450-render`, `bboxy450-ui`, `bboxy450-doc`, `bboxy450-plugin` | Reusable runtime, verification, UI, document and plugin tools. Book independently consumes the renderer. |
 | Generic harness kits | `bboxy450-harness-host`, `bboxy450-harness-wake-up` | Caller-configured harness execution and wake adapters, without terminal app policy. |
-| Generic platform kits | `bboxy450-keychain`, `bboxy450-keychain-windows`, `bboxy450-keychain-file`, `bboxy450-desktop-notifications`, `bboxy450-desktop-notifications-macos`, `bboxy450-desktop-notifications-windows`, `bboxy450-desktop-notifications-linux` | Reusable custody and notification facades/backends. |
+| Generic platform kits | `bboxy450-keychain`, `bboxy450-keychain-macos`, `bboxy450-keychain-windows`, `bboxy450-keychain-file`, `bboxy450-desktop-notifications`, `bboxy450-desktop-notifications-macos`, `bboxy450-desktop-notifications-windows`, `bboxy450-desktop-notifications-linux` | Reusable custody and notification facades/backends. |
 | Separate app | `bboxy450-book` | Standalone component gallery and parity consumer; binary is also `bboxy450-book`. |
 
-`bboxy450-keychain-macos` and `bboxy450-keychain-linux` are proposed generic
-backends, absent from this workspace. `bboxy450-frontmatter` remains a proposed
+`bboxy450-keychain-macos` provides bounded read-only provider credential queries;
+the identity custody facade still selects explicit file storage.
+`bboxy450-keychain-linux` remains proposed and absent from this workspace.
+`bboxy450-frontmatter` remains a proposed
 umbrella, not an extra workspace package. Rust library names and source
 directories remain stable. This inventory changes source/package metadata only;
 publication, version bumps and yanking retired names belong to release issue #69.

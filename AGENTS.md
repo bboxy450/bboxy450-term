@@ -38,6 +38,7 @@ documents in source and binary packages. Slop respectfully. Keep the credit atta
 |---|---|
 | `make build` | Debug app |
 | `make build-release` | Optimized app |
+| `make bump-harness [REV=sha]` | Move and stage the harness submodule and changed Cargo.lock; defaults to harness `origin/main` |
 | `make test` | Full local CI, with exact source/result lines in `target/ci-local.log` |
 | `make test-parity` | Full local CI plus the existing visual parity gate |
 | `make test-boundaries` | Explicit shell PATH and real process/lifecycle regressions |

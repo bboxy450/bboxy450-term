@@ -1804,7 +1804,8 @@ async fn ctl_noun_verb_grammar_replies_and_errors() {
     let (code, out, _) = ctl_raw(&run, &root, &["app", "endpoint"]);
     let reply = json(&out);
     assert_eq!(code, Some(0));
-    let keys: Vec<&String> = reply["data"].as_object().unwrap().keys().collect();
+    let mut keys: Vec<&String> = reply["data"].as_object().unwrap().keys().collect();
+    keys.sort(); // Object key membership is independent of ACP-agent's JSON map feature.
     assert_eq!(keys, ["generation", "path", "run_dir"], "{reply}");
 
     // message send to a seat by id; --op makes a retry the same message.

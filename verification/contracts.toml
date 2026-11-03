@@ -347,7 +347,7 @@ title = "Original document effects have a read-only scoped recovery path"
 models = ["OperationRecovery", "BrokenOperationRecovery"]
 sources = ["crates/bbt-mux/src/mcp/journal.rs", "crates/bbt-mux/src/mcp/recovery.rs", "crates/bbt-mux/src/logic.rs"]
 implementation_tests = ["crates/bbt-mux/src/mcp/journal.rs", "crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/tests/knowledge.rs"]
-assumptions = "One operation, two roots and actors, two launch generations; journal admission/completion and lookup are atomic. Context changes include A-B-A. No fairness or eventual completion is assumed: missing or interrupted outcomes stay unknown. SQL durability, signing, paths, byte bounds and retained process transport use implementation tests; no arbitrary Rust refinement proof."
+assumptions = "One operation, two roots and actors, two launch generations; journal admission/completion and lookup are atomic. Context changes include A-B-A. No fairness or eventual completion is assumed: missing or interrupted outcomes stay unknown. SQL durability, signing, paths, byte bounds and retained process transport use implementation tests; no arbitrary Rust refinement proof. Argument hashes abstract sorted JSON bytes independent of map iteration; argument_digest_keeps_legacy_sorted_bytes_for_nested_reordered_json and the MCP reordered-retry witness check this assumption with ACP-agent enabled."
 property = "A lookup neither dispatches effects nor exposes another actor/root's result nor converts missing evidence to a terminal verdict. Broken controls redispatch an unknown write, leak another context and treat missing as terminal."
 checks = ["make test-formal", "make test"]
 

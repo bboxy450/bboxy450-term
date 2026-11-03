@@ -66,9 +66,12 @@ def validate_json_features(data):
     nodes = {n['id']: set(n['features']) for n in data['resolve']['nodes']}
     if set(packages.values()) != {'serde_json', 'bboxy450-harness'} or not packages.keys() <= nodes.keys():
         raise ValueError('harness: parent JSON feature inventory is missing')
+    harness_features = set().union(*(nodes[ident] for ident, name in packages.items() if name == 'bboxy450-harness'))
     violations = set()
     for ident, name in packages.items():
-        if name == 'serde_json' and 'preserve_order' in nodes[ident]:
+        # The requested ACP-agent backend enables preserve_order upstream. The
+        # legacy ACP frontend remains forbidden in term's embedded dependency.
+        if name == 'serde_json' and 'preserve_order' in nodes[ident] and 'acp-agent' not in harness_features:
             violations.add('serde_json/preserve_order')
         if name == 'bboxy450-harness' and 'acp' in nodes[ident]:
             violations.add('bboxy450-harness/acp')
@@ -79,7 +82,7 @@ def validate_json_features(data):
 
 def check_json_features(root, features=()):
     resolved = validate_json_features(workspace_metadata(root, features))
-    print('harness: parent JSON features isolated: ' + ', '.join(resolved), flush=True)
+    print('harness: parent JSON features (ACP-agent includes preserve_order): ' + ', '.join(resolved), flush=True)
 
 
 def check_resolution(root):

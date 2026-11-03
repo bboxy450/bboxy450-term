@@ -116,42 +116,11 @@ fn keychain(_: &str) -> Result<Option<Vec<u8>>, Failure> {
 
 #[cfg(target_os = "macos")]
 fn keychain(service: &str) -> Result<Option<Vec<u8>>, Failure> {
-    use core_foundation::{
-        base::{CFType, TCFType},
-        boolean::CFBoolean,
-        data::CFData,
-        dictionary::CFDictionary,
-        string::CFString,
-    };
-    use security_framework_sys::item::*;
-    use security_framework_sys::keychain_item::SecItemCopyMatching;
-    #[link(name = "Security", kind = "framework")]
-    unsafe extern "C" {
-        static kSecUseAuthenticationUIFail: core_foundation::string::CFStringRef;
-    }
-    // Interaction is forbidden in the query itself. Never spawn `security`, unlock or refresh.
-    unsafe {
-        let s = |p| CFString::wrap_under_get_rule(p).into_CFType();
-        let query = CFDictionary::<CFType, CFType>::from_CFType_pairs(&[
-            (s(kSecClass), s(kSecClassGenericPassword)),
-            (s(kSecAttrService), CFString::new(service).into_CFType()),
-            (s(kSecReturnData), CFBoolean::true_value().into_CFType()),
-            (s(kSecUseAuthenticationUI), s(kSecUseAuthenticationUIFail)),
-        ]);
-        let mut result = std::ptr::null();
-        let status = SecItemCopyMatching(query.as_concrete_TypeRef(), &mut result);
-        match status {
-            0 if !result.is_null() => {
-                let data = CFData::wrap_under_create_rule(result.cast());
-                if data.len() as u64 > MAX_BYTES {
-                    return Err(Failure::Credentials);
-                }
-                Ok(Some(data.bytes().to_vec()))
-            }
-            -25300 => Ok(None), // errSecItemNotFound
-            _ => Err(Failure::KeychainLocked),
-        }
-    }
+    use bboxy450_keychain_macos::Error;
+    bboxy450_keychain_macos::read_generic_password(service, MAX_BYTES).map_err(|error| match error {
+        Error::TooLarge => Failure::Credentials,
+        Error::Unavailable => Failure::KeychainLocked,
+    })
 }
 
 pub struct Http {

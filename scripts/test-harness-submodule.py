@@ -20,19 +20,26 @@ spec.loader.exec_module(harness)
 
 
 class SubmoduleTests(unittest.TestCase):
-    def test_real_parent_json_features_are_isolated_and_acp_is_rejected(self):
+    def test_real_parent_acp_agent_features_are_explicit_and_legacy_acp_is_rejected(self):
         root = Path(__file__).resolve().parent.parent
         harness.check_json_features(root)
         rejected = subprocess.run([sys.executable, '-I', str(Path(__file__).with_name('harness-submodule.py')),
                                    '--check-json-features', '--acp-control'], cwd=root, text=True, capture_output=True)
         self.assertEqual(rejected.returncode, 1, rejected.stdout + rejected.stderr)
-        self.assertIn('serde_json/preserve_order', rejected.stderr)
         self.assertIn('bboxy450-harness/acp', rejected.stderr)
         print(f'harness: real ACP metadata control exits 1: {rejected.stderr.splitlines()[-1]}', flush=True)
 
     def test_missing_json_feature_inventory_is_rejected(self):
         with self.assertRaisesRegex(ValueError, 'feature inventory is missing'):
             harness.validate_json_features({'packages': [], 'resolve': {'nodes': []}})
+
+    def test_unexpected_ordering_feature_without_acp_agent_is_rejected(self):
+        data = {'packages': [{'id': 'json', 'name': 'serde_json'}, {'id': 'harness', 'name': 'bboxy450-harness'}],
+                'resolve': {'nodes': [{'id': 'json', 'features': ['preserve_order']}, {'id': 'harness', 'features': []}]}}
+        with self.assertRaisesRegex(ValueError, 'serde_json/preserve_order'):
+            harness.validate_json_features(data)
+        data['resolve']['nodes'][1]['features'] = ['embedded', 'acp-agent']
+        self.assertEqual(harness.validate_json_features(data), ['preserve_order'])
 
     def test_missing_checkout_fails_after_initialization_instead_of_skipping(self):
         with tempfile.TemporaryDirectory() as own:

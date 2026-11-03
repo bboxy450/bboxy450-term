@@ -5,6 +5,7 @@ members = [
   "crates/bboxy450-term-desktop-core",
   "crates/bboxy450-term-desktop-macos",
   "crates/bboxy450-term-desktop",
+  "crates/bboxy450-keychain-macos",
   "crates/bboxy450-keychain-windows",
   "crates/bboxy450-keychain-file",
   "crates/bboxy450-keychain",
