@@ -8925,23 +8925,6 @@ impl ApplicationHandler<UiEvent> for App {
                     }
                     return;
                 }
-                WindowEvent::KeyboardInput { event, .. } => {
-                    if event.state.is_pressed() && !event.repeat {
-                        if self.modifiers.super_key()
-                            && !self.modifiers.shift_key()
-                            && event.logical_key == Key::Character("q".into())
-                        {
-                            if self.modifiers.alt_key() {
-                                self.request_shutdown(event_loop);
-                            } else {
-                                self.request_close(event_loop);
-                            }
-                        } else if event.logical_key == Key::Named(NamedKey::Enter) {
-                            self.retry_startup();
-                        }
-                    }
-                    return;
-                }
                 WindowEvent::MouseWheel { .. }
                 | WindowEvent::MouseInput { .. }
                 | WindowEvent::Ime(_) => return,
@@ -9162,6 +9145,23 @@ impl ApplicationHandler<UiEvent> for App {
             } => self.overlay_right_click(self.pointer),
             WindowEvent::Ime(event) => self.ime_input(event),
             WindowEvent::KeyboardInput { event, .. } => {
+                if self.startup.visible {
+                    if event.state.is_pressed() && !event.repeat {
+                        if self.modifiers.super_key()
+                            && !self.modifiers.shift_key()
+                            && event.logical_key == Key::Character("q".into())
+                        {
+                            if self.modifiers.alt_key() {
+                                self.request_shutdown(event_loop);
+                            } else {
+                                self.request_close(event_loop);
+                            }
+                        } else if event.logical_key == Key::Named(NamedKey::Enter) {
+                            self.retry_startup();
+                        }
+                    }
+                    return;
+                }
                 if event.state == ElementState::Pressed {
                     self.cancel_ui(
                         "ui_frame_refused: physical keyboard input superseded this request",

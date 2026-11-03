@@ -277,6 +277,7 @@ mod tests {
             return;
         }
         let (mut app, _) = crate::lazy_projection_tests::fixture();
+        app.startup.attached();
         app.test_account = true;
         let seat = SeatId::from_u128(1);
         let record =
