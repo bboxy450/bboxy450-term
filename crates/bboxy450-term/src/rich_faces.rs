@@ -117,6 +117,7 @@ impl App {
         let ids: Vec<_> = self.rich_panes.keys().copied().collect();
         for i in 0..ids.len() {
             if start.elapsed() >= Duration::from_micros(300) {
+                self.request_redraw(); // Deferred dirty views need another frame even while idle.
                 break;
             }
             let id = ids[(self.rich_round + i) % ids.len()];
