@@ -212,6 +212,26 @@ The radius scale is 4 (tags), 5–7 (tiles), 8 (buttons, inner blocks), 11 (card
 - A `notice` at warn level (for example "the agent does not offer model …") is a 6px `ask` dot and 11.5 `fg-dim` text,
   never a card.
 
+## Refinement pass 2 (2026-11-02)
+
+Found by comparing the native capture with the reference on the real ACP and mermaid logs (`parity-web.sh`, harness ca80cde),
+and from the operator's screenshot.
+
+- **Usage items never draw a row.** An `item_completed` with body `usage` adds to the header meter and nothing else.
+  If the total is 0 in and 0 out, there is no meter. Never draw "0 in · 0 out" or any per-round token line in the feed.
+- **The message source toggle is hover-only.** The `source` / `formatted` control on an agent message is hidden at rest.
+  On row hover it fades to 0.6 over 150ms `std`, and to 1.0 when the control itself is hovered.
+- **The exit status lives in the tool card header only** (`exit N` chip). The terminal body never gets an extra `exit 0` line.
+- **Terminal body padding:** 8px top and 10px bottom. Do not add space under the last output line beyond that.
+- **Message text rhythm** (13.5px body):
+  - paragraphs 0 above, 6 below;
+  - headings 15/700, 8 above, 6 below;
+  - lists 2 above, 8 below, 20 indent, 2 between items;
+  - list markers in `seat`;
+  - inline code 0.88em mono, 1/5 padding, radius 5, `card-hi` fill, `hair` border.
+- **Mermaid sequence:** lifeline heads 30px tall. Messages are 30px apart, arrows run lifeline to lifeline, and labels sit 4px above the arrow.
+  Flowchart back edges route around the nodes, never through a node box.
+
 ## Empty session (`empty-session`)
 
 Shown while the session has no blocks. It leaves when the first block mounts.
