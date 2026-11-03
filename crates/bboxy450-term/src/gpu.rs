@@ -261,8 +261,8 @@ pub enum OverlayDraw {
     None,
     Hit,
     Rebuilt,
-    /// Not cacheable this frame: the first material inside the dock, or
-    /// "after" when a frosted op follows it.
+    /// Not cacheable this frame: the first frosted, rim or glow material
+    /// inside the dock.
     Live(&'static str),
 }
 /// Content whose pixels depend only on itself: draw lists, groups, and the
@@ -290,16 +290,10 @@ fn first_material(ops: &[Paint]) -> Option<&'static str> {
         Paint::Draw(_) | Paint::Underlay(_) => None,
     })
 }
-fn frosted_paint(op: &Paint) -> bool {
-    match op {
-        Paint::Material { kind, .. } => *kind == ui::Material::Frosted,
-        Paint::Group { ops, .. } => ops.iter().any(frosted_paint),
-        Paint::Draw(_) | Paint::Underlay(_) => false,
-    }
-}
 /// Before, the retained layer, then after, in painter's order on `destination`.
-/// A frosted op after the layer keys its blur on that call's own ops, so a
-/// split there could reuse a stale blur: such frames encode in one live call.
+/// Overlay calls are external (`backdrop_keys` keys nothing), so a frosted op
+/// after the layer always blurs the live target, which already holds the
+/// composited layer: the same pixels one combined call would sample.
 #[allow(
     clippy::too_many_arguments,
     reason = "the overlay's three ordered parts"
@@ -423,7 +417,7 @@ fn draw_overlay_or_live(
 ) -> Result<OverlayDraw, String> {
     if let Some(list) = retained
         .as_ref()
-        .filter(|list| list.iter().all(plain_paint) && !after.iter().any(frosted_paint))
+        .filter(|list| list.iter().all(plain_paint))
     {
         return draw_overlay(
             renderer,
@@ -439,9 +433,9 @@ fn draw_overlay_or_live(
         );
     }
     layer.entry = None;
-    let reason = retained.as_ref().map(|list| {
-        first_material(list).unwrap_or("after:Frosted")
-    });
+    let reason = retained
+        .as_ref()
+        .map(|list| first_material(list).unwrap_or("dock"));
     let mut ops = before;
     if let Some(list) = retained {
         ops.extend(list.iter().cloned());
@@ -2097,7 +2091,11 @@ mod clear_fold_tests {
                 mask: None,
             },
         ]);
-        let after = vec![rect(120., [1., 1., 0., 0.4]), material(ui::Material::Rim)];
+        let after = vec![
+            rect(120., [1., 1., 0., 0.4]),
+            material(ui::Material::Frosted),
+            material(ui::Material::Rim),
+        ];
         let live = FrameTime {
             scale: 1.,
             time_ms: 450.,
@@ -2162,27 +2160,11 @@ mod clear_fold_tests {
             let counts = bbt_render::passes::take();
             assert_eq!(counts.group, 1, "a hit composites the layer once");
             assert_eq!(counts.flat, 2, "only before and after encode: {counts:?}");
-            assert_eq!(counts.material, 1, "only the rim after the layer: {counts:?}");
-            // A frosted op after the layer, or a material inside it, is live.
-            let mut frosted = after.clone();
-            frosted.push(material(ui::Material::Frosted));
             assert_eq!(
-                draw_overlay_or_live(
-                    renderer,
-                    &pass,
-                    &mut layer,
-                    &scratch,
-                    &backdrop,
-                    vec![],
-                    Some(retained.clone()),
-                    frosted,
-                    live,
-                    encoder,
-                )
-                .unwrap(),
-                OverlayDraw::Live("after:Frosted")
+                counts.material, 2,
+                "the frosted and rim after the layer: {counts:?}"
             );
-            assert!(layer.entry.is_none());
+            // A frosted op inside the dock samples what lies beneath: live.
             let with_material = std::sync::Arc::new(vec![material(ui::Material::Frosted)]);
             assert_eq!(
                 draw_overlay_or_live(
