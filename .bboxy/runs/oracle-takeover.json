@@ -1,0 +1,201 @@
+{
+  "actor": {
+    "seat_id": "01M6H97SAX3GN1BYB4YG76P3P0",
+    "process_generation": 1,
+    "swarm_id": "01M649102FBS60QWNPZS5VAGF9",
+    "role": {
+      "name": "oracle",
+      "class": "oracle"
+    },
+    "grant_epoch": 1,
+    "issuer_kind": "local-dev"
+  },
+  "closures": [
+    {
+      "target": {
+        "name": "previous Oracle",
+        "id": "01M6H9704RM1WGA5MZYG8YBJBR",
+        "generation": "1"
+      },
+      "status": "applied",
+      "op_id": "01M6HCJZJYEW1EEKP8069WMKX0"
+    },
+    {
+      "target": {
+        "name": "Claude Architect",
+        "id": "01M6H970AZDNH8MPVMAFNFPYMZ",
+        "generation": "1"
+      },
+      "status": "applied",
+      "op_id": "01M6HCJZQFX1XDJ59NRJ13XHDE"
+    },
+    {
+      "target": {
+        "name": "Claude Creativity",
+        "id": "01M6H9714ZDG7QEARG33YVJNQN",
+        "generation": "1"
+      },
+      "status": "applied",
+      "op_id": "01M6HCJZTRZNWZZPA215SXQHAZ"
+    },
+    {
+      "target": {
+        "name": "obsolete pre-restart Oracle",
+        "id": "01M6F3V39NH351CTSW6ED1KF49",
+        "generation": "1"
+      },
+      "status": "rejected",
+      "op_id": "01M6HCJZY77364N5W5G9NZG3TQ",
+      "error": {
+        "code": "rejected",
+        "message": "target viewport unavailable"
+      }
+    }
+  ],
+  "replacements": [
+    {
+      "seat_id": "01M6HCVV32KS845WHVD5FCX7QE",
+      "slug": "2026-11-03-codex-rich-socket",
+      "worktree": "/Users/feral/mydev/bboxy450-harness-pane-b12",
+      "name": "Rich socket (Codex)",
+      "delegation": {
+        "status": "accepted",
+        "task_id": "01M6HCYCQB66JTBKPHE1YE4QJB",
+        "path": ".bboxy/tasks/2026-11-03-codex-rich-socket.md",
+        "task_status": "claimed",
+        "message_ids": [
+          "4X6VYGBRF6R5DZWM0C4W8B8JF7"
+        ],
+        "op_id": "01M6HCYSPF5DJA2XBB1FCRVJJD"
+      }
+    },
+    {
+      "seat_id": "01M6HCYT7FYN90XD2C4TXGZQZC",
+      "slug": "2026-11-03-codex-harness-recovery",
+      "worktree": "/Users/feral/mydev/bboxy450-harness-codex-recovery",
+      "name": "Standalone (Codex)",
+      "spawn_op": "01M6HCYT7FA9YPN3G755QT9RJ9",
+      "delegation": {
+        "status": "accepted",
+        "task_id": "01M6HCYD1S81VTDS3V9M4Y8H4K",
+        "path": ".bboxy/tasks/2026-11-03-codex-harness-recovery.md",
+        "task_status": "claimed",
+        "message_ids": [
+          "0SX3EDQFHAPFAFMV6WE7178N9W"
+        ],
+        "op_id": "01M6HCYTAW2JZDFS9STGYCB2AV"
+      }
+    },
+    {
+      "seat_id": "01M6HCYVGE7CJ8KK6PB20SPF3D",
+      "slug": "2026-11-03-codex-rich-host",
+      "worktree": "/Users/feral/mydev/bboxy450-term-codex-rich",
+      "name": "Rich host (Codex)",
+      "spawn_op": "01M6HCYVGECEMAQMJHNTQ6599X",
+      "delegation": {
+        "status": "accepted",
+        "task_id": "01M6HCYDWBAX2FDYGMSPB12HRN",
+        "path": ".bboxy/tasks/2026-11-03-codex-rich-host.md",
+        "task_status": "claimed",
+        "message_ids": [
+          "2NSCSE389ZM8FTS0PGV7A7BSE2"
+        ],
+        "op_id": "01M6HCYVNDV4FTZA7147403P5Q"
+      }
+    }
+  ],
+  "cross_swarm_refusal": {
+    "op_id": "01M6HD2733WYQV0PQ9EN2CRAED",
+    "status": "rejected",
+    "error": {
+      "code": "rejected",
+      "message": "target outside caller swarm"
+    }
+  },
+  "cross_swarm_notice": {
+    "message_id": "01M6HD274CFB23J9SXV8P4QRPE"
+  },
+  "source_snapshots": [
+    "preservation-before.json",
+    "preservation-original-recovered.json",
+    "original-interrupted-source.zip"
+  ],
+  "cleanup_results": "cleanup-results.json",
+  "effective_default_profile": "codex-exec",
+  "cache_cleanup": "cargo-cache-cleanup.json",
+  "latest_vesper_request": {
+    "seat": "01M6HEDKGMGNSJYV4KEYAH4C70",
+    "swarm": "01M649102FBS60QWNPZS5VAGF9",
+    "state": "closed_retained",
+    "pid_77009": "exited",
+    "close_retry": "01M6HEYDDVV1SRHCBBZ7JQA046 rejected authority changed because exit completed",
+    "confirmation_op": "01M6HEYVA22T4Y7J6763Q86V3F"
+  },
+  "latest_usage": {
+    "at": 1793737073,
+    "age_seconds": 2,
+    "claude_weekly": 98,
+    "codex_weekly": 69,
+    "cpu": 100,
+    "memory": 69,
+    "disk": 91
+  },
+  "standalone_landed": {
+    "commit": "ea753072c7ec2a0a278e5086ef21458efa0a08f0",
+    "push_exit_code": 0,
+    "base": "0c403165e815c2f7bf77ccac293784b021f42f96",
+    "full_make_exit": 0,
+    "seconds": 1235.874678,
+    "formal_models": 99,
+    "formal_contracts": 34,
+    "formal_sha256": "2bbcb32495cdfa7ef64185eae4e83e38fa2318d6bde4904488df611be3833a73",
+    "source_hashes_checked": 270,
+    "signed_commits": 6,
+    "same_lab_fixtures": 7,
+    "native_pngs_identical_to_main": true,
+    "baseline_adopted": false
+  },
+  "standalone_report_landed": {
+    "commit": "af65c6cf82d9dde6314b1771b9314061b0e24212",
+    "push_exit_code": 0,
+    "reconcile_op": "01M6HH4T8JRMQ9NG6KESV96XDS",
+    "reconcile_disposition": "historically implemented, original report arrived during grace"
+  },
+  "install": {
+    "worktree": "/Users/feral/mydev/bboxy450-harness-land",
+    "commit": "ea753072c7ec2a0a278e5086ef21458efa0a08f0",
+    "session_id": 2878,
+    "result_file": "harness-install-result.json",
+    "log": "harness-install.log",
+    "status": "passed",
+    "exit_code": 0,
+    "seconds": 630.1839447498787
+  },
+  "resume_identity_gap": {
+    "old": "01M6HCYT7FYN90XD2C4TXGZQZC",
+    "new": "01M6HGY3V1KRZQVGFP17JVJ7JM",
+    "both_closed": true,
+    "message": "01M6HH1YVB3BRBNQ4SK48BCJNG",
+    "close_op": "01M6HH4VBB5YWXEM3V349P202Y",
+    "result": "Resumed native thread authenticated old closed MCP seat; refused execution; no credential change."
+  },
+  "intermediate_report": {
+    "id": "01M6HH95QSSAXPSV41HFYVMT4Q",
+    "number": 17033,
+    "path": ".bboxy/reports/2026-11-03-codex-oracle-takeover-interim.md"
+  },
+  "task": "01M6HCH1SJHDSB6SDAC2ZF1BXX",
+  "at": 1793737432.248372,
+  "operational_exit_code": 0,
+  "product_complete": false,
+  "raw_evidence_directory": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0",
+  "archive_sha256": "eb7658af7fb9fae1eb186852e99b9bcedc150058fb989f28e7672b9214ea3ce9",
+  "installed_smoke": {
+    "command": "python3 -I scripts/smoke-app.py /Users/feral/Applications/bboxy450-harness.app /tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/installed-harness-smoke",
+    "exit_code": 0,
+    "seconds": 1.3692119121551514,
+    "log": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/installed-harness-smoke.log",
+    "source": "ea753072c7ec2a0a278e5086ef21458efa0a08f0"
+  },
+  "source_preservation_manifest_sha256": "50e9e26e6e8db1f77cb1358dfcf062c138bc348b1da4a2ae23dbe1e895d49689"
+}
