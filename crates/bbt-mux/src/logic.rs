@@ -27,6 +27,8 @@ mod ring_batch_tests;
 
 #[cfg(test)]
 mod hol_tests;
+#[cfg(test)]
+mod ownership_tests;
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::{Path, PathBuf};
@@ -476,6 +478,8 @@ enum Command {
     IdentityStatus(oneshot::Sender<Result<crate::identity::IdentityStatus>>),
     #[cfg(test)]
     RefreshIdentity(oneshot::Sender<Result<()>>),
+    #[cfg(test)]
+    ProjectionTurn(PathBuf, oneshot::Sender<Result<()>>),
 }
 impl Command {
     fn local_while_checkpoint_pending(&self) -> bool {
@@ -2949,7 +2953,7 @@ struct Worker {
     /// In memory only: plugin calls for that seat carry it, nothing journals it.
     seat_attribution: BTreeMap<Ulid, (u64, crate::plugins::attribution::Attribution)>,
     effect_jobs: tokio::task::JoinSet<knowledge_effects::Completion>,
-    effect_roots: BTreeSet<String>,
+    effect_roots: BTreeMap<String, std::sync::Weak<crate::provenance::projection::WriterLease>>,
     gui_knowledge_jobs: tokio::task::JoinSet<GuiKnowledgeCompletion>,
     gui_task_reads: tokio::task::JoinSet<GuiTaskReadCompletion>,
     task_import_jobs: tokio::task::JoinSet<()>,
@@ -3210,7 +3214,7 @@ impl Worker {
             diagnostic_pending: BTreeSet::new(),
             seat_attribution: BTreeMap::new(),
             effect_jobs: tokio::task::JoinSet::new(),
-            effect_roots: BTreeSet::new(),
+            effect_roots: BTreeMap::new(),
             gui_knowledge_jobs: tokio::task::JoinSet::new(),
             gui_task_reads: tokio::task::JoinSet::new(),
             task_import_jobs: tokio::task::JoinSet::new(),
@@ -4352,7 +4356,7 @@ impl Worker {
             return journal.checked(actor, call, value);
         }
         if crate::mcp::work_items::mutation(&call.tool) {
-            if self.effect_roots.contains(&port.binding.root_id) {
+            if self.effect_root_busy(&port.binding.root_id) {
                 return Ok(crate::mcp::error(
                     call.op_id,
                     "provider_busy",
@@ -10124,6 +10128,26 @@ impl Worker {
                     }
                     Command::IdentityStatus(reply) => {
                         let _ = reply.send(self.identity.status());
+                    }
+                    #[cfg(test)]
+                    Command::ProjectionTurn(path, reply) => {
+                        let result = (|| -> Result<()> {
+                            let root = self
+                                .workspaces
+                                .cache
+                                .roots()
+                                .find(|root| root.index.knowledge_root() == path)
+                                .ok_or_else(|| invalid("private projection root not mounted"))?
+                                .root_id()
+                                .to_owned();
+                            self.workspaces
+                                .cache
+                                .root_mut(&root)
+                                .unwrap()
+                                .step_provenance(&self.bus, &self.handle, &self.identity, &[])?;
+                            Ok(())
+                        })();
+                        let _ = reply.send(result);
                     }
                     #[cfg(test)]
                     Command::RefreshIdentity(reply) => {

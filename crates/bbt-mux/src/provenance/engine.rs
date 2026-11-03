@@ -271,6 +271,20 @@ impl Engine {
         identity: &IdentityRuntime,
         active: &[(Ulid, u64, u64)],
     ) -> Result<bool> {
+        let Some(writer) = index.try_projection_writer()? else {
+            return Ok(false);
+        };
+        let mut index = index.projection_scope(writer)?;
+        self.step_owned(&mut index, bus, handle, identity, active)
+    }
+    fn step_owned(
+        &mut self,
+        index: &mut Index,
+        bus: &BusHandle,
+        handle: &tokio::runtime::Handle,
+        identity: &IdentityRuntime,
+        active: &[(Ulid, u64, u64)],
+    ) -> Result<bool> {
         if self.recovering {
             let rows = index.activity().after(self.recovery_cursor, 128)?;
             let head = self.recovery_head;

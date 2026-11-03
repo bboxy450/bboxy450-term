@@ -318,6 +318,7 @@ pub struct Index {
     store: SqliteStore,
     activity: crate::store::events::EventLog,
     activity_sink: Option<(crate::bus::BusHandle, tokio::runtime::Handle, String)>,
+    writer: Option<Arc<crate::provenance::projection::WriterLease>>,
     issued_by: Option<String>,
     pub documents: BTreeMap<String, Document>,
     pub graphs: BTreeMap<GraphKind, DiGraph<String, Link>>,
@@ -328,6 +329,29 @@ pub struct Index {
     numbers: Arc<Mutex<BTreeMap<PathBuf, (Stamp, u64)>>>,
     #[cfg(test)]
     document_reads: usize,
+}
+
+/// Temporarily lend the claim to nested artifact/document projection calls.
+/// Restores the prior claim on every exit, including unwinding.
+pub(crate) struct ProjectionScope<'a> {
+    index: &'a mut Index,
+    previous: Option<Arc<crate::provenance::projection::WriterLease>>,
+}
+impl std::ops::Deref for ProjectionScope<'_> {
+    type Target = Index;
+    fn deref(&self) -> &Index {
+        self.index
+    }
+}
+impl std::ops::DerefMut for ProjectionScope<'_> {
+    fn deref_mut(&mut self) -> &mut Index {
+        self.index
+    }
+}
+impl Drop for ProjectionScope<'_> {
+    fn drop(&mut self) {
+        self.index.writer = self.previous.take();
+    }
 }
 
 /// A checked write expects either these exact source bytes or a new path.
@@ -367,6 +391,7 @@ impl Index {
                     .ok_or_else(|| invalid("index store has no object directory"))?,
             )?,
             activity_sink: None,
+            writer: None,
             issued_by: None,
             store,
             documents: BTreeMap::new(),
@@ -670,7 +695,41 @@ impl Index {
             self.activity.append(event, key)
         }
     }
+    pub(crate) fn try_projection_writer(
+        &self,
+    ) -> Result<Option<Arc<crate::provenance::projection::WriterLease>>> {
+        if let Some(writer) = &self.writer {
+            return Ok(Some(writer.clone()));
+        }
+        crate::provenance::projection::WriterLease::acquire(&self.root)
+    }
+    pub(crate) fn owned_projection(
+        mut self,
+        writer: Arc<crate::provenance::projection::WriterLease>,
+    ) -> Result<Self> {
+        if writer.root != self.root {
+            return Err(invalid("projection lease belongs to another root"));
+        }
+        self.writer = Some(writer);
+        Ok(self)
+    }
+    pub(crate) fn projection_scope(
+        &mut self,
+        writer: Arc<crate::provenance::projection::WriterLease>,
+    ) -> Result<ProjectionScope<'_>> {
+        if writer.root != self.root {
+            return Err(invalid("projection lease belongs to another root"));
+        }
+        let previous = self.writer.replace(writer);
+        Ok(ProjectionScope {
+            index: self,
+            previous,
+        })
+    }
     pub(crate) fn project_activity(&self) -> Result<crate::provenance::projection::Projection> {
+        let _writer = self
+            .try_projection_writer()?
+            .ok_or_else(|| Box::new(IndexBusy) as crate::store::Error)?;
         crate::provenance::projection::step(&self.root, &self.store, &self.activity)
     }
     pub(crate) fn mirror(&self) -> SqliteStore {
@@ -907,11 +966,22 @@ impl Index {
         guarded: bool,
     ) -> Result<String> {
         bbt_rt::assert_not_ui_thread();
+        if self.writer.is_none() {
+            let writer = self
+                .try_projection_writer()?
+                .ok_or_else(|| Box::new(IndexBusy) as crate::store::Error)?;
+            return self
+                .clone()
+                .owned_projection(writer)?
+                .write_inner(update, author, guarded);
+        }
         // One OS lock per store root spans the fresh scan, signature and
         // atomic publication. Closing this descriptor also releases it after
         // an error or process exit; no counter/reservation state is needed.
         let number_lock = std::fs::File::open(&self.root)?;
-        number_lock.lock()?;
+        number_lock
+            .try_lock()
+            .map_err(|_| Box::new(IndexBusy) as crate::store::Error)?;
         self.write_locked(update, author, guarded, None)
     }
     // Inactive import staging uses a provisional number range; the importer

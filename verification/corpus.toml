@@ -931,3 +931,33 @@ frontend = "project"
 name = "BrokenLogicWorkerAuditShutdown"
 expected = "liveness"
 frontend = "project"
+
+[[model]]
+name = "ProjectionWriterExclusion"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenProjectionWriterExclusion"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "ProjectionWriterLifetime"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenProjectionWriterLifetime"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "ProjectionRootAvailability"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenProjectionRootAvailability"
+expected = "liveness"
+frontend = "project"

@@ -207,13 +207,12 @@ impl Workspace {
         identity: &IdentityRuntime,
         active: &[(Ulid, u64, u64)],
     ) -> crate::store::Result<bool> {
-        self.provenance.step(
-            Arc::make_mut(&mut self.index),
-            bus,
-            runtime,
-            identity,
-            active,
-        )
+        let Some(writer) = self.index.try_projection_writer()? else {
+            return Ok(false);
+        };
+        let mut index = Arc::make_mut(&mut self.index).projection_scope(writer)?;
+        self.provenance
+            .step(&mut index, bus, runtime, identity, active)
     }
     pub fn close(&self) {
         self.host.close();

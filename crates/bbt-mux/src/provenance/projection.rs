@@ -29,6 +29,35 @@ const PAGE: usize = 128;
 
 mod recovery;
 
+/// A kernel-owned, nonblocking claim for one canonical root. Never unlink the
+/// lock inode: descriptor lifetime, including a still-running blocking job,
+/// owns release. Dropping an old descriptor cannot unlock a newer claim.
+pub(crate) struct WriterLease {
+    pub(crate) root: PathBuf,
+    _file: File,
+}
+impl WriterLease {
+    pub(crate) fn acquire(root: &Path) -> Result<Option<std::sync::Arc<Self>>> {
+        let root = root.canonicalize()?;
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
+            .open(directory(&root)?.join(".writer-lock"))?;
+        if !file.metadata()?.is_file() {
+            return Err(invalid("unsafe projection writer lock"));
+        }
+        match file.try_lock() {
+            Ok(()) => Ok(Some(std::sync::Arc::new(Self { root, _file: file }))),
+            Err(std::fs::TryLockError::WouldBlock) => Ok(None),
+            Err(std::fs::TryLockError::Error(error)) => Err(error.into()),
+        }
+    }
+}
+
 #[derive(Default, Serialize, Deserialize)]
 pub(crate) struct Projection {
     cursor: u64,

@@ -19,7 +19,7 @@ const HELLO: Duration = Duration::from_secs(30);
 const MCP: Duration = Duration::from_secs(10);
 const SHUTDOWN: Duration = Duration::from_secs(5);
 
-fn history(directory: &Path) {
+pub(super) fn history(directory: &Path) {
     let events = EventLog::open(directory).unwrap();
     let key = SigningKey::from_bytes(&[64; 32]);
     let mut seq = events.last_sequence().unwrap();
@@ -374,6 +374,10 @@ fn logic_worker_recovery_yields_during_admitted_knowledge_write() {
 }
 
 fn run_child(write: bool) {
+    run_process("logic::hol_tests::recovery_child", write);
+}
+
+pub(super) fn run_process(case: &str, write: bool) {
     let root = tempfile::Builder::new()
         .prefix("bbt-hol-")
         .tempdir_in("/tmp")
@@ -386,12 +390,7 @@ fn run_child(write: bool) {
         command.env("BBOXY_HOL_WRITE", "1");
     }
     let mut child = command
-        .args([
-            "--exact",
-            "logic::hol_tests::recovery_child",
-            "--ignored",
-            "--nocapture",
-        ])
+        .args(["--exact", case, "--ignored", "--nocapture"])
         .env("BBOXY_HOL_ROOT", root.path())
         .stdin(Stdio::null())
         .stdout(log.try_clone().unwrap())
