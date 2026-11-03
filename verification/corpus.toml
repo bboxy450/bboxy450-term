@@ -891,3 +891,43 @@ frontend = "project"
 name = "BrokenJsonlRepair"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "LogicWorkerRequests"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenLogicWorkerRequests"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "LogicWorkerShutdown"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenLogicWorkerShutdown"
+expected = "liveness"
+frontend = "project"
+
+[[model]]
+name = "LogicWorkerAuditRequests"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenLogicWorkerAuditRequests"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "LogicWorkerAuditShutdown"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenLogicWorkerAuditShutdown"
+expected = "liveness"
+frontend = "project"
