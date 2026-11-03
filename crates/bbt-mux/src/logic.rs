@@ -12119,6 +12119,68 @@ mod identity_retry_clock_tests {
                 .iter()
                 .any(|row| row["source"] == observed.event.source)
         );
+        // keeps: a row that cannot be projected (its artifact's number now
+        // collides with a hand-written record) becomes a recorded gap; the
+        // step succeeds and the projection cursor moves past it.
+        let number = doc.metadata["number"].as_u64().unwrap();
+        std::fs::create_dir_all(root.path().join("repository/.bboxy/tasks")).unwrap();
+        std::fs::write(
+            root.path().join("repository/.bboxy/tasks/hand-written.md"),
+            format!(
+                "---\nid: \"{}\"\ntype: \"task\"\nnumber: {number}\ntitle: \"hand-written\"\nstatus: \"open\"\n---\n# hand-written\n",
+                Ulid::new()
+            ),
+        )
+        .unwrap();
+        let modified = Change {
+            kind: "modified".into(),
+            digest: Some(format!(
+                "sha256:{:x}",
+                <sha2::Sha256 as sha2::Digest>::digest(b"held-content-2")
+            )),
+            before_digest: observation.digest.clone(),
+            ..observation.clone()
+        };
+        let conflicting = runtime
+            .block_on(bus.publish(
+                "index",
+                Draft::new(
+                    format!("artifact/{artifact}/modified"),
+                    "provenance/filesystem",
+                    serde_json::json!({"observation": modified}),
+                ),
+            ))
+            .unwrap();
+        std::thread::sleep(Duration::from_secs(5));
+        worker
+            .workspaces
+            .cache
+            .startup_mut()
+            .step_provenance(&bus, runtime.handle(), &worker.identity, &[])
+            .expect("a conflicting row is a gap, not a stalled step");
+        let gap = worker
+            .workspaces
+            .cache
+            .startup()
+            .index
+            .activity()
+            .after(conflicting.seq, 128)
+            .unwrap()
+            .into_iter()
+            .find(|row| row.event.payload["reason"] == "projection-failed")
+            .expect("the gap is recorded on the activity stream");
+        let payload = &gap.event.payload;
+        assert_eq!(payload["origin"]["seq"], conflicting.seq);
+        assert_eq!(payload["origin"]["source"], conflicting.event.source);
+        assert_eq!(payload["detail"]["artifact"], serde_json::json!(artifact));
+        assert!(payload["error"].as_str().unwrap().contains("duplicate record number"));
+        // The raw trail is the exact retained envelope, whatever its shape.
+        let raw = serde_json::to_vec(&conflicting).unwrap();
+        assert_eq!(payload["raw"]["bytes"], raw.len());
+        assert_eq!(
+            payload["raw"]["sha256"],
+            format!("{:x}", <sha2::Sha256 as sha2::Digest>::digest(&raw))
+        );
         let restored = worker
             .workspaces
             .cache

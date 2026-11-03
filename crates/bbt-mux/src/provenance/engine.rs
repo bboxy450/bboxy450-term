@@ -147,6 +147,57 @@ impl Engine {
         }
         self.entries.insert(change.reference.clone(), entry);
     }
+    /// A row provenance could not use becomes a gap, never a stall. The exact
+    /// retained envelope bytes (whatever their shape) are kept in this root's
+    /// provenance store under `gap-raw/<seq>`, and the gap event says where the
+    /// row came from, so a later reconciler can infer and close it.
+    #[allow(clippy::too_many_arguments)]
+    fn record_gap(
+        &mut self,
+        index: &Index,
+        bus: &BusHandle,
+        handle: &tokio::runtime::Handle,
+        row: &Envelope,
+        reason: &str,
+        error: &str,
+        detail: serde_json::Value,
+    ) -> Result<()> {
+        let raw = serde_json::to_vec(row)?;
+        let key = format!("gap-raw/{}", row.seq);
+        self.store.put(&key, &raw)?;
+        let digest = format!("{:x}", <sha2::Sha256 as sha2::Digest>::digest(&raw));
+        let signer: String = row
+            .provenance
+            .signer
+            .iter()
+            .map(|byte| format!("{byte:02x}"))
+            .collect();
+        eprintln!(
+            "ProvenanceGap: {reason} seq={} event={} subject={}: {error}",
+            row.seq, row.event.id, row.event.subject
+        );
+        let event = Draft::new(
+            "activity/provenance/gap",
+            "provenance",
+            json!({
+                "reason": reason,
+                "complete": false,
+                "error": error,
+                "detail": detail,
+                "origin": {
+                    "stream": index.activity_stream(),
+                    "seq": row.seq,
+                    "event": row.event.id,
+                    "subject": row.event.subject,
+                    "source": row.event.source,
+                    "signer": signer,
+                },
+                "raw": {"store_key": key, "sha256": digest, "bytes": raw.len()},
+            }),
+        );
+        handle.block_on(bus.publish(index.activity_stream(), event))?;
+        Ok(())
+    }
     fn change(envelope: &Envelope) -> Option<Change> {
         let change: Change =
             serde_json::from_value(envelope.event.payload.get("observation")?.clone()).ok()?;
@@ -309,28 +360,59 @@ impl Engine {
             let rows = index.activity().after(self.projection_cursor, 128)?;
             for row in rows {
                 if let Some(change) = Self::change(&row) {
-                    let update = artifacts::materialize(index, &row, &change)?;
-                    // A prior completed write of this observation is already a projection.
-                    let already = index.current(&update.path)?.is_some_and(|doc| {
-                        doc.metadata["last_observation_sequence"]
-                            .as_str()
-                            .and_then(|value| value.parse::<u64>().ok())
-                            .is_some_and(|sequence| sequence >= row.seq)
-                            || doc.metadata["history"].as_array().is_some_and(|history| {
-                                history
-                                    .iter()
-                                    .any(|entry| entry["id"] == json!(row.event.id))
-                            })
-                    });
-                    if !already {
-                        index.apply_author(update, &Author::observer(&status, &key))?;
-                        changed = true;
+                    let author = Author::observer(&status, &key);
+                    let projected = (|| -> Result<bool> {
+                        let update = artifacts::materialize(index, &row, &change)?;
+                        // A prior completed write of this observation is already a projection.
+                        let already = index.current(&update.path)?.is_some_and(|doc| {
+                            doc.metadata["last_observation_sequence"]
+                                .as_str()
+                                .and_then(|value| value.parse::<u64>().ok())
+                                .is_some_and(|sequence| sequence >= row.seq)
+                                || doc.metadata["history"].as_array().is_some_and(|history| {
+                                    history
+                                        .iter()
+                                        .any(|entry| entry["id"] == json!(row.event.id))
+                                })
+                        });
+                        if !already {
+                            index.apply_author(update, &author)?;
+                        }
+                        Ok(!already)
+                    })();
+                    match projected {
+                        Ok(wrote) => changed |= wrote,
+                        // One row that cannot be projected (e.g. a record-number
+                        // conflict with a hand-written record) must not stall the
+                        // engine or the logic worker. It becomes a gap: the trail
+                        // names the row so a later reconciler can close it.
+                        Err(error) => self.record_gap(
+                            index,
+                            bus,
+                            handle,
+                            &row,
+                            "projection-failed",
+                            &error.to_string(),
+                            json!({"artifact": change.artifact_id, "ref": change.reference}),
+                        )?,
                     }
                     self.projection_cursor = row.seq;
                     if started.elapsed() >= PROJECTION_BUDGET {
                         break;
                     }
                     continue;
+                }
+                // An observation we cannot parse is unknown, not ignorable.
+                if row.event.payload.get("observation").is_some() {
+                    self.record_gap(
+                        index,
+                        bus,
+                        handle,
+                        &row,
+                        "observation-unparsed",
+                        "observation does not parse as an artifact change for its subject",
+                        json!({}),
+                    )?;
                 }
                 self.projection_cursor = row.seq;
             }
