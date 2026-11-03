@@ -27,7 +27,7 @@ id: 01M6HG4AQQE4N6AM4CKY7AHHS2
 status: claimed
 delegated_by: seat:01M6HF0S1BAJKHWT2N426W7328
 swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-03T20:15:36.304Z
+updated: 2026-11-03T20:21:33.644Z
 created: 2026-11-03T20:03:11.287Z
 number: 16394
 created_by: seat:01M6HF0S1BAJKHWT2N426W7328
@@ -39,11 +39,11 @@ authorship:
   process_generation: '1'
 assignee: seat:01M6HG4J9DHG29WDG4S0WYQFZ1
 provenance:
-  digest: sha256:ce228459597361697cd924b973eccf92df5ea77f24812535dbb9a5787059b515
-  frontmatter_digest: sha256:226c340cdf045394961a44f4825fea2e227a1311d0f3fe085821551cded80735
+  digest: sha256:c8f012a658c0c5374860318430f9c205ef2dd1d35c6fc29445f926cefa93f6f2
+  frontmatter_digest: sha256:789aa2d93082c3740f66a120760ac4e5d9c8294ff361b7f9d57f4d0efb835d50
   signer: seat:01M6HF0S1BAJKHWT2N426W7328
-  sig: dRosZDyntsN4PDvdrPo5ZzgTkzIXoVyY+UIbUmdfAW/sWw3BNjIUgxepc9gAHN+1+yjgpjCaJUCEio+Xmz50Cw==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#96794
+  sig: MxFJB4tpmByDpYw+mpiCowGLZLjkq+3HMv0T0Zw+uNhq4RjXiSzOXBzks04CmBlYyP3C6QwE0OV/re4FomkrAA==
+  log: .bboxy/log/2026-11-03.part-86213.jsonl#98139
 ---
 # Repair the immutable-report dead end
 
@@ -64,3 +64,8 @@ Main-green's actual nextest run found four additional startup-modal input regres
 
 
 Copy `.bboxy/tasks/2026-11-03-oracle-handoff-codex.md` unchanged from the selected knowledge root into your branch; its path is now explicitly in scope so all mandatory task/decision links resolve. The historical startup task is deliberately already reconciled done; do not reopen it. Both updates remove the previously reported record blockers. No new implementation scope is added by this record-copy authorization.
+
+
+## Upstream source is now repaired (2026-11-03 20:21 UTC)
+
+Rebase your candidate onto current origin/main before integration checks. Main now includes 6f2eddce (the four startup input failures fixed) and 3eafd2be (HarnessTextZoom inventory). Do not keep duplicate coverage/fixture patches merely because the old adf9796b base failed. #16417 is amended to consume 6f2eddce and return only a demonstrated residual normalized-input/IME regression and focused Make target, if any. Once your record migration is ready, main can be verified using the upstream source repair; never wait for another branch's landing. If #16417 has an outstanding justified fix, integrate its signed cut when ready, then run the final combined gate once. The original main-green executor finished without landing; its source-only layering cut is already in your ancestry, and its blocked report need not be cherry-picked.
