@@ -246,6 +246,7 @@ Only terminal output stays raw mono.
 - Any other tool output that is markdown renders the same way, unless the tool failed. Markdown means a ``` fence, or at least two
   lines that start with a heading, list item, table row or quote.
 - Mermaid fences anywhere in these bodies draw as native figures.
+- GFM tables draw full width: 12.5px, a `card-hi` header row at weight 650, cell padding 5/10, `hair` rules, radius 8.
 
 ## Refinement pass 2 (2026-11-02)
 

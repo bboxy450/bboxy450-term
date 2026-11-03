@@ -69,8 +69,10 @@
     .replace(/(→|←)/g, '<span class="arw">$1</span>');
   // figs collects closed ```mermaid fences; the caller swaps each placeholder for a diagram figure
   function markdown(src, figs) {
-    const out = []; let list = null, code = null, lang = '';
-    const flush = () => { if (list) { out.push('<' + list.tag + '>' + list.items.map(x => '<li>' + inline(x) + '</li>').join('') + '</' + list.tag + '>'); list = null; } };
+    const out = []; let list = null, code = null, lang = '', table = null;
+    const cells = l => l.trim().replace(/^\||\|$/g, '').split('|').map(c => c.trim());
+    const flushTable = () => { if (table) { const [hd, ...rows] = table; out.push('<table class="hx-table"><thead><tr>' + hd.map(c => '<th>' + inline(c) + '</th>').join('') + '</tr></thead><tbody>' + rows.map(r => '<tr>' + r.map(c => '<td>' + inline(c) + '</td>').join('') + '</tr>').join('') + '</tbody></table>'); table = null; } };
+    const flush = () => { flushTable(); if (list) { out.push('<' + list.tag + '>' + list.items.map(x => '<li>' + inline(x) + '</li>').join('') + '</' + list.tag + '>'); list = null; } };
     for (const line of src.split('\n')) {
       if (line.startsWith('```')) {
         if (code) {
@@ -81,6 +83,12 @@
         continue;
       }
       if (code) { code.push(line); continue; }
+      // GFM table: a pipe row, then a --- separator row; body rows follow until a non-pipe line
+      if (/^\s*\|.*\|\s*$/.test(line)) {
+        if (table) { if (!/^[\s|:-]+$/.test(line)) table.push(cells(line)); continue; }
+        table = [cells(line)]; continue;
+      }
+      flushTable();
       const h = line.match(/^(#{1,4}) (.*)/), ul = line.match(/^\s*[-*] (.*)/), ol = line.match(/^\s*\d+[.)] (.*)/);
       if (ul || ol) { const tag = ul ? 'ul' : 'ol'; if (list && list.tag !== tag) flush(); list = list || { tag, items: [] }; list.items.push((ul || ol)[1]); continue; }
       flush();
