@@ -1,0 +1,306 @@
+{
+  "task": "tasks/2026-11-03-codex-rich-host.md",
+  "seat": "01M6HCYVGE7CJ8KK6PB20SPF3D",
+  "created": "2026-11-03T20:45:06.681734+00:00",
+  "status": "blocked",
+  "source": "e82b1784355f2158828c5387ce23409695843e7e",
+  "commits": [
+    {
+      "sha": "e82b1784355f2158828c5387ce23409695843e7e",
+      "signature": "G",
+      "fingerprint": "9B07E849480C68328CA20684844ECC0587DE7AB0",
+      "author": "Boxy <bboxy450@gmail.com>"
+    },
+    {
+      "sha": "dd7727373b74a6898737e939f87dc0676d4674f6",
+      "signature": "G",
+      "fingerprint": "9B07E849480C68328CA20684844ECC0587DE7AB0",
+      "author": "Boxy <bboxy450@gmail.com>"
+    },
+    {
+      "sha": "26084f2bd62e3aa23182e9f2c70c085d3d9e90a5",
+      "signature": "G",
+      "fingerprint": "9B07E849480C68328CA20684844ECC0587DE7AB0",
+      "author": "Boxy <bboxy450@gmail.com>"
+    },
+    {
+      "sha": "5db409e5afcdcb1c896f9cc4484ca0b0bfa32c94",
+      "signature": "G",
+      "fingerprint": "9B07E849480C68328CA20684844ECC0587DE7AB0",
+      "author": "Boxy <bboxy450@gmail.com>"
+    }
+  ],
+  "harness": {
+    "committed": "0c403165e815c2f7bf77ccac293784b021f42f96",
+    "private_candidate": "d5e7249a01bf4830c79979aa7a8e2f17753be83b",
+    "gitlink_staged": false
+  },
+  "commands": [
+    {
+      "command": "BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make test-harness-native",
+      "exit_code": 0,
+      "log": "/tmp/codex-rich-native-current.log",
+      "sha256": "61518cce869ec70277ccab5c1f53bb46e74c9f0a9289856a73f18da1a6619963"
+    },
+    {
+      "command": "BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make test-boundaries",
+      "exit_code": 0,
+      "log": "/tmp/codex-rich-boundaries.log",
+      "sha256": "ed28c2073aeffb3b1e2c0efe2d5c5ebf253a457cf3256f84501bd7478d91c517"
+    },
+    {
+      "command": "BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make test-formal",
+      "exit_code": 0,
+      "log": "/tmp/codex-rich-formal-complete.log",
+      "sha256": "b4bc82b780b06c94d3621660acc109006519abcd108838bc19fd378a471b68e3"
+    },
+    {
+      "command": "BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make check-rich-host test-licenses",
+      "exit_code": 0,
+      "log": "/tmp/codex-rich-quality.log",
+      "sha256": "959a719f08c056f1d6fdcfba33765489b20a1988311875bb9e854d0dc83e852a"
+    },
+    {
+      "command": ". ./scripts/cache-env.sh; cargo nextest run --locked -p bboxy450-term-mux --lib -E 'test(window_journal)'",
+      "exit_code": 0,
+      "log": "/tmp/codex-rich-window-journal.log",
+      "sha256": "c160a79a08c97e38295bee78a520a5d703c7117b57a95e51a6c1bfe03f1b248e"
+    },
+    {
+      "command": "BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make test-parity",
+      "exit_code": 2,
+      "log": "/tmp/codex-rich-parity.log",
+      "sha256": "bc9dc39f9843ebc4356ebaab63c602db8e6a9f2d15f0efa1ef2712ad08033f70"
+    },
+    {
+      "command": "make check-formal-evidence",
+      "exit_code": 2,
+      "log": "/tmp/codex-rich-receipt.log",
+      "sha256": "d2a712748934d3a654f1141c9468727d43b24bc8e38fd864140aeb8f57d0c5ea"
+    },
+    {
+      "command": "sh scripts/layering.sh",
+      "exit_code": 0,
+      "log": "/tmp/codex-rich-layering-final.log",
+      "sha256": "8108f2217de611a6d7d4a8f51b864f9543318fcfc00480b1c6ea64b5b4df774e"
+    },
+    {
+      "command": "python3 -I scripts/source-notices.py --check",
+      "exit_code": 0,
+      "log": "/tmp/codex-rich-notices-final.log",
+      "sha256": "5923eb3fa989b2590d8acfdaa0a05d23f593ff1d3b7837c7835e367b41e48020"
+    },
+    {
+      "command": "python3 -I scripts/test-formal.py",
+      "exit_code": 0,
+      "log": "/tmp/codex-rich-formal-selftests.log",
+      "sha256": "2ca0b1727716820097cbe3a889debe68e976c9ba29e1d8776d79638820f88927"
+    }
+  ],
+  "formal": {
+    "source": "e82b1784355f2158828c5387ce23409695843e7e",
+    "dirty": true,
+    "sha256": "cca2509fa9222bc0d2648a95b43453ba43677c6c1b6768f4a0ec81b956fd262d",
+    "models": 284,
+    "crates": 34,
+    "contracts": 116,
+    "rich_models": [
+      {
+        "name": "RichHost",
+        "expected": "pass",
+        "states": 336,
+        "edges": 1346,
+        "tlc_exit": 0,
+        "graph_equal": true
+      },
+      {
+        "name": "BrokenRichHost",
+        "expected": "safety",
+        "states": 388,
+        "edges": 1528,
+        "tlc_exit": 12,
+        "graph_equal": true
+      },
+      {
+        "name": "RichHostIdentity",
+        "expected": "pass",
+        "states": 336,
+        "edges": 1346,
+        "tlc_exit": 0,
+        "graph_equal": true
+      },
+      {
+        "name": "BrokenRichHostIdentity",
+        "expected": "safety",
+        "states": 384,
+        "edges": 1518,
+        "tlc_exit": 12,
+        "graph_equal": true
+      },
+      {
+        "name": "RichHostDetach",
+        "expected": "pass",
+        "states": 336,
+        "edges": 1346,
+        "tlc_exit": 0,
+        "graph_equal": true
+      },
+      {
+        "name": "BrokenRichHostDetach",
+        "expected": "safety",
+        "states": 400,
+        "edges": 1638,
+        "tlc_exit": 12,
+        "graph_equal": true
+      },
+      {
+        "name": "RichHostRouting",
+        "expected": "pass",
+        "states": 336,
+        "edges": 1346,
+        "tlc_exit": 0,
+        "graph_equal": true
+      },
+      {
+        "name": "BrokenRichHostRouting",
+        "expected": "safety",
+        "states": 672,
+        "edges": 2692,
+        "tlc_exit": 12,
+        "graph_equal": true
+      }
+    ]
+  },
+  "offscreen": {
+    "four_visible_views_composition_p99_ms": 0.033417,
+    "harness": "d5e7249a01bf4830c79979aa7a8e2f17753be83b",
+    "memory_allocation_mib": 32,
+    "memory_measured": false,
+    "row_structure_mismatch": 0.0,
+    "ui_drain_allocation_ms": 0.3,
+    "ui_projection_allocation_ms": 0.6,
+    "under_load": "UNMEASURED"
+  },
+  "captures": [
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-codex-rich/target/rich-pane-parity/standalone.png",
+      "sha256": "0e0ead94269625e5eb98bcebb27a398702f593c5ecd01463272c6806f33a591e"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-codex-rich/target/rich-pane-parity/pane.png",
+      "sha256": "0e0ead94269625e5eb98bcebb27a398702f593c5ecd01463272c6806f33a591e"
+    },
+    {
+      "path": "/Users/feral/mydev/bboxy450-term-codex-rich/target/rich-pane-parity/report.json",
+      "sha256": "b49c7c34e26b0bc2e434435f6b897c875d6b18c796ad68d46a365fadf89cf14c"
+    }
+  ],
+  "machine_gate_observation": {
+    "created": "2026-11-03T20:41:39.503073+00:00",
+    "command": "pgrep -f '[c]i-local.sh'",
+    "exit_code": 1,
+    "pids": [],
+    "active_runs": 0
+  },
+  "failures_corrected": [
+    {
+      "command": "BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make test-formal",
+      "exit_code": 2,
+      "log": "/tmp/codex-rich-formal.log",
+      "sha256": "db17533229a2b772d108e6b61b20c78d22bed529cd0a9dbfeae818c71a9625d5"
+    },
+    {
+      "command": "BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make test-formal",
+      "exit_code": 2,
+      "log": "/tmp/codex-rich-formal-final.log",
+      "sha256": "c0ea6545bba9d41b5fd6bd2dae0919b4ba9eac0f30f4afe131ba591a350776b1"
+    }
+  ],
+  "control_operations": [
+    {
+      "tool": "knowledge_fetch",
+      "op_id": "01M6HJ8VSRK143C0561S424Y27",
+      "attempts": 2,
+      "status": "unknown",
+      "phase": "read_response",
+      "os": 35,
+      "timeout_ms": 10000
+    },
+    {
+      "tool": "operation_status",
+      "op_id": "01M6HJ9VT9MSE8VN0GZE7KTWEG",
+      "original_op_id": "01M6HJ8VSRK143C0561S424Y27",
+      "status": "unknown",
+      "phase": "read_response",
+      "os": 35,
+      "timeout_ms": 10000
+    },
+    {
+      "tool": "knowledge_write",
+      "op_id": "01M6HJHVDSVP2WXS2XX3WCA8MR",
+      "status": "applied",
+      "path": "reports/2026-11-03-codex-rich-host.md"
+    }
+  ],
+  "scheduling_note": "The parity signature preflight overlapped the end of the eight window-journal tests. CI refused dirty source before a full build/test began; no two Cargo builds were launched together.",
+  "decision_needed": "Published combined standalone+B1/B2 harness SHA and task gitlink scope amendment; then combined-pin integration and clean canonical gates.",
+  "changed_paths": [
+    "Cargo.lock",
+    "Cargo.toml",
+    "Makefile",
+    "crates/bboxy450-harness-wake-up/Cargo.toml",
+    "crates/bboxy450-harness-wake-up/src/launch.rs",
+    "crates/bboxy450-harness-wake-up/src/lib.rs",
+    "crates/bboxy450-harness-wake-up/src/rich.rs",
+    "crates/bboxy450-harness-wake-up/tests/rich_socket.rs",
+    "crates/bboxy450-term/Cargo.toml",
+    "crates/bboxy450-term/src/assets.rs",
+    "crates/bboxy450-term/src/attention.rs",
+    "crates/bboxy450-term/src/cockpit/desktop/attention.rs",
+    "crates/bboxy450-term/src/lib.rs",
+    "crates/bboxy450-term/src/live.rs",
+    "crates/bboxy450-term/src/main.rs",
+    "crates/bboxy450-term/src/model.rs",
+    "crates/bboxy450-term/src/navigation.rs",
+    "crates/bboxy450-term/src/rich_faces.rs",
+    "crates/bboxy450-term/src/rich_pane.rs",
+    "crates/bboxy450-term/src/scene.rs",
+    "crates/bboxy450-term/src/terminal_clipboard.rs",
+    "crates/bboxy450-term/src/wheel.rs",
+    "crates/bboxy450-term/src/window_state.rs",
+    "crates/bboxy450-term/tests/formal_contracts/models.rs",
+    "crates/bboxy450-term/tests/formal_contracts/rich_host.rs",
+    "crates/bboxy450-term/tests/formal_contracts/witnesses.rs",
+    "crates/bboxy450-term/tests/rich_client.rs",
+    "crates/bboxy450-term/tests/settings.rs",
+    "crates/bbt-mux/src/attention_observer.rs",
+    "crates/bbt-mux/src/lib.rs",
+    "crates/bbt-mux/src/logic.rs",
+    "crates/bbt-mux/src/logic/ring_batch_tests.rs",
+    "crates/bbt-mux/src/mcp/seats.rs",
+    "crates/bbt-mux/src/rich.rs",
+    "crates/bbt-mux/src/seat_socket/attention_tests.rs",
+    "crates/bbt-mux/src/window_journal.rs",
+    "crates/bbt-mux/tests/mcp.rs",
+    "crates/bbt-proto/src/gui/app.rs",
+    "crates/bbt-proto/src/gui/mod.rs",
+    "crates/bbt-proto/src/seat_state.rs",
+    "crates/bbt-proto/tests/notification_episode.rs",
+    "crates/bbt-ui-model/src/model/window.rs",
+    "scripts/harness-submodule.py",
+    "scripts/layering.sh",
+    "scripts/rich-host-controls.py",
+    "scripts/test-harness-submodule.py",
+    "verification/contracts.toml",
+    "verification/corpus.toml",
+    "verification/coverage.toml"
+  ],
+  "report": {
+    "path": "reports/2026-11-03-codex-rich-host.md",
+    "id": "01M6HJHVDSVP2WXS2XX3WCA8MR",
+    "number": 17675,
+    "op_id": "01M6HJHVDSVP2WXS2XX3WCA8MR",
+    "status": "registered",
+    "sha256": "86439fc2c84d2e5cccfc894422be68dff4ffeec5794c5d992874117ae2accbcd"
+  }
+}
