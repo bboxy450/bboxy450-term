@@ -1041,3 +1041,13 @@ frontend = "project"
 name = "RichHostRouting"
 expected = "pass"
 frontend = "project"
+
+[[model]]
+name = "RichCancelFence"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenRichCancelFence"
+expected = "safety"
+frontend = "project"

@@ -18,7 +18,10 @@ use bbt_ui_model::{
 };
 use std::{
     path::PathBuf,
-    sync::Arc,
+    sync::{
+        Arc,
+        atomic::{AtomicBool, Ordering},
+    },
     time::{Duration, Instant},
 };
 use tokio::sync::{Notify, mpsc};
@@ -37,6 +40,10 @@ pub struct Snapshot {
     pub paints: Arc<Vec<c::Paint>>,
     pub ready: bool,
     pub revision: u64,
+    pub generation: u64,
+    /// Worker completion receipt, including rejected captured input.
+    pub completed_inputs: u64,
+    pub notice: Option<String>,
     pub rect: Option<Rect>,
     pub projection: Duration,
     pub retained_items: usize,
@@ -50,9 +57,21 @@ pub struct Snapshot {
         bboxy450_harness::protocol::Seq,
     )>,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Identity {
+    session: bboxy450_harness::protocol::SessionId,
+    epoch: bboxy450_harness::protocol::Epoch,
+    generation: u64,
+}
 struct Request {
     input: Input,
-    session: Option<bboxy450_harness::protocol::SessionId>,
+    identity: Option<Identity>,
+}
+impl Request {
+    fn remote_allowed(&self, current: Option<Identity>, ready: bool, retired: bool) -> bool {
+        let remote = matches!(&self.input, Input::Enter | Input::Click(_) | Input::Cancel);
+        !remote || (ready && !retired && self.identity.is_some() && self.identity == current)
+    }
 }
 struct Signal(Arc<Notify>);
 impl bbt_rt::Waker for Signal {
@@ -69,9 +88,11 @@ pub struct Pane {
     latest: Arc<bbt_rt::Latest<Snapshot>>,
     commands: mpsc::Sender<Request>,
     task: tokio::task::JoinHandle<()>,
+    retired: Arc<AtomicBool>,
 }
 impl Drop for Pane {
     fn drop(&mut self) {
+        self.retired.store(true, Ordering::Release);
         self.task.abort();
     }
 }
@@ -91,24 +112,30 @@ impl Pane {
         let (commands, mut input) = mpsc::channel(64);
         let mut out = latest.clone();
         let socket = path.clone();
+        let retired = Arc::new(AtomicBool::new(false));
+        let worker_retired = retired.clone();
         let task=bbt_rt::handle().spawn(async move {
             let notify=Arc::new(Notify::new());
             let mut bridge=Bridge::new(Arc::new(Signal(notify.clone())));
             bridge.connect(socket,after);
             let mut view=HarnessView::default();let mut rect=rect;
+            let mut completed_inputs=0_u64;
             loop {
                 let mut batch=Vec::new();
                 tokio::select!{biased;cmd=input.recv()=>{let Some(cmd)=cmd else{return;};batch.push(cmd);},_=notify.notified()=>{}}
                 while batch.len()<64 {match input.try_recv(){Ok(cmd)=>batch.push(cmd),Err(_)=>break}}
+                let retired=worker_retired.clone();
                 let prepared=bboxy450_harness::runtime::blocking(move || {
                     bridge.drain(Duration::from_micros(300));
                     for request in batch {
                         let request:Request=request;
-                        let same=request.session==bridge.state.transcript.session;
-                        if (!same || !bridge.state.ready) && matches!(request.input,Input::Enter|Input::Click(_)) {
+                        completed_inputs+=1;
+                        let current=bridge.state.transcript.session.map(|session|Identity{session,epoch:bridge.state.transcript.epoch,generation});
+                        let same=request.identity==current;
+                        if !request.remote_allowed(current,bridge.state.ready,retired.load(Ordering::Acquire)) {
                             view.notice=Some("Session changed or unavailable; wait for its frame before submitting".into());view.invalidate();continue;
                         }
-                        if !same && request.session.is_some() && matches!(request.input,Input::Edit(_)){continue;}
+                        if !same && request.identity.is_some() && matches!(request.input,Input::Edit(_)){continue;}
                         match request.input {
                         Input::Size(r)=>rect=r,
                         Input::Focus(f)=>{view.focused=f;view.invalidate();},
@@ -140,11 +167,11 @@ impl Pane {
                     let (paints,error,send_rect)=match view.render(&bridge.state,[rect.w,rect.h]) {
                         Ok(frame)=>(Arc::new(paints(frame,rect)),bridge.state.error.clone(),frame.layout.as_ref().and_then(|l|bboxy450_harness::frontends::gui::view::find(l,"composer/send")).map(|n|n.rect)),Err(error)=>(Arc::default(),Some(error),None)
                     };
-                    let snapshot=Snapshot{retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
+                    let snapshot=Snapshot{generation,completed_inputs,notice:view.notice.clone(),retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
                     out.publish(snapshot);
-                    (bridge,view,rect,out)
+                    (bridge,view,rect,out,completed_inputs)
                 }).await;
-                let (b,v,r,o)=prepared;bridge=b;view=v;rect=r;out=o;
+                let (b,v,r,o,c)=prepared;bridge=b;view=v;rect=r;out=o;completed_inputs=c;
             }
         });
         Self {
@@ -156,13 +183,18 @@ impl Pane {
             latest,
             commands,
             task,
+            retired,
         }
     }
     pub fn send(&self, input: Input) -> bool {
         self.commands
             .try_send(Request {
                 input,
-                session: self.snapshot.cursor.map(|(session, _, _)| session),
+                identity: self.snapshot.cursor.map(|(session, epoch, _)| Identity {
+                    session,
+                    epoch,
+                    generation: self.snapshot.generation,
+                }),
             })
             .is_ok()
     }
@@ -335,4 +367,41 @@ pub fn paints(frame: &Frame, rect: Rect) -> Vec<c::Paint> {
 
 fn hit(r: Rect, at: [f32; 2]) -> bool {
     at[0] >= r.x && at[0] < r.right() && at[1] >= r.y && at[1] < r.bottom()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn cancel_requires_complete_ready_nonretired_identity() {
+        let identity = Identity {
+            session: serde_json::from_str("\"00000000000000000000000001\"").unwrap(),
+            epoch: bboxy450_harness::protocol::Epoch(1),
+            generation: 1,
+        };
+        let request = Request {
+            input: Input::Cancel,
+            identity: Some(identity),
+        };
+        assert!(request.remote_allowed(Some(identity), true, false));
+        assert!(!request.remote_allowed(Some(identity), false, false));
+        assert!(!request.remote_allowed(Some(identity), true, true));
+        assert!(!request.remote_allowed(None, true, false));
+        for changed in [
+            Identity {
+                session: serde_json::from_str("\"00000000000000000000000002\"").unwrap(),
+                ..identity
+            },
+            Identity {
+                epoch: bboxy450_harness::protocol::Epoch(2),
+                ..identity
+            },
+            Identity {
+                generation: 2,
+                ..identity
+            },
+        ] {
+            assert!(!request.remote_allowed(Some(changed), true, false));
+        }
+    }
 }

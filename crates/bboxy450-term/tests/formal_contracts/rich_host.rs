@@ -98,6 +98,67 @@ fn host(control: u8) -> Model {
     m.weak_fair.push(vec![2]);
     m
 }
+// One Escape is captured on A/e1/g1 before any interleaving. Worker owns
+// dequeue/admission; UI owns retirement; session owner changes session/epoch;
+// logic changes generation. Approval is pending in every announced incarnation.
+fn cancel(broken: bool) -> Model {
+    let mut m = model(
+        if broken {
+            "BrokenRichCancelFence"
+        } else {
+            "RichCancelFence"
+        },
+        false,
+        &[
+            ("session", 3, 1),
+            ("epoch", 2, 1),
+            ("generation", 2, 1),
+            ("captured_session", 3, 1),
+            ("captured_epoch", 2, 1),
+            ("captured_generation", 2, 1),
+            ("queued", 1, 1),
+            ("ready", 1, 1),
+            ("retired", 1, 0),
+            ("stale_admission", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "Switch",
+        Var(0).lt(Int(3)),
+        &[(0, Var(0).plus(Int(1))), (7, Int(0))],
+    );
+    action(&mut m, "Resume", eq(1, 1), &[(1, Int(2)), (7, Int(0))]);
+    action(&mut m, "Restart", eq(2, 1), &[(2, Int(2)), (7, Int(0))]);
+    action(&mut m, "Ready", eq(7, 0), &[(7, Int(1))]);
+    action(&mut m, "Disconnect", eq(7, 1), &[(7, Int(0))]);
+    action(&mut m, "Retire", eq(8, 0), &[(8, Int(1))]);
+    let valid = all([
+        Var(0).eq(Var(3)),
+        Var(1).eq(Var(4)),
+        Var(2).eq(Var(5)),
+        eq(7, 1),
+        eq(8, 0),
+    ]);
+    let admit = if broken { Bool(true) } else { valid.clone() };
+    action(
+        &mut m,
+        "DeliverCancel",
+        eq(6, 1),
+        &[
+            (6, Int(0)),
+            (9, all([admit, valid.negate()]).ite(Int(1), Var(9))),
+        ],
+    );
+    safe(&mut m, "NoStaleCancelAdmission", eq(9, 0));
+    m.responses.push(Response {
+        name: "CancelRetires".into(),
+        request: eq(6, 1),
+        response: eq(6, 0),
+    });
+    m.weak_fair.push(vec![6]);
+    m
+}
 pub fn cases() -> Vec<(Model, &'static str)> {
     let mut cases = vec![(host(0), "pass"), (host(1), "safety")];
     for control in 2..=4 {
@@ -106,5 +167,6 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         good.name = broken.name.strip_prefix("Broken").unwrap().into();
         cases.extend([(good, "pass"), (broken, "safety")]);
     }
+    cases.extend([(cancel(false), "pass"), (cancel(true), "safety")]);
     cases
 }

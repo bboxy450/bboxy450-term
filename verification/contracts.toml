@@ -953,3 +953,13 @@ implementation_tests = ["crates/bboxy450-harness-wake-up/tests/rich_socket.rs", 
 assumptions = "One message retained across three distinct session IDs labeled A/B/A, two sends, two process generations. Connection, admission, detach, reconnect, send and ack/deadline are atomic abstractions. Weak fairness of ack/deadline retires each pending delivery; reconnect is allowed but not assumed fair. Socket framing, permissions, real time, disk persistence and renderer cost remain implementation-only. Fork/resume ancestry frames do not renew delivery admission; UI input names the displayed session and replay hints name its session, generation, epoch and sequence. Finite model parity is not arbitrary Rust refinement."
 property = "One effect per retained op; retry never changes its admitted session; generation replacement fences old work; detach does not erase session effects; rich face keys write zero PTY bytes. The paired broken control removes its guard and must fail safety."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "RichCancelFence"
+title = "Escape retains displayed session, epoch and generation before cancelling an approval"
+models = ["RichCancelFence", "BrokenRichCancelFence"]
+sources = ["crates/bboxy450-term/src/rich_pane.rs", "crates/bboxy450-term/tests/formal_contracts/rich_host.rs", "Makefile"]
+implementation_tests = ["crates/bboxy450-term/tests/rich_client.rs", "scripts/rich-cancel-control.py"]
+assumptions = "One queued Escape captured on A/e1/g1, three distinct session births A/B/A, two epochs and two process generations, one pending approval per announced incarnation. Worker dequeue/admission and UI retirement are atomic abstractions; work admitted before retirement may already be in flight. Session/epoch/generation changes, disconnect and readiness may interleave before dequeue. WF{DeliverCancel} retires the queued key without assuming network fairness. Production actor/process tests separate session, epoch and generation changes. IO ordering, bytes, renderer cost and Rust refinement remain implementation-only."
+property = "NoStaleCancelAdmission: Cancel cannot reach the current approval unless captured session, epoch and generation match a ready, nonretired owner. The broken control bypasses that admission and must fail safety. CancelRetires holds under weak fairness of dequeue."
+checks = ["make test-formal", "make test"]
