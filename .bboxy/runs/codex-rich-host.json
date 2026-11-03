@@ -337,7 +337,7 @@
     "worktree_status": " M crates/bboxy450-harness",
     "five_commit_signatures": "G, approved Boxy fingerprint"
   },
-  "latest_source": "d41992424bf73853ef906c9612d2e12167082a1b",
+  "latest_source": "37b8f2f8e2579bc0e720a269be92427abed12c16",
   "cancel_correction": {
     "created": "2026-11-03T21:23:32.785660+00:00",
     "source": "d41992424bf73853ef906c9612d2e12167082a1b",
@@ -490,10 +490,124 @@
     ]
   },
   "latest_report": {
-    "path": "reports/2026-11-03-codex-rich-host-cancel-fence.md",
-    "id": "01M6HMQY9Z4SRXG7MRZM2C66TQ",
-    "number": 18711,
-    "sha256": "5d76bfd6c93a6b13cdc28cdbcc65124f5f3af75a2dd19aab9f06ad2940871dde",
-    "supersedes": "reports/2026-11-03-codex-rich-host.md"
+    "path": "reports/2026-11-03-codex-rich-host-budgets.md",
+    "id": "01M6HPC2150C7XRW5ASEAXPSHV",
+    "number": 18874,
+    "sha256": "9dfbc6101ddf57447537d1dcba47634a2e8ba22d105b56e557df36af88c14c9e",
+    "supersedes": "reports/2026-11-03-codex-rich-host-cancel-fence.md"
+  },
+  "budget_correction": {
+    "created": "2026-11-03T21:52:15.319979+00:00",
+    "source": "37b8f2f8e2579bc0e720a269be92427abed12c16",
+    "harness_candidate": "d5e7249a01bf4830c79979aa7a8e2f17753be83b",
+    "commands": [
+      {
+        "command": "BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make test-harness-native",
+        "exit_code": 0,
+        "log": "/tmp/codex-rich-budget-native.log",
+        "sha256": "ed0373aa01fcbb05488f448f282950f6cb315103aee6d622d2bcaa15d737ef94"
+      },
+      {
+        "command": "BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make check-rich-host",
+        "exit_code": 0,
+        "log": "/tmp/codex-rich-budget-lint.log",
+        "sha256": "b27ff41ef3140e9e04826f1d2479357be9ca4681171b5b0b94e45b8ca508a90f"
+      },
+      {
+        "command": "BBOXY_HARNESS_CANDIDATE=d5e7249a01bf4830c79979aa7a8e2f17753be83b make test-formal",
+        "exit_code": 0,
+        "log": "/tmp/codex-rich-budget-formal.log",
+        "sha256": "28c995baf145f7bcdd47b26ff3aca4fb8a25d081da6504411821a6b45697e283"
+      },
+      {
+        "command": "make test-licenses",
+        "exit_code": 0,
+        "log": "/tmp/codex-rich-budget-licenses.log",
+        "sha256": "913ea940efbabd184ec04edf1dbaa1615ee4f02ad86cb828cff32248d20f0dec"
+      },
+      {
+        "command": "make help",
+        "exit_code": 0,
+        "log": "/tmp/codex-rich-budget-help.log",
+        "sha256": "bb439bbe383bda9af2332b5c57e0d2d4bec1b86f46ddf652b076c491a5503563"
+      }
+    ],
+    "canonical_bench_goal": {
+      "target": "make bench-budgets",
+      "invoked_inside": "make test-harness-native",
+      "exit_code": 0,
+      "log": "/tmp/codex-rich-budget-native.log"
+    },
+    "metrics": {
+      "cold_worker_projection_elapsed_sum_ms": 1.495,
+      "drain_allocation_ms": 0.3,
+      "duplicate_durable_per_view": 0,
+      "durable_head_per_view": 31,
+      "harness": "d5e7249a01bf4830c79979aa7a8e2f17753be83b",
+      "heap_usage": "UNMEASURED",
+      "hidden_native_views": 0,
+      "injected_clock": {
+        "budget_us": 300,
+        "deferred": 1,
+        "first_frame_drained": 3,
+        "frames_to_catch_up": 2,
+        "latest_retained": true,
+        "per_drain_us": 100
+      },
+      "measurement": "actual App::rich_drain and App::rich_paints, four production Unix actors",
+      "memory_allocation_mib_per_view": 32,
+      "occluded_native_views": 0,
+      "projection_allocation_ms": 0.6,
+      "retained_items_per_view": 13,
+      "rounds": 128,
+      "ui_composition_p99_ms": 0.06133400000000001,
+      "ui_composition_p99_within_allocation": true,
+      "ui_drain_p99_ms": 0.052250000000000005,
+      "ui_drain_p99_within_allocation": true,
+      "ui_frames": 128,
+      "ui_rich_slice_p99_ms": 0.099709,
+      "under_load": "UNMEASURED",
+      "visible_views": 4,
+      "whole_frame_budget_verdict": "UNPROVEN",
+      "worker_projection_elapsed_sum_for_drained_snapshots_p99_ms": 4.018416,
+      "worker_projection_sum_p99_over_allocation": true,
+      "worker_scope": "HarnessView::render plus Frame-to-Paint; excludes Bridge background preparation",
+      "worker_sum_is_concurrent_elapsed_not_cpu_or_ui_time": true
+    },
+    "metrics_path": "/Users/feral/mydev/bboxy450-term-codex-rich/target/rich-budgets/report.json",
+    "metrics_sha256": "ef460e1c6813b5a53ff0957eb04068e1ea30bdf79b79e23ab0ce51a3b9f02880",
+    "formal": {
+      "source": "37b8f2f8e2579bc0e720a269be92427abed12c16",
+      "dirty": true,
+      "sha256": "c5ee070210611839caae43430f952d18b05bbaaa5e524980c6e0716ec5d01a5f",
+      "models": 286,
+      "crates": 34,
+      "contracts": 117
+    },
+    "parity_microbench": {
+      "four_visible_views_composition_p99_ms": 0.075666,
+      "harness": "d5e7249a01bf4830c79979aa7a8e2f17753be83b",
+      "measurement": "four-copy Frame-to-Paint conversion microbenchmark",
+      "memory_allocation_mib": 32,
+      "memory_measured": false,
+      "row_structure_mismatch": 0.0,
+      "ui_drain_allocation_ms": 0.3,
+      "ui_projection_allocation_ms": 0.6,
+      "under_load": "UNMEASURED",
+      "whole_frame_budget_verdict": "UNPROVEN"
+    },
+    "overall_task_verification": "not newly offered; prior full-parity/clean-receipt refusal on unchanged private gitlink is in cancellation report",
+    "budget_verdict": "UNPROVEN",
+    "remaining_decisions": [
+      "published combined B1/B2 + standalone harness pin and signed gitlink scope amendment",
+      "aggregate projection budget disposition; latest worker elapsed sum exceeds 0.6ms allocation and is not CPU/UI/whole-frame time"
+    ],
+    "report_op_id": "01M6HPC2150C7XRW5ASEAXPSHV",
+    "artifact_claim": {
+      "artifact_id": "01M6HPCV8J7YXY3XB3JR049KHH",
+      "op_id": "01M6HPCV8J7YXY3XB3JR049KHH",
+      "status": "accepted",
+      "grade": "reported"
+    }
   }
 }
