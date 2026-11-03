@@ -46,6 +46,7 @@ struct Fixture {
     task: Ulid,
     foreign_task: Ulid,
     input_attempts: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    pty_bytes: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     history_gap: std::sync::Arc<std::sync::atomic::AtomicBool>,
     native_runtime: NativeRuntimes,
     _temp: tempfile::TempDir,
@@ -106,6 +107,7 @@ impl Fixture {
             real.then(|| Supervisor::start(common::capture_config(temp.path())).unwrap());
         let record_link = (!real).then(RecordLink::default);
         let input_attempts = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let pty_bytes = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let history_gap = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let native_runtime =
             std::sync::Arc::new(std::sync::Mutex::new(std::collections::BTreeMap::new()));
@@ -117,6 +119,7 @@ impl Fixture {
                 },
                 lose,
                 attempts: input_attempts.clone(),
+                pty_bytes: pty_bytes.clone(),
                 history_gap: history_gap.clone(),
                 native_runtime: native_runtime.clone(),
             },
@@ -151,6 +154,7 @@ impl Fixture {
             task,
             foreign_task,
             input_attempts,
+            pty_bytes,
             history_gap,
             native_runtime,
             _temp: temp,
@@ -301,6 +305,7 @@ impl Fixture {
                     client: self.connection(),
                     lose: false,
                     attempts: self.input_attempts.clone(),
+                    pty_bytes: self.pty_bytes.clone(),
                     history_gap: self.history_gap.clone(),
                     native_runtime: self.native_runtime.clone(),
                 },
@@ -334,6 +339,7 @@ struct LostInputReceipt {
     client: Connection,
     lose: bool,
     attempts: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    pty_bytes: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     history_gap: std::sync::Arc<std::sync::atomic::AtomicBool>,
     native_runtime: NativeRuntimes,
 }
@@ -341,6 +347,10 @@ impl bbt_mux::logic::SupervisorConnection for LostInputReceipt {
     fn request(&mut self, action: bbt_mux::Action) -> bbt_mux::store::Result<bbt_mux::Reply> {
         let input = matches!(action, bbt_mux::Action::GuardedInput { .. });
         let mut result = self.client.request(action)?;
+        if let bbt_mux::Reply::Input { receipt } = &result {
+            self.pty_bytes
+                .fetch_add(receipt.bytes_written, std::sync::atomic::Ordering::SeqCst);
+        }
         // This RPC fixture hosts its native server in the test process. Supply
         // its explicit host facts at the existing fake transport boundary; real
         // companion subprocess ownership/reaping is checked in supervisor tests.
@@ -4815,7 +4825,12 @@ fn mcp_oracle_controls_remain_seat_bound_through_the_ctl_alias() {
             json!({"seat_id":f.peer.id,"expected_process_generation":"2"}),
             "stale target",
         ),
-        (f.own.id, "seat_close", f.target(f.peer.id), "oracle-class authority"),
+        (
+            f.own.id,
+            "seat_close",
+            f.target(f.peer.id),
+            "oracle-class authority",
+        ),
         (
             f.oracle.id,
             "ctl",
@@ -4972,6 +4987,9 @@ fn isolated_seat_fixture(mode: &str) {
         .env("BBOXY_TEST_CUSTODY", "memory")
         .env("BBOXY_MCP_SEAT_FIXTURE", mode);
     if mode.starts_with("harness") {
+        if let Some(control) = std::env::var_os("BBOXY_RICH_TEST_CONTROL") {
+            command.env("BBOXY_RICH_TEST_CONTROL", control);
+        }
         command.env(
             "BBOXY_HARNESS_TEST_BIN",
             std::env::var_os("BBOXY_HARNESS_TEST_BIN")
@@ -5167,35 +5185,133 @@ os.execv(BINARY, [BINARY, *args])
     assert_eq!(role.name, "executor");
     assert_eq!(role.class, Class::Worker);
     let attempts = f.input_attempts.load(std::sync::atomic::Ordering::SeqCst);
-    let refusal = f.mutate(
+    let zero_bytes = f.pty_bytes.load(std::sync::atomic::Ordering::SeqCst);
+    let until = Instant::now() + Duration::from_secs(8);
+    while f
+        .registry()
+        .get(seat)
+        .unwrap()
+        .harness_session_id
+        .as_deref()
+        != Some(&session.to_string())
+    {
+        assert!(Instant::now() < until, "Hello session was not persisted");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    if std::env::var("BBOXY_RICH_TEST_CONTROL").as_deref() == Ok("pty-fallback") {
+        f.runtime
+            .block_on(f.client().gui_input(
+                seat,
+                1,
+                Ulid::new(),
+                b"deliberate invalid PTY fallback\r".to_vec(),
+            ))
+            .unwrap();
+    }
+    let message = Ulid::new();
+    let admitted = f.mutate(
         f.oracle.id,
-        Ulid::new(),
+        message,
         "seat_input_text",
-        f.input_args(seat, "must not be submitted", true),
+        f.input_args(seat, "complete one scripted turn", true),
     );
-    assert_eq!(refusal["isError"], true);
-    let handoff = &refusal["structuredContent"];
-    assert_eq!(handoff["cause"], "composer-readiness-missing", "{handoff}");
-    assert_eq!(handoff["error"]["code"], "not_submitted");
+    assert_eq!(admitted["isError"], false, "{admitted}");
     assert_eq!(
-        f.input_attempts.load(std::sync::atomic::Ordering::SeqCst),
-        attempts,
-        "handoff never writes or retries PTY input"
+        admitted["structuredContent"]["native_id"],
+        message.to_string()
     );
-    f.runtime
-        .block_on(f.client().gui_input(
-            seat,
-            1,
-            Ulid::new(),
-            b"complete one scripted turn\r".to_vec(),
-        ))
-        .unwrap();
     f.wait_screen(seat, "Done.");
-    f.wait_screen(seat, "✓ Done"); // The pinned harness's completed-turn status row.
+    let duplicate = f.mutate(
+        f.oracle.id,
+        message,
+        "seat_input_text",
+        f.input_args(seat, "complete one scripted turn", true),
+    );
+    assert_eq!(duplicate["isError"], false, "{duplicate}");
+    assert!(
+        duplicate["structuredContent"]["note"]
+            .as_str()
+            .unwrap()
+            .contains("duplicate=true")
+    );
     assert_eq!(
         f.input_attempts.load(std::sync::atomic::Ordering::SeqCst),
         attempts,
-        "the completed turn used the GUI path; the guarded input was never retried"
+        "socket turn and replay wrote zero PTY bytes"
+    );
+    let socket = f
+        .runtime
+        .block_on(f.client().gui_seat(seat))
+        .unwrap()
+        .rich_socket
+        .unwrap();
+    let mut wire = std::os::unix::net::UnixStream::connect(&socket).unwrap();
+    wire.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    use std::io::{BufRead, Write};
+    writeln!(
+        wire,
+        "{}",
+        json!({"v":{"major":1,"minor":1},"subscribe":{"ephemeral":false,"after":null}})
+    )
+    .unwrap();
+    let mut reader = std::io::BufReader::new(wire.try_clone().unwrap());
+    let mut line = String::new();
+    reader.read_line(&mut line).unwrap();
+    let hello: Value = serde_json::from_str(&line).unwrap();
+    assert_eq!(hello["meta"]["session"], session.to_string());
+    writeln!(wire,"{}",json!({"v":hello["v"],"op_id":message,"session":session,"op":{"type":"user_turn","blocks":[{"type":"text","text":"complete one scripted turn"}],"mode":"queue"}})).unwrap();
+    loop {
+        line.clear();
+        reader.read_line(&mut line).unwrap();
+        let value: Value = serde_json::from_str(&line).unwrap();
+        if value["op_id"] == json!(message) {
+            assert_eq!(value["ack"]["duplicate"], true, "{value}");
+            break;
+        }
+    }
+    let until = Instant::now() + Duration::from_secs(8);
+    let events: Vec<Value> = loop {
+        let events: Vec<Value> =
+            std::fs::read_to_string(home.join(format!("sessions/{session}.jsonl")))
+                .unwrap()
+                .lines()
+                .map(|l| serde_json::from_str(l).unwrap())
+                .collect();
+        let ended = events.iter().find(|e| {
+            e["event"]["type"] == "turn_queued" && e["cause"] == json!(message)
+        }).is_some_and(|queued| events.iter().any(|e| {
+            e["event"]["type"] == "turn_ended" && e["event"]["turn"] == queued["event"]["turn"]
+        }));
+        if ended { break events; }
+        assert!(Instant::now() < until, "native causal turn did not end");
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    let queued: Vec<_> = events
+        .iter()
+        .filter(|e| e["event"]["type"] == "turn_queued" && e["cause"] == json!(message))
+        .collect();
+    assert_eq!(
+        queued.len(),
+        1,
+        "one causal admission for the retained message"
+    );
+    let turn = &queued[0]["event"]["turn"];
+    for kind in ["turn_started", "turn_ended"] {
+        assert_eq!(
+            events
+                .iter()
+                .filter(|e| e["event"]["type"] == kind && &e["event"]["turn"] == turn)
+                .count(),
+            1,
+            "{kind} linked to queued message by turn id"
+        );
+    }
+    drop(reader);
+    drop(wire);
+    assert_eq!(
+        f.pty_bytes.load(std::sync::atomic::Ordering::SeqCst),
+        zero_bytes,
+        "all PTY writer receipts: zero bytes for socket delivery and duplicates"
     );
     let launch: Vec<String> =
         serde_json::from_slice(&std::fs::read(home.join("launcher-argv.json")).unwrap()).unwrap();
@@ -5256,6 +5372,72 @@ os.execv(BINARY, [BINARY, *args])
         assert!(tool_pgid > 0 && tool_pgid != pgid && tool_pgid != mcp_pgid);
         groups.0.push(tool_pgid);
     }
+    if !owner_close {
+        std::fs::remove_file(&socket).unwrap();
+        std::thread::sleep(Duration::from_millis(250));
+        let unavailable = f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "seat_input_text",
+            f.input_args(seat, "no fallback", true),
+        );
+        assert_eq!(
+            unavailable["structuredContent"]["cause"], "harness-socket-unavailable",
+            "{unavailable}"
+        );
+        assert_eq!(
+            f.pty_bytes.load(std::sync::atomic::Ordering::SeqCst),
+            zero_bytes
+        );
+        let mut previous = session;
+        for profile in ["other", "scripted"] {
+            f.runtime
+                .block_on(f.client().gui_input(
+                    seat,
+                    1,
+                    Ulid::new(),
+                    format!("/profile {profile}\r").into_bytes(),
+                ))
+                .unwrap();
+            let until = Instant::now() + Duration::from_secs(8);
+            let next = loop {
+                if let Some(id) = f
+                    .registry()
+                    .get(seat)
+                    .unwrap()
+                    .harness_session_id
+                    .and_then(|s| s.parse::<Ulid>().ok())
+                    && id != previous
+                {
+                    break id;
+                }
+                assert!(
+                    Instant::now() < until,
+                    "profile rebound not announced: {}",
+                    f.screen(seat)
+                );
+                std::thread::sleep(Duration::from_millis(10));
+            };
+            assert_ne!(next, session, "A/B/A has a third session incarnation");
+            let baseline = f.pty_bytes.load(std::sync::atomic::Ordering::SeqCst);
+            let stale = f.mutate(
+                f.oracle.id,
+                message,
+                "seat_input_text",
+                f.input_args(seat, "complete one scripted turn", true),
+            );
+            assert_eq!(
+                stale["structuredContent"]["cause"], "harness-session-closed",
+                "{stale}"
+            );
+            assert_eq!(
+                f.pty_bytes.load(std::sync::atomic::Ordering::SeqCst),
+                baseline,
+                "stale resend wrote zero PTY bytes"
+            );
+            previous = next;
+        }
+    }
     let start = Instant::now();
     if owner_close {
         f.runtime
@@ -5298,46 +5480,63 @@ os.execv(BINARY, [BINARY, *args])
     let close_elapsed = start.elapsed();
     assert!(close_elapsed < Duration::from_secs(2));
     groups.0.clear(); // Every original group is gone; never signal a recycled ID.
-    let observer = f.supervisor.as_ref().unwrap().connect().unwrap();
-    let bbt_supervisor::Reply::Seats { seats } = observer
-        .request(bbt_supervisor::Action::ListOwnedSeats)
-        .unwrap()
-    else {
-        panic!("seat metadata missing")
+    let observe_exit = || {
+        let observer = f.supervisor.as_ref().unwrap().connect().unwrap();
+        let bbt_supervisor::Reply::Seats { seats } = observer
+            .request(bbt_supervisor::Action::ListOwnedSeats)
+            .unwrap()
+        else {
+            panic!("seat metadata missing")
+        };
+        seats
+            .iter()
+            .find(|s| s.seat == seat)
+            .unwrap()
+            .exited
+            .clone()
+            .unwrap()
     };
-    let exited = seats
-        .iter()
-        .find(|s| s.seat == seat)
-        .unwrap()
-        .exited
-        .as_ref()
-        .unwrap();
     if owner_close {
         let private_home = tempfile::Builder::new()
             .prefix("hresume-")
             .tempdir_in("/tmp")
             .unwrap();
-        let mut resume = std::process::Command::new(&binary);
-        resume
-            .args(["seat", "--resume", &session.to_string(), "--sessions"])
-            .arg(home.join("sessions"))
-            .arg("--scripted")
-            .arg(&fixture)
-            .env_clear()
-            .env("HOME", private_home.path())
-            .env("PATH", "/usr/bin:/bin")
-            .stdin(std::process::Stdio::null());
-        let (status, stdout, stderr) =
-            bounded_client(resume, Duration::from_secs(10), &private_home);
-        assert!(
-            status.success(),
-            "manual resume failed: {}",
-            String::from_utf8_lossy(&stderr)
-        );
-        assert!(
-            String::from_utf8_lossy(&stdout).contains("Done."),
-            "completed text was not replayed"
-        );
+        let resumed=data(f.mutate(f.oracle.id,Ulid::new(),"seat_spawn",json!({"swarm_id":f.own.swarm,"approved_profile":"bboxy450-harness","cwd":f._temp.path(),"resume":session.to_string()})));
+        assert_eq!(resumed["status"], "applied", "{resumed}");
+        let resumed_seat: Ulid = serde_json::from_value(resumed["seat_id"].clone()).unwrap();
+        let resumed_pid = resumed["pid"].as_u64().unwrap() as i32;
+        // SAFETY: this PID is the exact replacement admitted by this fixture.
+        let resumed_group = unsafe { libc::getpgid(resumed_pid) };
+        assert!(resumed_group > 0);
+        groups.0.push(resumed_group);
+        f.wait_screen(resumed_seat, "Done.");
+        let until = Instant::now() + Duration::from_secs(8);
+        while f
+            .registry()
+            .get(resumed_seat)
+            .unwrap()
+            .harness_session_id
+            .as_deref()
+            != Some(&session.to_string())
+        {
+            assert!(Instant::now() < until, "resumed Hello not persisted");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        f.runtime
+            .block_on(f.client().gui_input(resumed_seat, 1, Ulid::new(), vec![4]))
+            .unwrap();
+        let until = Instant::now() + Duration::from_secs(2);
+        loop {
+            // SAFETY: observe only the recorded replacement group.
+            if unsafe { libc::kill(-resumed_group, 0) } == -1
+                && std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH)
+            {
+                break;
+            }
+            assert!(Instant::now() < until, "replacement group did not exit");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        groups.0.clear();
         let mut check = std::process::Command::new(&binary);
         check
             .arg("check-transcript")
@@ -5362,6 +5561,7 @@ os.execv(BINARY, [BINARY, *args])
             "manual recovery lost completed items"
         );
     } else {
+        let exited = observe_exit();
         assert_eq!(exited.code, 0, "{exited:?}");
         assert_eq!(exited.signal, None);
         let log = std::fs::read_to_string(&log_path).unwrap();
@@ -5371,11 +5571,12 @@ os.execv(BINARY, [BINARY, *args])
             "close must be durable"
         );
     }
+    let exited = observe_exit();
     eprintln!(
-        "harness-native: route={} exit={exited:?} close={close_elapsed:?}; every group ESRCH; completed turn; unknown profile refused; composer-readiness-missing has zero writes{}",
+        "harness-native: route={} exit={exited:?} close={close_elapsed:?}; every group ESRCH; completed turn; unknown profile refused; socket Hello persisted; correlated Ack; duplicate Ack; one cause-bound turn; zero PTY bytes{}",
         if owner_close { "owner" } else { "Ctrl-D" },
         if owner_close {
-            "; HUP-ignoring tool retired; manual recovery preserved completed items; check-transcript=0"
+            "; HUP-ignoring tool retired; seat_spawn resume preserved completed items; check-transcript=0"
         } else {
             ""
         }

@@ -253,6 +253,14 @@ pub enum Evidence {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum WakeCause {
+    /// Harness transport has no recent Hello.
+    HarnessSocketUnavailable,
+    /// Harness explicitly refused busy; retry with the same op id.
+    HarnessBusy,
+    /// The original message admission names a closed session.
+    HarnessSessionClosed,
+    /// A harness write may have happened; retain the op id.
+    HarnessAckUnknown,
     /// The retained attachment belongs to another binding.
     NativeAttachmentReplaced,
     /// This delivery identity already has an unresolved native outcome.
@@ -585,3 +593,5 @@ mod wake_cause_tests {
         );
     }
 }
+
+pub mod rich;

@@ -24,6 +24,7 @@ mod log;
 mod navigation;
 mod perf_fixture;
 mod pointer_cursor;
+mod rich_faces;
 mod scene;
 mod settings_destinations;
 mod settings_roles;
@@ -2250,6 +2251,11 @@ impl UiProxy {
     }
 }
 struct App {
+    rich_panes: BTreeMap<SeatId, bboxy450_term::rich_pane::Pane>,
+    rich_focused: BTreeMap<SeatId, bool>,
+    pane_faces: BTreeMap<bbt_mux::Ulid, bbt_proto::gui::PaneFace>,
+    rich_round: usize,
+    rich_cursors: BTreeMap<bbt_mux::Ulid, bbt_proto::gui::RichCursor>,
     usage_worker: Option<bboxy450_usage::poller::Worker>,
     proxy: UiProxy,
     inbox: UiInbox,
@@ -2468,6 +2474,11 @@ impl App {
             let _ = time_proxy.send_event(UiEvent::LocalTimeReady);
         }));
         Self {
+            rich_panes: BTreeMap::new(),
+            rich_focused: BTreeMap::new(),
+            pane_faces: BTreeMap::new(),
+            rich_round: 0,
+            rich_cursors: BTreeMap::new(),
             proxy,
             inbox,
             usage_worker: None,
@@ -5780,6 +5791,8 @@ impl App {
             {
                 self.window_restored = true;
                 self.window_first_frame = true;
+                self.pane_faces = saved.pane_faces.clone();
+                self.rich_cursors = saved.rich_cursors.clone();
                 self.window_last = Some((**saved).clone());
                 if let Some(window) = &self.window {
                     self.restored_size = Some(saved.size);
@@ -6851,6 +6864,7 @@ impl App {
         }
         if matches!(request, UiRequest::Seats) {
             let sources = self.drain();
+            self.rich_drain();
             self.dispatch_wake_sources(&sources);
             self.answer_seats(id);
             return false;
@@ -7067,7 +7081,7 @@ impl App {
     }
     // Shared by the winit callback and the private ctl normalized-input seam.
     fn ime_input(&mut self, event: Ime) {
-        if self.startup.visible {
+        if self.startup.visible || self.rich_ime(&event) {
             return;
         }
         match event {
@@ -7157,6 +7171,10 @@ impl App {
                     self.retry_startup();
                 }
             }
+            return None;
+        }
+        if self.rich_key(input) {
+            self.keyboard.consumed(input.physical_key, input.state);
             return None;
         }
         if self.overlay_key(input) {
@@ -7853,6 +7871,7 @@ impl App {
         self.sidebar_viewport = self.scene.sidebar_extent(&layouts);
         self.sidebar_resize_region = self.scene.sidebar_resize_region(&layouts, logical);
         self.pane_bounds = bounds;
+        self.rich_sync();
         self.solve_launcher(logical)?;
         self.solve_app_overlay(logical)?;
         if self.document.open {
@@ -7879,6 +7898,8 @@ impl App {
                 logical,
                 self.window_last.as_ref(),
             );
+            state.pane_faces = self.pane_faces.clone();
+            state.rich_cursors = self.rich_cursors.clone();
             state.sidebar_scroll = self.scene.sidebar_scroll;
             state.sidebar_width = self.scene.sidebar_width;
             state.open_swarms = self
@@ -8033,6 +8054,7 @@ impl App {
         let projections_before =
             bbt_rt::diagnostics::calls(bbt_rt::diagnostics::Phase::UiProjection);
         let sources = self.drain();
+        self.rich_drain();
         // A native redraw can consume data before its queued Wake arrives.
         // If no drawable is pending, preserve that invalidation before the
         // later empty Wake is ignored.
@@ -8172,6 +8194,7 @@ impl App {
             vec![]
         };
         pane_overlay.extend(self.paint_terminal_selection());
+        pane_overlay.extend(self.rich_paints());
         let (document_paints, document_observation) =
             self.document_paint(self.meter.total_frames() + 1);
         // The conversation dock is painted between the pane foreground and the
@@ -8215,6 +8238,12 @@ impl App {
             ops.append(&mut overlay_after);
         }
         phases.draw = start.elapsed();
+        let terminal_bounds: Vec<_> = self
+            .pane_bounds
+            .iter()
+            .filter(|(id, _)| !self.rich_face(*id))
+            .copied()
+            .collect();
         if let Some((encode, wait)) = self.gpu.as_mut().unwrap().draw(
             ops,
             scale,
@@ -8223,7 +8252,7 @@ impl App {
             self.meter.total_frames() + 1,
             self.live_state.as_ref().map(|model| gpu::Panes {
                 model,
-                bounds: &self.pane_bounds,
+                bounds: &terminal_bounds,
                 focused: self.scene.focused(),
                 overlay: pane_overlay,
                 retained,
@@ -8719,6 +8748,7 @@ impl ApplicationHandler<UiEvent> for App {
                     self.fail(error, event_loop);
                     return;
                 }
+                self.rich_drain();
                 self.dispatch_wake_sources(&sources);
             }
             UiEvent::BeginIdle => {
@@ -9009,6 +9039,10 @@ impl ApplicationHandler<UiEvent> for App {
             }
             WindowEvent::Occluded(occluded) => {
                 self.occluded = occluded;
+                if occluded {
+                    self.rich_panes.clear();
+                    self.rich_focused.clear();
+                }
                 if let Some(pacer) = &mut self.pacer
                     && let Err(error) =
                         pacer.set_active(self.animate && !occluded && !self.clock.is_frozen())
@@ -12631,6 +12665,7 @@ mod launcher_host_tests {
             ordinal: 1,
         };
         let mut current = bbt_proto::GuiSeat {
+            rich_socket: None,
             notification_episode: Some(episode),
             attention: None,
             record: bbt_proto::registry::SeatRecord::new(

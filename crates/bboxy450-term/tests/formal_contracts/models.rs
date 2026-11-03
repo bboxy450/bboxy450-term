@@ -31,6 +31,8 @@ mod task_amend_model;
 mod capability_models;
 #[path = "usage_models.rs"]
 mod usage_models;
+#[path = "rich_host.rs"]
+mod rich_host;
 #[path = "launch_environment.rs"]
 mod launch_environment;
 #[path = "launch_readiness.rs"]
@@ -1872,6 +1874,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(capability_models::cases());
     cases.extend(gitkb_models::cases());
     cases.extend(usage_models::cases());
+    cases.extend(rich_host::cases());
     cases.extend(launch_environment::cases());
     cases.extend(launch_readiness::cases());
     cases.extend(provenance_models::cases());

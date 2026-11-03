@@ -46,6 +46,7 @@ async fn reply(read: &mut BufReader<tokio::net::unix::OwnedReadHalf>) -> GuiRepl
 }
 fn waiting() -> GuiSeat {
     GuiSeat {
+        rich_socket: None,
         notification_episode: None,
         attention: None,
         record: SeatRecord::new(Ulid(99), Ulid(100), "current question", "claude"),

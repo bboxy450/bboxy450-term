@@ -381,6 +381,7 @@ enum Command {
     GuiHello(oneshot::Sender<Result<bbt_proto::gui::GuiHello>>),
     GuiSeats(oneshot::Sender<Result<Vec<crate::seat_socket::GuiSeat>>>),
     GuiSeat(Ulid, oneshot::Sender<Result<crate::seat_socket::GuiSeat>>),
+    RichState(Ulid, u64),
     GuiIdentity(oneshot::Sender<Result<bbt_proto::GuiIdentity>>),
     OperatorIdentity(
         Ulid,
@@ -2397,6 +2398,9 @@ struct ViewState {
     tap: OscTap,
     replies: VecDeque<(Ulid, Vec<u8>)>,
     native_reader: Option<NativeReader>,
+    rich_connection: Option<bboxy450_harness_wake_up::rich::Connection>,
+    rich_delivery: Option<crate::rich::Delivery>,
+    rich_socket: Option<PathBuf>,
     shared_codex_runtime: Option<PathBuf>,
     state: Playback,
     view_generation: Ulid,
@@ -5317,6 +5321,112 @@ impl Worker {
             }
         }
     }
+    fn start_control_input(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        reply: oneshot::Sender<Result<serde_json::Value>>,
+    ) {
+        use crate::mcp::seats::{self, Request};
+        let prepared = (|| -> Result<_> {
+            let (actor, caller) = self.control_actor(id, generation)?;
+            call.validate()?;
+            let request = self
+                .prepare_seat_control(&actor, &caller, &call)
+                .map_err(invalid)?;
+            Ok((actor, request))
+        })();
+        let (
+            actor,
+            Request::Input {
+                target,
+                text,
+                submit,
+            },
+        ) = (match prepared {
+            Ok(p) => p,
+            Err(_) => {
+                let _ = reply.send(self.control_call(id, generation, call));
+                return;
+            }
+        })
+        else {
+            let _ = reply.send(Err(invalid("invalid input dispatch")));
+            return;
+        };
+        if !self
+            .views
+            .get(&target.seat)
+            .is_some_and(|v| v.adapter.record.kind == "bboxy450-harness")
+        {
+            let _ = reply.send(self.control_call(id, generation, call));
+            return;
+        }
+        let started = (|| -> Result<_> {
+            let journal = self.control_journal(id)?;
+            let (retained, fresh) = journal.admit(&actor, &call)?;
+            Ok((journal, retained, fresh))
+        })();
+        let (journal, retained, fresh) = match started {
+            Ok(p) => p,
+            Err(e) => {
+                let _ = reply.send(Err(e));
+                return;
+            }
+        };
+        // Rich ops are the one retryable native lane: the retained message ULID
+        // and original-session binding are durable, and the gateway deduplicates.
+        // A retry must observe Busy/Closed/unknown honestly instead of replaying
+        // an old Ack after a profile switch. Argument/authority reuse still refuses.
+        if !fresh && retained["structuredContent"]["error"]["code"] == "op_id_reused" {
+            let _ = reply.send(Ok(retained));
+            return;
+        }
+        if self.control_deliveries.len() >= 8 {
+            let outcome = crate::adapters::WakeOutcome {
+                evidence: crate::adapters::Evidence::RecipientStored,
+                native_id: None,
+                note: "harness delivery lane full".into(),
+                cause: Some(crate::adapters::WakeCause::HarnessBusy),
+            };
+            let value = seats::input_result(&call, call.op_id, outcome);
+            let _ = reply.send(journal.complete(&actor, &call, value));
+            return;
+        }
+        let port = self.views[&target.seat].rich_delivery.clone();
+        let run_dir = self.config.run_dir.clone();
+        let input_id = call.op_id;
+        self.control_deliveries.spawn_on(
+            async move {
+                let a = actor.clone();
+                let valid = tokio::task::spawn_blocking(move || {
+                    seats::revalidate_native(&run_dir, &a, target, "bboxy450-harness")
+                })
+                .await;
+                let outcome = if matches!(valid, Ok(Ok(()))) {
+                    match port {
+                        Some(p) => p.text(input_id, &text, submit).await,
+                        None => crate::rich::unavailable(),
+                    }
+                } else {
+                    crate::rich::unavailable()
+                };
+                let result = seats::input_result(&call, input_id, outcome.clone());
+                ControlDelivery {
+                    actor,
+                    call,
+                    journal,
+                    reply,
+                    target,
+                    input_id,
+                    outcome: Some(outcome),
+                    result,
+                }
+            },
+            &self.handle,
+        );
+    }
     fn start_control_interrupt(
         &mut self,
         id: Ulid,
@@ -6232,6 +6342,36 @@ impl Worker {
         } else {
             (crate::adapters::Endpoint::None, None)
         };
+        let rich_socket = if kind == "bboxy450-harness" {
+            SqliteStore::open(&directory)?
+                .get("harness_rich_socket")?
+                .map(|b| serde_json::from_slice::<PathBuf>(&b))
+                .transpose()?
+        } else {
+            None
+        };
+        let rich_connection = rich_socket
+            .as_ref()
+            .filter(|_| info.exited.is_none())
+            .map(|path| {
+                let sender = self.client.tx.clone();
+                let handle = self.handle.clone();
+                let seat = info.seat;
+                let generation = info.generation;
+                bboxy450_harness_wake_up::rich::Connection::start_notifying(
+                    path.clone(),
+                    &self.handle,
+                    Arc::new(move || {
+                        let sender = sender.clone();
+                        handle.spawn(async move {
+                            let _ = sender.send(Command::RichState(seat, generation)).await;
+                        });
+                    }),
+                )
+            });
+        let rich_delivery = rich_connection
+            .as_ref()
+            .map(|c| crate::rich::Delivery::new(c.client.clone(), directory.clone()));
         self.views.insert(
             info.seat,
             ViewState {
@@ -6244,6 +6384,9 @@ impl Worker {
                 tap,
                 replies,
                 native_reader: None,
+                rich_connection,
+                rich_delivery,
+                rich_socket,
                 shared_codex_runtime,
                 state,
                 view_generation: Ulid::new(),
@@ -6420,8 +6563,10 @@ impl Worker {
     }
     fn persist_native_session(&self, id: Ulid) -> Result<()> {
         let adapter = &self.views[&id].adapter;
-        if matches!(adapter.record.kind.as_str(), "claude" | "codex")
-            && !adapter.binding.session.starts_with("process-")
+        if matches!(
+            adapter.record.kind.as_str(),
+            "claude" | "codex" | "bboxy450-harness"
+        ) && !adapter.binding.session.starts_with("process-")
         {
             let session = &adapter.binding.session;
             if let Ok(record) = self.registry.get(id)
@@ -6508,6 +6653,21 @@ impl Worker {
                 },
             )?
         };
+        if harness.kind == "bboxy450-harness" && options.via.is_none() {
+            let store = SqliteStore::open(&root)?;
+            let path = store
+                .get("harness_rich_socket")?
+                .map(|b| serde_json::from_slice::<PathBuf>(&b))
+                .transpose()?
+                .unwrap_or(bboxy450_harness_wake_up::rich::socket_path(
+                    &endpoint.path,
+                    record.id,
+                )?);
+            if let Some(i) = plan.spec.args.iter().position(|a| a == "--socket") {
+                plan.spec.args[i + 1] = path.to_string_lossy().into_owned();
+            }
+            SqliteStore::open(&root)?.put("harness_rich_socket", &serde_json::to_vec(&path)?)?;
+        }
         record.harness_session_id = plan.harness_session_id;
         if options.via.is_none() {
             crate::adapters::launch::with_environment(&mut plan.spec, &options.env);
@@ -6676,7 +6836,10 @@ impl Worker {
             // Its restoration operation belongs to the dead process only.
             record.close = None;
             let resume = record.harness_session_id.is_some()
-                && matches!(record.harness_kind.as_str(), "claude" | "codex");
+                && matches!(
+                    record.harness_kind.as_str(),
+                    "claude" | "codex" | "bboxy450-harness"
+                );
             let harness = if resume || context.via.is_some() {
                 serde_json::from_slice(
                     &store
@@ -8425,6 +8588,20 @@ impl Worker {
         let now = now_ms();
         for id in self.views.keys().copied().collect::<Vec<_>>() {
             let view = self.views.get_mut(&id).unwrap();
+            if let Some(delivery) = &view.rich_delivery
+                && let Some(hello) = delivery.client.hello()
+                && view.adapter.binding.session != hello.session.to_string()
+            {
+                view.adapter.binding.session = hello.session.to_string();
+                self.registry.update(id, |record| {
+                    record.harness_session_id = Some(hello.session.to_string());
+                    Ok(())
+                })?;
+            }
+            if view.adapter.status.source == "exit" {
+                view.rich_connection = None;
+                view.rich_delivery = None;
+            }
             let before = view.adapter.status.clone();
             let mut live_wait = false;
             if view.adapter.status.source != "exit" {
@@ -8872,6 +9049,25 @@ impl Worker {
             } else {
                 false
             };
+            if view.adapter.record.kind == "bboxy450-harness" {
+                let delivery = view.rich_delivery.clone();
+                self.deliveries.spawn_on(
+                    async move {
+                        let outcome = match delivery {
+                            Some(port) => port.text(work.id, &text, true).await,
+                            None => crate::rich::unavailable(),
+                        };
+                        Delivery {
+                            swarm,
+                            work,
+                            outcome,
+                            relayed,
+                        }
+                    },
+                    &self.handle,
+                );
+                continue;
+            }
             match view.adapter.record.wake_method {
                 WakeMethod::ClaudeSocket | WakeMethod::CodexRpc => {
                     let binding = view.adapter.binding.clone();
@@ -8975,6 +9171,15 @@ impl Worker {
             note: crate::adapters::observe::short(note, 640),
             cause: Some(cause),
         };
+        // This synchronous guard has no socket IO. Harness requests are
+        // scheduled by start_control_input/pump_messages before PTY arbitration.
+        if self
+            .views
+            .get(&seat)
+            .is_some_and(|v| v.adapter.record.kind == "bboxy450-harness")
+        {
+            return Ok(crate::rich::unavailable());
+        }
         let attachment = self
             .attachments
             .get(&seat)
@@ -9267,6 +9472,7 @@ impl Worker {
             })
             .collect();
         Ok(bbt_proto::GuiSeat {
+            rich_socket: view.rich_socket.clone(),
             notification_episode: self
                 .client
                 .current_attention
@@ -10202,6 +10408,8 @@ impl Worker {
                             self.start_seat_effect(id, generation, call, reply);
                         } else if matches!(call.tool.as_str(), "seat_focus" | "seat_close") {
                             self.start_control_focus(id, generation, call, reply);
+                        } else if call.tool == "seat_input_text" {
+                            self.start_control_input(id, generation, call, reply);
                         } else if call.tool == "seat_interrupt" {
                             self.start_control_interrupt(id, generation, call, reply);
                         } else if crate::mcp::plugin_tools::handles(&call.tool) {
@@ -10688,6 +10896,21 @@ impl Worker {
                             .gui_device()
                             .and_then(|_| self.messaging.operator_subjects());
                         let _ = reply.send(result);
+                    }
+                    Command::RichState(id, generation) => {
+                        if let Some(view) = self
+                            .views
+                            .get_mut(&id)
+                            .filter(|v| v.generation == generation)
+                            && let Some(hello) =
+                                view.rich_delivery.as_ref().and_then(|p| p.client.hello())
+                        {
+                            view.adapter.binding.session = hello.session.to_string();
+                            let status = view.adapter.status.clone();
+                            self.persist_native_session(id)?;
+                            // Announce metadata even when no PTY byte arrives after Hello.
+                            self.publish_adapter(id, status)?;
+                        }
                     }
                     Command::GuiInput(id, generation, input_id, bytes, reply) => {
                         let result = self.seat_input(id, generation, input_id, bytes);

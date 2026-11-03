@@ -34,6 +34,7 @@ fn legacy_gui_hello_bytes_and_new_readonly_observer_are_distinct() {
 #[test]
 fn old_seat_omits_the_additive_key_and_current_episode_round_trips() {
     let seat = GuiSeat {
+        rich_socket: None,
         record: bbt_proto::registry::SeatRecord::new(Ulid(1), Ulid(2), "fixture", "claude"),
         notification_episode: None,
         attention: None,

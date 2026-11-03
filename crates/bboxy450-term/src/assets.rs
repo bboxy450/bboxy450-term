@@ -39,5 +39,20 @@ pub fn images() -> Result<Assets, String> {
         height: info.height,
         rgba,
     });
-    Ok(Assets::with_svgs(images, BAKED_ICONS))
+    let mut assets = Assets::with_svgs(images, BAKED_ICONS);
+    // The linked harness keeps its native icon bytes without replacing term's
+    // same-named marks. rich_pane namespaces only the embedded Frame references.
+    let rich = bboxy450_harness::frontends::gui::assets::icons();
+    assets
+        .bitmaps
+        .extend(rich.bitmaps.into_iter().map(|mut image| {
+            image.name = format!("harness-rich/{}", image.name);
+            image
+        }));
+    assets.svgs.extend(
+        rich.svgs
+            .into_iter()
+            .map(|(name, svg)| (format!("harness-rich/{name}"), svg)),
+    );
+    Ok(assets)
 }

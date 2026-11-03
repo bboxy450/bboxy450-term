@@ -231,6 +231,7 @@ mod tests {
             bbt_proto::registry::SeatRecord::new(Ulid(1), Ulid(2), "question", "claude");
         record.generation = generation;
         GuiSeat {
+            rich_socket: None,
             record,
             notification_episode: None,
             attention: None,

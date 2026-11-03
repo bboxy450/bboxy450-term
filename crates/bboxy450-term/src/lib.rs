@@ -42,3 +42,5 @@ pub mod starting;
 pub mod window_state;
 
 pub mod window_writes;
+
+pub mod rich_pane;

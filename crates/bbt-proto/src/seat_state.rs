@@ -16,6 +16,9 @@ pub use bbt_ui_model::{
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GuiSeat {
+    /// Term-owned rich session endpoint; never a capability or session file.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rich_socket: Option<std::path::PathBuf>,
     pub record: SeatRecord,
     pub state: SeatState,
     /// Full policy on an explicit read; small digest observations on ordinary state.

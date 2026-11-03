@@ -52,3 +52,5 @@ pub use supervisor::{Client, Config, Supervisor};
 pub use ulid::Ulid;
 
 mod window_journal;
+
+mod rich;

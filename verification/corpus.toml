@@ -1001,3 +1001,28 @@ frontend = "project"
 name = "ProtocolProgress"
 expected = "pass"
 frontend = "project"
+
+[[model]]
+name = "RichHost"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenRichHostDuplicate"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenRichHostIdentity"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenRichHostDetach"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenRichHostRouting"
+expected = "safety"
+frontend = "project"

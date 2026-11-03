@@ -219,6 +219,7 @@ mod tests {
 
     fn fixture(activity: Activity) -> GuiSeat {
         GuiSeat {
+            rich_socket: None,
             notification_episode: None,
             attention: None,
             record: SeatRecord::new(Ulid(1), Ulid(2), "fixture", "claude"),

@@ -513,7 +513,25 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
     let mut notes = Vec::new();
     match record.kind.as_str() {
         "bboxy450-harness" => {
+            let rich_socket = crate::rich::socket_path(context.socket, context.id)?;
+            if context.resume
+                && !context
+                    .harness_session_id
+                    .is_some_and(crate::rich::valid_session)
+            {
+                return Err(invalid("harness-resume-session-invalid"));
+            }
             mcp_wiring(&overlay, context)?;
+            spec.args.extend([
+                "--socket".into(),
+                rich_socket.to_string_lossy().into_owned(),
+            ]);
+            if context.resume {
+                spec.args.extend([
+                    "--resume".into(),
+                    context.harness_session_id.unwrap().into(),
+                ]);
+            }
             spec.args.extend([
                 "--cwd".into(),
                 context.cwd.to_string_lossy().into(),
@@ -522,7 +540,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
                 "--mcp-config".into(),
                 overlay.join("mcp.json").to_string_lossy().into(),
             ]);
-            notes.push("bboxy450-harness: cadence is inferred; automatic input is refused as composer-readiness-missing");
+            notes.push("bboxy450-harness: native socket admission, never PTY fallback");
         }
         "claude" => {
             if spec.args.iter().any(|a| a == "--bare") {

@@ -571,6 +571,7 @@ mod tests {
 
     fn waiting(epoch: u128, ordinal: u64) -> GuiSeat {
         GuiSeat {
+            rich_socket: None,
             attention: None,
             notification_episode: Some(EpisodeKey {
                 epoch: bbt_mux::Ulid(epoch),

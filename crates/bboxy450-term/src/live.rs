@@ -2639,6 +2639,7 @@ mod tests {
         let mut record = bbt_proto::registry::SeatRecord::new(Ulid(42), Ulid(1), "muted", "zsh");
         record.muted = true;
         let snapshot = GuiReply::Seat(GuiSeat {
+            rich_socket: None,
             notification_episode: None,
             record,
             attention: None,
@@ -3306,6 +3307,7 @@ mod tests {
         use bbt_proto::events::*;
         let make_row = |sequence, activity| {
             let seat = GuiSeat {
+                rich_socket: None,
                 notification_episode: None,
                 attention: None,
                 record: bbt_proto::SeatRecord::new(Ulid(3), Ulid(1), "question fixture", "claude"),

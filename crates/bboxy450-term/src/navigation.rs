@@ -144,6 +144,7 @@ impl App {
     }
     pub(super) fn pointer_pressed(&mut self, at: [f32; 2]) {
         self.pointer = at;
+        if self.rich_pointer(at) { return; }
         if self.ui_selection.text().is_some() {
             self.request_redraw();
         }
