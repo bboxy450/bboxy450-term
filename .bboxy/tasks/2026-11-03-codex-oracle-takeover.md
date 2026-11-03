@@ -68,7 +68,7 @@ acceptance:
 - Obsolete seats retired; replacement Codex workers have signed scoped tasks; unfinished work preserved
 - Lifecycle, source preservation, closures and gaps retained as evidence
 id: 01M6HCH1SJHDSB6SDAC2ZF1BXX
-updated: 2026-11-03T19:30:12.180Z
+updated: 2026-11-03T20:28:55.134Z
 created: 2026-11-03T19:00:13.435Z
 number: 15244
 created_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
@@ -79,11 +79,11 @@ authorship:
   public_key: B3hFSjBIE1Nnj7mw9Eg9pqyRpYHF/GQaKXPyV1KAod0=
   process_generation: '1'
 provenance:
-  digest: sha256:fda4ac25a21ec25bd90eaa4088cda304c96c332bfbc96ad61c2ae8735e80cf80
-  frontmatter_digest: sha256:836e3d5e8cf7b354871f43172a2de317527488dfaf8eff3bcbdd3e903062fe36
+  digest: sha256:f84cf41cada84e410c4c88ef6717172961bf1d326937e96ba483b28eb5155481
+  frontmatter_digest: sha256:f26f6283fe5c5e8aa97f8ea87c4c26e15d4c0590507c718232a53c8d9d592985
   signer: seat:01M6H97SAX3GN1BYB4YG76P3P0
-  sig: xHbUSSSfPu0JiHA8kVZVDkubDR2SF6EHx4hwwNxx6KX1+zMlq7o2G4dNzfpmer5jx9CgKVEk+RtWCSElOq9XDA==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#94298
+  sig: 0rFih6MMZUtyrMYPqpE/J661BuAqrmtTvwW5+utYIt9lqsp/c4xYuwjh/xYxqkdigsp4Ycct9mP4KOxHzD2jDQ==
+  log: .bboxy/log/2026-11-03.part-86213.jsonl#99227
 ---
 ROLE: ORACLE.
 
@@ -114,3 +114,5 @@ A new external controller (PID 34411) and Claude seat 01M6HCZWWK2PPMNFN1SJKW21BH
 Operator's Codex-only policy also applies to newly opened standalone/harness sessions. The verified plain selector /Users/feral/.bboxy450-harness/default-profile currently contains claude-acp. Back up that selector in the own evidence directory and atomically set it to the existing codex-exec profile, preserving permissions. This is a nonsecret profile preference, not a profile definition or credential. Do not edit account credentials, app role grants or other settings. Verify the effective default using MCP harness_profiles.
 
 Disk disposition: there are no additional clean, fully merged worktrees with remaining compiler caches. The operator's cleanup authorization permits reclaiming the retired harness workers' rebuildable Cargo caches while retaining their unfinished source trees, original refs, logs, captures, formal receipts and packaged apps. In these exact retired worktrees: /Users/feral/mydev/bboxy450-harness-quiet, /Users/feral/mydev/bboxy450-harness-heartbeat, /Users/feral/mydev/bboxy450-harness-agent-turns, /Users/feral/mydev/bboxy450-harness-capture-chrome, /Users/feral/mydev/bboxy450-harness-land, /Users/feral/mydev/bboxy450-harness-wt-architect, first prove no process holds the cache paths with lsof; then remove only target/{debug,release}/{incremental,build,deps,.fingerprint}. Do not follow symlinks, touch any active Codex worktree, remove other target contents, delete source or claim unrun verification. Retain an actual before/after manifest and disk reading.
+
+Continuation after standalone delivery: verified and published ea75307 implementation plus af65c6c report/summary, signed local install and installed private native startup smoke all exited zero; normal launch observed alive on codex-exec. Retired standalone worker/report-recovery seats after preserving and reconciling the original completed report. The freed third productive slot now recovers the explicit outstanding two-pass native visual work from ORACLE-HANDOFF.md via [[tasks/2026-11-03-codex-native-visual]], own worktree /Users/feral/mydev/bboxy450-harness-codex-visual. Scope is the carried terminal one-line fold/diff ellipsis defects and two native audit passes; no baseline/threshold/reference changes. Socket and rich-host assignments continue. The resumed-native-thread MCP old-seat identity defect is recorded as a gap; do not bypass identity or edit capabilities. Intermediate signed operational report is [[reports/2026-11-03-codex-oracle-takeover-interim]] (#17033), committed at 5e8e0583a9df8e780c6a80befbfd107ab64b86cd; parent product remains open.
