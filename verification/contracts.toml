@@ -2,6 +2,16 @@
 # Rust witnesses and existing implementation tests supplement these models, not refinement proofs.
 
 [[contract]]
+name = "EventLogCheckpoint"
+title = "Checkpointed event-log startup and post-readiness historical audit"
+models = ["EventLogCheckpoint", "BrokenEventLogCheckpoint"]
+sources = ["crates/bbt-mux/src/store/events.rs", "crates/bboxy450-term/src/cockpit.rs", "crates/bboxy450-term/tests/formal_contracts/event_log_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/store/events.rs", "crates/bbt-mux/src/store/sqlite.rs", "crates/bbt-mux/tests/storage_bus_index.rs"]
+assumptions = "Three retained rows (prefix 1, checkpoint 2, suffix 3), an optional preexisting checkpoint, one corruption present before open and one locally signed append. Open reads/checks/advances in a SQLite snapshot transaction; append and checkpoint advancement share an immediate transaction. The same-database checkpoint is trusted metadata, not protection against an adversary rewriting both checkpoint and history. Hash/signature rejection is abstracted, with actual Ed25519, JSON, sequence/prev/hash, schema and SQL trigger witnesses in Rust. Audit/report actions are weakly fair while the process remains alive; process termination can interrupt an audit and the next start audits again. Diagnostic delivery is best effort; stderr also reports failures. Concurrent malicious mutation after the opening snapshot, hash collisions, disk failure, OS scheduling and arbitrary Rust refinement are unmodeled."
+property = "A tampered checkpoint or suffix prevents readiness. First upgrade verifies at most 128 suffix rows synchronously, using an explicitly unaudited prefix anchor; historical tampering is eventually reported by the detached genesis pass after readiness. The checkpoint payload is rehashed as well as comparing the stored SQL hash. A locally signed append advances only a matching checkpoint atomically, keeping ordinary reopen work independent of retained history. BrokenEventLogCheckpoint skips only the existing checkpoint hash check and must fail safety. opening_n_rows_with_checkpoint_n_minus_one_verifies_exactly_one counts the actual successful signature verifications; historical_tampering_is_reported_after_ready_with_and_without_a_checkpoint observes the real private diagnostic socket."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "UsagePoller"
 title = "Read-only account usage, current attempt publication and visible deadlines"
 models = ["UsagePoller", "BrokenUsagePoller"]

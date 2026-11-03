@@ -46,6 +46,9 @@ mod wheel_model;
 #[path = "provenance_models.rs"]
 mod provenance_models;
 
+#[path = "event_log_model.rs"]
+mod event_log_model;
+
 fn eq(i: usize, n: i64) -> Expr {
     Var(i).eq(Int(n))
 }
@@ -1863,6 +1866,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(usage_models::cases());
     cases.extend(launch_environment::cases());
     cases.extend(provenance_models::cases());
+    cases.extend(event_log_model::cases());
     cases
 }
 

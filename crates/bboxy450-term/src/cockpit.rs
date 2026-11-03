@@ -825,6 +825,7 @@ async fn logic_main() -> Result<()> {
     };
     owners::write(&config, "logic", &ready)?;
     write_json(&mut tokio::io::stdout(), &ready).await?;
+    bbt_mux::store::events::verify_history_after_ready(&run_dir, bbt_rt::handle());
     // SIGTERM and SIGINT stop logic in order too, so the ctl door closes and its
     // gui.endpoint is removed (invariant #261), as on the window's stop.
     let mut terminate = signal(SignalKind::terminate())?;

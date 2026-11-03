@@ -7,6 +7,9 @@ Copyright 2026 Boxy (bboxy450) and contributors, for their respective contributi
 Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 
+Event-log checkpoint verification and its bounded formal model are project-owned
+contributions; their source headers carry this policy and origin with extracts.
+
 **Slop respectfully. Keep the credit attached.**
 
 Read this policy when studying, copying, adapting, translating or deliberately
