@@ -369,6 +369,46 @@ fn ownership_child() {
     ));
     assert_eq!(recovered["isError"], false, "{recovered}");
     assert!(b.join("notes/after-error.md").is_file());
+    // The legacy synchronous allocator can wait on this external root lock;
+    // an admitted effect and the request owner must still return promptly.
+    let number_lock = std::fs::File::open(&b).unwrap();
+    number_lock.lock().unwrap();
+    let at = Instant::now();
+    rt.block_on(async {
+        let write = call(
+            &client,
+            seats[1].0,
+            write("notes/number-busy.md", "held allocator"),
+        );
+        let hello = tokio::time::timeout(DEADLINE, client.gui_hello());
+        let status = call(
+            &client,
+            seats[1].0,
+            Call {
+                op_id: Ulid::new(),
+                tool: "self_status".into(),
+                args: serde_json::json!({}),
+            },
+        );
+        let (refused, hello, status) = tokio::join!(write, hello, status);
+        assert_eq!(refused["isError"], true, "{refused}");
+        assert_eq!(
+            refused["structuredContent"]["status"], "unknown",
+            "{refused}"
+        );
+        assert!(hello.unwrap().is_ok());
+        assert_eq!(status["isError"], false);
+    });
+    assert!(at.elapsed() < DEADLINE);
+    assert!(!b.join("notes/number-busy.md").exists());
+    drop(number_lock);
+    let recovered = rt.block_on(call(
+        &client,
+        seats[1].0,
+        write("notes/after-number-lock.md", "confirmed allocator release"),
+    ));
+    assert_eq!(recovered["isError"], false, "{recovered}");
+    assert!(b.join("notes/after-number-lock.md").is_file());
     *knowledge_effects::APPLY_HOOK.lock().unwrap() = None;
     let at = Instant::now();
     restarted.shutdown().unwrap();

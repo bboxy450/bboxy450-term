@@ -967,13 +967,19 @@ impl Index {
     ) -> Result<String> {
         bbt_rt::assert_not_ui_thread();
         if self.writer.is_none() {
+            // The legacy synchronous API serializes its IO caller before
+            // acquiring a projection claim. Owner-loop entry points instead
+            // lend a preclaimed Index (Engine/knowledge_effects), and retain
+            // the nonblocking number-lock path below.
+            let number_lock = std::fs::File::open(&self.root)?;
+            number_lock.lock()?;
             let writer = self
                 .try_projection_writer()?
                 .ok_or_else(|| Box::new(IndexBusy) as crate::store::Error)?;
             return self
                 .clone()
                 .owned_projection(writer)?
-                .write_inner(update, author, guarded);
+                .write_locked(update, author, guarded, None);
         }
         // One OS lock per store root spans the fresh scan, signature and
         // atomic publication. Closing this descriptor also releases it after
