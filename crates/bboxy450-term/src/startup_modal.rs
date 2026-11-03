@@ -103,57 +103,6 @@ fn view(modal: &cockpit::startup::Modal, elapsed_secs: u64) -> ui::modules::star
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use cockpit::startup::{Modal, Phase};
-
-    #[test]
-    fn startup_modal_projects_observed_steps_and_sticky_failure_without_inventing_progress() {
-        let now = Instant::now();
-        let mut modal = Modal::new(now, true);
-        for (phase, step) in [
-            (Phase::StartingSupervisor, 0),
-            (Phase::AdoptingSupervisor(42), 0),
-            (Phase::StartingLogic, 1),
-            (
-                Phase::VerifyingHistory {
-                    stream: "account".into(),
-                    verified: 25,
-                    total: 100,
-                },
-                2,
-            ),
-            (Phase::AttachingGui, 3),
-        ] {
-            modal.update(phase, now);
-            assert_eq!(view(&modal, 3).active_step, step);
-        }
-        modal.update(
-            Phase::VerifyingHistory {
-                stream: "account".into(),
-                verified: 25,
-                total: 100,
-            },
-            now,
-        );
-        modal.fail("history signature failed".into());
-        modal.update(Phase::AttachingGui, now);
-        let failed = view(&modal, 4);
-        assert_eq!(failed.active_step, 2);
-        assert_eq!(failed.history.unwrap().verified, 25);
-        assert_eq!(failed.error.as_deref(), Some("history signature failed"));
-        modal.retry(now);
-        let retry = view(&modal, 0);
-        assert_eq!(retry.active_step, 0);
-        assert!(retry.error.is_none() && retry.history.is_none());
-        assert_eq!(retry.details[0], ["Reconnect attempt 1", "Retry requested"]);
-        modal.update(Phase::AttachingGui, now);
-        modal.attached();
-        assert!(!modal.visible);
-    }
-}
-
 fn region(layout: &c::Layout, key: &str) -> Option<Rect> {
     if matches!(&layout.kind, c::LayoutKind::Named(name) if name == key) {
         return Some(layout.rect);
@@ -220,5 +169,56 @@ impl App {
             ));
         }
         self.request_redraw();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use cockpit::startup::{Modal, Phase};
+
+    #[test]
+    fn startup_modal_projects_observed_steps_and_sticky_failure_without_inventing_progress() {
+        let now = Instant::now();
+        let mut modal = Modal::new(now, true);
+        for (phase, step) in [
+            (Phase::StartingSupervisor, 0),
+            (Phase::AdoptingSupervisor(42), 0),
+            (Phase::StartingLogic, 1),
+            (
+                Phase::VerifyingHistory {
+                    stream: "account".into(),
+                    verified: 25,
+                    total: 100,
+                },
+                2,
+            ),
+            (Phase::AttachingGui, 3),
+        ] {
+            modal.update(phase, now);
+            assert_eq!(view(&modal, 3).active_step, step);
+        }
+        modal.update(
+            Phase::VerifyingHistory {
+                stream: "account".into(),
+                verified: 25,
+                total: 100,
+            },
+            now,
+        );
+        modal.fail("history signature failed".into());
+        modal.update(Phase::AttachingGui, now);
+        let failed = view(&modal, 4);
+        assert_eq!(failed.active_step, 2);
+        assert_eq!(failed.history.unwrap().verified, 25);
+        assert_eq!(failed.error.as_deref(), Some("history signature failed"));
+        modal.retry(now);
+        let retry = view(&modal, 0);
+        assert_eq!(retry.active_step, 0);
+        assert!(retry.error.is_none() && retry.history.is_none());
+        assert_eq!(retry.details[0], ["Reconnect attempt 1", "Retry requested"]);
+        modal.update(Phase::AttachingGui, now);
+        modal.attached();
+        assert!(!modal.visible);
     }
 }

@@ -45,11 +45,12 @@ allowed_paths:
 - crates/bboxy450-term/tests/ctl.rs
 - .bboxy/decisions/d18864-per-root-projection-writer-ownership.md
 - .bboxy/reports/2026-11-03-logic-recovery-write-route-witness-*.md
+- crates/bboxy450-term/src/startup_modal.rs
 id: 01M6HGAE1XXGRJ58SFATHX9R18
 status: claimed
 delegated_by: seat:01M6HF0S1BAJKHWT2N426W7328
 swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-03T22:09:23.734Z
+updated: 2026-11-03T22:34:10.705Z
 created: 2026-11-03T20:06:30.913Z
 number: 16404
 created_by: seat:01M6HF0S1BAJKHWT2N426W7328
@@ -62,11 +63,11 @@ authorship:
 assignee: seat:01M6HGAF8KJMA0860GJ6VYM9E2
 verify_revision: 1
 provenance:
-  digest: sha256:8c3ba4304e3a6d9c0121e90cbe2e4cec30b77ad51f67a3b052e14151dc11b99b
-  frontmatter_digest: sha256:4d3c61a8e708a5707c733a2bc96c107b2b479acd8a6017b83c8e5c0a04e72c6a
+  digest: sha256:66c743559225e10dd705108490187df6bd8de52799d33f3eff273e746d4593d4
+  frontmatter_digest: sha256:693abb837e51ecb178db34acd33404b2c4b20c48a71c2ddd923f7f355e3939de
   signer: seat:01M6HF0S1BAJKHWT2N426W7328
-  sig: ud0MPV2cFy348Y8LjpVJqA+s8BfLQ+RrHcaT6YEkXyQN6tVNaeX9S9FMnZfnMvb6OMg1VlkO+WLqLyo5CaRRAQ==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#105170
+  sig: jbvknMvzZvMQAdf86/MZwf42074OrHWSXDea6f6K9Ik7jdPcwuAmpUSwzhsrBDIbb54j3LjGdHMQKrEXXpcFCg==
+  log: .bboxy/log/2026-11-03.part-86213.jsonl#107392
 ---
 # Integrated logic recovery, real write witnesses, and projection ownership
 
@@ -126,3 +127,10 @@ After the ownership fix and focused tests are ready, use the existing canonical 
 verify is now exactly `sh scripts/land.sh --full`; a fresh report is required for it. Run the unchanged required make test-boundaries after the ownership correction. Avoid another broad standalone make test duplicating the lander's full gate. If source churn is disjoint, let the canonical loop choose the exact missing rechecks and refresh formal evidence; report the actual resulting scope. If the loop refuses or an affected path overlaps, report the exact reason before another unchanged baseline.
 
 The full report must contain real outcomes. If the final landing's outcome cannot truthfully be included in its own source commit, first land the signed implementation through --full, then append the factual host-numbered full report in a signed records-only commit and use the existing checked records-only gate-log reuse path for that report. Do not predeclare an unexecuted exit 0, edit an immutable report or rerun Rust simply for report prose. Commit the report before task_report. The report must distinguish tested/landed implementation SHA, subsequent record SHA and any actual incremental rechecks.
+
+
+## Mechanical upstream lint repair (2026-11-03)
+
+Oracle verified the canonical --full failure on signed 8011ef8b: startup_modal.rs:107 defines cfg(test) mod tests before region() and impl App; workspace -D warnings therefore rejects items_after_test_module. You are authorized to edit ONLY this item's order in crates/bboxy450-term/src/startup_modal.rs: move the existing test module intact to the end (or place existing production items before it). Preserve every test assertion, production statement and origin notice. Do not add a lint allow, alter behavior/style/geometry, or weaken a test. No new test/model is needed for this mechanical ordering fix. If fresh main already has the equivalent signed repair, consume it instead of duplicating it.
+
+Check the affected existing test and strict lint, then resume sh scripts/land.sh --full for the genuinely changed candidate, retaining valid canonical reuse/incremental checks. This is one newly evidenced failure, not authorization for an unchanged repeat or another standalone broad make test. All ownership/boundary/formal/landing requirements and resource limits remain.
