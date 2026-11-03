@@ -243,7 +243,7 @@
     }
   ],
   "scheduling_note": "The parity signature preflight overlapped the end of the eight window-journal tests. CI refused dirty source before a full build/test began; no two Cargo builds were launched together.",
-  "decision_needed": "Published combined standalone+B1/B2 harness SHA and task gitlink scope amendment; then combined-pin integration and clean canonical gates.",
+  "decision_needed": "Published combined standalone+B1/B2 harness SHA and task gitlink scope amendment; clear the root provider_busy condition for artifact claims and any refused task report.",
   "changed_paths": [
     "Cargo.lock",
     "Cargo.toml",
@@ -302,5 +302,39 @@
     "op_id": "01M6HJHVDSVP2WXS2XX3WCA8MR",
     "status": "registered",
     "sha256": "86439fc2c84d2e5cccfc894422be68dff4ffeec5794c5d992874117ae2accbcd"
+  },
+  "artifact_claims": [
+    {
+      "op_id": "01M6HJKW8C0G3S5QZ3QCP4E28Y",
+      "status": "rejected",
+      "error": "provider_busy",
+      "effect_admitted": false
+    },
+    {
+      "op_id": "01M6HJKWDK6JQ0XP9RWGM4QTJT",
+      "status": "rejected",
+      "error": "provider_busy",
+      "effect_admitted": false
+    },
+    {
+      "op_id": "01M6HJKWDZQ5FG72GN4FGF8W4G",
+      "status": "rejected",
+      "error": "provider_busy",
+      "effect_admitted": false
+    },
+    {
+      "op_id": "01M6HJKWEFPJCD6DD3SQHXBMTX",
+      "status": "rejected",
+      "error": "provider_busy",
+      "effect_admitted": false
+    }
+  ],
+  "handoff_checks": {
+    "exit_code": 0,
+    "canonical_report_byte_identical": true,
+    "report_only_commit": "2b39c6620306a4674e35cda91753153fc7703dbe",
+    "source_equivalence_to": "e82b1784355f2158828c5387ce23409695843e7e",
+    "worktree_status": " M crates/bboxy450-harness",
+    "five_commit_signatures": "G, approved Boxy fingerprint"
   }
 }
