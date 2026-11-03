@@ -2827,6 +2827,16 @@ fn workspace_command_error(
     }
     error
 }
+/// Retry pacing for one root's failing provenance step.
+#[derive(Default)]
+struct ProvenanceBackoff {
+    next: Option<Instant>,
+    delay: Duration,
+    reason: String,
+}
+const PROVENANCE_RETRY_MIN: Duration = Duration::from_millis(500);
+const PROVENANCE_RETRY_MAX: Duration = Duration::from_secs(30);
+
 struct Worker {
     connections: Connections,
     config: LogicConfig,
@@ -2839,6 +2849,9 @@ struct Worker {
     workspaces: WorkspaceRouter,
     provenance_registered: BTreeSet<(Ulid, u64, String)>,
     provenance_bindings: BTreeMap<Ulid, (u64, u64, RootBinding)>,
+    // A failing provenance step (a record conflict needing an operator) waits
+    // before it runs again: each attempt rescans the root on this thread.
+    provenance_backoff: BTreeMap<String, ProvenanceBackoff>,
     workspace_reads: BTreeMap<String, Vec<PendingWorkspaceRead>>,
     knowledge_reads: BTreeMap<String, Arc<tokio::sync::Semaphore>>,
     knowledge_jobs: tokio::task::JoinSet<crate::knowledge::seat_reads::Completion>,
@@ -3096,6 +3109,7 @@ impl Worker {
             workspaces,
             provenance_registered: BTreeSet::new(),
             provenance_bindings: BTreeMap::new(),
+            provenance_backoff: BTreeMap::new(),
             workspace_reads: BTreeMap::new(),
             knowledge_reads: BTreeMap::new(),
             knowledge_jobs: tokio::task::JoinSet::new(),
@@ -5812,15 +5826,35 @@ impl Worker {
             if workspace.failed() {
                 continue;
             }
+            let now = Instant::now();
+            if self
+                .provenance_backoff
+                .get(&root)
+                .and_then(|backoff| backoff.next)
+                .is_some_and(|next| now < next)
+            {
+                continue;
+            }
             let changed = match workspace.step_provenance(
                 &self.bus,
                 &self.handle,
                 &self.identity,
                 active.get(&root).map_or(&[], Vec::as_slice),
             ) {
-                Ok(changed) => changed,
+                Ok(changed) => {
+                    self.provenance_backoff.remove(&root);
+                    changed
+                }
                 Err(error) => {
-                    eprintln!("ProvenancePending [{root}]: {error}");
+                    let reason = error.to_string();
+                    let backoff = self.provenance_backoff.entry(root.clone()).or_default();
+                    // Log once per distinct reason, not once per attempt.
+                    if backoff.reason != reason {
+                        eprintln!("ProvenancePending [{root}]: {reason}");
+                        backoff.reason = reason;
+                    }
+                    backoff.delay = (backoff.delay * 2).clamp(PROVENANCE_RETRY_MIN, PROVENANCE_RETRY_MAX);
+                    backoff.next = Some(now + backoff.delay);
                     false
                 }
             };

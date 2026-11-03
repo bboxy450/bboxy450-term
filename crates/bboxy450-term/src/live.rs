@@ -791,6 +791,9 @@ fn discard_uncertain_actions(outgoing: &mut VecDeque<GuiAction>) {
 }
 
 const CONTROL_RETRY: Duration = Duration::from_millis(100);
+/// Pause before attaching events again while logic still holds the drain of a
+/// connection it has not yet seen die.
+const ATTACH_RETRY: Duration = Duration::from_millis(500);
 
 struct DesiredPane {
     view: Option<View>,
@@ -1152,6 +1155,7 @@ async fn run_with_control(
         &updates,
     )?;
     let mut lost = false;
+    let mut attach_retry: Option<Instant> = None;
     let mut retained = VecDeque::new();
     let mut controls = PaneControls::default();
     let mut history = History::default();
@@ -1297,11 +1301,16 @@ async fn run_with_control(
             current.e2e_scope = knowledge_watch.scope();
             updates.publish(model.clone());
         }
+        if attach_retry.is_some_and(|at| Instant::now() >= at) && !lost {
+            attach_retry = None;
+            attach_events(&mut model, &mut outgoing);
+        }
         let retry_at = controls
             .deadline(&grids, &outgoing)
             .into_iter()
             .chain(history.deadline())
             .chain(knowledge_watch.deadline())
+            .chain(attach_retry)
             .min();
         let writer_ready = session.writer_ready();
         let result:Result<()>=async {
@@ -1751,7 +1760,12 @@ async fn run_with_control(
                                 history_refused(&mut model,seat,&reason);
                                 publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                             }
-                            if event_model(&mut model).attach_result(op,Some(&reason)) {updates.publish(model.clone());}
+                            if event_model(&mut model).attach_result(op,Some(&reason)) {
+                                updates.publish(model.clone());
+                                // A reattach can race logic's release of the dead
+                                // connection's drain: retry until that lease ends.
+                                if reason.starts_with("GuiConsumerAttached:") {attach_retry=Some(Instant::now()+ATTACH_RETRY);}
+                            }
                             controls.refused(&reason,Instant::now());
                              if Arc::make_mut(&mut model).spawn_rejected(op,reason.clone()) {
                                  publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
