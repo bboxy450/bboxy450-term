@@ -1,6 +1,16 @@
 # Independent expectations and frontend ownership; omitted corpus members fail the gate.
 
 [[model]]
+name = "CodexMcpReadiness"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenCodexMcpReadiness"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "EventLogCheckpoint"
 expected = "pass"
 frontend = "project"
