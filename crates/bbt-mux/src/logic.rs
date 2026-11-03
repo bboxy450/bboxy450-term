@@ -25,6 +25,9 @@ mod native_reopen_tests;
 #[path = "logic/ring_batch_tests.rs"]
 mod ring_batch_tests;
 
+#[cfg(test)]
+mod hol_tests;
+
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::{
