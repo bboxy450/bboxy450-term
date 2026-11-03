@@ -231,6 +231,21 @@ Operator: "output can be tighter and tidier, too noisy right now". This applies 
   end ok), tools and edits. No rounds count. The failed receipt keeps its red rule, reason and actions.
 - **Rhythm:** feed gap 8.
 
+## What never reaches the transcript
+
+Operator, 2026-11-03, on a screenful of "SYSTEM Native · agent_message_chunk · 129 bytes" cards: "this is very verbose".
+
+- **Native records** (`Item::Native`, the raw protocol edge records the log keeps for fidelity) never draw. They feed the log
+  and its tools only. The text they carry already arrives as agent message, reasoning and tool items.
+- **Usage** draws nothing in the feed (see Refinement pass 2).
+- **No generic fallback card.** The role-labelled StreamDock card (`SYSTEM` / `TOOL` + kind + status) is not part of this face.
+  Every kind the face does not style draws as one quiet notice line (6px dot, 11.5 `fg-dim`):
+  - Command and Hook: `Ran /name`, `Hook name`;
+  - SystemMessage: its text;
+  - Compaction: a hairline divider reading `Context compacted`;
+  - anything unknown: `Unsupported item: <tag>`.
+- **Witness:** replaying a log that holds N native chunk records draws the same rows as the same log with them removed.
+
 ## Standalone window (`standalone-window`)
 
 The standalone app is the term's window, not an OS window.
