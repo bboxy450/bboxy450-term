@@ -25,7 +25,12 @@ pub(crate) fn handles(name: &str) -> bool {
     mutation(name)
         || matches!(
             name,
-            "screen_read" | "history_read" | "layout_read" | "harness_profiles" | "ctl"
+            "screen_read"
+                | "history_read"
+                | "layout_read"
+                | "harness_profiles"
+                | "usage_read"
+                | "ctl"
         )
 }
 pub(crate) fn mutation(name: &str) -> bool {
@@ -59,6 +64,12 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
             vec![],
         ),
         (
+            "usage_read",
+            "Read the resources available now: this machine's CPU, memory and disk percent, and each signed-in AI account's usage (Claude, Codex, ...): percent used of every limit window, pace by reset and reset time (unix seconds). This is the window's usage strip as last sampled; age_seconds says how fresh it is.",
+            json!({}),
+            vec![],
+        ),
+        (
             "harness_profiles",
             "List bboxy450-harness profiles on this machine (~/.bboxy450-harness/profiles): name, kind (model or acp-agent), model, agent command and the names of agent environment variables, plus the default profile. Never keys or environment values. Spawn a harness seat on one with seat_spawn harness_profile; switch a live harness seat by sending `/profile NAME` with seat_input_text.",
             json!({}),
@@ -79,7 +90,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
         ]);
     }
     defs.into_iter().map(|(name,description,mut properties,mut required)| {
-        if !matches!(name,"seat_spawn" | "layout_read" | "harness_profiles") {
+        if !matches!(name,"seat_spawn" | "layout_read" | "harness_profiles" | "usage_read") {
             properties["seat_id"]=id.clone();properties["expected_process_generation"]=revision.clone();
             required.extend(["seat_id","expected_process_generation"]);
         }
@@ -103,6 +114,7 @@ const CTL_COMMANDS: &[&str] = &[
     "screen_read",
     "history_read",
     "harness_profiles",
+    "usage_read",
     "seat_spawn",
     "seat_split",
     "seat_focus",
@@ -242,6 +254,7 @@ struct Interrupt {
 
 pub(crate) enum Request {
     HarnessProfiles,
+    Usage,
     Layout {
         swarm: Ulid,
         after: Option<Ulid>,
@@ -290,7 +303,7 @@ impl Request {
             | Self::Mute { target, .. }
             | Self::Interrupt { target, .. } => Some(*target),
             Self::Spawn(args) => args.target(),
-            Self::Layout { .. } | Self::HarnessProfiles => None,
+            Self::Layout { .. } | Self::HarnessProfiles | Self::Usage => None,
         }
     }
     pub fn is_read(&self) -> bool {
@@ -300,6 +313,7 @@ impl Request {
                 | Self::Screen { .. }
                 | Self::History { .. }
                 | Self::HarnessProfiles
+                | Self::Usage
         )
     }
 }
@@ -331,6 +345,10 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Request, String> {
         "harness_profiles" => {
             tools::parse::<tools::Empty>(&call.args)?;
             Request::HarnessProfiles
+        }
+        "usage_read" => {
+            tools::parse::<tools::Empty>(&call.args)?;
+            Request::Usage
         }
         "seat_input_text" => {
             let a: Input = tools::parse(&call.args)?;

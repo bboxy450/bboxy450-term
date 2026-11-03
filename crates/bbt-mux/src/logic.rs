@@ -4848,6 +4848,7 @@ impl Worker {
         use serde_json::json;
         match request {
             Request::HarnessProfiles => harness_profiles(),
+            Request::Usage => usage_snapshot(&self.config.run_dir),
             Request::Layout {
                 swarm,
                 after,
@@ -12332,6 +12333,61 @@ fn harness_profile_dir() -> Result<PathBuf> {
 }
 /// The machine-global harness profiles, frontmatter fields only: never a key, an
 /// `api_key` command or an environment value.
+/// MCP `usage_read`: the window's last usage sample (run/usage.json, written by
+/// its usage poller), with its age. Absent until the window has sampled once.
+fn usage_snapshot(run_dir: &std::path::Path) -> std::result::Result<serde_json::Value, String> {
+    let path = run_dir.join("usage.json");
+    let bytes = match std::fs::read(&path) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(serde_json::json!({
+                "available": false,
+                "reason": "the window has not sampled usage yet (headless or test account)",
+            }));
+        }
+        Err(error) => return Err(format!("usage snapshot unreadable: {error}")),
+    };
+    let mut value: serde_json::Value =
+        serde_json::from_slice(&bytes).map_err(|e| format!("usage snapshot invalid: {e}"))?;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64);
+    let age = value["sampled_at"].as_i64().map(|at| now.saturating_sub(at));
+    value["available"] = serde_json::json!(true);
+    value["age_seconds"] = serde_json::json!(age);
+    Ok(value)
+}
+#[cfg(test)]
+mod usage_snapshot_tests {
+    #[test]
+    fn usage_read_reports_absence_then_the_window_snapshot_with_its_age() {
+        let dir = tempfile::tempdir().unwrap();
+        let missing = super::usage_snapshot(dir.path()).unwrap();
+        assert_eq!(missing["available"], false);
+        let sampled = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64
+            - 7;
+        std::fs::write(
+            dir.path().join("usage.json"),
+            serde_json::to_vec(&serde_json::json!({
+                "sampled_at": sampled,
+                "machine": {"cpu": 48, "memory": 64, "disk": 95, "reason": null},
+                "providers": {"claude": {"used": 96, "windows": [{"label": "Weekly", "used": 96, "resets_at": 1}]}},
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let read = super::usage_snapshot(dir.path()).unwrap();
+        assert_eq!(read["available"], true);
+        assert_eq!(read["machine"]["disk"], 95);
+        assert_eq!(read["providers"]["claude"]["used"], 96);
+        assert!((7..=9).contains(&read["age_seconds"].as_i64().unwrap()));
+        std::fs::write(dir.path().join("usage.json"), b"not json").unwrap();
+        assert!(super::usage_snapshot(dir.path()).is_err());
+    }
+}
 fn harness_profiles() -> std::result::Result<serde_json::Value, String> {
     use serde_json::{Value, json};
     let dir = harness_profile_dir().map_err(|e| e.to_string())?;
