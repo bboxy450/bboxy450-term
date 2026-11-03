@@ -129,6 +129,225 @@ fn on_shape(shape: Shape, r: &Rect, p: Point) -> bool {
     }
 }
 
+/// Open-rectangle segment clipping: endpoint/border contact is allowed, but
+/// any positive-length interval in a node's interior is an intersection.
+fn path_intersects_node(points: &[Point], r: Rect) -> bool {
+    points.windows(2).any(|pair| {
+        let (a, b) = (pair[0], pair[1]);
+        let (mut enter, mut leave) = (0.0_f32, 1.0_f32);
+        for (start, delta, lo, hi) in [
+            (a.x, b.x - a.x, r.x, r.right()),
+            (a.y, b.y - a.y, r.y, r.bottom()),
+        ] {
+            if delta == 0.0 {
+                if start <= lo || start >= hi {
+                    return false;
+                }
+            } else {
+                let (t0, t1) = ((lo - start) / delta, (hi - start) / delta);
+                enter = enter.max(t0.min(t1));
+                leave = leave.min(t0.max(t1));
+            }
+        }
+        enter < leave
+    })
+}
+
+// keeps: harness-spec §Refinement pass 2 — 30px message pitch and 4px label gap
+#[test]
+fn sequence_message_pitch_labels_and_participant_heads_match_refinement() {
+    let g = geo(include_str!("fixtures/bboxy/c1-live-seats-2.mmd"));
+    assert_eq!(g.edges.len(), 9, "exercise regular and self messages");
+    for pair in g.edges.windows(2) {
+        assert_eq!(pair[1].points[0].y - pair[0].points[0].y, 30.0);
+    }
+    for edge in &g.edges {
+        assert_eq!(
+            edge.points[0].y - edge.label.as_ref().unwrap().rect.bottom(),
+            4.0
+        );
+    }
+    for node in &g.nodes {
+        assert_eq!(node.rect.h, 30.0);
+    }
+}
+
+// keeps: harness-spec §Refinement pass 2 — measurement never expands the message pitch
+#[test]
+fn sequence_multiline_labels_keep_the_fixed_message_pitch() {
+    let g = geo("sequenceDiagram\n A->>B: first\n B->>A: two<br/>lines\n A->>B: last");
+    assert_eq!(g.edges[1].label.as_ref().unwrap().rect.h, 32.0);
+    for pair in g.edges.windows(2) {
+        assert_eq!(pair[1].points[0].y - pair[0].points[0].y, 30.0);
+    }
+    for edge in &g.edges {
+        assert_eq!(
+            edge.points[0].y - edge.label.as_ref().unwrap().rect.bottom(),
+            4.0
+        );
+    }
+}
+
+// keeps: harness-spec §Refinement pass 2 — labels remain 4px above every message
+#[test]
+fn sequence_fixture_labels_stay_above_arrows_in_frames_notes_and_activations() {
+    let mut count = 0;
+    for (name, _, g) in rendered()
+        .iter()
+        .filter(|(_, _, g)| g.kind == Kind::Sequence)
+    {
+        for edge in &g.edges {
+            let gap = edge.points[0].y - edge.label.as_ref().unwrap().rect.bottom();
+            assert!((gap - 4.0).abs() < 0.0001, "{name}: label gap {gap}");
+            count += 1;
+        }
+    }
+    assert!(count >= 30, "retain the real sequence corpus");
+}
+
+// keeps: harness-spec §Refinement pass 2 — back edges avoid every node rectangle
+#[test]
+fn flowchart_back_edges_use_an_exterior_lane_in_every_direction() {
+    for dir in ["TD", "BT", "LR", "RL"] {
+        for scope in [false, true] {
+            let body = "A[begin] --> B[wide intervening node]\n B --> C[middle]\n C --> D[end]\n D -->|retry| A\n D -.->|again| B";
+            let source = if scope {
+                format!("flowchart {dir}\n subgraph S[cycle]\n {body}\n end\n X --> A")
+            } else {
+                format!("flowchart {dir}\n {body}")
+            };
+            let g = geo(&source);
+            for edge in g.edges.iter().filter(|e| e.from == "D") {
+                for node in &g.nodes {
+                    assert!(
+                        !path_intersects_node(&edge.points, node.rect),
+                        "{dir}, scope={scope}: {}->{} crosses {}: {:?}",
+                        edge.from,
+                        edge.to,
+                        node.id,
+                        edge.points
+                    );
+                }
+                let lane = edge
+                    .points
+                    .windows(2)
+                    .find(|pair| {
+                        pair[0] != pair[1]
+                            && pair.iter().all(|p| {
+                                g.nodes.iter().all(|n| match dir {
+                                    "LR" | "RL" => p.y > n.rect.bottom(),
+                                    _ => p.x > n.rect.right(),
+                                })
+                            })
+                    })
+                    .expect("back edge has a lane outside the node envelope");
+                let label = edge.label.as_ref().unwrap().rect.center();
+                assert_eq!(
+                    label,
+                    Point {
+                        x: (lane[0].x + lane[1].x) / 2.0,
+                        y: (lane[0].y + lane[1].y) / 2.0,
+                    }
+                );
+            }
+        }
+    }
+}
+
+// keeps: harness-spec §Refinement pass 2 — straight-through broken control is rejected
+#[test]
+fn back_edge_intersection_check_rejects_a_straight_through_control() {
+    let g = geo(
+        "flowchart TD\n A --> B[an intentionally wide intervening node]\n B --> C\n C --> D\n D --> A",
+    );
+    let edge = g.edges.iter().find(|e| e.from == "D").unwrap();
+    let from = g.nodes.iter().find(|n| n.id == "D").unwrap().rect;
+    let to = g.nodes.iter().find(|n| n.id == "A").unwrap().rect;
+    let straight = [
+        Point {
+            x: from.center().x,
+            y: from.y,
+        },
+        Point {
+            x: to.center().x,
+            y: to.bottom(),
+        },
+    ];
+    let obstacle = g.nodes.iter().find(|n| n.id == "B").unwrap().rect;
+    assert!(
+        path_intersects_node(&straight, obstacle),
+        "broken routing must fail the same oracle"
+    );
+    assert!(!path_intersects_node(&edge.points, obstacle));
+    assert!(
+        !path_intersects_node(
+            &[
+                Point {
+                    x: obstacle.x,
+                    y: obstacle.y
+                },
+                Point {
+                    x: obstacle.right(),
+                    y: obstacle.y
+                },
+            ],
+            obstacle
+        ),
+        "border contact is allowed"
+    );
+}
+
+// keeps: harness-spec §Refinement pass 2 — real flowchart back edges avoid node boxes
+#[test]
+fn flowchart_fixture_back_edges_do_not_intersect_node_rectangles() {
+    use bbt_mermaid::{Diagram, Dir};
+    let mut count = 0;
+    for (name, source, g) in rendered() {
+        let Diagram::Flowchart(flow) = parse(source).unwrap() else {
+            continue;
+        };
+        let center = |id: &str| {
+            g.nodes
+                .iter()
+                .find(|n| n.id == id)
+                .map(|n| n.rect.center())
+                .or_else(|| {
+                    g.clusters
+                        .iter()
+                        .find(|c| c.id == id)
+                        .map(|c| c.rect.center())
+                })
+                .unwrap()
+        };
+        for edge in &g.edges {
+            let (from, to) = (center(&edge.from), center(&edge.to));
+            let forward = match flow.dir {
+                Dir::TB => to.y - from.y,
+                Dir::BT => from.y - to.y,
+                Dir::LR => to.x - from.x,
+                Dir::RL => from.x - to.x,
+            };
+            if forward >= 0.0 {
+                continue;
+            }
+            for node in &g.nodes {
+                assert!(
+                    !path_intersects_node(&edge.points, node.rect),
+                    "{name}: {}->{} crosses {} {:?}: {:?}",
+                    edge.from,
+                    edge.to,
+                    node.id,
+                    node.rect,
+                    edge.points
+                );
+            }
+            count += 1;
+        }
+    }
+    assert!(count > 0, "retain actual back edges in the fixture corpus");
+    println!("{count} real flowchart back edges avoid every node rectangle");
+}
+
 // keeps: spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout
 #[test]
 fn fixture_counts() {

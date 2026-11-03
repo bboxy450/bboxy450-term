@@ -72,6 +72,45 @@ fn paths(l: &c::Layout) -> Vec<Prim> {
     out
 }
 
+// keeps: harness-spec §Refinement pass 2 — UI font geometry and retained label placement
+#[test]
+fn sequence_refinement_uses_exact_message_rhythm_with_native_fonts() {
+    let doc = bbt_doc::parse(include_str!("fixtures/lab/sequence.md"));
+    let bbt_doc::BlockKind::Code { text, .. } = &doc.blocks[0].kind else {
+        panic!("sequence fixture");
+    };
+    let g = mermaid::geometry(text, ctx(), &Fonts).unwrap();
+    assert_eq!(g.edges.len(), 6);
+    for i in [0, 1, 3, 4] {
+        assert_eq!(g.edges[i + 1].points[0].y - g.edges[i].points[0].y, 30.0);
+    }
+    for node in g
+        .nodes
+        .iter()
+        .filter(|n| n.shape == bbt_mermaid::Shape::Participant)
+    {
+        assert_eq!(node.rect.h, 30.0);
+    }
+    let layout = mermaid::canvas(&g, ctx(), &Fonts)
+        .layout(Rect::new(0., 0., g.size.w, g.size.h), ctx(), &Fonts)
+        .unwrap();
+    fn named<'a>(layout: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
+        if matches!(&layout.kind, c::LayoutKind::Named(k) if k == key) {
+            Some(layout)
+        } else {
+            layout.children.iter().find_map(|child| named(child, key))
+        }
+    }
+    for (i, edge) in g.edges.iter().enumerate() {
+        let label = edge.label.as_ref().unwrap().rect;
+        assert!((edge.points[0].y - label.bottom() - 4.0).abs() < 0.0001);
+        let retained = named(&layout, &format!("edge/{i}/label")).unwrap().rect;
+        assert!((retained.x - label.x).abs() < 0.0001);
+        assert!((retained.y - label.y).abs() < 0.0001);
+        assert_eq!([retained.w, retained.h], [label.w, label.h]);
+    }
+}
+
 // keeps: spec document-viewer §Mermaid — native geometry, source fallback and lab fixtures
 #[test]
 fn geometry_uses_ui_fonts_and_true_size_and_retains_document_link_targets() {
