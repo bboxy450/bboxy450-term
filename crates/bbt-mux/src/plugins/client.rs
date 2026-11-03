@@ -114,8 +114,7 @@ impl Client {
             .get_envs()
             .filter_map(|(name, value)| value.map(|_| name.to_string_lossy().into_owned()))
             .collect();
-        let mut child = command
-            .spawn()
+        let mut child = bbt_rt::qos::with_default_qos(|| command.spawn())
             .map_err(|e| failure("plugin_spawn_failed", e))?;
         let pid = child.id().expect("new child has a PID");
         let input = child.stdin.take();

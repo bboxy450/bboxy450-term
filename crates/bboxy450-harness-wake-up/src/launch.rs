@@ -833,6 +833,32 @@ fn serve_shared_codex(args: &[String]) -> Result<()> {
     ))
 }
 
+/// Spawn at default QoS class. A macOS process inherits its spawning thread's
+/// class; the shared Codex daemon runs every seat's tools and builds, which
+/// must not inherit the interactive class of the terminal path (bbt-rt::qos).
+fn default_qos_spawn(command: &mut std::process::Command) -> std::io::Result<std::process::Child> {
+    #[cfg(target_os = "macos")]
+    {
+        let mut class = libc::qos_class_t::QOS_CLASS_UNSPECIFIED;
+        let mut relative = 0;
+        // SAFETY: valid out-pointers; touches only the calling thread's QoS.
+        unsafe {
+            libc::pthread_get_qos_class_np(libc::pthread_self(), &mut class, &mut relative);
+            libc::pthread_set_qos_class_self_np(libc::qos_class_t::QOS_CLASS_DEFAULT, 0);
+        }
+        let child = command.spawn();
+        if class as u32 != libc::qos_class_t::QOS_CLASS_UNSPECIFIED as u32 {
+            // SAFETY: as above.
+            unsafe {
+                libc::pthread_set_qos_class_self_np(class, relative);
+            }
+        }
+        child
+    }
+    #[cfg(not(target_os = "macos"))]
+    command.spawn()
+}
+
 pub(super) fn ensure_codex_daemon(endpoint: &Path, program: &str) -> Result<()> {
     use std::process::{Command, Stdio};
     use std::time::{Duration, Instant};
@@ -853,7 +879,7 @@ pub(super) fn ensure_codex_daemon(endpoint: &Path, program: &str) -> Result<()> 
     for key in parent_session_env() {
         start.env_remove(key);
     }
-    let mut child = start.spawn()?;
+    let mut child = default_qos_spawn(&mut start)?;
     let deadline = Instant::now() + Duration::from_secs(30);
     loop {
         if let Some(status) = child.try_wait()? {

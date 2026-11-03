@@ -871,6 +871,8 @@ impl Supervisor {
         let thread = thread::Builder::new()
             .name("bbt-supervisor".into())
             .spawn(move || {
+                // This thread reads every PTY: it must outrank a parallel build.
+                bbt_rt::qos::interactive_thread();
                 let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| actor.run()));
                 match result {
                     Ok(result) => {
@@ -2427,9 +2429,8 @@ impl Seat {
             // after overrides, without embedding program-specific policy.
             environment::scrub_pty(&mut command);
         }
-        let child = pair
-            .slave
-            .spawn_command(command)
+        // The actor thread is interactive; the seat and its builds are not.
+        let child = bbt_rt::qos::with_default_qos(|| pair.slave.spawn_command(command))
             .map_err(|error| spawn_error(&spec, "spawn_command", tty.as_deref(), error))?;
         drop(pair.slave);
         let pid = child

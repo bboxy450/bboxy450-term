@@ -221,8 +221,7 @@ impl SetupJob {
             .stdout(Stdio::piped())
             .stderr(Stdio::null())
             .process_group(0);
-        let mut child = command
-            .spawn()
+        let mut child = bbt_rt::qos::with_default_qos(|| command.spawn())
             .map_err(|e| failure("setup_spawn_failed", e))?;
         self.pids.push(child.id());
         let mut stdout = child.stdout.take().expect("piped stdout");
@@ -284,8 +283,7 @@ impl SetupJob {
                 Ok(())
             });
         }
-        let mut child = command
-            .spawn()
+        let mut child = bbt_rt::qos::with_default_qos(|| command.spawn())
             .map_err(|e| failure("setup_spawn_failed", e))?;
         drop(command);
         drop(slave);

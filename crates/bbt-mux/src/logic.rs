@@ -2157,6 +2157,8 @@ impl Logic {
         let thread = std::thread::Builder::new()
             .name("bbt-logic".into())
             .spawn(move || {
+                // This thread parses terminal output into frames.
+                bbt_rt::qos::interactive_thread();
                 // Keep the receiver until the exit cause is published. A
                 // blocked caller must not observe channel closure first.
                 let mut rx = rx;
