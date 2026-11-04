@@ -24,7 +24,8 @@ env = dict(os.environ, TARGET_DIR=str(TARGET), RUSTC_WRAPPER='', CARGO_PROFILE_D
 
 def hashes():
     paths = [ROOT / p for p in ['Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'Makefile', 'ATTRIBUTION.md', 'scripts/verify-harness-onboarding.py']]
-    paths += [PRODUCER / p for p in ['Cargo.toml', 'Cargo.lock', 'Makefile', 'ATTRIBUTION.md', 'src/lib.rs', 'src/onboarding.rs', 'src/process.rs', 'tests/harness_onboarding.rs', 'tests/formal_models.rs', 'tests/formal/models.rs', 'tests/formal/export.rs', 'verification/contracts.toml', 'verification/corpus.toml', 'verification/coverage.toml', 'verification/tools.lock.json', 'scripts/formal.py', 'scripts/verify-harness-onboarding.py']]
+    paths += [PRODUCER / p for p in ['Cargo.toml', 'Cargo.lock', 'Makefile', 'ATTRIBUTION.md', 'src/lib.rs', 'src/main.rs', 'src/onboarding.rs', 'src/process.rs', 'tests/harness_onboarding.rs', 'tests/support/onboarding_startup.rs', 'tests/formal_models.rs', 'tests/formal/models.rs', 'tests/formal/export.rs', 'verification/contracts.toml', 'verification/corpus.toml', 'verification/coverage.toml', 'verification/tools.lock.json', 'scripts/formal.py', 'scripts/verify-harness-onboarding.py']]
+    paths += [ROOT / 'crates/bboxy450-term-desktop-core/src/lib.rs']
     paths += list((PRODUCER / 'src/frontends/gui').glob('*.rs'))
     paths += list((ROOT / 'crates').glob('*/ATTRIBUTION.md')) + list((ROOT / 'plugins').glob('*/ATTRIBUTION.md'))
     paths += list((ROOT / 'crates/bboxy450-term/src').glob('rich_*.rs'))
@@ -35,6 +36,7 @@ initial = hashes()
 commands = []
 for name, command in [
     ('producer', ['python3', '-I', str(PRODUCER / 'scripts/verify-harness-onboarding.py')]),
+    ('shared-menu-semantics', ['cargo', 'nextest', 'run', '--offline', '--locked', '--jobs', '2', '--target-dir', str(TARGET), '-p', 'bboxy450-term-desktop-core', '--lib']),
     ('strict-consumer', ['cargo', 'clippy', '--offline', '--locked', '--jobs', '2', '--target-dir', str(TARGET), '-p', 'bboxy450-term', '--lib', '--bin', 'bboxy450-term', '--no-deps', '--', '-D', 'warnings']),
     ('parent-license-copies-and-source-notices', ['make', 'check-licenses']),
 ]:
