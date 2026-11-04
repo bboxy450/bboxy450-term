@@ -53,9 +53,16 @@ pub(crate) fn validate(path: &str, kind: &str) -> d::Result<()> {
                     .is_some_and(|stem| prefix.strip_suffix("ies") == Some(stem))))
     });
     if !typed {
+        let types = super::types::DOCUMENT_TYPES
+            .iter()
+            .map(|entry| format!("{}: {}", entry.kind, entry.path))
+            .collect::<Vec<_>>()
+            .join("; ");
         return Err(d::CommandError::new(
             "document_type_prefix_required",
-            "Use a document-type prefix, such as tasks/<slug>.md, specs/<slug>.md or research/<slug>.md.",
+            format!(
+                "Use a document-type directory before the slug. Built-in types and paths: {types}. Call knowledge_types for purposes and writing guidance."
+            ),
         ));
     }
     Ok(())

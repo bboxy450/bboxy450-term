@@ -99,7 +99,8 @@ pub fn read_frame(reader: &mut impl BufRead) -> io::Result<Option<Vec<u8>>> {
 }
 
 fn rpc_error(id: Value, code: i64, message: &str) -> Value {
-    json!({"jsonrpc":"2.0","id":id,"error":{"code":code,"message":message}})
+    json!({"jsonrpc":"2.0","id":id,"error":{"code":code,"message":message,
+        "data":{"hints":super::hints::protocol(code, message)}}})
 }
 
 /// The bridge does no role or tool dispatch. Its sole authority is the socket's
@@ -280,7 +281,7 @@ impl Bridge {
                     "capabilities":{"tools":{"listChanged":false},"resources":{"listChanged":false,"subscribe":false}},
                     "serverInfo":{"name":"bboxy450","version":env!("CARGO_PKG_VERSION")},
                     // Decision #260: a curious agent finding the binary in PATH is the common case.
-                    "instructions":"These tools are your interface to bboxy450-term. Call orient first and use your role-filtered tools. Call knowledge_types for document purposes, paths and writing guidance. Discover canonical workflow and current provider guidance with skill_list and skill_read, or MCP resources. Reading guidance grants no authority. Oracle orchestration uses seat_spawn, seat_split, seat_focus or the MCP ctl tool. The shell command `bboxy450-term ctl` is the operator's door and refuses seats."}),
+                    "instructions":"These tools are your interface to bboxy450-term. Call orient first and use your role-filtered tools. Tool responses include a hints graph: concrete useful next MCP requests; errors show corrective calls. Hints never execute actions or grant authority. Call knowledge_types for document purposes, paths and writing guidance. Discover canonical workflow and current provider guidance with skill_list and skill_read, or MCP resources. Reading guidance grants no authority. Oracle orchestration uses seat_spawn, seat_split, seat_focus or the MCP ctl tool. The shell command `bboxy450-term ctl` is the operator's door and refuses seats."}),
                 )
             }
             "ping" => Ok(json!({})),
@@ -406,8 +407,11 @@ impl Bridge {
                     return Some(rpc_error(id, -32602, "Invalid control call"));
                 }
                 let attribution = self.attribution.clone();
-                match self.forward(Action::Call { call, attribution }) {
-                    Ok(result) => Ok(result),
+                match self.forward(Action::Call {
+                    call: call.clone(),
+                    attribution,
+                }) {
+                    Ok(result) => Ok(super::hints::attach(&call, result)),
                     Err(error) => {
                         let mut response = rpc_error(
                             id,
@@ -415,7 +419,7 @@ impl Bridge {
                             "Seat control transport unavailable; retain this operation ID before retry",
                         );
                         response["error"]["data"] = json!({"op_id":op_id,"status":"unknown",
-                            "transport":error.diagnostic()});
+                            "transport":error.diagnostic(),"hints":super::hints::recovery(op_id)});
                         return Some(response);
                     }
                 }
@@ -430,7 +434,7 @@ impl Bridge {
                     -32001,
                     "Seat control transport unavailable; query the original operation before retry",
                 );
-                response["error"]["data"] = json!({"transport":error.diagnostic()});
+                response["error"]["data"]["transport"] = error.diagnostic();
                 response
             }
         })

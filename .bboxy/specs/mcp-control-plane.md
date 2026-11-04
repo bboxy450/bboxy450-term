@@ -4,7 +4,7 @@ type: "spec"
 number: 87
 title: "MCP control plane — the Oracle's hands"
 created: "2026-10-21T20:04:14Z"
-updated: "2026-10-24T09:49:31Z"
+updated: "2026-11-04T20:40:00Z"
 ---
 # MCP control plane — the Oracle's hands
 
@@ -13,6 +13,28 @@ updated: "2026-10-24T09:49:31Z"
 [[vision]] · [[messaging]] · [[mux-daemon]] · [[harness-adapters]] · [[harness-touchpoints-exec]] · [[subagent-detection]]
 
 ## Boundary and transport
+
+### MCP hint graph
+
+Every tool is a node in a discoverable workflow. Successful calls suggest useful
+next calls; refusals explain how to proceed with a concrete corrective MCP request.
+Each hint contains `reason`, `method` and `params`, so a harness can use the shown
+call shape directly. The bridge returns hints as a visible text content block and
+under `_meta["bboxy450/hints"]`, preserving the tool's structured output, schema
+and signed receipt. Hints are bounded by the response frame and may be omitted
+when a result leaves insufficient room.
+
+Hints suggest reads permitted to both worker and Oracle roles. They do not execute
+actions or grant authority. Argument errors lead to `tools/list` for the caller's
+actual schemas. A missing document prefix lists every built-in type and its path,
+then points to `knowledge_types`; the dictionary leads to `knowledge_search`,
+search results to `knowledge_fetch`, and successful writes to a readback. Unknown
+mutation outcomes lead to `operation_status` with the original operation ID,
+preserving uncertainty rather than suggesting a repeated effect.
+
+`crates/bbt-mux/src/mcp/hints.rs` owns the shared graph and fallback edges for all
+tools, including plugins. New tools should add a useful next edge there. Check
+graph targets against role-filtered schemas and run `make test-mcp-hints`.
 
 Mux logic owns one logical control service and the per-seat socket/event bus specified in [[mux-daemon]] “Seat sockets and event bus”. Each harness launches a small **seat-bound stdio MCP bridge**, a private entry point in the same shipped executable. The bridge is a client of that bus: it forwards authenticated, bounded requests through the same broker, consumes the same snapshots/events and returns the same operation receipts. It owns neither PTYs nor signing keys. Logic restart can interrupt a call without terminating the harness or creating a replacement seat.
 

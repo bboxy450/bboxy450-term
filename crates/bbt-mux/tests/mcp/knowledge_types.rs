@@ -8,6 +8,87 @@
 use super::*;
 
 #[test]
+fn mcp_hint_graph_prefix_refusal_lists_types_and_leads_to_the_dictionary() {
+    let f = Fixture::new();
+    let mut bridge = f.bridge(f.own.id);
+    initialize(&mut bridge);
+    let rejected = rpc(
+        &mut bridge,
+        2,
+        "tools/call",
+        json!({"name":"knowledge_write","arguments":knowledge_record_args("missing-prefix.md", "note", "keep this unwritten")}),
+    );
+    let result = &rejected["result"];
+    assert_eq!(result["isError"], true);
+    let message = result["structuredContent"]["error"]["message"]
+        .as_str()
+        .unwrap();
+    assert!(message.contains("document_type_prefix_required"));
+    for entry in bbt_mux::knowledge::types::DOCUMENT_TYPES {
+        assert!(
+            message.contains(&format!("{}: {}", entry.kind, entry.path)),
+            "missing {}: {message}",
+            entry.kind
+        );
+    }
+    assert!(
+        !f.config
+            .repository
+            .join(".bboxy/missing-prefix.md")
+            .exists()
+    );
+    let hint = &result["_meta"]["bboxy450/hints"][0];
+    assert_eq!(hint["params"]["name"], "knowledge_types");
+    let dictionary = rpc(
+        &mut bridge,
+        3,
+        hint["method"].as_str().unwrap(),
+        hint["params"].clone(),
+    );
+    assert_eq!(dictionary["result"]["isError"], false);
+    assert_eq!(
+        dictionary["result"]["structuredContent"]["types"]
+            .as_array()
+            .unwrap()
+            .len(),
+        16
+    );
+    assert_eq!(
+        dictionary["result"]["_meta"]["bboxy450/hints"][0]["params"]["name"],
+        "knowledge_search"
+    );
+}
+
+#[test]
+fn mcp_hint_graph_argument_errors_show_a_valid_schema_discovery_call() {
+    let f = Fixture::new();
+    let mut bridge = f.bridge(f.own.id);
+    initialize(&mut bridge);
+    let response = rpc(
+        &mut bridge,
+        2,
+        "tools/call",
+        json!({"name":"knowledge_types","arguments":{"type":42}}),
+    );
+    assert_eq!(response["result"]["isError"], true);
+    let hint = &response["result"]["_meta"]["bboxy450/hints"][0];
+    assert_eq!(hint["method"], "tools/list");
+    let catalogue = rpc(
+        &mut bridge,
+        3,
+        hint["method"].as_str().unwrap(),
+        hint["params"].clone(),
+    );
+    assert!(
+        catalogue["result"]["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|tool| tool["name"] == "knowledge_types")
+    );
+}
+
+#[test]
 fn mcp_knowledge_types_are_discoverable_and_readable_by_workers_and_oracles() {
     let f = Fixture::new();
     for seat in [f.own.id, f.oracle.id] {

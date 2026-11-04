@@ -9,6 +9,7 @@
 pub(crate) mod attention;
 pub mod bridge;
 pub(crate) mod diagnostics;
+pub(crate) mod hints;
 pub(crate) mod journal;
 pub(crate) mod knowledge;
 pub(crate) mod messaging;
@@ -123,7 +124,10 @@ impl Actor {
     pub(crate) fn same_authority(&self, other: &Self) -> bool {
         match (self, other) {
             (Self::Operator { device_id: a, .. }, Self::Operator { device_id: b, .. }) => a == b,
-            (Self::OperatorLocal { reference: a, .. }, Self::OperatorLocal { reference: b, .. }) => a == b,
+            (
+                Self::OperatorLocal { reference: a, .. },
+                Self::OperatorLocal { reference: b, .. },
+            ) => a == b,
             _ => self == other,
         }
     }
