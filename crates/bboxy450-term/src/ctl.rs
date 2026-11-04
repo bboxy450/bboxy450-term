@@ -63,7 +63,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   seat ls
   seat attention <seat>                  read policy, defaults and pending digest summary
   seat attention <seat> <direct|destination> <conversation|event> <wake|inbox|digest|default>
-  seat spawn <claude|codex|zsh> [--place right|down|tab|space] [--role oracle|architect|creativity|executor|shell|solo]
+  seat spawn <claude|codex|zsh> [--place right|down|tab|space] [--role oracle|architect|creativity|researcher|executor|shell|solo]
              [--name NAME] [--cwd DIR] [--swarm ID] [--resume SESSION-ID]   claude/codex only
   seat screen <seat> [--human]            the visible screen, cursor and title
   seat type <seat> <text>                 types the text as written

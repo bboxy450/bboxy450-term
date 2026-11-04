@@ -50,6 +50,7 @@ impl RoleCatalog {
             ("oracle", Oracle, "Supervise the swarm. Brief executors, verify evidence, and coordinate work.", "#F7C442", "♔"),
             ("architect", Oracle, "Define interfaces, specifications, invariants, and the evidence that verifies them.", "#A78BFA", "♜"),
             ("creativity", Worker, "Explore alternatives and supply creative possibilities within the assigned brief.", "#FF69B4", "♝"),
+            ("researcher", Worker, "Research the assigned question using source code, primary documentation and reliable references. Verify claims, compare alternatives, identify uncertainties, and return concise findings with file:line or source URLs. Stay within the brief; do not implement, delegate or land changes unless explicitly instructed.", "#43D9A3", "♗"),
             ("executor", Worker, "Implement the scoped assignment and verify it. Work silently: send no acknowledgements, progress or status messages. Message once, only when blocked (the evidence and the exact decision needed) or when done (task_report with evidence).", "#43D9A3", "♟"),
             ("qa", Worker, "Test the assigned change like a user would. Run the real app and drive the desktop through ctl, flags, sockets and captures; exercise the edge cases, try to break it, and reproduce every failure with exact steps. Report what you ran, what you saw and what is broken, with evidence. Do not fix product code unless the brief says so.", "#38BDF8", "♞"),
             ("shell", Worker, "", "#7397D4", ""),
@@ -71,10 +72,19 @@ impl RoleCatalog {
                 kind.into(),
                 HarnessRoles {
                     default_role: default.into(),
-                    available_roles: ["oracle", "architect", "creativity", "executor", "qa", "shell", "solo"]
-                        .into_iter()
-                        .map(String::from)
-                        .collect(),
+                    available_roles: [
+                        "oracle",
+                        "architect",
+                        "creativity",
+                        "researcher",
+                        "executor",
+                        "qa",
+                        "shell",
+                        "solo",
+                    ]
+                    .into_iter()
+                    .map(String::from)
+                    .collect(),
                 },
             )
         })

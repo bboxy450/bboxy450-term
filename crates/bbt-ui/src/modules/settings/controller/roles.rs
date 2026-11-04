@@ -79,9 +79,17 @@ impl std::fmt::Debug for Text {
     }
 }
 pub(super) fn builtin(name: &str) -> bool {
-    ["oracle", "architect", "creativity", "executor", "shell", "solo"]
-        .iter()
-        .any(|id| id.eq_ignore_ascii_case(name))
+    [
+        "oracle",
+        "architect",
+        "creativity",
+        "researcher",
+        "executor",
+        "shell",
+        "solo",
+    ]
+    .iter()
+    .any(|id| id.eq_ignore_ascii_case(name))
 }
 pub(super) fn valid_name(name: &str) -> bool {
     !name.trim().is_empty()

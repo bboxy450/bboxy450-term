@@ -616,6 +616,7 @@ fn harness_defaults_follow_the_role_contract_and_validate_authority() {
             ("creativity", Class::Worker),
             ("executor", Class::Worker),
             ("qa", Class::Worker),
+            ("researcher", Class::Worker),
             ("shell", Class::Worker),
         ] {
             assert_eq!(

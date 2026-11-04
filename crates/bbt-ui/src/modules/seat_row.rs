@@ -200,7 +200,7 @@ pub fn role_color(role: &str) -> ui::Color {
         "oracle" | "solo" => TOKENS.color.role.oracle,
         "creativity" => TOKENS.color.role.creativity,
         "architect" => TOKENS.color.role.architect,
-        "executor" => TOKENS.color.role.executor,
+        "executor" | "researcher" => TOKENS.color.role.executor,
         _ => TOKENS.color.role.unsigned,
     })
 }
