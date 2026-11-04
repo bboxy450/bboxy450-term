@@ -49,7 +49,7 @@ id: 01M6KKWJVF71S4JT0NNF193EWJ
 status: claimed
 delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
 swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-04T16:18:03.462Z
+updated: 2026-11-04T17:22:28.881Z
 created: 2026-11-04T15:47:20.405Z
 number: 93377961360922
 created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
@@ -61,11 +61,11 @@ authorship:
   process_generation: '1'
 assignee: seat:01M6KKR5T6NMPBJH9RK6YRMKH9
 provenance:
-  digest: sha256:e57886c9e5b0a5060fa4d887a5a1a4b86c9eff0eb5388d058577baea45292bfe
-  frontmatter_digest: sha256:62f516d4ba091232b9f8a3174bc77700176fb2fbceec1794d06e74d52ca6c928
+  digest: sha256:d1598ade24ec452a6cd9cbb55ab228d327df3e93832c9fe6d3fbca44315af607
+  frontmatter_digest: sha256:11a61f0f293e79d3b07009ba32918106c573bcd23a4408ee32ebf7ab8f82c7b9
   signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  sig: wppl6xgiNgTNlbIrVg5/TKx8US5fKkyHoXDISk6t8bm8oZxZRL94yx3dPsOW0XCMewx0REE/Dp9tgcOyeM8OBw==
-  log: .bboxy/log/2026-11-04.jsonl#121080
+  sig: uyX/OGpANTaEBQE+2A7h+ioJDx6HbEHsl4iPg0z3RlnXIyVbxFzhb4rGn8KN6MBXeguqDz5cqarfj4v9Jc2MDg==
+  log: .bboxy/log/2026-11-04.jsonl#121780
 ---
 ROLE: EXECUTOR.
 
@@ -86,3 +86,84 @@ Handoff clarification: copying this exact indexed task record into .bboxy/tasks/
 
 
 The exact store entrypoint crates/bboxy450-harness/src/store.rs is also authorized to wire the scoped intake module; keep changes limited to attachment ingestion. Preserve the same verification and ownership boundaries.
+
+
+## Report from seat:01M6KKR5T6NMPBJH9RK6YRMKH9
+
+Implemented shared image attachment intake and workspace @file completion with real ACP image bytes/file contents, removable previews, queue retention and stale ownership/capability guards. make verify-harness-attachments exited 0: 6 composer/ACP cases, 2 pending/custody checks, native worker and private clipboard witnesses, strict compilation, plus native/Java graph and verdict parity for the 36-state positive model and 65-state broken control. All 52 source hashes match signed producer 958f1d14b40c4b83e50cf405c58efd126b73c976 and consumer source 623fff70c62e7838d56cf10a90fff7c6b27a8a23; signed record checkpoint 94222c5f19b2fdec8659f2a8c1d76fa5f459428d contains the indexed report and receipt. Producer is clean; only the deliberately unstaged parent gitlink remains. No push, pin, install or backend action.
+
+```json
+{
+  "op_id": "01M6KQ48M59VS58WPZMBS6RG3E",
+  "commit": "94222c5f19b2fdec8659f2a8c1d76fa5f459428d",
+  "report": "[[reports/2026-11-04-harness-attachments-delivery.md]]",
+  "verify_result": {
+    "command": "make verify-harness-attachments",
+    "exit_code": 0,
+    "evidence": [
+      {
+        "criterion": "Images can be selected or pasted into the shared composer and actual image content reaches the private underlying agent exactly once",
+        "reference": "crates/bboxy450-harness/tests/harness_attachments.rs:169 — real InProc/Unix Bridge to private ACP child, exact decoded PNG bytes, one prompt per send, removable preview and durable blob; target/harness-attachments/composer-acp.log — 6 passed."
+      },
+      {
+        "criterion": "Workspace @file autocomplete supports usable selection and sends the intended real file content or supported reference",
+        "reference": "crates/bboxy450-harness/tests/harness_attachments.rs:169 — keyboard directory and mouse Unicode/space file selection, actual file contents in the same ACP prompt; src/frontends/gui/attachments.rs — workspace containment and unavailable/hidden-path refusal."
+      },
+      {
+        "criterion": "Standalone and embedded input use the same attachment path without losing queued drafts, previous history or launcher/MCP context",
+        "reference": "crates/bboxy450-harness/tests/harness_attachments.rs:169, :404, :455; crates/bboxy450-term/tests/harness_attachments.rs:57 — shared view, concurrent pastes, middle-turn queue, independent later sends, once-only bootstrap and attachment content never becoming a launcher/profile command."
+      },
+      {
+        "criterion": "Stale intake, unsupported content and delivery failures are honest and cannot cross session or draft ownership",
+        "reference": "crates/bboxy450-harness/tests/harness_attachments.rs — stale draft/A-B-A, unsupported capability, unavailable file and closed Bridge cases; bridge.rs:1885 — unknown outcome retains real blocks/custody; HarnessAttachmentIntake 36 states/66 edges passes, broken control 65 states/116 edges fails safety identically in native/Java TLC."
+      },
+      {
+        "criterion": "Focused native clipboard/composer/Bridge/ACP witnesses and affected compilation pass without operator input or backend restart",
+        "reference": ".bboxy/runs/codex-harness-attachments.json — make verify-harness-attachments exit 0; producer/consumer strict compile, named native private clipboard/worker tests, all 52 source hashes matching signed source commits. Report: [[reports/2026-11-04-harness-attachments-delivery]]."
+      }
+    ]
+  }
+}
+```
+
+
+## Report from seat:01M6KKR5T6NMPBJH9RK6YRMKH9
+
+Added explicit current-actor image-intake negotiation: fresh session/epoch/connection challenge, live versioned response, and pre-send guards in the shared view and Bridge. A private old actor acknowledges the query but receives zero unsupported UserTurns; image draft and custody remain intact. Replayed/stale capability proof is rejected. Focused Make verification exited 0, including 7 composer/process cases, 3 Bridge checks, the existing reconnect regression, native/private clipboard witnesses, strict compilation and four native/Java model/control graph-verdict comparisons. All 53 source hashes match signed producer f2022dee24c344c5eee487a7a1dff28ae5ad7c42 and consumer 4a940bab010a474278d2fb5fc228b68e3cfbfa5c; superseding report/receipt committed as 1d060fab2ccdf8d6ca67c31c219096440fee5295. Producer is clean, parent gitlink remains unstaged, and the shared backend was not touched.
+
+```json
+{
+  "op_id": "01M6KRJWZFSESR48MF3P6SMTRQ",
+  "commit": "1d060fab2ccdf8d6ca67c31c219096440fee5295",
+  "report": "[[reports/2026-11-04-harness-attachments-capability.md]]",
+  "verify_result": {
+    "command": "make verify-harness-attachments",
+    "exit_code": 0,
+    "evidence": [
+      {
+        "criterion": "Images can be selected or pasted into the shared composer and actual image content reaches the private underlying agent exactly once",
+        "reference": "crates/bboxy450-harness/tests/harness_attachments.rs:490 — private old-wire actor acknowledges only the capability query; zero unsupported UserTurns; draft/attachment unchanged and custody bytes retained. Original real ACP exact-byte/one-prompt cases rerun green."
+      },
+      {
+        "criterion": "Workspace @file autocomplete supports usable selection and sends the intended real file content or supported reference",
+        "reference": "crates/bboxy450-harness/tests/harness_attachments.rs — original keyboard/mouse directory, space and Unicode file selection with real file content rerun green; image-only capability guard leaves text/file delivery unchanged."
+      },
+      {
+        "criterion": "Standalone and embedded input use the same attachment path without losing queued drafts, previous history or launcher/MCP context",
+        "reference": "crates/bboxy450-term/tests/harness_attachments.rs — native shared worker awaits the actual current actor proof; original real ACP, queue/concurrent paste, once-only bootstrap and content-as-data cases remain green; tests/gui_bridge.rs:487 preserves stale-reconnect/detach behavior."
+      },
+      {
+        "criterion": "Stale intake, unsupported content and delivery failures are honest and cannot cross session or draft ownership",
+        "reference": "crates/bboxy450-harness/src/frontends/gui/bridge.rs:694, :716, :808, :2016 and view.rs:2053 — image gate precedes pending registration and custody transfer; bare ACK, durable replay, stale epoch/challenge/reconnect proof cannot grant support. HarnessAttachmentCapability positive/control graphs match native/Java: 16/47 and 32/114 states/transitions."
+      },
+      {
+        "criterion": "Focused native clipboard/composer/Bridge/ACP witnesses and affected compilation pass without operator input or backend restart",
+        "reference": ".bboxy/runs/codex-harness-attachments.json — make verify-harness-attachments exit 0; 7 composer/process cases, 3 Bridge checks, 1 reconnect case, finite-model export, native worker/private clipboard, strict compilation, four native/Java graph/verdict comparisons, and all 53 hashes matching signed source commits."
+      }
+    ]
+  }
+}
+```
+
+
+Final usability requirements within the existing file-completion and history criteria: explicitly typed project dotfile paths such as .gitignore and .bboxy/tasks must work. Remove the blanket starts-with-dot rejection; keep .git internals and normal ignored/bulk directories excluded from automatic lookup. Add only a named explicit-dotfile case. The mid-turn queued image/file witness must include an actual prior-history pixel assertion, not merely item_text/layout labels. Reuse unchanged tests and selected model evidence; run only these missing cases and affected checks. Finish with one consolidated fresh signed report covering the current actor-capability guard and these two cases, linked to this same task; do not reuse the earlier reported snapshot as the final changed-source result.
