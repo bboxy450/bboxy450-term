@@ -144,6 +144,7 @@ impl App {
     }
     pub(super) fn pointer_pressed(&mut self, at: [f32; 2]) {
         self.pointer = at;
+        if self.rich_pointer(at) { return; }
         if self.ui_selection.text().is_some() {
             self.request_redraw();
         }
@@ -458,6 +459,13 @@ impl App {
         self.request_redraw();
     }
     pub(super) fn navigate_to(&mut self, id: &str) {
+        if let Some(seat) = id
+            .strip_prefix("pane-view:")
+            .and_then(|id| id.parse::<bbt_ui_model::SeatId>().ok())
+        {
+            self.rich_toggle_face(seat);
+            return;
+        }
         if let Some(seat) = id
             .strip_prefix("seat-mute:")
             .or_else(|| id.strip_prefix("pane-mute:"))

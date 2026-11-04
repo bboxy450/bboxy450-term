@@ -20,6 +20,13 @@ spec.loader.exec_module(harness)
 
 
 class SubmoduleTests(unittest.TestCase):
+    def setUp(self):
+        # Admission mocks exercise the default pinned path even when the parent
+        # gate is explicitly testing a signed private candidate.
+        env = patch.dict(harness.os.environ, {'BBOXY_HARNESS_CANDIDATE': ''})
+        env.start()
+        self.addCleanup(env.stop)
+
     def test_real_parent_acp_agent_features_are_explicit_and_legacy_acp_is_rejected(self):
         root = Path(__file__).resolve().parent.parent
         harness.check_json_features(root)

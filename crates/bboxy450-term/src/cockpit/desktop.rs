@@ -352,6 +352,9 @@ fn claim(config: &Config) -> Result<std::fs::File> {
 
 /// Private process entry. Native objects stay on its main thread, IO on bbt-rt.
 pub(super) fn run() -> Result<()> {
+    // The desktop daemon owns the menu bar, notifications and window relaunch:
+    // it must answer even when builds saturate every core.
+    bbt_rt::qos::interactive_thread();
     let mut input = BufReader::new(tokio::io::stdin());
     let config: Config = bbt_rt::handle().block_on(async {
         let line = read_line(&mut input)
@@ -376,6 +379,7 @@ pub(super) fn run() -> Result<()> {
         }
     });
     bboxy450_term_desktop::run_daemon(callback, move |stop| {
+        bbt_rt::qos::interactive_thread();
         let result = bbt_rt::handle().block_on(async {
             if let Some(error) = stop.native_error() { return Err(invalid(format!("desktop native backend: {error}"))); }
             let owner = owners::read::<SupervisorReady>(&config, "supervisor")?

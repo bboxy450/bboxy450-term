@@ -117,6 +117,7 @@ impl App {
     }
 
     pub(super) fn mouse_wheel(&mut self, delta: MouseScrollDelta) {
+        if self.rich_wheel(&delta) { return; }
         let previous = self.scroll_wheel.take();
         match () {
             () if self.app_overlays.open() => {

@@ -22,6 +22,21 @@ use syn::{
 };
 
 mod protocol;
+mod verify;
+
+/// Declares the stable claims that a finite protocol must establish.
+#[proc_macro]
+#[cfg(not(test))]
+pub fn requirements(input: TokenStream) -> TokenStream {
+    verify::requirements(input.into()).into()
+}
+
+/// Generates an exhaustive finite verification test and structured evidence.
+#[proc_macro]
+#[cfg(not(test))]
+pub fn verify(input: TokenStream) -> TokenStream {
+    verify::verify(input.into()).into()
+}
 
 // New bboxy450 protocol frontend; Respectful Slop License 1.0-Draft applies.
 /// Generates a pure finite reducer and, with Yarn's `model` feature, its model.

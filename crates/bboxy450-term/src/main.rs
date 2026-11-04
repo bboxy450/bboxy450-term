@@ -24,6 +24,7 @@ mod log;
 mod navigation;
 mod perf_fixture;
 mod pointer_cursor;
+mod rich_faces;
 mod scene;
 mod settings_destinations;
 mod settings_roles;
@@ -417,6 +418,7 @@ fn app_status(
     windows: usize,
 ) -> bbt_proto::gui::AppStatus {
     bbt_proto::gui::AppStatus {
+        gui: Some(bboxy450_term::gui_build::identity()),
         running: true,
         mode: mode.into(),
         unattended,
@@ -2250,6 +2252,11 @@ impl UiProxy {
     }
 }
 struct App {
+    rich_panes: BTreeMap<SeatId, bboxy450_term::rich_pane::Pane>,
+    rich_focused: BTreeMap<SeatId, bool>,
+    pane_faces: BTreeMap<bbt_mux::Ulid, bbt_proto::gui::PaneFace>,
+    rich_round: usize,
+    rich_cursors: BTreeMap<bbt_mux::Ulid, bbt_proto::gui::RichCursor>,
     usage_worker: Option<bboxy450_usage::poller::Worker>,
     proxy: UiProxy,
     inbox: UiInbox,
@@ -2468,6 +2475,11 @@ impl App {
             let _ = time_proxy.send_event(UiEvent::LocalTimeReady);
         }));
         Self {
+            rich_panes: BTreeMap::new(),
+            rich_focused: BTreeMap::new(),
+            pane_faces: BTreeMap::new(),
+            rich_round: 0,
+            rich_cursors: BTreeMap::new(),
             proxy,
             inbox,
             usage_worker: None,
@@ -3071,17 +3083,21 @@ impl App {
     fn settings_ime(&self) -> bool {
         matches!(&self.local_tab,Some(LocalTab::Settings {controller,..}) if controller.editing())
     }
+    fn text_ime_allowed(&self) -> bool {
+        if self.app_overlays.open() {
+            self.app_overlays.focused_field().is_some()
+        } else {
+            !self.document.open
+                && (self.launcher.is_some()
+                    || self.composer.view.focus
+                    || self.reject_focus
+                    || self.settings_ime()
+                    || self.rich_target().is_some())
+        }
+    }
     fn sync_text_ime(&self) {
         if let Some(window) = &self.window {
-            window.set_ime_allowed(if self.app_overlays.open() {
-                self.app_overlays.focused_field().is_some()
-            } else {
-                !self.document.open
-                    && (self.launcher.is_some()
-                        || self.composer.view.focus
-                        || self.reject_focus
-                        || self.settings_ime())
-            });
+            window.set_ime_allowed(self.text_ime_allowed());
         }
     }
     fn settings_action(&mut self, action: settings_controller::Action) {
@@ -3734,12 +3750,7 @@ impl App {
         }
         self.task_reads();
         self.refresh_conversation();
-        if let Some(window) = &self.window {
-            window.set_ime_allowed(
-                !self.document.open
-                    && (self.launcher.is_some() || self.composer.view.focus || self.reject_focus),
-            );
-        }
+        self.sync_text_ime();
         self.request_redraw();
     }
     fn review_task(&mut self, id: bbt_mux::Ulid, reason: Option<String>) {
@@ -3957,11 +3968,7 @@ impl App {
                 }
             }
             self.refresh_conversation();
-            if let Some(window) = &self.window {
-                window.set_ime_allowed(
-                    self.launcher.is_some() || self.composer.view.focus || self.reject_focus,
-                );
-            }
+            self.sync_text_ime();
             self.request_redraw();
             return;
         }
@@ -4011,9 +4018,7 @@ impl App {
             &self.composer_client.protected_image_paths(),
         );
         self.composer_notice();
-        if let Some(window) = &self.window {
-            window.set_ime_allowed(self.launcher.is_some() || self.composer.view.focus);
-        }
+        self.sync_text_ime();
         self.request_redraw();
     }
     /// Native sends and the UI relay admit the same prepared composer batch.
@@ -4299,11 +4304,7 @@ impl App {
             }
             None => {}
         }
-        if let Some(window) = &self.window {
-            window.set_ime_allowed(
-                self.composer.view.focus || self.reject_focus || self.settings_ime(),
-            );
-        }
+        self.sync_text_ime();
         self.request_redraw();
     }
     fn launcher_command(&mut self, command: LauncherCommand) {
@@ -4797,6 +4798,7 @@ impl App {
             }
             Err(error) => self.logger.write(format!("focus refused: {error}")),
         }
+        self.sync_text_ime();
     }
     fn attention_focus_events(&mut self, events: &[InputEvent], explicit: bool) {
         let Some(model) = &self.live_state else {
@@ -5605,7 +5607,7 @@ impl App {
         );
         self.install_desktop_menu();
         if !self.document.open
-            && (self.launcher.is_some() || self.composer.view.focus || self.settings_ime())
+            && self.text_ime_allowed()
         {
             window.set_ime_allowed(true);
             self.logger.write("debug text field open");
@@ -5780,6 +5782,8 @@ impl App {
             {
                 self.window_restored = true;
                 self.window_first_frame = true;
+                self.pane_faces = saved.pane_faces.clone();
+                self.rich_cursors = saved.rich_cursors.clone();
                 self.window_last = Some((**saved).clone());
                 if let Some(window) = &self.window {
                     self.restored_size = Some(saved.size);
@@ -6851,6 +6855,7 @@ impl App {
         }
         if matches!(request, UiRequest::Seats) {
             let sources = self.drain();
+            self.rich_drain();
             self.dispatch_wake_sources(&sources);
             self.answer_seats(id);
             return false;
@@ -7067,6 +7072,9 @@ impl App {
     }
     // Shared by the winit callback and the private ctl normalized-input seam.
     fn ime_input(&mut self, event: Ime) {
+        if self.startup.visible || self.rich_ime(&event) {
+            return;
+        }
         match event {
             event if self.app_overlays.open() => match event {
                 Ime::Preedit(text, cursor) => {
@@ -7134,6 +7142,32 @@ impl App {
         }
     }
     fn key_input(&mut self, input: &keyboard::Input<'_>) -> Option<RoutedKey> {
+        if self.startup.visible {
+            // Startup owns the normalized key and its repeat/release lifecycle,
+            // including keys still held when the backend attaches.
+            self.keyboard.consumed(input.physical_key, input.state);
+            if input.state.is_pressed() && !input.repeat {
+                let mods = input.modifiers.state;
+                if mods.super_key()
+                    && !mods.shift_key()
+                    && keyboard::shortcut_key(input) == Some('q')
+                {
+                    return Some(if mods.alt_key() {
+                        RoutedKey::HardQuit
+                    } else {
+                        RoutedKey::Quit
+                    });
+                }
+                if input.logical_key == Key::Named(NamedKey::Enter) {
+                    self.retry_startup();
+                }
+            }
+            return None;
+        }
+        if self.rich_key(input) {
+            self.keyboard.consumed(input.physical_key, input.state);
+            return None;
+        }
         if self.overlay_key(input) {
             self.keyboard.consumed(input.physical_key, input.state);
             return None;
@@ -7265,6 +7299,10 @@ impl App {
                             self.pointer_pressed([*x as f32, *y as f32]);
                             self.pointer_released();
                             self.modifiers = original;
+                        }
+                        UiInput::Wheel { x, y, dy } => {
+                            self.pointer = [*x as f32, *y as f32];
+                            self.mouse_wheel(MouseScrollDelta::PixelDelta(winit::dpi::PhysicalPosition::new(0., f64::from(*dy))));
                         }
                     }
                 }
@@ -7557,30 +7595,40 @@ impl App {
                     scroll: model
                         .scroll
                         .position(*seat, model.history.get(seat).map(Arc::as_ref)),
-                    rendered: model.prepared_screens.get(seat).and_then(|source| {
-                        self.frame_observations
-                            .read(*seat, source, &mut terminal_text)
-                            .map(|mut rendered| {
-                                rendered.pixel_size =
-                                    model.frames.get(seat).map(|grid| [grid.width, grid.height]);
-                                rendered
+                    rendered: model
+                        .prepared_screens
+                        .get(seat)
+                        .filter(|_| !self.rich_face(*seat))
+                        .and_then(|source| {
+                            self.frame_observations
+                                .read(*seat, source, &mut terminal_text)
+                                .map(|mut rendered| {
+                                    rendered.pixel_size = model
+                                        .frames
+                                        .get(seat)
+                                        .map(|grid| [grid.width, grid.height]);
+                                    rendered
+                                })
+                        }),
+                    historical: model
+                        .history
+                        .get(seat)
+                        .filter(|_| !self.rich_face(*seat))
+                        .and_then(|history| {
+                            let source = model.prepared_screens.get(seat)?;
+                            if !Arc::ptr_eq(&source.screen, &history.screen) {
+                                return None;
+                            }
+                            let grid = model.frames.get(seat)?;
+                            Some(bbt_proto::gui::UiHistoricalScreen {
+                                top_row: history.top_row,
+                                lines: bboxy450_term::frame_observation::bounded_lines(
+                                    source,
+                                    &mut terminal_text,
+                                ),
+                                pixel_size: [grid.width, grid.height],
                             })
-                    }),
-                    historical: model.history.get(seat).and_then(|history| {
-                        let source = model.prepared_screens.get(seat)?;
-                        if !Arc::ptr_eq(&source.screen, &history.screen) {
-                            return None;
-                        }
-                        let grid = model.frames.get(seat)?;
-                        Some(bbt_proto::gui::UiHistoricalScreen {
-                            top_row: history.top_row,
-                            lines: bboxy450_term::frame_observation::bounded_lines(
-                                source,
-                                &mut terminal_text,
-                            ),
-                            pixel_size: [grid.width, grid.height],
-                        })
-                    }),
+                        }),
                 })
             })
             .collect();
@@ -7678,6 +7726,7 @@ impl App {
             }),
             document: self.document.open.then(|| self.document.target.clone()),
             document_observation,
+            rich_observation: self.rich_observation(),
             panes,
             tree,
             spawned: None,
@@ -7721,6 +7770,7 @@ impl App {
         Ok(layout)
     }
     fn solve_ui(&mut self, logical: [f32; 2]) -> Result<Vec<bbt_ui::components::Layout>, String> {
+        self.scene.set_pane_views(self.rich_header_views());
         self.clock_frame = self.clock.frame();
         self.scene.advance_sidebar_motion(self.clock_frame.now);
         self.scene.sidebar_layout = self.effective_sidebar_layout();
@@ -7828,6 +7878,7 @@ impl App {
         self.sidebar_viewport = self.scene.sidebar_extent(&layouts);
         self.sidebar_resize_region = self.scene.sidebar_resize_region(&layouts, logical);
         self.pane_bounds = bounds;
+        self.rich_sync();
         self.solve_launcher(logical)?;
         self.solve_app_overlay(logical)?;
         if self.document.open {
@@ -7854,6 +7905,8 @@ impl App {
                 logical,
                 self.window_last.as_ref(),
             );
+            state.pane_faces = self.pane_faces.clone();
+            state.rich_cursors = self.rich_cursors.clone();
             state.sidebar_scroll = self.scene.sidebar_scroll;
             state.sidebar_width = self.scene.sidebar_width;
             state.open_swarms = self
@@ -8008,6 +8061,7 @@ impl App {
         let projections_before =
             bbt_rt::diagnostics::calls(bbt_rt::diagnostics::Phase::UiProjection);
         let sources = self.drain();
+        self.rich_drain();
         // A native redraw can consume data before its queued Wake arrives.
         // If no drawable is pending, preserve that invalidation before the
         // later empty Wake is ignored.
@@ -8126,6 +8180,14 @@ impl App {
                 winit::dpi::LogicalSize::new(caret.w, caret.h),
             );
         }
+        if let Some(pane) = self.rich_target().and_then(|id| self.rich_panes.get(&id))
+            && let Some(caret) = pane.snapshot.ime_caret
+        {
+            self.window.as_ref().unwrap().set_ime_cursor_area(
+                winit::dpi::LogicalPosition::new(pane.rect.x + caret.x, pane.rect.y + caret.y),
+                winit::dpi::LogicalSize::new(caret.w, caret.h),
+            );
+        }
         phases.layout = start.elapsed();
         let overlay = self.overlay.then(|| {
             perf_hud(
@@ -8147,6 +8209,7 @@ impl App {
             vec![]
         };
         pane_overlay.extend(self.paint_terminal_selection());
+        pane_overlay.extend(self.rich_paints());
         let (document_paints, document_observation) =
             self.document_paint(self.meter.total_frames() + 1);
         // The conversation dock is painted between the pane foreground and the
@@ -8190,6 +8253,12 @@ impl App {
             ops.append(&mut overlay_after);
         }
         phases.draw = start.elapsed();
+        let terminal_bounds: Vec<_> = self
+            .pane_bounds
+            .iter()
+            .filter(|(id, _)| !self.rich_face(*id))
+            .copied()
+            .collect();
         if let Some((encode, wait)) = self.gpu.as_mut().unwrap().draw(
             ops,
             scale,
@@ -8198,7 +8267,7 @@ impl App {
             self.meter.total_frames() + 1,
             self.live_state.as_ref().map(|model| gpu::Panes {
                 model,
-                bounds: &self.pane_bounds,
+                bounds: &terminal_bounds,
                 focused: self.scene.focused(),
                 overlay: pane_overlay,
                 retained,
@@ -8694,6 +8763,7 @@ impl ApplicationHandler<UiEvent> for App {
                     self.fail(error, event_loop);
                     return;
                 }
+                self.rich_drain();
                 self.dispatch_wake_sources(&sources);
             }
             UiEvent::BeginIdle => {
@@ -8925,23 +8995,6 @@ impl ApplicationHandler<UiEvent> for App {
                     }
                     return;
                 }
-                WindowEvent::KeyboardInput { event, .. } => {
-                    if event.state.is_pressed() && !event.repeat {
-                        if self.modifiers.super_key()
-                            && !self.modifiers.shift_key()
-                            && event.logical_key == Key::Character("q".into())
-                        {
-                            if self.modifiers.alt_key() {
-                                self.request_shutdown(event_loop);
-                            } else {
-                                self.request_close(event_loop);
-                            }
-                        } else if event.logical_key == Key::Named(NamedKey::Enter) {
-                            self.retry_startup();
-                        }
-                    }
-                    return;
-                }
                 WindowEvent::MouseWheel { .. }
                 | WindowEvent::MouseInput { .. }
                 | WindowEvent::Ime(_) => return,
@@ -9001,6 +9054,10 @@ impl ApplicationHandler<UiEvent> for App {
             }
             WindowEvent::Occluded(occluded) => {
                 self.occluded = occluded;
+                if occluded {
+                    self.rich_panes.clear();
+                    self.rich_focused.clear();
+                }
                 if let Some(pacer) = &mut self.pacer
                     && let Err(error) =
                         pacer.set_active(self.animate && !occluded && !self.clock.is_frozen())
@@ -9162,15 +9219,29 @@ impl ApplicationHandler<UiEvent> for App {
             } => self.overlay_right_click(self.pointer),
             WindowEvent::Ime(event) => self.ime_input(event),
             WindowEvent::KeyboardInput { event, .. } => {
+                let input = self.keyboard.event(&event, self.modifiers);
+                if self.startup.visible {
+                    if input.state.is_pressed() && !input.repeat {
+                        match route_key(&input, 0, None) {
+                            RoutedKey::Quit => self.request_close(event_loop),
+                            RoutedKey::HardQuit => self.request_shutdown(event_loop),
+                            _ if input.logical_key == Key::Named(NamedKey::Enter) => {
+                                self.retry_startup()
+                            }
+                            _ => {}
+                        }
+                    }
+                    return;
+                }
                 if event.state == ElementState::Pressed {
                     self.cancel_ui(
                         "ui_frame_refused: physical keyboard input superseded this request",
                     );
                 }
-                let input = self.keyboard.event(&event, self.modifiers);
                 // Verification-only resize exercises the real OS Resized event
                 // on borderless windows whose native edge is hard to grab.
                 if event.state.is_pressed()
+                    && !self.startup.visible
                     && self.capture.is_some()
                     && self.modifiers.super_key()
                     && self.modifiers.shift_key()
@@ -9192,6 +9263,7 @@ impl ApplicationHandler<UiEvent> for App {
                 // The existing --capture path can be refreshed after an
                 // interactive verification scene (no readback on the UI).
                 if event.state.is_pressed()
+                    && !self.startup.visible
                     && self.capture.is_some()
                     && self.modifiers.super_key()
                     && self.modifiers.shift_key()
@@ -9996,6 +10068,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         return Ok(());
     }
+    if let Some(status) = bboxy450_term::cockpit::gui_handoff::probe(&hook_args).map_err(|error| error as Box<dyn std::error::Error>)? {
+        println!("{}", serde_json::to_string(&status)?);
+        return Ok(());
+    }
     let notification_test_account =
         bboxy450_term::cockpit::Config::test_account_from_args(&hook_args)
             .map_err(|error| error as Box<dyn std::error::Error>)?
@@ -10004,6 +10080,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map_err(|error| error as Box<dyn std::error::Error>)?;
     let record_notifications = notification_recording(&hook_args)?;
     let verify = Verify::from_args(&hook_args)?;
+    bboxy450_term::cockpit::gui_handoff::prepare(&hook_args).map_err(|error| error as Box<dyn std::error::Error>)?;
     if hook_args.iter().any(|arg| arg == "--headless") {
         return headless::run(&hook_args).map_err(Into::into);
     }
@@ -10021,6 +10098,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let event_loop = event_loop_builder.build()?;
     let proxy = event_loop.create_proxy();
+    let handoff_proxy = proxy.clone();
+    bbt_rt::handle().spawn(async move {
+        use tokio::signal::unix::{SignalKind, signal};
+        if let Ok(mut close) = signal(SignalKind::hangup()) {
+            close.recv().await;
+            let _ = handoff_proxy.send_event(UiEvent::DesktopAction(
+                bboxy450_term_desktop::Action::CloseWindow,
+                None,
+            ));
+        }
+    });
+
     let diagnostics_proxy = proxy.clone();
     let _diagnostics = diagnostics_root.and_then(|root| {
         bbt_rt::error_journal::Server::start(root, move |n| {
@@ -10469,6 +10558,160 @@ mod lazy_projection_tests {
             messaging::Status::Unknown(_)
         ));
         assert!(!app.composer_client.retry().is_empty());
+    }
+    #[test]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "private home and isolated UI registration"
+    )]
+    fn startup_modal_owns_normalized_keys_and_cursors_until_attachment() {
+        const CHILD: &str = "BBOXY_STARTUP_INPUT_TEST_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let home = tempfile::tempdir().unwrap();
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", "lazy_projection_tests::startup_modal_owns_normalized_keys_and_cursors_until_attachment", "--nocapture", "--test-threads=1"])
+                .env(CHILD, "1")
+                .env("HOME", home.path())
+                .env("ZDOTDIR", home.path())
+                .env("CODEX_HOME", home.path().join(".codex"))
+                .env("CLAUDE_CONFIG_DIR", home.path().join(".claude"))
+                .output().unwrap();
+            assert!(
+                output.status.success(),
+                "{}\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return;
+        }
+        let (mut app, _) = fixture();
+        app.test_account = true;
+        let seat = SeatId::from_u128(1);
+        let record =
+            bbt_proto::SeatRecord::new(bbt_mux::Ulid(1), bbt_mux::Ulid(90), "covered seat", "zsh");
+        let mut model = bboxy450_term::model::build_at(
+            &[record],
+            &bboxy450_term::grids::Grids::new(),
+            &Default::default(),
+            Instant::now(),
+            1000,
+        );
+        model.identity = Some(bbt_proto::GuiIdentity {
+            state: bbt_proto::GuiIdentityState::LocalDev,
+            private_test_run: Some(bbt_mux::Ulid(99)),
+            reason: None,
+        });
+        let mut term = bbt_core::Term::new(40, 2, 0);
+        term.advance(b"\x1b[>11u");
+        model.screens.insert(
+            seat,
+            Arc::new(bbt_proto::Screen::from_term(
+                &term,
+                String::new(),
+                None,
+                None,
+            )),
+        );
+        app.scene.set_model(&model, &model.ui.window.stage);
+        app.focus.stage = Some(model.ui.window.stage.clone());
+        app.live_state = Some(Arc::new(model));
+        app.solve_ui([1200., 900.]).unwrap();
+        app.live_commands = Some(live::disconnected_commands());
+        let pending = app.pending_commands.len();
+        let rect = app.navigation_regions[0].1;
+        let covered = [rect.x + rect.w / 2., rect.y + rect.h / 2.];
+        assert!(
+            app.startup.visible,
+            "real headless cold start must remain modal"
+        );
+        assert_eq!(app.cursor_at(covered), bbt_ui::cursor::Cursor::Default);
+        use bbt_proto::gui::{UiInput, UiKeyEvent, UiRequest};
+        let key = |event| UiInput::Key {
+            logical: "a".into(),
+            physical: "KeyA".into(),
+            unmodified: "a".into(),
+            text: Some("a".into()),
+            text_all_modifiers: Some("a".into()),
+            event,
+            modifiers: Default::default(),
+            location: "Standard".into(),
+        };
+        let inject = |app: &mut App, input| {
+            app.apply_ui(bbt_mux::Ulid(100), UiRequest::Input(vec![input]))
+                .unwrap();
+        };
+        // Exercise ctl's admitted normalized-input API, which never visits winit.
+        inject(&mut app, key(UiKeyEvent::Press));
+        assert_eq!(app.pending_commands.len(), pending);
+        assert!(app.key_input(&chrome_input("cmd-t").unwrap()).is_none());
+        assert!(app.launcher.is_none());
+        let mut quit = test_key(
+            &Key::Character("q".into()),
+            PhysicalKey::Code(KeyCode::KeyQ),
+            None,
+            ModifiersState::SUPER,
+            false,
+        );
+        assert_eq!(app.key_input(&quit), Some(RoutedKey::Quit));
+        quit.modifiers.state.insert(ModifiersState::ALT);
+        assert_eq!(app.key_input(&quit), Some(RoutedKey::HardQuit));
+        quit.repeat = true;
+        assert!(app.key_input(&quit).is_none());
+        quit.state = ElementState::Released;
+        assert!(app.key_input(&quit).is_none());
+
+        app.startup.fail("private startup failure".into());
+        app.startup.attached();
+        assert!(
+            app.startup.visible,
+            "attachment cannot clear a sticky failure"
+        );
+        assert_eq!(app.cursor_at(covered), bbt_ui::cursor::Cursor::Default);
+        app.paint_startup_modal().unwrap();
+        fn region(layout: &bbt_ui::components::Layout, key: &str) -> Option<Rect> {
+            if matches!(&layout.kind, bbt_ui::components::LayoutKind::Named(name) if name == key) {
+                return Some(layout.rect);
+            }
+            layout.children.iter().find_map(|child| region(child, key))
+        }
+        for key in ["startup/quit", "startup/retry"] {
+            let rect = region(app.startup_layout.as_ref().unwrap(), key).unwrap();
+            let at = [rect.x + rect.w / 2., rect.y + rect.h / 2.];
+            assert_eq!(app.startup_action_at(at), Some(key));
+            assert_eq!(app.cursor_at(at), bbt_ui::cursor::Cursor::Pointer);
+        }
+        app.composer
+            .handle(ComposeCommand::Focus(ComposeField::Body));
+        inject(
+            &mut app,
+            UiInput::Commit {
+                text: "covered text".into(),
+            },
+        );
+        assert!(app.composer.view.text.is_empty());
+        app.composer.handle(ComposeCommand::Blur);
+        let mut enter = chrome_input("enter").unwrap();
+        enter.repeat = true;
+        assert!(app.key_input(&enter).is_none());
+        assert!(app.startup.error.is_some());
+        enter.repeat = false;
+        assert!(app.key_input(&enter).is_none());
+        assert!(app.startup.error.is_none());
+        assert!(app.startup.visible, "Retry remains modal until attachment");
+        assert_eq!(app.pending_commands.len(), pending);
+        app.startup.attached();
+        assert!(!app.startup.visible);
+        assert_eq!(app.cursor_at(covered), bbt_ui::cursor::Cursor::Pointer);
+        inject(&mut app, key(UiKeyEvent::Repeat));
+        inject(&mut app, key(UiKeyEvent::Release));
+        assert!(
+            app.pending_commands.len() == pending,
+            "modal-owned repeats/releases must not leak after attachment"
+        );
+        inject(&mut app, key(UiKeyEvent::Press));
+        assert!(
+            matches!(app.pending_commands.back(), Some(live::UiMsg::Input { bytes, .. }) if bytes == b"\x1b[97u")
+        );
     }
     pub(super) fn fixture() -> (App, Arc<Latest<Arc<bboxy450_term::model::Model>>>) {
         struct QuietWake;
@@ -12467,6 +12710,7 @@ mod launcher_host_tests {
             ordinal: 1,
         };
         let mut current = bbt_proto::GuiSeat {
+            rich_socket: None,
             notification_episode: Some(episode),
             attention: None,
             record: bbt_proto::registry::SeatRecord::new(
@@ -12482,6 +12726,7 @@ mod launcher_host_tests {
                 grade: bbt_proto::Grade::Shim,
                 title: String::new(),
                 detail: None,
+                stale: false,
                 turn_open: true,
                 observed_ms: 10,
                 subagents: vec![],

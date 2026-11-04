@@ -41,6 +41,73 @@ completeness enumerates all declared parameter and guard-read state values,
 without invariant or reachability pruning, and refuses universes over 65,536.
 See `crates/bbt-yarn/README.md` for the grammar and limits.
 
+### What protocol liveness assumes
+
+`crates/bbt-yarn/tests/protocol_temporal.rs` supplies the temporal/effect
+contracts to both runtime witnesses and the existing exporter. Named state
+predicates feed `#[property(id = "...", leads_to(P, Q))];`; named cases alone
+carry `#[fair(weak)]` / `#[fair(strong)]`. A case's concrete parameter instances
+form one disjunction, not independently fair instances. Only nonstuttering
+transitions count toward fairness. Terminal/quiescent predicates are explicit
+Boolean labels, never permission to drop a pending response or prune the graph.
+The one-state BrokenProtocolProgress control has both WF and SF annotations but
+still violates its quiescent-to-terminal response through ignore/reject loops.
+
+PresentGeneration has Frame={F}, Generation={First,Second}, one owner and atomic
+steps. Issued generations cannot be reused. Emission, admission, completion and
+presentation occur in separate steps; all generated completion outcomes require
+exhaustive handling. Each successfully fetched generation must eventually be
+visible **or cease to be selected**. Thus continued selection implies eventual
+visibility under weak fairness of `Present::current`; strong fairness of
+`FetchAdmitted::admit` is separately explicit. No assumption forces successful
+fetches, every event's delivery, a globally fair runtime or a wall-clock bound.
+The generation guard is rechecked at presentation. The correct 91-state/1,365-edge
+model passes; removing generation revalidation refutes safety (99/1,485), and
+removing only presentation fairness refutes liveness with closed lassos at the
+original graph bounds. RetryUnknown (6/42) retains its admission claim across an
+uncertain possible commit; relaxing only the unknown retry guard produces a
+duplicate commit (16/112). Known pre-effect failure may release the claim.
+
+Every explicit edge in all eight declarations is replayed through generated
+`step`; the three requested broken controls replay their actual counterexamples.
+The exporter emits expressions, not precomputed transition tables; Java TLC
+independently compares full states, labeled transitions and verdicts. Real
+external effects, persistent dedup services, process restart and larger identity
+domains remain implementation-only gaps. See the PresentGeneration and
+RetryUnknown entries in `contracts.toml` for bounds and assumptions.
+
+`make test-yarn-kani` additionally checks the **generated Rust reducer**, reusing
+`tests/protocol.rs` directly from `tests/kani/main.rs`. The optional
+`kani_bounded_proof` method pins Kani 0.68.0 and release-bundle SHA256 digests in
+`kani-tools.lock.json`. Its launcher, KANI_HOME, Rustup home, compiler and build
+outputs live under `target/tools/yarn-kani-0.68.0`; nothing is installed globally.
+First use downloads unattended; unsupported hosts, tool failures, missing harnesses,
+timeouts and insufficient unwinding fail the target. This supplementary target is
+explicit, separate from the mandatory native/TLC gate.
+
+Kani autoharness synthesizes arbitrary values of the actual private generated
+State (including unreachable representations and unused high set bits), and each
+harness chooses among all five finite events with `kani::any`. This is an
+overapproximation of every state obtainable through the public API, without
+bounded history replay, copied declarations, unsafe layout construction or
+constructor-derived assumptions. RESULT-001 alone is assumed for the inductive
+step; no strengthened invariant is added. Default establishes its base case.
+Reject/ignore decisions contain no next state; their public API retains the
+unchanged input. All loops, including generated effect-vector machinery, have
+unwind bound 4 with unwinding assertions enabled. No liveness, environmental
+effects, allocation exhaustion or arbitrary Rust correctness is claimed.
+
+Per-harness structured results are written under `target/yarn-kani`. The broken
+declaration runs without `should_panic`: a nonzero exit counts as the expected
+negative control only when completed JSON identifies the precise
+`RESULT-001 broken inductive step` assertion as its sole failure. Compilation,
+unsupported semantics and solver/unwinding failures never count as that control.
+These independent harnesses are inspired by the
+[Kani autoharness interface](https://model-checking.github.io/kani/reference/experimental/autoharness.html)
+and [custom installation](https://model-checking.github.io/kani/install-guide.html).
+Kani and its bundled tools retain their upstream licenses in the local download;
+no tool binaries enter project source or release packages.
+
 The native checker accepts an explicit expression/action representation: finite
 integer domains, integer/Boolean literals, equality, comparisons, arithmetic,
 Boolean operations, `IF-THEN-ELSE`, bounded `\A`/`\E` over integer ranges
@@ -81,6 +148,21 @@ coverage. Missing, duplicate and stale crate entries fail the gate. A contract
 model is a design check, not a proof that its mapped Rust implements it.
 
 ## Project contracts
+
+Yarn's `requirements!` / `verify!` contract gate is
+`make check-protocol-contracts`, included in `make test-formal`. The compiled
+LatestResult verification declaration supplies the active required ids,
+reachable cases, domain members, variable bounds, state limit and explicit
+fairness/assumptions. `protocol-contracts.toml` is the reviewed baseline;
+weakening it requires the source change in the same commit. The checker prints
+the contract diff and refuses a dropped RESULT-001 control. Independent JSON
+axes and complete counts are compared with `golden/latest-result.json` after
+normalizing expansion locations only. Actual test evidence stays under
+`target/yarn-verification/`, including invalid, refuted and inconclusive runs.
+Its `generated_core` marker does not assert replay; existing protocol witnesses
+and Java TLC parity remain separate. Canonical-token FNV hashes are input
+identities, while the existing SHA-256 receipts/signatures retain custody.
+See `crates/bbt-yarn/README.md` for syntax and limitations.
 
 Each project contract pairs a model family with its broken control. The checked
 totals come from `contracts.toml` and `corpus.toml`. The declarations live
@@ -162,6 +244,38 @@ algorithm would not establish its correctness. New asynchronous document or UI
 protocols still need their own model when introduced.
 
 ## Changing a crate
+
+`make test-yarn-concurrency` runs the real Yarn adapter code with a test-only
+`cfg(loom)`/`cfg(shuttle)` synchronization shim. Four Loom checks use preemption
+bound 2 and at most 3 threads; four broken controls must fail their named
+assertions with nextest exit 100. Shuttle checks four larger scenarios with two
+fixed seeds, random and PCT depth 3, and 128 iterations each (2,048 executions).
+Exceeding 1,000 Loom branches or 10,000 Shuttle steps fails; no duration or
+iteration cutoff silently accepts an incomplete run. Failures print Shuttle's
+encoded schedule; set `YARN_SHUTTLE_REPLAY` and run the named test under
+`RUSTFLAGS='--cfg shuttle'` with `--no-default-features --features macros --lib`
+to replay it. The canonical target deliberately clears replay/seed overrides.
+
+This is implementation-level evidence in `contracts.toml`'s separate
+`implementation_evidence` inventory. The shim treats channel queue operations
+and registration as mutex transactions and assumes one producer per channel;
+it does not explore Tokio's internal synchronization, capacity/backpressure,
+cancellation tree, timers, cooperative budget or the OS executor. Existing normal
+Tokio API/runtime witnesses remain necessary. No formal refinement or unbounded
+liveness proof follows from these schedules. Normal product builds contain no
+shim or mutation and retain their existing no_std/features.
+
+Shuttle treats atomics as sequentially consistent; weak-memory exploration is
+limited to the Loom fixtures. A -> B -> A checks cover both retained future and
+optional receiver replacement, with at most four concurrent tasks (seven total
+task identities in that scenario).
+
+The target is included in `make test`: the complete run including strict
+Clippy of both cfg builds took 48.173 seconds; the earlier run before adding
+Clippy took 7.720 seconds with scheduler dependencies compiled. Initial cold
+compilation attempts failed while developing the checks and are not included.
+Build cost varies with the cache.
+Per-backend and negative-control logs stay in `TARGET_DIR/yarn-concurrency/`.
 
 For a change to a stateful boundary, update its finite model and add the smallest
 counterexample to the previous behavior as a negative control. Keep assumptions,

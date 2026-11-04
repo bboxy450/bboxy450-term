@@ -69,6 +69,7 @@ impl Draw for RoleMark<'_> {
         let (mark, color) = match self.0.name.as_str() {
             "oracle" => ("♔", TOKENS.color.role.oracle),
             "solo" => ("♚", TOKENS.color.role.oracle),
+            "researcher" => ("♗", TOKENS.color.role.executor),
             "creativity" => ("♝", TOKENS.color.role.creativity),
             "qa" => ("♞", TOKENS.color.role.executor),
             _ => ("♟", TOKENS.color.role.executor),

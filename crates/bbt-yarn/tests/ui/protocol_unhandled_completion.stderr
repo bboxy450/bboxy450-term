@@ -1,0 +1,5 @@
+error: PRO002 event `FetchUnknownOutcome` has no on arm. Repair: add an on arm with exhaustive, disjoint cases.
+  --> tests/ui/protocol_unhandled_completion.rs:13:19
+   |
+13 |         effects { Fetch completes { Succeeded, UnknownOutcome }; }
+   |                   ^^^^^

@@ -9,6 +9,24 @@ account. `UNSIGNED_INSTALL_DIR` and `INSTALL_DIR` override the destinations.
 `make release` makes the signed app archive, checksum and detached GPG signature.
 The old bundle script forwards to `make bundle`; it contains no signing recipe.
 
+## Repeated 1Password app-data prompts
+
+When a harness uses 1Password, macOS can ask whether bboxy450-term may access
+data from other apps. **Allow** lasts only for the current app run. For persistent
+access, run `make privacy-1password`: it reveals the installed signed app and
+opens **System Settings → Privacy & Security → Full Disk Access**. Add that app
+with **+** (or drag it from Finder) and enable its switch once, then restart the
+app and any existing harness backend. Full Disk Access is a broad, optional grant;
+macOS requires the operator to enable it. The command cannot grant it itself.
+
+The installed app's stable bundle identifier and team signing requirement preserve
+its identity across `make install` updates. Grant access to the installed app,
+rather than a versioned Homebrew `op` executable or an unsigned test bundle.
+This addresses macOS app-data consent; 1Password's own authentication still applies.
+See Apple's [app-data protection explanation](https://developer.apple.com/videos/play/wwdc2023/10053/).
+
+## Signing and notification evidence
+
 The signed bundle and installation targets require the approved Apple Development identity
 `3943AF130A015B36824B7FBC86AA672E7B25F3C4` (team `UQB3368A84`). They fail if it
 is unavailable. An ad-hoc signature fails notification authorization on this

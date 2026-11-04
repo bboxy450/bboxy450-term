@@ -14,10 +14,11 @@ use bbt_ui::modules::settings::Role;
 use std::collections::BTreeMap;
 use toml_edit::{DocumentMut, Item, Value};
 
-pub const BUILTINS: [&str; 7] = [
+pub const BUILTINS: [&str; 8] = [
     "oracle",
     "architect",
     "creativity",
+    "researcher",
     "executor",
     "qa",
     "shell",

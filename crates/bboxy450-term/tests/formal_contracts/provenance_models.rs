@@ -123,5 +123,62 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         (record_number_cache(true), "safety"),
         (projection_pacing(false), "pass"),
         (projection_pacing(true), "liveness"),
+        (jsonl_repair(false), "pass"),
+        (jsonl_repair(true), "safety"),
     ]
+}
+
+// Three retained rows, one page per owner turn. Cursor survival across restart
+// and eventual publication are separate from OS durability and signature checks.
+pub(super) fn jsonl_repair(b: bool) -> Model {
+    let mut m = model(
+        "JsonlRepair",
+        b,
+        &[("remaining", 3, 3), ("debt", 2, 0), ("published", 1, 0)],
+    );
+    action(
+        &mut m,
+        "RepairPage",
+        all([
+            Int(0).lt(Var(0)),
+            if b { Int(0).eq(Int(0)) } else { eq(1, 0) },
+        ]),
+        &[
+            (0, Var(0).minus(Int(1))),
+            (1, Var(1).lt(Int(2)).ite(Var(1).plus(Int(1)), Var(1))),
+        ],
+    );
+    action(&mut m, "OwnerTurn", Int(0).lt(Var(1)), &[(1, Int(0))]);
+    action(&mut m, "Publish", all([eq(0, 0), eq(2, 0)]), &[(2, Int(1))]);
+    safe(&mut m, "RepairYieldsToOwner", Var(1).lt(Int(2)));
+    safe(
+        &mut m,
+        "PublishedOnlyWhenComplete",
+        implies(eq(2, 1), eq(0, 0)),
+    );
+    m.responses.push(Response {
+        name: "RepairEventuallyPublished".into(),
+        request: Int(0).eq(Int(0)),
+        response: eq(2, 1),
+    });
+    m.weak_fair.extend([vec![0], vec![1], vec![2]]);
+    m
+}
+
+#[test]
+fn jsonl_repair_yields_and_publishes() {
+    assert!(
+        jsonl_repair(false)
+            .check(1000)
+            .unwrap()
+            .violations
+            .is_empty()
+    );
+    let broken = jsonl_repair(true).check(1000).unwrap();
+    assert!(
+        broken
+            .violations
+            .iter()
+            .any(|v| v.property == "RepairYieldsToOwner")
+    );
 }

@@ -303,6 +303,7 @@ fn add_view(worker: &mut Worker, id: Ulid) {
             tap,
             replies: VecDeque::new(),
             native_reader: None,
+            rich_connection: None, rich_delivery: None, rich_socket: None,
             shared_codex_runtime: None,
             state,
             view_generation: Ulid::new(),

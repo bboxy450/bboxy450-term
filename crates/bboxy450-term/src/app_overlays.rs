@@ -1216,8 +1216,10 @@ mod tests {
             &["--headless".into()],
             Verify::default(),
         );
+        app.startup.attached();
         app.composer
             .handle(ComposeCommand::Focus(ComposeField::Body));
+        app.startup.attached();
         let body = c::Element::Stack(c::Stack {
             direction: bbt_ui_model::layout::Axis::Column,
             gap: ui::Length::Spacing(3),

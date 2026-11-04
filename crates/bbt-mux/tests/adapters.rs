@@ -616,6 +616,7 @@ fn harness_defaults_follow_the_role_contract_and_validate_authority() {
             ("creativity", Class::Worker),
             ("executor", Class::Worker),
             ("qa", Class::Worker),
+            ("researcher", Class::Worker),
             ("shell", Class::Worker),
         ] {
             assert_eq!(
@@ -1184,6 +1185,9 @@ fn adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it() 
             .as_deref(),
         Some("native-fixture-session")
     );
+    let reported_before_restart = runtime
+        .block_on(logic.client.adapter_status(id, 1))
+        .unwrap();
     logic.shutdown().unwrap();
     let logic = bbt_mux::logic::Logic::start(
         supervisor.connect().unwrap(),
@@ -1196,12 +1200,11 @@ fn adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it() 
         runtime.handle(),
     )
     .unwrap();
+    // The same generation retains its Reported hold from metadata, not replay:
+    // no fresh timestamp, synthetic report or composer proof is created.
     assert_eq!(
-        runtime
-            .block_on(logic.client.adapter_status(id, 1))
-            .unwrap()
-            .source,
-        "unobserved"
+        runtime.block_on(logic.client.adapter_status(id, 1)).unwrap(),
+        reported_before_restart
     );
     assert_eq!(
         runtime

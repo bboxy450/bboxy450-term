@@ -60,7 +60,7 @@ pub fn validate_role(_kind: &str, role: &Role) -> Result<()> {
 pub fn role_preset(name: &str) -> Result<Role> {
     let class = match name {
         "oracle" | "architect" | "solo" => Class::Oracle,
-        "creativity" | "executor" | "qa" | "shell" => Class::Worker,
+        "creativity" | "researcher" | "executor" | "qa" | "shell" => Class::Worker,
         _ => return Err(invalid("unknown_role_preset")),
     };
     Ok(Role {

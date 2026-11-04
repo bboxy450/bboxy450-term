@@ -195,11 +195,13 @@ mod tests {
                         grade,
                         title: "zsh".into(),
                         detail: None,
+                        stale: false,
                         turn_open: false,
                         observed_ms: 3,
                         subagents: vec![],
                     };
                     let seat = GuiSeat {
+                        rich_socket: None,
                         attention: None,
                         notification_episode: None,
                         record: SeatRecord::new(Ulid::from(1), Ulid::from(2), "zsh", "zsh"),

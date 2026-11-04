@@ -662,7 +662,9 @@ impl Index {
     }
 
     /// Enable the index and start its first build. `BBOXY_GITKB_INDEX=off`
-    /// in the plugin's own environment keeps every call on the backend path.
+    /// keeps every call on the backend path (git-kb per call). The index is
+    /// on by default: without it a Tasks panel graph page took ~0.75 s idle
+    /// and overran its deadline under load ("graph backend stopped").
     /// A snapshot in the plugin's private data directory (its cwd) for the
     /// current store signal is loaded synchronously, so a respawned process
     /// answers filtered calls at once; otherwise the build starts.

@@ -62,3 +62,7 @@ bboxy450-ui = { path = "crates/bbt-ui" }
 bboxy450-doc = { path = "crates/bbt-doc" }
 bboxy450-ui-core = { path = "crates/bbt-ui-model" }
 bboxy450-render = { path = "crates/bbt-render" }
+
+bboxy450-term-desktop-core = { path = "crates/bboxy450-term-desktop-core" }
+bboxy450-term-desktop = { path = "crates/bboxy450-term-desktop" }
+bboxy450-term-desktop-macos = { path = "crates/bboxy450-term-desktop-macos" }

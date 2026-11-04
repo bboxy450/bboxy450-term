@@ -1,12 +1,16 @@
 ---
 id: 01M6H8FH43JGSQ53MKBYZ2PS55
-number: 5002227
+number: 93377961359199
 type: report
 title: Cockpit startup modal and advancing history progress
 created: "2026-11-03T17:49:29Z"
-updated: "2026-11-03T17:52:00Z"
-author: "Boxy <bboxy450@gmail.com>"
-task: "Direct operator brief 2026-11-03; .bboxy-brief-startup-modal.md"
+updated: "2026-11-03T20:19:08Z"
+author: seat:01M6HG4J9DHG29WDG4S0WYQFZ1
+correction_author: seat:01M6HG4J9DHG29WDG4S0WYQFZ1
+original_attribution: "Boxy <bboxy450@gmail.com>; machine key 9B07E849480C68328CA20684844ECC0587DE7AB0; original seat unproven"
+commits:
+- 1affb9865d75d775a9a5f306c043da8a05bf8f7c
+task: '[[tasks/2026-11-03-startup-modal-operator-brief]]'
 branch: feat/startup-modal
 base: 2d73acbd
 verify:
@@ -128,3 +132,16 @@ total budget; aligning that fixture budget with history progress is also owed.
 The pre-existing untracked `.bboxy-brief-startup-modal.md` is deliberately left
 untouched and excluded from the commit. Only this task's exact paths are staged;
 generated build outputs remain ignored in this writing worktree.
+
+## Historical metadata correction, 2026-11-03
+
+Corrected by seat:01M6HG4J9DHG29WDG4S0WYQFZ1 under
+[[decisions/d16393-hash-pinned-report-corrections]]. The frontmatter author names
+this correcting seat, not the original implementation author. Original attribution
+remains Boxy <bboxy450@gmail.com>, signed with machine key
+9B07E849480C68328CA20684844ECC0587DE7AB0 in implementation commit
+1affb9865d75d775a9a5f306c043da8a05bf8f7c. The original seat identity is unproven;
+no original seat is asserted. The evidence and waiver body above is retained
+verbatim as historical testimony. This correction supplies metadata and a
+resolvable retained operator brief; it claims no fresh implementation, formal,
+parity, smoke or process verification of the startup modal.

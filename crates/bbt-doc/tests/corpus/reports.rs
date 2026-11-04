@@ -5,6 +5,8 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use super::*;
+#[path = "corrections.rs"]
+mod corrections;
 use bbt_doc::links::{Record, resolve};
 use std::{
     io::Write,
@@ -20,8 +22,28 @@ pub(super) fn report_errors(sources: &[(String, String)], message: &str) -> Vec<
         .collect();
     let mut errors = Vec::new();
     for record in &records {
-        if record.markdown.frontmatter.string("type").as_deref() != Some("report") {
+        if record.markdown.frontmatter.string("type").as_deref() != Some("report")
+            && !record.path.starts_with(".bboxy/reports/")
+        {
             continue;
+        }
+        if record.markdown.frontmatter.error.is_some()
+            || !record.markdown.frontmatter.fields.contains_key("id")
+            || record.markdown.frontmatter.number().is_none()
+        {
+            errors.push(format!(
+                "{}: report requires valid frontmatter, id and positive number",
+                record.path
+            ));
+        }
+        if let Some(number) = record.markdown.frontmatter.number()
+            && records
+                .iter()
+                .filter(|r| r.markdown.frontmatter.number() == Some(number))
+                .count()
+                != 1
+        {
+            errors.push(format!("{}: duplicate record number {number}", record.path));
         }
         let metadata = serde_json::to_value(&record.markdown.frontmatter.fields).unwrap();
         if let Err(e) = bbt_doc::reports::validate(record.path, &metadata) {
@@ -143,32 +165,18 @@ pub(super) fn commit_errors(root: &Path, range: &str) -> Vec<String> {
     let mut fields = log.split('\0');
     let mut errors = Vec::new();
     while let (Some(sha), Some(message)) = (fields.next(), fields.next()) {
-        if !message.lines().any(|s| s.starts_with("Report:")) {
-            continue;
-        }
         let sha = sha.trim();
-        for error in report_errors(&tree_sources(root, sha), message) {
-            errors.push(format!("{sha}: {error}"));
+        let (affected, correction_errors) = corrections::commit_errors(root, sha);
+        errors.extend(
+            correction_errors
+                .into_iter()
+                .map(|error| format!("{sha}: {error}")),
+        );
+        if affected || message.lines().any(|s| s.starts_with("Report:")) {
+            for error in report_errors(&tree_sources(root, sha), message) {
+                errors.push(format!("{sha}: {error}"));
+            }
         }
-    }
-    let changes = String::from_utf8(git(
-        root,
-        &[
-            "log",
-            "--format=%H",
-            "--name-only",
-            "--no-renames",
-            "--diff-filter=MD",
-            range,
-            "--",
-            ".bboxy/reports",
-        ],
-    ))
-    .unwrap();
-    if !changes.trim().is_empty() {
-        errors.push(format!(
-            "reports are append-only; create a correction with supersedes instead:\n{changes}"
-        ));
     }
     errors
 }

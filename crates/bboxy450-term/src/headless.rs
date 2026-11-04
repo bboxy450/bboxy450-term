@@ -121,10 +121,12 @@ pub fn run(args: &[String]) -> Result<(), String> {
         let Ok(mut interrupt) = signal(SignalKind::interrupt()) else {
             return;
         };
-        tokio::select! { _ = stop.recv() => {}, _ = interrupt.recv() => {} }
-        signals(UiEvent::App(live::AppEvent::Stop {
-            id: bbt_mux::Ulid::nil(),
-        }));
+        let Ok(mut close) = signal(SignalKind::hangup()) else { return; };
+        tokio::select! {
+            _ = close.recv() => signals(UiEvent::DesktopAction(bboxy450_term_desktop::Action::CloseWindow, None)),
+            _ = stop.recv() => signals(UiEvent::App(live::AppEvent::Stop { id: bbt_mux::Ulid::nil() })),
+            _ = interrupt.recv() => signals(UiEvent::App(live::AppEvent::Stop { id: bbt_mux::Ulid::nil() })),
+        }
     });
     let mut app = crate::App::owner(
         crate::UiProxy::Headless(sink.clone()),
@@ -409,6 +411,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
             if sources.iter().any(|source| !matches!(*source, 0 | 1)) {
                 dirty = true;
             }
+            app.rich_drain();
             dirty |= app.redraw_pending.replace(false);
             app.redraw_queued.set(false);
             if let Some(next) = &app.live_state
@@ -498,11 +501,11 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         .is_some_and(|m| m.metadata_initialized)
                 {
                     app.project_scene(true);
-                    if let Some(prepared)=&app.document.prepared
-                        && let Err(reason)=gpu.install_document_images(&prepared.images)
+                    if let Some(prepared) = &app.document.prepared
+                        && let Err(reason) = gpu.install_document_images(&prepared.images)
                     {
                         app.document.image_failed(reason);
-                        app.document_layout=None;
+                        app.document_layout = None;
                     }
                     let layouts = app.solve_ui(size)?;
                     app.focus_layout_ready();
@@ -557,19 +560,29 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             document_paints,
                             rims,
                         );
+                        foreground.splice(0..0, app.rich_paints());
                         foreground.splice(0..0, app.paint_terminal_selection());
-                        foreground.splice(0..0, app.scene.history_foreground(&model, &app.pane_bounds, 1.)?);
+                        foreground.splice(
+                            0..0,
+                            app.scene.history_foreground(&model, &app.pane_bounds, 1.)?,
+                        );
                         foreground.push(bbt_ui::components::Paint::Draw(
                             app.ui_selection.paint(app.scene.text_metrics()),
                         ));
                         foreground.extend(app.scene.error_overlay(size, app.unread_errors));
                         foreground.extend(app.paint_app_overlay());
                         foreground.extend(app.paint_startup_modal()?);
+                        let terminal_bounds: Vec<_> = app
+                            .pane_bounds
+                            .iter()
+                            .filter(|(id, _)| !app.rich_face(*id))
+                            .copied()
+                            .collect();
                         gpu.draw_layers_notifying(
                             base,
                             crate::gpu::Panes {
                                 model: &model,
-                                bounds: &app.pane_bounds,
+                                bounds: &terminal_bounds,
                                 focused: app.scene.focused(),
                                 overlay: foreground,
                                 retained: None,

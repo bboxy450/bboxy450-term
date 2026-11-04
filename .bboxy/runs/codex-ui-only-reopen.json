@@ -1,0 +1,140 @@
+{
+  "created": "2026-11-04T04:59:39.998202+00:00",
+  "task": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/EXECUTOR-UI-ONLY-REOPEN.md",
+  "base": "5793139a66b5ba58e55703239d5866fea87eb61b",
+  "source_commit": "b904fc13254e80ca09329d6d72bb3fade99a4ee4",
+  "harness_pin": "0dfa2b8147f01c95dda5da8ac14c33ec249cd86d",
+  "source_sha256": {
+    "Makefile": "60abf23aa0d093407c4b3769e21c0ee82d29ea3bbd915ecaa4ace4d334b12ba9",
+    "crates/bboxy450-term/src/cockpit.rs": "ba071c6b59a53ed154b9177cea40f92b3e768a8beb537133ddfabd5d55792082",
+    "crates/bboxy450-term/src/cockpit/gui_handoff.rs": "b8d2c7e794111a634cc7531878c55d3661d48c7723ebd4f3dff1058984f11e3a",
+    "crates/bboxy450-term/src/cockpit/owners.rs": "ee3c9725d21d77d15b2756d53bab94c536050e51b5ddbacea7c9ae5406ebc8a2",
+    "crates/bboxy450-term/tests/test_account.rs": "58048fe7a5f02f1bf57bcae8932373f3d7ba980ca93befeed14edf85b9febde4",
+    "crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs": "9dcfb1de89f19d16a8f6a3672106179ac80b014b27b2d0f65ae2606b95717355",
+    "crates/bboxy450-term/tests/formal_contracts.rs": "d3422ff1ed4f651b32ef56d6c38a10ad08b88462916fa5e90575eaa041903aa1",
+    "crates/bboxy450-term/tests/formal_contracts/gui_replacement.rs": "6209d64ca6713ed588094d0a50249491e981e0a908e88cb77fa12d90fd77f04a",
+    "scripts/reopen-gui.py": "5d8618b9590c5a7e837beb664cc526f961ab436eca68550968c4efe2997e817c",
+    "packaging/macos/Info.plist": "e4988ef7137799ec038d4820202552a3c5a4426757fc3734fc5258495db70587",
+    "verification/contracts.toml": "26e8c6247983829071a22dd1ab26053d03afc01c90dd33069413b93eb5dcce2c",
+    "verification/corpus.toml": "27bf27cb89808ee42700d0df98bacd14e06eeeb444151414c6bb41862b59e8af",
+    "verification/coverage.toml": "85e9d288939fac01bcdbb9269e30244da3c232d26cbd0e64f1e11f8953e4feaa"
+  },
+  "checks": [
+    {
+      "command": "BBOXY_UI_ONLY_REMOVE_GUARD=1 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make test-ui-only-reopen-guards",
+      "exit_code": 2,
+      "cargo_exit_code": 101,
+      "log": "/tmp/bboxy-ui-only-reopen-evidence/control-red-final.log",
+      "result": "Deliberately omit preserve mode in private fixture; actual ordinary startup refreshes incompatible Logic, named preservation assertion fails after private cleanup."
+    },
+    {
+      "command": "CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make test-ui-only-reopen-guards",
+      "exit_code": 0,
+      "log": "/tmp/bboxy-ui-only-reopen-evidence/guard-green-final.log"
+    },
+    {
+      "command": "CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make check-ui-only-reopen",
+      "exit_code": 0,
+      "log": "/tmp/bboxy-ui-only-reopen-evidence/strict-final.log",
+      "scope": "--no-deps strict App lib/bin/test_account/swarm_workdir/formal_contracts; producer lint tracked separately"
+    },
+    {
+      "command": "CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make verify-ui-only-reopen",
+      "exit_code": 0,
+      "log": "/tmp/bboxy-ui-only-reopen-evidence/green-bootstrap-fixed.log",
+      "source_note": "Earlier candidate run: real healthy GUI+supported/legacy rollback pass; changed rich/native handoff pass; native/Java changed pair parity. Since then standalone --preserve-backend-check routing and fixture-only controls/bounds were added. Exact committed-source refresh follows this checkpoint."
+    },
+    {
+      "command": "AST syntax + formal corpus/coverage/contracts metadata validation",
+      "exit_code": 0
+    }
+  ],
+  "formal_prior_candidate": [
+    {
+      "name": "GuiBackendPreservation",
+      "verdict": "pass",
+      "states": 14,
+      "edges": 18
+    },
+    {
+      "name": "BrokenGuiBackendPreservation",
+      "verdict": "safety",
+      "states": 14,
+      "edges": 18
+    }
+  ],
+  "logs_sha256": {
+    "final-green.log": "d71ca35bfc7f5a5d0e3acf2727dbe4c107982b8b6c51970e9b9ad019bb6d9ee0",
+    "removed-guard-red.log": "83188c942edb9ddc91e0539b35106227b4b46d8e82b505c95a5f666605696477",
+    "green.log": "d60c3f7e6ea631e378de9ea76ee93085e7e6281cc3d86cbe898643fab363db0b",
+    "strict-final.log": "8be266de5d0668ce0e2bc3c7d6deb2b57b0bf5f7629e1b5e66bde964f5ea1eda",
+    "compile-focused.log": "402ae2989294b8a32f25661db4bfcda11b0a4ba57dd765c6326c50312f9d6206",
+    "guard-green-final.log": "85d39ac08b15361e100bab2072808ac06ae9c1c223ea15b872143d28cf44be6c",
+    "compile-initial.log": "8487fe77d3b794d3c02dd32c5a67f9670ae45f5e9d2e29cea186505635ea924d",
+    "control-red-final.log": "983b7acb3469f9aca96bcec184f23d9d90a75e61cc388c7e2868d1870d13514a",
+    "green-bootstrap-fixed.log": "dfc0f50f82033797b9b8e4c63ce2f202b18e7eccd26bb0d38364204906db80c2",
+    "strict-fixture-fixed.log": "86a95ac4db6ef9cb657529f7847fbb712941b3b002a8bd408b966f59f37a3f8b",
+    "committed-green.log": "d0fada331a8d2dba64d2cbafadeba5be4881b529007e2e1e0d216bf2c2f5d1bb"
+  },
+  "activation": "STAGED ONLY; no production install, restart, signal or bundle write. Parent handles reviewed signed UI-only installation; existing Logic must be compatible and remain exact PID/birth.",
+  "rollback": "Signed static bundle capability required before any candidate execution. Supported rollback is signature-checked and uses same preserve flag/owner fence; unsupported legacy bundle files restored with NO automatic launch.",
+  "limits": [
+    "No full suite, full formal corpus/landing receipt or broad recovery tests.",
+    "Original live workspace report backlog/intents are untouched.",
+    "Producer0dfa has3 pre-existing Clippy errors; parent producer follow-up owns47c66162; no harness edits by this executor."
+  ],
+  "intermediate_failures": [
+    "Restricted desktop attention observer rejected preflight; replaced with existing non-claiming GUI hello.",
+    "Session bootstrap inside still-live test PID correctly prevented new GUI claim; fixture now detaches/exits an owned bootstrap child.",
+    "Initial direct Clippy found one test collapsible_if, corrected.",
+    "First committed refresh reached healthy/supported rollback then refused only the overstrict temporary-container0700 fixture assertion; Make-only fixture bounds corrected and whole focused gate passed."
+  ],
+  "prepared_report": "/tmp/bboxy-ui-only-reopen-evidence/REPORT.md",
+  "final_verification": {
+    "created": "2026-11-04T05:09:48.626680+00:00",
+    "product_source_commit": "b904fc13254e80ca09329d6d72bb3fade99a4ee4",
+    "fixture_successor_only": {
+      "Makefile": "d53061cc0ed2a9b6d9e1e9daa44de142551a914f1123555135eccdef59c9695c",
+      "crates/bboxy450-term/tests/test_account.rs": "f11bdefb7fb947c245905e889dd05095c919ea1b8a0c506518f171ed84d743e8"
+    },
+    "command": "CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make verify-ui-only-reopen",
+    "exit_code": 0,
+    "log": "/tmp/bboxy-ui-only-reopen-evidence/final-green.log",
+    "log_sha256": "d71ca35bfc7f5a5d0e3acf2727dbe4c107982b8b6c51970e9b9ad019bb6d9ee0",
+    "result": "2 private test_account cases pass;1 native-rich handoff passes72.95s; selected model export passes; native/Java full graphs/verdicts agree14states/18edges for pass and broken safety.",
+    "strict_command": "CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make check-ui-only-reopen",
+    "strict_exit_code": 0,
+    "strict_log": "/tmp/bboxy-ui-only-reopen-evidence/strict-fixture-fixed.log",
+    "strict_log_sha256": "86a95ac4db6ef9cb657529f7847fbb712941b3b002a8bd408b966f59f37a3f8b",
+    "binary_source_label": "b904fc13254e80ca09329d6d72bb3fade99a4ee4-dirty (only fixture Make/test successor changed; all product/model/script/plist bytes equal signed core)",
+    "bundle": "target/debug/bboxy450-term.app",
+    "application_sha256": "c153f44e16663317d7d9ba00f896deb14c05abcb90cf93944631f4d01ca4d5c8",
+    "private_fixture_correction": "Tempfile container is owned/non-writable by others, not necessarily0700; private account custody remains0700. Record GUI PID/birth receipts for failed-fixture cleanup.",
+    "gaps": "No production activation; no full suite/corpus/landing receipt. Producer0dfa lint disposition is separate.",
+    "proof_sha256": {
+      "BrokenGuiBackendPreservation.states": "8e937fe313bf9a3127a4e6e88017405a87c89af18b08caec34c69e7c6dc4fdb7",
+      "BrokenGuiBackendPreservation.edges": "acf3160ab80361d56d5a13b8ee4a685cb364b4e90aef842e1e99a6c82f258f66",
+      "GuiBackendPreservation.native-trace": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "GuiBackendPreservationGraph.cfg": "dfbf9c024600d5f7fae7336708f3e839379b7f7a26a6324a826c414a70f9f4e9",
+      "BrokenGuiBackendPreservationGraph.log": "f304cf05a9d4dcff7bfb3161a4afbf4d07e63aa0c21c75897a26603d66796ed4",
+      "GuiBackendPreservation.tla": "1e09a3e111ccae3aa70d3dbef7a4d61a16e9463e61255ef44a820ae38940b1bf",
+      "BrokenGuiBackendPreservation.tla": "f8954b55afec8018fce01d2002425e3623391d08d942df1a496883dbd0402e02",
+      "manifest.tsv": "19bb174c754bee753db1d7676957ed32c2ae441ed82882fcfbc2e228e789d9e4",
+      "BrokenGuiBackendPreservation.log": "8edf7c85ccd6bbc88eb06a24df0ca41888638d950cc6389680277257a6e7f2ef",
+      "GuiBackendPreservation.log": "11d9798c0a09a6e4b33f64318bfcd35df3105e8a049ac8afa47471585b3e2fc0",
+      "BrokenGuiBackendPreservation.cfg": "772faa3beb208c622411d3a708ce3a646be3eafc4879932597d42cda461d67bd",
+      "GuiBackendPreservation.cfg": "772faa3beb208c622411d3a708ce3a646be3eafc4879932597d42cda461d67bd",
+      "GuiBackendPreservation.edges": "cff298daf99d5248df59b2a7956fd9286f2529e2093fe0021548ce5981b9be9b",
+      "GuiBackendPreservation.states": "7e128a1aa6133f4aa21bf33d2c284a33e0f4545acf238922b347306786d8f8b3",
+      "GuiBackendPreservationGraph.log": "9de51109d5096d8c685fc41cecc5881b557f188cba1588e467ceb0e0dfbef1de",
+      "BrokenGuiBackendPreservationGraph.cfg": "dfbf9c024600d5f7fae7336708f3e839379b7f7a26a6324a826c414a70f9f4e9",
+      "BrokenGuiBackendPreservation.dot": "ebd92fa2b2abe415623446ee937e497a6a19d8af241159c20a636245e48a4894",
+      "BrokenGuiBackendPreservation.native-trace": "a31b2cfea52fbd750da4ee86e9aa5d1fb0423839a53e55ba81da92779549fcd5",
+      "GuiBackendPreservation.dot": "cdac8a44beb7060118b71ec8ef42a61e1d5cfdbcb7ee4d21a0b541328453fbaa"
+    },
+    "private_cleanup_sha256": {
+      "native-fixture-gui-cleanup.json": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "private-gui-cleanup.json": "d33f6b9f20b147df7bf0b170744108d0b08c448fca75a0bfae0727bfdfb3486e"
+    }
+  }
+}

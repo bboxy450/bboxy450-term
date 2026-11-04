@@ -230,7 +230,7 @@ With Yarn's `model` feature, the same declaration also provides `model()`,
 zero-based ordinals, `None` is -1, booleans are 0/1, and sets use one Boolean
 variable per domain member. Model actions retain rejected/ignored self-loops.
 `model().check(limit)` checks all reachable states or returns an error if the
-limit is exceeded. It adds no environmental fairness or liveness assertion.
+limit is exceeded. Fairness and liveness are present only when explicitly declared.
 The feature is selected on the Yarn dependency; consumers need no feature named
 `model`. Ordinary reducers work with `--no-default-features --features macros`
 and use `core` plus `alloc` for returned effect vectors.
@@ -248,6 +248,142 @@ unmodeled.** This is not verification of arbitrary Rust or a complete TLA+ front
 Inspired by [Verus state_machine!](https://verus-lang.github.io/verus/state_machines/)
 (explicit pre-state transitions) and [machine-check](https://github.com/onderjan/machine-check)
 (a constrained Rust-facing language). Independently implemented; no source copied.
+
+## Temporal properties and effect lifecycle
+
+State predicates can be named with `#[predicate] fn ready() { ... }`,
+`#[terminal] fn done() { ... }` or `#[quiescent] fn idle() { ... }`.
+All generate ordinary `fn(&State) -> bool` functions from the same finite
+expression language. Invariant functions are also usable as predicates.
+Declare a response as a standalone attribute (including its final semicolon):
+`#[property(id = "VISIBLE-001", leads_to(ready, done))];`.
+This lowers to `Model.responses` and TLA+ `ready ~> done`: every occurrence of
+`ready` must eventually reach a state satisfying `done`. IDs are unique across
+invariants and temporal properties; unknown predicate names fail compilation.
+Terminal/quiescent labels describe state predicates; they do not prune the
+graph, stop the reducer, or automatically satisfy a different response target.
+Ignored/rejected self-loops and implicit stuttering preserve outstanding obligations.
+
+Attach `#[fair(weak)]` or `#[fair(strong)]` immediately before a named `case`.
+The equivalent standalone form is `#[fair(weak, case = Present::current)];`.
+Unknown cases and duplicate annotations fail compilation. Each annotation
+creates one fair group containing the disjunction of that case's concrete
+parameter instances. Weak fairness requires a continuously enabled
+**nonstuttering** action group eventually to run; strong fairness also covers
+groups enabled infinitely often. This is case fairness, not per-parameter,
+per-event, per-effect or global runtime fairness. A fair ignored/rejected case
+cannot make a false response predicate true. Both native checking and the TLA+
+export use the existing `WF_vars` / `SF_vars` semantics.
+
+Declare effect outcomes with, for example,
+`effects { Fetch(id: Id) completes { Succeeded, FailedBeforeEffect, UnknownOutcome, CancelledBeforeStart }; }`.
+It generates `FetchAdmitted(id)`, `FetchSucceeded(id)`,
+`FetchFailedBeforeEffect(id)`, `FetchUnknownOutcome(id)` and
+`FetchCancelledBeforeStart(id)` event variants carrying the intent's declared
+parameters. Every generated variant requires an exhaustive `on` block, just
+like an explicitly declared event. Outcome names are scoped by the effect's
+prefix; `Admitted` is reserved. Legacy effects without `completes` keep their
+existing intent-only API.
+
+`emit Fetch(id)` returns an intent, never executes it, admits it, or recursively
+processes a completion. The caller supplies admission and completion as later
+`step` inputs. Lifecycle state and guards are explicit in the protocol:
+accept admission only for queued work, completion only for admitted work,
+and cancellation-before-start only before admission. Revalidate the current
+generation in the completion/commit guard. The language does not invent a
+hidden queue or enforce guards that the declaration omitted. The finite
+witnesses check those guards against delayed, reordered, duplicate and stale
+inputs. An `UnknownOutcome` may already have performed the external effect;
+a retry needs a retained claim or an independently verified idempotent backend.
+No effect backend or persistent claim store is supplied by this macro.
+
+[protocol_temporal.rs](tests/protocol_temporal.rs) uses one frame and two
+nonreused generations. The live property is ready leads_to visible-or-deselected,
+for each generation: **if a successfully fetched request remains selected**,
+weak fairness on `Present::current` ensures it eventually becomes visible.
+Strong fairness is separately declared on `FetchAdmitted::admit`; successful
+fetch completion is not assumed. The correct declaration has exactly 91 states
+and 1,365 labeled edges. Removing its generation comparison violates safety
+(99/1,485); removing presentation fairness retains 91/1,365 but yields closed
+lassos. A one-state/two-edge fair-stuttering control remains quiescent forever
+and fails its terminal-target response. The unknown-outcome witness retains
+an admission claim (6 states/42 edges); allowing unknown retries past that
+claim duplicates a commit (16/112). All edges and counterexamples replay the
+generated reducer, and the same declarations enter Java TLC graph/verdict parity.
+These results assume atomic pure steps at exactly those finite bounds; they do
+not prove external effect execution, arbitrary Rust, wall-clock progress,
+restart persistence or general TLC completeness.
+
+## Required claims and structured verification
+
+With `model` and `macros`, make the project contract explicit:
+
+```text
+bbt_yarn::requirements! {
+    pub ResultContract {
+        "RESULT-001" => LatestResult::result_is_current;
+    }
+}
+bbt_yarn::verify! {
+    #[test]
+    pub fn latest_result_contract() {
+        contract: ResultContract;
+        protocol: LatestResult;
+        exploration: exhaustive;
+        require_reachable: [Submit::fresh, Complete::current];
+        limits { states: 100_000; on_exhaustion: inconclusive; }
+    }
+}
+```
+
+Required ids must match all protocol invariants and temporal property ids
+exactly. A missing claim, an unrequired extra claim, a wrong predicate, or an
+unknown case is invalid input. A required case must fire on an actual edge in
+the complete reachable graph, including rejected/ignored self-loops. A state
+limit produces `inconclusive` and fails the test; partial exploration never
+establishes a claim. Only exhaustive exploration and inconclusive exhaustion
+are accepted syntax. Qualified `super::` and `crate::` paths retain their scope.
+
+Every generated test writes `target/yarn-verification/<test>.json` before its
+verdict assertion, including failed runs. An explicit Cargo target directory
+is honored. `verify::VerificationResult::to_json()` separates `outcome`,
+`method`, `scope`, `implementation`, `provenance` and `counterexample`.
+Scope includes domain members/sizes, encoded bounds, state limit, explicit
+fairness assumptions and unmodeled effects/environment. A refuted result
+includes event names/parameters and the failed condition; temporal traces also
+retain their cycle. Counts are absent when exploration is incomplete.
+
+`generated_core` means the reducer and model share the protocol AST. It does
+not claim independent implementation replay. The separate LatestResult edge
+witness checks all 21 states/105 edges. Declaration locations and deterministic
+FNV-1a hashes identify canonical tokens (comments/whitespace excluded); these
+are not cryptographic signatures. Repository signed commits and SHA-256 formal
+receipts provide separate custody. Tool versions are recorded. No serialization
+or hashing dependency is added to the no_std runtime.
+
+`protocol!` exposes `verification_metadata()` and `action_case(index)` with the
+`model` feature. A verification declaration additionally exposes
+`latest_result_contract::check()` for tooling, returning the same structured
+result without asserting or writing it. The repository's
+`protocol_contracts` example consumes that generated configuration directly.
+
+`make check-protocol-contracts` compiles the current configuration and checks
+`verification/protocol-contracts.toml`. It prints the contract diff and rejects
+removed required ids/cases, shrinking domains/bounds/limits, added assumptions
+or fairness, and new waivers. Weakening requires a matching baseline amendment
+in the same commit as its source change; a later baseline-only amendment does
+not retroactively approve it. Non-`test` attributes, including `ignore` and
+`should_panic`, are recorded as potential waivers. The baseline is reviewable
+policy, not proof that its assumptions describe reality. The RESULT-001-drop
+fixture must fail. This check and a JSON golden comparison run in
+`make test-formal`. The committed golden normalizes only expansion locations;
+real results retain them. No fairness or larger-domain claim is inferred.
+
+Inspired by [Quint](https://quint.sh/docs/checking-properties) (explicit finite verification scope)
+and [TLA-Verus](https://arxiv.org/abs/2610.14923) (statement
+preservation). Independently implemented; no source copied. Keep the project
+credit and [reuse policy](https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md)
+with extracts.
 
 ## Native verification and TLA+ export
 

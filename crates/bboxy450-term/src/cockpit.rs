@@ -34,6 +34,7 @@ pub mod desktop;
 #[cfg(test)]
 mod environment_tests;
 mod fixture_hosts;
+pub mod gui_handoff;
 mod owners;
 mod shell_path;
 pub mod startup;
@@ -47,7 +48,7 @@ pub fn frontend_running(run_dir: &std::path::Path) -> Result<Option<bool>> {
     owners::frontend_running(run_dir)
 }
 
-const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
+const STARTUP_TIMEOUT: Duration = Duration::from_secs(180);
 const GUI_WRITE_CAPACITY: usize = 64;
 
 /// App-defined, bounded UI-to-IO messages. A full sender returns ownership to
@@ -507,7 +508,8 @@ fn fixture_hosts_default() -> bool {
 // Provider status and matching source context must also reach retained owners (#78).
 // Original-operation recovery must reach a healthy retained logic owner (#74).
 // Own-seat diagnostic paging must reach a healthy retained logic owner (#75).
-const MCP_CONTROL_VERSION: u16 = 14;
+// Bounded JSONL repair must replace a blocking retained owner without replacing PTYs.
+const MCP_CONTROL_VERSION: u16 = 15;
 /// The one-line private startup reply. Never log its capability.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LogicReady {
@@ -768,31 +770,35 @@ async fn logic_main() -> Result<()> {
         repository: bootstrap.config.repository,
         ring: Default::default(),
     };
+    let emit = |stream: &str, verified, total, restoring| {
+        use std::io::Write;
+        let record = startup::ProgressLine {
+            startup_progress: startup::HistoryProgress {
+                stream: stream.into(),
+                verified,
+                total,
+                restoring,
+            },
+        };
+        if let Ok(bytes) = serde_json::to_vec(&record) {
+            let mut output = std::io::stdout().lock();
+            let _ = output
+                .write_all(&bytes)
+                .and_then(|_| output.write_all(b"\n"))
+                .and_then(|_| output.flush());
+        }
+    };
     let logic = Logic::start_custodied_with_progress(
         connection,
         logic_config,
         store,
         bootstrap.fixture_hosts,
         bbt_rt::handle(),
-        &mut |stream, verified, total| {
-            use std::io::Write;
-            let record = startup::ProgressLine {
-                startup_progress: startup::HistoryProgress {
-                    stream: stream.into(),
-                    verified,
-                    total,
-                },
-            };
-            if let Ok(bytes) = serde_json::to_vec(&record) {
-                let mut output = std::io::stdout().lock();
-                let _ = output
-                    .write_all(&bytes)
-                    .and_then(|_| output.write_all(b"\n"))
-                    .and_then(|_| output.flush());
-            }
-        },
+        &mut |stream, verified, total| emit(stream, verified, total, false),
+        &mut |operation, completed, total| emit(operation, completed, total, true),
     )?;
     if bootstrap.recover_seats {
+        emit("Resuming saved sessions", 0, 0, true);
         logic.client.recover_seats().await?;
     }
     let observer_supervisor = bootstrap.supervisor.pid;
@@ -803,6 +809,7 @@ async fn logic_main() -> Result<()> {
         }));
     // The operator's ctl door, only when asked for (decision #260, invariant #261): the
     // window is logic's parent, and the supervisor names whose descendants are seats.
+    emit("Opening control endpoint", 0, 0, true);
     let door = if bootstrap.config.ctl {
         let peers = bbt_mux::ctl_door::Peers {
             supervisor: bootstrap.supervisor.pid,
@@ -859,8 +866,70 @@ async fn logic_main() -> Result<()> {
     Ok(())
 }
 
+/// Public kernel identities only; capabilities remain in product-owned custody.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BackendIdentity {
+    supervisor: owners::ProcessIdentity,
+    logic: owners::ProcessIdentity,
+}
+impl BackendIdentity {
+    fn current(config: &Config) -> Result<Self> {
+        if !owners::supervisor_held(config)? {
+            return Err(invalid(
+                "preserve_backend: live supervisor required; cold startup refused",
+            ));
+        }
+        Ok(Self {
+            supervisor: owners::read::<SupervisorReady>(config, "supervisor")?
+                .ok_or_else(|| invalid("preserve_backend: supervisor owner unavailable"))?
+                .process,
+            logic: owners::read::<LogicReady>(config, "logic")?
+                .ok_or_else(|| invalid("preserve_backend: live Logic owner required"))?
+                .process,
+        })
+    }
+    fn check(&self, config: &Config) -> Result<()> {
+        if Self::current(config)? != *self {
+            return Err(invalid("preserve_backend: backend owner changed"));
+        }
+        Ok(())
+    }
+}
+fn logic_compatible(ready: &LogicReady, launch_path: &std::ffi::OsStr) -> bool {
+    ready.mcp_control_version == MCP_CONTROL_VERSION
+        && ready.gui_state_version == bbt_proto::gui::WINDOW_STATE_VERSION
+        && ready.swarm_metadata_version == bbt_proto::gui::SWARM_METADATA_VERSION
+        && ready.ui_control_version == bbt_proto::gui::UI_CONTROL_VERSION
+        && ready.swarm_workspace_version == bbt_proto::gui::SWARM_WORKSPACE_VERSION
+        && ready.launch_path_fingerprint.as_deref()
+            == Some(shell_path::fingerprint(launch_path).as_str())
+}
+/// Read-only compatibility/non-claiming handshake before the old GUI is detached.
+pub async fn preserve_backend_preflight(config: &Config) -> Result<BackendIdentity> {
+    let identity = BackendIdentity::current(config)?;
+    let path = shell_path::load(config).await;
+    let mut ready = owners::read::<LogicReady>(config, "logic")?
+        .ok_or_else(|| invalid("preserve_backend: Logic owner unavailable"))?
+        .ready;
+    if !logic_compatible(&ready, &path) {
+        return Err(invalid(
+            "preserve_backend: incompatible Logic schema or launch PATH; refresh forbidden",
+        ));
+    }
+    let io = tokio::time::timeout(
+        Duration::from_secs(5),
+        attach_gui(config, &mut ready, false),
+    )
+    .await
+    .map_err(|_| invalid("preserve_backend: non-claiming attach timed out"))??;
+    drop(io);
+    identity.check(config)?;
+    Ok(identity)
+}
+
 /// The IO owner, never stored on or dropped from the UI thread.
 pub struct Session {
+    preserved_backend: Option<BackendIdentity>,
     pub supervisor: Process,
     pub desktop_supervisor: std::sync::Arc<std::sync::atomic::AtomicU32>,
     pub logic: Process,
@@ -928,7 +997,23 @@ impl Session {
     pub async fn start(config: Config) -> Result<Self> {
         Self::start_with_progress(config, std::sync::Arc::new(|_| {})).await
     }
-    pub async fn start_with_progress(mut config: Config, progress: Progress) -> Result<Self> {
+    pub async fn start_with_progress(config: Config, progress: Progress) -> Result<Self> {
+        let args: Vec<_> = std::env::args().skip(1).collect();
+        let (preserve, expected) = gui_handoff::preservation(&args)?;
+        Self::start_policy(config, progress, preserve, expected).await
+    }
+    pub async fn start_preserving_backend(
+        config: Config,
+        expected: BackendIdentity,
+    ) -> Result<Self> {
+        Self::start_policy(config, std::sync::Arc::new(|_| {}), true, Some(expected)).await
+    }
+    async fn start_policy(
+        mut config: Config,
+        progress: Progress,
+        preserve: bool,
+        expected: Option<BackendIdentity>,
+    ) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         progress(Phase::StartingSupervisor);
         // Refuse before any custody or child process opens, including direct callers.
@@ -936,6 +1021,18 @@ impl Session {
         if let Some(directory) = &config.test_account {
             bbt_mux::identity::TestAccount::prepare_directory(directory)?;
         }
+        let preserved_backend = if preserve {
+            let current = preserve_backend_preflight(&config).await?;
+            if expected
+                .as_ref()
+                .is_some_and(|expected| *expected != current)
+            {
+                return Err(invalid("preserve_backend: preflight owner changed"));
+            }
+            Some(current)
+        } else {
+            None
+        };
         let frontend = match owners::FrontendLock::claim(&config)? {
             Some(lock) => lock,
             None => {
@@ -972,6 +1069,11 @@ impl Session {
                     true,
                 )
             } else {
+                if preserve {
+                    return Err(invalid(
+                        "preserve_backend: supervisor disappeared; startup forbidden",
+                    ));
+                }
                 let owner = start_supervisor(&config, &launch_path).await?;
                 (
                     Process::Child(owner.child),
@@ -981,15 +1083,15 @@ impl Session {
                 )
             };
         let mut existing = owners::read::<LogicReady>(&config, "logic")?.filter(|_| attached);
-        if existing.as_ref().is_some_and(|record| {
-            record.ready.mcp_control_version != MCP_CONTROL_VERSION
-                || record.ready.gui_state_version != bbt_proto::gui::WINDOW_STATE_VERSION
-                || record.ready.swarm_metadata_version != bbt_proto::gui::SWARM_METADATA_VERSION
-                || record.ready.ui_control_version != bbt_proto::gui::UI_CONTROL_VERSION
-                || record.ready.swarm_workspace_version != bbt_proto::gui::SWARM_WORKSPACE_VERSION
-                || record.ready.launch_path_fingerprint.as_deref()
-                    != Some(shell_path::fingerprint(&launch_path).as_str())
-        }) {
+        if existing
+            .as_ref()
+            .is_some_and(|record| !logic_compatible(&record.ready, &launch_path))
+        {
+            if preserve {
+                return Err(invalid(
+                    "preserve_backend: incompatible Logic; refresh forbidden",
+                ));
+            }
             progress(Phase::RefreshingLogic(
                 "Control service, launch environment or GUI schema changed".into(),
             ));
@@ -1008,6 +1110,11 @@ impl Session {
             match attach_gui(&config, &mut endpoint, true).await {
                 Ok(io) => (process, None, endpoint, io),
                 Err(error) => {
+                    if preserve {
+                        return Err(invalid(format!(
+                            "preserve_backend: GUI attach failed; refresh forbidden: {error}"
+                        )));
+                    }
                     progress(Phase::RefreshingLogic(error.to_string()));
                     eprintln!(
                         "logic endpoint unavailable: {error}; refreshing logic, retaining supervisor and seats"
@@ -1025,6 +1132,11 @@ impl Session {
                 }
             }
         } else {
+            if preserve {
+                return Err(invalid(
+                    "preserve_backend: Logic owner disappeared; startup forbidden",
+                ));
+            }
             let owner =
                 start_logic(&config, &supervisor_ready, false, &launch_path, &progress).await?;
             (
@@ -1036,7 +1148,11 @@ impl Session {
         };
         supervisor.preserve_on_drop();
         logic.preserve_on_drop();
+        if let Some(identity) = &preserved_backend {
+            identity.check(&config)?;
+        }
         Ok(Self {
+            preserved_backend,
             config,
             launch_path,
             _frontend: frontend,
@@ -1142,7 +1258,7 @@ impl Session {
     /// The supervisor is gone, so logic must be replaced with it.
     fn disconnect(&mut self) -> Result<()> {
         self.close_io();
-        if !self.logic_exited {
+        if !self.logic_exited && self.preserved_backend.is_none() {
             self.logic.start_kill()?;
         }
         Ok(())
@@ -1164,13 +1280,30 @@ impl Session {
             reason,
         });
         let progress = self.progress.clone();
+        let preserved = self.preserved_backend.clone();
         self.recovery = Some(tokio::spawn(async move {
-            tokio::time::timeout(STARTUP_TIMEOUT, reattach(config, endpoint, watches, progress))
-                .await
-                .map_err(|_| invalid("GUI reattach timed out"))?
+            if let Some(identity) = &preserved {
+                identity.check(&config)?;
+            }
+            let result = tokio::time::timeout(
+                STARTUP_TIMEOUT,
+                reattach(config.clone(), endpoint, watches, progress),
+            )
+            .await
+            .map_err(|_| invalid("GUI reattach timed out"))??;
+            if let Some(identity) = &preserved {
+                identity.check(&config)?;
+            }
+            Ok(result)
         }));
     }
     fn restart_if_ready(&mut self) {
+        if self.preserved_backend.is_some() {
+            if self.logic_exited || self.supervisor_exited {
+                self.recovery_failed = true;
+            }
+            return;
+        }
         if !self.logic_exited || self.recovery.is_some() || self.recovery_failed {
             return;
         }
@@ -1264,6 +1397,11 @@ impl Session {
                             Ok(Event::Reply(Box::new(GuiReply::Seats(recovered.seats))))
                         }
                         // Fall back to replacing logic; restart follows its observed exit.
+                        Err(error) if reattached && self.preserved_backend.is_some() => {
+                            self.recovery_failed = true;
+                            (self.progress)(Phase::Failed(format!("preserve_backend: GUI reattach failed: {error}")));
+                            Ok(Event::Disconnected(format!("preserve_backend: GUI reattach failed; owners retained: {error}")))
+                        }
                         Err(error) if reattached => {
                             (self.progress)(Phase::RefreshingLogic(format!("GUI reattach failed: {error}")));
                             if !self.logic_exited {
@@ -1392,6 +1530,12 @@ impl Session {
 
     /// Explicit hard quit: stop and reap both backend owners and their seats.
     pub async fn shutdown(mut self) -> Result<()> {
+        if self.preserved_backend.is_some() {
+            self.close_io();
+            return Err(invalid(
+                "preserve_backend: backend shutdown forbidden; GUI detached",
+            ));
+        }
         if let Some(task) = self.recovery.take() {
             task.abort();
             if let Ok(Ok(recovered)) = task.await {
@@ -1516,7 +1660,7 @@ async fn start_logic(
     let mut endpoint: LogicReady = loop {
         let line = tokio::time::timeout_at(deadline, read_line(&mut output))
             .await
-            .map_err(|_| invalid("logic startup timed out: no progress for 30 s"))??
+            .map_err(|_| invalid("logic startup timed out: no progress for 180 s"))??
             .ok_or_else(|| invalid("logic exited during startup"))?;
         if let Ok(record) = serde_json::from_slice::<startup::ProgressLine>(&line) {
             let p = record.startup_progress;
@@ -1525,10 +1669,18 @@ async fn start_logic(
             }
             if p.advances(last_progress.as_ref()) {
                 deadline = tokio::time::Instant::now() + STARTUP_TIMEOUT;
-                progress(Phase::VerifyingHistory {
-                    stream: p.stream.clone(),
-                    verified: p.verified,
-                    total: p.total,
+                progress(if p.restoring {
+                    Phase::RestoringState {
+                        operation: p.stream.clone(),
+                        completed: p.verified,
+                        total: p.total,
+                    }
+                } else {
+                    Phase::VerifyingHistory {
+                        stream: p.stream.clone(),
+                        verified: p.verified,
+                        total: p.total,
+                    }
                 });
                 last_progress = Some(p);
             }

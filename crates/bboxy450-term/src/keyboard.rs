@@ -571,6 +571,73 @@ fn protocol_physical(key: PhysicalKey) -> protocol::PhysicalKey {
     ))
 }
 
+/// Typed rich-face intents share this adapter's single key interpretation boundary.
+pub enum RichKey {
+    Global,
+    Paste,
+    Pane(crate::rich_pane::Input),
+    Consumed,
+}
+pub fn rich_key(input: &Input<'_>) -> RichKey {
+    use crate::rich_pane::Input as P;
+    use bbt_ui::text_edit::{Command as E, Motion};
+    let command = input
+        .modifiers
+        .state
+        .contains(winit::keyboard::ModifiersState::SUPER);
+    if command && matches!(shortcut_key(input), Some('q' | 'w' | 't' | 'n' | '1'..='9')) {
+        return RichKey::Global;
+    }
+    if !input.state.is_pressed() {
+        return RichKey::Consumed;
+    }
+    if command && shortcut_key(input) == Some('v') {
+        return RichKey::Paste;
+    }
+    let action = match &input.logical_key {
+        Key::Named(NamedKey::Enter)
+            if input
+                .modifiers
+                .state
+                .contains(winit::keyboard::ModifiersState::SHIFT) =>
+        {
+            Some(P::Edit(E::Insert("\n".into())))
+        }
+        Key::Named(NamedKey::Enter) => Some(P::Enter),
+        Key::Named(NamedKey::Escape) => Some(P::Cancel),
+        Key::Named(NamedKey::Backspace) => Some(P::Edit(E::Delete { backwards: true })),
+        Key::Named(NamedKey::Delete) => Some(P::Edit(E::Delete { backwards: false })),
+        Key::Named(
+            k @ (NamedKey::ArrowLeft
+            | NamedKey::ArrowRight
+            | NamedKey::ArrowUp
+            | NamedKey::ArrowDown
+            | NamedKey::Home
+            | NamedKey::End),
+        ) => Some(P::Edit(E::Move {
+            motion: match k {
+                NamedKey::ArrowLeft => Motion::Left,
+                NamedKey::ArrowRight => Motion::Right,
+                NamedKey::ArrowUp => Motion::Up,
+                NamedKey::ArrowDown => Motion::Down,
+                NamedKey::Home => Motion::LineStart,
+                _ => Motion::LineEnd,
+            },
+            extend: input
+                .modifiers
+                .state
+                .contains(winit::keyboard::ModifiersState::SHIFT),
+        })),
+        _ if command => match shortcut_key(input) {
+            Some('a') => Some(P::Edit(E::SelectAll)),
+            Some('z') => Some(P::Edit(E::Undo)),
+            _ => None,
+        },
+        _ => input.text.map(|text| P::Edit(E::Insert(text.into()))),
+    };
+    action.map_or(RichKey::Consumed, RichKey::Pane)
+}
+
 #[cfg(test)]
 pub(crate) fn assert_adapter() {
     source_guard();
@@ -748,8 +815,13 @@ pub(crate) fn source_guard() {
     ] {
         assert!(!route.contains(bypass), "key-to-bytes bypass: {bypass}");
     }
-    let callback = source.split_once("WindowEvent::KeyboardInput { event, .. } =>").unwrap().1
-        .split_once("WindowEvent::RedrawRequested =>").unwrap().0;
+    let callback = source
+        .split_once("WindowEvent::KeyboardInput { event, .. } =>")
+        .unwrap()
+        .1
+        .split_once("WindowEvent::RedrawRequested =>")
+        .unwrap()
+        .0;
     assert!(callback.contains("self.keyboard.event("));
     assert!(callback.contains("self.key_input(&input)"));
     let input = source

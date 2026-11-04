@@ -1,0 +1,138 @@
+{
+  "task": "01M6J7NRAC1B36W8MGNFW2GTBY",
+  "task_etag": "1cede7b5eb7af27c3efe30d24f47ac6fca2df7a6a393e7419ad26760fc19222a",
+  "source": "e22f6a5ba4b3221af238f50cff907236a0ae1762",
+  "accepted_base": "4b8cd49cdb64ccb440213db8617a334c8e2fdd87",
+  "preserved_ref": "preserve/rich-host-4b8cd49c",
+  "prepared_bundle": "target/release/bboxy450-term.app",
+  "prepared_source": "4b8cd49cdb64ccb440213db8617a334c8e2fdd87",
+  "prepared_signature_team": "UQB3368A84",
+  "prepared_identifier": "com.bboxy450.term",
+  "prepared_unchanged": true,
+  "prepared_snapshot_sha256": "7b9f1ac47a1c4ac46cf3e124755116cdf38f589d138bd787697b5ab0dfc31785",
+  "private_destination": "target/trusted-install-probe",
+  "baseline": {
+    "command": [
+      "make",
+      "install-prepared",
+      "BUNDLE=target/release/bboxy450-term.app",
+      "INSTALL_DIR=target/trusted-install-probe"
+    ],
+    "source": "4b8cd49cdb64ccb440213db8617a334c8e2fdd87",
+    "exit_code": 2,
+    "log": "/tmp/codex-trusted-handoff-baseline.log",
+    "sha256": "22581b9d397513a88fc768658bad1b88ad69aa43351ebc7e7bee2f183a1f33d9",
+    "destination_absent": true
+  },
+  "verify": {
+    "command": [
+      "make",
+      "install-prepared",
+      "BUNDLE=target/release/bboxy450-term.app",
+      "INSTALL_DIR=target/trusted-install-probe"
+    ],
+    "exit_code": 0,
+    "log": "/tmp/codex-trusted-handoff-green.log",
+    "sha256": "99d91a847d133c3450ea1d8ae5e5c1ed736ca3eebb379e01ffde8818b3de2e67",
+    "command_text": "make install-prepared BUNDLE=target/release/bboxy450-term.app INSTALL_DIR=target/trusted-install-probe"
+  },
+  "wrong_identifier_control": {
+    "command": [
+      "make",
+      "install-prepared",
+      "BUNDLE=target/release/bboxy450-term.app",
+      "INSTALL_DIR=target/trusted-install-probe",
+      "REQUIREMENT=identifier \"com.bboxy450.term.invalid\" and anchor apple generic and certificate leaf[subject.OU] = \"UQB3368A84\""
+    ],
+    "exit_code": 2,
+    "log": "/tmp/codex-trusted-handoff-wrong-identifier.log",
+    "sha256": "d6ffbcd9e45cb638c25fca6d86bc497fb89f945b23563462b538c8be1c9e6682"
+  },
+  "wrong_identifier_destination_unchanged": true,
+  "identity": {
+    "command": [
+      "codesign",
+      "--display",
+      "--verbose=4",
+      "/Users/feral/mydev/bboxy450-term-codex-rich/target/trusted-install-probe/bboxy450-term.app"
+    ],
+    "exit_code": 0,
+    "log": "/tmp/codex-trusted-handoff-identity.log",
+    "sha256": "ac94783421e9f484d59f08a47c7e38e9a362f14a8c94ea5f2afb072eb3b5b986"
+  },
+  "reopen_prepared_dry_run": {
+    "command": [
+      "make",
+      "--dry-run",
+      "reopen-prepared",
+      "BUNDLE=target/release/bboxy450-term.app",
+      "INSTALL_DIR=target/trusted-install-probe",
+      "GUI_REPOSITORY=/tmp/unused-trusted-handoff-probe"
+    ],
+    "exit_code": 0,
+    "log": "/tmp/codex-trusted-handoff-reopen-dry-run.log",
+    "sha256": "5112b09bcc7c5656817bf677d3a1089e7ea6a5cff2e325a9691e27b150c7cfa6"
+  },
+  "live_install_or_gui_activation": false,
+  "build_sign_repackage": false,
+  "omitted": [
+    "Cargo/build",
+    "full/unit/formal/visual suites",
+    "live GUI replacement"
+  ],
+  "runtime_sources_unchanged": true,
+  "primary_oracle_failure": {
+    "path": "target/release/gui-reopen-7ld3pgkj/install.log",
+    "sha256": "1ee7020e1422f1933354e79159cb8817067b9ef33d85e2ffff725a2753745fad",
+    "error": "requirement expression treated as filename; invalid requirement specification",
+    "observed_recipe_error": 1,
+    "outer_exit": "not independently observed; own exact baseline returned2"
+  },
+  "source_sha256": {
+    "Makefile": "c7ec08bb34df7179925b0d326b28112629ed7e3bfd465a811b1aae498181fda8",
+    "scripts/reopen-gui.py": "5d337d76e5d5070c4f778d6d19c5eaa6f4835e42e0ac13963b1d1fe3975ce7cd"
+  },
+  "artifact_claim": {
+    "id": "01M6J7V7VQN8V578FZB1BNWEWF",
+    "status": "accepted",
+    "grade": "reported"
+  },
+  "report_registration": {
+    "path": "reports/2026-11-04-codex-trusted-handoff.md",
+    "original_op_id": "01M6J7WJBJD042R157SF12Z94K",
+    "status": "unknown",
+    "initial_transport": "connect NotFound os2 elapsed0ms",
+    "original_outcome_queries": [
+      "01M6J7X2NV4GRYSVCXEB85EPT7"
+    ],
+    "report_body_retained_in_session": true,
+    "original_outcome_query": "01M6J7Z1FJS2Y0SMFQEFXXQZ5E",
+    "ledger": "missing",
+    "terminal": false,
+    "retry_allowed": false
+  },
+  "oracle_reported_activation": {
+    "message": "01M6J84XF3T80DMWS7A11JMTNJ",
+    "command": "make reopen-prepared",
+    "exit_code": 0,
+    "installed_running_source": "4b8cd49cdb64ccb440213db8617a334c8e2fdd87",
+    "gui_pid": 54941,
+    "gui_instance": "01M6J7VZEC8A3YCVS4942Q36DE",
+    "native_frame": 106,
+    "ready": true,
+    "operator_confirms_embedded_gui_works": true,
+    "session_identities_preserved": true,
+    "independently_probed_by_executor": false
+  },
+  "final_delivery_report_registration": {
+    "path": "reports/2026-11-04-codex-trusted-handoff-delivered.md",
+    "original_op_id": "01M6J8718GYVWXB8BCQSXCDGPS",
+    "status": "unknown",
+    "ledger": "retained",
+    "terminal": false,
+    "retry_allowed": false,
+    "error": "activity projection backlog; write intent retained; never automatically redispatch",
+    "latest_outcome_query": "01M6J8B5828CYQXVNMKM8Y3YKB",
+    "new_material_evidence": "Later Oracle/operator-confirmed live deployment; original unobserved draft was not replayed"
+  }
+}

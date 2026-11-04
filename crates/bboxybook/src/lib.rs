@@ -19,6 +19,7 @@ pub mod launchers;
 pub mod materials;
 pub mod modules;
 pub mod overlays;
+pub mod startup;
 pub mod panes;
 pub mod parity;
 pub mod paths;

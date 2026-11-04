@@ -15,12 +15,27 @@ extern crate self as bbt_yarn;
 
 extern crate alloc;
 
-#[cfg(feature = "model")]
+#[cfg(any(feature = "model", test))]
 extern crate std;
+
+#[cfg(all(test, any(loom, shuttle)))]
+mod concurrency;
 
 /// Native finite-state checking and TLA+ export for the explicit Yarn subset.
 #[cfg(feature = "model")]
 pub mod model;
+
+/// Required claims, finite verification results and JSON evidence (hosted only).
+#[cfg(feature = "model")]
+pub mod verify;
+
+/// Declares stable required claim ids for a protocol.
+#[cfg(all(feature = "macros", feature = "model"))]
+pub use bbt_yarn_macros::requirements;
+
+/// Generates a deterministic exhaustive finite verification test.
+#[cfg(all(feature = "macros", feature = "model"))]
+pub use bbt_yarn_macros::verify;
 
 /// Control values returned by non-terminal reactor handlers.
 pub mod reactor;

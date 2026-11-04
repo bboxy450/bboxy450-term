@@ -25,6 +25,11 @@ mod native_reopen_tests;
 #[path = "logic/ring_batch_tests.rs"]
 mod ring_batch_tests;
 
+#[cfg(test)]
+mod hol_tests;
+#[cfg(test)]
+mod ownership_tests;
+
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::{
@@ -376,6 +381,7 @@ enum Command {
     GuiHello(oneshot::Sender<Result<bbt_proto::gui::GuiHello>>),
     GuiSeats(oneshot::Sender<Result<Vec<crate::seat_socket::GuiSeat>>>),
     GuiSeat(Ulid, oneshot::Sender<Result<crate::seat_socket::GuiSeat>>),
+    RichState(Ulid, u64),
     GuiIdentity(oneshot::Sender<Result<bbt_proto::GuiIdentity>>),
     OperatorIdentity(
         Ulid,
@@ -473,6 +479,8 @@ enum Command {
     IdentityStatus(oneshot::Sender<Result<crate::identity::IdentityStatus>>),
     #[cfg(test)]
     RefreshIdentity(oneshot::Sender<Result<()>>),
+    #[cfg(test)]
+    ProjectionTurn(PathBuf, oneshot::Sender<Result<()>>),
 }
 impl Command {
     fn local_while_checkpoint_pending(&self) -> bool {
@@ -1959,6 +1967,7 @@ impl Logic {
         fixture_hosts: bool,
         handle: &tokio::runtime::Handle,
         progress: &mut dyn FnMut(&str, u64, u64),
+        recovery_progress: &mut dyn FnMut(&str, u64, u64),
     ) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         let providers: Vec<Box<dyn Provider>> = if fixture_hosts {
@@ -1988,6 +1997,7 @@ impl Logic {
             handle,
             Default::default(),
             progress,
+            recovery_progress,
         )
     }
     /// Production construction: custody may be pending while PTYs, the GUI
@@ -2066,6 +2076,7 @@ impl Logic {
             handle,
             plugins,
             &mut |_, _, _| {},
+            &mut |_, _, _| {},
         )
     }
     fn start_with_custody(
@@ -2132,8 +2143,10 @@ impl Logic {
             handle,
             Default::default(),
             &mut |_, _, _| {},
+            &mut |_, _, _| {},
         )
     }
+    #[allow(clippy::too_many_arguments, reason = "bootstrap keeps verification and restoration observations separate")]
     fn start_inner_with_plugins(
         providers: Vec<Box<dyn Provider>>,
         config: LogicConfig,
@@ -2142,6 +2155,7 @@ impl Logic {
         handle: &tokio::runtime::Handle,
         plugins: crate::plugins::HostConfig,
         progress: &mut dyn FnMut(&str, u64, u64),
+        recovery_progress: &mut dyn FnMut(&str, u64, u64),
     ) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         let custodied = !matches!(&identity, IdentityMode::Explicit(_));
@@ -2200,7 +2214,9 @@ impl Logic {
         let stop = Arc::new(StopSignal::default());
         let stopping = stop.clone();
         let runtime = handle.clone();
-        let (ready_tx, ready_rx) = std::sync::mpsc::sync_channel(1);
+        let (ready_tx, ready_rx) = std::sync::mpsc::sync_channel::<
+            std::result::Result<Option<(String, u64, u64)>, String>,
+        >(1);
         let worker_client = client.clone();
         let reporter = client.clone();
         let thread = std::thread::Builder::new()
@@ -2220,6 +2236,9 @@ impl Logic {
                     identity,
                     bus_window,
                     plugins,
+                    &mut |operation, completed, total| {
+                        let _ = ready_tx.send(Ok(Some((operation.into(), completed, total))));
+                    },
                 ) {
                     Ok(worker) => worker,
                     Err(error) => {
@@ -2229,7 +2248,7 @@ impl Logic {
                     }
                 };
                 worker.plugin_signing = Some(plugin_signing);
-                let _ = ready_tx.send(Ok(()));
+                let _ = ready_tx.send(Ok(None));
                 let execution = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     let result = worker.run(&mut rx, stopping);
                     let seal = worker.seal_active_hold();
@@ -2257,13 +2276,18 @@ impl Logic {
                 let _ = worker.handle.block_on(worker.bus.shutdown());
                 result
             })?;
-        let ready = match ready_rx.recv_timeout(Duration::from_secs(30)) {
-            Ok(ready) => ready,
-            Err(error) => {
-                // Preserve the startup deadline; the detached owner will exit
-                // when startup returns, even if its idle timer cannot run.
-                stop.request();
-                return Err(error.into());
+        let ready = loop {
+            match ready_rx.recv_timeout(Duration::from_secs(180)) {
+                Ok(Ok(Some((operation, completed, total)))) => {
+                    recovery_progress(&operation, completed, total)
+                }
+                Ok(result) => break result.map(|_| ()),
+                Err(error) => {
+                    // Preserve the startup deadline; the detached owner will exit
+                    // when startup returns, even if its idle timer cannot run.
+                    stop.request();
+                    return Err(error.into());
+                }
             }
         };
         match ready {
@@ -2344,6 +2368,13 @@ pub const SEAT_PENDING_WAIT: Duration = Duration::from_secs(4);
 /// The resend interval while waiting, and the `retry_after_ms` hint after.
 pub const PENDING_RETRY_MS: u64 = 100;
 
+/// Concurrent knowledge and task reads one root admits before provider_busy.
+#[cfg(not(test))]
+const KNOWLEDGE_READS_PER_ROOT: usize = 16;
+/// Unit tests hold a small number of reads to reach the same refusal.
+#[cfg(test)]
+const KNOWLEDGE_READS_PER_ROOT: usize = 2;
+
 /// Pause before reading a seat's ring again after an I/O refusal.
 const RING_REFUSAL_RETRY: Duration = Duration::from_secs(2);
 
@@ -2357,6 +2388,9 @@ impl ViewState {
     }
 }
 
+#[path = "logic/harness_status.rs"]
+mod harness_status;
+
 struct ViewState {
     info: SeatInfo,
     adapter: Session,
@@ -2367,6 +2401,9 @@ struct ViewState {
     tap: OscTap,
     replies: VecDeque<(Ulid, Vec<u8>)>,
     native_reader: Option<NativeReader>,
+    rich_connection: Option<bboxy450_harness_wake_up::rich::Connection>,
+    rich_delivery: Option<crate::rich::Delivery>,
+    rich_socket: Option<PathBuf>,
     shared_codex_runtime: Option<PathBuf>,
     state: Playback,
     view_generation: Ulid,
@@ -2835,6 +2872,23 @@ struct RoleUpdate {
     reply: oneshot::Sender<Result<()>>,
     result: Result<bbt_proto::gui::RoleCatalog>,
 }
+#[cfg(test)]
+type PublicationHook = Arc<dyn Fn(&str) + Send + Sync>;
+enum RootPublication {
+    Read {
+        root: String,
+        outbox: crate::index::DocumentOutbox,
+        result: Result<Option<Box<Draft>>>,
+    },
+    Published {
+        root: String,
+        result: Result<()>,
+    },
+}
+fn publication_io<T>(job: impl FnOnce() -> Result<T>) -> Result<T> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(job))
+        .unwrap_or_else(|_| Err(invalid("knowledge publication IO worker panicked")))
+}
 enum WorkspaceRead {
     Seat(
         Ulid,
@@ -2906,6 +2960,12 @@ struct Worker {
     role_catalog: std::result::Result<bbt_proto::gui::RoleCatalog, String>,
     role_catalog_store: role_catalog::CatalogStore,
     role_updates: tokio::task::JoinSet<RoleUpdate>,
+    root_publications: tokio::task::JoinSet<RootPublication>,
+    publication_tasks: BTreeMap<tokio::task::Id, String>,
+    publication_running: BTreeMap<String, bool>,
+    publication_backoff: BTreeMap<String, ProvenanceBackoff>,
+    #[cfg(test)]
+    publication_io_hook: Option<PublicationHook>,
     // Reads retain an immutable catalogue without holding the logic worker.
     // Scans and provenance updates use copy-on-write while an older read is active.
     workspaces: WorkspaceRouter,
@@ -2923,7 +2983,7 @@ struct Worker {
     /// In memory only: plugin calls for that seat carry it, nothing journals it.
     seat_attribution: BTreeMap<Ulid, (u64, crate::plugins::attribution::Attribution)>,
     effect_jobs: tokio::task::JoinSet<knowledge_effects::Completion>,
-    effect_roots: BTreeSet<String>,
+    effect_roots: BTreeMap<String, std::sync::Weak<crate::provenance::projection::WriterLease>>,
     gui_knowledge_jobs: tokio::task::JoinSet<GuiKnowledgeCompletion>,
     gui_task_reads: tokio::task::JoinSet<GuiTaskReadCompletion>,
     task_import_jobs: tokio::task::JoinSet<()>,
@@ -3064,6 +3124,7 @@ impl Worker {
             identity,
             bus_window,
             Default::default(),
+            &mut |_, _, _| {},
         )
     }
     #[allow(
@@ -3079,7 +3140,9 @@ impl Worker {
         identity: crate::identity::IdentityRuntime,
         bus_window: Option<Ulid>,
         plugin_config: crate::plugins::HostConfig,
+        progress: &mut dyn FnMut(&str, u64, u64),
     ) -> Result<Self> {
+        progress("Loading session registry", 0, 0);
         let connections = Connections::open(providers)?;
         let account = SqliteStore::open(&object_dir(&config.run_dir, "account")?)?;
         let registry = Registry::new(account.clone());
@@ -3119,6 +3182,7 @@ impl Worker {
                 .map_err(|error| invalid(error.to_string()))?;
         }
         let plugins = crate::plugins::control::Control::new(plugin_registry.clone());
+        progress("Loading workspace records", 0, 0);
         let workspaces = WorkspaceRouter::new(
             Workspaces::open(WorkspaceConfig {
                 startup_repository: config.repository.clone(),
@@ -3144,6 +3208,7 @@ impl Worker {
         std::fs::DirBuilder::new()
             .mode(0o700)
             .create(&endpoint_root)?;
+        progress("Restoring messages", 0, 0);
         let mut messaging = crate::messaging::Messaging::open(&config.run_dir, identity.keys())?;
         messaging.startup_workspace(workspaces.cache.startup().root_id())?;
         messaging.operator_reference(identity.observed_operator_device()?)?;
@@ -3168,6 +3233,12 @@ impl Worker {
             role_catalog,
             role_catalog_store,
             role_updates: tokio::task::JoinSet::new(),
+            root_publications: tokio::task::JoinSet::new(),
+            publication_tasks: BTreeMap::new(),
+            publication_running: BTreeMap::new(),
+            publication_backoff: BTreeMap::new(),
+            #[cfg(test)]
+            publication_io_hook: None,
             workspaces,
             provenance_registered: BTreeSet::new(),
             provenance_bindings: BTreeMap::new(),
@@ -3179,7 +3250,7 @@ impl Worker {
             diagnostic_pending: BTreeSet::new(),
             seat_attribution: BTreeMap::new(),
             effect_jobs: tokio::task::JoinSet::new(),
-            effect_roots: BTreeSet::new(),
+            effect_roots: BTreeMap::new(),
             gui_knowledge_jobs: tokio::task::JoinSet::new(),
             gui_task_reads: tokio::task::JoinSet::new(),
             task_import_jobs: tokio::task::JoinSet::new(),
@@ -3234,26 +3305,40 @@ impl Worker {
             parsers: Default::default(),
             ingestion_ready: Arc::default(),
         };
-        for (host, info) in worker.connections.owned_seats()? {
+        let seats = worker.connections.owned_seats()?;
+        let seat_count = seats.len() as u64;
+        progress("Restoring saved sessions", 0, seat_count);
+        for (index, (host, info)) in seats.into_iter().enumerate() {
             // Several fixture links can wrap one local supervisor. Recover a
             // seat only through the link selected by its durable location.
             if worker.host_for_seat(info.seat)? == host {
                 worker.attach(info, false)?;
             }
+            if index % 32 == 0 || index as u64 + 1 == seat_count {
+                progress("Restoring saved sessions", index as u64 + 1, seat_count);
+            }
         }
         let startup = worker.workspaces.cache.startup().root_id().to_owned();
         let swarms = worker.workspaces.bound_swarms(&worker.registry, &startup)?;
-        for (task, status) in worker.workspaces.cache.startup().index.task_states() {
+        let tasks: Vec<_> = worker.workspaces.cache.startup().index.task_states().collect();
+        let task_count = tasks.len() as u64;
+        progress("Restoring task state", 0, task_count);
+        for (index, (task, status)) in tasks.into_iter().enumerate() {
             worker
                 .messaging
                 .task_state_root(&startup, &swarms, task, status, now_ms())?;
+            if index % 32 == 0 || index as u64 + 1 == task_count {
+                progress("Restoring task state", index as u64 + 1, task_count);
+            }
         }
+        progress("Restoring pending deliveries", 0, 0);
         worker.publish_root_outbox(&startup)?;
         // Recover audit outboxes after a logic crash, even without a new call.
         for record in worker.registry.list()? {
             worker.control_journal(record.id)?;
         }
         worker.publish_control_audits()?;
+        progress("Checking identity", 0, 0);
         worker.refresh_identity()?;
         Ok(worker)
     }
@@ -4307,7 +4392,7 @@ impl Worker {
             return journal.checked(actor, call, value);
         }
         if crate::mcp::work_items::mutation(&call.tool) {
-            if self.effect_roots.contains(&port.binding.root_id) {
+            if self.effect_root_busy(&port.binding.root_id) {
                 return Ok(crate::mcp::error(
                     call.op_id,
                     "provider_busy",
@@ -5088,48 +5173,37 @@ impl Worker {
             },
             Request::Spawn(args) => {
                 let result = (|| -> Result<SeatInfo> {
-                    let harness = HarnessRecord::builtin(&args.approved_profile)?;
-                    let mut record = SeatRecord::new(
+                    let placement = Some(self.control_placement(&args, id)?);
+                    let (record, harness, mut options) = self.prepare_spawn(
                         id,
-                        args.swarm_id,
-                        args.name
-                            .clone()
-                            .map(Ok)
-                            .unwrap_or_else(|| self.default_seat_name(args.swarm_id))?,
-                        harness.kind.clone(),
-                    );
-                    record.launch_placement = Some(self.control_placement(&args, id)?);
-                    let (role, role_prompt) =
-                        self.configured_role(&harness.kind, args.role.as_deref())?;
-                    record.role = role;
-                    record.harness_session_id = args.resume.clone();
+                        bbt_proto::SpawnSpec {
+                            swarm: bbt_proto::SwarmId::from_u128(args.swarm_id.0),
+                            harness_kind: args.approved_profile,
+                            name: args.name,
+                            role: args.role,
+                            cwd: args.cwd.to_string_lossy().into_owned(),
+                            location: bbt_proto::Where::Local,
+                            resume: args.resume,
+                            placement,
+                            via: None,
+                            command: None,
+                            args: vec![],
+                            env: vec![],
+                        },
+                    )?;
                     if let Some(name) = &args.harness_profile
                         && !harness_profile_dir()?.join(format!("{name}.md")).is_file()
                     {
-                        return Err(invalid("no such bboxy450-harness profile; see harness_profiles"));
+                        return Err(invalid(
+                            "no such bboxy450-harness profile; see harness_profiles",
+                        ));
                     }
-                    self.launch(
-                        record,
-                        harness,
-                        crate::adapters::launch::LaunchOptions {
-                            transport_argv: None,
-                            via: None,
-                            // the harness seat starts on this profile (its own precedence: env first)
-                            env: args
-                                .harness_profile
-                                .clone()
-                                .map(|p| vec![("BBOXY450_HARNESS_PROFILE".into(), p)])
-                                .unwrap_or_default(),
-                            cwd: args.cwd.canonicalize()?,
-                            role_prompt,
-                            executable: std::env::current_exe()?,
-                            user_home: std::env::var_os("HOME")
-                                .map(PathBuf::from)
-                                .ok_or_else(|| invalid("missing user home"))?,
-                            user_zdotdir: std::env::var_os("ZDOTDIR").map(PathBuf::from),
-                            resume: args.resume.is_some(),
-                        },
-                    )
+                    if let Some(profile) = args.harness_profile {
+                        options
+                            .env
+                            .push(("BBOXY450_HARNESS_PROFILE".into(), profile));
+                    }
+                    self.launch(record, harness, options)
                 })();
                 match result {
                     Ok(info) => crate::mcp::success(
@@ -5278,6 +5352,112 @@ impl Worker {
                 }
             }
         }
+    }
+    fn start_control_input(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        reply: oneshot::Sender<Result<serde_json::Value>>,
+    ) {
+        use crate::mcp::seats::{self, Request};
+        let prepared = (|| -> Result<_> {
+            let (actor, caller) = self.control_actor(id, generation)?;
+            call.validate()?;
+            let request = self
+                .prepare_seat_control(&actor, &caller, &call)
+                .map_err(invalid)?;
+            Ok((actor, request))
+        })();
+        let (
+            actor,
+            Request::Input {
+                target,
+                text,
+                submit,
+            },
+        ) = (match prepared {
+            Ok(p) => p,
+            Err(_) => {
+                let _ = reply.send(self.control_call(id, generation, call));
+                return;
+            }
+        })
+        else {
+            let _ = reply.send(Err(invalid("invalid input dispatch")));
+            return;
+        };
+        if !self
+            .views
+            .get(&target.seat)
+            .is_some_and(|v| v.adapter.record.kind == "bboxy450-harness")
+        {
+            let _ = reply.send(self.control_call(id, generation, call));
+            return;
+        }
+        let started = (|| -> Result<_> {
+            let journal = self.control_journal(id)?;
+            let (retained, fresh) = journal.admit(&actor, &call)?;
+            Ok((journal, retained, fresh))
+        })();
+        let (journal, retained, fresh) = match started {
+            Ok(p) => p,
+            Err(e) => {
+                let _ = reply.send(Err(e));
+                return;
+            }
+        };
+        // Rich ops are the one retryable native lane: the retained message ULID
+        // and original-session binding are durable, and the gateway deduplicates.
+        // A retry must observe Busy/Closed/unknown honestly instead of replaying
+        // an old Ack after a profile switch. Argument/authority reuse still refuses.
+        if !fresh && retained["structuredContent"]["error"]["code"] == "op_id_reused" {
+            let _ = reply.send(Ok(retained));
+            return;
+        }
+        if self.control_deliveries.len() >= 8 {
+            let outcome = crate::adapters::WakeOutcome {
+                evidence: crate::adapters::Evidence::RecipientStored,
+                native_id: None,
+                note: "harness delivery lane full".into(),
+                cause: Some(crate::adapters::WakeCause::HarnessBusy),
+            };
+            let value = seats::input_result(&call, call.op_id, outcome);
+            let _ = reply.send(journal.complete(&actor, &call, value));
+            return;
+        }
+        let port = self.views[&target.seat].rich_delivery.clone();
+        let run_dir = self.config.run_dir.clone();
+        let input_id = call.op_id;
+        self.control_deliveries.spawn_on(
+            async move {
+                let a = actor.clone();
+                let valid = tokio::task::spawn_blocking(move || {
+                    seats::revalidate_native(&run_dir, &a, target, "bboxy450-harness")
+                })
+                .await;
+                let outcome = if matches!(valid, Ok(Ok(()))) {
+                    match port {
+                        Some(p) => p.text(input_id, &text, submit).await,
+                        None => crate::rich::unavailable(),
+                    }
+                } else {
+                    crate::rich::unavailable()
+                };
+                let result = seats::input_result(&call, input_id, outcome.clone());
+                ControlDelivery {
+                    actor,
+                    call,
+                    journal,
+                    reply,
+                    target,
+                    input_id,
+                    outcome: Some(outcome),
+                    result,
+                }
+            },
+            &self.handle,
+        );
     }
     fn start_control_interrupt(
         &mut self,
@@ -5687,56 +5867,211 @@ impl Worker {
         self.publish_root_outbox(root)?;
         self.workspaces.reconcile(root)
     }
+    fn scan_pending_root(&mut self, root: &str) -> Result<()> {
+        self.publish_root_outbox(root)?;
+        self.workspaces.reconcile_pending(root)
+    }
     fn publish_root_outbox(&mut self, root: &str) -> Result<()> {
         if self.workspaces.scanning(root) || self.workspaces.reconciliation_failed(root) {
             return Ok(());
         }
-        let events = self
+        if let Some(wake) = self.publication_running.get_mut(root) {
+            *wake = true;
+            return Ok(());
+        }
+        if self.publication_running.len() >= 2
+            || self
+                .publication_backoff
+                .get(root)
+                .and_then(|backoff| backoff.next)
+                .is_some_and(|next| Instant::now() < next)
+        {
+            self.workspaces.retry_publication(root.to_owned());
+            return Ok(());
+        }
+        let outbox = self
             .workspaces
             .cache
             .root_mut(root)
             .ok_or_else(|| invalid("unknown workspace root"))?
             .index
-            .pending_events()?;
-        let swarms = self.workspaces.bound_swarms(&self.registry, root)?;
-        for mut event in events {
-            if let Some(payload) = event.payload.as_object_mut() {
-                payload.insert("knowledge_root_id".into(), serde_json::json!(root));
-            }
-            if let Some(task) = event
-                .subject
-                .strip_prefix("task/")
-                .and_then(|s| s.strip_suffix("/status"))
-                .and_then(|s| s.parse::<Ulid>().ok())
-                && let Some(status) = event.payload["to"].as_str()
-            {
-                self.messaging
-                    .task_state_root(root, &swarms, task, status, now_ms())?;
-            }
-            let stream = if event.subject.starts_with("task/") {
-                let swarm = event.payload["swarm_id"]
-                    .as_str()
-                    .and_then(|id| id.parse::<Ulid>().ok())
-                    .filter(|swarm| !swarm.is_nil());
-                match swarm {
-                    Some(swarm) if self.workspaces.matches_root(&self.registry, swarm, root)? => {
-                        format!("swarm-{swarm}")
+            .outbox();
+        let root = root.to_owned();
+        self.publication_running.insert(root.clone(), false);
+        let tracked = root.clone();
+        #[cfg(test)]
+        let hook = self.publication_io_hook.clone();
+        let task = self.root_publications.spawn_blocking_on(
+            move || {
+                let result = publication_io(|| {
+                    #[cfg(test)]
+                    if let Some(hook) = hook {
+                        hook(&root);
                     }
-                    _ => "account".into(),
+                    Ok(outbox.page(1)?.pop().map(Box::new))
+                });
+                RootPublication::Read {
+                    root,
+                    outbox,
+                    result,
                 }
-            } else {
-                "index".into()
-            };
-            let id = event.id;
-            self.publish(&stream, event)?;
-            self.workspaces
-                .cache
-                .root_mut(root)
-                .expect("mounted root")
-                .index
-                .acknowledge(id)?;
-        }
+            },
+            &self.handle,
+        );
+        self.publication_tasks.insert(task.id(), tracked);
         Ok(())
+    }
+    fn finish_root_publication(&mut self, root: String, result: Result<()>, more: bool) {
+        let wake = self.publication_running.remove(&root).unwrap_or(false);
+        match result {
+            Ok(()) => {
+                self.publication_backoff.remove(&root);
+            }
+            Err(error) => {
+                let backoff = self.publication_backoff.entry(root.clone()).or_default();
+                let reason = error.to_string();
+                if backoff.reason != reason {
+                    eprintln!("WorkspacePublicationPending [{root}]: {reason}");
+                    backoff.reason = reason;
+                }
+                backoff.delay =
+                    (backoff.delay * 2).clamp(PROVENANCE_RETRY_MIN, PROVENANCE_RETRY_MAX);
+                backoff.next = Some(Instant::now() + backoff.delay);
+                self.workspaces.retry_publication(root.clone());
+            }
+        }
+        if more || wake {
+            self.workspaces.retry_publication(root);
+        }
+    }
+    fn poll_root_publications(&mut self) {
+        // Read, append, and ACK are IO jobs. At most two roots and one event
+        // per root are in flight; no bus await or SQLite ACK runs on the owner.
+        for _ in 0..2 {
+            let Some(joined) = self.root_publications.try_join_next_with_id() else {
+                break;
+            };
+            let (id, done) = match joined {
+                Ok(done) => done,
+                Err(error) => {
+                    if let Some(root) = self.publication_tasks.remove(&error.id()) {
+                        self.finish_root_publication(
+                            root,
+                            Err(invalid("knowledge publication job stopped")),
+                            true,
+                        );
+                    }
+                    continue;
+                }
+            };
+            self.publication_tasks.remove(&id);
+            match done {
+                RootPublication::Published { root, result } => {
+                    self.finish_root_publication(root, result, true)
+                }
+                RootPublication::Read {
+                    root,
+                    outbox,
+                    result,
+                } => {
+                    let mut event = match result {
+                        Ok(Some(event)) => *event,
+                        Ok(None) => {
+                            self.finish_root_publication(root, Ok(()), false);
+                            continue;
+                        }
+                        Err(error) => {
+                            self.finish_root_publication(root, Err(error), true);
+                            continue;
+                        }
+                    };
+                    if self.workspaces.scanning(&root)
+                        || self.workspaces.reconciliation_failed(&root)
+                    {
+                        self.finish_root_publication(root, Ok(()), true);
+                        continue;
+                    }
+                    if let Some(payload) = event.payload.as_object_mut() {
+                        payload.insert("knowledge_root_id".into(), serde_json::json!(root));
+                    }
+                    let route = (|| -> Result<_> {
+                        let swarms = self.workspaces.bound_swarms(&self.registry, &root)?;
+                        let stream = if event.subject.starts_with("task/") {
+                            match event.payload["swarm_id"]
+                                .as_str()
+                                .and_then(|value| value.parse::<Ulid>().ok())
+                                .filter(|id| !id.is_nil())
+                            {
+                                Some(swarm)
+                                    if self.workspaces.matches_root(
+                                        &self.registry,
+                                        swarm,
+                                        &root,
+                                    )? =>
+                                {
+                                    format!("swarm-{swarm}")
+                                }
+                                _ => "account".into(),
+                            }
+                        } else {
+                            "index".into()
+                        };
+                        let task = event
+                            .subject
+                            .strip_prefix("task/")
+                            .and_then(|tail| tail.strip_suffix("/status"))
+                            .and_then(|id| id.parse::<Ulid>().ok());
+                        // Historical events remain in the audit stream, but cannot
+                        // roll current task suppression back to an older status.
+                        let current_task = task.filter(|_| {
+                            event.payload["path"]
+                                .as_str()
+                                .and_then(|path| {
+                                    self.workspaces
+                                        .cache
+                                        .root_mut(&root)
+                                        .and_then(|workspace| workspace.index.documents.get(path))
+                                })
+                                .is_some_and(|doc| doc.metadata["status"] == event.payload["to"])
+                        });
+                        Ok((stream, swarms, current_task))
+                    })();
+                    let (stream, swarms, task) = match route {
+                        Ok(route) => route,
+                        Err(error) => {
+                            self.finish_root_publication(root, Err(error), true);
+                            continue;
+                        }
+                    };
+                    // Keep task suppression ordered with native owner-side task
+                    // transitions. Only append/ACK may outlive this owner turn.
+                    if let Some(task) = task
+                        && let Some(status) = event.payload["to"].as_str()
+                        && let Err(error) =
+                            self.messaging
+                                .task_state_root(&root, &swarms, task, status, now_ms())
+                    {
+                        self.finish_root_publication(root, Err(error), true);
+                        continue;
+                    }
+                    let bus = self.bus.clone();
+                    let handle = self.handle.clone();
+                    let tracked = root.clone();
+                    let job = self.root_publications.spawn_blocking_on(
+                        move || {
+                            let result = publication_io(|| {
+                                let id = event.id;
+                                handle.block_on(bus.publish(stream, event))?;
+                                outbox.acknowledge(id)
+                            });
+                            RootPublication::Published { root, result }
+                        },
+                        &self.handle,
+                    );
+                    self.publication_tasks.insert(job.id(), tracked);
+                }
+            }
+        }
     }
     fn scan_port(&mut self, binding: &RootBinding) -> Result<WorkspacePort> {
         self.workspaces.current(&self.registry, binding)?;
@@ -5745,8 +6080,16 @@ impl Worker {
                 binding.swarm,
             )));
         }
-        if self.workspaces.cache.get(binding)?.changed() {
-            self.workspaces.reconcile(&binding.root_id)?;
+        let workspace = self.workspaces.cache.get(binding)?;
+        if workspace.pending() {
+            if workspace.changed() {
+                self.workspaces.reconcile_pending(&binding.root_id)?;
+            }
+            // Settling delays IO, not freshness checks: a claim must not create
+            // a second artifact from the snapshot preceding an observed write.
+            return Err(Box::new(crate::knowledge::workspaces::Error::Pending(
+                binding.swarm,
+            )));
         }
         if self.workspaces.scanning(&binding.root_id) {
             return Err(Box::new(crate::knowledge::workspaces::Error::Pending(
@@ -5759,7 +6102,9 @@ impl Worker {
     fn knowledge_permits(&mut self, root: &str) -> Arc<tokio::sync::Semaphore> {
         self.knowledge_reads
             .entry(root.to_owned())
-            .or_insert_with(|| Arc::new(tokio::sync::Semaphore::new(2)))
+            // Reads wait for one of the root's provider connections within their
+            // own deadline (plugins/source.rs); this only bounds blocked threads.
+            .or_insert_with(|| Arc::new(tokio::sync::Semaphore::new(KNOWLEDGE_READS_PER_ROOT)))
             .clone()
     }
     fn seat_workspace(&mut self, actor: &crate::mcp::SeatActor) -> Result<WorkspacePort> {
@@ -5887,6 +6232,15 @@ impl Worker {
             }
             let workspace = self.workspaces.cache.root_mut(&root).expect("mounted root");
             if workspace.failed() {
+                if let Err(error) = self.workspaces.reconcile(&root) {
+                    eprintln!("WorkspaceWatchRecovery [{root}]: {error}");
+                }
+                continue;
+            }
+            if workspace.changed() {
+                if let Err(error) = self.scan_pending_root(&root) {
+                    eprintln!("WorkspacePending [{root}]: {error}");
+                }
                 continue;
             }
             let now = Instant::now();
@@ -5898,7 +6252,7 @@ impl Worker {
             {
                 continue;
             }
-            let changed = match workspace.step_provenance(
+            let _changed = match workspace.step_provenance(
                 &self.bus,
                 &self.handle,
                 &self.identity,
@@ -5916,13 +6270,14 @@ impl Worker {
                         eprintln!("ProvenancePending [{root}]: {reason}");
                         backoff.reason = reason;
                     }
-                    backoff.delay = (backoff.delay * 2).clamp(PROVENANCE_RETRY_MIN, PROVENANCE_RETRY_MAX);
+                    backoff.delay =
+                        (backoff.delay * 2).clamp(PROVENANCE_RETRY_MIN, PROVENANCE_RETRY_MAX);
                     backoff.next = Some(now + backoff.delay);
                     false
                 }
             };
-            if (workspace.changed() || changed)
-                && let Err(error) = self.scan_root(&root)
+            if workspace.changed()
+                && let Err(error) = self.scan_pending_root(&root)
             {
                 eprintln!("WorkspacePending [{root}]: {error}");
             }
@@ -6150,6 +6505,31 @@ impl Worker {
                     }),
             },
         )?;
+        // Preserve explicit evidence across logic reattachment to the same
+        // supervisor-owned generation. Old reports confer no input readiness.
+        if !bare
+            && let Some(bytes) = SqliteStore::open(&directory)?.get("reported_adapter")?
+            && let Ok((generation, reported)) =
+                serde_json::from_slice::<(u64, crate::adapters::Status)>(&bytes)
+            && generation == info.generation
+            && reported.grade == crate::adapters::Grade::Reported
+        {
+            adapter.apply(crate::adapters::Observation {
+                sequence: reported.sequence,
+                generation,
+                observed_ms: reported.observed_ms,
+                source: reported.source.clone(),
+                grade: reported.grade,
+                state: reported.state,
+                waiting_kind: reported.waiting_kind,
+                agent_id: None,
+                title: None,
+                detail: reported.detail.clone(),
+                clear: false,
+                resolves: reported.state != crate::adapters::State::Waiting,
+            });
+            adapter.status = reported;
+        }
         // A plugin login's OSC frames are never observed.
         for (sequence, params) in live_frames.into_iter().filter(|_| !bare) {
             adapter.on_osc(&params, sequence, now_ms());
@@ -6191,6 +6571,36 @@ impl Worker {
         } else {
             (crate::adapters::Endpoint::None, None)
         };
+        let rich_socket = if kind == "bboxy450-harness" {
+            SqliteStore::open(&directory)?
+                .get("harness_rich_socket")?
+                .map(|b| serde_json::from_slice::<PathBuf>(&b))
+                .transpose()?
+        } else {
+            None
+        };
+        let rich_connection = rich_socket
+            .as_ref()
+            .filter(|_| info.exited.is_none())
+            .map(|path| {
+                let sender = self.client.tx.clone();
+                let handle = self.handle.clone();
+                let seat = info.seat;
+                let generation = info.generation;
+                bboxy450_harness_wake_up::rich::Connection::start_notifying(
+                    path.clone(),
+                    &self.handle,
+                    Arc::new(move || {
+                        let sender = sender.clone();
+                        handle.spawn(async move {
+                            let _ = sender.send(Command::RichState(seat, generation)).await;
+                        });
+                    }),
+                )
+            });
+        let rich_delivery = rich_connection
+            .as_ref()
+            .map(|c| crate::rich::Delivery::new(c.client.clone(), directory.clone()));
         self.views.insert(
             info.seat,
             ViewState {
@@ -6203,6 +6613,9 @@ impl Worker {
                 tap,
                 replies,
                 native_reader: None,
+                rich_connection,
+                rich_delivery,
+                rich_socket,
                 shared_codex_runtime,
                 state,
                 view_generation: Ulid::new(),
@@ -6379,8 +6792,10 @@ impl Worker {
     }
     fn persist_native_session(&self, id: Ulid) -> Result<()> {
         let adapter = &self.views[&id].adapter;
-        if matches!(adapter.record.kind.as_str(), "claude" | "codex")
-            && !adapter.binding.session.starts_with("process-")
+        if matches!(
+            adapter.record.kind.as_str(),
+            "claude" | "codex" | "bboxy450-harness"
+        ) && !adapter.binding.session.starts_with("process-")
         {
             let session = &adapter.binding.session;
             if let Ok(record) = self.registry.get(id)
@@ -6467,6 +6882,21 @@ impl Worker {
                 },
             )?
         };
+        if harness.kind == "bboxy450-harness" && options.via.is_none() {
+            let store = SqliteStore::open(&root)?;
+            let path = store
+                .get("harness_rich_socket")?
+                .map(|b| serde_json::from_slice::<PathBuf>(&b))
+                .transpose()?
+                .unwrap_or(bboxy450_harness_wake_up::rich::socket_path(
+                    &endpoint.path,
+                    record.id,
+                )?);
+            if let Some(i) = plan.spec.args.iter().position(|a| a == "--socket") {
+                plan.spec.args[i + 1] = path.to_string_lossy().into_owned();
+            }
+            SqliteStore::open(&root)?.put("harness_rich_socket", &serde_json::to_vec(&path)?)?;
+        }
         record.harness_session_id = plan.harness_session_id;
         if options.via.is_none() {
             crate::adapters::launch::with_environment(&mut plan.spec, &options.env);
@@ -6635,7 +7065,10 @@ impl Worker {
             // Its restoration operation belongs to the dead process only.
             record.close = None;
             let resume = record.harness_session_id.is_some()
-                && matches!(record.harness_kind.as_str(), "claude" | "codex");
+                && matches!(
+                    record.harness_kind.as_str(),
+                    "claude" | "codex" | "bboxy450-harness"
+                );
             let harness = if resume || context.via.is_some() {
                 serde_json::from_slice(
                     &store
@@ -8384,9 +8817,45 @@ impl Worker {
         let now = now_ms();
         for id in self.views.keys().copied().collect::<Vec<_>>() {
             let view = self.views.get_mut(&id).unwrap();
+            if let Some(delivery) = &view.rich_delivery
+                && let Some(hello) = delivery.client.hello()
+                && view.adapter.binding.session != hello.session.to_string()
+            {
+                view.adapter.binding.session = hello.session.to_string();
+                self.registry.update(id, |record| {
+                    record.harness_session_id = Some(hello.session.to_string());
+                    Ok(())
+                })?;
+            }
+            if view.adapter.status.source == "exit" {
+                view.rich_connection = None;
+                view.rich_delivery = None;
+            }
             let before = view.adapter.status.clone();
             let mut live_wait = false;
             if view.adapter.status.source != "exit" {
+                if view.adapter.record.kind == "bboxy450-harness"
+                    && view
+                        .native_reader
+                        .as_ref()
+                        .is_none_or(|reader| reader.task.is_finished())
+                    && let Some(home) = std::env::var_os("HOME")
+                {
+                    let binding = view.adapter.binding.clone();
+                    let reader_binding = binding.clone();
+                    let client = self.client.clone();
+                    let root = PathBuf::from(home).join(".bboxy450-harness");
+                    let task = self.handle.spawn(harness_status::run(
+                        client,
+                        binding,
+                        root,
+                        view.rich_socket.clone(),
+                    ));
+                    view.native_reader = Some(NativeReader {
+                        binding: reader_binding,
+                        task,
+                    });
+                }
                 if view.adapter.record.kind == "claude" {
                     let root = std::env::var_os("CLAUDE_CONFIG_DIR")
                         .map(PathBuf::from)
@@ -8580,6 +9049,7 @@ impl Worker {
         Ok(())
     }
     fn pump_messages(&mut self) -> Result<()> {
+        self.poll_root_publications();
         while let Some(joined) = self.role_updates.try_join_next() {
             match joined {
                 Ok(done) => {
@@ -8831,6 +9301,25 @@ impl Worker {
             } else {
                 false
             };
+            if view.adapter.record.kind == "bboxy450-harness" {
+                let delivery = view.rich_delivery.clone();
+                self.deliveries.spawn_on(
+                    async move {
+                        let outcome = match delivery {
+                            Some(port) => port.text(work.id, &text, true).await,
+                            None => crate::rich::unavailable(),
+                        };
+                        Delivery {
+                            swarm,
+                            work,
+                            outcome,
+                            relayed,
+                        }
+                    },
+                    &self.handle,
+                );
+                continue;
+            }
             match view.adapter.record.wake_method {
                 WakeMethod::ClaudeSocket | WakeMethod::CodexRpc => {
                     let binding = view.adapter.binding.clone();
@@ -8934,6 +9423,15 @@ impl Worker {
             note: crate::adapters::observe::short(note, 640),
             cause: Some(cause),
         };
+        // This synchronous guard has no socket IO. Harness requests are
+        // scheduled by start_control_input/pump_messages before PTY arbitration.
+        if self
+            .views
+            .get(&seat)
+            .is_some_and(|v| v.adapter.record.kind == "bboxy450-harness")
+        {
+            return Ok(crate::rich::unavailable());
+        }
         let attachment = self
             .attachments
             .get(&seat)
@@ -9013,6 +9511,13 @@ impl Worker {
             })
     }
     fn publish_adapter(&self, id: Ulid, status: crate::adapters::Status) -> Result<()> {
+        if status.grade == crate::adapters::Grade::Reported {
+            let root = object_dir(&self.config.run_dir, &format!("seat-{id}"))?;
+            SqliteStore::open(&root)?.put(
+                "reported_adapter",
+                &serde_json::to_vec(&(self.views[&id].generation, &status))?,
+            )?;
+        }
         self.publish(
             &format!("seat-{id}"),
             Draft::new(
@@ -9226,6 +9731,7 @@ impl Worker {
             })
             .collect();
         Ok(bbt_proto::GuiSeat {
+            rich_socket: view.rich_socket.clone(),
             notification_episode: self
                 .client
                 .current_attention
@@ -9244,6 +9750,7 @@ impl Worker {
                 grade: gui_grade(status.grade),
                 title,
                 detail: status.detail.clone(),
+                stale: status.source == "stale",
                 turn_open: status.turn_open,
                 observed_ms: status.observed_ms,
                 subagents,
@@ -9655,7 +10162,7 @@ impl Worker {
         };
         let (retained, fresh) = self.operator_journal.admit(&principal, &call)?;
         let result = if fresh {
-            let result = match self.prepare_gui_spawn(spec) {
+            let result = match self.prepare_spawn(Ulid::new(), spec) {
                 Ok((record, harness, options)) => match self.launch(record, harness, options) {
                     Ok(info) => crate::mcp::success(id, serde_json::json!({"seat":info.seat})),
                     // Admission is durable before the native effect. A lost
@@ -9690,8 +10197,11 @@ impl Worker {
         Ok(first_available_seat_name(swarm, &self.registry.list()?))
     }
 
-    fn prepare_gui_spawn(
+    /// Every admitted door supplies a SpawnSpec here. Authority and operation
+    /// journals stay with the door; seat identity, role and launch inputs do not.
+    fn prepare_spawn(
         &self,
+        seat: Ulid,
         spec: bbt_proto::SpawnSpec,
     ) -> Result<(
         SeatRecord,
@@ -9772,19 +10282,28 @@ impl Worker {
         }
         if let Some(via) = &spec.via {
             if via.kind.starts_with("plugin:") {
-                bbt_proto::TransportSpec::inner_command(
-                    &spec.cwd, &harness.command, &spec.env,
-                ).map_err(invalid)?;
+                bbt_proto::TransportSpec::inner_command(&spec.cwd, &harness.command, &spec.env)
+                    .map_err(invalid)?;
             } else {
-                via.argv(&spec.cwd, &harness.command, &spec.env).map_err(invalid)?;
+                via.argv(&spec.cwd, &harness.command, &spec.env)
+                    .map_err(invalid)?;
             }
         }
+        let cwd = if spec.via.is_none() && spec.location == bbt_proto::Where::Local {
+            let path = Path::new(&spec.cwd);
+            if !path.is_absolute() || !path.is_dir() {
+                return Err(invalid("cwd must be an explicit absolute directory"));
+            }
+            path.canonicalize()?
+        } else {
+            spec.cwd.into()
+        };
         let swarm = Ulid::from(spec.swarm.0.0);
         let name = match spec.name {
             Some(name) => name,
             None => self.default_seat_name(swarm)?,
         };
-        let mut record = SeatRecord::new(Ulid::new(), swarm, name, harness.kind.clone());
+        let mut record = SeatRecord::new(seat, swarm, name, harness.kind.clone());
         record.location = match spec.location {
             bbt_proto::Where::Local => crate::registry::Location::Local,
             bbt_proto::Where::Ssh { host } => crate::registry::Location::Ssh { host },
@@ -9804,7 +10323,7 @@ impl Worker {
                 transport_argv: None,
                 via: spec.via,
                 env: spec.env,
-                cwd: spec.cwd.into(),
+                cwd,
                 role_prompt,
                 executable: std::env::current_exe()?,
                 user_home: std::env::var_os("HOME")
@@ -10077,6 +10596,26 @@ impl Worker {
                         let _ = reply.send(self.identity.status());
                     }
                     #[cfg(test)]
+                    Command::ProjectionTurn(path, reply) => {
+                        let result = (|| -> Result<()> {
+                            let root = self
+                                .workspaces
+                                .cache
+                                .roots()
+                                .find(|root| root.index.knowledge_root() == path)
+                                .ok_or_else(|| invalid("private projection root not mounted"))?
+                                .root_id()
+                                .to_owned();
+                            self.workspaces
+                                .cache
+                                .root_mut(&root)
+                                .unwrap()
+                                .step_provenance(&self.bus, &self.handle, &self.identity, &[])?;
+                            Ok(())
+                        })();
+                        let _ = reply.send(result);
+                    }
+                    #[cfg(test)]
                     Command::RefreshIdentity(reply) => {
                         let _ = reply.send(self.refresh_identity());
                     }
@@ -10129,6 +10668,8 @@ impl Worker {
                             self.start_seat_effect(id, generation, call, reply);
                         } else if matches!(call.tool.as_str(), "seat_focus" | "seat_close") {
                             self.start_control_focus(id, generation, call, reply);
+                        } else if call.tool == "seat_input_text" {
+                            self.start_control_input(id, generation, call, reply);
                         } else if call.tool == "seat_interrupt" {
                             self.start_control_interrupt(id, generation, call, reply);
                         } else if crate::mcp::plugin_tools::handles(&call.tool) {
@@ -10149,7 +10690,11 @@ impl Worker {
                         self.start_gui_swarm(*action, origin, reply);
                     }
                     Command::GuiSpawn(id, spec, door, reply) => {
-                        if spec.via.as_ref().is_some_and(|via| via.kind.starts_with("plugin:")) {
+                        if spec
+                            .via
+                            .as_ref()
+                            .is_some_and(|via| via.kind.starts_with("plugin:"))
+                        {
                             self.start_plugin_transport(id, spec, door, reply);
                         } else {
                             let result = self.gui_spawn(id, spec, door);
@@ -10612,6 +11157,21 @@ impl Worker {
                             .and_then(|_| self.messaging.operator_subjects());
                         let _ = reply.send(result);
                     }
+                    Command::RichState(id, generation) => {
+                        if let Some(view) = self
+                            .views
+                            .get_mut(&id)
+                            .filter(|v| v.generation == generation)
+                            && let Some(hello) =
+                                view.rich_delivery.as_ref().and_then(|p| p.client.hello())
+                        {
+                            view.adapter.binding.session = hello.session.to_string();
+                            let status = view.adapter.status.clone();
+                            self.persist_native_session(id)?;
+                            // Announce metadata even when no PTY byte arrives after Hello.
+                            self.publish_adapter(id, status)?;
+                        }
+                    }
                     Command::GuiInput(id, generation, input_id, bytes, reply) => {
                         let result = self.seat_input(id, generation, input_id, bytes);
                         let _ = reply.send(result);
@@ -10992,6 +11552,7 @@ impl Worker {
                                 Ok(view.adapter.status.clone())
                             });
                         if let (Some(before), Ok(status)) = (&before, &result) {
+                            self.persist_native_session(id)?;
                             let promoted =
                                 self.sync_adapter_attention(id, before, status, live_wait)?;
                             if !status.same_value(before) || promoted {
@@ -12223,7 +12784,12 @@ mod identity_retry_clock_tests {
         assert_eq!(payload["origin"]["seq"], conflicting.seq);
         assert_eq!(payload["origin"]["source"], conflicting.event.source);
         assert_eq!(payload["detail"]["artifact"], serde_json::json!(artifact));
-        assert!(payload["error"].as_str().unwrap().contains("duplicate record number"));
+        assert!(
+            payload["error"]
+                .as_str()
+                .unwrap()
+                .contains("duplicate record number")
+        );
         // The raw trail is the exact retained envelope, whatever its shape.
         let raw = serde_json::to_vec(&conflicting).unwrap();
         assert_eq!(payload["raw"]["bytes"], raw.len());
@@ -12401,7 +12967,9 @@ fn usage_snapshot(run_dir: &std::path::Path) -> std::result::Result<serde_json::
     let now = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_secs() as i64);
-    let age = value["sampled_at"].as_i64().map(|at| now.saturating_sub(at));
+    let age = value["sampled_at"]
+        .as_i64()
+        .map(|at| now.saturating_sub(at));
     value["available"] = serde_json::json!(true);
     value["age_seconds"] = serde_json::json!(age);
     Ok(value)
@@ -12447,9 +13015,19 @@ fn harness_profiles() -> std::result::Result<serde_json::Value, String> {
             if path.extension().is_none_or(|x| x != "md") {
                 continue;
             }
-            let Ok(text) = std::fs::read_to_string(&path) else { continue };
-            let Some(header) = text.strip_prefix("---\n").and_then(|r| r.split_once("\n---")).map(|(h, _)| h) else { continue };
-            let Ok(meta) = serde_yaml::from_str::<Value>(header) else { continue };
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            let Some(header) = text
+                .strip_prefix("---\n")
+                .and_then(|r| r.split_once("\n---"))
+                .map(|(h, _)| h)
+            else {
+                continue;
+            };
+            let Ok(meta) = serde_yaml::from_str::<Value>(header) else {
+                continue;
+            };
             let field = |k: &str| meta.get(k).and_then(Value::as_str).unwrap_or("").to_owned();
             let acp = field("provider") == "acp-agent";
             out.push(json!({
@@ -12463,8 +13041,14 @@ fn harness_profiles() -> std::result::Result<serde_json::Value, String> {
         }
     }
     out.sort_by_key(|p| p["name"].as_str().unwrap_or("").to_owned());
-    let default = std::env::var("BBOXY450_HARNESS_PROFILE").ok().filter(|s| !s.trim().is_empty()).or_else(|| {
-        std::fs::read_to_string(dir.parent()?.join("default-profile")).ok().map(|s| s.trim().to_owned()).filter(|s| !s.is_empty())
-    });
+    let default = std::env::var("BBOXY450_HARNESS_PROFILE")
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+        .or_else(|| {
+            std::fs::read_to_string(dir.parent()?.join("default-profile"))
+                .ok()
+                .map(|s| s.trim().to_owned())
+                .filter(|s| !s.is_empty())
+        });
     Ok(json!({ "profiles": out, "default": default, "directory": dir }))
 }

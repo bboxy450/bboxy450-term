@@ -24,7 +24,7 @@ use crate::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::collections::{BTreeMap, VecDeque};
+use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::time::{Duration, Instant};
 
 const OUTBOX: &str = "provenance/observation-outbox";
@@ -63,6 +63,7 @@ pub(crate) struct Engine {
     pending: Option<Pending>,
     holding: Option<bool>,
     projection_due: Option<Instant>,
+    refreshed: BTreeSet<String>,
 }
 impl Engine {
     pub fn open(
@@ -96,6 +97,7 @@ impl Engine {
             pending,
             holding: None,
             projection_due: None,
+            refreshed: BTreeSet::new(),
         };
         for doc in index
             .documents
@@ -271,6 +273,20 @@ impl Engine {
         identity: &IdentityRuntime,
         active: &[(Ulid, u64, u64)],
     ) -> Result<bool> {
+        let Some(writer) = index.try_projection_writer()? else {
+            return Ok(false);
+        };
+        let mut index = index.projection_scope(writer)?;
+        self.step_owned(&mut index, bus, handle, identity, active)
+    }
+    fn step_owned(
+        &mut self,
+        index: &mut Index,
+        bus: &BusHandle,
+        handle: &tokio::runtime::Handle,
+        identity: &IdentityRuntime,
+        active: &[(Ulid, u64, u64)],
+    ) -> Result<bool> {
         if self.recovering {
             let rows = index.activity().after(self.recovery_cursor, 128)?;
             let head = self.recovery_head;
@@ -376,7 +392,9 @@ impl Engine {
                                 })
                         });
                         if !already {
+                            let path = update.path.clone();
                             index.apply_author(update, &author)?;
+                            self.refreshed.insert(path);
                         }
                         Ok(!already)
                     })();
@@ -425,6 +443,9 @@ impl Engine {
         } // No legitimate observer key: durable hold events remain, projection is pending.
         index.project_activity()?;
         Ok(changed)
+    }
+    pub fn take_refreshed(&mut self) -> BTreeSet<String> {
+        std::mem::take(&mut self.refreshed)
     }
     pub fn note_claim(&mut self, metadata: &serde_json::Value) {
         let Some(reference) = metadata["ref"].as_str() else {

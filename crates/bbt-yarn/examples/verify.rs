@@ -15,7 +15,10 @@ use std::path::Path;
 #[path = "../tests/protocol_runtime.rs"]
 mod protocol_language;
 #[path = "../tests/protocol.rs"]
+#[allow(dead_code)] // Model export includes runtime-only declarations and contract references.
 mod protocols;
+#[path = "../tests/protocol_temporal.rs"]
+mod temporal_protocols;
 
 // Existing formal-contract metadata, shared with the project gate. No new report format.
 fn json_string(value: &str) -> String {
@@ -66,9 +69,10 @@ fn metadata(model: &Model) -> String {
         .collect::<Vec<_>>()
         .join(",");
     let fair = &model.weak_fair;
+    let strong_fair = &model.strong_fair;
     let deadlock = model.check_deadlock;
     format!(
-        "{{\"variables\":[{variables}],\"actions\":[{actions}],\"invariants\":[{invariants}],\"responses\":[{responses}],\"weak_fair_action_groups\":{fair:?},\"check_deadlock\":{deadlock},\"implementation_refinement_proven\":false}}\n"
+        "{{\"variables\":[{variables}],\"actions\":[{actions}],\"invariants\":[{invariants}],\"responses\":[{responses}],\"weak_fair_action_groups\":{fair:?},\"strong_fair_action_groups\":{strong_fair:?},\"check_deadlock\":{deadlock},\"implementation_refinement_proven\":false}}\n"
     )
 }
 
@@ -178,6 +182,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (protocols::LatestResult::model(), "pass"),
         (protocols::BrokenLatestResult::model(), "safety"),
         (protocol_language::ProtocolLanguage::model(), "pass"),
+        (temporal_protocols::PresentGeneration::model(), "pass"),
+        (
+            temporal_protocols::BrokenPresentGeneration::model(),
+            "safety",
+        ),
+        (temporal_protocols::PresentProgress::model(), "pass"),
+        (
+            temporal_protocols::BrokenPresentProgress::model(),
+            "liveness",
+        ),
+        (temporal_protocols::RetryUnknown::model(), "pass"),
+        (temporal_protocols::BrokenRetryUnknown::model(), "safety"),
+        (temporal_protocols::ProtocolProgress::model(), "pass"),
+        (
+            temporal_protocols::BrokenProtocolProgress::model(),
+            "liveness",
+        ),
     ] {
         export(model, expected, root, &mut manifest)?;
     }

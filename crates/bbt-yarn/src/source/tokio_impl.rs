@@ -11,9 +11,15 @@ use core::marker::PhantomData;
 use core::pin::Pin;
 use core::task::{Context, Poll};
 
+// Test backends explore adapter ownership and wake boundaries, not Tokio internals.
+#[cfg(all(test, any(loom, shuttle)))]
+use crate::concurrency::mpsc;
+use mpsc::error::TryRecvError;
+#[cfg(not(all(test, any(loom, shuttle))))]
 use tokio::sync::mpsc;
-use tokio::sync::mpsc::error::TryRecvError;
+#[cfg(not(all(test, any(loom, shuttle))))]
 use tokio::time::{Instant, Sleep};
+#[cfg(not(all(test, any(loom, shuttle))))]
 use tokio_util::sync::{CancellationToken, WaitForCancellationFutureOwned};
 
 use super::{
@@ -117,6 +123,10 @@ where
     }
 
     fn close(&mut self) -> Option<C::Item> {
+        #[cfg(all(test, loom, yarn_broken_controls))]
+        if crate::concurrency::broken("close") {
+            return C::close_event();
+        }
         self.receiver = None;
         C::close_event()
     }
@@ -153,6 +163,7 @@ where
         // accounting. Respect an already exhausted task budget without
         // consuming, resetting, or making the operation unconstrained. The
         // next arbitration's normal `poll_recv` registers Tokio's budget wake.
+        #[cfg(not(all(test, any(loom, shuttle))))]
         if !tokio::task::coop::has_budget_remaining() {
             return TryNext::Empty;
         }
@@ -327,6 +338,10 @@ impl<F: Future> ReactorSource for OneShot<F> {
             Poll::Ready(output) => output,
             Poll::Pending => return Poll::Pending,
         };
+        #[cfg(all(test, loom, yarn_broken_controls))]
+        if crate::concurrency::broken("service") {
+            return Poll::Ready(output);
+        }
         self.future = None;
         Poll::Ready(output)
     }
@@ -424,21 +439,26 @@ impl<F: Future> ReactorSource for OptionalOneShot<F> {
 /// `Ready(())`. Dropping the adapter drops the waiter and token clone; it does
 /// not cancel unrelated token owners or perform async cleanup.
 #[derive(Debug)]
+#[cfg(not(all(test, any(loom, shuttle))))]
 pub struct Cancellation {
     waiter: Option<Pin<Box<WaitForCancellationFutureOwned>>>,
 }
 
+#[cfg(not(all(test, any(loom, shuttle))))]
 impl Unpin for Cancellation {}
 
 /// Creates a retained one-shot cancellation source.
+#[cfg(not(all(test, any(loom, shuttle))))]
 pub fn cancellation(token: CancellationToken) -> Cancellation {
     Cancellation {
         waiter: Some(Box::pin(token.cancelled_owned())),
     }
 }
 
+#[cfg(not(all(test, any(loom, shuttle))))]
 impl sealed::Sealed for Cancellation {}
 
+#[cfg(not(all(test, any(loom, shuttle))))]
 impl ReactorSource for Cancellation {
     type Item = ();
     type Readiness = readiness::Quiescent;
@@ -467,13 +487,16 @@ impl ReactorSource for Cancellation {
 /// it cancels the timer registration synchronously and no event is delivered
 /// afterward.
 #[derive(Debug, Default)]
+#[cfg(not(all(test, any(loom, shuttle))))]
 pub struct OptionalDeadline {
     at: Option<Instant>,
     sleep: Option<Pin<Box<Sleep>>>,
 }
 
+#[cfg(not(all(test, any(loom, shuttle))))]
 impl Unpin for OptionalDeadline {}
 
+#[cfg(not(all(test, any(loom, shuttle))))]
 impl OptionalDeadline {
     /// Creates a dormant deadline.
     pub const fn new() -> Self {
@@ -519,8 +542,10 @@ impl OptionalDeadline {
     }
 }
 
+#[cfg(not(all(test, any(loom, shuttle))))]
 impl sealed::Sealed for OptionalDeadline {}
 
+#[cfg(not(all(test, any(loom, shuttle))))]
 impl ReactorSource for OptionalDeadline {
     type Item = Instant;
     type Readiness = readiness::Quiescent;

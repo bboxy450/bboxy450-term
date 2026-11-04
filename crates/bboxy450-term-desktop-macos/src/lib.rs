@@ -40,6 +40,15 @@ define_class!(
     struct Target;
     unsafe impl NSObjectProtocol for Target {}
     unsafe impl NSApplicationDelegate for Target {
+        // finishLaunching applies the bundle's default (regular) policy over
+        // the Accessory set before run(): the helper then registered as a
+        // second, windowless com.bboxy450.term app, and tools that pick the
+        // app by bundle ID (Codex Computer Use) waited on it for a window.
+        #[unsafe(method(applicationDidFinishLaunching:))]
+        fn did_finish_launching(&self, _notification: &objc2::runtime::AnyObject) {
+            NSApplication::sharedApplication(MainThreadMarker::from(self))
+                .setActivationPolicy(NSApplicationActivationPolicy::Accessory);
+        }
         #[unsafe(method(applicationShouldHandleReopen:hasVisibleWindows:))]
         fn reopen(&self, _app: &NSApplication, _visible: bool) -> bool {
             // Finder/Dock may address the surviving accessory process after

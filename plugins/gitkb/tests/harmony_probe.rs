@@ -376,9 +376,7 @@ fn cold_task_list(
     index: bool,
 ) -> (Vec<Vec<Value>>, Value) {
     let mut env = env.to_vec();
-    if !index {
-        env.push(("BBOXY_GITKB_INDEX".into(), "off".into()));
-    }
+    env.push(("BBOXY_GITKB_INDEX".into(), if index { "on" } else { "off" }.into()));
     let requests = gui_requests(seats);
     let started = Instant::now();
     let mut client = Client::spawn(plugin, dir, &env).unwrap();
@@ -491,9 +489,7 @@ fn host_task_reads(
     index: bool,
 ) -> (Value, Value) {
     let mut env = env.to_vec();
-    if !index {
-        env.push(("BBOXY_GITKB_INDEX".into(), "off".into()));
-    }
+    env.push(("BBOXY_GITKB_INDEX".into(), if index { "on" } else { "off" }.into()));
     let began = Instant::now();
     let mut client = Client::spawn(plugin, dir, &env).unwrap();
     client
@@ -637,7 +633,9 @@ fn page_parity(
             .unwrap();
         client
     };
-    let (mut a, mut b) = (open(indexed, env), open(native, &off));
+    let mut on = env.to_vec();
+    on.push(("BBOXY_GITKB_INDEX".into(), "on".into()));
+    let (mut a, mut b) = (open(indexed, &on), open(native, &off));
     let (mut compared, mut nodes_equal, mut edges_true, mut backend_short) = (0, 0, 0, 0);
     let mut first_difference = Value::Null;
     for (kind, pages) in [("task", 12), ("bug", 64), ("epic", 64)] {
@@ -886,9 +884,7 @@ fn task_list_simulation(
     let initialize = json!({"protocolVersion": "2025-06-18", "root": root.display().to_string()});
     let session = |index: bool| {
         let mut env = env.to_vec();
-        if !index {
-            env.push(("BBOXY_GITKB_INDEX".into(), "off".into()));
-        }
+        env.push(("BBOXY_GITKB_INDEX".into(), if index { "on" } else { "off" }.into()));
         let dir = data.join(if index { "on" } else { "off" });
         let mut client = Client::spawn(plugin, &dir, &env).unwrap();
         let started = Instant::now();

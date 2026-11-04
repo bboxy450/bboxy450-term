@@ -295,6 +295,7 @@ mod tests {
             &["--headless".into()],
             Verify::default(),
         );
+        app.startup.attached();
         let records: Vec<_> = (1..=2)
             .map(|id| {
                 bbt_proto::SeatRecord::new(

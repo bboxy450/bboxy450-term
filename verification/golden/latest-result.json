@@ -1,0 +1,92 @@
+{
+  "outcome": "established",
+  "method": "exhaustive_finite_model",
+  "contract": "ResultContract",
+  "required_ids": [
+    "RESULT-001"
+  ],
+  "require_reachable": [
+    "Submit::fresh",
+    "Submit::reused",
+    "Complete::current",
+    "Complete::stale",
+    "Cancel::clear"
+  ],
+  "protocol": "LatestResult",
+  "scope": {
+    "domains": [
+      {
+        "name": "Id",
+        "size": 2,
+        "variants": [
+          "A",
+          "B"
+        ]
+      }
+    ],
+    "bounds": [
+      {
+        "name": "desired",
+        "min": -1,
+        "max": 1
+      },
+      {
+        "name": "visible",
+        "min": -1,
+        "max": 1
+      },
+      {
+        "name": "submitted::A",
+        "min": 0,
+        "max": 1
+      },
+      {
+        "name": "submitted::B",
+        "min": 0,
+        "max": 1
+      },
+      {
+        "name": "pending::A",
+        "min": 0,
+        "max": 1
+      },
+      {
+        "name": "pending::B",
+        "min": 0,
+        "max": 1
+      }
+    ],
+    "state_limit": 100000,
+    "fairness_assumed": [],
+    "assumptions": [
+      "atomic pure protocol steps",
+      "effects and environment outside the model"
+    ],
+    "waivers": []
+  },
+  "implementation": "generated_core",
+  "provenance": {
+    "source_hash": "fnv1a64:7d36e18e9d992fd5",
+    "verification_hash": "fnv1a64:f4c8aa9f10a97e3e",
+    "declaration": {
+      "file": "<declaration>",
+      "line": 0,
+      "column": 0
+    },
+    "tool_versions": {
+      "bboxy450-yarn": "0.1.1",
+      "bboxy450-yarn-macros": "0.1.1"
+    }
+  },
+  "states": 21,
+  "transitions": 105,
+  "reached_cases": [
+    "Cancel::clear",
+    "Complete::current",
+    "Complete::stale",
+    "Submit::fresh",
+    "Submit::reused"
+  ],
+  "counterexample": null,
+  "message": "all required claims and cases hold over the complete finite graph"
+}

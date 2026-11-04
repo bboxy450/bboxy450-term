@@ -847,6 +847,7 @@ fn settings_persisted_policy_drives_attention_and_keeps_focus_and_mute_suppressi
     let mut seats: Vec<_> = [(1, "codex"), (2, "claude")]
         .into_iter()
         .map(|(id, harness)| GuiSeat {
+            rich_socket: None,
             notification_episode: None,
             attention: None,
             record: bbt_proto::registry::SeatRecord::new(
@@ -862,6 +863,7 @@ fn settings_persisted_policy_drives_attention_and_keeps_focus_and_mute_suppressi
                 grade: Grade::Shim,
                 title: String::new(),
                 detail: None,
+                stale: false,
                 turn_open: true,
                 observed_ms: 10,
                 subagents: vec![],

@@ -1187,7 +1187,10 @@ pub(crate) fn authorize(doc: &Document, registry: &Registry, actor: &Actor) -> C
     Ok(())
 }
 fn validate_task_role(target: &SeatRecord, role: &str) -> Checked<()> {
-    if (!matches!(role, "executor" | "oracle" | "creativity" | "qa" | "solo") && role != target.role.name)
+    if (!matches!(
+        role,
+        "executor" | "oracle" | "creativity" | "researcher" | "qa" | "solo"
+    ) && role != target.role.name)
         || (matches!(role, "oracle" | "solo") && target.role.class != Class::Oracle)
     {
         return Err("requested task role exceeds target authority".into());

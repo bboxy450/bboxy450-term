@@ -33,6 +33,18 @@ Source tags used in every cell: **HT §n** = [[harness-touchpoints]] section n (
 
 ## 1. Adapter trait
 
+All admitted UI, operator `ctl`, and MCP spawns use the same backend
+`prepare_spawn` and `launch` pipeline. Door-specific authority and durable
+operation journals stay at admission; role resolution, local directory
+canonicalization, overlays, hooks, native resume and process wiring are shared.
+Explicit UI command/argument choices remain inputs to that pipeline.
+
+Codex's per-launch `bboxy` MCP server is enabled and required. Startup must wait
+for the server rather than admitting a session with an incomplete tool catalog;
+a connection failure is a startup failure. This applies to both fresh and
+resumed threads and to the shared-daemon proxy's thread configuration.
+Native Codex contract: [MCP startup options](https://learn.chatgpt.com/docs/extend/mcp?surface=cli).
+
 Rust-shaped. One `impl` per harness. The mux logic process owns the instances (MUX «Ownership and failure boundaries»: "native harness adapters" live in logic, not the supervisor).
 
 ```rust

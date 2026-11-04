@@ -8,8 +8,12 @@
 
 use bbt_mux::messaging::wire::EnvelopeExt;
 mod common;
+#[path = "mcp/harness_status.rs"]
+mod harness_status;
 #[path = "common/record_supervisor.rs"]
 mod record_supervisor;
+#[path = "mcp/launch.rs"]
+mod launch_tests;
 use record_supervisor::RecordLink;
 use std::io::{Cursor, Read, Write};
 use std::os::unix::net::UnixStream;
@@ -44,6 +48,7 @@ struct Fixture {
     task: Ulid,
     foreign_task: Ulid,
     input_attempts: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    pty_bytes: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     history_gap: std::sync::Arc<std::sync::atomic::AtomicBool>,
     native_runtime: NativeRuntimes,
     _temp: tempfile::TempDir,
@@ -104,6 +109,7 @@ impl Fixture {
             real.then(|| Supervisor::start(common::capture_config(temp.path())).unwrap());
         let record_link = (!real).then(RecordLink::default);
         let input_attempts = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let pty_bytes = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let history_gap = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let native_runtime =
             std::sync::Arc::new(std::sync::Mutex::new(std::collections::BTreeMap::new()));
@@ -115,6 +121,7 @@ impl Fixture {
                 },
                 lose,
                 attempts: input_attempts.clone(),
+                pty_bytes: pty_bytes.clone(),
                 history_gap: history_gap.clone(),
                 native_runtime: native_runtime.clone(),
             },
@@ -149,6 +156,7 @@ impl Fixture {
             task,
             foreign_task,
             input_attempts,
+            pty_bytes,
             history_gap,
             native_runtime,
             _temp: temp,
@@ -299,6 +307,7 @@ impl Fixture {
                     client: self.connection(),
                     lose: false,
                     attempts: self.input_attempts.clone(),
+                    pty_bytes: self.pty_bytes.clone(),
                     history_gap: self.history_gap.clone(),
                     native_runtime: self.native_runtime.clone(),
                 },
@@ -332,6 +341,7 @@ struct LostInputReceipt {
     client: Connection,
     lose: bool,
     attempts: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    pty_bytes: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     history_gap: std::sync::Arc<std::sync::atomic::AtomicBool>,
     native_runtime: NativeRuntimes,
 }
@@ -339,6 +349,10 @@ impl bbt_mux::logic::SupervisorConnection for LostInputReceipt {
     fn request(&mut self, action: bbt_mux::Action) -> bbt_mux::store::Result<bbt_mux::Reply> {
         let input = matches!(action, bbt_mux::Action::GuardedInput { .. });
         let mut result = self.client.request(action)?;
+        if let bbt_mux::Reply::Input { receipt } = &result {
+            self.pty_bytes
+                .fetch_add(receipt.bytes_written, std::sync::atomic::Ordering::SeqCst);
+        }
         // This RPC fixture hosts its native server in the test process. Supply
         // its explicit host facts at the existing fake transport boundary; real
         // companion subprocess ownership/reaping is checked in supervisor tests.
@@ -4813,7 +4827,12 @@ fn mcp_oracle_controls_remain_seat_bound_through_the_ctl_alias() {
             json!({"seat_id":f.peer.id,"expected_process_generation":"2"}),
             "stale target",
         ),
-        (f.own.id, "seat_close", f.target(f.peer.id), "oracle-class authority"),
+        (
+            f.own.id,
+            "seat_close",
+            f.target(f.peer.id),
+            "oracle-class authority",
+        ),
         (
             f.oracle.id,
             "ctl",
@@ -4970,6 +4989,9 @@ fn isolated_seat_fixture(mode: &str) {
         .env("BBOXY_TEST_CUSTODY", "memory")
         .env("BBOXY_MCP_SEAT_FIXTURE", mode);
     if mode.starts_with("harness") {
+        if let Some(control) = std::env::var_os("BBOXY_RICH_TEST_CONTROL") {
+            command.env("BBOXY_RICH_TEST_CONTROL", control);
+        }
         command.env(
             "BBOXY_HARNESS_TEST_BIN",
             std::env::var_os("BBOXY_HARNESS_TEST_BIN")
@@ -5039,8 +5061,11 @@ fn mcp_seat_isolated_process() {
         "spawn" => seat_spawn_fixture(),
         "orchestrate" => seat_orchestration_fixture(),
         "native" => seat_native_fixture(),
-        "harness" => seat_harness_fixture(false),
-        "harness-owner" => seat_harness_fixture(true),
+        "harness" => seat_harness_fixture(false, None),
+        "harness-owner" => seat_harness_fixture(true, None),
+        "harness-status" => seat_harness_fixture(false, Some(false)),
+        "harness-status-log" => seat_harness_fixture(false, Some(true)),
+        "harness-status-phase" => harness_status::run(),
         _ => panic!("unknown fixture mode"),
     }
 }
@@ -5050,6 +5075,15 @@ fn mcp_seat_isolated_process() {
 #[ignore = "real private PTY; make test-harness-native builds the pinned harness and runs this in full CI"]
 fn mcp_harness_seat_completes_and_closes_without_orphans() {
     isolated_seat_fixture("harness");
+}
+
+// keeps: app-harness #348; HarnessReportedStatus. Both runs use a real, quiet
+// tool beyond 20 seconds. Relocated logs prove OSC alone; JSON mode proves log alone.
+#[test]
+#[ignore = "real private PTY and scripted tool; make test-harness-native"]
+fn mcp_harness_seat_status_survives_quiet_tool() {
+    isolated_seat_fixture("harness-status");
+    isolated_seat_fixture("harness-status-log");
 }
 
 // Only exact process groups created and recorded by this private fixture.
@@ -5072,7 +5106,7 @@ fn mcp_harness_seat_owner_close_retires_hup_ignoring_tool_and_recovers() {
     isolated_seat_fixture("harness-owner");
 }
 
-fn seat_harness_fixture(owner_close: bool) {
+fn seat_harness_fixture(owner_close: bool, quiet: Option<bool>) {
     use std::os::unix::fs::PermissionsExt;
     let home = PathBuf::from(std::env::var_os("HOME").unwrap());
     let binary = PathBuf::from(std::env::var_os("BBOXY_HARNESS_TEST_BIN").unwrap());
@@ -5088,10 +5122,20 @@ fn seat_harness_fixture(owner_close: bool) {
     // still launches its production argv [bboxy450-harness, seat]. No key/network.
     let shim = bin.join("bboxy450-harness");
     let tool_pid_path = home.join("tool-pid");
-    let command = format!(
-        "trap '' HUP; trap '' TERM; printf '%s\\n' \"$$\" > {0}.tmp; mv {0}.tmp {0}; sleep 600",
-        quote(&tool_pid_path)
-    );
+    let command = if quiet.is_some() {
+        format!(
+            "bash -c {}",
+            quote(std::path::Path::new(&format!(
+                "printf '%s\\n' \"$$\" > {0}.tmp; mv {0}.tmp {0}; sleep 22",
+                quote(&tool_pid_path)
+            ))),
+        )
+    } else {
+        format!(
+            "trap '' HUP; trap '' TERM; printf '%s\\n' \"$$\" > {0}.tmp; mv {0}.tmp {0}; sleep 600",
+            quote(&tool_pid_path)
+        )
+    };
     let tool_call = json!({"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"owned-hup-tool","type":"function","function":{"name":"bash","arguments":serde_json::to_string(&json!({"command":command})).unwrap()}}]},"finish_reason":null}]});
     std::fs::write(home.join("tool.sse"), format!("data: {tool_call}\n\ndata: {{\"choices\":[{{\"index\":0,\"delta\":{{}},\"finish_reason\":\"tool_calls\"}}]}}\n\ndata: [DONE]\n\n")).unwrap();
     let fixture_mcp = binary.parent().unwrap().join("mcp-fixture");
@@ -5107,6 +5151,11 @@ fn seat_harness_fixture(owner_close: bool) {
         serde_json::to_string(&home).unwrap(),
         if owner_close { "True" } else { "False" }
     );
+    script.push_str(&format!(
+        "QUIET={}\nJSON={}\n",
+        if quiet.is_some() { "True" } else { "False" },
+        if quiet == Some(true) { "True" } else { "False" }
+    ));
     script.push_str(r#"import json, os, sys
 from pathlib import Path
 args = sys.argv[1:]
@@ -5120,11 +5169,19 @@ private = Path(HOME, 'fixture-mcp.json')
 private.write_text(json.dumps(config))
 private.chmod(0o600)
 args[index] = str(private)
-args.extend(['--scripted', FIXTURE, '--sessions', str(Path(HOME, 'sessions'))])
+args.extend(['--scripted', FIXTURE])
 if OWNER:
     # Fixture-only authority for its owned tool; the production argv above has
     # no permission selector and is asserted separately by the launch-kit test.
     args.extend(['--scripted', str(Path(HOME, 'tool.sse')), '--yolo'])
+if QUIET:
+    args.extend(['--scripted', str(Path(HOME, 'tool.sse')), '--scripted', FIXTURE, '--yolo'])
+if QUIET and not JSON:
+    # The production log observer cannot find this native CLI override.
+    # The engine still records its log; status must come only from OSC.
+    args.extend(['--sessions', str(Path(HOME, 'osc-only-sessions'))])
+if JSON:
+    args.append('--json')
 os.execv(BINARY, [BINARY, *args])
 "#);
     std::fs::write(&shim, script).unwrap();
@@ -5134,7 +5191,7 @@ os.execv(BINARY, [BINARY, *args])
         format!("export PATH={}:$PATH\n", quote(&bin)),
     )
     .unwrap();
-    let f = Fixture::real();
+    let mut f = Fixture::real();
     let baseline = f.registry().list().unwrap().len();
     refused(f.mutate(f.oracle.id, Ulid::new(), "seat_spawn", json!({
         "swarm_id": f.own.swarm, "approved_profile": "unknown-harness", "cwd": f._temp.path()
@@ -5155,45 +5212,173 @@ os.execv(BINARY, [BINARY, *args])
     let pgid = unsafe { libc::getpgid(pid) };
     assert!(pgid > 0);
     let mut groups = OwnedHarnessGroups(vec![pgid]);
-    f.wait_screen(seat, "session ");
-    let screen = f.screen(seat);
-    let first = screen.lines().next().unwrap();
-    let mut fields = first.split_whitespace();
-    assert_eq!(fields.next(), Some("session"), "{screen}");
-    let session: Ulid = fields.next().unwrap().parse().unwrap();
+    f.wait_screen(
+        seat,
+        if quiet == Some(true) {
+            "session_started"
+        } else {
+            "session "
+        },
+    );
+    let sessions = if quiet == Some(false) {
+        home.join("osc-only-sessions")
+    } else {
+        home.join(".bboxy450-harness/sessions")
+    };
+    let logs: Vec<_> = std::fs::read_dir(&sessions)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|ext| ext == "jsonl"))
+        .collect();
+    assert_eq!(logs.len(), 1, "private session discovery");
+    let session: Ulid = logs[0]
+        .file_stem()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .parse()
+        .unwrap();
     let role = f.registry().get(seat).unwrap().role;
     assert_eq!(role.name, "executor");
     assert_eq!(role.class, Class::Worker);
     let attempts = f.input_attempts.load(std::sync::atomic::Ordering::SeqCst);
-    let refusal = f.mutate(
+    let zero_bytes = f.pty_bytes.load(std::sync::atomic::Ordering::SeqCst);
+    let until = Instant::now() + Duration::from_secs(8);
+    while f
+        .registry()
+        .get(seat)
+        .unwrap()
+        .harness_session_id
+        .as_deref()
+        != Some(&session.to_string())
+    {
+        assert!(Instant::now() < until, "Hello session was not persisted");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    if std::env::var("BBOXY_RICH_TEST_CONTROL").as_deref() == Ok("pty-fallback") {
+        f.runtime
+            .block_on(f.client().gui_input(
+                seat,
+                1,
+                Ulid::new(),
+                b"deliberate invalid PTY fallback\r".to_vec(),
+            ))
+            .unwrap();
+    }
+    let message = Ulid::new();
+    let admitted = f.mutate(
         f.oracle.id,
-        Ulid::new(),
+        message,
         "seat_input_text",
-        f.input_args(seat, "must not be submitted", true),
+        f.input_args(seat, "complete one scripted turn", true),
     );
-    assert_eq!(refusal["isError"], true);
-    let handoff = &refusal["structuredContent"];
-    assert_eq!(handoff["cause"], "composer-readiness-missing", "{handoff}");
-    assert_eq!(handoff["error"]["code"], "not_submitted");
+    assert_eq!(admitted["isError"], false, "{admitted}");
+    assert_eq!(
+        admitted["structuredContent"]["native_id"],
+        message.to_string()
+    );
+    if quiet != Some(true) {
+        f.wait_screen(seat, "Done.");
+    }
+    let duplicate = f.mutate(
+        f.oracle.id,
+        message,
+        "seat_input_text",
+        f.input_args(seat, "complete one scripted turn", true),
+    );
+    assert_eq!(duplicate["isError"], false, "{duplicate}");
+    assert!(
+        duplicate["structuredContent"]["note"]
+            .as_str()
+            .unwrap()
+            .contains("duplicate=true")
+    );
+    if quiet != Some(true) {
+        f.wait_screen(seat, "✓ Done");
+    }
     assert_eq!(
         f.input_attempts.load(std::sync::atomic::Ordering::SeqCst),
         attempts,
-        "handoff never writes or retries PTY input"
+        "socket turn and replay wrote zero PTY bytes"
     );
-    f.runtime
-        .block_on(f.client().gui_input(
-            seat,
-            1,
-            Ulid::new(),
-            b"complete one scripted turn\r".to_vec(),
-        ))
+    let socket = f
+        .runtime
+        .block_on(f.client().gui_seat(seat))
+        .unwrap()
+        .rich_socket
         .unwrap();
-    f.wait_screen(seat, "Done.");
-    f.wait_screen(seat, "✓ Done"); // The pinned harness's completed-turn status row.
+    let mut wire = std::os::unix::net::UnixStream::connect(&socket).unwrap();
+    wire.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    use std::io::{BufRead, Write};
+    writeln!(
+        wire,
+        "{}",
+        json!({"v":{"major":1,"minor":1},"subscribe":{"ephemeral":false,"after":null}})
+    )
+    .unwrap();
+    let mut reader = std::io::BufReader::new(wire.try_clone().unwrap());
+    let mut line = String::new();
+    reader.read_line(&mut line).unwrap();
+    let hello: Value = serde_json::from_str(&line).unwrap();
+    assert_eq!(hello["meta"]["session"], session.to_string());
+    writeln!(wire,"{}",json!({"v":hello["v"],"op_id":message,"session":session,"op":{"type":"user_turn","blocks":[{"type":"text","text":"complete one scripted turn"}],"mode":"queue"}})).unwrap();
+    loop {
+        line.clear();
+        reader.read_line(&mut line).unwrap();
+        let value: Value = serde_json::from_str(&line).unwrap();
+        if value["op_id"] == json!(message) {
+            assert_eq!(value["ack"]["duplicate"], true, "{value}");
+            break;
+        }
+    }
+    let until = Instant::now() + Duration::from_secs(8);
+    let events: Vec<Value> = loop {
+        let events: Vec<Value> = std::fs::read_to_string(sessions.join(format!("{session}.jsonl")))
+            .unwrap()
+            .lines()
+            .map(|l| serde_json::from_str(l).unwrap())
+            .collect();
+        let ended = events
+            .iter()
+            .find(|e| e["event"]["type"] == "turn_queued" && e["cause"] == json!(message))
+            .is_some_and(|queued| {
+                events.iter().any(|e| {
+                    e["event"]["type"] == "turn_ended"
+                        && e["event"]["turn"] == queued["event"]["turn"]
+                })
+            });
+        if ended {
+            break events;
+        }
+        assert!(Instant::now() < until, "native causal turn did not end");
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    let queued: Vec<_> = events
+        .iter()
+        .filter(|e| e["event"]["type"] == "turn_queued" && e["cause"] == json!(message))
+        .collect();
     assert_eq!(
-        f.input_attempts.load(std::sync::atomic::Ordering::SeqCst),
-        attempts,
-        "the completed turn used the GUI path; the guarded input was never retried"
+        queued.len(),
+        1,
+        "one causal admission for the retained message"
+    );
+    let turn = &queued[0]["event"]["turn"];
+    for kind in ["turn_started", "turn_ended"] {
+        assert_eq!(
+            events
+                .iter()
+                .filter(|e| e["event"]["type"] == kind && &e["event"]["turn"] == turn)
+                .count(),
+            1,
+            "{kind} linked to queued message by turn id"
+        );
+    }
+    drop(reader);
+    drop(wire);
+    assert_eq!(
+        f.pty_bytes.load(std::sync::atomic::Ordering::SeqCst),
+        zero_bytes,
+        "all PTY writer receipts: zero bytes for socket delivery and duplicates"
     );
     let launch: Vec<String> =
         serde_json::from_slice(&std::fs::read(home.join("launcher-argv.json")).unwrap()).unwrap();
@@ -5218,7 +5403,7 @@ os.execv(BINARY, [BINARY, *args])
     let mcp_pgid = unsafe { libc::getpgid(mcp_pid) };
     assert!(mcp_pgid > 0 && mcp_pgid != pgid);
     groups.0.push(mcp_pgid);
-    let log_path = home.join(format!("sessions/{session}.jsonl"));
+    let log_path = sessions.join(format!("{session}.jsonl"));
     let completed: Vec<Value> = std::fs::read_to_string(&log_path)
         .unwrap()
         .lines()
@@ -5226,6 +5411,156 @@ os.execv(BINARY, [BINARY, *args])
         .filter(|event| event["event"]["type"] == "item_completed")
         .collect();
     assert!(!completed.is_empty());
+    if quiet.is_some() {
+        let consumer =
+            bboxy450_harness_wake_up::rich::Connection::start(socket.clone(), f.runtime.handle());
+        let turn = f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "seat_input_text",
+            f.input_args(seat, "run a quiet tool", true),
+        );
+        assert_eq!(turn["isError"], false, "{turn}");
+        let until = Instant::now() + Duration::from_secs(10);
+        while !tool_pid_path.is_file() {
+            assert!(
+                Instant::now() < until,
+                "quiet tool did not start: {}",
+                f.screen(seat)
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        let started = Instant::now();
+        let read = |f: &Fixture| {
+            data(f.call(
+                f.oracle.id,
+                Ulid::new(),
+                "seat_get",
+                json!({"seat_id":seat}),
+            ))
+        };
+        // Allow the independent log reader one publication interval.
+        let until = Instant::now() + Duration::from_secs(2);
+        loop {
+            let status = read(&f);
+            if status["adapter"]["detail"]
+                .as_str()
+                .is_some_and(|detail| detail.contains("bash"))
+            {
+                break;
+            }
+            assert!(Instant::now() < until, "tool detail not reported: {status}");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        if quiet == Some(false) {
+            assert!(
+                !home
+                    .join(format!(".bboxy450-harness/sessions/{session}.jsonl"))
+                    .exists(),
+                "OSC-only fixture must leave the observer's log path absent"
+            );
+        }
+        let native_head = std::fs::read_to_string(&log_path)
+            .unwrap()
+            .lines()
+            .last()
+            .map(|l| serde_json::from_str::<Value>(l).unwrap())
+            .unwrap();
+        let mut liveness_checked = false;
+        let mut samples = 0;
+        let mut restarted = false;
+        while started.elapsed() < Duration::from_secs(22) {
+            if !liveness_checked && started.elapsed() >= Duration::from_secs(21) {
+                let hello = consumer
+                    .client
+                    .hello()
+                    .expect("durable-only term consumer expired during the quiet tool");
+                assert_eq!(hello.session, session);
+                assert!(hello.last_frame.elapsed() < Duration::from_secs(12));
+                let last: Value = serde_json::from_str(
+                    std::fs::read_to_string(&log_path)
+                        .unwrap()
+                        .lines()
+                        .last()
+                        .unwrap(),
+                )
+                .unwrap();
+                assert_eq!(
+                    last["seq"], native_head["seq"],
+                    "transport Status fabricated semantic progress"
+                );
+                assert_eq!(
+                    last["ts_ms"], native_head["ts_ms"],
+                    "transport Status freshened native event time"
+                );
+                eprintln!(
+                    "harness-native: durable_only_live_ms={} frame_age_ms={} semantic_seq={}",
+                    started.elapsed().as_millis(),
+                    hello.last_frame.elapsed().as_millis(),
+                    last["seq"]
+                );
+                liveness_checked = true;
+            }
+            if quiet == Some(false) && !restarted && started.elapsed() >= Duration::from_secs(8) {
+                f.restart();
+                restarted = true;
+            }
+            let status = read(&f);
+            let adapter = &status["adapter"];
+            // A tool may finish just before the poll which crosses 20 seconds.
+            if adapter["state"] == "idle" {
+                assert!(
+                    started.elapsed() >= Duration::from_millis(19_800),
+                    "early idle: {status}"
+                );
+                break;
+            }
+            assert_eq!(adapter["state"], "active", "{status}");
+            assert_eq!(adapter["grade"], "reported", "{status}");
+            if quiet == Some(true) {
+                assert_eq!(adapter["source"], "sessions_file", "{status}");
+            } else {
+                assert!(adapter["source"] == "7501", "{status}");
+            }
+            assert!(
+                adapter["detail"]
+                    .as_str()
+                    .is_some_and(|detail| detail.contains("bash")),
+                "{status}"
+            );
+            samples += 1;
+            std::thread::sleep(Duration::from_millis(200));
+        }
+        assert!(
+            liveness_checked,
+            "the actual term consumer must cross its 20s freshness deadline"
+        );
+        assert!(
+            samples >= 80,
+            "insufficient quiet interval samples: {samples}"
+        );
+        let until = Instant::now() + Duration::from_secs(5);
+        loop {
+            let status = read(&f);
+            if status["adapter"]["state"] == "idle"
+                && (quiet != Some(true) || status["adapter"]["source"] == "sessions_file")
+            {
+                assert_eq!(status["adapter"]["detail"], Value::Null);
+                assert_eq!(status["adapter"]["grade"], "reported");
+                break;
+            }
+            assert!(
+                Instant::now() < until,
+                "turn did not become reported idle: {status}"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        eprintln!(
+            "harness-native: quiet_tool_ms={} samples={samples} osc_suppressed={}",
+            started.elapsed().as_millis(),
+            quiet == Some(true)
+        );
+    }
     if owner_close {
         f.runtime
             .block_on(f.client().gui_input(
@@ -5253,6 +5588,72 @@ os.execv(BINARY, [BINARY, *args])
         let tool_pgid = unsafe { libc::getpgid(tool_pid) };
         assert!(tool_pgid > 0 && tool_pgid != pgid && tool_pgid != mcp_pgid);
         groups.0.push(tool_pgid);
+    }
+    if !owner_close {
+        std::fs::remove_file(&socket).unwrap();
+        std::thread::sleep(Duration::from_millis(250));
+        let unavailable = f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "seat_input_text",
+            f.input_args(seat, "no fallback", true),
+        );
+        assert_eq!(
+            unavailable["structuredContent"]["cause"], "harness-socket-unavailable",
+            "{unavailable}"
+        );
+        assert_eq!(
+            f.pty_bytes.load(std::sync::atomic::Ordering::SeqCst),
+            zero_bytes
+        );
+        let mut previous = session;
+        for profile in ["other", "scripted"] {
+            f.runtime
+                .block_on(f.client().gui_input(
+                    seat,
+                    1,
+                    Ulid::new(),
+                    format!("/profile {profile}\r").into_bytes(),
+                ))
+                .unwrap();
+            let until = Instant::now() + Duration::from_secs(8);
+            let next = loop {
+                if let Some(id) = f
+                    .registry()
+                    .get(seat)
+                    .unwrap()
+                    .harness_session_id
+                    .and_then(|s| s.parse::<Ulid>().ok())
+                    && id != previous
+                {
+                    break id;
+                }
+                assert!(
+                    Instant::now() < until,
+                    "profile rebound not announced: {}",
+                    f.screen(seat)
+                );
+                std::thread::sleep(Duration::from_millis(10));
+            };
+            assert_ne!(next, session, "A/B/A has a third session incarnation");
+            let baseline = f.pty_bytes.load(std::sync::atomic::Ordering::SeqCst);
+            let stale = f.mutate(
+                f.oracle.id,
+                message,
+                "seat_input_text",
+                f.input_args(seat, "complete one scripted turn", true),
+            );
+            assert_eq!(
+                stale["structuredContent"]["cause"], "harness-session-closed",
+                "{stale}"
+            );
+            assert_eq!(
+                f.pty_bytes.load(std::sync::atomic::Ordering::SeqCst),
+                baseline,
+                "stale resend wrote zero PTY bytes"
+            );
+            previous = next;
+        }
     }
     let start = Instant::now();
     if owner_close {
@@ -5296,46 +5697,63 @@ os.execv(BINARY, [BINARY, *args])
     let close_elapsed = start.elapsed();
     assert!(close_elapsed < Duration::from_secs(2));
     groups.0.clear(); // Every original group is gone; never signal a recycled ID.
-    let observer = f.supervisor.as_ref().unwrap().connect().unwrap();
-    let bbt_supervisor::Reply::Seats { seats } = observer
-        .request(bbt_supervisor::Action::ListOwnedSeats)
-        .unwrap()
-    else {
-        panic!("seat metadata missing")
+    let observe_exit = || {
+        let observer = f.supervisor.as_ref().unwrap().connect().unwrap();
+        let bbt_supervisor::Reply::Seats { seats } = observer
+            .request(bbt_supervisor::Action::ListOwnedSeats)
+            .unwrap()
+        else {
+            panic!("seat metadata missing")
+        };
+        seats
+            .iter()
+            .find(|s| s.seat == seat)
+            .unwrap()
+            .exited
+            .clone()
+            .unwrap()
     };
-    let exited = seats
-        .iter()
-        .find(|s| s.seat == seat)
-        .unwrap()
-        .exited
-        .as_ref()
-        .unwrap();
     if owner_close {
         let private_home = tempfile::Builder::new()
             .prefix("hresume-")
             .tempdir_in("/tmp")
             .unwrap();
-        let mut resume = std::process::Command::new(&binary);
-        resume
-            .args(["seat", "--resume", &session.to_string(), "--sessions"])
-            .arg(home.join("sessions"))
-            .arg("--scripted")
-            .arg(&fixture)
-            .env_clear()
-            .env("HOME", private_home.path())
-            .env("PATH", "/usr/bin:/bin")
-            .stdin(std::process::Stdio::null());
-        let (status, stdout, stderr) =
-            bounded_client(resume, Duration::from_secs(10), &private_home);
-        assert!(
-            status.success(),
-            "manual resume failed: {}",
-            String::from_utf8_lossy(&stderr)
-        );
-        assert!(
-            String::from_utf8_lossy(&stdout).contains("Done."),
-            "completed text was not replayed"
-        );
+        let resumed=data(f.mutate(f.oracle.id,Ulid::new(),"seat_spawn",json!({"swarm_id":f.own.swarm,"approved_profile":"bboxy450-harness","cwd":f._temp.path(),"resume":session.to_string()})));
+        assert_eq!(resumed["status"], "applied", "{resumed}");
+        let resumed_seat: Ulid = serde_json::from_value(resumed["seat_id"].clone()).unwrap();
+        let resumed_pid = resumed["pid"].as_u64().unwrap() as i32;
+        // SAFETY: this PID is the exact replacement admitted by this fixture.
+        let resumed_group = unsafe { libc::getpgid(resumed_pid) };
+        assert!(resumed_group > 0);
+        groups.0.push(resumed_group);
+        f.wait_screen(resumed_seat, "Done.");
+        let until = Instant::now() + Duration::from_secs(8);
+        while f
+            .registry()
+            .get(resumed_seat)
+            .unwrap()
+            .harness_session_id
+            .as_deref()
+            != Some(&session.to_string())
+        {
+            assert!(Instant::now() < until, "resumed Hello not persisted");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        f.runtime
+            .block_on(f.client().gui_input(resumed_seat, 1, Ulid::new(), vec![4]))
+            .unwrap();
+        let until = Instant::now() + Duration::from_secs(2);
+        loop {
+            // SAFETY: observe only the recorded replacement group.
+            if unsafe { libc::kill(-resumed_group, 0) } == -1
+                && std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH)
+            {
+                break;
+            }
+            assert!(Instant::now() < until, "replacement group did not exit");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        groups.0.clear();
         let mut check = std::process::Command::new(&binary);
         check
             .arg("check-transcript")
@@ -5360,6 +5778,7 @@ os.execv(BINARY, [BINARY, *args])
             "manual recovery lost completed items"
         );
     } else {
+        let exited = observe_exit();
         assert_eq!(exited.code, 0, "{exited:?}");
         assert_eq!(exited.signal, None);
         let log = std::fs::read_to_string(&log_path).unwrap();
@@ -5369,11 +5788,12 @@ os.execv(BINARY, [BINARY, *args])
             "close must be durable"
         );
     }
+    let exited = observe_exit();
     eprintln!(
-        "harness-native: route={} exit={exited:?} close={close_elapsed:?}; every group ESRCH; completed turn; unknown profile refused; composer-readiness-missing has zero writes{}",
+        "harness-native: route={} exit={exited:?} close={close_elapsed:?}; every group ESRCH; completed turn; unknown profile refused; socket Hello persisted; correlated Ack; duplicate Ack; one cause-bound turn; zero PTY bytes{}",
         if owner_close { "owner" } else { "Ctrl-D" },
         if owner_close {
-            "; HUP-ignoring tool retired; manual recovery preserved completed items; check-transcript=0"
+            "; HUP-ignoring tool retired; seat_spawn resume preserved completed items; check-transcript=0"
         } else {
             ""
         }

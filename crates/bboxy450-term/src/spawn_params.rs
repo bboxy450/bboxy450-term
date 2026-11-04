@@ -72,6 +72,10 @@ pub fn resolve_with_catalog(
                     "oracle" => ("Oracle".into(), "supervises, briefs, verifies".into()),
                     "architect" => ("Architect".into(), "specs, invariants, decisions".into()),
                     "creativity" => ("Creativity".into(), "diverges before the pick".into()),
+                    "researcher" => (
+                        "Researcher".into(),
+                        "investigates, verifies, cites evidence".into(),
+                    ),
                     "executor" => ("Executor".into(), "implements a scoped brief".into()),
                     "qa" => ("QA".into(), "tests the app, drives the desktop".into()),
                     "solo" => ("Solo".into(), "plans, builds, verifies, lands alone".into()),

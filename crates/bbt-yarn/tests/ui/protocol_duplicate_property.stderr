@@ -1,0 +1,5 @@
+error: PRO006 duplicate property id. Repair: give every invariant and temporal property a unique stable id.
+  --> tests/ui/protocol_duplicate_property.rs:15:25
+   |
+15 |         #[property(id = "LIVE-001", leads_to(ready, ready))];
+   |                         ^^^^^^^^^^

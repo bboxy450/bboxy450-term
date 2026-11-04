@@ -46,6 +46,7 @@ async fn reply(read: &mut BufReader<tokio::net::unix::OwnedReadHalf>) -> GuiRepl
 }
 fn waiting() -> GuiSeat {
     GuiSeat {
+        rich_socket: None,
         notification_episode: None,
         attention: None,
         record: SeatRecord::new(Ulid(99), Ulid(100), "current question", "claude"),
@@ -56,6 +57,7 @@ fn waiting() -> GuiSeat {
             grade: bbt_proto::Grade::Shim,
             title: String::new(),
             detail: Some("Which workspace?".into()),
+            stale: false,
             turn_open: true,
             observed_ms: 1,
             subagents: Vec::new(),

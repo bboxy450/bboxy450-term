@@ -17,6 +17,281 @@ use crate::{
 use serde_json::{Value, json};
 
 struct Link;
+
+#[test]
+fn deferred_scan_replaces_failed_watcher_and_observes_later_edits() {
+    let mut f = Fixture::open();
+    let actor = f.actor(&f.a.clone());
+    let port = f.ready(&actor);
+    let root = &port.binding.root_id;
+    f.worker
+        .workspaces
+        .cache
+        .root_mut(root)
+        .unwrap()
+        .watch
+        .inject_failure();
+    assert!(f.worker.workspaces.cache.root_mut(root).unwrap().failed());
+    f.worker.workspaces.reconcile(root).unwrap();
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        f.worker.workspaces.poll(&f.worker.registry);
+        if !f.worker.workspaces.scanning(root) {
+            break;
+        }
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    assert!(!f.worker.workspaces.cache.root_mut(root).unwrap().failed());
+    let file = f.first.join(".bboxy/notes/same.md");
+    let content = std::fs::read_to_string(&file)
+        .unwrap()
+        .replace("first content", "later content");
+    std::fs::write(&file, content).unwrap();
+    // Let the real replacement watcher deliver and settle this edit.
+    loop {
+        f.worker.workspaces.poll(&f.worker.registry);
+        if f.worker.workspaces.cache.root_mut(root).unwrap().changed() {
+            f.worker.workspaces.reconcile_pending(root).unwrap();
+        }
+        if f.worker
+            .workspaces
+            .cache
+            .root_mut(root)
+            .unwrap()
+            .index
+            .documents["notes/same.md"]
+            .body
+            == "later content\n"
+        {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "replacement watcher did not deliver the edit"
+        );
+        std::thread::sleep(Duration::from_millis(2));
+    }
+}
+
+#[test]
+fn deferred_publication_preserves_outbox_while_another_root_progresses() {
+    use std::sync::{Condvar, Mutex};
+    struct Release(Arc<(Mutex<bool>, Condvar)>);
+    impl Drop for Release {
+        fn drop(&mut self) {
+            *self.0.0.lock().unwrap() = true;
+            self.0.1.notify_all();
+        }
+    }
+    let mut f = Fixture::open();
+    let actor_a = f.actor(&f.a.clone());
+    let actor_b = f.actor(&f.b.clone());
+    let a = f.ready(&actor_a).binding.root_id;
+    let b = f.ready(&actor_b).binding.root_id;
+    let outbox_a = f
+        .worker
+        .workspaces
+        .cache
+        .root_mut(&a)
+        .unwrap()
+        .index
+        .outbox();
+    let outbox_b = f
+        .worker
+        .workspaces
+        .cache
+        .root_mut(&b)
+        .unwrap()
+        .index
+        .outbox();
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        f.worker.poll_root_publications();
+        if outbox_a.page(1).unwrap().is_empty()
+            && outbox_b.page(1).unwrap().is_empty()
+            && f.worker.publication_running.is_empty()
+        {
+            break;
+        }
+        f.worker.publish_root_outbox(&a).unwrap();
+        f.worker.publish_root_outbox(&b).unwrap();
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    for (directory, root) in [(&f.first, &a), (&f.second, &b)] {
+        let path = directory.join(".bboxy/notes/same.md");
+        let content = std::fs::read_to_string(&path).unwrap();
+        std::fs::write(path, format!("{content}additional evidence\n")).unwrap();
+        f.worker.workspaces.reconcile(root).unwrap();
+    }
+    while f.worker.workspaces.scanning(&a) || f.worker.workspaces.scanning(&b) {
+        f.worker.workspaces.poll(&f.worker.registry);
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    let pending_id = outbox_a.page(1).unwrap()[0].id;
+    let gate = Arc::new((Mutex::new(false), Condvar::new()));
+    let release = Release(gate.clone());
+    let held = a.clone();
+    let (sent, received) = std::sync::mpsc::channel();
+    f.worker.publication_io_hook = Some(Arc::new(move |root| {
+        if root == held {
+            let _ = sent.send(());
+            let guard = gate.0.lock().unwrap();
+            drop(gate.1.wait_while(guard, |released| !*released).unwrap());
+        }
+    }));
+    f.worker.publish_root_outbox(&a).unwrap();
+    received.recv_timeout(Duration::from_secs(5)).unwrap();
+    f.worker.publish_root_outbox(&b).unwrap();
+    while !outbox_b.page(1).unwrap().is_empty() {
+        f.worker.poll_root_publications();
+        f.worker.publish_root_outbox(&b).unwrap();
+        assert!(
+            Instant::now() < deadline,
+            "a held publisher blocked another root"
+        );
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    assert_eq!(
+        outbox_a.page(1).unwrap()[0].id,
+        pending_id,
+        "unpublished event was acknowledged"
+    );
+    assert!(f.worker.registry.list().unwrap().len() >= 2);
+    assert!(f.worker.publication_running.len() <= 2);
+    drop(release);
+    while !outbox_a.page(1).unwrap().is_empty() {
+        f.worker.poll_root_publications();
+        f.worker.publish_root_outbox(&a).unwrap();
+        assert!(Instant::now() < deadline);
+        std::thread::sleep(Duration::from_millis(2));
+    }
+}
+
+#[test]
+fn deferred_scan_caps_workers_and_replays_changes_arriving_after_preparation() {
+    use std::sync::{Condvar, Mutex};
+    type Gate = Arc<(Mutex<bool>, Condvar)>;
+    struct Release(Gate);
+    impl Drop for Release {
+        fn drop(&mut self) {
+            *self.0.0.lock().unwrap() = true;
+            self.0.1.notify_all();
+        }
+    }
+    let mut fixture = Fixture::open();
+    let actor_a = fixture.actor(&fixture.a.clone());
+    let actor_b = fixture.actor(&fixture.b.clone());
+    let a = fixture.ready(&actor_a);
+    let b = fixture.ready(&actor_b);
+    let startup = fixture.worker.workspaces.legacy().unwrap();
+    let gate: Gate = Arc::new((Mutex::new(false), Condvar::new()));
+    let release = Release(gate.clone());
+    let wait = gate.clone();
+    let roots = [a.binding.root_id.clone(), b.binding.root_id.clone()];
+    let (sent, received) = std::sync::mpsc::channel();
+    fixture.worker.workspaces.scan_complete_hook = Some(Arc::new(move |root| {
+        if roots.iter().any(|expected| expected == root) {
+            let _ = sent.send(root.to_owned());
+            let guard = wait.0.lock().unwrap();
+            drop(wait.1.wait_while(guard, |released| !*released).unwrap());
+        }
+    }));
+    for root in [
+        &a.binding.root_id,
+        &b.binding.root_id,
+        &startup.binding.root_id,
+    ] {
+        fixture.worker.workspaces.reconcile(root).unwrap();
+    }
+    received.recv_timeout(Duration::from_secs(5)).unwrap();
+    received.recv_timeout(Duration::from_secs(5)).unwrap();
+    assert_eq!(fixture.worker.workspaces.scan_work(), (2, 1));
+    let root_a = fixture.first.join(".bboxy");
+    std::fs::create_dir_all(root_a.join("research")).unwrap();
+    std::fs::write(
+        root_a.join("research/late.md"),
+        "---\nnumber: 981\ntype: research\n---\nlate evidence\n",
+    )
+    .unwrap();
+    fixture
+        .worker
+        .workspaces
+        .cache
+        .root_mut(&a.binding.root_id)
+        .unwrap()
+        .watch
+        .mark_paths(std::collections::BTreeSet::from(
+            ["research/late.md".into()],
+        ));
+    fixture
+        .worker
+        .workspaces
+        .reconcile_pending(&a.binding.root_id)
+        .unwrap();
+    assert!(
+        !fixture
+            .worker
+            .workspaces
+            .cache
+            .get(&a.binding)
+            .unwrap()
+            .index
+            .documents
+            .contains_key("research/late.md")
+    );
+    drop(release);
+    let deadline = Instant::now() + Duration::from_secs(30);
+    loop {
+        fixture.worker.workspaces.poll(&fixture.worker.registry);
+        assert!(fixture.worker.workspaces.scan_work().0 <= 2);
+        for root in [
+            &a.binding.root_id,
+            &b.binding.root_id,
+            &startup.binding.root_id,
+        ] {
+            if !fixture.worker.workspaces.scanning(root)
+                && fixture
+                    .worker
+                    .workspaces
+                    .cache
+                    .root_mut(root)
+                    .unwrap()
+                    .changed()
+            {
+                fixture.worker.workspaces.reconcile_pending(root).unwrap();
+            }
+        }
+        if !fixture.worker.workspaces.scanning(&a.binding.root_id)
+            && fixture
+                .worker
+                .workspaces
+                .cache
+                .get(&a.binding)
+                .unwrap()
+                .index
+                .documents
+                .contains_key("research/late.md")
+        {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "late dirty paths disappeared behind an old scan"
+        );
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    let graph = &fixture
+        .worker
+        .workspaces
+        .cache
+        .get(&a.binding)
+        .unwrap()
+        .index;
+    assert_eq!(graph.documents["research/late.md"].body, "late evidence\n");
+}
 impl SupervisorConnection for Link {
     fn request(&mut self, action: Action) -> Result<Reply> {
         match action {

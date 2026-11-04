@@ -310,6 +310,53 @@ impl EventLog {
             .optional()?;
         bytes.map(|b| Ok(serde_json::from_slice(&b)?)).transpose()
     }
+
+    /// A bounded genesis-to-head audit page for resumable projection repair.
+    /// Unlike `after`, this also checks the SQL sequence/hash/prev columns.
+    pub(crate) fn verified_page(
+        &self,
+        sequence: u64,
+        previous: &str,
+        limit: usize,
+    ) -> Result<Vec<Envelope>> {
+        let db = sqlite::open(&self.path)?;
+        if sequence == 0 {
+            let first: Option<i64> =
+                db.query_row("SELECT MIN(seq) FROM events", [], |r| r.get(0))?;
+            if first.is_some_and(|seq| seq != 1) {
+                return Err(invalid("broken event chain: missing genesis"));
+            }
+        }
+        let mut stmt = db.prepare(
+            "SELECT seq,payload,hash,prev FROM events WHERE seq>?1 ORDER BY seq LIMIT ?2",
+        )?;
+        let mut rows = stmt.query(params![super::sqlint(sequence)?, limit.min(128) as i64])?;
+        let (mut sequence, mut previous) = (sequence, previous.to_owned());
+        let mut page = Vec::new();
+        while let Some(row) = rows.next()? {
+            let seq: u64 = row.get::<_, i64>(0)?.try_into()?;
+            let bytes: Vec<u8> = row.get(1)?;
+            if bytes.len() > MAX_EVENT_BYTES {
+                return Err(invalid("oversized stored event"));
+            }
+            let record: Envelope = serde_json::from_slice(&bytes)?;
+            let hash: String = row.get(2)?;
+            let prev: String = row.get(3)?;
+            if seq != sequence + 1
+                || record.seq != seq
+                || prev != previous
+                || record.prev != previous
+                || hash != record.hash()?
+            {
+                return Err(invalid("broken event chain"));
+            }
+            record.verify()?;
+            sequence = seq;
+            previous = hash;
+            page.push(record);
+        }
+        Ok(page)
+    }
 }
 
 impl Events for EventLog {
@@ -437,7 +484,7 @@ fn history_failure(root: &Path, path: &Path, error: impl std::fmt::Display) {
     );
 }
 
-/// Start an independent historical audit for every retained stream. Call only
+/// Start at most two historical audits at a time. Call only
 /// after writing the logic readiness line. No task is joined by the bus/logic
 /// owner; a failed stream cannot stop other streams' audits or message traffic.
 /// Each process start audits from genesis, even when a checkpoint already exists.
@@ -466,20 +513,26 @@ pub fn verify_history_after_ready(root: &Path, runtime: &tokio::runtime::Handle)
                 return;
             }
         };
+        let mut audits = tokio::task::JoinSet::new();
         for path in paths {
+            if audits.len() == 2
+                && let Some(Err(error)) = audits.join_next().await
+            {
+                history_failure(&root, &root, error);
+            }
             let root = root.clone();
-            tokio::spawn(async move {
-                let audit_path = path.clone();
-                let result = tokio::task::spawn_blocking(move || {
-                    EventLog { path: audit_path }.verify_chain()
-                })
-                .await;
-                match result {
-                    Ok(Ok(_)) => {}
-                    Ok(Err(error)) => history_failure(&root, &path, error),
-                    Err(error) => history_failure(&root, &path, error),
+            audits.spawn_blocking(move || {
+                // Separate WAL reader connections; the pool mutex is released
+                // before scanning, and no writer transaction is held here.
+                if let Err(error) = (EventLog { path: path.clone() }).verify_chain() {
+                    history_failure(&root, &path, error);
                 }
             });
+        }
+        while let Some(result) = audits.join_next().await {
+            if let Err(error) = result {
+                history_failure(&root, &root, error);
+            }
         }
     });
 }
