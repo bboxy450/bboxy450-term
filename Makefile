@@ -186,6 +186,7 @@ help:
 	  'make verify-view-switch          Pane titlebar view label, geometry, native hit/action and strict compile' \
 	  'make verify-ui-status            Bounded native status, readonly handoff diagnostics and strict compile' \
 	  'make verify-rich-text-safety     Bounded native long-line and inline-code expansion/paint checks' \
+	  'make verify-harness-theme        Native independent palettes, parent propagation and system appearance' \
 	  'make test-workspace-roots        Canonical cwd mounts, scoped records and stale-root fences' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
 	  'make test-role-identity          ROLE-first seat, pane and message identity; check-role-identity / parity-role-identity' \
@@ -2309,3 +2310,13 @@ verify-rich-text-safety:
 	cargo clippy --no-deps --locked -p bboxy450-render --lib --test chrome_long_lines --target-dir '$(TARGET_DIR)' -- -D warnings; \
 	cargo clippy --no-deps --locked -p bboxy450-doc --lib --test inline_code --target-dir '$(TARGET_DIR)' -- -D warnings; \
 	cargo clippy --no-deps --locked -p $(APP) --lib --bin $(APP) --test rich_text_safety --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: verify-harness-theme
+verify-harness-theme:
+	@set -eu; . ./scripts/cache-env.sh; export CARGO_BUILD_JOBS=2; \
+	mkdir -p '$(TARGET_DIR)/harness-theme'; \
+	BBOXY_HARNESS_THEME_OUT='$(abspath $(TARGET_DIR))/harness-theme' cargo nextest run --locked -p bboxy450-harness --features standalone --test gui_theme --target-dir '$(TARGET_DIR)' --no-capture; \
+	cargo nextest run --locked -p bboxy450-harness --features standalone --lib --target-dir '$(TARGET_DIR)' -E 'test(quiet_code_python_uses_shared_markdown_highlight_spans)'; \
+	cargo nextest run --locked -p $(APP) --bin $(APP) --test harness_theme --target-dir '$(TARGET_DIR)' -E 'test(harness_theme_)' --no-capture; \
+	cargo clippy --no-deps --locked -p bboxy450-harness --features standalone --lib --test gui_theme --target-dir '$(TARGET_DIR)' -- -D warnings; \
+	cargo clippy --no-deps --locked -p $(APP) --lib --bin $(APP) --test harness_theme --target-dir '$(TARGET_DIR)' -- -D warnings

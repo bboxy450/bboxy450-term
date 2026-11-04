@@ -91,6 +91,12 @@ impl App {
         self.sync_text_ime();
         self.request_redraw();
     }
+    pub(super) fn rich_theme_changed(&mut self) {
+        let theme = self.scene.ui_context().theme;
+        for pane in self.rich_panes.values() {
+            pane.set_theme(theme);
+        }
+    }
     pub(super) fn rich_sync(&mut self) {
         if self.occluded || self.document.open || self.local_tab.is_some() {
             self.rich_panes.clear();
@@ -115,6 +121,7 @@ impl App {
             .collect();
         self.rich_panes
             .retain(|id, _| visible.iter().any(|(s, _, _, _)| s == id));
+        let theme = self.scene.ui_context().theme;
         let focused = self.rich_target();
         let mut focus_changed = false;
         for (id, rect, generation, path) in visible {
@@ -153,6 +160,7 @@ impl App {
                 self.rich_panes.insert(id, pane);
             }
             let pane = self.rich_panes.get_mut(&id).unwrap();
+            pane.set_theme(theme);
             pane.resize(rect);
             if self.rich_focused.get(&id) != Some(&(focused == Some(id)))
                 && pane.send(Input::Focus(focused == Some(id)))
@@ -213,12 +221,16 @@ impl App {
                 }
             }
             let mut list = DrawList::default();
-            list.rect(*rect, 0., Color::hex("171719"));
+            list.rect(
+                *rect,
+                0.,
+                Color::hex(self.scene.ui_context().theme.palette().bg),
+            );
             list.text(
                 *rect,
                 "Harness starting / unavailable · Terminal remains available",
                 TextStyle::default(),
-                Color::WHITE,
+                Color::hex(self.scene.ui_context().theme.palette().fg),
             );
             ops.push(bbt_ui::components::Paint::Draw(list));
         }
@@ -365,6 +377,86 @@ mod verification {
         let n = r.next_frame(&mut b).unwrap().buffer_size();
         b.truncate(n);
         b
+    }
+    #[test]
+    fn harness_theme_parent_preferences_fan_out_without_model_update() {
+        let name = "rich_faces::verification::harness_theme_parent_preferences_fan_out_without_model_update";
+        if std::env::var_os("BBOXY_THEME_APP_PRIVATE").is_none() {
+            let home = tempfile::Builder::new()
+                .prefix("theme-app-home-")
+                .tempdir_in("/tmp")
+                .unwrap();
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", name, "--nocapture", "--test-threads=1"])
+                .env_clear()
+                .env("HOME", home.path())
+                .env("PATH", "/usr/bin:/bin")
+                .env("BBOXY_THEME_APP_PRIVATE", "1")
+                .output()
+                .unwrap();
+            assert!(
+                output.status.success(),
+                "{}\n{}\n{}",
+                output.status,
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return;
+        }
+        struct Signal;
+        impl bbt_rt::Waker for Signal {
+            fn wake(&self) {}
+        }
+        let (mut app, _) = crate::lazy_projection_tests::fixture();
+        let root = tempfile::Builder::new()
+            .prefix("theme-parent-")
+            .tempdir_in("/tmp")
+            .unwrap();
+        let seat = SeatId::from_u128(42);
+        let rect = Rect::new(0., 0., 640., 400.);
+        app.pane_faces
+            .insert(bbt_mux::Ulid(seat.0.0), PaneFace::HarnessRich);
+        app.pane_bounds = vec![(seat, rect)];
+        app.rich_panes.insert(
+            seat,
+            Pane::connect(
+                root.path().join("unavailable.sock"),
+                17,
+                rect,
+                None,
+                Arc::new(Signal),
+            ),
+        );
+        for theme in [Theme::Light, Theme::Dark, Theme::Light] {
+            app.system_theme = theme;
+            // This is the production handler called by WindowEvent::ThemeChanged
+            // and explicit appearance preferences, without any model publication.
+            app.apply_preferences();
+            let deadline = Instant::now() + Duration::from_secs(8);
+            loop {
+                let pane = app.rich_panes.get_mut(&seat).unwrap();
+                pane.drain();
+                if pane.snapshot.theme == theme && !pane.painted().is_empty() {
+                    break;
+                }
+                assert!(
+                    Instant::now() < deadline,
+                    "appearance did not reach loading pane"
+                );
+                std::thread::sleep(Duration::from_millis(5));
+            }
+            assert_eq!(app.rich_panes[&seat].generation, 17);
+            assert!(app.rich_panes[&seat].snapshot.cursor.is_none());
+            assert_eq!(
+                app.rich_panes[&seat].snapshot.completed_inputs, 0,
+                "appearance bypasses input/agent command queues"
+            );
+        }
+        app.rich_panes.clear();
+        let fallback = app.rich_paints();
+        assert!(
+            matches!(&fallback[0],bbt_ui::components::Paint::Draw(list) if list.primitives.iter().any(|p|matches!(p,bbt_ui_model::draw::Prim::Rect{fill,..} if *fill==Color::hex(Theme::Light.palette().bg))))
+        );
     }
     #[test]
     fn rich_keys_and_face_preference_do_not_reach_the_pty() {

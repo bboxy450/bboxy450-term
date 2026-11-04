@@ -37,6 +37,8 @@ pub enum Input {
 }
 #[derive(Clone, Default)]
 pub struct Snapshot {
+    pub theme: ui::Theme,
+    pub appearance_revision: u64,
     pub paints: Arc<Vec<c::Paint>>,
     pub ready: bool,
     pub revision: u64,
@@ -85,6 +87,8 @@ impl bbt_rt::Waker for Signal {
     }
 }
 pub struct Pane {
+    appearance: Arc<AtomicU64>,
+    appearance_wake: Arc<Notify>,
     pub generation: u64,
     pub path: PathBuf,
     pub rect: Rect,
@@ -116,6 +120,10 @@ impl Pane {
         let dirty = bbt_rt::DirtySet::new(1, waker);
         let latest = Arc::new(bbt_rt::Latest::new(dirty.paint_source(0)));
         let (commands, mut input) = mpsc::channel(64);
+        let appearance = Arc::new(AtomicU64::new(0));
+        let appearance_wake = Arc::new(Notify::new());
+        let worker_appearance = appearance.clone();
+        let worker_appearance_wake = appearance_wake.clone();
         let mut out = latest.clone();
         let socket = path.clone();
         let retired = Arc::new(AtomicBool::new(false));
@@ -130,11 +138,15 @@ impl Pane {
             let mut completed_inputs=0_u64;
             loop {
                 let mut batch=Vec::new();
-                tokio::select!{biased;cmd=input.recv()=>{let Some(cmd)=cmd else{return;};batch.push(cmd);},_=notify.notified()=>{}}
+                tokio::select!{biased;cmd=input.recv()=>{let Some(cmd)=cmd else{return;};batch.push(cmd);},_=notify.notified()=>{},_=worker_appearance_wake.notified()=>{}}
                 while batch.len()<64 {match input.try_recv(){Ok(cmd)=>batch.push(cmd),Err(_)=>break}}
+                let appearance=worker_appearance.clone();
                 let retired=worker_retired.clone();
                 let published=worker_published.clone();
                 let prepared=bboxy450_harness::runtime::blocking(move || {
+                    let appearance_revision=appearance.load(Ordering::Acquire);
+                    let theme=if appearance_revision & 1 == 1 { ui::Theme::Light } else { ui::Theme::Dark };
+                    view.set_theme(theme); bridge.set_theme(theme);
                     bridge.drain(Duration::from_micros(300));
                     for request in batch {
                         let request:Request=request;
@@ -178,7 +190,7 @@ impl Pane {
                     };
                     let approval_choices=view.frame.actions.iter().filter_map(|(r,a)|matches!(a,Action::Approval(..)).then_some([r.x,r.y,r.w,r.h])).take(16).collect();
                     let ime_caret=view.frame.layout.as_ref().and_then(|l|ui::modules::composer::Regions::new(l).ok()).and_then(|r|r.caret);
-                    let snapshot=Snapshot{generation,completed_inputs,notice:view.notice.clone(),retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,ime_caret,focused:view.focused,composer_len:view.composer.view.text.len(),scroll:[view.frame.scroll,view.frame.max_scroll],approval_choices,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
+                    let snapshot=Snapshot{theme,appearance_revision,generation,completed_inputs,notice:view.notice.clone(),retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,ime_caret,focused:view.focused,composer_len:view.composer.view.text.len(),scroll:[view.frame.scroll,view.frame.max_scroll],approval_choices,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
                     out.publish(snapshot);
                     published.store(completed_inputs, Ordering::Release);
                     (bridge,view,rect,out,completed_inputs)
@@ -187,6 +199,8 @@ impl Pane {
             }
         });
         Self {
+            appearance,
+            appearance_wake,
             generation,
             path,
             rect,
@@ -198,6 +212,21 @@ impl Pane {
             retired,
             published_inputs,
         }
+    }
+    /// Latest local appearance bypasses the bounded input queue. No agent op,
+    /// identity grant or OS lookup is involved; obsolete completed paint is fenced.
+    pub fn set_theme(&self, theme: ui::Theme) -> bool {
+        let light = u64::from(theme == ui::Theme::Light);
+        let changed = self
+            .appearance
+            .try_update(Ordering::AcqRel, Ordering::Acquire, |old| {
+                ((old & 1) != light).then(|| ((old >> 1).wrapping_add(1) << 1) | light)
+            })
+            .is_ok();
+        if changed {
+            self.appearance_wake.notify_one();
+        }
+        changed
     }
     pub fn send(&self, input: Input) -> bool {
         self.commands
@@ -234,7 +263,9 @@ impl Pane {
         changed
     }
     pub fn painted(&self) -> &[c::Paint] {
-        if self.snapshot.rect == Some(self.rect) {
+        if self.snapshot.rect == Some(self.rect)
+            && self.snapshot.appearance_revision == self.appearance.load(Ordering::Acquire)
+        {
             &self.snapshot.paints
         } else {
             &[]

@@ -3330,6 +3330,7 @@ impl App {
         self.scene
             .set_appearance(&self.effective_preferences(), system);
         self.scene_dirty = true;
+        self.rich_theme_changed();
         if let Some(commands) = &self.live_commands {
             let ctx = self.scene.ui_context();
             commands.set_context(preferences::ContextUpdate {
