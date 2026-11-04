@@ -1,0 +1,73 @@
+{
+  "task": "tasks/2026-11-04-rich-text-safety.md",
+  "base": "bd820ef3558f6e0f9dbbab78d7402ef8db12e793",
+  "harness_pin": "a832bd6ff4b31a36064508632c47840a58cfe56c",
+  "source_sha256": {
+    "Makefile": "028bcfd9bb3e92b76dd291d26d2adf581b6336eb7e0330582ce3883e6be415bc",
+    "crates/bbt-render/src/chrome/text.rs": "4fc801eb3c6d99d8f44bc6f2ba8b35218ea996085c125cf5a635469c1fe546d3",
+    "crates/bbt-render/src/chrome/text_glyphs.rs": "6b167bbcdca56dcdcfdbdca1b54773b91704f132a535050869f2951e88a76b5c",
+    "crates/bbt-render/tests/chrome_long_lines.rs": "32347212be2f192a963d79e8454653f3dcadd270449fc1aa86c717b4ab287d44",
+    "crates/bbt-doc/src/markdown/layout.rs": "969df06a45e832527663f02d12a338b1493425acff54f3036e5f89e1ac10078c",
+    "crates/bbt-doc/tests/inline_code.rs": "19fab94f1009ab7c1d0482e947718f6633b9b9375a5680c9414e39a5df0a705f",
+    "crates/bboxy450-term/tests/rich_text_safety.rs": "89c5e0e327fc441c6c5271c7bb8bfd4824c4801086be1e2097a8ac9afd2dfc08"
+  },
+  "checks": [
+    {
+      "command": "make verify-rich-text-safety",
+      "exit_code": 0,
+      "log": "target/rich-text-safety/final.log",
+      "sha256": "6c7959fb7a7ff564952657e36ba4702df5b8eb0dccd97acf90c089865b660a5f"
+    },
+    {
+      "command": "make test-licenses",
+      "exit_code": 0,
+      "log": "target/rich-text-safety/licenses.log",
+      "sha256": "6d80000f641bd3e7ca80ee399d70b9fe29432348af58fc776852347a1e5a42e6"
+    }
+  ],
+  "controls": [
+    {
+      "control": "line-guard-control",
+      "command": [
+        "make",
+        "verify-rich-text-safety"
+      ],
+      "exit_code": 2,
+      "expected_failure": "chrome text line too large",
+      "source_before": "4fc801eb3c6d99d8f44bc6f2ba8b35218ea996085c125cf5a635469c1fe546d3",
+      "log": "target/rich-text-safety/line-guard-control.log",
+      "log_sha256": "60d9d00db5ef21e26744f640798231b40f1e8c9069a5237b2f724c465e5bcc2b"
+    },
+    {
+      "control": "inline-control",
+      "command": [
+        "zsh",
+        "-c",
+        ". ./scripts/cache-env.sh; cargo nextest run --locked -p bboxy450-doc --test inline_code --target-dir target"
+      ],
+      "exit_code": 100,
+      "expected_failure": "code.is_empty()",
+      "source_before": "969df06a45e832527663f02d12a338b1493425acff54f3036e5f89e1ac10078c",
+      "log": "target/rich-text-safety/inline-control.log",
+      "log_sha256": "81f976d143fce7d1538abf3b65964db394538d37b7b82057f8b4f5c584ded8a9"
+    }
+  ],
+  "captures": {
+    "target/rich-text-safety/expanded-mcp.png": {
+      "sha256": "8dc0ccaba2588dbec8169d917325e217f491a842e5b69a792945e2c3a88604fd",
+      "bytes": 20438
+    },
+    "target/rich-text-safety/inline-240-zoom100-scale1.png": {
+      "sha256": "5ab404b6e64b6877ced31f4405c86a435ff53fc73841eb18667d731a5dacbda7",
+      "bytes": 16408
+    },
+    "target/rich-text-safety/inline-640-zoom100-scale1.png": {
+      "sha256": "ea835e97b147d13d0028d0f746b77ae2c07596f526035d927f0d923620f016a6",
+      "bytes": 17947
+    },
+    "target/rich-text-safety/inline-240-zoom160-scale2.png": {
+      "sha256": "9403d502416579a632a0969e1193f962b3789239ab7367fa8d5578227afe83de",
+      "bytes": 56000
+    }
+  }
+}

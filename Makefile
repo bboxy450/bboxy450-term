@@ -185,6 +185,7 @@ help:
 	  'make verify-workspace-ready      Focused activity-churn API, watch, model/control parity and strict compile' \
 	  'make verify-view-switch          Pane titlebar view label, geometry, native hit/action and strict compile' \
 	  'make verify-ui-status            Bounded native status, readonly handoff diagnostics and strict compile' \
+	  'make verify-rich-text-safety     Bounded native long-line and inline-code expansion/paint checks' \
 	  'make test-workspace-roots        Canonical cwd mounts, scoped records and stale-root fences' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
 	  'make test-role-identity          ROLE-first seat, pane and message identity; check-role-identity / parity-role-identity' \
@@ -2296,3 +2297,15 @@ verify-ui-status:
 	cargo nextest run --locked -p bboxy450-harness-wake-up --test harness_status --target-dir '$(TARGET_DIR)'; \
 	cargo nextest run --locked -p $(APP) --lib --bin $(APP) --test ui_status_probe --target-dir '$(TARGET_DIR)' -E 'test(ui_status_) or test(view_switch_header_geometry_and_hits)'; \
 	cargo clippy --no-deps --locked -p bboxy450-harness-wake-up -p bboxy450-ui -p $(APP) --lib --bin $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: verify-rich-text-safety
+verify-rich-text-safety:
+	@set -eu; . ./scripts/cache-env.sh; export CARGO_BUILD_JOBS=2; \
+	mkdir -p '$(TARGET_DIR)/rich-text-safety'; \
+	BBOXY_RICH_TEXT_OUT='$(abspath $(TARGET_DIR))/rich-text-safety' cargo nextest run --locked -p $(APP) --test rich_text_safety --target-dir '$(TARGET_DIR)' --no-capture; \
+	cargo nextest run --locked -p bboxy450-render --test chrome_long_lines --target-dir '$(TARGET_DIR)'; \
+	cargo nextest run --locked -p bboxy450-render --lib --target-dir '$(TARGET_DIR)' -E 'test(rich_text_safety_) or test(cropped_glyph_components_reproduce_native_line_masks) or test(cached_fallback_font_variations_and_phases_preserve_native_coverage) or test(resolved_text_baseline_places_actual_ink_and_shadow_at_both_device_scales) or test(emoji_sequences_shape_as_one_native_glyph_and_truncate_only_between_clusters)'; \
+	cargo nextest run --locked -p bboxy450-doc --test inline_code --target-dir '$(TARGET_DIR)'; \
+	cargo clippy --no-deps --locked -p bboxy450-render --lib --test chrome_long_lines --target-dir '$(TARGET_DIR)' -- -D warnings; \
+	cargo clippy --no-deps --locked -p bboxy450-doc --lib --test inline_code --target-dir '$(TARGET_DIR)' -- -D warnings; \
+	cargo clippy --no-deps --locked -p $(APP) --lib --bin $(APP) --test rich_text_safety --target-dir '$(TARGET_DIR)' -- -D warnings
