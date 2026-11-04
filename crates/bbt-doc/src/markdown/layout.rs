@@ -581,6 +581,10 @@ struct Render<'a> {
 }
 #[derive(Clone)]
 enum Piece {
+    Code {
+        value: String,
+        font: ui::Text,
+    },
     Text {
         value: String,
         font: ui::Text,
@@ -595,6 +599,14 @@ enum Piece {
     },
     Image(super::ImageAsset),
     Break,
+}
+fn code_font(font: ui::Text) -> ui::Text {
+    ui::Text {
+        mono: true,
+        size: Some(font.size.unwrap_or_else(|| font.step.pixels()) * 0.88),
+        line_height: 1.25,
+        ..font
+    }
 }
 impl Render<'_> {
     fn blocks(&self, blocks: &[Block], prefix: &str) -> c::Element {
@@ -875,7 +887,10 @@ impl Render<'_> {
             };
             match value {
                 Inline::Text(s) => out.push(text(s.clone(), f)),
-                Inline::Code(s) => out.push(text(s.clone(), ui::Text { mono: true, ..f })),
+                Inline::Code(s) => out.push(Piece::Code {
+                    value: s.clone(),
+                    font: f,
+                }),
                 Inline::Emphasis(s) => {
                     Self::pieces(s, ui::Text { italic: true, ..f }, strike, underline, out)
                 }
@@ -979,6 +994,57 @@ impl Render<'_> {
         let mut i = 0;
         for p in pieces {
             match p {
+                Piece::Code { value, font } => {
+                    // One semantic code span owns its measured padding and
+                    // background. Text never carries fake spaces or font-size
+                    // markers for a host's post-layout decoration pass.
+                    // Adapted from bboxy450-harness gui/rich.rs chip appearance:
+                    // https://github.com/bboxy450/bboxy450-harness
+                    // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+                    let code_font = code_font(font);
+                    let hair = STYLE.material.hairline_px as f32;
+                    let pad = STYLE.spacing.s2 as f32;
+                    let inner = Render {
+                        width: (self.width - 2. * (pad + hair)).max(1.),
+                        ..*self
+                    };
+                    for fragment in inner.fragments(&value, code_font) {
+                        let part = format!("{key}/code{i}");
+                        i += 1;
+                        let mut t = c::Text::new(fragment, code_font);
+                        t.preserve_whitespace = true;
+                        let mut capsule = style(
+                            ui::Color::Foreground,
+                            0.07,
+                            STYLE.radius.tag as f32,
+                            [hair, pad, hair, pad],
+                        );
+                        capsule.overrides.border = Some(ui::Border {
+                            width: ui::Length::Px(hair),
+                            paint: ui::Paint {
+                                color: ui::Color::Foreground,
+                                alpha: ui::Alpha::Value(0.10),
+                            },
+                            outside: false,
+                        });
+                        let mut b = c::Box::new(
+                            capsule,
+                            vec![named(format!("{part}/text"), c::Element::Text(t)).into()],
+                        );
+                        b.gap = ui::Length::Px(0.);
+                        b.align = c::Alignment::Baseline;
+                        children.push(c::Item {
+                            element: named(format!("{part}/capsule"), c::Element::Box(b)),
+                            extent: c::Extent::Content {
+                                grow: 0.,
+                                shrink: 1.,
+                                min: 0.,
+                                max: None,
+                                max_fraction: None,
+                            },
+                        });
+                    }
+                }
                 Piece::Break => {
                     lines.push(Self::flow(key, std::mem::take(&mut children)));
                 }
@@ -1494,6 +1560,27 @@ impl Render<'_> {
         let mut hard = 0_f32;
         for piece in pieces {
             match piece {
+                Piece::Code { value, font } => {
+                    let font = measure_style(code_font(font));
+                    let padding = 2. * (STYLE.spacing.s2 + STYLE.material.hairline_px) as f32;
+                    minimum = minimum.max(word);
+                    word = 0.;
+                    minimum = minimum.max(
+                        value
+                            .split_whitespace()
+                            .map(|s| self.m.width(s, &font))
+                            .fold(0., f32::max)
+                            + padding,
+                    );
+                    hard = hard.max(
+                        value
+                            .graphemes(true)
+                            .map(|s| self.m.width(s, &font))
+                            .fold(0., f32::max)
+                            + padding,
+                    );
+                    line += self.m.width(&value, &font) + padding;
+                }
                 Piece::Text { value, font, .. } => {
                     for cluster in value.graphemes(true) {
                         hard = hard.max(self.m.width(cluster, &measure_style(font)));

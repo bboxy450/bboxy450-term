@@ -380,11 +380,20 @@ pub(super) fn shape_at(
     let native = typographic_bounds(&line);
     let (ascent, descent) = (native.ascent, native.descent);
     let advance = native.advance as f32;
-    let width = ((advance * scale).ceil() as u32 + 5).max(1);
-    let height = (((ascent + descent) * f64::from(scale)).ceil() as u32 + 4).max(1);
-    if width > 16_384 || height > 2_048 {
-        return Err("chrome text line too large".into());
-    }
+    // A shaped line is geometry, not a bitmap. The retained renderer rasterizes
+    // bounded glyph/components and clips their quads to the viewport; its full
+    // logical advance must survive horizontal scrolling of arbitrarily wide
+    // tool output. Keep canvas limits at actual bitmap allocation sites.
+    // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    let dimension = |pixels: f64, guard: u32| -> Result<u32> {
+        if !pixels.is_finite() || pixels < 0. || pixels.ceil() > f64::from(i32::MAX as u32 - guard)
+        {
+            return Err("chrome text layout dimensions overflow".into());
+        }
+        Ok((pixels.ceil() as u32 + guard).max(1))
+    };
+    let width = dimension(f64::from(advance * scale), 5)?;
+    let height = dimension((ascent + descent) * f64::from(scale), 4)?;
     let device_scale = f64::from(scale);
     let baseline = ((descent * device_scale).ceil() + 2.) / device_scale;
     let mut output = Vec::new();
@@ -443,6 +452,11 @@ pub fn rasterize_at(
     use objc2_core_graphics::{CGBitmapContextCreate, CGColorSpace, CGContext};
     use std::ptr::NonNull;
     let line = shape_at(text, style, max_width, scale, phase_x)?;
+    // This reference API does allocate one whole-line bitmap. Production text
+    // uses text_glyphs, whose component allocation keeps the same native bounds.
+    if line.width > 16_384 || line.height > 2_048 {
+        return Err("chrome text line too large".into());
+    }
     let color = line.runs.iter().any(|run| {
         unsafe { run.font.symbolic_traits() }
             .contains(objc2_core_text::CTFontSymbolicTraits::TraitColorGlyphs)

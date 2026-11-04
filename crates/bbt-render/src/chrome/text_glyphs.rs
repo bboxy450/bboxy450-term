@@ -185,23 +185,27 @@ pub(super) fn connected(bounds: &[[i32; 4]]) -> Vec<Vec<usize>> {
         i
     }
     let mut parents: Vec<_> = (0..bounds.len()).collect();
-    for (i, a) in bounds.iter().enumerate() {
-        if a[0] >= a[2] || a[1] >= a[3] {
-            continue;
-        }
-        for (j, b) in bounds[..i].iter().enumerate() {
-            if b[0] < b[2]
-                && b[1] < b[3]
-                && a[0] < b[2]
-                && b[0] < a[2]
-                && a[1] < b[3]
-                && b[1] < a[3]
-            {
+    // Sweep physical x, not source order: CoreText may reorder bidi glyphs.
+    // Disjoint long lines need only a small active window instead of comparing
+    // every pair. Exact overlap and native run/draw order remain unchanged.
+    // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    let mut order: Vec<_> = (0..bounds.len())
+        .filter(|&i| bounds[i][0] < bounds[i][2] && bounds[i][1] < bounds[i][3])
+        .collect();
+    order.sort_unstable_by_key(|&i| (bounds[i][0], i));
+    let mut active: Vec<usize> = Vec::new();
+    for i in order {
+        let a = bounds[i];
+        active.retain(|&j| bounds[j][2] > a[0]);
+        for &j in &active {
+            let b = bounds[j];
+            if a[1] < b[3] && b[1] < a[3] {
                 let x = root(&parents, i);
                 let y = root(&parents, j);
                 parents[x] = y;
             }
         }
+        active.push(i);
     }
     let mut groups = std::collections::BTreeMap::<usize, Vec<usize>>::new();
     for (i, b) in bounds.iter().enumerate() {
@@ -512,6 +516,51 @@ mod shadow_tests {
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    // keeps: rich-text-safety — bidi/source reordering cannot change overlap groups.
+    #[test]
+    fn rich_text_safety_sweep_matches_pairwise_overlap_components() {
+        fn reference(bounds: &[[i32; 4]]) -> Vec<Vec<usize>> {
+            let mut remaining: Vec<_> = (0..bounds.len())
+                .filter(|&i| bounds[i][0] < bounds[i][2] && bounds[i][1] < bounds[i][3])
+                .collect();
+            let mut groups = vec![];
+            while !remaining.is_empty() {
+                let mut group = vec![remaining.remove(0)];
+                let mut cursor = 0;
+                while cursor < group.len() {
+                    let a = bounds[group[cursor]];
+                    remaining.retain(|&j| {
+                        let b = bounds[j];
+                        let overlap = a[0] < b[2] && b[0] < a[2] && a[1] < b[3] && b[1] < a[3];
+                        if overlap {
+                            group.push(j);
+                        }
+                        !overlap
+                    });
+                    cursor += 1;
+                }
+                group.sort_unstable();
+                groups.push(group);
+            }
+            groups.sort_by_key(|g| g[0]);
+            groups
+        }
+        let mut seed = 71_u32;
+        for _ in 0..256 {
+            let mut bounds = vec![[0; 4], [0, 0, 2, 2], [2, 0, 4, 2], [1, -1, 3, 1]];
+            for _ in 0..24 {
+                let mut next = || {
+                    seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+                    (seed >> 16) as i32 % 24 - 12
+                };
+                let (x, y, w, h) = (next(), next(), next().abs(), next().abs());
+                bounds.push([x, y, x + w, y + h]);
+            }
+            assert_eq!(connected(&bounds), reference(&bounds));
+            bounds.reverse();
+            assert_eq!(connected(&bounds), reference(&bounds));
+        }
+    }
     use bbt_ui_model::draw::TypeScale;
     use std::{collections::HashMap, sync::Arc};
 
