@@ -120,6 +120,7 @@ help:
 	  'make test-rich-pane              Private rich keyboard/IME, layout persistence and offscreen parity' \
 	  'make bench-budgets               Four-view actual drain/composition p99; load and heap UNMEASURED' \
 	  'make install-reopen              Oracle: signed install, GUI-only replace, rendered source receipt/rollback' \
+	  'make reopen-prepared             Oracle: reuse an existing signed BUNDLE for the same GUI-only handoff' \
 	  'make install-unsigned-reopen     Private headless activation; requires GUI_TEST_ACCOUNT' \
 	  'make check-rich-host             Strict all-target lint for the rich host boundary' \
 	  'make verify-rich-delivery        Focused compile, corpus and changed-input App delivery checks' \
@@ -2152,9 +2153,9 @@ test-rich-launch-context-control:
 	@python3 -I scripts/rich-launch-context-control.py --target '$(abspath $(TARGET_DIR))'
 
 # Reuse the same atomic installer after a caller has prepared and verified a bundle.
-.PHONY: install-prepared install-prepared-unsigned install-reopen install-unsigned-reopen
+.PHONY: install-prepared install-prepared-unsigned install-reopen reopen-prepared install-unsigned-reopen
 install-prepared:
-	@codesign --verify --strict -R '$(REQUIREMENT)' '$(BUNDLE)'
+	@codesign --verify --strict -R '= $(REQUIREMENT)' '$(BUNDLE)'
 	@$(call install_bundle,$(INSTALL_DIR))
 
 install-prepared-unsigned:
@@ -2166,6 +2167,9 @@ GUI_REPOSITORY ?=
 GUI_TEST_ACCOUNT ?=
 GUI_OPTIONS = $(if $(GUI_RUN_DIR),--run-dir '$(GUI_RUN_DIR)') $(if $(GUI_REPOSITORY),--repository '$(GUI_REPOSITORY)')
 install-reopen: bundle
+	$(MAKE) reopen-prepared BUNDLE='$(BUNDLE)'
+
+reopen-prepared:
 	@python3 -I scripts/reopen-gui.py --prepared '$(abspath $(BUNDLE))' --destination '$(INSTALL_DIR)' $(GUI_OPTIONS)
 
 install-unsigned-reopen: PROFILE=debug
