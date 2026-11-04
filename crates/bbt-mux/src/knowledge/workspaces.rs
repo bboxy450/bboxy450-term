@@ -171,7 +171,10 @@ impl Workspace {
         self.index.knowledge_root()
     }
     pub fn changed(&self) -> bool {
-        self.watch.changed()
+        self.watch.ready()
+    }
+    pub fn pending(&self) -> bool {
+        self.watch.pending()
     }
     pub fn failed(&self) -> bool {
         self.watch.failed()
@@ -211,8 +214,11 @@ impl Workspace {
             return Ok(false);
         };
         let mut index = Arc::make_mut(&mut self.index).projection_scope(writer)?;
-        self.provenance
-            .step(&mut index, bus, runtime, identity, active)
+        let result = self
+            .provenance
+            .step(&mut index, bus, runtime, identity, active);
+        self.watch.mark_paths(self.provenance.take_refreshed());
+        result
     }
     pub fn close(&self) {
         self.host.close();

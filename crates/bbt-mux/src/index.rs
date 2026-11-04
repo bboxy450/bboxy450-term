@@ -9,14 +9,10 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::io::Read;
 use std::path::{Component, Path, PathBuf};
-use std::sync::{
-    Arc, Mutex,
-    atomic::{AtomicBool, Ordering},
-};
+use std::sync::{Arc, Mutex};
 
 use base64::Engine;
 use ed25519_dalek::{Signer, SigningKey};
-use notify::{RecursiveMode, Watcher};
 use petgraph::graph::{DiGraph, NodeIndex};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -413,11 +409,72 @@ impl Index {
         bbt_rt::assert_not_ui_thread();
         let mut paths = Vec::new();
         collect(&self.root, &mut paths)?;
+        self.reconcile_files(paths, None)
+    }
+    /// Re-read only the final filesystem state of dirty record paths. Unknown
+    /// namespace changes fall back to the existing complete reconciliation.
+    pub(crate) fn scan_paths(&mut self, dirty: &BTreeSet<String>) -> Result<Vec<Draft>> {
+        bbt_rt::assert_not_ui_thread();
+        let mut paths = Vec::new();
+        for relative in dirty {
+            let relative_path = Path::new(relative);
+            if relative_path.as_os_str().is_empty()
+                || relative_path
+                    .components()
+                    .any(|part| !matches!(part, Component::Normal(_)))
+            {
+                return self.reconcile_all();
+            }
+            let mut path = self.root.clone();
+            let mut metadata = None;
+            for component in relative_path.components() {
+                path.push(component);
+                match path.symlink_metadata() {
+                    Ok(current) if current.file_type().is_symlink() => return self.reconcile_all(),
+                    Ok(current) => metadata = Some(current),
+                    Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                        metadata = None;
+                        break;
+                    }
+                    Err(error) => return Err(error.into()),
+                }
+            }
+            if metadata.as_ref().is_some_and(|metadata| metadata.is_dir())
+                || self
+                    .documents
+                    .range(format!("{relative}/")..)
+                    .next()
+                    .is_some_and(|(name, _)| name.starts_with(&format!("{relative}/")))
+            {
+                return self.reconcile_all();
+            }
+            if let Some(metadata) = metadata.filter(|metadata| {
+                metadata.is_file()
+                    && metadata.len() <= MAX_DOCUMENT
+                    && relative_path
+                        .extension()
+                        .is_some_and(|extension| extension == "md")
+            }) {
+                paths.push((path, metadata));
+            }
+            // An observed change must be read even if size/mtime were restored.
+            self.file_states.remove(relative);
+        }
+        self.reconcile_files(paths, Some(dirty))
+    }
+    fn reconcile_files(
+        &mut self,
+        paths: Vec<(PathBuf, std::fs::Metadata)>,
+        scope: Option<&BTreeSet<String>>,
+    ) -> Result<Vec<Draft>> {
         let mut seen = BTreeSet::new();
         let mut changed = false;
         let mut events = self.pending_events()?;
         for (path, metadata) in paths {
             let relative = path.strip_prefix(&self.root)?.to_string_lossy().to_string();
+            if generated_log_path(Path::new(&relative)) {
+                continue;
+            }
             let state = FileState {
                 len: metadata.len(),
                 modified: metadata.modified()?,
@@ -494,12 +551,19 @@ impl Index {
             self.documents.insert(relative, doc);
             changed = true;
         }
-        let removed: Vec<_> = self
-            .documents
-            .keys()
-            .filter(|p| !seen.contains(*p))
-            .cloned()
-            .collect();
+        let removed: Vec<_> = match scope {
+            Some(scope) => scope
+                .iter()
+                .filter(|path| self.documents.contains_key(*path) && !seen.contains(*path))
+                .cloned()
+                .collect(),
+            None => self
+                .documents
+                .keys()
+                .filter(|path| !seen.contains(*path))
+                .cloned()
+                .collect(),
+        };
         for path in removed {
             if let Some(doc) = self.documents.remove(&path) {
                 let event_start = events.len();
@@ -526,30 +590,31 @@ impl Index {
                 changed = true;
             }
         }
-        self.file_states.retain(|path, _| seen.contains(path));
+        if let Some(scope) = scope {
+            for path in scope.iter().filter(|path| !seen.contains(*path)) {
+                self.file_states.remove(path);
+            }
+        } else {
+            self.file_states.retain(|path, _| seen.contains(path));
+        }
         if changed {
             self.rebuild_graphs();
         }
         Ok(events)
     }
+    pub(crate) fn outbox(&self) -> DocumentOutbox {
+        DocumentOutbox(self.store.clone())
+    }
     pub(crate) fn pending_events(&self) -> Result<Vec<Draft>> {
-        let db = self.store.connection()?;
-        let mut statement = db.prepare("SELECT payload FROM document_outbox ORDER BY seq")?;
-        let pending = statement
-            .query_map([], |r| r.get::<_, Vec<u8>>(0))?
-            .collect::<std::result::Result<Vec<_>, _>>()?;
-        pending
-            .into_iter()
-            .map(|bytes| Ok(serde_json::from_slice(&bytes)?))
-            .collect::<Result<Vec<Draft>>>()
+        self.outbox().page(usize::MAX)
     }
     /// Called only after the bus confirms append; retry uses the same event ID.
     pub fn acknowledge(&self, event: Ulid) -> Result<()> {
-        self.store.connection()?.execute(
-            "DELETE FROM document_outbox WHERE id=?1",
-            [event.to_string()],
-        )?;
-        Ok(())
+        self.outbox().acknowledge(event)
+    }
+    pub(crate) fn reconcile_all(&mut self) -> Result<Vec<Draft>> {
+        self.file_states.clear();
+        self.scan()
     }
     pub fn rebuild_graphs(&mut self) {
         self.graphs = [
@@ -1192,6 +1257,9 @@ fn collect_in(
 ) -> Result<()> {
     for entry in std::fs::read_dir(directory)? {
         let entry = entry?;
+        if generated_log_path(entry.path().strip_prefix(root)?) {
+            continue;
+        }
         let kind = entry.file_type()?;
         if kind.is_symlink() {
             continue;
@@ -1220,59 +1288,56 @@ fn collect_in(
     Ok(())
 }
 
-/// FSEvents/inotify only dirties one atomic bit. Bursts cannot overflow a path
-/// queue and lose edits; the logic worker reconciles the final filesystem view.
-pub struct FileWatch {
-    _watcher: notify::RecommendedWatcher,
-    dirty: Arc<AtomicBool>,
-    failed: Arc<AtomicBool>,
+// Filter changes which cannot affect the Markdown record set before dirtying it.
+// The host-owned rebuild namespace is defined by provenance/projection/recovery.rs.
+fn generated_log_path(relative: &Path) -> bool {
+    let mut parts = relative.components();
+    if !matches!(parts.next(), Some(Component::Normal(name)) if name == "log") {
+        return false;
+    }
+    matches!(parts.next(), Some(Component::Normal(name)) if name == ".projection-rebuild-v1")
+        || relative.extension().is_some_and(|extension| extension == "jsonl")
 }
-impl FileWatch {
-    pub fn start(root: &Path) -> Result<Self> {
-        bbt_rt::assert_not_ui_thread();
-        let root = root.canonicalize()?;
-        let watched_root = root.clone();
-        let dirty = Arc::new(AtomicBool::new(true));
-        let failed = Arc::new(AtomicBool::new(false));
-        let d = dirty.clone();
-        let f = failed.clone();
-        let mut watcher =
-            notify::recommended_watcher(move |event: notify::Result<notify::Event>| {
-                match event {
-                    Ok(event) => {
-                        // Reconciliation reads must not trigger another scan.
-                        if matches!(event.kind, notify::EventKind::Access(_)) {
-                            return;
-                        }
-                        if event.paths.is_empty()
-                            || event
-                                .paths
-                                .iter()
-                                .any(|path| path.starts_with(&watched_root))
-                        {
-                            d.store(true, Ordering::Release);
-                        }
-                    }
-                    Err(_) => {
-                        f.store(true, Ordering::Release);
-                        d.store(true, Ordering::Release);
-                    }
-                }
-            })?;
-        watcher.watch(&root, RecursiveMode::Recursive)?;
-        Ok(Self {
-            _watcher: watcher,
-            dirty,
-            failed,
-        })
-    }
-    pub fn changed(&self) -> bool {
-        self.dirty.swap(false, Ordering::AcqRel)
-    }
-    pub fn failed(&self) -> bool {
-        self.failed.load(Ordering::Acquire)
-    }
+fn knowledge_event(root: &Path, event: &notify::Event) -> bool {
+    !matches!(event.kind, notify::EventKind::Access(_))
+        && (event.need_rescan()
+            || event.paths.is_empty()
+            || event
+                .paths
+                .iter()
+                .any(|path| knowledge_path(root, path, event.kind)))
 }
+fn knowledge_path(root: &Path, path: &Path, kind: notify::EventKind) -> bool {
+    let Ok(relative) = path.strip_prefix(root) else {
+        return false;
+    };
+    if generated_log_path(relative) {
+        return false;
+    }
+    if matches!(relative.components().next(), Some(Component::Normal(name))
+        if matches!(name.to_str(), Some("plugins" | "plugin-notices")))
+    {
+        return false;
+    }
+    // Changes to existing regular non-Markdown data cannot change the record
+    // set. Namespace/rename, missing-path and directory events stay conservative.
+    !(matches!(
+        kind,
+        notify::EventKind::Modify(
+            notify::event::ModifyKind::Any
+                | notify::event::ModifyKind::Data(_)
+                | notify::event::ModifyKind::Metadata(_)
+        )
+    ) && path.extension().is_none_or(|extension| extension != "md")
+        && path
+            .symlink_metadata()
+            .is_ok_and(|metadata| metadata.is_file()))
+}
+mod outbox;
+pub(crate) use outbox::DocumentOutbox;
+mod watch;
+pub use watch::FileWatch;
+pub(crate) use watch::ScanBatch;
 
 #[cfg(test)]
 #[allow(
@@ -1282,6 +1347,119 @@ impl FileWatch {
 mod tests {
     use super::*;
     use std::time::{Duration, Instant, UNIX_EPOCH};
+
+    #[test]
+    fn incremental_scan_reads_only_dirty_paths_and_preserves_unrelated_records() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("records");
+        std::fs::create_dir(&root).unwrap();
+        for n in 1..=100 {
+            std::fs::write(root.join(format!("{n}.md")), format!("---\nnumber: {n}\ntype: research\n---\nold body\n")).unwrap();
+        }
+        let mut index = Index::open(&root, SqliteStore::open(&temp.path().join("db")).unwrap()).unwrap();
+        index.scan().unwrap();
+        let old_time = root.join("1.md").metadata().unwrap().modified().unwrap();
+        std::fs::write(root.join("1.md"), "---\nnumber: 1\ntype: research\n---\nnew body\n").unwrap();
+        std::fs::File::options().write(true).open(root.join("1.md")).unwrap()
+            .set_times(std::fs::FileTimes::new().set_modified(old_time)).unwrap();
+        index.document_reads = 0;
+        index.scan_paths(&BTreeSet::from(["1.md".into()])).unwrap();
+        assert_eq!(index.document_reads, 1);
+        assert_eq!(index.documents.len(), 100);
+        assert_eq!(index.documents["1.md"].body, "new body\n");
+        assert_eq!(index.documents["2.md"].body, "old body\n");
+        // Overflow/full recovery discards explicit hints: it must bypass stamps
+        // even when a replacement restores both length and modification time.
+        let path = root.join("2.md");
+        let stamp = path.metadata().unwrap().modified().unwrap();
+        std::fs::write(&path, "---\nnumber: 2\ntype: research\n---\nnew body\n").unwrap();
+        std::fs::File::options().write(true).open(&path).unwrap()
+            .set_times(std::fs::FileTimes::new().set_modified(stamp)).unwrap();
+        index.reconcile_all().unwrap();
+        assert_eq!(index.documents["2.md"].body, "new body\n");
+        std::fs::remove_file(root.join("1.md")).unwrap();
+        index.scan_paths(&BTreeSet::from(["1.md".into()])).unwrap();
+        assert_eq!(index.documents.len(), 99);
+        assert!(!index.documents.contains_key("1.md"));
+        assert!(index.documents.contains_key("2.md"));
+    }
+
+    #[test]
+    fn knowledge_watch_ignores_generated_rebuild_churn_and_keeps_log_markdown() {
+        use notify::{
+            Event, EventKind,
+            event::{CreateKind, ModifyKind, RemoveKind, RenameMode},
+        };
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("records");
+        let staging = root.join("log/.projection-rebuild-v1");
+        std::fs::create_dir_all(&staging).unwrap();
+        std::fs::write(
+            root.join("log/notes.md"),
+            "---\nnumber: 1\ntype: research\n---\nreal record\n",
+        )
+        .unwrap();
+        std::fs::write(
+            staging.join("not-a-record.md"),
+            "---\nnumber: 2\ntype: note\n---\ngenerated staging\n",
+        )
+        .unwrap();
+        let mut index =
+            Index::open(&root, SqliteStore::open(&temp.path().join("db")).unwrap()).unwrap();
+        index.scan().unwrap();
+        assert_eq!(index.documents.len(), 1);
+        assert!(index.documents.contains_key("log/notes.md"));
+        index
+            .scan_paths(&BTreeSet::from([
+                "log/.projection-rebuild-v1/not-a-record.md".into(),
+            ]))
+            .unwrap();
+        assert_eq!(index.documents.len(), 1);
+        for kind in [
+            EventKind::Create(CreateKind::File),
+            EventKind::Remove(RemoveKind::File),
+            EventKind::Modify(ModifyKind::Name(RenameMode::Any)),
+            EventKind::Modify(ModifyKind::Any),
+        ] {
+            assert!(!knowledge_event(
+                &root,
+                &Event::new(kind).add_path(root.join("log/2026-11-04.jsonl"))
+            ));
+            assert!(knowledge_event(
+                &root,
+                &Event::new(kind).add_path(root.join("log/notes.md"))
+            ));
+        }
+        for kind in [
+            EventKind::Create(CreateKind::Folder),
+            EventKind::Remove(RemoveKind::Folder),
+            EventKind::Modify(ModifyKind::Name(RenameMode::Any)),
+        ] {
+            assert!(!knowledge_event(
+                &root,
+                &Event::new(kind).add_path(staging.clone())
+            ));
+        }
+    }
+    #[test]
+    fn knowledge_watch_ignores_jsonl_writes_but_keeps_markdown_and_namespace_changes() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path();
+        std::fs::create_dir(root.join("log")).unwrap();
+        std::fs::create_dir(root.join("research")).unwrap();
+        std::fs::write(root.join("log/activity.jsonl"), "{}\n").unwrap();
+        std::fs::write(root.join("research/source.md"), "# Evidence\n").unwrap();
+        let modification = |path: &str| notify::Event::new(notify::EventKind::Modify(notify::event::ModifyKind::Any)).add_path(root.join(path));
+        assert!(!knowledge_event(root, &modification("log/activity.jsonl")));
+        assert!(knowledge_event(root, &modification("research/source.md")));
+        assert!(knowledge_event(root, &modification("research")));
+        assert!(knowledge_event(root, &modification("research/removed.md")));
+        assert!(!knowledge_event(root, &modification("plugins/provider.md")));
+        let rename = notify::Event::new(notify::EventKind::Modify(notify::event::ModifyKind::Name(notify::event::RenameMode::Both)))
+            .add_path(root.join("log/activity.jsonl")).add_path(root.join("research/moved.md"));
+        assert!(knowledge_event(root, &rename));
+        assert!(knowledge_event(root, &notify::Event::new(notify::EventKind::Other)));
+    }
 
     // keeps: spec work-items, optimistic writes retain editor bytes and reject path escapes.
     #[test]

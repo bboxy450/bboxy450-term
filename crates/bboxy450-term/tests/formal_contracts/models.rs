@@ -57,6 +57,9 @@ mod logic_worker_model;
 #[path = "projection_writer_model.rs"]
 mod projection_writer_model;
 
+#[path = "watcher_model.rs"]
+mod watcher_model;
+
 fn eq(i: usize, n: i64) -> Expr {
     Var(i).eq(Int(n))
 }
@@ -1878,6 +1881,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(event_log_model::cases());
     cases.extend(logic_worker_model::cases());
     cases.extend(projection_writer_model::cases());
+    cases.extend(watcher_model::cases());
     cases
 }
 

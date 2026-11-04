@@ -2865,6 +2865,23 @@ struct RoleUpdate {
     reply: oneshot::Sender<Result<()>>,
     result: Result<bbt_proto::gui::RoleCatalog>,
 }
+#[cfg(test)]
+type PublicationHook = Arc<dyn Fn(&str) + Send + Sync>;
+enum RootPublication {
+    Read {
+        root: String,
+        outbox: crate::index::DocumentOutbox,
+        result: Result<Option<Box<Draft>>>,
+    },
+    Published {
+        root: String,
+        result: Result<()>,
+    },
+}
+fn publication_io<T>(job: impl FnOnce() -> Result<T>) -> Result<T> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(job))
+        .unwrap_or_else(|_| Err(invalid("knowledge publication IO worker panicked")))
+}
 enum WorkspaceRead {
     Seat(
         Ulid,
@@ -2936,6 +2953,12 @@ struct Worker {
     role_catalog: std::result::Result<bbt_proto::gui::RoleCatalog, String>,
     role_catalog_store: role_catalog::CatalogStore,
     role_updates: tokio::task::JoinSet<RoleUpdate>,
+    root_publications: tokio::task::JoinSet<RootPublication>,
+    publication_tasks: BTreeMap<tokio::task::Id, String>,
+    publication_running: BTreeMap<String, bool>,
+    publication_backoff: BTreeMap<String, ProvenanceBackoff>,
+    #[cfg(test)]
+    publication_io_hook: Option<PublicationHook>,
     // Reads retain an immutable catalogue without holding the logic worker.
     // Scans and provenance updates use copy-on-write while an older read is active.
     workspaces: WorkspaceRouter,
@@ -3203,6 +3226,12 @@ impl Worker {
             role_catalog,
             role_catalog_store,
             role_updates: tokio::task::JoinSet::new(),
+            root_publications: tokio::task::JoinSet::new(),
+            publication_tasks: BTreeMap::new(),
+            publication_running: BTreeMap::new(),
+            publication_backoff: BTreeMap::new(),
+            #[cfg(test)]
+            publication_io_hook: None,
             workspaces,
             provenance_registered: BTreeSet::new(),
             provenance_bindings: BTreeMap::new(),
@@ -5725,56 +5754,211 @@ impl Worker {
         self.publish_root_outbox(root)?;
         self.workspaces.reconcile(root)
     }
+    fn scan_pending_root(&mut self, root: &str) -> Result<()> {
+        self.publish_root_outbox(root)?;
+        self.workspaces.reconcile_pending(root)
+    }
     fn publish_root_outbox(&mut self, root: &str) -> Result<()> {
         if self.workspaces.scanning(root) || self.workspaces.reconciliation_failed(root) {
             return Ok(());
         }
-        let events = self
+        if let Some(wake) = self.publication_running.get_mut(root) {
+            *wake = true;
+            return Ok(());
+        }
+        if self.publication_running.len() >= 2
+            || self
+                .publication_backoff
+                .get(root)
+                .and_then(|backoff| backoff.next)
+                .is_some_and(|next| Instant::now() < next)
+        {
+            self.workspaces.retry_publication(root.to_owned());
+            return Ok(());
+        }
+        let outbox = self
             .workspaces
             .cache
             .root_mut(root)
             .ok_or_else(|| invalid("unknown workspace root"))?
             .index
-            .pending_events()?;
-        let swarms = self.workspaces.bound_swarms(&self.registry, root)?;
-        for mut event in events {
-            if let Some(payload) = event.payload.as_object_mut() {
-                payload.insert("knowledge_root_id".into(), serde_json::json!(root));
-            }
-            if let Some(task) = event
-                .subject
-                .strip_prefix("task/")
-                .and_then(|s| s.strip_suffix("/status"))
-                .and_then(|s| s.parse::<Ulid>().ok())
-                && let Some(status) = event.payload["to"].as_str()
-            {
-                self.messaging
-                    .task_state_root(root, &swarms, task, status, now_ms())?;
-            }
-            let stream = if event.subject.starts_with("task/") {
-                let swarm = event.payload["swarm_id"]
-                    .as_str()
-                    .and_then(|id| id.parse::<Ulid>().ok())
-                    .filter(|swarm| !swarm.is_nil());
-                match swarm {
-                    Some(swarm) if self.workspaces.matches_root(&self.registry, swarm, root)? => {
-                        format!("swarm-{swarm}")
+            .outbox();
+        let root = root.to_owned();
+        self.publication_running.insert(root.clone(), false);
+        let tracked = root.clone();
+        #[cfg(test)]
+        let hook = self.publication_io_hook.clone();
+        let task = self.root_publications.spawn_blocking_on(
+            move || {
+                let result = publication_io(|| {
+                    #[cfg(test)]
+                    if let Some(hook) = hook {
+                        hook(&root);
                     }
-                    _ => "account".into(),
+                    Ok(outbox.page(1)?.pop().map(Box::new))
+                });
+                RootPublication::Read {
+                    root,
+                    outbox,
+                    result,
                 }
-            } else {
-                "index".into()
-            };
-            let id = event.id;
-            self.publish(&stream, event)?;
-            self.workspaces
-                .cache
-                .root_mut(root)
-                .expect("mounted root")
-                .index
-                .acknowledge(id)?;
-        }
+            },
+            &self.handle,
+        );
+        self.publication_tasks.insert(task.id(), tracked);
         Ok(())
+    }
+    fn finish_root_publication(&mut self, root: String, result: Result<()>, more: bool) {
+        let wake = self.publication_running.remove(&root).unwrap_or(false);
+        match result {
+            Ok(()) => {
+                self.publication_backoff.remove(&root);
+            }
+            Err(error) => {
+                let backoff = self.publication_backoff.entry(root.clone()).or_default();
+                let reason = error.to_string();
+                if backoff.reason != reason {
+                    eprintln!("WorkspacePublicationPending [{root}]: {reason}");
+                    backoff.reason = reason;
+                }
+                backoff.delay =
+                    (backoff.delay * 2).clamp(PROVENANCE_RETRY_MIN, PROVENANCE_RETRY_MAX);
+                backoff.next = Some(Instant::now() + backoff.delay);
+                self.workspaces.retry_publication(root.clone());
+            }
+        }
+        if more || wake {
+            self.workspaces.retry_publication(root);
+        }
+    }
+    fn poll_root_publications(&mut self) {
+        // Read, append, and ACK are IO jobs. At most two roots and one event
+        // per root are in flight; no bus await or SQLite ACK runs on the owner.
+        for _ in 0..2 {
+            let Some(joined) = self.root_publications.try_join_next_with_id() else {
+                break;
+            };
+            let (id, done) = match joined {
+                Ok(done) => done,
+                Err(error) => {
+                    if let Some(root) = self.publication_tasks.remove(&error.id()) {
+                        self.finish_root_publication(
+                            root,
+                            Err(invalid("knowledge publication job stopped")),
+                            true,
+                        );
+                    }
+                    continue;
+                }
+            };
+            self.publication_tasks.remove(&id);
+            match done {
+                RootPublication::Published { root, result } => {
+                    self.finish_root_publication(root, result, true)
+                }
+                RootPublication::Read {
+                    root,
+                    outbox,
+                    result,
+                } => {
+                    let mut event = match result {
+                        Ok(Some(event)) => *event,
+                        Ok(None) => {
+                            self.finish_root_publication(root, Ok(()), false);
+                            continue;
+                        }
+                        Err(error) => {
+                            self.finish_root_publication(root, Err(error), true);
+                            continue;
+                        }
+                    };
+                    if self.workspaces.scanning(&root)
+                        || self.workspaces.reconciliation_failed(&root)
+                    {
+                        self.finish_root_publication(root, Ok(()), true);
+                        continue;
+                    }
+                    if let Some(payload) = event.payload.as_object_mut() {
+                        payload.insert("knowledge_root_id".into(), serde_json::json!(root));
+                    }
+                    let route = (|| -> Result<_> {
+                        let swarms = self.workspaces.bound_swarms(&self.registry, &root)?;
+                        let stream = if event.subject.starts_with("task/") {
+                            match event.payload["swarm_id"]
+                                .as_str()
+                                .and_then(|value| value.parse::<Ulid>().ok())
+                                .filter(|id| !id.is_nil())
+                            {
+                                Some(swarm)
+                                    if self.workspaces.matches_root(
+                                        &self.registry,
+                                        swarm,
+                                        &root,
+                                    )? =>
+                                {
+                                    format!("swarm-{swarm}")
+                                }
+                                _ => "account".into(),
+                            }
+                        } else {
+                            "index".into()
+                        };
+                        let task = event
+                            .subject
+                            .strip_prefix("task/")
+                            .and_then(|tail| tail.strip_suffix("/status"))
+                            .and_then(|id| id.parse::<Ulid>().ok());
+                        // Historical events remain in the audit stream, but cannot
+                        // roll current task suppression back to an older status.
+                        let current_task = task.filter(|_| {
+                            event.payload["path"]
+                                .as_str()
+                                .and_then(|path| {
+                                    self.workspaces
+                                        .cache
+                                        .root_mut(&root)
+                                        .and_then(|workspace| workspace.index.documents.get(path))
+                                })
+                                .is_some_and(|doc| doc.metadata["status"] == event.payload["to"])
+                        });
+                        Ok((stream, swarms, current_task))
+                    })();
+                    let (stream, swarms, task) = match route {
+                        Ok(route) => route,
+                        Err(error) => {
+                            self.finish_root_publication(root, Err(error), true);
+                            continue;
+                        }
+                    };
+                    // Keep task suppression ordered with native owner-side task
+                    // transitions. Only append/ACK may outlive this owner turn.
+                    if let Some(task) = task
+                        && let Some(status) = event.payload["to"].as_str()
+                        && let Err(error) =
+                            self.messaging
+                                .task_state_root(&root, &swarms, task, status, now_ms())
+                    {
+                        self.finish_root_publication(root, Err(error), true);
+                        continue;
+                    }
+                    let bus = self.bus.clone();
+                    let handle = self.handle.clone();
+                    let tracked = root.clone();
+                    let job = self.root_publications.spawn_blocking_on(
+                        move || {
+                            let result = publication_io(|| {
+                                let id = event.id;
+                                handle.block_on(bus.publish(stream, event))?;
+                                outbox.acknowledge(id)
+                            });
+                            RootPublication::Published { root, result }
+                        },
+                        &self.handle,
+                    );
+                    self.publication_tasks.insert(job.id(), tracked);
+                }
+            }
+        }
     }
     fn scan_port(&mut self, binding: &RootBinding) -> Result<WorkspacePort> {
         self.workspaces.current(&self.registry, binding)?;
@@ -5783,8 +5967,16 @@ impl Worker {
                 binding.swarm,
             )));
         }
-        if self.workspaces.cache.get(binding)?.changed() {
-            self.workspaces.reconcile(&binding.root_id)?;
+        let workspace = self.workspaces.cache.get(binding)?;
+        if workspace.pending() {
+            if workspace.changed() {
+                self.workspaces.reconcile_pending(&binding.root_id)?;
+            }
+            // Settling delays IO, not freshness checks: a claim must not create
+            // a second artifact from the snapshot preceding an observed write.
+            return Err(Box::new(crate::knowledge::workspaces::Error::Pending(
+                binding.swarm,
+            )));
         }
         if self.workspaces.scanning(&binding.root_id) {
             return Err(Box::new(crate::knowledge::workspaces::Error::Pending(
@@ -5927,6 +6119,15 @@ impl Worker {
             }
             let workspace = self.workspaces.cache.root_mut(&root).expect("mounted root");
             if workspace.failed() {
+                if let Err(error) = self.workspaces.reconcile(&root) {
+                    eprintln!("WorkspaceWatchRecovery [{root}]: {error}");
+                }
+                continue;
+            }
+            if workspace.changed() {
+                if let Err(error) = self.scan_pending_root(&root) {
+                    eprintln!("WorkspacePending [{root}]: {error}");
+                }
                 continue;
             }
             let now = Instant::now();
@@ -5938,7 +6139,7 @@ impl Worker {
             {
                 continue;
             }
-            let changed = match workspace.step_provenance(
+            let _changed = match workspace.step_provenance(
                 &self.bus,
                 &self.handle,
                 &self.identity,
@@ -5962,8 +6163,8 @@ impl Worker {
                     false
                 }
             };
-            if (workspace.changed() || changed)
-                && let Err(error) = self.scan_root(&root)
+            if workspace.changed()
+                && let Err(error) = self.scan_pending_root(&root)
             {
                 eprintln!("WorkspacePending [{root}]: {error}");
             }
@@ -8621,6 +8822,7 @@ impl Worker {
         Ok(())
     }
     fn pump_messages(&mut self) -> Result<()> {
+        self.poll_root_publications();
         while let Some(joined) = self.role_updates.try_join_next() {
             match joined {
                 Ok(done) => {
