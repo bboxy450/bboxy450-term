@@ -28,6 +28,17 @@ the corresponding `task_*` tools. The host owns custody, signatures, role
 checks and acceptance; a storage plugin cannot grant those powers. Native
 historical bulk-import tools may be unavailable for an external provider.
 
+Call `knowledge_types` for the built-in document dictionary: each type has a
+short purpose, recommended path and writing instructions. Pass `{"type":"concern"}`
+for one entry or `{}` for all types. A `concern` lives at `concerns/<slug>.md`
+and records what matters, to whom, what is at stake and the evidence that work
+addresses it. The dictionary is embedded host guidance, independent of provider
+availability; its path conventions do not grant write permissions.
+
+A `recipe` at `recipes/<slug>.md` teaches a reusable procedure for any tool or
+workflow: goal, prerequisites, inputs, steps, examples and result verification.
+Include required permissions and recovery from common failures.
+
 The selected provider and root are captured by the host. If a result reports
 that the workspace, provider or generation changed, reorient and rediscover
 the current skill URIs before retrying a read. Never follow an old skill URI

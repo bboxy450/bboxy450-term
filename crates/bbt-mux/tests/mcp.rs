@@ -10,10 +10,12 @@ use bbt_mux::messaging::wire::EnvelopeExt;
 mod common;
 #[path = "mcp/harness_status.rs"]
 mod harness_status;
-#[path = "common/record_supervisor.rs"]
-mod record_supervisor;
+#[path = "mcp/knowledge_types.rs"]
+mod knowledge_types_tests;
 #[path = "mcp/launch.rs"]
 mod launch_tests;
+#[path = "common/record_supervisor.rs"]
+mod record_supervisor;
 use record_supervisor::RecordLink;
 use std::io::{Cursor, Read, Write};
 use std::os::unix::net::UnixStream;
@@ -1419,7 +1421,7 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     initialize(&mut bridge);
     let list = rpc(&mut bridge, 2, "tools/list", json!({}));
     let tools = list["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 30);
+    assert_eq!(tools.len(), 31);
     assert!(tools.iter().any(|tool| tool["name"] == "harness_profiles"));
     assert!(tools.iter().any(|tool| tool["name"] == "usage_read"
         && tool["annotations"]["readOnlyHint"] == true));

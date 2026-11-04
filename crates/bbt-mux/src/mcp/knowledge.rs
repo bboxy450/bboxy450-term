@@ -11,7 +11,7 @@ use serde::Deserialize;
 use serde_json::{Value, json};
 
 use super::{Call, SeatActor};
-use crate::knowledge::{DataSource, data_source as d};
+use crate::knowledge::{DataSource, data_source as d, types::DOCUMENT_TYPES};
 use crate::registry::Class;
 
 /// What every knowledge result's identifiers mean (review 5004 finding 4).
@@ -58,9 +58,14 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
         "Create/update e2e, comment, research, note and artifact records as your seat. Create append-only reports at reports/YYYY-MM-DD-slug.md for your assigned task; corrections create a new report with supersedes. For your assigned task preserve every other field and the body, changing only report.summary, report.commit, report.report and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools. Updates retain type, ref and etag."
     };
     let write_help = format!(
-        "{write_help} Research is a supported type: use research/<topic>.md with parent/children for its document tree, derived_from for origins, and links with rel used/evidence for cited sources. Specs and tasks retain derived_from links to their research or spec; these relations feed the provenance graph. The host stamps authorship and signed provenance. Create takes a document-type path (tasks/slug.md, specs/slug.md, notes/slug.md, etc.); update takes the ref a fetch or search returned. Top-level slugs are refused. {IDENTIFIERS}"
+        "{write_help} Call knowledge_types for the built-in type dictionary, purposes, paths and writing guidance; concern records use concerns/<slug>.md. Research is a supported type: use research/<topic>.md with parent/children for its document tree, derived_from for origins, and links with rel used/evidence for cited sources. Specs and tasks retain derived_from links to their research or spec; these relations feed the provenance graph. The host stamps authorship and signed provenance. Create takes a document-type path (tasks/slug.md, specs/slug.md, concerns/slug.md, etc.); update takes the ref a fetch or search returned. Top-level slugs are refused. {IDENTIFIERS}"
     );
+    let kinds: Vec<_> = DOCUMENT_TYPES.iter().map(|entry| entry.kind).collect();
     let mut tools = vec![
+        json!({"name":"knowledge_types","description":"Read the built-in document type dictionary: short purposes, recommended paths and instructions for writing each type. Omit type to list all, or supply a type such as concern, spec or report. This host help is available independently of the selected knowledge provider; it grants no write authority.",
+            "inputSchema":{"type":"object","properties":{"type":{"type":"string","enum":kinds}},"required":[],"additionalProperties":false},
+            "outputSchema":{"type":"object","additionalProperties":true},
+            "annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}),
         json!({"name":"knowledge_status","description":"Inspect this swarm's selected knowledge provider, root and revision, available providers, plugin activation/check state and failures. Read-only; trust, check, enable and selection use operator controls.",
             "inputSchema":{"type":"object","properties":{},"required":[],"additionalProperties":false},
             "outputSchema":{"type":"object","additionalProperties":true},
@@ -83,6 +88,33 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
             "outputSchema":{"type":"object","additionalProperties":true},"annotations":{"readOnlyHint":false,"idempotentHint":true,"destructiveHint":false,"openWorldHint":false}}));
     }
     tools
+}
+
+/// Static host guidance; never route this read through a workspace or provider.
+pub(crate) fn type_info(args: &Value) -> Result<Value, String> {
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct Query {
+        #[serde(rename = "type")]
+        kind: Option<String>,
+    }
+    let query: Query = super::tools::parse(args)?;
+    let entries: Vec<_> = DOCUMENT_TYPES
+        .iter()
+        .filter(|entry| query.kind.as_deref().is_none_or(|kind| kind == entry.kind))
+        .collect();
+    if entries.is_empty() {
+        return Err("unknown built-in document type; omit type to list the dictionary".into());
+    }
+    Ok(json!({
+        "types":entries,
+        "writing":{
+            "create":"Call knowledge_write with a root-relative Markdown path under a document-type directory (such as concerns/session-continuity.md), frontmatter containing type and title, and a Markdown body. The host assigns identity, number, timestamps, authorship and signatures; do not invent them.",
+            "update":"Fetch the current record with knowledge_fetch, then pass its ref and etag to knowledge_write, preserving type and other frontmatter. Omit path on update.",
+            "authority":"Follow your role-filtered knowledge_write schema and task_* or artifact_* controls. This dictionary describes types and conventions; it grants no permissions and a selected provider may refuse unsupported writes.",
+            "custom_types":"Oracle-class writes may also use custom types; these entries describe the built-in vocabulary rather than a closed storage schema."
+        }
+    }))
 }
 
 #[derive(Deserialize)]

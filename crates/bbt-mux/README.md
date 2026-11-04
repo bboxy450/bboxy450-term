@@ -14,6 +14,22 @@ runtime. Bootstrap, database work and terminal parsing belong to IO owners,
 with debug guards against calling their blocking entry points on the UI thread.
 The UI uses bounded asynchronous `LogicClient` messages.
 
+## Document dictionary
+
+The built-in document vocabulary is defined in
+[`src/knowledge/types.rs`](src/knowledge/types.rs). Each entry has a short purpose,
+a recommended path and writing guidance. Harnesses call the read-only MCP tool
+`knowledge_types` with `{}` for all entries or `{"type":"concern"}` for one.
+MCP initialization, `orient`, `knowledge_write` help and the bundled knowledge
+skill point to this dictionary. It remains available when a provider is unavailable.
+
+A `concern` at `concerns/<slug>.md` records what matters, to whom, what is at
+stake and how to tell that work addresses it. A `recipe` at `recipes/<slug>.md`
+teaches a reusable procedure for any tool or workflow, including prerequisites,
+steps, examples and verification. Paths are conventions; the host's existing
+role and write policies still apply. Run `make test-knowledge-types` for the
+focused discovery, guidance and signed concern-write checks.
+
 ## Ownership and modules
 
 | Module | Mechanism |

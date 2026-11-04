@@ -115,6 +115,7 @@ help:
 	  'make check-plugin-fixtures       Strict all-target Clippy for private SDK fixtures' \
 	  'make test-harmony-pages          Private SDK Harmony paging/status probe; no backend account' \
 	  'make test-plugin-skills          Canonical MCP instructions, descriptors and selected-provider fences' \
+	  'make test-knowledge-types        Focused MCP document dictionary, concern writes and discovery tests' \
 	  'make check-plugin-skills         Strict plugin, mux and app all-target Clippy' \
 	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
 	  'make build-harness               Build the in-suite seat binary; add target/debug to PATH' \
@@ -858,6 +859,14 @@ test-plugin-transports:
 	cargo test --locked -p $(APP) --test remote_launch --target-dir '$(TARGET_DIR)'; \
 	cargo run --locked -p bboxy450-term-plugin-fixture --example transport --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/transport-plugins/bboxy450-term-transport-example'
 	@BBOXY_TRANSPORT_PLUGIN='$(abspath $(TARGET_DIR))/transport-plugins/bboxy450-term-transport-example' $(MAKE) test-settings-plugins
+
+.PHONY: test-knowledge-types
+test-knowledge-types:
+	@set -eu; . ./scripts/cache-env.sh; \
+	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux --lib mcp::knowledge::tests; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux --test mcp mcp_knowledge_types; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux --test mcp mcp_four_methods_
 
 .PHONY: test-plugin-skills check-plugin-skills
 test-plugin-skills:

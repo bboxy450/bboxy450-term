@@ -14,6 +14,7 @@ mod read;
 pub(crate) use paths::validate as validate_document_path;
 pub(crate) mod roots;
 pub(crate) mod seat_reads;
+pub mod types;
 pub mod workspaces;
 pub use bboxy::BboxySource;
 pub use bbt_plugin::data_source;

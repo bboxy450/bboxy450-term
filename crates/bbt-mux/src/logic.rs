@@ -5813,6 +5813,7 @@ impl Worker {
                 let _: tools::Empty = tools::parse(&call.args)?;
                 Ok(json!({"actor":actor,"seat":self.control_seat(record)}))
             }
+            "knowledge_types" => crate::mcp::knowledge::type_info(&call.args),
             "seat_get" => {
                 let args: tools::SeatGet = tools::parse(&call.args)?;
                 let target = self

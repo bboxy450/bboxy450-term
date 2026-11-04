@@ -4,7 +4,7 @@ type: "spec"
 number: 105
 title: "Work items — epics, specs, tasks as Markdown with frontmatter"
 created: "2026-10-21T22:23:16Z"
-updated: "2026-10-30T15:04:48Z"
+updated: "2026-11-04T20:33:00Z"
 links:
   - { to: "[[d18-executor-harness-override]]", rel: decision }
   - { to: "[[d28-structured-task-verification]]", rel: decision }
@@ -19,12 +19,12 @@ Owner: Vesper Greywind <ORACLE>. 2026-10-21. DECIDED by the operator: native sup
 
 ## Shape
 
-A work item is one Markdown file with YAML frontmatter in the repository the swarm works on, under **`.bboxy/`** (operator decision 2026-10-21; this repo's `.bboxy/` migrates to `.bboxy/` as the dogfood). `.bboxy/` holds all of a repo's tasks and knowledge: epics, specs, tasks, research, runs. Knowledge files are the same schema with `type: note`. Seven types, one schema (operator, 2026-10-21): **epic**, **spec**, **task**, **bug**, **note**, **invariant**, **artifact**. Every item is a **markdown** (the operator's word; "slug" is retired). Git is the database; the terminal is a reader, writer and watcher of these files, nothing more.
+A work item is one Markdown file with YAML frontmatter in the repository the swarm works on, under **`.bboxy/`**. This is the shared, Git-versioned knowledge base for the swarm. The built-in vocabulary has sixteen types, one schema: **concern**, **epic**, **spec**, **task**, **bug**, **note**, **invariant**, **artifact**, **decision**, **proposal**, **comment**, **research**, **recipe**, **e2e**, **report**, **interface**. Every item is a **markdown** (the operator's word; "slug" is retired). Git is the database; the terminal is a reader, writer and watcher of these files, nothing more.
 
 ```yaml
 ---
 id: 01JAX3K9Q7M2N8P4R6S1T0V5W9      # ULID, assigned on creation, never changes
-type: epic | spec | task | bug | note | invariant | artifact
+type: concern | epic | spec | task | bug | note | invariant | artifact | decision | proposal | comment | research | recipe | e2e | report | interface
 title: fork alacritty_terminal + vte into bbt-core
 status: open | claimed | running | reported | accepted | rejected | blocked | done
 parent: 01JAX…                       # single parent, optional
@@ -64,6 +64,15 @@ Body is free Markdown: goal, steps, acceptance, report. Wikilinks `[[id-or-slug]
 A record is one file and the file is the object: one decision, one comment, one research record, one spec, one task. The git tree under `.bboxy/` is the store, the first and for now the only backend. The schema never assumes a path: identity is the ULID `id`, addressing is the slug, the id or the **number** (`number: N`, one global sequence across every type, allocated as max + 1 at creation, unique or the records push fails; `[[#N]]` resolves to it; [[d48-every-record-has-a-number]]), a version is the content digest, a relation is a link by slug or by `#N`. A binary or remote store can hold the same objects later behind the same reads and writes; nothing pluggable is built now ("KISS for now so we can keep developing our system").
 
 ## Types
+
+The canonical short dictionary is embedded in
+`crates/bbt-mux/src/knowledge/types.rs`: each entry has a one- or two-sentence
+purpose, recommended path and writing guidance. Harnesses call the read-only
+MCP tool `knowledge_types` with `{}` for all types or `{"type":"concern"}` for
+one. MCP initialization, `orient`, `knowledge_write` help and the bundled
+knowledge skill make it discoverable. It remains available without a working
+provider and does not change write authority or close the storage schema to
+custom Oracle-authored types.
 
 ### Authenticated historical reconciliation and lossless import (issue 43)
 
@@ -171,18 +180,22 @@ disposition/duplicate verifier. Products stay in `target/task-migration/`.
 
 | Type | What it is | Status set | Typical links |
 |---|---|---|---|
+| concern | an ongoing area of care or responsibility that gives work its purpose; records what matters, to whom, what is at stake and how to tell it is being addressed. Lives at `concerns/<slug>.md` and may stay active after related tasks finish | active, retired | related decisions, specs, epics, tasks and evidence |
 | epic | an outcome spanning specs and tasks | open, running, done | `children` specs and tasks |
 | spec | a decided design for one concern | draft, decided, superseded | `parent` epic; `[[…\|evidence]]` to research notes |
 | task | one Executor assignment | open, claimed, running, reported, accepted, rejected, blocked, done | `parent` spec or epic; `depends`; `assignee` |
 | bug | a defect with a reproduction | open, claimed, running, reported, fixed, wontfix, duplicate | `[[task\|blocks]]`, `[[spec\|violates]]`, `[[invariant\|violates]]` |
 | note | knowledge: runs, runbooks, evidence | none (always current until superseded) | anything |
 | invariant | a property that holds before and after every change, **with the command that checks it**; the thing bugs are checked against and specs may not contradict. No command, no invariant: then it is a preference and lives in a note | active, retired | `[[spec\|constrains]]`, `[[bug\|violated-by]]` |
-| recipe | a data-driven composition of `ctl` verbs over a seat ([[ctl-cli]] §4): `steps` of `screen`, `match`, `input`, `wait`, `report`; the first is `codex-hook-review`; runs under the operator principal and cannot skip `match` | active, retired | `[[spec\\|implements]]`, `[[run\\|evidence]]` |
+| artifact | a produced file, commit, release or other output, with responsibility and provenance attached. Claims, observations and protected lineage use the artifact tools | claims and observations are host-owned | producing task, source records, derived artifacts |
+| recipe | a reusable procedure for achieving a particular purpose with any tool or workflow. Records the goal, prerequisites, inputs, steps, examples, required permissions, expected result, verification and recovery from common failures | active, retired | related tools, specs, concerns and evidence |
 | e2e | one end-to-end test of one promised user-facing function ([[e2e-acceptance]] §1): `function`, `group`, `steps` naming the tool per action, `expected`, `status: pass \| fail \| blocked \| untested \| manual`, `coverage: full \| partial` with `missing` naming the unasserted parts when partial (#316), `last_run`, `result`, `run_by` (a seat), `evidence`; a `fail` or a partial pass links `[[task\|tracked-by]]` to an open task; written only through the app so the running seat signs it | pass, fail, blocked, untested, manual | `[[spec\|tests]]`, `[[run\|evidence]]`, `[[task\|tracked-by]]` |
 | decision | a numbered record of alternatives, choice, reason and date, written when the decision is made, **one file per decision** `d<N>-<slug>.md` with `number`, `status: decided \| amended \| superseded`, `decided`, `operator` (a list of verbatim words), and links `decides`, `constrains`, `evidence`, `answers`, `amends`, `supersedes` ([[d47-decision-nodes]]; [[2026-10-22-architecture-round-1]] is the index of the first 46) | proposed, decided, superseded | `[[spec\|changes]]`, `[[invariant\|creates]]` |
 | proposal | an RFC: motivation, design, alternatives, open questions; reviewed by red-team comments, closed by a decision that creates or changes a spec (operator, 2026-10-23: "proposal should also be a document type, then we can do entire RFC") | draft, review, accepted, rejected, withdrawn | `[[spec\|changes]]`, `[[decision\|decided-by]]`, `[[research\|evidence]]` |
 | comment | one review remark on one document version: `on: [[doc]]`, `on_digest` (the reviewed version's digest), `anchor` (section or line), `kind: question \| objection \| suggestion \| approval`; written by a seat and signed by its leaf like every record (operator: "comment should be a document type as well") | open, resolved, withdrawn | `[[doc\|on]]`, `[[comment\|resolves]]` |
 | research | truth compression: `file:line — mechanism` and `source — fact` pointers with sources, never prose summaries; what a spec cites as its evidence (operator, 2026-10-23: "research should be a document type as well"; the files in `research/` take `type: research` on their next touch) | none (always current until superseded) | `[[spec\|evidence-for]]` |
+| report | an append-only record of completed work and verification evidence. Corrections create a new report with `supersedes`, preserving the original | append-only | assigned task, commits, verification evidence, superseded report |
+| interface | a contract between components or subsystems. Defines the data, operations, ownership, ordering, errors and compatibility rules at their boundary | draft, decided, superseded | participating specs, decisions and verification evidence |
 
 **The RFC loop (decision [[d41-plugins|#41]]).** A `proposal` is written; the Oracle delegates a **red-team review** to a seat (a Claude Executor by the operator's choice, decision [[d18-executor-harness-override|#18]]), which writes `comment` records against the proposal's digest; the author answers with comments or a revision; a `decision` closes it and creates or changes the `spec`. Every record in the loop is written through the task tools and signed by the writer's seat leaf (W2.5d), each comment pins the digest it reviewed, and the decision links the proposal, so provenance holds the whole argument: who proposed, who objected to which version, what was decided and why. The viewer shows comments beside their anchor (later, [[document-viewer]]). **Outside a running cockpit** (today: the agents are ICQ sessions, not seats), a comment or proposal is a plain Markdown file under `.bboxy/comments/` or `.bboxy/proposals/` with `author: name:<Name> key:<icq key prefix>` in its frontmatter, landed in a commit signed by the machine key; the commit signature attests the machine and the operator's account, not the seat, so the record's author grade is **inferred** (the [[provenance]] grades: reported beats inferred, nothing inferred is shown as certain) and it carries no `provenance` block. When the same agent runs as a cockpit seat, the task tools write the record and the seat leaf's DSSE signature joins; a later `artifact_claim` by that seat upgrades an inferred record to reported. Acceptable until agents run as seats, which is the cockpit's own goal; no second signing path is built for the interim.
 
