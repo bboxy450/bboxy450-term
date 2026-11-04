@@ -86,6 +86,7 @@ fn tiered(broken: bool) -> Model {
             ("workers", 2, 0),
             ("generation", 1, 0),
             ("view_generation", 1, 0),
+            ("commands", 1, 0),
         ],
     );
     action(
@@ -116,6 +117,7 @@ fn tiered(broken: bool) -> Model {
         ],
     );
     action(&mut m, "Ready", all([eq(1, 0), ne(0, 2)]), &[(0, Int(2))]);
+    action(&mut m, "ServeCommand", eq(5, 0), &[(5, Int(1))]);
     safe(&mut m, "NoStaleRecoveryPublication", Var(3).eq(Var(4)));
     safe(
         &mut m,
@@ -124,12 +126,17 @@ fn tiered(broken: bool) -> Model {
     );
     if !broken {
         m.responses.push(Response {
+            name: "CommandsStayResponsive".into(),
+            request: eq(5, 0),
+            response: eq(5, 1),
+        });
+        m.responses.push(Response {
             name: "RecoveryEventuallyReady".into(),
             request: ne(0, 2),
             response: eq(0, 2),
         });
     }
-    m.weak_fair.extend([vec![2], vec![4]]);
+    m.weak_fair.extend([vec![2], vec![4], vec![5]]);
     m
 }
 #[test]

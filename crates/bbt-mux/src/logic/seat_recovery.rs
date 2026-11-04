@@ -58,12 +58,6 @@ impl Preparations {
         }
         Ok(batch)
     }
-    pub fn recv(
-        &self,
-        timeout: Duration,
-    ) -> std::result::Result<(SeatRecord, Result<Playback>), sync::RecvTimeoutError> {
-        self.receiver.recv_timeout(timeout)
-    }
     pub fn cancel(&self) {
         self.cancelled.store(true, Ordering::Release);
     }
@@ -71,6 +65,56 @@ impl Preparations {
 impl Drop for Preparations {
     fn drop(&mut self) {
         self.cancel();
+    }
+}
+
+pub(super) struct Batch {
+    pub pending: BTreeMap<Ulid, SeatRecord>,
+    pub preparations: Option<Preparations>,
+    pub deadline: Instant,
+    pub total: u64,
+    pub completed: u64,
+    pub progress: Option<mpsc::UnboundedSender<(u64, u64)>>,
+    pub reply: Option<oneshot::Sender<Result<()>>>,
+}
+impl Batch {
+    // This runs on the command owner: never wait here. One launch per turn
+    // leaves MCP initialization and other seats' requests serviceable.
+    pub fn next(&mut self, now: Instant) -> Option<(SeatRecord, Option<Playback>, bool)> {
+        let result = self
+            .preparations
+            .as_ref()
+            .map_or(Err(sync::TryRecvError::Disconnected), |pool| {
+                pool.receiver.try_recv()
+            });
+        match result {
+            Ok((record, result)) => {
+                if !self
+                    .pending
+                    .get(&record.id)
+                    .is_some_and(|saved| saved.generation == record.generation)
+                {
+                    return None;
+                }
+                self.pending.remove(&record.id);
+                match result {
+                    Ok(state) => Some((record, Some(state), false)),
+                    Err(error) => {
+                        eprintln!("SeatRecoveryDeferred [{}]: {error}", record.id);
+                        Some((record, None, true))
+                    }
+                }
+            }
+            Err(sync::TryRecvError::Empty) if now < self.deadline => None,
+            Err(_) => {
+                if let Some(pool) = &self.preparations {
+                    pool.cancel();
+                }
+                self.pending
+                    .pop_first()
+                    .map(|(_, record)| (record, None, true))
+            }
+        }
     }
 }
 
@@ -83,8 +127,12 @@ mod tests {
         let started = Arc::new(AtomicU64::new(0));
         let (entered, entries) = sync::sync_channel(2);
         let (finished, finishes) = sync::sync_channel(2);
-        let records = (1..=4)
+        let records: Vec<_> = (1..=4)
             .map(|id| SeatRecord::new(Ulid::from(id), Ulid::from(9), "fixture", "zsh"))
+            .collect();
+        let pending = records
+            .iter()
+            .map(|record| (record.id, record.clone()))
             .collect();
         let ready = gate.clone();
         let count = started.clone();
@@ -96,11 +144,7 @@ mod tests {
             while !*released {
                 released = wake.wait(released).unwrap();
             }
-            let state = Playback::new(
-                record.id,
-                record.generation,
-                SeatSize::default(),
-            );
+            let state = Playback::new(record.id, record.generation, SeatSize::default());
             finished.send(()).unwrap();
             Ok(state)
         })
@@ -109,7 +153,21 @@ mod tests {
             entries.recv_timeout(Duration::from_secs(5)).unwrap();
         }
         assert_eq!(started.load(Ordering::Acquire), lanes() as u64);
-        assert!(batch.recv(Duration::ZERO).is_err());
+        let before = Instant::now();
+        let mut batch = Batch {
+            pending,
+            preparations: Some(batch),
+            deadline: before + Duration::from_secs(60),
+            total: 4,
+            completed: 0,
+            progress: None,
+            reply: None,
+        };
+        assert!(batch.next(before).is_none());
+        assert!(
+            before.elapsed() < Duration::from_secs(1),
+            "replay blocked the command owner"
+        );
         drop(batch); // No receiver remains that could publish a stale generation.
         *gate.0.lock().unwrap() = true;
         gate.1.notify_all();

@@ -3044,6 +3044,7 @@ struct Worker {
     checkpoint_saves: Saves,
     /// Seats `ctl seat restart` stopped, by the generation that is exiting.
     restarts: BTreeMap<Ulid, u64>,
+    active_recovery: Option<seat_recovery::Batch>,
     /// Plugin login seats whose setup job is waiting for their exit.
     logins: BTreeMap<Ulid, PendingLogin>,
     /// Attached bare plugin login seats: no adapter, OSC, attention or title.
@@ -3305,6 +3306,7 @@ impl Worker {
             checkpoint_policy,
             checkpoint_saves: Saves::new(checkpoint_policy),
             restarts: BTreeMap::new(),
+            active_recovery: None,
             logins: BTreeMap::new(),
             bare: BTreeSet::new(),
             checkpoint_images: BTreeMap::new(),
@@ -6986,7 +6988,7 @@ impl Worker {
         // that actually started. Reconciliation uses the original durable seat ID.
         self.spawn(record, plan.spec)
     }
-    fn recover_seats(&mut self, progress: Option<&mpsc::UnboundedSender<(u64, u64)>>) -> Result<()> {
+    fn prepare_seat_recovery(&mut self, progress: Option<mpsc::UnboundedSender<(u64, u64)>>) -> Result<seat_recovery::Batch> {
         let mut eligible = Vec::new();
         for record in self.registry.list()? {
             if record.location != crate::registry::Location::Local
@@ -7007,8 +7009,8 @@ impl Worker {
             eligible.push(record);
         }
         let total = eligible.len() as u64;
-        if let Some(progress) = progress { let _ = progress.send((0, total)); }
-        let mut pending: BTreeMap<_, _> = eligible.iter().map(|record| (record.id, record.clone())).collect();
+        if let Some(progress) = &progress { let _ = progress.send((0, total)); }
+        let pending: BTreeMap<_, _> = eligible.iter().map(|record| (record.id, record.clone())).collect();
         let root = self.config.run_dir.clone();
         let settings = self.config.ring.clone();
         let preparations = seat_recovery::Preparations::start(eligible, move |record| {
@@ -7018,40 +7020,33 @@ impl Worker {
             }
             crate::ring::Ring::open(&ring_root, record.id, record.generation, 0, settings.clone())?.replay()
         }).inspect_err(|error| eprintln!("SeatRecoveryDeferred: {error}")).ok();
-        // Terminal replay has a bounded startup budget. A conversation resumes
-        // from its retained harness ID even when the old terminal is expensive
-        // or damaged. Old generation files remain available for history.
-        let deadline = Instant::now() + Duration::from_secs(60);
-        let mut completed = 0;
-        while !pending.is_empty() {
-            let (record, prepared, deferred) = match preparations.as_ref().map_or(Err(std::sync::mpsc::RecvTimeoutError::Disconnected), |pool| pool.recv(deadline.saturating_duration_since(Instant::now()))) {
-                Ok((record, Ok(state))) if pending.get(&record.id).is_some_and(|saved| saved.generation == record.generation) => {
-                    pending.remove(&record.id);
-                    (record, Some(state), false)
-                }
-                Ok((record, Err(error))) if pending.contains_key(&record.id) => {
-                    eprintln!("SeatRecoveryDeferred [{}]: {error}", record.id);
-                    pending.remove(&record.id);
-                    (record, None, true)
-                }
-                Ok(_) => continue,
-                Err(_) => {
-                    if let Some(pool) = &preparations { pool.cancel(); }
-                    let (_, record) = pending.pop_first().unwrap();
-                    (record, None, true)
-                }
-            };
+        Ok(seat_recovery::Batch {
+            pending, preparations, deadline: Instant::now() + Duration::from_secs(60),
+            total, completed: 0, progress, reply: None,
+        })
+    }
+    fn poll_seat_recovery(&mut self) -> bool {
+        let Some(mut batch) = self.active_recovery.take() else { return false; };
+        let mut progressed = false;
+        if let Some((record, prepared, deferred)) = batch.next(Instant::now()) {
             let id = record.id;
-            let prepared = prepared.unwrap_or_else(|| Playback::new(id, record.generation, SeatSize::default()));
-            if let Err(error) = self.relaunch_prepared(record, Some(prepared), deferred) {
-                // One damaged or full capture must not abort recovery of every
-                // other retained session or take the backend down again.
-                eprintln!("SeatRecoveryFailed [{id}]: {error}");
+            let current = self.registry.get(id).is_ok_and(|saved| saved.generation == record.generation);
+            if current {
+                let prepared = prepared.unwrap_or_else(|| Playback::new(id, record.generation, SeatSize::default()));
+                if let Err(error) = self.relaunch_prepared(record, Some(prepared), deferred) {
+                    eprintln!("SeatRecoveryFailed [{id}]: {error}");
+                }
             }
-            completed += 1;
-            if let Some(progress) = progress { let _ = progress.send((completed, total)); }
+            batch.completed += 1;
+            if let Some(progress) = &batch.progress { let _ = progress.send((batch.completed, batch.total)); }
+            progressed = true;
         }
-        Ok(())
+        if batch.pending.is_empty() {
+            if let Some(reply) = batch.reply.take() { let _ = reply.send(Ok(())); }
+            return true;
+        }
+        self.active_recovery = Some(batch);
+        progressed
     }
     /// The next process generation of a seat whose process is gone (#11): its committed
     /// ring replayed as the restored screen with the gap named, a harness seat resumed by
@@ -10750,8 +10745,14 @@ impl Worker {
                         }
                     }
                     Command::RecoverSeats(reply, progress) => {
-                        let result = self.recover_seats(progress.as_ref());
-                        let _ = reply.send(result);
+                        if self.active_recovery.is_some() {
+                            let _ = reply.send(Err(invalid("session recovery already active")));
+                        } else {
+                            match self.prepare_seat_recovery(progress) {
+                                Ok(mut batch) => { batch.reply = Some(reply); self.active_recovery = Some(batch); }
+                                Err(error) => { let _ = reply.send(Err(error)); }
+                            }
+                        }
                     }
                     Command::GuiSwarm(action, origin, reply) => {
                         self.start_gui_swarm(*action, origin, reply);
@@ -11766,6 +11767,7 @@ impl Worker {
                 }
             }
             command_span.finish(Outcome::Ok, command_count, 0);
+            made_progress |= self.poll_seat_recovery();
             self.poll_history();
             self.refresh_gui_watch_interest(&mut pending_events);
             let receive =
