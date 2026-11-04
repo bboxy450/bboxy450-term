@@ -48,6 +48,7 @@ pub(super) struct Journal {
     name: String,
     length: u64,
     committed: u64,
+    pending_commit: Option<u64>,
     tick: u64,
     dirty: bool,
     buffer: Vec<u8>,
@@ -56,6 +57,8 @@ pub(super) struct Journal {
     required: Coverage,
     retired: Vec<(String, Coverage)>,
     projected: Coverage,
+    #[cfg(test)]
+    pub(super) disk_full: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
 }
 impl Journal {
     pub fn open(root: &Path) -> Result<Self> {
@@ -99,6 +102,7 @@ impl Journal {
             name,
             length: 0,
             committed: 0,
+            pending_commit: None,
             tick: 0,
             dirty: false,
             buffer: Vec::with_capacity(1024 * 1024),
@@ -107,6 +111,8 @@ impl Journal {
             required: HashMap::new(),
             retired: Vec::new(),
             projected: HashMap::new(),
+            #[cfg(test)]
+            disk_full: None,
         })
     }
     pub fn bind(&self, ring: &Ring) -> Result<()> {
@@ -115,11 +121,18 @@ impl Journal {
             .write(true)
             .create_new(true)
             .open(&temp)?;
-        serde_json::to_writer(&mut file, &self.root)?;
-        sync_file(&file, true)?;
-        std::fs::rename(temp, ring.root.join("journal.json"))?;
-        sync_directory(&File::open(&ring.root)?)?;
-        Ok(())
+        let result = (|| -> Result<()> {
+            serde_json::to_writer(&mut file, &self.root)?;
+            sync_file(&file, true)?;
+            std::fs::rename(&temp, ring.root.join("journal.json"))?;
+            sync_directory(&File::open(&ring.root)?)?;
+            Ok(())
+        })();
+        if result.is_err() {
+            // A storage-pressure retry must not leave another temporary file.
+            let _ = std::fs::remove_file(temp);
+        }
+        result
     }
     pub fn append(
         &mut self,
@@ -203,7 +216,27 @@ impl Journal {
     }
     fn flush_buffer(&mut self) -> Result<()> {
         if !self.buffer.is_empty() {
-            self.file.write_all(&self.buffer)?;
+            // write_all may have written a prefix before ENOSPC. Retain the
+            // complete buffer and restore its exact start before any retry.
+            let start = self.length - self.buffer.len() as u64;
+            self.file.set_len(start)?;
+            let result = (|| -> std::io::Result<()> {
+                #[cfg(test)]
+                if self
+                    .disk_full
+                    .as_ref()
+                    .is_some_and(|flag| flag.load(std::sync::atomic::Ordering::Acquire))
+                {
+                    self.file
+                        .write_all(&self.buffer[..self.buffer.len().min(17)])?;
+                    return Err(std::io::Error::from_raw_os_error(libc::ENOSPC));
+                }
+                self.file.write_all(&self.buffer)
+            })();
+            if let Err(error) = result {
+                self.file.set_len(start)?;
+                return Err(error.into());
+            }
             self.buffer.clear();
         }
         Ok(())
@@ -237,7 +270,7 @@ impl Journal {
         if !self.dirty || (!strong && self.length == self.committed) {
             return Ok(false);
         }
-        if self.length != self.committed {
+        if self.length != self.committed && self.pending_commit != Some(self.length) {
             self.tick += 1;
             let frame = encode(
                 COMMIT,
@@ -249,6 +282,7 @@ impl Journal {
             )?;
             self.buffer_frame(&frame)?;
             self.length += frame.len() as u64;
+            self.pending_commit = Some(self.length);
         }
         self.flush_buffer()?;
         sync_file(&self.file, strong)?;
@@ -264,19 +298,29 @@ impl Journal {
     }
     pub fn rotate(&mut self) -> Result<()> {
         self.commit(true)?;
-        self.files.insert(self.name.clone(), self.file.try_clone()?);
-        self.retired
-            .push((self.name.clone(), std::mem::take(&mut self.required)));
-        self.name = next_name(Some(&self.name))?;
-        self.file = OpenOptions::new()
+        // Keep the current file/name/coverage intact if creating its successor
+        // fails. A disk-full retry must never append into a misnamed journal.
+        let name = next_name(Some(&self.name))?;
+        let file = OpenOptions::new()
             .read(true)
             .append(true)
             .create_new(true)
-            .open(self.root.join(&self.name))?;
-        sync_directory(&File::open(&self.root)?)?;
-        sync_file(&self.file, true)?;
+            .open(self.root.join(&name))?;
+        if let Err(error) =
+            sync_directory(&File::open(&self.root)?).and_then(|_| sync_file(&file, true))
+        {
+            drop(file);
+            let _ = std::fs::remove_file(self.root.join(&name));
+            return Err(error.into());
+        }
+        self.files.insert(self.name.clone(), self.file.try_clone()?);
+        self.retired
+            .push((self.name.clone(), std::mem::take(&mut self.required)));
+        self.name = name;
+        self.file = file;
         self.length = 0;
         self.committed = 0;
+        self.pending_commit = None;
         self.tick = 0;
         Ok(())
     }
@@ -728,5 +772,32 @@ mod tests {
         // A second open uses the compacted cursor and does not duplicate bytes.
         let again = Ring::open(&root, seat, 1, 0, Settings::default()).unwrap();
         assert_eq!(again.status().byte_end, restored.byte_end);
+    }
+    #[test]
+    fn disk_full_commit_retries_keep_one_marker_and_roll_back_partial_bytes() {
+        use std::sync::{
+            Arc,
+            atomic::{AtomicBool, Ordering},
+        };
+        let temp = tempfile::tempdir().unwrap();
+        let mut journal = Journal::open(temp.path()).unwrap();
+        let full = Arc::new(AtomicBool::new(true));
+        journal.disk_full = Some(full.clone());
+        journal
+            .append((Ulid::new(), 1), 1, 1, 0, b"retained")
+            .unwrap();
+        assert!(journal.commit(true).is_err());
+        let length = journal.length;
+        let buffered = journal.buffer.len();
+        for _ in 0..10 {
+            assert!(journal.commit(true).is_err());
+            assert_eq!(journal.length, length);
+            assert_eq!(journal.buffer.len(), buffered);
+            assert_eq!(journal.file.metadata().unwrap().len(), 0);
+        }
+        full.store(false, Ordering::Release);
+        journal.commit(true).unwrap();
+        assert_eq!(journal.committed, length);
+        assert!(journal.buffer.is_empty());
     }
 }

@@ -655,6 +655,18 @@ fn operator_spawn_replays_case() {
     logic.shutdown().unwrap();
     server.shutdown().unwrap();
     let server = Supervisor::start(supervisor()).unwrap();
+    // A damaged historical launch must not prevent a later healthy seat from
+    // recovering or abort the new logic owner.
+    let mut damaged = first.record.clone();
+    damaged.id = Ulid::from(1_u128);
+    account
+        .put(&format!("seat/{}", damaged.id), &serde_json::to_vec(&damaged).unwrap())
+        .unwrap();
+    let damaged_store = SqliteStore::open(
+        &object_dir(&config.run_dir, &format!("seat-{}", damaged.id)).unwrap(),
+    ).unwrap();
+    damaged_store.put("process_running", b"1").unwrap();
+    damaged_store.put("recovery_launch", b"invalid launch context").unwrap();
     let logic = start(&server);
     rt.block_on(logic.client.recover_seats()).unwrap();
     let recovered = rt.block_on(logic.client.gui_seat(Ulid(seat.0.0))).unwrap();

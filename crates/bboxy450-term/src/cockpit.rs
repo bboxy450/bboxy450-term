@@ -1649,7 +1649,7 @@ async fn start_logic(
         &LogicBootstrap {
             config: config.clone(),
             supervisor: ready.clone(),
-            recover_seats,
+            recover_seats: recover_seats || std::env::args().any(|arg| arg == "--recover-seats"),
             fixture_hosts,
         },
     )

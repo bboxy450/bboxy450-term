@@ -1185,3 +1185,13 @@ name = "BrokenWatcherAdmission"
 name = "BrokenGuiBackendPreservation"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "CaptureStoragePressure"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenCaptureStoragePressure"
+expected = "safety"
+frontend = "project"

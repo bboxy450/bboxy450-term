@@ -6,7 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! One disk writer for a supervisor. The PTY actor never waits for ring IO.
 
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::io;
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Condvar, Mutex, mpsc};
@@ -32,6 +32,7 @@ const MAX_JOBS: usize = 8192;
 const TICK: Duration = Duration::from_millis(20);
 const DURABLE_INTERVAL: Duration = Duration::from_secs(5);
 const DURABLE_BYTES: u64 = 16 * 1024 * 1024;
+const STORAGE_RETRY: Duration = Duration::from_millis(250);
 type Key = (Ulid, u64);
 pub(crate) type Response = mpsc::Receiver<Result<Reply, Failure>>;
 
@@ -62,6 +63,7 @@ struct Queue {
     undurable_bytes: usize,
     peak_undurable_bytes: usize,
     durable_paused: bool,
+    storage_paused: bool,
     durable_pauses: u64,
     durable_rounds: u64,
     debt_since: Option<std::time::Instant>,
@@ -128,6 +130,7 @@ impl Default for Queue {
             undurable_bytes: 0,
             peak_undurable_bytes: 0,
             durable_paused: false,
+            storage_paused: false,
             durable_pauses: 0,
             durable_rounds: 0,
             debt_since: None,
@@ -150,6 +153,8 @@ struct Shared {
     queue: Mutex<Queue>,
     ready: Condvar,
     wake: Arc<Waker>,
+    #[cfg(test)]
+    disk_full: Arc<std::sync::atomic::AtomicBool>,
 }
 enum Job {
     Register(Box<Ring>),
@@ -188,6 +193,13 @@ impl CaptureWriter {
             queue: Mutex::new(Queue::default()),
             ready: Condvar::new(),
             wake,
+            #[cfg(test)]
+            disk_full: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+        });
+        #[cfg(test)]
+        let journal = journal.map(|mut journal| {
+            journal.disk_full = Some(shared.disk_full.clone());
+            journal
         });
         let state = shared.clone();
         let thread = thread::Builder::new()
@@ -266,7 +278,8 @@ impl Handle {
             .unordered
             .front()
             .is_some_and(|(_, at)| now.duration_since(*at) >= TICK);
-        let available = has_room(&q, self.key, cost) && !q.durable_paused && !tick_limit;
+        let available =
+            has_room(&q, self.key, cost) && !q.durable_paused && !q.storage_paused && !tick_limit;
         let pressure = q.pressure.get_mut(&self.key).unwrap();
         if !available && !pressure.full {
             pressure.full_count += 1;
@@ -292,8 +305,17 @@ impl Handle {
             _ => HEADER + 256,
         };
         let mut q = self.shared.queue.lock().unwrap();
-        if let Some(error) = q.failures.get(&self.key) {
-            return Err(io::Error::other(error.to_string()));
+        if let Some(error) = q.failures.get(&self.key)
+            && (error.code != FailureCode::Busy || matches!(event, Event::Output { .. }))
+        {
+            return Err(io::Error::new(
+                if error.code == FailureCode::Busy {
+                    io::ErrorKind::WouldBlock
+                } else {
+                    io::ErrorKind::Other
+                },
+                error.to_string(),
+            ));
         }
         if !has_room(&q, self.key, cost) {
             return Err(io::Error::other("capture queue reservation missing"));
@@ -402,8 +424,33 @@ fn release(shared: &Shared, key: Key, cost: usize) {
     // Commits and control replies wake the actor. Raw credit release must not
     // force an O(seats) poller pass for every append before its tick commits.
 }
-fn failure(error: impl std::fmt::Display) -> Failure {
-    Failure::new(FailureCode::Io, format!("capture writer failed: {error}"))
+fn failure(error: impl Into<Box<dyn std::error::Error + Send + Sync>>) -> Failure {
+    let error = error.into();
+    let mut cause: Option<&(dyn std::error::Error + 'static)> = Some(error.as_ref());
+    let mut full = false;
+    while let Some(value) = cause {
+        full |= value
+            .downcast_ref::<io::Error>()
+            .is_some_and(|error| matches!(error.raw_os_error(), Some(libc::ENOSPC | libc::EDQUOT)));
+        cause = value.source();
+    }
+    Failure::new(
+        if full {
+            FailureCode::Busy
+        } else {
+            FailureCode::Io
+        },
+        format!("capture writer failed: {error}"),
+    )
+}
+fn pause_storage(shared: &Shared, key: Key, error: Failure) {
+    let mut q = shared.queue.lock().unwrap();
+    if !q.storage_paused {
+        q.durable_pauses += 1;
+    }
+    q.storage_paused = true;
+    q.durable_paused = true;
+    q.failures.insert(key, error);
 }
 struct Tail {
     ring: Ring,
@@ -619,7 +666,7 @@ impl Tail {
         self.ring.grouped = true;
         let mut position = None;
         for r in &self.records {
-            if r.kind != 4 {
+            if r.kind != 4 && r.sequence > self.ring.boundary.sequence {
                 self.ring.append_event(&super::decode_event(
                     r.kind,
                     r.key.0,
@@ -657,29 +704,97 @@ impl Tail {
 
 fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
     let mut rings: HashMap<Key, Tail> = HashMap::new();
+    let mut repair_projection: HashSet<Key> = HashSet::new();
+    let mut retry_at = std::time::Instant::now();
     let mut next_flush = std::time::Instant::now() + TICK;
     loop {
+        if shared.queue.lock().unwrap().storage_paused && std::time::Instant::now() >= retry_at {
+            let result = (|| -> Result<(), Failure> {
+                let journal = journal.as_mut().ok_or_else(|| failure("journal absent"))?;
+                commit_group(&mut rings, journal, &shared, true)?;
+                for key in &repair_projection {
+                    if let Some(tail) = rings.get_mut(key) {
+                        tail.ring = Ring::open(
+                            &tail.ring.root,
+                            key.0,
+                            key.1,
+                            tail.ring.first_base(),
+                            tail.ring.settings().clone(),
+                        )
+                        .map_err(failure)?;
+                        tail.compact(journal, true).map_err(failure)?;
+                    }
+                }
+                Ok(())
+            })();
+            match result {
+                Ok(()) => {
+                    repair_projection.clear();
+                    let mut q = shared.queue.lock().unwrap();
+                    q.storage_paused = false;
+                    q.failures
+                        .retain(|_, error| error.code != FailureCode::Busy);
+                    if q.undurable_bytes + OUTPUT_CHUNK_BYTES <= q.durable_capacity {
+                        q.durable_paused = false;
+                    }
+                    drop(q);
+                    let _ = shared.wake.wake();
+                }
+                Err(error) if error.code == FailureCode::Busy => {}
+                Err(error) => {
+                    let mut q = shared.queue.lock().unwrap();
+                    for &key in rings.keys() {
+                        q.failures.insert(key, error.clone());
+                    }
+                    q.storage_paused = false;
+                }
+            }
+            retry_at = std::time::Instant::now() + STORAGE_RETRY;
+        }
         let (job, automatic_ticks) = {
             let mut q = shared.queue.lock().unwrap();
-            if q.jobs.is_empty() && !q.stop {
-                q = if q.automatic_ticks() {
-                    shared
-                        .ready
-                        .wait_timeout(
-                            q,
-                            next_flush.saturating_duration_since(std::time::Instant::now()),
-                        )
-                        .unwrap()
-                        .0
+            if q.storage_paused {
+                if q.stop {
+                    break;
+                }
+                // Output remains charged in the bounded queue. Control queries
+                // get Busy promptly instead of waiting behind a failed append.
+                if let Some(position) = q.jobs.iter().position(|job| matches!(job, Job::Query(..)))
+                {
+                    (q.jobs.remove(position), q.automatic_ticks())
                 } else {
-                    shared.ready.wait(q).unwrap()
-                };
+                    drop(
+                        shared
+                            .ready
+                            .wait_timeout(
+                                q,
+                                retry_at.saturating_duration_since(std::time::Instant::now()),
+                            )
+                            .unwrap(),
+                    );
+                    continue;
+                }
+            } else {
+                if q.jobs.is_empty() && !q.stop {
+                    q = if q.automatic_ticks() {
+                        shared
+                            .ready
+                            .wait_timeout(
+                                q,
+                                next_flush.saturating_duration_since(std::time::Instant::now()),
+                            )
+                            .unwrap()
+                            .0
+                    } else {
+                        shared.ready.wait(q).unwrap()
+                    };
+                }
+                if q.stop && q.jobs.is_empty() {
+                    break;
+                }
+                let automatic_ticks = q.automatic_ticks();
+                (q.jobs.pop_front(), automatic_ticks)
             }
-            if q.stop && q.jobs.is_empty() {
-                break;
-            }
-            let automatic_ticks = q.automatic_ticks();
-            (q.jobs.pop_front(), automatic_ticks)
         };
         let active_started = std::time::Instant::now();
         let active = job.is_some();
@@ -688,11 +803,27 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
         match job {
             Some(Job::Register(ring)) => {
                 let key = (ring.boundary.seat, ring.boundary.generation);
-                let result = journal
+                let bound = journal
                     .as_ref()
                     .ok_or_else(|| super::invalid("JournalDirectoryRequired"))
-                    .and_then(|j| j.bind(&ring))
-                    .and_then(|_| Tail::new(*ring));
+                    .and_then(|j| j.bind(&ring));
+                if let Err(error) = bound {
+                    let error = failure(error);
+                    if error.code == FailureCode::Busy {
+                        pause_storage(&shared, key, error);
+                        shared
+                            .queue
+                            .lock()
+                            .unwrap()
+                            .jobs
+                            .push_front(Job::Register(ring));
+                        retry_at = std::time::Instant::now() + STORAGE_RETRY;
+                        continue;
+                    }
+                    shared.queue.lock().unwrap().failures.insert(key, error);
+                    continue;
+                }
+                let result = Tail::new(*ring);
                 match result {
                     Ok(tail) => {
                         rings.insert(key, tail);
@@ -713,12 +844,19 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
                     .ok_or_else(|| super::invalid("ring absent"))
                     .and_then(|tail| tail.append(journal.as_mut().unwrap(), &event));
                 if let Err(e) = result {
-                    shared
-                        .queue
-                        .lock()
-                        .unwrap()
-                        .failures
-                        .insert(key, failure(e));
+                    let error = failure(e);
+                    if error.code == FailureCode::Busy {
+                        pause_storage(&shared, key, error);
+                        shared
+                            .queue
+                            .lock()
+                            .unwrap()
+                            .jobs
+                            .push_front(Job::Append(key, event, cost));
+                        retry_at = std::time::Instant::now() + STORAGE_RETRY;
+                        continue;
+                    }
+                    shared.queue.lock().unwrap().failures.insert(key, error);
                 }
                 release(&shared, key, cost);
                 let seal = rings
@@ -734,12 +872,28 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
                                 .map_err(failure)
                         });
                     if let Err(e) = result {
-                        shared.queue.lock().unwrap().failures.insert(key, e);
+                        if e.code == FailureCode::Busy {
+                            repair_projection.insert(key);
+                            pause_storage(&shared, key, e);
+                            retry_at = std::time::Instant::now() + STORAGE_RETRY;
+                        } else {
+                            shared.queue.lock().unwrap().failures.insert(key, e);
+                        }
                     }
                 }
             }
             Some(Job::Query(key, query, reply, cost)) => {
-                let failed = shared.queue.lock().unwrap().failures.get(&key).cloned();
+                let failed = {
+                    let q = shared.queue.lock().unwrap();
+                    q.failures.get(&key).cloned().or_else(|| {
+                        q.storage_paused.then(|| {
+                            Failure::new(
+                                FailureCode::Busy,
+                                "capture persistence paused: storage full",
+                            )
+                        })
+                    })
+                };
                 let checkpoint = matches!(query, Query::Checkpoint(_));
                 let mut result = if let Some(e) = failed {
                     Err(e)
@@ -773,6 +927,13 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
                         commit_group(&mut rings, journal.as_mut().unwrap(), &shared, true)
                 {
                     result = Err(e);
+                }
+                if let Err(error) = &result
+                    && error.code == FailureCode::Busy
+                    && checkpoint
+                {
+                    pause_storage(&shared, key, error.clone());
+                    retry_at = std::time::Instant::now() + STORAGE_RETRY;
                 }
                 release(&shared, key, cost);
                 let result = result.map(|mut result| {
@@ -842,13 +1003,21 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
         let tick_requested = tick_reply.is_some();
         #[cfg(not(test))]
         let tick_requested = false;
-        if tick_requested || automatic_ticks && (std::time::Instant::now() >= next_flush || force) {
+        if !shared.queue.lock().unwrap().storage_paused
+            && (tick_requested
+                || automatic_ticks && (std::time::Instant::now() >= next_flush || force))
+        {
             let started = std::time::Instant::now();
             if let Some(journal) = journal.as_mut() {
                 if let Err(e) = commit_group(&mut rings, journal, &shared, force) {
                     for &key in rings.keys() {
-                        shared.queue.lock().unwrap().failures.insert(key, e.clone());
+                        if e.code == FailureCode::Busy {
+                            pause_storage(&shared, key, e.clone());
+                        } else {
+                            shared.queue.lock().unwrap().failures.insert(key, e.clone());
+                        }
                     }
+                    retry_at = std::time::Instant::now() + STORAGE_RETRY;
                 }
                 // Never compact trickling seats once per tick. Wait for actual
                 // idle, or their bounded journal tail reaching the seal size.
@@ -881,12 +1050,14 @@ fn run(shared: Arc<Shared>, mut journal: Option<super::journal::Journal>) {
                 if let Some(key) = idle
                     && let Err(e) = rings.get_mut(&key).unwrap().compact(journal, false)
                 {
-                    shared
-                        .queue
-                        .lock()
-                        .unwrap()
-                        .failures
-                        .insert(key, failure(e));
+                    let error = failure(e);
+                    if error.code == FailureCode::Busy {
+                        repair_projection.insert(key);
+                        pause_storage(&shared, key, error);
+                        retry_at = std::time::Instant::now() + STORAGE_RETRY;
+                    } else {
+                        shared.queue.lock().unwrap().failures.insert(key, error);
+                    }
                 }
             }
             shared.queue.lock().unwrap().timings.busy_ns += started.elapsed().as_nanos() as u64;
@@ -959,6 +1130,215 @@ fn commit_group(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    #[allow(clippy::disallowed_methods)] // Private deterministic ENOSPC injection.
+    fn disk_full_pauses_capture_without_poisoning_the_writer_and_retries() {
+        use std::sync::atomic::Ordering;
+        let temp = tempfile::tempdir().unwrap();
+        let poll = mio::Poll::new().unwrap();
+        let wake = Arc::new(Waker::new(poll.registry(), mio::Token(0)).unwrap());
+        let writer = CaptureWriter::start(wake, Some(&temp.path().join("journal"))).unwrap();
+        let seat = Ulid::new();
+        let root = temp.path().join("ring");
+        let mut handle =
+            writer.register(Ring::open(&root, seat, 1, 0, Settings::default()).unwrap());
+        handle
+            .request(Query::Recovery)
+            .unwrap()
+            .recv_timeout(Duration::from_secs(5))
+            .unwrap()
+            .unwrap();
+        writer.shared.disk_full.store(true, Ordering::Release);
+        handle
+            .append_event(&Event::Output {
+                seat,
+                generation: 1,
+                seq: 1,
+                bytes: b"retained across disk full".to_vec(),
+            })
+            .unwrap();
+        let deadline = std::time::Instant::now() + Duration::from_secs(5);
+        while !writer.shared.queue.lock().unwrap().storage_paused {
+            assert!(std::time::Instant::now() < deadline);
+            thread::sleep(Duration::from_millis(5));
+        }
+        assert!(!writer.thread.as_ref().unwrap().is_finished());
+        assert!(!handle.can_capture());
+        assert!(handle.can_control());
+        assert_eq!(
+            handle.request(Query::Recovery).err().unwrap().code,
+            FailureCode::Busy
+        );
+        assert_eq!(
+            handle
+                .append_event(&Event::Output {
+                    seat,
+                    generation: 1,
+                    seq: 2,
+                    bytes: b"later".to_vec()
+                })
+                .unwrap_err()
+                .kind(),
+            io::ErrorKind::WouldBlock
+        );
+        assert!(writer.shared.queue.lock().unwrap().undurable_bytes <= DURABLE_BYTES as usize);
+        // Exit/resize records still have bounded control credit. Rejecting an
+        // exit with WouldBlock would escape Seat::tick and kill the owner.
+        handle
+            .append_event(&Event::Exited {
+                seat,
+                generation: 1,
+                seq: 2,
+                status: crate::protocol::ExitInfo {
+                    code: 0,
+                    signal: None,
+                },
+            })
+            .unwrap();
+        writer.shared.disk_full.store(false, Ordering::Release);
+        writer.shared.ready.notify_one();
+        loop {
+            if let Ok(response) = handle.request(Query::Recovery)
+                && let Ok(Ok(Reply::RingRecovery { status, .. })) =
+                    response.recv_timeout(Duration::from_secs(1))
+                && status.captured_sequence == 2
+            {
+                break;
+            }
+            assert!(
+                std::time::Instant::now() < deadline,
+                "writer did not recover after space returned"
+            );
+            thread::sleep(Duration::from_millis(5));
+        }
+        drop(handle);
+        drop(writer);
+        let restored = Ring::open(&root, seat, 1, 0, Settings::default()).unwrap();
+        let history = restored.history(1, 1).unwrap();
+        assert!(
+            matches!(&history.records[0].event, Event::Output { bytes, .. } if bytes == b"retained across disk full")
+        );
+    }
+
+    #[test]
+    #[allow(clippy::disallowed_methods)] // A partial buffered append must retry at the same sequence.
+    fn disk_full_append_retry_keeps_the_sequence_and_crc_prefix() {
+        use std::sync::atomic::{AtomicBool, Ordering};
+        let temp = tempfile::tempdir().unwrap();
+        let seat = Ulid::new();
+        let root = temp.path().join("ring");
+        let mut journal =
+            super::super::journal::Journal::open(&temp.path().join("journal")).unwrap();
+        let ring = Ring::open(&root, seat, 1, 0, Settings::default()).unwrap();
+        journal.bind(&ring).unwrap();
+        let mut tail = Tail::new(ring).unwrap();
+        let full = Arc::new(AtomicBool::new(true));
+        journal.disk_full = Some(full.clone());
+        let mut failed = false;
+        for seq in 1..=160 {
+            let event = Event::Output {
+                seat,
+                generation: 1,
+                seq,
+                bytes: vec![seq as u8; OUTPUT_CHUNK_BYTES],
+            };
+            if let Err(error) = tail.append(&mut journal, &event) {
+                assert_eq!(failure(error).code, FailureCode::Busy);
+                assert_eq!(tail.sequence, seq - 1);
+                full.store(false, Ordering::Release);
+                tail.append(&mut journal, &event).unwrap();
+                failed = true;
+            }
+        }
+        assert!(failed);
+        journal.commit(true).unwrap();
+        drop(tail);
+        drop(journal);
+        let restored = Ring::open(&root, seat, 1, 0, Settings::default()).unwrap();
+        assert_eq!(restored.status().captured_sequence, 160);
+        let mut from = 1;
+        while from <= 160 {
+            let page = restored.history(from, 160).unwrap();
+            for record in &page.records {
+                assert!(
+                    matches!(&record.event,Event::Output {seq,bytes,..} if *seq==from && bytes.iter().all(|byte| *byte==from as u8))
+                );
+                from += 1;
+            }
+        }
+    }
+
+    #[test]
+    #[allow(clippy::disallowed_methods)] // Reopen the durable prefix after an interrupted projection.
+    fn interrupted_projection_reopens_before_retrying_the_journal_tail() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("ring");
+        let seat = Ulid::new();
+        let mut journal =
+            super::super::journal::Journal::open(&temp.path().join("journal")).unwrap();
+        let ring = Ring::open(&root, seat, 1, 0, Settings::default()).unwrap();
+        journal.bind(&ring).unwrap();
+        let mut tail = Tail::new(ring).unwrap();
+        for seq in 1..=80 {
+            tail.append(
+                &mut journal,
+                &Event::Output {
+                    seat,
+                    generation: 1,
+                    seq,
+                    bytes: vec![seq as u8; 1024],
+                },
+            )
+            .unwrap();
+        }
+        journal.commit(true).unwrap();
+        tail.ring.grouped = true;
+        for record in tail.records.iter().take(20) {
+            tail.ring
+                .append_event(
+                    &super::super::decode_event(
+                        record.kind,
+                        seat,
+                        1,
+                        record.sequence,
+                        &journal.payload(record).unwrap(),
+                    )
+                    .unwrap(),
+                )
+                .unwrap();
+        }
+        tail.ring.flush().unwrap();
+        for record in tail.records.iter().skip(20).take(20) {
+            tail.ring
+                .append_event(
+                    &super::super::decode_event(
+                        record.kind,
+                        seat,
+                        1,
+                        record.sequence,
+                        &journal.payload(record).unwrap(),
+                    )
+                    .unwrap(),
+                )
+                .unwrap();
+        }
+        tail.ring = Ring::open(&root, seat, 1, 0, Settings::default()).unwrap();
+        tail.compact(&mut journal, true).unwrap();
+        drop(tail);
+        drop(journal);
+        let restored = Ring::open(&root, seat, 1, 0, Settings::default()).unwrap();
+        assert_eq!(restored.status().captured_sequence, 80);
+        let mut from = 1;
+        while from <= 80 {
+            let history = restored.history(from, 80).unwrap();
+            assert!(!history.records.is_empty());
+            for record in history.records {
+                assert_eq!(record.event.sequence(), Some(from));
+                from += 1;
+            }
+        }
+    }
 
     struct OpenGate(Option<mpsc::SyncSender<()>>);
     impl Drop for OpenGate {

@@ -6989,7 +6989,12 @@ impl Worker {
             {
                 continue;
             }
-            self.relaunch(record)?;
+            let id = record.id;
+            if let Err(error) = self.relaunch(record) {
+                // One damaged or full capture must not abort recovery of every
+                // other retained session or take the backend down again.
+                eprintln!("SeatRecoveryFailed [{id}]: {error}");
+            }
         }
         Ok(())
     }

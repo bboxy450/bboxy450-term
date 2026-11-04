@@ -64,6 +64,9 @@ mod logic_worker_model;
 #[path = "projection_writer_model.rs"]
 mod projection_writer_model;
 
+#[path = "capture_storage_model.rs"]
+mod capture_storage_model;
+
 #[path = "watcher_model.rs"]
 mod watcher_model;
 
@@ -1891,6 +1894,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(logic_worker_model::cases());
     cases.extend(projection_writer_model::cases());
     cases.extend(watcher_model::cases());
+    cases.extend(capture_storage_model::cases());
     cases.extend(harness_status_model::cases());
     cases
 }

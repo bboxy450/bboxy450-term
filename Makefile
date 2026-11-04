@@ -1789,7 +1789,19 @@ test-jsonl-recovery:
 	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib -E 'test(provenance::projection)'; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts models::provenance_models::jsonl_repair_yields_and_publishes -- --exact
 
-.PHONY: test-watcher-burst test-watcher-import test-watcher-claims test-watcher-models profile-watcher-burst profile-rebase-watcher
+.PHONY: test-capture-storage-pressure test-capture-storage-model test-retained-seat-recovery test-watcher-burst test-watcher-import test-watcher-claims test-watcher-models profile-watcher-burst profile-rebase-watcher
+test-capture-storage-pressure:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --lib -E 'test(ring::writer::tests::) | test(ring::journal::)'
+
+test-capture-storage-model:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts models::capture_storage_model::
+
+test-retained-seat-recovery:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test provider_gui --run-ignored only -E 'test(operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch)'
+
 test-watcher-import:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib logic::task_import::tests::task_migration_held_import_keeps_messages_tasks_and_other_roots_live_and_refuses_stale_publication -- --exact --nocapture
