@@ -21,7 +21,9 @@
 //! must list), else the committed frontmatter. A document whose
 //! fields are unknown stays a candidate; the caller's exact or batched summary
 //! applies the authoritative filter, so the index only ever narrows.
-use std::collections::HashMap;
+// Local catalog lookups use hashbrown's fast default hasher; wire objects
+// remain ordered serde_json maps and retain their canonical fingerprints.
+use hashbrown::HashMap;
 use std::io::{BufRead, BufReader, Read};
 use std::os::unix::fs::{MetadataExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
@@ -462,9 +464,8 @@ impl Listed {
         }
     }
 
-    /// Rows `query` admits, in native order. Committed documents use their
-    /// committed fields (native semantics, even under a workspace edit);
-    /// workspace-only documents use their workspace source.
+    /// Rows `query` admits, in native order. Checked-out documents use workspace
+    /// fields so uncommitted assignments are visible; other rows use committed fields.
     pub fn select(
         &mut self,
         query: &Query,
@@ -1093,6 +1094,64 @@ fn build(mut backend: Backend, root: &Path) -> Result<(Committed, u64), (String,
 mod tests {
     use super::*;
 
+    #[test]
+    #[ignore = "measured catalog lookup workload; make bench-gitkb-index"]
+    fn catalog_map_workload() {
+        let keys: Vec<_> = (0..16_384)
+            .map(|i| {
+                (
+                    format!("tasks/{i:05}-research-provenance"),
+                    json!(format!("doc-{i:05}")),
+                )
+            })
+            .collect();
+        let docs = keys
+            .iter()
+            .map(|(slug, id)| {
+                (
+                    slug.clone(),
+                    Doc::new(
+                        id.as_str().unwrap().into(),
+                        json!(1),
+                        json!(slug),
+                        json!("task"),
+                        Map::new(),
+                        String::new(),
+                        Value::Null,
+                    ),
+                )
+            })
+            .collect();
+        let index = Committed {
+            signal: "benchmark".into(),
+            docs,
+            edges: HashMap::new(),
+            skipped: Map::new(),
+        };
+        let mut times = Vec::new();
+        for _ in 0..7 {
+            let start = Instant::now();
+            for _ in 0..128 {
+                for (slug, id) in &keys {
+                    assert!(
+                        std::hint::black_box(
+                            index.doc(std::hint::black_box(slug), std::hint::black_box(id))
+                        )
+                        .is_some()
+                    );
+                }
+            }
+            times.push(start.elapsed().as_secs_f64() * 1000.);
+        }
+        times.sort_by(f64::total_cmp);
+        println!(
+            "catalog_map_workload docs={} lookups_per_sample={} median_ms={:.3}",
+            keys.len(),
+            keys.len() * 128,
+            times[times.len() / 2]
+        );
+    }
+
     /// Recorded from a private git-kb 0.2.19 fixture: the unfiltered
     /// `list --json --sort title --asc` rows (identity, type and status),
     /// the export's `--where` fields, and native filtered listings. `tasks/a`
@@ -1233,7 +1292,10 @@ mod tests {
                 &["--status", "draft,backlog,open"],
                 &["tasks/b", "tasks/f", "tasks/f2"],
             ),
-            (&["--where", "assignee = carol"], &["tasks/a", "tasks/c", "tasks/w"]),
+            (
+                &["--where", "assignee = carol"],
+                &["tasks/a", "tasks/c", "tasks/w"],
+            ),
             (&["--where", "assignee = alice"], &[]),
             (&["--where", "assignee = bob"], &["tasks/b"]),
             (&["--where", "assignee = Bob@x-y"], &["tasks/f", "tasks/f2"]),

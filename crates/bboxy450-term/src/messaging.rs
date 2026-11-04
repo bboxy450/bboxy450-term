@@ -1167,6 +1167,7 @@ fn send(
 
 /// Delay before the one retry of a task read refused `deadline_exceeded`.
 pub const DEADLINE_BACKOFF: std::time::Duration = std::time::Duration::from_millis(500);
+pub const TASK_REFRESH_BACKOFF: std::time::Duration = std::time::Duration::from_secs(5);
 
 /// Tasks one view page reads: the newest changes first, then older on scroll.
 pub const TASK_PAGE: usize = 20;
@@ -1185,6 +1186,9 @@ pub struct Records {
     retry_blocked: bool,
     retry_delay: Option<std::time::Duration>,
     retry_started: Option<std::time::Instant>,
+    retry_at: Option<std::time::Instant>,
+    tasks_loaded: bool,
+    task_load_started: Option<std::time::Instant>,
     retries: u8,
     /// `issue` came from a refused read, so the next good read clears it.
     read_issue: bool,
@@ -1228,6 +1232,9 @@ impl Records {
     ) -> bool {
         let next = binding.ok();
         if self.workspace_required && self.workspace == next {
+            if next.is_none() && !self.retry_blocked {
+                self.schedule_retry(TASK_REFRESH_BACKOFF);
+            }
             return false;
         }
         self.workspace_required = true;
@@ -1236,6 +1243,9 @@ impl Records {
         self.retry_blocked = false;
         self.retry_delay = None;
         self.retry_started = None;
+        self.retry_at = None;
+        self.tasks_loaded = false;
+        self.task_load_started = Some(std::time::Instant::now());
         self.retries = 0;
         self.deadline_retried.clear();
         self.pending.retain(|_, request| {
@@ -1252,8 +1262,60 @@ impl Records {
         self.read_issue = false;
         if next.is_some() {
             self.refresh();
+        } else {
+            self.schedule_retry(TASK_REFRESH_BACKOFF);
         }
         true
+    }
+    fn schedule_retry(&mut self, delay: std::time::Duration) {
+        if !self.retry_blocked {
+            self.retry_blocked = true;
+            self.retry_delay = Some(delay);
+            self.retry_at = Some(std::time::Instant::now() + delay);
+        }
+    }
+    pub fn retry_epoch(&self) -> u64 {
+        self.retry_epoch
+    }
+    /// Refresh reads only; uncertain mutations retain their original identity.
+    pub fn refresh_tasks_now(&mut self) {
+        self.retry_epoch = self.retry_epoch.wrapping_add(1);
+        self.retry_blocked = false;
+        self.retry_delay = None;
+        self.retry_at = None;
+        self.retry_started = None;
+        self.retries = 0;
+        self.deadline_retried.clear();
+        if self.read_issue || self.workspace.is_none() {
+            self.issue = None;
+            self.read_issue = false;
+        }
+        self.task_load_started = Some(std::time::Instant::now());
+        self.refresh();
+    }
+    pub fn panel_state(
+        &self,
+        now: std::time::Instant,
+    ) -> Option<bbt_ui::modules::stream_dock::TaskState> {
+        if self.scope.is_none() || !self.tasks.is_empty() {
+            return None;
+        }
+        let issue = self.issue.as_deref();
+        if self.tasks_loaded && issue.is_none() {
+            return None;
+        }
+        Some(bbt_ui::modules::stream_dock::TaskState {
+            loading: issue.is_none(),
+            message: issue.map(friendly_task_issue).unwrap_or_default().into(),
+            retry_in: self
+                .retry_at
+                .map(|at| at.saturating_duration_since(now).as_millis().div_ceil(1000) as u64),
+            phase: (now
+                .saturating_duration_since(self.task_load_started.unwrap_or(now))
+                .as_millis()
+                / 300
+                % 4) as u8,
+        })
     }
     pub fn take_retry(&mut self) -> Option<(u64, std::time::Duration)> {
         self.retry_delay
@@ -1263,6 +1325,7 @@ impl Records {
     pub fn retry_ready(&mut self, epoch: u64) -> bool {
         if epoch == self.retry_epoch && self.retry_blocked {
             self.retry_blocked = false;
+            self.retry_at = None;
             true
         } else {
             false
@@ -1325,7 +1388,7 @@ impl Records {
         }
         if let Some(issue) = &self.issue {
             out.push(Entry::Note {
-                text: issue.clone(),
+                text: friendly_task_issue(issue).into(),
                 padding: [4.; 4],
             });
         }
@@ -1352,6 +1415,7 @@ impl Records {
         *self = Self {
             scope: Some(scope),
             retry_epoch,
+            task_load_started: Some(std::time::Instant::now()),
             pending,
             ..Default::default()
         };
@@ -1679,6 +1743,8 @@ impl Records {
             }
             match (&p.read, &row.reply) {
                 (Some(Read::Tasks(after)), Reply::Task(TaskResponse::Items { items, next })) => {
+                    self.tasks_loaded = true;
+                    self.retry_at = None;
                     for card in items {
                         if self.task(card.id) != Some(card) {
                             self.docs.retain(|doc| doc.id != card.id);
@@ -1778,6 +1844,17 @@ impl Records {
                 (_, Reply::Refused(reason)) => {
                     self.issue = Some(reason.chars().take(512).collect());
                     self.read_issue = p.read.is_some();
+                    if self.tasks.is_empty()
+                        && matches!(&p.read, Some(Read::Tasks(_)))
+                        && (transient(reason)
+                            || reason
+                                .strip_prefix("rejected: ")
+                                .unwrap_or(reason)
+                                .starts_with("deadline_exceeded"))
+                    {
+                        self.enqueue(p.read.clone().unwrap());
+                        self.schedule_retry(TASK_REFRESH_BACKOFF);
+                    }
                     if let Some(task) = p.task {
                         self.review_issue = Some((task, reason.chars().take(512).collect()));
                     }
@@ -1787,5 +1864,20 @@ impl Records {
             changed = true;
         }
         changed
+    }
+}
+
+fn friendly_task_issue(reason: &str) -> &str {
+    let reason = reason.strip_prefix("rejected: ").unwrap_or(reason);
+    if reason.starts_with("workspace_pending") {
+        "Workspace is opening."
+    } else if reason.starts_with("provider_busy") || reason.starts_with("provider_changed") {
+        "Workspace is busy."
+    } else if reason.starts_with("deadline_exceeded") {
+        "Request timed out."
+    } else if reason.starts_with("backend_unavailable") {
+        "Backend is unavailable."
+    } else {
+        "Could not load tasks."
     }
 }

@@ -1213,11 +1213,10 @@ fn native_write(fx: &mut Fixture, root: &Path, slug: &str, fields: &str, update:
     fx.cli(root, &args, Some(&raw));
 }
 
-/// Index-served filters equal the backend path (`BBOXY_GITKB_INDEX=off`),
-/// including the native semantics for a committed document edited in its
-/// workspace and a workspace-only document; workspace writes change only
-/// the workspace signal, commits change the store signal and fall back
-/// until the rebuild.
+/// Checked-out assignments are visible before commit. The native-path parity
+/// matrix uses matching committed/workspace fields: native `--where` intentionally
+/// reads committed fields, while the index serves the selected workspace source.
+/// Workspace writes change only the workspace signal; commits rebuild the index.
 fn index_checks(fx: &mut Fixture) -> Vec<Conn> {
     let root = fx.project("root-index");
     for (slug, fields) in [
@@ -1258,7 +1257,7 @@ fn index_checks(fx: &mut Fixture) -> Vec<Conn> {
         ],
         None,
     );
-    // Committed alice, workspace carol: native filters use the committed value.
+    // Committed alice, workspace carol: the index follows the workspace assignment.
     native_write(
         fx,
         &root,
@@ -1283,13 +1282,26 @@ fn index_checks(fx: &mut Fixture) -> Vec<Conn> {
     let carol_task = json!({"filter": {"type": "task", "assignee": "carol"}});
     assert_eq!(
         slugs(&on.collect("list", carol_task.clone()), ""),
-        ["tasks/c", "tasks/w"]
+        ["tasks/a", "tasks/c", "tasks/w"]
     );
     let cold = index_facts(&mut on);
     assert_eq!(cold["fallbacks"], 0, "{cold}");
     assert_eq!(cold["served"], 1, "{cold}");
     let mut off = fx.connect(&root, None, Some(off_env), false).unwrap();
     assert_eq!(index_facts(&mut off)["enabled"], false);
+    assert_eq!(
+        slugs(&off.collect("list", carol_task), ""),
+        ["tasks/c", "tasks/w"]
+    );
+    // Compare the two paths with the same source fields. Keep the uncommitted
+    // assignment witness above; do not require it to match native --where.
+    native_write(
+        fx,
+        &root,
+        "tasks/a",
+        "type: task\nstatus: active\nassignee: alice\n",
+        true,
+    );
     let ready = wait_ready(&mut on);
     assert_eq!(ready["documents"], 7, "{ready}");
     let filters = || {
@@ -1347,6 +1359,14 @@ fn index_checks(fx: &mut Fixture) -> Vec<Conn> {
         ["tasks/c", "tasks/w"]
     );
 
+    // An uncommitted reassignment must remain visible alongside workspace-only tasks.
+    native_write(
+        fx,
+        &root,
+        "tasks/a",
+        "type: task\nstatus: completed\nassignee: carol\nswarm: s9\n",
+        true,
+    );
     // A workspace write changes the workspace signal, not the store signal.
     let before = index_facts(&mut on);
     native_write(
@@ -1362,7 +1382,7 @@ fn index_checks(fx: &mut Fixture) -> Vec<Conn> {
     assert_eq!(written["ready"], true);
     assert_eq!(
         slugs(&on.collect("list", carol.clone()), ""),
-        ["tasks/c", "tasks/w", "tasks/x"]
+        ["tasks/a", "tasks/c", "tasks/w", "tasks/x"]
     );
     // A commit changes the store signal; filters fall back until the rebuild.
     fx.cli(

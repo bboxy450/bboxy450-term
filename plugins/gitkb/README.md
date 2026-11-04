@@ -16,6 +16,15 @@ make probe-gitkb-harmony PLUGIN_WORKSPACE=/absolute/project
 make install-gitkb-plugin-local PLUGIN_WORKSPACE=/absolute/project
 ```
 
+Local catalog and record caches use `hashbrown`; public JSON ordering and
+fingerprints are unchanged. `make bench-gitkb-index` measures the real catalog
+lookup path with 16,384 documents and 2,097,152 lookups per sample. It reports
+the median of seven samples, not end-to-end indexing time.
+
+Indexed filters use workspace fields for checked-out records, making assignments
+visible before commit. Native `git-kb --where` uses committed fields; conformance
+checks both behaviors and compares the paths when those fields agree.
+
 `GITKB_BIN` selects the installed backend at build time (`build.rs` reads it as
 `BBOXY_GITKB_BIN`; unset, `git-kb` on PATH); `TARGET_DIR` selects the
 worktree-local output. The build pins the backend's canonical path, SHA-256 and

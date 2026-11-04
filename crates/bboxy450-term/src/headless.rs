@@ -221,6 +221,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             dirty = true;
                         }
                     }
+                    UiEvent::TaskPanelTick(epoch) => {
+                        app.task_panel_tick(epoch);
+                        dirty = true;
+                    }
                     UiEvent::DocumentRetry(epoch) => {
                         if app.document.retry_ready(epoch) {
                             app.drive_document();

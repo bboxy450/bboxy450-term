@@ -10,7 +10,8 @@
 //! `workspace_stats`, `read`, `resources`, `token`); the batch path and cache
 //! are new. Uses (does not copy) GitKB's document.read.v1 CLI contract,
 //! https://github.com/gitkb/gitkb-core crates/gitkb-cli/src/commands/show.rs.
-use std::collections::{HashMap, VecDeque};
+use hashbrown::HashMap;
+use std::collections::VecDeque;
 use std::fs::OpenOptions;
 use std::io::{Read, Write};
 use std::os::unix::fs::{DirBuilderExt, MetadataExt, OpenOptionsExt};

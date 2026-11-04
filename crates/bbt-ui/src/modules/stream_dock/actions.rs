@@ -12,6 +12,7 @@ use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
+    RefreshTasks,
     Task(String),
     OpenRecord(String),
     Delegate(String),
@@ -87,6 +88,7 @@ impl Regions {
         for (i, entry) in view.entries.iter().enumerate() {
             let key = format!("e{}", i + start);
             match entry {
+                Entry::TaskState { .. } => out.add("conversation/tasks-refresh", Action::RefreshTasks),
                 Entry::Message { data, .. } => {
                     for (j, attachment) in data.attach.iter().enumerate() {
                         let target = if attachment.path.is_empty() {

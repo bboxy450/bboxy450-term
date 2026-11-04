@@ -590,6 +590,7 @@ name = "bboxy450-term-data_source-gitkb"
 version = "0.1.1"
 dependencies = [
  "bboxy450-term-plugin-sdk",
+ "hashbrown 0.17.1",
  "libc",
  "serde_json",
  "serde_yaml",

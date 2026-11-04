@@ -23,6 +23,8 @@ mod plugin_models;
 
 #[path = "task_page_model.rs"]
 mod task_page_model;
+#[path = "task_panel_model.rs"]
+mod task_panel_model;
 
 #[path = "report_models.rs"]
 mod report_models;
@@ -1880,6 +1882,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     // Plugin-system families live beside their own contract module.
     cases.extend(plugin_models::cases());
     cases.extend(task_page_model::cases());
+    cases.extend(task_panel_model::cases());
     cases.extend(report_models::cases());
     cases.extend(task_amend_model::cases());
     cases.extend(capability_models::cases());

@@ -86,6 +86,7 @@ pub enum UiEvent {
     Usage(bboxy450_usage::poller::Update),
     DocumentRetry(u64),
     TaskRetry(u64),
+    TaskPanelTick(u64),
     SeatTaskRetry(bbt_mux::Ulid),
     LaunchDirectoryChecked {
         token: bbt_mux::Ulid,
@@ -2329,6 +2330,7 @@ struct App {
     composer_images: bboxy450_term::composer_images::Images,
     composer_scope: Option<bbt_proto::SwarmId>,
     task_records: messaging::Records,
+    task_panel_timer: Option<sidebar_chat::TaskPanelTimer>,
     message_history: messaging::History,
     events_seen: Option<Arc<bboxy450_term::model::EventLane>>,
     task_regions: bbt_ui::modules::stream_dock::Regions,
@@ -2552,6 +2554,7 @@ impl App {
             composer_images: Default::default(),
             composer_scope: None,
             task_records: messaging::Records::default(),
+            task_panel_timer: None,
             message_history: messaging::History::default(),
             events_seen: None,
             task_regions: Default::default(),
@@ -3655,6 +3658,7 @@ impl App {
         self.scene.set_unread(&unread);
         self.append_close_notices();
         self.schedule_chat_notice_expiry();
+        self.sync_task_panel();
         if !self.conversation_cache_matches(self.solved_size) {
             self.conversation_layout = None;
         }
@@ -3663,6 +3667,7 @@ impl App {
         use bbt_ui::modules::stream_dock::Action;
         let parse = |id: &str| id.parse::<bbt_mux::Ulid>().ok();
         match action {
+            Action::RefreshTasks => self.task_records.refresh_tasks_now(),
             Action::OpenRecord(target) => self.open_document(target),
             Action::Task(id) => self.open_document(id),
             Action::Delegate(id) => {
@@ -8509,6 +8514,7 @@ impl ApplicationHandler<UiEvent> for App {
                     self.request_redraw();
                 }
             }
+            UiEvent::TaskPanelTick(epoch) => self.task_panel_tick(epoch),
             UiEvent::DocumentRetry(epoch) => {
                 if self.document.retry_ready(epoch) {
                     self.drive_document();

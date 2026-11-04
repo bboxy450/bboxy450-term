@@ -485,7 +485,7 @@ async fn open_codex(path: &Path, owner: Option<u32>) -> Result<Socket> {
 }
 async fn read_codex_thread(
     socket: &mut Socket,
-    path: &Path,
+    _path: &Path,
     thread: &str,
     request_id: u64,
 ) -> Result<Value> {
@@ -506,7 +506,7 @@ async fn read_codex_thread(
                     .map(|id| super::observe::short(id, 256)),
                 "status_type": identity["thread"]["status"]["type"].as_str()
                     .map(|status| super::observe::short(status, 256)),
-                "socket_target": std::fs::canonicalize(path).ok(),
+                "socket_target": std::fs::canonicalize(_path).ok(),
             })
         );
     }

@@ -31,6 +31,62 @@ fn draft() -> Submission {
         priority: 9,
     }
 }
+
+#[test]
+fn task_panel_loading_error_countdown_and_swarm_fences() {
+    use bboxy450_term::messaging::{Records, TASK_REFRESH_BACKOFF};
+    use bbt_proto::messaging::TaskResponse;
+    use std::time::{Duration, Instant};
+    let a = SwarmId::from_u128(901);
+    let b = SwarmId::from_u128(902);
+    let mut records = Records::default();
+    records.select(a);
+    assert!(records.panel_state(Instant::now()).unwrap().loading);
+    records.bind_workspace(Err(
+        "workspace_pending: swarm private-id\nworkspace is opening; retry shortly",
+    ));
+    let now = Instant::now();
+    let panel = records.panel_state(now).unwrap();
+    assert!(!panel.loading);
+    assert_eq!(panel.message, "Workspace is opening.");
+    assert_eq!(panel.retry_in, Some(5));
+    assert_eq!(
+        records
+            .panel_state(now + Duration::from_secs(2))
+            .unwrap()
+            .retry_in,
+        Some(3)
+    );
+    let (old, delay) = records.take_retry().unwrap();
+    assert_eq!(delay, TASK_REFRESH_BACKOFF);
+    records.select(b);
+    records.select(a);
+    assert!(
+        !records.retry_ready(old),
+        "A to B to A does not revive A's old timer"
+    );
+    let commands = records.commands();
+    let mut replies = Results::default();
+    replies.push(
+        op_id(swarm_list(&commands).unwrap()),
+        Reply::Task(TaskResponse::Items {
+            items: vec![],
+            next: None,
+        }),
+    );
+    records.replies(&replies);
+    assert!(
+        records.panel_state(Instant::now()).is_none(),
+        "an empty successful list is not loading"
+    );
+    records.bind_workspace(Err("workspace_pending"));
+    let (stale, _) = records.take_retry().unwrap();
+    records.refresh_tasks_now();
+    assert!(
+        !records.retry_ready(stale),
+        "manual refresh retires the old countdown"
+    );
+}
 #[test]
 fn send_captures_the_selected_swarm_exact_destination_and_stable_operation_id() {
     let c = Client::default();

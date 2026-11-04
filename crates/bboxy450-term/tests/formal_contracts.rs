@@ -131,6 +131,26 @@ fn project_contracts_and_broken_controls() -> Result<(), Box<dyn std::error::Err
 
 // The UI-only gate executes/exports only this changed pair, not the corpus.
 #[test]
+fn selected_task_panel_retry() -> Result<(), Box<dyn std::error::Error>> {
+    let Some(output) = std::env::var_os("BBOXY_TASK_PANEL_FORMAL_OUTPUT") else {
+        return Ok(());
+    };
+    let root = Path::new(&output);
+    std::fs::create_dir_all(root)?;
+    let mut manifest = String::new();
+    for (m, expected) in models::cases()
+        .into_iter()
+        .filter(|(m, _)| m.name == "TaskPanelRetry" || m.name == "BrokenTaskPanelRetry")
+    {
+        export(m, expected, root, &mut manifest)?;
+    }
+    assert_eq!(manifest.lines().count(), 2);
+    std::fs::write(root.join("manifest.tsv"), manifest)?;
+    Ok(())
+}
+
+// The UI-only gate executes/exports only this changed pair, not the corpus.
+#[test]
 fn selected_gui_backend_preservation() -> Result<(), Box<dyn std::error::Error>> {
     let output =
         std::env::var_os("BBOXY_FORMAL_OUTPUT").ok_or("focused export directory required")?;

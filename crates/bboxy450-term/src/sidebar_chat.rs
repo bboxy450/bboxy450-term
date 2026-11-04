@@ -22,6 +22,63 @@ impl Drop for NoticeTimer {
     }
 }
 
+pub(super) struct TaskPanelTimer {
+    epoch: u64,
+    task: tokio::task::AbortHandle,
+}
+impl Drop for TaskPanelTimer {
+    fn drop(&mut self) {
+        self.task.abort();
+    }
+}
+
+impl App {
+    pub(super) fn sync_task_panel(&mut self) {
+        if let Some((epoch, delay)) = self.task_records.take_retry() {
+            let proxy = self.proxy.clone();
+            bbt_rt::handle().spawn(async move {
+                tokio::time::sleep(delay).await;
+                let _ = proxy.send_event(UiEvent::TaskRetry(epoch));
+            });
+        }
+        let Some(data) = self.task_records.panel_state(Instant::now()) else {
+            self.task_panel_timer = None;
+            return;
+        };
+        self.task_stream.entries = vec![Entry::TaskState { data }];
+        let epoch = self.task_records.retry_epoch();
+        if self
+            .task_panel_timer
+            .as_ref()
+            .is_some_and(|timer| timer.epoch == epoch)
+        {
+            return;
+        }
+        self.task_panel_timer = None;
+        let proxy = self.proxy.clone();
+        let task = bbt_rt::handle().spawn(async move {
+            loop {
+                tokio::time::sleep(Duration::from_millis(300)).await;
+                if proxy.send_event(UiEvent::TaskPanelTick(epoch)).is_err() {
+                    break;
+                }
+            }
+        });
+        self.task_panel_timer = Some(TaskPanelTimer {
+            epoch,
+            task: task.abort_handle(),
+        });
+    }
+    pub(super) fn task_panel_tick(&mut self, epoch: u64) {
+        if epoch != self.task_records.retry_epoch() || self.task_panel_timer.is_none() {
+            return;
+        }
+        self.sync_task_panel();
+        self.conversation_layout = None;
+        self.request_redraw();
+    }
+}
+
 /// A notice joins the chronological chat rows. Both UI timestamps are epoch milliseconds.
 fn insert_notice(entries: &mut Vec<Entry>, notice: &bboxy450_term::close::CloseNotice) {
     let at = entries

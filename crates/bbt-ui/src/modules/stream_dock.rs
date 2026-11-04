@@ -14,6 +14,8 @@ use bbt_ui_model::{STYLE, TOKENS, draw::Color as DrawColor, layout::Axis};
 use serde::{Deserialize, Serialize};
 mod actions;
 pub use actions::{Action, Regions};
+mod task_state;
+pub use task_state::TaskState;
 
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
@@ -171,6 +173,7 @@ pub struct Channel {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "kebab-case")]
 pub enum Entry {
+    TaskState { data: TaskState },
     Message {
         data: Box<Message>,
         #[serde(default)]
@@ -1491,6 +1494,7 @@ impl StreamDock {
                             .into(),
                         ],
                     ),
+                    Entry::TaskState { data } => data.element(ctx, [240., 180.]),
                     Entry::Note { text, padding } => column(
                         &key,
                         plain(None, *padding, 0.),

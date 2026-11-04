@@ -152,6 +152,9 @@ impl Conversation {
         let task_size = Accordion::body_size(ctx, [width, tasks_height], open[0]);
         let chat_size = Accordion::body_size(ctx, [width, chat_height], open[1]);
         let tasks_body = open[0].then(|| {
+            if let Some(crate::modules::stream_dock::Entry::TaskState { data }) = tasks.entries.first() {
+                return named("conversation/tasks", data.element(ctx, task_size));
+            }
             named(
                 "conversation/tasks",
                 c::Element::ScrollView(c::ScrollView {

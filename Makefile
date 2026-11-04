@@ -14,6 +14,7 @@ TARGET_DIR ?= target
 GITKB_BIN ?= $(shell command -v git-kb)
 GITKB_CRATE := bboxy450-term-data_source-gitkb
 GITKB_PLUGIN :=$(TARGET_DIR)/plugins/bboxy450-term-data_source-gitkb
+GITKB_CHECK_PLUGIN ?= $(abspath $(GITKB_PLUGIN))
 # Each fixture owns real app/PTY/provider processes. Leave fixed provider deadlines
 # for its own scenario rather than unrelated GUI fixture startup.
 SWARM_TEST_THREADS ?= 2
@@ -361,7 +362,19 @@ test-cursors:
 	cargo test --locked -p bboxy450-ui --target-dir '$(TARGET_DIR)'; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) pointer_cursor
 
-.PHONY: test-chat-recent test-chat-sections test-chat-sections-e2e test-chat-notices check-chat-sections test-chat-ux parity-chat
+.PHONY: test-task-panel test-chat-recent test-chat-sections test-chat-sections-e2e test-chat-notices check-chat-sections test-chat-ux parity-chat
+.PHONY: test-task-panel-formal
+test-task-panel-formal:
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_TASK_PANEL_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/task-panel-formal/models' cargo test --locked --release -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts selected_task_panel_retry -- --exact --nocapture; \
+	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(pathlib.Path(sys.argv[2]).resolve()); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"TaskPanelRetry":"pass","BrokenTaskPanelRetry":"safety"}; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/task-panel-formal' '$(FORMAL_DIR)'
+
+test-task-panel:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked --release -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test task_panel; \
+	cargo test --locked --release -p $(APP) --target-dir '$(TARGET_DIR)' --test messaging_ui; \
+	cargo check --locked --release -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP)
+
 test-chat-recent:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-term-proto --target-dir '$(TARGET_DIR)' --test gui_wire_golden; \
@@ -1538,7 +1551,11 @@ test-harness-vocabulary:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --test vocabulary
 
-.PHONY: build-gitkb-plugin check-gitkb-plugin install-gitkb-plugin-local
+.PHONY: build-gitkb-plugin check-gitkb-plugin install-gitkb-plugin-local bench-gitkb-index
+bench-gitkb-index:
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_GITKB_BIN='$(GITKB_BIN)' cargo test --locked --release -p $(GITKB_CRATE) --target-dir '$(TARGET_DIR)' --bin $(GITKB_CRATE) index::tests::catalog_map_workload -- --ignored --exact --nocapture
+
 build-gitkb-plugin:
 	@set -eu; case '$(PROFILE)' in debug) flag='' ;; release) flag='--release' ;; *) echo 'PROFILE must be debug or release' >&2; exit 2 ;; esac; \
 	test -n '$(GITKB_BIN)' || { echo 'GITKB_BIN is required: git-kb is not on PATH' >&2; exit 2; }; \
@@ -1551,12 +1568,14 @@ build-gitkb-plugin:
 
 check-gitkb-plugin: build-gitkb-plugin
 	@set -eu; . ./scripts/cache-env.sh; \
-	BBOXY_GITKB_BIN='$(GITKB_BIN)' cargo build --locked -p $(GITKB_CRATE) --example install-gitkb-plugin --target-dir '$(TARGET_DIR)'; \
-	BBOXY_GITKB_BIN='$(GITKB_BIN)' BBOXY_GITKB_PLUGIN='$(abspath $(GITKB_PLUGIN))' \
-	BBOXY_GITKB_INSTALLER='$(abspath $(TARGET_DIR))/debug/examples/install-gitkb-plugin' \
+	gitkb_profile=''; if [ '$(PROFILE)' = release ]; then gitkb_profile=--release; fi; \
+	BBOXY_GITKB_BIN='$(GITKB_BIN)' cargo test --locked $$gitkb_profile -p $(GITKB_CRATE) --target-dir '$(TARGET_DIR)' --bin $(GITKB_CRATE); \
+	BBOXY_GITKB_BIN='$(GITKB_BIN)' cargo build --locked $$gitkb_profile -p $(GITKB_CRATE) --example install-gitkb-plugin --target-dir '$(TARGET_DIR)'; \
+	BBOXY_GITKB_BIN='$(GITKB_BIN)' BBOXY_GITKB_PLUGIN='$(GITKB_CHECK_PLUGIN)' \
+	BBOXY_GITKB_INSTALLER='$(abspath $(TARGET_DIR))/$(PROFILE)/examples/install-gitkb-plugin' \
 	BBOXY_GITKB_EVIDENCE='$(abspath $(TARGET_DIR))/gitkb-plugin-check.json' \
 	BBOXY_GITKB_TRACE_TARGET='$(abspath $(TARGET_DIR))/gitkb-traced' \
-	cargo test --locked -p $(GITKB_CRATE) --target-dir '$(TARGET_DIR)' --test conformance -- --ignored --exact conformance --nocapture
+	cargo test --locked $$gitkb_profile -p $(GITKB_CRATE) --target-dir '$(TARGET_DIR)' --test conformance -- --ignored --exact conformance --nocapture
 	@$(MAKE) plugin-doctor PLUGIN='$(GITKB_PLUGIN)' DOCTOR_ARGS='--package plugins/gitkb --child git-kb'
 
 .PHONY: probe-gitkb-harmony
@@ -2017,13 +2036,14 @@ format-kb-reports:
 PLUGIN ?=
 JSON ?=
 DOCTOR_ARGS ?=
-DOCTOR = $(TARGET_DIR)/debug/examples/bboxy450-term-plugin-doctor
+DOCTOR = $(TARGET_DIR)/$(PROFILE)/examples/bboxy450-term-plugin-doctor
 DOCTOR_ENV = BBOXY450_JAVA='$(firstword $(wildcard $(FORMAL_DIR)/tools/java-*/Contents/Home/bin/java $(FORMAL_DIR)/tools/java-*/bin/java))' BBOXY450_TLC_JAR='$(wildcard $(FORMAL_DIR)/tools/tla2tools.jar)'
 .PHONY: plugin-doctor plugin-doctor-test
 plugin-doctor:
 	@test -n '$(PLUGIN)' || { echo 'PLUGIN is required: a plugin executable or package directory' >&2; exit 2; }
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo build --locked --quiet -p bboxy450-term-plugin-sdk --example bboxy450-term-plugin-doctor --target-dir '$(TARGET_DIR)'; \
+	doctor_profile=''; if [ '$(PROFILE)' = release ]; then doctor_profile=--release; fi; \
+	cargo build --locked $$doctor_profile --quiet -p bboxy450-term-plugin-sdk --example bboxy450-term-plugin-doctor --target-dir '$(TARGET_DIR)'; \
 	$(DOCTOR_ENV) '$(DOCTOR)' '$(abspath $(PLUGIN))' $(if $(JSON),--json) $(DOCTOR_ARGS)
 
 plugin-doctor-test:
