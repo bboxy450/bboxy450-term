@@ -56,6 +56,7 @@ help:
 	  'make tools                      Install the Rust workflow tools (cargo-nextest, sccache) once per machine' \
 	  'make land / make push           Diff-scoped gate (affected crates + dependents, nextest), then push' \
 	  'make land-full                  Full signed gate (make test in a warm, queued gate slot)' \
+	  'make verify-clean-start        Private Codex defaults, CLI/seat, native GUI and Bridge checks' \
 	  'make verify-harness-onboarding  Private discovery, setup, installer and user Markdown checks' \
 	  'make verify-harness-attachments  Focused private composer, clipboard, ACP and ownership checks' \
 	  'make test                       Full local CI; no operator input' \
@@ -2381,3 +2382,8 @@ verify-harness-attachments:
 .PHONY: verify-harness-onboarding
 verify-harness-onboarding:
 	TARGET_DIR='$(abspath $(TARGET_DIR))' python3 -I scripts/verify-harness-onboarding.py
+
+.PHONY: verify-clean-start
+verify-clean-start:
+	TARGET_DIR='$(abspath $(TARGET_DIR))' $(MAKE) -C crates/bboxy450-harness verify-clean-start
+	@$(MAKE) check-licenses
