@@ -73,7 +73,7 @@ fn view(modal: &cockpit::startup::Modal, elapsed_secs: u64) -> ui::modules::star
                         "Loading workspace records" => "Load workspace",
                         "Restoring messages" => "Restore messages",
                         "Restoring saved sessions" => "Restore session state",
-                        "Resuming saved sessions" => "Resume sessions",
+                        "Resuming saved sessions" => "",
                         "Restoring task state" => "Restore tasks",
                         "Restoring pending deliveries" => "Restore deliveries",
                         "Checking identity" => "Check identity",
