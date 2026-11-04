@@ -17,6 +17,29 @@ comments so extracts carry their credit. Formats without comments use a
 companion attribution map. Run `make test-licenses` and preserve license/notice
 documents in source and binary packages. Slop respectfully. Keep the credit attached.
 
+## Naming — the bboxy450 suite
+
+This repository is the bboxy450 suite: every crate here, and every repository
+split out of it, carries the `bboxy450-` prefix.
+
+| Thing | Rule | Example |
+|---|---|---|
+| Cargo package / crates.io name | `bboxy450-<name>`, kebab-case | `bboxy450-keychain` |
+| Rust import name | the package name in snake_case | `bboxy450_keychain` |
+| Directory | `crates/<package name>`, identical to the package | `crates/bboxy450-keychain` |
+| Terminal-app-only crate | `bboxy450-term-<name>` | `bboxy450-term-mux` |
+| Reusable outside the terminal | `bboxy450-<name>`, no `term` | `bboxy450-render` |
+| Platform backend | `<base>-macos`, `-linux`, `-windows` | `bboxy450-keychain-windows` |
+| Test fixture | normal name plus `publish = false` | `bboxy450-term-plugin-fixture` |
+| GitHub repository | `bboxy450/bboxy450-<name>`; a suite crate stays in `bboxy450/bboxy450-term` until it is split out | `bboxy450/bboxy450-harness` |
+
+The `bbt-*`, `bboxybook` and `bboxy-firehose` directories are legacy: their
+packages already follow the rule. Do not rename them as a side effect, and do
+not create new directories in that style. A new crate also gets an entry in
+`verification/coverage.toml` and a workspace version. It is published as
+**bboxy450** only through `make package-crate CRATE=<package name>` and an
+authorized release brief.
+
 ## Use the Makefile
 
 **The Makefile is the canonical interface for building, tests, installation and release work. Run `make help`. Do not invent Cargo/codesign/copy/publish sequences or keep a second installation recipe in a script or handoff. Add a missing workflow to Make.**
