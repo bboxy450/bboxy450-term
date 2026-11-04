@@ -32,11 +32,11 @@ acceptance:
 - Precedence, flags semantics, cwd and session/generation lifecycle retain context without cross-seat transfer
 - Native/TLC ownership/failure model parity and causal broken controls pass
 - Clean canonical make test and current-source formal evidence pass; signed report and exact logs retained
-status: claimed
+status: accepted
 id: 01M6HRGGBFA6Z97D4TPDSZWPK8
 delegated_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
 swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-03T22:29:40.464Z
+updated: 2026-11-04T00:03:16.782Z
 created: 2026-11-03T22:29:38.490Z
 number: 19244
 created_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
@@ -47,12 +47,33 @@ authorship:
   public_key: B3hFSjBIE1Nnj7mw9Eg9pqyRpYHF/GQaKXPyV1KAod0=
   process_generation: '1'
 assignee: seat:01M6HRD7KZD5Q336S88VRS5HJX
+artifacts:
+- '[[01M6HXJ85PNY0B47EM9G5MN2PA]]'
+verify_result:
+  command: RUSTC_WRAPPER= make test
+  exit_code: 0
+  evidence:
+  - criterion: Downstream process receives admitted launch prompt/context and can call scoped MCP tools across ACP/exec fixtures
+    reference: 'tests/acp_launch_context.rs:239; /tmp/codex-launch-parity.LWWeDR/process-proof/result.json and per-profile downstream.jsonl/stdout.jsonl/tool-effects.log: four exit0, exact private identity/custody, one prompt/effect each.'
+  - criterion: Precedence, flags semantics, cwd and session/generation lifecycle retain context without cross-seat transfer
+    reference: 'src/gateway/host.rs:288; src/backend/acp_agent.rs:760; src/mcp.rs:699; seven acp_launch_context cases and all19 existing ACP actor cases pass; packaged command/JSON-RPC evidence retained; scope and ACP system-role limitation documented in report #19624.'
+  - criterion: Native/TLC ownership/failure model parity and causal broken controls pass
+    reference: 'verification/evidence/b4c11e7387371584d5512e22c3f7756e91b55337b68e004b0a9cb2537e457f6f/evidence.json: source a231295, dirty=false,119 variants/39 contracts, full graph/verdict parity; /tmp/codex-launch-parity.LWWeDR/report-head-formal.log exit0; six formal controls and three actual forwarding/approval controls reject, exact restoration green.'
+  - criterion: Clean canonical make test and current-source formal evidence pass; signed report and exact logs retained
+    reference: '/tmp/codex-launch-parity.LWWeDR/canonical-result.json: exit0 on7c774f3, log SHA256 d7ffd3c0f3cc65cf572e12d5daa03eafc3b0df6a18dd924d17e34309ecd717da; final-head-audit.json:278 unchanged inputs, clean a231295; final-head-checks.log: formal receipt/headers/secrets/KB/signature exit0. Committed report .bboxy/reports/2026-11-03-codex-agent-context.md and compact .bboxy/runs/codex-launch-parity.json.'
+report:
+  summary: 'Implemented the shared ACP launch boundary, immutable profile/launcher context, origin-preserving private MCP relays, semantic --yolo admission and startup/failure bounds; retained existing actor behavior and fixed stale-address selection in its unattended GUI fixture. Signed final commit a2312959f4ddd4519db13f2194c167705056e532 has a clean worktree. Canonical RUSTC_WRAPPER= make test exited0 on source7c774f3; all278 implementation input hashes still match, all23 core/five GUI rows plus packaging/native smoke passed. Four retained packaged codex-exec/codex-acp/claude-* compatibility processes each called a scoped MCP tool under its exact private identity with one prompt/effect. Current-report-HEAD native/TLC refresh and check-formal-evidence exit0:119 models/39 contracts, clean receipt b4c11e7387371584d5512e22c3f7756e91b55337b68e004b0a9cb2537e457f6f. Context/MCP/approval omissions fail named controls and restore green. ACP v1 bootstrap is first-real-prompt content, without system-role priority; no live vendor/provider call or publication occurred. Original unknown report write was confirmed applied and preserved as #19620. Current-task report #19624 cites it as evidence because the host rejected cross-task supersedes; no implementation or canonical gate was duplicated for task rebinding.'
+  commit: a2312959f4ddd4519db13f2194c167705056e532
+  reported_by: seat:01M6HRD7KZD5Q336S88VRS5HJX
+  op_id: 01M6HXSWRSMKVWW495ZY1S26GP
+  verify_revision: 0
+  report: '[[reports/2026-11-03-codex-agent-context.md]]'
 provenance:
-  digest: sha256:9c1181387fdf5fa979a116c6cb0cffb15ddf4deb16317ec7ee5126b7a57a7ce8
-  frontmatter_digest: sha256:f6af66ef92f8b9f74742b081cee33ed32ee85aaa4565c40e9cee477de5134da3
+  digest: sha256:c7b27c9069e412fee3b9fb279a3097cc5a69622d037255949efa88d45233f919
+  frontmatter_digest: sha256:382a8fd0e73ffc9bbd8d27c3494570f3119ea302e40b9ef2e3198b1c59402e99
   signer: seat:01M6H97SAX3GN1BYB4YG76P3P0
-  sig: W9TT7VsBPu9gTxzLG+WifgrBv4paSCnTZJN+co6Lej6EDAO4rL8QcM7ciALOZXoR9oyRBt31lhXvc1IM0X57BQ==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#106912
+  sig: IMQ7SXPJWkPKJnk15eUU/9eRs1e0/DKkoXfF6FsKee/TX8/vgVASN28LsFdQ04n8dXNhNwKsSjuKDzS25TpZBg==
+  log: .bboxy/log/2026-11-04.jsonl#109412
 ---
 ROLE: EXECUTOR. Implement launch-context parity in /Users/feral/mydev/bboxy450-harness-pane-b12, branch codex-launch-parity-20261103, base published2fb78a017992f73468b6fa9fe5edbc48ba27f05c. The prior socket task is accepted and its seat exited; preserve pane/b1-b2, all original refs/source/reports/formal receipts. Reuse the existing warm worktree target to limit disk use. Read project instructions, Make help and relevant source/ICDs before edits. Exact allowed_paths only, exact staging, approved Boxy signed commits, attribution. No recruiting, push/merge/publication/trusted install, actual Claude launch, paid inference, credentials, global configs, desktop control or other worktrees.
 
@@ -73,3 +94,37 @@ Acceptance via unattended process fixtures (no live provider requests):
 Coordinate the boundary with Side A via the existing task; send a message only for a true all-work blocker. A single final append-only report through knowledge tools, committed with Report trailer, then task_report. Include actual changed files/lines, command exits/log hashes, red→green controls, exact semantic limitations, final signed SHA/clean state, and per-acceptance evidence. Oracle will verify, publish the harness, pass its pin to host, and install; you do not publish.
 
 Current assignment locator: tasks/2026-11-03-codex-agent-context.md. Earlier same-brief task records01M6HRD5XR91MD7MH557R77N5Y and01M6HREVGM5DB1KQ1P4CZ20VWH have a duplicate normalized-path ambiguity in the host's lifecycle API and are preserved pending Oracle disposition; they authorize no separate work. This latest signed Delegate is the single productive assignment in this worktree. Do not implement task-system repair or duplicate the implementation/gate/report.
+
+## Report from seat:01M6HRD7KZD5Q336S88VRS5HJX
+
+Implemented the shared ACP launch boundary, immutable profile/launcher context, origin-preserving private MCP relays, semantic --yolo admission and startup/failure bounds; retained existing actor behavior and fixed stale-address selection in its unattended GUI fixture. Signed final commit a2312959f4ddd4519db13f2194c167705056e532 has a clean worktree. Canonical RUSTC_WRAPPER= make test exited0 on source7c774f3; all278 implementation input hashes still match, all23 core/five GUI rows plus packaging/native smoke passed. Four retained packaged codex-exec/codex-acp/claude-* compatibility processes each called a scoped MCP tool under its exact private identity with one prompt/effect. Current-report-HEAD native/TLC refresh and check-formal-evidence exit0:119 models/39 contracts, clean receipt b4c11e7387371584d5512e22c3f7756e91b55337b68e004b0a9cb2537e457f6f. Context/MCP/approval omissions fail named controls and restore green. ACP v1 bootstrap is first-real-prompt content, without system-role priority; no live vendor/provider call or publication occurred. Original unknown report write was confirmed applied and preserved as #19620. Current-task report #19624 cites it as evidence because the host rejected cross-task supersedes; no implementation or canonical gate was duplicated for task rebinding.
+
+```json
+{
+  "op_id": "01M6HXSWRSMKVWW495ZY1S26GP",
+  "commit": "a2312959f4ddd4519db13f2194c167705056e532",
+  "report": "[[reports/2026-11-03-codex-agent-context.md]]",
+  "verify_result": {
+    "command": "RUSTC_WRAPPER= make test",
+    "exit_code": 0,
+    "evidence": [
+      {
+        "criterion": "Downstream process receives admitted launch prompt/context and can call scoped MCP tools across ACP/exec fixtures",
+        "reference": "tests/acp_launch_context.rs:239; /tmp/codex-launch-parity.LWWeDR/process-proof/result.json and per-profile downstream.jsonl/stdout.jsonl/tool-effects.log: four exit0, exact private identity/custody, one prompt/effect each."
+      },
+      {
+        "criterion": "Precedence, flags semantics, cwd and session/generation lifecycle retain context without cross-seat transfer",
+        "reference": "src/gateway/host.rs:288; src/backend/acp_agent.rs:760; src/mcp.rs:699; seven acp_launch_context cases and all19 existing ACP actor cases pass; packaged command/JSON-RPC evidence retained; scope and ACP system-role limitation documented in report #19624."
+      },
+      {
+        "criterion": "Native/TLC ownership/failure model parity and causal broken controls pass",
+        "reference": "verification/evidence/b4c11e7387371584d5512e22c3f7756e91b55337b68e004b0a9cb2537e457f6f/evidence.json: source a231295, dirty=false,119 variants/39 contracts, full graph/verdict parity; /tmp/codex-launch-parity.LWWeDR/report-head-formal.log exit0; six formal controls and three actual forwarding/approval controls reject, exact restoration green."
+      },
+      {
+        "criterion": "Clean canonical make test and current-source formal evidence pass; signed report and exact logs retained",
+        "reference": "/tmp/codex-launch-parity.LWWeDR/canonical-result.json: exit0 on7c774f3, log SHA256 d7ffd3c0f3cc65cf572e12d5daa03eafc3b0df6a18dd924d17e34309ecd717da; final-head-audit.json:278 unchanged inputs, clean a231295; final-head-checks.log: formal receipt/headers/secrets/KB/signature exit0. Committed report .bboxy/reports/2026-11-03-codex-agent-context.md and compact .bboxy/runs/codex-launch-parity.json."
+      }
+    ]
+  }
+}
+```
