@@ -58,18 +58,38 @@ impl App {
             })
             == PaneFace::HarnessRich
     }
-    fn rich_control(&self, seat: SeatId, body: Rect) -> Option<Rect> {
+    pub(super) fn rich_header_views(&self) -> BTreeMap<SeatId, bbt_ui::modules::strip::ViewTarget> {
+        use bbt_ui::modules::strip::ViewTarget;
         self.live_state
-            .as_ref()?
-            .gui_seats
             .iter()
-            .any(|r| r.record.id.0 == seat.0.0 && r.record.harness_kind == "bboxy450-harness")
-            .then_some(Rect::new(
-                (body.right() - 96.).max(body.x),
-                body.y - 24.,
-                88.,
-                22.,
-            ))
+            .flat_map(|model| model.gui_seats.iter())
+            .filter(|row| row.record.harness_kind == "bboxy450-harness")
+            .map(|row| {
+                let id = SeatId::from_u128(row.record.id.0);
+                let target = if self.rich_face(id) {
+                    ViewTarget::Terminal
+                } else {
+                    ViewTarget::Harness
+                };
+                (id, target)
+            })
+            .collect()
+    }
+    pub(super) fn rich_toggle_face(&mut self, seat: SeatId) {
+        // Retain the old control's live harness eligibility, including before
+        // announcement: Terminal remains reachable while the rich face starts.
+        if !self.rich_header_views().contains_key(&seat) {
+            return;
+        }
+        let face = if self.rich_face(seat) {
+            PaneFace::Terminal
+        } else {
+            PaneFace::HarnessRich
+        };
+        self.pane_faces.insert(bbt_mux::Ulid(seat.0.0), face);
+        self.rich_sync();
+        self.sync_text_ime();
+        self.request_redraw();
     }
     pub(super) fn rich_sync(&mut self) {
         if self.occluded || self.document.open || self.local_tab.is_some() {
@@ -183,21 +203,6 @@ impl App {
     pub(super) fn rich_paints(&self) -> Vec<bbt_ui::components::Paint> {
         let mut ops = Vec::new();
         for (id, rect) in &self.pane_bounds {
-            if let Some(button) = self.rich_control(*id, *rect) {
-                let mut list = DrawList::default();
-                list.rect(button, 4., Color::hex(bbt_ui_model::TOKENS.color.dark.bg));
-                list.text(
-                    button,
-                    if self.rich_face(*id) {
-                        "Terminal"
-                    } else {
-                        "Harness"
-                    },
-                    TextStyle::default(),
-                    Color::WHITE,
-                );
-                ops.push(bbt_ui::components::Paint::Draw(list));
-            }
             if !self.rich_face(*id) {
                 continue;
             }
@@ -285,18 +290,6 @@ impl App {
             return false;
         }
         for (id, rect) in self.pane_bounds.clone() {
-            if self.rich_control(id, rect).is_some_and(|r| hit(r, at)) {
-                let face = if self.rich_face(id) {
-                    PaneFace::Terminal
-                } else {
-                    PaneFace::HarnessRich
-                };
-                self.pane_faces.insert(bbt_mux::Ulid(id.0.0), face);
-                self.rich_sync();
-                self.sync_text_ime();
-                self.request_redraw();
-                return true;
-            }
             if self.rich_face(id) && hit(rect, at) {
                 self.focus_action(FocusAction::Activate(id, FocusOrigin::Pane));
                 if let Some(pane) = self.rich_panes.get(&id) {
@@ -423,6 +416,119 @@ mod verification {
         app.pane_faces
             .insert(bbt_mux::Ulid(seat.0.0), PaneFace::Terminal);
         assert!(!app.rich_face(seat));
+    }
+    #[test]
+    fn view_switch_titlebar_pointer_action_and_saved_preference() {
+        use bbt_ui::modules::strip::ViewTarget;
+        let name =
+            "rich_faces::verification::view_switch_titlebar_pointer_action_and_saved_preference";
+        if crate::lazy_projection_tests::isolated_ui_case(name) {
+            return;
+        }
+        let (mut app, _) = crate::lazy_projection_tests::fixture();
+        let seat = SeatId::from_u128(42);
+        let ordinary = SeatId::from_u128(43);
+        let record = bbt_proto::registry::SeatRecord::new(
+            bbt_mux::Ulid(42),
+            bbt_mux::Ulid(1),
+            "Harness pane",
+            "bboxy450-harness",
+        );
+        let terminal = bbt_proto::registry::SeatRecord::new(
+            bbt_mux::Ulid(43),
+            bbt_mux::Ulid(1),
+            "Shell pane",
+            "zsh",
+        );
+        let mut model = bboxy450_term::model::build(
+            &[record.clone(), terminal.clone()],
+            &bboxy450_term::grids::Grids::new(),
+            &Default::default(),
+        );
+        let rows = [record, terminal].map(|record| bbt_proto::GuiSeat {
+            state: bbt_proto::SeatState {
+                generation: record.generation,
+                process: bbt_proto::ProcessStatus::Running { pid: 0 },
+                activity: bbt_proto::Activity::Idle,
+                grade: bbt_proto::Grade::Reported,
+                title: String::new(),
+                detail: None,
+                stale: false,
+                turn_open: false,
+                observed_ms: 1,
+                subagents: vec![],
+            },
+            record,
+            rich_socket: None,
+            attention: None,
+            notification_episode: None,
+        });
+        model.apply_seat_states(&rows);
+        let mut stage = model.ui.window.stage.clone();
+        stage.focused = Some(seat);
+        app.focus.stage = Some(stage.clone());
+        app.scene = scene::Scene::live();
+        app.scene.set_model(&model, &stage);
+        app.live_state = Some(Arc::new(model));
+        assert_eq!(
+            app.rich_header_views().get(&seat),
+            Some(&ViewTarget::Harness)
+        );
+        assert!(!app.rich_header_views().contains_key(&ordinary));
+        app.navigate_to(&format!("pane-view:{ordinary}"));
+        assert!(!app.pane_faces.contains_key(&bbt_mux::Ulid(43)));
+        for target in [ViewTarget::Harness, ViewTarget::Terminal] {
+            app.solve_ui([1200., 800.]).unwrap();
+            let rect = app
+                .navigation_regions
+                .iter()
+                .find(|(key, _)| key == &format!("pane-view:{seat}"))
+                .unwrap()
+                .1;
+            assert_eq!(app.rich_header_views()[&seat], target);
+            let before = app.pending_commands.len();
+            app.pointer_pressed([rect.x + rect.w / 2., rect.y + rect.h / 2.]);
+            app.pointer_released();
+            assert_eq!(
+                app.pending_commands.len(),
+                before,
+                "view action queued a PTY/backend command"
+            );
+            assert_eq!(app.rich_face(seat), target == ViewTarget::Harness);
+            assert_eq!(
+                app.pane_faces[&bbt_mux::Ulid(42)],
+                if app.rich_face(seat) {
+                    PaneFace::HarnessRich
+                } else {
+                    PaneFace::Terminal
+                }
+            );
+            if app.rich_face(seat) {
+                assert!(app.rich_ime(&Ime::Commit("私的な入力".into())));
+                assert!(
+                    !app.rich_paints().is_empty(),
+                    "unavailable rich view keeps its fallback"
+                );
+            } else {
+                assert!(
+                    app.rich_paints().is_empty(),
+                    "Terminal has no floating overlay button"
+                );
+            }
+        }
+        // The existing WindowState serialization continues to carry the explicit choice.
+        app.solve_ui([1200., 800.]).unwrap();
+        let saved = app.window_last.as_ref().unwrap();
+        assert_eq!(
+            saved.pane_faces.get(&bbt_mux::Ulid(42)),
+            Some(&PaneFace::Terminal)
+        );
+        assert_eq!(
+            app.live_state.as_ref().unwrap().gui_seats[0]
+                .state
+                .generation,
+            rows[0].state.generation
+        );
     }
     #[test]
     #[ignore = "private offscreen Metal capture; make test-rich-pane"]

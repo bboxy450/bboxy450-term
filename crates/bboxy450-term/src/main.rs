@@ -7770,6 +7770,7 @@ impl App {
         Ok(layout)
     }
     fn solve_ui(&mut self, logical: [f32; 2]) -> Result<Vec<bbt_ui::components::Layout>, String> {
+        self.scene.set_pane_views(self.rich_header_views());
         self.clock_frame = self.clock.frame();
         self.scene.advance_sidebar_motion(self.clock_frame.now);
         self.scene.sidebar_layout = self.effective_sidebar_layout();
