@@ -185,7 +185,7 @@
     "path": ".bboxy/reports/2026-11-03-codex-oracle-takeover-interim.md"
   },
   "task": "01M6HCH1SJHDSB6SDAC2ZF1BXX",
-  "at": 1793745218.256167,
+  "at": 1793750801.7857559,
   "operational_exit_code": 0,
   "product_complete": false,
   "raw_evidence_directory": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0",
@@ -528,8 +528,69 @@
   "report_registration_gap": {
     "original_operation": "01M6HWPJFGWXANRB126ZP4XZ63",
     "owner": "01M6HRD7KZD5Q336S88VRS5HJX",
-    "state": "unknown to Oracle; owning seat instructed to resolve, never redispatch",
+    "state": "resolved applied by owning seat; historical19620 and current-task19624 retained",
     "prepared_report_task": "01M6HRD5XR91MD7MH557R77N5Y",
     "correct_task": "01M6HRGGBFA6Z97D4TPDSZWPK8"
+  },
+  "agent_context_final": {
+    "at": 1793750580.995848,
+    "head": "a2312959f4ddd4519db13f2194c167705056e532",
+    "implementation": "7c774f3e0d02ebdaa2b25bc0143fcc8cd47e11aa",
+    "canonical_inputs_verified": 278,
+    "retained_log_hashes_verified": 27,
+    "report_only_paths": [
+      ".bboxy/reports/2026-11-03-codex-agent-context.md",
+      ".bboxy/reports/2026-11-03-codex-launch-parity.md",
+      ".bboxy/runs/codex-launch-parity.json"
+    ],
+    "formal_check_exit_code": 0,
+    "formal_sha256": "b4c11e7387371584d5512e22c3f7756e91b55337b68e004b0a9cb2537e457f6f",
+    "models": 119,
+    "contracts": 39,
+    "worktree_clean": true,
+    "report": {
+      "number": 19624,
+      "id": "01M6HXF8WPTF9GHFQ4N6NH594R",
+      "task": "01M6HRGGBFA6Z97D4TPDSZWPK8"
+    },
+    "original_report_write_outcome": "owning seat resolved applied, original report preserved; no write replay"
+  },
+  "agent_context_final_install": {
+    "at": 1793750709.937116,
+    "source": "a2312959f4ddd4519db13f2194c167705056e532",
+    "implementation": "7c774f3e0d02ebdaa2b25bc0143fcc8cd47e11aa",
+    "binary_sha256": "f9c7bd85d05e63f5996a8545b3ab2d7ae7dd05ec3b960e4d267e3c24ba92ab9f",
+    "signature_exit_code": 0,
+    "team": "UQB3368A84",
+    "private_smoke_exit_code": 0,
+    "presentation": "hidden native startup/surface/frame only",
+    "implementation_equivalence": "all278 canonical implementation input hashes unchanged; report-only git diff; no binary-equivalence claim",
+    "audit_corrections": [
+      {
+        "assertion": "whole signed executable bytes unchanged",
+        "exit_code": 1
+      },
+      {
+        "assertion": "bundle CodeDirectory hash unchanged",
+        "exit_code": 1
+      }
+    ],
+    "correction_reason": "These extra identity assertions do not express a required invariant: re-signing and source-revision plist metadata change signed artifact identity. Retain actual artifact hashes and validate current revision/signature/smoke instead."
+  },
+  "agent_context_accept_op": "01M6HXVXSSSH6NH0B0BENA6VNG",
+  "agent_context_close_op": "01M6HXVZBRBW8SPQQ3G62550M1",
+  "agent_context_lifecycle": "closed_retained; actual exit observed",
+  "context_cache_cleanup": {
+    "at": 1793750750.590037,
+    "authority": "context-cache-authority.json",
+    "head": "a2312959f4ddd4519db13f2194c167705056e532",
+    "published_main": "a2312959f4ddd4519db13f2194c167705056e532",
+    "source_inputs_unchanged": 278,
+    "worktree_clean": true,
+    "allocated_bytes_removed": 14420967424,
+    "free_bytes_before": 25322967040,
+    "free_bytes_after": 39574188032,
+    "active_host_untouched": true,
+    "raw_formal_packaging_and_source_preserved": true
   }
 }

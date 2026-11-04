@@ -77,6 +77,14 @@ allowed_paths:
 - /Users/feral/mydev/bboxy450-harness-codex-visual/target/release/build/**
 - /Users/feral/mydev/bboxy450-harness-codex-visual/target/release/deps/**
 - /Users/feral/mydev/bboxy450-harness-codex-visual/target/release/.fingerprint/**
+- /Users/feral/mydev/bboxy450-harness-pane-b12/target/debug/incremental/**
+- /Users/feral/mydev/bboxy450-harness-pane-b12/target/debug/build/**
+- /Users/feral/mydev/bboxy450-harness-pane-b12/target/debug/deps/**
+- /Users/feral/mydev/bboxy450-harness-pane-b12/target/debug/.fingerprint/**
+- /Users/feral/mydev/bboxy450-harness-pane-b12/target/release/incremental/**
+- /Users/feral/mydev/bboxy450-harness-pane-b12/target/release/build/**
+- /Users/feral/mydev/bboxy450-harness-pane-b12/target/release/deps/**
+- /Users/feral/mydev/bboxy450-harness-pane-b12/target/release/.fingerprint/**
 verify: python3 -I /tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/verify.py
 acceptance:
 - Fresh MCP account/resource usage recorded
@@ -84,7 +92,7 @@ acceptance:
 - Obsolete seats retired; replacement Codex workers have signed scoped tasks; unfinished work preserved
 - Lifecycle, source preservation, closures and gaps retained as evidence
 id: 01M6HCH1SJHDSB6SDAC2ZF1BXX
-updated: 2026-11-03T22:30:18.729Z
+updated: 2026-11-04T00:03:50.245Z
 created: 2026-11-03T19:00:13.435Z
 number: 15244
 created_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
@@ -95,11 +103,11 @@ authorship:
   public_key: B3hFSjBIE1Nnj7mw9Eg9pqyRpYHF/GQaKXPyV1KAod0=
   process_generation: '1'
 provenance:
-  digest: sha256:0248ef28e749fa6df10bf1a21818a8664bd27d7151d5eb3113016aa3acb99e60
-  frontmatter_digest: sha256:4f0f957803dae88ae1ea25e5892b32af7b21db1ce85d97d6781155a4928e862e
+  digest: sha256:7790057bd1ce8279efc371429678310b4f7d921d2a544627820c2b9af4e27649
+  frontmatter_digest: sha256:6553221384cdc0b1d646bdc7b8bb81f4b1d9787a888015fb895cf1e3c5d40052
   signer: seat:01M6H97SAX3GN1BYB4YG76P3P0
-  sig: QrS0QI9g1Qvwr9PrbcIQnIA7vTxHjqKeyHPiqW+Wn5My3UEMqN5OOK3CUxj6cX1pRRDDRiqdZubnVDr5zN+NCw==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#106991
+  sig: 2GqaP6fpVRPOWCuK839V+sO1cQVlfZc/yWMsOcwKCVZ3NZ0RUP8Rnuc2UELKhouuOUZonlBFZXyQThWURRFzDA==
+  log: .bboxy/log/2026-11-04.jsonl#109429
 ---
 ROLE: ORACLE.
 
@@ -141,3 +149,7 @@ One newly discovered critical gap is harness src/gateway/host.rs ACP actor loadi
 Resource disposition: the operator prioritizes delivery speed and disk/inference. Optional visual task17271 is historically superseded (operation01M6HQ42GSWYXABDNCB78SPHD7), not accepted as implemented; its closed seat's unfinished six files, diff and hashes are preserved in own evidence deferred-visual-source.{zip,json,diff}. No baseline adoption occurs, so the two-pass requirement remains conditional on any later adoption, not a blocker to this delivery. Socket task15249 is accepted and published2fb78a0; canonical make install plus installed private native startup smoke and strict approved signature passed. Current only productive delivery assignments are rich-host and the bounded launch-context fix. Remove only the exact deferred visual target/{debug,release}/{incremental,build,deps,.fingerprint} caches after fresh MCP closed_retained/actual exit, no-symlink and exact-path lsof checks, preserving every source byte, raw log/capture and evidence. Never delete the reused socket target or active host caches. Keep a before/after disk and retained-evidence hash manifest. Oracle's verify instrument may reflect this honest deferred/no-adoption disposition while still enforcing two passes for any adoption. Product completion still requires actual installed rich term and launch-context evidence; no unverified acceptance.
 
 Task locator correction: the single active launch-context assignment is [[tasks/2026-11-03-codex-agent-context]], task01M6HRGGBFA6Z97D4TPDSZWPK8, seat01M6HRD7KZD5Q336S88VRS5HJX. Two earlier same-brief records01M6HRD5XR91MD7MH557R77N5Y and01M6HREVGM5DB1KQ1P4CZ20VWH remain preserved because normalized nested/canonical paths make lifecycle preflight ambiguous/conflicting even with an ID lookup (rejected operations01M6HREW73HS0HSBN4T8352DKY/01M6HREWVJ7W9GBRES55FWDPG2/01M6HRFDYBR7KF7Q6CEE8BT0SM/01M6HRFEDEZGS62EF0MABER34F; no effects). They are not additional productive assignments; no shell record rewrite or deletion is authorized as a bypass. Record the gap; do not expand this delivery to task-system implementation repair.
+
+Cleanup/source continuation: ACP context source7c774f3 and report-only signed a2312959f4ddd4519db13f2194c167705056e532 are Oracle-verified. Correct-task report#19624/task01M6HRGGBFA6Z97D4TPDSZWPK8 accepted (operation01M6HXVXSSSH6NH0B0BENA6VNG), worker seat01M6HRD7KZD5Q336S88VRS5HJX close applied (01M6HXVZBRBW8SPQQ3G62550M1). Original unknown report write confirmed applied by owning seat; historical#19620 retained and correct report links it (cross-task supersedes refused). All278 canonical inputs still match source7c; current report-HEAD119-model/39-contract clean receipt and source signatures verified; report commit changes only two reports plus compact summary. Source was already published7c and installed/smoked0; final report-only a231 landing preserves identical implementation inputs.
+
+The reused socket/launch-context worktree is now retired again. After fresh MCP closed_retained/actual exit, clean Git + published-main ancestry, no-symlink and exact-path lsof proof, reclaim ONLY /Users/feral/mydev/bboxy450-harness-pane-b12/target/{debug,release}/{incremental,build,deps,.fingerprint}. Keep every source/ref, target/formal, target/term-heartbeat-probe, private/packaged/native evidence and all other target contents. Preserve retained-file hashes before/after and real disk readings. Do not delete the source worktree or the active rich-host target. The earlier no-delete instruction for the reused target applied while the launch worker was active and is superseded only for these exact proven-idle compiler caches after its retirement. The rich-host is the sole productive executor, finishing the published-context pin, actual production approval parity, shared native GUI and verified session-preserving install/reattach.
