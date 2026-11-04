@@ -134,5 +134,62 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         cases.push((good, "pass"));
         cases.push((broken, "safety"));
     }
+    cases.extend([
+        (backend_preservation(false), "pass"),
+        (backend_preservation(true), "safety"),
+    ]);
     cases
+}
+
+// One candidate, compatible/incompatible retained owners and supported/legacy
+// rollback. A refusal must never advance the backend generation. No IO timing,
+// PID reuse, crypto or arbitrary process correctness is represented here.
+fn backend_preservation(broken: bool) -> Model {
+    let mut m = model(
+        "GuiBackendPreservation",
+        broken,
+        &[
+            ("phase", 4, 0),
+            ("compatible", 1, 0),
+            ("backend_generation", 1, 0),
+            ("rollback_supported", 1, 0),
+            ("legacy_started", 1, 0),
+        ],
+    );
+    action(&mut m, "CompatibleOwners", eq(0, 0), &[(1, Int(1))]);
+    action(&mut m, "SupportedRollback", eq(0, 0), &[(3, Int(1))]);
+    action(
+        &mut m,
+        "PreflightRefusal",
+        all([eq(0, 0), eq(1, 0)]),
+        &[(0, Int(4))],
+    );
+    action(
+        &mut m,
+        "PreflightAndDetach",
+        all([eq(0, 0), eq(1, 1)]),
+        &[(0, Int(1))],
+    );
+    action(&mut m, "GuiAttached", eq(0, 1), &[(0, Int(2))]);
+    action(
+        &mut m,
+        "AttachFailure",
+        eq(0, 1),
+        &[(0, Int(3)), (2, Int(if broken { 1 } else { 0 }))],
+    );
+    action(
+        &mut m,
+        "GuardedRollback",
+        all([eq(0, 3), eq(3, 1)]),
+        &[(0, Int(4))],
+    );
+    action(
+        &mut m,
+        "RestoreLegacyWithoutLaunch",
+        all([eq(0, 3), eq(3, 0)]),
+        &[(0, Int(4))],
+    );
+    safe(&mut m, "ExactBackendGenerationRetained", eq(2, 0));
+    safe(&mut m, "UnsupportedRollbackNeverLaunched", eq(4, 0));
+    m
 }

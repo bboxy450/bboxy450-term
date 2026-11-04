@@ -20,7 +20,7 @@ use std::{
     path::Path,
 };
 
-#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProcessIdentity {
     pid: u32,
     birth: (u64, u64),

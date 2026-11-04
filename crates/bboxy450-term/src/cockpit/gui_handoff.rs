@@ -93,11 +93,58 @@ fn run_dir(args: &[String]) -> Result<PathBuf> {
                 .to_owned())
         })
 }
+/// Explicit mode plus an optional captured public owner fence. Unknown variants
+/// refuse rather than silently entering ordinary backend recovery.
+pub(super) fn preservation(args: &[String]) -> Result<(bool, Option<BackendIdentity>)> {
+    let mut preserve = false;
+    let mut expected = None;
+    for (i, arg) in args.iter().enumerate() {
+        match arg.as_str() {
+            "--preserve-backend" if !preserve => preserve = true,
+            "--preserve-backend-owners" if expected.is_none() => {
+                let value = args.get(i + 1).filter(|v| v.len() <= 4096).ok_or_else(|| {
+                    invalid("preserve_backend: missing bounded public owner fence")
+                })?;
+                expected = Some(serde_json::from_str(value)?);
+            }
+            "--preserve-backend-check" => (),
+            value if value.starts_with("--preserve-backend") => {
+                return Err(invalid("invalid preserve-backend option"));
+            }
+            _ => (),
+        }
+    }
+    if expected.is_some() && !preserve {
+        return Err(invalid("backend owner fence requires --preserve-backend"));
+    }
+    Ok((preserve, expected))
+}
+fn backend_check(args: &[String]) -> Result<BackendIdentity> {
+    let config = Config::discover(Some(run_dir(args)?))?;
+    bbt_rt::handle().block_on(preserve_backend_preflight(&config))
+}
+
 /// Credential-free process/lock observation for the canonical installer.
 pub fn probe(args: &[String]) -> Result<Option<serde_json::Value>> {
-    if !args.iter().any(|s| s == "--gui-handoff-probe") {
+    if !args
+        .iter()
+        .any(|s| s == "--gui-handoff-probe" || s == "--preserve-backend-check")
+    {
         return Ok(None);
     }
+    let (_, expected) = preservation(args)?;
+    let backend = if args.iter().any(|s| s == "--preserve-backend-check") {
+        let identity = backend_check(args)?;
+        if expected
+            .as_ref()
+            .is_some_and(|expected| *expected != identity)
+        {
+            return Err(invalid("preserve_backend: owner changed after preflight"));
+        }
+        Some(identity)
+    } else {
+        None
+    };
     let run = run_dir(args)?;
     let owner = current(&run)?;
     let gui = if owner.is_some() {
@@ -120,12 +167,33 @@ pub fn probe(args: &[String]) -> Result<Option<serde_json::Value>> {
         None
     };
     Ok(Some(
-        serde_json::json!({"running":owner.is_some(),"process":owner,"gui":gui.as_ref().map(|v|&v["gui"]),"repository":gui.as_ref().map(|v|&v["repository"])}),
+        serde_json::json!({"preserve_backend_supported":1,"backend":backend,"running":owner.is_some(),"process":owner,"gui":gui.as_ref().map(|v|&v["gui"]),"repository":gui.as_ref().map(|v|&v["repository"])}),
     ))
 }
 /// Explicit normal GUI startup action, before claiming its lock. No ctl/capability door.
 /// The installer passes its captured public owner identity to fence concurrent replacement.
 pub fn prepare(args: &[String]) -> Result<()> {
+    let (preserve, expected) = preservation(args)?;
+    let injected_failure = args.iter().any(|s| s == "--verify-ui-only-after-detach");
+    if injected_failure
+        && (!args.iter().any(|s| s == "--unattended")
+            || Config::test_account_from_args(args)?.is_none())
+    {
+        return Err(invalid(
+            "UI-only failure fixture requires a private unattended account",
+        ));
+    }
+    if preserve {
+        let identity = backend_check(args)?;
+        if expected
+            .as_ref()
+            .is_some_and(|expected| *expected != identity)
+        {
+            return Err(invalid(
+                "preserve_backend: owners changed before GUI detach",
+            ));
+        }
+    }
     if !args.iter().any(|s| s == "--replace-gui") {
         return Ok(());
     }
@@ -154,6 +222,9 @@ pub fn prepare(args: &[String]) -> Result<()> {
             return Err(invalid("GUI detach did not complete; no force termination"));
         }
         std::thread::sleep(Duration::from_millis(20));
+    }
+    if injected_failure {
+        return Err(invalid("private UI-only failure after GUI detach"));
     }
     Ok(())
 }

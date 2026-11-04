@@ -1,0 +1,89 @@
+{
+  "created": "2026-11-04T04:59:39.998202+00:00",
+  "task": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/EXECUTOR-UI-ONLY-REOPEN.md",
+  "base": "5793139a66b5ba58e55703239d5866fea87eb61b",
+  "source_commit": "signed core checkpoint containing this file",
+  "harness_pin": "0dfa2b8147f01c95dda5da8ac14c33ec249cd86d",
+  "source_sha256": {
+    "Makefile": "60abf23aa0d093407c4b3769e21c0ee82d29ea3bbd915ecaa4ace4d334b12ba9",
+    "crates/bboxy450-term/src/cockpit.rs": "ba071c6b59a53ed154b9177cea40f92b3e768a8beb537133ddfabd5d55792082",
+    "crates/bboxy450-term/src/cockpit/gui_handoff.rs": "b8d2c7e794111a634cc7531878c55d3661d48c7723ebd4f3dff1058984f11e3a",
+    "crates/bboxy450-term/src/cockpit/owners.rs": "ee3c9725d21d77d15b2756d53bab94c536050e51b5ddbacea7c9ae5406ebc8a2",
+    "crates/bboxy450-term/tests/test_account.rs": "58048fe7a5f02f1bf57bcae8932373f3d7ba980ca93befeed14edf85b9febde4",
+    "crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs": "9dcfb1de89f19d16a8f6a3672106179ac80b014b27b2d0f65ae2606b95717355",
+    "crates/bboxy450-term/tests/formal_contracts.rs": "d3422ff1ed4f651b32ef56d6c38a10ad08b88462916fa5e90575eaa041903aa1",
+    "crates/bboxy450-term/tests/formal_contracts/gui_replacement.rs": "6209d64ca6713ed588094d0a50249491e981e0a908e88cb77fa12d90fd77f04a",
+    "scripts/reopen-gui.py": "5d8618b9590c5a7e837beb664cc526f961ab436eca68550968c4efe2997e817c",
+    "packaging/macos/Info.plist": "e4988ef7137799ec038d4820202552a3c5a4426757fc3734fc5258495db70587",
+    "verification/contracts.toml": "26e8c6247983829071a22dd1ab26053d03afc01c90dd33069413b93eb5dcce2c",
+    "verification/corpus.toml": "27bf27cb89808ee42700d0df98bacd14e06eeeb444151414c6bb41862b59e8af",
+    "verification/coverage.toml": "85e9d288939fac01bcdbb9269e30244da3c232d26cbd0e64f1e11f8953e4feaa"
+  },
+  "checks": [
+    {
+      "command": "BBOXY_UI_ONLY_REMOVE_GUARD=1 CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make test-ui-only-reopen-guards",
+      "exit_code": 2,
+      "cargo_exit_code": 101,
+      "log": "/tmp/bboxy-ui-only-reopen-evidence/control-red-final.log",
+      "result": "Deliberately omit preserve mode in private fixture; actual ordinary startup refreshes incompatible Logic, named preservation assertion fails after private cleanup."
+    },
+    {
+      "command": "CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make test-ui-only-reopen-guards",
+      "exit_code": 0,
+      "log": "/tmp/bboxy-ui-only-reopen-evidence/guard-green-final.log"
+    },
+    {
+      "command": "CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make check-ui-only-reopen",
+      "exit_code": 0,
+      "log": "/tmp/bboxy-ui-only-reopen-evidence/strict-final.log",
+      "scope": "--no-deps strict App lib/bin/test_account/swarm_workdir/formal_contracts; producer lint tracked separately"
+    },
+    {
+      "command": "CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make verify-ui-only-reopen",
+      "exit_code": 0,
+      "log": "/tmp/bboxy-ui-only-reopen-evidence/green-bootstrap-fixed.log",
+      "source_note": "Earlier candidate run: real healthy GUI+supported/legacy rollback pass; changed rich/native handoff pass; native/Java changed pair parity. Since then standalone --preserve-backend-check routing and fixture-only controls/bounds were added. Exact committed-source refresh follows this checkpoint."
+    },
+    {
+      "command": "AST syntax + formal corpus/coverage/contracts metadata validation",
+      "exit_code": 0
+    }
+  ],
+  "formal_prior_candidate": [
+    {
+      "name": "GuiBackendPreservation",
+      "verdict": "pass",
+      "states": 14,
+      "edges": 18
+    },
+    {
+      "name": "BrokenGuiBackendPreservation",
+      "verdict": "safety",
+      "states": 14,
+      "edges": 18
+    }
+  ],
+  "logs_sha256": {
+    "removed-guard-red.log": "83188c942edb9ddc91e0539b35106227b4b46d8e82b505c95a5f666605696477",
+    "green.log": "d60c3f7e6ea631e378de9ea76ee93085e7e6281cc3d86cbe898643fab363db0b",
+    "strict-final.log": "8be266de5d0668ce0e2bc3c7d6deb2b57b0bf5f7629e1b5e66bde964f5ea1eda",
+    "compile-focused.log": "402ae2989294b8a32f25661db4bfcda11b0a4ba57dd765c6326c50312f9d6206",
+    "guard-green-final.log": "85d39ac08b15361e100bab2072808ac06ae9c1c223ea15b872143d28cf44be6c",
+    "compile-initial.log": "8487fe77d3b794d3c02dd32c5a67f9670ae45f5e9d2e29cea186505635ea924d",
+    "control-red-final.log": "983b7acb3469f9aca96bcec184f23d9d90a75e61cc388c7e2868d1870d13514a",
+    "green-bootstrap-fixed.log": "dfc0f50f82033797b9b8e4c63ce2f202b18e7eccd26bb0d38364204906db80c2"
+  },
+  "activation": "STAGED ONLY; no production install, restart, signal or bundle write. Parent handles reviewed signed UI-only installation; existing Logic must be compatible and remain exact PID/birth.",
+  "rollback": "Signed static bundle capability required before any candidate execution. Supported rollback is signature-checked and uses same preserve flag/owner fence; unsupported legacy bundle files restored with NO automatic launch.",
+  "limits": [
+    "No full suite, full formal corpus/landing receipt or broad recovery tests.",
+    "Original live workspace report backlog/intents are untouched.",
+    "Producer0dfa has3 pre-existing Clippy errors; parent producer follow-up owns47c66162; no harness edits by this executor."
+  ],
+  "intermediate_failures": [
+    "Restricted desktop attention observer rejected preflight; replaced with existing non-claiming GUI hello.",
+    "Session bootstrap inside still-live test PID correctly prevented new GUI claim; fixture now detaches/exits an owned bootstrap child.",
+    "Initial direct Clippy found one test collapsible_if, corrected."
+  ],
+  "prepared_report": "/tmp/bboxy-ui-only-reopen-evidence/REPORT.md"
+}

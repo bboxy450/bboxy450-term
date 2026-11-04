@@ -1131,3 +1131,13 @@ frontend = "project"
 name = "BrokenWorkspaceReady"
 expected = "liveness"
 frontend = "project"
+
+[[model]]
+name = "GuiBackendPreservation"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenGuiBackendPreservation"
+expected = "safety"
+frontend = "project"

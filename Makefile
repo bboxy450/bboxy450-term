@@ -2175,12 +2175,17 @@ test-rich-launch-context-control:
 
 # Reuse the same atomic installer after a caller has prepared and verified a bundle.
 .PHONY: install-prepared install-prepared-unsigned install-reopen reopen-prepared install-unsigned-reopen
-install-prepared:
+.PHONY: check-prepared check-prepared-unsigned
+check-prepared:
 	@codesign --verify --strict -R '= $(REQUIREMENT)' '$(BUNDLE)'
+
+check-prepared-unsigned:
+	@codesign --verify --strict '$(BUNDLE)'
+
+install-prepared: check-prepared
 	@$(call install_bundle,$(INSTALL_DIR))
 
-install-prepared-unsigned:
-	@codesign --verify --strict '$(BUNDLE)'
+install-prepared-unsigned: check-prepared-unsigned
 	@$(call install_bundle,$(UNSIGNED_INSTALL_DIR))
 
 GUI_RUN_DIR ?=
@@ -2197,3 +2202,31 @@ install-unsigned-reopen: PROFILE=debug
 install-unsigned-reopen: bundle-unsigned
 	@test -n '$(GUI_TEST_ACCOUNT)' || { echo 'GUI_TEST_ACCOUNT is required for private headless activation'; exit 2; }
 	@python3 -I scripts/reopen-gui.py --private --headless --test-account '$(GUI_TEST_ACCOUNT)' --prepared '$(abspath $(BUNDLE))' --destination '$(UNSIGNED_INSTALL_DIR)' $(GUI_OPTIONS)
+
+.PHONY: verify-ui-only-reopen check-ui-only-reopen format-ui-only-reopen
+format-ui-only-reopen:
+	@rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/src/cockpit/gui_handoff.rs crates/bboxy450-term/src/cockpit/owners.rs crates/bboxy450-term/tests/test_account.rs crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs crates/bboxy450-term/tests/formal_contracts/gui_replacement.rs crates/bboxy450-term/tests/formal_contracts.rs
+
+check-ui-only-reopen: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --no-deps --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP) --test test_account --test swarm_workdir --test formal_contracts -- -D warnings
+
+verify-ui-only-reopen: PROFILE=debug
+verify-ui-only-reopen: bundle-unsigned prepare-rich-native-fixture
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_PREPARED_GUI_BUNDLE='$(abspath $(BUNDLE))' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test test_account ui_only_reopen -- --ignored --nocapture --test-threads=1; \
+	BBOXY_PREPARED_GUI_BUNDLE='$(abspath $(BUNDLE))' BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir rich_detach::rich_gui_handoff_preserves_turn_and_rolls_back_failed_activation -- --ignored --exact --nocapture; \
+	mkdir -p '$(abspath $(TARGET_DIR))/ui-only-reopen/models'; \
+	BBOXY_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/ui-only-reopen/models' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts selected_gui_backend_preservation -- --exact --nocapture; \
+	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"GuiBackendPreservation":"pass","BrokenGuiBackendPreservation":"safety"}; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/ui-only-reopen'
+
+# Only a throwaway signed fixture may remove this static rollback capability.
+.PHONY: fixture-ui-only-legacy
+fixture-ui-only-legacy:
+	@python3 -I -c 'import os,pathlib,stat,sys; root=pathlib.Path(sys.argv[1]).resolve(strict=True); bundle=pathlib.Path(sys.argv[2]).resolve(strict=True); assert root.parent == pathlib.Path("/tmp").resolve() and root.name.startswith("ui-only-"); assert root.stat().st_uid == os.getuid() and stat.S_IMODE(root.stat().st_mode) == 0o700; assert bundle == root/"installed/bboxy450-term.app" and (root/"bootstrap.json").is_file()' '$(UI_ONLY_TEST_ROOT)' '$(BUNDLE)'
+	@plutil -remove BBOXYPreserveBackend '$(BUNDLE)/Contents/Info.plist'
+	@codesign --force --sign - --timestamp=none '$(BUNDLE)'
+	@codesign --verify --strict '$(BUNDLE)'
+
+.PHONY: test-ui-only-reopen-guards
+test-ui-only-reopen-guards: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test test_account ui_only_reopen_guard_refuses_refresh_and_failed_attach -- --exact --ignored --nocapture

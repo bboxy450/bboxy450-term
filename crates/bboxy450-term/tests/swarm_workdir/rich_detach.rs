@@ -419,37 +419,64 @@ fn app_detach(replace: bool) {
         "cold reopen must rebuild the whole prefix, not only the cursor suffix"
     );
     if replace {
-        // The existing normal startup path refreshes an older logical control
-        // schema while the supervisor retains the native process. This is a
-        // real process/version witness, not a claim to run an old compiled binary.
+        // Canonical reopen is now a hard UI-only operation. An incompatible
+        // retained Logic must refuse before changing the GUI or any owner.
         let owner_path = f.root.join("run/logic.owner.json");
-        let mut owner: Value = serde_json::from_slice(&fs::read(&owner_path).unwrap()).unwrap();
+        let original_owner = fs::read(&owner_path).unwrap();
+        let mut owner: Value = serde_json::from_slice(&original_owner).unwrap();
+        let backend_births: Vec<Value> = ["supervisor", "logic"]
+            .into_iter()
+            .map(|name| {
+                serde_json::from_slice::<Value>(
+                    &fs::read(f.root.join(format!("run/{name}.owner.json"))).unwrap(),
+                )
+                .unwrap()["process"]
+                    .clone()
+            })
+            .collect();
+        let prior_gui = f.ctl(&["app", "status"])["gui"].clone();
         owner["ready"]["ui_control_version"] = json!(bbt_proto::gui::UI_CONTROL_VERSION - 1);
         fs::write(&owner_path, serde_json::to_vec(&owner).unwrap()).unwrap();
-        handoff(&f, false);
-        let refreshed = f.owners();
-        assert_eq!(
-            refreshed[0], owners[0],
-            "logical schema refresh replaced supervisor"
+        let refused = handoff(&f, true);
+        assert!(
+            refused["error"].as_str().unwrap().contains("incompatible"),
+            "{refused}"
         );
-        assert_ne!(
-            refreshed[1], owners[1],
-            "older logical schema was silently retained"
+        assert_eq!(
+            f.owners(),
+            owners,
+            "incompatible UI-only handoff replaced backend"
+        );
+        let after_births: Vec<Value> = ["supervisor", "logic"]
+            .into_iter()
+            .map(|name| {
+                serde_json::from_slice::<Value>(
+                    &fs::read(f.root.join(format!("run/{name}.owner.json"))).unwrap(),
+                )
+                .unwrap()["process"]
+                    .clone()
+            })
+            .collect();
+        assert_eq!(after_births, backend_births);
+        assert_eq!(
+            f.ctl(&["app", "status"])["gui"],
+            prior_gui,
+            "refusal detached the old GUI"
         );
         assert_eq!(
             identity(&row(&f, &seat)),
             before,
-            "logical schema refresh replaced native process"
+            "refusal replaced native session"
         );
+        fs::write(&owner_path, original_owner).unwrap();
         assert_eq!(
             rich(&f, &seat, tail)["retained_items"],
             final_frame["retained_items"]
         );
+        owners = f.owners();
         println!(
-            "rich-gui-handoff: logical_schema_refresh old_logic={} new_logic={} retained_supervisor={}",
-            owners[1], refreshed[1], owners[0]
+            "rich-gui-handoff: incompatible preserved owners refused before GUI disruption; exact PID/birth/session retained"
         );
-        owners = refreshed;
         let active_gui = f.ctl(&["app", "status"])["gui"].clone();
         let contents = f.root.join("installed/bboxy450-term.app/Contents");
         let inode = std::os::unix::fs::MetadataExt::ino(&fs::metadata(&contents).unwrap());

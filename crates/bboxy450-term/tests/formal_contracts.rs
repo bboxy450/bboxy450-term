@@ -128,3 +128,23 @@ fn project_contracts_and_broken_controls() -> Result<(), Box<dyn std::error::Err
     }
     Ok(())
 }
+
+// The UI-only gate executes/exports only this changed pair, not the corpus.
+#[test]
+fn selected_gui_backend_preservation() -> Result<(), Box<dyn std::error::Error>> {
+    let output =
+        std::env::var_os("BBOXY_FORMAL_OUTPUT").ok_or("focused export directory required")?;
+    let root = Path::new(&output);
+    std::fs::create_dir_all(root)?;
+    let mut manifest = String::new();
+    let mut count = 0;
+    for (m, expected) in models::cases().into_iter().filter(|(m, _)| {
+        m.name == "GuiBackendPreservation" || m.name == "BrokenGuiBackendPreservation"
+    }) {
+        export(m, expected, root, &mut manifest)?;
+        count += 1;
+    }
+    assert_eq!(count, 2);
+    std::fs::write(root.join("manifest.tsv"), manifest)?;
+    Ok(())
+}

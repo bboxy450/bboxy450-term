@@ -28,6 +28,12 @@ def info(bundle):
         return plistlib.load(file)
 
 
+def preservation_supported(bundle):
+    # Static signed metadata: do not execute a legacy binary to ask whether it
+    # understands a flag which that binary might ignore and launch normally.
+    return info(bundle).get('BBOXYPreserveBackend') == 1
+
+
 def executable(bundle):
     return bundle / 'Contents/MacOS' / APP
 
@@ -35,7 +41,9 @@ def executable(bundle):
 def probe(program, arguments):
     reply = subprocess.run([str(program), '--gui-handoff-probe', *arguments],
                            stdin=subprocess.DEVNULL, capture_output=True,
-                           text=True, timeout=6, check=True)
+                           text=True, timeout=9)
+    if reply.returncode:
+        raise RuntimeError(f'GUI preservation probe refused: {reply.stderr[-4096:].strip()}')
     return json.loads(reply.stdout)
 
 
@@ -94,6 +102,11 @@ def main():
     destination_dir = options.destination.resolve()
     destination = destination_dir / f'{APP}.app'
     expected = info(prepared)['BBOXYSourceRevision']
+    if not preservation_supported(prepared):
+        raise RuntimeError('prepared bundle has no hard preserve-backend capability')
+    signature_target = 'check-prepared-unsigned' if options.private else 'check-prepared'
+    subprocess.run(['make', signature_target, f'BUNDLE={prepared}'], cwd=ROOT,
+                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
     if (not options.private and (len(expected) != 40 or any(c not in '0123456789abcdef' for c in expected))):
         raise RuntimeError('trusted GUI activation requires a clean source revision')
     if options.private and not (options.headless and options.test_account):
@@ -112,6 +125,11 @@ def main():
         raise RuntimeError('legacy GUI replacement requires explicit GUI_REPOSITORY')
     if repository:
         arguments.extend(['--repository', repository])
+    preflight = probe(executable(prepared), [*arguments, '--preserve-backend-check'])
+    if preflight.get('preserve_backend_supported') != 1 or not preflight.get('backend'):
+        raise RuntimeError('candidate cannot attest preserved backend compatibility')
+    before['backend'] = preflight['backend']
+    arguments.extend(['--preserve-backend', '--preserve-backend-owners', json.dumps(preflight['backend'])])
     previous_revision = info(destination).get('BBOXYSourceRevision') if destination.exists() else None
     evidence = Path(tempfile.mkdtemp(prefix='gui-reopen-', dir=prepared.parent))
     install_target = 'install-prepared-unsigned' if options.private else 'install-prepared'
@@ -131,16 +149,15 @@ def main():
             raise RuntimeError('installed source revision does not match the prepared candidate')
         launch_arguments = [*arguments, '--replace-gui', '--replace-gui-owner', json.dumps(before['process'])]
         if options.verify_failure_after_detach:
-            invalid = evidence / 'not-an-account-directory'
-            invalid.write_text('private startup failure fixture\n')
-            at = launch_arguments.index('--test-account') + 1
-            launch_arguments[at] = str(invalid)
+            launch_arguments.append('--verify-ui-only-after-detach')
         child = launch(executable(destination), launch_arguments, evidence / 'gui.log')
         actual = ready(child)
         gui = actual.get('gui') or {}
         if gui.get('pid') != child.pid or gui.get('source_revision') != expected:
             raise RuntimeError('rendered GUI did not attest the installed source and launched PID')
-        after = probe(executable(prepared), run_args)
+        after = probe(executable(prepared), [*arguments, '--preserve-backend-check'])
+        if after.get('backend') != preflight['backend']:
+            raise RuntimeError('backend owners changed during GUI replacement')
         if not after['running'] or after['process']['pid'] != child.pid or after['gui'] != gui:
             raise RuntimeError('ready GUI does not hold the one current GUI lease')
         if (before.get('gui') or {}).get('instance') == gui.get('instance'):
@@ -151,6 +168,7 @@ def main():
         return 0
     except Exception as failure:
         rollback = None
+        rollback_skipped = None
         restored = False
         close_error = None
         try:
@@ -175,12 +193,17 @@ def main():
                     raise RuntimeError('rollback did not restore the prior installed revision') from failure
             restored = True
             if previous_revision and before['running'] and not observed['running']:
-                old = launch(executable(destination), arguments, evidence / 'rollback-gui.log')
-                rollback = {'pid': old.pid, 'ready': ready(old)}
+                if preservation_supported(destination):
+                    subprocess.run(['make', signature_target, f'BUNDLE={destination}'], cwd=ROOT,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+                    old = launch(executable(destination), arguments, evidence / 'rollback-gui.log')
+                    rollback = {'pid': old.pid, 'ready': ready(old)}
+                else:
+                    rollback_skipped = 'restored legacy bundle lacks hard preservation; GUI left closed, backend retained'
         print(json.dumps({'ok': False, 'error': str(failure), 'close_error': close_error,
                           'restored': restored,
                           'installed_revision': info(destination).get('BBOXYSourceRevision') if (destination / 'Contents').exists() else None,
-                          'rollback': rollback,
+                          'rollback': rollback, 'rollback_skipped': rollback_skipped,
                           'concurrent_gui': observed if observed['running'] and not same_old_owner else None,
                           'evidence': str(evidence)}))
         return 2
