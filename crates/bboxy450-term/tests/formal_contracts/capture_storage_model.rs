@@ -69,7 +69,68 @@ fn capture(broken: bool) -> Model {
     m
 }
 pub fn cases() -> Vec<(Model, &'static str)> {
-    vec![(capture(false), "pass"), (capture(true), "safety")]
+    vec![
+        (capture(false), "pass"),
+        (capture(true), "safety"),
+        (tiered(false), "pass"),
+        (tiered(true), "safety"),
+    ]
+}
+fn tiered(broken: bool) -> Model {
+    let mut m = model(
+        "TieredSeatRecovery",
+        broken,
+        &[
+            ("phase", 2, 0),
+            ("pending", 2, 2),
+            ("workers", 2, 0),
+            ("generation", 1, 0),
+            ("view_generation", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "Start",
+        all([eq(0, 0), Var(2).lt(Var(1))]),
+        &[(2, Var(2).plus(Int(1)))],
+    );
+    action(
+        &mut m,
+        "Precise",
+        all([eq(0, 0), Int(0).lt(Var(2))]),
+        &[(1, Var(1).plus(Int(-1))), (2, Var(2).plus(Int(-1)))],
+    );
+    action(
+        &mut m,
+        "Fallback",
+        eq(0, 0),
+        &[(0, Int(1)), (1, Int(0)), (3, Int(1)), (4, Int(1))],
+    );
+    action(
+        &mut m,
+        "LateCompletion",
+        all([ne(0, 0), Int(0).lt(Var(2))]),
+        &[
+            (2, Var(2).plus(Int(-1))),
+            (4, if broken { Int(0) } else { Var(4) }),
+        ],
+    );
+    action(&mut m, "Ready", all([eq(1, 0), ne(0, 2)]), &[(0, Int(2))]);
+    safe(&mut m, "NoStaleRecoveryPublication", Var(3).eq(Var(4)));
+    safe(
+        &mut m,
+        "AtMostTwoRecoveryWorkers",
+        Int(2).lt(Var(2)).negate(),
+    );
+    if !broken {
+        m.responses.push(Response {
+            name: "RecoveryEventuallyReady".into(),
+            request: ne(0, 2),
+            response: eq(0, 2),
+        });
+    }
+    m.weak_fair.extend([vec![2], vec![4]]);
+    m
 }
 #[test]
 fn disk_pressure_keeps_the_owner_alive_and_recovers_without_false_durability() {

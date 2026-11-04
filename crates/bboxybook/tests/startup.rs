@@ -49,7 +49,7 @@ fn startup_checklist_keeps_every_step_actions_and_wrapped_diagnostics_in_bounds(
                 for active in 0..4 {
                     for failed in [false, true] {
                         let data = Startup {
-                            title: "Opening your cockpit".into(), description: "Your sessions appear when each check is complete.".into(),
+                            title: "Starting bboxy".into(), description: "".into(),
                             elapsed_secs: 3, active_step: active,
                             history: (active == 2).then(|| History { stream: "account".into(), verified: 25, total: 100, operation: None }),
                             details: vec![], error: failed.then(|| "History signature failed while verifying a retained account stream. Startup is paused until the signed history can be verified. The records and the diagnostic paths below remain available for inspection.".into()),
@@ -108,7 +108,7 @@ fn startup_history_zero_and_over_reported_totals_have_finite_layout() {
         (u64::MAX, u64::MAX),
     ] {
         let data = Startup {
-            title: "Opening your cockpit".into(),
+            title: "Starting bboxy".into(),
             description: String::new(),
             elapsed_secs: 0,
             active_step: 2,

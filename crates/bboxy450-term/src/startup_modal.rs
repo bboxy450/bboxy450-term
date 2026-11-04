@@ -23,38 +23,26 @@ fn view(modal: &cockpit::startup::Modal, elapsed_secs: u64) -> ui::modules::star
     };
     let mut details = vec![];
     if let Phase::AdoptingSupervisor(pid) = modal.phase {
-        details.push(["Existing supervisor".into(), format!("Process {pid}")]);
+        details.push(["Backend".into(), format!("PID {pid}")]);
     }
     if let Some((attempt, reason)) = &modal.reconnect {
-        details.push([format!("Reconnect attempt {attempt}"), reason.clone()]);
+        details.push([format!("Attempt {attempt}"), reason.clone()]);
     }
     if let Some(reason) = &modal.refresh_reason {
-        details.push(["Runtime refresh".into(), reason.clone()]);
+        details.push(["Backend update".into(), reason.clone()]);
     }
-    let (title, description) = if modal.error.is_some() {
-        (
-            "Startup needs attention",
-            "The highlighted step could not finish. Check the details and retry.",
-        )
+    let title = if modal.error.is_some() {
+        "Startup failed"
     } else if matches!(modal.phase, Phase::Reconnecting { .. }) {
-        (
-            "Reconnecting your cockpit",
-            "Restoring the connection before the cockpit opens.",
-        )
+        "Reconnecting"
     } else if matches!(modal.phase, Phase::RefreshingLogic(_)) {
-        (
-            "Refreshing session runtime",
-            "Updating the runtime before reconnecting your cockpit.",
-        )
+        "Updating backend"
     } else {
-        (
-            "Opening your cockpit",
-            "Your sessions appear when each check is complete.",
-        )
+        "Starting bboxy"
     };
     Startup {
         title: title.into(),
-        description: description.into(),
+        description: String::new(),
         elapsed_secs,
         active_step,
         history: if let Phase::VerifyingHistory {
@@ -79,7 +67,21 @@ fn view(modal: &cockpit::startup::Modal, elapsed_secs: u64) -> ui::modules::star
                 stream: String::new(),
                 verified: *completed,
                 total: *total,
-                operation: Some(operation.clone()),
+                operation: Some(
+                    match operation.as_str() {
+                        "Loading session registry" => "Load sessions",
+                        "Loading workspace records" => "Load workspace",
+                        "Restoring messages" => "Restore messages",
+                        "Restoring saved sessions" => "Restore session state",
+                        "Resuming saved sessions" => "Resume sessions",
+                        "Restoring task state" => "Restore tasks",
+                        "Restoring pending deliveries" => "Restore deliveries",
+                        "Checking identity" => "Check identity",
+                        "Opening control endpoint" => "Open controls",
+                        _ => operation,
+                    }
+                    .into(),
+                ),
             })
         } else {
             None
@@ -94,7 +96,7 @@ fn view(modal: &cockpit::startup::Modal, elapsed_secs: u64) -> ui::modules::star
                 vec![
                     ["App log".into(), run.join("app.log").display().to_string()],
                     [
-                        "Runtime log".into(),
+                        "Backend log".into(),
                         run.join("logic.log").display().to_string(),
                     ],
                 ]
@@ -216,7 +218,7 @@ mod tests {
         let retry = view(&modal, 0);
         assert_eq!(retry.active_step, 0);
         assert!(retry.error.is_none() && retry.history.is_none());
-        assert_eq!(retry.details[0], ["Reconnect attempt 1", "Retry requested"]);
+        assert_eq!(retry.details[0], ["Attempt 1", "Retry requested"]);
         modal.update(Phase::AttachingGui, now);
         modal.attached();
         assert!(!modal.visible);

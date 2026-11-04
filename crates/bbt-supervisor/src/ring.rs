@@ -1572,6 +1572,22 @@ fn load_boundary(path: &Path) -> Result<Boundary> {
     }
     Ok(serde_json::from_slice(&bytes[..end])?)
 }
+// Process-generation authority needs the committed identity fence. Terminal
+// content is validated by bounded recovery workers, never on the PTY actor.
+pub(crate) fn valid_predecessor(root: &Path, seat: Ulid, generation: u64) -> bool {
+    use std::os::unix::fs::MetadataExt;
+    // SAFETY: geteuid reads the process identity without changing state.
+    let uid = unsafe { libc::geteuid() };
+    if !std::fs::symlink_metadata(root).is_ok_and(|m| m.is_dir() && m.uid() == uid) {
+        return false;
+    }
+    ["committed", "previous"].iter().any(|name| {
+        let path = root.join(name);
+        std::fs::symlink_metadata(&path).is_ok_and(|m| m.is_file() && m.uid() == uid)
+            && load_boundary(&path).is_ok_and(|b| b.version == 1 && b.seat == seat
+                && b.generation == generation && b.settings.validate().is_ok())
+    })
+}
 fn crc32c_parts(header: &[u8], payload: &[u8]) -> u32 {
     #[cfg(target_arch = "aarch64")]
     if std::arch::is_aarch64_feature_detected!("crc") {

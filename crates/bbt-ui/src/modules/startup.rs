@@ -10,10 +10,10 @@ use bbt_ui_model::{STYLE, TOKENS, draw::Color, layout::Axis};
 use serde::{Deserialize, Serialize};
 
 pub const STEPS: [&str; 4] = [
-    "Connect to supervisor",
-    "Start session runtime",
-    "Verify signed history",
-    "Restore sessions and attach cockpit",
+    "Connect backend",
+    "Start runtime",
+    "Verify history",
+    "Restore sessions",
 ];
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -134,9 +134,9 @@ impl Startup {
             } else if current && self.error.is_some() {
                 "Failed"
             } else if current {
-                "In progress"
+                "Running"
             } else {
-                "Pending"
+                "Waiting"
             };
             let header = stack(
                 Axis::Row,
@@ -172,12 +172,12 @@ impl Startup {
                             if history.total == 0 {
                                 operation.clone()
                             } else {
-                                format!("{} of {} items", history.verified, history.total)
+                                format!("{} / {}", history.verified, history.total)
                             }
                         } else if history.total == 0 {
-                            "Checkpoint is current".into()
+                            "History current".into()
                         } else {
-                            format!("{} new records verified", history.verified)
+                            format!("{} records verified", history.verified)
                         },
                         ui::TypeStep::Title,
                         ui::Color::Foreground,
@@ -190,9 +190,9 @@ impl Startup {
                             .filter(|_| history.total > 0)
                             .unwrap_or_else(|| {
                                 if history.operation.is_some() {
-                                    "Waiting for this operation to finish".into()
+                                    String::new()
                                 } else {
-                                    format!("Last checked stream · {}", history.stream)
+                                    format!("Stream · {}", history.stream)
                                 }
                             }),
                         ui::TypeStep::Caption,
@@ -200,6 +200,7 @@ impl Startup {
                         400,
                     ),
                 ];
+                progress.retain(|element| !matches!(element, c::Element::Text(text) if text.runs.iter().all(|run| run.value.is_empty())));
                 if history.operation.is_some() && history.total > 0 {
                     let fraction =
                         (history.verified as f64 / history.total as f64).clamp(0., 1.) as f32;
@@ -232,14 +233,21 @@ impl Startup {
                 vec![stack(Axis::Column, 12., contents)],
             ));
         }
-        let header = stack(
-            Axis::Column,
-            8.,
-            vec![
-                text(&self.title, ui::TypeStep::Title, ui::Color::Foreground, 600),
-                text(&self.description, ui::TypeStep::Body, ui::Color::Muted, 400),
-            ],
-        );
+        let mut heading = vec![text(
+            &self.title,
+            ui::TypeStep::Title,
+            ui::Color::Foreground,
+            600,
+        )];
+        if !self.description.is_empty() {
+            heading.push(text(
+                &self.description,
+                ui::TypeStep::Body,
+                ui::Color::Muted,
+                400,
+            ));
+        }
+        let header = stack(Axis::Column, 8., heading);
         let mut body = vec![header, stack(Axis::Column, 4., rows)];
         for [label, value] in &self.details {
             body.push(stack(
@@ -291,7 +299,7 @@ impl Startup {
         };
         let mut footer = vec![
             text(
-                format!("{} s on this step", self.elapsed_secs),
+                format!("{} s", self.elapsed_secs),
                 ui::TypeStep::Caption,
                 ui::Color::Muted,
                 400,

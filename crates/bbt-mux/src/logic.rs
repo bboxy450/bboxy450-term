@@ -40,6 +40,8 @@ use std::time::{Duration, Instant};
 
 use crate::adapters::{Adapter, Binding, HarnessRecord, OscTap, Session};
 use crate::ring::{Playback, Saved as RingSaved};
+#[path = "logic/seat_recovery.rs"]
+mod seat_recovery;
 use bbt_core::Checkpoint;
 use ed25519_dalek::SigningKey;
 use serde::{Deserialize, Serialize};
@@ -47,6 +49,7 @@ use tokio::sync::{mpsc, oneshot};
 use ulid::Ulid;
 
 use bbt_supervisor::supervisor::capture_diagnostics::{Outcome, Phase, Recorder};
+use bbt_supervisor::protocol::SeatSize;
 
 use crate::bus::{Broker, BusHandle};
 use crate::checkpoint::{Age, Cursor as CheckpointCursor, Policy as CheckpointPolicy, Saves};
@@ -7003,24 +7006,60 @@ impl Worker {
             }
             eligible.push(record);
         }
-        let _scans = bbt_supervisor::ring::RecoveryScanCache::default();
         let total = eligible.len() as u64;
         if let Some(progress) = progress { let _ = progress.send((0, total)); }
-        for (index, record) in eligible.into_iter().enumerate() {
+        let mut pending: BTreeMap<_, _> = eligible.iter().map(|record| (record.id, record.clone())).collect();
+        let root = self.config.run_dir.clone();
+        let settings = self.config.ring.clone();
+        let preparations = seat_recovery::Preparations::start(eligible, move |record| {
+            let ring_root = root.join(format!("seat-{}/ring-{}", record.id, record.generation));
+            if !ring_root.join("committed").is_file() && !ring_root.join("previous").is_file() {
+                return Err(invalid("no committed predecessor capture"));
+            }
+            crate::ring::Ring::open(&ring_root, record.id, record.generation, 0, settings.clone())?.replay()
+        }).inspect_err(|error| eprintln!("SeatRecoveryDeferred: {error}")).ok();
+        // Terminal replay has a bounded startup budget. A conversation resumes
+        // from its retained harness ID even when the old terminal is expensive
+        // or damaged. Old generation files remain available for history.
+        let deadline = Instant::now() + Duration::from_secs(60);
+        let mut completed = 0;
+        while !pending.is_empty() {
+            let (record, prepared, deferred) = match preparations.as_ref().map_or(Err(std::sync::mpsc::RecvTimeoutError::Disconnected), |pool| pool.recv(deadline.saturating_duration_since(Instant::now()))) {
+                Ok((record, Ok(state))) if pending.get(&record.id).is_some_and(|saved| saved.generation == record.generation) => {
+                    pending.remove(&record.id);
+                    (record, Some(state), false)
+                }
+                Ok((record, Err(error))) if pending.contains_key(&record.id) => {
+                    eprintln!("SeatRecoveryDeferred [{}]: {error}", record.id);
+                    pending.remove(&record.id);
+                    (record, None, true)
+                }
+                Ok(_) => continue,
+                Err(_) => {
+                    if let Some(pool) = &preparations { pool.cancel(); }
+                    let (_, record) = pending.pop_first().unwrap();
+                    (record, None, true)
+                }
+            };
             let id = record.id;
-            if let Err(error) = self.relaunch(record) {
+            let prepared = prepared.unwrap_or_else(|| Playback::new(id, record.generation, SeatSize::default()));
+            if let Err(error) = self.relaunch_prepared(record, Some(prepared), deferred) {
                 // One damaged or full capture must not abort recovery of every
                 // other retained session or take the backend down again.
                 eprintln!("SeatRecoveryFailed [{id}]: {error}");
             }
-            if let Some(progress) = progress { let _ = progress.send((index as u64 + 1, total)); }
+            completed += 1;
+            if let Some(progress) = progress { let _ = progress.send((completed, total)); }
         }
         Ok(())
     }
     /// The next process generation of a seat whose process is gone (#11): its committed
     /// ring replayed as the restored screen with the gap named, a harness seat resumed by
     /// its session id, any other seat a fresh zsh.
-    fn relaunch(&mut self, mut record: SeatRecord) -> Result<()> {
+    fn relaunch(&mut self, record: SeatRecord) -> Result<()> {
+        self.relaunch_prepared(record, None, false)
+    }
+    fn relaunch_prepared(&mut self, mut record: SeatRecord, prepared: Option<Playback>, history_deferred: bool) -> Result<()> {
         {
             let root = object_dir(&self.config.run_dir, &format!("seat-{}", record.id))?;
             let store = SqliteStore::open(&root)?;
@@ -7032,7 +7071,9 @@ impl Worker {
             })?;
             let context: RecoveryLaunch = serde_json::from_slice(&bytes)?;
             let previous = record.generation;
-            let mut state = if let Some(view) = self.views.get(&record.id) {
+            let mut state = if let Some(state) = prepared {
+                state
+            } else if let Some(view) = self.views.get(&record.id) {
                 // A restart under a live supervisor: it still holds this generation's ring,
                 // so logic's own playback of it is the restored screen, never a second
                 // writer on that ring.
@@ -7056,10 +7097,12 @@ impl Worker {
                 )?
                 .replay()?
             };
-            let retained = format!(
+            let retained = if history_deferred {
+                format!("predecessor generation {previous}; terminal replay deferred (fast resume)")
+            } else { format!(
                 "generation {previous}, committed through capture sequence {} ({} bytes)",
                 state.sequence, state.byte_end
-            );
+            ) };
             // Resolve the old launch only through this seat's private store,
             // before launch() replaces its retained paths. Never scan /tmp or
             // remove a still-present socket or the predecessor's overlay.

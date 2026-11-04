@@ -1800,6 +1800,7 @@ test-capture-storage-model:
 
 test-retained-seat-recovery:
 	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib -E 'test(logic::seat_recovery::tests::)'; \
 	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test provider_gui --run-ignored only -E 'test(operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch)'
 
 test-watcher-import:

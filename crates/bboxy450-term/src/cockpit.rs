@@ -49,6 +49,7 @@ pub fn frontend_running(run_dir: &std::path::Path) -> Result<Option<bool>> {
 }
 
 const STARTUP_TIMEOUT: Duration = Duration::from_secs(180);
+const RECOVERY_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 const GUI_WRITE_CAPACITY: usize = 64;
 
 /// App-defined, bounded UI-to-IO messages. A full sender returns ownership to
@@ -1656,12 +1657,13 @@ async fn start_logic(
     )
     .await?;
     let mut output = BufReader::new(child.stdout.take().unwrap());
-    let mut deadline = tokio::time::Instant::now() + STARTUP_TIMEOUT;
+    let mut quiet_timeout = STARTUP_TIMEOUT;
+    let mut deadline = tokio::time::Instant::now() + quiet_timeout;
     let mut last_progress: Option<startup::HistoryProgress> = None;
     let mut endpoint: LogicReady = loop {
         let line = tokio::time::timeout_at(deadline, read_line(&mut output))
             .await
-            .map_err(|_| invalid("logic startup timed out: no progress for 180 s"))??
+            .map_err(|_| invalid(format!("Startup timed out: no progress for {} min", quiet_timeout.as_secs() / 60)))??
             .ok_or_else(|| invalid("logic exited during startup"))?;
         if let Ok(record) = serde_json::from_slice::<startup::ProgressLine>(&line) {
             let p = record.startup_progress;
@@ -1669,7 +1671,8 @@ async fn start_logic(
                 return Err(invalid("invalid logic startup progress"));
             }
             if p.advances(last_progress.as_ref()) {
-                deadline = tokio::time::Instant::now() + STARTUP_TIMEOUT;
+                quiet_timeout = if p.restoring { RECOVERY_TIMEOUT } else { STARTUP_TIMEOUT };
+                deadline = tokio::time::Instant::now() + quiet_timeout;
                 progress(if p.restoring {
                     Phase::RestoringState {
                         operation: p.stream.clone(),
