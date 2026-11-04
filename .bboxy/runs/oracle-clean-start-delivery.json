@@ -1,0 +1,168 @@
+{
+  "source_hashes": {
+    "Makefile": "1e17efffcc928ee6d9eace6fe33813f7d168c5054c0bebe011e4130656378926",
+    "ATTRIBUTION.md": "833e6fb1b8f348762cadc11ce13ebd3d2f86d0abadd901a6c63f9e715f01f2b0",
+    "scripts/verify-clean-start.py": "cc9744d67a257cd98a6cbdf319ac23211cf8bc61a4e58f824806c63a27ad4751",
+    "src/onboarding.rs": "51d532a331ba1909429d51ffd38696ca1919c6db10592c2e93efef30ac3b4917",
+    "src/backend/acp_agent.rs": "8d1fc6570717f2462a47d3fcbfc5140807da84ce8649e2c5d5025fe3694bdea3",
+    "src/frontends/headless.rs": "838b070c61f66c9dcdf5148e34cdc0c350541a2a8d7a2c3e9d16ca153bcac286",
+    "src/frontends/gui/options.rs": "33827b8b66281025a77da8def1299eb5932472ccb1b20e25f3d1119870fda81a",
+    "src/frontends/gui/window.rs": "5498de9a1077fac9de36c290f1faee768cd41eeddeebadb5b9a1d728598bcc49",
+    "src/frontends/gui/bridge.rs": "2902f1c5b254953ee58061a3ab09ffaccc286f9fe9b6045bba0954660442ebe9",
+    "tests/clean_start.rs": "99a9ff6754f879d513c64a25543c0a58a50465426d9dafd9a5fd35847b0de2f1",
+    "tests/support/clean_start.rs": "c5200ade43b5aecf77def86386ad012b711f22d0114b135b814714dfb54607ad",
+    "tests/support/onboarding_startup.rs": "09d7ecaf0b40285bb0f8fa260d7fb4a270cf408633e76a0002769f43e8f38d5e"
+  },
+  "commands": [
+    {
+      "name": "private-process-and-native-gui",
+      "command": [
+        "cargo",
+        "nextest",
+        "run",
+        "--offline",
+        "--locked",
+        "--jobs",
+        "2",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-codex-rich/crates/bboxy450-harness/target/recovery-restore",
+        "-p",
+        "bboxy450-harness",
+        "--features",
+        "standalone",
+        "--test",
+        "clean_start"
+      ],
+      "exit_code": 0,
+      "log": "/tmp/bb-clean-start-gate-y_0tpckt/private-process-and-native-gui.log",
+      "sha256": "629f4d7d3377bcc076e653de1110ddbc734c1d7982bda69d5927f6a7044db827"
+    },
+    {
+      "name": "gui-option-parsing",
+      "command": [
+        "cargo",
+        "nextest",
+        "run",
+        "--offline",
+        "--locked",
+        "--jobs",
+        "2",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-codex-rich/crates/bboxy450-harness/target/recovery-restore",
+        "-p",
+        "bboxy450-harness",
+        "--features",
+        "standalone",
+        "--test",
+        "gui_cli"
+      ],
+      "exit_code": 0,
+      "log": "/tmp/bb-clean-start-gate-y_0tpckt/gui-option-parsing.log",
+      "sha256": "25f123747dbce37c30fb1b62722d1abf87d79591f2e09bc9ef7a425601d61188"
+    },
+    {
+      "name": "actual-bridge-precedence-and-existing-setup",
+      "command": [
+        "cargo",
+        "nextest",
+        "run",
+        "--offline",
+        "--locked",
+        "--jobs",
+        "2",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-codex-rich/crates/bboxy450-harness/target/recovery-restore",
+        "-p",
+        "bboxy450-harness",
+        "--features",
+        "standalone",
+        "--lib",
+        "-E",
+        "test(clean_start_) | test(onboarding_empty_home_live_bridge_refresh)"
+      ],
+      "exit_code": 0,
+      "log": "/tmp/bb-clean-start-gate-y_0tpckt/actual-bridge-precedence-and-existing-setup.log",
+      "sha256": "81ac9e7e57a78fcea4d442882fc71de1a3071dc65c7c0840b2fe61848049dadb"
+    },
+    {
+      "name": "strict-affected-standalone",
+      "command": [
+        "cargo",
+        "clippy",
+        "--offline",
+        "--locked",
+        "--jobs",
+        "2",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-codex-rich/crates/bboxy450-harness/target/recovery-restore",
+        "-p",
+        "bboxy450-harness",
+        "--features",
+        "standalone",
+        "--lib",
+        "--bin",
+        "bboxy450-harness",
+        "--test",
+        "clean_start",
+        "--no-deps",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exit_code": 0,
+      "log": "/tmp/bb-clean-start-gate-y_0tpckt/strict-affected-standalone.log",
+      "sha256": "d96b841ee6db8f14632fdf7b726375988c42a14f75cb0be6daeb14ae9291318a"
+    },
+    {
+      "name": "embedded-without-acp",
+      "command": [
+        "cargo",
+        "check",
+        "--offline",
+        "--locked",
+        "--jobs",
+        "2",
+        "--target-dir",
+        "/Users/feral/mydev/bboxy450-term-codex-rich/crates/bboxy450-harness/target/recovery-restore",
+        "-p",
+        "bboxy450-harness",
+        "--no-default-features",
+        "--features",
+        "embedded",
+        "--lib"
+      ],
+      "exit_code": 0,
+      "log": "/tmp/bb-clean-start-gate-y_0tpckt/embedded-without-acp.log",
+      "sha256": "98cd88bb92f7f67f6f75bc0b76b40974aca76ebe43810d8e3ccb208bd53b300c"
+    },
+    {
+      "name": "license-headers",
+      "command": [
+        "make",
+        "test-licenses"
+      ],
+      "exit_code": 0,
+      "log": "/tmp/bb-clean-start-gate-y_0tpckt/license-headers.log",
+      "sha256": "263c141258db6017366ce4f11d52bf045cacabd62cccb0ace695b0cb04fe944e"
+    }
+  ],
+  "reused_commands": [],
+  "operator_input": false,
+  "raw_logs": "/tmp/bb-clean-start-gate-y_0tpckt",
+  "unchanged_contracts": [
+    "protocol",
+    "runtime",
+    "installer ownership",
+    "create-new profile publication"
+  ],
+  "default_file_written": false,
+  "producer": "bb2db636049a951d0d42caa0823467226940daa5",
+  "verified_parent_source": "4527934ccf1f3ceb45404444b997e3a7463213e4",
+  "verify": {
+    "command": "make verify-clean-start TARGET_DIR=target/recovery-restore",
+    "exit_code": 0
+  },
+  "scope": "Focused clean-start integration; full CI/parity/formal suites intentionally omitted under operator speed instruction.",
+  "worker_report": "reports/2026-11-04-harness-clean-start-correction",
+  "author": "seat:01M6KDR7TE4H4B4AF0PZYK0Q1T"
+}
