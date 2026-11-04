@@ -24,6 +24,113 @@ use std::{
     time::{Duration, Instant},
 };
 
+#[test]
+fn twenty_commit_rebase_keeps_control_requests_responsive() {
+    use std::process::{Command, Stdio};
+    fn git(root: &Path, args: &[&str]) -> String {
+        // Exercise native Git, without the operator's PATH wrappers or inherited
+        // repository/object-directory settings affecting this private fixture.
+        let output = Command::new("/usr/bin/git")
+            .env_clear()
+            .env("PATH", "/usr/bin:/bin:/usr/sbin:/sbin")
+            .env("LC_ALL", "C")
+            .current_dir(root)
+            .env("GIT_CONFIG_GLOBAL", "/dev/null")
+            .env("GIT_CONFIG_NOSYSTEM", "1")
+            .env("GIT_TERMINAL_PROMPT", "0")
+            .args([
+                "-c",
+                "core.hooksPath=/dev/null",
+                "-c",
+                "commit.gpgsign=false",
+                "-c",
+                "user.name=Watcher fixture",
+                "-c",
+                "user.email=fixture@example.invalid",
+            ])
+            .args(args)
+            .stdin(Stdio::null())
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        String::from_utf8(output.stdout).unwrap().trim().to_owned()
+    }
+    let f = Fixture::new();
+    let root = &f.config.repository;
+    git(root, &["init", "--quiet", "--initial-branch=main"]);
+    std::fs::write(root.join(".gitignore"), ".bboxy/\n").unwrap();
+    std::fs::create_dir(root.join("src")).unwrap();
+    for n in 0..64 {
+        std::fs::write(root.join(format!("src/{n}.txt")), "base\n").unwrap();
+    }
+    git(root, &["add", ".gitignore", "src"]);
+    git(root, &["commit", "--quiet", "-m", "base"]);
+    let base = git(root, &["rev-parse", "HEAD"]);
+    git(root, &["checkout", "--quiet", "-b", "topic"]);
+    for revision in 0..20 {
+        for n in 0..64 {
+            std::fs::write(
+                root.join(format!("src/{n}.txt")),
+                format!("revision {revision} file {n}\n"),
+            )
+            .unwrap();
+        }
+        git(
+            root,
+            &["commit", "--quiet", "-am", &format!("change {revision}")],
+        );
+    }
+    git(root, &["checkout", "--quiet", "main"]);
+    std::fs::write(root.join("README.md"), "upstream change\n").unwrap();
+    git(root, &["add", "README.md"]);
+    git(root, &["commit", "--quiet", "-m", "upstream"]);
+    git(root, &["checkout", "--quiet", "topic"]);
+    let path = root.to_owned();
+    let rebasing =
+        std::thread::spawn(move || git(&path, &["rebase", "--onto", "main", &base, "topic"]));
+    let started = Instant::now();
+    let mut samples = 0;
+    let mut maximum = Duration::ZERO;
+    loop {
+        let at = Instant::now();
+        f.runtime.block_on(async {
+            tokio::time::timeout(
+                Duration::from_secs(2),
+                f.logic.as_ref().unwrap().client.snapshot(f.one, 1),
+            )
+            .await
+            .expect("filesystem burst blocked control requests")
+            .unwrap();
+        });
+        maximum = maximum.max(at.elapsed());
+        samples += 1;
+        if rebasing.is_finished() {
+            break;
+        }
+        assert!(
+            started.elapsed() < Duration::from_secs(30),
+            "private rebase hung"
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    rebasing.join().unwrap();
+    assert!(samples > 1);
+    assert_eq!(git(root, &["rev-list", "--count", "main..topic"]), "20");
+    assert_eq!(
+        std::fs::read_to_string(root.join("src/0.txt")).unwrap(),
+        "revision 19 file 0\n"
+    );
+    eprintln!(
+        "watcher_rebase commits=20 files=64 control_reads={samples} max_control_us={} elapsed_ms={}",
+        maximum.as_micros(),
+        started.elapsed().as_millis()
+    );
+}
+
 struct Fixture {
     _temp: Option<tempfile::TempDir>,
     runtime: tokio::runtime::Runtime,

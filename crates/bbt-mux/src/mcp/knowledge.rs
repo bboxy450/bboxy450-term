@@ -58,7 +58,7 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
         "Create/update e2e, comment, research, note and artifact records as your seat. Create append-only reports at reports/YYYY-MM-DD-slug.md for your assigned task; corrections create a new report with supersedes. For your assigned task preserve every other field and the body, changing only report.summary, report.commit, report.report and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools. Updates retain type, ref and etag."
     };
     let write_help = format!(
-        "{write_help} Create takes path (slug.md); update takes the ref a fetch or search returned. {IDENTIFIERS}"
+        "{write_help} Research is a supported type: use research/<topic>.md with parent/children for its document tree, derived_from for origins, and links with rel used/evidence for cited sources. Specs and tasks retain derived_from links to their research or spec; these relations feed the provenance graph. The host stamps authorship and signed provenance. Create takes path (slug.md); update takes the ref a fetch or search returned. {IDENTIFIERS}"
     );
     let mut tools = vec![
         json!({"name":"knowledge_status","description":"Inspect this swarm's selected knowledge provider, root and revision, available providers, plugin activation/check state and failures. Read-only; trust, check, enable and selection use operator controls.",

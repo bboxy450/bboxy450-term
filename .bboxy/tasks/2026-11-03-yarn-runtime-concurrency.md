@@ -4,25 +4,36 @@ title: 'Yarn runtime: Loom and Shuttle exploration of reactor/source synchronisa
 role: executor
 verify: make test-yarn-concurrency
 id: 01M6H3DQX6TJ27H2AX1E1KB35R
-status: open
+status: done
 delegated_by: seat:01M6GVBAY1HW6P67GGDZM9XEBY
 swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-03T16:21:07.843Z
+updated: 2026-11-04T02:31:48.640Z
 created: 2026-11-03T16:21:07.843Z
 number: 15236
 created_by: seat:01M6GVBAY1HW6P67GGDZM9XEBY
-updated_by: seat:01M6GVBAY1HW6P67GGDZM9XEBY
+updated_by: seat:01M6HF0S1BAJKHWT2N426W7328
 authorship:
-  signer: seat:01M6GVBAY1HW6P67GGDZM9XEBY
+  signer: seat:01M6HF0S1BAJKHWT2N426W7328
   kind: seat
-  public_key: UVOPOaWiKiIlf3/HRaRx9L4rRJKHPpaAXciElGQdQaE=
+  public_key: NJfxjXALG4vfTtn9XxMx7XCD2GZh2WlrBe8FFTqIaLM=
   process_generation: '1'
+reconciliation:
+- kind: historical
+  fresh_accepted: false
+  previous_status: open
+  disposition: implemented
+  reason: Operator explicitly requests closing the completed KB tasks as done. Implementation is on main. The final combined landing used the operator's explicit CI waiver; this is historical implementation disposition, not fresh acceptance or a claim of rerun current-source CI.
+  evidence:
+  - Signed integration cdbb7d6f, ancestor of remote main f01428b8 and its later descendants.
+  - 'Task #19660 records the operator''s one-time CI/formal/local-hook waiver and the normal fast-forward push. Root independently checked all new signatures, whitespace and clean Git state. Original source branch/test histories retained; no new combined-source CI pass claimed.'
+  by: seat:01M6HF0S1BAJKHWT2N426W7328
+  op_id: 01M6J6BWKR6BKTVQQYCTG7FVRQ
 provenance:
   digest: sha256:4454b30f30659d656f7fef3333983d234f7ef0082ef5b511114336bf923cc5fd
-  frontmatter_digest: sha256:14541ecf2d68883e67eb182e66d5bbb8016411caa50a01473acc1e9118ea1335
-  signer: seat:01M6GVBAY1HW6P67GGDZM9XEBY
-  sig: FO9ZKWxU7ylN9Vc1lSxK6zaGMo1nkZfzGZPC99y5GIWU5eL5zt1N4n9yvLOU4Spd1nFX1pP0Q1U4wJMVoh1MAQ==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#90863
+  frontmatter_digest: sha256:8687f406f3a0180fa05c1784f50653e06e51ee6c0c96579fbdfc28d69ff54584
+  signer: seat:01M6HF0S1BAJKHWT2N426W7328
+  sig: xT6z1W+Em+d1hsOJtF1H5UnDR03qsgETYFNWGBZ4ng+8CeVAkcn+Ra3HD6cq59JSTlScDX3wi2CRoeHj0oDcCA==
+  log: .bboxy/log/2026-11-04.jsonl#110708
 ---
 # Yarn runtime concurrency checks (Loom + Shuttle)
 

@@ -1789,6 +1789,38 @@ test-jsonl-recovery:
 	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib -E 'test(provenance::projection)'; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts models::provenance_models::jsonl_repair_yields_and_publishes -- --exact
 
+.PHONY: test-watcher-burst test-watcher-import test-watcher-claims test-watcher-models profile-watcher-burst profile-rebase-watcher
+test-watcher-import:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib logic::task_import::tests::task_migration_held_import_keeps_messages_tasks_and_other_roots_live_and_refuses_stale_publication -- --exact --nocapture
+
+test-watcher-claims:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test provenance -E 'test(live_detection_claim_hook_rename_delete_and_restart_preserve_evidence)'
+
+test-watcher-models:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts models::watcher_model::
+
+test-watcher-burst:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib -E 'test(provenance::detector) | test(knowledge_watch_ignores_) | test(index::watch::tests) | test(incremental_scan_) | test(deferred_scan_) | test(deferred_publication_)'; \
+	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test provenance -E 'test(twenty_commit_rebase_keeps_control_requests_responsive)'
+
+profile-watcher-burst:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib provenance::detector::tests::twenty_commit_checkout_burst_coalesces_without_losing_reported_hints -- --exact --nocapture
+
+profile-rebase-watcher:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test provenance twenty_commit_rebase_keeps_control_requests_responsive -- --exact --nocapture
+
+.PHONY: test-research-lineage
+test-research-lineage:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test research_lineage; \
+	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test mcp -E 'test(mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_types)'
+
 .PHONY: test-task-import-observer test-task-import-observer-causal test-task-import-observer-mutant check-task-import-observer
 test-task-import-observer: test-task-migration
 	@set -eu; . ./scripts/cache-env.sh; \

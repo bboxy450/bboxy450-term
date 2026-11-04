@@ -4,25 +4,36 @@ title: 'Yarn protocol!: liveness/fairness properties and effect lifecycle (admis
 role: executor
 verify: make test-yarn-model && make test-formal
 id: 01M6H3D24MTW3923FT6VVMQHAG
-status: open
+status: done
 delegated_by: seat:01M6GVBAY1HW6P67GGDZM9XEBY
 swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-03T16:20:45.984Z
+updated: 2026-11-04T02:32:34.821Z
 created: 2026-11-03T16:20:45.984Z
 number: 15234
 created_by: seat:01M6GVBAY1HW6P67GGDZM9XEBY
-updated_by: seat:01M6GVBAY1HW6P67GGDZM9XEBY
+updated_by: seat:01M6HF0S1BAJKHWT2N426W7328
 authorship:
-  signer: seat:01M6GVBAY1HW6P67GGDZM9XEBY
+  signer: seat:01M6HF0S1BAJKHWT2N426W7328
   kind: seat
-  public_key: UVOPOaWiKiIlf3/HRaRx9L4rRJKHPpaAXciElGQdQaE=
+  public_key: NJfxjXALG4vfTtn9XxMx7XCD2GZh2WlrBe8FFTqIaLM=
   process_generation: '1'
+reconciliation:
+- kind: historical
+  fresh_accepted: false
+  previous_status: open
+  disposition: implemented
+  reason: Operator explicitly requests closing the completed KB tasks as done. Implementation is on main. The final combined landing used the operator's explicit CI waiver; this is historical implementation disposition, not fresh acceptance or a claim of rerun current-source CI.
+  evidence:
+  - Signed integration a51f1f3d921ed7ac3a08d8fb57bac67ca6484c7f, ancestor of remote main f01428b8 and its later descendants.
+  - 'Task #19660 records the operator''s one-time CI/formal/local-hook waiver and the normal fast-forward push. Root independently checked all new signatures, whitespace and clean Git state. Original source branch/test histories retained; no new combined-source CI pass claimed.'
+  by: seat:01M6HF0S1BAJKHWT2N426W7328
+  op_id: 01M6J6D8W63DVNKQT2B0P12HJJ
 provenance:
   digest: sha256:78ae90c29c36ebe6264f17620b45987bc3419788a45f3e95a478ae5a9aa37ff1
-  frontmatter_digest: sha256:5a9eb09513b87fcdee6e75cc693a91e6bac350f6743b31f319c17b715918de7b
-  signer: seat:01M6GVBAY1HW6P67GGDZM9XEBY
-  sig: QxJtmn+Y2gPCXGtbU6DpnzAGkke48+4q3xY46S8oI0iYkTDPYlW4/CFgHE38vVpFGVRjjMGB+eXo9HaotgeIDQ==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#90859
+  frontmatter_digest: sha256:90e1b6c1811f4b49e81091bf073b32e0f74e733133e76261889595c7be88d4ce
+  signer: seat:01M6HF0S1BAJKHWT2N426W7328
+  sig: NznaySrGlhLjipbjLPe1KC3LOoudQt/aDnHt/nxbThljdFTvGug5ZgJZwW9rnDKGSDuWxHT12soHuL+U/g6bAg==
+  log: .bboxy/log/2026-11-04.jsonl#110894
 ---
 # Yarn `protocol!` stage 4: temporal properties and effects
 

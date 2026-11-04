@@ -924,6 +924,66 @@ assumptions = "One Boolean visible, initially false; Wait::waiting is weakly fai
 property = "The correct declaration has 2 states/4 edges and eventually reaches its terminal predicate. Replacing only the update by ignore yields 1 state/2 edges and the explicit response violation STUTTER-LIVE with prefix [0], cycle [0,0], despite both fairness annotations. Every explicit edge and counterexample replays through step. Native and Java TLC graphs and liveness verdicts must agree."
 checks = ["make test-formal", "make test"]
 
+
+[[contract]]
+name = "WatcherInbox"
+title = "Indexed filesystem hints retain FIFO membership through pop and counter wrap"
+models = ["WatcherInbox", "BrokenWatcherInbox"]
+sources = ["crates/bbt-mux/src/provenance/detector.rs", "crates/bbt-mux/src/index.rs", "crates/bboxy450-term/tests/formal_contracts/watcher_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/provenance/detector.rs", "crates/bbt-mux/src/index.rs", "crates/bbt-mux/tests/provenance.rs"]
+assumptions = "Two modification paths, two queued slots and a four-position wrapping head. Push, coalesce and pop are atomic under the same mutex. Fair consumer pops eventually service retained paths; event arrivals are not fair. A side index stores absolute positions and wrapping subtraction recovers deque offsets. Real capacity is 4096, root identity is part of each key, and non-modification hints keep their order. Native witnesses cover reported attribution, exact overflow counts, distinct roots and kinds, counter wrap and ignored events completing while the consumer holds the mutex. The host-owned log/*.jsonl projection and log/.projection-rebuild-v1 staging namespace never dirty the Markdown collector; staging is excluded from collection while ordinary log/*.md remains a record. Other root-relative regular non-Markdown data/metadata changes cannot alter the Markdown collector's record set; rename, directory, missing-path and rescan hints remain conservative. Filesystem delivery completeness, actual Git/OS latency, hashing and arbitrary Rust refinement remain outside this finite projection."
+property = "Every side index names its retained path, no duplicate modification is queued, and fair consumption eventually removes each path. The broken control retains an index after pop and must violate index safety. Performance is measured separately by the same 4096-path/20-commit-style burst before and after; it is not a GUI or whole-rebase latency proof."
+checks = ["make test-formal", "make test"]
+
+
+[[contract]]
+name = "WatcherSettle"
+title = "Continuous hints do not postpone dirty batches forever"
+models = ["WatcherSettle", "BrokenWatcherSettle"]
+sources = ["crates/bbt-mux/src/index/watch.rs", "crates/bboxy450-term/tests/formal_contracts/watcher_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/index/watch.rs", "crates/bbt-mux/tests/provenance.rs"]
+assumptions = "Atomic callback merge and batch capture. Two age ticks abstract the maximum debounce age; one idle tick the quiet period. Hints may arrive indefinitely. Tick and eligible admission are weakly fair; IO lane admission can add delay. Native pending-set tests cover 200 ms quiet, 1 s maximum eligibility, path deduplication and overflow. OS delivery completeness, actual wall-clock scheduling and arbitrary Rust refinement are unmodeled."
+property = "A dirty batch eventually becomes eligible and is admitted despite continuous hints. The broken control resets first-dirty age for every hint and must exhibit a fair liveness counterexample."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "WatcherChanges"
+title = "Prepared scan completion preserves newer pending changes"
+models = ["WatcherChanges", "BrokenWatcherChanges"]
+sources = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/index/watch.rs", "crates/bbt-mux/src/knowledge/routing.rs", "crates/bboxy450-term/tests/formal_contracts/watcher_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/knowledge/routing_tests.rs", "crates/bbt-mux/tests/provenance.rs"]
+assumptions = "One path, two filesystem revisions, atomic hint/capture/completion and eventual scan IO under weakly fair capture/completion. Native witnesses retain an edit arriving after preparation, reread restored-mtime bytes on full reconciliation, replace failed watchers before scanning, and preserve root/base identity fences. Eventual convergence is not an atomic filesystem snapshot; unbounded external failure, graph memory cost and arbitrary Rust refinement are unmodeled."
+property = "No stable filesystem change is left without a running or pending reconciliation, and each stable revision eventually becomes visible or superseded. The broken completion clears dirtiness belonging to a newer change and violates safety."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "WatcherPool"
+title = "Root reconciliation occupies at most two IO lanes"
+models = ["WatcherPool", "BrokenWatcherPool"]
+sources = ["crates/bbt-mux/src/knowledge/routing.rs", "crates/bboxy450-term/tests/formal_contracts/watcher_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/knowledge/routing_tests.rs", "crates/bbt-mux/tests/provenance.rs"]
+assumptions = "Three roots each request one operation and share two lanes. Root admission and IO completion are weakly fair. Two permanently stalled operations can consume both lanes, though the logic owner never waits on scan IO. Native tests hold two prepared completions, verify the third root queues, retain later edits, and read private control snapshots during a real 20-commit rebase. Actual latency and full runtime scheduling are unmodeled."
+property = "At most two operations run and all finitely requested roots eventually finish under completion fairness. The broken admission ignores the lane bound and must violate the two-job invariant."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "WatcherPublication"
+title = "Durable outbox ACK follows idempotent append"
+models = ["WatcherPublication", "BrokenWatcherPublication"]
+sources = ["crates/bbt-mux/src/index/outbox.rs", "crates/bbt-mux/src/logic.rs", "crates/bboxy450-term/tests/formal_contracts/watcher_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/knowledge/routing_tests.rs", "crates/bbt-mux/tests/provenance.rs"]
+assumptions = "One stable durable event ID, idempotent bus append, one transient failure, and weakly fair recovery/read/append/ACK. The native fixture holds publication IO for one root, verifies its event remains pending with the same ID, and observes another root publish. Owner-side task suppression stays serialized with native transitions. Arbitrarily persistent storage/bus failure, cross-process storage implementation and unbounded streams are unmodeled."
+property = "An event is acknowledged only after append and eventually appended/acknowledged after a transient failure. The broken ACK guard allows deletion before append and must violate safety."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "WatcherAdmission"
+title = "Unsettled filesystem hints fence knowledge mutations"
+models = ["WatcherAdmission", "BrokenWatcherAdmission"]
+sources = ["crates/bbt-mux/src/index/watch.rs", "crates/bbt-mux/src/knowledge/workspaces.rs", "crates/bbt-mux/src/knowledge/routing.rs", "crates/bbt-mux/src/logic.rs", "crates/bboxy450-term/tests/formal_contracts/watcher_model.rs"]
+implementation_tests = ["crates/bbt-mux/tests/provenance.rs", "crates/bbt-mux/src/knowledge/routing_tests.rs"]
+assumptions = "One observed change moves through clean, unsettled, settled, scanning and published phases. Admission and observation are owner-serialized; native IO remains subject to existing root identity and writer leases. No fairness is needed for this safety property. The live claim/hook/rename/delete/restart integration regression verifies artifact ID preservation during deferred reconciliation. Unobserved external changes and full arbitrary Rust refinement are unmodeled."
+property = "Knowledge mutation is never admitted from a snapshot preceding an observed unsettled change. The broken guard checks readiness instead of pending dirtiness, admits the unsettled phase, and must violate safety."
 [[contract]]
 name = "RichHost"
 title = "Harness socket delivery, session incarnation and disposable rich face"

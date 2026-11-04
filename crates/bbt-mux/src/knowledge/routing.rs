@@ -6,9 +6,14 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Owner-side root routing. No filesystem access or waiting in admission.
 use super::{roots::Host, workspaces::*};
-use crate::{Ulid, index::Index, registry::Registry, store};
+use crate::{
+    Ulid,
+    index::{FileWatch, Index, ScanBatch},
+    registry::Registry,
+    store,
+};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, VecDeque},
     path::PathBuf,
     sync::Arc,
     time::{Duration, Instant},
@@ -33,14 +38,20 @@ enum Completion {
 }
 struct ScanCompletion {
     root: String,
+    generation: u64,
+    watch: Option<FileWatch>,
     base: Arc<Index>,
     index: Arc<Index>,
     result: Result<()>,
 }
 #[cfg(test)]
 pub(crate) type ScanHook = Arc<dyn Fn(&str) + Send + Sync>;
+#[derive(Default)]
 struct ScanState {
     running: bool,
+    queued: bool,
+    force: bool,
+    generation: u64,
     failure: Option<(Instant, Error)>,
 }
 struct Attempt {
@@ -57,9 +68,13 @@ pub(crate) struct Router {
     runtime: Handle,
     scans: BTreeMap<String, ScanState>,
     scan_jobs: JoinSet<ScanCompletion>,
+    scan_queue: VecDeque<String>,
     ready_scans: std::collections::BTreeSet<String>,
+    ready_cursor: Option<String>,
     #[cfg(test)]
     pub scan_hook: Option<ScanHook>,
+    #[cfg(test)]
+    pub scan_complete_hook: Option<ScanHook>,
     #[cfg(test)]
     pub fail_next_prepare: bool,
 }
@@ -81,9 +96,13 @@ impl Router {
             runtime,
             scans: BTreeMap::new(),
             scan_jobs: JoinSet::new(),
+            scan_queue: VecDeque::new(),
             ready_scans: Default::default(),
+            ready_cursor: None,
             #[cfg(test)]
             scan_hook: None,
+            #[cfg(test)]
+            scan_complete_hook: None,
             #[cfg(test)]
             fail_next_prepare: false,
         }
@@ -231,6 +250,7 @@ impl Router {
     }
     pub fn poll(&mut self, registry: &Registry) {
         self.poll_scans();
+        self.start_scans();
         while let Some(joined) = self.jobs.try_join_next() {
             let done = match joined {
                 Ok(done) => done,
@@ -317,62 +337,132 @@ impl Router {
     /// Reconcile one root on IO. The owner excludes effects/provenance while
     /// its mirror/outbox can change, rather than discarding a raced DB commit.
     pub fn reconcile(&mut self, root: &str) -> store::Result<()> {
-        if self.scans.get(root).is_some_and(|state| {
-            state.running
-                || state
-                    .failure
-                    .as_ref()
-                    .is_some_and(|(at, _)| at.elapsed() < Duration::from_secs(1))
-        }) {
-            return Ok(());
+        self.queue_scan(root, true)
+    }
+    pub fn reconcile_pending(&mut self, root: &str) -> store::Result<()> {
+        self.queue_scan(root, false)
+    }
+    fn queue_scan(&mut self, root: &str, force: bool) -> store::Result<()> {
+        if self.cache.root_mut(root).is_none() {
+            return Err(store::invalid("unknown workspace root"));
         }
-        let workspace = self
-            .cache
-            .root_mut(root)
-            .ok_or_else(|| store::invalid("unknown workspace root"))?;
-        let _ = workspace.changed();
-        let base = workspace.index.clone();
-        let repository = workspace.root().to_owned();
-        let root = root.to_owned();
-        let state = self.scans.entry(root.clone()).or_insert(ScanState {
-            running: false,
-            failure: None,
-        });
-        state.running = true;
-        #[cfg(test)]
-        let hook = self.scan_hook.clone();
-        self.scan_jobs.spawn_blocking_on(
-            move || {
-                let mut index = base.clone();
-                let result = io_result(&repository, || {
-                    #[cfg(test)]
-                    if let Some(hook) = hook {
-                        hook(&root);
-                    }
-                    Arc::make_mut(&mut index)
-                        .scan()
+        let state = self.scans.entry(root.to_owned()).or_default();
+        state.force |= force;
+        if !state.queued {
+            state.queued = true;
+            if !state.running {
+                self.scan_queue.push_back(root.to_owned());
+            }
+        }
+        self.start_scans();
+        Ok(())
+    }
+    fn start_scans(&mut self) {
+        // One job per root, at most two scans process-wide for this owner. A
+        // continuously dirty root rejoins the FIFO behind other workspaces.
+        let mut budget = self.scan_queue.len();
+        while self.scan_jobs.len() < 2 && budget > 0 {
+            budget -= 1;
+            let Some(root) = self.scan_queue.pop_front() else {
+                break;
+            };
+            let state = self.scans.get_mut(&root).expect("queued scan");
+            if state
+                .failure
+                .as_ref()
+                .is_some_and(|(at, _)| at.elapsed() < Duration::from_secs(1))
+            {
+                self.scan_queue.push_back(root);
+                continue;
+            }
+            state.queued = false;
+            let Some(workspace) = self.cache.root_mut(&root) else {
+                continue;
+            };
+            let batch = if state.force {
+                let _ = workspace.watch.take(true);
+                ScanBatch::Full
+            } else {
+                let Some(batch) = workspace.watch.take(false) else {
+                    continue;
+                };
+                batch
+            };
+            state.force = false;
+            state.running = true;
+            state.generation = state.generation.wrapping_add(1);
+            let generation = state.generation;
+            let replace_watch = workspace.failed();
+            let base = workspace.index.clone();
+            let repository = workspace.root().to_owned();
+            #[cfg(test)]
+            let hook = self.scan_hook.clone();
+            #[cfg(test)]
+            let complete_hook = self.scan_complete_hook.clone();
+            self.scan_jobs.spawn_blocking_on(
+                move || {
+                    let mut index = base.clone();
+                    let mut watch = None;
+                    let result = io_result(&repository, || {
+                        if replace_watch {
+                            let replacement = FileWatch::start(&repository).map_err(|error| {
+                                Error::Unavailable {
+                                    repository: repository.clone(),
+                                    reason: error.to_string(),
+                                }
+                            })?;
+                            if replacement.root() != repository {
+                                return Err(Error::Unavailable {
+                                    repository: repository.clone(),
+                                    reason: "watch root changed during recovery".into(),
+                                });
+                            }
+                            let _ = replacement.take(true);
+                            watch = Some(replacement);
+                        }
+                        #[cfg(test)]
+                        if let Some(hook) = hook {
+                            hook(&root);
+                        }
+                        let index = Arc::make_mut(&mut index);
+                        match batch {
+                            ScanBatch::Full => index.reconcile_all(),
+                            ScanBatch::Paths(paths) => index.scan_paths(&paths),
+                        }
                         .map(|_| ())
                         .map_err(|error| Error::Unavailable {
                             repository: repository.clone(),
                             reason: error.to_string(),
                         })
-                });
-                if result.is_err() {
-                    Arc::make_mut(&mut index).rebuild_graphs();
-                }
-                ScanCompletion {
-                    root,
-                    base,
-                    index,
-                    result,
-                }
-            },
-            &self.runtime,
-        );
-        Ok(())
+                    });
+                    if result.is_err() {
+                        Arc::make_mut(&mut index).rebuild_graphs();
+                    }
+                    #[cfg(test)]
+                    if let Some(hook) = complete_hook {
+                        hook(&root);
+                    }
+                    ScanCompletion {
+                        root,
+                        generation,
+                        watch,
+                        base,
+                        index,
+                        result,
+                    }
+                },
+                &self.runtime,
+            );
+        }
     }
     pub fn scanning(&self, root: &str) -> bool {
-        self.scans.get(root).is_some_and(|state| state.running)
+        self.scans
+            .get(root)
+            .is_some_and(|state| state.running || state.queued)
+    }
+    #[cfg(test)]
+    pub fn scan_work(&self) -> (usize, usize) {
+        (self.scan_jobs.len(), self.scan_queue.len())
     }
     pub fn reconciliation_failed(&self, root: &str) -> bool {
         self.scans
@@ -381,7 +471,7 @@ impl Router {
     }
     pub fn write_ready(&self, registry: &Registry, binding: &RootBinding) -> store::Result<()> {
         self.current(registry, binding)?;
-        if self.scanning(&binding.root_id) {
+        if self.scanning(&binding.root_id) || self.cache.get(binding)?.pending() {
             return Err(Box::new(Error::Pending(binding.swarm)));
         }
         Ok(())
@@ -390,40 +480,92 @@ impl Router {
         self.ready_scans.insert(root);
     }
     pub fn take_ready_scans(&mut self) -> Vec<String> {
-        std::mem::take(&mut self.ready_scans).into_iter().collect()
+        use std::ops::Bound::{Excluded, Unbounded};
+        let mut selected: Vec<_> = match &self.ready_cursor {
+            Some(cursor) => self
+                .ready_scans
+                .range((Excluded(cursor.clone()), Unbounded))
+                .take(2)
+                .cloned()
+                .collect(),
+            None => self.ready_scans.iter().take(2).cloned().collect(),
+        };
+        if selected.len() < 2 {
+            let remaining: Vec<_> = self
+                .ready_scans
+                .iter()
+                .filter(|root| !selected.contains(root))
+                .take(2 - selected.len())
+                .cloned()
+                .collect();
+            selected.extend(remaining);
+        }
+        for root in &selected {
+            self.ready_scans.remove(root);
+        }
+        if let Some(last) = selected.last() {
+            self.ready_cursor = Some(last.clone());
+        }
+        selected
     }
     fn poll_scans(&mut self) {
         while let Some(joined) = self.scan_jobs.try_join_next() {
             let Ok(done) = joined else {
                 continue;
             };
-            let state = self.scans.get_mut(&done.root).expect("admitted scan");
-            state.running = false;
-            let Some(workspace) = self.cache.root_mut(&done.root) else {
-                continue;
-            };
-            if !Arc::ptr_eq(&workspace.index, &done.base) {
-                state.failure = Some((
-                    Instant::now(),
-                    Error::Unavailable {
-                        repository: workspace.root().to_owned(),
-                        reason: "workspace snapshot changed during reconciliation; retry".into(),
-                    },
-                ));
-                self.ready_scans.insert(done.root);
-                continue;
-            }
-            workspace.index = done.index;
-            match done.result {
-                Ok(()) => {
-                    state.failure = None;
-                    self.ready_scans.insert(done.root);
+            let ScanCompletion {
+                root,
+                generation,
+                base,
+                index,
+                watch,
+                result,
+            } = done;
+            let mut prepared = Some(index);
+            let mut watch = watch;
+            let mut retired = None;
+            let mut retired_watch = None;
+            if let Some(state) = self.scans.get_mut(&root)
+                && state.running
+                && state.generation == generation
+            {
+                state.running = false;
+                if let Some(workspace) = self.cache.root_mut(&root) {
+                    if !Arc::ptr_eq(&workspace.index, &base) {
+                        state.failure = Some((
+                            Instant::now(),
+                            Error::Unavailable {
+                                repository: workspace.root().to_owned(),
+                                reason: "workspace snapshot changed during reconciliation; retry"
+                                    .into(),
+                            },
+                        ));
+                    } else {
+                        retired = Some(std::mem::replace(
+                            &mut workspace.index,
+                            prepared.take().expect("prepared scan"),
+                        ));
+                        if let Some(replacement) = watch.take() {
+                            retired_watch =
+                                Some(std::mem::replace(&mut workspace.watch, replacement));
+                        }
+                        state.failure = result.err().map(|error| (Instant::now(), error));
+                    }
+                    self.ready_scans.insert(root.clone());
                 }
-                Err(error) => {
-                    state.failure = Some((Instant::now(), error));
-                    self.ready_scans.insert(done.root);
+                if state.queued {
+                    self.scan_queue.push_back(root);
                 }
             }
+            // Transfer, rather than clone, the published Arc; retaining a
+            // second new Arc here would force the next owner edit to clone it.
+            self.jobs.spawn_blocking_on(
+                move || {
+                    drop((base, retired, prepared, watch, retired_watch));
+                    Completion::Closed
+                },
+                &self.runtime,
+            );
         }
     }
     fn cached_root_match(

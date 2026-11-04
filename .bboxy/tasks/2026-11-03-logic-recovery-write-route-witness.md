@@ -53,10 +53,10 @@ allowed_paths:
 - .bboxy/specs/provenance.md
 - .bboxy/decisions/d19427-canonical-paged-jsonl-recovery-integration.md
 id: 01M6HGAE1XXGRJ58SFATHX9R18
-status: claimed
+status: accepted
 delegated_by: seat:01M6HF0S1BAJKHWT2N426W7328
 swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-03T22:51:00.394Z
+updated: 2026-11-04T00:52:48.106Z
 created: 2026-11-03T20:06:30.913Z
 number: 16404
 created_by: seat:01M6HF0S1BAJKHWT2N426W7328
@@ -68,12 +68,37 @@ authorship:
   process_generation: '1'
 assignee: seat:01M6HGAF8KJMA0860GJ6VYM9E2
 verify_revision: 1
+artifacts:
+- '[[01M6HZYJQK0XRHNQ43MWMC8FMR]]'
+verify_result:
+  command: sh scripts/land.sh --full
+  exit_code: 0
+  evidence:
+  - criterion: Canonical final gate and landing
+    reference: 40f45c5838f521bd70e9b8ff907caca3f8784eb9; /Users/feral/.local/state/bboxy450-term/landing/presubmits/40f45c5838f521bd70e9b8ff907caca3f8784eb9-07e7b1ea/commands.log SHA256 cc53be84a6ab628e9585267c9b584a6802c6a55ed4c10b525c5ceedbc3a802e7; /tmp/hol-final-complete-land.log exit 0
+  - criterion: Real admitted write and nonblocking ownership/lifetime
+    reference: 'Report #19654; /tmp/hol-number-owner-process.log exit 0 (4 parent witnesses); /tmp/hol-final-ownership-mutant.log nextest 100 at actual overlap assertion, exact restored projection SHA256 88fcef0c09e232a10b15f7dcfbdcd969085d972de86c20eda1a0560978fc7a18'
+  - criterion: Recovery diagnostics, durable migration and crash controls
+    reference: crates/bbt-mux/src/provenance/projection/recovery.rs:90,136,344; /tmp/hol-canonical-recovery.log make test-jsonl-recovery exit 0 (12 recovery tests plus native JsonlRepair check)
+  - criterion: Unchanged ready ctl and synchronous allocation contracts
+    reference: /tmp/hol-final-boundaries.log make test-boundaries exit 0, all 21 ctl cases; /tmp/hol-number-allocation.log exit 0, 14 tests and independent-process numbers 42..49
+  - criterion: Complete current-source formal receipt and proof limits
+    reference: /Users/feral/mydev/bboxy450-term/.git/bboxy-formal-evidence/cd9d93570e189d605cea6a22e5bbd53815391cd4feb46d2d203dcb5f57b49fec/evidence.json; 290 models/34 crates/119 contracts, dirty=false, source 184b770f9f43094c518570f143e5eeaeb7e999ef; finite hand-written declarations, not Rust or macro-to-worker refinement
+  - criterion: Signed committed full report and checked report landing
+    reference: 'Report #19654 at reports/2026-11-03-logic-recovery-write-route-witness.md, signed Report trailer in 184b770f9f43094c518570f143e5eeaeb7e999ef; /tmp/hol-report-land.log exit 0 with records_checks_exit=0; artifact 01M6HZYJQK0XRHNQ43MWMC8FMR'
+report:
+  summary: 'Landed implementation 40f45c5838f521bd70e9b8ff907caca3f8784eb9 through sh scripts/land.sh --full (0): 2623 tests passed, private smoke/invariants passed, and complete clean native/TLC parity covers 290 models, 34 crates and 119 contracts. Report #19654 is signed and landed separately as 184b770f9f43094c518570f143e5eeaeb7e999ef through the existing checked records-only reuse path (0; no incremental rechecks). It records canonical bounded recovery/batched sync and explicit legacy STATE.repair migration, per-root actual-IO ownership across cancellation/restart/A-B-A, real admitted-write unknown/backlog with retained signed intent (no commit claimed), distinct once-per-transition triggers, final-source removed-guard failure, unchanged ctl/NUM2 regressions, resolved red gates, exact source/log/receipt hashes and formal limits. Current receipt binds the record SHA (cd9d9357…); worktree is clean and both commits are on origin/main. The exact historical trigger and arbitrary Rust/wall-clock refinement remain unproven.'
+  commit: 184b770f9f43094c518570f143e5eeaeb7e999ef
+  reported_by: seat:01M6HGAF8KJMA0860GJ6VYM9E2
+  op_id: 01M6HZZC0966JKDBVJABKY669G
+  verify_revision: 1
+  report: '[[reports/2026-11-03-logic-recovery-write-route-witness.md]]'
 provenance:
-  digest: sha256:64418192a8322cb8ac3d3f178cf99083efbf226e85ce8c779dd82aa1e43e8b9f
-  frontmatter_digest: sha256:ccbebf56634545e8bd76c37c9c46fdfda426818c8dadc9b236b354fb1d820632
+  digest: sha256:d4230775b14a1814c0b65110eb85ca8e88f59e67aa7c5b6f51fbd63ebc379332
+  frontmatter_digest: sha256:2d6b6e7933357ed9aaa392f618875738bd970c65d4b1e2a968e1d30352b74f54
   signer: seat:01M6HF0S1BAJKHWT2N426W7328
-  sig: 6CGramR0/aCLmdX4EMIzbePidEP2LPTRWyuNtr63yZHUjzZg/cp1iaQldBIVHnH9oxHYL73S0kmuefcBqefpBA==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#107870
+  sig: FbirK6dFV69uT5+qEOTQk19C2+nL3X115GKclPtLguQrF9Db5nqxgaKvNpx/1O0dYdOmWuLVGS7cU4VWAxXgCw==
+  log: .bboxy/log/2026-11-04.jsonl#109827
 ---
 # Integrated logic recovery, real write witnesses, and projection ownership
 
@@ -156,3 +181,46 @@ Do not regenerate either session asset or run the generators to create new sessi
 Follow [[decisions/d19427-canonical-paged-jsonl-recovery-integration]] (copy this signed decision unchanged). Retain our separate durable rebuild and bounded staged publication as the canonical mechanism; integrate upstream page-batched file fsync and compatible JsonlRepair tests/model. Upstream final publication still loops every part in one call, whereas our publication/cleanup are paged and have additional crash/SQL-chain controls. Keep unrelated upstream cockpit/bootstrap behavior.
 
 Explicitly detect/migrate old STATE.repair into the canonical bounded path, with interrupted legacy-state tests; do not silently ignore a staged cursor. Preserve file-content-sync -> directory durability -> cursor commit ordering, SQL/envelope verification, hidden unpublished references, ownership guards and all crash/negative controls. Do not keep two active recovery algorithms. Align provenance spec and JsonlRepair contract/native witness with the selected implementation rather than deleting the upstream property. Model/Makefile/projection paths are already scoped; the provenance spec and decision copy are now additionally authorized. Resolve the inspectable rebase under this decision, run focused migration/recovery checks including make test-jsonl-recovery, then unchanged boundary witnesses and the final canonical full/incremental landing loop. No unchanged baseline rerun or waiver.
+
+
+## Report from seat:01M6HGAF8KJMA0860GJ6VYM9E2
+
+Landed implementation 40f45c5838f521bd70e9b8ff907caca3f8784eb9 through sh scripts/land.sh --full (0): 2623 tests passed, private smoke/invariants passed, and complete clean native/TLC parity covers 290 models, 34 crates and 119 contracts. Report #19654 is signed and landed separately as 184b770f9f43094c518570f143e5eeaeb7e999ef through the existing checked records-only reuse path (0; no incremental rechecks). It records canonical bounded recovery/batched sync and explicit legacy STATE.repair migration, per-root actual-IO ownership across cancellation/restart/A-B-A, real admitted-write unknown/backlog with retained signed intent (no commit claimed), distinct once-per-transition triggers, final-source removed-guard failure, unchanged ctl/NUM2 regressions, resolved red gates, exact source/log/receipt hashes and formal limits. Current receipt binds the record SHA (cd9d9357…); worktree is clean and both commits are on origin/main. The exact historical trigger and arbitrary Rust/wall-clock refinement remain unproven.
+
+```json
+{
+  "op_id": "01M6HZZC0966JKDBVJABKY669G",
+  "commit": "184b770f9f43094c518570f143e5eeaeb7e999ef",
+  "report": "[[reports/2026-11-03-logic-recovery-write-route-witness.md]]",
+  "verify_result": {
+    "command": "sh scripts/land.sh --full",
+    "exit_code": 0,
+    "evidence": [
+      {
+        "criterion": "Canonical final gate and landing",
+        "reference": "40f45c5838f521bd70e9b8ff907caca3f8784eb9; /Users/feral/.local/state/bboxy450-term/landing/presubmits/40f45c5838f521bd70e9b8ff907caca3f8784eb9-07e7b1ea/commands.log SHA256 cc53be84a6ab628e9585267c9b584a6802c6a55ed4c10b525c5ceedbc3a802e7; /tmp/hol-final-complete-land.log exit 0"
+      },
+      {
+        "criterion": "Real admitted write and nonblocking ownership/lifetime",
+        "reference": "Report #19654; /tmp/hol-number-owner-process.log exit 0 (4 parent witnesses); /tmp/hol-final-ownership-mutant.log nextest 100 at actual overlap assertion, exact restored projection SHA256 88fcef0c09e232a10b15f7dcfbdcd969085d972de86c20eda1a0560978fc7a18"
+      },
+      {
+        "criterion": "Recovery diagnostics, durable migration and crash controls",
+        "reference": "crates/bbt-mux/src/provenance/projection/recovery.rs:90,136,344; /tmp/hol-canonical-recovery.log make test-jsonl-recovery exit 0 (12 recovery tests plus native JsonlRepair check)"
+      },
+      {
+        "criterion": "Unchanged ready ctl and synchronous allocation contracts",
+        "reference": "/tmp/hol-final-boundaries.log make test-boundaries exit 0, all 21 ctl cases; /tmp/hol-number-allocation.log exit 0, 14 tests and independent-process numbers 42..49"
+      },
+      {
+        "criterion": "Complete current-source formal receipt and proof limits",
+        "reference": "/Users/feral/mydev/bboxy450-term/.git/bboxy-formal-evidence/cd9d93570e189d605cea6a22e5bbd53815391cd4feb46d2d203dcb5f57b49fec/evidence.json; 290 models/34 crates/119 contracts, dirty=false, source 184b770f9f43094c518570f143e5eeaeb7e999ef; finite hand-written declarations, not Rust or macro-to-worker refinement"
+      },
+      {
+        "criterion": "Signed committed full report and checked report landing",
+        "reference": "Report #19654 at reports/2026-11-03-logic-recovery-write-route-witness.md, signed Report trailer in 184b770f9f43094c518570f143e5eeaeb7e999ef; /tmp/hol-report-land.log exit 0 with records_checks_exit=0; artifact 01M6HZYJQK0XRHNQ43MWMC8FMR"
+      }
+    ]
+  }
+}
+```
