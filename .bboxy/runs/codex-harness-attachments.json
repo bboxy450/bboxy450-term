@@ -3,8 +3,8 @@
     "command": "make verify-harness-attachments",
     "exit_code": 0
   },
-  "producer_head": "958f1d14b40c4b83e50cf405c58efd126b73c976",
-  "consumer_head": "94222c5f19b2fdec8659f2a8c1d76fa5f459428d",
+  "producer_head": "f2022dee24c344c5eee487a7a1dff28ae5ad7c42",
+  "consumer_head": "1d060fab2ccdf8d6ca67c31c219096440fee5295",
   "source_hashes": {
     "ATTRIBUTION.md": "d3b8a0d725060db78b1da4a36a25d04066f4fc835445dce908d500b4789f5dd5",
     "Cargo.lock": "4986e8c5ac1decb5e2053b9cda967eee12c6252309e8d1354a5b64ec41b4c605",
@@ -15,12 +15,12 @@
     "crates/bboxy450-harness/Cargo.toml": "7fa6161c1c12856a1c17efef922d74302a73319d70e2ee5678bcbc012328c546",
     "crates/bboxy450-harness/Makefile": "2efe8ea2430dcd9a25f2011eb6d2291cbef2ff70bfdb5cf1e61e9448466bd846",
     "crates/bboxy450-harness/scripts/formal.py": "7bd64ace2a79bc92d689ed64480938c2b9882d3dbb6f1c19ef23e0daa56d7cff",
-    "crates/bboxy450-harness/scripts/verify-harness-attachments.py": "9a6c2f2a195170c879b831a60394edea23284a15dc8c04d4cc93260b371d64ea",
+    "crates/bboxy450-harness/scripts/verify-harness-attachments.py": "56ab847857965a3b8d677fc46000fa4c6bbd4520c7c0944e778bf5803d3c3c79",
     "crates/bboxy450-harness/src/backend/acp_agent.rs": "96277f65145cb92409d9306682687cceb7fa7262368e50c7a20854b02a11e4d8",
     "crates/bboxy450-harness/src/engine/mod.rs": "da6373b7acdc59b6a705ca1b43fea0627c10ac7d7a225c7edb316b384e583bcc",
     "crates/bboxy450-harness/src/frontends/gui/anim.rs": "3bb1cd00d2c4ef2d67a58b5110a063a6e8872ba267a931a214d5d54d6f0bb7de",
     "crates/bboxy450-harness/src/frontends/gui/assets.rs": "b6f57d57d3a6c3ee7fb8869f76a797a43ae1d62383691002d95f34dff7477e4d",
-    "crates/bboxy450-harness/src/frontends/gui/attachments.rs": "c4ecd17eddee986ba6c0ddd000552f8eddd6938285aed4aa4000f7013dd89f7f",
+    "crates/bboxy450-harness/src/frontends/gui/attachments.rs": "1df223c267c4d7a6c6610501111e00c41506694a20a998dab09091531cde4f25",
     "crates/bboxy450-harness/src/frontends/gui/bridge.rs": "e5188736d7c20581d952b0e4448fcebc153811e10e99567645feb509188a5f89",
     "crates/bboxy450-harness/src/frontends/gui/budget.rs": "80e271ad648d81c672db002b9912dd7e5debea9ea72c7b5056003bcdf7f2d1a8",
     "crates/bboxy450-harness/src/frontends/gui/chat_scroll.rs": "b9c25f771d9c0c555c02458d4cf4a18365a8742b502abcdd636ed604c4596275",
@@ -43,12 +43,12 @@
     "crates/bboxy450-harness/src/protocol/mod.rs": "d77746bce74f182f24ffb238f906116b4cacb721aa26b6731cfcb2a2b3481f08",
     "crates/bboxy450-harness/src/store/intake.rs": "19d59425b523b9e81114a9e721bff795ce56d7b903b8eb456f170de4a7fa0106",
     "crates/bboxy450-harness/src/store.rs": "22f0ad8c7aae9d3dc243db54f4fa28d6a60d4cba3774c7b09fccfc2362b596b9",
-    "crates/bboxy450-harness/tests/fixtures/acp-agent/attachments.py": "9f8f2c977e1ce3748fa84ecc666978e937833d548efaaa3c86c28e0c3c9465ab",
+    "crates/bboxy450-harness/tests/fixtures/acp-agent/attachments.py": "126991ecb20d15bbd4ee2a5e41822ad674a2d7c8b80542323dc0135a9fd058a9",
     "crates/bboxy450-harness/tests/formal/export.rs": "8c7222a2575965b19f1a7b8add2fa176ef16d2d4033048ce1790125e5935cb95",
     "crates/bboxy450-harness/tests/formal/models.rs": "bf4bcf3691c6d80eb5eefb14104a5f250e76d7c0f7d8d2bb7b60fd54ca4edea3",
     "crates/bboxy450-harness/tests/formal_models.rs": "f73e898fe0728130f730eee36dc34b7dfafd5b646f10e32543db228c7ac588f7",
     "crates/bboxy450-harness/tests/gui_bridge.rs": "61335e875433d230305d81e6e7a00ca25c9c07b510b1eeb75a3f77558f1e8a7f",
-    "crates/bboxy450-harness/tests/harness_attachments.rs": "17ca7945ff706c0ebf53e65c7efd4f28d9a5040ff725cfdadfdd7917e970fd3b",
+    "crates/bboxy450-harness/tests/harness_attachments.rs": "e1b67758804ac5253ebdd1eed35c38a5f5af8f3ee3390cb46eb7acb0a7cd043d",
     "crates/bboxy450-harness/verification/contracts.toml": "f4b8e539baa63f5c36910c7e8ce0198fde6f8269c5bc76d10a23f330f2c92652",
     "crates/bboxy450-harness/verification/corpus.toml": "714ef6c677574ed87ca3157387c2195c9dc36302c274d1355e159658a2eb544e",
     "crates/bboxy450-harness/verification/tools.lock.json": "45d8a35d0b533e53689efc46542315cf91713ee5821a2f002289cc0b8bc7a8dd",
@@ -88,7 +88,7 @@
         "harness_attachments"
       ],
       "exit_code": 0,
-      "log_sha256": "aa0ca5506bc4ab0363d5ca8fe4bdd242897e1ec6d29244e4777cb53d0aa539b2",
+      "log_sha256": "f36f6e1a0eefa286d905b1973088aa899bbb509e5f35f6c92a0d4ffe5914721d",
       "log": "/Users/feral/mydev/bboxy450-term-composer/target/harness-attachments/native-worker.log"
     },
     {
@@ -109,7 +109,7 @@
         "test(clipboard_private_pasteboard_snapshots_png_tiff_text_without_general_clipboard)"
       ],
       "exit_code": 0,
-      "log_sha256": "67b4403b5629d22a8bc31855a87437fac1e15ae7c87139fd1624d759a7ae986f",
+      "log_sha256": "dfdeb680f03134fefc814eff0e4b785e59e2e6f21cbf4f68a5138dc023255a49",
       "log": "/Users/feral/mydev/bboxy450-term-composer/target/harness-attachments/private-native-clipboard.log"
     },
     {
@@ -135,7 +135,7 @@
         "warnings"
       ],
       "exit_code": 0,
-      "log_sha256": "c3a7404a957daa995585d8b4502216a48d94efece5976c383f31f9324e1edc8d",
+      "log_sha256": "babd54ae84c3e46a1db3212aef76bf3cb5612f550e98e24a850a4fa5f872b018",
       "log": "/Users/feral/mydev/bboxy450-term-composer/target/harness-attachments/strict-consumer.log"
     }
   ],
@@ -161,7 +161,7 @@
         ],
         "exit_code": 0,
         "log": "/Users/feral/mydev/bboxy450-term-composer/target/harness-attachments/composer-acp.log",
-        "sha256": "b21bc17a0d53696cfdeff42a4a474c311423582df2efc4ecdbd1cfee61ab79b8"
+        "sha256": "e9c3a8dee05f8f871f1df82ed3f82f10de4c3acdb03ff897eced66a32b4f6b96"
       },
       {
         "command": [
@@ -184,7 +184,7 @@
         ],
         "exit_code": 0,
         "log": "/Users/feral/mydev/bboxy450-term-composer/target/harness-attachments/existing-pending-contract.log",
-        "sha256": "5edfb24d69e5f4fbc7192081341de533244cae987eae7f8422d5f3517a5924e6"
+        "sha256": "ba2101135d5a8be1b3be3ae05bd81c914a9b6de64d13a7f18f26b80e3166755e"
       },
       {
         "command": [
@@ -208,7 +208,7 @@
         ],
         "exit_code": 0,
         "log": "/Users/feral/mydev/bboxy450-term-composer/target/harness-attachments/existing-reconnect.log",
-        "sha256": "dfeb23e39438852c3adac8addbffa76d8fb91bbcce5412b6b6cb7b500bbfba14"
+        "sha256": "9ff6665888b8e11d9b8d27197c03d5c1fb6600c5e496672d81e3f3444761274e"
       },
       {
         "command": [
@@ -230,7 +230,7 @@
         ],
         "exit_code": 0,
         "log": "/Users/feral/mydev/bboxy450-term-composer/target/harness-attachments/ownership-model.log",
-        "sha256": "766b0a3fabaa40f82ceaa6b92dcbe1a810827021c89c121668a1e0b63e6cbdb1"
+        "sha256": "443ceeb936d181e90348c2a74b181ec921ec914363756e885ddf0102c8bd5747"
       },
       {
         "command": [
@@ -260,7 +260,7 @@
         ],
         "exit_code": 0,
         "log": "/Users/feral/mydev/bboxy450-term-composer/target/harness-attachments/strict-producer.log",
-        "sha256": "a8bb93971cd33d2ac8338a091d0c3a237048251c76a658f0bfd63c0d9d851dc6"
+        "sha256": "5ed439f7a4eb4c3a667fd0a67875cad42bfcb495ff23f49b8710cc794085aa30"
       },
       {
         "command": [
@@ -281,7 +281,7 @@
         ],
         "exit_code": 0,
         "log": "/Users/feral/mydev/bboxy450-term-composer/target/harness-attachments/embedded.log",
-        "sha256": "8bc69aad419ce77dbd1518dc626662c32335d5acbfe821919bf5ce084710dc42"
+        "sha256": "ac0aa07e76bd47469461072423b440f2fd7cbdc8cb085c1c943d31cb73c05dd8"
       }
     ],
     "models": [
@@ -361,13 +361,18 @@
     "install"
   ],
   "source_commits": {
-    "producer": "f2022dee24c344c5eee487a7a1dff28ae5ad7c42",
-    "consumer": "4a940bab010a474278d2fb5fc228b68e3cfbfa5c",
+    "producer": "ff6d0685aad6ed4f0796123e997dfdd66c61d6d9",
+    "consumer": "1d060fab2ccdf8d6ca67c31c219096440fee5295",
     "all_53_source_hashes_match_committed_bytes": true,
     "consumer_gitlink_deliberately_unstaged": true
   },
   "source_manifest_sha256": {
-    "producer": "4df0d02e40ac46f21a0aed2de112b987928adacbd33ba39e78c471faf9848ba6",
+    "producer": "66a40dcfd522007c64de1389ec36bb2e6cd3ec8a0fc0b8abc5630769a49defa1",
     "consumer": "618b67952413c151e1a7da048d9700fd1fa516a568fc638fce681bdca9e8e400"
-  }
+  },
+  "captures": {
+    "target/harness-attachments/captures/prior-history-baseline.png": "2741cd8be1c7c163e0e9f059c5f28b0e982fa5e5dfdaa345df9a5c5a250f52e6",
+    "target/harness-attachments/captures/queued-image-file-history.png": "ba4181c8c5ee58c4284e2e397f1c198590c67f2df55e50d9ab2f2b02896038c1"
+  },
+  "captures_assertion": "Exact RGBA equality for both completed prior user/assistant regions before and during a real queued image/file turn with prepared=None; each baseline region has more than eight distinct colors."
 }
