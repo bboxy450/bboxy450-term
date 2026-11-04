@@ -1028,6 +1028,8 @@ sources = ["crates/bbt-mux/src/index/watch.rs", "crates/bbt-mux/src/knowledge/wo
 implementation_tests = ["crates/bbt-mux/tests/provenance.rs", "crates/bbt-mux/src/knowledge/routing_tests.rs"]
 assumptions = "One observed change moves through clean, unsettled, settled, scanning and published phases. Admission and observation are owner-serialized; native IO remains subject to existing root identity and writer leases. No fairness is needed for this safety property. The live claim/hook/rename/delete/restart integration regression verifies artifact ID preservation during deferred reconciliation. Unobserved external changes and full arbitrary Rust refinement are unmodeled."
 property = "Knowledge mutation is never admitted from a snapshot preceding an observed unsettled change. The broken guard checks readiness instead of pending dirtiness, admits the unsettled phase, and must violate safety."
+checks = ["make test-formal", "make test"]
+
 [[contract]]
 name = "RichHost"
 title = "Harness socket delivery, session incarnation and disposable rich face"
@@ -1175,8 +1177,9 @@ models = ["TieredSeatRecovery", "BrokenTieredSeatRecovery"]
 sources = ["crates/bbt-supervisor/src/ring.rs", "crates/bbt-supervisor/src/supervisor.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/logic/seat_recovery.rs", "crates/bboxy450-term/src/cockpit.rs", "crates/bboxy450-term/tests/formal_contracts/capture_storage_model.rs"]
 implementation_tests = ["crates/bbt-mux/src/logic/seat_recovery.rs", "crates/bbt-mux/tests/provider_gui.rs"]
 assumptions = "Two seats and at most two preparation workers. Precise completion, budget expiry, fallback generation publication and late completion are atomic actions. Fair timeout, ready and command service guarantee progress. Recovery polls one completion without waiting, and launches at most one seat per command-owner turn so required MCP initialization remains serviceable. Actual file IO is not cancellable: workers may finish old-generation repair after fallback, but never publish views, change ownership or launch processes. A bounded result queue is discarded on cancellation. Process admission reads a bounded CRC-valid, owned predecessor marker with the exact seat and generation, without scanning terminal data on the PTY actor. Native witnesses hold both workers, drop the result owner and release late completions without starting queued jobs. The model abstracts filesystem content, native conversation resume and wall-clock scheduling."
-property = "At most two recovery workers exist. Precise terminal restoration receives a 60-second batch budget; remaining seats resume from retained launch/session IDs with an explicit history gap and old generation files preserved. Late preparation cannot replace the fallback generation. The broken control publishes the old generation and must violate safety."
-checks = ["make test-capture-storage-model", "make test-retained-seat-recovery", "make test-formal"]
+property = "At most two recovery workers exist. Precise terminal restoration receives a 60-second batch budget; remaining seats resume from retained launch/session IDs with an explicit history gap and old generation files preserved. Late preparation cannot replace the fallback generation. The broken control publishes the old generation and must violate safety. Focused implementation witnesses also run make test-capture-storage-model, make test-retained-seat-recovery."
+checks = ["make test-formal", "make test"]
+
 
 [[contract]]
 name = "TaskPanelRetry"
@@ -1185,5 +1188,6 @@ models = ["TaskPanelRetry", "BrokenTaskPanelRetry"]
 sources = ["crates/bboxy450-term/src/messaging.rs", "crates/bboxy450-term/src/sidebar_chat.rs", "crates/bboxy450-term/tests/formal_contracts/task_panel_model.rs"]
 implementation_tests = ["crates/bboxy450-term/tests/messaging_ui.rs", "crates/bbt-ui/tests/task_panel.rs"]
 assumptions = "Two swarms, three non-reused generations, one retained timer and two countdown ticks; selection, refresh and delivery are atomic UI turns. Native tests cover A to B to A, manual refresh, actual countdown calculation, successful empty lists, and centered clickable states. Timer delivery, RPC termination, real clocks, unbounded generations and layout/font metrics remain implementation-tested; no wall-clock progress guarantee is claimed. Existing request identities preserve uncertain mutations, and only reads are automatically repeated."
-property = "Only a timer from the current generation admits a retry. Removing the generation check must fail safety."
-checks = ["make test-task-panel", "make test-task-panel-formal", "make test-formal"]
+property = "Only a timer from the current generation admits a retry. Removing the generation check must fail safety. Focused implementation witnesses also run make test-task-panel, make test-task-panel-formal."
+checks = ["make test-formal", "make test"]
+
