@@ -65,6 +65,7 @@ help:
 	  'make check-formal-evidence      Verify the source-bound formal landing receipt' \
 	  'make test-formal-contracts      Project contracts and real API witnesses (native)' \
 	  'make test-yarn-model            Native checker, exporter and strict Rust lint' \
+	  'make test-yarn-concurrency      Bounded Loom primitives/controls + seeded Shuttle reactors' \
 	  'make publish-tlc-crate          Publish native crate as verified bboxy450 (authorization required)' \
 	  'make publish-crates             Publish workspace crates in dependency order (authorization required)' \
 	  'make prepare-tlc                Export signed standalone bboxy450-tlc source' \
@@ -258,7 +259,7 @@ compile: tools
 	@set -eu; case '$(PROFILE)' in debug) flag='' ;; release) flag='--release' ;; *) echo 'PROFILE must be debug or release' >&2; exit 2 ;; esac; \
 	. ./scripts/cache-env.sh; cargo build --locked -p $(APP) -p bboxy450-harness --target-dir '$(TARGET_DIR)' $$flag
 
-test check: tools test-signatures
+test check: tools test-signatures test-yarn-concurrency
 	@set -eu; mkdir -p "$$(dirname '$(CI_LOG)')"; \
 	SIGNED_RANGE= BBOXY_GATE_SLOT=none BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))' sh scripts/ci-local.sh $(CI_ARGS) >'$(CI_LOG)' 2>&1 || { code=$$?; tail -60 '$(CI_LOG)'; exit $$code; }; \
 	tail -12 '$(CI_LOG)'; printf 'Full gate log: %s\n' '$(CI_LOG)'
@@ -1584,6 +1585,9 @@ test-recovery-built:
 	'$(abspath $(TARGET_DIR))/recovery-test' --exact checkpoint_bounded_recovery --nocapture
 
 .PHONY: test-formal test-yarn-model test-formal-contracts format-formal-contracts check-formal-evidence
+.PHONY: test-yarn-concurrency
+test-yarn-concurrency: tools init-submodules
+	@set -eu; . ./scripts/cache-env.sh; python3 -I crates/bbt-yarn/tests/concurrency/run.py '$(TARGET_DIR)'
 
 check-formal-evidence:
 	@python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' --verify-evidence

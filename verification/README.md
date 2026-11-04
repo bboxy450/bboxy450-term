@@ -213,6 +213,38 @@ protocols still need their own model when introduced.
 
 ## Changing a crate
 
+`make test-yarn-concurrency` runs the real Yarn adapter code with a test-only
+`cfg(loom)`/`cfg(shuttle)` synchronization shim. Four Loom checks use preemption
+bound 2 and at most 3 threads; four broken controls must fail their named
+assertions with nextest exit 100. Shuttle checks four larger scenarios with two
+fixed seeds, random and PCT depth 3, and 128 iterations each (2,048 executions).
+Exceeding 1,000 Loom branches or 10,000 Shuttle steps fails; no duration or
+iteration cutoff silently accepts an incomplete run. Failures print Shuttle's
+encoded schedule; set `YARN_SHUTTLE_REPLAY` and run the named test under
+`RUSTFLAGS='--cfg shuttle'` with `--no-default-features --features macros --lib`
+to replay it. The canonical target deliberately clears replay/seed overrides.
+
+This is implementation-level evidence in `contracts.toml`'s separate
+`implementation_evidence` inventory. The shim treats channel queue operations
+and registration as mutex transactions and assumes one producer per channel;
+it does not explore Tokio's internal synchronization, capacity/backpressure,
+cancellation tree, timers, cooperative budget or the OS executor. Existing normal
+Tokio API/runtime witnesses remain necessary. No formal refinement or unbounded
+liveness proof follows from these schedules. Normal product builds contain no
+shim or mutation and retain their existing no_std/features.
+
+Shuttle treats atomics as sequentially consistent; weak-memory exploration is
+limited to the Loom fixtures. A -> B -> A checks cover both retained future and
+optional receiver replacement, with at most four concurrent tasks (seven total
+task identities in that scenario).
+
+The target is included in `make test`: the complete run including strict
+Clippy of both cfg builds took 48.173 seconds; the earlier run before adding
+Clippy took 7.720 seconds with scheduler dependencies compiled. Initial cold
+compilation attempts failed while developing the checks and are not included.
+Build cost varies with the cache.
+Per-backend and negative-control logs stay in `TARGET_DIR/yarn-concurrency/`.
+
 For a change to a stateful boundary, update its finite model and add the smallest
 counterexample to the previous behavior as a negative control. Keep assumptions,
 atomicity, channel capacities, failures and fairness explicit. Model selected

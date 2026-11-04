@@ -1,6 +1,18 @@
 # Project-owned bounded specifications. Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 # Rust witnesses and existing implementation tests supplement these models, not refinement proofs.
 
+# Separate implementation evidence: not a new symbolic model or refinement proof.
+[[implementation_evidence]]
+name = "YarnRuntimeConcurrency"
+check = "make test-yarn-concurrency"
+sources = ["crates/bbt-yarn/src/reactor.rs", "crates/bbt-yarn/src/source/mod.rs", "crates/bbt-yarn/src/source/tokio_impl.rs"]
+implementation_tests = ["crates/bbt-yarn/src/concurrency.rs", "crates/bbt-yarn/tests/concurrency/run.py", "crates/bbt-yarn/tests/reactor_runtime.rs", "crates/bbt-yarn/tests/tokio_source_coverage.rs"]
+state = "One reactor owns adapter slots via exclusive mutable access. Signal starts ready=false, value=0, waker=None; publish writes value then release-publishes readiness and wakes a registered waiter. Poll acquire-checks readiness, registers/replaces the waker, then rechecks. Channel starts empty/open/no waker; a mutex makes send, receive/registration and close atomic at the shim boundary. One producer per channel; no sender cloning; at most three work items per each of two channels. Source completion removes its retained slot before delivery. Replacement cancels the prior future before installing its successor."
+properties = "WAKE-001: pending after a completion implies a wake. WAKER-001: the latest pending poll is woken. CLOSE-001: queued item precedes one close event, then permanent dormancy. SERVICE-001: a retained future is delivered once under two serialized consumers. SHUTDOWN-001: a shutdown ready before arbitration wins. DRAIN-001: each actual generated service window handles 1..2 items. GENERATION-001: A -> B -> A replacement returns only the last generation even as old completions race."
+bounds = "Loom 0.7.2: preemption_bound=2, max_threads=3, max_branches=1000, no max_permutations/max_duration. Four positive tests, four process-isolated cfg(test)+cfg(loom)+cfg(yarn_broken_controls) negatives; the driver requires nextest exit 100 and each named assertion, refusing build failures or empty selections. Shuttle 0.9.1: seeds 0x5941524e and 0x4c4f4f4d; random and PCT depth=3, 128 executions each per four scenarios (2048 total); max_steps=FailAfter(10000), no time cutoff, at most four concurrent tasks (seven total task identities in replacement) and six work items. Every normal execution is finite; scheduler progress is sampled, not a liveness/fairness proof."
+broken_controls = "Remove the Signal fixture's post-registration readiness recheck; keep its stale waker; remove real Mpsc receiver retirement; remove real OneShot future retirement. Each mutation is reachable only in the test-only Loom build and selected in a separate process. The first two validate the admitted-future boundary assumption; the latter two mutate production adapter code under test-only cfg."
+limits = "The shim explores the real Yarn adapter/macro code, not Tokio's internal atomics, lock-free queues, cancellation tree, timers, cooperative budget or OS scheduler. Channel synchronization is one mutex transaction and has no capacity/backpressure semantics; the bounded Receiver name only selects the real adapter enum branch. std Arc reference counts for Wake objects are not instrumented. Existing normal Tokio runtime/source tests remain independent API witnesses. No arbitrary Rust correctness, full memory-model, unbounded fairness or formal refinement claim."
+
 [[contract]]
 name = "EventLogCheckpoint"
 title = "Checkpointed event-log startup and post-readiness historical audit"

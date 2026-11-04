@@ -15,8 +15,11 @@ extern crate self as bbt_yarn;
 
 extern crate alloc;
 
-#[cfg(feature = "model")]
+#[cfg(any(feature = "model", test))]
 extern crate std;
+
+#[cfg(all(test, any(loom, shuttle)))]
+mod concurrency;
 
 /// Native finite-state checking and TLA+ export for the explicit Yarn subset.
 #[cfg(feature = "model")]
