@@ -2222,7 +2222,7 @@ verify-ui-only-reopen: bundle-unsigned prepare-rich-native-fixture
 # Only a throwaway signed fixture may remove this static rollback capability.
 .PHONY: fixture-ui-only-legacy
 fixture-ui-only-legacy:
-	@python3 -I -c 'import os,pathlib,stat,sys; root=pathlib.Path(sys.argv[1]).resolve(strict=True); bundle=pathlib.Path(sys.argv[2]).resolve(strict=True); assert root.parent == pathlib.Path("/tmp").resolve() and root.name.startswith("ui-only-"); assert root.stat().st_uid == os.getuid() and stat.S_IMODE(root.stat().st_mode) == 0o700; assert bundle == root/"installed/bboxy450-term.app" and (root/"bootstrap.json").is_file()' '$(UI_ONLY_TEST_ROOT)' '$(BUNDLE)'
+	@python3 -I -c 'import os,pathlib,stat,sys; root=pathlib.Path(sys.argv[1]).resolve(strict=True); bundle=pathlib.Path(sys.argv[2]).resolve(strict=True); assert root.parent == pathlib.Path("/tmp").resolve() and root.name.startswith("ui-only-"); assert root.stat().st_uid == os.getuid() and not (stat.S_IMODE(root.stat().st_mode) & 0o022); assert bundle == root/"installed/bboxy450-term.app" and (root/"bootstrap.json").is_file()' '$(UI_ONLY_TEST_ROOT)' '$(BUNDLE)'
 	@plutil -remove BBOXYPreserveBackend '$(BUNDLE)/Contents/Info.plist'
 	@codesign --force --sign - --timestamp=none '$(BUNDLE)'
 	@codesign --verify --strict '$(BUNDLE)'

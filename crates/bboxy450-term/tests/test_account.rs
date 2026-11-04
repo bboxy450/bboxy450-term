@@ -186,6 +186,18 @@ fn ui_only_birth(pid: u32) -> Option<(u64, u64)> {
 }
 #[cfg(target_os = "macos")]
 impl UiOnlyCleanup {
+    fn gui(&mut self, receipt: &serde_json::Value) {
+        for value in [
+            &receipt["after"]["process"]["pid"],
+            &receipt["rollback"]["pid"],
+        ] {
+            if let Some(pid) = value.as_u64().and_then(|p| u32::try_from(p).ok())
+                && let Some(birth) = ui_only_birth(pid)
+            {
+                self.0.push((pid, birth));
+            }
+        }
+    }
     fn new(session: &Session) -> Self {
         Self(
             [
@@ -437,13 +449,15 @@ async fn ui_only_reopen_real_gui_and_supported_or_legacy_rollback() {
     let bootstrap: serde_json::Value =
         serde_json::from_slice(&std::fs::read(root.path().join("bootstrap.json")).unwrap())
             .unwrap();
-    let _owned = UiOnlyCleanup(serde_json::from_value(bootstrap["owners"].clone()).unwrap());
+    let mut owned = UiOnlyCleanup(serde_json::from_value(bootstrap["owners"].clone()).unwrap());
     let seat: GuiSeat = serde_json::from_value(bootstrap["seat"].clone()).unwrap();
     let expected: bboxy450_term::cockpit::BackendIdentity =
         serde_json::from_value(bootstrap["expected"].clone()).unwrap();
     let identity = bootstrap["authority"].clone();
     let first = ui_only_handoff(root.path(), &config, false).await;
+    owned.gui(&first);
     let next = ui_only_handoff(root.path(), &config, false).await;
+    owned.gui(&next);
     assert_ne!(
         first["after"]["gui"]["instance"],
         next["after"]["gui"]["instance"]
@@ -456,6 +470,7 @@ async fn ui_only_reopen_real_gui_and_supported_or_legacy_rollback() {
     );
     assert_eq!(preserve_backend_preflight(&config).await.unwrap(), expected);
     let failed = ui_only_handoff(root.path(), &config, true).await;
+    owned.gui(&failed);
     assert_eq!(failed["restored"], true, "{failed}");
     assert_eq!(failed["rollback"]["ready"]["gui_ready"], true, "{failed}");
     assert_eq!(preserve_backend_preflight(&config).await.unwrap(), expected);
