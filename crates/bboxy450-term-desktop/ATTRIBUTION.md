@@ -163,3 +163,9 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+- Shared composer attachment custody, workspace completion, async ownership fences and private native/ACP/formal witnesses are project-owned; retain this policy with extracted implementations.
+
+Harness onboarding verification in `scripts/verify-harness-onboarding.py` is a
+project-owned focused gate; the harness producer retains its own canonical
+origin, factual adapter sources and attribution in its submodule.
