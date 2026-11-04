@@ -1,0 +1,5 @@
+error: PRO012 case has multiple fairness annotations. Repair: declare fairness once per named case.
+  --> tests/ui/protocol_duplicate_fairness.rs:14:37
+   |
+14 |         #[fair(strong, case = Ping::current)];
+   |                                     ^^^^^^^

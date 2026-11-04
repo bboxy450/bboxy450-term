@@ -1,0 +1,5 @@
+error: PRO011 unknown state predicate `missing`. Repair: declare the predicate with #[predicate], #[terminal], #[quiescent] or #[invariant].
+  --> tests/ui/protocol_unknown_predicate.rs:15:53
+   |
+15 |         #[property(id = "LIVE-001", leads_to(ready, missing))];
+   |                                                     ^^^^^^^

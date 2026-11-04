@@ -858,3 +858,44 @@ implementation_tests = ["crates/bbt-mux/src/provenance/projection.rs", "crates/b
 assumptions = "Three retained pages, one owner and a fixed head. A page, owner turn and publication are atomic; each is weakly fair. The canonical separate rebuild verifies/appends at most 16 rows or 8 ms per turn, with at least one row, and publishes or cleans at most 16 parts. Normal append retains the upstream 128-row/8-ms bound. Batching syncs touched file contents, then directory entries, before SQLite cursor durability. STATE.repair from upstream 2e481e4f is explicitly hidden and conservatively restarted through this one rebuild protocol; unknown legacy temporary trees are retained. Representation-adapted upstream repair_yields_and_resumes_its_durable_cursor_before_publishing and legacy_state_repair_restarts_staging_and_interrupted_publication check restart, retained progress, hidden references and exact signed sequence publication. Staged files are synced once per page before its cursor is persisted and references remain unavailable until all rows are verified and files replaced. The finite model checks turn arbitration and publication, not OS latency, signature algorithms, filesystem crash durability or arbitrary Rust refinement. Native tests reopen the store mid-repair, verify all signatures and sequence order, and retain partial/duplicate/symlink controls."
 property = "A repair page yields to the owner before the next page, and publication follows all retained pages. The broken control removes the yield guard and must violate RepairYieldsToOwner; a fair healthy run eventually publishes."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "PresentGeneration"
+title = "Yarn temporal declarations revalidate generation and assume only named case fairness"
+models = ["PresentGeneration", "BrokenPresentGeneration"]
+sources = ["crates/bbt-yarn-macros/src/protocol.rs", "crates/bbt-yarn/tests/protocol_temporal.rs", "crates/bbt-yarn/examples/verify.rs"]
+implementation_tests = ["crates/bbt-yarn/tests/protocol_temporal.rs", "crates/bbt-yarn/tests/ui.rs"]
+assumptions = "One owner; Frame={F}, Generation={First,Second}, each generation selectable once; initially unselected, visible=None and issued/queued/admitted/fetched empty. Atomic Select emits an intent; FetchAdmitted and FetchSucceeded/FailedBeforeEffect/UnknownOutcome/CancelledBeforeStart are later independent inputs. Completion order, delays, duplicates, cancellation and selection changes are arbitrary; outcomes require lifecycle guards. Presentation rechecks generation at commit, not just admission. Each generation's response is ready leads_to visible-or-deselected; therefore a successfully fetched request that remains selected eventually becomes visible. Weak fairness is only on the disjunction of Present::current parameter instances; strong fairness is only on FetchAdmitted::admit instances. Neither assumes fetch success, fair delivery of every event or a fair runtime. Infinite ignore/reject or implicit stuttering cannot satisfy a response. Terminal/quiescent predicate labels do not prune states or discharge unrelated obligations. A-B-A generation reuse is explicitly refused at this finite bound. External execution, real scheduling, retries after restart, unbounded identities and wall-clock progress remain unmodeled."
+property = "PRESENT-001 requires visible=None or selected && visible=Some(generation). Correct declaration has exactly 91 states/1365 edges. Removing only the generation comparison (and complementary stale guard) gives 99/1485 and a replayed safety counterexample. Removing only Present::current fairness preserves 91/1365 and produces a replayed closed lasso for both generation response IDs. BrokenProtocolProgress has 1 state/2 ignored-or-rejected edges, explicit WF/SF, a true quiescent predicate and a false terminal target; its response must fail. Every explicit edge in every variant is replayed through the generated step. Java TLC compares full reachable state and labeled transition sets and independent safety/liveness verdicts."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "RetryUnknown"
+title = "Unknown effect outcome retains admission identity and prevents duplicate commit"
+models = ["RetryUnknown", "BrokenRetryUnknown"]
+sources = ["crates/bbt-yarn-macros/src/protocol.rs", "crates/bbt-yarn/tests/protocol_temporal.rs", "crates/bbt-yarn/examples/verify.rs"]
+implementation_tests = ["crates/bbt-yarn/tests/protocol_temporal.rs", "crates/bbt-yarn/tests/ui.rs"]
+assumptions = "One atomic protocol owner, Id={Only}, all seven Boolean fields initially false. Begin/Retry emits a Write intent; separate WriteAdmitted claims the identity; later completion is Succeeded, FailedBeforeEffect, UnknownOutcome or CancelledBeforeStart. UnknownOutcome conservatively includes a possible external commit and retains the claim without exposing a certain success. Known failure before the effect releases the claim. Retry requires no intent/admission and an unclaimed identity; successful/uncertain claims are retained. No fairness is required for this safety property. Protocol guards and pure generated API witnesses check the finite claim contract; no actual remote I/O, persistent dedup service, restart recovery or arbitrary Rust refinement is proved."
+property = "EFFECT-ONCE-001 requires !duplicate. RetryUnknown has 6 states/42 edges. BrokenRetryUnknown relaxes only the retry claim guard for unknown outcomes: Begin, WriteAdmitted, WriteUnknownOutcome, Retry, WriteAdmitted, WriteSucceeded commits twice (16 states/112 edges). The native counterexample is replayed and the false generated invariant asserted. All edges replay through step. Known pre-effect failure permits retry; an unknown outcome does not. Every generated admission and completion event requires an exhaustive on arm; trybuild rejects an unhandled UnknownOutcome. Native and Java TLC graphs and safety verdicts must agree."
+checks = ["make test-formal", "make test"]
+
+
+[[contract]]
+name = "PresentProgress"
+title = "Successfully fetched current selection becomes visible under named presentation fairness"
+models = ["PresentProgress", "BrokenPresentProgress"]
+sources = ["crates/bbt-yarn-macros/src/protocol.rs", "crates/bbt-yarn/tests/protocol_temporal.rs", "crates/bbt-yarn/examples/verify.rs"]
+implementation_tests = ["crates/bbt-yarn/tests/protocol_temporal.rs", "crates/bbt-yarn/tests/ui.rs"]
+assumptions = "The same Frame={F}, Generation={First,Second}, one-owner atomic lifecycle as PresentGeneration. The positive declaration repeats that exact graph to pair only the presentation fairness change; strong FetchAdmitted::admit fairness remains in both variants. WF is on the disjunction of Present::current parameter instances; it does not force successful fetch completion. Each generation's ready leads_to visible-or-deselected response yields visibility only if the current request remains selected. No global runtime, per-instance, wall-clock or external execution fairness is assumed."
+property = "PresentProgress and BrokenPresentProgress both have exactly 91 states and 1365 labeled edges. Removing only Present::current weak fairness produces PRESENT-LIVE-First and PRESENT-LIVE-Second violations with prefix plus closed lasso. Every state and edge replays through the generated Rust API. The concrete lasso retains a fetched current selection without visibility; ignored stale presentation and rejected generation reuse still cannot discharge its response. Java TLC independently agrees on graphs and liveness verdicts."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ProtocolProgress"
+title = "Terminal and quiescent labels never turn fair stuttering into response progress"
+models = ["ProtocolProgress", "BrokenProtocolProgress"]
+sources = ["crates/bbt-yarn-macros/src/protocol.rs", "crates/bbt-yarn/tests/protocol_temporal.rs", "crates/bbt-yarn/examples/verify.rs"]
+implementation_tests = ["crates/bbt-yarn/tests/protocol_temporal.rs"]
+assumptions = "One Boolean visible, initially false; Wait::waiting is weakly fair, Refuse::refused strongly fair. A true quiescent predicate and false terminal predicate are ordinary state conditions. The correct waiting case sets visible, while the broken case only preserves it and ignores. Ignore, reject and implicit TLA stutters do not count as nonstuttering fairness steps. This is a finite pure-API/frontend witness, not real scheduling or effect execution."
+property = "The correct declaration has 2 states/4 edges and eventually reaches its terminal predicate. Replacing only the update by ignore yields 1 state/2 edges and the explicit response violation STUTTER-LIVE with prefix [0], cycle [0,0], despite both fairness annotations. Every explicit edge and counterexample replays through step. Native and Java TLC graphs and liveness verdicts must agree."
+checks = ["make test-formal", "make test"]

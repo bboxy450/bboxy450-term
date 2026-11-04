@@ -41,6 +41,41 @@ completeness enumerates all declared parameter and guard-read state values,
 without invariant or reachability pruning, and refuses universes over 65,536.
 See `crates/bbt-yarn/README.md` for the grammar and limits.
 
+### What protocol liveness assumes
+
+`crates/bbt-yarn/tests/protocol_temporal.rs` supplies the temporal/effect
+contracts to both runtime witnesses and the existing exporter. Named state
+predicates feed `#[property(id = "...", leads_to(P, Q))];`; named cases alone
+carry `#[fair(weak)]` / `#[fair(strong)]`. A case's concrete parameter instances
+form one disjunction, not independently fair instances. Only nonstuttering
+transitions count toward fairness. Terminal/quiescent predicates are explicit
+Boolean labels, never permission to drop a pending response or prune the graph.
+The one-state BrokenProtocolProgress control has both WF and SF annotations but
+still violates its quiescent-to-terminal response through ignore/reject loops.
+
+PresentGeneration has Frame={F}, Generation={First,Second}, one owner and atomic
+steps. Issued generations cannot be reused. Emission, admission, completion and
+presentation occur in separate steps; all generated completion outcomes require
+exhaustive handling. Each successfully fetched generation must eventually be
+visible **or cease to be selected**. Thus continued selection implies eventual
+visibility under weak fairness of `Present::current`; strong fairness of
+`FetchAdmitted::admit` is separately explicit. No assumption forces successful
+fetches, every event's delivery, a globally fair runtime or a wall-clock bound.
+The generation guard is rechecked at presentation. The correct 91-state/1,365-edge
+model passes; removing generation revalidation refutes safety (99/1,485), and
+removing only presentation fairness refutes liveness with closed lassos at the
+original graph bounds. RetryUnknown (6/42) retains its admission claim across an
+uncertain possible commit; relaxing only the unknown retry guard produces a
+duplicate commit (16/112). Known pre-effect failure may release the claim.
+
+Every explicit edge in all eight declarations is replayed through generated
+`step`; the three requested broken controls replay their actual counterexamples.
+The exporter emits expressions, not precomputed transition tables; Java TLC
+independently compares full states, labeled transitions and verdicts. Real
+external effects, persistent dedup services, process restart and larger identity
+domains remain implementation-only gaps. See the PresentGeneration and
+RetryUnknown entries in `contracts.toml` for bounds and assumptions.
+
 The native checker accepts an explicit expression/action representation: finite
 integer domains, integer/Boolean literals, equality, comparisons, arithmetic,
 Boolean operations, `IF-THEN-ELSE`, bounded `\A`/`\E` over integer ranges

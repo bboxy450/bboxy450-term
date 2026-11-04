@@ -37,6 +37,7 @@ OWNED_FORK_FILES = {
     "crates/bbt-yarn/src/protocol.rs",
     "crates/bbt-yarn/tests/protocol.rs",
     "crates/bbt-yarn/tests/protocol_runtime.rs",
+    "crates/bbt-yarn/tests/protocol_temporal.rs",
     "crates/bbt-yarn/tests/ui-pass/protocol_hygiene.rs",
 }
 STRICT_PREFIXES = ("crates/bbt-yarn/tests/ui/",)

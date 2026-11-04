@@ -961,3 +961,43 @@ frontend = "project"
 name = "BrokenProjectionRootAvailability"
 expected = "liveness"
 frontend = "project"
+
+[[model]]
+name = "PresentGeneration"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenPresentGeneration"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenPresentProgress"
+expected = "liveness"
+frontend = "project"
+
+[[model]]
+name = "RetryUnknown"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenRetryUnknown"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenProtocolProgress"
+expected = "liveness"
+frontend = "project"
+
+[[model]]
+name = "PresentProgress"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "ProtocolProgress"
+expected = "pass"
+frontend = "project"

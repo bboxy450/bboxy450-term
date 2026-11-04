@@ -24,6 +24,7 @@ mod kw {
     syn::custom_keyword!(state);
     syn::custom_keyword!(events);
     syn::custom_keyword!(effects);
+    syn::custom_keyword!(completes);
     syn::custom_keyword!(on);
     syn::custom_keyword!(case);
     syn::custom_keyword!(when);
@@ -72,6 +73,7 @@ struct Field {
     ty: syn::Type,
     init: syn::Expr,
 }
+#[derive(Clone)]
 struct Parameter {
     name: Ident,
     ty: syn::Type,
@@ -79,6 +81,7 @@ struct Parameter {
 struct Message {
     name: Ident,
     parameters: Vec<Parameter>,
+    completions: Vec<Ident>,
 }
 struct Arm {
     event: Ident,
@@ -87,6 +90,7 @@ struct Arm {
 }
 struct Case {
     name: Ident,
+    fairness: Option<Fairness>,
     guard: syn::Expr,
     statements: Vec<Statement>,
 }
@@ -102,6 +106,25 @@ struct Invariant {
     name: Ident,
     expression: syn::Expr,
 }
+struct Predicate {
+    name: Ident,
+    expression: syn::Expr,
+}
+struct Property {
+    id: syn::LitStr,
+    request: Ident,
+    response: Ident,
+}
+#[derive(Clone, Copy)]
+enum Fairness {
+    Weak,
+    Strong,
+}
+struct FairCase {
+    event: Ident,
+    case: Ident,
+    fairness: Fairness,
+}
 struct Declaration {
     visibility: syn::Visibility,
     name: Ident,
@@ -111,6 +134,9 @@ struct Declaration {
     effects: Vec<Message>,
     arms: Vec<Arm>,
     invariants: Vec<Invariant>,
+    predicates: Vec<Predicate>,
+    properties: Vec<Property>,
+    fair_cases: Vec<FairCase>,
 }
 
 fn comma_idents(input: ParseStream<'_>) -> Result<Vec<Ident>> {
@@ -119,7 +145,7 @@ fn comma_idents(input: ParseStream<'_>) -> Result<Vec<Ident>> {
         .into_iter()
         .collect())
 }
-fn messages(input: ParseStream<'_>) -> Result<Vec<Message>> {
+fn messages(input: ParseStream<'_>, effects: bool) -> Result<Vec<Message>> {
     let content;
     braced!(content in input);
     let mut messages = Vec::new();
@@ -141,8 +167,29 @@ fn messages(input: ParseStream<'_>) -> Result<Vec<Message>> {
                 }
             }
         }
+        let completions = if effects && content.peek(kw::completes) {
+            content.parse::<kw::completes>()?;
+            let outcomes;
+            braced!(outcomes in content);
+            let names = comma_idents(&outcomes)?;
+            if names.is_empty() {
+                return Err(error(
+                    &name,
+                    "PRO013",
+                    "empty effect outcomes",
+                    "list every completion outcome",
+                ));
+            }
+            names
+        } else {
+            vec![]
+        };
         content.parse::<Token![;]>()?;
-        messages.push(Message { name, parameters });
+        messages.push(Message {
+            name,
+            parameters,
+            completions,
+        });
     }
     Ok(messages)
 }
@@ -162,6 +209,9 @@ impl Parse for Declaration {
             effects: vec![],
             arms: vec![],
             invariants: vec![],
+            predicates: vec![],
+            properties: vec![],
+            fair_cases: vec![],
         };
         let mut sections = HashSet::new();
         while !body.is_empty() {
@@ -217,7 +267,7 @@ impl Parse for Declaration {
                         "declare each section once",
                     ));
                 }
-                let entries = messages(&body)?;
+                let entries = messages(&body, section == "effects")?;
                 if section == "events" {
                     d.events = entries;
                 } else {
@@ -237,6 +287,19 @@ impl Parse for Declaration {
                 braced!(cases in body);
                 let mut parsed = Vec::new();
                 while !cases.is_empty() {
+                    let attrs = cases.call(syn::Attribute::parse_outer)?;
+                    let fairness = match attrs.as_slice() {
+                        [] => None,
+                        [attr] if attr.path().is_ident("fair") => Some(parse_fair(attr, false)?.0),
+                        _ => {
+                            return Err(error(
+                                &d.name,
+                                "PRO012",
+                                "unsupported case attribute",
+                                "attach #[fair(weak)] or #[fair(strong)] to a named case",
+                            ));
+                        }
+                    };
                     cases.parse::<kw::case>()?;
                     let name = cases.parse()?;
                     cases.parse::<kw::when>()?;
@@ -289,6 +352,7 @@ impl Parse for Declaration {
                     }
                     parsed.push(Case {
                         name,
+                        fairness,
                         guard,
                         statements: operations,
                     });
@@ -300,8 +364,36 @@ impl Parse for Declaration {
                 });
             } else if body.peek(Token![#]) {
                 let attrs = body.call(syn::Attribute::parse_outer)?;
+                if attrs.len() != 1 {
+                    return Err(error(
+                        &d.name,
+                        "PRO001",
+                        "expected one protocol attribute",
+                        "use one predicate, property or fairness attribute",
+                    ));
+                }
+                let attr = &attrs[0];
+                if attr.path().is_ident("property") {
+                    d.properties.push(attr.parse_args::<Property>()?);
+                    body.parse::<Token![;]>()?;
+                    continue;
+                }
+                if attr.path().is_ident("fair") {
+                    let (fairness, target) = parse_fair(attr, true)?;
+                    let (event, case) = target.expect("required target checked");
+                    d.fair_cases.push(FairCase {
+                        event,
+                        case,
+                        fairness,
+                    });
+                    body.parse::<Token![;]>()?;
+                    continue;
+                }
+                let is_predicate = ["predicate", "terminal", "quiescent"]
+                    .iter()
+                    .any(|name| attr.path().is_ident(name));
                 let mut id = None;
-                if attrs.len() != 1 || !attrs[0].path().is_ident("invariant") {
+                if !is_predicate && !attr.path().is_ident("invariant") {
                     return Err(error(
                         &d.name,
                         "PRO001",
@@ -309,23 +401,38 @@ impl Parse for Declaration {
                         "use #[invariant(id = \"stable-id\")] on a state predicate",
                     ));
                 }
-                attrs[0].parse_nested_meta(|meta| {
-                    if !meta.path.is_ident("id") || id.is_some() {
-                        return Err(meta.error(
-                            "PRO001 expected one invariant id. Repair: use id = \"stable-id\".",
+                if is_predicate {
+                    if !matches!(attr.meta, syn::Meta::Path(_)) {
+                        return Err(error(
+                            attr,
+                            "PRO001",
+                            "predicate attribute takes no arguments",
+                            "use #[predicate], #[terminal] or #[quiescent]",
                         ));
                     }
-                    id = Some(meta.value()?.parse::<syn::LitStr>()?);
-                    Ok(())
-                })?;
-                let id = id.filter(|id| !id.value().is_empty()).ok_or_else(|| {
-                    error(
-                        &d.name,
-                        "PRO001",
-                        "missing invariant id",
-                        "provide a nonempty id",
-                    )
-                })?;
+                } else {
+                    attr.parse_nested_meta(|meta| {
+                        if !meta.path.is_ident("id") || id.is_some() {
+                            return Err(meta.error(
+                                "PRO001 expected one invariant id. Repair: use id = \"stable-id\".",
+                            ));
+                        }
+                        id = Some(meta.value()?.parse::<syn::LitStr>()?);
+                        Ok(())
+                    })?;
+                }
+                let id = if is_predicate {
+                    None
+                } else {
+                    Some(id.filter(|id| !id.value().is_empty()).ok_or_else(|| {
+                        error(
+                            &d.name,
+                            "PRO001",
+                            "missing invariant id",
+                            "provide a nonempty id",
+                        )
+                    })?)
+                };
                 body.parse::<Token![fn]>()?;
                 let name = body.parse()?;
                 let args;
@@ -349,11 +456,15 @@ impl Parse for Declaration {
                         "use one finite Boolean predicate without statements",
                     ));
                 }
-                d.invariants.push(Invariant {
-                    id,
-                    name,
-                    expression,
-                });
+                if let Some(id) = id {
+                    d.invariants.push(Invariant {
+                        id,
+                        name,
+                        expression,
+                    });
+                } else {
+                    d.predicates.push(Predicate { name, expression });
+                }
             } else {
                 return Err(error(
                     &d.name,
@@ -363,8 +474,94 @@ impl Parse for Declaration {
                 ));
             }
         }
+        // Outcome events carry the original intent's finite parameters. Admission
+        // and completion are separate inputs to step, never recursive execution.
+        for effect in &d.effects {
+            if !effect.completions.is_empty() {
+                unique(effect.completions.clone(), &["Admitted"])?;
+                for outcome in std::iter::once(format_ident!("Admitted"))
+                    .chain(effect.completions.iter().cloned())
+                {
+                    d.events.push(Message {
+                        name: format_ident!("{}{}", effect.name, outcome),
+                        parameters: effect.parameters.clone(),
+                        completions: vec![],
+                    });
+                }
+            }
+        }
         Ok(d)
     }
+}
+
+impl Parse for Property {
+    fn parse(input: ParseStream<'_>) -> Result<Self> {
+        let id_key: Ident = input.parse()?;
+        if id_key != "id" {
+            return Err(error(
+                id_key,
+                "PRO011",
+                "missing property id",
+                "use id = \"stable-id\", leads_to(P, Q)",
+            ));
+        }
+        input.parse::<Token![=]>()?;
+        let id: syn::LitStr = input.parse()?;
+        input.parse::<Token![,]>()?;
+        let leads_to: Ident = input.parse()?;
+        if leads_to != "leads_to" || id.value().is_empty() {
+            return Err(error(
+                leads_to,
+                "PRO011",
+                "unsupported temporal property",
+                "use a nonempty id and leads_to(P, Q)",
+            ));
+        }
+        let predicates;
+        parenthesized!(predicates in input);
+        let request = predicates.parse()?;
+        predicates.parse::<Token![,]>()?;
+        let response = predicates.parse()?;
+        if !predicates.is_empty() {
+            return Err(predicates
+                .error("PRO011 leads_to needs two state predicates. Repair: use leads_to(P, Q)."));
+        }
+        Ok(Self {
+            id,
+            request,
+            response,
+        })
+    }
+}
+
+fn parse_fair(attr: &syn::Attribute, targeted: bool) -> Result<(Fairness, Option<(Ident, Ident)>)> {
+    attr.parse_args_with(|input: ParseStream<'_>| {
+        let kind: Ident = input.parse()?;
+        let fairness = match kind.to_string().as_str() {
+            "weak" => Fairness::Weak,
+            "strong" => Fairness::Strong,
+            _ => {
+                return Err(error(
+                    kind,
+                    "PRO012",
+                    "unsupported fairness",
+                    "use weak or strong fairness on a named case",
+                ));
+            }
+        };
+        let target = if targeted {
+            input.parse::<Token![,]>()?;
+            input.parse::<kw::case>()?;
+            input.parse::<Token![=]>()?;
+            let event = input.parse()?;
+            input.parse::<Token![::]>()?;
+            let case = input.parse()?;
+            Some((event, case))
+        } else {
+            None
+        };
+        Ok((fairness, target))
+    })
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -493,6 +690,7 @@ impl Environment<'_> {
         };
         let result = match expr {
             E::Paren(p) => return self.expression(&p.expr, expected),
+            E::Group(g) => return self.expression(&g.expr, expected),
             E::Lit(l) => {
                 if let syn::Lit::Bool(b) = &l.lit {
                     Expression {
@@ -786,6 +984,7 @@ struct Checked {
     effects: Vec<Vec<Ty>>,
     arms: Vec<CheckedArm>,
     invariants: Vec<Expression>,
+    predicates: Vec<Expression>,
 }
 struct CheckedArm {
     event: usize,
@@ -794,6 +993,7 @@ struct CheckedArm {
 }
 struct CheckedCase {
     name: Ident,
+    fairness: Option<Fairness>,
     guard: Expression,
     assignments: Vec<Option<Expression>>,
     emits: Vec<(usize, Vec<Expression>)>,
@@ -850,7 +1050,7 @@ fn each_valuation(
     }
 }
 impl Declaration {
-    fn check(self) -> Result<Checked> {
+    fn check(mut self) -> Result<Checked> {
         let model_name = self.name.to_string();
         if !model_name
             .bytes()
@@ -907,7 +1107,10 @@ impl Declaration {
         unique(self.events.iter().map(|e| e.name.clone()), &[])?;
         unique(self.effects.iter().map(|e| e.name.clone()), &[])?;
         unique(
-            self.invariants.iter().map(|i| i.name.clone()),
+            self.invariants
+                .iter()
+                .map(|i| i.name.clone())
+                .chain(self.predicates.iter().map(|p| p.name.clone())),
             &["model", "step", "action_event"],
         )?;
         let mut ids = HashSet::new();
@@ -918,6 +1121,51 @@ impl Declaration {
                     "PRO006",
                     format!("duplicate invariant id `{}`", invariant.id.value()),
                     "give each invariant a unique stable id",
+                ));
+            }
+        }
+        for property in &self.properties {
+            if !ids.insert(property.id.value()) {
+                return Err(error(
+                    &property.id,
+                    "PRO006",
+                    "duplicate property id",
+                    "give every invariant and temporal property a unique stable id",
+                ));
+            }
+            for predicate in [&property.request, &property.response] {
+                if !self.predicates.iter().any(|p| p.name == *predicate)
+                    && !self.invariants.iter().any(|p| p.name == *predicate)
+                {
+                    return Err(error(
+                        predicate,
+                        "PRO011",
+                        format!("unknown state predicate `{predicate}`"),
+                        "declare the predicate with #[predicate], #[terminal], #[quiescent] or #[invariant]",
+                    ));
+                }
+            }
+        }
+        for fair in &self.fair_cases {
+            let case = self
+                .arms
+                .iter_mut()
+                .find(|a| a.event == fair.event)
+                .and_then(|a| a.cases.iter_mut().find(|c| c.name == fair.case))
+                .ok_or_else(|| {
+                    error(
+                        &fair.case,
+                        "PRO012",
+                        format!("unknown fair case `{}::{}`", fair.event, fair.case),
+                        "name a declared Event::case or attach #[fair(weak)] directly to that case",
+                    )
+                })?;
+            if case.fairness.replace(fair.fairness).is_some() {
+                return Err(error(
+                    &fair.case,
+                    "PRO012",
+                    "case has multiple fairness annotations",
+                    "declare fairness once per named case",
                 ));
             }
         }
@@ -1130,6 +1378,7 @@ impl Declaration {
                 }
                 cases.push(CheckedCase {
                     name: case.name.clone(),
+                    fairness: case.fairness,
                     guard,
                     assignments,
                     emits,
@@ -1219,6 +1468,18 @@ impl Declaration {
                 .expression(&i.expression, Some(&Ty::Bool))
             })
             .collect::<Result<Vec<_>>>()?;
+        let predicates = self
+            .predicates
+            .iter()
+            .map(|p| {
+                Environment {
+                    declaration: &self,
+                    fields: &fields,
+                    parameters: &[],
+                }
+                .expression(&p.expression, Some(&Ty::Bool))
+            })
+            .collect::<Result<Vec<_>>>()?;
         Ok(Checked {
             declaration: self,
             fields,
@@ -1226,6 +1487,7 @@ impl Declaration {
             effects: effect_types,
             arms,
             invariants,
+            predicates,
         })
     }
 }
@@ -1426,6 +1688,11 @@ impl Checked {
             let predicate = self.rust_expr(e, &[]);
             quote!(pub fn #name(#state: &State) -> ::core::primitive::bool { #predicate })
         });
+        let predicates = d.predicates.iter().zip(&self.predicates).map(|(p, e)| {
+            let name = &p.name;
+            let predicate = self.rust_expr(e, &[]);
+            quote!(pub fn #name(#state: &State) -> ::core::primitive::bool { #predicate })
+        });
         let model = self.generate_model();
         let visibility = &d.visibility;
         let name = &d.name;
@@ -1452,6 +1719,7 @@ impl Checked {
                     match #event_var { #(#arms),* }
                 }
                 #(#invariants)*
+                #(#predicates)*
                 #path::__yarn_protocol_model! { #model }
             }
         }
@@ -1661,15 +1929,20 @@ impl Checked {
         }
         let mut actions = Vec::new();
         let mut action_events = Vec::new();
+        // Inspired by TLA+ WF_vars/SF_vars (Leslie Lamport):
+        // https://lamport.azurewebsites.net/tla/high-level-view.html
+        // One case is one disjunction, not independent per-parameter fairness.
+        let mut fairness = Vec::new();
         let offsets = self.offsets();
         for arm in &self.arms {
+            let mut case_actions = vec![Vec::new(); arm.cases.len()];
             let types: Vec<_> = arm.parameters.iter().map(|(_, t)| t.clone()).collect();
             each_valuation(d, &types, |values| {
                 let params = types.iter().zip(values).map(|(ty, v)| self.value_label(ty, v)).collect::<Vec<_>>().join(",");
                 let event = &d.events[arm.event].name;
                 let label = if types.is_empty() { event.to_string() } else { format!("{event}({params})") };
                 let args: Vec<_> = types.iter().zip(values).map(|(ty, v)| self.rust_value(ty, v)).collect();
-                for case in &arm.cases {
+                for (case_index, case) in arm.cases.iter().enumerate() {
                     let guard = self.lower(&case.guard, values).scalar();
                     let label = format!("{label}::{}", case.name);
                     let mut updates = Vec::new();
@@ -1689,17 +1962,48 @@ impl Checked {
                         }
                     }
                     let index = actions.len();
+                    case_actions[case_index].push(index);
                     let event_value = self.message(&format_ident!("Event"), event, &args);
                     action_events.push(quote!(#index => ::core::option::Option::Some(#event_value)));
                     actions.push(quote!(model.actions.push(#path::model::Action::new(#label, #guard, #path::protocol::Effects::from([#(#updates),*])));));
                 }
                 Ok(())
             }).expect("universe was bounded during validation");
+            for (case, indices) in arm.cases.iter().zip(case_actions) {
+                if let Some(kind) = case.fairness {
+                    let field = match kind {
+                        Fairness::Weak => format_ident!("weak_fair"),
+                        Fairness::Strong => format_ident!("strong_fair"),
+                    };
+                    fairness.push(
+                        quote!(model.#field.push(#path::protocol::Effects::from([#(#indices),*]));),
+                    );
+                }
+            }
         }
         let invariants = d.invariants.iter().zip(&self.invariants).map(|(invariant, expression)| {
             let id = invariant.id.value();
             let condition = self.lower(expression, &[]).scalar();
             quote!(model.invariants.push(#path::model::Invariant { name: #id.into(), condition: #condition });)
+        });
+        let predicate = |name: &Ident| {
+            d.predicates
+                .iter()
+                .position(|p| p.name == *name)
+                .map(|i| &self.predicates[i])
+                .unwrap_or_else(|| {
+                    &self.invariants[d
+                        .invariants
+                        .iter()
+                        .position(|p| p.name == *name)
+                        .expect("validated predicate")]
+                })
+        };
+        let responses = d.properties.iter().map(|property| {
+            let id = property.id.value();
+            let request = self.lower(predicate(&property.request), &[]).scalar();
+            let response = self.lower(predicate(&property.response), &[]).scalar();
+            quote!(model.responses.push(#path::model::Response { name: #id.into(), request: #request, response: #response });)
         });
         quote! {
             impl State {
@@ -1712,12 +2016,14 @@ impl Checked {
             pub fn action_event(action: ::core::primitive::usize) -> ::core::option::Option<Event> {
                 match action { #(#action_events,)* _ => ::core::option::Option::None }
             }
-            /// Symbolic finite model; effects and environmental scheduling are unmodeled.
+            /// Symbolic finite model with only the declaration's named fairness assumptions.
             pub fn model() -> #path::model::Model {
                 let mut model = #path::model::Model::new(#name, #path::protocol::Effects::from([#(#variables),*]));
                 model.check_deadlock = false;
                 #(#actions)*
                 #(#invariants)*
+                #(#fairness)*
+                #(#responses)*
                 model
             }
         }
