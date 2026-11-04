@@ -64,6 +64,7 @@ impl Input {
 pub struct Snapshot {
     pub paints: Arc<Vec<c::Paint>>,
     pub ready: bool,
+    pub image_intake: bool,
     pub images: Vec<Arc<bbt_render::chrome::icons::Image>>,
     pub attachment_count: usize,
     pub pending_attachment_count: usize,
@@ -212,7 +213,7 @@ impl Pane {
                     };
                     let approval_choices=view.frame.actions.iter().filter_map(|(r,a)|matches!(a,Action::Approval(..)).then_some([r.x,r.y,r.w,r.h])).take(16).collect();
                     let ime_caret=view.frame.layout.as_ref().and_then(|l|ui::modules::composer::Regions::new(l).ok()).and_then(|r|r.caret);
-                    let snapshot=Snapshot{images:view.attachment_images(),attachment_count:view.attachment_count(),pending_attachment_count:view.pending_attachment_count(),generation,completed_inputs,notice:view.notice.clone(),retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,ime_caret,focused:view.focused,composer_len:view.composer.view.text.len(),scroll:[view.frame.scroll,view.frame.max_scroll],approval_choices,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
+                    let snapshot=Snapshot{image_intake:bridge.image_intake_available(),images:view.attachment_images(),attachment_count:view.attachment_count(),pending_attachment_count:view.pending_attachment_count(),generation,completed_inputs,notice:view.notice.clone(),retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,ime_caret,focused:view.focused,composer_len:view.composer.view.text.len(),scroll:[view.frame.scroll,view.frame.max_scroll],approval_choices,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
                     out.publish(snapshot);
                     published.store(completed_inputs, Ordering::Release);
                     (bridge,view,rect,out,completed_inputs)

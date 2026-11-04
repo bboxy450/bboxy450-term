@@ -90,7 +90,7 @@ async fn private_native_clipboard_and_drop_reach_shared_worker_and_durable_image
         None,
         Arc::new(Wake),
     );
-    wait(&mut pane, |p| p.snapshot.ready).await;
+    wait(&mut pane, |p| p.snapshot.ready && p.snapshot.image_intake).await;
     let bytes = png();
     assert!(pane.send(Input::clipboard(ClipboardContent::Image {
         bytes: bytes.clone(),

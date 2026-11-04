@@ -24,7 +24,7 @@ commands = []
 def source_hashes():
     paths = [ROOT / p for p in ['Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', 'Makefile', 'ATTRIBUTION.md', 'scripts/verify-harness-attachments.py']]
     paths += [ROOT / ('crates/bboxy450-term/' + p) for p in ['src/rich_pane.rs', 'src/rich_faces.rs', 'src/terminal_clipboard.rs', 'src/main.rs', 'tests/harness_attachments.rs']]
-    paths += [PRODUCER / p for p in ['Cargo.toml', 'Cargo.lock', 'verification/tools.lock.json', 'scripts/formal.py', 'tests/formal/export.rs', 'Makefile', 'ATTRIBUTION.md', 'src/protocol/mod.rs', 'src/store.rs', 'src/store/intake.rs', 'src/engine/mod.rs', 'src/backend/acp_agent.rs', 'tests/harness_attachments.rs', 'tests/fixtures/acp-agent/attachments.py', 'tests/formal/models.rs', 'tests/formal_models.rs', 'verification/contracts.toml', 'verification/corpus.toml', 'scripts/verify-harness-attachments.py']]
+    paths += [PRODUCER / p for p in ['Cargo.toml', 'Cargo.lock', 'verification/tools.lock.json', 'scripts/formal.py', 'tests/formal/export.rs', 'Makefile', 'ATTRIBUTION.md', 'src/protocol/mod.rs', 'src/store.rs', 'src/store/intake.rs', 'src/engine/mod.rs', 'src/backend/acp_agent.rs', 'tests/harness_attachments.rs', 'tests/gui_bridge.rs', 'tests/fixtures/acp-agent/attachments.py', 'tests/formal/models.rs', 'tests/formal_models.rs', 'verification/contracts.toml', 'verification/corpus.toml', 'scripts/verify-harness-attachments.py']]
     paths += list((PRODUCER / 'src/frontends/gui').glob('*.rs'))
     return {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted(paths)}
 
