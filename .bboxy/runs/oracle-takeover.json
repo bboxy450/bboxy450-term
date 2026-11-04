@@ -592,5 +592,72 @@
     "free_bytes_after": 39574188032,
     "active_host_untouched": true,
     "raw_formal_packaging_and_source_preserved": true
+  },
+  "focused_cfg_delivery": {
+    "at": 1793759286.749665,
+    "cfg_verified": {
+      "at": 1793759024.036652,
+      "head": "5c288d0bcbdaebc7249740220158829e87c85e5a",
+      "implementation": "035e5b29e4ba02cbd2160fc48ad3ad3600d8c6e7",
+      "reported_head": "626fbcc59b1c17952f85f054c258e9bc39dd283f",
+      "base": "a2312959f4ddd4519db13f2194c167705056e532",
+      "included_upstream": "061bc30bf6030fc072b3aa05bd5190d3e638c61f",
+      "upstream_changes": "only published log/research/decision records",
+      "signed_commits": [
+        "e0c725a7701fa90e88195ccfd6b09e3ab4cbd265",
+        "626fbcc59b1c17952f85f054c258e9bc39dd283f",
+        "f4dfc0ea60d97f83fdc6295cf28d8b08557f6e83",
+        "9e3c7f9578dec162b1046e0f9c8543184a3b7669",
+        "f98974156a4b899e17047062cf9ba937ee35f30f",
+        "035e5b29e4ba02cbd2160fc48ad3ad3600d8c6e7"
+      ],
+      "input_hashes_checked": 9,
+      "command": "make check-embedded-build",
+      "exit_code": 0,
+      "build_configurations": 3,
+      "red_exit_code": 2,
+      "red_cargo_exit": 101,
+      "logs": {
+        "baseline": {
+          "path": "/tmp/codex-embedded-build-red.log",
+          "exit_code": 2,
+          "sha256": "d240d6d9af21e2831c65a6f654f4cf6d0dea68b37abb573734e9eca6169105ae"
+        },
+        "fixed": {
+          "path": "/tmp/codex-embedded-build-green.log",
+          "exit_code": 0,
+          "sha256": "28b8112c36da2099b40db710c75c8ec222da6dd3eff6ad87d56d451a9ebbdf3a"
+        }
+      },
+      "full_suites_run_by_oracle": false,
+      "prior_formal_evidence": "119 models/39 contracts, prior source; full rerun omitted by operator",
+      "worktree_clean": true,
+      "report": 19676,
+      "push_exit_code": 0,
+      "first_push_non_ff": "remote advanced to research-only061bc; preserved via signed merge, no force push",
+      "published_ref": "refs/heads/oracle/embedded-cfg-20261104",
+      "published_sha": "5c288d0bcbdaebc7249740220158829e87c85e5a",
+      "published_main": false,
+      "main_fast_forward_attempts": "two non-fast-forward rejections as published main changed; no force push, dedicated published branch used"
+    },
+    "cfg_installed": {
+      "at": 1793759247.852471,
+      "source": "5c288d0bcbdaebc7249740220158829e87c85e5a",
+      "published_ref": "oracle/embedded-cfg-20261104",
+      "binary_sha256": "d6de800237065e0dfb6847e369cbb1386c19fceab3a81f7f40822709175fc65e",
+      "signature_exit_code": 0,
+      "team": "UQB3368A84",
+      "private_native_smoke_exit_code": 0,
+      "smoke_log_sha256": "da413449a1d69c8d111a87366809b25eff97e0110d8be5969f1188c4d699fc54",
+      "presentation": "hidden native startup/surface/frame only"
+    },
+    "cfg_task_accept_op": "01M6J5TW6XKFS552GYW5SZ00J4",
+    "host_return_delegate_op": "01M6J5ZC04PTXN56SBSEC3X3SG",
+    "host_verify": "make verify-rich-delivery",
+    "host_brief_bytes": 4553,
+    "root_compact_op": "01M6J63391TFXT59AR9GWQRJMZ",
+    "needed_checks_only": true,
+    "free_gib": 28.77,
+    "product_complete": false
   }
 }
