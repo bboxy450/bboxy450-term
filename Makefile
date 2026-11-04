@@ -122,6 +122,7 @@ help:
 	  'make install-reopen              Oracle: signed install, GUI-only replace, rendered source receipt/rollback' \
 	  'make install-unsigned-reopen     Private headless activation; requires GUI_TEST_ACCOUNT' \
 	  'make check-rich-host             Strict all-target lint for the rich host boundary' \
+	  'make verify-rich-delivery        Focused compile, corpus and changed-input App delivery checks' \
 	  'make test-harness-status-control Quiet-tool cadence mutation must fail, then restored pass' \
 	  'make test-rich-app-detach         Real App detach/reopen during a native harness turn' \
 	  'make test-rich-app-input          Real App composer, approval, wheel and focus routing' \
@@ -2091,6 +2092,18 @@ test-rich-controls:
 check-rich-host: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo clippy --locked -p bboxy450-harness-wake-up -p bboxy450-term-mux -p bboxy450-term-proto -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-term --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+# Focused operator-authorized delivery gate; broader prior evidence stays dated.
+# Upstream changed GUI/backend ownership and launch inputs, so retain these real
+# App witnesses along with the two record cases that failed on the prior cut.
+.PHONY: verify-rich-delivery
+verify-rich-delivery: check-rich-host
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked -p bboxy450-doc --test corpus --target-dir '$(TARGET_DIR)' -E 'test(=real_bboxy_frontmatter_parses) | test(=real_corpus_links_numeric_handles_and_legacy_ledger_anchors_resolve)'
+	$(MAKE) prepare-rich-native-fixture TARGET_DIR='$(TARGET_DIR)'
+	$(MAKE) test-rich-gui-handoff TARGET_DIR='$(TARGET_DIR)'
+	$(MAKE) test-rich-app-detach TARGET_DIR='$(TARGET_DIR)'
+	$(MAKE) test-rich-launch-context TARGET_DIR='$(TARGET_DIR)'
 
 .PHONY: test-rich-cancel-control
 test-rich-cancel-control: init-submodules
