@@ -24,6 +24,7 @@ use crate::store::{Blobs, Result, blobs::LocalBlobs, invalid};
 #[cfg(test)]
 mod checksum_tests;
 mod journal;
+pub use journal::RecoveryScanCache;
 #[cfg(test)]
 mod paging_tests;
 mod writer;

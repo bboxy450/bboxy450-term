@@ -668,7 +668,11 @@ fn operator_spawn_replays_case() {
     damaged_store.put("process_running", b"1").unwrap();
     damaged_store.put("recovery_launch", b"invalid launch context").unwrap();
     let logic = start(&server);
-    rt.block_on(logic.client.recover_seats()).unwrap();
+    let mut progress = Vec::new();
+    rt.block_on(logic.client.recover_seats_with_progress(|completed, total| {
+        progress.push((completed, total));
+    })).unwrap();
+    assert_eq!(progress, [(0, 2), (1, 2), (2, 2)]);
     let recovered = rt.block_on(logic.client.gui_seat(Ulid(seat.0.0))).unwrap();
     assert_eq!(recovered.record.name, first.record.name);
     assert_eq!(recovered.state.generation, first.state.generation + 1);

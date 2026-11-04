@@ -798,8 +798,9 @@ async fn logic_main() -> Result<()> {
         &mut |operation, completed, total| emit(operation, completed, total, true),
     )?;
     if bootstrap.recover_seats {
-        emit("Resuming saved sessions", 0, 0, true);
-        logic.client.recover_seats().await?;
+        logic.client.recover_seats_with_progress(|completed, total| {
+            emit("Resuming saved sessions", completed, total, true);
+        }).await?;
     }
     let observer_supervisor = bootstrap.supervisor.pid;
     logic

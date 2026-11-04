@@ -202,7 +202,7 @@ enum Command {
         crate::mcp::Origin,
         oneshot::Sender<Result<UiAdmission>>,
     ),
-    RecoverSeats(oneshot::Sender<Result<()>>),
+    RecoverSeats(oneshot::Sender<Result<()>>, Option<mpsc::UnboundedSender<(u64, u64)>>),
     GuiHosts(oneshot::Sender<Result<Vec<bbt_proto::GuiHost>>>),
     GuiSwarm(
         Box<bbt_proto::GuiAction>,
@@ -982,9 +982,20 @@ impl LogicClient {
     pub async fn recover_seats(&self) -> Result<()> {
         let (tx, rx) = oneshot::channel();
         self.tx
-            .send(Command::RecoverSeats(tx))
+            .send(Command::RecoverSeats(tx, None))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
+    }
+    /// Resume retained sessions while reporting completed attempts and total.
+    pub async fn recover_seats_with_progress(&self, mut progress: impl FnMut(u64, u64) + Send) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        let (updates, mut receiver) = mpsc::unbounded_channel();
+        self.tx.send(Command::RecoverSeats(tx, Some(updates))).await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        while let Some((completed, total)) = receiver.recv().await {
+            progress(completed, total);
+        }
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     pub async fn gui_hosts(&self) -> Result<Vec<bbt_proto::GuiHost>> {
@@ -6972,7 +6983,8 @@ impl Worker {
         // that actually started. Reconciliation uses the original durable seat ID.
         self.spawn(record, plan.spec)
     }
-    fn recover_seats(&mut self) -> Result<()> {
+    fn recover_seats(&mut self, progress: Option<&mpsc::UnboundedSender<(u64, u64)>>) -> Result<()> {
+        let mut eligible = Vec::new();
         for record in self.registry.list()? {
             if record.location != crate::registry::Location::Local
                 || record.lifecycle != Lifecycle::Open
@@ -6989,12 +7001,19 @@ impl Worker {
             {
                 continue;
             }
+            eligible.push(record);
+        }
+        let _scans = bbt_supervisor::ring::RecoveryScanCache::default();
+        let total = eligible.len() as u64;
+        if let Some(progress) = progress { let _ = progress.send((0, total)); }
+        for (index, record) in eligible.into_iter().enumerate() {
             let id = record.id;
             if let Err(error) = self.relaunch(record) {
                 // One damaged or full capture must not abort recovery of every
                 // other retained session or take the backend down again.
                 eprintln!("SeatRecoveryFailed [{id}]: {error}");
             }
+            if let Some(progress) = progress { let _ = progress.send((index as u64 + 1, total)); }
         }
         Ok(())
     }
@@ -10687,8 +10706,8 @@ impl Worker {
                             let _ = reply.send(result);
                         }
                     }
-                    Command::RecoverSeats(reply) => {
-                        let result = self.recover_seats();
+                    Command::RecoverSeats(reply, progress) => {
+                        let result = self.recover_seats(progress.as_ref());
                         let _ = reply.send(result);
                     }
                     Command::GuiSwarm(action, origin, reply) => {
