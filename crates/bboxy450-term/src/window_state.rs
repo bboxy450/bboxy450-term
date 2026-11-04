@@ -44,6 +44,8 @@ pub fn capture(
     prior: Option<&WindowState>,
 ) -> WindowState {
     WindowState {
+        rich_cursors: prior.map_or_else(Default::default,|s|s.rich_cursors.clone()),
+        pane_faces: prior.map_or_else(Default::default,|s|s.pane_faces.clone()),
         version: bbt_proto::gui::WINDOW_STATE_VERSION,
         size,
         sidebar_width: model.ui.window.sidebar.width,

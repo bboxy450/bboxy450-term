@@ -101,6 +101,45 @@ fn seat_rows_carry_the_rim_edge_to_edge_and_idle_rows_are_bare_at_rest() {
     assert_eq!((found[0].swell, found[0].attention), (0.7, true));
 }
 
+// keeps: interface app-harness phase 1c — stale dims without inventing idle.
+#[test]
+fn stale_reported_activity_dims_both_rims_without_changing_the_activity() {
+    use bbt_ui::modules::{pane::Pane, strip::Strip};
+    for activity in [
+        Activity::Active,
+        Activity::Waiting(bbt_ui_model::WaitKind::Permission),
+    ] {
+        let mut seat = row("harness", activity, true);
+        assert_eq!(rims(seat.element(ctx()))[0].inferred_multiplier, 1.);
+        seat.stale = true;
+        assert_eq!(seat.grade, bbt_ui_model::Grade::Reported);
+        let found = rims(seat.element(ctx()));
+        assert_eq!(found[0].inferred_multiplier, 0.5);
+        assert_eq!(found[0].activity, activity.into());
+        let pane = Pane {
+            strip: Strip::new(seat),
+            lines: vec![],
+            gap_from: None,
+            resumed: None,
+            min_height: 100.,
+            unfocused: false,
+            reconnecting: false,
+            reconnected: false,
+            glow_seed: Some(7),
+            opacity: 1.,
+            depth: TOKENS.glow.depth as f32,
+            rim: TOKENS.glow.rim_min as f32,
+        };
+        let found = rims(pane.element(ctx()));
+        assert!(!found.is_empty());
+        assert!(
+            found
+                .iter()
+                .all(|rim| rim.inferred_multiplier == 0.5 && rim.activity == activity.into())
+        );
+    }
+}
+
 // keeps: spec rim-glow §6
 #[test]
 fn a_tab_reads_its_worst_seat_and_swells_with_its_seats() {

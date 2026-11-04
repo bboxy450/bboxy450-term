@@ -34,9 +34,19 @@ pub enum AppRequest {
     Stop,
 }
 
+/// Identity of the GUI process that actually produced readiness, separate from backend generation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GuiProcess {
+    pub pid: u32,
+    pub instance: Ulid,
+    pub source_revision: String,
+}
+
 /// Public app readiness. No process credential or endpoint capability belongs here.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AppStatus {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gui: Option<GuiProcess>,
     pub running: bool,
     pub mode: String,
     pub unattended: bool,
@@ -121,11 +131,28 @@ macro_rules! app_replies {
 }
 pub(super) use app_replies;
 
-pub const WINDOW_STATE_VERSION: u16 = 4;
+pub const WINDOW_STATE_VERSION: u16 = 5;
 
-/// Durable GUI layout and operator launch defaults; seat authority remains in the registry.
+/// A view preference only; process ownership is independent of this face.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PaneFace {
+    Terminal,
+    HarnessRich,
+}
+
+/// Replay cursor of a disposable rich subscriber; never input authority.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub struct RichCursor {
+    pub session: Ulid,
+    pub generation: u64,
+    pub epoch: u32,
+    pub seq: u64,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
+/// Durable layout and view preferences; seat authority remains in the registry.
 pub struct WindowState {
     pub version: u16,
     pub size: [f32; 2],
@@ -139,6 +166,11 @@ pub struct WindowState {
     pub swarms: Vec<WindowSwarm>,
     pub stage: WindowStage,
     pub scroll: Vec<WindowScroll>,
+    /// Explicit face choices; absent entries follow native harness announcement.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub pane_faces: std::collections::BTreeMap<Ulid, PaneFace>,
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub rich_cursors: std::collections::BTreeMap<Ulid, RichCursor>,
 }
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]

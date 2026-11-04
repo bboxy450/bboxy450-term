@@ -25,7 +25,9 @@ struct Fixture {
 }
 impl Fixture {
     fn new() -> Self {
-        let directory = tempfile::tempdir().unwrap();
+        Self::with_directory(tempfile::tempdir().unwrap())
+    }
+    fn with_directory(directory: tempfile::TempDir) -> Self {
         let root = directory.path().canonicalize().unwrap();
         for name in [
             "home",
@@ -59,7 +61,18 @@ impl Fixture {
         }
     }
     fn command(&self) -> Command {
-        let mut command = Command::new(BIN);
+        // A fixture may copy the current app beside its private native launcher.
+        // This exercises bundled-binary resolution without changing the shared target.
+        let private = self.root.join("bin/bboxy450-term");
+        let mut command = Command::new(if private.is_file() {
+            private
+        } else {
+            PathBuf::from(BIN)
+        });
+        self.environment(&mut command);
+        command
+    }
+    fn environment(&self, command: &mut Command) {
         command
             .env_clear()
             .env("HOME", self.root.join("home"))
@@ -71,7 +84,6 @@ impl Fixture {
             .env("LANG", "en_US.UTF-8")
             .current_dir(&self.root)
             .stdin(Stdio::null());
-        command
     }
     fn ctl(&self, args: &[&str]) -> Value {
         let output = self
@@ -4706,3 +4718,8 @@ fn ui_selection_copies_read_only_settings_text_through_native_copy() {
     f.ctl(&["app", "stop"]);
     assert!(f.app.as_mut().unwrap().wait().unwrap().success());
 }
+
+#[path = "swarm_workdir/rich_detach.rs"]
+mod rich_detach;
+#[path = "swarm_workdir/launch_context.rs"]
+mod launch_context;

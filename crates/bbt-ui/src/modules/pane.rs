@@ -409,7 +409,7 @@ impl Pane {
             swell: seat.swell,
             attention: seat.attention,
             activity: seat.activity.into(),
-            inferred_multiplier: if seat.grade == Grade::Inferred {
+            inferred_multiplier: if seat.stale || seat.grade == Grade::Inferred {
                 0.5
             } else {
                 1.

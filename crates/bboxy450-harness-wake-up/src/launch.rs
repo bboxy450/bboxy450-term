@@ -228,6 +228,10 @@ fn launch_permissions(kind: &str, args: &mut Vec<String>) -> Result<()> {
                 "sandbox_mode=\"danger-full-access\"".into(),
             ]);
         }
+        "bboxy450-harness" if !args.iter().any(|arg| arg == "--yolo") => {
+            // Managed native launcher intent; vendor flags stay in their own CLI.
+            args.push("--yolo".into());
+        }
         _ => {}
     }
     Ok(())
@@ -513,16 +517,34 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
     let mut notes = Vec::new();
     match record.kind.as_str() {
         "bboxy450-harness" => {
+            let rich_socket = crate::rich::socket_path(context.socket, context.id)?;
+            if context.resume
+                && !context
+                    .harness_session_id
+                    .is_some_and(crate::rich::valid_session)
+            {
+                return Err(invalid("harness-resume-session-invalid"));
+            }
             mcp_wiring(&overlay, context)?;
+            spec.args.extend([
+                "--socket".into(),
+                rich_socket.to_string_lossy().into_owned(),
+            ]);
+            if context.resume {
+                spec.args.extend([
+                    "--resume".into(),
+                    context.harness_session_id.unwrap().into(),
+                ]);
+            }
             spec.args.extend([
                 "--cwd".into(),
                 context.cwd.to_string_lossy().into(),
                 "--append-system-prompt".into(),
-                startup_prompt(context)?,
+                format!("{}\n\n{}", startup_prompt(context)?, context.skill),
                 "--mcp-config".into(),
                 overlay.join("mcp.json").to_string_lossy().into(),
             ]);
-            notes.push("bboxy450-harness: cadence is inferred; automatic input is refused as composer-readiness-missing");
+            notes.push("bboxy450-harness: native socket admission, OSC and process-bound session logs report activity; never PTY fallback");
         }
         "claude" => {
             if spec.args.iter().any(|a| a == "--bare") {
@@ -1098,7 +1120,7 @@ mod embed_tests {
     use std::os::unix::fs::PermissionsExt;
 
     #[test]
-    fn embedded_seat_gets_the_claude_prompt_and_mcp_file_without_hook_or_plugin() {
+    fn embedded_seat_gets_role_workflow_and_mcp_without_hook_or_plugin() {
         let temp = tempfile::tempdir().unwrap();
         let context = LaunchContext {
             id: crate::Ulid::new(),
@@ -1106,7 +1128,7 @@ mod embed_tests {
             name: "literal \"quoted\" name",
             role_name: "executor",
             harness_session_id: None,
-            skill: "unused skill",
+            skill: "Workflow: orient first; task_report closes the assigned task.",
             cwd: temp.path(),
             role_prompt: "ROLE: EXECUTOR\nUse the assigned repository.",
             executable: Path::new("/tmp/bboxy term"),
@@ -1132,7 +1154,11 @@ mod embed_tests {
         };
         assert_eq!(
             argument(&harness.args, "--append-system-prompt"),
-            argument(&claude.args, "--append-system-prompt")
+            format!(
+                "{}\n\n{}",
+                argument(&claude.args, "--append-system-prompt"),
+                context.skill
+            )
         );
         assert_eq!(
             argument(&harness.args, "--cwd"),
@@ -1165,11 +1191,12 @@ mod embed_tests {
             0o600
         );
         assert!(!harness.args.join(" ").contains(&"ab".repeat(32)));
+        assert!(harness.args.iter().any(|a| a == "--yolo"));
         assert!(
             !harness
                 .args
                 .iter()
-                .any(|a| a == "--yolo" || a == "--dangerously-skip-permissions")
+                .any(|a| a == "--dangerously-skip-permissions")
         );
     }
 }

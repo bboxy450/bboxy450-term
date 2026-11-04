@@ -116,7 +116,19 @@ help:
 	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
 	  'make build-harness               Build the in-suite seat binary; add target/debug to PATH' \
 	  'make test-harness-branding       All harness menu/row labels, marks and omission control' \
-	  'make test-harness-native         Scripted harness seat, completed turn and bounded group cleanup' \
+	  'make test-harness-native         Scripted harness seat, socket delivery, rich face and bounded cleanup' \
+	  'make test-rich-pane              Private rich keyboard/IME, layout persistence and offscreen parity' \
+	  'make bench-budgets               Four-view actual drain/composition p99; load and heap UNMEASURED' \
+	  'make install-reopen              Oracle: signed install, GUI-only replace, rendered source receipt/rollback' \
+	  'make reopen-prepared             Oracle: reuse an existing signed BUNDLE for the same GUI-only handoff' \
+	  'make install-unsigned-reopen     Private headless activation; requires GUI_TEST_ACCOUNT' \
+	  'make check-rich-host             Strict all-target lint for the rich host boundary' \
+	  'make verify-rich-delivery        Focused compile, corpus and changed-input App delivery checks' \
+	  'make test-harness-status-control Quiet-tool cadence mutation must fail, then restored pass' \
+	  'make test-rich-app-detach         Real App detach/reopen during a native harness turn' \
+	  'make test-rich-app-input          Real App composer, approval, wheel and focus routing' \
+	  'make test-rich-launch-context     Real private launch children and admitted MCP context' \
+	  'make test-rich-gui-handoff        Private unsigned GUI install/replace, schema refresh and rollback' \
 	  'make test-capability-native      Capability file and real Codex shared-daemon environment scans' \
 	  'make init-submodules             Initialize and verify the pinned harness unattended' \
 	  'Fresh clone: git clone --recurse-submodules https://github.com/bboxy450/bboxy450-term' \
@@ -170,6 +182,8 @@ help:
 	  'make test-swarm-metadata         Persistent swarm names/cwd, legacy import and operator admission' \
 	  'make test-workspace-boundary     Scoped wire, root-bound replay and read-completion fences' \
 	  'make test-ctl-workspaces         Bounded same-op workspace preparation and real operator CLI' \
+	  'make verify-workspace-ready      Focused activity-churn API, watch, model/control parity and strict compile' \
+	  'make verify-view-switch          Pane titlebar view label, geometry, native hit/action and strict compile' \
 	  'make test-workspace-roots        Canonical cwd mounts, scoped records and stale-root fences' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
 	  'make test-role-identity          ROLE-first seat, pane and message identity; check-role-identity / parity-role-identity' \
@@ -633,12 +647,16 @@ set -eu; mkdir -p '$(1)'; \
 stage=$$(mktemp -d '$(1)/.$(APP)-install.XXXXXX'); \
 ditto '$(BUNDLE)' "$$stage/new.app"; codesign --verify --strict "$$stage/new.app"; \
 destination='$(1)/$(APP).app'; mkdir -p "$$destination"; \
+printf 'Previous contents, if any: %s\n' "$$stage/previous-Contents"; \
 if [ -d "$$destination/Contents" ]; then mv "$$destination/Contents" "$$stage/previous-Contents"; fi; \
 if ! mv "$$stage/new.app/Contents" "$$destination/Contents"; then \
   if [ -d "$$stage/previous-Contents" ]; then mv "$$stage/previous-Contents" "$$destination/Contents"; fi; exit 1; \
 fi; \
-codesign --verify --strict --verbose=2 "$$destination"; \
-printf 'Installed: %s\nPrevious contents, if any: %s\n' "$$destination" "$$stage/previous-Contents"
+if ! codesign --verify --strict --verbose=2 "$$destination"; then \
+  mv "$$destination/Contents" "$$stage/failed-Contents"; \
+  if [ -d "$$stage/previous-Contents" ]; then mv "$$stage/previous-Contents" "$$destination/Contents"; fi; exit 1; \
+fi; \
+printf 'Installed: %s\n' "$$destination"
 endef
 
 install: bundle
@@ -1403,6 +1421,26 @@ test-ctl-workspaces:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test ctl; \
 	cargo clippy --locked -p $(APP) --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
 
+.PHONY: verify-workspace-ready update-workspace-ready-models format-workspace-ready
+format-workspace-ready:
+	@rustfmt --edition 2024 crates/bbt-mux/src/index.rs crates/bbt-mux/src/knowledge/responsiveness_tests.rs crates/bbt-mux/src/models/workspace_ready.rs
+
+update-workspace-ready-models: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_UPDATE_MODELS=1 cargo test --locked -p bboxy450-term-mux --features model --target-dir '$(TARGET_DIR)' --lib models::workspace_ready::tests::workspace_ready_model_and_broken_control -- --exact --nocapture
+
+verify-workspace-ready: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_WORKSPACE_READY_MODELS='$(abspath $(TARGET_DIR))/workspace-ready/models' cargo test --locked -p bboxy450-term-mux --features model --target-dir '$(TARGET_DIR)' --lib workspace_ready -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --features model --target-dir '$(TARGET_DIR)' --lib logic::knowledge_responsiveness_tests::workspace_held_scan_keeps_input_chat_and_other_root_live_and_excludes_writes -- --exact --nocapture; \
+	cargo clippy --locked -p bboxy450-term-mux --features model --target-dir '$(TARGET_DIR)' --lib --tests -- -D warnings; \
+	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[line.split("\t") for line in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"WorkspaceReady":"pass","BrokenWorkspaceReady":"liveness"}; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/workspace-ready'
+
+.PHONY: verify-workspace-ready-restart
+verify-workspace-ready-restart: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test test_account logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authority -- --exact --ignored --nocapture
+
 .PHONY: test-terminal-font check-terminal-font format-terminal-font
 format-terminal-font: fmt-spawn
 
@@ -2000,9 +2038,12 @@ init-submodules:
 test-harness-native: init-submodules
 	@python3 -I scripts/harness-submodule.py --check-resolution
 	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-harness-wake-up --test rich_socket --test harness_status --target-dir '$(TARGET_DIR)'; \
 	cargo build --locked -p bboxy450-harness --features test-fixtures --target-dir '$(TARGET_DIR)'; \
 	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' mcp_harness_seat_ -- --ignored --nocapture; \
-	cargo test --locked -p bboxy450-harness --test seat_process --target-dir '$(TARGET_DIR)' non_pty_spawn_does_not_keep_a_sibling_master_alive -- --exact
+	cargo test --locked -p bboxy450-harness --test seat_process --target-dir '$(TARGET_DIR)' non_pty_spawn_does_not_keep_a_sibling_master_alive -- --exact; \
+	$(MAKE) test-rich-controls test-rich-cancel-control test-rich-pane bench-budgets test-rich-app-detach TARGET_DIR='$(TARGET_DIR)'
+	$(MAKE) test-rich-app-input test-rich-launch-context-control test-rich-gui-handoff-control TARGET_DIR='$(TARGET_DIR)'
 
 format-harness-embed:
 	@rustfmt --edition 2024 crates/bboxy450-harness-wake-up/src/launch.rs crates/bbt-mux/src/adapters/mod.rs crates/bbt-mux/src/mcp/seats.rs crates/bbt-mux/tests/mcp.rs crates/bboxy450-term/src/settings/roles.rs crates/bbt-proto/src/gui/roles.rs
@@ -2089,3 +2130,148 @@ test-harness-branding-control: init-submodules
 	cat '$(TARGET_DIR)/harness-branding-control.log'; test "$$status" = 101; \
 	grep -F 'broken picker omits bboxy450-harness' '$(TARGET_DIR)/harness-branding-control.log'; \
 	printf '%s\n' 'branding omission control: expected red 101'
+
+.PHONY: test-rich-pane
+test-rich-pane: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p bboxy450-term --lib --target-dir '$(TARGET_DIR)' rich_pane::tests; \
+	cargo test --locked -p bboxy450-term --test rich_client --target-dir '$(TARGET_DIR)' -- --nocapture --test-threads=1; \
+	cargo test --locked -p bboxy450-term --bin bboxy450-term --target-dir '$(TARGET_DIR)' rich_faces::verification:: -- --include-ignored --nocapture
+
+.PHONY: test-rich-controls
+test-rich-controls:
+	@set -eu; . ./scripts/cache-env.sh; \
+	python3 -I scripts/rich-host-controls.py --target '$(abspath $(TARGET_DIR))'
+
+.PHONY: check-rich-host
+check-rich-host: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked -p bboxy450-harness-wake-up -p bboxy450-term-mux -p bboxy450-term-proto -p bboxy450-ui-core -p bboxy450-ui -p bboxy450-term --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+# Focused operator-authorized delivery gate; broader prior evidence stays dated.
+# Upstream changed GUI/backend ownership and launch inputs, so retain these real
+# App witnesses along with the two record cases that failed on the prior cut.
+.PHONY: verify-rich-delivery
+verify-rich-delivery: check-rich-host
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked -p bboxy450-doc --test corpus --target-dir '$(TARGET_DIR)' -E 'test(=real_bboxy_frontmatter_parses) | test(=real_corpus_links_numeric_handles_and_legacy_ledger_anchors_resolve)'
+	$(MAKE) prepare-rich-native-fixture TARGET_DIR='$(TARGET_DIR)'
+	$(MAKE) test-rich-gui-handoff TARGET_DIR='$(TARGET_DIR)'
+	$(MAKE) test-rich-app-detach TARGET_DIR='$(TARGET_DIR)'
+	$(MAKE) test-rich-launch-context TARGET_DIR='$(TARGET_DIR)'
+
+.PHONY: test-rich-cancel-control
+test-rich-cancel-control: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	python3 -I scripts/rich-cancel-control.py --target '$(abspath $(TARGET_DIR))'
+
+.PHONY: bench-budgets
+bench-budgets: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_RICH_BUDGET_OUT='$(abspath $(TARGET_DIR))/rich-budgets' cargo test --locked -p bboxy450-term --bin bboxy450-term --target-dir '$(TARGET_DIR)' rich_faces::budget_verification::rich_four_view_aggregate_budget -- --ignored --exact --nocapture --test-threads=1
+
+.PHONY: test-harness-status-control test-rich-app-detach test-rich-gui-handoff test-rich-launch-context test-rich-app-input
+test-harness-status-control: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo build --locked -p bboxy450-harness --features test-fixtures --target-dir '$(TARGET_DIR)'; \
+	python3 -I scripts/test-harness-status-control.py '$(abspath $(TARGET_DIR))'
+
+test-rich-app-detach: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p $(APP) --test swarm_workdir --target-dir '$(TARGET_DIR)' rich_detach::rich_app_detach_during_native_turn_retains_owner_and_replays -- --ignored --exact --nocapture
+
+test-rich-gui-handoff: PROFILE=debug
+test-rich-gui-handoff: bundle-unsigned
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_PREPARED_GUI_BUNDLE='$(abspath $(BUNDLE))' BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p $(APP) --test swarm_workdir --target-dir '$(TARGET_DIR)' rich_detach::rich_gui_handoff_preserves_turn_and_rolls_back_failed_activation -- --ignored --exact --nocapture
+
+.PHONY: prepare-rich-native-fixture
+prepare-rich-native-fixture: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo build --locked -p bboxy450-harness --features test-fixtures --target-dir '$(TARGET_DIR)'
+
+test-rich-launch-context: prepare-rich-native-fixture
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p $(APP) --test swarm_workdir --target-dir '$(TARGET_DIR)' launch_context::launch_children_receive_workflow_and_call_their_own_admitted_mcp -- --ignored --exact --nocapture
+
+test-rich-app-input: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p $(APP) --test swarm_workdir --target-dir '$(TARGET_DIR)' rich_detach::rich_app_routes_composer_approval_scroll_and_focus -- --ignored --exact --nocapture
+
+.PHONY: test-rich-gui-handoff-control
+test-rich-gui-handoff-control:
+	@python3 -I scripts/rich-gui-handoff-control.py --target '$(abspath $(TARGET_DIR))'
+
+.PHONY: test-rich-launch-context-control
+test-rich-launch-context-control:
+	@python3 -I scripts/rich-launch-context-control.py --target '$(abspath $(TARGET_DIR))'
+
+# Reuse the same atomic installer after a caller has prepared and verified a bundle.
+.PHONY: install-prepared install-prepared-unsigned install-reopen reopen-prepared install-unsigned-reopen
+.PHONY: check-prepared check-prepared-unsigned
+check-prepared:
+	@codesign --verify --strict -R '= $(REQUIREMENT)' '$(BUNDLE)'
+
+check-prepared-unsigned:
+	@codesign --verify --strict '$(BUNDLE)'
+
+install-prepared: check-prepared
+	@$(call install_bundle,$(INSTALL_DIR))
+
+install-prepared-unsigned: check-prepared-unsigned
+	@$(call install_bundle,$(UNSIGNED_INSTALL_DIR))
+
+GUI_RUN_DIR ?=
+GUI_REPOSITORY ?=
+GUI_TEST_ACCOUNT ?=
+GUI_OPTIONS = $(if $(GUI_RUN_DIR),--run-dir '$(GUI_RUN_DIR)') $(if $(GUI_REPOSITORY),--repository '$(GUI_REPOSITORY)')
+install-reopen: bundle
+	$(MAKE) reopen-prepared BUNDLE='$(BUNDLE)'
+
+reopen-prepared:
+	@python3 -I scripts/reopen-gui.py --prepared '$(abspath $(BUNDLE))' --destination '$(INSTALL_DIR)' $(GUI_OPTIONS)
+
+install-unsigned-reopen: PROFILE=debug
+install-unsigned-reopen: bundle-unsigned
+	@test -n '$(GUI_TEST_ACCOUNT)' || { echo 'GUI_TEST_ACCOUNT is required for private headless activation'; exit 2; }
+	@python3 -I scripts/reopen-gui.py --private --headless --test-account '$(GUI_TEST_ACCOUNT)' --prepared '$(abspath $(BUNDLE))' --destination '$(UNSIGNED_INSTALL_DIR)' $(GUI_OPTIONS)
+
+.PHONY: verify-ui-only-reopen check-ui-only-reopen format-ui-only-reopen
+format-ui-only-reopen:
+	@rustfmt --edition 2024 --config skip_children=true crates/bboxy450-term/src/cockpit.rs crates/bboxy450-term/src/cockpit/gui_handoff.rs crates/bboxy450-term/src/cockpit/owners.rs crates/bboxy450-term/tests/test_account.rs crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs crates/bboxy450-term/tests/formal_contracts/gui_replacement.rs crates/bboxy450-term/tests/formal_contracts.rs
+
+check-ui-only-reopen: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --no-deps --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib --bin $(APP) --test test_account --test swarm_workdir --test formal_contracts -- -D warnings
+
+verify-ui-only-reopen: PROFILE=debug
+verify-ui-only-reopen: bundle-unsigned prepare-rich-native-fixture
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_PREPARED_GUI_BUNDLE='$(abspath $(BUNDLE))' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test test_account ui_only_reopen -- --ignored --nocapture --test-threads=1; \
+	BBOXY_PREPARED_GUI_BUNDLE='$(abspath $(BUNDLE))' BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir rich_detach::rich_gui_handoff_preserves_turn_and_rolls_back_failed_activation -- --ignored --exact --nocapture; \
+	mkdir -p '$(abspath $(TARGET_DIR))/ui-only-reopen/models'; \
+	BBOXY_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/ui-only-reopen/models' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts selected_gui_backend_preservation -- --exact --nocapture; \
+	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"GuiBackendPreservation":"pass","BrokenGuiBackendPreservation":"safety"}; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/ui-only-reopen'
+
+# Only a throwaway signed fixture may remove this static rollback capability.
+.PHONY: fixture-ui-only-legacy
+fixture-ui-only-legacy:
+	@python3 -I -c 'import os,pathlib,stat,sys; root=pathlib.Path(sys.argv[1]).resolve(strict=True); bundle=pathlib.Path(sys.argv[2]).resolve(strict=True); assert root.parent == pathlib.Path("/tmp").resolve() and root.name.startswith("ui-only-"); assert root.stat().st_uid == os.getuid() and not (stat.S_IMODE(root.stat().st_mode) & 0o022); assert bundle == root/"installed/bboxy450-term.app" and (root/"bootstrap.json").is_file()' '$(UI_ONLY_TEST_ROOT)' '$(BUNDLE)'
+	@plutil -remove BBOXYPreserveBackend '$(BUNDLE)/Contents/Info.plist'
+	@codesign --force --sign - --timestamp=none '$(BUNDLE)'
+	@codesign --verify --strict '$(BUNDLE)'
+
+.PHONY: test-ui-only-reopen-guards
+test-ui-only-reopen-guards: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test test_account ui_only_reopen_guard_refuses_refresh_and_failed_attach -- --exact --ignored --nocapture
+
+.PHONY: verify-view-switch check-view-switch format-view-switch
+format-view-switch:
+	@rustfmt --edition 2024 --config skip_children=true crates/bbt-ui/src/modules/strip.rs crates/bboxy450-term/src/rich_faces.rs crates/bboxy450-term/src/scene.rs crates/bboxy450-term/src/scene/navigation.rs
+
+check-view-switch: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --no-deps --locked -p bboxy450-ui --lib -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
+
+verify-view-switch: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; mkdir -p '$(TARGET_DIR)/view-switch'; \
+	BBOXY_VIEW_SWITCH_GEOMETRY='$(abspath $(TARGET_DIR))/view-switch/geometry.json' cargo test --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)' view_switch_ -- --nocapture --test-threads=1; \
+	cargo test --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)' rich_faces::verification::rich_keys_and_face_preference_do_not_reach_the_pty -- --exact --nocapture

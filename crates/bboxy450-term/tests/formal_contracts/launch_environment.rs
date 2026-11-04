@@ -77,5 +77,49 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         (environment(false, true), "safety"),
         (environment(true, false), "pass"),
         (environment(true, true), "safety"),
+        (managed_approval(false), "pass"),
+        (managed_approval(true), "safety"),
     ]
+}
+
+// Four managed presets (Codex, Claude, harness model, harness ACP), one launch.
+// The planner owns an atomic intent snapshot; profile default denies. No fairness
+// is needed for this safety check. Vendor/ACP permission semantics are separate
+// producer models and real private process/MCP witnesses, not Rust refinement.
+fn managed_approval(broken: bool) -> Model {
+    let mut m = model(
+        "ManagedApprovalIntent",
+        broken,
+        &[
+            ("preset", 3, 0),
+            ("launched", 1, 0),
+            ("outer_allow", 1, 0),
+            ("effective_allow", 1, 0),
+        ],
+    );
+    for preset in 0..=3 {
+        action(
+            &mut m,
+            &format!("ChoosePreset{preset}"),
+            eq(1, 0),
+            &[(0, Int(preset))],
+        );
+        let allowed = !(broken && preset >= 2);
+        action(
+            &mut m,
+            &format!("LaunchPreset{preset}"),
+            all([eq(1, 0), eq(0, preset)]),
+            &[
+                (1, Int(1)),
+                (2, Int(i64::from(allowed))),
+                (3, Int(i64::from(allowed))),
+            ],
+        );
+    }
+    safe(
+        &mut m,
+        "ManagedUnattendedIntent",
+        implies(eq(1, 1), all([eq(2, 1), eq(3, 1)])),
+    );
+    m
 }

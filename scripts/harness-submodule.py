@@ -25,14 +25,25 @@ def initialize(root):
     entry = subprocess.check_output(['git', 'ls-files', '--stage', '--', MEMBER], cwd=root, text=True).split()
     if module != URL or len(entry) != 4 or entry[0] != '160000':
         raise ValueError('harness: missing or unapproved pinned submodule')
-    subprocess.run(['git', 'submodule', 'update', '--init', '--recursive', '--', MEMBER], cwd=root,
-                   env={**os.environ, 'GIT_TERMINAL_PROMPT': '0', 'GCM_INTERACTIVE': 'never'}, check=True, timeout=180)
+    candidate = os.environ.get('BBOXY_HARNESS_CANDIDATE')
     child = root / MEMBER
+    if candidate:
+        if len(candidate) != 40 or any(c not in '0123456789abcdef' for c in candidate):
+            raise ValueError('harness: candidate must be an exact commit SHA')
+        if subprocess.check_output(['git', 'status', '--porcelain'], cwd=child).strip():
+            raise ValueError('harness: candidate requires a clean child worktree')
+        subprocess.run(['git', 'verify-commit', candidate], cwd=child, check=True)
+        subprocess.run(['git', 'checkout', '--detach', candidate], cwd=child, check=True)
+    else:
+        subprocess.run(['git', 'submodule', 'update', '--init', '--recursive', '--', MEMBER], cwd=root,
+                       env={**os.environ, 'GIT_TERMINAL_PROMPT': '0', 'GCM_INTERACTIVE': 'never'}, check=True, timeout=180)
     if not (child / '.git').is_file() or not (child / 'Cargo.toml').is_file():
         raise ValueError('harness: pinned submodule checkout is missing')
     head = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=child, text=True).strip()
-    if head != entry[1]:
-        raise ValueError('harness: checkout differs from the pinned gitlink')
+    if head != (candidate or entry[1]):
+        raise ValueError('harness: checkout differs from the requested pin')
+    if candidate:
+        print(f'harness: PRIVATE TEST CANDIDATE {head}; committed pin remains {entry[1]}', flush=True)
     print(f'harness: pinned {head}', flush=True)
     return True
 
@@ -89,12 +100,12 @@ def check_resolution(root):
     data = workspace_metadata(root)
     validate_json_features(data)
     toolkit = {"bboxy450-rt": "bbt-rt", "bboxy450-yarn": "bbt-yarn", "bboxy450-tlc": "bboxy450-tlc",
-               "bboxy450-ui": "bbt-ui", "bboxy450-ui-core": "bbt-ui-model", "bboxy450-render": "bbt-render", "bboxy450-doc": "bbt-doc"}
+               "bboxy450-ui": "bbt-ui", "bboxy450-ui-core": "bbt-ui-model", "bboxy450-render": "bbt-render", "bboxy450-doc": "bbt-doc", "bboxy450-term-desktop-core": "bboxy450-term-desktop-core", "bboxy450-term-desktop-macos": "bboxy450-term-desktop-macos", "bboxy450-term-desktop": "bboxy450-term-desktop"}
     for name, directory in toolkit.items():
         matches = [p for p in data['packages'] if p['name'] == name]
         if len(matches) != 1 or matches[0]['source'] is not None or Path(matches[0]['manifest_path']).resolve() != root / 'crates' / directory / 'Cargo.toml':
             raise ValueError(f'harness: {name} must resolve once to the in-tree path')
-    print('harness: all seven toolkit dependencies resolve to in-tree paths', flush=True)
+    print('harness: all ten toolkit dependencies resolve to in-tree paths', flush=True)
 
 
 def archive_generated_evidence(child, artifacts):

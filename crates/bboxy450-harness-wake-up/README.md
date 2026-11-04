@@ -39,6 +39,7 @@ The complete `record.rs` program is in `examples/`. Build it with
 |---|---|---|---|
 | Claude | Hooks, OSC, session metadata | Bound cross-session socket | Positive composer readiness |
 | Codex | Hooks, OSC, app-server events | Pinned shared daemon and exact authenticated thread | Positive composer readiness |
+| bboxy450-harness | OSC and process-bound JSONL session log | No wake transport in this observer | Operator handoff |
 | zsh | OSC 133 and working-directory reports | None | Canonical prompt readiness |
 | Custom kind | Caller-supplied observations | No built-in transport | Operator handoff unless implemented |
 
@@ -47,6 +48,13 @@ Implement `hook::HookSink` to carry fallback hook events over your own admitted 
 Claude receives NAME, ROLE, host/cwd and "call orient first" through its appended system prompt. Codex receives those instructions and its isolated MCP/hook wiring through a per-thread app-server start/resume; the TUI attaches to that named thread. The host dispatches the plan's `harness-exec` entry to `launch::exec_when_ready`. Shared-daemon startup is idempotent through Codex's CLI; the host never restarts, stops or cleans up that borrowed daemon. Native wake-up validates the exact thread and daemon peer, and never creates or loads an unknown target.
 
 ## Pitfalls
+
+After a parent Reported observation, cadence stays disabled for that process generation.
+Sixty seconds without another report or a native heartbeat marks the retained state
+`stale`, with an explicit detail. A new report or exit replaces it; output silence
+never turns it into inferred idle. `harness_log` discovers the native session from
+an owned socket's peer PID and matching Hello, then incrementally reads its JSONL.
+Only a complete current log projection reports state; rereading EOF is not a heartbeat.
 
 This crate does synchronous filesystem and socket work; keep it off the UI thread. An installed harness or a matching PID alone does not establish a live native attachment. The kit does not assign roles or send through an application messaging ledger.
 

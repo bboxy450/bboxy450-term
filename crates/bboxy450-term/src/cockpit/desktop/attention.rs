@@ -571,6 +571,7 @@ mod tests {
 
     fn waiting(epoch: u128, ordinal: u64) -> GuiSeat {
         GuiSeat {
+            rich_socket: None,
             attention: None,
             notification_episode: Some(EpisodeKey {
                 epoch: bbt_mux::Ulid(epoch),
@@ -585,6 +586,7 @@ mod tests {
                 grade: Grade::Shim,
                 title: String::new(),
                 detail: Some("Answer this?".into()),
+                stale: false,
                 turn_open: true,
                 observed_ms: 10,
                 subagents: vec![],

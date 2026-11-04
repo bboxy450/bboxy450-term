@@ -229,6 +229,7 @@ fn captured_episode_identity_survives_rebuild_but_not_a_to_b_to_a() {
     };
     use std::time::Instant;
     let mut row = GuiSeat {
+        rich_socket: None,
         record: SeatRecord::new(Ulid::from(7_u128), Ulid::from(8_u128), "A", "claude"),
         state: SeatState {
             generation: 1,
@@ -237,6 +238,7 @@ fn captured_episode_identity_survives_rebuild_but_not_a_to_b_to_a() {
             grade: Grade::Shim,
             title: String::new(),
             detail: Some("Answer?".into()),
+            stale: false,
             turn_open: true,
             observed_ms: 0,
             subagents: vec![],

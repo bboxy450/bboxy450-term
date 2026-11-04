@@ -1216,6 +1216,7 @@ mod tests {
             &["--headless".into()],
             Verify::default(),
         );
+        app.startup.attached();
         app.composer
             .handle(ComposeCommand::Focus(ComposeField::Body));
         app.startup.attached();

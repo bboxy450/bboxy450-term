@@ -9,6 +9,9 @@
 use Expr::{Bool, Int, Var};
 use bboxy450_tlc::{Action, Expr, Invariant, Model, Response, Variable};
 
+#[path = "harness_status_model.rs"]
+mod harness_status_model;
+
 #[path = "notification_models.rs"]
 mod notification_models;
 
@@ -31,6 +34,10 @@ mod task_amend_model;
 mod capability_models;
 #[path = "usage_models.rs"]
 mod usage_models;
+#[path = "gui_replacement.rs"]
+mod gui_replacement;
+#[path = "rich_host.rs"]
+mod rich_host;
 #[path = "launch_environment.rs"]
 mod launch_environment;
 #[path = "launch_readiness.rs"]
@@ -1875,6 +1882,8 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(capability_models::cases());
     cases.extend(gitkb_models::cases());
     cases.extend(usage_models::cases());
+    cases.extend(rich_host::cases());
+    cases.extend(gui_replacement::cases());
     cases.extend(launch_environment::cases());
     cases.extend(launch_readiness::cases());
     cases.extend(provenance_models::cases());
@@ -1882,6 +1891,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(logic_worker_model::cases());
     cases.extend(projection_writer_model::cases());
     cases.extend(watcher_model::cases());
+    cases.extend(harness_status_model::cases());
     cases
 }
 

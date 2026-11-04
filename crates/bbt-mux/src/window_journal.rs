@@ -143,7 +143,7 @@ impl Journal {
 pub(crate) fn validate(state: &WindowState) -> Result<()> {
     if !matches!(
         state.version,
-        1 | 2 | 3 | bbt_proto::gui::WINDOW_STATE_VERSION
+        1 | 2 | 3 | 4 | bbt_proto::gui::WINDOW_STATE_VERSION
     ) || state
         .size
         .iter()
@@ -247,6 +247,8 @@ mod tests {
     use bbt_proto::gui::WindowStage;
     fn empty() -> WindowState {
         WindowState {
+            pane_faces: Default::default(),
+            rich_cursors: Default::default(),
             version: 1,
             size: [1280., 720.],
             sidebar_width: 300.,
@@ -384,7 +386,7 @@ mod tests {
     }
     #[test]
     fn journal_accepts_legacy_and_current_schemas_but_rejects_invalid_sections() {
-        for version in [1, 2, 3, bbt_proto::gui::WINDOW_STATE_VERSION] {
+        for version in [1, 2, 3, 4, bbt_proto::gui::WINDOW_STATE_VERSION] {
             let mut state = empty();
             state.version = version;
             validate(&state).unwrap();

@@ -226,6 +226,8 @@ pub struct SeatRow {
     pub title: String,
     pub activity: Activity,
     pub grade: Grade,
+    /// Freshness can expire while the last reported activity stays visible.
+    pub stale: bool,
     pub color: Option<[f32; 4]>,
     pub where_: Option<String>,
     pub link: Option<super::link::LinkState>,
@@ -268,6 +270,7 @@ impl SeatRow {
             title: String::new(),
             activity: Activity::Idle,
             grade: Grade::Reported,
+            stale: false,
             color: None,
             where_: None,
             link: None,
@@ -362,6 +365,7 @@ impl SeatRow {
         // The alive rim (rim-glow §8): rows stack edge to edge, so no outer half and no bloom;
         // an idle, unfocused row carries none at rest but still takes the swell.
         style.overrides.rim = Some(ui::Rim {
+            inferred_multiplier: if self.stale { 0.5 } else { 1. },
             swell: self.swell,
             attention: self.attention,
             ..ui::Rim::block(
