@@ -37,6 +37,7 @@ allowed_paths:
 - .bboxy/reports/**
 - .bboxy/runs/codex-harness-attachments.json
 - .bboxy/tasks/2026-11-04-harness-attachments.md
+- crates/bboxy450-harness/src/store.rs
 verify: make verify-harness-attachments
 acceptance:
 - Images can be selected or pasted into the shared composer and actual image content reaches the private underlying agent exactly once
@@ -48,7 +49,7 @@ id: 01M6KKWJVF71S4JT0NNF193EWJ
 status: claimed
 delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
 swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-04T16:09:56.194Z
+updated: 2026-11-04T16:18:03.462Z
 created: 2026-11-04T15:47:20.405Z
 number: 93377961360922
 created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
@@ -60,11 +61,11 @@ authorship:
   process_generation: '1'
 assignee: seat:01M6KKR5T6NMPBJH9RK6YRMKH9
 provenance:
-  digest: sha256:083b321e3f929a80f5609f40ca89b7c79119c4d09c2768c1994bfd1274a85afc
-  frontmatter_digest: sha256:35c46847688ae2bff209e2589968f82b15b1c5bef75b6b60795f0d10ff25a9ed
+  digest: sha256:e57886c9e5b0a5060fa4d887a5a1a4b86c9eff0eb5388d058577baea45292bfe
+  frontmatter_digest: sha256:62f516d4ba091232b9f8a3174bc77700176fb2fbceec1794d06e74d52ca6c928
   signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  sig: Y9D/FxuzBIbObEmrt23742ZOAT5bUT2YgsMS8Zt+P0bkrJKuB5ThBSZWYSp9GtAAkeWw6r0D8cTFDyimrTXmDg==
-  log: .bboxy/log/2026-11-04.jsonl#120887
+  sig: wppl6xgiNgTNlbIrVg5/TKx8US5fKkyHoXDISk6t8bm8oZxZRL94yx3dPsOW0XCMewx0REE/Dp9tgcOyeM8OBw==
+  log: .bboxy/log/2026-11-04.jsonl#121080
 ---
 ROLE: EXECUTOR.
 
@@ -82,3 +83,6 @@ Signed Boxy commits, indexed append-only report reports/2026-11-04-harness-attac
 
 
 Handoff clarification: copying this exact indexed task record into .bboxy/tasks/2026-11-04-harness-attachments.md in your own worktree is explicitly authorized for the local report/task linkage gate. Preserve its indexed fields and signed bytes; do not edit task lifecycle or import unrelated records. A signed source checkpoint may precede the indexed report; commit the report afterward as a report-only checkpoint so metadata cannot hold up Oracle's build. Reuse existing exact-source green checks; do not rerun suites for this record-only change.
+
+
+The exact store entrypoint crates/bboxy450-harness/src/store.rs is also authorized to wire the scoped intake module; keep changes limited to attachment ingestion. Preserve the same verification and ownership boundaries.
