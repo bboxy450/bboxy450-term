@@ -33,7 +33,9 @@
   "published_correction": "d32803e2c51f0aec03c4044c9020d77118e2ee25",
   "verify": {
     "command": "make verify-rich-delivery",
-    "exit_code": null
+    "exit_code": 0,
+    "log": "/tmp/codex-rich-verify-delivery-final.log",
+    "sha256": "40859d172cf878d046e15334589f81a030adfd6331942540ceda050ae18ec9ef"
   },
   "omitted_by_operator": [
     "full make test/test-parity",
@@ -47,5 +49,161 @@
     "crates": 34,
     "receipt_sha256": "b19641f1c5dbed75b14eb7f9eda21c7d31d9dd28ccbd04ac35c962170dee31d4",
     "fresh_for_integrated_source": false
+  },
+  "source": "a531338d930f6bed73747047e06c56883b5ce5ea",
+  "source_tree": "15a4e4eece1c5cd1c213b891398f4f55dbd67a5f",
+  "focused_exits": {
+    "check-rich-host": 0,
+    "two_real_corpus_cases": 0,
+    "prepare-rich-native-fixture": 0,
+    "test-rich-gui-handoff": 0,
+    "test-rich-app-detach": 0,
+    "test-rich-launch-context": 0
+  },
+  "previous_attempt": {
+    "source": "17871c3d1e025adb9ab034fa0b750be25ef1bcaf",
+    "preserved_ref": "preserve/rich-host-17871c3d",
+    "command": "make verify-rich-delivery",
+    "exit_code": 2,
+    "log": "/tmp/codex-rich-verify-delivery-17871c3d.log",
+    "sha256": "440bc41d40f09cd8a61c9e6e6539dd4aac6a7c4dc3d8e7931c8435ac515748ae",
+    "cause": "Premature future Report trailer did not resolve in its committed tree; removed that unearned trailer by signed amend before the final actual result. Checks remained enforced."
+  },
+  "fresh_process_evidence": {
+    "handoff": {
+      "supervisor": 54491,
+      "old_logic": 54492,
+      "new_logic_after_schema_refresh": 57557,
+      "harness_pid": 54512,
+      "session": "01M6J6JZHHEWTNPT0X9187A083",
+      "generation": 1,
+      "before_seq": 14,
+      "head": 19,
+      "contiguous_durable_prefix": "1..19",
+      "unexpected_activation_exit": 1,
+      "rollback_restored": true
+    },
+    "unexpected_gui_detach": {
+      "old_gui": 60990,
+      "exit": "SIGKILL exact private fixture PID",
+      "supervisor": 61065,
+      "logic": 61067,
+      "harness": 61087,
+      "session": "01M6J6NB5WQQ3ZJHB9KQEDCG40",
+      "generation": 1,
+      "before_seq": 14,
+      "head": 19,
+      "contiguous_durable_prefix": "1..19"
+    },
+    "launch": "Real private scoped MCP: Codex/Claude generations1,2; native engine3 loopback requests under production --yolo; no vendor requests"
+  },
+  "prior_observations": {
+    "source": "337832b56d24da8803aab316a31c964dddef9af2",
+    "row_mismatch": 0.0,
+    "app_four_view_drain_p99_ms": 0.041792,
+    "app_four_view_composition_p99_ms": 0.083792,
+    "app_joint_ui_p99_ms": 0.120167,
+    "concurrent_worker_projection_elapsed_sum_p99_ms": 1.303208,
+    "fresh": false,
+    "whole_frame": "UNPROVEN",
+    "load_background_cpu_heap": "UNMEASURED",
+    "per_view_memory_allocation_mib": 32
+  },
+  "retained_logs": [
+    {
+      "path": "/tmp/codex-rich-final-native-7c.log",
+      "exit_code": 0,
+      "sha256": "550311a68fed879003ef389466c7ba71b1183687aca0af47564c74450159ea65",
+      "prior_source": true
+    },
+    {
+      "path": "/tmp/codex-rich-final-boundaries-7c.log",
+      "exit_code": 0,
+      "sha256": "e2ce9abdba25159c5764c06a27207d7d416624018f7b08a0dbdeaff7bdfa7ad9",
+      "prior_source": true
+    },
+    {
+      "path": "/tmp/codex-rich-final-status-control-7c.log",
+      "exit_code": 0,
+      "sha256": "e97b33ba919e6ccef2df7b3422604dd7fbae38d4a754607d23684d2ca3a0974d",
+      "prior_source": true
+    },
+    {
+      "path": "/tmp/codex-rich-final-licenses-layering-7c.log",
+      "exit_code": 0,
+      "sha256": "b8ba570c6ef4c916b1f244bad22ba92c187b492a8be81bcf9bbd48be110bf614",
+      "prior_source": true
+    },
+    {
+      "path": "/tmp/codex-rich-final-formal-7c2.log",
+      "exit_code": 0,
+      "sha256": "b7fe459bd87dc599129ec003e3fa42b8003eaaf25b8330263a6276745d07b988",
+      "prior_source": true
+    },
+    {
+      "path": "/tmp/codex-rich-final-formal-7c-receipt.log",
+      "exit_code": 0,
+      "sha256": "4a1f09d8a753374f95e048c008b432cf18a77bfe6465005b08beb87c3390f836",
+      "prior_source": true
+    },
+    {
+      "path": "/tmp/codex-rich-final-cfg-pin.log",
+      "exit_code": 0,
+      "sha256": "36f5351105cf3fe065e41c8e81a356aae79075a50a2214f587cd8e355cd0ea10",
+      "prior_source": false
+    }
+  ],
+  "current_source_model_tool_sha256": {
+    "verification/contracts.toml": "eb24c8ba8a8cf501700d36e632d26884406e10c8d3ea5c198f7a8c929728b6c0",
+    "verification/corpus.toml": "8efb8be5f3b4bf459e23ebdd97a02ee8bc10b2d28ff369c52cbb4bde2b66084c",
+    "verification/coverage.toml": "c8c9040787c4db2b78b6d32a00d9eb2158851b4a5066a64ee37870296e972845",
+    "verification/tools.lock.json": "45d8a35d0b533e53689efc46542315cf91713ee5821a2f002289cc0b8bc7a8dd",
+    "scripts/formal.py": "09ca7496419d59f0a41245cff8297b7fdb79dba2a9b81abf5df9e4a6597aa937",
+    "crates/bboxy450-term/tests/formal_contracts/rich_host.rs": "b71091ad02a39667bde60cd053dcf2d2408f78d341cbe1a1735e3381bd890dab",
+    "crates/bboxy450-term/tests/formal_contracts/harness_status_model.rs": "f926ffb52b4d1a922c3c08ecf7addcf3043b93c702f04072bcaf83a1dc216bf9",
+    "crates/bboxy450-term/tests/formal_contracts/gui_replacement.rs": "82337e7dab6e77250cff841166d9113f03e35a591113dc6ea52d6287c456586c",
+    "crates/bboxy450-term/tests/formal_contracts/launch_environment.rs": "de44db731ffeb8ab4a4660a670b9a9c1084ae03c97ddf09164ad558b4c702852"
+  },
+  "signature_audit": [
+    "a531338d930f6bed73747047e06c56883b5ce5ea G",
+    "6796c99c69517e2e74afd357ea6c0f5a071ed7ff G",
+    "a35e7b982a6c0e94421ef64855eb87a643fe7eb4 G",
+    "bf52051da476ae63695ec9392a8d505137cfc45d G",
+    "745648a127fa8553df2db9b7241d6a21ba840438 G",
+    "9fc46a30b39c8f4579072b2ce06a8e25ca4ee1e3 G",
+    "3568f5eb7ab935075e5db059d7a42437bbcd0624 G",
+    "3c6def209a767d13d66acfea9c2b9635239844d4 G",
+    "b52669dd6747f33f1d1d3a76d9e912db58302d4c G",
+    "3dda5f4e56af9ad3d8597da541c01be31ffdcf02 G",
+    "c385fb9cf6dcd554a40333703d1ff70e3ba34970 G",
+    "09d5e0af49aa93cd91a95d6f6806b5050ecdd888 G",
+    "2eb6cd0543b081d3808401ffd700fc4f70760f61 G",
+    "65bbaa267d6a2ba2678c3ee5f12b5b6cae1f73bc G",
+    "24700d0e14cdfe68fdd49019012e182fe10ede61 G",
+    "93c199871d4a35009dedf973fc454046861a6142 G",
+    "51cd76498b62600e55daa19da0af05a077693b3d G",
+    "5bb3e64e06e0623e52d993c1223a5b03b9be6fd7 G"
+  ],
+  "static_preservation_audit": "Exact published d328 correction bytes; prior rich and upstream contract/model names and per-crate mappings retained. Inventory audit only; no fresh model execution.",
+  "report_registration": {
+    "original_op_id": "01M6J6X5Z0R18GKDPKA77H5NS6",
+    "path": "reports/2026-11-04-codex-rich-host-delivery.md",
+    "status": "applied",
+    "lookup": "01M6J6Y4C7D2NWX4BM5XQ5SZSZ",
+    "ledger": "missing",
+    "retry_allowed": false,
+    "terminal": true,
+    "id": "01M6J6X5Z0R18GKDPKA77H5NS6",
+    "number": 19886,
+    "sha256": "14fd840e0be0cbe0b855795885f8d75425ca7e707cb9dd0ce290eefd7eb7ccaf",
+    "resolved_by_operation_status": "01M6J709KCPE1WYN27H9WBDVCN"
+  },
+  "report_source_aliases": {
+    "wake-up/": "crates/bboxy450-harness-wake-up/",
+    "mux/": "crates/bbt-mux/",
+    "rich_pane.rs": "crates/bboxy450-term/src/rich_pane.rs",
+    "rich_faces.rs": "crates/bboxy450-term/src/rich_faces.rs",
+    "harness_log.rs": "crates/bboxy450-harness-wake-up/src/harness_log.rs",
+    "cockpit/gui_handoff.rs": "crates/bboxy450-term/src/cockpit/gui_handoff.rs"
   }
 }
