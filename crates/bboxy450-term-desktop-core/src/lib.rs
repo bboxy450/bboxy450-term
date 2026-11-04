@@ -167,14 +167,33 @@ pub struct MenuGroup {
 /// The host and native adapter consume this same menu model.
 pub fn app_menu() -> Vec<MenuGroup> {
     use Action::*;
+    // Runtime selection keeps standalone consumers on the existing shared API.
+    // Unknown executable names retain the terminal app's established fallback.
+    let harness = std::env::current_exe().ok().is_some_and(|path| {
+        path.file_stem()
+            .is_some_and(|name| name == "bboxy450-harness")
+    });
+    let (name, hide, quit) = if harness {
+        (
+            "bboxy450-harness",
+            "Hide bboxy450-harness",
+            "Quit bboxy450-harness (Keep Sessions)",
+        )
+    } else {
+        (
+            "bboxy450-term",
+            "Hide bboxy450-term",
+            "Quit bboxy450-term (Keep Sessions)",
+        )
+    };
     vec![
         MenuGroup {
-            title: "bboxy450-term",
+            title: name,
             items: vec![
                 MenuItem::action("Settings…", Settings, ","),
                 MenuItem::separator(),
-                MenuItem::action("Hide bboxy450-term", HideWindow, "h"),
-                MenuItem::action("Quit bboxy450-term (Keep Sessions)", CloseWindow, "q"),
+                MenuItem::action(hide, HideWindow, "h"),
+                MenuItem::action(quit, CloseWindow, "q"),
                 MenuItem {
                     option: true,
                     ..MenuItem::action("Quit and Stop All Sessions", HardQuit, "q")
