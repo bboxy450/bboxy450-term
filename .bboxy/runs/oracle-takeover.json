@@ -659,5 +659,51 @@
     "needed_checks_only": true,
     "free_gib": 28.77,
     "product_complete": false
-  }
+  },
+  "refinements_staged": {
+    "at": 1793764414.154772,
+    "term_source": "5793139a66b5ba58e55703239d5866fea87eb61b",
+    "harness_source": "0dfa2b8147f01c95dda5da8ac14c33ec249cd86d",
+    "bundle": "/Users/feral/mydev/bboxy450-term-codex-rich/target/staged-refinements/bboxy450-term.app",
+    "signature_exit": 0,
+    "team": "UQB3368A84",
+    "build": {
+      "exit_code": 0,
+      "seconds": 140.7676637172699,
+      "source": "5793139a66b5ba58e55703239d5866fea87eb61b",
+      "bundle": "/Users/feral/mydev/bboxy450-term-codex-rich/target/staged-refinements/bboxy450-term.app",
+      "activation": "none; no install/reopen/backend refresh"
+    },
+    "binary_sha256": {
+      "bboxy450-harness": "4f59cac78dbe5b3e8dd7b0dd12c47a1b4010c4d876dc3074cfdc9e285d3dfd1c",
+      "bboxy450-term": "eb57ef3c069c83a3566c545b67df8670e8282a6c9877f2e5a69c5766d9a28e56"
+    },
+    "installed_term_source_unchanged": "4b8cd49cdb64ccb440213db8617a334c8e2fdd87",
+    "live_gui_probe": {
+      "running": true,
+      "process": {
+        "pid": 54941,
+        "birth": [
+          1793761082,
+          64673
+        ]
+      },
+      "gui": {
+        "pid": 54941,
+        "instance": "01M6J7VZEC8A3YCVS4942Q36DE",
+        "source_revision": "4b8cd49cdb64ccb440213db8617a334c8e2fdd87"
+      },
+      "repository": "/Users/feral/mydev/bboxy450-term"
+    },
+    "live_logic_process": "55157 54941 Tue Nov  3 18:58:04 2026     /Users/feral/Applications/bboxy450-term.app/Contents/MacOS/bboxy450-term",
+    "live_activation": "NONE; no backend or GUI refresh/install performed after no-restart instruction",
+    "focused_checks": "Verified logs/hashes/captures in workspace-fix-verified.json, private-restart-verified.json, gui-polish-review-96.json and gui-polish-final-verified.json",
+    "full_suites": "omitted under operator exception; no fresh whole-corpus/whole-CI receipt claimed",
+    "harness_published_ref": "oracle-gui-polish-20261104 (review branch, not main release)",
+    "term_publication": "local signed staging branch only",
+    "pending": "Task/report indexing remains pending on live old backend; original unknown intents not replayed/resolved",
+    "free_gib": 43.03
+  },
+  "prepared_handoff": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/REFINEMENT-HANDOFF.md",
+  "task_registration": "deferred; operator-authorized local /tmp collaboration fallback, no task_delegate/acceptance fabricated"
 }
