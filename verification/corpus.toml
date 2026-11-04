@@ -1073,7 +1073,7 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
-name = "GuiReplacement"
+name = "GuiReplacementOwners"
 expected = "pass"
 frontend = "project"
 
@@ -1083,13 +1083,28 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "GuiReplacementDuplicate"
+expected = "pass"
+frontend = "project"
+
+[[model]]
 name = "BrokenGuiReplacementDuplicate"
 expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "GuiReplacementSource"
+expected = "pass"
+frontend = "project"
+
+[[model]]
 name = "BrokenGuiReplacementSource"
 expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "GuiReplacementRollback"
+expected = "pass"
 frontend = "project"
 
 [[model]]

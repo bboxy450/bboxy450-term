@@ -126,7 +126,13 @@ fn replacement(control: u8) -> Model {
     m
 }
 pub fn cases() -> Vec<(Model, &'static str)> {
-    (0..=4)
-        .map(|c| (replacement(c), if c == 0 { "pass" } else { "safety" }))
-        .collect()
+    let mut cases = Vec::new();
+    for control in 1..=4 {
+        let broken = replacement(control);
+        let mut good = replacement(0);
+        good.name = broken.name.strip_prefix("Broken").unwrap().to_owned();
+        cases.push((good, "pass"));
+        cases.push((broken, "safety"));
+    }
+    cases
 }
