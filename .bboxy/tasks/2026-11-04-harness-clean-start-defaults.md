@@ -25,6 +25,7 @@ allowed_paths:
 - .bboxy/tasks/2026-11-04-harness-clean-start-defaults.md
 - .bboxy/reports/**
 - .bboxy/runs/codex-clean-start.json
+- crates/bboxy450-harness/src/backend/acp_agent.rs
 verify: make verify-clean-start
 acceptance:
 - Canonical Codex profile identity is codex, its generated file is codex.md and its ACP executable is codex-acp without duplicate profile generation
@@ -36,7 +37,7 @@ id: 01M6M65A1VYVMQNPSTJ46YD5S2
 status: claimed
 delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
 swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-04T21:09:17.601Z
+updated: 2026-11-04T21:23:49.309Z
 created: 2026-11-04T21:06:40.639Z
 number: 93377961363555
 created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
@@ -48,11 +49,11 @@ authorship:
   process_generation: '1'
 assignee: seat:01M6M69Y5FVMKEHTCVGWKY8EZH
 provenance:
-  digest: sha256:fbec262fd573dd0c35d3c8c594644a93c3d7d4f1d435446221a3ab80ad8e4677
-  frontmatter_digest: sha256:51541eb21b12f6431eee08457ff7ca299eec838ab871ed22ffd3384c3e103eaf
+  digest: sha256:e3854e604c7798d04eb98c1b59a22948071242cc8ecfd3c75a9230d96ecb82f3
+  frontmatter_digest: sha256:151573e820dd7d40e4c15ae806f449f9244bc29d586148ea3c5435ff2f076674
   signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  sig: vfplcxAYpfVtgf8SaPnv7/8tSX+zHj8p3ByckIS7VPX9WKTMiYyq7biY/WzlaV/AhIvI1Z5TZDSXrNuCMiywBw==
-  log: .bboxy/log/2026-11-04.jsonl#130656
+  sig: hBHDPLKRIePYCiAwzHumlgJXbM36CAsWq1p/MOfWn+avU+fa6p5dLdxkdhRdYeAfQPWL9UULlu1vUbiFOIZoAg==
+  log: .bboxy/log/2026-11-04.jsonl#130783
 ---
 ROLE: EXECUTOR.
 
@@ -67,3 +68,10 @@ Keep profile discovery/filesystem work off GUI callbacks; reuse the current boun
 Add make verify-clean-start with only named private temp-home/PATH/fake-adapter process and actual GUI/Bridge checks, plus affected strict compilation/license checks. Cover missing root/profile/default file, no installed CLI, native CLI without wrapper, proper argv/profile identity, env/saved/explicit precedence, preserved edits, repeated startup and concurrent create-new if relevant. Parsing/layout keep specialized checks; reuse unchanged protocol/runtime/formal evidence and add only a minimal affected model/control if you introduce a new ownership contract. No full CI/parity/formal/runtime suites. Two Cargo jobs, local target; disk92%, Codex96% weekly—keep this bounded and deliver promptly.
 
 Commit a signed producer source checkpoint immediately when the focused gate passes; do not wait for report indexing. Parent holds only Make wrapper, exact indexed task/report and compact .bboxy/runs/codex-clean-start.json; leave its gitlink unstaged. Register append-only report reports/2026-11-04-harness-clean-start.md via knowledge tools, copy exact indexed bytes, signed report commit with Report trailer, task_report using acceptance strings VERBATIM. Save raw logs/fixtures outside Git, only command/exits/hashes in run JSON. Unknown write: retain original op ID and query it, never redispatch an unknown effect. Quiet: no plan/progress/ack DMs, only genuine all-work blocker and final task_report. No root or peer worktree edits, broad staging, reset/stash, OS desktop input or test needing the operator.
+
+
+## Oracle source-review correction — same bounded startup scope
+
+The current fdaaf876 candidate fails a private existing-behavior witness: an explicit valid custom ACP profile whose executable exists only in the login-shell PATH succeeds with installed f1d3a3f (exit 0 and PRIVATE-CLEAN-START), but candidate exits 1 before launch. Exact private instrument/results: /tmp/bboxy-oracle-recovery-01M6KDR7TE4H4B4AF0PZYK0Q1T/clean-start-login-path-review.json and clean-start-login-path-{installed-baseline,candidate}.log. The process owns a private HOME, fake login shell and fake adapter; no vendor or credentials.
+
+Remove the new narrower inherited-PATH rejection or reuse production ACP resolution for any early availability check. backend/acp_agent.rs is now allowed solely to expose/reuse that existing bounded resolver if needed; preserve its launch semantics. Preserve the actual profile parse/config error when adding setup guidance. Add this regression to the existing focused fixture, run only the changed named checks/affected compile, and refresh the compact exact-source receipt. No full suite, new formal model, backend action or installer run. New-session default discovery must not change saved/environment selection during resume; retain existing Host identity handling. This source correction must be complete before final handoff; the old focused green alone is insufficient.
