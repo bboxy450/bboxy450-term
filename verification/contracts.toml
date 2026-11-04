@@ -134,6 +134,16 @@ property = "Detach preserves the desktop owner and current question; replay cann
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "WorkspaceReady"
+title = "Internal activity output cannot starve document write admission"
+models = ["WorkspaceReady", "BrokenWorkspaceReady"]
+sources = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/knowledge/routing.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/models/workspace_ready.rs"]
+implementation_tests = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/knowledge/responsiveness_tests.rs", "crates/bbt-mux/src/models/workspace_ready.rs"]
+assumptions = "One root starts scanning with no dirty document input, one pending write and no admitted write. A single optional external document edit and arbitrarily many internal activity output events can interleave with scan completion, dirty reconciliation and write admission. Each action is atomic. Scan completion, reconciliation and admission are separately weakly fair; activity output and the external edit are not fair. The model abstracts known file creation/removal or content/metadata updates to non-Markdown leaves under log/ as ActivityOutput. Directory creation/removal, Markdown, rename, overflow, failure and unknown events still invalidate documents. Real notify classification and OS coalescing use the synthetic-event and real-owner API witnesses. Infinite genuine Markdown edits, multiple roots, provider/identity changes, exact-once journaling, crypto, IO failure and elapsed timing are not modeled here; existing WorkspaceFence, operation and projection contracts retain their fences."
+property = "PendingWriteEventuallyAdmitted under continuing internal output, after the finite external edit is reconciled. BrokenWorkspaceReady removes only the internal-output classification guard and has a fair scan/restart cycle without admission. The private real-owner regression holds reconciliation, emits activity-file output throughout scans, obtains workspace_pending before admission, then requires a successful knowledge_write, byte-identical same-operation replay, one signed write_prepared and written event, plus independent chat and self_status. The held-scan witness retains exclusion, cross-root progress and document refresh. make verify-workspace-ready compares both full native/Java TLC reachable graphs and the pass/liveness verdicts; the whole-corpus receipt is not claimed by that focused check."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "WorkspaceFence"
 title = "Workspace reads and authority"
 models = ["WorkspaceFence", "BrokenWorkspaceFence"]

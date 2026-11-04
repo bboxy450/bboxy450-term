@@ -182,6 +182,7 @@ help:
 	  'make test-swarm-metadata         Persistent swarm names/cwd, legacy import and operator admission' \
 	  'make test-workspace-boundary     Scoped wire, root-bound replay and read-completion fences' \
 	  'make test-ctl-workspaces         Bounded same-op workspace preparation and real operator CLI' \
+	  'make verify-workspace-ready      Focused activity-churn API, watch, model/control parity and strict compile' \
 	  'make test-workspace-roots        Canonical cwd mounts, scoped records and stale-root fences' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
 	  'make test-role-identity          ROLE-first seat, pane and message identity; check-role-identity / parity-role-identity' \
@@ -1418,6 +1419,21 @@ test-ctl-workspaces:
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --lib ctl::workspace; \
 	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test ctl; \
 	cargo clippy --locked -p $(APP) --target-dir '$(TARGET_DIR)' --all-targets -- -D warnings
+
+.PHONY: verify-workspace-ready update-workspace-ready-models format-workspace-ready
+format-workspace-ready:
+	@rustfmt --edition 2024 crates/bbt-mux/src/index.rs crates/bbt-mux/src/knowledge/responsiveness_tests.rs crates/bbt-mux/src/models/workspace_ready.rs
+
+update-workspace-ready-models: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_UPDATE_MODELS=1 cargo test --locked -p bboxy450-term-mux --features model --target-dir '$(TARGET_DIR)' --lib models::workspace_ready::tests::workspace_ready_model_and_broken_control -- --exact --nocapture
+
+verify-workspace-ready: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_WORKSPACE_READY_MODELS='$(abspath $(TARGET_DIR))/workspace-ready/models' cargo test --locked -p bboxy450-term-mux --features model --target-dir '$(TARGET_DIR)' --lib workspace_ready -- --nocapture; \
+	cargo test --locked -p bboxy450-term-mux --features model --target-dir '$(TARGET_DIR)' --lib logic::knowledge_responsiveness_tests::workspace_held_scan_keeps_input_chat_and_other_root_live_and_excludes_writes -- --exact --nocapture; \
+	cargo clippy --locked -p bboxy450-term-mux --features model --target-dir '$(TARGET_DIR)' --lib --tests -- -D warnings; \
+	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[line.split("\t") for line in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"WorkspaceReady":"pass","BrokenWorkspaceReady":"liveness"}; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/workspace-ready'
 
 .PHONY: test-terminal-font check-terminal-font format-terminal-font
 format-terminal-font: fmt-spawn

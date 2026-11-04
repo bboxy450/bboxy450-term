@@ -1,0 +1,116 @@
+{
+  "created": "2026-11-04T03:35:57.317241+00:00",
+  "task_delivery": "operator-authorized direct /tmp brief; no task_delegate or task_report success claimed",
+  "brief": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/EXECUTOR-WORKSPACE-FIX.md",
+  "brief_sha256": "6da8b74010e9cbc04430ac313cda0095be8e452a7256cd7a84926693ab01679f",
+  "base_commit": "9ba749108125907f6d46b260ec5b9c7ae69d93f9",
+  "source_commit": "signed commit containing this record",
+  "source_sha256": {
+    "Makefile": "fd99fed096c21741ac1392166994ddfe95430b0e319444c44af6b15b835543e9",
+    "crates/bbt-mux/src/index.rs": "13cdf66ef10ed5a1a6ca56b74e35b90eac2183bc427e24499fdedfeadcb97e37",
+    "crates/bbt-mux/src/knowledge/responsiveness_tests.rs": "a26eac8148aa06b4ca1edc985086a50588ad51c0503936a238a47df76ebf8a3b",
+    "crates/bbt-mux/src/models.rs": "73a8f17c8f331c5f6a5bc5667fc9879e14a41ed33e2f6761cc3b9b40f71ed738",
+    "crates/bbt-mux/src/models/workspace_ready.rs": "25684b7b390508f77d30483fd27d873a9f5b85b323a618979065e87d0d1848c2",
+    "verification/contracts.toml": "bd9dc6f97438e13e2849e56ce5f0710d168807584265a81e8810662ac6971e5f",
+    "verification/corpus.toml": "580ac1dfbadd97707251e60e1c34049589def2af191f4d2985ed96d5a8450f31",
+    "verification/coverage.toml": "6b9560971ff872bdf36b05c4e8fa0f446cbc732c8a4569fc1344a6f671d57332",
+    "crates/bbt-mux/models/WorkspaceReady.tla": "f1b39fa2499ebcb93d48c75b7f2efc01ec1f6b537acf8a7fb244b9151c15b5a9",
+    "crates/bbt-mux/models/WorkspaceReady.cfg": "9bff397f0f30f8e652bb8651974479ab74921694d58f0bceff429a44e5f92e98",
+    "crates/bbt-mux/models/BrokenWorkspaceReady.tla": "759d4cc9273a1c96ea7df7ecf6b17de3407aae97c2c07d024e854be8a603422b",
+    "crates/bbt-mux/models/BrokenWorkspaceReady.cfg": "9bff397f0f30f8e652bb8651974479ab74921694d58f0bceff429a44e5f92e98"
+  },
+  "commands": [
+    {
+      "command": "make init-submodules",
+      "exit_code": 0
+    },
+    {
+      "command": "CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make verify-workspace-ready (baseline production, corrected initial fixture)",
+      "exit_code": 2,
+      "cargo_exit_code": 101,
+      "log": "/tmp/bboxy-workspace-fix-evidence/red-corrected-fixture.log",
+      "result": "knowledge_write remains workspace_pending through four-second wait; unrelated status/chat complete"
+    },
+    {
+      "command": "make format-workspace-ready",
+      "exit_code": 0
+    },
+    {
+      "command": "CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make update-workspace-ready-models",
+      "exit_code": 0,
+      "log": "/tmp/bboxy-workspace-fix-evidence/model-generation-corrected.log"
+    },
+    {
+      "command": "CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make verify-workspace-ready",
+      "exit_code": 0,
+      "log": "/tmp/bboxy-workspace-fix-evidence/green-final.log",
+      "result": "3 focused tests and 1 held-scan test pass; mux model-feature lib/tests Clippy -D warnings passes; full native/Java graphs and verdicts agree for only changed pair"
+    },
+    {
+      "command": "formal.corpus + formal.coverage + formal.contracts metadata validation",
+      "exit_code": 0,
+      "models": 344,
+      "crate_mappings": 34,
+      "contracts": 141
+    },
+    {
+      "command": "git diff --check",
+      "exit_code": 0
+    }
+  ],
+  "formal": [
+    {
+      "name": "WorkspaceReady",
+      "verdict": "pass",
+      "states": 10,
+      "edges": 21,
+      "tlc_exit_code": 0
+    },
+    {
+      "name": "BrokenWorkspaceReady",
+      "verdict": "liveness",
+      "states": 16,
+      "edges": 38,
+      "tlc_exit_code": 13
+    }
+  ],
+  "log_sha256": {
+    "red.log": "cb112df32c460863611ebf1b5f8e6fdb768ce3804e16001693040fd74331b54d",
+    "red-corrected-fixture.log": "8aa752304c8dc9130afe826d51ba7735ff1569fe3c02fb86a43f55ff948bc22c",
+    "model-generation.log": "c400c0cb3d77caf71c0d74a25e9212a4c9bb30c2aad8def9ade21d8618245f8c",
+    "model-generation-corrected.log": "3fee6328263ff9f46aa7ee7d86f2a756a11f7605fde1031366af130ac43b3911",
+    "green.log": "6458fad8314b570b0df4f06ec89cc1cdfc9c7d1d747051e1edd6b30b90ab8772",
+    "watch-diagnostic.log": "dbd2ad32dff415a86b8f5bf5f3cef5ee2fad596c72e75dd6eabdb1d9a86738bb",
+    "green-final.log": "98a03ab8303258aa041672d1450d091d7451a2e1cc80dc5f489b225644607c5a"
+  },
+  "proof_sha256": {
+    "BrokenWorkspaceReady.log": "aacb030cf8b36999f3630a67f4e05a2aee5ff9c51c5dd6113898fc924d1bdd7b",
+    "BrokenWorkspaceReady.tla": "759d4cc9273a1c96ea7df7ecf6b17de3407aae97c2c07d024e854be8a603422b",
+    "BrokenWorkspaceReadyGraph.log": "a1094900a7e3f3f956f78ba3507492b95519d759bab6a0b41c674d73af69bee8",
+    "manifest.tsv": "df7c51b3481266f6063d20f344984ee6da1c2489ed93cca4d16a6a20d428b49a",
+    "WorkspaceReady.log": "af08746ecd98d45741ed36977ea544a0125eb381494f23533561fd7c7039c2a5",
+    "WorkspaceReady.tla": "f1b39fa2499ebcb93d48c75b7f2efc01ec1f6b537acf8a7fb244b9151c15b5a9",
+    "WorkspaceReadyGraph.log": "c8c2860359712bd1dfb3ab71036a7709aa20a5c48d8d32fc683959f25b8af4c8",
+    "BrokenWorkspaceReady.dot": "eaf0c6c35db8e2310b0a4af3762bcfe33a142d61f196eff05e44211a42a983c8",
+    "WorkspaceReady.edges": "9d20110924799b81f98a8585910122ee2b159f2204e4cd7820e629f413e2c25c",
+    "WorkspaceReady.cfg": "9bff397f0f30f8e652bb8651974479ab74921694d58f0bceff429a44e5f92e98",
+    "WorkspaceReadyGraph.cfg": "dfbf9c024600d5f7fae7336708f3e839379b7f7a26a6324a826c414a70f9f4e9",
+    "BrokenWorkspaceReady.cfg": "9bff397f0f30f8e652bb8651974479ab74921694d58f0bceff429a44e5f92e98",
+    "BrokenWorkspaceReady.edges": "e18a4d40432758e3888c2dbda04764efb691ea9edd3faff064124eb035a8ba5d",
+    "WorkspaceReady.native-trace": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+    "WorkspaceReady.dot": "5ae75f6aa9481be375bc9e8ffb0ddcdd9ed2a0e66c5ac50b182af6f0012f229a",
+    "WorkspaceReady.states": "d57c2ae82c5daaa0a071b3ed5abfaf5be7ac99730186eddc93e4ef9d7db0bd2a",
+    "BrokenWorkspaceReady.states": "5bf3d053c9f08fff5884c672dfec73d2f2c6d87543a3ffd9a6edbfc33217fa45",
+    "BrokenWorkspaceReady.native-trace": "5965417a484806f8a129f6595dc227ac6de010b5f74211a183027e9ff648bb06",
+    "BrokenWorkspaceReadyGraph.cfg": "dfbf9c024600d5f7fae7336708f3e839379b7f7a26a6324a826c414a70f9f4e9"
+  },
+  "test_executable": "target/debug/deps/bbt_mux-1aa619efb21804e8",
+  "test_executable_sha256": "af1e4613f2228a6fc4c2136e0426244e0c108cc9d19047d44fbde18ad0e7cf71",
+  "activation": "STAGED ONLY. No production GUI/Logic/backend/supervisor/seat stop, restart, install, merge or push. Filter needs a new Logic owner to take effect; GUI-only replacement cannot patch retained compiled code.",
+  "gaps": [
+    "Full make test, full formal corpus/receipt, UI parity, production activation and live writes intentionally not run under focused-only/no-backend-restart authorization.",
+    "Native draft/tool/render refusal has no demonstrated same-cause link; see logic.rs guarded_input arbiter and harness-wake-up guard.rs:114.",
+    "Retained unknown original operations are untouched; no resend or fabricated ready state."
+  ],
+  "intermediate_failures": "Initial fixture missing log directory and exporter borrow error were corrected; content/metadata-only candidate still reached workspace_pending; private notification trace exposed repeated Create(File) flags. Diagnostic write succeeded but initial /written assertion used a nonexistent path field; corrected to match prepared event ID. All intermediate logs retained."
+}

@@ -1121,3 +1121,13 @@ frontend = "project"
 name = "BrokenManagedApprovalIntent"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "WorkspaceReady"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenWorkspaceReady"
+expected = "liveness"
+frontend = "project"

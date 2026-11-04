@@ -1228,6 +1228,30 @@ pub struct FileWatch {
     failed: Arc<AtomicBool>,
 }
 impl FileWatch {
+    fn invalidates(root: &Path, event: &notify::Event) -> bool {
+        use notify::event::{CreateKind, ModifyKind, RemoveKind};
+        if event.need_rescan() || event.paths.is_empty() {
+            return true;
+        }
+        // JSONL is the activity projection, not Markdown input. Its continuing
+        // file writes must not restart document reconciliation. FSEvents can
+        // retain a file's creation flag across continuing content updates.
+        // Keep Markdown, rename, directory and unknown notifications:
+        // these can change the set of Markdown paths, including inside log/.
+        let activity_write = matches!(
+            event.kind,
+            notify::EventKind::Create(CreateKind::File)
+                | notify::EventKind::Remove(RemoveKind::File)
+                | notify::EventKind::Modify(ModifyKind::Data(_) | ModifyKind::Metadata(_))
+        );
+        event.paths.iter().any(|path| {
+            path.strip_prefix(root).is_ok_and(|relative| {
+                !(activity_write
+                    && relative.starts_with("log")
+                    && relative.extension().is_none_or(|ext| ext != "md"))
+            })
+        })
+    }
     pub fn start(root: &Path) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         let root = root.canonicalize()?;
@@ -1244,12 +1268,7 @@ impl FileWatch {
                         if matches!(event.kind, notify::EventKind::Access(_)) {
                             return;
                         }
-                        if event.paths.is_empty()
-                            || event
-                                .paths
-                                .iter()
-                                .any(|path| path.starts_with(&watched_root))
-                        {
+                        if Self::invalidates(&watched_root, &event) {
                             d.store(true, Ordering::Release);
                         }
                     }
@@ -1597,6 +1616,44 @@ mod tests {
             }
             std::thread::sleep(Duration::from_millis(10));
         }
+    }
+
+    #[test]
+    fn workspace_ready_watch_retains_document_directory_rename_and_rescan_events() {
+        use notify::event::{CreateKind, DataChange, Flag, ModifyKind, RemoveKind, RenameMode};
+        use notify::{Event, EventKind};
+        let root = Path::new("/private/fixture/.bboxy");
+        let log = root.join("log/2026-11-04.jsonl");
+        let append = Event::new(EventKind::Modify(ModifyKind::Data(DataChange::Content)))
+            .add_path(log.clone());
+        assert!(!FileWatch::invalidates(root, &append));
+        for event in [
+            Event::new(EventKind::Create(CreateKind::File)).add_path(log.clone()),
+            Event::new(EventKind::Remove(RemoveKind::File)).add_path(log.clone()),
+            Event::new(EventKind::Create(CreateKind::File)).add_path(root.join("log/.writer-lock")),
+        ] {
+            assert!(!FileWatch::invalidates(root, &event), "{event:?}");
+        }
+        for event in [
+            append.clone().add_path(root.join("notes/changed.md")),
+            Event::new(EventKind::Create(CreateKind::File)).add_path(root.join("log/record.md")),
+            Event::new(EventKind::Remove(RemoveKind::File)).add_path(root.join("log/record.md")),
+            Event::new(EventKind::Modify(ModifyKind::Name(RenameMode::Both)))
+                .add_path(root.join("log/previous.jsonl"))
+                .add_path(root.join("notes/moved.md")),
+            Event::new(EventKind::Remove(RemoveKind::Folder)).add_path(root.join("notes")),
+            Event::new(EventKind::Any).add_path(log),
+            Event::new(EventKind::Any),
+            append.set_flag(Flag::Rescan),
+        ] {
+            assert!(FileWatch::invalidates(root, &event), "{event:?}");
+        }
+        // The same extension elsewhere is not the root-owned activity output.
+        assert!(FileWatch::invalidates(
+            root,
+            &Event::new(EventKind::Modify(ModifyKind::Data(DataChange::Content)))
+                .add_path(root.join("notes/input.jsonl"))
+        ));
     }
 
     #[test]
