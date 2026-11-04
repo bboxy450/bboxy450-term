@@ -1960,23 +1960,27 @@ impl Scene {
             rims.extend(rim);
         }
         if self.live {
-            // Real PTYs replace the kit's transparent terminal. Carry their
-            // background through the padding without changing cell/rim bounds.
+            // Carry each face's background through the padding, using the harness
+            // palette for rich views and the PTY background for terminal views.
             let mut padding = DrawList::default();
             for (slot, layout) in self.pane_keys().zip(layouts.iter().skip(2)) {
                 if let Slot::Seat(id) = slot
                     && let Some(term) = named(layout, "pane/term")
-                    && let Some(background) = self.terminal_backgrounds.get(&id)
                 {
-                    padding.rect(
-                        term.rect,
-                        0.,
+                    let background = if self.pane_views.get(&id)
+                        == Some(&ui::modules::strip::ViewTarget::Terminal)
+                    {
+                        Color::hex(ctx.theme.palette().bg)
+                    } else if let Some(background) = self.terminal_backgrounds.get(&id) {
                         crate::gpu::terminal_background(
                             *background,
                             ctx.theme,
                             self.focused() == Some(id),
-                        ),
-                    );
+                        )
+                    } else {
+                        continue;
+                    };
+                    padding.rect(term.rect, 0., background);
                 }
             }
             ops.push(c::Paint::Draw(padding));

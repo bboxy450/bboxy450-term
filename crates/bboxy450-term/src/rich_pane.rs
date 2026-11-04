@@ -165,8 +165,11 @@ impl Pane {
         let task=bbt_rt::handle().spawn(async move {
             let notify=Arc::new(Notify::new());
             let mut bridge=Bridge::new(Arc::new(Signal(notify.clone())));
+            let mut view=HarnessView::default();
+            // Embedded text is one zoom step smaller; standalone keeps its own size.
+            view.restore_zoom(view.zoom().step(-1),&bridge);
             bridge.connect(socket,after);
-            let mut view=HarnessView::default();let mut rect=rect;
+            let mut rect=rect;
             let mut completed_inputs=0_u64;
             loop {
                 let mut batch=Vec::new();
