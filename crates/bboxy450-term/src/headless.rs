@@ -121,10 +121,12 @@ pub fn run(args: &[String]) -> Result<(), String> {
         let Ok(mut interrupt) = signal(SignalKind::interrupt()) else {
             return;
         };
-        tokio::select! { _ = stop.recv() => {}, _ = interrupt.recv() => {} }
-        signals(UiEvent::App(live::AppEvent::Stop {
-            id: bbt_mux::Ulid::nil(),
-        }));
+        let Ok(mut close) = signal(SignalKind::hangup()) else { return; };
+        tokio::select! {
+            _ = close.recv() => signals(UiEvent::DesktopAction(bboxy450_term_desktop::Action::CloseWindow, None)),
+            _ = stop.recv() => signals(UiEvent::App(live::AppEvent::Stop { id: bbt_mux::Ulid::nil() })),
+            _ = interrupt.recv() => signals(UiEvent::App(live::AppEvent::Stop { id: bbt_mux::Ulid::nil() })),
+        }
     });
     let mut app = crate::App::owner(
         crate::UiProxy::Headless(sink.clone()),

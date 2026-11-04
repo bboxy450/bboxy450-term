@@ -16,7 +16,8 @@ use super::*;
 /// Version 10 adds saved Tasks/Chat folds; version 11 adds the Cmd-V logical chord.
 // Version 12: disclosure acknowledgements observe settled live-clock frames;
 // frozen clocks expose the requested intermediate frame for deterministic ctl.
-pub const UI_CONTROL_VERSION: u16 = 13;
+// Version 14: native wheel input and private shared HarnessView observations.
+pub const UI_CONTROL_VERSION: u16 = 14;
 pub const MAX_SECTION_WHEEL_DY: f32 = 32768.;
 
 /// The completed frame which acknowledged a focus command.
@@ -218,6 +219,8 @@ pub enum UiInput {
     Commit { text: String },
     CancelComposition,
     Click { x: u32, y: u32, #[serde(default)] modifiers: UiModifiers },
+    /// Logical pixel wheel event through the same native App routing path.
+    Wheel { x: u32, y: u32, dy: i32 },
 }
 
 fn standard_location() -> String { "Standard".into() }
@@ -250,6 +253,7 @@ impl UiInput {
             }),
             Self::Commit { text } => bounded(text),
             Self::Click { x, y, .. } => *x <= 32768 && *y <= 32768,
+            Self::Wheel { x, y, dy } => *x <= 32768 && *y <= 32768 && dy.unsigned_abs() <= 32768,
             Self::CancelComposition => true,
         };
         if valid { Ok(()) } else { Err("invalid_ui_input: invalid or oversized native input fields") }
@@ -501,6 +505,10 @@ pub struct UiRichObservation {
     pub retained_items: usize,
     pub paint_count: usize,
     pub error: Option<String>,
+    pub focused: bool,
+    pub composer_len: usize,
+    pub scroll: [f32; 2],
+    pub approval_choices: Vec<[f32; 4]>,
 }
 
 /// The GUI's solved tree, not a reconstruction by logic or ctl.

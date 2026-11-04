@@ -119,9 +119,14 @@ help:
 	  'make test-harness-native         Scripted harness seat, socket delivery, rich face and bounded cleanup' \
 	  'make test-rich-pane              Private rich keyboard/IME, layout persistence and offscreen parity' \
 	  'make bench-budgets               Four-view actual drain/composition p99; load and heap UNMEASURED' \
+	  'make install-reopen              Oracle: signed install, GUI-only replace, rendered source receipt/rollback' \
+	  'make install-unsigned-reopen     Private headless activation; requires GUI_TEST_ACCOUNT' \
 	  'make check-rich-host             Strict all-target lint for the rich host boundary' \
 	  'make test-harness-status-control Quiet-tool cadence mutation must fail, then restored pass' \
 	  'make test-rich-app-detach         Real App detach/reopen during a native harness turn' \
+	  'make test-rich-app-input          Real App composer, approval, wheel and focus routing' \
+	  'make test-rich-launch-context     Real private launch children and admitted MCP context' \
+	  'make test-rich-gui-handoff        Private unsigned GUI install/replace, schema refresh and rollback' \
 	  'make test-capability-native      Capability file and real Codex shared-daemon environment scans' \
 	  'make init-submodules             Initialize and verify the pinned harness unattended' \
 	  'Fresh clone: git clone --recurse-submodules https://github.com/bboxy450/bboxy450-term' \
@@ -638,12 +643,16 @@ set -eu; mkdir -p '$(1)'; \
 stage=$$(mktemp -d '$(1)/.$(APP)-install.XXXXXX'); \
 ditto '$(BUNDLE)' "$$stage/new.app"; codesign --verify --strict "$$stage/new.app"; \
 destination='$(1)/$(APP).app'; mkdir -p "$$destination"; \
+printf 'Previous contents, if any: %s\n' "$$stage/previous-Contents"; \
 if [ -d "$$destination/Contents" ]; then mv "$$destination/Contents" "$$stage/previous-Contents"; fi; \
 if ! mv "$$stage/new.app/Contents" "$$destination/Contents"; then \
   if [ -d "$$stage/previous-Contents" ]; then mv "$$stage/previous-Contents" "$$destination/Contents"; fi; exit 1; \
 fi; \
-codesign --verify --strict --verbose=2 "$$destination"; \
-printf 'Installed: %s\nPrevious contents, if any: %s\n' "$$destination" "$$stage/previous-Contents"
+if ! codesign --verify --strict --verbose=2 "$$destination"; then \
+  mv "$$destination/Contents" "$$stage/failed-Contents"; \
+  if [ -d "$$stage/previous-Contents" ]; then mv "$$stage/previous-Contents" "$$destination/Contents"; fi; exit 1; \
+fi; \
+printf 'Installed: %s\n' "$$destination"
 endef
 
 install: bundle
@@ -1978,6 +1987,7 @@ test-harness-native: init-submodules
 	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' mcp_harness_seat_ -- --ignored --nocapture; \
 	cargo test --locked -p bboxy450-harness --test seat_process --target-dir '$(TARGET_DIR)' non_pty_spawn_does_not_keep_a_sibling_master_alive -- --exact; \
 	$(MAKE) test-rich-controls test-rich-cancel-control test-rich-pane bench-budgets test-rich-app-detach TARGET_DIR='$(TARGET_DIR)'
+	$(MAKE) test-rich-app-input test-rich-launch-context-control test-rich-gui-handoff-control TARGET_DIR='$(TARGET_DIR)'
 
 format-harness-embed:
 	@rustfmt --edition 2024 crates/bboxy450-harness-wake-up/src/launch.rs crates/bbt-mux/src/adapters/mod.rs crates/bbt-mux/src/mcp/seats.rs crates/bbt-mux/tests/mcp.rs crates/bboxy450-term/src/settings/roles.rs crates/bbt-proto/src/gui/roles.rs
@@ -2092,7 +2102,7 @@ bench-budgets: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	BBOXY_RICH_BUDGET_OUT='$(abspath $(TARGET_DIR))/rich-budgets' cargo test --locked -p bboxy450-term --bin bboxy450-term --target-dir '$(TARGET_DIR)' rich_faces::budget_verification::rich_four_view_aggregate_budget -- --ignored --exact --nocapture --test-threads=1
 
-.PHONY: test-harness-status-control test-rich-app-detach
+.PHONY: test-harness-status-control test-rich-app-detach test-rich-gui-handoff test-rich-launch-context test-rich-app-input
 test-harness-status-control: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo build --locked -p bboxy450-harness --features test-fixtures --target-dir '$(TARGET_DIR)'; \
@@ -2101,3 +2111,46 @@ test-harness-status-control: init-submodules
 test-rich-app-detach: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p $(APP) --test swarm_workdir --target-dir '$(TARGET_DIR)' rich_detach::rich_app_detach_during_native_turn_retains_owner_and_replays -- --ignored --exact --nocapture
+
+test-rich-gui-handoff: PROFILE=debug
+test-rich-gui-handoff: bundle-unsigned
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_PREPARED_GUI_BUNDLE='$(abspath $(BUNDLE))' BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p $(APP) --test swarm_workdir --target-dir '$(TARGET_DIR)' rich_detach::rich_gui_handoff_preserves_turn_and_rolls_back_failed_activation -- --ignored --exact --nocapture
+
+test-rich-launch-context: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p $(APP) --test swarm_workdir --target-dir '$(TARGET_DIR)' launch_context::launch_children_receive_workflow_and_call_their_own_admitted_mcp -- --ignored --exact --nocapture
+
+test-rich-app-input: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p $(APP) --test swarm_workdir --target-dir '$(TARGET_DIR)' rich_detach::rich_app_routes_composer_approval_scroll_and_focus -- --ignored --exact --nocapture
+
+.PHONY: test-rich-gui-handoff-control
+test-rich-gui-handoff-control:
+	@python3 -I scripts/rich-gui-handoff-control.py --target '$(abspath $(TARGET_DIR))'
+
+.PHONY: test-rich-launch-context-control
+test-rich-launch-context-control:
+	@python3 -I scripts/rich-launch-context-control.py --target '$(abspath $(TARGET_DIR))'
+
+# Reuse the same atomic installer after a caller has prepared and verified a bundle.
+.PHONY: install-prepared install-prepared-unsigned install-reopen install-unsigned-reopen
+install-prepared:
+	@codesign --verify --strict -R '$(REQUIREMENT)' '$(BUNDLE)'
+	@$(call install_bundle,$(INSTALL_DIR))
+
+install-prepared-unsigned:
+	@codesign --verify --strict '$(BUNDLE)'
+	@$(call install_bundle,$(UNSIGNED_INSTALL_DIR))
+
+GUI_RUN_DIR ?=
+GUI_REPOSITORY ?=
+GUI_TEST_ACCOUNT ?=
+GUI_OPTIONS = $(if $(GUI_RUN_DIR),--run-dir '$(GUI_RUN_DIR)') $(if $(GUI_REPOSITORY),--repository '$(GUI_REPOSITORY)')
+install-reopen: bundle
+	@python3 -I scripts/reopen-gui.py --prepared '$(abspath $(BUNDLE))' --destination '$(INSTALL_DIR)' $(GUI_OPTIONS)
+
+install-unsigned-reopen: PROFILE=debug
+install-unsigned-reopen: bundle-unsigned
+	@test -n '$(GUI_TEST_ACCOUNT)' || { echo 'GUI_TEST_ACCOUNT is required for private headless activation'; exit 2; }
+	@python3 -I scripts/reopen-gui.py --private --headless --test-account '$(GUI_TEST_ACCOUNT)' --prepared '$(abspath $(BUNDLE))' --destination '$(UNSIGNED_INSTALL_DIR)' $(GUI_OPTIONS)

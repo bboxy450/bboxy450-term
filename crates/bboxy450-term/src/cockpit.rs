@@ -35,6 +35,7 @@ pub mod desktop;
 mod environment_tests;
 mod fixture_hosts;
 mod owners;
+pub mod gui_handoff;
 mod shell_path;
 pub mod startup;
 use owners::ManagedChild as Child;

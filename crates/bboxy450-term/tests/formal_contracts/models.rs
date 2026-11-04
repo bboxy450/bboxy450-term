@@ -34,6 +34,8 @@ mod task_amend_model;
 mod capability_models;
 #[path = "usage_models.rs"]
 mod usage_models;
+#[path = "gui_replacement.rs"]
+mod gui_replacement;
 #[path = "rich_host.rs"]
 mod rich_host;
 #[path = "launch_environment.rs"]
@@ -1878,6 +1880,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(gitkb_models::cases());
     cases.extend(usage_models::cases());
     cases.extend(rich_host::cases());
+    cases.extend(gui_replacement::cases());
     cases.extend(launch_environment::cases());
     cases.extend(launch_readiness::cases());
     cases.extend(provenance_models::cases());

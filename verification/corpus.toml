@@ -1071,3 +1071,28 @@ frontend = "project"
 name = "BrokenHarnessStatusExpiry"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "GuiReplacement"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenGuiReplacementOwners"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenGuiReplacementDuplicate"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenGuiReplacementSource"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenGuiReplacementRollback"
+expected = "safety"
+frontend = "project"

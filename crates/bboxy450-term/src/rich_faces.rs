@@ -28,6 +28,10 @@ impl App {
                         retained_items: pane.snapshot.retained_items,
                         paint_count: pane.painted().len(),
                         error: pane.snapshot.error.clone(),
+                        focused: pane.snapshot.focused,
+                        composer_len: pane.snapshot.composer_len,
+                        scroll: pane.snapshot.scroll,
+                        approval_choices: pane.snapshot.approval_choices.clone(),
                     },
                 ))
             })
@@ -89,7 +93,7 @@ impl App {
             .collect();
         self.rich_panes
             .retain(|id, _| visible.iter().any(|(s, _, _, _)| s == id));
-        let focused = self.focus.stage.as_ref().and_then(|s| s.focused);
+        let focused = self.rich_target();
         for (id, rect, generation, path) in visible {
             if self
                 .rich_panes
@@ -227,74 +231,22 @@ impl App {
         let Some(id) = self.rich_target() else {
             return false;
         };
-        let command = input
-            .modifiers
-            .state
-            .contains(winit::keyboard::ModifiersState::SUPER);
-        if command
-            && matches!(
-                keyboard::shortcut_key(input),
-                Some('q' | 'w' | 't' | 'n' | '1'..='9')
-            )
-        {
-            return false;
-        }
-        if command && keyboard::shortcut_key(input) == Some('v') {
-            if input.state.is_pressed()
-                && let Ok(Some(bboxy450_term_desktop::ClipboardContent::Text(text))) =
+        match keyboard::rich_key(input) {
+            keyboard::RichKey::Global => return false,
+            keyboard::RichKey::Paste => {
+                if let Ok(Some(bboxy450_term_desktop::ClipboardContent::Text(text))) =
                     self.clipboard_content()
-                && let Some(pane) = self.rich_panes.get(&id)
-            {
-                pane.send(Input::Edit(EditCommand::Insert(text)));
-            }
-            return true;
-        }
-        if input.state.is_pressed() {
-            use bbt_ui::text_edit::{Command as E, Motion};
-            let action = match &input.logical_key {
-                Key::Named(NamedKey::Enter)
-                    if input
-                        .modifiers
-                        .state
-                        .contains(winit::keyboard::ModifiersState::SHIFT) =>
+                    && let Some(pane) = self.rich_panes.get(&id)
                 {
-                    Some(Input::Edit(E::Insert("\n".into())))
+                    pane.send(Input::Edit(EditCommand::Insert(text)));
                 }
-                Key::Named(NamedKey::Enter) => Some(Input::Enter),
-                Key::Named(NamedKey::Escape) => Some(Input::Cancel),
-                Key::Named(NamedKey::Backspace) => Some(Input::Edit(E::Delete { backwards: true })),
-                Key::Named(NamedKey::Delete) => Some(Input::Edit(E::Delete { backwards: false })),
-                Key::Named(
-                    k @ (NamedKey::ArrowLeft
-                    | NamedKey::ArrowRight
-                    | NamedKey::ArrowUp
-                    | NamedKey::ArrowDown
-                    | NamedKey::Home
-                    | NamedKey::End),
-                ) => Some(Input::Edit(E::Move {
-                    motion: match k {
-                        NamedKey::ArrowLeft => Motion::Left,
-                        NamedKey::ArrowRight => Motion::Right,
-                        NamedKey::ArrowUp => Motion::Up,
-                        NamedKey::ArrowDown => Motion::Down,
-                        NamedKey::Home => Motion::LineStart,
-                        _ => Motion::LineEnd,
-                    },
-                    extend: input
-                        .modifiers
-                        .state
-                        .contains(winit::keyboard::ModifiersState::SHIFT),
-                })),
-                _ if command => match keyboard::shortcut_key(input) {
-                    Some('a') => Some(Input::Edit(E::SelectAll)),
-                    Some('z') => Some(Input::Edit(E::Undo)),
-                    _ => None,
-                },
-                _ => input.text.map(|s| Input::Edit(E::Insert(s.into()))),
-            };
-            if let (Some(pane), Some(action)) = (self.rich_panes.get(&id), action) {
-                pane.send(action);
             }
+            keyboard::RichKey::Pane(action) => {
+                if let Some(pane) = self.rich_panes.get(&id) {
+                    pane.send(action);
+                }
+            }
+            keyboard::RichKey::Consumed => {}
         }
         true
     }

@@ -427,6 +427,7 @@ mod tests {
             matches!(owner.try_recv().unwrap(), Notice::App { id: seen, request: bbt_proto::gui::AppRequest::Stop } if seen == id)
         );
         let status = bbt_proto::gui::AppStatus {
+            gui: None,
             running: true,
             mode: "headless".into(),
             unattended: false,

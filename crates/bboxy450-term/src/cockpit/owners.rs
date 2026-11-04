@@ -20,13 +20,15 @@ use std::{
     path::Path,
 };
 
-#[derive(Clone, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProcessIdentity {
     pid: u32,
     birth: (u64, u64),
 }
 impl ProcessIdentity {
-    pub(super) fn pid(&self) -> u32 { self.pid }
+    pub(super) fn pid(&self) -> u32 {
+        self.pid
+    }
     pub(super) fn read(pid: u32) -> Result<Self> {
         birth(pid)
             .map(|birth| Self { pid, birth })
@@ -35,7 +37,7 @@ impl ProcessIdentity {
     pub(super) fn alive(&self) -> bool {
         birth(self.pid) == Some(self.birth)
     }
-    fn signal(&self, signal: i32) -> std::io::Result<()> {
+    pub(super) fn signal(&self, signal: i32) -> std::io::Result<()> {
         if !self.alive() {
             return Ok(());
         }
@@ -175,6 +177,11 @@ impl FrontendLock {
         let file = private_file(&config.run_dir.join("app.owner.lock"), true)?;
         // SAFETY: flock borrows an owned FD; LOCK_NB never waits for a peer.
         if unsafe { libc::flock(file.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) } == 0 {
+            let info = serde_json::json!({"process":ProcessIdentity::read(std::process::id())?,"gui":crate::gui_build::identity(),"repository":config.repository});
+            let mut metadata = private_file(&config.run_dir.join("gui.owner.json"), true)?;
+            metadata.set_len(0)?;
+            metadata.write_all(&serde_json::to_vec(&info)?)?;
+            metadata.sync_all()?;
             return Ok(Some(Self { _file: file }));
         }
         let error = std::io::Error::last_os_error();
@@ -247,20 +254,31 @@ pub struct ManagedChild {
 }
 impl ManagedChild {
     pub(super) fn new(inner: tokio::process::Child) -> Self {
-        Self { inner, kill_on_drop: true }
+        Self {
+            inner,
+            kill_on_drop: true,
+        }
     }
-    fn preserve(&mut self) { self.kill_on_drop = false; }
+    fn preserve(&mut self) {
+        self.kill_on_drop = false;
+    }
 }
 impl std::ops::Deref for ManagedChild {
     type Target = tokio::process::Child;
-    fn deref(&self) -> &Self::Target { &self.inner }
+    fn deref(&self) -> &Self::Target {
+        &self.inner
+    }
 }
 impl std::ops::DerefMut for ManagedChild {
-    fn deref_mut(&mut self) -> &mut Self::Target { &mut self.inner }
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.inner
+    }
 }
 impl Drop for ManagedChild {
     fn drop(&mut self) {
-        if self.kill_on_drop { let _ = self.inner.start_kill(); }
+        if self.kill_on_drop {
+            let _ = self.inner.start_kill();
+        }
     }
 }
 pub enum Process {
@@ -339,6 +357,11 @@ pub(super) fn frontend_running(run: &Path) -> Result<Option<bool>> {
         Err(error) => return Err(error),
     };
     lock_held(file).map(Some)
+}
+
+/// Read the credential-free GUI identity using the same owned-file checks.
+pub(super) fn public_gui_file(path: &Path) -> Result<File> {
+    private_file(path, false)
 }
 
 #[cfg(test)]

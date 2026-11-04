@@ -69,6 +69,10 @@ impl Fixture {
         } else {
             PathBuf::from(BIN)
         });
+        self.environment(&mut command);
+        command
+    }
+    fn environment(&self, command: &mut Command) {
         command
             .env_clear()
             .env("HOME", self.root.join("home"))
@@ -80,7 +84,6 @@ impl Fixture {
             .env("LANG", "en_US.UTF-8")
             .current_dir(&self.root)
             .stdin(Stdio::null());
-        command
     }
     fn ctl(&self, args: &[&str]) -> Value {
         let output = self
@@ -4718,3 +4721,5 @@ fn ui_selection_copies_read_only_settings_text_through_native_copy() {
 
 #[path = "swarm_workdir/rich_detach.rs"]
 mod rich_detach;
+#[path = "swarm_workdir/launch_context.rs"]
+mod launch_context;

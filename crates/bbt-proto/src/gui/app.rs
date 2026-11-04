@@ -34,9 +34,19 @@ pub enum AppRequest {
     Stop,
 }
 
+/// Identity of the GUI process that actually produced readiness, separate from backend generation.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct GuiProcess {
+    pub pid: u32,
+    pub instance: Ulid,
+    pub source_revision: String,
+}
+
 /// Public app readiness. No process credential or endpoint capability belongs here.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AppStatus {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub gui: Option<GuiProcess>,
     pub running: bool,
     pub mode: String,
     pub unattended: bool,

@@ -418,6 +418,7 @@ fn app_status(
     windows: usize,
 ) -> bbt_proto::gui::AppStatus {
     bbt_proto::gui::AppStatus {
+        gui: Some(bboxy450_term::gui_build::identity()),
         running: true,
         mode: mode.into(),
         unattended,
@@ -7309,6 +7310,10 @@ impl App {
                             self.pointer_released();
                             self.modifiers = original;
                         }
+                        UiInput::Wheel { x, y, dy } => {
+                            self.pointer = [*x as f32, *y as f32];
+                            self.mouse_wheel(MouseScrollDelta::PixelDelta(winit::dpi::PhysicalPosition::new(0., f64::from(*dy))));
+                        }
                     }
                 }
             }
@@ -9215,12 +9220,25 @@ impl ApplicationHandler<UiEvent> for App {
             } => self.overlay_right_click(self.pointer),
             WindowEvent::Ime(event) => self.ime_input(event),
             WindowEvent::KeyboardInput { event, .. } => {
+                let input = self.keyboard.event(&event, self.modifiers);
+                if self.startup.visible {
+                    if input.state.is_pressed() && !input.repeat {
+                        match route_key(&input, 0, None) {
+                            RoutedKey::Quit => self.request_close(event_loop),
+                            RoutedKey::HardQuit => self.request_shutdown(event_loop),
+                            _ if input.logical_key == Key::Named(NamedKey::Enter) => {
+                                self.retry_startup()
+                            }
+                            _ => {}
+                        }
+                    }
+                    return;
+                }
                 if event.state == ElementState::Pressed {
                     self.cancel_ui(
                         "ui_frame_refused: physical keyboard input superseded this request",
                     );
                 }
-                let input = self.keyboard.event(&event, self.modifiers);
                 // Verification-only resize exercises the real OS Resized event
                 // on borderless windows whose native edge is hard to grab.
                 if event.state.is_pressed()
@@ -10051,6 +10069,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         return Ok(());
     }
+    if let Some(status) = bboxy450_term::cockpit::gui_handoff::probe(&hook_args).map_err(|error| error as Box<dyn std::error::Error>)? {
+        println!("{}", serde_json::to_string(&status)?);
+        return Ok(());
+    }
     let notification_test_account =
         bboxy450_term::cockpit::Config::test_account_from_args(&hook_args)
             .map_err(|error| error as Box<dyn std::error::Error>)?
@@ -10059,6 +10081,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map_err(|error| error as Box<dyn std::error::Error>)?;
     let record_notifications = notification_recording(&hook_args)?;
     let verify = Verify::from_args(&hook_args)?;
+    bboxy450_term::cockpit::gui_handoff::prepare(&hook_args).map_err(|error| error as Box<dyn std::error::Error>)?;
     if hook_args.iter().any(|arg| arg == "--headless") {
         return headless::run(&hook_args).map_err(Into::into);
     }
@@ -10076,6 +10099,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let event_loop = event_loop_builder.build()?;
     let proxy = event_loop.create_proxy();
+    let handoff_proxy = proxy.clone();
+    bbt_rt::handle().spawn(async move {
+        use tokio::signal::unix::{SignalKind, signal};
+        if let Ok(mut close) = signal(SignalKind::hangup()) {
+            close.recv().await;
+            let _ = handoff_proxy.send_event(UiEvent::DesktopAction(
+                bboxy450_term_desktop::Action::CloseWindow,
+                None,
+            ));
+        }
+    });
+
     let diagnostics_proxy = proxy.clone();
     let _diagnostics = diagnostics_root.and_then(|root| {
         bbt_rt::error_journal::Server::start(root, move |n| {
