@@ -335,7 +335,31 @@ impl App {
             if self.rich_face(id) && hit(rect, at) {
                 self.focus_action(FocusAction::Activate(id, FocusOrigin::Pane));
                 if let Some(pane) = self.rich_panes.get(&id) {
-                    pane.send(Input::Click([at[0] - rect.x, at[1] - rect.y]));
+                    if pane.painted().is_empty() {
+                        return true;
+                    }
+                    let local = [at[0] - rect.x, at[1] - rect.y];
+                    let control = pane.snapshot.controls.iter().any(|(r, _)| hit(*r, local));
+                    if !control {
+                        if let Some(bbt_ui::modules::document_modal::controller::Action::Open(target)) =
+                            pane.snapshot.links.hit(local)
+                        {
+                            if ["https://", "http://", "mailto:"]
+                                .iter()
+                                .any(|scheme| target.starts_with(scheme))
+                            {
+                                self.open_external_link(target);
+                            } else {
+                                self.open_document(target);
+                            }
+                            return true;
+                        }
+                        if self.ui_selection.begin(at, self.scene.text_metrics()) {
+                            self.request_redraw();
+                            return true;
+                        }
+                    }
+                    pane.send(Input::Click(local));
                 }
                 return true;
             }

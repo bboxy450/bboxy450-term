@@ -39,6 +39,52 @@ fn runs<'a>(node: &'a c::Layout, out: &mut Vec<&'a c::PositionedRun>) {
     }
 }
 
+#[test]
+fn markdown_links_keep_targets_through_emphasis_code_and_wrapping() {
+    fn links<'a>(node: &'a c::Layout, out: &mut Vec<&'a c::Layout>) {
+        if matches!(&node.kind, c::LayoutKind::Named(name) if name.starts_with("record-link:")) {
+            out.push(node);
+        }
+        for child in &node.children {
+            links(child, out);
+        }
+    }
+    let source = "Before [**bold label** and `code` café](https://example.com/docs) after.";
+    for theme in [ui::Theme::Light, ui::Theme::Dark] {
+        for width in [120., 320.] {
+            let ctx = ui::Context::new(theme, ui::Density::Cozy);
+            let layout = bbt_doc::parse(source)
+                .body_element(ctx, &Fonts, width, &[])
+                .layout(Rect::new(0., 0., width, 400.), ctx, &Fonts)
+                .unwrap();
+            let regions = ui::modules::document_modal::controller::Regions::retained(&layout);
+            let mut targets = Vec::new();
+            links(&layout, &mut targets);
+            assert!(targets.len() > 2);
+            let mut visible = 0;
+            for link in targets {
+                // Flow removes whitespace at a wrap boundary; it has no clickable pixels.
+                if link.rect.w <= 0. || link.rect.h <= 0. { continue; }
+                visible += 1;
+                assert!(link.rect.x >= 0. && link.rect.right() <= width + 0.01);
+                let at = [
+                    link.rect.x + link.rect.w / 2.,
+                    link.rect.y + link.rect.h / 2.,
+                ];
+                assert_eq!(
+                    regions.hit(at),
+                    Some(ui::modules::document_modal::controller::Action::Open(
+                        "https://example.com/docs".into()
+                    )),
+                    "link {:?}, root {:?}, kind {:?}", link.rect, layout.rect, link.kind
+                );
+                assert_eq!(regions.cursor(at), ui::cursor::Cursor::Pointer);
+            }
+            assert!(visible >= 3);
+        }
+    }
+}
+
 // keeps: rich-text-safety — one semantic capsule owns padding, not copied text.
 #[test]
 fn inline_code_capsules_wrap_without_fake_spaces_or_split_graphemes() {

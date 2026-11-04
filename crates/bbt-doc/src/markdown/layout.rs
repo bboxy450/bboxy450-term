@@ -584,12 +584,14 @@ enum Piece {
     Code {
         value: String,
         font: ui::Text,
+        target: Option<String>,
     },
     Text {
         value: String,
         font: ui::Text,
         strike: bool,
         underline: bool,
+        target: Option<String>,
     },
     Wiki {
         target: String,
@@ -877,28 +879,49 @@ impl Render<'_> {
             ),
         }
     }
-    fn pieces(values: &[Inline], f: ui::Text, strike: bool, underline: bool, out: &mut Vec<Piece>) {
+    fn pieces(
+        values: &[Inline],
+        f: ui::Text,
+        strike: bool,
+        underline: bool,
+        target: Option<&str>,
+        out: &mut Vec<Piece>,
+    ) {
         for value in values {
             let text = |value: String, font: ui::Text| Piece::Text {
                 value,
                 font,
                 strike,
                 underline,
+                target: target.map(str::to_owned),
             };
             match value {
                 Inline::Text(s) => out.push(text(s.clone(), f)),
                 Inline::Code(s) => out.push(Piece::Code {
                     value: s.clone(),
                     font: f,
+                    target: target.map(str::to_owned),
                 }),
-                Inline::Emphasis(s) => {
-                    Self::pieces(s, ui::Text { italic: true, ..f }, strike, underline, out)
-                }
-                Inline::Strong(s) => {
-                    Self::pieces(s, ui::Text { weight: 700, ..f }, strike, underline, out)
-                }
-                Inline::Strike(s) => Self::pieces(s, f, true, underline, out),
-                Inline::Link { content, .. } => Self::pieces(
+                Inline::Emphasis(s) => Self::pieces(
+                    s,
+                    ui::Text { italic: true, ..f },
+                    strike,
+                    underline,
+                    target,
+                    out,
+                ),
+                Inline::Strong(s) => Self::pieces(
+                    s,
+                    ui::Text { weight: 700, ..f },
+                    strike,
+                    underline,
+                    target,
+                    out,
+                ),
+                Inline::Strike(s) => Self::pieces(s, f, true, underline, target, out),
+                Inline::Link {
+                    target, content, ..
+                } => Self::pieces(
                     content,
                     ui::Text {
                         paint: ui::Paint::solid(ui::Color::Accent),
@@ -906,6 +929,7 @@ impl Render<'_> {
                     },
                     strike,
                     true,
+                    Some(target),
                     out,
                 ),
                 Inline::WikiLink {
@@ -948,7 +972,7 @@ impl Render<'_> {
     }
     fn rich(&self, key: &str, values: &[Inline], f: ui::Text) -> c::Element {
         let mut pieces = vec![];
-        Self::pieces(values, f, false, false, &mut pieces);
+        Self::pieces(values, f, false, false, None, &mut pieces);
         if !self.fragment_words
             && pieces.iter().all(|p| {
                 matches!(
@@ -994,7 +1018,11 @@ impl Render<'_> {
         let mut i = 0;
         for p in pieces {
             match p {
-                Piece::Code { value, font } => {
+                Piece::Code {
+                    value,
+                    font,
+                    target,
+                } => {
                     // One semantic code span owns its measured padding and
                     // background. Text never carries fake spaces or font-size
                     // markers for a host's post-layout decoration pass.
@@ -1034,7 +1062,15 @@ impl Render<'_> {
                         b.gap = ui::Length::Px(0.);
                         b.align = c::Alignment::Baseline;
                         children.push(c::Item {
-                            element: named(format!("{part}/capsule"), c::Element::Box(b)),
+                            element: {
+                                let element = named(format!("{part}/capsule"), c::Element::Box(b));
+                                match target.as_deref() {
+                                    Some(target) => ui::modules::document_modal::controller::link(
+                                        element, target, true,
+                                    ),
+                                    None => element,
+                                }
+                            },
                             extent: c::Extent::Content {
                                 grow: 0.,
                                 shrink: 1.,
@@ -1096,6 +1132,7 @@ impl Render<'_> {
                     font,
                     strike,
                     underline,
+                    target,
                 } => {
                     for word in value
                         .split_inclusive(' ')
@@ -1128,13 +1165,19 @@ impl Render<'_> {
                                 bottom,
                             });
                         }
-                        children.push(natural(if overlays.is_empty() {
+                        let element = if overlays.is_empty() {
                             e
                         } else {
                             c::Element::Layers {
                                 base: Box::new(e),
                                 overlays,
                             }
+                        };
+                        children.push(natural(match target.as_deref() {
+                            Some(target) => {
+                                ui::modules::document_modal::controller::link(element, target, true)
+                            }
+                            None => element,
                         }));
                     }
                 }
@@ -1555,12 +1598,12 @@ impl Render<'_> {
     }
     fn cell_widths(&self, values: &[Inline], f: ui::Text) -> [f32; 3] {
         let mut pieces = vec![];
-        Self::pieces(values, f, false, false, &mut pieces);
+        Self::pieces(values, f, false, false, None, &mut pieces);
         let (mut minimum, mut preferred, mut word, mut line) = (0_f32, 0_f32, 0_f32, 0_f32);
         let mut hard = 0_f32;
         for piece in pieces {
             match piece {
-                Piece::Code { value, font } => {
+                Piece::Code { value, font, .. } => {
                     let font = measure_style(code_font(font));
                     let padding = 2. * (STYLE.spacing.s2 + STYLE.material.hairline_px) as f32;
                     minimum = minimum.max(word);

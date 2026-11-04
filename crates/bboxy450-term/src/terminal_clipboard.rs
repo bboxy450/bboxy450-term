@@ -261,7 +261,11 @@ impl App {
         let Some(uri) = self.terminal_display(seat).and_then(|d| d.link_at(at)) else {
             return false;
         };
-        self.logger.write(format!("terminal link: {uri}"));
+        self.open_external_link(uri);
+        true
+    }
+    pub(super) fn open_external_link(&mut self, uri: String) {
+        self.logger.write(format!("open link: {uri}"));
         if !self.test_account {
             let logger = self.logger.clone();
             bbt_rt::handle().spawn(async move {
@@ -290,7 +294,6 @@ impl App {
                 }
             });
         }
-        true
     }
 }
 

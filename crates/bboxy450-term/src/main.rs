@@ -2701,6 +2701,10 @@ impl App {
         self.open_document_bound(target, binding.map(Some));
     }
     fn follow_document_link(&mut self, target: String) {
+        if ["https://", "http://", "mailto:"].iter().any(|scheme| target.starts_with(scheme)) {
+            self.open_external_link(target);
+            return;
+        }
         self.document.follow(target);
         self.document_layout = None;
         self.drive_document();

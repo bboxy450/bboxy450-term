@@ -188,6 +188,29 @@ impl App {
         {
             return Cursor::Pointer;
         }
+        for (seat, rect) in &self.pane_bounds {
+            if self.rich_face(*seat)
+                && contains(*rect, at)
+                && let Some(pane) = self.rich_panes.get(seat)
+                && !pane.painted().is_empty()
+            {
+                let local = [at[0] - rect.x, at[1] - rect.y];
+                if let Some((_, cursor)) = pane
+                    .snapshot
+                    .controls
+                    .iter()
+                    .find(|(r, _)| contains(*r, local))
+                {
+                    return *cursor;
+                }
+                if matches!(
+                    pane.snapshot.links.hit(local),
+                    Some(bbt_ui::modules::document_modal::controller::Action::Open(_))
+                ) {
+                    return Cursor::Pointer;
+                }
+            }
+        }
         if self.ui_selection.contains(at) {
             return Cursor::Text;
         }

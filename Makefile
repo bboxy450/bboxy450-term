@@ -2211,7 +2211,8 @@ test-rich-polish:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked --release -p bboxy450-harness --features embedded --lib --target-dir '$(TARGET_DIR)' json_tool_results_keep_literal_source_and_error_fields -- --exact frontends::gui::rich::tests::json_tool_results_keep_literal_source_and_error_fields; \
 	cargo test --locked --release -p bboxy450-harness --features embedded --lib --target-dir '$(TARGET_DIR)' acp_terminal_metadata_survives_completion_and_duplicate_replay; \
-	cargo test --locked --release -p bboxy450-harness --features embedded --lib --target-dir '$(TARGET_DIR)' header_dropdowns_fit_narrow_panes_and_keep_revision_fences
+	cargo test --locked --release -p bboxy450-harness --features embedded --lib --target-dir '$(TARGET_DIR)' header_dropdowns_fit_narrow_panes_and_keep_revision_fences; \
+	cargo test --locked --release -p bboxy450-harness --features embedded --lib --target-dir '$(TARGET_DIR)' tool_header_and_reasoning_text_share_alignment
 
 .PHONY: test-rich-polish
 test-kb-write-fixes:
@@ -2220,6 +2221,11 @@ test-kb-write-fixes:
 	BBOXY_GITKB_BIN='$(GITKB_BIN)' cargo test --locked --release -p $(GITKB_CRATE) --bin $(GITKB_CRATE) --target-dir '$(TARGET_DIR)' manifest_passes_the_host_validator
 
 .PHONY: test-kb-write-fixes
+test-rich-links:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked --release -p bboxy450-doc --test inline_code --target-dir '$(TARGET_DIR)' markdown_links_keep_targets_through_emphasis_code_and_wrapping
+
+.PHONY: test-rich-links
 test-rich-pane: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-term --lib --target-dir '$(TARGET_DIR)' rich_pane::tests; \
