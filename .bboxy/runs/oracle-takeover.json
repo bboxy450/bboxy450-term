@@ -463,5 +463,73 @@
     "status_unchanged": true,
     "source_hashes_unchanged": true,
     "other_worktrees_untouched": true
+  },
+  "agent_context_published": {
+    "at": 1793750135.856704,
+    "source": "7c774f3e0d02ebdaa2b25bc0143fcc8cd47e11aa",
+    "base": "2fb78a017992f73468b6fa9fe5edbc48ba27f05c",
+    "verified_signatures": [
+      "7c774f3e0d02ebdaa2b25bc0143fcc8cd47e11aa",
+      "cf211eff0a5d5ee2d0bda0608a4dd5b6ee6fba9e",
+      "6b400cc3273c102748fa195f2f30bf5452fa0fb4",
+      "d3aede74824fe355e589c6ed2b94d09098217cd6"
+    ],
+    "canonical_log_sha256": "d7ffd3c0f3cc65cf572e12d5daa03eafc3b0df6a18dd924d17e34309ecd717da",
+    "canonical_exit_code": 0,
+    "input_hashes_verified": 278,
+    "core_zero_rows": 23,
+    "gui_zero_rows": 5,
+    "process_profiles_verified": 4,
+    "process_evidence_sha256": "627214861d9b95e63ad88bcc631983b0fa4b69d0911b4ebd4808e28192b4369e",
+    "socket_fixture_control": {
+      "command": "make -f /tmp/codex-launch-parity.LWWeDR/focus.mk",
+      "assertion": "session socket did not bind",
+      "red_make_exit": 2,
+      "red_cargo_exit": 101,
+      "green_exit": 0,
+      "source_sha256": "54fcc5b50d6033a29d3d76dd6005c8ac0c3ae7d155d2858b6c3a275032acc644"
+    },
+    "report_registration": "pending original operation resolution/correct current task",
+    "scope": "source and retained evidence verified; not accepted/published by this step; no vendor conformance/system-role proof",
+    "formal_check_exit_code": 0,
+    "formal_models": 119,
+    "formal_contracts": 39,
+    "retained_models": 112,
+    "formal_graphs_equal": true,
+    "published_main": "7c774f3e0d02ebdaa2b25bc0143fcc8cd47e11aa",
+    "push_exit_code": 0,
+    "published_at": 1793750224.555325
+  },
+  "agent_context_installed": {
+    "at": 1793750358.371068,
+    "source": "7c774f3e0d02ebdaa2b25bc0143fcc8cd47e11aa",
+    "bundle": "/Users/feral/Applications/bboxy450-harness.app",
+    "signature_exit_code": 0,
+    "team": "UQB3368A84",
+    "binary_sha256": "a4dc8afa8bc87ffcbcc4d67a6dd7443fea47f502274c48c5a1f122c04b381574",
+    "smoke_command": [
+      "python3",
+      "-I",
+      "scripts/smoke-app.py",
+      "/Users/feral/Applications/bboxy450-harness.app",
+      "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/installed-context-smoke"
+    ],
+    "smoke_exit_code": 0,
+    "smoke_seconds": 0.9422781467437744,
+    "smoke_log_sha256": "33c5aea8be21bdef92dabcab49cd26ab04bead315e8820426780ed43b245f8a8",
+    "presentation": "private replay and hidden native window/surface/frame only"
+  },
+  "latest_disk": {
+    "at": 1793750421.497885,
+    "free_gib": 23.45,
+    "used_percent": 94.91
+  },
+  "host_production_flag_correction_op": "01M6HXM3RDARMT6X351SVCXS2E",
+  "report_registration_gap": {
+    "original_operation": "01M6HWPJFGWXANRB126ZP4XZ63",
+    "owner": "01M6HRD7KZD5Q336S88VRS5HJX",
+    "state": "unknown to Oracle; owning seat instructed to resolve, never redispatch",
+    "prepared_report_task": "01M6HRD5XR91MD7MH557R77N5Y",
+    "correct_task": "01M6HRGGBFA6Z97D4TPDSZWPK8"
   }
 }
