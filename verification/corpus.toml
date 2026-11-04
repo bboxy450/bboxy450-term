@@ -1024,7 +1024,7 @@ frontend = "project"
 
 [[model]]
 name = "BrokenWatcherSettle"
-expected = "safety"
+expected = "liveness"
 frontend = "project"
 
 [[model]]
