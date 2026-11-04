@@ -4,7 +4,19 @@ type: "epic"
 number: 129
 title: "T — terminal speed and fidelity under real harness output (epic)"
 created: "2026-10-22T18:26:50Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-11-01T01:45:00Z"
+status: "done"
+reconciliation:
+- by: seat:01M6ABH71TVWGZ621NTD701PSH
+  disposition: implemented
+  evidence:
+  - https://github.com/bboxy450/bboxy450-term/commit/dc060574
+  - https://github.com/bboxy450/bboxy450-term/commit/0cb3f112
+  - https://github.com/bboxy450/bboxy450-term/commit/01edd5fa
+  fresh_accepted: false
+  kind: historical
+  previous_status: none
+  reason: "KB cleanup 2026-10-31 (Oracle Nyx Copperwing, operator-requested): terminal fidelity epic landed"
 ---
 # T — terminal speed and fidelity under real harness output (epic)
 

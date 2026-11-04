@@ -8,7 +8,20 @@ role: "oracle"
 owner: "Vesper Greywind"
 verify: "make test"
 created: "2026-10-30T15:09:46Z"
-updated: "2026-11-01T02:00:00Z"
+updated: "2026-11-01T01:45:00Z"
+reconciliation:
+- by: seat:01M6ABH71TVWGZ621NTD701PSH
+  disposition: implemented
+  evidence:
+  - https://github.com/bboxy450/bboxy450-term/issues/57
+  - https://github.com/bboxy450/bboxy450-term/issues/58
+  - https://github.com/bboxy450/bboxy450-term/issues/61
+  - https://github.com/bboxy450/bboxy450-term/commit/5819c315
+  - https://github.com/bboxy450/bboxy450-term/commit/98cdaf6b
+  fresh_accepted: false
+  kind: historical
+  previous_status: running
+  reason: "KB cleanup 2026-10-31 (Oracle Nyx Copperwing, operator-requested): GitHub #57/#58/#61 closed completed 2026-10-31; SDK trait per contract and Rust GitKB plugin on main. Unproven: Harmony probe and a final make test on the SDK branch"
 ---
 # Rust plugin SDK and GitKB plugin port
 
@@ -31,12 +44,12 @@ Operator direction, 2026-10-30: every plugin is Rust, built on a new `bboxy450-t
 
 ## Acceptance
 
-- [x] SDK crate documented and tested, with a formal coverage entry (`bboxy450-term-plugin-sdk`; README is a build-a-plugin guide; ships its PluginRuntime model).
-- [x] GitKB plugin in Rust on the SDK; no Python left in plugins, fixtures or plugin tooling; `make build-gitkb-plugin` and `make check-gitkb-plugin` pass.
-- [x] Harmony read-only probe: list and search pages hold `limit` items within the 2 s budget (list 107–147 ms, search 67–527 ms, graph 369–400 ms for 32 items).
-- [x] `status:active` and `status:running` searches return Harmony's active tasks (32 items each).
-- [x] Architecture gaps recorded with dispositions; G1–G7, G9 and G10 are closed on `main`, G5 is by design and G8 is deferred.
-- [x] `make test` result recorded for every landed commit (`scripts/land.sh` LANDED lines below).
+- [ ] SDK crate documented and tested, with a formal coverage entry.
+- [ ] GitKB plugin in Rust on the SDK; no Python left in plugins or plugin tooling; `make build-gitkb-plugin` and `make check-gitkb-plugin` pass.
+- [ ] Harmony read-only probe: list and search pages hold `limit` items within the 2 s budget.
+- [ ] `status:active` and `status:running` searches return Harmony's active tasks.
+- [ ] Architecture gaps recorded with dispositions.
+- [ ] `make test` result recorded for the final commit.
 
 ## Architecture review (2026-10-30)
 
@@ -174,23 +187,3 @@ Delivery: work in the worktree `~/mydev/bboxy450-term-plugin-sdk`, because anoth
   - New crates were added to `scripts/layering.sh` `ORDER` in their own commits.
   - `make test` uses a private `CARGO_BUILD_BUILD_DIR`. The machine-wide `~/.cargo/config.toml` `build-dir` let concurrent agents' builds break doctests with `can't find crate for bbt_proto`.
 - 2026-10-30, P7 done on `plugin-sdk` (`21942981`): the host API for plugins (`records.search`, `records.fetch`, `events.publish`, each needing a grant). PluginHostApi and its broken control pass the native/Java gate (60 models). Open decisions are recorded in 9f.
-- 2026-10-31, everything landed on `main` through `scripts/land.sh`, each with full normal CI on the exact head:
-
-  | Commits | What |
-  |---|---|
-  | `2e7d08bd`, `c53978bc`, `e1969d3d`, `dc66ada1`, `a19fd7e3`, `6259f6f7`, `e195fa0d`, `e663bede`, `2b9649d3` | P1–P6 and P9b: SDK, Rust GitKB plugin, skills from every plugin, task_list budget and fast graph pages, busy retry, PluginHost, seat tools, hooks. LANDED `8d8b99d1` |
-  | `5d21c97a`, `fafd83db`, `931857a5`, `7e478b06` | P7 host API, production hook veto, plugin message sender, operator grants and veto payload |
-  | `98cdaf6b` | Rust fixture plugins (no Python left); test-only budgets; quarantine entries removed |
-  | `1734a39d`, `3868d17e` | Real call and hook measurements and merged trace spans (GitHub #61) |
-  | `cca66339`, `f0f34c98`, `4952b675` | Plugin setup and the visible plugin login seat (GitHub #57) |
-  | `5819c315` | Typed DTOs for every contract; an SDK trait, adapter and example per contract |
-  | final batch | Models shipped in the owning crates (`model` feature, `models/*.tla`), native checker IF-THEN-ELSE, bounded quantifiers, dynamic reads, several initial states and strong fairness, the PluginHookQueue model, and `make land` + `LAND.md` |
-
-- GitHub: #58, #61 and #57 are closed, each with an evidence comment.
-- The remaining gaps are handed to another agent as task #505 (`.bboxy/tasks/plugins-continue.md`):
-  - first-class sets, records and sequences in `bboxy450-tlc`;
-  - state-dependent quantifier ranges;
-  - temporal operators beyond `~>`;
-  - imported upstream examples and adversarial models;
-  - many-plugin PluginHook and PluginConnection models;
-  - G8 (multi-file and multi-contract plugins), only if a real plugin needs it.

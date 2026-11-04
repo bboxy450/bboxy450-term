@@ -4,25 +4,37 @@ title: 'Fix logic hang: bound provenance recover per step, interruptible shutdow
 role: executor
 verify: make test
 id: 01M6HEHFAAYYGBKSZ3R5VJV04K
-status: open
+status: done
 delegated_by: seat:01M6HEDKGMGNSJYV4KEYAH4C70
 swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-03T19:35:24.532Z
+updated: 2026-11-04T14:14:52.610Z
 created: 2026-11-03T19:35:24.532Z
 number: 16371
 created_by: seat:01M6HEDKGMGNSJYV4KEYAH4C70
-updated_by: seat:01M6HEDKGMGNSJYV4KEYAH4C70
+updated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
 authorship:
-  signer: seat:01M6HEDKGMGNSJYV4KEYAH4C70
+  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
   kind: seat
-  public_key: Ayn9XrIjVAYAXEZChx8NJacOr4FXag6KviYA5wiyv0c=
+  public_key: JlpXQZ4/Qy0yh5dcFR+iK7RgP5q83vzdNaLijybKm+Y=
   process_generation: '1'
+reconciliation:
+- kind: historical
+  fresh_accepted: false
+  previous_status: open
+  disposition: implemented
+  reason: 'The logic-worker recovery fix is delivered in published/installed main ca7cde96 through bounded recovery and subsequent JSONL/write-route hardening. The original open record is stale. Historical closure only: its source/process/formal checks are retained; no fresh all-merge verification is claimed.'
+  evidence:
+  - Signed80566df996974e33981bf35e97942a594aba6811 is an ancestor of approved origin/main ca7cde968dfee7b60937fd1a7086fe9bc5f96c15; later123eeb2f/19b21c5c retain bounded recovery and actual writer IO ownership.
+  - 'ca7cde96:crates/bbt-mux/src/provenance/projection/recovery.rs: RECOVERY_PAGE=16, BUDGET=8ms, resumable durable cursor/publication; logic/hol_tests.rs and verification/contracts.toml connect request/shutdown witnesses and four LogicWorker contracts.'
+  - '/tmp/hol-final-complete-land.log: ci-local result40f45c5838f521bd70e9b8ff907caca3f8784eb9 normal0,290 native/TLC models,34 crates,119 contracts; LANDED40f45c58. /tmp/hol-report-land.log: LANDED184b770f9f43094c518570f143e5eeaeb7e999ef, retained source-bound gate reuse. Both commits are ancestors of published ca7cde96.'
+  by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+  op_id: 01M6KEK8N7N03Y7RZC1H65E8HH
 provenance:
   digest: sha256:3dea81461165fd435e8b3c65e8f42c383b16b1f844cb40680dfa39d52ca58c2a
-  frontmatter_digest: sha256:93ebb37dfc3820f4ee34e8d6babfb57e029d568dc7913b75b72f69c55460b534
-  signer: seat:01M6HEDKGMGNSJYV4KEYAH4C70
-  sig: QFVyjgZ3gcnxnnPwDoyH1YWJ1SOFTJzKlkZRt0FdNtVaHDroI9Qqkg1aWzLpQdJgOVg6Ae2e7dWx+OpnDPO0Bg==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#94860
+  frontmatter_digest: sha256:8853e1a15bce65cc4adfd4784a2e8b4ca64f4fcad4ce47d8ded89cc8ae3c6ae6
+  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+  sig: EysdNlfxal4ttLMvFEFd/0nCeRCMx9/ngK0KoKov1zMQRGbMr23fGF/tH2vmhOlSeK0MIKwUdDjD8QewnR2dAw==
+  log: .bboxy/log/2026-11-04.jsonl#114026
 ---
 # Fix the 2026-11-03 logic hang
 

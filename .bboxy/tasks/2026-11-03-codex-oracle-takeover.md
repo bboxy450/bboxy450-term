@@ -1,7 +1,7 @@
 ---
 type: task
 title: 'Codex Oracle takeover: retire Claude and recover the active cohort'
-status: claimed
+status: done
 role: oracle
 assignee: seat:01M6H97SAX3GN1BYB4YG76P3P0
 delegated_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
@@ -92,22 +92,35 @@ acceptance:
 - Obsolete seats retired; replacement Codex workers have signed scoped tasks; unfinished work preserved
 - Lifecycle, source preservation, closures and gaps retained as evidence
 id: 01M6HCH1SJHDSB6SDAC2ZF1BXX
-updated: 2026-11-04T02:27:01.642Z
+updated: 2026-11-04T14:20:11.886Z
 created: 2026-11-03T19:00:13.435Z
 number: 15244
 created_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
-updated_by: seat:01M6H97SAX3GN1BYB4YG76P3P0
+updated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
 authorship:
-  signer: seat:01M6H97SAX3GN1BYB4YG76P3P0
+  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
   kind: seat
-  public_key: B3hFSjBIE1Nnj7mw9Eg9pqyRpYHF/GQaKXPyV1KAod0=
+  public_key: JlpXQZ4/Qy0yh5dcFR+iK7RgP5q83vzdNaLijybKm+Y=
   process_generation: '1'
+reconciliation:
+- kind: historical
+  fresh_accepted: false
+  previous_status: claimed
+  disposition: superseded
+  reason: 'The November3 Codex takeover and initial native GPU delivery are retained as completed historical work. Following the overnight crash, Oracle resumed under a new authenticated seat and the remaining live recovery/profile-regression/administrative scope is explicitly carried by new task #21222 (01M6KEVVYNZW5H21RPTFW1RVDR), delegated to the current Oracle. Retire this stale assignment without claiming fresh acceptance or that restored old Claude seat labels are currently closed.'
+  evidence:
+  - New signed task tasks/2026-11-04-oracle-night-recovery.md (#21222) carries the post-crash scope, exact current actor01M6KDR7TE4H4B4AF0PZYK0Q1T, source preservation, open administrative conflicts and profile/model/effort follow-up.
+  - Signed records branch be5475d4507c0a4ecd00ad192193d6a0751f9c9d and /tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/REPORT-UI-DELIVERY.md retain original cohort closures, refs/archive hashes, defaultcodex-exec and installed/running2f56b3d6 proof.
+  - 'Current installed and approved remote mainca7cde968dfee7b60937fd1a7086fe9bc5f96c15 includes2f56b3d6. Actual live profile menu is still empty; that regression is not marked complete and is explicitly in #21222.'
+  - Current MCP inventory119 seats/resources age1s and surviving clean delivery worktrees observed; no backend restart, reset, broad staging, unknown-write replay or peer process kill performed.
+  by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+  op_id: 01M6KEWZPABMX1DXZ5Y4STEDR6
 provenance:
   digest: sha256:f6926150c478a4c843a17838da700c98c43cc91ae7e6cb84e17586fe3438e148
-  frontmatter_digest: sha256:f1bb583eb439607739d81a86d81255db166e417ab2b56bbb0e4ebad60a1337ca
-  signer: seat:01M6H97SAX3GN1BYB4YG76P3P0
-  sig: pXMJqvd2Z/DNMX9Wj5XB4M2hyp5mZzSmozADEcZyZqbNTR2prt0fi53gq3uOqorb5xU/f3CSezMrr8VEtexLDQ==
-  log: .bboxy/log/2026-11-04.jsonl#110225
+  frontmatter_digest: sha256:76a8bcc4dc112d0399383033e4a75acc5a29de7d0fd8c9949a83cea23494c0cf
+  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+  sig: h3pj+t9Y/XK2V+2JLnv6PSxroXBbgiZPpvMb0xyqj0Pn5vrgNjkKDPjYvbcxOQFpAJGkwgZsmPZNpo/t3RupAA==
+  log: .bboxy/log/2026-11-04.jsonl#114054
 ---
 ROLE: ORACLE. Takeover/delivery brief, latest direct operator instruction: "hurry up ... only run tests it needs, not entire test suites, if it compiles its likely correct!" Do only needed affected compile/focused checks; no whole make test/test-parity, runtime/visual/formal corpus reruns. Reuse matching-input prior proof; label omitted/stale broader coverage honestly. No fabricated full CI receipt. Earlier detailed briefs/evidence are retained in signed task history and Oracle records branch; this concise brief replaces broad-test wording.
 

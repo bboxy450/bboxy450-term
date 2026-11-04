@@ -3,21 +3,28 @@ artifacts:
 - '[[01M6DDYJJNX3CWH4ME3R7Y84QC]]'
 assignee: seat:01M6CQVV188SDF1BZDJYBZ65N8
 authorship:
+  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
   kind: seat
+  public_key: JlpXQZ4/Qy0yh5dcFR+iK7RgP5q83vzdNaLijybKm+Y=
   process_generation: '1'
-  public_key: J+Eete7RzpCHzcNSDpuEpx+ye6zu+UTGX+qDDQkPrw4=
-  signer: seat:01M6CQ90BPKR0WZ70BDJD6R7MV
 created: 2026-11-01T23:42:07.503Z
 created_by: seat:01M6CQ90BPKR0WZ70BDJD6R7MV
 delegated_by: seat:01M6CQ90BPKR0WZ70BDJD6R7MV
 id: 01M6CQVSJCA37S02QAMN49XPNT
 number: 2191
-provenance:
-  digest: sha256:4e6c1ad9c2063e245dfcaf6c0da51d4ceeeb2f3ffe7a8a7c35b9efe0dce1bbef
-  frontmatter_digest: sha256:5aefd5f1a5c1befdfd4cad21e7a491c3a6e38051794a67a4d6bb5f354f656ffc
-  log: .bboxy/log/2026-11-02.jsonl#15005
-  sig: H9JAtIsJHGTL0s1W6PDk2QrcilXehOyHUeTmbzrizeC3pkWtOK+TZAqgZuaa/GsNqiYxrUvsBnWQ+lIhD9t9Ag==
-  signer: seat:01M6CQ90BPKR0WZ70BDJD6R7MV
+reconciliation:
+- kind: historical
+  fresh_accepted: false
+  previous_status: rejected
+  disposition: implemented
+  reason: 'Post-restart historical triage after workspace readiness: mode-aware wheel dispatch and native process/control evidence are delivered in published main ca7cde96. The old rejection concerned composing its task/report in the same landing tree; both records are now present. Close that delivered assignment. This does not claim the unproven historical operator Logic-stall cause was fixed by wheel routing.'
+  evidence:
+  - Remote mainca7cde968dfee7b60937fd1a7086fe9bc5f96c15 includes d3a4db1a wheel routing, rich face wheel integration, bounded diagnostics and native regression cases; linked task and report#5188 are present in the same committed tree.
+  - '/tmp/bboxy-wheel-ci-final.log SHA25678ec620f460d464116a786473e4fff8d9a34117927e976c0a047ee3d732080dc: all gates passed; ci-local aeff156662db4ae6ee1ebb06f513fc10e2da08f6 normal0. Signed reportc9d8cb51 retains predecessor5a03687e provenance and actual headless fixed/control results.'
+  - 'Report#5188: native shared wheel path broken100→100→100 versus fixed100→97→94, preserved private backend identities; strict control1/restored0. /tmp/bboxy-wheel-after-committed-process.log SHA2565379f20629f89dd79029aebac0670de470b6d9e6491804ad402072377c5df221 retains committed process proof.'
+  - No full current-merge test was rerun for this historical bookkeeping action.
+  by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+  op_id: 01M6KEP6WEAG4PJQEN2B3KQN7H
 rejection:
   by: seat:01M6CQ90BPKR0WZ70BDJD6R7MV
   reason: 'Bookkeeping only; the work is verified. The Oracle read /tmp/bboxy-wheel-ci-final.log `ci-local: result aeff1566… normal 0` and the mode-based routing in wheel.rs:35-49. Acceptance compares the command string exactly: re-report with verify_result command `make test`, exit_code 0, commit aeff1566, and the same evidence, naming TARGET_DIR/CI_LOG and the log path inside the evidence text. Run no new tests. The task-record copy into the landing tree is the Oracle''s integration step.'
@@ -27,12 +34,12 @@ report:
   reported_by: seat:01M6CQVV188SDF1BZDJYBZ65N8
   summary: 'Report: [[reports/2026-11-01-wheel-scroll-dead]]. Signed code aeff156662db4ae6ee1ebb06f513fc10e2da08f6; signed report 5a03687e7d0271093af8b981892382f54507d691 with Report trailer; clean wheel-scroll, no merge/push. Mode-blind history routing reproduced and fixed; native wheel diagnostics bounded/rate-limited. Full make test/strict Clippy 0 on code commit; boundary and focused keyboard 0 (K1 full 1346); real broken-control strict 1 versus fixed process 0; fresh report-tip formal/check 0 (207 models). Scope fallback remains: report-tip corpus 2 solely because task record is outside allowed paths; task and report must be composed in the same landing tree, not a later task-only commit. Actual operator logic-stall causation remains unproven; #2187 untouched. Artifact [[artifacts/01M6DDYJJNX3CWH4ME3R7Y84QC]].'
 role: executor
-status: rejected
+status: done
 swarm: 01M649102FBS60QWNPZS5VAGF9
 title: Mouse-wheel scroll stopped working in every pane; persists across UI restart
 type: task
-updated: 2026-11-02T06:11:09.424Z
-updated_by: seat:01M6CQ90BPKR0WZ70BDJD6R7MV
+updated: 2026-11-04T14:16:29.028Z
+updated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
 verify: make test
 verify_result:
   command: make test TARGET_DIR=target/wheel-proof CI_LOG=/tmp/bboxy-wheel-ci-final.log
@@ -50,6 +57,12 @@ verify_result:
   - criterion: Verification and remaining integration gap
     reference: '/tmp/bboxy-wheel-ci-final.log SHA256 78ec620f460d464116a786473e4fff8d9a34117927e976c0a047ee3d732080dc ends exact aeff1566 normal0, 27invariants0failures11slow-skips; full strict workspace Clippy0, private smoke0. make test-boundaries0; test-keyboard-input0, K1full1346, K2existingpartial. Geometry unchanged, parity not run. Post-report make test-kb-reports2: exactly3 assertions for the missing scoped task link. See committed report and /tmp/bboxy-wheel-report-tip-corpus.log; Oracle fallback decisions 01M6CRM26NHM7GS9QW7Q920YBH / 01M6CT15WWEKWVQ0M2B514AT3S.'
   exit_code: 0
+provenance:
+  digest: sha256:4e6c1ad9c2063e245dfcaf6c0da51d4ceeeb2f3ffe7a8a7c35b9efe0dce1bbef
+  frontmatter_digest: sha256:05b45786ab75c464b3a12b1c60cab642f7100c8b38e88344a5f59835de29ef06
+  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+  sig: 9q/706U2OfDkNFqYn0Mk+d0caGnC7JrcxrddSYg+brQNkZv5RsIwV+2QSKzt6CffpoejImElkt992bgyS2kCBg==
+  log: .bboxy/log/2026-11-04.jsonl#114041
 ---
 # Wheel scroll is dead in every pane
 

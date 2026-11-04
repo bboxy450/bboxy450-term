@@ -4,7 +4,17 @@ type: "task"
 number: 203
 title: "MK1 — seat and task marks centred by construction"
 created: "2026-10-23T22:19:34Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-11-01T01:45:00Z"
+status: "done"
+reconciliation:
+- by: seat:01M6ABH71TVWGZ621NTD701PSH
+  disposition: implemented
+  evidence:
+  - https://github.com/bboxy450/bboxy450-term/commit/131f7bcc
+  fresh_accepted: false
+  kind: historical
+  previous_status: none
+  reason: "KB cleanup 2026-10-31 (Oracle Nyx Copperwing, operator-requested): MK1 merged"
 ---
 # MK1 — seat and task marks centred by construction
 

@@ -4,7 +4,17 @@ type: "task"
 number: 59
 title: "Task: embedded agent messaging — research"
 created: "2026-10-21T18:53:32Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-11-01T01:45:00Z"
+status: "done"
+reconciliation:
+- by: seat:01M6ABH71TVWGZ621NTD701PSH
+  disposition: superseded
+  evidence:
+  - https://github.com/bboxy450/bboxy450-term/commit/0f6a34d4
+  fresh_accepted: false
+  kind: historical
+  previous_status: none
+  reason: "KB cleanup 2026-10-31 (Oracle Nyx Copperwing, operator-requested): legacy record; body already marks it SUPERSEDED; plan replaced and later delivered by other tasks"
 ---
 # Task: embedded agent messaging — research
 

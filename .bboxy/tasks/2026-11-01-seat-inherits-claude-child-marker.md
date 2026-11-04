@@ -1,4 +1,6 @@
 ---
+artifacts:
+- '[[01M6DDBMCKSJAE5A06R114WA22]]'
 assignee: seat:01M6D1P97MBKV7ZG21RYJQ3YSW
 authorship:
   kind: seat
@@ -11,19 +13,41 @@ delegated_by: seat:01M6CQ90BPKR0WZ70BDJD6R7MV
 id: 01M6D1P7VRADV9GGJV42752W82
 number: 2985
 provenance:
-  digest: sha256:51db3f318bf2761fcaf0928fa6a7cc883769f39e3b3ae731b26786bdff9bcd83
-  frontmatter_digest: sha256:9cd4fde2783088e9b38eb4fadbc776795dd1c88f5fe615bf1daab9f18dcdc262
-  log: .bboxy/log/2026-11-02.jsonl#12741
-  sig: Q8L+j9o9HfpEbV/vKKDjGLosSUAoXRMveUDzEwET0gENlM2Pa19HJmHgGh0RZLz/jg9f48V64Lf8XCZ/69FsCw==
+  digest: sha256:58cf48bcaf37867220147a99dd5f39f6dc059ff20c93bff96b9a3944860db7f6
+  frontmatter_digest: sha256:8f4a88d8608c8d31329fccdc5e1ae0033864f4bdbcf87885a3a130731570ebd5
+  log: .bboxy/log/2026-11-02.jsonl#14978
+  sig: 6b3LwffBmwoGlGg4YBMCmm9IbIgbvaTa3paAFpcWFwc+mQuY9zTA7wWbhv60PzY+SNEnbeGDuv12VVQxMYPCBA==
   signer: seat:01M6CQ90BPKR0WZ70BDJD6R7MV
+report:
+  commit: 2fd028ff891e6414998881d9995a3ded47985129
+  op_id: 01M6DDXS2CG56JD17RZ3BRZXS6
+  report: '[[reports/2026-11-01-seat-launch-environment-verified.md]]'
+  reported_by: seat:01M6D1P97MBKV7ZG21RYJQ3YSW
+  summary: 'Implemented shared caller-session scrubbing for all five harness profiles, companions, app startup and detached backends. Signed implementation ce63a06adb9d24b0e017ad4d2fc005b0428d6d42 passed make test (0), including strict workspace Clippy, native/TLC parity and unattended smoke; make test-boundaries also passed (0), including the polluted-parent witness and expected-failing broken control. Signed 2fd028ff891e6414998881d9995a3ded47985129 adds only the final report: source equivalence is checked, make test-kb-reports test-formal exited 0, and current-HEAD make check-formal-evidence exited 0 (209 models, 32 crates, 86 contracts). The conditional inheritance defect is proven; the historical two-laptop launcher remains unproven because Claude creates child markers for its own tool subprocesses. Existing owners were untouched and need an upgraded restart. Worktree clean; no merge or push.'
 role: executor
-status: claimed
+status: accepted
 swarm: 01M649102FBS60QWNPZS5VAGF9
 title: Claude seats inherit CLAUDE_CODE_CHILD_SESSION, so transcript saving is off
 type: task
-updated: 2026-11-02T02:33:56.199Z
+updated: 2026-11-02T06:08:00.250Z
 updated_by: seat:01M6CQ90BPKR0WZ70BDJD6R7MV
 verify: make test
+verify_result:
+  command: make test
+  evidence:
+  - criterion: Root cause as file:line and distinction between inherited and process-owned markers
+    reference: reports/2026-11-01-seat-launch-environment-verified.md:36 — base 86ce2653 ctl/app.rs:74 → cockpit.rs:1588 → supervisor.rs:2392 inherit caller environment; report:72 records static Claude child-factory evidence and the unproven historical trigger.
+  - criterion: Every harness profile drops caller session markers while retaining user configuration and intended bboxy values
+    reference: crates/bboxy450-harness-wake-up/src/guard/environment.rs:17; src/launch.rs:488; crates/bbt-supervisor/src/supervisor.rs:2424 and supervisor/companion.rs:56 — shared rule names applied after inheritance/overrides; target/seat-env-evidence/boundaries.log:147–153 records both launch cases passing. No persistence workaround is added.
+  - criterion: Defence in depth at app and detached backend start
+    reference: crates/bboxy450-term/src/ctl/app.rs:93; src/cockpit.rs:1597; src/cockpit/environment_tests.rs:13 — command-local cleanup and polluted-parent supervisor/logic/desktop witness; full CI log records the test passing.
+  - criterion: Real polluted-parent process test with an unscrubbed control that must fail
+    reference: crates/bboxy450-term/tests/cockpit/launch_environment.rs:106 and :237 — real supervisor with 20 PTY and 20 companion captures across five profiles, stale overrides and both persistence configurations; negative child must exit 101; make test-boundaries exit 0 in target/seat-env-evidence/boundaries.log.
+  - criterion: Formal launch contract, assumptions, implementation witness and broken controls
+    reference: verification/contracts.toml:5 and :15; target/seat-env-evidence/formal-2fd028ff.json SHA256 f1af82334635ec94f0b8df213b11d3dc0e60c8e8387f9247fa8780856c1a9abc — clean final HEAD, 209 models; launch models pass (32 states/90 edges each), separate broken controls produce safety failures (56/156 and 40/112), all graphs equal. make check-formal-evidence exit 0.
+  - criterion: Required checks, signed commits and clean worktree
+    reference: target/seat-env-evidence/ci-ce63a06a-green.log ends exact ce63a06a normal result 0; implementation-verification.json records log hashes and boundary/focused results; final-source-equivalence.json proves only the final report differs at 2fd028ff; final-verification.json records report/formal checks 0 and clean state. git verify-commit returned 0 for both commits. Normal CI retains 11 configured slow skips.
+  exit_code: 0
 ---
 # Seats inherit the parent Claude session's markers
 
@@ -58,3 +82,46 @@ Every Claude seat shows: `⚠ Transcript saving is off — inherited CLAUDE_CODE
 ## Done
 
 Signed commits on `seat-env`, a report in `.bboxy/reports/` with a `Report:` trailer, and `task_report`. Do not merge or push.
+
+
+## Report from seat:01M6D1P97MBKV7ZG21RYJQ3YSW
+
+Implemented shared caller-session scrubbing for all five harness profiles, companions, app startup and detached backends. Signed implementation ce63a06adb9d24b0e017ad4d2fc005b0428d6d42 passed make test (0), including strict workspace Clippy, native/TLC parity and unattended smoke; make test-boundaries also passed (0), including the polluted-parent witness and expected-failing broken control. Signed 2fd028ff891e6414998881d9995a3ded47985129 adds only the final report: source equivalence is checked, make test-kb-reports test-formal exited 0, and current-HEAD make check-formal-evidence exited 0 (209 models, 32 crates, 86 contracts). The conditional inheritance defect is proven; the historical two-laptop launcher remains unproven because Claude creates child markers for its own tool subprocesses. Existing owners were untouched and need an upgraded restart. Worktree clean; no merge or push.
+
+```json
+{
+  "commit": "2fd028ff891e6414998881d9995a3ded47985129",
+  "op_id": "01M6DDXS2CG56JD17RZ3BRZXS6",
+  "report": "[[reports/2026-11-01-seat-launch-environment-verified.md]]",
+  "verify_result": {
+    "command": "make test",
+    "evidence": [
+      {
+        "criterion": "Root cause as file:line and distinction between inherited and process-owned markers",
+        "reference": "reports/2026-11-01-seat-launch-environment-verified.md:36 — base 86ce2653 ctl/app.rs:74 → cockpit.rs:1588 → supervisor.rs:2392 inherit caller environment; report:72 records static Claude child-factory evidence and the unproven historical trigger."
+      },
+      {
+        "criterion": "Every harness profile drops caller session markers while retaining user configuration and intended bboxy values",
+        "reference": "crates/bboxy450-harness-wake-up/src/guard/environment.rs:17; src/launch.rs:488; crates/bbt-supervisor/src/supervisor.rs:2424 and supervisor/companion.rs:56 — shared rule names applied after inheritance/overrides; target/seat-env-evidence/boundaries.log:147–153 records both launch cases passing. No persistence workaround is added."
+      },
+      {
+        "criterion": "Defence in depth at app and detached backend start",
+        "reference": "crates/bboxy450-term/src/ctl/app.rs:93; src/cockpit.rs:1597; src/cockpit/environment_tests.rs:13 — command-local cleanup and polluted-parent supervisor/logic/desktop witness; full CI log records the test passing."
+      },
+      {
+        "criterion": "Real polluted-parent process test with an unscrubbed control that must fail",
+        "reference": "crates/bboxy450-term/tests/cockpit/launch_environment.rs:106 and :237 — real supervisor with 20 PTY and 20 companion captures across five profiles, stale overrides and both persistence configurations; negative child must exit 101; make test-boundaries exit 0 in target/seat-env-evidence/boundaries.log."
+      },
+      {
+        "criterion": "Formal launch contract, assumptions, implementation witness and broken controls",
+        "reference": "verification/contracts.toml:5 and :15; target/seat-env-evidence/formal-2fd028ff.json SHA256 f1af82334635ec94f0b8df213b11d3dc0e60c8e8387f9247fa8780856c1a9abc — clean final HEAD, 209 models; launch models pass (32 states/90 edges each), separate broken controls produce safety failures (56/156 and 40/112), all graphs equal. make check-formal-evidence exit 0."
+      },
+      {
+        "criterion": "Required checks, signed commits and clean worktree",
+        "reference": "target/seat-env-evidence/ci-ce63a06a-green.log ends exact ce63a06a normal result 0; implementation-verification.json records log hashes and boundary/focused results; final-source-equivalence.json proves only the final report differs at 2fd028ff; final-verification.json records report/formal checks 0 and clean state. git verify-commit returned 0 for both commits. Normal CI retains 11 configured slow skips."
+      }
+    ],
+    "exit_code": 0
+  }
+}
+```

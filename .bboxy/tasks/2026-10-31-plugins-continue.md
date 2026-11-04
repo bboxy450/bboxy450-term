@@ -1,20 +1,56 @@
 ---
-assignee: "seat:01M6AD98G0W194HGDQDAESG484"
-authorship: {"kind": "seat", "process_generation": "1", "public_key": "dNWbVeHRHyt/TnV6QHFyDXtWIj+UElZjvaWtEgWhcFg=", "signer": "seat:01M6ABH71TVWGZ621NTD701PSH"}
-created: "2026-11-01T01:58:44.127Z"
-created_by: "seat:01M6ABH71TVWGZ621NTD701PSH"
-delegated_by: "seat:01M6ABH71TVWGZ621NTD701PSH"
-id: "01M6AD972977NZH976NK2GSD43"
+artifacts:
+- '[[01M6BSKVB5RN2YPQ3YPQ5951ZG]]'
+assignee: seat:01M6AD98G0W194HGDQDAESG484
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: dNWbVeHRHyt/TnV6QHFyDXtWIj+UElZjvaWtEgWhcFg=
+  signer: seat:01M6ABH71TVWGZ621NTD701PSH
+created: 2026-11-01T01:58:44.127Z
+created_by: seat:01M6ABH71TVWGZ621NTD701PSH
+delegated_by: seat:01M6ABH71TVWGZ621NTD701PSH
+id: 01M6AD972977NZH976NK2GSD43
 number: 572
-role: "executor"
-status: done
-swarm: "01M649102FBS60QWNPZS5VAGF9"
-title: "Plugins continue: land #31, ship the #84 transport contract, close #377's unproven checks"
-type: "task"
-updated: "2026-11-02T18:30:00Z"
-updated_by: "seat:01M6EQFA2G00BFT3TVPY6AMXE6"
-verify: "make test-settings-plugins test-formal-contracts && make test"
-reconciliation: [{"by": "seat:01M6EQFA2G00BFT3TVPY6AMXE6", "disposition": "implemented", "evidence": ["https://github.com/bboxy450/bboxy450-term/commit/c1af68b6", "https://github.com/bboxy450/bboxy450-term/commit/4fa1b876", "https://github.com/bboxy450/bboxy450-term/commit/6ff474a1"], "fresh_accepted": false, "kind": "historical", "previous_status": "claimed", "reason": "#31, #84 and the #377 close landed; remaining model work moved to #505. Hand-edited: task_reconcile refused (see tasks/2026-11-02-bug-task-lifecycle-unowned-records)."}]
+provenance:
+  digest: sha256:6e7fb913201c51602fd5a30db360bccbb79acf763793fb3b858c552636e73cbb
+  frontmatter_digest: sha256:7c29c93a8083f7c27d42011155bf8d4f099d86b765f61c63e8f686ad7138a5a4
+  log: .bboxy/log/2026-11-01.jsonl#9536
+  sig: HICyqz5Bgfa6aL/nfU5p5d2kusgPT9KGy64BnHUcS9EmiD3mYpqCunvxWDu3aZjMerAMAK2mF5r5GLly/rSNBQ==
+  signer: seat:01M6ABH71TVWGZ621NTD701PSH
+report:
+  commit: b9015a4006fb2c408c3d39c4ef3102846aa6a600
+  op_id: 01M6BSNZRK68GSAF3FVKS1DW54
+  reported_by: seat:01M6AD98G0W194HGDQDAESG484
+  summary: 'Report: [[reports/2026-11-01-plugins-continue-verification]], superseding [[reports/2026-11-01-plugins-continue]]. On main: #31 G3 553f9325; #84 transport base 4fa1b876 plus bounded-admission completion d579986c; #377 Harmony/sweep 8ce271ca plus fixture verification b9015a40. Signed, clean; exact-HEAD make test and author landing both exit 0, with 134 native/TLC models, 31 crates, 57 contracts, headless smoke and 27 invariants (11 slow checks skipped). The declared verification stack was executed as separate component Make invocations; logs and actual exits are in the reports. Remaining unproven: real-Harmony backend/account, P9b busy retry, configured preview, full native G4 identity evidence and G5 theme night. Live schema has no optional report field, so this summary carries the qualified Report link.'
+role: executor
+status: accepted
+swarm: 01M649102FBS60QWNPZS5VAGF9
+title: 'Plugins continue: land #31, ship the #84 transport contract, close #377''s unproven checks'
+type: task
+updated: 2026-11-01T14:54:55.340Z
+updated_by: seat:01M6ABH71TVWGZ621NTD701PSH
+verify: make test-settings-plugins test-formal-contracts && make test
+verify_result:
+  command: make test-settings-plugins test-formal-contracts && make test
+  evidence:
+  - criterion: '#31 G3'
+    reference: Main 553f9325; make test-settings-plugins exit 0 in target/plugins-harmony-final-g3.log, custom and native full G3; missing-warning negative rejected.
+  - criterion: '#84 transport contract, SDK, Settings, argv and refusals'
+    reference: Main 4fa1b876 and d579986c; crates/bbt-plugin/src/transport.rs:13; crates/bbt-plugin-sdk/src/contracts.rs:242; crates/bbt-mux/tests/plugin_transport.rs:38; make test-plugin-transports exit 0 in target/plugins-transport-focused-retry.log.
+  - criterion: '#377 private Harmony read-only paging and status'
+    reference: Main 8ce271ca; crates/bbt-plugin-fixture/tests/harmony_pages.rs:83 and :166; red baseline Make 2, fixed make test-harmony-pages 0; 72 Harmony RPCs <2 s, exact inventories and unchanged backing bytes; ordinary status controls passed. Real backend remains unproven.
+  - criterion: Architecture and partial/missing row dispositions
+    reference: .bboxy/specs/plugins.md:173; .bboxy/specs/e2e-script-map.md:580 and :594; explicit remaining P9b, preview, G4, G5, real-backend and G8/#505 limits.
+  - criterion: Verification stack and final committed source
+    reference: 'Components ran separately: make test-settings-plugins 0 (target/plugins-harmony-final-g3.log); make test-formal-contracts within make test-plugin-fixtures test-formal-contracts 0 (target/plugins-harmony-focused.log); exact signed b9015a40 make test 0 (target/plugins-harmony-final-ci-b9015a40.log, SHA256 f1be4be5f6ced15e8e9995a6127e8360714a8b0f20d94b3b4ae5df920df4e548).'
+  - criterion: Formal, process, parity and strict checks
+    reference: 'Clean current-source formal receipt 730ecf0705d7c57b500741e03516351cc43f51e38f5590a2dec43bb4c6029b3f: 134 models/31 crates/57 contracts, native/TLC parity and broken controls. Boundary/Settings/Launcher/landing fixtures exit 0 in target/plugins-transport-verification-retry.log; 48 Settings advisory pixel reviews remain. Strict workspace and fixture/ingestion lint exit 0.'
+  - criterion: Failures retained and correction verified
+    reference: First final-source 8ce271ca make test exited 2 on two 967-seat ring sweep deadlines. Test-only idle yield retains 967 seats, 15-second bound and all assertions; make test-seat-ingestion check-seat-ingestion 0 (9 ring cases, 1.82 s); both cases passed final full CI. No quarantine or widened bound.
+  - criterion: Landing, signatures, per-commit compilation and Report
+    reference: 'sh scripts/land.sh --gate-log target/ci-local.log exit 0; actual remote refs/heads/main=b9015a4006fb2c408c3d39c4ef3102846aa6a600; clean worktree; signatures G; both final candidates cargo check --workspace --all-targets --locked exit 0. Report: [[reports/2026-11-01-plugins-continue-verification]], with signed trailer and supersedes chain.'
+  exit_code: 0
 ---
 # Plugins continue — close every remaining plugin-system gap
 
@@ -36,3 +72,53 @@ Plugin SDK + trait/adapter/example per contract (5819c315), Rust fixtures replac
 
 ## Communication (operator order: no token burn)
 No acknowledgements, progress DMs or channel posts. One `task_report` at the end: per-gap commit SHA on main, files+mechanism, commands+exit codes, gaps left. Message the Oracle mid-task only for a blocker that stops all work, ≤3 lines.
+
+
+## Report from seat:01M6AD98G0W194HGDQDAESG484
+
+Report: [[reports/2026-11-01-plugins-continue-verification]], superseding [[reports/2026-11-01-plugins-continue]]. On main: #31 G3 553f9325; #84 transport base 4fa1b876 plus bounded-admission completion d579986c; #377 Harmony/sweep 8ce271ca plus fixture verification b9015a40. Signed, clean; exact-HEAD make test and author landing both exit 0, with 134 native/TLC models, 31 crates, 57 contracts, headless smoke and 27 invariants (11 slow checks skipped). The declared verification stack was executed as separate component Make invocations; logs and actual exits are in the reports. Remaining unproven: real-Harmony backend/account, P9b busy retry, configured preview, full native G4 identity evidence and G5 theme night. Live schema has no optional report field, so this summary carries the qualified Report link.
+
+```json
+{
+  "commit": "b9015a4006fb2c408c3d39c4ef3102846aa6a600",
+  "op_id": "01M6BSNZRK68GSAF3FVKS1DW54",
+  "verify_result": {
+    "command": "make test-settings-plugins test-formal-contracts && make test",
+    "evidence": [
+      {
+        "criterion": "#31 G3",
+        "reference": "Main 553f9325; make test-settings-plugins exit 0 in target/plugins-harmony-final-g3.log, custom and native full G3; missing-warning negative rejected."
+      },
+      {
+        "criterion": "#84 transport contract, SDK, Settings, argv and refusals",
+        "reference": "Main 4fa1b876 and d579986c; crates/bbt-plugin/src/transport.rs:13; crates/bbt-plugin-sdk/src/contracts.rs:242; crates/bbt-mux/tests/plugin_transport.rs:38; make test-plugin-transports exit 0 in target/plugins-transport-focused-retry.log."
+      },
+      {
+        "criterion": "#377 private Harmony read-only paging and status",
+        "reference": "Main 8ce271ca; crates/bbt-plugin-fixture/tests/harmony_pages.rs:83 and :166; red baseline Make 2, fixed make test-harmony-pages 0; 72 Harmony RPCs <2 s, exact inventories and unchanged backing bytes; ordinary status controls passed. Real backend remains unproven."
+      },
+      {
+        "criterion": "Architecture and partial/missing row dispositions",
+        "reference": ".bboxy/specs/plugins.md:173; .bboxy/specs/e2e-script-map.md:580 and :594; explicit remaining P9b, preview, G4, G5, real-backend and G8/#505 limits."
+      },
+      {
+        "criterion": "Verification stack and final committed source",
+        "reference": "Components ran separately: make test-settings-plugins 0 (target/plugins-harmony-final-g3.log); make test-formal-contracts within make test-plugin-fixtures test-formal-contracts 0 (target/plugins-harmony-focused.log); exact signed b9015a40 make test 0 (target/plugins-harmony-final-ci-b9015a40.log, SHA256 f1be4be5f6ced15e8e9995a6127e8360714a8b0f20d94b3b4ae5df920df4e548)."
+      },
+      {
+        "criterion": "Formal, process, parity and strict checks",
+        "reference": "Clean current-source formal receipt 730ecf0705d7c57b500741e03516351cc43f51e38f5590a2dec43bb4c6029b3f: 134 models/31 crates/57 contracts, native/TLC parity and broken controls. Boundary/Settings/Launcher/landing fixtures exit 0 in target/plugins-transport-verification-retry.log; 48 Settings advisory pixel reviews remain. Strict workspace and fixture/ingestion lint exit 0."
+      },
+      {
+        "criterion": "Failures retained and correction verified",
+        "reference": "First final-source 8ce271ca make test exited 2 on two 967-seat ring sweep deadlines. Test-only idle yield retains 967 seats, 15-second bound and all assertions; make test-seat-ingestion check-seat-ingestion 0 (9 ring cases, 1.82 s); both cases passed final full CI. No quarantine or widened bound."
+      },
+      {
+        "criterion": "Landing, signatures, per-commit compilation and Report",
+        "reference": "sh scripts/land.sh --gate-log target/ci-local.log exit 0; actual remote refs/heads/main=b9015a4006fb2c408c3d39c4ef3102846aa6a600; clean worktree; signatures G; both final candidates cargo check --workspace --all-targets --locked exit 0. Report: [[reports/2026-11-01-plugins-continue-verification]], with signed trailer and supersedes chain."
+      }
+    ],
+    "exit_code": 0
+  }
+}
+```

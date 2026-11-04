@@ -4,25 +4,37 @@ title: 'Formal model: logic worker head-of-line blocking (provenance recover vs 
 role: executor
 verify: make test-formal
 id: 01M6HEH0XF19CP3RY4QW75VBX8
-status: open
+status: done
 delegated_by: seat:01M6HEDKGMGNSJYV4KEYAH4C70
 swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-03T19:35:09.896Z
+updated: 2026-11-04T14:14:54.172Z
 created: 2026-11-03T19:35:09.896Z
 number: 16368
 created_by: seat:01M6HEDKGMGNSJYV4KEYAH4C70
-updated_by: seat:01M6HEDKGMGNSJYV4KEYAH4C70
+updated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
 authorship:
-  signer: seat:01M6HEDKGMGNSJYV4KEYAH4C70
+  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
   kind: seat
-  public_key: Ayn9XrIjVAYAXEZChx8NJacOr4FXag6KviYA5wiyv0c=
+  public_key: JlpXQZ4/Qy0yh5dcFR+iK7RgP5q83vzdNaLijybKm+Y=
   process_generation: '1'
+reconciliation:
+- kind: historical
+  fresh_accepted: false
+  previous_status: open
+  disposition: implemented
+  reason: The eight finite logic-worker recovery/audit models and named broken controls were integrated and verified; the old open model-only task is stale. This closes that delivered model assignment, not arbitrary Rust or current merge conformance.
+  evidence:
+  - Signed1c499ff2 integrated logic_worker_model.rs; its model file is byte-identical to signed model1aaa322e67ff9c7974e96ce50565db8e0476626f and present in published/installed ca7cde96.
+  - Four correct/broken families LogicWorkerRequests, LogicWorkerShutdown, LogicWorkerAuditRequests, LogicWorkerAuditShutdown are registered with source mappings in ca7cde96 verification/contracts.toml/coverage/corpus.
+  - Model report from1aaa322e records all eight complete native/Java graph and safety/liveness counterexamples; full normal gate40f45c58 later passed290 models/119 contracts/34 crates with retained receiptca67c9bedfd076917a63b87217ddb0633a4d4e0d844734d7c41cd7314795eb01. This is prior-source evidence, not a fresh ca7cde96 receipt.
+  by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+  op_id: 01M6KEK9HQP9TVN1SANW3Z9V3Y
 provenance:
   digest: sha256:08eb17f25c67257ae84066ce176d02a9aec6cd5d8a1680254a7db6496362274a
-  frontmatter_digest: sha256:d92a35004d3ecd18c574628fb48ae703b9c7af3012b00bc85a28079c390472f9
-  signer: seat:01M6HEDKGMGNSJYV4KEYAH4C70
-  sig: i+BlpvQFir1g0M/oNa995BLnfQBOKFp/beztiF26oxWDk6tTdf45qKvTL9pMOxGtPMTd5zuJq+R3UccPoMFPBQ==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#94832
+  frontmatter_digest: sha256:d7b6d93a1c71c9872a4ec051e8155042cc2aeb155ddeb73c192edf74795f43c5
+  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+  sig: IB8HN1QacVoUBNFWId0P5RAO7wijLiVNWrLKvx4x5BBZLHlvPwJOvaNbDWkGhRvTujpuDI3ayIKB9vEyV4u9AA==
+  log: .bboxy/log/2026-11-04.jsonl#114028
 ---
 # Model the 2026-11-03 logic hang before any fix
 
