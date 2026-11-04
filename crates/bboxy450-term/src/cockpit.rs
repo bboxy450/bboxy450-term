@@ -912,9 +912,7 @@ pub async fn preserve_backend_preflight(config: &Config) -> Result<BackendIdenti
         .ok_or_else(|| invalid("preserve_backend: Logic owner unavailable"))?
         .ready;
     if !logic_compatible(&ready, &path) {
-        return Err(invalid(
-            "preserve_backend: incompatible Logic schema or launch PATH; refresh forbidden",
-        ));
+        return Err(invalid(gui_handoff::incompatibility(&ready, &path)));
     }
     let io = tokio::time::timeout(
         Duration::from_secs(5),

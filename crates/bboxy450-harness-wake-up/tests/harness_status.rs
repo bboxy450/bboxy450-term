@@ -193,6 +193,33 @@ fn log_reports_open_tool_and_approval_through_quiet_pty_then_clears_detail() {
 }
 
 #[test]
+fn ui_status_log_uses_operation_kind_without_copying_command_source() {
+    for command in [
+        "python3 - <<'PY'\nprint('界👩🏽‍💻')\nPY".to_owned(),
+        "λ".repeat(4096),
+    ] {
+        let mut f = Fixture::new();
+        let mut log = Log::open(f.root.path(), &f.id).unwrap();
+        let mut s = session();
+        f.append(json!({"type":"turn_started","turn":"t"}));
+        f.append(json!({"type":"item_started","turn":"t","item":"i","kind":"terminal","head":{"command":command}}));
+        let mut event = log.poll().unwrap().unwrap();
+        assert_eq!(event["detail"], "terminal");
+        event["binding"] = json!(s.binding);
+        harness_log::observe(&mut s, &event, 1, 2000).unwrap();
+        assert_eq!(s.status.detail.as_deref(), Some("terminal"));
+        assert_eq!(s.status.state, State::Active);
+        let raw = std::fs::read_to_string(f.root.path().join(format!("sessions/{}.jsonl", f.id)))
+            .unwrap();
+        let item: Value = serde_json::from_str(raw.lines().last().unwrap()).unwrap();
+        assert_eq!(
+            item["event"]["head"]["command"], command,
+            "raw tool details must survive"
+        );
+    }
+}
+
+#[test]
 fn log_retains_partial_lines_rejects_gaps_and_never_counts_eof_as_a_heartbeat() {
     let mut f = Fixture::new();
     let mut log = Log::open(f.root.path(), &f.id).unwrap();

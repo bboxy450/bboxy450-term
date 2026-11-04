@@ -5,7 +5,9 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Pane identity strip. The host supplies capabilities and one-shot notice state.
-use super::seat_row::{SeatRow, first_name, fixed_role, named, role_label};
+use super::seat_row::{
+    SeatRow, chrome_line, chrome_title, first_name, fixed_role, named, role_label,
+};
 use crate::{self as ui, components as c};
 use bbt_ui_model::{Activity, STYLE, TOKENS};
 
@@ -38,7 +40,7 @@ pub(crate) fn text(
     line_height: f32,
 ) -> c::Element {
     let mut t = c::Text::new(
-        value,
+        chrome_line(&value.into()),
         ui::Text {
             size: Some(size),
             weight,
@@ -50,6 +52,7 @@ pub(crate) fn text(
     );
     t.wrap = false;
     t.ellipsis = true;
+    t.max_lines = Some(1);
     c::Element::Text(t)
 }
 fn flexible(element: c::Element, grow: f32) -> c::Item {
@@ -245,11 +248,11 @@ impl Strip {
         let title = if matches!(seat.activity, Activity::Waiting(_)) {
             format!(
                 "{} · waiting for {}",
-                seat.title,
+                chrome_title(&seat.harness, &seat.title),
                 self.waiting_description.as_deref().unwrap_or("an answer")
             )
         } else {
-            seat.title.clone()
+            chrome_title(&seat.harness, &seat.title)
         };
         children.push(flexible(
             named(

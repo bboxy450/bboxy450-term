@@ -124,6 +124,64 @@ fn backend_check(args: &[String]) -> Result<BackendIdentity> {
     bbt_rt::handle().block_on(preserve_backend_preflight(&config))
 }
 
+/// Allowlist public compatibility facts. Never serialize LogicReady: it contains
+/// the endpoint capability, identity notes and private paths.
+pub(super) fn incompatibility(ready: &LogicReady, path: &std::ffi::OsStr) -> String {
+    let mut mismatches = serde_json::Map::new();
+    for (name, expected, observed) in [
+        (
+            "mcp_control_version",
+            MCP_CONTROL_VERSION,
+            ready.mcp_control_version,
+        ),
+        (
+            "gui_state_version",
+            bbt_proto::gui::WINDOW_STATE_VERSION,
+            ready.gui_state_version,
+        ),
+        (
+            "swarm_metadata_version",
+            bbt_proto::gui::SWARM_METADATA_VERSION,
+            ready.swarm_metadata_version,
+        ),
+        (
+            "ui_control_version",
+            bbt_proto::gui::UI_CONTROL_VERSION,
+            ready.ui_control_version,
+        ),
+        (
+            "swarm_workspace_version",
+            bbt_proto::gui::SWARM_WORKSPACE_VERSION,
+            ready.swarm_workspace_version,
+        ),
+    ] {
+        if expected != observed {
+            mismatches.insert(
+                name.into(),
+                serde_json::json!({"expected":expected,"observed":observed}),
+            );
+        }
+    }
+    let expected = shell_path::fingerprint(path);
+    if ready.launch_path_fingerprint.as_deref() != Some(&expected) {
+        let observed = match ready.launch_path_fingerprint.as_deref() {
+            None => "missing",
+            Some(value) if value.len() == 16 && value.bytes().all(|b| b.is_ascii_hexdigit()) => {
+                value
+            }
+            Some(_) => "invalid_fingerprint",
+        };
+        mismatches.insert(
+            "launch_path_fingerprint".into(),
+            serde_json::json!({"expected":expected,"observed":observed}),
+        );
+    }
+    format!(
+        "preserve_backend: incompatible Logic schema or launch PATH; refresh forbidden; mismatches={}",
+        serde_json::Value::Object(mismatches)
+    )
+}
+
 /// Credential-free process/lock observation for the canonical installer.
 pub fn probe(args: &[String]) -> Result<Option<serde_json::Value>> {
     if !args
@@ -227,4 +285,165 @@ pub fn prepare(args: &[String]) -> Result<()> {
         return Err(invalid("private UI-only failure after GUI detach"));
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod ui_status_tests {
+    use super::*;
+    use std::{
+        ffi::OsStr,
+        os::unix::{
+            fs::{OpenOptionsExt, PermissionsExt},
+            io::AsRawFd,
+        },
+    };
+
+    fn ready() -> LogicReady {
+        serde_json::from_value(serde_json::json!({
+            "root":"/private/secret-endpoint", "capability":vec![197;32],
+            "identity":{"state":"held","reason":"private-token-value"},
+            "custody_backend":"private-custody", "account_root":"secret-account",
+            "mcp_control_version":MCP_CONTROL_VERSION,
+            "gui_state_version":bbt_proto::gui::WINDOW_STATE_VERSION,
+            "swarm_metadata_version":bbt_proto::gui::SWARM_METADATA_VERSION,
+            "ui_control_version":bbt_proto::gui::UI_CONTROL_VERSION,
+            "swarm_workspace_version":bbt_proto::gui::SWARM_WORKSPACE_VERSION,
+            "launch_path_fingerprint":shell_path::fingerprint(OsStr::new("/fixture/bin")),
+        }))
+        .unwrap()
+    }
+
+    #[test]
+    fn ui_status_diagnostic_separates_every_version_and_path_without_private_fields() {
+        let good = ready();
+        let path = OsStr::new("/fixture/bin");
+        assert!(logic_compatible(&good, path));
+        assert!(incompatibility(&good, path).ends_with("mismatches={}"));
+        for field in [
+            "mcp_control_version",
+            "gui_state_version",
+            "swarm_metadata_version",
+            "ui_control_version",
+            "swarm_workspace_version",
+        ] {
+            let mut value = serde_json::to_value(&good).unwrap();
+            value[field] = serde_json::json!(65535);
+            let changed: LogicReady = serde_json::from_value(value).unwrap();
+            assert!(!logic_compatible(&changed, path));
+            let text = incompatibility(&changed, path);
+            let facts: serde_json::Value =
+                serde_json::from_str(text.split_once("mismatches=").unwrap().1).unwrap();
+            assert_eq!(facts.as_object().unwrap().len(), 1);
+            assert_eq!(facts[field]["observed"], 65535);
+            assert!(facts[field]["expected"].is_u64());
+            assert!(!text.contains("launch_path_fingerprint"));
+        }
+        for (observed, expected) in [
+            (None, "missing"),
+            (Some("token=private-token-value"), "invalid_fingerprint"),
+            (Some("0123456789abcdef"), "0123456789abcdef"),
+        ] {
+            let mut changed = good.clone();
+            changed.launch_path_fingerprint = observed.map(str::to_owned);
+            assert!(!logic_compatible(&changed, path));
+            let text = incompatibility(&changed, path);
+            let facts: serde_json::Value =
+                serde_json::from_str(text.split_once("mismatches=").unwrap().1).unwrap();
+            assert_eq!(facts.as_object().unwrap().len(), 1);
+            assert_eq!(facts["launch_path_fingerprint"]["observed"], expected);
+            assert_eq!(
+                facts["launch_path_fingerprint"]["expected"],
+                shell_path::fingerprint(path)
+            );
+            for secret in [
+                "private-token-value",
+                "secret-endpoint",
+                "private-custody",
+                "secret-account",
+                "capability",
+                "[197",
+            ] {
+                assert!(!text.contains(secret), "private field in diagnostic");
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn ui_status_readonly_preflight_refuses_cold_and_incompatible_private_owners() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+        let config = Config {
+            executable: root.path().join("must-not-execute"),
+            socket: root.path().join("mux.sock"),
+            run_dir: root.path().into(),
+            repository: root.path().into(),
+            shell_config: Some(root.path().into()),
+            ctl: false,
+            test_account: Some(root.path().into()),
+        };
+        let cold = preserve_backend_preflight(&config)
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(cold.contains("cold startup refused"));
+        assert_eq!(
+            std::fs::read_dir(root.path()).unwrap().count(),
+            0,
+            "cold probe wrote files"
+        );
+        let lock = std::fs::OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .mode(0o600)
+            .open(root.path().join("mux.sock.lock"))
+            .unwrap();
+        // SAFETY: private fixture owns this descriptor and releases it on drop.
+        assert_eq!(
+            unsafe { libc::flock(lock.as_raw_fd(), libc::LOCK_EX | libc::LOCK_NB) },
+            0
+        );
+        owners::write(
+            &config,
+            "supervisor",
+            SupervisorReady {
+                socket: config.socket.clone(),
+                capability: [197; 32],
+                pid: std::process::id(),
+            },
+        )
+        .unwrap();
+        let mut incompatible = ready();
+        incompatible.ui_control_version = 65535;
+        owners::write(&config, "logic", incompatible).unwrap();
+        let before = ["logic.owner.json", "supervisor.owner.json"]
+            .map(|name| std::fs::read(root.path().join(name)).unwrap());
+        let refusal = preserve_backend_preflight(&config)
+            .await
+            .unwrap_err()
+            .to_string();
+        assert!(
+            refusal.contains("ui_control_version")
+                && refusal.contains("65535")
+                && refusal.contains("refresh forbidden")
+        );
+        for secret in [
+            "private-token-value",
+            "secret-endpoint",
+            "private-custody",
+            "secret-account",
+            "capability",
+        ] {
+            assert!(!refusal.contains(secret));
+        }
+        assert_eq!(
+            before,
+            ["logic.owner.json", "supervisor.owner.json"]
+                .map(|name| std::fs::read(root.path().join(name)).unwrap())
+        );
+        assert!(!config.socket.exists(), "probe started a backend");
+        assert!(
+            owners::supervisor_held(&config).unwrap(),
+            "probe disturbed owner lock"
+        );
+    }
 }

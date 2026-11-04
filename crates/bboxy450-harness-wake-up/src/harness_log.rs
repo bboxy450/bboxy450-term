@@ -264,7 +264,7 @@ impl Log {
                 ) {
                     let name = e["head"]["name"]
                         .as_str()
-                        .or_else(|| e["head"]["command"].as_str())
+                        .filter(|name| !name.is_empty() && !name.chars().any(char::is_whitespace))
                         .unwrap_or(kind);
                     self.items.push((
                         e["item"].to_string(),

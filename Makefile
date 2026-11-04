@@ -184,6 +184,7 @@ help:
 	  'make test-ctl-workspaces         Bounded same-op workspace preparation and real operator CLI' \
 	  'make verify-workspace-ready      Focused activity-churn API, watch, model/control parity and strict compile' \
 	  'make verify-view-switch          Pane titlebar view label, geometry, native hit/action and strict compile' \
+	  'make verify-ui-status            Bounded native status, readonly handoff diagnostics and strict compile' \
 	  'make test-workspace-roots        Canonical cwd mounts, scoped records and stale-root fences' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
 	  'make test-role-identity          ROLE-first seat, pane and message identity; check-role-identity / parity-role-identity' \
@@ -2275,3 +2276,10 @@ verify-view-switch: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; mkdir -p '$(TARGET_DIR)/view-switch'; \
 	BBOXY_VIEW_SWITCH_GEOMETRY='$(abspath $(TARGET_DIR))/view-switch/geometry.json' cargo test --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)' view_switch_ -- --nocapture --test-threads=1; \
 	cargo test --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)' rich_faces::verification::rich_keys_and_face_preference_do_not_reach_the_pty -- --exact --nocapture
+
+.PHONY: verify-ui-status
+verify-ui-status:
+	@set -eu; . ./scripts/cache-env.sh; export CARGO_BUILD_JOBS=2; \
+	cargo nextest run --locked -p bboxy450-harness-wake-up --test harness_status --target-dir '$(TARGET_DIR)'; \
+	cargo nextest run --locked -p $(APP) --lib --bin $(APP) --test ui_status_probe --target-dir '$(TARGET_DIR)' -E 'test(ui_status_) or test(view_switch_header_geometry_and_hits)'; \
+	cargo clippy --no-deps --locked -p bboxy450-harness-wake-up -p bboxy450-ui -p $(APP) --lib --bin $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings

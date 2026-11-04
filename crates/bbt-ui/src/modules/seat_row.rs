@@ -9,6 +9,43 @@
 use crate::{self as ui, components as c};
 use bbt_ui_model::{Activity, Grade, STYLE, SeatColor, TOKENS};
 
+/// Chrome is one line, even when a terminal or tool supplies script source.
+/// Keep the original title/tool payload in the host model and transcript.
+pub(crate) fn chrome_line(value: &str) -> String {
+    let mut chars = value
+        .chars()
+        .filter(|c| !c.is_control() || c.is_whitespace());
+    let mut line = String::new();
+    for _ in 0..192 {
+        let Some(c) = chars.next() else { return line };
+        line.push(if c.is_whitespace() { ' ' } else { c });
+    }
+    if chars.next().is_some() {
+        line.pop();
+        line.push('…');
+    }
+    line
+}
+
+/// Harness activity captions carry an operation, never the operation's arguments.
+pub(crate) fn chrome_title(harness: &str, title: &str) -> String {
+    if harness == "bboxy450-harness" {
+        let (prefix, phase) = title.split_once(" · ").unwrap_or(("", title));
+        let verb = phase.split_whitespace().next().unwrap_or("");
+        if matches!(
+            verb,
+            "Run" | "Read" | "Search" | "Find" | "Edit" | "Write" | "Changed" | "Tool"
+        ) {
+            return chrome_line(&if prefix.is_empty() {
+                verb.to_owned()
+            } else {
+                format!("{prefix} · {verb}")
+            });
+        }
+    }
+    chrome_line(title)
+}
+
 /// Visible first-name presentation only; canonical names and routing stay intact.
 pub fn first_name(name: &str) -> &str {
     name.split_whitespace().next().unwrap_or("")
@@ -83,7 +120,7 @@ fn label(
     color: ui::Color,
 ) -> c::Element {
     let mut t = c::Text::new(
-        value,
+        chrome_line(&value.into()),
         ui::Text {
             size: Some(size),
             weight,
@@ -95,6 +132,7 @@ fn label(
     );
     t.wrap = false;
     t.ellipsis = true;
+    t.max_lines = Some(1);
     c::Element::Text(t)
 }
 fn plain(height: Option<f32>, pad: [f32; 4], radius: f32) -> ui::Style {
@@ -503,7 +541,7 @@ impl SeatRow {
                 element: named(
                     "title",
                     label(
-                        &self.title,
+                        chrome_title(&self.harness, &self.title),
                         d.font_small as f32,
                         400,
                         false,
@@ -652,13 +690,30 @@ impl SeatRow {
             right.push(named("kbd", keyboard_badge(shortcut, self.focused, false, 400)).into());
         }
         if self.may_mute {
-            let color = if self.muted { rgba(TOKENS.color.state.waiting) } else { ui::Color::Muted };
+            let color = if self.muted {
+                rgba(TOKENS.color.state.waiting)
+            } else {
+                ui::Color::Muted
+            };
             let mut style = plain(Some(16.), [2.; 4], STYLE.radius.tag as f32);
             style.overrides.width = Some(ui::Length::Px(16.));
             style.overrides.fill = Some(paint(color, if self.muted { 0.14 } else { 0. }));
-            right.push(named("mute", c::Element::Box(c::Box::new(style, vec![
-                named("mute/hicon", icon(if self.muted { "muted" } else { "unmuted" }, 12., color)).into(),
-            ]))).into());
+            right.push(
+                named(
+                    "mute",
+                    c::Element::Box(c::Box::new(
+                        style,
+                        vec![
+                            named(
+                                "mute/hicon",
+                                icon(if self.muted { "muted" } else { "unmuted" }, 12., color),
+                            )
+                            .into(),
+                        ],
+                    )),
+                )
+                .into(),
+            );
         }
         right.push(
             named(
@@ -711,7 +766,10 @@ impl SeatRow {
         } else {
             children.push(right.into());
         }
-        let base = row_box(style, d.gap as f32, children);
+        let mut base = row_box(style, d.gap as f32, children);
+        if let c::Element::Box(body) = &mut base {
+            body.clip = true;
+        }
         let base = if let Some(subtitle) = &self.subtitle {
             let mut content = named(
                 "sub",

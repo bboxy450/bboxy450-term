@@ -1,0 +1,76 @@
+{
+  "task": "tasks/2026-11-04-ui-status-and-handoff-diagnostics",
+  "seat": "01M6KGM9DJ6TH7222SFTQM2D0Y",
+  "created": "2026-11-04T15:11:01.526607+00:00",
+  "base": "cadf6700cbdb3d3575b9fc0dad7567cb5c96f0c9",
+  "source_sha256": "9328df5a2daf2f5c5e76fb127cabcca462039d25f1afc05596c49aeac667a3ca",
+  "source_files": [
+    "Makefile",
+    "crates/bboxy450-harness-wake-up/src/harness_log.rs",
+    "crates/bboxy450-harness-wake-up/tests/harness_status.rs",
+    "crates/bboxy450-term/src/cockpit.rs",
+    "crates/bboxy450-term/src/cockpit/gui_handoff.rs",
+    "crates/bboxy450-term/src/scene.rs",
+    "crates/bboxy450-term/tests/ui_status_probe.rs",
+    "crates/bbt-ui/src/modules/seat_row.rs",
+    "crates/bbt-ui/src/modules/strip.rs"
+  ],
+  "checks": [
+    {
+      "command": "make verify-ui-status",
+      "exit_code": 0,
+      "harness_tests": 14,
+      "app_tests": 5,
+      "app_tests_skipped_by_filter": 448,
+      "strict_compile": [
+        "bboxy450-harness-wake-up/lib",
+        "bboxy450-ui/lib",
+        "bboxy450-term/lib+bin"
+      ],
+      "jobs": 2,
+      "target": "target",
+      "log": "/tmp/codex-ui-status-verify-passed.log",
+      "log_sha256": "842cfbc72b8bcb2ad2dbe9956ba567b8c99816e52501ac91524ea6d42087d6c2"
+    },
+    {
+      "command": "make test-licenses",
+      "exit_code": 0,
+      "log": "/tmp/codex-ui-status-licenses.log",
+      "log_sha256": "f4ef9fd17996b0c0ad023afba4f666846cc75bdad06833b2dcb0865135b8a1d3"
+    }
+  ],
+  "production_probe": {
+    "command": [
+      "/Users/feral/mydev/bboxy450-term-ui-status/target/debug/bboxy450-term",
+      "--gui-handoff-probe",
+      "--preserve-backend-check",
+      "--repository",
+      "/Users/feral/Library/Application Support/bboxy450-term/workspace",
+      "--run-dir",
+      "/Users/feral/Library/Application Support/bboxy450-term/run"
+    ],
+    "binary_sha256": "64e44fabaefffd763b6d05d74600211b5b67feb5a6edc906981a4210d524a675",
+    "exit_code": 1,
+    "elapsed_seconds": 0.552,
+    "reason": "launch_path_fingerprint_mismatch",
+    "mismatches": {
+      "launch_path_fingerprint": {
+        "expected": "78c1d194ec384ba9",
+        "observed": "d74860b838acf725"
+      }
+    },
+    "version_mismatches": [],
+    "raw_log": "/tmp/codex-ui-status-production-probe.json"
+  },
+  "resolved_verification_failures": [
+    "sandbox Unix socket denial (rerun authorized outside sandbox)",
+    "private fixture mode corrected to 0700; geometry comparison allows <0.001 px rounding",
+    "Clippy needless borrow removed"
+  ],
+  "deliberately_not_run": [
+    "whole test/parity/formal/runtime corpus",
+    "backend restart/refresh",
+    "GUI detach/install",
+    "fetch/pull/rebase/merge/pin changes"
+  ]
+}

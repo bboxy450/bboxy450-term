@@ -2569,6 +2569,139 @@ impl Scene {
 }
 
 #[cfg(test)]
+mod ui_status_tests {
+    use super::*;
+    use ui::modules::strip::{Strip, ViewTarget};
+
+    fn labels(layout: &c::Layout) -> String {
+        let mut text = String::new();
+        if let c::LayoutKind::Text { runs, .. } = &layout.kind {
+            for run in runs {
+                text.push_str(&run.text);
+            }
+        }
+        for child in &layout.children {
+            text.push_str(&labels(child));
+        }
+        text
+    }
+    fn bounded_text(layout: &c::Layout, height: f32) {
+        if let c::LayoutKind::Text { runs, .. } = &layout.kind {
+            assert!(
+                layout.rect.h <= height + 0.01,
+                "multiline chrome geometry: {:?}",
+                layout.rect
+            );
+            for run in runs {
+                assert!(!run.text.chars().any(char::is_control));
+                assert!(!run.text.contains(['\u{2028}', '\u{2029}']));
+            }
+            if let Some(first) = runs.first() {
+                assert!(
+                    runs.iter()
+                        .all(|r| (r.baseline - first.baseline).abs() < 0.01),
+                    "chrome wrapped"
+                );
+            }
+        }
+        for child in &layout.children {
+            bounded_text(child, height);
+        }
+    }
+
+    #[test]
+    fn ui_status_native_header_and_sidebar_bound_scripts_unicode_and_long_words() {
+        let scene = Scene::new();
+        let ctx = scene.ui_context();
+        let commands = [
+            "acp:codex-acp · Run python3 - <<'PY'\nprint('leaked source 界')\nPY".to_owned(),
+            format!("acp:codex-acp · Run {}", "界👩🏽‍💻e\u{301}".repeat(1024)),
+            "x".repeat(8192),
+            "界👩🏽‍💻e\u{301}\tline\r\nsecond\u{2028}third\u{2029}".repeat(256),
+            "acp:codex-acp · Thinking".into(),
+        ];
+        for harness in ["bboxy450-harness", "zsh"] {
+            for width in [200., 320., 800.] {
+                let mut row = SeatRow::new("fixture", "Boxy fixture", harness);
+                row.role = Some("executor".into());
+                row.activity = Activity::Active;
+                row.may_mute = true;
+                for title in &commands {
+                    row.title = title.clone();
+                    let mut strip = Strip::new(row.clone());
+                    strip.view_target =
+                        (harness == "bboxy450-harness").then_some(ViewTarget::Terminal);
+                    let header = strip
+                        .element(ctx)
+                        .layout(Rect::new(0., 50., width, 0.), ctx, &scene.metrics)
+                        .unwrap();
+                    let sidebar = row
+                        .element(ctx)
+                        .layout(Rect::new(0., 90., width, 0.), ctx, &scene.metrics)
+                        .unwrap();
+                    bounded_text(&header, header.rect.h);
+                    bounded_text(&sidebar, sidebar.rect.h);
+                    let title_layout = named(&header, "pane/strip/title").unwrap();
+                    assert!(title_layout.rect.h <= header.rect.h);
+                    assert!(labels(title_layout).chars().count() <= 192);
+                    assert!(labels(&sidebar).chars().count() < 256);
+                    let mut reference = strip.clone();
+                    reference.seat.title = "short".into();
+                    let reference = reference
+                        .element(ctx)
+                        .layout(Rect::new(0., 50., width, 0.), ctx, &scene.metrics)
+                        .unwrap();
+                    assert_eq!(reference.rect, header.rect, "title changed header bounds");
+                    for key in [
+                        "pane/strip/close",
+                        "pane/strip/mute",
+                        "pane/strip/glyph",
+                        "pane/strip/view",
+                    ] {
+                        let expected = named(&reference, key).map(|l| l.rect);
+                        let actual = named(&header, key).map(|l| l.rect);
+                        assert_eq!(expected.is_some(), actual.is_some());
+                        if let (Some(a), Some(b)) = (expected, actual) {
+                            // Flex arithmetic may differ by subpixel roundoff.
+                            for (a, b) in [a.x, a.y, a.w, a.h].into_iter().zip([b.x, b.y, b.w, b.h])
+                            {
+                                assert!(
+                                    (a - b).abs() < 0.001,
+                                    "title moved {key}: {expected:?} -> {actual:?}"
+                                );
+                            }
+                        }
+                    }
+                    assert!(matches!(
+                        header.children[0].kind,
+                        c::LayoutKind::Box { clip: true, .. }
+                    ));
+                    assert!(matches!(
+                        sidebar.children[0].kind,
+                        c::LayoutKind::Box { clip: true, .. }
+                    ));
+                    if width == 800. {
+                        let visible = labels(title_layout);
+                        if harness == "bboxy450-harness"
+                            && title.starts_with("acp:codex-acp · Run ")
+                        {
+                            assert_eq!(visible, "acp:codex-acp · Run");
+                        }
+                        if title.ends_with("Thinking") {
+                            assert_eq!(visible, *title);
+                        }
+                        if harness == "zsh" && title.contains("python3") {
+                            assert!(visible.contains("python3"));
+                        }
+                    }
+                    assert_eq!(row.title, *title, "display changed raw model title");
+                }
+            }
+        }
+    }
+}
+
+#[cfg(test)]
 mod error_hud_tests {
     use super::*;
     fn texts(ops: &[c::Paint]) -> Vec<String> {
