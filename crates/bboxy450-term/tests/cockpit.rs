@@ -6,6 +6,8 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 #[path = "support/events.rs"]
 mod events;
+#[path = "cockpit/launch_environment.rs"]
+mod launch_environment;
 use events::StateEvents;
 use std::{os::unix::fs::PermissionsExt, path::Path, time::Duration};
 

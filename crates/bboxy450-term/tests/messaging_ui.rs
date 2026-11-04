@@ -352,7 +352,8 @@ fn task_views_keep_canonical_status_and_require_the_actual_zero_exit_report() {
     let view = task_item(&card, &bboxy450_term::model::Model::default());
     assert_eq!(view.state, "claimed");
     assert_eq!(view.assignee, "seat:missing");
-    assert_eq!(view.delegated_by.as_deref(), Some("operator:actual-device"));
+    // The card names who delegated it; the device identity stays on the record.
+    assert_eq!(view.delegated_by.as_deref(), Some("operator"));
     assert_eq!(task_attachment(&card).path, card.path);
     assert!(!task_row(&card).0.may_accept);
     card.status = "reported".into();
@@ -427,30 +428,30 @@ fn read_pages_capture_scope_keep_actual_next_and_ignore_old_scope_replies() {
     let swarm = SwarmId::from_u128(52);
     records.select(swarm);
     let commands = records.commands();
-    assert_eq!(commands.len(), 4);
+    assert_eq!(commands.len(), 3, "one Tasks read and two tree reads");
     let task = commands
         .iter()
         .find(|c| matches!(c, UiMsg::Task { .. }))
         .unwrap();
     assert!(
-        matches!(task,UiMsg::Task {request:TaskRequest::List {swarm_id:Some(id),limit:Some(128),..},..} if id.0==52)
+        matches!(task,UiMsg::Task {request:TaskRequest::List {unassigned:false,include_unassigned:true,swarm_id:Some(id),status:None,limit:Some(20),..},..} if id.0==52)
     );
     for c in &commands {
         if let UiMsg::Messaging { swarm_id, .. } = c {
             assert_eq!(*swarm_id, swarm);
         }
     }
-    let next = Ulid::new();
+    let next = format!("1793498400000:{}", Ulid::new());
     let mut replies = Results::default();
     replies.push(
         op_id(task),
         Reply::Task(TaskResponse::Items {
             items: vec![task_card(Ulid::new())],
-            next: Some(next),
+            next: Some(next.clone()),
         }),
     );
     assert!(records.replies(&replies));
-    assert_eq!(records.task_next, Some(next));
+    assert_eq!(records.task_next, Some(next.clone()));
     records.more_tasks();
     let more = records.commands();
     assert!(more.iter().any(
@@ -460,6 +461,379 @@ fn read_pages_capture_scope_keep_actual_next_and_ignore_old_scope_replies() {
     assert!(!records.replies(&replies));
     assert!(records.tasks().is_empty());
 }
+
+#[test]
+fn task_byte_pages_render_every_row_of_a_large_board() {
+    use bboxy450_term::messaging::Records;
+    use bbt_proto::messaging::{TaskRequest, TaskResponse};
+    let mut records = Records::default();
+    records.select(SwarmId::from_u128(52));
+    let mut results = Results::default();
+    let cursor = |page: u128| format!("{}:{}", 90 - page * 30, Ulid::from(90 - page * 30));
+    for page in 0_u128..3 {
+        let request = records
+            .commands()
+            .into_iter()
+            .find(|command| {
+                matches!(command, UiMsg::Task {
+                request: TaskRequest::List { unassigned: false, after, .. }, ..
+            } if *after == (page > 0).then(|| cursor(page)))
+            })
+            .expect("Tasks follows the exact last-emitted cursor even for a short byte page");
+        // Newest first: each page continues with strictly older tasks.
+        let cards = (page * 30..page * 30 + 30)
+            .map(|n| {
+                let mut card = task_card(Ulid::from(90 - n));
+                card.status = "open".into();
+                card
+            })
+            .collect();
+        results.push(
+            op_id(&request),
+            Reply::Task(TaskResponse::Items {
+                items: cards,
+                next: (page < 2).then(|| cursor(page + 1)),
+            }),
+        );
+        assert!(records.replies(&results));
+        assert!(records.issue.is_none());
+        records.more_tasks();
+    }
+    assert_eq!(records.tasks().len(), 90);
+    assert_eq!(
+        records.tasks().iter().map(|t| t.id).collect::<Vec<_>>(),
+        (1..=90).rev().map(Ulid::from).collect::<Vec<_>>(),
+        "the view keeps the provider's newest-first order across pages"
+    );
+    assert!(records.task_next.is_none());
+    assert_eq!(records.omitted, 0);
+    assert_eq!(
+        records
+            .entries(&Default::default(), None)
+            .iter()
+            .filter(|entry| { matches!(entry, bbt_ui::modules::stream_dock::Entry::Task { .. }) })
+            .count(),
+        90
+    );
+}
+
+// The operator's Tasks view: 20 recent tasks first, more on scroll, at most 500.
+#[test]
+fn task_view_reads_twenty_recent_pages_more_and_stops_at_five_hundred() {
+    use bboxy450_term::messaging::{Records, TASK_PAGE, TASK_VIEW};
+    use bbt_proto::messaging::{TaskRequest, TaskResponse};
+    assert_eq!((TASK_PAGE, TASK_VIEW), (20, 500));
+    let mut records = Records::default();
+    records.select(SwarmId::from_u128(54));
+    let mut results = Results::default();
+    let mut pages = 0_u128;
+    loop {
+        let commands = records.commands();
+        let Some(request) = swarm_list(&commands) else {
+            break;
+        };
+        assert!(matches!(
+            request,
+            UiMsg::Task {
+                request: TaskRequest::List {
+                    include_unassigned: true,
+                    limit: Some(20),
+                    ..
+                },
+                ..
+            }
+        ));
+        let cards = (0..20)
+            .map(|n| {
+                let mut card = task_card(Ulid::from(10_000 - pages * 20 - n));
+                card.status = "open".into();
+                card
+            })
+            .collect();
+        results.push(
+            op_id(request),
+            Reply::Task(TaskResponse::Items {
+                items: cards,
+                next: Some(format!("page-{pages}")),
+            }),
+        );
+        assert!(records.replies(&results));
+        pages += 1;
+        records.more_tasks();
+        assert!(pages <= 25, "paging must stop at the view cap");
+    }
+    assert_eq!(pages, 25);
+    assert_eq!(records.tasks().len(), 500);
+    assert!(records.task_next.is_none(), "a full view requests no more");
+    assert_eq!(records.tasks().front().unwrap().id, Ulid::from(10_000));
+}
+
+// Assigned, delegated and unassigned tasks share one recent-first list; an
+// update moves its task to the top on the next read.
+#[test]
+fn task_view_merges_assigned_delegated_unassigned_and_updates_move_to_top() {
+    use bboxy450_term::messaging::Records;
+    use bbt_proto::messaging::TaskResponse;
+    let mut records = Records::default();
+    records.select(SwarmId::from_u128(55));
+    let (assigned, delegated, unassigned) = (Ulid::from(1), Ulid::from(2), Ulid::from(3));
+    let card = |id, assignee: Option<&str>, by: Option<&str>, status: &str| {
+        let mut card = task_card(id);
+        card.assignee = assignee.map(Into::into);
+        card.delegated_by = by.map(Into::into);
+        card.status = status.into();
+        card
+    };
+    let assigned_card = card(
+        assigned,
+        Some("seat:01M6AD23JS424P4FGVQCQFEDZT"),
+        None,
+        "running",
+    );
+    let delegated_card = card(
+        delegated,
+        Some("seat:01M6AD23JS424P4FGVQCQFEDZT"),
+        Some("operator:device"),
+        "claimed",
+    );
+    let unassigned_card = card(unassigned, None, None, "open");
+    let mut results = Results::default();
+    let first = records.commands();
+    results.push(
+        op_id(swarm_list(&first).unwrap()),
+        Reply::Task(TaskResponse::Items {
+            items: vec![
+                unassigned_card.clone(),
+                delegated_card.clone(),
+                assigned_card.clone(),
+            ],
+            next: None,
+        }),
+    );
+    assert!(records.replies(&results));
+    let order = |records: &Records| records.tasks().iter().map(|t| t.id).collect::<Vec<_>>();
+    assert_eq!(order(&records), vec![unassigned, delegated, assigned]);
+    let rows: Vec<_> = records
+        .entries(&Default::default(), None)
+        .into_iter()
+        .filter_map(|entry| match entry {
+            bbt_ui::modules::stream_dock::Entry::Task { data, delegate } => Some((data, delegate)),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(rows.len(), 3, "one list, no separate unassigned section");
+    assert!(rows.iter().all(|(_, delegate)| *delegate));
+    assert_eq!(rows[0].0.assignee, "");
+    assert_eq!(rows[1].0.delegated_by.as_deref(), Some("operator"));
+    assert_eq!(rows[2].0.state, "running");
+
+    // The assigned task is updated: the next first-page read lists it first.
+    records.task_notice(Some(assigned));
+    let read = records.commands();
+    results.push(
+        op_id(swarm_list(&read).unwrap()),
+        Reply::Task(TaskResponse::Items {
+            items: vec![
+                card(
+                    assigned,
+                    Some("seat:01M6AD23JS424P4FGVQCQFEDZT"),
+                    None,
+                    "reported",
+                ),
+                unassigned_card,
+                delegated_card,
+            ],
+            next: None,
+        }),
+    );
+    assert!(records.replies(&results));
+    assert_eq!(order(&records), vec![assigned, unassigned, delegated]);
+}
+/// The swarm's task-list read in `commands`, if any.
+fn swarm_list(commands: &[UiMsg]) -> Option<&UiMsg> {
+    use bbt_proto::messaging::TaskRequest;
+    commands.iter().find(|c| {
+        matches!(
+            c,
+            UiMsg::Task {
+                request: TaskRequest::List {
+                    unassigned: false,
+                    ..
+                },
+                ..
+            }
+        )
+    })
+}
+
+/// A Tasks read over its budget (a cold knowledge provider still indexing)
+/// is retried once after a short backoff with the last good list kept; a
+/// second overrun in the same episode is reported, still keeping the list.
+#[test]
+fn deadline_exceeded_task_reads_retry_once_and_keep_the_last_good_list() {
+    use bboxy450_term::messaging::{DEADLINE_BACKOFF, Records};
+    use bbt_proto::messaging::TaskResponse;
+    let overrun = "rejected: deadline_exceeded: task_list exceeded its 8 s budget";
+    let mut records = Records::default();
+    records.select(SwarmId::from_u128(78));
+    let mut replies = Results::default();
+    let task = Ulid::new();
+    let first = records.commands();
+    replies.push(
+        op_id(swarm_list(&first).unwrap()),
+        Reply::Task(TaskResponse::Items {
+            items: vec![task_card(task)],
+            next: None,
+        }),
+    );
+    assert!(records.replies(&replies));
+
+    records.task_notice(None);
+    let read = records.commands();
+    replies.push(
+        op_id(swarm_list(&read).unwrap()),
+        Reply::Refused(overrun.into()),
+    );
+    assert!(records.replies(&replies));
+    assert_eq!(records.tasks().len(), 1, "the last good list stays");
+    assert_eq!(
+        records.issue, None,
+        "the first overrun is retried, not shown"
+    );
+    let (epoch, delay) = records.take_retry().expect("an overrun schedules a retry");
+    assert_eq!(delay, DEADLINE_BACKOFF);
+    assert!(
+        swarm_list(&records.commands()).is_none(),
+        "no read before the backoff"
+    );
+    assert!(records.retry_ready(epoch));
+    let retry = records.commands();
+    replies.push(
+        op_id(swarm_list(&retry).expect("the retried read")),
+        Reply::Refused(overrun.into()),
+    );
+    assert!(records.replies(&replies));
+    assert_eq!(records.issue.as_deref(), Some(overrun), "retried once only");
+    assert!(records.take_retry().is_none());
+    assert_eq!(
+        records.tasks().len(),
+        1,
+        "a reported overrun keeps the list"
+    );
+
+    // A good read ends the episode: the next overrun is retried again.
+    records.task_notice(None);
+    let read = records.commands();
+    let replacement = Ulid::new();
+    replies.push(
+        op_id(swarm_list(&read).unwrap()),
+        Reply::Task(TaskResponse::Items {
+            items: vec![task_card(replacement)],
+            next: None,
+        }),
+    );
+    assert!(records.replies(&replies));
+    assert_eq!(records.issue, None);
+    records.task_notice(None);
+    let read = records.commands();
+    replies.push(
+        op_id(swarm_list(&read).unwrap()),
+        Reply::Refused(overrun.into()),
+    );
+    assert!(records.replies(&replies));
+    assert_eq!(records.issue, None);
+    assert!(records.take_retry().is_some());
+}
+
+/// A knowledge provider selection or revision change for the workspace's
+/// root re-reads the Tasks section and drops the issue a refused read left;
+/// an unchanged status and the first observation do not.
+#[test]
+fn knowledge_provider_changes_reread_the_tasks_section() {
+    use bboxy450_term::messaging::Records;
+    use bbt_proto::gui::{KnowledgeProvider, KnowledgeRoot, KnowledgeStatus};
+    use bbt_proto::messaging::TaskResponse;
+    let status = |provider: &str, revision: u64| KnowledgeStatus {
+        roots: vec![KnowledgeRoot {
+            id: "root-a".into(),
+            path: "/fixture".into(),
+            provider: KnowledgeProvider {
+                id: provider.into(),
+                name: provider.into(),
+                sha256: None,
+            },
+            revision,
+            records: None,
+            process: None,
+            refusal: None,
+        }],
+        offered: vec![],
+    };
+    let mut records = Records::default();
+    records.select(SwarmId::from_u128(79));
+    let mut replies = Results::default();
+    let first = records.commands();
+    assert!(
+        !records.knowledge(Some(&status("native", 1))),
+        "first observation"
+    );
+    // The startup read was refused by a selection that raced it.
+    let changed = "rejected: provider_changed: activation changed during selection";
+    replies.push(
+        op_id(swarm_list(&first).unwrap()),
+        Reply::Refused(changed.into()),
+    );
+    assert!(records.replies(&replies));
+    while let Some((epoch, _)) = records.take_retry() {
+        records.retry_ready(epoch);
+    }
+    let retried = records.commands();
+    let retried = swarm_list(&retried).expect("provider_changed is transient");
+    replies.push(op_id(retried), Reply::Refused("rejected: refused".into()));
+    assert!(records.replies(&replies));
+    assert!(records.issue.is_some());
+    assert!(!records.knowledge(Some(&status("native", 1))), "unchanged");
+    assert!(swarm_list(&records.commands()).is_none());
+    assert!(
+        records.knowledge(Some(&status("gitkb", 2))),
+        "selection changed"
+    );
+    assert_eq!(records.issue, None, "the stale refusal is dropped");
+    let reread = records.commands();
+    let task = Ulid::new();
+    replies.push(
+        op_id(swarm_list(&reread).expect("the Tasks section is read again")),
+        Reply::Task(TaskResponse::Items {
+            items: vec![task_card(task)],
+            next: None,
+        }),
+    );
+    assert!(records.replies(&replies));
+    assert_eq!(
+        records.tasks().iter().map(|t| t.id).collect::<Vec<_>>(),
+        vec![task]
+    );
+    assert!(
+        records.knowledge(Some(&status("gitkb", 3))),
+        "revision changed"
+    );
+    assert!(swarm_list(&records.commands()).is_some());
+
+    // A status first seen while a refused read is on screen re-reads too.
+    let mut records = Records::default();
+    records.select(SwarmId::from_u128(80));
+    let first = records.commands();
+    replies.push(
+        op_id(swarm_list(&first).unwrap()),
+        Reply::Refused("rejected: refused".into()),
+    );
+    assert!(records.replies(&replies));
+    assert!(records.issue.is_some());
+    assert!(records.knowledge(Some(&status("gitkb", 4))));
+    assert_eq!(records.issue, None);
+    assert!(swarm_list(&records.commands()).is_some());
+}
+
 /// A busy provider connection is transient: the Tasks panel retries within the
 /// workspace_pending bound and keeps its last good list instead of showing 0.
 #[test]
@@ -661,8 +1035,72 @@ fn projected_message(scope: SwarmId, sequence: u64) -> bbt_proto::messaging::Mes
         priority_class: bbt_proto::registry::Class::Worker,
         priority: 8,
         text: "shared projection".into(),
-        ts: 1000,
+        ts_ms: 1_000_000,
         receipts: ReceiptSummary::default(),
+    }
+}
+
+#[test]
+fn chat_timestamps_an_hour_apart_keep_their_sent_times_in_views_and_history() {
+    use bboxy450_term::{local_time, messaging};
+    use bbt_ui::modules::stream_dock::Entry;
+
+    local_time::initialize();
+    let scope = SwarmId::from_u128(1);
+    // Retained W2.4 JSON uses seconds, including for messages from earlier days.
+    let sent: jiff::Timestamp = "2026-10-28T18:06:00Z".parse().unwrap();
+    let seconds = sent.as_second() as u64;
+    let rows: Vec<_> = [seconds, seconds + 3600]
+        .into_iter()
+        .enumerate()
+        .map(|(index, timestamp)| {
+            let mut json =
+                serde_json::to_value(projected_message(scope, index as u64 + 1)).unwrap();
+            json["ts"] = timestamp.into();
+            serde_json::from_value::<bbt_proto::messaging::MessageRow>(json).unwrap()
+        })
+        .collect();
+    let model = Default::default();
+    let times: Vec<_> = rows
+        .iter()
+        .map(|row| messaging::message_view(row, &model).time)
+        .collect();
+    assert_ne!(
+        times[0], times[1],
+        "an hour cannot collapse to the same minute"
+    );
+    let expected: Vec<_> = [seconds, seconds + 3600]
+        .map(|timestamp| local_time::hm(timestamp * 1000))
+        .into();
+    assert_eq!(times, expected);
+
+    let mut history = messaging::History::default();
+    history.select(scope);
+    for row in &rows {
+        history.row(row, Some("operator/inbox"), u64::MAX);
+    }
+    for entries in [
+        messaging::message_entries(
+            &rows,
+            &Default::default(),
+            &Default::default(),
+            scope,
+            &model,
+            None,
+        ),
+        history.entries(&model, &Default::default(), &[]),
+    ] {
+        let times: Vec<_> = entries
+            .iter()
+            .filter_map(|entry| match entry {
+                Entry::Message { data, .. } => Some(data.time.clone()),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(
+            times, expected,
+            "projection time must never replace sent time"
+        );
     }
 }
 

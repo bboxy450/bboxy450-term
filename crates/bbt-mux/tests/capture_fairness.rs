@@ -349,13 +349,16 @@ time.sleep(60)
             .iter()
             .any(|(phase, total)| *phase == Phase::ReplayPage && total.calls > 0 && total.work > 0)
     );
+    // #47 superseded the single global page rule with independent per-seat
+    // reads. The owner admits at most 128 ingestion attempts per turn; serial
+    // Screen equality and the held-seat progress bound above prove fairness.
     assert!(
         diagnostics
             .spans
             .iter()
             .filter(|span| span.phase == Phase::LogicTurn)
-            .all(|span| span.work <= 1),
-        "instrumentation observed more than one page per turn"
+            .all(|span| span.work <= 128),
+        "instrumentation exceeded the bounded ingestion quantum"
     );
     let supervisor_diagnostics = supervisor.capture_diagnostics();
     assert!(

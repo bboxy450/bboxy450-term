@@ -49,3 +49,37 @@ Retained upstream material keeps its original terms; earlier grants are not
 withdrawn. [ATTRIBUTION.md](ATTRIBUTION.md) identifies the scope, source and reuse
 examples; [NOTICE](NOTICE) preserves factual upstream notices.
 Slop respectfully. Keep the credit attached.
+
+## Streaming and prepared code
+
+`StreamingMarkdown::append` retains completed prefix blocks, reparses the open
+tail and preserves absolute UTF-8 source offsets. An incomplete first line may
+still join its predecessor (notably a table row), so that predecessor remains in
+the tail until the line settles. EOF alone never freezes a block. Reference and
+footnote definitions introduce document-wide dependencies, including definitions
+inside blockquotes/list items and labels split across lines. Those documents
+retain the full parser's reference context. Escaped brackets remain label text;
+escaped backslashes preserve the next closing bracket. A line-leading open label
+temporarily uses full parsing until its closing bracket disambiguates it; an ordinary inline
+link then resumes prefix reuse. Task lists, indexing and JSON brackets keep prefix
+reuse. The scanner examines the unfinished line and appended bytes, or resumes
+from an ambiguous label's original line.
+YAML remains unsettled until its delimiter
+closes. `reparsed_range()` exposes the work actually performed.
+
+`highlight::Highlighter` is the owned-span hook. `RustHighlighter` uses syntect
+5.3 with only parsing, bundled syntaxes/themes and `regex-fancy`. The SyntaxSet
+and ThemeSet are shared through a process `OnceLock`, initialized on a preparation
+worker. `Highlights::prepare` validates exact text coverage and
+binds spans to the block offset, language and source; unsupported languages keep
+plain readable text. `highlighted_body_element` only composes prepared runs.
+
+`highlight::Work::prepare_off_thread()` schedules parsing and highlighting on
+`bbt_rt` blocking workers. `Preparation::request` captures a generation and
+revision; `install` accepts only the current request, retaining the previous
+prepared body while work is pending. Call `retire` on view replacement/drop,
+even for A → B → A. Hosts own task cancellation and wake delivery, as with
+`documents::Work::prepare` and AsyncRenderPreparation. A streaming host can move
+its retained `StreamingMarkdown` and highlighter to that same worker instead of
+using `Work`'s one-shot full-document parse. No toolkit code knows a transport or
+application protocol.

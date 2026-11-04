@@ -37,6 +37,9 @@ pub struct ProviderObservation {
     pub error: Option<String>,
 }
 
+/// Plugin processes one root may run at once; a further read waits for one.
+const CLIENTS_PER_ROOT: usize = 4;
+
 pub struct DataSourceProvider {
     registry: Registry,
     activation: Activation,
@@ -45,7 +48,9 @@ pub struct DataSourceProvider {
     directory: PathBuf,
     handle: Handle,
     config: ProviderConfig,
-    client: Mutex<Option<Client>>,
+    // Concurrent reads: each slot is its own plugin process on this root,
+    // spawned on first use. GitKB orders concurrent CLI runs itself.
+    clients: Vec<Mutex<Option<Client>>>,
     observed: ObservationLock<ProviderObservation>,
     closed: AtomicBool,
 }
@@ -139,7 +144,7 @@ impl Registry {
             directory,
             handle,
             config,
-            client: Mutex::new(None),
+            clients: (0..CLIENTS_PER_ROOT).map(|_| Mutex::new(None)).collect(),
             observed: ObservationLock::new(ProviderObservation::default()),
             closed: AtomicBool::new(false),
         })
@@ -324,14 +329,7 @@ impl DataSourceProvider {
         )?;
         validate(&command.args, &args, "argument_schema_mismatch")?;
         trace.mark("validate");
-        let mut slot = self.client.try_lock().map_err(|_| {
-            let mut reason = error(
-                "provider_busy",
-                "one read is already using this root connection",
-            );
-            reason.retry_after_ms = Some(100);
-            reason
-        })?;
+        let mut slot = self.free_client(deadline)?;
         let copy = match self.current() {
             Ok(copy) => copy,
             Err(reason) => {
@@ -343,6 +341,8 @@ impl DataSourceProvider {
             }
         };
         trace.mark("authority");
+        // Read on this thread: the calling seat's scope, if any.
+        let attribution = crate::plugins::attribution::current();
         let result = self.handle.block_on(async {
             if slot.is_none() {
                 let initialize_limit = deadline
@@ -395,8 +395,9 @@ impl DataSourceProvider {
                 ));
             }
             let name = contract.wire_name(method).map_err(refused)?;
+            let params = crate::plugins::attribution::tools_call(&name, args, &attribution);
             let outer = client
-                .request("tools/call", json!({"name":name,"arguments":args}), budget)
+                .request("tools/call", params, budget)
                 .await
                 .map_err(refused)?;
             trace.mark("plugin");
@@ -448,22 +449,50 @@ impl DataSourceProvider {
         result
     }
 
+    /// A free client slot: the first idle one, else wait for one until the
+    /// call's deadline (the config timeout without one). Busy only past that.
+    fn free_client(
+        &self,
+        deadline: Option<Instant>,
+    ) -> d::Result<tokio::sync::MutexGuard<'_, Option<Client>>> {
+        if let Some(slot) = self.clients.iter().find_map(|slot| slot.try_lock().ok()) {
+            return Ok(slot);
+        }
+        let until = deadline.unwrap_or_else(|| Instant::now() + self.config.timeout);
+        while Instant::now() < until {
+            std::thread::sleep(Duration::from_millis(5));
+            if let Some(slot) = self.clients.iter().find_map(|slot| slot.try_lock().ok()) {
+                return Ok(slot);
+            }
+        }
+        let mut reason = error(
+            "provider_busy",
+            "every connection to this root stayed busy until the deadline",
+        );
+        reason.retry_after_ms = Some(100);
+        Err(reason)
+    }
+
     /// The owner may close in background when a root is reset; callers never retry effects.
     pub async fn close(&self) {
         self.closed.store(true, Ordering::Release);
-        let client = self.client.lock().await.take();
-        if let Some(client) = client {
-            client.shutdown().await;
+        for slot in &self.clients {
+            let client = slot.lock().await.take();
+            if let Some(client) = client {
+                client.shutdown().await;
+            }
         }
     }
 }
 
 impl Drop for DataSourceProvider {
     fn drop(&mut self) {
-        if let Some(client) = self.client.get_mut().take() {
-            drop(self.handle.spawn(async move {
-                client.shutdown().await;
-            }));
+        for slot in &mut self.clients {
+            if let Some(client) = slot.get_mut().take() {
+                drop(self.handle.spawn(async move {
+                    client.shutdown().await;
+                }));
+            }
         }
     }
 }
@@ -637,6 +666,10 @@ impl DataSource for DataSourceProvider {
             serde_json::to_value(&request).map_err(|e| error("invalid_request", e.to_string()))?;
         args["signed_record"] = json!(signed_record);
         let value: Value = self.request("write", args).map_err(|reason| {
+            // A status the provider cannot store is refused before any write.
+            if reason.code == "unmappable_status" {
+                return reason;
+            }
             error(
                 "write_not_confirmed",
                 format!(
@@ -668,9 +701,8 @@ impl DataSource for DataSourceProvider {
                     reference: result.record.reference.clone(),
                 },
             )?;
-            if fetched["signed_record"].as_str() != Some(&signed_record)
-                && fetched["frontmatter"]["bboxy_signed_record"].as_str() != Some(&signed_record)
-            {
+            // Providers keep the proof outside the document and return it on fetch.
+            if fetched["signed_record"].as_str() != Some(&signed_record) {
                 return Err(error(
                     "signed_record_mismatch",
                     "stored proof differs from the admitted write",

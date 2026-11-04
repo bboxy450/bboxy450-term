@@ -10,6 +10,7 @@ pub mod closed_strip;
 pub mod composer;
 pub mod e2e_checklist;
 pub mod graph_tab;
+pub mod harness;
 pub mod launcher;
 pub mod launcher_banner;
 pub mod link;
@@ -23,6 +24,12 @@ pub mod strip;
 pub mod swarm_card;
 pub mod tab_row;
 pub mod title_bar;
+pub mod startup;
 
 pub mod document_modal;
 pub mod settings;
+
+pub mod transcript;
+pub mod diff;
+pub mod tool_call;
+pub mod approval;

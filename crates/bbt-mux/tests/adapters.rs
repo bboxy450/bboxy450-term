@@ -251,6 +251,7 @@ exec /bin/sleep 30
                 record,
                 harness,
                 bbt_mux::adapters::launch::LaunchOptions {
+                    transport_argv: None,
                     via: None,
                     env,
                     cwd: root.clone(),
@@ -614,6 +615,8 @@ fn harness_defaults_follow_the_role_contract_and_validate_authority() {
             ("architect", Class::Oracle),
             ("creativity", Class::Worker),
             ("executor", Class::Worker),
+            ("qa", Class::Worker),
+            ("researcher", Class::Worker),
             ("shell", Class::Worker),
         ] {
             assert_eq!(
@@ -705,6 +708,7 @@ fn logic_refuses_a_forged_codex_role_class_without_admitting_a_seat() {
             record.clone(),
             HarnessRecord::builtin("codex").unwrap(),
             bbt_mux::adapters::launch::LaunchOptions {
+                transport_argv: None,
                 via: None,
                 env: vec![],
                 cwd: directory.path().into(),
@@ -1010,6 +1014,7 @@ fn adapters_logic_launch_retains_overlay_until_exit_and_authenticates_shim_fallb
             record,
             HarnessRecord::builtin("zsh").unwrap(),
             bbt_mux::adapters::launch::LaunchOptions {
+                transport_argv: None,
                 via: None,
                 env: vec![],
                 cwd: temp.path().into(),
@@ -1180,6 +1185,9 @@ fn adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it() 
             .as_deref(),
         Some("native-fixture-session")
     );
+    let reported_before_restart = runtime
+        .block_on(logic.client.adapter_status(id, 1))
+        .unwrap();
     logic.shutdown().unwrap();
     let logic = bbt_mux::logic::Logic::start(
         supervisor.connect().unwrap(),
@@ -1192,12 +1200,11 @@ fn adapters_live_logic_answers_bel_probe_on_the_same_pty_without_replaying_it() 
         runtime.handle(),
     )
     .unwrap();
+    // The same generation retains its Reported hold from metadata, not replay:
+    // no fresh timestamp, synthetic report or composer proof is created.
     assert_eq!(
-        runtime
-            .block_on(logic.client.adapter_status(id, 1))
-            .unwrap()
-            .source,
-        "unobserved"
+        runtime.block_on(logic.client.adapter_status(id, 1)).unwrap(),
+        reported_before_restart
     );
     assert_eq!(
         runtime

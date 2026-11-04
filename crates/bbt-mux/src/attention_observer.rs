@@ -231,6 +231,7 @@ mod tests {
             bbt_proto::registry::SeatRecord::new(Ulid(1), Ulid(2), "question", "claude");
         record.generation = generation;
         GuiSeat {
+            rich_socket: None,
             record,
             notification_episode: None,
             attention: None,
@@ -245,6 +246,7 @@ mod tests {
                 grade: bbt_proto::Grade::Shim,
                 title: String::new(),
                 detail: Some("Which folder?".into()),
+                stale: false,
                 turn_open: true,
                 observed_ms: 1,
                 subagents: Vec::new(),

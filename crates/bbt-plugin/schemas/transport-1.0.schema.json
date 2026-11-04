@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:bboxy450:transport:1.0",
+  "title": "bboxy450 transport 1.0",
+  "$defs": {
+    "WrapRequest": {
+      "type": "object",
+      "required": [
+        "fields",
+        "command"
+      ],
+      "properties": {
+        "fields": {
+          "type": "object",
+          "maxProperties": 32,
+          "additionalProperties": {
+            "type": "string",
+            "maxLength": 4096,
+            "pattern": "^[^\\u0000]*$"
+          }
+        },
+        "command": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "maxLength": 4096,
+            "pattern": "^[^\\u0000]*$"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "WrapResult": {
+      "type": "object",
+      "required": [
+        "argv"
+      ],
+      "properties": {
+        "argv": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": {
+            "type": "string",
+            "maxLength": 4096,
+            "pattern": "^[^\\u0000]*$"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "Field": {
+      "type": "object",
+      "required": [
+        "name",
+        "label"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-z0-9_]+$"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "kind": {
+          "const": "text",
+          "default": "text"
+        },
+        "default": {
+          "type": "string",
+          "maxLength": 4096,
+          "pattern": "^[^\\u0000]*$"
+        }
+      },
+      "additionalProperties": true
+    }
+  },
+  "x-methods": {
+    "wrap": {
+      "request": "#/$defs/WrapRequest",
+      "result": "#/$defs/WrapResult"
+    }
+  },
+  "$comment": "bboxy450-term \u2014 https://github.com/bboxy450/bboxy450-term; LicenseRef-Respectful-Slop-1.0-Draft. Credit copied/adapted/translated reuse. Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md"
+}

@@ -195,11 +195,13 @@ mod tests {
                         grade,
                         title: "zsh".into(),
                         detail: None,
+                        stale: false,
                         turn_open: false,
                         observed_ms: 3,
                         subagents: vec![],
                     };
                     let seat = GuiSeat {
+                        rich_socket: None,
                         attention: None,
                         notification_episode: None,
                         record: SeatRecord::new(Ulid::from(1), Ulid::from(2), "zsh", "zsh"),
@@ -355,6 +357,7 @@ mod spawn_pick_tests {
             cwd: "/fixture".into(),
             swarm: None,
             place: SpawnPlace::Right,
+            resume: None,
         };
         let request = UiRequest::Spawn(Box::new(pick.clone()));
         request.validate().unwrap();

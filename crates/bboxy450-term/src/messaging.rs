@@ -34,7 +34,7 @@ mod empty_swarm_reads {
         let mut records = Records::default();
         records.select(SwarmId::from_u128(1));
         let tasks = records.commands_with_messaging(false);
-        assert_eq!(tasks.len(), 2);
+        assert_eq!(tasks.len(), 1, "one recent-first Tasks read");
         assert!(
             tasks
                 .iter()
@@ -235,8 +235,8 @@ pub fn message_view(
             .into(),
         ),
         text: row.text.clone(),
-        ts: Some(row.ts),
-        time: crate::local_time::hm(row.ts),
+        ts: Some(row.ts_ms),
+        time: crate::local_time::hm(row.ts_ms),
         role,
         // v0.1 has one operator per account; other rows' receipt aggregates are
         // not displayed as the operator's own delivery evidence.
@@ -281,7 +281,13 @@ pub fn task_item(
             .assignee
             .as_deref()
             .map_or_else(String::new, |id| assignee_name(id, model)),
-        delegated_by: card.delegated_by.clone(),
+        delegated_by: card.delegated_by.as_deref().map(|by| {
+            if by.starts_with("operator") {
+                "operator".into()
+            } else {
+                assignee_name(by, model)
+            }
+        }),
         kind: "task".into(),
         ..Default::default()
     }
@@ -1159,6 +1165,15 @@ fn send(
     }
 }
 
+/// Delay before the one retry of a task read refused `deadline_exceeded`.
+pub const DEADLINE_BACKOFF: std::time::Duration = std::time::Duration::from_millis(500);
+
+/// Tasks one view page reads: the newest changes first, then older on scroll.
+pub const TASK_PAGE: usize = 20;
+/// Tasks the view retains; it stops paging once it holds this many.
+pub const TASK_VIEW: usize = 500;
+const TASK_VIEW_BYTES: usize = 1024 * 1024;
+
 /// Read-through task/tree snapshots for the selected swarm. These are bounded
 /// display caches; the backend journal, bus positions and read marks stay authority.
 #[derive(Default)]
@@ -1173,14 +1188,19 @@ pub struct Records {
     retries: u8,
     /// `issue` came from a refused read, so the next good read clears it.
     read_issue: bool,
+    /// Reads already retried once after `deadline_exceeded` in this episode.
+    deadline_retried: Vec<Read>,
+    /// Knowledge roots last seen as (root, provider, revision, refused); a
+    /// change re-reads.
+    knowledge_seen: Option<Vec<(String, String, u64, bool)>>,
     pending: BTreeMap<Ulid, RecordRequest>,
     waiting: VecDeque<Read>,
+    /// One list, most recently changed first: the swarm's assigned and
+    /// delegated tasks with the account's open unassigned ones.
     tasks: VecDeque<wire::TaskCard>,
-    unassigned: VecDeque<wire::TaskCard>,
     docs: VecDeque<wire::TaskDoc>,
     nodes: Vec<wire::Node>,
-    pub task_next: Option<Ulid>,
-    pub unassigned_next: Option<Ulid>,
+    pub task_next: Option<String>,
     pub tree_next: BTreeMap<String, Option<String>>,
     pub issue: Option<String>,
     pub omitted: usize,
@@ -1190,8 +1210,7 @@ pub struct Records {
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Read {
-    Tasks(Option<Ulid>),
-    Unassigned(Option<Ulid>),
+    Tasks(Option<String>),
     Detail(Ulid),
     Tree(String, Option<String>),
 }
@@ -1218,15 +1237,14 @@ impl Records {
         self.retry_delay = None;
         self.retry_started = None;
         self.retries = 0;
+        self.deadline_retried.clear();
         self.pending.retain(|_, request| {
             request.read.is_none() || matches!(request.read, Some(Read::Tree(..)))
         });
         self.waiting.retain(|read| matches!(read, Read::Tree(..)));
         self.tasks.clear();
-        self.unassigned.clear();
         self.docs.clear();
         self.task_next = None;
-        self.unassigned_next = None;
         self.selected = None;
         self.review_issue = None;
         self.review_completed = None;
@@ -1256,14 +1274,8 @@ impl Records {
     pub fn tasks(&self) -> &VecDeque<wire::TaskCard> {
         &self.tasks
     }
-    pub fn unassigned(&self) -> &VecDeque<wire::TaskCard> {
-        &self.unassigned
-    }
     pub fn task(&self, id: Ulid) -> Option<&wire::TaskCard> {
-        self.tasks
-            .iter()
-            .chain(&self.unassigned)
-            .find(|t| t.id == id)
+        self.tasks.iter().find(|t| t.id == id)
     }
     pub fn doc(&self, id: Ulid) -> Option<&wire::TaskDoc> {
         self.docs.iter().find(|t| t.id == id)
@@ -1288,16 +1300,6 @@ impl Records {
                 delegate: true,
             })
             .collect();
-        if !self.unassigned.is_empty() {
-            out.push(Entry::Note {
-                text: "Unassigned tasks · account".into(),
-                padding: [4.; 4],
-            });
-            out.extend(self.unassigned.iter().map(|card| Entry::Task {
-                data: task_item(card, model),
-                delegate: true,
-            }));
-        }
         if let Some(card) = self.selected.and_then(|id| self.task(id))
             && let Some(doc) = self.doc(card.id)
         {
@@ -1371,14 +1373,50 @@ impl Records {
         // ids until the operator repeats that same action explicitly.
         self.pending.retain(|_, p| p.read.is_none() || !p.unknown);
         self.enqueue(Read::Tasks(None));
-        self.enqueue(Read::Unassigned(None));
         for path in ["channels", "groups"] {
             self.enqueue(Read::Tree(path.into(), None));
         }
     }
+    /// Observe the workspace's knowledge roots. When a root's provider
+    /// selection or revision changes (or its refusal clears or appears) after
+    /// the first observation, the Tasks section is read again and the issue a
+    /// refused read left (such as `provider_changed`) is dropped. Returns
+    /// whether a re-read was queued.
+    pub fn knowledge(&mut self, status: Option<&bbt_proto::gui::KnowledgeStatus>) -> bool {
+        let Some(status) = status else {
+            return false;
+        };
+        let seen: Vec<_> = status
+            .roots
+            .iter()
+            .map(|root| {
+                (
+                    root.id.clone(),
+                    root.provider.id.clone(),
+                    root.revision,
+                    root.refusal.is_some(),
+                )
+            })
+            .collect();
+        if self.knowledge_seen.as_ref() == Some(&seen) {
+            return false;
+        }
+        // The first status after a swarm selection only records it, unless a
+        // refused read is on screen: then the provider may have healed.
+        if self.knowledge_seen.replace(seen).is_none() && !self.read_issue {
+            return false;
+        }
+        self.retries = 0;
+        self.retry_started = None;
+        self.deadline_retried.clear();
+        if std::mem::take(&mut self.read_issue) {
+            self.issue = None;
+        }
+        self.enqueue(Read::Tasks(None));
+        true
+    }
     pub fn task_notice(&mut self, id: Option<Ulid>) {
         self.enqueue(Read::Tasks(None));
-        self.enqueue(Read::Unassigned(None));
         if let Some(id) = id {
             self.docs.retain(|doc| doc.id != id);
             if self.task(id).is_some() {
@@ -1387,11 +1425,8 @@ impl Records {
         }
     }
     pub fn more_tasks(&mut self) {
-        if let Some(next) = self.task_next {
+        if let Some(next) = self.task_next.clone() {
             self.enqueue(Read::Tasks(Some(next)));
-        }
-        if let Some(next) = self.unassigned_next {
-            self.enqueue(Read::Unassigned(Some(next)));
         }
     }
     pub fn more_tree(&mut self, path: &str) {
@@ -1431,16 +1466,17 @@ impl Records {
             }
             let id = Ulid::new();
             let command = match &read {
-                Read::Tasks(after) | Read::Unassigned(after) => UiMsg::Task {
+                Read::Tasks(after) => UiMsg::Task {
                     id,
                     scope: self.workspace,
                     request: TaskRequest::List {
-                        unassigned: matches!(&read, Read::Unassigned(_)),
-                        swarm_id: matches!(&read, Read::Tasks(_)).then(|| Ulid::from(scope.0.0)),
-                        status: matches!(&read, Read::Unassigned(_)).then(|| "open".into()),
+                        unassigned: false,
+                        include_unassigned: true,
+                        swarm_id: Some(Ulid::from(scope.0.0)),
+                        status: None,
                         assignee: None,
-                        after: *after,
-                        limit: Some(128),
+                        after: after.clone(),
+                        limit: Some(TASK_PAGE),
                     },
                 },
                 Read::Detail(task) => {
@@ -1583,11 +1619,37 @@ impl Records {
             // A mounting workspace and a busy provider connection are transient.
             // Neither refusal carries retry_after_ms on this string reply; both
             // hosts declare 100 ms. The last good list stays on screen.
+            // A read that raced a provider activation change is refused
+            // provider_changed; the same read under the new provider is valid.
+            let transient = |reason: &str| {
+                let reason = reason.strip_prefix("rejected: ").unwrap_or(reason);
+                reason.starts_with("workspace_pending")
+                    || reason.starts_with("provider_busy")
+                    || reason.starts_with("provider_changed")
+            };
+            // A task read over its budget (a cold provider still indexing) is
+            // retried once per episode after a short backoff; the last good
+            // list stays on screen. A second overrun is reported.
+            if let (Some(read), Reply::Refused(reason)) = (&p.read, &row.reply)
+                && matches!(read, Read::Tasks(_))
+                && reason
+                    .strip_prefix("rejected: ")
+                    .unwrap_or(reason)
+                    .starts_with("deadline_exceeded")
+                && !self.deadline_retried.contains(read)
+            {
+                self.deadline_retried.push(read.clone());
+                self.enqueue(read.clone());
+                if !self.retry_blocked {
+                    self.retry_blocked = true;
+                    self.retry_delay = Some(DEADLINE_BACKOFF);
+                }
+                changed = true;
+                continue;
+            }
             if let (Some(read), Reply::Refused(reason)) = (&p.read, &row.reply)
                 && !matches!(read, Read::Tree(..))
-                && (reason.starts_with("workspace_pending")
-                    || reason.starts_with("provider_busy")
-                    || reason.starts_with("rejected: provider_busy"))
+                && transient(reason)
             {
                 let now = std::time::Instant::now();
                 let began = self.retry_started.get_or_insert(now);
@@ -1604,73 +1666,57 @@ impl Records {
                     continue;
                 }
             }
-            if p.read.is_some() && !matches!(row.reply, Reply::Refused(_)) {
+            if let Some(read) = &p.read
+                && !matches!(row.reply, Reply::Refused(_))
+            {
                 // The bound covers one transient episode, not the session.
                 self.retries = 0;
                 self.retry_started = None;
+                self.deadline_retried.retain(|retried| retried != read);
                 if std::mem::take(&mut self.read_issue) {
                     self.issue = None;
                 }
             }
             match (&p.read, &row.reply) {
-                (
-                    Some(Read::Tasks(after) | Read::Unassigned(after)),
-                    Reply::Task(TaskResponse::Items { items, next }),
-                ) => {
-                    let unassigned = matches!(&p.read, Some(Read::Unassigned(_)));
-                    if unassigned
-                        && items
-                            .iter()
-                            .any(|card| card.status != "open" || card.assignee.is_some())
-                    {
-                        self.issue = Some("unassigned_inventory_mismatch".into());
-                        changed = true;
-                        continue;
-                    }
+                (Some(Read::Tasks(after)), Reply::Task(TaskResponse::Items { items, next })) => {
                     for card in items {
                         if self.task(card.id) != Some(card) {
                             self.docs.retain(|doc| doc.id != card.id);
                         }
                     }
-                    let target = if unassigned {
-                        &mut self.unassigned
-                    } else {
-                        &mut self.tasks
-                    };
                     if after.is_none() {
-                        target.clear();
+                        self.tasks.clear();
                         self.omitted = 0;
                     }
-                    if unassigned {
-                        self.unassigned_next = *next;
-                    } else {
-                        self.task_next = *next;
-                    }
+                    self.task_next = next.clone();
+                    // Pages descend from the most recent change: append each.
                     for card in items {
-                        if let Some(i) = target.iter().position(|t| t.id == card.id) {
-                            target.remove(i);
+                        if let Some(i) = self.tasks.iter().position(|t| t.id == card.id) {
+                            self.tasks.remove(i);
                         }
-                        target.push_back(card.clone());
+                        self.tasks.push_back(card.clone());
                     }
-                    while target.len() > 128
-                        || serde_json::to_vec(&target).map_or(true, |b| b.len() > 256 * 1024)
+                    // The view keeps the newest TASK_VIEW and then stops paging.
+                    while self.tasks.len() > TASK_VIEW
+                        || serde_json::to_vec(&self.tasks)
+                            .map_or(true, |b| b.len() > TASK_VIEW_BYTES)
                     {
-                        if target.pop_front().is_none() {
+                        if self.tasks.pop_back().is_none() {
                             break;
                         }
                         self.omitted += 1;
+                        self.task_next = None;
+                    }
+                    if self.tasks.len() >= TASK_VIEW {
+                        self.task_next = None;
                     }
                     for card in items {
                         if card.status == "reported" && self.docs.iter().all(|d| d.id != card.id) {
                             self.enqueue(Read::Detail(card.id));
                         }
                     }
-                    self.docs.retain(|d| {
-                        self.tasks
-                            .iter()
-                            .chain(&self.unassigned)
-                            .any(|t| t.id == d.id)
-                    });
+                    self.docs
+                        .retain(|d| self.tasks.iter().any(|t| t.id == d.id));
                 }
                 (Some(Read::Detail(id)), Reply::Task(TaskResponse::Item { item }))
                     if item.id == *id =>

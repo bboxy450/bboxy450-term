@@ -25,6 +25,11 @@ mod native_reopen_tests;
 #[path = "logic/ring_batch_tests.rs"]
 mod ring_batch_tests;
 
+#[cfg(test)]
+mod hol_tests;
+#[cfg(test)]
+mod ownership_tests;
+
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::{
@@ -209,6 +214,7 @@ enum Command {
         Ulid,
         u64,
         crate::mcp::Call,
+        crate::plugins::attribution::Attribution,
         oneshot::Sender<Result<serde_json::Value>>,
     ),
     TaskImportAuthority(
@@ -221,6 +227,7 @@ enum Command {
         crate::mcp::Door,
         oneshot::Sender<Result<bbt_proto::SeatId>>,
     ),
+    PluginTransportReady(Box<plugin_transport::Completion>),
     GuiMessaging(
         Ulid,
         Ulid,
@@ -374,6 +381,7 @@ enum Command {
     GuiHello(oneshot::Sender<Result<bbt_proto::gui::GuiHello>>),
     GuiSeats(oneshot::Sender<Result<Vec<crate::seat_socket::GuiSeat>>>),
     GuiSeat(Ulid, oneshot::Sender<Result<crate::seat_socket::GuiSeat>>),
+    RichState(Ulid, u64),
     GuiIdentity(oneshot::Sender<Result<bbt_proto::GuiIdentity>>),
     OperatorIdentity(
         Ulid,
@@ -471,6 +479,8 @@ enum Command {
     IdentityStatus(oneshot::Sender<Result<crate::identity::IdentityStatus>>),
     #[cfg(test)]
     RefreshIdentity(oneshot::Sender<Result<()>>),
+    #[cfg(test)]
+    ProjectionTurn(PathBuf, oneshot::Sender<Result<()>>),
 }
 impl Command {
     fn local_while_checkpoint_pending(&self) -> bool {
@@ -1067,14 +1077,76 @@ impl LogicClient {
         generation: u64,
         call: crate::mcp::Call,
     ) -> Result<serde_json::Value> {
-        let (tx, rx) = oneshot::channel();
-        self.tx
-            .send(Command::ControlCall(seat, generation, call, tx))
+        self.control_call_attributed(seat, generation, call, Default::default())
             .await
-            .map_err(|_| self.unavailable("logic stopped"))?;
-        rx.await.map_err(|_| {
-            self.unavailable("control outcome unavailable; query the original operation ID")
-        })?
+    }
+    /// [`LogicClient::control_call`] with the seat harness's ATC session
+    /// attribution, which the plugin calls made for it carry (never journaled).
+    pub async fn control_call_attributed(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        attribution: std::collections::BTreeMap<String, String>,
+    ) -> Result<serde_json::Value> {
+        self.control_call_attributed_within(seat, generation, call, attribution, Duration::ZERO)
+            .await
+    }
+    /// [`Self::control_call`], resending a `workspace_pending` refusal every
+    /// [`PENDING_RETRY_MS`] while `wait` lasts.
+    pub async fn control_call_within(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        wait: Duration,
+    ) -> Result<serde_json::Value> {
+        self.control_call_attributed_within(seat, generation, call, Default::default(), wait)
+            .await
+    }
+    /// [`Self::control_call_attributed`], resending a `workspace_pending`
+    /// refusal every [`PENDING_RETRY_MS`] while `wait` lasts. Every such
+    /// refusal precedes admission, so a resend never repeats an effect. A
+    /// reply still pending when `wait` runs out carries `retry_after_ms`.
+    pub async fn control_call_attributed_within(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        attribution: std::collections::BTreeMap<String, String>,
+        wait: Duration,
+    ) -> Result<serde_json::Value> {
+        let attribution = crate::plugins::attribution::admit(&attribution);
+        let deadline = Instant::now() + wait;
+        let retry = Duration::from_millis(PENDING_RETRY_MS);
+        loop {
+            let (tx, rx) = oneshot::channel();
+            self.tx
+                .send(Command::ControlCall(
+                    seat,
+                    generation,
+                    call.clone(),
+                    attribution.clone(),
+                    tx,
+                ))
+                .await
+                .map_err(|_| self.unavailable("logic stopped"))?;
+            let mut value = rx.await.map_err(|_| {
+                self.unavailable("control outcome unavailable; query the original operation ID")
+            })??;
+            let error = &value["structuredContent"]["error"];
+            if error["code"] != "workspace_pending" {
+                return Ok(value);
+            }
+            if Instant::now() + retry > deadline {
+                if error["retry_after_ms"].is_null() {
+                    value["structuredContent"]["error"]["retry_after_ms"] = PENDING_RETRY_MS.into();
+                    value["content"][0]["text"] = value["structuredContent"].to_string().into();
+                }
+                return Ok(value);
+            }
+            tokio::time::sleep(retry).await;
+        }
     }
     /// Only the operator's admitted GUI/ctl endpoint supplies Settings snapshots.
     /// The acknowledgement follows durable cache storage and Worker adoption.
@@ -1887,6 +1959,47 @@ enum IdentityMode {
     Prepared(Box<crate::identity::IdentityRuntime>),
 }
 impl Logic {
+    /// App bootstrap observations; callbacks run on the non-UI bootstrap owner.
+    pub fn start_custodied_with_progress(
+        connection: impl SupervisorConnection + 'static,
+        config: LogicConfig,
+        store: Option<Arc<dyn crate::identity::DeviceKeyStore + Send + Sync>>,
+        fixture_hosts: bool,
+        handle: &tokio::runtime::Handle,
+        progress: &mut dyn FnMut(&str, u64, u64),
+        recovery_progress: &mut dyn FnMut(&str, u64, u64),
+    ) -> Result<Self> {
+        bbt_rt::assert_not_ui_thread();
+        let providers: Vec<Box<dyn Provider>> = if fixture_hosts {
+            let registry =
+                Registry::new(SqliteStore::open(&object_dir(&config.run_dir, "account")?)?);
+            let owners = registry
+                .list()?
+                .into_iter()
+                .map(|seat| (seat.id, HostId::from(&seat.location)));
+            crate::provider::shared::fixture_providers(
+                connection,
+                owners,
+                Arc::new(crate::provider::fake::RealClock::default()),
+            )?
+        } else {
+            vec![Box::new(LocalProvider::new(connection))]
+        };
+        let mut seed = [0; 32];
+        getrandom::fill(&mut seed)?;
+        let key = SigningKey::from_bytes(&seed);
+        seed.fill(0);
+        Self::start_inner_with_plugins(
+            providers,
+            config,
+            key,
+            IdentityMode::Custodied(store),
+            handle,
+            Default::default(),
+            progress,
+            recovery_progress,
+        )
+    }
     /// Production construction: custody may be pending while PTYs, the GUI
     /// and public history remain live. No caller substitutes a fresh issuer.
     pub fn start_custodied(
@@ -1962,6 +2075,8 @@ impl Logic {
             IdentityMode::Custodied(Some(store)),
             handle,
             plugins,
+            &mut |_, _, _| {},
+            &mut |_, _, _| {},
         )
     }
     fn start_with_custody(
@@ -2020,8 +2135,18 @@ impl Logic {
         identity: IdentityMode,
         handle: &tokio::runtime::Handle,
     ) -> Result<Self> {
-        Self::start_inner_with_plugins(providers, config, key, identity, handle, Default::default())
+        Self::start_inner_with_plugins(
+            providers,
+            config,
+            key,
+            identity,
+            handle,
+            Default::default(),
+            &mut |_, _, _| {},
+            &mut |_, _, _| {},
+        )
     }
+    #[allow(clippy::too_many_arguments, reason = "bootstrap keeps verification and restoration observations separate")]
     fn start_inner_with_plugins(
         providers: Vec<Box<dyn Provider>>,
         config: LogicConfig,
@@ -2029,6 +2154,8 @@ impl Logic {
         identity: IdentityMode,
         handle: &tokio::runtime::Handle,
         plugins: crate::plugins::HostConfig,
+        progress: &mut dyn FnMut(&str, u64, u64),
+        recovery_progress: &mut dyn FnMut(&str, u64, u64),
     ) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
         let custodied = !matches!(&identity, IdentityMode::Explicit(_));
@@ -2061,7 +2188,7 @@ impl Logic {
         };
         let key = ready.unwrap_or(key);
         let plugin_signing = key.clone();
-        let mut broker = Broker::open(&config.run_dir, key.clone())?;
+        let mut broker = Broker::open_with_progress(&config.run_dir, key.clone(), progress)?;
         broker.set_issued_by(identity.issued_by().map(str::to_owned));
         if let Some(run) = bus_window {
             broker.identity_signer(key, Some(run));
@@ -2087,12 +2214,16 @@ impl Logic {
         let stop = Arc::new(StopSignal::default());
         let stopping = stop.clone();
         let runtime = handle.clone();
-        let (ready_tx, ready_rx) = std::sync::mpsc::sync_channel(1);
+        let (ready_tx, ready_rx) = std::sync::mpsc::sync_channel::<
+            std::result::Result<Option<(String, u64, u64)>, String>,
+        >(1);
         let worker_client = client.clone();
         let reporter = client.clone();
         let thread = std::thread::Builder::new()
             .name("bbt-logic".into())
             .spawn(move || {
+                // This thread parses terminal output into frames.
+                bbt_rt::qos::interactive_thread();
                 // Keep the receiver until the exit cause is published. A
                 // blocked caller must not observe channel closure first.
                 let mut rx = rx;
@@ -2105,6 +2236,9 @@ impl Logic {
                     identity,
                     bus_window,
                     plugins,
+                    &mut |operation, completed, total| {
+                        let _ = ready_tx.send(Ok(Some((operation.into(), completed, total))));
+                    },
                 ) {
                     Ok(worker) => worker,
                     Err(error) => {
@@ -2114,7 +2248,7 @@ impl Logic {
                     }
                 };
                 worker.plugin_signing = Some(plugin_signing);
-                let _ = ready_tx.send(Ok(()));
+                let _ = ready_tx.send(Ok(None));
                 let execution = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     let result = worker.run(&mut rx, stopping);
                     let seal = worker.seal_active_hold();
@@ -2142,13 +2276,18 @@ impl Logic {
                 let _ = worker.handle.block_on(worker.bus.shutdown());
                 result
             })?;
-        let ready = match ready_rx.recv_timeout(Duration::from_secs(30)) {
-            Ok(ready) => ready,
-            Err(error) => {
-                // Preserve the startup deadline; the detached owner will exit
-                // when startup returns, even if its idle timer cannot run.
-                stop.request();
-                return Err(error.into());
+        let ready = loop {
+            match ready_rx.recv_timeout(Duration::from_secs(180)) {
+                Ok(Ok(Some((operation, completed, total)))) => {
+                    recovery_progress(&operation, completed, total)
+                }
+                Ok(result) => break result.map(|_| ()),
+                Err(error) => {
+                    // Preserve the startup deadline; the detached owner will exit
+                    // when startup returns, even if its idle timer cannot run.
+                    stop.request();
+                    return Err(error.into());
+                }
             }
         };
         match ready {
@@ -2199,6 +2338,8 @@ struct LegacySaved {
 #[derive(Serialize, Deserialize)]
 struct RecoveryLaunch {
     #[serde(default)]
+    transport_argv: Option<Vec<String>>,
+    #[serde(default)]
     via: Option<bbt_proto::TransportSpec>,
     #[serde(default)]
     environment: Vec<(String, String)>,
@@ -2220,6 +2361,36 @@ struct PendingLogin {
 /// The seat row kind of a plugin login: a bare PTY, never a harness seat.
 pub const PLUGIN_LOGIN_HARNESS: &str = "plugin-login";
 
+/// How long a seat call waits for its workspace to open before it answers
+/// `workspace_pending`; inside the seat bridge's 10 s socket timeout, with
+/// the rest left for the call itself.
+pub const SEAT_PENDING_WAIT: Duration = Duration::from_secs(4);
+/// The resend interval while waiting, and the `retry_after_ms` hint after.
+pub const PENDING_RETRY_MS: u64 = 100;
+
+/// Concurrent knowledge and task reads one root admits before provider_busy.
+#[cfg(not(test))]
+const KNOWLEDGE_READS_PER_ROOT: usize = 16;
+/// Unit tests hold a small number of reads to reach the same refusal.
+#[cfg(test)]
+const KNOWLEDGE_READS_PER_ROOT: usize = 2;
+
+/// Pause before reading a seat's ring again after an I/O refusal.
+const RING_REFUSAL_RETRY: Duration = Duration::from_secs(2);
+
+impl ViewState {
+    /// Ring reads stop after a definitive refusal; an I/O refusal holds them
+    /// only until its retry time.
+    fn ring_held(&self) -> bool {
+        self.ring_refusal.as_ref().is_some_and(|refusal| {
+            refusal.code != crate::FailureCode::Io || Instant::now() < self.ring_retry_at
+        })
+    }
+}
+
+#[path = "logic/harness_status.rs"]
+mod harness_status;
+
 struct ViewState {
     info: SeatInfo,
     adapter: Session,
@@ -2230,6 +2401,9 @@ struct ViewState {
     tap: OscTap,
     replies: VecDeque<(Ulid, Vec<u8>)>,
     native_reader: Option<NativeReader>,
+    rich_connection: Option<bboxy450_harness_wake_up::rich::Connection>,
+    rich_delivery: Option<crate::rich::Delivery>,
+    rich_socket: Option<PathBuf>,
     shared_codex_runtime: Option<PathBuf>,
     state: Playback,
     view_generation: Ulid,
@@ -2698,6 +2872,23 @@ struct RoleUpdate {
     reply: oneshot::Sender<Result<()>>,
     result: Result<bbt_proto::gui::RoleCatalog>,
 }
+#[cfg(test)]
+type PublicationHook = Arc<dyn Fn(&str) + Send + Sync>;
+enum RootPublication {
+    Read {
+        root: String,
+        outbox: crate::index::DocumentOutbox,
+        result: Result<Option<Box<Draft>>>,
+    },
+    Published {
+        root: String,
+        result: Result<()>,
+    },
+}
+fn publication_io<T>(job: impl FnOnce() -> Result<T>) -> Result<T> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(job))
+        .unwrap_or_else(|_| Err(invalid("knowledge publication IO worker panicked")))
+}
 enum WorkspaceRead {
     Seat(
         Ulid,
@@ -2752,6 +2943,16 @@ fn workspace_command_error(
     }
     error
 }
+/// Retry pacing for one root's failing provenance step.
+#[derive(Default)]
+struct ProvenanceBackoff {
+    next: Option<Instant>,
+    delay: Duration,
+    reason: String,
+}
+const PROVENANCE_RETRY_MIN: Duration = Duration::from_millis(500);
+const PROVENANCE_RETRY_MAX: Duration = Duration::from_secs(30);
+
 struct Worker {
     connections: Connections,
     config: LogicConfig,
@@ -2759,17 +2960,30 @@ struct Worker {
     role_catalog: std::result::Result<bbt_proto::gui::RoleCatalog, String>,
     role_catalog_store: role_catalog::CatalogStore,
     role_updates: tokio::task::JoinSet<RoleUpdate>,
+    root_publications: tokio::task::JoinSet<RootPublication>,
+    publication_tasks: BTreeMap<tokio::task::Id, String>,
+    publication_running: BTreeMap<String, bool>,
+    publication_backoff: BTreeMap<String, ProvenanceBackoff>,
+    #[cfg(test)]
+    publication_io_hook: Option<PublicationHook>,
     // Reads retain an immutable catalogue without holding the logic worker.
     // Scans and provenance updates use copy-on-write while an older read is active.
     workspaces: WorkspaceRouter,
     provenance_registered: BTreeSet<(Ulid, u64, String)>,
+    provenance_bindings: BTreeMap<Ulid, (u64, u64, RootBinding)>,
+    // A failing provenance step (a record conflict needing an operator) waits
+    // before it runs again: each attempt rescans the root on this thread.
+    provenance_backoff: BTreeMap<String, ProvenanceBackoff>,
     workspace_reads: BTreeMap<String, Vec<PendingWorkspaceRead>>,
     knowledge_reads: BTreeMap<String, Arc<tokio::sync::Semaphore>>,
     knowledge_jobs: tokio::task::JoinSet<crate::knowledge::seat_reads::Completion>,
     diagnostic_jobs: tokio::task::JoinSet<DiagnosticCompletion>,
     diagnostic_pending: BTreeSet<Ulid>,
+    /// Each seat's latest ATC session attribution, by process generation.
+    /// In memory only: plugin calls for that seat carry it, nothing journals it.
+    seat_attribution: BTreeMap<Ulid, (u64, crate::plugins::attribution::Attribution)>,
     effect_jobs: tokio::task::JoinSet<knowledge_effects::Completion>,
-    effect_roots: BTreeSet<String>,
+    effect_roots: BTreeMap<String, std::sync::Weak<crate::provenance::projection::WriterLease>>,
     gui_knowledge_jobs: tokio::task::JoinSet<GuiKnowledgeCompletion>,
     gui_task_reads: tokio::task::JoinSet<GuiTaskReadCompletion>,
     task_import_jobs: tokio::task::JoinSet<()>,
@@ -2910,6 +3124,7 @@ impl Worker {
             identity,
             bus_window,
             Default::default(),
+            &mut |_, _, _| {},
         )
     }
     #[allow(
@@ -2925,7 +3140,9 @@ impl Worker {
         identity: crate::identity::IdentityRuntime,
         bus_window: Option<Ulid>,
         plugin_config: crate::plugins::HostConfig,
+        progress: &mut dyn FnMut(&str, u64, u64),
     ) -> Result<Self> {
+        progress("Loading session registry", 0, 0);
         let connections = Connections::open(providers)?;
         let account = SqliteStore::open(&object_dir(&config.run_dir, "account")?)?;
         let registry = Registry::new(account.clone());
@@ -2965,6 +3182,7 @@ impl Worker {
                 .map_err(|error| invalid(error.to_string()))?;
         }
         let plugins = crate::plugins::control::Control::new(plugin_registry.clone());
+        progress("Loading workspace records", 0, 0);
         let workspaces = WorkspaceRouter::new(
             Workspaces::open(WorkspaceConfig {
                 startup_repository: config.repository.clone(),
@@ -2990,6 +3208,7 @@ impl Worker {
         std::fs::DirBuilder::new()
             .mode(0o700)
             .create(&endpoint_root)?;
+        progress("Restoring messages", 0, 0);
         let mut messaging = crate::messaging::Messaging::open(&config.run_dir, identity.keys())?;
         messaging.startup_workspace(workspaces.cache.startup().root_id())?;
         messaging.operator_reference(identity.observed_operator_device()?)?;
@@ -3014,15 +3233,24 @@ impl Worker {
             role_catalog,
             role_catalog_store,
             role_updates: tokio::task::JoinSet::new(),
+            root_publications: tokio::task::JoinSet::new(),
+            publication_tasks: BTreeMap::new(),
+            publication_running: BTreeMap::new(),
+            publication_backoff: BTreeMap::new(),
+            #[cfg(test)]
+            publication_io_hook: None,
             workspaces,
             provenance_registered: BTreeSet::new(),
+            provenance_bindings: BTreeMap::new(),
+            provenance_backoff: BTreeMap::new(),
             workspace_reads: BTreeMap::new(),
             knowledge_reads: BTreeMap::new(),
             knowledge_jobs: tokio::task::JoinSet::new(),
             diagnostic_jobs: tokio::task::JoinSet::new(),
             diagnostic_pending: BTreeSet::new(),
+            seat_attribution: BTreeMap::new(),
             effect_jobs: tokio::task::JoinSet::new(),
-            effect_roots: BTreeSet::new(),
+            effect_roots: BTreeMap::new(),
             gui_knowledge_jobs: tokio::task::JoinSet::new(),
             gui_task_reads: tokio::task::JoinSet::new(),
             task_import_jobs: tokio::task::JoinSet::new(),
@@ -3077,26 +3305,40 @@ impl Worker {
             parsers: Default::default(),
             ingestion_ready: Arc::default(),
         };
-        for (host, info) in worker.connections.owned_seats()? {
+        let seats = worker.connections.owned_seats()?;
+        let seat_count = seats.len() as u64;
+        progress("Restoring saved sessions", 0, seat_count);
+        for (index, (host, info)) in seats.into_iter().enumerate() {
             // Several fixture links can wrap one local supervisor. Recover a
             // seat only through the link selected by its durable location.
             if worker.host_for_seat(info.seat)? == host {
                 worker.attach(info, false)?;
             }
+            if index % 32 == 0 || index as u64 + 1 == seat_count {
+                progress("Restoring saved sessions", index as u64 + 1, seat_count);
+            }
         }
         let startup = worker.workspaces.cache.startup().root_id().to_owned();
         let swarms = worker.workspaces.bound_swarms(&worker.registry, &startup)?;
-        for (task, status) in worker.workspaces.cache.startup().index.task_states() {
+        let tasks: Vec<_> = worker.workspaces.cache.startup().index.task_states().collect();
+        let task_count = tasks.len() as u64;
+        progress("Restoring task state", 0, task_count);
+        for (index, (task, status)) in tasks.into_iter().enumerate() {
             worker
                 .messaging
                 .task_state_root(&startup, &swarms, task, status, now_ms())?;
+            if index % 32 == 0 || index as u64 + 1 == task_count {
+                progress("Restoring task state", index as u64 + 1, task_count);
+            }
         }
+        progress("Restoring pending deliveries", 0, 0);
         worker.publish_root_outbox(&startup)?;
         // Recover audit outboxes after a logic crash, even without a new call.
         for record in worker.registry.list()? {
             worker.control_journal(record.id)?;
         }
         worker.publish_control_audits()?;
+        progress("Checking identity", 0, 0);
         worker.refresh_identity()?;
         Ok(worker)
     }
@@ -3158,7 +3400,7 @@ impl Worker {
         );
     }
     fn host_for_seat(&self, seat: Ulid) -> Result<HostId> {
-        match self.registry.get(seat) {
+        match self.registry.route(seat) {
             Ok(record) => Ok(HostId::from(&record.location)),
             // Preserve the existing recovery of supervisor-owned local seats
             // predating registry metadata. Other storage failures propagate.
@@ -3227,11 +3469,18 @@ impl Worker {
             }
             self.operator_journal.published(event_id)?;
         }
+        // One database per seat: only journals with a committed, unpublished
+        // audit are opened, so a large registry does not cycle the shared pool.
         for (id, journal) in &self.control_journals {
-            for event in journal.pending(32)? {
+            for event in journal.pending_if_any(32)? {
                 let event_id = event.id;
-                self.publish(&format!("seat-{id}"), event)?;
-                journal.published(event_id)?;
+                let published = self
+                    .publish(&format!("seat-{id}"), event)
+                    .and_then(|_| journal.published(event_id));
+                if let Err(error) = published {
+                    journal.mark_pending();
+                    return Err(error);
+                }
             }
         }
         Ok(())
@@ -3949,6 +4198,7 @@ impl Worker {
                 return;
             }
         };
+        let attribution = self.attribution_of(actor.seat_id, actor.process_generation);
         let job = crate::knowledge::seat_reads::Job {
             host: port.host,
             index: port.index,
@@ -3963,8 +4213,10 @@ impl Worker {
             reply,
             permit,
         };
-        self.knowledge_jobs
-            .spawn_blocking_on(move || job.run(), &self.handle);
+        self.knowledge_jobs.spawn_blocking_on(
+            move || crate::plugins::attribution::scope(attribution, || job.run()),
+            &self.handle,
+        );
     }
     /// The seat's plugin tools from its swarm root's snapshot; none while
     /// that root is still mounting. Reads no plugin record, starts no process.
@@ -3975,6 +4227,18 @@ impl Worker {
                 crate::mcp::plugin_tools::catalogue(&port.host.plugin_host().seat_tools(), actor)
             })
             .unwrap_or_default()
+    }
+    /// The seat's attribution for plugin calls made for this process
+    /// generation; none for another generation, the operator or the host.
+    fn attribution_of(
+        &self,
+        seat: Ulid,
+        generation: u64,
+    ) -> crate::plugins::attribution::Attribution {
+        self.seat_attribution
+            .get(&seat)
+            .filter(|(current, _)| *current == generation)
+            .and_then(|(_, attribution)| attribution.clone())
     }
     /// A plugin seat tool on the seat's swarm root, under the per-root read
     /// permit, on blocking IO; completion is revalidated like a knowledge read.
@@ -4028,6 +4292,7 @@ impl Worker {
             ));
             return;
         };
+        let attribution = self.attribution_of(actor.seat_id, actor.process_generation);
         let job = crate::mcp::plugin_tools::Job {
             plugins: port.host.plugin_host().clone(),
             actor,
@@ -4038,8 +4303,10 @@ impl Worker {
             reply,
             permit,
         };
-        self.knowledge_jobs
-            .spawn_blocking_on(move || job.run(), &self.handle);
+        self.knowledge_jobs.spawn_blocking_on(
+            move || crate::plugins::attribution::scope(attribution, || job.run()),
+            &self.handle,
+        );
     }
     fn knowledge_call(
         &mut self,
@@ -4065,7 +4332,7 @@ impl Worker {
         match tool::prepare(call) {
             Ok(tool::Request::Fetch(locator)) => {
                 let source = port.host.source(&port.index, &self.registry);
-                let value = match tool::fetch(&source, locator) {
+                let value = match tool::fetch_page(&source, locator, call) {
                     Ok(record) => tool::bounded(
                         call.op_id,
                         mcp::success(call.op_id, serde_json::to_value(record)?),
@@ -4125,7 +4392,7 @@ impl Worker {
             return journal.checked(actor, call, value);
         }
         if crate::mcp::work_items::mutation(&call.tool) {
-            if self.effect_roots.contains(&port.binding.root_id) {
+            if self.effect_root_busy(&port.binding.root_id) {
                 return Ok(crate::mcp::error(
                     call.op_id,
                     "provider_busy",
@@ -4445,7 +4712,9 @@ impl Worker {
             .iter()
             .map(|w| format!(".bboxy/{}", w.path))
             .collect();
+        let mut first = true;
         for (update, reference) in plan.writes.into_iter().zip(references) {
+            let first_write = std::mem::replace(&mut first, false);
             let artifact = (update.metadata["type"] == "artifact").then(|| update.metadata.clone());
             let task_status = (update.metadata["type"] == "task").then(|| {
                 (
@@ -4462,7 +4731,11 @@ impl Worker {
                 body: update.body,
                 etag: None,
             };
-            if source.write(request, &context).is_err() {
+            if let Err(error) = source.write(request, &context) {
+                // Refused before any write: the provider cannot store this status.
+                if error.code == "unmappable_status" && first_write {
+                    return crate::mcp::error(call.op_id, &error.code, &error.message);
+                }
                 return crate::mcp::error(
                     call.op_id,
                     "unknown",
@@ -4708,6 +4981,8 @@ impl Worker {
         use crate::mcp::seats::{self, Request};
         use serde_json::json;
         match request {
+            Request::HarnessProfiles => harness_profiles(),
+            Request::Usage => usage_snapshot(&self.config.run_dir),
             Request::Layout {
                 swarm,
                 after,
@@ -4898,36 +5173,37 @@ impl Worker {
             },
             Request::Spawn(args) => {
                 let result = (|| -> Result<SeatInfo> {
-                    let harness = HarnessRecord::builtin(&args.approved_profile)?;
-                    let mut record = SeatRecord::new(
+                    let placement = Some(self.control_placement(&args, id)?);
+                    let (record, harness, mut options) = self.prepare_spawn(
                         id,
-                        args.swarm_id,
-                        args.name
-                            .clone()
-                            .map(Ok)
-                            .unwrap_or_else(|| self.default_seat_name(args.swarm_id))?,
-                        harness.kind.clone(),
-                    );
-                    record.launch_placement = Some(self.control_placement(&args, id)?);
-                    let (role, role_prompt) =
-                        self.configured_role(&harness.kind, args.role.as_deref())?;
-                    record.role = role;
-                    self.launch(
-                        record,
-                        harness,
-                        crate::adapters::launch::LaunchOptions {
+                        bbt_proto::SpawnSpec {
+                            swarm: bbt_proto::SwarmId::from_u128(args.swarm_id.0),
+                            harness_kind: args.approved_profile,
+                            name: args.name,
+                            role: args.role,
+                            cwd: args.cwd.to_string_lossy().into_owned(),
+                            location: bbt_proto::Where::Local,
+                            resume: args.resume,
+                            placement,
                             via: None,
+                            command: None,
+                            args: vec![],
                             env: vec![],
-                            cwd: args.cwd.canonicalize()?,
-                            role_prompt,
-                            executable: std::env::current_exe()?,
-                            user_home: std::env::var_os("HOME")
-                                .map(PathBuf::from)
-                                .ok_or_else(|| invalid("missing user home"))?,
-                            user_zdotdir: std::env::var_os("ZDOTDIR").map(PathBuf::from),
-                            resume: false,
                         },
-                    )
+                    )?;
+                    if let Some(name) = &args.harness_profile
+                        && !harness_profile_dir()?.join(format!("{name}.md")).is_file()
+                    {
+                        return Err(invalid(
+                            "no such bboxy450-harness profile; see harness_profiles",
+                        ));
+                    }
+                    if let Some(profile) = args.harness_profile {
+                        options
+                            .env
+                            .push(("BBOXY450_HARNESS_PROFILE".into(), profile));
+                    }
+                    self.launch(record, harness, options)
                 })();
                 match result {
                     Ok(info) => crate::mcp::success(
@@ -5009,7 +5285,7 @@ impl Worker {
             call.validate()?;
             let journal = self.control_journal(id)?;
             let target = match self.prepare_seat_control(&actor, &caller, &call) {
-                Ok(Request::Focus { target }) => target,
+                Ok(Request::Focus { target } | Request::Close { target }) => target,
                 other => {
                     let reason = other
                         .err()
@@ -5050,6 +5326,10 @@ impl Worker {
                 let check_actor = actor.clone();
                 let checked = tokio::task::spawn_blocking(move || seats::revalidate_focus(&run_dir,&check_actor,target,&harness)).await;
                 let result = match checked {
+                    Ok(Ok(())) if call.tool == "seat_close" => match captures.close(input_id,bbt_proto::SeatId::from_u128(target.seat.0),false).await {
+                        Ok(layout) => crate::mcp::success(call.op_id,serde_json::json!({"status":"applied","seat_id":target.seat,"process_generation":target.generation.to_string(),"layout":layout})),
+                        Err(reason) => crate::mcp::error(call.op_id,"unavailable",&reason),
+                    },
                     Ok(Ok(())) => match captures.focus(input_id,bbt_proto::SeatId::from_u128(target.seat.0)).await {
                         Ok(frame) => crate::mcp::success(call.op_id,serde_json::json!({"status":"applied","seat_id":target.seat,"process_generation":target.generation.to_string(),"frame":frame})),
                         Err(reason) => crate::mcp::error(call.op_id,"unavailable",&reason),
@@ -5072,6 +5352,112 @@ impl Worker {
                 }
             }
         }
+    }
+    fn start_control_input(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        reply: oneshot::Sender<Result<serde_json::Value>>,
+    ) {
+        use crate::mcp::seats::{self, Request};
+        let prepared = (|| -> Result<_> {
+            let (actor, caller) = self.control_actor(id, generation)?;
+            call.validate()?;
+            let request = self
+                .prepare_seat_control(&actor, &caller, &call)
+                .map_err(invalid)?;
+            Ok((actor, request))
+        })();
+        let (
+            actor,
+            Request::Input {
+                target,
+                text,
+                submit,
+            },
+        ) = (match prepared {
+            Ok(p) => p,
+            Err(_) => {
+                let _ = reply.send(self.control_call(id, generation, call));
+                return;
+            }
+        })
+        else {
+            let _ = reply.send(Err(invalid("invalid input dispatch")));
+            return;
+        };
+        if !self
+            .views
+            .get(&target.seat)
+            .is_some_and(|v| v.adapter.record.kind == "bboxy450-harness")
+        {
+            let _ = reply.send(self.control_call(id, generation, call));
+            return;
+        }
+        let started = (|| -> Result<_> {
+            let journal = self.control_journal(id)?;
+            let (retained, fresh) = journal.admit(&actor, &call)?;
+            Ok((journal, retained, fresh))
+        })();
+        let (journal, retained, fresh) = match started {
+            Ok(p) => p,
+            Err(e) => {
+                let _ = reply.send(Err(e));
+                return;
+            }
+        };
+        // Rich ops are the one retryable native lane: the retained message ULID
+        // and original-session binding are durable, and the gateway deduplicates.
+        // A retry must observe Busy/Closed/unknown honestly instead of replaying
+        // an old Ack after a profile switch. Argument/authority reuse still refuses.
+        if !fresh && retained["structuredContent"]["error"]["code"] == "op_id_reused" {
+            let _ = reply.send(Ok(retained));
+            return;
+        }
+        if self.control_deliveries.len() >= 8 {
+            let outcome = crate::adapters::WakeOutcome {
+                evidence: crate::adapters::Evidence::RecipientStored,
+                native_id: None,
+                note: "harness delivery lane full".into(),
+                cause: Some(crate::adapters::WakeCause::HarnessBusy),
+            };
+            let value = seats::input_result(&call, call.op_id, outcome);
+            let _ = reply.send(journal.complete(&actor, &call, value));
+            return;
+        }
+        let port = self.views[&target.seat].rich_delivery.clone();
+        let run_dir = self.config.run_dir.clone();
+        let input_id = call.op_id;
+        self.control_deliveries.spawn_on(
+            async move {
+                let a = actor.clone();
+                let valid = tokio::task::spawn_blocking(move || {
+                    seats::revalidate_native(&run_dir, &a, target, "bboxy450-harness")
+                })
+                .await;
+                let outcome = if matches!(valid, Ok(Ok(()))) {
+                    match port {
+                        Some(p) => p.text(input_id, &text, submit).await,
+                        None => crate::rich::unavailable(),
+                    }
+                } else {
+                    crate::rich::unavailable()
+                };
+                let result = seats::input_result(&call, input_id, outcome.clone());
+                ControlDelivery {
+                    actor,
+                    call,
+                    journal,
+                    reply,
+                    target,
+                    input_id,
+                    outcome: Some(outcome),
+                    result,
+                }
+            },
+            &self.handle,
+        );
     }
     fn start_control_interrupt(
         &mut self,
@@ -5338,6 +5724,13 @@ impl Worker {
         use crate::mcp::tools;
         use crate::registry::Class;
         use serde_json::json;
+        // Tool discovery uses the mounted plugin snapshot, just like
+        // tools/list, even while the document scan is still pending.
+        let plugins = if call.tool == "orient" {
+            self.plugin_catalogue(actor)
+        } else {
+            Vec::new()
+        };
         let index = port
             .map(|port| port.index.clone())
             .unwrap_or_else(|| self.workspaces.cache.startup().index.clone());
@@ -5378,14 +5771,6 @@ impl Worker {
                     .messaging
                     .inbox_summary(record.id, record.generation)
                     .map_err(|_| "inbox counts are unavailable; no count was substituted")?;
-                let plugins = port
-                    .map(|port| {
-                        crate::mcp::plugin_tools::catalogue(
-                            &port.host.plugin_host().seat_tools(),
-                            actor,
-                        )
-                    })
-                    .unwrap_or_default();
                 let catalogue = tools::catalogue(actor, plugins);
                 let tools = catalogue["tools"]
                     .as_array()
@@ -5482,56 +5867,211 @@ impl Worker {
         self.publish_root_outbox(root)?;
         self.workspaces.reconcile(root)
     }
+    fn scan_pending_root(&mut self, root: &str) -> Result<()> {
+        self.publish_root_outbox(root)?;
+        self.workspaces.reconcile_pending(root)
+    }
     fn publish_root_outbox(&mut self, root: &str) -> Result<()> {
         if self.workspaces.scanning(root) || self.workspaces.reconciliation_failed(root) {
             return Ok(());
         }
-        let events = self
+        if let Some(wake) = self.publication_running.get_mut(root) {
+            *wake = true;
+            return Ok(());
+        }
+        if self.publication_running.len() >= 2
+            || self
+                .publication_backoff
+                .get(root)
+                .and_then(|backoff| backoff.next)
+                .is_some_and(|next| Instant::now() < next)
+        {
+            self.workspaces.retry_publication(root.to_owned());
+            return Ok(());
+        }
+        let outbox = self
             .workspaces
             .cache
             .root_mut(root)
             .ok_or_else(|| invalid("unknown workspace root"))?
             .index
-            .pending_events()?;
-        let swarms = self.workspaces.bound_swarms(&self.registry, root)?;
-        for mut event in events {
-            if let Some(payload) = event.payload.as_object_mut() {
-                payload.insert("knowledge_root_id".into(), serde_json::json!(root));
-            }
-            if let Some(task) = event
-                .subject
-                .strip_prefix("task/")
-                .and_then(|s| s.strip_suffix("/status"))
-                .and_then(|s| s.parse::<Ulid>().ok())
-                && let Some(status) = event.payload["to"].as_str()
-            {
-                self.messaging
-                    .task_state_root(root, &swarms, task, status, now_ms())?;
-            }
-            let stream = if event.subject.starts_with("task/") {
-                let swarm = event.payload["swarm_id"]
-                    .as_str()
-                    .and_then(|id| id.parse::<Ulid>().ok())
-                    .filter(|swarm| !swarm.is_nil());
-                match swarm {
-                    Some(swarm) if self.workspaces.matches_root(&self.registry, swarm, root)? => {
-                        format!("swarm-{swarm}")
+            .outbox();
+        let root = root.to_owned();
+        self.publication_running.insert(root.clone(), false);
+        let tracked = root.clone();
+        #[cfg(test)]
+        let hook = self.publication_io_hook.clone();
+        let task = self.root_publications.spawn_blocking_on(
+            move || {
+                let result = publication_io(|| {
+                    #[cfg(test)]
+                    if let Some(hook) = hook {
+                        hook(&root);
                     }
-                    _ => "account".into(),
+                    Ok(outbox.page(1)?.pop().map(Box::new))
+                });
+                RootPublication::Read {
+                    root,
+                    outbox,
+                    result,
                 }
-            } else {
-                "index".into()
-            };
-            let id = event.id;
-            self.publish(&stream, event)?;
-            self.workspaces
-                .cache
-                .root_mut(root)
-                .expect("mounted root")
-                .index
-                .acknowledge(id)?;
-        }
+            },
+            &self.handle,
+        );
+        self.publication_tasks.insert(task.id(), tracked);
         Ok(())
+    }
+    fn finish_root_publication(&mut self, root: String, result: Result<()>, more: bool) {
+        let wake = self.publication_running.remove(&root).unwrap_or(false);
+        match result {
+            Ok(()) => {
+                self.publication_backoff.remove(&root);
+            }
+            Err(error) => {
+                let backoff = self.publication_backoff.entry(root.clone()).or_default();
+                let reason = error.to_string();
+                if backoff.reason != reason {
+                    eprintln!("WorkspacePublicationPending [{root}]: {reason}");
+                    backoff.reason = reason;
+                }
+                backoff.delay =
+                    (backoff.delay * 2).clamp(PROVENANCE_RETRY_MIN, PROVENANCE_RETRY_MAX);
+                backoff.next = Some(Instant::now() + backoff.delay);
+                self.workspaces.retry_publication(root.clone());
+            }
+        }
+        if more || wake {
+            self.workspaces.retry_publication(root);
+        }
+    }
+    fn poll_root_publications(&mut self) {
+        // Read, append, and ACK are IO jobs. At most two roots and one event
+        // per root are in flight; no bus await or SQLite ACK runs on the owner.
+        for _ in 0..2 {
+            let Some(joined) = self.root_publications.try_join_next_with_id() else {
+                break;
+            };
+            let (id, done) = match joined {
+                Ok(done) => done,
+                Err(error) => {
+                    if let Some(root) = self.publication_tasks.remove(&error.id()) {
+                        self.finish_root_publication(
+                            root,
+                            Err(invalid("knowledge publication job stopped")),
+                            true,
+                        );
+                    }
+                    continue;
+                }
+            };
+            self.publication_tasks.remove(&id);
+            match done {
+                RootPublication::Published { root, result } => {
+                    self.finish_root_publication(root, result, true)
+                }
+                RootPublication::Read {
+                    root,
+                    outbox,
+                    result,
+                } => {
+                    let mut event = match result {
+                        Ok(Some(event)) => *event,
+                        Ok(None) => {
+                            self.finish_root_publication(root, Ok(()), false);
+                            continue;
+                        }
+                        Err(error) => {
+                            self.finish_root_publication(root, Err(error), true);
+                            continue;
+                        }
+                    };
+                    if self.workspaces.scanning(&root)
+                        || self.workspaces.reconciliation_failed(&root)
+                    {
+                        self.finish_root_publication(root, Ok(()), true);
+                        continue;
+                    }
+                    if let Some(payload) = event.payload.as_object_mut() {
+                        payload.insert("knowledge_root_id".into(), serde_json::json!(root));
+                    }
+                    let route = (|| -> Result<_> {
+                        let swarms = self.workspaces.bound_swarms(&self.registry, &root)?;
+                        let stream = if event.subject.starts_with("task/") {
+                            match event.payload["swarm_id"]
+                                .as_str()
+                                .and_then(|value| value.parse::<Ulid>().ok())
+                                .filter(|id| !id.is_nil())
+                            {
+                                Some(swarm)
+                                    if self.workspaces.matches_root(
+                                        &self.registry,
+                                        swarm,
+                                        &root,
+                                    )? =>
+                                {
+                                    format!("swarm-{swarm}")
+                                }
+                                _ => "account".into(),
+                            }
+                        } else {
+                            "index".into()
+                        };
+                        let task = event
+                            .subject
+                            .strip_prefix("task/")
+                            .and_then(|tail| tail.strip_suffix("/status"))
+                            .and_then(|id| id.parse::<Ulid>().ok());
+                        // Historical events remain in the audit stream, but cannot
+                        // roll current task suppression back to an older status.
+                        let current_task = task.filter(|_| {
+                            event.payload["path"]
+                                .as_str()
+                                .and_then(|path| {
+                                    self.workspaces
+                                        .cache
+                                        .root_mut(&root)
+                                        .and_then(|workspace| workspace.index.documents.get(path))
+                                })
+                                .is_some_and(|doc| doc.metadata["status"] == event.payload["to"])
+                        });
+                        Ok((stream, swarms, current_task))
+                    })();
+                    let (stream, swarms, task) = match route {
+                        Ok(route) => route,
+                        Err(error) => {
+                            self.finish_root_publication(root, Err(error), true);
+                            continue;
+                        }
+                    };
+                    // Keep task suppression ordered with native owner-side task
+                    // transitions. Only append/ACK may outlive this owner turn.
+                    if let Some(task) = task
+                        && let Some(status) = event.payload["to"].as_str()
+                        && let Err(error) =
+                            self.messaging
+                                .task_state_root(&root, &swarms, task, status, now_ms())
+                    {
+                        self.finish_root_publication(root, Err(error), true);
+                        continue;
+                    }
+                    let bus = self.bus.clone();
+                    let handle = self.handle.clone();
+                    let tracked = root.clone();
+                    let job = self.root_publications.spawn_blocking_on(
+                        move || {
+                            let result = publication_io(|| {
+                                let id = event.id;
+                                handle.block_on(bus.publish(stream, event))?;
+                                outbox.acknowledge(id)
+                            });
+                            RootPublication::Published { root, result }
+                        },
+                        &self.handle,
+                    );
+                    self.publication_tasks.insert(job.id(), tracked);
+                }
+            }
+        }
     }
     fn scan_port(&mut self, binding: &RootBinding) -> Result<WorkspacePort> {
         self.workspaces.current(&self.registry, binding)?;
@@ -5540,8 +6080,16 @@ impl Worker {
                 binding.swarm,
             )));
         }
-        if self.workspaces.cache.get(binding)?.changed() {
-            self.workspaces.reconcile(&binding.root_id)?;
+        let workspace = self.workspaces.cache.get(binding)?;
+        if workspace.pending() {
+            if workspace.changed() {
+                self.workspaces.reconcile_pending(&binding.root_id)?;
+            }
+            // Settling delays IO, not freshness checks: a claim must not create
+            // a second artifact from the snapshot preceding an observed write.
+            return Err(Box::new(crate::knowledge::workspaces::Error::Pending(
+                binding.swarm,
+            )));
         }
         if self.workspaces.scanning(&binding.root_id) {
             return Err(Box::new(crate::knowledge::workspaces::Error::Pending(
@@ -5554,7 +6102,9 @@ impl Worker {
     fn knowledge_permits(&mut self, root: &str) -> Arc<tokio::sync::Semaphore> {
         self.knowledge_reads
             .entry(root.to_owned())
-            .or_insert_with(|| Arc::new(tokio::sync::Semaphore::new(2)))
+            // Reads wait for one of the root's provider connections within their
+            // own deadline (plugins/source.rs); this only bounds blocked threads.
+            .or_insert_with(|| Arc::new(tokio::sync::Semaphore::new(KNOWLEDGE_READS_PER_ROOT)))
             .clone()
     }
     fn seat_workspace(&mut self, actor: &crate::mcp::SeatActor) -> Result<WorkspacePort> {
@@ -5592,7 +6142,16 @@ impl Worker {
         )
     }
     fn provenance_binding(&mut self, seat: Ulid, generation: u64) -> Option<RootBinding> {
-        let record = self.registry.get(seat).ok()?;
+        let epoch = self.registry.routing_epoch();
+        if let Some((cached_generation, cached_epoch, binding)) =
+            self.provenance_bindings.get(&seat)
+            && *cached_generation == generation
+            && *cached_epoch == epoch
+            && self.workspaces.port(binding.clone()).is_ok()
+        {
+            return Some(binding.clone());
+        }
+        let record = self.registry.route(seat).ok()?;
         let port = self
             .workspaces
             .select(&self.registry, record.swarm, None)
@@ -5618,9 +6177,17 @@ impl Worker {
                 );
             self.provenance_registered.insert(key);
         }
-        let _ = self
+        // Registration and the persisted messaging root are static for this
+        // seat generation and registry epoch. Cache successes only: failed IO
+        // must be retried, and current in-memory root/watch fences still apply.
+        if self
             .messaging
-            .bind_workspace(record.swarm, &port.binding.root_id);
+            .bind_workspace(record.swarm, &port.binding.root_id)
+            .is_ok()
+        {
+            self.provenance_bindings
+                .insert(seat, (generation, epoch, port.binding.clone()));
+        }
         Some(port.binding)
     }
     fn maintain_workspaces(&mut self) {
@@ -5665,22 +6232,52 @@ impl Worker {
             }
             let workspace = self.workspaces.cache.root_mut(&root).expect("mounted root");
             if workspace.failed() {
+                if let Err(error) = self.workspaces.reconcile(&root) {
+                    eprintln!("WorkspaceWatchRecovery [{root}]: {error}");
+                }
                 continue;
             }
-            let changed = match workspace.step_provenance(
+            if workspace.changed() {
+                if let Err(error) = self.scan_pending_root(&root) {
+                    eprintln!("WorkspacePending [{root}]: {error}");
+                }
+                continue;
+            }
+            let now = Instant::now();
+            if self
+                .provenance_backoff
+                .get(&root)
+                .and_then(|backoff| backoff.next)
+                .is_some_and(|next| now < next)
+            {
+                continue;
+            }
+            let _changed = match workspace.step_provenance(
                 &self.bus,
                 &self.handle,
                 &self.identity,
                 active.get(&root).map_or(&[], Vec::as_slice),
             ) {
-                Ok(changed) => changed,
+                Ok(changed) => {
+                    self.provenance_backoff.remove(&root);
+                    changed
+                }
                 Err(error) => {
-                    eprintln!("ProvenancePending [{root}]: {error}");
+                    let reason = error.to_string();
+                    let backoff = self.provenance_backoff.entry(root.clone()).or_default();
+                    // Log once per distinct reason, not once per attempt.
+                    if backoff.reason != reason {
+                        eprintln!("ProvenancePending [{root}]: {reason}");
+                        backoff.reason = reason;
+                    }
+                    backoff.delay =
+                        (backoff.delay * 2).clamp(PROVENANCE_RETRY_MIN, PROVENANCE_RETRY_MAX);
+                    backoff.next = Some(now + backoff.delay);
                     false
                 }
             };
-            if (workspace.changed() || changed)
-                && let Err(error) = self.scan_root(&root)
+            if workspace.changed()
+                && let Err(error) = self.scan_pending_root(&root)
             {
                 eprintln!("WorkspacePending [{root}]: {error}");
             }
@@ -5908,6 +6505,31 @@ impl Worker {
                     }),
             },
         )?;
+        // Preserve explicit evidence across logic reattachment to the same
+        // supervisor-owned generation. Old reports confer no input readiness.
+        if !bare
+            && let Some(bytes) = SqliteStore::open(&directory)?.get("reported_adapter")?
+            && let Ok((generation, reported)) =
+                serde_json::from_slice::<(u64, crate::adapters::Status)>(&bytes)
+            && generation == info.generation
+            && reported.grade == crate::adapters::Grade::Reported
+        {
+            adapter.apply(crate::adapters::Observation {
+                sequence: reported.sequence,
+                generation,
+                observed_ms: reported.observed_ms,
+                source: reported.source.clone(),
+                grade: reported.grade,
+                state: reported.state,
+                waiting_kind: reported.waiting_kind,
+                agent_id: None,
+                title: None,
+                detail: reported.detail.clone(),
+                clear: false,
+                resolves: reported.state != crate::adapters::State::Waiting,
+            });
+            adapter.status = reported;
+        }
         // A plugin login's OSC frames are never observed.
         for (sequence, params) in live_frames.into_iter().filter(|_| !bare) {
             adapter.on_osc(&params, sequence, now_ms());
@@ -5949,6 +6571,36 @@ impl Worker {
         } else {
             (crate::adapters::Endpoint::None, None)
         };
+        let rich_socket = if kind == "bboxy450-harness" {
+            SqliteStore::open(&directory)?
+                .get("harness_rich_socket")?
+                .map(|b| serde_json::from_slice::<PathBuf>(&b))
+                .transpose()?
+        } else {
+            None
+        };
+        let rich_connection = rich_socket
+            .as_ref()
+            .filter(|_| info.exited.is_none())
+            .map(|path| {
+                let sender = self.client.tx.clone();
+                let handle = self.handle.clone();
+                let seat = info.seat;
+                let generation = info.generation;
+                bboxy450_harness_wake_up::rich::Connection::start_notifying(
+                    path.clone(),
+                    &self.handle,
+                    Arc::new(move || {
+                        let sender = sender.clone();
+                        handle.spawn(async move {
+                            let _ = sender.send(Command::RichState(seat, generation)).await;
+                        });
+                    }),
+                )
+            });
+        let rich_delivery = rich_connection
+            .as_ref()
+            .map(|c| crate::rich::Delivery::new(c.client.clone(), directory.clone()));
         self.views.insert(
             info.seat,
             ViewState {
@@ -5961,6 +6613,9 @@ impl Worker {
                 tap,
                 replies,
                 native_reader: None,
+                rich_connection,
+                rich_delivery,
+                rich_socket,
                 shared_codex_runtime,
                 state,
                 view_generation: Ulid::new(),
@@ -6137,8 +6792,10 @@ impl Worker {
     }
     fn persist_native_session(&self, id: Ulid) -> Result<()> {
         let adapter = &self.views[&id].adapter;
-        if matches!(adapter.record.kind.as_str(), "claude" | "codex")
-            && !adapter.binding.session.starts_with("process-")
+        if matches!(
+            adapter.record.kind.as_str(),
+            "claude" | "codex" | "bboxy450-harness"
+        ) && !adapter.binding.session.starts_with("process-")
         {
             let session = &adapter.binding.session;
             if let Ok(record) = self.registry.get(id)
@@ -6225,6 +6882,21 @@ impl Worker {
                 },
             )?
         };
+        if harness.kind == "bboxy450-harness" && options.via.is_none() {
+            let store = SqliteStore::open(&root)?;
+            let path = store
+                .get("harness_rich_socket")?
+                .map(|b| serde_json::from_slice::<PathBuf>(&b))
+                .transpose()?
+                .unwrap_or(bboxy450_harness_wake_up::rich::socket_path(
+                    &endpoint.path,
+                    record.id,
+                )?);
+            if let Some(i) = plan.spec.args.iter().position(|a| a == "--socket") {
+                plan.spec.args[i + 1] = path.to_string_lossy().into_owned();
+            }
+            SqliteStore::open(&root)?.put("harness_rich_socket", &serde_json::to_vec(&path)?)?;
+        }
         record.harness_session_id = plan.harness_session_id;
         if options.via.is_none() {
             crate::adapters::launch::with_environment(&mut plan.spec, &options.env);
@@ -6270,6 +6942,7 @@ impl Worker {
         store.put(
             "recovery_launch",
             &serde_json::to_vec(&RecoveryLaunch {
+                transport_argv: options.transport_argv.clone(),
                 via: options.via.clone(),
                 environment: if options.via.is_some() {
                     options.env
@@ -6392,7 +7065,10 @@ impl Worker {
             // Its restoration operation belongs to the dead process only.
             record.close = None;
             let resume = record.harness_session_id.is_some()
-                && matches!(record.harness_kind.as_str(), "claude" | "codex");
+                && matches!(
+                    record.harness_kind.as_str(),
+                    "claude" | "codex" | "bboxy450-harness"
+                );
             let harness = if resume || context.via.is_some() {
                 serde_json::from_slice(
                     &store
@@ -6435,6 +7111,7 @@ impl Worker {
                 record,
                 harness,
                 crate::adapters::launch::LaunchOptions {
+                    transport_argv: context.transport_argv,
                     via: context.via,
                     env: context.environment,
                     cwd,
@@ -7765,7 +8442,7 @@ impl Worker {
     fn ring_read(&self, id: Ulid, through: u64) -> Option<bbt_supervisor::protocol::RingRead> {
         let view = self.views.get(&id)?;
         if view.sequence >= through
-            || view.ring_refusal.is_some()
+            || view.ring_held()
             || (view.checkpoint_paused
                 && view.checkpoint_requested
                 && view.checkpoint_pending.is_none())
@@ -7959,17 +8636,28 @@ impl Worker {
             .and_then(|page| page.page(&read));
         match result {
             None => Ok(None),
-            Some(Ok(history)) => Ok(Some(history)),
+            Some(Ok(history)) => {
+                self.views.get_mut(&id).unwrap().ring_refusal = None;
+                Ok(Some(history))
+            }
             Some(Err(error)) => {
                 if let Some(pages) = self.ring_pages.get_mut(&host) {
                     pages.remove(&id);
                 }
                 if error.code != crate::FailureCode::Busy {
-                    eprintln!(
-                        "ring read refused: seat={id} generation={} code={:?}",
-                        read.attachment.generation, error.code
-                    );
-                    self.views.get_mut(&id).unwrap().ring_refusal = Some(error);
+                    let view = self.views.get_mut(&id).unwrap();
+                    if view.ring_refusal.is_none() {
+                        eprintln!(
+                            "ring read refused: seat={id} generation={} code={:?}",
+                            read.attachment.generation, error.code
+                        );
+                    }
+                    // An I/O refusal can be transient (logic recovering under
+                    // load). Holding it forever froze the seat's view: no later
+                    // output and no exit ever reached logic. Definitive codes
+                    // (NotFound, StaleGeneration, Limit, ...) stay held.
+                    view.ring_refusal = Some(error);
+                    view.ring_retry_at = Instant::now() + RING_REFUSAL_RETRY;
                 }
                 Ok(None)
             }
@@ -8129,9 +8817,45 @@ impl Worker {
         let now = now_ms();
         for id in self.views.keys().copied().collect::<Vec<_>>() {
             let view = self.views.get_mut(&id).unwrap();
+            if let Some(delivery) = &view.rich_delivery
+                && let Some(hello) = delivery.client.hello()
+                && view.adapter.binding.session != hello.session.to_string()
+            {
+                view.adapter.binding.session = hello.session.to_string();
+                self.registry.update(id, |record| {
+                    record.harness_session_id = Some(hello.session.to_string());
+                    Ok(())
+                })?;
+            }
+            if view.adapter.status.source == "exit" {
+                view.rich_connection = None;
+                view.rich_delivery = None;
+            }
             let before = view.adapter.status.clone();
             let mut live_wait = false;
             if view.adapter.status.source != "exit" {
+                if view.adapter.record.kind == "bboxy450-harness"
+                    && view
+                        .native_reader
+                        .as_ref()
+                        .is_none_or(|reader| reader.task.is_finished())
+                    && let Some(home) = std::env::var_os("HOME")
+                {
+                    let binding = view.adapter.binding.clone();
+                    let reader_binding = binding.clone();
+                    let client = self.client.clone();
+                    let root = PathBuf::from(home).join(".bboxy450-harness");
+                    let task = self.handle.spawn(harness_status::run(
+                        client,
+                        binding,
+                        root,
+                        view.rich_socket.clone(),
+                    ));
+                    view.native_reader = Some(NativeReader {
+                        binding: reader_binding,
+                        task,
+                    });
+                }
                 if view.adapter.record.kind == "claude" {
                     let root = std::env::var_os("CLAUDE_CONFIG_DIR")
                         .map(PathBuf::from)
@@ -8325,6 +9049,7 @@ impl Worker {
         Ok(())
     }
     fn pump_messages(&mut self) -> Result<()> {
+        self.poll_root_publications();
         while let Some(joined) = self.role_updates.try_join_next() {
             match joined {
                 Ok(done) => {
@@ -8576,6 +9301,25 @@ impl Worker {
             } else {
                 false
             };
+            if view.adapter.record.kind == "bboxy450-harness" {
+                let delivery = view.rich_delivery.clone();
+                self.deliveries.spawn_on(
+                    async move {
+                        let outcome = match delivery {
+                            Some(port) => port.text(work.id, &text, true).await,
+                            None => crate::rich::unavailable(),
+                        };
+                        Delivery {
+                            swarm,
+                            work,
+                            outcome,
+                            relayed,
+                        }
+                    },
+                    &self.handle,
+                );
+                continue;
+            }
             match view.adapter.record.wake_method {
                 WakeMethod::ClaudeSocket | WakeMethod::CodexRpc => {
                     let binding = view.adapter.binding.clone();
@@ -8679,6 +9423,15 @@ impl Worker {
             note: crate::adapters::observe::short(note, 640),
             cause: Some(cause),
         };
+        // This synchronous guard has no socket IO. Harness requests are
+        // scheduled by start_control_input/pump_messages before PTY arbitration.
+        if self
+            .views
+            .get(&seat)
+            .is_some_and(|v| v.adapter.record.kind == "bboxy450-harness")
+        {
+            return Ok(crate::rich::unavailable());
+        }
         let attachment = self
             .attachments
             .get(&seat)
@@ -8758,6 +9511,13 @@ impl Worker {
             })
     }
     fn publish_adapter(&self, id: Ulid, status: crate::adapters::Status) -> Result<()> {
+        if status.grade == crate::adapters::Grade::Reported {
+            let root = object_dir(&self.config.run_dir, &format!("seat-{id}"))?;
+            SqliteStore::open(&root)?.put(
+                "reported_adapter",
+                &serde_json::to_vec(&(self.views[&id].generation, &status))?,
+            )?;
+        }
         self.publish(
             &format!("seat-{id}"),
             Draft::new(
@@ -8971,6 +9731,7 @@ impl Worker {
             })
             .collect();
         Ok(bbt_proto::GuiSeat {
+            rich_socket: view.rich_socket.clone(),
             notification_episode: self
                 .client
                 .current_attention
@@ -8989,6 +9750,7 @@ impl Worker {
                 grade: gui_grade(status.grade),
                 title,
                 detail: status.detail.clone(),
+                stale: status.source == "stale",
                 turn_open: status.turn_open,
                 observed_ms: status.observed_ms,
                 subagents,
@@ -9400,7 +10162,7 @@ impl Worker {
         };
         let (retained, fresh) = self.operator_journal.admit(&principal, &call)?;
         let result = if fresh {
-            let result = match self.prepare_gui_spawn(spec) {
+            let result = match self.prepare_spawn(Ulid::new(), spec) {
                 Ok((record, harness, options)) => match self.launch(record, harness, options) {
                     Ok(info) => crate::mcp::success(id, serde_json::json!({"seat":info.seat})),
                     // Admission is durable before the native effect. A lost
@@ -9435,8 +10197,11 @@ impl Worker {
         Ok(first_available_seat_name(swarm, &self.registry.list()?))
     }
 
-    fn prepare_gui_spawn(
+    /// Every admitted door supplies a SpawnSpec here. Authority and operation
+    /// journals stay with the door; seat identity, role and launch inputs do not.
+    fn prepare_spawn(
         &self,
+        seat: Ulid,
         spec: bbt_proto::SpawnSpec,
     ) -> Result<(
         SeatRecord,
@@ -9516,15 +10281,29 @@ impl Worker {
             return Err(invalid("reserved_spawn_environment"));
         }
         if let Some(via) = &spec.via {
-            via.argv(&spec.cwd, &harness.command, &spec.env)
-                .map_err(invalid)?;
+            if via.kind.starts_with("plugin:") {
+                bbt_proto::TransportSpec::inner_command(&spec.cwd, &harness.command, &spec.env)
+                    .map_err(invalid)?;
+            } else {
+                via.argv(&spec.cwd, &harness.command, &spec.env)
+                    .map_err(invalid)?;
+            }
         }
+        let cwd = if spec.via.is_none() && spec.location == bbt_proto::Where::Local {
+            let path = Path::new(&spec.cwd);
+            if !path.is_absolute() || !path.is_dir() {
+                return Err(invalid("cwd must be an explicit absolute directory"));
+            }
+            path.canonicalize()?
+        } else {
+            spec.cwd.into()
+        };
         let swarm = Ulid::from(spec.swarm.0.0);
         let name = match spec.name {
             Some(name) => name,
             None => self.default_seat_name(swarm)?,
         };
-        let mut record = SeatRecord::new(Ulid::new(), swarm, name, harness.kind.clone());
+        let mut record = SeatRecord::new(seat, swarm, name, harness.kind.clone());
         record.location = match spec.location {
             bbt_proto::Where::Local => crate::registry::Location::Local,
             bbt_proto::Where::Ssh { host } => crate::registry::Location::Ssh { host },
@@ -9541,9 +10320,10 @@ impl Worker {
             record,
             harness,
             crate::adapters::launch::LaunchOptions {
+                transport_argv: None,
                 via: spec.via,
                 env: spec.env,
-                cwd: spec.cwd.into(),
+                cwd,
                 role_prompt,
                 executable: std::env::current_exe()?,
                 user_home: std::env::var_os("HOME")
@@ -9724,7 +10504,7 @@ impl Worker {
         };
         if let Some(view) = self.views.get(&key.1) {
             pending_events.parsed(&key, view.sequence);
-            pending_events.seats.get_mut(&key).unwrap().ring_blocked = view.ring_refusal.is_some();
+            pending_events.seats.get_mut(&key).unwrap().ring_blocked = view.ring_held();
         }
         pending_events.finish(key, complete);
         Ok(())
@@ -9816,6 +10596,26 @@ impl Worker {
                         let _ = reply.send(self.identity.status());
                     }
                     #[cfg(test)]
+                    Command::ProjectionTurn(path, reply) => {
+                        let result = (|| -> Result<()> {
+                            let root = self
+                                .workspaces
+                                .cache
+                                .roots()
+                                .find(|root| root.index.knowledge_root() == path)
+                                .ok_or_else(|| invalid("private projection root not mounted"))?
+                                .root_id()
+                                .to_owned();
+                            self.workspaces
+                                .cache
+                                .root_mut(&root)
+                                .unwrap()
+                                .step_provenance(&self.bus, &self.handle, &self.identity, &[])?;
+                            Ok(())
+                        })();
+                        let _ = reply.send(result);
+                    }
+                    #[cfg(test)]
                     Command::RefreshIdentity(reply) => {
                         let _ = reply.send(self.refresh_identity());
                     }
@@ -9829,14 +10629,21 @@ impl Worker {
                         });
                         let _ = reply.send(result);
                     }
-                    Command::ControlCall(id, generation, call, reply) => {
+                    Command::ControlCall(id, generation, call, attribution, reply) => {
+                        // The seat's latest attribution, for the plugin IO this
+                        // and its later deferred work run on the seat's behalf.
+                        self.seat_attribution.insert(id, (generation, attribution));
                         let call = if call.tool == "ctl" {
                             match self.control_actor(id, generation).and_then(|(actor, _)| {
                                 crate::mcp::seats::canonical(&actor, &call).map_err(invalid)
                             }) {
                                 Ok(canonical) => canonical,
                                 Err(_) => {
-                                    let result = self.control_call(id, generation, call);
+                                    let attribution = self.attribution_of(id, generation);
+                                    let result =
+                                        crate::plugins::attribution::scope(attribution, || {
+                                            self.control_call(id, generation, call)
+                                        });
                                     let _ = reply.send(result);
                                     continue;
                                 }
@@ -9859,14 +10666,19 @@ impl Worker {
                             && call.tool != "artifact_claim"
                         {
                             self.start_seat_effect(id, generation, call, reply);
-                        } else if call.tool == "seat_focus" {
+                        } else if matches!(call.tool.as_str(), "seat_focus" | "seat_close") {
                             self.start_control_focus(id, generation, call, reply);
+                        } else if call.tool == "seat_input_text" {
+                            self.start_control_input(id, generation, call, reply);
                         } else if call.tool == "seat_interrupt" {
                             self.start_control_interrupt(id, generation, call, reply);
                         } else if crate::mcp::plugin_tools::handles(&call.tool) {
                             self.start_plugin_tool(id, generation, call, reply);
                         } else {
-                            let result = self.control_call(id, generation, call);
+                            let attribution = self.attribution_of(id, generation);
+                            let result = crate::plugins::attribution::scope(attribution, || {
+                                self.control_call(id, generation, call)
+                            });
                             let _ = reply.send(result);
                         }
                     }
@@ -9878,9 +10690,18 @@ impl Worker {
                         self.start_gui_swarm(*action, origin, reply);
                     }
                     Command::GuiSpawn(id, spec, door, reply) => {
-                        let result = self.gui_spawn(id, spec, door);
-                        let _ = reply.send(result);
+                        if spec
+                            .via
+                            .as_ref()
+                            .is_some_and(|via| via.kind.starts_with("plugin:"))
+                        {
+                            self.start_plugin_transport(id, spec, door, reply);
+                        } else {
+                            let result = self.gui_spawn(id, spec, door);
+                            let _ = reply.send(result);
+                        }
                     }
+                    Command::PluginTransportReady(done) => self.finish_plugin_transport(*done),
                     Command::GuiMessaging(id, swarm, request, origin, reply) => {
                         let result = self.gui_messaging(id, swarm, request, origin);
                         let _ = reply.send(result);
@@ -10336,6 +11157,21 @@ impl Worker {
                             .and_then(|_| self.messaging.operator_subjects());
                         let _ = reply.send(result);
                     }
+                    Command::RichState(id, generation) => {
+                        if let Some(view) = self
+                            .views
+                            .get_mut(&id)
+                            .filter(|v| v.generation == generation)
+                            && let Some(hello) =
+                                view.rich_delivery.as_ref().and_then(|p| p.client.hello())
+                        {
+                            view.adapter.binding.session = hello.session.to_string();
+                            let status = view.adapter.status.clone();
+                            self.persist_native_session(id)?;
+                            // Announce metadata even when no PTY byte arrives after Hello.
+                            self.publish_adapter(id, status)?;
+                        }
+                    }
                     Command::GuiInput(id, generation, input_id, bytes, reply) => {
                         let result = self.seat_input(id, generation, input_id, bytes);
                         let _ = reply.send(result);
@@ -10716,6 +11552,7 @@ impl Worker {
                                 Ok(view.adapter.status.clone())
                             });
                         if let (Some(before), Ok(status)) = (&before, &result) {
+                            self.persist_native_session(id)?;
                             let promoted =
                                 self.sync_adapter_attention(id, before, status, live_wait)?;
                             if !status.same_value(before) || promoted {
@@ -11893,6 +12730,73 @@ mod identity_retry_clock_tests {
                 .iter()
                 .any(|row| row["source"] == observed.event.source)
         );
+        // keeps: a row that cannot be projected (its artifact's number now
+        // collides with a hand-written record) becomes a recorded gap; the
+        // step succeeds and the projection cursor moves past it.
+        let number = doc.metadata["number"].as_u64().unwrap();
+        std::fs::create_dir_all(root.path().join("repository/.bboxy/tasks")).unwrap();
+        std::fs::write(
+            root.path().join("repository/.bboxy/tasks/hand-written.md"),
+            format!(
+                "---\nid: \"{}\"\ntype: \"task\"\nnumber: {number}\ntitle: \"hand-written\"\nstatus: \"open\"\n---\n# hand-written\n",
+                Ulid::new()
+            ),
+        )
+        .unwrap();
+        let modified = Change {
+            kind: "modified".into(),
+            digest: Some(format!(
+                "sha256:{:x}",
+                <sha2::Sha256 as sha2::Digest>::digest(b"held-content-2")
+            )),
+            before_digest: observation.digest.clone(),
+            ..observation.clone()
+        };
+        let conflicting = runtime
+            .block_on(bus.publish(
+                "index",
+                Draft::new(
+                    format!("artifact/{artifact}/modified"),
+                    "provenance/filesystem",
+                    serde_json::json!({"observation": modified}),
+                ),
+            ))
+            .unwrap();
+        std::thread::sleep(Duration::from_secs(5));
+        worker
+            .workspaces
+            .cache
+            .startup_mut()
+            .step_provenance(&bus, runtime.handle(), &worker.identity, &[])
+            .expect("a conflicting row is a gap, not a stalled step");
+        let gap = worker
+            .workspaces
+            .cache
+            .startup()
+            .index
+            .activity()
+            .after(conflicting.seq, 128)
+            .unwrap()
+            .into_iter()
+            .find(|row| row.event.payload["reason"] == "projection-failed")
+            .expect("the gap is recorded on the activity stream");
+        let payload = &gap.event.payload;
+        assert_eq!(payload["origin"]["seq"], conflicting.seq);
+        assert_eq!(payload["origin"]["source"], conflicting.event.source);
+        assert_eq!(payload["detail"]["artifact"], serde_json::json!(artifact));
+        assert!(
+            payload["error"]
+                .as_str()
+                .unwrap()
+                .contains("duplicate record number")
+        );
+        // The raw trail is the exact retained envelope, whatever its shape.
+        let raw = serde_json::to_vec(&conflicting).unwrap();
+        assert_eq!(payload["raw"]["bytes"], raw.len());
+        assert_eq!(
+            payload["raw"]["sha256"],
+            format!("{:x}", <sha2::Sha256 as sha2::Digest>::digest(&raw))
+        );
         let restored = worker
             .workspaces
             .cache
@@ -12031,4 +12935,120 @@ mod native_hook_tests {
                     .unwrap();
             });
     }
+}
+
+#[path = "logic/plugin_transport.rs"]
+mod plugin_transport;
+
+fn harness_profile_dir() -> Result<PathBuf> {
+    Ok(std::env::var_os("HOME")
+        .map(PathBuf::from)
+        .ok_or_else(|| invalid("missing user home"))?
+        .join(".bboxy450-harness/profiles"))
+}
+/// The machine-global harness profiles, frontmatter fields only: never a key, an
+/// `api_key` command or an environment value.
+/// MCP `usage_read`: the window's last usage sample (run/usage.json, written by
+/// its usage poller), with its age. Absent until the window has sampled once.
+fn usage_snapshot(run_dir: &std::path::Path) -> std::result::Result<serde_json::Value, String> {
+    let path = run_dir.join("usage.json");
+    let bytes = match std::fs::read(&path) {
+        Ok(bytes) => bytes,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            return Ok(serde_json::json!({
+                "available": false,
+                "reason": "the window has not sampled usage yet (headless or test account)",
+            }));
+        }
+        Err(error) => return Err(format!("usage snapshot unreadable: {error}")),
+    };
+    let mut value: serde_json::Value =
+        serde_json::from_slice(&bytes).map_err(|e| format!("usage snapshot invalid: {e}"))?;
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64);
+    let age = value["sampled_at"]
+        .as_i64()
+        .map(|at| now.saturating_sub(at));
+    value["available"] = serde_json::json!(true);
+    value["age_seconds"] = serde_json::json!(age);
+    Ok(value)
+}
+#[cfg(test)]
+mod usage_snapshot_tests {
+    #[test]
+    fn usage_read_reports_absence_then_the_window_snapshot_with_its_age() {
+        let dir = tempfile::tempdir().unwrap();
+        let missing = super::usage_snapshot(dir.path()).unwrap();
+        assert_eq!(missing["available"], false);
+        let sampled = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap()
+            .as_secs() as i64
+            - 7;
+        std::fs::write(
+            dir.path().join("usage.json"),
+            serde_json::to_vec(&serde_json::json!({
+                "sampled_at": sampled,
+                "machine": {"cpu": 48, "memory": 64, "disk": 95, "reason": null},
+                "providers": {"claude": {"used": 96, "windows": [{"label": "Weekly", "used": 96, "resets_at": 1}]}},
+            }))
+            .unwrap(),
+        )
+        .unwrap();
+        let read = super::usage_snapshot(dir.path()).unwrap();
+        assert_eq!(read["available"], true);
+        assert_eq!(read["machine"]["disk"], 95);
+        assert_eq!(read["providers"]["claude"]["used"], 96);
+        assert!((7..=9).contains(&read["age_seconds"].as_i64().unwrap()));
+        std::fs::write(dir.path().join("usage.json"), b"not json").unwrap();
+        assert!(super::usage_snapshot(dir.path()).is_err());
+    }
+}
+fn harness_profiles() -> std::result::Result<serde_json::Value, String> {
+    use serde_json::{Value, json};
+    let dir = harness_profile_dir().map_err(|e| e.to_string())?;
+    let mut out = vec![];
+    if let Ok(entries) = std::fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().is_none_or(|x| x != "md") {
+                continue;
+            }
+            let Ok(text) = std::fs::read_to_string(&path) else {
+                continue;
+            };
+            let Some(header) = text
+                .strip_prefix("---\n")
+                .and_then(|r| r.split_once("\n---"))
+                .map(|(h, _)| h)
+            else {
+                continue;
+            };
+            let Ok(meta) = serde_yaml::from_str::<Value>(header) else {
+                continue;
+            };
+            let field = |k: &str| meta.get(k).and_then(Value::as_str).unwrap_or("").to_owned();
+            let acp = field("provider") == "acp-agent";
+            out.push(json!({
+                "name": path.file_stem().map(|s| s.to_string_lossy().into_owned()),
+                "kind": if acp { "acp-agent" } else { "model" },
+                "provider": field("provider"),
+                "model": field("model"),
+                "agent_command": meta.pointer("/agent/command").cloned().unwrap_or(Value::Null),
+                "agent_env_names": meta.pointer("/agent/env").and_then(Value::as_object).map(|m| m.keys().cloned().collect::<Vec<_>>()).unwrap_or_default(),
+            }));
+        }
+    }
+    out.sort_by_key(|p| p["name"].as_str().unwrap_or("").to_owned());
+    let default = std::env::var("BBOXY450_HARNESS_PROFILE")
+        .ok()
+        .filter(|s| !s.trim().is_empty())
+        .or_else(|| {
+            std::fs::read_to_string(dir.parent()?.join("default-profile"))
+                .ok()
+                .map(|s| s.trim().to_owned())
+                .filter(|s| !s.is_empty())
+        });
+    Ok(json!({ "profiles": out, "default": default, "directory": dir }))
 }

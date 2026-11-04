@@ -651,16 +651,62 @@ fn long_paths_and_emoji_wrap_at_grapheme_boundaries_without_rewriting_source() {
 
 #[test]
 fn resolved_images_keep_aspect_and_true_size_inside_horizontal_clips() {
-    let mut doc=parse("![[proof.png]]\n");
-    let bbt_doc::BlockKind::Paragraph(values)=&mut doc.blocks[0].kind else {panic!("image paragraph")};
-    let bbt_doc::Inline::Image {asset,..}=&mut values[0] else {panic!("wiki image")};
-    *asset=Some(bbt_doc::markdown::ImageAsset {key:"test-bitmap".into(),width:800,height:300});
-    let layout=doc.body_element(ctx(),&Fonts,400.,&[]).layout(Rect::new(0.,0.,400.,0.),ctx(),&Fonts).unwrap();
-    fn images(node:&c::Layout,out:&mut Vec<[f32;2]>) {
-        if matches!(node.kind,c::LayoutKind::Image {..}) {out.push([node.rect.w,node.rect.h]);}
-        for child in &node.children {images(child,out);}
+    let mut doc = parse("![[proof.png]]\n");
+    let bbt_doc::BlockKind::Paragraph(values) = &mut doc.blocks[0].kind else {
+        panic!("image paragraph")
+    };
+    let bbt_doc::Inline::Image { asset, .. } = &mut values[0] else {
+        panic!("wiki image")
+    };
+    *asset = Some(bbt_doc::markdown::ImageAsset {
+        key: "test-bitmap".into(),
+        width: 800,
+        height: 300,
+    });
+    let layout = doc
+        .body_element(ctx(), &Fonts, 400., &[])
+        .layout(Rect::new(0., 0., 400., 0.), ctx(), &Fonts)
+        .unwrap();
+    fn images(node: &c::Layout, out: &mut Vec<[f32; 2]>) {
+        if matches!(node.kind, c::LayoutKind::Image { .. }) {
+            out.push([node.rect.w, node.rect.h]);
+        }
+        for child in &node.children {
+            images(child, out);
+        }
     }
-    let mut sizes=vec![];images(&layout,&mut sizes);
-    assert_eq!(sizes,[[800.,300.]]);
-    assert_eq!(doc.source,"![[proof.png]]\n");
+    let mut sizes = vec![];
+    images(&layout, &mut sizes);
+    assert_eq!(sizes, [[800., 300.]]);
+    assert_eq!(doc.source, "![[proof.png]]\n");
+}
+
+// In a transcript (no inner horizontal scroll) a diagram is a wide block like a table: it takes
+// the offered width, so a left-to-right flowchart is not clipped. The reading view is unchanged.
+#[test]
+fn transcript_diagrams_use_the_offered_width_like_tables() {
+    let source = "Readable prose stays on its own measure.\n\n```mermaid\nflowchart LR\n  A[User turn] --> B[Gateway] --> C[Session actor] --> D[Provider] --> E[Tools] --> F[Store]\n```\n";
+    let doc = parse(source);
+    let width = 944.;
+    let highlighter = bbt_doc::highlight::RustHighlighter::new(false);
+    let highlights = bbt_doc::highlight::Highlights::prepare(&doc, &highlighter);
+    // the reading view keeps figures on the measure (they scroll inside their viewport)
+    let reading = doc
+        .highlighted_body_element(&highlights, ctx(), &Fonts, width)
+        .layout(Rect::new(0., 0., width, 0.), ctx(), &Fonts)
+        .unwrap();
+    assert!(named(&reading, "block1").unwrap().rect.w <= STYLE.spacing.doc_measure as f32 + 0.01);
+    let layout = doc
+        .transcript_body_element(&highlights, ctx(), &Fonts, width)
+        .layout(Rect::new(0., 0., width, 0.), ctx(), &Fonts)
+        .unwrap();
+    let prose = named(&layout, "block0").unwrap();
+    assert!(prose.rect.w <= STYLE.spacing.doc_measure as f32 + 0.01);
+    let diagram = named(&layout, "block1").unwrap();
+    assert!(
+        diagram.rect.w > STYLE.spacing.doc_measure as f32 + 0.01,
+        "diagram {:?} stayed on the prose measure",
+        diagram.rect
+    );
+    assert!(diagram.rect.w <= width + 0.01);
 }

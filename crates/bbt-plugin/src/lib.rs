@@ -10,6 +10,8 @@ pub mod contracts;
 pub mod data_source;
 pub mod decision_model;
 pub mod event_sink;
+#[cfg(feature = "model")]
+pub mod models;
 pub mod policy;
 pub mod provider;
 pub mod registry;
@@ -18,6 +20,7 @@ pub mod session;
 pub mod shape;
 pub mod skills;
 pub mod task_system;
+pub mod transport;
 pub mod trust;
 
 /// A stable, named refusal suitable for a checker or registry entry.

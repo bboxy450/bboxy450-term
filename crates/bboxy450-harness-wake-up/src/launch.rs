@@ -5,6 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use super::HarnessRecord;
+use crate::guard::environment;
 use crate::{Result, invalid};
 use std::collections::BTreeMap;
 use std::io::Write;
@@ -12,23 +13,20 @@ use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt};
 use std::path::{Path, PathBuf};
 
 // Session discovery belongs to the launched client, never its parent harness.
-// Preserve HOME, auth, model settings and the caller's BBOXY admission variables.
-const PARENT_SESSION_ENV: [&str; 7] = [
-    "CODEX_THREAD_ID",
-    "ICQ_CODEX_SOCKET",
-    "CLAUDE_CODE_SESSION_ID",
-    "CLAUDE_CODE_MESSAGING_SOCKET",
-    "PI_SESSION_ID",
-    "PI_SESSION_FILE",
-    "ICQ_HARNESS_DESCRIPTOR",
-];
+// Preserve HOME, auth, model settings and path-only BBOXY admission.
+fn parent_session_env() -> Vec<String> {
+    let mut keys = environment::removal_keys();
+    keys.push("BBOXY_CAPABILITY".into());
+    keys
+}
 
 fn isolated_runtime(program: &str, args: Vec<String>) -> (String, Vec<String>) {
     // env replaces itself with the native service (same PID). This also works
     // when an older, already-running supervisor inherited the parent's IDs.
-    let mut isolated = Vec::with_capacity(PARENT_SESSION_ENV.len() * 2 + args.len() + 2);
-    for key in PARENT_SESSION_ENV {
-        isolated.extend(["-u".into(), key.into()]);
+    let keys = parent_session_env();
+    let mut isolated = Vec::with_capacity(keys.len() * 2 + args.len() + 2);
+    for key in keys {
+        isolated.extend(["-u".into(), key]);
     }
     isolated.extend(["--".into(), program.into()]);
     isolated.extend(args);
@@ -230,6 +228,10 @@ fn launch_permissions(kind: &str, args: &mut Vec<String>) -> Result<()> {
                 "sandbox_mode=\"danger-full-access\"".into(),
             ]);
         }
+        "bboxy450-harness" if !args.iter().any(|arg| arg == "--yolo") => {
+            // Managed native launcher intent; vendor flags stay in their own CLI.
+            args.push("--yolo".into());
+        }
         _ => {}
     }
     Ok(())
@@ -418,13 +420,17 @@ fn startup_prompt(context: &LaunchContext<'_>) -> Result<String> {
         serde_json::to_string(context.cwd)?,
     ))
 }
-fn claude_wiring(overlay: &Path, context: &LaunchContext<'_>) -> Result<PathBuf> {
+fn mcp_wiring(overlay: &Path, context: &LaunchContext<'_>) -> Result<()> {
     write(
         &overlay.join("mcp.json"),
         &serde_json::to_vec(&serde_json::json!({"mcpServers":{"bboxy":{
             "command":context.executable,"args":["mcp"]
         }}}))?,
     )?;
+    Ok(())
+}
+fn claude_wiring(overlay: &Path, context: &LaunchContext<'_>) -> Result<PathBuf> {
+    mcp_wiring(overlay, context)?;
     let plugin = overlay.join("bboxy450");
     for dir in [
         plugin.join(".claude-plugin"),
@@ -469,10 +475,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
     let overlay = context
         .overlay_parent
         .join(format!("launch-{}", crate::Ulid::new()));
-    std::fs::DirBuilder::new()
-        .recursive(true)
-        .mode(0o700)
-        .create(&overlay)?;
+    let owned_overlay = crate::capability::create_overlay(&overlay)?;
     let mut spec = LaunchPlan {
         program: record.command[0].clone(),
         args,
@@ -484,6 +487,12 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
         runtime: None,
         shared_runtime: None,
     };
+    // The process host applies this data after explicit overrides. No inherited
+    // values, credentials or program-specific logic enter the host's protocol.
+    spec.env.insert(
+        environment::UNSET_RULES.into(),
+        environment::SESSION_RULES.into(),
+    );
     spec.env
         .insert("BBOXY_SEAT_ID".into(), context.id.to_string());
     spec.env
@@ -493,12 +502,10 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
     spec.env
         .insert("BBOXY_SOCK".into(), context.socket.to_string_lossy().into());
     spec.env.insert(
-        "BBOXY_CAPABILITY".into(),
-        context
-            .capability
-            .iter()
-            .map(|b| format!("{b:02x}"))
-            .collect(),
+        "BBOXY_CAPABILITY_FILE".into(),
+        crate::capability::create(&overlay, &context.capability)?
+            .to_string_lossy()
+            .into_owned(),
     );
     spec.env
         .insert("TERM_PROGRAM".into(), "bboxy450-term".into());
@@ -509,6 +516,36 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
     let mut session = context.harness_session_id.map(str::to_owned);
     let mut notes = Vec::new();
     match record.kind.as_str() {
+        "bboxy450-harness" => {
+            let rich_socket = crate::rich::socket_path(context.socket, context.id)?;
+            if context.resume
+                && !context
+                    .harness_session_id
+                    .is_some_and(crate::rich::valid_session)
+            {
+                return Err(invalid("harness-resume-session-invalid"));
+            }
+            mcp_wiring(&overlay, context)?;
+            spec.args.extend([
+                "--socket".into(),
+                rich_socket.to_string_lossy().into_owned(),
+            ]);
+            if context.resume {
+                spec.args.extend([
+                    "--resume".into(),
+                    context.harness_session_id.unwrap().into(),
+                ]);
+            }
+            spec.args.extend([
+                "--cwd".into(),
+                context.cwd.to_string_lossy().into(),
+                "--append-system-prompt".into(),
+                format!("{}\n\n{}", startup_prompt(context)?, context.skill),
+                "--mcp-config".into(),
+                overlay.join("mcp.json").to_string_lossy().into(),
+            ]);
+            notes.push("bboxy450-harness: native socket admission, OSC and process-bound session logs report activity; never PTY fallback");
+        }
         "claude" => {
             if spec.args.iter().any(|a| a == "--bare") {
                 return Err(invalid("Claude --bare disables hook/socket integration"));
@@ -591,10 +628,10 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
             // A private executable gives each thread its own MCP configuration,
             // without putting the capability in CLI flags or changing user config.
             let mcp = overlay.join("bboxy-seat");
-            let mut script = String::from("#!/bin/sh\n");
+            let mut script = String::from("#!/bin/sh\nunset BBOXY_CAPABILITY\n");
             for key in [
                 "BBOXY_SOCK",
-                "BBOXY_CAPABILITY",
+                "BBOXY_CAPABILITY_FILE",
                 "BBOXY_SEAT_ID",
                 "BBOXY_GENERATION",
                 "BBOXY_ROLE",
@@ -619,11 +656,15 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
                 "-c".into(),
                 "mcp_servers.bboxy.args=[\"mcp\"]".into(),
                 "-c".into(),
+                "mcp_servers.bboxy.enabled=true".into(),
+                "-c".into(),
+                "mcp_servers.bboxy.required=true".into(),
+                "-c".into(),
                 "mcp_servers.bboxy.default_tools_approval_mode=\"approve\"".into(),
                 "-c".into(),
                 "check_for_update_on_startup=false".into(),
                 "-c".into(),
-                "mcp_servers.bboxy.env_vars=[\"BBOXY_SOCK\",\"BBOXY_CAPABILITY\",\"BBOXY_SEAT_ID\",\"BBOXY_GENERATION\",\"BBOXY_RUN_DIR\"]".into(),
+                "mcp_servers.bboxy.env_vars=[\"BBOXY_SOCK\",\"BBOXY_CAPABILITY_FILE\",\"BBOXY_SEAT_ID\",\"BBOXY_GENERATION\",\"BBOXY_RUN_DIR\"]".into(),
             ]);
             notes.push("Codex skill text is in per-launch developer_instructions; a per-session skill path remains unverified");
             if record.hooks {
@@ -732,6 +773,7 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
     }
     spec.harness_session_id = session;
     spec.notes = notes;
+    owned_overlay.retain();
     Ok(spec)
 }
 
@@ -786,7 +828,7 @@ pub fn exec_when_ready(args: &[String]) -> Result<()> {
     )?;
     let mut command = std::process::Command::new(program);
     command.args(rest);
-    for key in PARENT_SESSION_ENV {
+    for key in parent_session_env() {
         command.env_remove(key);
     }
     Err(command.exec().into())
@@ -817,6 +859,33 @@ fn serve_shared_codex(args: &[String]) -> Result<()> {
     ))
 }
 
+/// Spawn at the seat QoS class (user-initiated). A macOS process inherits its
+/// spawning thread's class; the shared Codex daemon runs the Codex seats'
+/// tools and builds, so they share the seats' class: above background work,
+/// below the interactive terminal path (bbt-rt::qos).
+fn seat_qos_spawn(command: &mut std::process::Command) -> std::io::Result<std::process::Child> {
+    #[cfg(target_os = "macos")]
+    {
+        let mut class = libc::qos_class_t::QOS_CLASS_UNSPECIFIED;
+        let mut relative = 0;
+        // SAFETY: valid out-pointers; touches only the calling thread's QoS.
+        unsafe {
+            libc::pthread_get_qos_class_np(libc::pthread_self(), &mut class, &mut relative);
+            libc::pthread_set_qos_class_self_np(libc::qos_class_t::QOS_CLASS_USER_INITIATED, 0);
+        }
+        let child = command.spawn();
+        if class as u32 != libc::qos_class_t::QOS_CLASS_UNSPECIFIED as u32 {
+            // SAFETY: as above.
+            unsafe {
+                libc::pthread_set_qos_class_self_np(class, relative);
+            }
+        }
+        child
+    }
+    #[cfg(not(target_os = "macos"))]
+    command.spawn()
+}
+
 pub(super) fn ensure_codex_daemon(endpoint: &Path, program: &str) -> Result<()> {
     use std::process::{Command, Stdio};
     use std::time::{Duration, Instant};
@@ -834,10 +903,10 @@ pub(super) fn ensure_codex_daemon(endpoint: &Path, program: &str) -> Result<()> 
             start.env_remove(key);
         }
     }
-    for key in PARENT_SESSION_ENV {
+    for key in parent_session_env() {
         start.env_remove(key);
     }
-    let mut child = start.spawn()?;
+    let mut child = seat_qos_spawn(&mut start)?;
     let deadline = Instant::now() + Duration::from_secs(30);
     loop {
         if let Some(status) = child.try_wait()? {
@@ -883,7 +952,7 @@ mod runtime_tests {
             if /usr/bin/printenv "$key" >/dev/null; then exit 91; fi
         done
         test "$HOME" = fixture-home && test "$CODEX_HOME" = fixture-codex &&
-        test "$OPENAI_API_KEY" = fixture-auth && test "$BBOXY_CAPABILITY" = fixture-admission || exit 92
+        test "$OPENAI_API_KEY" = fixture-auth && test "$BBOXY_CAPABILITY_FILE" = fixture-admission || exit 92
         printf '%s' "$$""#;
         let (program, args) = isolated_runtime("/bin/sh", vec!["-c".into(), script.into()]);
         let mut command = std::process::Command::new(program);
@@ -894,9 +963,9 @@ mod runtime_tests {
             .env("HOME", "fixture-home")
             .env("CODEX_HOME", "fixture-codex")
             .env("OPENAI_API_KEY", "fixture-auth")
-            .env("BBOXY_CAPABILITY", "fixture-admission")
+            .env("BBOXY_CAPABILITY_FILE", "fixture-admission")
             .stdout(std::process::Stdio::piped());
-        for key in PARENT_SESSION_ENV {
+        for key in parent_session_env() {
             command.env(key, "parent-fixture");
         }
         let child = command.spawn().unwrap();
@@ -1041,5 +1110,93 @@ mod runtime_tests {
         std::fs::set_permissions(&first.overlay, std::fs::Permissions::from_mode(0o755)).unwrap();
         assert!(cleanup_stale_runtime_alias(&first.overlay, Some(&first.endpoint)).is_err());
         assert_eq!(std::fs::read_link(first.alias()).unwrap(), first.overlay);
+    }
+}
+
+#[cfg(test)]
+mod embed_tests {
+    use super::*;
+    use crate::{StateSource, WakeMethod};
+    use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn embedded_seat_gets_role_workflow_and_mcp_without_hook_or_plugin() {
+        let temp = tempfile::tempdir().unwrap();
+        let context = LaunchContext {
+            id: crate::Ulid::new(),
+            generation: 1,
+            name: "literal \"quoted\" name",
+            role_name: "executor",
+            harness_session_id: None,
+            skill: "Workflow: orient first; task_report closes the assigned task.",
+            cwd: temp.path(),
+            role_prompt: "ROLE: EXECUTOR\nUse the assigned repository.",
+            executable: Path::new("/tmp/bboxy term"),
+            overlay_parent: temp.path(),
+            user_home: temp.path(),
+            user_zdotdir: None,
+            socket: Path::new("/tmp/private.sock"),
+            capability: [0xab; 32],
+            resume: false,
+        };
+        let record = HarnessRecord {
+            kind: "bboxy450-harness".into(),
+            name: "Harness".into(),
+            command: vec!["bboxy450-harness".into(), "seat".into()],
+            wake_method: WakeMethod::Pty,
+            state_source: StateSource::Cadence,
+            hooks: false,
+        };
+        let harness = plan(&record, &context).unwrap();
+        let claude = plan(&HarnessRecord::builtin("claude").unwrap(), &context).unwrap();
+        let argument = |args: &[String], flag: &str| {
+            args.windows(2).find(|p| p[0] == flag).unwrap()[1].clone()
+        };
+        assert_eq!(
+            argument(&harness.args, "--append-system-prompt"),
+            format!(
+                "{}\n\n{}",
+                argument(&claude.args, "--append-system-prompt"),
+                context.skill
+            )
+        );
+        assert_eq!(
+            argument(&harness.args, "--cwd"),
+            temp.path().to_str().unwrap()
+        );
+        assert_eq!(
+            std::fs::read(harness.overlay.join("mcp.json")).unwrap(),
+            std::fs::read(claude.overlay.join("mcp.json")).unwrap()
+        );
+        assert_eq!(
+            argument(&harness.args, "--mcp-config"),
+            harness.overlay.join("mcp.json").to_str().unwrap()
+        );
+        assert_eq!(std::fs::read_dir(&harness.overlay).unwrap().count(), 2);
+        assert!(harness.overlay.join("capability").is_file());
+        assert_eq!(
+            std::fs::metadata(&harness.overlay)
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o700
+        );
+        assert_eq!(
+            std::fs::metadata(harness.overlay.join("mcp.json"))
+                .unwrap()
+                .permissions()
+                .mode()
+                & 0o777,
+            0o600
+        );
+        assert!(!harness.args.join(" ").contains(&"ab".repeat(32)));
+        assert!(harness.args.iter().any(|a| a == "--yolo"));
+        assert!(
+            !harness
+                .args
+                .iter()
+                .any(|a| a == "--dangerously-skip-permissions")
+        );
     }
 }

@@ -1,0 +1,5 @@
+error[E0616]: field `value` of struct `State` is private
+  --> tests/ui/protocol_private_state.rs:17:31
+   |
+17 |     Private::State::default().value = true;
+   |                               ^^^^^ private field

@@ -1,0 +1,11 @@
+{
+  "version": "0.68.0",
+  "origin": "https://github.com/model-checking/kani/releases/tag/kani-0.68.0",
+  "policy": "https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md",
+  "bundles": {
+    "aarch64-apple-darwin": "a5d39a5d5e748253a553aa62f295c6c397287927a28e5e32691d7ff2eda0c398",
+    "aarch64-unknown-linux-gnu": "0042d2688bf1550270def4a79c96aaeea138631818cb4ab5480120f2d51a942c",
+    "x86_64-apple-darwin": "b1367f694c1350abcae133701f78b3be3fd6e9beb66681a22ea0bcac0cc34808",
+    "x86_64-unknown-linux-gnu": "32e2b484d73ede0bbf64a2cf0879c4259422497d8aec4ee67d448de9ae7843d3"
+  }
+}

@@ -19,7 +19,7 @@ mod text_cache;
 mod text_glyphs;
 use crate::{RenderError, Result, device::DeviceContext};
 use bbt_ui_model::{
-    draw::{Color, DrawList, Prim},
+    draw::{Color, DrawList, PathCommand, PathStroke, Prim, TextShadow},
     layout::Rect,
 };
 use pipeline::Instance;
@@ -53,6 +53,9 @@ pub struct ChromeRenderer {
     pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
     group_pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
     group_depth: usize,
+    /// Isolated group layers kept across frames, so a frame with nine groups
+    /// does not allocate nine full-window textures. Keyed by size.
+    group_layers: Vec<wgpu::Texture>,
     paths: paths::Renderer,
     /// Headless material renders reuse one Pass (bind layout and pipelines) per target
     /// format; see materials::render_layered_to_rgba.
@@ -64,7 +67,14 @@ impl ChromeRenderer {
     /// A submission boundary: per-draw buffer slices may be reused from here on. Call it
     /// before encoding each submitted command buffer, never while one is being encoded.
     /// Register a worker-decoded immutable bitmap; the next draw uploads its dirty atlas region.
-    pub fn add_image(&mut self, image: &icons::Image) -> Result<()> { self.icons.add_bitmap(image) }
+    pub fn add_image(&mut self, image: &icons::Image) -> Result<()> {
+        self.icons.add_bitmap(image)
+    }
+    /// Mask cache counters for the frame log.
+    pub fn mask_stats(&self) -> (u64, u64) {
+        let s = self.text.stats();
+        (s.misses, s.shadow_requests)
+    }
     pub fn begin_frame(&mut self) {
         self.arenas.begin_frame();
     }
@@ -117,6 +127,7 @@ impl ChromeRenderer {
             image_sampler,
             pipelines: HashMap::new(),
             group_pipelines: HashMap::new(),
+            group_layers: Vec::new(),
             group_depth: 0,
             paths: paths::Renderer::default(),
             material_pass: None,
@@ -157,6 +168,15 @@ impl ChromeRenderer {
         let clear = wgpu::LoadOp::Clear(wgpu::Color::TRANSPARENT);
         self.draw_with_load(list, target, encoder, clear)
     }
+    /// A pooled full-window layer of exactly this size; other sizes are dropped
+    /// so a resize does not retain stale textures.
+    fn take_group_layer(&mut self, width: u32, height: u32) -> wgpu::Texture {
+        self.group_layers
+            .retain(|t| t.width() == width && t.height() == height);
+        self.group_layers
+            .pop()
+            .unwrap_or_else(|| group::texture(&self.context.device, width, height))
+    }
     fn draw_with_load(
         &mut self,
         list: &DrawList,
@@ -164,7 +184,39 @@ impl ChromeRenderer {
         encoder: &mut wgpu::CommandEncoder,
         load: wgpu::LoadOp<wgpu::Color>,
     ) -> Result<()> {
+        #[cfg(test)]
+        let probe_start = std::time::Instant::now();
         list.validate().map_err(RenderError::from)?;
+        #[cfg(test)]
+        probe(4, probe_start);
+        #[cfg(test)]
+        let probe_start = std::time::Instant::now();
+        // A small path (an icon) is one or two flat instances sampling the
+        // shared mask atlas, exactly like an unblurred path shadow: no render
+        // pass of its own and no split of the surrounding flat batch. Only a
+        // path too large for a mask keeps the analytic pass.
+        let rewritten;
+        let list = if list
+            .primitives
+            .iter()
+            .any(|p| matches!(p, Prim::Path { .. }))
+        {
+            rewritten = DrawList {
+                primitives: list
+                    .primitives
+                    .iter()
+                    .flat_map(|p| atlas_path(p, target.scale))
+                    .collect(),
+                ..list.clone()
+            };
+            &rewritten
+        } else {
+            list
+        };
+        #[cfg(test)]
+        probe(5, probe_start);
+        #[cfg(test)]
+        let _batch_loop = ProbeGuard(6, std::time::Instant::now());
         if !list
             .primitives
             .iter()
@@ -218,7 +270,9 @@ impl ChromeRenderer {
                 for _ in &clips {
                     children.unclip();
                 }
-                let layer = group::texture(&self.context.device, width, height);
+                #[cfg(test)]
+                let probe_group = std::time::Instant::now();
+                let layer = self.take_group_layer(width, height);
                 let layer_view = layer.create_view(&Default::default());
                 self.with_group_layer(|renderer| {
                     renderer.draw(
@@ -249,6 +303,11 @@ impl ChromeRenderer {
                     },
                     encoder,
                 )?;
+                // The composite reading this layer is already encoded; the next
+                // group in this frame may draw into it again.
+                self.group_layers.push(layer);
+                #[cfg(test)]
+                probe(2, probe_group);
                 batch = DrawList {
                     primitives: clips.clone(),
                     ..Default::default()
@@ -325,10 +384,16 @@ impl ChromeRenderer {
             view: target,
             format,
         } = target;
+        #[cfg(test)]
+        let probe_start = std::time::Instant::now();
         list.validate().map_err(RenderError::from)?;
+        #[cfg(test)]
+        probe(0, probe_start);
         if width == 0 || height == 0 || !scale.is_finite() || !(0.5..=4.0).contains(&scale) {
             return Err("invalid chrome viewport".into());
         }
+        #[cfg(test)]
+        let probe_start = std::time::Instant::now();
         let mut instances = Vec::new();
         // UVs are resolved only after every glyph in this flat pass is pinned.
         // LRU repacking cannot invalidate an instance built earlier in the pass.
@@ -504,8 +569,7 @@ impl ChromeRenderer {
                     if text.is_empty() || shadow.color.0[3] <= 0. {
                         continue;
                     }
-                    let physical_x = (origin[0] + shadow.offset[0]) * scale;
-                    let phase = physical_x.rem_euclid(1.);
+                    let (physical_x, phase) = quarter_phase((origin[0] + shadow.offset[0]) * scale);
                     let line = self.text.shadow_line(
                         text,
                         *style,
@@ -560,10 +624,10 @@ impl ChromeRenderer {
                     if text.is_empty() {
                         continue;
                     }
-                    // Quantize each glyph once, after adding the line origin.
-                    // Rounding the origin first loses eighth-pixel positions.
-                    let physical_x = origin[0] * scale;
-                    let phase = physical_x.rem_euclid(1.);
+                    // Quantize each glyph once, after adding the line origin, to
+                    // a quarter device pixel: at most four masks per glyph, as
+                    // gpui, WebRender and Skia do, instead of one per fraction.
+                    let (physical_x, phase) = quarter_phase(origin[0] * scale);
                     let line = self.text.line(text, *style, *max_width, scale, phase)?;
                     if line.advance <= 0.0 {
                         continue;
@@ -646,6 +710,8 @@ impl ChromeRenderer {
                 }
             }
         }
+        #[cfg(test)]
+        probe(1, probe_start);
         self.glyph_reset_pending |= self.text.finish(
             &glyph_instances
                 .iter()
@@ -671,6 +737,10 @@ impl ChromeRenderer {
         if instances.len() > 65_536 {
             return Err("chrome instance budget exceeded".into());
         }
+        #[cfg(test)]
+        FLAT_BATCHES.with(|c| c.set(c.get() + 1));
+        #[cfg(test)]
+        let probe_sync = std::time::Instant::now();
         let (atlas, dirty) = self.text.upload();
         atlas_gpu::sync_glyphs(
             &mut self.glyph_gpu,
@@ -680,6 +750,8 @@ impl ChromeRenderer {
             dirty,
             self.glyph_reset_pending,
         );
+        #[cfg(test)]
+        probe(0, probe_sync);
         let (atlas, dirty) = self.text.upload_color();
         atlas_gpu::sync_glyphs(
             &mut self.color_glyph_gpu,
@@ -912,6 +984,119 @@ impl ChromeRenderer {
     }
 }
 
+/// Largest device-pixel extent a path takes through the mask atlas: icon
+/// sized. A larger path is rasterized on the CPU per distinct placement,
+/// which is the analytic pass's job.
+const ATLAS_PATH_MAX: f32 = 256.;
+
+/// A path as flat atlas instances (fill, then stroke), or itself when it is
+/// too large for a mask. An empty fill or a zero-width stroke emits nothing.
+fn atlas_path(primitive: &Prim, device_scale: f32) -> Vec<Prim> {
+    let Prim::Path {
+        origin,
+        scale,
+        points,
+        stroke,
+        color,
+        fill,
+    } = primitive
+    else {
+        return vec![primitive.clone()];
+    };
+    let mut lo = [f32::INFINITY; 2];
+    let mut hi = [f32::NEG_INFINITY; 2];
+    let mut see = |p: [f32; 2]| {
+        for i in 0..2 {
+            lo[i] = lo[i].min(p[i]);
+            hi[i] = hi[i].max(p[i]);
+        }
+    };
+    for command in points.iter() {
+        match *command {
+            PathCommand::Move(p) | PathCommand::Line(p) => see(p),
+            PathCommand::Cubic(ps) => ps.into_iter().for_each(&mut see),
+        }
+    }
+    let s = scale * device_scale;
+    let pad = stroke.width * s * 2. + 2.;
+    let extent = [
+        (hi[0] - lo[0]) * s + pad * 2.,
+        (hi[1] - lo[1]) * s + pad * 2.,
+    ];
+    if points.is_empty()
+        || !s.is_finite()
+        || s <= 0.
+        || extent.iter().any(|v| !v.is_finite() || *v > ATLAS_PATH_MAX)
+    {
+        return vec![primitive.clone()];
+    }
+    let shadow = |color: Color, filled: bool| Prim::PathShadow {
+        origin: *origin,
+        scale: *scale,
+        points: points.clone(),
+        stroke: if filled {
+            PathStroke {
+                width: 0.,
+                ..stroke.clone()
+            }
+        } else {
+            stroke.clone()
+        },
+        filled,
+        shadow: TextShadow {
+            color,
+            blur_radius: 0.,
+            offset: [0.; 2],
+        },
+    };
+    let mut out = Vec::with_capacity(2);
+    if let Some(fill) = fill {
+        out.push(shadow(*fill, true));
+    }
+    if stroke.width > 0. {
+        out.push(shadow(*color, false));
+    }
+    out
+}
+
+/// A device-pixel x snapped to the nearest quarter pixel, as the integer-plus-
+/// phase pair the glyph cache keys on. 0.875 and above rounds into the next
+/// pixel with phase 0, so a line never carries a phase of 1.
+fn quarter_phase(x: f32) -> (f32, f32) {
+    let snapped = (x * 4.).round() / 4.;
+    (snapped, snapped.rem_euclid(1.))
+}
+
+#[cfg(test)]
+thread_local! {
+    /// validate, instance build, glyph finish+resolve, upload+pass (seconds).
+    static PROBES: std::cell::Cell<[f64; 7]> = const { std::cell::Cell::new([0.; 7]) };
+}
+#[cfg(test)]
+fn probe(slot: usize, start: std::time::Instant) {
+    PROBES.with(|p| {
+        let mut v = p.get();
+        v[slot] += start.elapsed().as_secs_f64();
+        p.set(v);
+    });
+}
+#[cfg(test)]
+thread_local! {
+    static FLAT_BATCHES: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+#[cfg(test)]
+struct ProbeGuard(usize, std::time::Instant);
+#[cfg(test)]
+impl Drop for ProbeGuard {
+    fn drop(&mut self) {
+        probe(self.0, self.1);
+    }
+}
+#[cfg(test)]
+fn take_probes() -> [f64; 7] {
+    PROBES.with(|p| p.replace([0.; 7]))
+}
+
 fn clear(view: &wgpu::TextureView, color: wgpu::Color, encoder: &mut wgpu::CommandEncoder) {
     crate::passes::count(crate::passes::Kind::Clear);
     let _pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -1010,9 +1195,10 @@ mod tests {
                 1.,
             ]);
             list.rect(Rect::new(x, y, 4., 4.), 1., c);
-            // A path ends the flat batch, so every rect is its own draw: 800 draws, each
+            // A group ends the flat batch, so every rect is its own draw: 800 draws, each
             // with its own uniform and instance (or clip) slice, in one submission.
-            list.push(Prim::Path {
+            let mut inner = DrawList::default();
+            inner.push(Prim::Path {
                 origin: [x + 1., y + 1.],
                 scale: 1.,
                 points: std::sync::Arc::from([
@@ -1022,6 +1208,12 @@ mod tests {
                 stroke: PathStroke::default(),
                 color: Color([c.0[2], c.0[0], c.0[1], 1.]),
                 fill: None,
+            });
+            list.push(Prim::Group {
+                primitives: inner.primitives,
+                opacity: 1.,
+                saturation: 1.,
+                mask: None,
             });
         }
         let mut fallback = ChromeRenderer::new(vec![]).unwrap();
@@ -1035,9 +1227,192 @@ mod tests {
             grown.iter().all(|&c| c > 64 * 1024),
             "the frame outgrew both first arenas mid-frame: {grown:?}"
         );
-        // The next frame rewinds into the grown arenas and still matches.
+        // Growth may settle over two frames (a group's composite uniform lands
+        // after its layer); from then on each frame rewinds into the same
+        // arenas and still matches.
         assert_eq!(arenas.render_to_rgba(&list, 240, 64, 1.).unwrap(), expected);
-        assert_eq!(arenas.arenas.capacity(), grown);
+        let settled = arenas.arenas.capacity();
+        assert!(settled.iter().zip(&grown).all(|(s, g)| s >= g));
+        assert_eq!(arenas.render_to_rgba(&list, 240, 64, 1.).unwrap(), expected);
+        assert_eq!(arenas.arenas.capacity(), settled);
+    }
+    // keeps: spec renderer §4.4 — a glyph has at most four horizontal masks
+    #[test]
+    fn text_within_a_quarter_pixel_shares_masks_and_the_next_quarter_adds_one_set() {
+        assert_eq!(quarter_phase(10.0), (10.0, 0.0));
+        assert_eq!(quarter_phase(10.1), (10.0, 0.0));
+        assert_eq!(quarter_phase(10.13), (10.25, 0.25));
+        assert_eq!(quarter_phase(10.9), (11.0, 0.0));
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let draw = |renderer: &mut ChromeRenderer, x: f32| {
+            let mut list = DrawList::default();
+            list.rect(Rect::new(0., 0., 96., 24.), 0., Color::WHITE);
+            list.text(
+                Rect::new(x, 4., 80., 16.),
+                "quarter",
+                bbt_ui_model::draw::TextStyle::default(),
+                Color::BLACK,
+            );
+            renderer.render_to_rgba(&list, 96, 24, 1.).unwrap();
+            renderer.text.stats().misses
+        };
+        let first = draw(&mut renderer, 10.0);
+        assert!(first > 0);
+        assert_eq!(
+            draw(&mut renderer, 10.05),
+            first,
+            "same quarter: no new masks"
+        );
+        assert_eq!(draw(&mut renderer, 10.1), first);
+        let second = draw(&mut renderer, 10.3);
+        assert!(second > first, "next quarter: a new mask set");
+        let per_phase = second - first;
+        assert_eq!(draw(&mut renderer, 10.32), second);
+        for x in [10.55, 10.8, 11.0, 11.25, 11.5, 11.75, 12.1] {
+            draw(&mut renderer, x);
+        }
+        let total = renderer.text.stats().misses;
+        assert!(
+            total <= first * 4 && total >= first + per_phase * 2,
+            "four phases cover every placement: {total} misses, {first} per full set"
+        );
+    }
+    /// cargo nextest run -p bboxy450-render --lib -E 'test(bench_sidebar_frame)' --run-ignored all --no-capture
+    #[test]
+    #[ignore = "timing probe, prints per-frame cost of an overlay-sized draw list"]
+    fn bench_sidebar_frame() {
+        use std::time::Instant;
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let mut list = DrawList::default();
+        list.rect(Rect::new(0., 0., 480., 1000.), 0., Color::WHITE);
+        let words = [
+            "the", "and", "a", "is", "in", "with", "to", "for", "it", "or", "render", "frame",
+        ];
+        let style = bbt_ui_model::draw::TextStyle::default();
+        let tri = std::sync::Arc::<[PathCommand]>::from([
+            PathCommand::Move([2., 2.]),
+            PathCommand::Line([14., 2.]),
+            PathCommand::Line([8., 14.]),
+            PathCommand::Line([2., 2.]),
+        ]);
+        for line in 0..200 {
+            let y = 4. + line as f32 * 18.;
+            if line % 5 == 0 {
+                list.push(Prim::Path {
+                    origin: [2., y],
+                    scale: 1.,
+                    points: tri.clone(),
+                    stroke: PathStroke::default(),
+                    color: Color::BLACK,
+                    fill: Some(Color([0., 0., 1., 1.])),
+                });
+            }
+            let mut x = 24.;
+            for w in 0..60 {
+                let word = words[(line * 7 + w) % words.len()];
+                list.text(Rect::new(x, y, 60., 16.), word, style, Color::BLACK);
+                x += 7.;
+            }
+        }
+        let mut t = Vec::new();
+        let _ = take_probes();
+        for _ in 0..10 {
+            let at = Instant::now();
+            renderer.render_to_rgba(&list, 480, 1000, 2.).unwrap();
+            t.push(at.elapsed().as_secs_f64() * 1000.);
+        }
+        // The app's cost: encode into a retained target, no readback.
+        let texture = renderer
+            .context
+            .device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("bench target"),
+                size: wgpu::Extent3d {
+                    width: 960,
+                    height: 2000,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: wgpu::TextureFormat::Rgba8Unorm,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+                view_formats: &[wgpu::TextureFormat::Rgba8UnormSrgb],
+            });
+        let view = texture.create_view(&Default::default());
+        let _ = take_probes();
+        let mut encode = Vec::new();
+        for _ in 0..10 {
+            let at = Instant::now();
+            renderer.begin_frame();
+            let mut encoder = renderer
+                .context
+                .device
+                .create_command_encoder(&Default::default());
+            let t_begin = at.elapsed().as_secs_f64() * 1000.;
+            renderer
+                .draw(
+                    &list,
+                    ChromeTarget {
+                        width: 960,
+                        height: 2000,
+                        scale: 2.,
+                        view: &view,
+                        format: wgpu::TextureFormat::Rgba8Unorm,
+                    },
+                    &mut encoder,
+                )
+                .unwrap();
+            let t_draw = at.elapsed().as_secs_f64() * 1000. - t_begin;
+            renderer.flush();
+            let t_flush = at.elapsed().as_secs_f64() * 1000. - t_begin - t_draw;
+            renderer.context.queue.submit([encoder.finish()]);
+            let total = at.elapsed().as_secs_f64() * 1000.;
+            encode.push([total, t_begin, t_draw, t_flush]);
+        }
+        let outer = take_probes().map(|v| (v * 100.).round() / 10.);
+        eprintln!(
+            "bench_sidebar_frame: encode-only per frame [total, begin, draw, flush] ms = {:?}; probes per frame ms: top-validate={} glyph-sync={} rewrite={} batch-loop={} flat-build={} groups={} upload+pass={}; flat batches/frame={}",
+            encode
+                .iter()
+                .map(|v| v.map(|x| (x * 10.).round() / 10.))
+                .collect::<Vec<_>>(),
+            outer[4],
+            outer[0],
+            outer[5],
+            outer[6],
+            outer[1],
+            outer[2],
+            outer[3],
+            FLAT_BATCHES.with(|c| c.replace(0)) / 10
+        );
+        eprintln!(
+            "bench_sidebar_frame: encode-only frames ms = {:?}",
+            encode
+                .iter()
+                .map(|v| (v[0] * 10.).round() / 10.)
+                .collect::<Vec<_>>()
+        );
+        let probes = take_probes().map(|v| (v * 100.).round() / 10.);
+        let s = renderer.text.stats();
+        eprintln!(
+            "bench_sidebar_frame: {} prims ({} B each); frames ms = {:?}; per-frame ms flat: validate={} build={} glyphs={} upload+pass={}; outer: validate={} rewrite={}; misses={} hits={} plan_hits={} plan_misses={}",
+            list.primitives.len(),
+            std::mem::size_of::<Prim>(),
+            t.iter()
+                .map(|v| (v * 10.).round() / 10.)
+                .collect::<Vec<_>>(),
+            probes[0],
+            probes[1],
+            probes[2],
+            probes[3],
+            probes[4],
+            probes[5],
+            s.misses,
+            s.hits,
+            s.line_plan_hits,
+            s.line_plan_misses
+        );
     }
     // keeps: spec renderer §1/§1a/§4.4a — retained uploads, submission lifetime and exact chrome compositing
     #[test]
@@ -1323,8 +1698,14 @@ mod tests {
             ..Default::default()
         };
         for origin_x in [2.125f32, 2.25] {
-            let mask =
-                text::rasterize_at("Hamburgefonts AV", style, None, 1., origin_x.fract()).unwrap();
+            let mask = text::rasterize_at(
+                "Hamburgefonts AV",
+                style,
+                None,
+                1.,
+                quarter_phase(origin_x).1,
+            )
+            .unwrap();
             let foreground = Color([0.18, 0.42, 0.93, 0.8]);
             for background in [
                 Color::WHITE,

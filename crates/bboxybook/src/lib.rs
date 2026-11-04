@@ -19,6 +19,7 @@ pub mod launchers;
 pub mod materials;
 pub mod modules;
 pub mod overlays;
+pub mod startup;
 pub mod panes;
 pub mod parity;
 pub mod paths;
@@ -76,3 +77,5 @@ pub fn read_png_bytes(bytes: &[u8]) -> Result<(u32, u32, Vec<u8>)> {
     };
     Ok((info.width, info.height, rgba))
 }
+
+pub mod toolkit;

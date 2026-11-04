@@ -15,11 +15,14 @@ use std::collections::BTreeSet;
 use bbt_plugin_sdk::{Refusal, encoded};
 use serde_json::{Map, Value, json};
 
+use crate::index::portable_edge;
 use crate::native::{
-    digest, native, native_statuses, number, portable, portable_to_native, random_hex, shell_words,
-    slug_path, spaced_json, yaml_key,
+    TASK_STATUS, digest, native, native_statuses, native_to_portable, number, portable,
+    portable_to_native, random_hex, shell_words, slug_path, spaced_json, yaml_key,
 };
-use crate::store::{Catalog, GitKb, PAGE_BYTES, PER_DOC_MS, RESERVE, Summary, reference, truthy};
+use crate::store::{
+    Catalog, GitKb, PAGE_BYTES, PER_DOC_MS, RESERVE, Summary, reference, store_signed, truthy,
+};
 
 const MAX_PAGE: u64 = 128;
 const MAX_EDGES: usize = 512;
@@ -277,17 +280,12 @@ impl GitKb {
                 flags.extend(["--where".into(), format!("{field} = {value}")]);
             }
         }
-        let catalog = if let Some(status) = wanted("status")? {
-            let mut native_flags = flags.clone();
-            native_flags.extend(["--status".into(), native_statuses(&status).join(",")]);
-            let mut catalog = self.catalog(&native_flags)?;
-            let mut namespaced = flags.clone();
-            namespaced.extend(["--where".into(), format!("bboxy_status = {status}")]);
-            catalog.merge(self.catalog(&namespaced)?);
-            catalog
-        } else {
-            self.catalog(&flags)?
-        };
+        if let Some(status) = wanted("status")?
+            && let Some(natives) = native_statuses(&status)
+        {
+            flags.extend(["--status".into(), natives.join(",")]);
+        }
+        let catalog = self.catalog(&flags)?;
         if !words.is_empty() {
             return self.search_page(&catalog, &words, &filters, args);
         }
@@ -477,6 +475,57 @@ impl GitKb {
         Ok(json!({"items": items, "next": next}))
     }
 
+    /// Outgoing edges of these page members: committed-only members from the
+    /// committed layer, workspace-backed members from their per-document
+    /// native read made in the background at the same file stat, and any
+    /// other member from one native read of just those members.
+    pub fn member_edges(
+        &mut self,
+        catalog: &Catalog,
+        members: &[String],
+    ) -> Result<Vec<Value>, Refusal> {
+        let committed = self.index_committed();
+        let mut edges = Vec::new();
+        let mut unknown = Vec::new();
+        for slug in members {
+            let row = &catalog.rows[slug];
+            let known = if !self.index.enabled() {
+                None
+            } else if catalog.workspace(slug) {
+                self.index
+                    .prepared(slug, &row["workspace_stat"])
+                    .and_then(|record| {
+                        if record["clean"] == true {
+                            // A clean checkout: its committed relationships.
+                            let id = record["id"].as_str()?.to_owned();
+                            committed
+                                .as_ref()
+                                .filter(|c| c.doc(slug, &row["id"]).is_some())
+                                .map(|c| c.outgoing(&id).to_vec())
+                        } else {
+                            record["edges"].as_array().cloned()
+                        }
+                    })
+            } else {
+                committed
+                    .as_ref()
+                    .filter(|c| c.doc(slug, &row["id"]).is_some())
+                    .and_then(|c| {
+                        let id = portable(row["id"].as_str()?).ok()?;
+                        Some(c.outgoing(&id).to_vec())
+                    })
+            };
+            match known {
+                Some(known) => edges.extend(known),
+                None => unknown.push(slug.clone()),
+            }
+        }
+        if !unknown.is_empty() {
+            edges.extend(self.edges(&unknown, 1)?.0);
+        }
+        Ok(edges)
+    }
+
     fn edges(&mut self, slugs: &[String], depth: u64) -> Result<(Vec<Value>, Vec<Value>), Refusal> {
         if slugs.is_empty() {
             return Ok((Vec::new(), Vec::new()));
@@ -485,23 +534,12 @@ impl GitKb {
         let mut args = vec!["graph", "--json", "--depth", &depth, "--"];
         args.extend(slugs.iter().map(String::as_str));
         let result = self.cli(&args)?;
-        let mut edges = Vec::new();
-        for edge in result["edges"].as_array().into_iter().flatten() {
-            // Document edges only: GitKB also reports code-symbol targets
-            // (`code:path::symbol`), which have no portable record identity.
-            let (Ok(from), Ok(to)) = (
-                portable(edge["from"].as_str().unwrap_or("")),
-                portable(edge["to"].as_str().unwrap_or("")),
-            ) else {
-                continue;
-            };
-            edges.push(json!({
-                "from": from,
-                "to": to,
-                "rel": edge.get("rel_type").cloned().unwrap_or_else(|| "references".into()),
-                "weight": edge["weight"].as_f64().unwrap_or(1.0),
-            }));
-        }
+        let edges = result["edges"]
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(portable_edge)
+            .collect();
         let nodes = result["nodes"].as_array().cloned().unwrap_or_default();
         Ok((edges, nodes))
     }
@@ -529,6 +567,12 @@ impl GitKb {
             ));
         }
         let catalog = self.catalog(&[])?;
+        // Committed nodes come from the index: a cold process's first pages
+        // wait briefly for its build; a page whose wait ran out holds one
+        // node (each call examines at least one record), so the caller's next
+        // page meets the finished build instead of reading every record.
+        let building =
+            (self.wait_committed().is_none() && self.index.building()) || !self.wait_prepared();
         let typed = |slug: &String, kind: &str| catalog.rows[slug]["type"] == kind;
         let mut selected: BTreeSet<String> = catalog
             .rows
@@ -570,6 +614,7 @@ impl GitKb {
         let slugs: Vec<String> = selected.into_iter().collect();
         let key = encoded(&json!(["graph", scope]));
         let (mut offset, limit, _) = self.position(args, &key, &catalog.snapshot)?;
+        let limit = if building { 1 } else { limit };
         let swarm_filter: Map<String, Value> = if kind == "swarm" {
             [("swarm".to_owned(), scope["swarm"].clone())]
                 .into_iter()
@@ -614,12 +659,15 @@ impl GitKb {
                 }
             }
         }
-        let (edges, _) = self.edges(&members, 1)?;
         let ids: BTreeSet<&str> = nodes.iter().filter_map(|n| n["id"].as_str()).collect();
-        let outgoing: Vec<&Value> = edges
+        let edges = self.member_edges(&catalog, &members)?;
+        let mut outgoing: Vec<&Value> = edges
             .iter()
             .filter(|e| e["from"].as_str().is_some_and(|id| ids.contains(id)))
             .collect();
+        // One order for both sources: by source, target, relationship, weight.
+        outgoing.sort_by_key(|e| encoded(e));
+        outgoing.dedup();
         let next = if offset < slugs.len() {
             self.cursors
                 .token(json!({"key": key, "snapshot": catalog.snapshot, "offset": offset}))
@@ -662,6 +710,7 @@ impl GitKb {
         let body = body.as_str().unwrap_or("").to_owned();
         let reference = args.get("ref").filter(|r| truthy(r));
         let mut create_workspace = false;
+        let mut current_native = Value::Null;
         let slug;
         let generation: Value;
         if let Some(reference) = reference {
@@ -696,6 +745,7 @@ impl GitKb {
                 generation = old["etag"].clone();
             }
             fm.insert("id".into(), old["external_id"].clone());
+            current_native = old["gitkb"]["native_status"].clone();
         } else {
             let path = args
                 .get("path")
@@ -724,16 +774,34 @@ impl GitKb {
             ));
         }
         fm.insert("slug".into(), slug.clone().into());
+        // Only GitKB's native status is stored, mapped through the one table.
+        fm.remove("bboxy_status");
+        fm.remove("bboxy_signed_record");
         if fm["type"] == "task" {
             let status = fm.get("status").cloned().unwrap_or_else(|| "open".into());
             let native_status = status
                 .as_str()
                 .and_then(portable_to_native)
-                .map_or_else(|| status.clone(), Value::from);
-            fm.insert("bboxy_status".into(), status);
-            fm.insert("status".into(), native_status);
+                .ok_or_else(|| {
+                    Refusal::new(
+                        "unmappable_status",
+                        format!(
+                            "task status {status} is not a host task state ({})",
+                            TASK_STATUS
+                                .iter()
+                                .map(|(host, _)| *host)
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        ),
+                    )
+                })?;
+            // A native status outside the table reads as open; an update that
+            // keeps it open keeps the document's raw value.
+            let kept = current_native
+                .as_str()
+                .filter(|raw| native_to_portable(raw).is_none() && status == "open");
+            fm.insert("status".into(), kept.unwrap_or(native_status).into());
         }
-        fm.insert("bboxy_signed_record".into(), signed.clone().into());
         // Flow-style JSON values are YAML 1.2. Plain top-level keys also let
         // GitKB's exact ID/slug guard see the supplied identity before parsing.
         let header: Vec<String> = fm
@@ -762,12 +830,163 @@ impl GitKb {
         cli.push("--json");
         self.cli_stdin(&cli, &raw)?;
         self.forget(&slug);
-        let record = self.read(&slug.clone().into(), Some("workspace"))?;
+        let mut record = self.read(&slug.clone().into(), Some("workspace"))?;
+        // The proof stays out of the document: it is kept for exactly this
+        // version in the plugin data dir, where fetch finds it.
+        let (id, version) = (
+            record["external_id"].as_str().unwrap_or(""),
+            record["digest"].as_str().unwrap_or(""),
+        );
+        store_signed(&self.backend.cwd, id, version, &signed)?;
+        record["signed_record"] = signed.clone().into();
+        record["relationships"] = self.relationships(&slug)?;
+        self.stable_created(&mut record)?;
         let lossy = record["body"] != body
             || requested
                 .iter()
                 .any(|(k, v)| record["frontmatter"].get(k) != Some(v));
         Ok(json!({"record": record, "lossy": lossy, "signed_record": signed}))
+    }
+
+    /// A fetched record: confined resources plus GitKB's resolved
+    /// relationships, as `git-kb show <slug> --json` reports them.
+    pub fn fetch(&mut self, record: Value) -> Result<Value, Refusal> {
+        let slug = record["slug"].as_str().unwrap_or("").to_owned();
+        let mut record = self.resources(record)?;
+        record["relationships"] = self.relationships(&slug)?;
+        self.stable_created(&mut record)?;
+        Ok(record)
+    }
+
+    /// A workspace record of a committed document carries the committed
+    /// `created_at`, never GitKB's read time; a workspace-only document keeps
+    /// its workspace file timestamp (`read_source_state`).
+    fn stable_created(&mut self, record: &mut Value) -> Result<(), Refusal> {
+        if record["gitkb"]["source"]["kind"] != "workspace"
+            || record["gitkb"]["committed_revision"].is_null()
+        {
+            return Ok(());
+        }
+        let slug = record["slug"].as_str().unwrap_or("").to_owned();
+        let committed = self.cli(&[
+            "show",
+            "--source",
+            "committed",
+            "--raw-content",
+            "--json",
+            "--",
+            &slug,
+        ])?;
+        if committed["exists"] == true
+            && committed["document"]["id"] == record["external_id"]
+            && committed["document"]["created_at"].is_string()
+        {
+            record["gitkb"]["created_at"] = committed["document"]["created_at"].clone();
+        }
+        Ok(())
+    }
+
+    /// `references`, `depends_on`, `blocks` and `parent` exactly as
+    /// `git-kb show <slug> --json` reports them. They can differ from the
+    /// frontmatter's source YAML: GitKB drops a `parent` whose target does
+    /// not exist (the `tasks/harmony-2119` case), and resolves `references`
+    /// from the committed body.
+    fn relationships(&mut self, slug: &str) -> Result<Value, Refusal> {
+        let shown = self.cli(&["show", "--json", "--", slug])?;
+        let doc = shown["documents"]
+            .as_array()
+            .and_then(|docs| docs.iter().find(|doc| doc["slug"] == slug))
+            .ok_or_else(|| Refusal::new("not_found", "GitKB show returned no document"))?;
+        Ok(
+            json!({"references": doc["references"], "depends_on": doc["depends_on"],
+            "blocks": doc["blocks"], "parent": doc["parent"]}),
+        )
+    }
+
+    /// Create the next numbered task of `family` with `title` through
+    /// `git-kb create task --next`, returning the CLI's `slug`, `authority`
+    /// and `sync_required` unchanged plus the new record's reference.
+    pub fn create_next(&mut self, args: &Value) -> Result<Value, Refusal> {
+        let family = slug_path(required(args, "family")?)?;
+        let title = string(required(args, "title")?, "title")?;
+        if title.trim().is_empty() || title.chars().count() > 4096 {
+            return Err(invalid(
+                "title must be a nonempty string of at most 4096 characters",
+            ));
+        }
+        let (family_flag, title_flag) = (format!("--next={family}"), format!("--title={title}"));
+        let created = self.cli(&["create", "task", &family_flag, &title_flag, "--json"])?;
+        let slug = created["slug"]
+            .as_str()
+            .ok_or_else(|| Refusal::new("backend_protocol_error", "GitKB create returned no slug"))?
+            .to_owned();
+        let record = self.read(&slug.into(), None)?;
+        Ok(
+            json!({"slug": created["slug"], "authority": created["authority"],
+            "sync_required": created.get("sync_required").cloned().unwrap_or(Value::Null),
+            "ref": reference(&record)}),
+        )
+    }
+
+    /// Read-only remote sync health for one pathspec: `git-kb sync status
+    /// <remote> <pathspec> --json`, with its JSON and exit code. The remote is
+    /// one the KB configures: the only one, or the one named. It never pushes,
+    /// pulls or repairs.
+    pub fn sync_status(&mut self, args: &Value) -> Result<Value, Refusal> {
+        let pathspec = string(required(args, "pathspec")?, "pathspec")?.to_owned();
+        if pathspec.is_empty() || pathspec.starts_with('-') || pathspec.chars().count() > 4096 {
+            return Err(invalid(
+                "pathspec must be a bounded string that is not a flag",
+            ));
+        }
+        let listed = self.cli(&["remote", "list", "--json"])?;
+        let remotes: Vec<String> = listed
+            .as_array()
+            .into_iter()
+            .flatten()
+            .filter_map(|r| r["name"].as_str().map(str::to_owned))
+            .collect();
+        let remote = match args.get("remote").filter(|r| !r.is_null()) {
+            Some(named) => {
+                let named = string(named, "remote")?;
+                remotes
+                    .iter()
+                    .find(|r| *r == named)
+                    .cloned()
+                    .ok_or_else(|| {
+                        Refusal::new("unknown_remote", "name a remote this KB configures")
+                            .with("remotes", json!(remotes))
+                    })?
+            }
+            None => match remotes.as_slice() {
+                [] => {
+                    return Err(Refusal::new(
+                        "remote_unconfigured",
+                        "this KB configures no sync remote",
+                    ));
+                }
+                [only] => only.clone(),
+                _ => {
+                    return Err(Refusal::new(
+                        "remote_required",
+                        "this KB configures several remotes; name one",
+                    )
+                    .with("remotes", json!(remotes)));
+                }
+            },
+        };
+        let command = [
+            "sync",
+            "status",
+            remote.as_str(),
+            pathspec.as_str(),
+            "--json",
+        ];
+        let (exit, status) = self.backend.cli_report(&self.ctx, &command)?;
+        Ok(
+            json!({"remote": remote, "pathspec": pathspec, "command": command,
+            "exit": exit, "status": status}),
+        )
     }
 
     pub fn changes(&mut self, args: &Value) -> Result<Value, Refusal> {

@@ -483,7 +483,7 @@ fn cursor_is_root_query_and_snapshot_bound_and_reopens_without_restarting_the_pa
 
 // keeps: spec knowledge-base §6
 #[test]
-fn uneven_search_pages_defer_a_row_that_fits_a_fresh_quantum_without_clipping() {
+fn search_summary_titles_are_bounded_and_full_fetch_keeps_the_original() {
     let mut f = Fixture::new();
     f.seed(
         1,
@@ -504,13 +504,19 @@ fn uneven_search_pages_defer_a_row_that_fits_a_fresh_quantum_without_clipping() 
         limit: Some(128),
     };
     let first = source.search(request(None)).unwrap();
-    assert_eq!(first.items.len(), 1);
-    assert!(first.items[0].title.len() > 240 * 1024);
+    assert_eq!(first.items.len(), 2);
+    assert!(first.items.iter().all(|hit| hit.title.len() == 4096));
+    assert!(first.next.is_none());
     assert!(serde_json::to_vec(&first).unwrap().len() <= 256 * 1024);
-    let second = source.search(request(first.next)).unwrap();
-    assert_eq!(second.items.len(), 1);
-    assert!(second.items[0].title.len() > 32 * 1024);
-    assert!(second.next.is_none());
+    let full = source
+        .fetch(d::FetchRequest {
+            reference: first.items[0].reference.clone(),
+        })
+        .unwrap();
+    assert_eq!(
+        full.frontmatter["title"].as_str().unwrap().len(),
+        240 * 1024 + 7
+    );
 }
 
 // keeps: decision #266
@@ -851,4 +857,75 @@ fn numbered_208_and_1000_record_fixtures_page_on_io_with_stable_unique_results()
             started.elapsed()
         );
     }
+}
+
+// keeps: #769; native search/graph pages include the escaped MCP text copy.
+#[test]
+fn native_read_byte_pages_search_and_graph() {
+    let mut f = Fixture::new();
+    for n in 1..=80 {
+        f.seed(
+            n,
+            &format!("notes/byte-{n:03}.md"),
+            json!({"title":"\0".repeat(4096),"history":"history".repeat(4096)}),
+            &"body".repeat(8192),
+        );
+    }
+    let source = BboxySource::new(&f.index);
+    let wire_size = |v: Value| {
+        serde_json::to_vec(&json!({"content":[{"type":"text","text":v.to_string()}],"structuredContent":v,"isError":false})).unwrap().len()
+    };
+    let mut cursor = None;
+    let mut hits = Vec::new();
+    loop {
+        let page = source
+            .search(d::SearchRequest {
+                query: "body".into(),
+                cursor,
+                limit: Some(128),
+            })
+            .unwrap();
+        assert!(wire_size(serde_json::to_value(&page).unwrap()) <= 512 * 1024 - 16 * 1024);
+        hits.extend(page.items);
+        cursor = page.next;
+        if cursor.is_none() {
+            break;
+        }
+    }
+    assert_eq!(hits.len(), 80);
+    // Control keeps the old raw-JSON cut: ten rows fit 256 KiB internally,
+    // but the escaped text copy pushes that same page over the MCP guard.
+    let control = json!({"items":&hits[..10],"next":"cursor"});
+    assert!(serde_json::to_vec(&control).unwrap().len() < 256 * 1024);
+    assert!(wire_size(control) > 512 * 1024);
+    let mut cursor = None;
+    let mut ids = BTreeSet::new();
+    loop {
+        let page = source
+            .graph(d::GraphRequest {
+                scope: d::Scope::All {
+                    graph: d::DocumentGraph::Markdown,
+                },
+                cursor,
+                limit: Some(128),
+            })
+            .unwrap();
+        assert!(wire_size(serde_json::to_value(&page).unwrap()) <= 512 * 1024 - 16 * 1024);
+        for node in page.nodes {
+            assert!(ids.insert(node.id));
+        }
+        cursor = page.next;
+        if cursor.is_none() {
+            break;
+        }
+    }
+    let expected: BTreeSet<_> = f
+        .index
+        .graphs
+        .get(&bbt_mux::index::GraphKind::Markdown)
+        .unwrap()
+        .node_weights()
+        .cloned()
+        .collect();
+    assert_eq!(ids, expected);
 }

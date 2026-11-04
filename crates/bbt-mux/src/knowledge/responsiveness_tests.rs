@@ -99,6 +99,155 @@ struct Gui {
     write: OwnedWriteHalf,
     capability: [u8; 32],
 }
+
+// keeps: invariant no-chokepoints; spec mux-daemon
+// Activity JSONL is not a document edit. Continuing activity must not keep a
+// mounted workspace behind an endless sequence of document scans.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn workspace_ready_activity_churn_reaches_writable() {
+    let root = tempfile::tempdir().unwrap();
+    let repository = root.path().join("repository");
+    let knowledge = repository.join(".bboxy");
+    std::fs::create_dir_all(knowledge.join("notes")).unwrap();
+    std::fs::create_dir_all(knowledge.join("log")).unwrap();
+    let supervisor = crate::Supervisor::start(crate::Config {
+        journal_directory: Some(root.path().join("supervisor")),
+        ..Default::default()
+    })
+    .unwrap();
+    let run = root.path().join("run");
+    let logic = Logic::start(
+        supervisor.connect().unwrap(),
+        LogicConfig {
+            run_dir: run.clone(),
+            repository,
+            ring: Default::default(),
+        },
+        SigningKey::from_bytes(&[48; 32]),
+        &tokio::runtime::Handle::current(),
+    )
+    .unwrap();
+    let launch = LaunchSpec::new("/bin/cat", root.path());
+    let seat = launch.seat;
+    let swarm = Ulid::new();
+    logic
+        .client
+        .spawn(
+            SeatRecord::new(seat, swarm, "activity churn", "zsh"),
+            launch,
+        )
+        .await
+        .unwrap();
+    let held = Arc::new(Held::default());
+    let release = Release(held.clone());
+    let hold = held.clone();
+    let log = knowledge.join("log/churn.jsonl");
+    let hook = Arc::new(move |_: &str| {
+        use std::io::Write;
+        // The initial scan is held until the caller has begun an API write.
+        // Every scan then emits ordinary activity bytes while it is running.
+        hold.block();
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(&log)
+            .unwrap();
+        for _ in 0..30 {
+            writeln!(file, "{{\"fixture\":\"activity\"}}").unwrap();
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    });
+    let (tx, rx) = oneshot::channel();
+    logic
+        .client
+        .tx
+        .send(Command::WorkspaceScanFixture(None, hook, tx))
+        .await
+        .unwrap();
+    rx.await.unwrap().unwrap();
+    held.entered(1).await;
+    let call = crate::mcp::Call {
+        op_id: Ulid::new(),
+        tool: "knowledge_write".into(),
+        args: json!({"path":"notes/ready.md","frontmatter":{"type":"note","title":"Ready"},"body":"one admitted effect"}),
+    };
+    let pending = logic
+        .client
+        .control_call(seat, 1, call.clone())
+        .await
+        .unwrap();
+    assert_eq!(
+        pending["structuredContent"]["error"]["code"],
+        "workspace_pending"
+    );
+    held.release();
+    let applied = logic
+        .client
+        .control_call_within(seat, 1, call.clone(), Duration::from_secs(6))
+        .await
+        .unwrap();
+    // Keep unrelated chat/status on the same actual owner in the witness.
+    let status = logic
+        .client
+        .control_call(
+            seat,
+            1,
+            crate::mcp::Call {
+                op_id: Ulid::new(),
+                tool: "self_status".into(),
+                args: json!({}),
+            },
+        )
+        .await
+        .unwrap();
+    assert_ne!(status["isError"], true, "{status}");
+    logic
+        .client
+        .messaging(
+            seat,
+            1,
+            crate::messaging::api::Request::Send {
+                message: crate::messaging::wire::SendRequest::text(
+                    format!("seats/{seat}/inbox"),
+                    "chat during activity churn",
+                ),
+            },
+        )
+        .await
+        .unwrap();
+    let replay = logic.client.control_call(seat, 1, call).await.unwrap();
+    drop(release);
+    logic.shutdown().unwrap();
+    supervisor.shutdown().unwrap();
+    assert_ne!(
+        applied["isError"], true,
+        "workspace never became writable: {applied}"
+    );
+    assert_eq!(
+        replay, applied,
+        "same operation must retain its original result"
+    );
+    assert!(knowledge.join("notes/ready.md").is_file());
+    use crate::store::Events;
+    let events = crate::store::events::EventLog::open(&object_dir(&run, "index").unwrap()).unwrap();
+    let rows = events.after(0, 1024).unwrap();
+    let prepared: Vec<_> = rows
+        .iter()
+        .filter(|row| {
+            row.event.subject.ends_with("/write_prepared")
+                && row.event.payload["path"] == "notes/ready.md"
+        })
+        .collect();
+    assert_eq!(prepared.len(), 1, "one admitted write intent");
+    assert_eq!(
+        rows.iter()
+            .filter(|row| row.event.subject.ends_with("/written")
+                && row.event.payload["prepared"] == prepared[0].event.id.to_string())
+            .count(),
+        1,
+        "one completion for the exact intent"
+    );
+}
 impl Gui {
     async fn connect(endpoint: &EndpointInfo) -> Self {
         let (read, write) = UnixStream::connect(&endpoint.path)
@@ -564,6 +713,26 @@ async fn workspace_held_scan_keeps_input_chat_and_other_root_live_and_excludes_w
         refused["structuredContent"]["error"]["code"],
         "workspace_pending"
     );
+    // keeps: review 5004 finding 6 — a pending refusal says when to retry.
+    assert_eq!(refused["structuredContent"]["error"]["retry_after_ms"], 100);
+    // A seat call waits for the workspace within its wait, then still answers
+    // pending with the hint; it never admits the effect meanwhile.
+    let started = std::time::Instant::now();
+    let waited = logic
+        .client
+        .control_call_within(seat, 1, call.clone(), Duration::from_millis(300))
+        .await
+        .unwrap();
+    assert!(
+        started.elapsed() >= Duration::from_millis(200),
+        "{:?}",
+        started.elapsed()
+    );
+    assert_eq!(
+        waited["structuredContent"]["error"]["code"],
+        "workspace_pending"
+    );
+    assert_eq!(waited["structuredContent"]["error"]["retry_after_ms"], 100);
     assert!(!first.join(".bboxy/notes/after-scan.md").exists());
     let store = SqliteStore::open(&object_dir(&run, &format!("seat-{seat}")).unwrap()).unwrap();
     assert!(
@@ -573,23 +742,21 @@ async fn workspace_held_scan_keeps_input_chat_and_other_root_live_and_excludes_w
             .is_none(),
         "transient scan refusal admitted effect"
     );
-    held.release();
-    let applied = tokio::time::timeout(Duration::from_secs(5), async {
-        loop {
-            let value = logic
-                .client
-                .control_call(seat, 1, call.clone())
-                .await
-                .unwrap();
-            if value["structuredContent"]["error"]["code"] == "workspace_pending" {
-                tokio::time::sleep(Duration::from_millis(20)).await;
-                continue;
-            }
-            break value;
-        }
+    // A call already waiting when the workspace opens applies once.
+    let waiting =
+        logic
+            .client
+            .control_call_within(seat, 1, call.clone(), crate::logic::SEAT_PENDING_WAIT);
+    let opening = async {
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        held.release();
+    };
+    let (applied, ()) = tokio::time::timeout(Duration::from_secs(5), async {
+        tokio::join!(waiting, opening)
     })
     .await
     .unwrap();
+    let applied = applied.unwrap();
     assert_ne!(applied["isError"], true, "{applied}");
     assert!(first.join(".bboxy/notes/after-scan.md").is_file());
     assert!(!second.join(".bboxy/notes/after-scan.md").exists());

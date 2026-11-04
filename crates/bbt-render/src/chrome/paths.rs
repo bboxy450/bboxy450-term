@@ -363,16 +363,18 @@ impl Renderer {
         };
         // SVG paint order: fill first, then stroke. Their geometry is cached
         // independently; colour, scale and translation do not retessellate.
+        // Both draw in one render pass: source-over of the stroke onto the
+        // fill inside a pass equals two load/store passes.
+        let mut draws = Vec::with_capacity(2);
         for (color, stroke) in fill
             .iter()
             .map(|c| (*c, None))
             .chain(std::iter::once((*color, Some(stroke))))
         {
-            self.draw_geometry(
+            if let Some(draw) = self.prepare_geometry(
                 context,
                 arenas,
                 &target,
-                encoder,
                 PathPaint {
                     points,
                     stroke,
@@ -381,19 +383,50 @@ impl Renderer {
                     scale: *scale,
                 },
                 clips,
-            )?;
+            )? {
+                draws.push(draw);
+            }
+        }
+        if draws.is_empty() {
+            return Ok(());
+        }
+        let format = target.format.remove_srgb_suffix();
+        let view = target
+            .view
+            .texture()
+            .create_view(&wgpu::TextureViewDescriptor {
+                format: Some(format),
+                ..Default::default()
+            });
+        crate::passes::count(crate::passes::Kind::Path);
+        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+            label: Some("analytic path coverage"),
+            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                view: &view,
+                depth_slice: None,
+                resolve_target: None,
+                ops: wgpu::Operations {
+                    load: wgpu::LoadOp::Load,
+                    store: wgpu::StoreOp::Store,
+                },
+            })],
+            ..Default::default()
+        });
+        pass.set_pipeline(&self.pipelines[&format]);
+        for bindings in &draws {
+            pass.set_bind_group(0, bindings, &[]);
+            pass.draw(0..6, 0..1);
         }
         Ok(())
     }
-    fn draw_geometry(
+    fn prepare_geometry(
         &mut self,
         context: &crate::device::DeviceContext,
         arenas: &mut super::arena::Arenas,
         target: &ChromeTarget<'_>,
-        encoder: &mut wgpu::CommandEncoder,
         path: PathPaint<'_>,
         clips: &[Prim],
-    ) -> Result<()> {
+    ) -> Result<Option<wgpu::BindGroup>> {
         let PathPaint {
             points,
             stroke,
@@ -410,7 +443,7 @@ impl Renderer {
             };
             let count = edges.len() as u32;
             if count == 0 {
-                return Ok(());
+                return Ok(None);
             }
             if count > 65536 {
                 return Err("path edge budget exceeded".into());
@@ -493,31 +526,7 @@ impl Renderer {
                 },
             ],
         });
-        let view = target
-            .view
-            .texture()
-            .create_view(&wgpu::TextureViewDescriptor {
-                format: Some(format),
-                ..Default::default()
-            });
-        crate::passes::count(crate::passes::Kind::Path);
-        let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
-            label: Some("analytic path coverage"),
-            color_attachments: &[Some(wgpu::RenderPassColorAttachment {
-                view: &view,
-                depth_slice: None,
-                resolve_target: None,
-                ops: wgpu::Operations {
-                    load: wgpu::LoadOp::Load,
-                    store: wgpu::StoreOp::Store,
-                },
-            })],
-            ..Default::default()
-        });
-        pass.set_pipeline(pipeline);
-        pass.set_bind_group(0, &bindings, &[]);
-        pass.draw(0..6, 0..1);
-        Ok(())
+        Ok(Some(bindings))
     }
 }
 fn pipeline(device: &wgpu::Device, format: wgpu::TextureFormat) -> wgpu::RenderPipeline {
@@ -698,7 +707,10 @@ mod tests {
         assert_eq!(pixel(20, 16), [255, 128, 128, 255]);
         assert_eq!(pixel(50, 16), [0, 0, 255, 255]);
         assert_eq!(a, renderer.render_to_rgba(&list, 64, 32, 1.).unwrap());
-        assert_eq!(renderer.paths.geometry.len(), 1);
+        // A small path is a flat atlas instance, never an analytic pass.
+        assert_eq!(renderer.paths.geometry.len(), 0);
+        let quads = renderer.text.stats().shadow_quads;
+        assert_eq!(quads, 2, "one stroke quad per frame, two frames");
         let Prim::Path { origin, color, .. } = &mut list.primitives[2] else {
             unreachable!()
         };
@@ -706,10 +718,72 @@ mod tests {
         *color = Color::BLACK;
         renderer.render_to_rgba(&list, 64, 32, 1.).unwrap();
         assert_eq!(
+            renderer.text.stats().atlas_entries,
+            1,
+            "paint and whole-pixel translation share one mask"
+        );
+    }
+    // keeps: spec renderer §4.4a — an icon rasterizes once per placement, not per frame
+    #[test]
+    fn repeated_frames_of_the_same_icons_do_not_rasterize_again() {
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let mut list = DrawList::default();
+        list.rect(Rect::new(0., 0., 128., 32.), 0., Color::WHITE);
+        for i in 0..8 {
+            let mut icon = path(
+                vec![
+                    PathCommand::Move([2., 2.]),
+                    PathCommand::Line([14., 2.]),
+                    PathCommand::Line([8., 14.]),
+                    PathCommand::Line([2., 2.]),
+                ],
+                PathStroke::default(),
+            );
+            if let Prim::Path { origin, fill, .. } = &mut icon {
+                *origin = [i as f32 * 16., 8.];
+                *fill = Some(Color([0., 0., 1., 1.]));
+            }
+            list.push(icon);
+        }
+        renderer.render_to_rgba(&list, 128, 32, 2.).unwrap();
+        let after_first = renderer.text.stats();
+        assert_eq!(after_first.shadow_requests, 16, "fill and stroke per icon");
+        assert_eq!(
+            after_first.misses, 2,
+            "one fill mask and one stroke mask, shared"
+        );
+        for _ in 0..3 {
+            renderer.render_to_rgba(&list, 128, 32, 2.).unwrap();
+        }
+        let later = renderer.text.stats();
+        assert_eq!(later.misses, 2, "later frames hit the atlas");
+        assert_eq!(renderer.paths.geometry.len(), 0);
+    }
+    // keeps: spec renderer §4.4a — exact geometry beyond the mask budget keeps its pass
+    #[test]
+    fn a_path_wider_than_the_mask_budget_keeps_the_analytic_pass() {
+        let mut renderer = ChromeRenderer::new(vec![]).unwrap();
+        let mut list = DrawList::default();
+        list.rect(Rect::new(0., 0., 64., 32.), 0., Color::WHITE);
+        list.push(path(
+            vec![
+                PathCommand::Move([0., 16.]),
+                PathCommand::Line([3000., 16.]),
+            ],
+            PathStroke {
+                width: 4.,
+                ..Default::default()
+            },
+        ));
+        let a = renderer.render_to_rgba(&list, 64, 32, 1.).unwrap();
+        let pixel = |x: usize, y: usize| &a[(y * 64 + x) * 4..(y * 64 + x + 1) * 4];
+        assert_eq!(pixel(20, 16), [255, 128, 128, 255]);
+        assert_eq!(
             renderer.paths.geometry.len(),
             1,
-            "paint and translation do not retessellate"
+            "analytic geometry retained"
         );
+        assert_eq!(renderer.text.stats().shadow_quads, 0);
     }
     // keeps: spec renderer §4.4a — finite exact path geometry, ordered paint and retained uploads
     #[test]

@@ -6,7 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! One actor owns the PTY masters, child handles, sequence counters and writers.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, VecDeque};
 use std::io::{self, Read};
 use std::os::fd::RawFd;
 use std::path::PathBuf;
@@ -27,12 +27,13 @@ use crate::transport::{BoundSocket, SocketPeer};
 #[cfg(target_os = "macos")]
 mod child_events;
 mod companion;
+/// Caller-selected environment removals for ordinary process launch.
+pub mod environment;
 
 const WAKE: Token = Token(0);
 const LISTENER: Token = Token(1);
 const CHANNEL_CAPACITY: usize = 128;
 const MAX_CLIENTS: usize = 8;
-const MAX_INPUT_IDS: usize = 4096;
 const TICK: Duration = Duration::from_millis(20);
 const CALL_TIMEOUT: Duration = Duration::from_secs(10);
 const OUTPUT_DELAY: Duration = Duration::from_millis(2);
@@ -870,6 +871,8 @@ impl Supervisor {
         let thread = thread::Builder::new()
             .name("bbt-supervisor".into())
             .spawn(move || {
+                // This thread reads every PTY: it must outrank a parallel build.
+                bbt_rt::qos::interactive_thread();
                 let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| actor.run()));
                 match result {
                     Ok(result) => {
@@ -1070,6 +1073,8 @@ impl Client {
     }
 
     /// Submit one idempotently identified byte sequence under the attachment.
+    /// Retry only within the bounded receipt window (`protocol::MAX_INPUT_IDS`);
+    /// submitting an evicted terminal ID writes a new operation.
     ///
     /// # Errors
     /// Returns stale leases, invalid/oversized/conflicting input or request failures; inspect unknown writes.
@@ -1220,51 +1225,77 @@ fn batch_wire_bytes(request_id: Ulid, results: &[RingReadResult]) -> io::Result<
     .map(|bytes| bytes.len())
 }
 
+// Encode each candidate once and reuse its bytes on the socket. The empty typed
+// frame supplies the envelope, keeping JSON version/field layout authoritative.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 fn bounded_batch_reply(
     request_id: Ulid,
     results: Vec<RingReadResult>,
     max_bytes: usize,
-) -> Result<Reply, Failure> {
+) -> Result<(Reply, Vec<u8>), Failure> {
     let encoding_failed = || Failure::new(FailureCode::Invalid, "ring batch reply encoding failed");
-    let mut bounded: Vec<_> = results
-        .iter()
-        .map(|row| RingReadResult {
+    let empty = crate::transport::encode(&Frame::new(Message::Reply {
+        request_id,
+        result: Ok(Reply::RingHistoryBatch {
+            results: Vec::new(),
+        }),
+    }))
+    .map_err(|_| encoding_failed())?;
+    let insertion = empty
+        .windows(2)
+        .position(|pair| pair == b"[]")
+        .ok_or_else(encoding_failed)?
+        + 1;
+    let mut bounded = Vec::with_capacity(results.len());
+    let mut rows = Vec::with_capacity(results.len());
+    let mut used = empty.len() + results.len().saturating_sub(1);
+    for row in &results {
+        let reserved = RingReadResult {
             seat: row.seat,
             generation: row.generation,
             from: row.from,
             to: row.to,
             result: Err(batch_limit()),
-        })
-        .collect();
-    let mut used = batch_wire_bytes(request_id, &bounded).map_err(|_| encoding_failed())?;
+        };
+        let bytes = serde_json::to_vec(&reserved).map_err(|_| encoding_failed())?;
+        used = used.checked_add(bytes.len()).ok_or_else(encoding_failed)?;
+        bounded.push(reserved);
+        rows.push(bytes);
+    }
     if used > max_bytes {
         return Err(Failure::new(
             FailureCode::Invalid,
             "batch budget cannot contain member results",
         ));
     }
-    // Replacing a JSON array member changes only its own encoded length. Reserve
-    // named errors first, so one oversized member cannot erase a later small one.
+    // Reserve every named refusal first: a large member cannot erase a later
+    // small member. Replacement changes exactly one array element's byte count.
     for (index, candidate) in results.into_iter().enumerate() {
-        let reserved = serde_json::to_vec(&bounded[index])
-            .map_err(|_| encoding_failed())?
-            .len();
-        let actual = serde_json::to_vec(&candidate)
-            .map_err(|_| encoding_failed())?
-            .len();
+        let bytes = serde_json::to_vec(&candidate).map_err(|_| encoding_failed())?;
         if let Some(next) = used
-            .checked_sub(reserved)
-            .and_then(|n| n.checked_add(actual))
+            .checked_sub(rows[index].len())
+            .and_then(|n| n.checked_add(bytes.len()))
             && next <= max_bytes
         {
             used = next;
             bounded[index] = candidate;
+            rows[index] = bytes;
         }
     }
-    if !batch_wire_bytes(request_id, &bounded).is_ok_and(|bytes| bytes <= max_bytes) {
+    let mut wire = Vec::with_capacity(used);
+    wire.extend_from_slice(&empty[..insertion]);
+    for (index, row) in rows.into_iter().enumerate() {
+        if index != 0 {
+            wire.push(b',');
+        }
+        wire.extend_from_slice(&row);
+    }
+    wire.extend_from_slice(&empty[insertion..]);
+    if wire.len() != used || used - 4 > crate::transport::MAX_FRAME_BYTES {
         return Err(encoding_failed());
     }
-    Ok(Reply::RingHistoryBatch { results: bounded })
+    wire[..4].copy_from_slice(&((used - 4) as u32).to_be_bytes());
+    Ok((Reply::RingHistoryBatch { results: bounded }, wire))
 }
 
 impl Drop for Actor {
@@ -1754,9 +1785,20 @@ impl Actor {
             );
             batch.diagnostic.finish(diagnostic_outcome(&result), 0, 0);
             if let Some(reply) = batch.reply {
-                let _ = reply.try_send(result);
+                let _ = reply.try_send(result.map(|(reply, _)| reply));
             } else {
-                self.socket_reply(batch.client, batch.request_id, result);
+                match result {
+                    Ok((_, wire)) => {
+                        let queued = match self.clients.get_mut(&batch.client) {
+                            Some(Target::Socket { peer, .. }) => peer.enqueue_encoded(wire, true),
+                            _ => false,
+                        };
+                        if !queued {
+                            self.disconnect(batch.client);
+                        }
+                    }
+                    Err(error) => self.socket_reply(batch.client, batch.request_id, Err(error)),
+                }
             }
         }
     }
@@ -1964,10 +2006,12 @@ impl Actor {
                 input_id,
             } => {
                 let seat = self.seat_mut(seat, generation)?;
-                let record = seat
-                    .inputs
-                    .get(&input_id)
-                    .ok_or_else(|| Failure::new(FailureCode::NotFound, "input id not accepted"))?;
+                let record = seat.inputs.get(&input_id).ok_or_else(|| {
+                    Failure::new(
+                        FailureCode::NotFound,
+                        "input id not retained or never accepted",
+                    )
+                })?;
                 Ok(Reply::Input {
                     receipt: record.receipt.clone(),
                 })
@@ -2323,6 +2367,7 @@ struct Seat {
     output_since: Option<Instant>,
     pending_write: Option<PendingWrite>,
     inputs: HashMap<Ulid, StoredInput>,
+    input_order: VecDeque<Ulid>,
     input_epoch: u64,
     last_input_ms: u64,
     operator_draft: bool,
@@ -2366,18 +2411,27 @@ impl Seat {
             // Explicit launch overrides and the user's later shell startup still win.
             // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
             command.env_remove("NO_COLOR");
+            // Admission travels by overlay file, including when this owner
+            // inherited an obsolete seat environment from an older launcher.
+            command.env_remove("BBOXY_CAPABILITY");
             command.env("TERM", "xterm-256color");
             command.env("COLORTERM", "truecolor");
             command.env("CLICOLOR", "1");
             for (key, value) in &spec.env {
+                if key == "BBOXY_CAPABILITY" {
+                    continue;
+                }
                 command.env(key, value);
             }
             command.env("BBOXY_SEAT_ID", spec.seat.to_string());
             command.env("BBOXY_PROCESS_GENERATION", spec.generation.to_string());
+            // Apply the caller's removal data to this owner's exec snapshot,
+            // after overrides, without embedding program-specific policy.
+            environment::scrub_pty(&mut command);
         }
-        let child = pair
-            .slave
-            .spawn_command(command)
+        // The actor thread is interactive; the seat and its builds run one class
+        // lower (user-initiated), above background work.
+        let child = bbt_rt::qos::with_seat_qos(|| pair.slave.spawn_command(command))
             .map_err(|error| spawn_error(&spec, "spawn_command", tty.as_deref(), error))?;
         drop(pair.slave);
         let pid = child
@@ -2408,6 +2462,7 @@ impl Seat {
             output_since: None,
             pending_write: None,
             inputs: HashMap::new(),
+            input_order: VecDeque::new(),
             input_epoch: 0,
             last_input_ms: 0,
             operator_draft: false,
@@ -2564,12 +2619,7 @@ impl Seat {
                 "a previous input is still in flight",
             ));
         }
-        if self.inputs.len() >= MAX_INPUT_IDS {
-            return Err(Failure::new(
-                FailureCode::Limit,
-                "input deduplication capacity reached; ids are never silently evicted",
-            ));
-        }
+        self.make_input_room()?;
         let receipt = InputReceipt {
             input_id: id,
             state: InputState::Pending,
@@ -2587,6 +2637,7 @@ impl Seat {
             self.operator_draft = !matches!(bytes.last(), Some(b'\r' | b'\n' | 3));
         }
         self.inputs.insert(id, StoredInput { digest, receipt });
+        self.input_order.push_back(id);
         let guard = guarded.then(|| self.input_context());
         self.pending_write = Some(PendingWrite {
             id,
@@ -2597,6 +2648,32 @@ impl Seat {
         self.write_ready = true;
         self.write_pending();
         Ok(self.inputs[&id].receipt.clone())
+    }
+
+    fn make_input_room(&mut self) -> Result<(), Failure> {
+        while self.inputs.len() >= MAX_INPUT_IDS {
+            // Insertion order, not replay order: retained retries never shorten
+            // another input's retry window. An active write is never retired.
+            let oldest_terminal = self.input_order.iter().position(|id| {
+                !self
+                    .pending_write
+                    .as_ref()
+                    .is_some_and(|write| write.id == *id)
+                    && matches!(
+                        self.inputs[id].receipt.state,
+                        InputState::PtyWritten | InputState::PartialUnknown
+                    )
+            });
+            let Some(index) = oldest_terminal else {
+                return Err(Failure::new(
+                    FailureCode::Limit,
+                    "input deduplication capacity is full of non-terminal receipts",
+                ));
+            };
+            let id = self.input_order.remove(index).unwrap();
+            self.inputs.remove(&id);
+        }
+        Ok(())
     }
 
     fn input_context(&self) -> crate::protocol::InputContext {
@@ -3149,6 +3226,94 @@ fn admit_recovered_generation(config: &Config, spec: &LaunchSpec) -> Result<(), 
 }
 
 #[cfg(test)]
+mod input_receipt_tests {
+    use super::*;
+
+    #[test]
+    fn eviction_retires_oldest_terminal_receipts_and_preserves_pending() {
+        let poll = Poll::new().unwrap();
+        let spec = LaunchSpec::new("/bin/cat", std::env::current_dir().unwrap());
+        let mut seat = Seat::spawn(spec, Token(2), poll.registry()).unwrap();
+        for n in 1..=MAX_INPUT_IDS {
+            let id = Ulid::from(n as u128);
+            seat.inputs.insert(
+                id,
+                StoredInput {
+                    digest: [0; 32],
+                    receipt: InputReceipt {
+                        input_id: id,
+                        state: InputState::PtyWritten,
+                        bytes_written: 1,
+                        bytes_total: 1,
+                    },
+                },
+            );
+            seat.input_order.push_back(id);
+        }
+        let partial = Ulid::from(1_u128);
+        let pending = Ulid::from(2_u128);
+        seat.inputs.get_mut(&partial).unwrap().receipt.state = InputState::PartialUnknown;
+        seat.inputs.get_mut(&pending).unwrap().receipt.state = InputState::Pending;
+        seat.pending_write = Some(PendingWrite {
+            id: pending,
+            bytes: b"x".to_vec(),
+            deadline: Instant::now() + Duration::from_secs(5),
+            guard: None,
+        });
+        seat.make_input_room().unwrap();
+        assert!(!seat.inputs.contains_key(&partial));
+        assert_eq!(seat.inputs.len(), MAX_INPUT_IDS - 1);
+        assert_eq!(seat.input_order.len(), seat.inputs.len());
+
+        // Refill, then retire the next terminal entry even with a pending head.
+        seat.inputs.insert(
+            partial,
+            StoredInput {
+                digest: [0; 32],
+                receipt: InputReceipt {
+                    input_id: partial,
+                    state: InputState::PtyWritten,
+                    bytes_written: 1,
+                    bytes_total: 1,
+                },
+            },
+        );
+        seat.input_order.push_back(partial);
+        seat.make_input_room().unwrap();
+        assert!(!seat.inputs.contains_key(&Ulid::from(3_u128)));
+        assert_eq!(seat.input_order.front(), Some(&pending));
+        assert_eq!(seat.inputs[&pending].receipt.state, InputState::Pending);
+        assert_eq!(seat.pending_write.as_ref().unwrap().id, pending);
+        assert_eq!(seat.inputs.len(), MAX_INPUT_IDS - 1);
+        assert_eq!(seat.input_order.len(), seat.inputs.len());
+
+        // Defensive Limit branch: even a synthetic all-pending map is neither
+        // silently retired nor allowed to exceed its bound.
+        let extra = Ulid::from(3_u128);
+        seat.inputs.insert(
+            extra,
+            StoredInput {
+                digest: [0; 32],
+                receipt: InputReceipt {
+                    input_id: extra,
+                    state: InputState::Pending,
+                    bytes_written: 0,
+                    bytes_total: 1,
+                },
+            },
+        );
+        seat.input_order.push_back(extra);
+        for stored in seat.inputs.values_mut() {
+            stored.receipt.state = InputState::Pending;
+        }
+        let order = seat.input_order.clone();
+        assert_eq!(seat.make_input_room().unwrap_err().code, FailureCode::Limit);
+        assert_eq!(seat.inputs.len(), MAX_INPUT_IDS);
+        assert_eq!(seat.input_order, order);
+    }
+}
+
+#[cfg(test)]
 mod capture_read_tests {
     use super::*;
 
@@ -3279,7 +3444,7 @@ mod capture_read_tests {
         }))
         .unwrap()
         .len();
-        let Reply::RingHistoryBatch { results } =
+        let (Reply::RingHistoryBatch { results }, wire) =
             bounded_batch_reply(id, vec![first, oversized, last], budget).unwrap()
         else {
             panic!("batch reply required")
@@ -3291,8 +3456,41 @@ mod capture_read_tests {
             results[1].result.as_ref().unwrap_err().code,
             FailureCode::Limit
         );
+        assert_eq!(wire.len(), budget);
+        let expected = crate::transport::encode(&Frame::new(Message::Reply {
+            request_id: id,
+            result: Ok(Reply::RingHistoryBatch {
+                results: results.clone(),
+            }),
+        }))
+        .unwrap();
+        assert_eq!(
+            wire, expected,
+            "byte-identical typed JSON including framing"
+        );
         assert!(batch_wire_bytes(id, &results).unwrap() <= budget);
         assert!(bounded_batch_reply(id, results, 1).is_err());
+    }
+
+    #[test]
+    fn ring_batch_cached_encoding_matches_typed_wire_for_all_byte_values() {
+        for count in 0..=MAX_RING_BATCH_MEMBERS {
+            let rows = (1..=count)
+                .map(|id| batch_row(id as u128, (0..=255).collect()))
+                .collect();
+            let id = Ulid::new();
+            let (reply, wire) = bounded_batch_reply(id, rows, MAX_RING_BATCH_BYTES).unwrap();
+            let expected = crate::transport::encode(&Frame::new(Message::Reply {
+                request_id: id,
+                result: Ok(reply),
+            }))
+            .unwrap();
+            assert_eq!(wire, expected);
+            assert_eq!(
+                crate::transport::read_frame::<Message>(&mut wire.as_slice()).unwrap(),
+                crate::transport::read_frame::<Message>(&mut expected.as_slice()).unwrap()
+            );
+        }
     }
 
     // keeps: invariant ring-reads-batched

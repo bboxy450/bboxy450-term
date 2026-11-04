@@ -1,0 +1,5 @@
+error: PRO012 unknown fair case `Ping::missing`. Repair: name a declared Event::case or attach #[fair(weak)] directly to that case.
+  --> tests/ui/protocol_unknown_fair_case.rs:14:35
+   |
+14 |         #[fair(weak, case = Ping::missing)];
+   |                                   ^^^^^^^

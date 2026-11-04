@@ -1025,14 +1025,14 @@ impl Ctx<'_> {
 
         // 7. Paths, source to target.
         let mut out = LevelOut::default();
+        let lane_gap = st.edge_sep.max(st.corner_radius * 2.0);
+        let mut lane_x = vs
+            .iter()
+            .enumerate()
+            .map(|(i, v)| x[i] + v.lw / 2.0)
+            .fold(0.0_f32, f32::max)
+            + lane_gap;
         for (k, g) in segs.iter().enumerate() {
-            let mut mid: Vec<Point> = chains[k][1..chains[k].len() - 1]
-                .iter()
-                .map(|&v| at(v))
-                .collect();
-            if reversed[k] {
-                mid.reverse();
-            }
             let (si, ti) = (idx[&g.s], idx[&g.t]);
             let anchor = |i: usize, it: Item, entry: bool| -> Option<Point> {
                 attach(it, g.edge, entry).map(|o| Point {
@@ -1042,6 +1042,58 @@ impl Ctx<'_> {
             };
             let sa = anchor(si, g.s, false);
             let ta = anchor(ti, g.t, true);
+            if reversed[k] {
+                // Back edges use the gaps between whole ranks to reach an
+                // exterior lane. A diagonal through ordinary waypoints can
+                // cut across a wide node between otherwise clear endpoints.
+                // Origin/policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+                let (sr, tr) = (vs[si].rank, vs[ti].rank);
+                let source_top = rank_y[sr] - rank_h[sr] / 2.0;
+                let target_bottom = rank_y[tr] + rank_h[tr] / 2.0;
+                let sy = if sr > 0 {
+                    (source_top + rank_y[sr - 1] + rank_h[sr - 1] / 2.0) / 2.0
+                } else {
+                    source_top - lane_gap
+                };
+                let ty = if tr + 1 < nranks {
+                    (target_bottom + rank_y[tr + 1] - rank_h[tr + 1] / 2.0) / 2.0
+                } else {
+                    target_bottom + lane_gap
+                };
+                let p0 = sa.unwrap_or_else(|| clip(at(si), &vs[si], Point { x: x[si], y: sy }));
+                let p1 = ta.unwrap_or_else(|| clip(at(ti), &vs[ti], Point { x: x[ti], y: ty }));
+                let label_width = g.label.map_or(0.0, |size| fr(size, dir).w);
+                let lane = lane_x + label_width / 2.0;
+                lane_x = lane + label_width / 2.0 + lane_gap;
+                out.paths.insert(
+                    g.edge,
+                    vec![
+                        p0,
+                        Point { x: p0.x, y: sy },
+                        Point { x: lane, y: sy },
+                        Point { x: lane, y: ty },
+                        Point { x: p1.x, y: ty },
+                        p1,
+                    ],
+                );
+                if g.label.is_some() {
+                    out.labels.insert(
+                        g.edge,
+                        Point {
+                            x: lane,
+                            y: (sy + ty) / 2.0,
+                        },
+                    );
+                }
+                if !flipped(g.s) && !flipped(g.t) {
+                    out.reversed.insert(g.edge);
+                }
+                continue;
+            }
+            let mid: Vec<Point> = chains[k][1..chains[k].len() - 1]
+                .iter()
+                .map(|&v| at(v))
+                .collect();
             let toward_t = mid.first().copied().or(ta).unwrap_or(at(ti));
             let toward_s = mid.last().copied().or(sa).unwrap_or(at(si));
             let p0 = sa.unwrap_or_else(|| clip(at(si), &vs[si], toward_t));
@@ -1050,9 +1102,6 @@ impl Ctx<'_> {
             pts.extend(mid);
             pts.push(p1);
             out.paths.insert(g.edge, pts);
-            if reversed[k] && !flipped(g.s) && !flipped(g.t) {
-                out.reversed.insert(g.edge);
-            }
             if let Some(lv) = label_v[k] {
                 out.labels.insert(g.edge, at(lv));
             }

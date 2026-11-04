@@ -6,6 +6,7 @@
 # The watcher's --after-tests continuation reports post-test checks only.
 # --parity runs visual parity; --slow also runs the scale gates.
 set -eu
+python3 -I "$(dirname "$0")/harness-submodule.py"
 gate_clean() {
     [ -z "$(git status --porcelain --untracked-files=no)" ] &&
     [ -z "$(git ls-files --others --exclude-standard -- crates scripts verification lab design .cargo Cargo.toml Cargo.lock build.rs)" ]
@@ -71,11 +72,19 @@ if [ "$after_tests" = false ]; then
     if [ -f "$ledger_helper" ]; then
         ledger integration python3 -I scripts/test-resource-ledger.py
     fi
+    ledger integration python3 -I scripts/test-landing-budget-controls.py --out "$BBOXY_CARGO_TARGET_DIR/landing-budget-controls"
     ledger build cargo build --workspace --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
     ledger build cargo clippy --workspace --all-targets --locked --target-dir "$BBOXY_CARGO_TARGET_DIR" -- -D warnings
-    ledger unit sh scripts/quarantine-test.sh --workspace --locked
+    # The harness deliberately clears CLOEXEC in this one fixture. Run it in
+    # test-harness-native, outside concurrent forking cases, as its own Make does.
+    ledger unit sh scripts/quarantine-test.sh --workspace --locked -- --skip non_pty_spawn_does_not_keep_a_sibling_master_alive
 fi
-ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
+# This real exec-environment control restores and hashes its source before
+# returning; no other compilation runs while the broken variant is present.
+ledger integration make test-capability-scan TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
+ledger integration make test-capability-control TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
+ledger integration make test-harness-native TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
+ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR" FORMAL_REUSE=0
 ledger smoke sh scripts/ui-lint.sh
 ledger build cargo build -p bboxy450-term --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
 smoke_bin="$BBOXY_CARGO_TARGET_DIR/debug/bboxy450-term"

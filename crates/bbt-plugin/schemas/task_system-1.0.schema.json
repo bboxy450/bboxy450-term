@@ -156,6 +156,9 @@
         "unassigned": {
           "type": "boolean"
         },
+        "include_unassigned": {
+          "type": "boolean"
+        },
         "swarm_id": {
           "type": "string",
           "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
@@ -170,7 +173,7 @@
         },
         "after": {
           "type": "string",
-          "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+          "pattern": "^(?:[0-9]{1,20}:)?[0-7][0-9A-HJKMNP-TV-Z]{25}$"
         },
         "limit": {
           "type": "integer",
@@ -222,7 +225,7 @@
           "anyOf": [
             {
               "type": "string",
-              "pattern": "^[0-7][0-9A-HJKMNP-TV-Z]{25}$"
+              "pattern": "^(?:[0-9]{1,20}:)?[0-7][0-9A-HJKMNP-TV-Z]{25}$"
             },
             {
               "type": "null"
@@ -348,6 +351,11 @@
         },
         "verify_result": {
           "$ref": "#/$defs/TaskVerification"
+        },
+        "report": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4096
         }
       },
       "required": [

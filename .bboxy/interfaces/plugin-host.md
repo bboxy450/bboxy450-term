@@ -22,7 +22,7 @@ updated: "2026-10-30T00:00:00Z"
 | States and lifecycle | trust is a content-addressed copy; nothing executes before trust; plugins start disabled; one provider instance per root, the root bound at start. **Swap guard in production** (Kestrel, 2026-10-26): a proposed provider is selected for a root when its handshake succeeds and a bounded read over that root (a `list` page and a `resolve` of a known record, within the call caps) answers without error; otherwise the selection is refused with the provider's reason and the current provider stays. A full comparison of path and digest maps is **not** a production guard, since digests are provider data and a whole-root scan per swap is a global scan; it is acceptance evidence only, for the same-representation stub swap of [[knowledge-base]] §6 |
 | Failure | a refusal names its reason in the app; providers without the signed writer capability reply `signed_writer_unavailable`; authorship is always the host's |
 | Versioning | contracts are versioned in `bbt-plugin`; a provider declares the version it implements |
-| Verified by | `plugin check` on its fixture store; contract conformance fixtures; promises G3, G4, D1 and up, N1 and up |
+| Verified by | `plugin check` on its fixture store; contract conformance fixtures; promises G3, G4, D1 and up, N1 and up. Plugin authors test against this table offline with the plugin doctor: `make plugin-doctor PLUGIN=<binary-or-package>` or `bbt_plugin_sdk::testkit::doctor` (SDK README "Smoke-test your plugin"; task [[2026-11-01-plugin-doctor]]) |
 | Open | native GitKB commit has no generation-CAS argument; preflight references are checked, and the native commit transaction owns the final snapshot |
 
 A change to this interface names both sides, the reason and the verification it needs, and lands only with both sides' owners agreeing. A question an Executor asks about this boundary is a missing line here: the answer is written into this table, not only sent.
@@ -183,3 +183,89 @@ Both sides: the host (`bbt-mux` `plugins/setup.rs`, `PluginRequest::Setup`, `ctl
 | Settings | The auth field shows the recorded result in plain words ("logged in · <detail> · 12 ms", "login refused (exit 2)", "setup failed (<code>)", "setup not run"). "Run setup" is available for a trusted plugin whose shape declares auth; when a login is needed it opens the plugin login row in the window's swarm and focuses it. |
 | Deferred | A device-flow URL or code the login prints is shown only in its row; Settings does not repeat it. `ctl plugin setup` waits for the login within ctl's own reply timeout; a longer login still completes and is recorded. |
 | Verification | `PluginSetup`/`BrokenPluginSetup` (native and Java TLC; owner loss and orphan cleanup included); `bboxy450-term` `tests/plugin_login.rs` (the real app and ctl: a typed code completes the login in its row, the row closes, a SIGHUP-ignoring grandchild is ended; a wrong code is a refused login); `tests/plugin_setup.rs` (the private-terminal success, refusal, hang at a 1 s budget and missing-auth cases; a login seat past its budget; an orphaned login seat ended on reattach); supervisor `a_bare_terminal_gets_only_its_environment_and_ends_its_process_group`; `setup.rs` escape-stripping unit; SDK shape test; app label/request and `bbt-ui` controller/settings/seat-row tests. |
+
+## Hook budget warning and skip agreement (#31, operator batch 2026-10-31)
+
+The host registry owns one bounded persistent budget record per candidate,
+keyed by activation generation and declared event/phase (bus subject included).
+Wall time includes hook connection/admission and dispatch. A completed overrun
+raises `Entry.hook_warnings`; an under-budget completion clears an unlatched
+consecutive counter. Three consecutive overruns latch a skip for that event,
+with one `account/control` publication on that transition. Later attempts are
+named `hook_budget_skipped` measurements and preserve the block grant's failure
+policy. The registry alert remains authoritative if the best-effort activity
+stream is unavailable. Re-enable or re-trust advances the activation generation;
+a late completion cannot affect its replacement, including A → B → A. Restart
+retains the account record. Observational timeline ring eviction cannot clear a
+skip. Settings reports measured time, budget and consecutive count, never the
+plugin's requested work duration. The SDK G3 fixture attempts 10 s; production
+ceilings and real cancellation remain enforced.
+
+Host/consumer owners remain PluginHost and Settings. Verification:
+`PluginHookBudget` / broken control with native/TLC parity, registry persistence
+witnesses, the real host alert/skip test, and `make test-settings-plugins`.
+
+## Transport 1.0 (#84, operator batch 2026-10-31)
+
+Producer: a trusted SDK/MCP `bboxy450-term-transport-<provider>` declares
+bounded `spawn_fields` (unique name, human label, `kind: "text"`, optional default).
+Omitted kind defaults to text; unsupported kinds refuse as `invalid_transport_fields`. Consumer:
+Settings Machines shows discovered transports and their state/fields; an enabled
+transport is a Via choice `plugin:<provider>`. Machine preferences and launcher
+fields retain names separately from labels. Changing Via clears another
+transport's parameter overrides. Builtin ssh/mosh/et argv remains unchanged.
+
+`transport_wrap({fields, command}) -> {argv}` is host-only, at transport tier.
+The host validates names/defaults against the trusted shape and both DTO schemas;
+no network or shell interpretation is required by the contract. The inner argv
+is `/bin/sh -lc <existing quoted cwd/env/command composition>`, so remote context
+has the same meaning as the builtins. Returned argv is validated before the
+supervisor sees it. Malformed fields/commands refuse during trusted inspection.
+
+The operator spawn operation is admitted before IO. Wrap runs on a blocking IO
+worker, bounded at two seconds, while the logic owner remains available. Its
+completion captures the root binding and connection authority. The owner fences
+both before launching, revalidates the role, and uses the same original journal
+operation. Pre-effect refusals are rejected; ambiguous supervisor outcomes stay
+unknown and never authorize an automatic second launch. Losing a UI waiter does
+not revoke an admitted owned launch. A busy/unavailable completion queue returns
+an honest unknown outcome instead of waiting on the owner. Disable/re-pin
+reconciliation removes superseded connections before acknowledgement.
+
+Verification: `PluginTransportLaunch` / broken control and existing
+OperationRecovery; the real SDK fixture in `tests/plugin_transport.rs` checks
+literal fields through the owner and supervisor without network, a held wrap
+versus status reads, disable in flight, and duplicate operation IDs. The SDK
+example passes conformance, malformed declarations refuse at trust, builtin
+remote-launch tests remain, and `make test-plugin-transports` captures Settings.
+
+Explicit seat restart replays its retained, already-authorized wrapped argv,
+matching built-in transport recovery. It does not run a new plugin callback.
+A new spawn always resolves the current trusted activation and fields.
+
+
+The transport admission deadline is captured before worker scheduling. An async
+owner timer covers a saturated blocking pool as well as the plugin RPC;
+expired queued work is canceled and a running worker's late result is retired.
+The launch owner checks connection authority with a nonblocking lock attempt:
+contention refuses `transport_unavailable`, and replacement refuses
+`transport_changed`. A dropped GUI waiter does not revoke its owned admission.
+`PluginTransportProgress` assumes weak fairness only for that timer and the
+owner completion group, not for a plugin reply, blocking capacity or mutex
+release. Its broken control removes timer fairness. Private runtime witnesses
+hold the blocking pool or host mutex, retire late/duplicate completion and keep
+status reads moving. Wall clocks, filesystems, signatures and journal durability
+remain implementation coverage, without a Rust refinement claim.
+
+## Seat attribution (task #5003, 2026-11-01)
+
+Both sides: the host (`bbt-mux` `mcp/bridge.rs`, `seat_socket.rs`, `plugins/attribution.rs`, `PluginHost::dispatch`, `DataSourceProvider::request_traced`) and plugins (`bboxy450-term-plugin-sdk` `Ctx::attribution`; the GitKB plugin's `git-kb` child).
+
+| Boundary | Agreement |
+|---|---|
+| Names | Exactly `SESSION_ACTIVITY_RESOURCE_ID`, `SESSION_ACTIVITY_RESOURCE_KIND`, `SESSION_ACTIVITY_PROVIDER`, `SESSION_ACTIVITY_CONTEXT_FILE`, `SESSION_ACTIVITY_SINK_COMMAND`, `SESSION_ACTIVITY_SINK_ARGS_JSON`, `ATC_SESSION_ID`, `GITKB_AGENT_ID` (`bbt_plugin::policy::ATTRIBUTION_ENV`): what `git-kb` reads to export document activity to ATC. Never tokens, registry paths or shim internals. |
+| Validation | `policy::attribution_env`: each value nonempty, at most 1 KiB, no NUL or line break; `SESSION_ACTIVITY_SINK_ARGS_JSON` a JSON string array; at most 4 KiB in all (a name that would exceed it is dropped). Applied by the bridge, again by the host, and by the SDK. |
+| Seat to host | `bboxy450-term mcp` captures the names from the environment its harness gave it, once at start, and sends them as `attribution` beside each `Action::Call` on the seat socket (absent when empty). |
+| Host | Kept per seat and process generation in the logic worker's memory, never journaled. Every plugin `tools/call` made for that seat (declared seat tools, data_source reads, and both phases of a document or task effect) carries `params._meta["bboxy450/attribution"] = {"env": {NAME: value}}`. Calls made by the operator, the host, hooks, checks or another seat carry none. |
+| Plugin | `Ctx::attribution()` returns the validated map for that call only, empty otherwise. Apply it to that call's own child processes, never to shared or background work. The GitKB plugin spawns one `git-kb` per command and adds the map to that child's environment only; its index builds use detached contexts and stay unattributed. |
+| Verification | `bbt-plugin` `policy` attribution test; bridge capture test; `plugins/attribution.rs` scope test; `tests/plugin_attribution.rs` (seat data_source reads and effect reads, seat tools, an unattributed seat, the operator, two seats); SDK runtime accessor test; GitKB `backend.rs` fake `git-kb` environment test; `tests/conformance.rs` `attribution_reaches_the_gitkb_activity_sink` (real `git-kb` commit to a capture sink). |

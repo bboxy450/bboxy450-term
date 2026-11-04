@@ -520,5 +520,8 @@ pub(crate) fn result(response: Response) -> Value {
     if let Some(status) = status {
         value["status"] = json!(status);
     }
+    if matches!(value["kind"].as_str(), Some("messages" | "receipts")) {
+        super::read_pages::message_page(&mut value);
+    }
     value
 }

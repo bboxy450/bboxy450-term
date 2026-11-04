@@ -22,13 +22,13 @@ impl Drop for NoticeTimer {
     }
 }
 
-/// A notice joins the chronological chat rows, never the task list or a sticky footer.
+/// A notice joins the chronological chat rows. Both UI timestamps are epoch milliseconds.
 fn insert_notice(entries: &mut Vec<Entry>, notice: &bboxy450_term::close::CloseNotice) {
     let at = entries
         .iter()
         .position(|entry| {
             matches!(entry,
-        Entry::Message { data, .. } if data.ts.is_some_and(|ts| ts > notice.ts_ms))
+        Entry::Message { data, .. } if data.ts.is_some_and(|ts_ms| ts_ms > notice.ts_ms))
         })
         .unwrap_or_else(|| {
             entries
@@ -238,8 +238,8 @@ mod tests {
             .collect();
         app.task_records.select(bbt_proto::SwarmId::from_u128(1));
         let _ = app.task_records.commands(); // Admit initial reads before measuring pagination.
-        let next = bbt_mux::Ulid(99);
-        app.task_records.task_next = Some(next);
+        let next = format!("99:{}", bbt_mux::Ulid(99));
+        app.task_records.task_next = Some(next.clone());
         app.solve_ui([1200., 1000.]).unwrap();
         let (_, chat_max) = scroll_position(
             &app.conversation_layout.as_ref().unwrap().layout,
@@ -342,13 +342,22 @@ mod tests {
     #[test]
     fn close_notice_joins_chat_chronology_between_real_messages() {
         let mut entries = vec![Entry::Filter { name: "all".into() }];
-        for ts in [10, 30] {
+        let first_seconds = 1_793_211_000_u64;
+        for seconds in [first_seconds, first_seconds + 3600] {
+            // Use the real row adapter: fabricated millisecond UI rows hid this bug.
+            let row = serde_json::from_value(serde_json::json!({
+                "id": bbt_mux::Ulid::new(), "bus": null,
+                "author": {"kind": "observer", "id": "fixture", "name": "Fixture"},
+                "kind": "text", "priority_class": "worker", "priority": 0,
+                "text": seconds.to_string(), "ts": seconds,
+                "receipts": {"delivered": 0, "acked": 0, "held": 0}
+            }))
+            .unwrap();
             entries.push(Entry::Message {
-                data: Box::new(Message {
-                    ts: Some(ts),
-                    text: ts.to_string(),
-                    ..Default::default()
-                }),
+                data: Box::new(bboxy450_term::messaging::message_view(
+                    &row,
+                    &Default::default(),
+                )),
                 show_channel: None,
             });
         }
@@ -359,7 +368,7 @@ mod tests {
             swarm: bbt_ui_model::SwarmId::from_u128(3),
             text: "fixture closed".into(),
             time: "00:00".into(),
-            ts_ms: 20,
+            ts_ms: (first_seconds + 1800) * 1000,
             until: Instant::now(),
         };
         insert_notice(&mut entries, &notice);
@@ -370,7 +379,11 @@ mod tests {
                 _ => None,
             })
             .collect();
-        assert_eq!(times, vec![10, 20, 30]);
+        assert_eq!(
+            times,
+            [first_seconds, first_seconds + 1800, first_seconds + 3600]
+                .map(|seconds| seconds * 1000)
+        );
         assert!(matches!(&entries[0], Entry::Filter { .. }));
     }
 }

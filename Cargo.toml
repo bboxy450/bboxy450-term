@@ -1,9 +1,11 @@
 [workspace]
 resolver = "3"
 members = [
+  "crates/bboxy450-usage",
   "crates/bboxy450-term-desktop-core",
   "crates/bboxy450-term-desktop-macos",
   "crates/bboxy450-term-desktop",
+  "crates/bboxy450-keychain-macos",
   "crates/bboxy450-keychain-windows",
   "crates/bboxy450-keychain-file",
   "crates/bboxy450-keychain",
@@ -31,6 +33,7 @@ members = [
   "crates/bbt-doc",
   "crates/bboxybook",
   "crates/bboxy450-term",
+  "crates/bboxy450-harness",
   "crates/bboxy-firehose",
 ]
 
@@ -49,3 +52,17 @@ bbt-mux = { package = "bboxy450-term-mux", version = "0.1.1", path = "crates/bbt
 bbt-proto = { package = "bboxy450-term-proto", version = "0.1.1", path = "crates/bbt-proto" }
 bbt-render = { package = "bboxy450-render", version = "0.1.1", path = "crates/bbt-render" }
 bbt-ui-model = { package = "bboxy450-ui-core", version = "0.1.1", path = "crates/bbt-ui-model" }
+
+# The embedded harness uses this checkout; its standalone manifest stays intact.
+[patch.crates-io]
+bboxy450-rt = { path = "crates/bbt-rt" }
+bboxy450-yarn = { path = "crates/bbt-yarn" }
+bboxy450-tlc = { path = "crates/bboxy450-tlc" }
+bboxy450-ui = { path = "crates/bbt-ui" }
+bboxy450-doc = { path = "crates/bbt-doc" }
+bboxy450-ui-core = { path = "crates/bbt-ui-model" }
+bboxy450-render = { path = "crates/bbt-render" }
+
+bboxy450-term-desktop-core = { path = "crates/bboxy450-term-desktop-core" }
+bboxy450-term-desktop = { path = "crates/bboxy450-term-desktop" }
+bboxy450-term-desktop-macos = { path = "crates/bboxy450-term-desktop-macos" }

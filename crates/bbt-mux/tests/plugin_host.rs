@@ -32,7 +32,7 @@ use bbt_plugin_fixture::Knobs;
 use serde_json::{Value, json};
 use std::{
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{Duration, Instant},
 };
 
@@ -46,6 +46,66 @@ fn operator() -> Actor {
 
 /// One fixture at a time keeps the exec burst, and its timing, small.
 static SERIAL: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+fn read_hooks(path: &Path) -> Vec<Value> {
+    fs::read(path)
+        .unwrap_or_default()
+        .split_inclusive(|byte| *byte == b'\n')
+        .filter(|line| line.ends_with(b"\n"))
+        .map(|line| serde_json::from_slice(line).expect("complete hook log record is invalid JSON"))
+        .collect()
+}
+
+#[test]
+fn a_hook_fragment_is_ignored_until_its_newline() {
+    use std::{io::Write, sync::mpsc, thread};
+
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("hooks.jsonl");
+    let first = json!({"event": "first"});
+    fs::write(&path, format!("{first}\n")).unwrap();
+    let second = json!({"event": "second", "text": "fox 🦊"});
+    let record = format!("{second}\n").into_bytes();
+    let at = record.iter().position(|byte| *byte == 0xf0).unwrap();
+    let partial_utf8 = record[..at + 1].to_vec();
+    let (partial, observed) = mpsc::sync_channel(0);
+    let (resume, ready) = mpsc::sync_channel(0);
+    let writer_path = path.clone();
+    let writer = thread::spawn(move || {
+        let mut file = fs::OpenOptions::new()
+            .append(true)
+            .open(writer_path)
+            .unwrap();
+        file.write_all(&record[..at]).unwrap();
+        partial.send(()).unwrap();
+        ready.recv_timeout(Duration::from_secs(30)).unwrap();
+        file.write_all(&record[at..]).unwrap();
+    });
+    observed.recv_timeout(Duration::from_secs(30)).unwrap();
+    let during = read_hooks(&path);
+    resume.send(()).unwrap();
+    writer.join().unwrap();
+    assert_eq!(
+        during,
+        vec![first.clone()],
+        "partial hook record must wait for newline"
+    );
+    assert_eq!(read_hooks(&path), vec![first.clone(), second]);
+    // A poll may also split a Unicode scalar; never decode the unfinished tail.
+    let mut bytes = format!("{first}\n").into_bytes();
+    bytes.extend(partial_utf8);
+    fs::write(&path, bytes).unwrap();
+    assert_eq!(read_hooks(&path), vec![first]);
+}
+
+#[test]
+#[should_panic(expected = "complete hook log record is invalid JSON")]
+fn a_complete_invalid_hook_record_fails_loudly() {
+    let temp = tempfile::tempdir().unwrap();
+    let path = temp.path().join("hooks.jsonl");
+    fs::write(&path, b"{invalid}\n").unwrap();
+    read_hooks(&path);
+}
 
 struct Fixture {
     _serial: tokio::sync::MutexGuard<'static, ()>,
@@ -177,11 +237,7 @@ impl Fixture {
 
     /// Every `hook` call the plugin received, in order.
     fn hooks_received(&self) -> Vec<Value> {
-        fs::read_to_string(&self.hook_log)
-            .unwrap_or_default()
-            .lines()
-            .map(|line| serde_json::from_str(line).unwrap())
-            .collect()
+        read_hooks(&self.hook_log)
     }
 
     async fn wait_for_hooks(&self, count: usize) -> Vec<Value> {
@@ -966,4 +1022,78 @@ async fn declared_trace_spans_merge_inside_the_plugin_phase_and_bad_ones_are_cou
     assert!(sample.spans.iter().any(|s| s.name == "ok" && s.depth == 2));
     let skip = sample.span_skip.unwrap();
     assert_eq!((skip.code.as_str(), skip.count), ("trace_span_invalid", 2));
+}
+
+// keeps: #31 — measured budgets warn once, latch after three overruns, and
+// a skipped hook does not execute; the account/control alert is not repeated.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn slow_hooks_warn_then_skip_with_one_account_control_alert() {
+    let f = Fixture::with(Variant::hooks(
+        json!([{"event":"PreToolUse","phase":"before","budget_ms":300}]),
+        "slow",
+        approval(&["PreToolUse"], Some(FailurePolicy::FailOpen)),
+    ))
+    .await;
+    let bus = f.bus();
+    let alerts = bus.subscribe(pull("account/control")).await.unwrap();
+    let event = HookEvent::harness("PreToolUse", None, json!({}));
+    for count in 1..=3 {
+        let (verdict, elapsed) = f.decide(event.clone()).await;
+        assert_eq!(verdict, Verdict::Allow);
+        assert!(
+            elapsed < Duration::from_millis(800),
+            "hook did not respect its 300 ms deadline"
+        );
+        let entries = f.registry.refresh().unwrap();
+        let entry = entries
+            .iter()
+            .find(|e| e.candidate.id == f.candidate)
+            .unwrap();
+        let value = serde_json::to_value(entry).unwrap();
+        let warnings = value["hook_warnings"]
+            .as_array()
+            .cloned()
+            .unwrap_or_default();
+        assert!(
+            !warnings.is_empty(),
+            "slow hook did not raise a registry warning"
+        );
+        let warning = &warnings[0];
+        assert_eq!(warning["consecutive_overruns"], count);
+        assert!(warning["elapsed_ms"].as_f64().unwrap() > warning["budget_ms"].as_f64().unwrap());
+        assert_eq!(warning["skipped"], count == 3);
+    }
+    assert_eq!(f.hooks_received().len(), 3);
+    let (_, elapsed) = f.decide(event.clone()).await;
+    assert!(elapsed < Duration::from_millis(300));
+    assert_eq!(f.hooks_received().len(), 3, "a skipped hook ran");
+    assert!(
+        f.host
+            .hook_outcomes()
+            .iter()
+            .any(|o| o.code.as_deref() == Some("hook_budget_skipped"))
+    );
+    let control = bus
+        .poll(&alerts, 16)
+        .await
+        .unwrap()
+        .into_iter()
+        .filter(|d| matches!(d, Delivery::Event { .. }))
+        .count();
+    assert_eq!(
+        control, 1,
+        "three overruns produce exactly one account/control line"
+    );
+    f.enable(true);
+    f.reconcile().await;
+    assert_eq!(f.decide(event).await.0, Verdict::Allow);
+    assert_eq!(
+        f.hooks_received().len(),
+        4,
+        "explicit re-enable did not clear skip"
+    );
+    assert_eq!(
+        serde_json::to_value(&f.registry.refresh().unwrap()[0]).unwrap()["hook_warnings"][0]["consecutive_overruns"],
+        1
+    );
 }

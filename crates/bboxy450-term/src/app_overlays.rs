@@ -45,10 +45,10 @@ struct SeatTarget {
     harness: String,
     scope: Result<bbt_proto::gui::SwarmScope, String>,
 }
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 enum SeatFormKind {
     Roles,
-    Tasks { next: Option<bbt_mux::Ulid> },
+    Tasks { next: Option<String> },
     Kill,
     Restart,
 }
@@ -60,7 +60,7 @@ pub(super) struct SeatForm {
     reading: bool,
     error: Option<String>,
     offset: usize,
-    read_after: Option<bbt_mux::Ulid>,
+    read_after: Option<String>,
     retrying: bool,
     retries: u8,
     retry_started: Option<Instant>,
@@ -422,7 +422,7 @@ impl App {
             self.read_seat_tasks(None);
         }
     }
-    fn read_seat_tasks(&mut self, after: Option<bbt_mux::Ulid>) {
+    fn read_seat_tasks(&mut self, after: Option<String>) {
         let Some(Surface::Dialog {
             seat: Some(form), ..
         }) = &mut self.app_overlays.surface
@@ -441,7 +441,7 @@ impl App {
         }
         let id = bbt_mux::Ulid::new();
         form.pending = Some(id);
-        form.read_after = after;
+        form.read_after = after.clone();
         form.reading = true;
         form.error = None;
         form.choices.clear();
@@ -450,6 +450,7 @@ impl App {
             scope: Some(scope),
             request: bbt_proto::messaging::TaskRequest::List {
                 unassigned: true,
+                include_unassigned: false,
                 swarm_id: None,
                 status: Some("open".into()),
                 assignee: None,
@@ -495,7 +496,7 @@ impl App {
             return;
         }
         if action == "seat-next" {
-            if let SeatFormKind::Tasks { next } = form.kind {
+            if let SeatFormKind::Tasks { next } = form.kind.clone() {
                 self.read_seat_tasks(next);
             }
             return;
@@ -582,7 +583,7 @@ impl App {
                     .iter()
                     .map(|item| (item.path.clone(), item.title.clone()))
                     .collect();
-                form.kind = SeatFormKind::Tasks { next: *next };
+                form.kind = SeatFormKind::Tasks { next: next.clone() };
                 form.pending = None;
                 form.reading = false;
                 form.retries = 0;
@@ -634,7 +635,7 @@ impl App {
         if form.pending != Some(op) || !form.retrying {
             return false;
         }
-        let after = form.read_after;
+        let after = form.read_after.clone();
         form.pending = None;
         form.retrying = false;
         self.read_seat_tasks(after);
@@ -1215,8 +1216,10 @@ mod tests {
             &["--headless".into()],
             Verify::default(),
         );
+        app.startup.attached();
         app.composer
             .handle(ComposeCommand::Focus(ComposeField::Body));
+        app.startup.attached();
         let body = c::Element::Stack(c::Stack {
             direction: bbt_ui_model::layout::Axis::Column,
             gap: ui::Length::Spacing(3),

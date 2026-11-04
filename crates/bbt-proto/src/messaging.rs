@@ -266,6 +266,7 @@ pub struct Envelope {
     /// Signed when nonempty; absence preserves the original v1 signing bytes.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub mentions: Vec<Ulid>,
+    /// Unix epoch seconds, included unchanged in the signed envelope bytes.
     pub timestamp: u64,
     pub priority: u8,
     pub kind: MessageKind,
@@ -555,6 +556,7 @@ pub struct MessageView<'a> {
     pub supersedes: Option<Ulid>,
     pub mentions: &'a [Ulid],
     pub attachments: &'a [String],
+    /// Unix epoch seconds from the envelope, or the pending intent's admission.
     pub timestamp: u64,
     pub issuer_kind: Option<IssuerKind>,
     pub signature: SignatureState,
@@ -695,8 +697,32 @@ pub struct MessageRow {
     pub priority_class: Class,
     pub priority: u8,
     pub text: String,
-    pub ts: u64,
+    /// Message's own Unix epoch milliseconds, at envelope second precision.
+    /// W2.4 JSON keeps the historical `ts` field in seconds for existing clients;
+    /// the wire codec converts at that boundary, including old retained rows.
+    #[serde(rename = "ts", with = "row_seconds")]
+    pub ts_ms: u64,
     pub receipts: ReceiptSummary,
+}
+
+/// Preserve W2.4's seconds on the wire without exposing ambiguous units in Rust.
+mod row_seconds {
+    use serde::{Deserialize, Deserializer, Serializer, de, ser};
+
+    pub fn serialize<S: Serializer>(milliseconds: &u64, serializer: S) -> Result<S::Ok, S::Error> {
+        if !milliseconds.is_multiple_of(1000) {
+            return Err(ser::Error::custom(
+                "message row requires whole-second precision",
+            ));
+        }
+        serializer.serialize_u64(milliseconds / 1000)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<u64, D::Error> {
+        u64::deserialize(deserializer)?
+            .checked_mul(1000)
+            .ok_or_else(|| de::Error::custom("message row timestamp exceeds millisecond range"))
+    }
 }
 
 /// Wake evidence is separate from storage/delivery evidence. `until` is RFC 3339.
@@ -985,10 +1011,15 @@ pub enum TaskRequest {
     List {
         #[serde(default, skip_serializing_if = "is_false")]
         unassigned: bool,
+        /// Operator only: the swarm's page merged with the account's open
+        /// unassigned tasks, one most-recently-changed-first list.
+        #[serde(default, skip_serializing_if = "is_false")]
+        include_unassigned: bool,
         swarm_id: Option<Ulid>,
         status: Option<String>,
         assignee: Option<String>,
-        after: Option<Ulid>,
+        /// The opaque `next` of the previous page; continues with older tasks.
+        after: Option<String>,
         limit: Option<usize>,
     },
     Status {
@@ -1031,6 +1062,8 @@ pub enum TaskRequest {
         task_path: String,
         summary: String,
         commit: Option<String>,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        report: Option<String>,
         verify_result: Option<TaskVerification>,
     },
 }
@@ -1103,7 +1136,8 @@ pub enum TaskResponse {
     },
     Items {
         items: Vec<TaskCard>,
-        next: Option<Ulid>,
+        /// Opaque recent-first cursor, passed back as `List::after`.
+        next: Option<String>,
     },
     Item {
         item: TaskDoc,

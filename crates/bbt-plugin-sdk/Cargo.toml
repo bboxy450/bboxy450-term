@@ -14,9 +14,48 @@ bbt-plugin = { package = "bboxy450-plugin", version = "0.1.1", path = "../bbt-pl
 libc = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+# The plugin doctor checks a package's shipped models natively.
+bboxy450-tlc = { version = "0.1.1", path = "../bboxy450-tlc" }
+# The plugin doctor validates results and hashes the binary as the host does.
+jsonschema = { version = "=0.60.1", default-features = false }
+sha2 = "0.10"
+
+[features]
+# The shipped runtime model (models/PluginRuntime.tla) as a bboxy450-tlc builder.
+model = []
 
 [lib]
 name = "bbt_plugin_sdk"
 
-[dev-dependencies]
-sha2 = "0.10"
+# Each example plugin runs its own plugin-doctor test (`cargo test --examples`).
+[[example]]
+name = "bboxy450-term-data_source-example"
+test = true
+
+[[example]]
+name = "bboxy450-term-task_system-example"
+test = true
+
+[[example]]
+name = "bboxy450-term-event_sink-example"
+test = true
+
+[[example]]
+name = "bboxy450-term-decision_model-example"
+test = true
+
+[[example]]
+name = "bboxy450-term-repo_graph-example"
+test = true
+
+[[example]]
+name = "bboxy450-term-session-example"
+test = true
+
+[[example]]
+name = "bboxy450-term-provider-example"
+test = true
+
+[[example]]
+name = "bboxy450-term-transport-example"
+test = true

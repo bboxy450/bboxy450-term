@@ -21,7 +21,26 @@ struct State {
     release: bool,
     limit: usize,
     pages: Vec<Ulid>,
+    watched: Option<Ulid>,
+    source_limits: BTreeMap<Ulid, usize>,
     notified: BTreeMap<Ulid, u64>,
+}
+// bboxy450-term — preserve credit with this controlled-readiness fixture.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+impl State {
+    fn can_read(&self, seat: Ulid) -> bool {
+        !self.release
+            || (self.pages.len() < self.limit
+                && self.source_limits.get(&seat).is_none_or(|&limit| {
+                    self.pages.iter().filter(|&&id| id == seat).count() < limit
+                }))
+    }
+    fn background_exhausted(&self) -> bool {
+        self.source_limits
+            .keys()
+            .filter(|&&seat| Some(seat) != self.watched)
+            .all(|&seat| !self.can_read(seat))
+    }
 }
 struct HeldCapture {
     client: Client,
@@ -33,15 +52,19 @@ struct HeldCapture {
 impl SupervisorConnection for HeldCapture {
     fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
         if let Action::ReadRingBatch { reads, max_bytes } = action {
-            let available = {
+            let admitted = {
                 let state = self.shared.lock().unwrap();
-                if state.release {
+                let available = if state.release {
                     state.limit.saturating_sub(state.pages.len())
                 } else {
                     usize::MAX
-                }
+                };
+                reads
+                    .iter()
+                    .take(available)
+                    .take_while(|read| state.can_read(read.attachment.seat))
+                    .count()
             };
-            let admitted = reads.len().min(available);
             let mut results = if admitted == 0 {
                 vec![]
             } else {
@@ -90,9 +113,9 @@ impl SupervisorConnection for HeldCapture {
             Action::ReadRing { attachment, .. } => Some(attachment.seat),
             _ => None,
         };
-        if seat.is_some() {
+        if let Some(seat) = seat {
             let state = self.shared.lock().unwrap();
-            if state.release && state.pages.len() >= state.limit {
+            if !state.can_read(seat) {
                 return Err(Box::new(bbt_mux::Failure {
                     code: bbt_mux::FailureCode::Busy,
                     message: "fixture replay page budget exhausted".into(),
@@ -125,7 +148,16 @@ impl SupervisorConnection for HeldCapture {
             return Ok(None);
         }
         if !self.latest.is_empty() {
+            // Make the worst readiness order explicit: backgrounds consume their
+            // finite allowances before the watched notification becomes ready.
+            // Parser speed and OS scheduling cannot spend the watched allowance.
+            let state = self.shared.lock().unwrap();
+            let hold = state.watched.filter(|_| !state.background_exhausted());
+            drop(state);
             for seat in &self.order {
+                if Some(*seat) == hold {
+                    continue;
+                }
                 if let Some(event) = self.latest.remove(seat) {
                     self.ready.push_back(event);
                 }
@@ -144,6 +176,7 @@ impl Drop for Release {
         let mut state = self.0.lock().unwrap();
         state.release = true;
         state.limit = usize::MAX;
+        state.source_limits.clear();
     }
 }
 async fn send(
@@ -321,6 +354,7 @@ while True: time.sleep(1)
     // These read-only probes happen before replay is released and are not counted.
     let mut reference = BTreeMap::new();
     let mut watched_pages = 0;
+    let mut page_counts = BTreeMap::new();
     for &seat in &seats {
         let mut playback = Playback::new(seat, 1, Default::default());
         let mut pages = 0;
@@ -342,6 +376,8 @@ while True: time.sleep(1)
         if seat == watched {
             watched_pages = pages;
         }
+        assert!(pages >= 16, "every source needs a retained backlog");
+        page_counts.insert(seat, pages);
         reference.insert(
             seat,
             Screen::from_term(&playback.term, playback.title, playback.cwd, playback.gap),
@@ -352,17 +388,36 @@ while True: time.sleep(1)
         "fixture needs enough pages to distinguish quotas"
     );
     let budget = 2 * watched_pages + 16;
+    // Bound each source inside the unchanged total budget. Independently ready
+    // parsers may donate turns; completed RPC counts do not measure the 3:1
+    // runnable-turn quota (checked by PendingSeats and SeatFairness).
+    let mut limits = BTreeMap::from([(watched, watched_pages)]);
+    let background_budget = budget - watched_pages;
+    let backgrounds = seats.len() - 1;
+    for (index, &seat) in seats[1..].iter().enumerate() {
+        let share =
+            background_budget / backgrounds + usize::from(index < background_budget % backgrounds);
+        // The last notification may apply one record without a read RPC.
+        // Keep two reference pages behind that boundary on every background.
+        limits.insert(seat, share.min(page_counts[&seat] - 2));
+    }
+    let admitted_limit = limits.values().sum::<usize>();
+    assert!(admitted_limit <= budget);
     {
         let mut state = shared.lock().unwrap();
         state.limit = budget;
+        state.watched = Some(watched);
+        state.source_limits = limits;
         state.release = true;
     }
     progress = Instant::now();
     let mut previous = 0;
-    loop {
+    let snapshot = loop {
         let count = shared.lock().unwrap().pages.len();
-        if count == budget {
-            break;
+        assert!(count <= admitted_limit && count <= budget);
+        let snapshot = runtime.block_on(logic.client.snapshot(watched, 1)).unwrap();
+        if snapshot.sequence == tails[&watched] {
+            break snapshot;
         }
         if count != previous {
             previous = count;
@@ -370,23 +425,8 @@ while True: time.sleep(1)
         }
         assert!(
             progress.elapsed() < Duration::from_secs(60),
-            "replay made no progress"
-        );
-        std::thread::sleep(Duration::from_millis(5));
-    }
-    // Admission and parser publication are independent. Keep the fixed read
-    // budget closed while the already admitted watched suffix completes.
-    let until = Instant::now() + Duration::from_secs(60);
-    let snapshot = loop {
-        let snapshot = runtime.block_on(logic.client.snapshot(watched, 1)).unwrap();
-        if snapshot.sequence == tails[&watched] {
-            break snapshot;
-        }
-        assert!(
-            Instant::now() < until,
             "watched tail starved within page budget"
         );
-        assert_eq!(shared.lock().unwrap().pages.len(), budget);
         std::thread::sleep(Duration::from_millis(5));
     };
     let pages = shared.lock().unwrap().pages.clone();
@@ -403,7 +443,10 @@ while True: time.sleep(1)
         "watched tail starved behind background replay"
     );
     assert_eq!(snapshot.screen, reference[&watched]);
+    assert!(pages.len() <= budget);
+    assert!(pages.iter().filter(|&&seat| seat == watched).count() <= watched_pages);
     for &seat in &seats[1..] {
+        assert!(pages.contains(&seat), "background made no read progress");
         assert!(
             runtime
                 .block_on(logic.client.snapshot(seat, 1))
@@ -413,7 +456,11 @@ while True: time.sleep(1)
             "background finished before the visible tail proof"
         );
     }
-    shared.lock().unwrap().limit = usize::MAX;
+    {
+        let mut state = shared.lock().unwrap();
+        state.limit = usize::MAX;
+        state.source_limits.clear();
+    }
     runtime.block_on(async {
         while replica.snapshot.as_ref().unwrap().sequence < tails[&watched] {
             apply(&mut read, &mut write, endpoint.capability, &mut replica).await;

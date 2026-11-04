@@ -219,6 +219,7 @@ mod tests {
 
     fn fixture(activity: Activity) -> GuiSeat {
         GuiSeat {
+            rich_socket: None,
             notification_episode: None,
             attention: None,
             record: SeatRecord::new(Ulid(1), Ulid(2), "fixture", "claude"),
@@ -229,6 +230,7 @@ mod tests {
                 grade: Grade::Shim,
                 title: String::new(),
                 detail: Some("\n  Allow this action?\nprivate second line".into()),
+                stale: false,
                 turn_open: true,
                 observed_ms: 10,
                 subagents: vec![],
@@ -280,6 +282,27 @@ mod tests {
         });
         episodes.observe(&seat, Instant::now());
         assert_eq!(episodes.key(id), Some(restarted_source));
+    }
+
+    #[test]
+    fn harness_branding_notification_title_uses_the_display_name() {
+        for kind in crate::settings::roles::HARNESSES {
+            let mut seat = fixture(Activity::Waiting(WaitKind::Question));
+            seat.record.harness_kind = kind.into();
+            let mut episodes = Episodes::default();
+            episodes.observe(&seat, Instant::now());
+            let desired = episodes.notifications(&Notifications::default(), false, None);
+            let title = &desired.values().next().unwrap().notification.title;
+            if kind == "bboxy450-harness" {
+                assert_eq!(title, "fixture · bboxy450-harness");
+            }
+            assert!(!title.to_lowercase().contains("bboxy harness"));
+            assert!(
+                !title
+                    .split(|c: char| !c.is_alphanumeric())
+                    .any(|word| word == "Bboxy")
+            );
+        }
     }
 
     // keeps: spec attention §5

@@ -408,11 +408,11 @@ impl Launcher {
         }
         let icon = named(
             format!("{key}/tile/hicon"),
-            c::Element::Icon {
-                name: it.harness.clone(),
-                size: ui::Length::Px(if spot { 17. } else { 13. }),
-                paint: ui::Paint::solid(ui::Color::OnAccent),
-            },
+            super::harness::mark(
+                &it.harness,
+                if spot { 17. } else { 13. },
+                ui::Paint::solid(ui::Color::OnAccent),
+            ),
         );
         let tile = boxed(
             &format!("{key}/tile"),

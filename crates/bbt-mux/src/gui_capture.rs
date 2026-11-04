@@ -394,6 +394,7 @@ mod tests {
                     page: None,
                     document: None,
                     document_observation: None,
+                    rich_observation: Default::default(),
                     panes: Vec::new(),
                     tree: Vec::new(),
                 }),
@@ -426,6 +427,7 @@ mod tests {
             matches!(owner.try_recv().unwrap(), Notice::App { id: seen, request: bbt_proto::gui::AppRequest::Stop } if seen == id)
         );
         let status = bbt_proto::gui::AppStatus {
+            gui: None,
             running: true,
             mode: "headless".into(),
             unattended: false,

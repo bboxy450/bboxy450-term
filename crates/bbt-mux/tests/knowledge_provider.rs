@@ -676,16 +676,14 @@ async fn enabled_plugin_methods_and_declared_tools_reach_seats_by_role() {
     assert_eq!(echo["inputSchema"]["properties"]["text"]["type"], "string");
     assert!(echo["inputSchema"]["properties"]["op_id"].is_object());
     assert_eq!(echo["outputSchema"]["required"], json!(["result"]));
-    let orient = tool(&logic.client, worker, "orient", json!({})).await;
-    let mut oriented: Vec<String> = orient["structuredContent"]["tools"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .filter_map(|tool| tool["name"].as_str().map(str::to_owned))
-        .filter(|name| name.starts_with("plugin_"))
-        .collect();
-    oriented.sort();
-    assert_eq!(oriented, plugin_tools(&worker_catalogue));
+    for (seat, expected) in [(worker, &worker_catalogue), (oracle, &oracle_catalogue)] {
+        let orient = tool(&logic.client, seat, "orient", json!({})).await;
+        assert_eq!(orient["isError"], false, "{orient}");
+        assert_eq!(
+            plugin_tools(&orient["structuredContent"]),
+            plugin_tools(expected)
+        );
+    }
 
     let echoed = tool(
         &logic.client,
@@ -752,6 +750,8 @@ async fn enabled_plugin_methods_and_declared_tools_reach_seats_by_role() {
     )
     .await;
     assert!(plugin_tools(&catalogue(oracle).await).is_empty());
+    let orient = tool(&logic.client, worker, "orient", json!({})).await;
+    assert!(plugin_tools(&orient["structuredContent"]).is_empty());
     let after = tool(
         &logic.client,
         worker,

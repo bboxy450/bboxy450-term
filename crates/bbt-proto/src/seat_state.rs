@@ -16,6 +16,9 @@ pub use bbt_ui_model::{
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct GuiSeat {
+    /// Term-owned rich session endpoint; never a capability or session file.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rich_socket: Option<std::path::PathBuf>,
     pub record: SeatRecord,
     pub state: SeatState,
     /// Full policy on an explicit read; small digest observations on ordinary state.
@@ -42,9 +45,15 @@ pub struct SeatState {
     pub grade: Grade,
     pub title: String,
     pub detail: Option<String>,
+    /// The last explicit activity remains visible after its freshness expires.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub stale: bool,
     pub turn_open: bool,
     pub observed_ms: u64,
     pub subagents: Vec<SubagentRow>,
+}
+fn is_false(value: &bool) -> bool {
+    !value
 }
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SubagentRow {
@@ -72,9 +81,33 @@ pub struct TransportSpec {
     pub port: Option<u16>,
     #[serde(default)]
     pub key: Option<String>,
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub fields: std::collections::BTreeMap<String, String>,
 }
 impl TransportSpec {
+    pub fn inner_command(
+        cwd: &str,
+        argv: &[String],
+        env: &[(String, String)],
+    ) -> Result<String, String> {
+        bbt_ui_model::transport::remote_command(cwd, argv, env)
+    }
     pub fn validate(&self) -> Result<(), String> {
+        if let Some(provider) = self.kind.strip_prefix("plugin:") {
+            if provider.is_empty()
+                || provider.len() > 128
+                || !provider
+                    .bytes()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-')
+                || self.fields.len() > 32
+                || self.fields.iter().any(|(k, v)| {
+                    k.is_empty() || k.len() > 64 || v.len() > 4096 || v.contains('\0')
+                })
+            {
+                return Err("Invalid plugin transport fields".into());
+            }
+            return Ok(());
+        }
         bbt_ui_model::transport::Transport {
             kind: &self.kind,
             route: &self.route,
@@ -89,6 +122,9 @@ impl TransportSpec {
         argv: &[String],
         env: &[(String, String)],
     ) -> Result<Vec<String>, String> {
+        if self.kind.starts_with("plugin:") {
+            return Err("Plugin transport argv is resolved by the plugin host".into());
+        }
         let inner = bbt_ui_model::transport::remote_command(cwd, argv, env)?;
         bbt_ui_model::transport::Transport {
             kind: &self.kind,

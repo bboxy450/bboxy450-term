@@ -105,6 +105,10 @@ pub struct ConversationLayout {
     pub available_height: f32,
     pub actions: ui::modules::stream_dock::Regions,
     context: ui::Context,
+    /// The painted list, built once per layout. A layout is replaced, never
+    /// edited, when chat content, size or context changes, so its paint is
+    /// fixed; repainting the whole tree each frame cost ~18 ms of every frame.
+    painted: std::cell::OnceCell<std::sync::Arc<Vec<c::Paint>>>,
 }
 pub struct DocumentLayout {
     pub layout: c::Layout,
@@ -167,7 +171,12 @@ impl LocalPageLayout {
 }
 impl ConversationLayout {
     pub fn paint(&self) -> Vec<c::Paint> {
-        c::paint(&self.layout, self.context)
+        self.painted().as_ref().clone()
+    }
+    /// The retained paint list; clones share its primitives' text and icons.
+    pub fn painted(&self) -> &std::sync::Arc<Vec<c::Paint>> {
+        self.painted
+            .get_or_init(|| std::sync::Arc::new(c::paint(&self.layout, self.context)))
     }
 }
 pub struct LauncherLayout {
@@ -236,6 +245,7 @@ fn named_suffix<'a>(layout: &'a c::Layout, name: &str) -> Option<&'a c::Layout> 
 }
 
 pub struct Scene {
+    pub usage: bbt_ui_model::usage::UsageStrip,
     pub sidebar_scroll: f32,
     pub sidebar_width: f32,
     pub sidebar_layout: ui::modules::composer::SidebarLayout,
@@ -251,6 +261,7 @@ pub struct Scene {
     layout_revision: u64,
     swarms: Vec<bbt_ui_model::Swarm>,
     pub seats: Vec<SeatRow>,
+    pane_views: BTreeMap<SeatId, ui::modules::strip::ViewTarget>,
     tasks: Vec<(SeatId, String, ui::modules::seat_row::TaskRow, Option<i32>)>,
     tree: Option<SplitNode>,
     starting: Option<starting::StartingScene>,
@@ -265,6 +276,8 @@ pub struct Scene {
     /// gutter between panes is R and the stage inset R/2, so changing it relayouts.
     rim: f32,
     context: ui::Context,
+    /// The saved appearance theme ("auto", "light" or "dark") for the title-bar button.
+    theme_setting: String,
     glow: bool,
     subtitle: bool,
     /// When each seat's focus swell started (rim-glow §7); it runs glow.swell_ms.
@@ -293,6 +306,7 @@ struct LayoutKey {
     hosts: Vec<bbt_proto::GuiHost>,
     closed: Vec<(SeatId, Instant, String, String)>,
     seats: Vec<SeatRow>,
+    pane_views: BTreeMap<SeatId, ui::modules::strip::ViewTarget>,
     tasks: Vec<(SeatId, String, ui::modules::seat_row::TaskRow, Option<i32>)>,
     tree: Option<SplitNode>,
     focused: Option<SeatId>,
@@ -307,6 +321,7 @@ impl LayoutKey {
             && self.hosts == scene.hosts
             && self.closed == scene.closed
             && self.seats == scene.seats
+            && self.pane_views == scene.pane_views
             && self.tasks == scene.tasks
             && self.tree == scene.tree
             && self.focused == scene.focused
@@ -321,6 +336,7 @@ impl LayoutKey {
             hosts: scene.hosts.clone(),
             closed: scene.closed.clone(),
             seats: scene.seats.clone(),
+            pane_views: scene.pane_views.clone(),
             tasks: scene.tasks.clone(),
             tree: scene.tree.clone(),
             focused: scene.focused,
@@ -478,9 +494,11 @@ impl Scene {
             #[cfg(test)]
             projections: 0,
             seats,
+            pane_views: BTreeMap::new(),
             tasks: vec![],
             closed: vec![],
             layout_revision: 0,
+            usage: Default::default(),
             swarms: vec![],
             tree: Some(tree(&fixture["tree"])),
             starting: None,
@@ -494,6 +512,7 @@ impl Scene {
             metrics: Metrics::default(),
             rim: TOKENS.glow.rim as f32,
             context: ui::Context::new(ui::Theme::Dark, ui::Density::Cozy),
+            theme_setting: "auto".into(),
             glow: true,
             subtitle: false,
             swells: HashMap::new(),
@@ -519,6 +538,133 @@ impl Scene {
     pub fn ui_context(&self) -> ui::Context {
         self.context
     }
+
+    pub fn apply_usage(&mut self, update: bboxy450_usage::poller::Update) {
+        use bbt_ui_model::usage::UsageMetric;
+        match update {
+            bboxy450_usage::poller::Update::Machine(m) => {
+                self.usage.machine = [("CPU", m.cpu), ("MEM", m.memory), ("DISK", m.disk)]
+                    .into_iter()
+                    .map(|(label, percent)| UsageMetric {
+                        label: label.into(),
+                        percent,
+                        projected: None,
+                        windows: Vec::new(),
+                        stale: false,
+                        reason: percent.is_none().then(|| {
+                            m.reason
+                                .clone()
+                                .unwrap_or_else(|| "Machine read unavailable".into())
+                        }),
+                    })
+                    .collect();
+            }
+            bboxy450_usage::poller::Update::Provider { id, reading } => {
+                // An in-flight refresh keeps the last value instead of blinking out.
+                let refreshing = reading.as_ref().is_some_and(|r| {
+                    r.used.is_none()
+                        && r.reason
+                            .as_deref()
+                            .is_some_and(|s| s.starts_with("Refreshing"))
+                });
+                if !refreshing {
+                    self.usage.providers.retain(|m| m.label != id);
+                    // An account with no reading (signed out, unreadable) is not shown.
+                    if let Some(r) = reading.filter(|r| r.used.is_some()) {
+                        let now = bboxy450_usage::now() as i64;
+                        let windows = r
+                            .windows
+                            .iter()
+                            .map(|w| bbt_ui_model::usage::UsageWindow {
+                                label: w.label.clone(),
+                                percent: w.used,
+                                projected: w.projected,
+                                resets: w.resets_at.map(|t| bboxy450_usage::reset_label(t, now)),
+                            })
+                            .collect();
+                        self.usage.providers.push(UsageMetric {
+                            label: id.into(),
+                            percent: r.used,
+                            projected: r.projected,
+                            windows,
+                            stale: r.stale,
+                            reason: r.reason,
+                        });
+                    }
+                    self.usage.providers.sort_by(|a, b| a.label.cmp(&b.label));
+                }
+            }
+        }
+        self.layout_cache.borrow_mut().take();
+    }
+
+    pub fn inherit_usage(&mut self, previous: &mut Self) {
+        self.usage = std::mem::take(&mut previous.usage);
+        self.layout_cache.borrow_mut().take();
+    }
+
+    pub fn usage_tooltip(&self, size: [f32; 2]) -> Vec<c::Paint> {
+        let mut style = ui::Style::new(ui::Preset::Modal);
+        style.overrides.padding = Some([ui::Length::Px(16.); 4]);
+        // Tachyon-style breakdown: rings, per-window progress bars, resets and pace.
+        let width = (size[0] - 24.).clamp(1., 360.);
+        let element = c::Element::Box(c::Box::new(
+            style,
+            vec![bbt_ui::modules::title_bar::usage_breakdown(&self.usage, width - 32.).into()],
+        ));
+        element
+            .layout(
+                Rect::new(
+                    (size[0] - width - 12.).max(0.),
+                    STYLE.spacing.title_bar as f32 + 4.,
+                    width,
+                    0.,
+                ),
+                self.context,
+                &self.metrics,
+            )
+            .map(|layout| c::paint(&layout, self.context))
+            .unwrap_or_default()
+    }
+    /// Hover label for the title-bar theme button: the saved choice and what a click picks.
+    pub fn theme_tooltip(&self, size: [f32; 2]) -> Vec<c::Paint> {
+        let now = if self.context.theme == ui::Theme::Dark {
+            "dark"
+        } else {
+            "light"
+        };
+        let (current, next) = match self.theme_setting.as_str() {
+            "light" => ("Light".to_string(), "Dark"),
+            "dark" => ("Dark".to_string(), "Auto"),
+            _ => (format!("Auto (system is {now})"), "Light"),
+        };
+        let mut style = ui::Style::new(ui::Preset::Modal);
+        style.overrides.padding = Some([
+            ui::Length::Px(8.),
+            ui::Length::Px(12.),
+            ui::Length::Px(8.),
+            ui::Length::Px(12.),
+        ]);
+        let text = c::Text::new(
+            format!("Theme: {current}\nClick for {next}"),
+            ui::Text::default(),
+        );
+        let element = c::Element::Box(c::Box::new(style, vec![c::Element::Text(text).into()]));
+        let width = 220f32.min(size[0] - 24.).max(1.);
+        element
+            .layout(
+                Rect::new(
+                    (size[0] - width - 12.).max(0.),
+                    STYLE.spacing.title_bar as f32 + 4.,
+                    width,
+                    0.,
+                ),
+                self.context,
+                &self.metrics,
+            )
+            .map(|layout| c::paint(&layout, self.context))
+            .unwrap_or_default()
+    }
     pub fn set_context(&mut self, context: ui::Context) {
         self.context = context;
     }
@@ -528,6 +674,7 @@ impl Scene {
         system: ui::Theme,
     ) {
         self.set_context(preferences.context(system));
+        self.theme_setting = preferences.appearance.theme.clone();
         self.set_rim(preferences.appearance.rim);
         self.glow = preferences.appearance.glow;
         self.subtitle = preferences.appearance.subtitle;
@@ -608,9 +755,11 @@ impl Scene {
             #[cfg(test)]
             projections: 0,
             seats: vec![],
+            pane_views: BTreeMap::new(),
             tasks: vec![],
             closed: vec![],
             layout_revision: 0,
+            usage: Default::default(),
             swarms: vec![],
             tree: None,
             starting: None,
@@ -624,6 +773,7 @@ impl Scene {
             metrics: Metrics::default(),
             rim: TOKENS.glow.rim as f32,
             context: ui::Context::new(ui::Theme::Dark, ui::Density::Cozy),
+            theme_setting: "auto".into(),
             glow: true,
             subtitle: false,
             swells: HashMap::new(),
@@ -638,6 +788,9 @@ impl Scene {
     /// Uncontrolled fixture projection; the App uses `set_model_with_clock`.
     pub fn set_model(&mut self, model: &bboxy450_term::model::Model, stage: &Stage) {
         self.set_model_at(model, stage, None);
+    }
+    pub fn set_pane_views(&mut self, views: BTreeMap<SeatId, ui::modules::strip::ViewTarget>) {
+        self.pane_views = views;
     }
     pub fn set_model_with_clock(
         &mut self,
@@ -789,6 +942,7 @@ impl Scene {
                     .flatten();
                 row.activity = seat.activity;
                 row.grade = seat.grade;
+                row.stale = model.states.get(id).is_some_and(|state| state.stale);
                 row.muted = seat.muted;
                 row.may_mute = self.live;
                 row.deferred = model.messaging_deferred.get(id).cloned();
@@ -1511,9 +1665,10 @@ impl Scene {
                             },
                         )
                 },
+                theme: self.theme_setting.clone(),
                 ..Default::default()
             }
-            .element(ctx)
+            .element_with_usage(ctx, &self.usage)
             .layout(Rect::new(0., 0., size[0], title), ctx, &self.metrics)
             .map_err(|e| e.to_string())?,
             {
@@ -1555,8 +1710,12 @@ impl Scene {
                 focused: seat.focused,
                 ..ctx
             };
+            let mut strip = Strip::new(seat);
+            if let Slot::Seat(id) = slot {
+                strip.view_target = self.pane_views.get(&id).copied();
+            }
             let pane = Pane {
-                strip: Strip::new(seat),
+                strip,
                 lines: self.slot_lines(slot),
                 gap_from: None,
                 resumed: None,
@@ -1971,6 +2130,7 @@ impl Scene {
             tasks_height,
             available_height: available,
             actions,
+            painted: std::cell::OnceCell::new(),
         })
     }
     pub fn conversation_position(
@@ -2249,6 +2409,15 @@ impl Scene {
         let width = 480_f32.min((size[0] - 24.).max(1.));
         modal.style.overrides.width = Some(ui::Length::Px(width));
         let element = modal.element(self.ui_context());
+        self.app_dialog_element_layout(element, size, width)
+    }
+    pub fn app_dialog_element_layout(
+        &self,
+        element: c::Element,
+        size: [f32; 2],
+        preferred_width: f32,
+    ) -> Result<c::Layout, String> {
+        let width = preferred_width.min((size[0] - 24.).max(1.));
         let natural = element
             .layout(
                 Rect::new(0., 0., width, 0.),
@@ -3147,6 +3316,7 @@ mod depth_tests {
 
         let seat = SeatId::from_u128(3);
         let mut current = GuiSeat {
+            rich_socket: None,
             notification_episode: None,
             attention: None,
             record: SeatRecord::new(Ulid(3), Ulid(2), "fixture", "zsh"),
@@ -3157,6 +3327,7 @@ mod depth_tests {
                 grade: Grade::Shim,
                 title: String::new(),
                 detail: Some("Your answer is needed".into()),
+                stale: false,
                 turn_open: true,
                 observed_ms: 10,
                 subagents: vec![],
@@ -3521,6 +3692,31 @@ mod launcher_tests {
             Some(ui::modules::stream_dock::Action::Accept(
                 "real-task-id".into()
             ))
+        );
+    }
+
+    // keeps: a conversation layout paints once; every frame reuses that list
+    #[test]
+    fn conversation_layout_paints_once_and_frames_share_the_list() {
+        let scene = Scene::new();
+        let size = [1600., 960.];
+        let conversation = scene
+            .conversation_layout(size, &ui::modules::composer::Conversation::default())
+            .unwrap();
+        let first = conversation.painted().clone();
+        assert!(std::sync::Arc::ptr_eq(&first, conversation.painted()));
+        assert_eq!(conversation.paint(), *first);
+        assert_eq!(
+            *first,
+            c::paint(&conversation.layout, conversation.context),
+            "the retained list is the tree's paint"
+        );
+        let rebuilt = scene
+            .conversation_layout(size, &ui::modules::composer::Conversation::default())
+            .unwrap();
+        assert!(
+            !std::sync::Arc::ptr_eq(&first, rebuilt.painted()),
+            "a new layout paints itself"
         );
     }
 

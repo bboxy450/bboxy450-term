@@ -19,8 +19,8 @@ use std::io::{BufRead, Write};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
+use crate::Knobs;
 use bbt_plugin::contracts::Contract;
-use bbt_plugin_fixture::Knobs;
 use serde_json::{Map, Value, json};
 
 const CASES: &str = include_str!("../../bbt-plugin/tests/fixtures/data_source/conformance.json");
@@ -35,12 +35,15 @@ fn emit(out: &Out, value: &Value) {
 }
 
 pub(crate) fn append(path: &str, value: &Value) {
+    // Serialize before writing so formatting cannot expose a series of fragments.
+    // Readers still require a newline before decoding a possibly short write.
+    let record = format!("{value}\n");
     let mut file = std::fs::OpenOptions::new()
         .create(true)
         .append(true)
         .open(path)
         .expect("fixture log");
-    let _ = writeln!(file, "{value}");
+    let _ = file.write_all(record.as_bytes());
 }
 
 struct Server<'a> {
@@ -532,7 +535,12 @@ impl Server<'_> {
             .iter()
             .any(|t| format!("tool_{}", t["name"].as_str().unwrap_or("")) == name)
         {
-            return self.reply(req, json!({"structuredContent":{"tool":name,"args":args}}));
+            let mut value = json!({"tool":name,"args":args});
+            // Seat attribution, exactly as the host sent it in `_meta`.
+            if let Some(meta) = req["params"].get("_meta") {
+                value["meta"] = meta.clone();
+            }
+            return self.reply(req, json!({"structuredContent":value}));
         }
         if name == "health" {
             return self.health(req);

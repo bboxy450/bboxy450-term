@@ -6,6 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Logic-owned plugin discovery, account trust and isolated conformance checks.
 
+pub mod attribution;
 mod check;
 mod client;
 pub(crate) mod control;
@@ -22,7 +23,7 @@ pub use registry::{
     HookEvent, HookOutcome, InspectionJob, InspectionResult, LoginCommand, LoginRun,
     MAX_CONCURRENT_CALLS, MessageSender, PluginHost, ProviderConfig, ProviderObservation,
     RecordReader, Registry, RegistryConfig, SETUP_LOGIN_BUDGET, SeatTool, SetupJob, SetupRun,
-    Verdict, seat_role,
+    TransportPlan, Verdict, seat_role,
 };
 
 use bbt_plugin::Refusal;

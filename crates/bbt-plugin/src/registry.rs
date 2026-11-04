@@ -130,9 +130,22 @@ pub struct Entry {
     /// never in the account record. Empty means nothing was measured.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub measurements: Vec<Sample>,
+    /// Persistent hook overruns of this activation, including latched skips.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub hook_warnings: Vec<HookWarning>,
     /// The last setup (auth status, then login when needed) of this pin.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub setup: Option<SetupResult>,
+}
+
+/// A host-measured hook budget overrun, scoped to one activation generation.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct HookWarning {
+    pub event: String,
+    pub budget_ms: u64,
+    pub elapsed_ms: f64,
+    pub consecutive_overruns: u8,
+    pub skipped: bool,
 }
 
 /// How a plugin's setup ended.

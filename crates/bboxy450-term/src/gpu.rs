@@ -125,7 +125,12 @@ pub struct Panes<'a> {
     pub bounds: &'a [(SeatId, Rect)],
     /// Window-local focus, projected in the same frame as the pane chrome.
     pub focused: Option<SeatId>,
+    /// Foreground painted over the cells, before the retained layer.
     pub overlay: Vec<Paint>,
+    /// The conversation dock: retained in its own layer while unchanged.
+    pub retained: Option<std::sync::Arc<Vec<Paint>>>,
+    /// Foreground painted after the retained layer (rims, modals, tooltips).
+    pub overlay_after: Vec<Paint>,
 }
 
 /// Match the terminal group's default background across its padding and the
@@ -236,6 +241,225 @@ impl ChromeCache {
     }
 }
 
+/// The conversation dock rendered once into its own layer, then composited
+/// source-over each frame: same as an isolated group of opacity 1. Re-encoding
+/// its ~20k primitives was the whole overlay cost of an idle frame.
+#[derive(Default)]
+struct OverlayLayer {
+    entry: Option<CachedOverlay>,
+}
+struct CachedOverlay {
+    list: std::sync::Arc<Vec<Paint>>,
+    size: wgpu::Extent3d,
+    scale: u32,
+    texture: wgpu::Texture,
+}
+/// How the last frame drew its retained overlay, for the hitch log.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum OverlayDraw {
+    #[default]
+    None,
+    Hit,
+    Rebuilt,
+    /// Not cacheable this frame: the first frosted, rim or glow material
+    /// inside the dock.
+    Live(&'static str),
+}
+/// Content whose pixels depend only on itself: draw lists, groups, and the
+/// flat and gloss fills. Frosted samples what lies beneath; rims and glows
+/// animate.
+fn plain_paint(op: &Paint) -> bool {
+    match op {
+        Paint::Draw(_) | Paint::Underlay(_) => true,
+        Paint::Group { ops, .. } => ops.iter().all(plain_paint),
+        Paint::Material { kind, .. } => {
+            matches!(kind, ui::Material::Flat | ui::Material::Gloss)
+        }
+    }
+}
+/// The first material that keeps a dock list live, for the hitch log.
+fn first_material(ops: &[Paint]) -> Option<&'static str> {
+    ops.iter().find_map(|op| match op {
+        Paint::Material { kind, .. } => match kind {
+            ui::Material::Flat | ui::Material::Gloss => None,
+            ui::Material::Frosted => Some("dock:Frosted"),
+            ui::Material::Rim => Some("dock:Rim"),
+            ui::Material::Glow => Some("dock:Glow"),
+        },
+        Paint::Group { ops, .. } => first_material(ops),
+        Paint::Draw(_) | Paint::Underlay(_) => None,
+    })
+}
+/// Before, the retained layer, then after, in painter's order on `destination`.
+/// Overlay calls are external (`backdrop_keys` keys nothing), so a frosted op
+/// after the layer always blurs the live target, which already holds the
+/// composited layer: the same pixels one combined call would sample.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the overlay's three ordered parts"
+)]
+fn draw_overlay(
+    renderer: &mut ChromeRenderer,
+    materials: &m::Pass,
+    layer: &mut OverlayLayer,
+    destination: &wgpu::Texture,
+    backdrop: &wgpu::Texture,
+    before: Vec<Paint>,
+    list: std::sync::Arc<Vec<Paint>>,
+    after: Vec<Paint>,
+    timing: FrameTime,
+    encoder: &mut wgpu::CommandEncoder,
+) -> Result<OverlayDraw, String> {
+    let live = FrameTime {
+        external_before: true,
+        clear: false,
+        ..timing
+    };
+    if !before.is_empty() {
+        encode_ops(
+            renderer,
+            materials,
+            destination,
+            backdrop,
+            before,
+            live,
+            encoder,
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    let size = destination.size();
+    let scale = timing.scale.to_bits();
+    let hit = layer.entry.as_ref().is_some_and(|old| {
+        old.size == size
+            && old.scale == scale
+            && (std::sync::Arc::ptr_eq(&old.list, &list) || *old.list == *list)
+    });
+    let state = if hit {
+        // Keep the newest identity so the next frame hits by pointer.
+        layer.entry.as_mut().expect("retained overlay").list = list;
+        OverlayDraw::Hit
+    } else {
+        let texture = layer
+            .entry
+            .take()
+            .map(|old| old.texture)
+            .filter(|t| t.size() == size)
+            .unwrap_or_else(|| texture(&renderer.context.device, [size.width, size.height]));
+        encode_ops(
+            renderer,
+            materials,
+            &texture,
+            backdrop,
+            list.as_ref().clone(),
+            FrameTime {
+                external_before: false,
+                clear: true,
+                ..timing
+            },
+            encoder,
+        )
+        .map_err(|e| e.to_string())?;
+        layer.entry = Some(CachedOverlay {
+            list,
+            size,
+            scale,
+            texture,
+        });
+        OverlayDraw::Rebuilt
+    };
+    let source = layer
+        .entry
+        .as_ref()
+        .expect("retained overlay")
+        .texture
+        .create_view(&Default::default());
+    renderer
+        .composite_group(
+            &source,
+            group::Filter {
+                opacity: 1.,
+                saturation: 1.,
+            },
+            target(&destination.create_view(&Default::default()), timing.scale),
+            encoder,
+        )
+        .map_err(|e| e.to_string())?;
+    if !after.is_empty() {
+        encode_ops(
+            renderer,
+            materials,
+            destination,
+            backdrop,
+            after,
+            live,
+            encoder,
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(state)
+}
+/// One live call, today's path, when the overlay cannot use its layer.
+#[allow(
+    clippy::too_many_arguments,
+    reason = "the overlay's three ordered parts"
+)]
+fn draw_overlay_or_live(
+    renderer: &mut ChromeRenderer,
+    materials: &m::Pass,
+    layer: &mut OverlayLayer,
+    destination: &wgpu::Texture,
+    backdrop: &wgpu::Texture,
+    before: Vec<Paint>,
+    retained: Option<std::sync::Arc<Vec<Paint>>>,
+    after: Vec<Paint>,
+    timing: FrameTime,
+    encoder: &mut wgpu::CommandEncoder,
+) -> Result<OverlayDraw, String> {
+    if let Some(list) = retained
+        .as_ref()
+        .filter(|list| list.iter().all(plain_paint))
+    {
+        return draw_overlay(
+            renderer,
+            materials,
+            layer,
+            destination,
+            backdrop,
+            before,
+            list.clone(),
+            after,
+            timing,
+            encoder,
+        );
+    }
+    layer.entry = None;
+    let reason = retained
+        .as_ref()
+        .map(|list| first_material(list).unwrap_or("dock"));
+    let mut ops = before;
+    if let Some(list) = retained {
+        ops.extend(list.iter().cloned());
+    }
+    ops.extend(after);
+    if !ops.is_empty() {
+        encode_ops(
+            renderer,
+            materials,
+            destination,
+            backdrop,
+            ops,
+            FrameTime {
+                external_before: true,
+                clear: false,
+                ..timing
+            },
+            encoder,
+        )
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(reason.map_or(OverlayDraw::None, OverlayDraw::Live))
+}
+
 fn timed_paint(op: &Paint) -> bool {
     match op {
         Paint::Material { kind, .. } => matches!(kind, ui::Material::Glow | ui::Material::Rim),
@@ -250,10 +474,13 @@ pub struct Gpu {
     materials: m::Pass,
     /// Render passes and copies encoded by the last draw (profiling; see bbt_render::passes).
     pub passes: bbt_render::passes::Counts,
+    /// The last frame's encode breakdown, read with `passes` after a hitch.
+    pub last_split: EncodeSplit,
     target: wgpu::Texture,
     backdrop: wgpu::Texture,
     cells: CellTextures,
     chrome: ChromeCache,
+    overlay_layer: OverlayLayer,
     gpu_sender: SyncSender<GpuSample>,
     gpu_samples: Receiver<GpuSample>,
     native_probe: Option<native_probe::NativeProbe>,
@@ -326,8 +553,13 @@ fn target(view: &wgpu::TextureView, scale: f32) -> ChromeTarget<'_> {
 }
 
 impl Gpu {
-    pub fn install_document_images(&mut self, images: &[std::sync::Arc<bbt_render::chrome::icons::Image>]) -> Result<(),String> {
-        for image in images { self.renderer.add_image(image).map_err(|e|e.to_string())?; }
+    pub fn install_document_images(
+        &mut self,
+        images: &[std::sync::Arc<bbt_render::chrome::icons::Image>],
+    ) -> Result<(), String> {
+        for image in images {
+            self.renderer.add_image(image).map_err(|e| e.to_string())?;
+        }
         Ok(())
     }
 
@@ -366,9 +598,12 @@ impl Gpu {
             .map_err(|e| e.to_string())?;
         let mut native_probe = native_probe::NativeProbe::from_args()?;
         let config = wgpu::SurfaceConfiguration {
-            usage: wgpu::TextureUsages::RENDER_ATTACHMENT | if native_probe.is_some() {
-                wgpu::TextureUsages::COPY_SRC
-            } else { wgpu::TextureUsages::empty() },
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                | if native_probe.is_some() {
+                    wgpu::TextureUsages::COPY_SRC
+                } else {
+                    wgpu::TextureUsages::empty()
+                },
             format,
             width: size[0].max(1),
             height: size[1].max(1),
@@ -401,10 +636,12 @@ impl Gpu {
                 renderer,
                 materials,
                 passes: Default::default(),
+                last_split: EncodeSplit::default(),
                 target,
                 backdrop,
                 cells: CellTextures::default(),
                 chrome: ChromeCache::default(),
+                overlay_layer: OverlayLayer::default(),
                 gpu_sender,
                 gpu_samples,
                 native_probe,
@@ -437,13 +674,18 @@ impl Gpu {
     // Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
     pub fn resize_native(&mut self, width: u32, height: u32) -> Result<(), String> {
         debug_assert!(self.configured);
-        if width == 0 || height == 0 { return Ok(()); }
+        if width == 0 || height == 0 {
+            return Ok(());
+        }
         let layer = {
             // SAFETY: this UI owner configures the same layer bound by the
             // display link. No drawable is imported until its new extent matches.
             let surface = unsafe { self.surface.as_hal::<wgpu::hal::api::Metal>() }
                 .ok_or("native resize requires Metal")?;
-            let layer = surface.render_layer().try_lock().ok_or("Metal layer busy")?;
+            let layer = surface
+                .render_layer()
+                .try_lock()
+                .ok_or("Metal layer busy")?;
             layer.clone()
         };
         let mut extent = layer.drawableSize();
@@ -608,6 +850,17 @@ impl Gpu {
     ) -> Result<Option<(Duration, Duration)>, String> {
         let AcquiredFrame { frame, wait } = acquired;
         let encode = Instant::now();
+        let mut split = EncodeSplit::default();
+        let (misses0, shadows0) = self.renderer.mask_stats();
+        if std::env::var_os("BBOXY_OVERLAY_DUMP").is_some()
+            && let Some(panes) = &panes
+        {
+            let mut counts = std::collections::BTreeMap::new();
+            for op in &panes.overlay {
+                dump_overlay_op(op, &mut counts);
+            }
+            eprintln!("overlay prims {counts:?}");
+        }
         self.renderer.begin_frame();
         self.materials.begin_frame();
         let mut encoder = self
@@ -633,16 +886,26 @@ impl Gpu {
                 &mut encoder,
             )
             .map_err(|e| e.to_string())?;
+        split.chrome = encode.elapsed();
         let mut probe_sample = self.native_probe.as_ref().and_then(|probe| {
-            panes.as_ref().and_then(|panes| probe.begin(&self.renderer.context.device, panes, &self.target, scale, frame_id))
+            panes.as_ref().and_then(|panes| {
+                probe.begin(
+                    &self.renderer.context.device,
+                    panes,
+                    &self.target,
+                    scale,
+                    frame_id,
+                )
+            })
         });
         if let Some(sample) = &mut probe_sample {
             sample.surface(&self.surface, matches!(frame, Acquired::Metal { .. }));
         }
-        if let (Some(probe),Some(sample)) = (&self.native_probe,&probe_sample) {
-            probe.inject(sample,"source",&self.target,&mut encoder);
+        if let (Some(probe), Some(sample)) = (&self.native_probe, &probe_sample) {
+            probe.inject(sample, "source", &self.target, &mut encoder);
         }
         if let Some(panes) = panes {
+            let at = Instant::now();
             self.cells.draw(
                 &mut self.renderer,
                 &self.target,
@@ -650,27 +913,31 @@ impl Gpu {
                 scale,
                 &mut encoder,
             )?;
-            if !panes.overlay.is_empty() {
-                encode_ops(
-                    &mut self.renderer,
-                    &self.materials,
-                    &self.target,
-                    &self.backdrop,
-                    panes.overlay,
-                    FrameTime {
-                        scale,
-                        time_ms,
-                        external_before: true,
-                        clear: false,
-                    },
-                    &mut encoder,
-                )
-                .map_err(|e| e.to_string())?;
-            }
+            split.cells = at.elapsed();
+            let at = Instant::now();
+            split.retained = draw_overlay_or_live(
+                &mut self.renderer,
+                &self.materials,
+                &mut self.overlay_layer,
+                &self.target,
+                &self.backdrop,
+                panes.overlay,
+                panes.retained,
+                panes.overlay_after,
+                FrameTime {
+                    scale,
+                    time_ms,
+                    external_before: true,
+                    clear: false,
+                },
+                &mut encoder,
+            )?;
+            split.overlay = at.elapsed();
         }
-        if let (Some(probe),Some(sample)) = (&self.native_probe,&probe_sample) {
-            probe.inject(sample,"copy",&self.target,&mut encoder);
+        if let (Some(probe), Some(sample)) = (&self.native_probe, &probe_sample) {
+            probe.inject(sample, "copy", &self.target, &mut encoder);
         }
+        let at = Instant::now();
         let surface_view = frame.texture().create_view(&Default::default());
         self.renderer
             .composite_group_clearing(
@@ -689,10 +956,12 @@ impl Gpu {
                 &mut encoder,
             )
             .map_err(|e| e.to_string())?;
-        if let (Some(probe),Some(sample)) = (&mut self.native_probe,probe_sample) {
-            probe.inject(&sample,"final",frame.texture(),&mut encoder);
-            probe.record(sample,&self.target,frame.texture(),&mut encoder);
+        split.composite = at.elapsed();
+        if let (Some(probe), Some(sample)) = (&mut self.native_probe, probe_sample) {
+            probe.inject(&sample, "final", frame.texture(), &mut encoder);
+            probe.record(sample, &self.target, frame.texture(), &mut encoder);
         }
+        let at = Instant::now();
         // wgpu 30 prohibits mixing its encoding API with as_hal_mut. Native
         // queue markers bracket the submission (including staging uploads),
         // yielding a conservative GPU span without inspecting private state.
@@ -729,10 +998,62 @@ impl Gpu {
             gpu_end.addCompletedHandler(RcBlock::as_ptr(&completed));
         }
         gpu_end.commit();
+        split.submit = at.elapsed();
+        let (misses1, shadows1) = self.renderer.mask_stats();
+        split.mask_misses = misses1.saturating_sub(misses0);
+        split.shadow_requests = shadows1.saturating_sub(shadows0);
+        self.last_split = split;
         let encoded = encode.elapsed();
         let present = Instant::now();
         frame.present(&self.renderer.context)?;
         Ok(Some((encoded, wait + present.elapsed())))
+    }
+}
+
+/// Where one frame's encode time went, for the hitch log (CPU-side, before present).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct EncodeSplit {
+    pub chrome: Duration,
+    pub cells: Duration,
+    pub overlay: Duration,
+    pub composite: Duration,
+    pub submit: Duration,
+    /// Mask atlas misses and shadow (atlas path) requests during this frame.
+    pub mask_misses: u64,
+    pub shadow_requests: u64,
+    /// How the conversation layer was drawn.
+    pub retained: OverlayDraw,
+}
+
+/// BBOXY_OVERLAY_DUMP: count overlay primitives by kind on stderr, once per
+/// frame (profiling only). Per-primitive printing costs more than a frame.
+fn dump_overlay_op(op: &Paint, counts: &mut std::collections::BTreeMap<&'static str, usize>) {
+    use bbt_ui_model::draw::Prim;
+    match op {
+        Paint::Draw(list) | Paint::Underlay(list) => {
+            for p in &list.primitives {
+                let kind = match p {
+                    Prim::Path { .. } => "Path",
+                    Prim::PathShadow { .. } => "PathShadow",
+                    Prim::Text { .. } => "Text",
+                    Prim::TextShadow { .. } => "TextShadow",
+                    Prim::Rect { .. } => "Rect",
+                    Prim::Icon { .. } => "Icon",
+                    Prim::Image { .. } => "Image",
+                    Prim::Group { .. } => "Group",
+                    Prim::Clip { .. } | Prim::Unclip => "Clip",
+                    _ => "Other",
+                };
+                *counts.entry(kind).or_default() += 1;
+            }
+        }
+        Paint::Group { ops, .. } => {
+            *counts.entry("PaintGroup").or_default() += 1;
+            for op in ops {
+                dump_overlay_op(op, counts);
+            }
+        }
+        _ => *counts.entry("PaintOther").or_default() += 1,
     }
 }
 
@@ -980,10 +1301,16 @@ pub(crate) struct VerificationFrame {
     backdrop: wgpu::Texture,
     cells: CellTextures,
     chrome: ChromeCache,
+    overlay_layer: OverlayLayer,
 }
 impl VerificationFrame {
-    pub fn install_document_images(&mut self, images: &[std::sync::Arc<bbt_render::chrome::icons::Image>]) -> Result<(),String> {
-        for image in images { self.renderer.add_image(image).map_err(|e|e.to_string())?; }
+    pub fn install_document_images(
+        &mut self,
+        images: &[std::sync::Arc<bbt_render::chrome::icons::Image>],
+    ) -> Result<(), String> {
+        for image in images {
+            self.renderer.add_image(image).map_err(|e| e.to_string())?;
+        }
         Ok(())
     }
 
@@ -1003,6 +1330,7 @@ impl VerificationFrame {
                 backdrop,
                 cells: CellTextures::default(),
                 chrome: ChromeCache::default(),
+                overlay_layer: OverlayLayer::default(),
             })
         })
         .await
@@ -1047,6 +1375,8 @@ impl VerificationFrame {
                 bounds,
                 focused: model.ui.window.stage.focused,
                 overlay: vec![],
+                retained: None,
+                overlay_after: vec![],
             },
             frame,
             450.,
@@ -1097,23 +1427,23 @@ impl VerificationFrame {
             .map_err(|e| e.to_string())?;
         self.cells
             .draw(&mut self.renderer, &self.target, &panes, 1., &mut encoder)?;
-        if !panes.overlay.is_empty() {
-            encode_ops(
-                &mut self.renderer,
-                &self.materials,
-                &self.target,
-                &self.backdrop,
-                panes.overlay,
-                FrameTime {
-                    scale: 1.,
-                    time_ms,
-                    external_before: true,
-                    clear: false,
-                },
-                &mut encoder,
-            )
-            .map_err(|e| e.to_string())?;
-        }
+        draw_overlay_or_live(
+            &mut self.renderer,
+            &self.materials,
+            &mut self.overlay_layer,
+            &self.target,
+            &self.backdrop,
+            panes.overlay,
+            panes.retained,
+            panes.overlay_after,
+            FrameTime {
+                scale: 1.,
+                time_ms,
+                external_before: true,
+                clear: false,
+            },
+            &mut encoder,
+        )?;
         self.materials.flush(&self.renderer.context);
         self.renderer.flush();
         self.renderer.context.queue.submit([encoder.finish()]);
@@ -1740,6 +2070,129 @@ mod clear_fold_tests {
         }));
     }
 
+    // keeps: the retained conversation layer composites to the live pixels
+    #[test]
+    fn retained_overlay_layer_matches_live_pixels_hits_and_falls_back() {
+        use super::backdrop_key_tests::{draw, material};
+        use bbt_ui_model::layout::Rect;
+        let rect = |x: f32, rgba: [f32; 4]| {
+            let mut list = DrawList::default();
+            list.rect(Rect::new(x, 10., 120., 80.), 6., Color(rgba));
+            Paint::Draw(list)
+        };
+        let before = vec![rect(0., [0., 0., 1., 0.5])];
+        let retained = std::sync::Arc::new(vec![
+            rect(40., [1., 0., 0., 0.5]),
+            material(ui::Material::Flat),
+            Paint::Group {
+                ops: vec![rect(80., [0., 1., 0., 1.])],
+                opacity: 0.5,
+                saturation: 1.,
+                mask: None,
+            },
+        ]);
+        let after = vec![
+            rect(120., [1., 1., 0., 0.4]),
+            material(ui::Material::Frosted),
+            material(ui::Material::Rim),
+        ];
+        let live = FrameTime {
+            scale: 1.,
+            time_ms: 450.,
+            external_before: true,
+            clear: false,
+        };
+        let mut all = before.clone();
+        all.extend(retained.iter().cloned());
+        all.extend(after.clone());
+        let (expected, _) =
+            render_with(vec![draw("#204060")], true, |renderer, target, encoder| {
+                let pass = m::Pass::new(&renderer.context.device, FORMAT);
+                let backdrop = texture(&renderer.context.device, [target.width(), target.height()]);
+                encode_ops(
+                    renderer,
+                    &pass,
+                    target,
+                    &backdrop,
+                    all.clone(),
+                    live,
+                    encoder,
+                )
+                .unwrap();
+                pass.flush(&renderer.context);
+            });
+        let (actual, _) = render_with(vec![draw("#204060")], true, |renderer, target, encoder| {
+            let pass = m::Pass::new(&renderer.context.device, FORMAT);
+            let backdrop = texture(&renderer.context.device, [target.width(), target.height()]);
+            let scratch = texture(&renderer.context.device, [target.width(), target.height()]);
+            let mut layer = OverlayLayer::default();
+            let first = draw_overlay_or_live(
+                renderer,
+                &pass,
+                &mut layer,
+                &scratch,
+                &backdrop,
+                before.clone(),
+                Some(retained.clone()),
+                after.clone(),
+                live,
+                encoder,
+            )
+            .unwrap();
+            assert_eq!(first, OverlayDraw::Rebuilt);
+            bbt_render::passes::take();
+            // A rebuilt, equal list hits by value and keeps the layer.
+            let equal = std::sync::Arc::new(retained.as_ref().clone());
+            let second = draw_overlay_or_live(
+                renderer,
+                &pass,
+                &mut layer,
+                target,
+                &backdrop,
+                before.clone(),
+                Some(equal),
+                after.clone(),
+                live,
+                encoder,
+            )
+            .unwrap();
+            assert_eq!(second, OverlayDraw::Hit);
+            let counts = bbt_render::passes::take();
+            assert_eq!(counts.group, 1, "a hit composites the layer once");
+            assert_eq!(counts.flat, 2, "only before and after encode: {counts:?}");
+            assert_eq!(
+                counts.material, 2,
+                "the frosted and rim after the layer: {counts:?}"
+            );
+            // A frosted op inside the dock samples what lies beneath: live.
+            let with_material = std::sync::Arc::new(vec![material(ui::Material::Frosted)]);
+            assert_eq!(
+                draw_overlay_or_live(
+                    renderer,
+                    &pass,
+                    &mut layer,
+                    &scratch,
+                    &backdrop,
+                    vec![],
+                    Some(with_material),
+                    vec![],
+                    live,
+                    encoder,
+                )
+                .unwrap(),
+                OverlayDraw::Live("dock:Frosted")
+            );
+            pass.flush(&renderer.context);
+        });
+        let worst = expected
+            .iter()
+            .zip(&actual)
+            .map(|(a, b)| a.abs_diff(*b))
+            .max()
+            .unwrap();
+        assert!(worst <= 1, "layer composite differs by {worst} from live");
+    }
+
     #[test]
     fn worker_rasters_keep_old_publications_immutable_across_a_b_a() {
         let (pixels, _) = render_with(vec![], true, |renderer, target, encoder| {
@@ -1821,6 +2274,8 @@ mod clear_fold_tests {
                             bounds: &[(id, Rect::new(x, 0., 32., 24.))],
                             focused,
                             overlay: vec![],
+                            retained: None,
+                            overlay_after: vec![],
                         },
                         1.,
                         encoder,

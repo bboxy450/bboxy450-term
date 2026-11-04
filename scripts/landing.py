@@ -1,9 +1,13 @@
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# LicenseRef-Respectful-Slop-1.0-Draft; credit copied/adapted/translated reuse.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """The landing scripts' shared state and bounded command implementation (#323).
 
 Shell entry points keep the same contract on every worktree. All Git commands
 use argument arrays; fixture runs use their own repository and shared-state dir.
 """
 import argparse
+import ast
 from contextlib import contextmanager
 import fcntl
 import fnmatch
@@ -31,6 +35,49 @@ import uuid
 sys.dont_write_bytecode = True
 
 _timing_path = None
+STAGE_ALLOCATIONS = {"formal": 290., "tests": 400., "fixtures": 60., "invariants_misc": 60.}
+STAGE_MARGIN = 90.
+FORMAL_PHASE_PREFIX = "formal-phase: "
+
+
+def fixture_copy_scripts(root=None):
+    """Read the fixture's one copy tuple as data, without importing its tests."""
+    path = Path(root or Path(__file__).resolve().parents[1]) / "scripts/test-landing.py"
+    declarations = [node for node in ast.parse(path.read_text()).body
+                    if isinstance(node, ast.Assign)
+                    and any(isinstance(target, ast.Name) and target.id == "FIXTURE_SCRIPTS" for target in node.targets)]
+    if len(declarations) != 1:
+        raise Refusal("fixture_copy_tuple_missing_or_ambiguous")
+    names = ast.literal_eval(declarations[0].value)
+    if not isinstance(names, tuple) or not all(isinstance(name, str) and Path(name).name == name for name in names):
+        raise Refusal("fixture_copy_tuple_invalid")
+    return set(names)
+
+
+def landing_machinery(paths, root=None):
+    names = {"invariants.sh", "ci-local.sh", "test-landing.py", "test-resource-ledger.py"}
+    names.update(fixture_copy_scripts(root))
+    return any(p.startswith("scripts/") and
+               (Path(p).name in names or Path(p).name.startswith("resource-ledger")) for p in paths)
+
+
+def load_average():
+    try:
+        return os.getloadavg()[0]
+    except OSError:
+        return None
+
+
+def budget_findings(totals, load_start, load_end):
+    findings = [{"kind": "stage_allocation", "stage": stage, "seconds": seconds,
+                 "allocation_seconds": STAGE_ALLOCATIONS[stage]}
+                for stage, seconds in totals["stage_seconds"].items()
+                if seconds > STAGE_ALLOCATIONS[stage]]
+    if totals["unclassified_seconds"] > 15:
+        findings.append({"kind": "unclassified", "seconds": totals["unclassified_seconds"],
+                         "allocation_seconds": 15.})
+    return [{**row, "load_average_start": load_start, "load_average_end": load_end}
+            for row in findings]
 
 
 class Refusal(Exception):
@@ -297,6 +344,37 @@ def native_input_crates(root, paths, packages):
     return consumers
 
 
+def lean(range_spec, *, root=None):
+    """Lean land plan: one line per touched crate with its test selection, then the
+    dependents that only need to compile. A crate whose source changed runs its lib
+    and bin tests; a changed integration-test file adds that test target."""
+    root = Path(root or repository()).resolve()
+    result = affected(range_spec, root=root)
+    paths = {(root / p).resolve() for p in changed_paths(range_spec, cwd=root)}
+    packages = metadata(root)
+    lines = []
+    for name in result["touched"]:
+        package = packages[name]
+        base = Path(package["manifest_path"]).parent.resolve()
+        targets = package["targets"]
+        tests = sorted(t["name"] for t in targets
+                       if "test" in t["kind"] and Path(t["src_path"]).resolve() in paths)
+        source = any(p.is_relative_to(base) and not p.is_relative_to(base / "tests")
+                     for p in paths)
+        selection = []
+        if source or not tests:
+            selection += ["--lib"] if any(set(t["kind"]) & {"lib", "proc-macro"} for t in targets) else []
+            selection += ["--bins"] if any("bin" in t["kind"] for t in targets) else []
+        for test in tests:
+            selection += ["--test", test]
+        if selection:
+            lines.append(" ".join(["test", name, *selection]))
+    check = sorted(set(result["affected"]) - set(result["touched"]))
+    if check:
+        lines.append(" ".join(["check", *check]))
+    return lines
+
+
 def affected(range_spec, *, root=None):
     root = Path(root or repository()).resolve()
     paths = changed_paths(range_spec, cwd=root)
@@ -314,7 +392,8 @@ def affected(range_spec, *, root=None):
                 dependencies[name].add(dep["name"])
     tier = "lab" if paths and all(p.startswith(("lab/", "design/", ".bboxy/"))
                                  for p in paths) else "code"
-    broad = [p for p in paths if p in ("Cargo.toml", "Cargo.lock") or p.startswith(".cargo/")]
+    broad = [p for p in paths if p in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml")
+             or p.startswith(".cargo/")]
     # Validation tools are shared for retry decisions, but are not Rust source
     # dependencies. Their fixture suite and the fast invariants check them.
     tooling = [p for p in paths if (p.startswith("scripts/") and not p.startswith("scripts/e2e/"))
@@ -400,9 +479,14 @@ def cargo_backed(check):
                                and Path(words[1]).name == "ui-lint.sh")))
 
 
-def checked(argv, root):
+def checked(argv, root, *, env=None):
     print("presubmit:", shlex.join(map(str, argv)), flush=True)
-    code = measured_command(list(map(str, argv)), root, _timing_path)
+    names = {Path(str(arg)).name for arg in argv}
+    stage = ("formal" if list(argv)[:2] == ["make", "test-formal"] else
+             "tests" if "quarantine-test.sh" in names else
+             "fixtures" if names & {"test-landing.py", "test-resource-ledger.py"} else
+             "invariants_misc")
+    code = measured_command(list(map(str, argv)), root, _timing_path, stage=stage, env=env)
     if code:
         raise Refusal(f"check_failed ({code}): {argv[0]}", 1)
 
@@ -449,25 +533,30 @@ def ledger_stage(argv):
     return "smoke"
 
 
-def measured_command(argv, root, timing_path, *, stream=None, env=None):
+def measured_command(argv, root, timing_path, *, stream=None, env=None, stage=None):
     phase = None
+    substep = None
+    previous = None
     def switch(value):
-        nonlocal phase
-        if value != phase and timing_path is not None:
-            line = (json.dumps({"at": time.monotonic(), "phase": value}) + "\n").encode()
+        nonlocal phase, previous
+        active = stage if stage != "formal" or substep else None
+        state = (value, active, substep)
+        if state != previous and timing_path is not None:
+            line = (json.dumps({"at": time.monotonic(), "phase": value,
+                                "stage": active, "substep": substep}) + "\n").encode()
             fd = os.open(timing_path, os.O_WRONLY | os.O_CREAT | os.O_APPEND, 0o600)
             try:
                 os.write(fd, line)
             finally:
                 os.close(fd)
-        phase = value
+        phase, previous = value, state
     cargo = argv[0] == "cargo" or any(Path(arg).name == "quarantine-test.sh" for arg in argv)
     fixtures = any(Path(arg).name in {"test-landing.py", "test-resource-ledger.py"} for arg in argv)
     switch("compile" if cargo else "test" if fixtures else "other")
     argv, env = cargo_invocation(argv, env)
     ledger = ledger_module()
-    stage = ledger_stage(argv)
-    accounting = ledger.begin(stage, root) if ledger is not None and stage else None
+    accounting_stage = ledger_stage(argv)
+    accounting = ledger.begin(accounting_stage, root) if ledger is not None and accounting_stage else None
     wrapped = ledger.attempt(accounting, "wrap", argv) if ledger is not None else None
     options = ledger.attempt(accounting, "popen_options") if ledger is not None else None
     child = subprocess.Popen(wrapped or argv, cwd=root, env=env, text=True,
@@ -477,7 +566,13 @@ def measured_command(argv, root, timing_path, *, stream=None, env=None):
     try:
         for line in child.stdout:
             clean = re.sub(r"\x1b\[[0-9;]*m", "", line)
-            if re.match(r"\s*(Compiling|Checking) ", clean):
+            if stage == "formal" and clean.startswith(FORMAL_PHASE_PREFIX):
+                event = json.loads(clean[len(FORMAL_PHASE_PREFIX):])
+                if event.get("event") not in {"start", "end"} or not re.fullmatch(r"[\w.-]+", event.get("step", "")):
+                    raise Refusal("invalid_formal_phase")
+                substep = event["step"] if event["event"] == "start" else None
+                switch("other")
+            elif re.match(r"\s*(Compiling|Checking) ", clean):
                 switch("compile")
             elif re.match(r"\s*Finished .*(?:profile|target)", clean):
                 switch("other")
@@ -494,6 +589,7 @@ def measured_command(argv, root, timing_path, *, stream=None, env=None):
         return child.wait()
     finally:
         child.stdout.close()
+        stage = substep = None
         switch("other")
         if ledger is not None:
             ledger.attempt(accounting, "finish", child.returncode)
@@ -522,10 +618,20 @@ class TwoClocks:
         self.phase = "compile"  # setup cannot run forever outside either cap
         self.compile = self.run = self.test = 0.
         self.tests_started = False
+        self.stage = self.substep = None
+        self.stage_seconds = dict.fromkeys(STAGE_ALLOCATIONS, 0.)
+        self.formal_step_seconds = {}
+
+    def classified(self, elapsed):
+        if self.phase != "compile" and self.stage in self.stage_seconds:
+            self.stage_seconds[self.stage] += elapsed
+            if self.stage == "formal" and self.substep:
+                self.formal_step_seconds[self.substep] = self.formal_step_seconds.get(self.substep, 0.) + elapsed
 
     def event(self, value):
         at = max(self.at, value["at"])
         elapsed = at - self.at
+        self.classified(elapsed)
         if self.phase == "compile":
             self.compile += elapsed
         else:
@@ -533,6 +639,7 @@ class TwoClocks:
             if self.phase == "test":
                 self.test += elapsed
         self.at, self.phase = at, value["phase"]
+        self.stage, self.substep = value.get("stage"), value.get("substep")
         self.tests_started |= self.phase == "test"
 
     def totals(self, ended):
@@ -540,8 +647,15 @@ class TwoClocks:
         build = self.compile + (tail if self.phase == "compile" else 0.)
         run = self.run + (tail if self.phase != "compile" else 0.)
         test = self.test + (tail if self.phase == "test" else 0.)
+        stages, steps = dict(self.stage_seconds), dict(self.formal_step_seconds)
+        if self.phase != "compile" and self.stage in stages:
+            stages[self.stage] += tail
+            if self.stage == "formal" and self.substep:
+                steps[self.substep] = steps.get(self.substep, 0.) + tail
         return {"compile_seconds": build, "run_seconds": run, "test_seconds": test,
-                "unclassified_seconds": max(0., run - test), "tests_started": self.tests_started}
+                "unclassified_seconds": max(0., run - sum(stages.values())),
+                "stage_seconds": stages, "formal_step_seconds": steps,
+                "tests_started": self.tests_started}
 
     def expired(self, ended, build_cap, run_bound):
         totals = self.totals(ended)
@@ -552,14 +666,24 @@ class TwoClocks:
         return None
 
 
-def records_checks(root, paths):
-    checked(["cargo", "test", "-p", "bboxy450-doc", "--locked", "--test", "corpus", "-q"], root)
-    checked(["cargo", "test", "-p", "bboxy450-mermaid", "--locked", "-q"], root)
+def records_checks(root, paths, *, env=None):
+    # Report only the path, never the matching bytes from a record.
+    secret = re.compile(r"(?i)(?:\b(?:key|token|secret|password)\s*:\s*[\"']?[a-f0-9]{32,}"
+                        r"|sk-[a-z0-9_-]{16,}|gh[pousr]_[a-z0-9]{20,}"
+                        r"|-----BEGIN (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY)")
+    tracked = set(git("ls-files", "-z", "--", *paths, cwd=root).split("\0")) if paths else set()
+    for name in paths:
+        # Inspect stored bytes rather than following a record symlink outside
+        # this repository. Deleted paths have no new content to scan.
+        if name in tracked and secret.search(git("show", "HEAD:" + name, cwd=root)):
+            raise Refusal("records secret scan failed: " + name)
+    checked(["cargo", "test", "-p", "bboxy450-doc", "--locked", "--test", "corpus", "-q"], root, env=env)
+    checked(["cargo", "test", "-p", "bboxy450-mermaid", "--locked", "-q"], root, env=env)
     if set(paths) & {".bboxy/specs/e2e-acceptance.md", "lab/web/e2e.js"}:
-        checked(["cargo", "test", "-p", "bboxy450-ui", "--locked", "--test", "e2e_checklist", "-q"], root)
-    for script in ("layering", "pending-flags", "kill-own-pids", "licenses", "brand",
+        checked(["cargo", "test", "-p", "bboxy450-ui", "--locked", "--test", "e2e_checklist", "-q"], root, env=env)
+    for script in ("layering", "pending-flags", "kill-own-pids", "generated-sources", "licenses", "brand",
                    "images", "cross-os", "never-block"):
-        checked(["sh", f"scripts/{script}.sh"], root)
+        checked(["sh", f"scripts/{script}.sh"], root, env=env)
 
 
 def command_tools(argv, root):
@@ -594,7 +718,7 @@ def command_tools(argv, root):
             sources.update(p for row in tomllib.loads(contracts.read_text())["contract"]
                            for field in ["sources", "implementation_tests"] for p in row[field])
         return {"Makefile", "scripts/formal.py", "scripts/test-formal.py",
-                "verification/corpus.toml", "verification/coverage.toml", "verification/tools.lock.json",
+                "scripts/formal-stage.py", "verification/corpus.toml", "verification/coverage.toml", "verification/tools.lock.json",
                 "crates/bboxy450-tlc/src/lib.rs", "crates/bboxy450-tlc/examples/verify.rs",
                 "crates/bbt-yarn/src/model.rs", "crates/bbt-yarn/examples/verify.rs",
                 "crates/bbt-yarn-macros/src/lib.rs", "verification/contracts.toml",
@@ -816,7 +940,10 @@ def presubmit_worker(base, result_path, recheck=None):
     root = repository()
     data = recheck_data(affected(base + "..HEAD", root=root), recheck)
     atomic_write(result_path, json.dumps(data) + "\n")
-    checked(["make", "test-formal"], root)
+    coverage_path = result_path.parent / "quarantine-coverage.json"
+    os.environ["BBOXY_PRESUBMIT_COVERAGE"] = str(coverage_path)
+    os.environ["BBOXY_PRESUBMIT_ATTEMPT"] = result_path.parent.name
+    checked(["make", "test-formal", "FORMAL_REUSE=1"], root)
     if data["tier"] == "lab":
         if recheck is None:
             records_checks(root, data["paths"])
@@ -828,12 +955,13 @@ def presubmit_worker(base, result_path, recheck=None):
         if packages:
             checked(["sh", "scripts/quarantine-test.sh", "--locked", *packages], root)
             checked(["cargo", "clippy", "--locked", *packages, "--all-targets", "--", "-D", "warnings"], root)
-        if recheck is None and any(p.startswith("scripts/") for p in data["paths"]):
+        if recheck is None and landing_machinery(data["paths"], root):
             checked(["python3", "-I", "scripts/test-landing.py", "--all"], root)
             if (root / "scripts/test-resource-ledger.py").exists():
                 checked(["python3", "-I", "scripts/test-resource-ledger.py"], root)
         if packages or recheck is None:
-            checked(["sh", "scripts/invariants.sh", "--affected", " ".join(data["affected"])], root)
+            checked(["sh", "scripts/invariants.sh", "--affected", " ".join(data["affected"]),
+                     "--covered-tests", str(coverage_path)], root)
         dispatch = any(Path(p).name in ("ctl.rs", "seat_socket.rs", "logic.rs")
                        or "/src/ctl/" in p or "/src/mcp/" in p for p in data["paths"])
         if dispatch and packages and (recheck is None or "bboxy450-term-proto" in data["affected"]):
@@ -842,19 +970,27 @@ def presubmit_worker(base, result_path, recheck=None):
             output = io.StringIO()
             code = measured_command(["cargo", "test", "--locked", "-p", "bboxy450-term-proto",
                                      "--test", "gui_wire_golden"],
-                                    root, _timing_path, stream=output)
+                                    root, _timing_path, stream=output, stage="invariants_misc")
             print(output.getvalue(), end="", flush=True)
             if code or not re.search(r"test result: ok\. [1-9][0-9]* passed", output.getvalue()):
                 raise Refusal("golden_dispatch_tests_missing")
     for argv in data.get("recheck", {}).get("commands", []):
-        if argv != ["make", "test-formal"]:
+        if argv not in (["make", "test-formal"], ["make", "test-formal", "FORMAL_REUSE=1"]):
             checked(argv, root)
     if data["parity"] == "yes":
         scoped_parity(root, data, result_path.parent / "parity")
+    # A cut without a Report trailer satisfies the optional link contract without
+    # adding a Cargo gate to script/lab-only or disjoint incremental checks.
+    messages = git("log", "--format=%B", base + "..HEAD", cwd=root)
+    if any(line.startswith("Report:") for line in messages.splitlines()):
+        checked(["cargo", "test", "-p", "bboxy450-doc", "--locked", "--test", "corpus", "reports::committed_report_trailers_resolve_in_their_own_trees", "--", "--exact"], root)
     return 0
 
 
 def clean_source(root):
+    initializer = root / "scripts/harness-submodule.py"
+    if initializer.is_file():
+        checked([sys.executable, "-I", str(initializer)], root)
     if git("status", "--porcelain", "--untracked-files=no", cwd=root):
         raise Refusal("dirty_tracked_tree")
     untracked = git("ls-files", "--others", "--exclude-standard", "-z", cwd=root).split("\0")
@@ -924,6 +1060,7 @@ def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, oper
     output.mkdir(parents=True, mode=0o700)
     result_path = output / "affected.json"
     started = time.monotonic()
+    load_start = load_average()
     clocks = TwoClocks(started)
     reason = None
     reader = None
@@ -974,6 +1111,8 @@ def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, oper
             stop_worker(child)
             raise
         finally:
+            read_events()
+            ended = time.monotonic()
             if reader is not None:
                 reader.close()
     transcript = (output / "commands.log").read_text()
@@ -987,12 +1126,17 @@ def presubmit_attempt(root, sha, base, data, build_cap, run_bound, attempt, oper
               "log": str(output / "commands.log"),
               "timing_basis": "setup_and_visible_compile_build;all_other_execution_run",
               **clocks.totals(ended)}
+    record.update(load_average_start=load_start, load_average_end=load_average(),
+                  stage_allocations={**STAGE_ALLOCATIONS, "margin": STAGE_MARGIN})
+    record["findings"] = budget_findings(record, load_start, record["load_average_end"])
     if code == 0:
         record["formal"] = formal_receipt(transcript, sha, root)
         record["commands"] = execution_commands(root, sha, transcript,
-                                                 fixtures=any(p.startswith("scripts/") for p in data["paths"]))
+                                                 fixtures=landing_machinery(data["paths"], root))
     if "recheck" in data:
         record["recheck"] = data["recheck"]
+    record["result"] = str(output / "result.json")
+    atomic_write(output / "result.json", json.dumps(record, sort_keys=True) + "\n")
     append_record("presubmit.log", record)
     print(transcript, end="")
     print(json.dumps(record, sort_keys=True), flush=True)
@@ -1057,13 +1201,34 @@ def formal_receipt(transcript, sha, root=None):
 
 def refresh_formal(root, sha):
     """A disjoint Rust recheck still needs formal evidence for its new commit."""
-    result = command(["make", "test-formal"], cwd=root, check=False)
+    result = command(["make", "test-formal", "FORMAL_REUSE=1"], cwd=root, check=False)
     log = state_directory() / "formal" / (sha + "-" + uuid.uuid4().hex[:8] + ".log")
     atomic_write(log, result.stdout + result.stderr)
     print(result.stdout + result.stderr, end="", flush=True)
     if result.returncode:
         raise Refusal("formal_recheck_failed: " + str(log), 77)
     return formal_receipt(result.stdout, sha, root)
+
+
+def records_gate_delta(root, source, sha):
+    """R5 compares trees, including renames and modes, never commit subjects."""
+    different = command(["git", "diff", "--quiet", "--ignore-submodules=none", source, sha, "--", ".", ":!.bboxy"],
+                        cwd=root, check=False)
+    if different.returncode:
+        raise Refusal("gate_log_source_mismatch: non-records tree delta")
+    if command(["git", "verify-commit", sha], cwd=root, check=False).returncode:
+        raise Refusal("gate_log_source_mismatch: unsigned rebased candidate")
+    delta = git("diff", "--no-renames", "--name-only", "-z", source, sha, "--", ".bboxy/", cwd=root)
+    paths = sorted(set(delta.split("\0")) - {""})
+    for name in paths:
+        # invariants.sh globs this directory and executes each record's check.
+        if name == ".bboxy/invariants" or name.startswith(".bboxy/invariants/"):
+            raise Refusal("gate_log_source_mismatch: executable gate record: " + name)
+        named = command(["git", "grep", "-F", "-l", "-e", name, sha, "--",
+                         "crates", "scripts", "Makefile", "verification", "lab"], cwd=root, check=False)
+        if named.returncode != 1:
+            raise Refusal("gate_log_source_mismatch: record is named by code: " + name)
+    return paths
 
 
 def gate_proof(path, sha, root=None):
@@ -1083,16 +1248,43 @@ def gate_proof(path, sha, root=None):
             passed |= line == "ci-local: all gates passed"
             if line:
                 last = line
+    source, delta = sha, None
     if sources != [[sha, "normal"]]:
-        raise Refusal("gate_log_source_mismatch: expected exact candidate " + sha)
-    if (results != [[sha, "normal", "0"]] or not passed
-            or last != f"ci-local: result {sha} normal 0"):
+        if (len(sources) != 1 or len(sources[0]) != 2 or sources[0][1] != "normal"
+                or not re.fullmatch(r"[a-f0-9]{40}", sources[0][0]) or root is None):
+            raise Refusal("gate_log_source_mismatch: expected exact candidate " + sha)
+        source = sources[0][0]
+        delta = records_gate_delta(root, source, sha)
+    if (results != [[source, "normal", "0"]] or not passed
+            or last != f"ci-local: result {source} normal 0"):
         raise Refusal("gate_log_not_green: full normal gate completion required")
-    return {"gate_log": str(path), "gate_log_sha256": digest.hexdigest(),
-            "tested_sha": sha, "formal": formal_receipt(path.read_text(), sha, root)}
+    proof = {"gate_log": str(path), "gate_log_sha256": digest.hexdigest(), "tested_sha": sha}
+    if delta is None:
+        proof["formal"] = formal_receipt(path.read_text(), sha, root)
+    else:
+        try:
+            rows = [json.loads(line.removeprefix("formal: receipt ")) for line in path.read_text().splitlines()
+                    if line.startswith("formal: receipt ")]
+            if len(rows) != 1 or rows[0]["source"] != source:
+                raise ValueError("formal receipt does not identify tested source")
+            spec = importlib.util.spec_from_file_location("records_formal", Path(__file__).with_name("formal.py"))
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            # Validate the original receipt and all unchanged inputs before any gates.
+            current = module.evidence_receipt(Path(rows[0]["evidence"]).parent, Path(root), expected_source=source)
+            if {k: v for k, v in current.items() if k != "checkout"} != {
+                    k: v for k, v in rows[0].items() if k != "checkout"}:
+                raise ValueError("formal receipt differs from evidence")
+            check_root, check_environment = candidate_environment(root, sha)
+            records_checks(check_root, delta, env=check_environment)
+            proof["formal"] = module.records_rebase_receipt(rows[0], root, delta)
+        except (Refusal, ValueError, KeyError, TypeError, OSError, subprocess.SubprocessError) as error:
+            raise Refusal("gate_log_source_mismatch: records rebase checks failed: " + str(error)) from error
+        proof.update(tested_sha=source, gate_log_source=source, records_delta=delta, records_checks_exit=0)
+    return proof
 
 
-def wide_check(root, data, gate_log=None):
+def wide_check(root, data, gate_log=None, *, canonical=False):
     sha = git("rev-parse", "HEAD", cwd=root)
     started = time.monotonic()
     if gate_log is None:
@@ -1101,26 +1293,34 @@ def wide_check(root, data, gate_log=None):
         gate_log = output / "commands.log"
         check_root, environment = candidate_environment(root, sha)
         environment["BBOXY_GATE_SLOT"] = "none"  # land/presubmit already owns it
-        print("land: wide cut; full normal CI, no presubmit deadline", flush=True)
-        with gate_log.open("w") as stream:
-            code = measured_command(["sh", "scripts/ci-local.sh"], check_root, output / "phases.jsonl",
+        print("land: full normal CI, no presubmit deadline", flush=True)
+        argv = (["make", "test", "CI_ARGS=", "TARGET_DIR=" + environment["BBOXY_CARGO_TARGET_DIR"],
+                 "CI_LOG=" + str(gate_log)] if canonical else ["sh", "scripts/ci-local.sh"])
+        with (output / "make.log" if canonical else gate_log).open("w") as stream:
+            code = measured_command(argv, check_root, output / "phases.jsonl",
                                     stream=stream, env=environment)
+        if not gate_log.exists():
+            gate_log.write_text((output / "make.log").read_text())
         print(gate_log.read_text(), end="", flush=True)
         proof = gate_proof(gate_log, sha, root) if code == 0 else {"gate_log": str(gate_log)}
     else:
         proof = gate_proof(gate_log, sha, root)
         code = 0
-        print("land: reusing full normal gate on exact candidate " + sha, flush=True)
+        if "gate_log_source" in proof:
+            print("land: reusing full normal gate from " + proof["gate_log_source"]
+                  + " after checked records rebase to " + sha, flush=True)
+        else:
+            print("land: reusing full normal gate on exact candidate " + sha, flush=True)
     if git("rev-parse", "HEAD", cwd=root) != sha:
         raise Refusal("candidate_changed_during_gate")
     clean_source(root)
-    record = {"sha": sha, "tier": "wide", "affected": data["affected"],
+    record = {"sha": sha, "tier": data["tier"], "affected": data["affected"],
               "seconds": time.monotonic() - started, "verdict": "green" if code == 0 else "red",
               "exit": code, "binary_durations": binary_durations(Path(gate_log).read_text()),
               **proof}
     if code == 0:
         record["commands"] = execution_commands(root, sha, Path(gate_log).read_text(),
-                                                 fixtures=any(p.startswith("scripts/") for p in data["paths"]))
+                                                 fixtures=landing_machinery(data["paths"], root))
     if "output" in locals():
         record.update(phase_totals(output / "phases.jsonl", time.monotonic()))
         record["timing_basis"] = "observed_output_phase_wall"
@@ -1225,22 +1425,33 @@ def slot_guard(path, *, blocking=False):
             fcntl.flock(stream, fcntl.LOCK_UN)
 
 
-def remove_slot(path, root):
+def release_slot(path, root):
+    # Only ownership is released. The checkout and its Cargo target stay warm, so the
+    # next landing rebuilds only what changed since this slot's last candidate.
     if any(p.name not in {"pid", "owner.json", "tree", "target"} for p in path.iterdir()):
         raise Refusal("slot_has_unknown_files: " + str(path))
-    tree = path / "tree"
-    if tree.exists():
-        if tree.is_symlink() or common_repository(tree) != common_repository(root):
-            raise Refusal("slot_tree_is_not_this_repository")
-        git("worktree", "remove", "--force", str(tree), cwd=root)
-    target = path / "target"
-    if target.exists():
-        if target.is_symlink():
-            raise Refusal("slot_target_is_symlink")
-        shutil.rmtree(target)
+    # A foreign or symlinked tree/target is refused loudly by candidate_environment.
     (path / "pid").unlink(missing_ok=True)
     (path / "owner.json").unlink(missing_ok=True)
-    path.rmdir()
+
+
+def slot_limit():
+    """One gate at a time by default: a queued gate at full width beats three thrashing."""
+    try:
+        wanted = int(os.environ.get("BBOXY_GATE_SLOTS", "1"))
+    except ValueError:
+        raise Refusal("BBOXY_GATE_SLOTS must be 1, 2 or 3")
+    if wanted not in (1, 2, 3):
+        raise Refusal("BBOXY_GATE_SLOTS must be 1, 2 or 3")
+    return min(wanted, 3 if shutil.disk_usage(Path.home()).free >= 25 * 1024 ** 3 else 2)
+
+
+def gate_jobs():
+    """Cargo jobs for the gate slot; agents' own builds keep two."""
+    try:
+        return max(2, int(os.environ.get("BBOXY_GATE_JOBS") or 4))
+    except ValueError:
+        raise Refusal("BBOXY_GATE_JOBS must be an integer")
 
 
 def slot_notice(text):
@@ -1264,9 +1475,22 @@ class Slot:
         self.previous_environment = {}
 
     def __enter__(self):
+        waiting = False
+        while True:
+            try:
+                return self.acquire()
+            except Refusal as refusal:
+                if refusal.code != 75 or os.environ.get("BBOXY_GATE_WAIT") == "0":
+                    raise
+                if not waiting:
+                    waiting = True
+                    print(f"{self.label}: {refusal}; queued, waiting for a gate slot", flush=True)
+                time.sleep(5)
+
+    def acquire(self):
         directory = slot_directory()
         directory.mkdir(parents=True, exist_ok=True)
-        limit = 3 if shutil.disk_usage(Path.home()).free >= 25 * 1024 ** 3 else 2
+        limit = slot_limit()
         numbers = [self.preferred] if self.preferred is not None else range(1, limit + 1)
         for number in numbers:
             if number not in range(1, limit + 1):
@@ -1277,7 +1501,7 @@ class Slot:
             with slot_guard(path) as held:
                 if not held:
                     continue
-                if path.exists():
+                if (path / "pid").exists():
                     try:
                         pid = int((path / "pid").read_text())
                         if pid <= 0:
@@ -1285,13 +1509,15 @@ class Slot:
                         os.kill(pid, 0)
                         continue
                     except ProcessLookupError:
-                        try:
-                            remove_slot(path, self.root)
-                        except (OSError, Refusal):
-                            continue
+                        pass
                     except (ValueError, OSError):
                         continue
-                path.mkdir()
+                if path.exists():
+                    try:
+                        release_slot(path, self.root)
+                    except (OSError, Refusal):
+                        continue
+                path.mkdir(exist_ok=True)
                 owner = {"pid": os.getpid(), "token": self.token,
                          "repository": str(common_repository(self.root))}
                 atomic_write(path / "pid", str(os.getpid()) + "\n")
@@ -1320,7 +1546,7 @@ class Slot:
                 with slot_guard(self.path, blocking=True):
                     data = json.loads((self.path / "owner.json").read_text())
                     if data.get("token") == self.token and data.get("pid") == os.getpid():
-                        remove_slot(self.path, self.root)
+                        release_slot(self.path, self.root)
         except BaseException as cleanup_error:
             code = getattr(cleanup_error, "code", 1)
             raise
@@ -1368,13 +1594,20 @@ def candidate_environment(root, sha):
         git("checkout", "-f", sha, cwd=tree)
         git("clean", "-fdx", cwd=tree)
     else:
+        git("worktree", "prune", cwd=root)  # /tmp may have dropped a registered tree
         git("worktree", "add", "--detach", str(tree), sha, cwd=root)
-    if target.exists():
-        if target.is_symlink():
-            raise Refusal("slot_target_is_symlink")
-        shutil.rmtree(target)
-    target.mkdir()
-    return tree, build_environment(tree, target=target)
+    if target.is_symlink():
+        raise Refusal("slot_target_is_symlink")
+    target.mkdir(exist_ok=True)  # warm: same path, so Cargo rebuilds only changed crates
+    initializer = tree / "scripts/harness-submodule.py"
+    if initializer.is_file():
+        checked([sys.executable, "-I", str(initializer)], tree)
+    environment = build_environment(tree, target=target)
+    # Intermediates live in the slot's own target, never a worktree's private build dir.
+    environment.pop("CARGO_BUILD_BUILD_DIR", None)
+    jobs = str(gate_jobs())
+    environment.update(CARGO_BUILD_JOBS=jobs, BBOXY_CARGO_JOBS=jobs)
+    return tree, environment
 
 
 def ci_local(arguments):
@@ -1428,7 +1661,7 @@ def publishing_identity(root):
         raise Refusal("unapproved_github_identity: " + actor)
 
 
-def land(gate_log=None):
+def land(gate_log=None, full=False):
     root = repository()
     ledger_origin(root)
     clean_source(root)
@@ -1488,14 +1721,12 @@ def land(gate_log=None):
                 atomic_write(recheck, json.dumps(plan) + "\n")
                 print("land: incremental recheck:", " ".join(intersection), flush=True)
             candidate = git("rev-parse", "HEAD", cwd=root)
-            if tested is None or common_paths or recheck is not None:
+            if tested is None or common_paths or recheck is not None or gate_log:
                 started = time.monotonic()
-                if data["tier"] == "wide" and recheck is None:
-                    proof = wide_check(root, data, gate_log if tested is None else None)
+                if gate_log or (recheck is None and (full or data["tier"] == "wide")):
+                    proof = wide_check(root, data, gate_log, canonical=full)
                     code = proof["exit"]
                 else:
-                    if gate_log and tested is None:
-                        raise Refusal("gate_log_requires_wide_cut")
                     code = command(["sh", "scripts/presubmit.sh", base,
                                     *(["--recheck", str(recheck)] if recheck else [])], cwd=root,
                                    capture=False, check=False).returncode
@@ -1506,11 +1737,18 @@ def land(gate_log=None):
                                     if row.get("operation") == proof["operation"]]
                         for field in ("compile_seconds", "run_seconds", "test_seconds", "unclassified_seconds"):
                             proof[field] = sum(row[field] for row in attempts)
+                        for field in ("stage_seconds", "formal_step_seconds"):
+                            proof[field] = {key: sum(row.get(field, {}).get(key, 0.) for row in attempts)
+                                            for key in {key for row in attempts for key in row.get(field, {})}}
+                        proof["findings"] = [finding for row in attempts for finding in row.get("findings", [])]
+                        proof["load_average_start"] = attempts[0].get("load_average_start")
+                        proof["load_average_end"] = attempts[-1].get("load_average_end")
                         proof["build_attempts"] = len(attempts)
                 spent += time.monotonic() - started
                 check_timings.append({k: proof.get(k) for k in
                                       ("sha", "affected", "recheck", "log", "gate_log", "gate_log_sha256", "compile_seconds", "run_seconds",
-                                       "test_seconds", "unclassified_seconds", "timing_basis")})
+                                       "test_seconds", "unclassified_seconds", "timing_basis", "stage_seconds",
+                                       "formal_step_seconds", "load_average_start", "load_average_end", "findings")})
                 if code:
                     raise Refusal("presubmit_failed", 77)
                 if tested is None or common_paths:
@@ -1547,12 +1785,13 @@ def land(gate_log=None):
             landing = {"sha": sha, "base": base, "timestamp": now(), "author_key": signing_key, "author": email,
                        "tier": data["tier"], "affected": data["affected"],
                        "presubmit_seconds": spent, "retries": retry, "paths": data["paths"],
-                       "tested_sha": tested, "branch": branch,
+                       "tested_sha": proof.get("gate_log_source", tested), "branch": branch,
                        "incremental_rechecks": incremental_rechecks}
             landing["formal"] = formal
-            landing.update({k: proof[k] for k in ("gate_log", "gate_log_sha256", "compile_seconds",
+            landing.update({k: proof[k] for k in ("gate_log", "gate_log_sha256", "gate_log_source", "records_delta", "records_checks_exit", "compile_seconds",
                                                  "run_seconds", "test_seconds", "unclassified_seconds", "build_attempts",
-                                                 "tests_started", "timing_basis") if k in proof})
+                                                 "tests_started", "timing_basis", "stage_seconds", "formal_step_seconds",
+                                                 "load_average_start", "load_average_end", "findings") if k in proof})
             landing["check_timings"] = check_timings
             landing["commands"] = list(executed_commands.values())
             if len(check_timings) > 1:
@@ -1560,6 +1799,10 @@ def land(gate_log=None):
             for kind in ("compile_seconds", "run_seconds", "test_seconds", "unclassified_seconds"):
                 landing[kind] = (sum(row[kind] for row in check_timings)
                                  if all(row[kind] is not None for row in check_timings) else None)
+            for kind in ("stage_seconds", "formal_step_seconds"):
+                landing[kind] = {key: sum((row.get(kind) or {}).get(key, 0.) for row in check_timings)
+                                 for key in {key for row in check_timings for key in (row.get(kind) or {})}}
+            landing["findings"] = [finding for row in check_timings for finding in (row.get("findings") or [])]
             append_record("landings.log", landing)
             ledger = ledger_module()
             if ledger is not None:
@@ -1586,6 +1829,8 @@ def main():
     p = sub.add_parser("affected")
     p.add_argument("range", nargs="?", default="origin/main..HEAD")
     p.add_argument("--crates", action="store_true")
+    p = sub.add_parser("lean")
+    p.add_argument("range", nargs="?", default="origin/main..HEAD")
     sub.add_parser("state-dir")
     sub.add_parser("parity-dir")
     p = sub.add_parser("check-is-cargo")
@@ -1600,12 +1845,17 @@ def main():
     p.add_argument("result", type=Path)
     p.add_argument("--recheck", type=Path)
     p = sub.add_parser("land")
-    p.add_argument("--gate-log", type=Path,
-                   help="reuse full NORMAL CI on the exact wide candidate SHA")
+    proof = p.add_mutually_exclusive_group()
+    proof.add_argument("--gate-log", type=Path,
+                       help="reuse full NORMAL CI on the candidate SHA or a checked records-only rebase")
+    proof.add_argument("--full", action="store_true",
+                       help="run make test after rebasing, for any tier; retain incremental rechecks")
     args = parser.parse_args()
     if args.verb == "affected":
         result = affected(args.range)
         print(" ".join(result["affected"]) if args.crates else json.dumps(result))
+    elif args.verb == "lean":
+        print("\n".join(lean(args.range)))
     elif args.verb == "state-dir":
         print(state_directory())
     elif args.verb == "parity-dir":
@@ -1622,7 +1872,7 @@ def main():
     elif args.verb == "presubmit-worker":
         return presubmit_worker(args.base, args.result, args.recheck)
     elif args.verb == "land":
-        return land(args.gate_log)
+        return land(args.gate_log, args.full)
 
 
 if __name__ == "__main__":

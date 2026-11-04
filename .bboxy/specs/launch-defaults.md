@@ -99,3 +99,22 @@ Saved machine records also supply the native Machines and launcher catalogues
 when no remote provider snapshot exists. Add a machine accepts a host or
 user@host route; availability still filters its launcher row. No connected
 provider state is fabricated or required before attempting the local client.
+
+## Transport cut 3 implementation — 2026-11-01
+
+`transport` 1.0 supplies host-only `wrap` and bounded declared launcher fields.
+Version 1 accepts text fields (`kind: text`); omitted kind defaults to text and
+unsupported kinds refuse with `invalid_transport_fields`. Settings Machines and
+the launcher retain those declared names/defaults as `plugin:<provider>` Via
+parameters. Logic captures fields and the quoted cwd/environment/command once,
+then admits a wrap outside the owner loop. Its two-second RPC admission budget
+includes worker queue time. Completion rechecks root and activation authority;
+a busy host state refuses promptly. Explicit restart replays retained wrapped
+argv, with the same configured remote-command semantics as the builtins.
+
+`PluginTransportLaunch` and `PluginTransportProgress`, with broken controls,
+map the owner fence and eventual terminal admission. Private SDK/runtime tests
+cover literal fields to argv, status during a held call, stale activation,
+worker saturation, late completion and a busy mutex. They require no network or
+external account. Real-server behavior and local-only MCP/hook installation on
+remote hosts retain the separate scope recorded in cut 2.

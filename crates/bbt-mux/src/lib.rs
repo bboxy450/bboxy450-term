@@ -29,6 +29,8 @@ pub mod identity;
 pub mod index;
 pub mod knowledge;
 pub mod logic;
+#[cfg(feature = "model")]
+pub mod models;
 pub mod mcp;
 pub mod messaging;
 pub mod plugins;
@@ -50,3 +52,5 @@ pub use supervisor::{Client, Config, Supervisor};
 pub use ulid::Ulid;
 
 mod window_journal;
+
+mod rich;

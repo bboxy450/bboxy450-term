@@ -141,6 +141,19 @@ def check(data, synchronize=False, package_lists=False, only=None):
         declared = tomllib.loads(read_regular(manifest).decode("utf-8"))["package"]
         if declared.get("name") != package["name"]:
             errors.append(f"{package['name']}: metadata name does not match its manifest")
+        # An independently licensed, pinned submodule keeps its own notices.
+        embedded = directory == root / "crates/bboxy450-harness" and package["name"] == "bboxy450-harness"
+        if embedded:
+            if declared.get("license-file") != "LICENSE" or declared.get("license"):
+                errors.append("harness: expected its own local LICENSE")
+            if read_regular(directory / "LICENSE") != sources["LICENSE"]:
+                errors.append("harness: license differs from the agreed custom policy")
+            credit = read_regular(directory / "ATTRIBUTION.md").decode()
+            if "https://github.com/bboxy450/bboxy450-harness" not in credit:
+                errors.append("harness: independent attribution is missing")
+            # Do not synchronize parent notices or invent retained prior grants.
+            directories.append((package, directory))
+            continue
         terms = policy.get(directory.name)
         if terms is None:
             errors.append(f"{package['name']}: missing from the licensing map")
@@ -177,7 +190,9 @@ def check(data, synchronize=False, package_lists=False, only=None):
     if errors:
         raise ValueError("\n".join(errors))
     if synchronize:
-        for _, directory in directories:
+        for package, directory in directories:
+            if package["name"] == "bboxy450-harness":
+                continue
             for name, content in sources.items():
                 (directory / name).write_bytes(content)
     if only and not any(p["name"] == only for p in packages):
@@ -191,7 +206,8 @@ def check(data, synchronize=False, package_lists=False, only=None):
                                     cwd=root, capture_output=True, text=True, timeout=60)
             if result.returncode:
                 raise ValueError(f"{package['name']}: cargo package --list exited {result.returncode}: {result.stderr.strip()}")
-            required = set(COPIES + LEGACY)
+            required = ({"LICENSE", "ATTRIBUTION.md"} if package["name"] == "bboxy450-harness"
+                        else set(COPIES + LEGACY))
             if directory.name != "bboxy-firehose":
                 required.update(UPSTREAM.get(directory.name, {}))
             missing = required.difference(result.stdout.splitlines())

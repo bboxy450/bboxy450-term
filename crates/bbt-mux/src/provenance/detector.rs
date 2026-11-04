@@ -59,15 +59,20 @@ struct Signal {
 #[derive(Default)]
 struct Inbox {
     queue: VecDeque<Signal>,
+    // Absolute deque positions stay valid when the front moves. Wrapping
+    // subtraction recovers an offset even across the machine counter boundary.
+    head: usize,
+    modified: BTreeMap<(usize, PathBuf), usize>,
+    paths: BTreeMap<(usize, PathBuf), usize>,
     lost: u64,
 }
 impl Inbox {
     fn push(&mut self, signal: Signal) {
+        let key = (signal.root, signal.path.clone());
         if signal.kind == "modified"
-            && let Some(old) = self.queue.iter_mut().find(|old| {
-                old.root == signal.root && old.path == signal.path && old.kind == "modified"
-            })
+            && let Some(position) = self.modified.get(&key)
         {
+            let old = &mut self.queue[position.wrapping_sub(self.head)];
             // Preserve a reported source when a later generic FS hint coalesces.
             if signal.reported.is_some() || old.reported.is_none() {
                 *old = signal;
@@ -77,8 +82,30 @@ impl Inbox {
         if self.queue.len() >= PENDING {
             self.lost = self.lost.saturating_add(1);
         } else {
+            if signal.kind == "modified" {
+                self.modified
+                    .insert(key.clone(), self.head.wrapping_add(self.queue.len()));
+            }
+            *self.paths.entry(key).or_default() += 1;
             self.queue.push_back(signal);
         }
+    }
+    fn pop_front(&mut self) -> Option<Signal> {
+        let signal = self.queue.pop_front()?;
+        self.head = self.head.wrapping_add(1);
+        let key = (signal.root, signal.path.clone());
+        if signal.kind == "modified" {
+            self.modified.remove(&key);
+        }
+        let count = self.paths.get_mut(&key).expect("queued path index");
+        *count -= 1;
+        if *count == 0 {
+            self.paths.remove(&key);
+        }
+        Some(signal)
+    }
+    fn contains(&self, root: usize, path: &Path) -> bool {
+        self.paths.contains_key(&(root, path.to_owned()))
     }
 }
 #[derive(Debug)]
@@ -147,30 +174,129 @@ fn ignored(relative: &Path) -> bool {
     }) {
         return true;
     }
-    let parts: Vec<_> = relative
+    let mut in_bboxy = false;
+    relative
         .components()
         .filter_map(|c| match c {
             Component::Normal(p) => p.to_str(),
             _ => None,
         })
-        .collect();
-    parts.iter().any(|p| {
-        host_import_stage(p)
-            || matches!(
-                *p,
-                ".git"
+        .any(|p| {
+            let generated = in_bboxy && matches!(p, "log" | "artifacts");
+            in_bboxy = p == ".bboxy";
+            generated
+                || host_import_stage(p)
+                || matches!(
+                    p,
+                    ".git"
                     | "target"
                     | "node_modules"
+                    // Generated build output and tool caches: rebuilt, not authored.
+                    | "dist"
+                    | ".svelte-kit"
+                    | ".next"
+                    | ".nuxt"
+                    | ".turbo"
+                    | ".vite"
+                    | ".parcel-cache"
+                    | "__pycache__"
+                    | ".pytest_cache"
+                    | ".mypy_cache"
+                    | ".ruff_cache"
+                    | ".venv"
+                    | ".gradle"
+                    | "DerivedData"
                     | ".gnupg"
                     | ".ssh"
                     | ".icq"
                     | ".claude"
                     | ".codex"
-            )
-    }) || parts
-        .windows(2)
-        .any(|w| w[0] == ".bboxy" && matches!(w[1], "log" | "artifacts"))
+                    | ".cache"
+                )
+        })
 }
+// Normalize and reject irrelevant paths before taking the logic owner's queue
+// lock. Git/object and build-output bursts must not block detector polling.
+fn record_fs_event(
+    inbox: &Mutex<Inbox>,
+    root: &Path,
+    id: usize,
+    result: notify::Result<notify::Event>,
+) {
+    let (signals, lost) = fs_hints(root, id, result);
+    if signals.is_empty() && lost == 0 {
+        return;
+    }
+    let mut inbox = inbox.lock().unwrap_or_else(|e| e.into_inner());
+    inbox.lost = inbox.lost.saturating_add(lost);
+    for signal in signals {
+        inbox.push(signal);
+    }
+}
+
+fn fs_hints(root: &Path, id: usize, result: notify::Result<notify::Event>) -> (Vec<Signal>, u64) {
+    let Ok(event) = result else {
+        return (vec![], 1);
+    };
+    let mut lost = u64::from(event.need_rescan());
+    let kind = match event.kind {
+        notify::EventKind::Create(notify::event::CreateKind::Folder)
+        | notify::EventKind::Remove(notify::event::RemoveKind::Folder) => return (vec![], lost),
+        notify::EventKind::Create(_) => "created",
+        notify::EventKind::Remove(_) => "deleted",
+        notify::EventKind::Modify(ModifyKind::Name(RenameMode::From)) => "deleted",
+        notify::EventKind::Modify(ModifyKind::Name(RenameMode::To)) => "created",
+        notify::EventKind::Modify(ModifyKind::Name(RenameMode::Both)) if event.paths.len() == 2 => {
+            "renamed"
+        }
+        notify::EventKind::Modify(_) => "modified",
+        _ => return (vec![], lost),
+    };
+    let mut signals = Vec::new();
+    if kind == "renamed" {
+        let from = relative(root, &event.paths[0]);
+        let to = relative(root, &event.paths[1]);
+        let change = match (from, to) {
+            (Some(previous), Some(path)) => Some((path, Some(previous), "renamed")),
+            (Some(path), None) => Some((path, None, "deleted")),
+            (None, Some(path)) => Some((path, None, "created")),
+            (None, None) => None,
+        };
+        if let Some((path, previous, kind)) = change {
+            signals.push(Signal {
+                root: id,
+                path,
+                previous,
+                kind: kind.into(),
+                source: "filesystem".into(),
+                reported: None,
+                at: now_ms(),
+            });
+        }
+    } else {
+        for path in event
+            .paths
+            .into_iter()
+            .filter_map(|path| relative(root, &path))
+        {
+            if signals.len() == 128 {
+                lost = lost.saturating_add(1);
+                continue;
+            }
+            signals.push(Signal {
+                root: id,
+                path,
+                previous: None,
+                kind: kind.into(),
+                source: "filesystem".into(),
+                reported: None,
+                at: now_ms(),
+            });
+        }
+    }
+    (signals, lost)
+}
+
 fn relative(root: &Path, path: &Path) -> Option<PathBuf> {
     let relative = path.strip_prefix(root).ok()?;
     if relative.as_os_str().is_empty()
@@ -370,73 +496,9 @@ impl Detector {
         };
         let inbox = self.inbox.clone();
         let observed = root.path.clone();
-        let mut watcher =
-            notify::recommended_watcher(move |result: notify::Result<notify::Event>| {
-                let mut queue = inbox.lock().unwrap_or_else(|e| e.into_inner());
-                let Ok(event) = result else {
-                    queue.lost = queue.lost.saturating_add(1);
-                    return;
-                };
-                if event.need_rescan() {
-                    queue.lost = queue.lost.saturating_add(1);
-                }
-                let kind = match event.kind {
-                    notify::EventKind::Create(notify::event::CreateKind::Folder)
-                    | notify::EventKind::Remove(notify::event::RemoveKind::Folder) => return,
-                    notify::EventKind::Create(_) => "created",
-                    notify::EventKind::Remove(_) => "deleted",
-                    notify::EventKind::Modify(ModifyKind::Name(RenameMode::From)) => "deleted",
-                    notify::EventKind::Modify(ModifyKind::Name(RenameMode::To)) => "created",
-                    notify::EventKind::Modify(ModifyKind::Name(RenameMode::Both))
-                        if event.paths.len() == 2 =>
-                    {
-                        "renamed"
-                    }
-                    notify::EventKind::Modify(_) => "modified",
-                    _ => return,
-                };
-                if kind == "renamed" {
-                    let from = relative(&observed, &event.paths[0]);
-                    let to = relative(&observed, &event.paths[1]);
-                    let change = match (from, to) {
-                        (Some(previous), Some(path)) => Some((path, Some(previous), "renamed")),
-                        (Some(path), None) => Some((path, None, "deleted")),
-                        (None, Some(path)) => Some((path, None, "created")),
-                        (None, None) => None,
-                    };
-                    if let Some((path, previous, kind)) = change {
-                        queue.push(Signal {
-                            root: id,
-                            path,
-                            previous,
-                            kind: kind.into(),
-                            source: "filesystem".into(),
-                            reported: None,
-                            at: now_ms(),
-                        });
-                    }
-                } else {
-                    if event.paths.len() > 128 {
-                        queue.lost = queue.lost.saturating_add((event.paths.len() - 128) as u64);
-                    }
-                    for path in event
-                        .paths
-                        .into_iter()
-                        .take(128)
-                        .filter_map(|p| relative(&observed, &p))
-                    {
-                        queue.push(Signal {
-                            root: id,
-                            path,
-                            previous: None,
-                            kind: kind.into(),
-                            source: "filesystem".into(),
-                            reported: None,
-                            at: now_ms(),
-                        });
-                    }
-                }
-            })?;
+        let mut watcher = notify::recommended_watcher(move |result| {
+            record_fs_event(&inbox, &observed, id, result);
+        })?;
         watcher.watch(path, RecursiveMode::Recursive)?;
         self.watchers.push(watcher);
         self.roots.push(root);
@@ -658,11 +720,7 @@ impl Detector {
                 {
                     continue;
                 }
-                if inbox
-                    .queue
-                    .iter()
-                    .any(|signal| signal.root == id && signal.path == path)
-                {
+                if inbox.contains(id, &path) {
                     continue;
                 }
                 let kind = if root.path.join(&path).symlink_metadata().is_ok() {
@@ -843,7 +901,7 @@ impl Detector {
         let mut budget = inbox.queue.len().min(64);
         while self.jobs.len() < HASH_JOBS && budget > 0 {
             budget -= 1;
-            let Some(signal) = inbox.queue.pop_front() else {
+            let Some(signal) = inbox.pop_front() else {
                 break;
             };
             if ignored(&signal.path) {
@@ -860,7 +918,7 @@ impl Detector {
                     .as_ref()
                     .is_some_and(|reference| self.in_flight.contains_key(reference))
             {
-                inbox.queue.push_back(signal);
+                inbox.push(signal);
                 continue;
             }
 
@@ -968,6 +1026,14 @@ mod tests {
         ] {
             assert!(!ignored(Path::new(name)), "ordinary name hidden: {name}");
         }
+        for name in [
+            "clients/app/dist/assets/index-Bx1.js",
+            "web/.svelte-kit/output/a.js",
+            "tools/__pycache__/m.pyc",
+        ] {
+            assert!(ignored(Path::new(name)), "build output observed: {name}");
+        }
+        assert!(!ignored(Path::new("src/distance.rs")));
     }
     // keeps: regression unchanged_clipped_git_refs_produce_no_activity_for_ten_seconds
     // Completed scans, rather than elapsed silence, prove unchanged snapshots are quiet.
@@ -1060,6 +1126,127 @@ mod tests {
             Attribution::inferred(vec![(seat, 7), (Ulid::new(), 1)]).seat,
             None
         );
+    }
+
+    #[test]
+    fn twenty_commit_checkout_burst_coalesces_without_losing_reported_hints() {
+        let started = std::time::Instant::now();
+        let mut inbox = Inbox::default();
+        let seat = Ulid::new();
+        for n in 0..PENDING {
+            let mut row = signal(format!("src/checkout-{n:04}.rs"));
+            row.reported = Some((seat, 7));
+            row.source = "harness/tool".into();
+            inbox.push(row);
+        }
+        for _ in 0..20 {
+            for n in 0..PENDING {
+                inbox.push(signal(format!("src/checkout-{n:04}.rs")));
+            }
+        }
+        assert_eq!(inbox.queue.len(), PENDING);
+        assert_eq!(inbox.lost, 0);
+        assert!(
+            inbox
+                .queue
+                .iter()
+                .all(|row| row.reported == Some((seat, 7)))
+        );
+        eprintln!(
+            "watcher_checkout_burst paths={PENDING} commits=20 hints={} elapsed_us={}",
+            PENDING * 21,
+            started.elapsed().as_micros()
+        );
+    }
+
+    #[test]
+    fn indexed_hints_preserve_fifo_roots_kinds_and_wrapping_positions() {
+        let mut inbox = Inbox {
+            head: usize::MAX - 1,
+            ..Inbox::default()
+        };
+        inbox.push(signal("a".into()));
+        let mut created = signal("a".into());
+        created.kind = "created".into();
+        inbox.push(created);
+        let mut other_root = signal("a".into());
+        other_root.root = 1;
+        inbox.push(other_root);
+        inbox.push(signal("b".into()));
+        assert_eq!(inbox.queue.len(), 4);
+        assert_eq!(inbox.pop_front().unwrap().path, Path::new("a"));
+        inbox.push(signal("a".into()));
+        let mut update = signal("b".into());
+        update.at = 99;
+        inbox.push(update);
+        assert_eq!(inbox.queue.len(), 4);
+        let first = inbox.pop_front().unwrap();
+        assert_eq!(first.kind, "created");
+        assert!(inbox.contains(0, Path::new("a")));
+        assert_eq!(inbox.pop_front().unwrap().root, 1);
+        let b = inbox.pop_front().unwrap();
+        assert_eq!(b.path, Path::new("b"));
+        assert_eq!(b.at, 99);
+        assert_eq!(inbox.pop_front().unwrap().path, Path::new("a"));
+        assert!(inbox.modified.is_empty());
+        assert!(inbox.paths.is_empty());
+        assert!(inbox.pop_front().is_none());
+    }
+
+    #[test]
+    fn ignored_git_burst_never_takes_the_inbox_lock_or_spends_its_capacity() {
+        let inbox = Arc::new(Mutex::new(Inbox::default()));
+        let guard = inbox.lock().unwrap();
+        let producer = inbox.clone();
+        let (sent, received) = std::sync::mpsc::channel();
+        let thread = std::thread::spawn(move || {
+            let root = Path::new("/private/fixture");
+            let mut event = notify::Event::new(notify::EventKind::Modify(ModifyKind::Any));
+            event.paths = (0..PENDING)
+                .map(|n| root.join(format!(".git/objects/{n}")))
+                .collect();
+            record_fs_event(&producer, root, 0, Ok(event));
+            sent.send(()).unwrap();
+        });
+        let result = received.recv_timeout(std::time::Duration::from_secs(2));
+        drop(guard);
+        thread.join().unwrap();
+        assert!(
+            result.is_ok(),
+            "ignored filesystem hints waited for the owner lock"
+        );
+        let inbox = inbox.lock().unwrap();
+        assert!(inbox.queue.is_empty());
+        assert_eq!(inbox.lost, 0);
+    }
+
+    #[test]
+    fn event_batch_limits_only_relevant_paths_and_preserves_rename_boundaries() {
+        let root = Path::new("/private/fixture");
+        let mut event = notify::Event::new(notify::EventKind::Modify(ModifyKind::Any));
+        event.paths = (0..256)
+            .map(|n| root.join(format!("target/{n}")))
+            .chain((0..130).map(|n| root.join(format!("src/{n}.rs"))))
+            .collect();
+        let (rows, lost) = fs_hints(root, 0, Ok(event));
+        assert_eq!(rows.len(), 128);
+        assert_eq!(lost, 2);
+        for (from, to, kind) in [
+            ("src/a", "src/b", "renamed"),
+            ("src/a", ".git/a", "deleted"),
+            ("target/a", "src/b", "created"),
+        ] {
+            let event = notify::Event::new(notify::EventKind::Modify(ModifyKind::Name(
+                RenameMode::Both,
+            )))
+            .add_path(root.join(from))
+            .add_path(root.join(to));
+            let (rows, lost) = fs_hints(root, 0, Ok(event));
+            assert_eq!(rows.len(), 1);
+            assert_eq!(rows[0].kind, kind);
+            assert_eq!(rows[0].previous.is_some(), kind == "renamed");
+            assert_eq!(lost, 0);
+        }
     }
     // keeps: spec provenance
     #[test]

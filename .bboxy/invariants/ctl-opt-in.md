@@ -11,11 +11,13 @@ links:
   - { to: "[[e2e-acceptance]]", rel: constrains }
   - { to: "[[mux-daemon]]", rel: constrains }
 created: "2026-10-24T05:31:34Z"
-updated: "2026-10-25T10:31:36Z"
+updated: "2026-11-02T00:00:00Z"
 ---
 # No gui.endpoint exists unless ctl is enabled, and the app's own seats are refused at the door
 
-**Property.** With `ctl` off (the default), no `gui.endpoint` file exists in any
+**Default changed 2026-11-02 (operator):** the app opens `ctl` unless started with `--no-ctl`; `--ctl` is still accepted. The door's library default and this check are unchanged.
+
+**Property.** With `ctl` off (`--no-ctl`), no `gui.endpoint` file exists in any
 run directory of the app, before, during or after a run. With `ctl` on, the file
 exists only while logic runs, mode 0600, and is gone on exit; a connection whose
 process ancestry contains this app's supervisor is refused with the reason

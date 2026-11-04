@@ -178,7 +178,7 @@ mod tests {
             priority_class: bbt_proto::registry::Class::Oracle,
             priority: 0,
             text: "Identical chat survives unrelated terminal publications.".into(),
-            ts: 1000,
+            ts_ms: 1_000_000,
             receipts: Default::default(),
         }
     }

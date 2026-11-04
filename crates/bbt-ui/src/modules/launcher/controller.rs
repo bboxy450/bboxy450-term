@@ -431,10 +431,8 @@ impl Controller {
         } else {
             params.editing = Some(index);
             self.launcher.query = field.value.clone();
-            self.launcher.placeholder = format!(
-                "{} · ↵ sets it · esc keeps the old value",
-                field.key.label()
-            );
+            self.launcher.placeholder =
+                format!("{} · ↵ sets it · esc keeps the old value", field.label());
             self.reset_edit();
             self.edit(EditCommand::SelectAll);
         }

@@ -7,6 +7,35 @@
 //! Bounded seat recovery contracts; SQL, signing and arbitrary Rust use API witnesses.
 use super::*;
 
+// One private fixture, an inherited operator run, and two producer kinds.
+// Resolution/configuration and each report are atomic, with no fairness or
+// delivery guarantee. The broken control pins the inherited run too early.
+pub(super) fn diagnostic_routing(b: bool) -> Model {
+    let mut m = model(
+        "DiagnosticRouting",
+        b,
+        &[
+            ("root", 2, 0),
+            ("provider_reported", 1, 0),
+            ("ctl_reported", 1, 0),
+            ("operator_rows", 2, 0),
+        ],
+    );
+    for source in ["PrivateAccount", "PrivateBootstrap"] {
+        action(&mut m, source, eq(0, 0), &[(0, Int(if b { 1 } else { 2 }))]);
+    }
+    for (index, name) in [(1, "ProviderFailure"), (2, "CtlFailure")] {
+        action(
+            &mut m,
+            name,
+            all([ne(0, 0), eq(index, 0)]),
+            &[(index, Int(1)), (3, Var(3).plus(Int(2).minus(Var(0))))],
+        );
+    }
+    safe(&mut m, "PrivateFailuresNeverReachOperator", eq(3, 0));
+    m
+}
+
 // One durable operation, two roots and two seat identities. Ledger 0=missing,
 // 1=admitted/unknown, 2=completed. Atomic journal writes survive restart.
 // No fairness assumption: a lost completion may remain unknown forever.

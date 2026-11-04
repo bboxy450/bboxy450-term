@@ -13,23 +13,61 @@
 // from examples/integration tests that belong to this package.
 extern crate self as bbt_yarn;
 
-#[cfg(all(feature = "tokio", not(target_os = "none")))]
 extern crate alloc;
 
-#[cfg(feature = "model")]
+#[cfg(any(feature = "model", test))]
 extern crate std;
+
+#[cfg(all(test, any(loom, shuttle)))]
+mod concurrency;
 
 /// Native finite-state checking and TLA+ export for the explicit Yarn subset.
 #[cfg(feature = "model")]
 pub mod model;
+
+/// Required claims, finite verification results and JSON evidence (hosted only).
+#[cfg(feature = "model")]
+pub mod verify;
+
+/// Declares stable required claim ids for a protocol.
+#[cfg(all(feature = "macros", feature = "model"))]
+pub use bbt_yarn_macros::requirements;
+
+/// Generates a deterministic exhaustive finite verification test.
+#[cfg(all(feature = "macros", feature = "model"))]
+pub use bbt_yarn_macros::verify;
 
 /// Control values returned by non-terminal reactor handlers.
 pub mod reactor;
 /// Persistent, selection-loss-preserving reactor sources.
 pub mod source;
 
+/// Pure finite protocol decisions and domain sets.
+pub mod protocol;
+
 #[cfg(feature = "macros")]
 pub use bbt_yarn_macros::reactor;
+
+/// Declares a finite protocol, its pure reducer and optional formal model.
+#[cfg(feature = "macros")]
+pub use bbt_yarn_macros::protocol;
+
+// Select at the dependency's feature boundary, not the consuming crate's cfg.
+/// Implementation detail for protocol macro expansion.
+#[doc(hidden)]
+#[cfg(feature = "model")]
+#[macro_export]
+macro_rules! __yarn_protocol_model {
+    ($($item:item)*) => { $($item)* };
+}
+
+/// Implementation detail for protocol macro expansion.
+#[doc(hidden)]
+#[cfg(not(feature = "model"))]
+#[macro_export]
+macro_rules! __yarn_protocol_model {
+    ($($item:item)*) => {};
+}
 
 /// Projects the same reactor grammar into a finite scheduling model.
 #[cfg(all(feature = "macros", feature = "model"))]

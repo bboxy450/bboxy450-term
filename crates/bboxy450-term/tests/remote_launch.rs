@@ -74,6 +74,7 @@ fn compose_machine_fields_equals_spawned_argv_for_every_transport() {
                 "codex",
             );
             let options = bbt_mux::adapters::launch::LaunchOptions {
+                transport_argv: None,
                 via: resolved.via.clone(),
                 env: resolved.env.clone(),
                 cwd: resolved.cwd.clone().into(),
@@ -182,7 +183,10 @@ fn machine_choices_persist_without_changing_local_directory_or_role_defaults() {
 #[test]
 fn native_machine_text_control_emits_a_persistable_patch() {
     use bbt_ui::text_edit::Command as Edit;
-    let mut values = bbt_ui::modules::settings::Records { machine_controls: true, ..Default::default() };
+    let mut values = bbt_ui::modules::settings::Records {
+        machine_controls: true,
+        ..Default::default()
+    };
     values.machine_defaults.insert(
         "ssh:fixture".into(),
         Machine {
@@ -218,9 +222,19 @@ fn add_machine_is_available_without_a_remote_provider_snapshot() {
     let mut gallery = bbt_ui::modules::settings::Records::default();
     let gallery_defaults = gallery.clone();
     let mut unhosted = Controller::new("Machines");
-    unhosted.handle(Action::Toggle(Field::MachineNew), &mut gallery, &gallery_defaults);
-    assert!(!unhosted.editing(), "a gallery never enables host persistence controls");
-    let mut values = bbt_ui::modules::settings::Records { machine_controls: true, ..Default::default() };
+    unhosted.handle(
+        Action::Toggle(Field::MachineNew),
+        &mut gallery,
+        &gallery_defaults,
+    );
+    assert!(
+        !unhosted.editing(),
+        "a gallery never enables host persistence controls"
+    );
+    let mut values = bbt_ui::modules::settings::Records {
+        machine_controls: true,
+        ..Default::default()
+    };
     let defaults = values.clone();
     let mut controller = Controller::new("Machines");
     controller.handle(Action::Toggle(Field::MachineNew), &mut values, &defaults);
@@ -253,14 +267,90 @@ fn add_machine_is_available_without_a_remote_provider_snapshot() {
 
 #[test]
 fn route_changes_keep_prior_network_choices_in_settings_and_launcher() {
-    let mut machine = Machine { connect: "user@one.invalid".into(), ..Default::default() };
+    let mut machine = Machine {
+        connect: "user@one.invalid".into(),
+        ..Default::default()
+    };
     machine.set("connect", "user@two.invalid".into());
     assert!(machine.routes.contains(&"user@one.invalid".into()));
     assert!(machine.routes.contains(&"user@two.invalid".into()));
     let mut launch = fields(&machine);
-    launch.iter_mut().find(|field| field.key == bbt_ui_model::FieldKey::Connect).unwrap().value = "user@three.invalid".into();
+    launch
+        .iter_mut()
+        .find(|field| field.key == bbt_ui_model::FieldKey::Connect)
+        .unwrap()
+        .value = "user@three.invalid".into();
     let captured = spawn_params::Resolved::from_fields(&launch, "/private/home").unwrap();
     let remembered = captured.remember_machine(machine);
     assert_eq!(remembered.connect, "user@three.invalid");
-    assert_eq!(remembered.routes, ["user@three.invalid", "user@two.invalid", "user@one.invalid"]);
+    assert_eq!(
+        remembered.routes,
+        ["user@three.invalid", "user@two.invalid", "user@one.invalid"]
+    );
+}
+
+#[test]
+fn plugin_parameters_keep_declared_names_and_never_cross_via_choices() {
+    use bbt_ui::modules::settings::machines::{PluginParameter, PluginTransport};
+    let transports = vec![
+        PluginTransport {
+            id: "plugin:a".into(),
+            name: "A".into(),
+            status: "enabled".into(),
+            fields: vec![PluginParameter {
+                name: "prefix".into(),
+                label: "Friendly prefix".into(),
+                default: Some("default A".into()),
+            }],
+        },
+        PluginTransport {
+            id: "plugin:b".into(),
+            name: "B".into(),
+            status: "enabled".into(),
+            fields: vec![PluginParameter {
+                name: "prefix".into(),
+                label: "Other prefix".into(),
+                default: Some("default B".into()),
+            }],
+        },
+    ];
+    let mut machine = bbt_ui::modules::settings::Machine {
+        via: "plugin:a".into(),
+        parameters: std::collections::BTreeMap::from([("prefix".into(), "A-only value".into())]),
+        ..Default::default()
+    };
+    let mut fields = spawn_params::with_machine_transports(
+        spawn_params::resolve("zsh", &Default::default(), None, "/tmp"),
+        &machine,
+        &transports,
+    );
+    let parameter = fields.iter().find(|f| f.parameter.is_some()).unwrap();
+    assert_eq!(parameter.label(), "Friendly prefix");
+    assert_eq!(
+        spawn_params::Resolved::from_fields(&fields, "/tmp")
+            .unwrap()
+            .via
+            .unwrap()
+            .fields["prefix"],
+        "A-only value"
+    );
+    fields
+        .iter_mut()
+        .find(|f| f.key == bbt_ui_model::FieldKey::Via)
+        .unwrap()
+        .value = "plugin:b".into();
+    assert!(spawn_params::refresh_transport_fields(
+        &mut fields,
+        &transports
+    ));
+    assert_eq!(
+        spawn_params::Resolved::from_fields(&fields, "/tmp")
+            .unwrap()
+            .via
+            .unwrap()
+            .fields["prefix"],
+        "default B"
+    );
+    machine.set("via", "plugin:b".into());
+    assert!(machine.parameters.is_empty());
 }

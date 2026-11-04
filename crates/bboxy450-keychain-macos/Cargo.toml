@@ -1,0 +1,14 @@
+[package]
+name = "bboxy450-keychain-macos"
+version.workspace = true
+edition.workspace = true
+license-file = "LICENSE"
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+description = "Read-only macOS Keychain queries with authentication UI disabled"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.10"
+security-framework-sys = "=2.17.0"

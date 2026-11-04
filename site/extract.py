@@ -3,8 +3,10 @@
 
   python3 -I site/extract.py --claude SESSION.jsonl --codex ROLLOUT.jsonl [--since 2026-10-26T21:00:00Z]
 
-Sources: a Claude Code session transcript, a Codex rollout, this repository's GitHub issues (gh) and the
-current identity's ICQ inbox and outbox (icq). The output is refused if it contains any local secret.
+Sources: a Claude Code session transcript, Codex rollouts, a bboxy450-harness session, this repository's GitHub
+issues (gh) and, when icq is installed, the ICQ inbox and outbox (otherwise the previous real.js stream is kept).
+Every transcript and message passes the bboxy450-log-converter d4947 sanitizer (--sanitizer, required); the output
+is refused if a home path, email, API key shape or local secret survives.
 """
 import argparse, datetime, json, os, re, subprocess, sys
 
@@ -18,8 +20,8 @@ COHORT = {  # key prefix -> (name, role); the repository's cohort record
 SEATS = {  # showcase fixture seat -> the real seat it stands for
     "Vesper Greywind": {"title": "release 0.1.0"},
     "Nyx Copperwing": {"title": "0.1.0 release cut", "log": "codex-Nyx"},
-    "Rook Ashwhisker": {"title": "#56 error journal", "log": "codex-Rook",
-                        "waitLine": "Please rule on the narrow Codex hook subscription seam"},
+    "Rook Ashwhisker": {"name": "bboxy450-harness", "harness": "bboxy450-harness", "title": "nemotron · source tour",
+                        "log": "harness-session", "state": "active", "where": "local"},
     "Sable Quill": {"name": "Sable Embertail", "title": "#42 ctl BrokenPipe", "log": "codex-Sable"},
     "Pip Hollow": {"name": "Kestrel Voidwing", "harness": "codex", "title": "#54 Finder cwd", "log": "codex-Kestrel"},
     "Marrow Finch": {"name": "Aster Cinderwing", "harness": "codex", "title": "release smoke", "log": "codex-Aster"},
@@ -140,6 +142,61 @@ def codex_lines(path, events):
     return [l for b in blocks[-events:] for l in b]
 
 
+def harness_lines(path):
+    """bboxy450-harness's own look: › prompt, ✦ thinking, ◆ tool with └ output, then the answer."""
+    out, cwd = [], None
+    for raw in open(path, encoding="utf-8"):
+        if cwd:
+            raw = raw.replace(json.dumps(cwd)[1:-1], "~/demo/bboxy450-harness")
+        e = json.loads(raw)["event"]
+        if e["type"] == "session_started":
+            cwd = e["meta"].get("cwd")
+        if e["type"] != "item_completed":
+            continue
+        b = e["body"]
+        k = b["kind"]
+        if k == "user_message":
+            text = " ".join(x.get("text", "") for x in b["blocks"])
+            out.extend(["› " + cut(" ".join(text.split()), 200), ""])
+        elif k == "reasoning" and (b.get("summary") or "").strip():
+            out.extend(["✦ " + cut(b["summary"].strip().split("\n")[0]), ""])
+        elif k == "tool_call":
+            try:
+                arg = json.loads(b.get("input_raw") or "{}")
+            except ValueError:
+                arg = {}
+            what = arg.get("command") or arg.get("path") or ""
+            out.append("◆ " + b["name"] + " " + cut(what, 90))
+            body = [l for x in b.get("output") or [] for l in x.get("text", "").split("\n") if l.strip()]
+            if body:
+                out.append("  └ " + cut(body[0]))
+                out.extend("    " + cut(l) for l in body[1:3])
+                if len(body) > 3:
+                    out.append(f"    + {len(body) - 3} lines")
+            out.append("")
+        elif k == "agent_message":
+            out.extend(b["markdown"].strip().split("\n") + [""])
+    return "\n".join(out)
+
+
+def sanitize(text, tool, secret_file):
+    r = subprocess.run([tool, secret_file], input=text, capture_output=True, text=True)
+    if r.returncode != 0:
+        sys.exit("extract: sanitizer failed: " + r.stderr.strip()[:200])
+    return r.stdout
+
+
+LEAKS = re.compile(r"/Users/|-Users-|[\w.+-]+@[\w-]+\.[\w.]+|sk-[A-Za-z0-9_-]{8,}|gh[pousr]_[A-Za-z0-9]{20,}|BEGIN [A-Z ]*PRIVATE KEY")
+
+
+def previous_stream(path):
+    try:
+        m = re.search(r"window\.REAL = (.*);\n", open(path, encoding="utf-8").read())
+        return json.loads(m.group(1)).get("stream", []) if m else []
+    except (OSError, ValueError):
+        return []
+
+
 def epics():
     issues = json.loads(subprocess.run(["gh", "issue", "list", "-R", "bboxy450/bboxy450-term", "--state", "all",
                                         "--limit", "100", "--json", "number,title,state"], capture_output=True,
@@ -165,7 +222,10 @@ def icq_stream(since, keep):
         after = 0
         while True:
             args = ["--after", str(after), "--limit", "50"] if cmd == ["inbox"] else []
-            r = subprocess.run(["icq", *cmd, *args], capture_output=True, text=True)
+            try:
+                r = subprocess.run(["icq", *cmd, *args], capture_output=True, text=True)
+            except FileNotFoundError:
+                return None
             try:
                 items = json.loads(r.stdout).get("items", [])
             except ValueError:
@@ -219,11 +279,13 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--claude", required=True)
     ap.add_argument("--codex", action="append", required=True, help="NAME=ROLLOUT.jsonl, one per Executor; the first is the default")
+    ap.add_argument("--harness", required=True, help="a bboxy450-harness session .jsonl")
+    ap.add_argument("--sanitizer", required=True, help="the converter's d4947 sanitizer: stdin text -> stdout")
     ap.add_argument("--since", default="2026-10-26T21:00:00Z")
     ap.add_argument("--out", default=os.path.join(os.path.dirname(os.path.abspath(__file__)), "real.js"))
     a = ap.parse_args()
     since = ts(a.since)
-    git_log = subprocess.run(["git", "log", "-3", "--stat", "--format=commit %h %G?%nAuthor: %an <%ae>%nDate:   %ad%n%n    %s%n"],
+    git_log = subprocess.run(["git", "log", "-3", "--author=bboxy450@gmail.com", "--stat", "--format=commit %h %G?%nAuthor: %an <%ae>%nDate:   %ad%n%n    %s%n"],
                              capture_output=True, text=True, check=True).stdout
     logs = {"claude-session": "\n".join(claude_lines(a.claude, since)),
             "git-log": git_log}
@@ -232,16 +294,31 @@ def main():
         logs["codex-" + name] = "\n".join(codex_lines(os.path.expanduser(path), 40))
         if k == 0:
             logs["codex-session"] = logs["codex-" + name]
+    logs["harness-session"] = harness_lines(os.path.expanduser(a.harness))
+    stream = icq_stream(since, 12)
+    if stream is None:
+        stream = previous_stream(a.out)
+    if not os.access(a.sanitizer, os.X_OK):
+        sys.exit("extract: refusing to write: sanitizer unavailable: " + a.sanitizer)
+    import tempfile
+    with tempfile.NamedTemporaryFile("wb") as sf:
+        sf.write(b"\n".join(secrets() + [os.path.basename(HOME).encode()])); sf.flush()
+        logs = {k: sanitize(v, a.sanitizer, sf.name) for k, v in logs.items()}
+        for m in stream:
+            m["text"] = sanitize(m["text"], a.sanitizer, sf.name)
     body = ("// Generated by site/extract.py from real sessions, issues and ICQ messages. Do not edit.\n"
             "Object.assign(window.LOGS, " + json.dumps(logs, ensure_ascii=False) + ");\n"
-            "window.REAL = " + json.dumps({"seats": SEATS, "epics": epics(), "stream": icq_stream(since, 12)},
+            "window.REAL = " + json.dumps({"seats": SEATS, "epics": epics(), "stream": stream},
                                           ensure_ascii=False) + ";\n")
     raw = body.encode()
     if any(v in raw for v in secrets()):
         sys.exit("extract: refusing to write: output contains a local secret")
+    leak = LEAKS.search(body) or re.search(r"\b" + re.escape(os.path.basename(HOME)) + r"\b", body)
+    if leak:
+        sys.exit("extract: refusing to write: unsanitized content survived: " + body[max(0, leak.start() - 60):leak.end() + 20].replace(HOME, "~"))
     open(a.out, "w", encoding="utf-8").write(body)
     print(f"{a.out}: {len(raw)} bytes, claude {logs['claude-session'].count(chr(10))} lines, "
-          f"codex {len(a.codex)} sessions")
+          f"codex {len(a.codex)} sessions, harness {logs['harness-session'].count(chr(10))} lines")
 
 
 if __name__ == "__main__":

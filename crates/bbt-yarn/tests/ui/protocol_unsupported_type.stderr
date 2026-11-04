@@ -1,0 +1,5 @@
+error: PRO008 unsupported protocol type. Repair: use bool, a declared domain, Option<Domain> or Set<Domain>.
+  --> tests/ui/protocol_unsupported_type.rs:10:35
+   |
+10 |     mod Infinite { state { value: u64 = 0; } events { Ping; } on Ping { case all when true => { preserve value; } } }
+   |                                   ^^^

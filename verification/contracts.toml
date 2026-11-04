@@ -1,6 +1,38 @@
 # Project-owned bounded specifications. Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 # Rust witnesses and existing implementation tests supplement these models, not refinement proofs.
 
+# Separate implementation evidence: not a new symbolic model or refinement proof.
+[[implementation_evidence]]
+name = "YarnRuntimeConcurrency"
+check = "make test-yarn-concurrency"
+sources = ["crates/bbt-yarn/src/reactor.rs", "crates/bbt-yarn/src/source/mod.rs", "crates/bbt-yarn/src/source/tokio_impl.rs"]
+implementation_tests = ["crates/bbt-yarn/src/concurrency.rs", "crates/bbt-yarn/tests/concurrency/run.py", "crates/bbt-yarn/tests/reactor_runtime.rs", "crates/bbt-yarn/tests/tokio_source_coverage.rs"]
+state = "One reactor owns adapter slots via exclusive mutable access. Signal starts ready=false, value=0, waker=None; publish writes value then release-publishes readiness and wakes a registered waiter. Poll acquire-checks readiness, registers/replaces the waker, then rechecks. Channel starts empty/open/no waker; a mutex makes send, receive/registration and close atomic at the shim boundary. One producer per channel; no sender cloning; at most three work items per each of two channels. Source completion removes its retained slot before delivery. Replacement cancels the prior future before installing its successor."
+properties = "WAKE-001: pending after a completion implies a wake. WAKER-001: the latest pending poll is woken. CLOSE-001: queued item precedes one close event, then permanent dormancy. SERVICE-001: a retained future is delivered once under two serialized consumers. SHUTDOWN-001: a shutdown ready before arbitration wins. DRAIN-001: each actual generated service window handles 1..2 items. GENERATION-001: A -> B -> A replacement returns only the last generation even as old completions race."
+bounds = "Loom 0.7.2: preemption_bound=2, max_threads=3, max_branches=1000, no max_permutations/max_duration. Four positive tests, four process-isolated cfg(test)+cfg(loom)+cfg(yarn_broken_controls) negatives; the driver requires nextest exit 100 and each named assertion, refusing build failures or empty selections. Shuttle 0.9.1: seeds 0x5941524e and 0x4c4f4f4d; random and PCT depth=3, 128 executions each per four scenarios (2048 total); max_steps=FailAfter(10000), no time cutoff, at most four concurrent tasks (seven total task identities in replacement) and six work items. Every normal execution is finite; scheduler progress is sampled, not a liveness/fairness proof."
+broken_controls = "Remove the Signal fixture's post-registration readiness recheck; keep its stale waker; remove real Mpsc receiver retirement; remove real OneShot future retirement. Each mutation is reachable only in the test-only Loom build and selected in a separate process. The first two validate the admitted-future boundary assumption; the latter two mutate production adapter code under test-only cfg."
+limits = "The shim explores the real Yarn adapter/macro code, not Tokio's internal atomics, lock-free queues, cancellation tree, timers, cooperative budget or OS scheduler. Channel synchronization is one mutex transaction and has no capacity/backpressure semantics; the bounded Receiver name only selects the real adapter enum branch. std Arc reference counts for Wake objects are not instrumented. Existing normal Tokio runtime/source tests remain independent API witnesses. No arbitrary Rust correctness, full memory-model, unbounded fairness or formal refinement claim."
+
+[[contract]]
+name = "EventLogCheckpoint"
+title = "Checkpointed event-log startup and post-readiness historical audit"
+models = ["EventLogCheckpoint", "BrokenEventLogCheckpoint"]
+sources = ["crates/bbt-mux/src/store/events.rs", "crates/bboxy450-term/src/cockpit.rs", "crates/bboxy450-term/tests/formal_contracts/event_log_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/store/events.rs", "crates/bbt-mux/src/store/sqlite.rs", "crates/bbt-mux/tests/storage_bus_index.rs"]
+assumptions = "Three retained rows (prefix 1, checkpoint 2, suffix 3), an optional preexisting checkpoint, one corruption present before open and one locally signed append. Open reads/checks/advances in a SQLite snapshot transaction; append and checkpoint advancement share an immediate transaction. The same-database checkpoint is trusted metadata, not protection against an adversary rewriting both checkpoint and history. Hash/signature rejection is abstracted, with actual Ed25519, JSON, sequence/prev/hash, schema and SQL trigger witnesses in Rust. Startup schedules at most two blocking historical audits concurrently, on separate WAL reader leases; the SQLite pool mutex is released before each scan, and the audit opens no writer transaction. Read snapshots may delay WAL checkpoint reclamation and share disk/CPU; queue admission and audit/report actions are weakly fair while the process remains alive; process termination can interrupt an audit and the next start audits again. Diagnostic delivery is best effort; stderr also reports failures. Concurrent malicious mutation after the opening snapshot, hash collisions, disk failure, OS scheduling and arbitrary Rust refinement are unmodeled."
+property = "A tampered checkpoint or suffix prevents readiness. First upgrade verifies at most 128 suffix rows synchronously, using an explicitly unaudited prefix anchor; historical tampering is eventually reported by the detached genesis pass after readiness. The checkpoint payload is rehashed as well as comparing the stored SQL hash. A locally signed append advances only a matching checkpoint atomically, keeping ordinary reopen work independent of retained history. BrokenEventLogCheckpoint skips only the existing checkpoint hash check and must fail safety. opening_n_rows_with_checkpoint_n_minus_one_verifies_exactly_one counts the actual successful signature verifications; historical_tampering_is_reported_after_ready_with_and_without_a_checkpoint observes the real private diagnostic socket."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "UsagePoller"
+title = "Read-only account usage, current attempt publication and visible deadlines"
+models = ["UsagePoller", "BrokenUsagePoller"]
+sources = ["crates/bboxy450-usage/src/poller.rs", "crates/bboxy450-term/tests/formal_contracts/usage_models.rs"]
+implementation_tests = ["crates/bboxy450-usage/tests/providers.rs", "crates/bboxy450-usage/src/poller.rs", "crates/bboxy450-term/src/usage_strip.rs", "crates/bbt-ui/tests/title_bars.rs"]
+assumptions = "Three attempts; account names A/B/A; one captured reply delivered twice; owner transitions atomic; deadlines weakly fair, network replies and user refreshes need not be fair. The model allows late completions beyond the implementation's serial worker, to check the public generation fence. Refresh clears visible values before identity re-observation. Credentials are revalidated before publishing an HTTP response. Account changes between unobserved polls are not detected immediately. Actual wall clocks, thread scheduling, OS counters/Keychain, filesystem and HTTP parsing/limits remain implementation-only; no arbitrary Rust refinement claim."
+property = "Any visible number belongs to the current account and attempt, even after A/B/A, expiry and duplicate/late replies; each pending attempt eventually retires under fair deadline service. Age clears the current flag. Broken removes the epoch/pending/identity guard and publishes a delayed reply; the API witness rejects it. Blocking calls have a visible timeout and one retained outstanding call per independent worker; tests check that a timed-out call cannot create an unbounded replacement queue."
+checks = ["make test-formal", "make test"]
+
 [[contract]]
 name = "DirtyWake"
 title = "Immediate dirty-set admission"
@@ -22,11 +54,51 @@ property = "A reused plan has current font and mask identities. The broken contr
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "StreamToView"
+title = "Ordered current-generation view deltas"
+models = ["StreamToView", "BrokenStreamToView"]
+sources = ["crates/bboxy450-term/tests/formal_contracts/toolkit_models.rs", "crates/bbt-ui/src/modules/transcript.rs"]
+implementation_tests = ["crates/bbt-ui/tests/toolkit.rs"]
+assumptions = "Three generation incarnations, three deltas, one captured completion. Capture, replace/drop, apply and retire are atomic owner transitions. Sequence gaps are explicit refusals requiring retry or a host snapshot; no network ordering, delivery fairness or unbounded buffer is assumed. Generation exhaustion refuses; byte payloads and transport use implementation tests."
+property = "The applied ledger contains each sequence below next exactly once, none at or above next, and every entry belongs to the current generation; dropped views have no entries. Broken bypasses identity/order fences and corrupts that ledger. A separately mutated good model proves that removing its generation guard is detected. Real StreamToView API witnesses include duplicate/gap/drop/A-B-A and coalesced budgeted frames."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "IncrementalMarkdown"
+title = "Stable-prefix Markdown cache identity"
+models = ["IncrementalMarkdown", "BrokenIncrementalMarkdown"]
+sources = ["crates/bboxy450-term/tests/formal_contracts/toolkit_models.rs", "crates/bbt-doc/src/markdown/streaming.rs", "crates/bbt-doc/src/markdown/parse.rs"]
+implementation_tests = ["crates/bbt-doc/tests/streaming.rs"]
+assumptions = "Three semantic prefix identities, three tail states, a definition-presence bit and pending line classification. Append ordinary/inline-bracket lines and append definition lines are distinct actions; classification plus invalidation are internal steps of one atomic parser call, so only the returned state is visible. Definition documents keep full-parse reference context. Container markers, multiline labels, escaped punctuation and temporary ambiguous-label fallback use every-split/full-parse equivalence and candidate-disambiguation tests in bbt-doc/tests/streaming.rs; grammar, UTF-8, YAML and actual work bytes remain implementation coverage. No arbitrary-parser refinement is claimed."
+property = "Every returned available cache has the current prefix identity. A definition-line action changes that identity and must invalidate; Broken skips that invalidation. Seven eighths of generated seeds avoid definitions, keeping inline links, task lists and code brackets on the incremental path. The ordinary-bracket witness counts real reparsed bytes across 100 appends."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ScrollStick"
+title = "Retained manual offset and explicit tail following"
+models = ["ScrollStick", "BrokenScrollStick"]
+sources = ["crates/bboxy450-term/tests/formal_contracts/toolkit_models.rs", "crates/bbt-ui/src/modules/transcript.rs"]
+implementation_tests = ["crates/bbt-ui/tests/toolkit.rs"]
+assumptions = "One view, following bit, manual intent and offsets bounded 0..3. User scroll, jump and layout after content growth/shrink are atomic. The actual projection clamps but the requested intent survives temporary empty/shrunk content. Pixel shaping, wheel burst aggregation and multiple scoped views use the existing app chat_scroll tests."
+property = "Following layout shows the tail; manual intent survives layout. User scroll at or beyond the maximum restores following. Jump synchronously restores following and resets requested/manual intent to zero; there is no asynchronous jump liveness claim. Broken overwrites manual intent during layout. A model-edge witness calls real jump_to_latest and compares following and projected offset after each reachable model jump; an implementation unit test checks the private reset state."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "DirtyWakeFrame"
+title = "Budget-deferred UI queue tail always gets another frame"
+models = ["DirtyWakeFrame", "BrokenDirtyWakeFrame"]
+sources = ["crates/bboxy450-term/tests/formal_contracts/toolkit_models.rs", "crates/bbt-ui/src/modules/transcript.rs", "crates/bbt-rt/src/wake.rs", "crates/bbt-rt/src/queues.rs"]
+implementation_tests = ["crates/bbt-ui/tests/toolkit.rs", "crates/bbt-rt/tests/runtime.rs"]
+assumptions = "Upstream DirtyWake bits/pending/producer_pc/drain_pc with three finite admitted deltas and a coalesced frame-ready bit. Marks, posts, bit take, pending clear and recheck can interleave; one owner frame atomically consumes up to two deltas. A nonempty budget remainder separately marks/posts a wake. Weak fairness is required for posted-wake, drain, recheck and frame service; producer arrival is not fair. Sequential consistency only; no OS/frame-time deadline or weak-memory proof."
+property = "No immediate dirty bit loses its wake after publication/drain completes; queued plus consumed equals admitted; every admitted delta eventually reaches a frame. Multiple arrivals can share one frame. Broken omits budget-tail rearm and fails liveness. The new coalesced_frames_apply_stream_deltas_and_rearm_a_budgeted_tail witness applies real StreamToView changes through DirtySet/ViewRing; omitting complete_drain is its real-API negative control."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "AsyncRenderPreparation"
 title = "Background renderer preparation never mutates a retired owner"
 models = ["AsyncRenderPreparation", "BrokenAsyncRenderPreparation"]
-sources = ["crates/bboxy450-term/src/gpu.rs"]
-implementation_tests = ["crates/bboxy450-term/src/gpu.rs"]
+sources = ["crates/bboxy450-term/src/gpu.rs", "crates/bbt-doc/src/highlight.rs"]
+implementation_tests = ["crates/bboxy450-term/src/gpu.rs", "crates/bbt-doc/tests/highlight.rs"]
 assumptions = "One UI waiter, one pending worker and one completion; cancellation/delivery are atomic owner transitions. A blocking worker may outlive its waiter but owns no mutable UI context. Worker completion/fairness, native driver latency and GPU pixels are not proved. Bounded real-thread tests witness IO responsiveness and late result retirement."
 property = "No value installs after its UI waiter is dropped. The broken control installs a late result into the absent owner."
 checks = ["make test-formal", "make test"]
@@ -59,6 +131,16 @@ sources = ["crates/bboxy450-term/tests/formal_contracts/notification_models.rs",
 implementation_tests = ["crates/bbt-mux/src/attention_observer.rs", "crates/bbt-mux/src/seat_socket/attention_tests.rs", "crates/bboxy450-term/src/cockpit/desktop/attention.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/tests/formal_contracts/witnesses.rs", "crates/bboxy450-term/tests/desktop.rs"]
 assumptions = "One seat, two questions, two UI context streams, three source incarnations (apparent A -> B -> A) and one delayed click. A model incarnation abstracts the exact epoch/generation/ordinal tuple, never a reusable seat ID. Current projection application, context receipt/EOF and click completion are separate atomic actions; duplicates self-loop. UI detach changes only attachment. No fairness is needed for safety; notification progress is checked by NotificationRecovery. FIFO/admitted current-source transport is assumed: lag resnapshot, peer admission, monotonic revisions, bounded receiver storage and authenticated ownership use actual socket/broker/process tests rather than a transport refinement proof."
 property = "Detach preserves the desktop owner and current question; replay cannot create a question; an old context/EOF cannot replace a newer stream; only an exact current captured episode can be handled after reconnect, including A -> B -> A. Broken controls remove these guards and must fail safety. Broker live_episode_is_shared_stable_and_replay_cannot_mint and snapshots_cover_lag_without_replaying_stale_deltas, desktop frontend_detach_preserves_policy_and_exact_handled_episode and late_old_context_and_eof_cannot_replace_a_new_frontend, and notification_click_cannot_handle_a_replacement_question_or_process are API witnesses; desktop.rs verifies a detached observer posts and click reopens the same retained process."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "WorkspaceReady"
+title = "Internal activity output cannot starve document write admission"
+models = ["WorkspaceReady", "BrokenWorkspaceReady"]
+sources = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/knowledge/routing.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/models/workspace_ready.rs"]
+implementation_tests = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/knowledge/responsiveness_tests.rs", "crates/bbt-mux/src/models/workspace_ready.rs"]
+assumptions = "One root starts scanning with no dirty document input, one pending write and no admitted write. A single optional external document edit and arbitrarily many internal activity output events can interleave with scan completion, dirty reconciliation and write admission. Each action is atomic. Scan completion, reconciliation and admission are separately weakly fair; activity output and the external edit are not fair. The model abstracts known file creation/removal or content/metadata updates to non-Markdown leaves under log/ as ActivityOutput. Directory creation/removal, Markdown, rename, overflow, failure and unknown events still invalidate documents. Real notify classification and OS coalescing use the synthetic-event and real-owner API witnesses. Infinite genuine Markdown edits, multiple roots, provider/identity changes, exact-once journaling, crypto, IO failure and elapsed timing are not modeled here; existing WorkspaceFence, operation and projection contracts retain their fences."
+property = "PendingWriteEventuallyAdmitted under continuing internal output, after the finite external edit is reconciled. BrokenWorkspaceReady removes only the internal-output classification guard and has a fair scan/restart cycle without admission. The private real-owner regression holds reconciliation, emits activity-file output throughout scans, obtains workspace_pending before admission, then requires a successful knowledge_write, byte-identical same-operation replay, one signed write_prepared and written event, plus independent chat and self_status. The held-scan witness retains exclusion, cross-root progress and document refresh. make verify-workspace-ready compares both full native/Java TLC reachable graphs and the pass/liveness verdicts; the whole-corpus receipt is not claimed by that focused check."
 checks = ["make test-formal", "make test"]
 
 [[contract]]
@@ -99,6 +181,26 @@ sources = ["crates/bbt-mux/src/plugins/hooks.rs", "crates/bbt-mux/src/plugins/ho
 implementation_tests = ["crates/bbt-mux/tests/plugin_host.rs", "crates/bbt-plugin/tests/policy.rs", "crates/bbt-plugin-sdk/src/runtime.rs"]
 assumptions = "One plugin, activation generations 1..3 (disable, enable and re-trust without the block grant each advance it), a host subscription snapshot that lags until a reconcile, a two-slot queue standing for HOOK_QUEUE, and one blocking decision with a two-tick ceiling. notify, reconcile, queue offers and dequeues are atomic and interleave freely; no fairness is assumed. Several subscribers, payload grants, bus subject matching, JSON-RPC transport and real deadlines use implementation tests."
 property = "A queued hook is delivered only to the enabled activation whose generation it was offered under, otherwise it is refused as stale; an offer beyond the queue is dropped and counted, never waited for. A blocking decision is made only for a subscriber holding the block grant, waits at most the ceiling, and a timeout or a reply from a superseded activation follows the grant's failure policy. The broken control delivers queued items without the generation check and must fail safety. tests/plugin_host.rs hooks_receive_harness_and_bus_events_with_payload_only_when_granted and blocking_hooks_veto_only_with_a_grant_and_time_out_by_policy are API witnesses."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "PluginHookQueue"
+title = "Plugin hook queue: many plugins share one bounded FIFO; superseded deliveries are never delivered"
+models = ["PluginHookQueue", "BrokenPluginHookQueue"]
+sources = ["crates/bbt-mux/src/plugins/hooks.rs", "crates/bbt-mux/src/models.rs"]
+implementation_tests = ["crates/bbt-mux/tests/plugin_host.rs"]
+assumptions = "Two plugins of one root, a FIFO of two slots (HOOK_QUEUE abstracted) and three offers; each queued delivery records its plugin and that plugin's activation generation; any plugin may be disabled or re-enabled (its generation superseded) at any time; a full queue drops and counts. Delivery timing, budgets, grants and payloads are covered by PluginHook and implementation tests."
+property = "The head is delivered only while its plugin's generation is current, otherwise it is skipped as stale (NoInvalidEffect), and every queued delivery's generation is at most its plugin's current one (QueuedGenerationsNeverAhead, a bounded \\A over the slots with dynamic-index reads). The broken control delivers a stale head and must fail safety. Witness: tests/plugin_host.rs hook_deliveries_are_measured_and_superseded_ones_are_named_skips. Shipped as crates/bbt-mux/models/PluginHookQueue.tla."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "PluginRuntime"
+title = "Plugin SDK runtime: bounded admission, cancellation and host callbacks during a call"
+models = ["PluginRuntime", "BrokenPluginRuntime"]
+sources = ["crates/bbt-plugin-sdk/src/runtime.rs", "crates/bbt-plugin-sdk/src/lib.rs", "crates/bbt-plugin-sdk/src/models.rs"]
+implementation_tests = ["crates/bbt-plugin-sdk/src/runtime.rs", "crates/bbt-mux/tests/plugin_sdk_examples.rs"]
+assumptions = "One plugin process, one worker and its reader thread; at most two admitted requests in this instance (MAX_PENDING abstracted; others are refused busy). A served call may ask the host once; the host answers or the call is cancelled. Fair reader, worker and host steps. Deadlines, frame and result limits, panics and the JSON-RPC wire are unit-tested."
+property = "Every admitted request is answered exactly once (EveryAdmittedRequestIsAnswered; AnsweredAtMostAdmitted) even while its call waits for a host answer that only the reader routes, and a cancelled call answers cancelled and drops a late host answer. The broken control lets the reader wait for the worker while the worker waits for the host and must fail liveness. Witnesses: runtime.rs host_requests_made_while_serving_a_call_are_answered_through_the_reader and rejects_parse_errors_and_requests_beyond_the_pending_bound. Shipped as crates/bbt-plugin-sdk/models/PluginRuntime.tla for plugin authors."
 checks = ["make test-formal", "make test"]
 
 [[contract]]
@@ -207,7 +309,7 @@ title = "Per-seat ingestion progress"
 models = ["SeatFairness", "BrokenSeatFairness"]
 sources = ["crates/bbt-mux/src/logic.rs"]
 implementation_tests = ["crates/bbt-mux/src/logic/ring_batch_tests.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/tests/logic.rs", "crates/bbt-mux/tests/common/capture_priority.rs"]
-assumptions = "One continuously ready watched seat, one background seat, watched quota 3 and optional watched checkpoint pause. Scheduler turns are weakly fair. The unchanged native 3:1 quota and eight-turn floor count runnable owner scheduling turns, not independently completing RPCs while a seat awaits its parser. A real fixed-page-budget witness checks watched-tail publication with background backlog and exact serial screens. Completion readiness, CPU deadlines and larger rings are implementation/performance coverage; SeatIngestion supplies the independent pending-work projection."
+assumptions = "One continuously ready watched seat, one background seat, watched quota 3 and optional watched checkpoint pause. Scheduler turns are weakly fair. The unchanged native 3:1 quota and eight-turn floor count runnable owner scheduling turns, not independently completing RPCs while a seat awaits its parser. A real fixed-page-budget witness checks watched-tail publication with background backlog and exact serial screens. The immediate-reply synthetic ring sweep gives each seat 3 * (3 + 1) * SEATS runnable owner opportunities: ring/history-parser admission, history publication/live-parser admission, then live publication, each served within one 3:1 queue rotation. Unfinished parser CPU jobs do not spend that seat's owner budget; 300 seconds is only a hang guard. A four-seat withheld-reader control must fail the turn bound. This quantitative fixture bound is implementation coverage, not a new bounded OS/Tokio scheduling claim in the two-seat model. Completion readiness, CPU deadlines and larger rings are implementation/performance coverage; SeatIngestion supplies the independent pending-work projection."
 property = "The background seat progresses even with a hot watched seat; a watched checkpoint pause is local."
 checks = ["make test-formal", "make test"]
 
@@ -235,9 +337,9 @@ checks = ["make test-formal", "make test"]
 name = "LandingVerification"
 title = "Source-bound formal evidence before landing"
 models = ["LandingVerification", "BrokenLandingVerification"]
-sources = ["scripts/landing.py", "scripts/formal.py", "Makefile"]
-implementation_tests = ["scripts/test-landing.py"]
-assumptions = "Three candidate identities, two remote bases and one input mutation. Checks abstract successful complete executions; Git atomic fast-forward and cryptographic signatures require real landing fixtures. The model requires fresh Rust checks; the implementation may reuse them only through its existing disjoint-change proof."
+sources = ["scripts/landing.py", "scripts/formal.py", "scripts/formal-stage.py", "scripts/quarantine.py", "scripts/invariants.sh", "scripts/ci-local.sh", "Makefile"]
+implementation_tests = ["scripts/test-landing.py", "scripts/test-formal.py", "scripts/test-landing-budget-controls.py"]
+assumptions = "Three candidate identities, two remote bases and one input mutation. Checks abstract successful complete executions; Git atomic fast-forward and cryptographic signatures require real landing fixtures. RustChecksPass abstracts source-bound successful checks, including a retained check after the implementation proves an equivalent source tree. R5 permits that equivalence only for a signed records-only tree delta, with submodule ignoring disabled, no executable invariant-directory delta or code-named record, passing records gates and intact unchanged formal inputs; the current-source receipt records the original checked evidence. Eligibility and receipt rebinding use Git/process controls, not a new unchecked publication transition. Per-model deterministic verdict memoization supplies the same NativeAndTlcAgree action only after current export TLA/config/native-graph bytes, independent expectation, contract metadata, all tool pins and the Python/native checker-source digest equal a validated immutable archived model; the full receipt still binds current candidate/input hashes. Quarantine observations discharge only the same attempt/source/target's exact observed passing invariant, with ignored/filtered tests still executed. Byte-key validation, coverage parsing and advisory timing allocations have Python/process controls; these pure evidence predicates add no publication authority or model transition. Full postsubmit never reuses model verdicts."
 property = "Publishing needs clean current-source Rust and formal evidence, matching model inputs and remote base; old or partial evidence cannot authorize a push."
 checks = ["make test-formal", "make test"]
 
@@ -277,7 +379,7 @@ title = "Original document effects have a read-only scoped recovery path"
 models = ["OperationRecovery", "BrokenOperationRecovery"]
 sources = ["crates/bbt-mux/src/mcp/journal.rs", "crates/bbt-mux/src/mcp/recovery.rs", "crates/bbt-mux/src/logic.rs"]
 implementation_tests = ["crates/bbt-mux/src/mcp/journal.rs", "crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/tests/knowledge.rs"]
-assumptions = "One operation, two roots and actors, two launch generations; journal admission/completion and lookup are atomic. Context changes include A-B-A. No fairness or eventual completion is assumed: missing or interrupted outcomes stay unknown. SQL durability, signing, paths, byte bounds and retained process transport use implementation tests; no arbitrary Rust refinement proof."
+assumptions = "One operation, two roots and actors, two launch generations; journal admission/completion and lookup are atomic. Context changes include A-B-A. No fairness or eventual completion is assumed: missing or interrupted outcomes stay unknown. SQL durability, signing, paths, byte bounds and retained process transport use implementation tests; no arbitrary Rust refinement proof. Argument hashes abstract sorted JSON bytes independent of map iteration; argument_digest_keeps_legacy_sorted_bytes_for_nested_reordered_json and the MCP reordered-retry witness check this assumption with ACP-agent enabled."
 property = "A lookup neither dispatches effects nor exposes another actor/root's result nor converts missing evidence to a terminal verdict. Broken controls redispatch an unknown write, leak another context and treat missing as terminal."
 checks = ["make test-formal", "make test"]
 
@@ -292,6 +394,16 @@ property = "Only own-seat rows publish under the captured current authority/work
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "DiagnosticRouting"
+title = "Private fixture diagnostics cannot reach an inherited operator run"
+models = ["DiagnosticRouting", "BrokenDiagnosticRouting"]
+sources = ["crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/cockpit.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/diagnostics.rs"]
+assumptions = "One private fixture, one inherited operator run and one report each from provider and ctl. Account/bootstrap selection and reports are atomic. No fairness or delivery guarantee is assumed; datagram loss, filesystem bounds, malformed CLI routing, real provider processes and exact redaction use private process witnesses. This is a routing specification, not a whole-Rust refinement proof. Optional JSON-RPC probe classification is stateless and checked by actual bridge responses and retained tool failures."
+property = "Private account/bootstrap ownership selects the private run before the once-only producer is configured. Neither producer reaches the operator run. The broken control pins the inherited operator run before private configuration."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "ImportStaging"
 title = "Internal staging cannot spend reserved record numbers"
 models = ["ImportStaging", "BrokenImportStaging"]
@@ -301,6 +413,26 @@ assumptions = "One import, one ordinary writer and one observer; stage, observe,
 property = "Private staging never produces an artifact observation or spends a record number; ordinary writes may invalidate a range and require a truthful retry. The broken control observes staging."
 checks = ["make test-formal", "make test"]
 
+
+[[contract]]
+name = "RecordNumberCache"
+title = "Cached record numbers are served only for an unchanged file stamp"
+models = ["RecordNumberCache", "BrokenRecordNumberCache"]
+sources = ["crates/bbt-mux/src/index.rs", "crates/bboxy450-term/tests/formal_contracts/provenance_models.rs"]
+implementation_tests = ["crates/bbt-mux/src/index.rs"]
+assumptions = "One record file, numbers A/B/A/B over three edits. Every edit advances the stamp (device, inode, size, mtime and ctime with nanoseconds; ctime cannot be restored by a writer). A lookup stats, then hits or parses; edits interleave between the stat and the parse. The cache is shared by clones of one root under its mutex and keeps only files seen by the last scan. Directory traversal, YAML parsing, the OS write lock and filesystem timestamp granularity are implementation-tested, not modelled."
+property = "A hit returns the number of the file that was statted, and an entry labelled with the current stamp names the current number (HitReturnsTheStattedNumber, CurrentStampNamesCurrentNumber). The broken control's stamp ignores a same-length edit and must fail. Witness: index.rs record_numbers_reuse_unchanged_files_and_see_same_length_edits restores mtime after a same-length edit; removing ctime from the stamp fails it."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ProjectionPacing"
+title = "Paced artifact projection eventually drains a bounded backlog"
+models = ["ProjectionPacing", "BrokenProjectionPacing"]
+sources = ["crates/bbt-mux/src/provenance/engine.rs", "crates/bboxy450-term/tests/formal_contracts/provenance_models.rs"]
+implementation_tests = ["crates/bbt-mux/tests/provenance.rs", "crates/bbt-mux/src/logic.rs"]
+assumptions = "Two arrivals, one projection per turn and a two-tick rest. Rest expiry, projection and logic-owner steps are weakly fair; arrivals are not. A real turn projects rows until an 8 ms budget is spent, then rests eight times its duration (at most 5 s); artifact Markdown is an eventually consistent projection of the signed activity log, and an interrupted batch is re-projected idempotently from its persisted cursor. Wall-clock costs, fsync and signing are implementation-tested."
+property = "Every backlog is eventually projected (BacklogEventuallyProjected). The rest is set only after a turn that wrote; the broken control renews it on every logic step and starves projection, which must fail liveness."
+checks = ["make test-formal", "make test"]
 
 [[contract]]
 name = "HistoricalReconcile"
@@ -348,7 +480,7 @@ title = "Native and ctl key press ownership"
 models = ["NativeInputOwnership", "BrokenNativeInputOwnership"]
 sources = ["crates/bboxy450-term/src/keyboard.rs", "crates/bboxy450-term/src/main.rs"]
 implementation_tests = ["crates/bboxy450-term/src/main.rs", "scripts/e2e/keyboard_checks.py"]
-assumptions = "One physical key, local ownership bit and Command bit, initially clear. Press, modifier change, repeat and release are atomic UI-owner turns; all interleavings including returning to the same key are explored. No fairness/liveness claim: the app cannot force a platform release. Character mapping, locks, IME bytes, pointer geometry, transport and PTY scheduling use native/API and raw-process tests."
+assumptions = "One physical key, local ownership bit and Command bit, initially clear. Press, modifier change, repeat and release are atomic UI-owner turns; all interleavings including returning to the same key are explored. No fairness/liveness claim: the app cannot force a platform release. Character mapping, locks, IME bytes, pointer geometry, transport and PTY scheduling use native/API and raw-process tests. The startup modal uses the same local ownership bit; startup_modal_owns_normalized_keys_and_cursors_until_attachment witnesses cold/failure admission, Retry/Quit, and held-key suppression after attachment. Modal visibility/failure transitions, IME blocking and control cursors remain implementation-only coverage in that private headless fixture and cockpit::startup::tests::startup_modal_tracks_progress_failure_retry_and_reattach; no new lifecycle model or arbitrary Rust refinement is claimed."
 property = "A locally owned press cannot leak its repeat or release after Command disappears. A new terminal press clears the old local ownership. The broken control drops that ownership guard."
 checks = ["make test-formal", "make test"]
 
@@ -370,6 +502,16 @@ sources = ["crates/bboxy450-term/src/knowledge.rs"]
 implementation_tests = ["crates/bboxy450-term/tests/knowledge_e2e.rs", "crates/bbt-ui/tests/graphs.rs", "scripts/e2e/decisions.py"]
 assumptions = "Two queries and one opaque token, initially unseen in each query. Page admission is atomic in the existing single-outstanding Graph consumer. No scheduling/fairness claim. Existing WorkspaceFence covers provider/root epochs; real query DTOs, repeated-token refusals, decision type filtering, typed edges and produced native paint use API/process tests."
 property = "The same opaque token can occur in independent E2E/decision queries without a false duplicate refusal. A repeat inside one query still fails in the real loader. The broken control shares the cursor set across queries."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "TaskBytePage"
+title = "Byte-bounded task summary pages retain every ordered task"
+models = ["TaskBytePage", "BrokenTaskBytePage"]
+sources = ["crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-mux/src/mcp/read_pages.rs", "crates/bbt-mux/src/mcp/journal.rs", "crates/bbt-mux/src/knowledge/bboxy.rs", "crates/bbt-mux/src/mcp/messaging.rs", "crates/bbt-mux/src/messaging/ledger.rs", "crates/bboxy450-term/tests/formal_contracts/task_page_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/mcp/work_items_inventory_tests.rs", "crates/bboxy450-term/tests/messaging_ui.rs", "crates/bboxy450-term/tests/messaging_flow.rs"]
+assumptions = "One immutable authorized inventory of three ordered IDs, summary costs 1/2/1 and page budget 2. The third source item is oversized and projected to cost 1. Append, publish-prefix and follow-next are atomic caller actions. No fairness assumption or progress claim for an unavailable provider/caller; when the caller follows next, every emitted page advances by a nonempty ordered prefix. Existing workspace and retained-operation guards are unchanged and retain their contracts. Exact UTF-8/JSON escaping, the duplicated MCP envelope, 16 KiB scope margin, metadata/body omission, pathological fields, 128-item lookahead, live inventory changes, IO deadlines and GUI retention/scrolling are implementation-only checks."
+property = "Encoded pages stay within the byte budget, the cursor never skips an unreturned item and next names the last emitted ID. The broken control removes the byte-cut guard and exceeds the bound. The real API witness lists all 160 large-body tasks without response_bound and proves the same uncut projection is refused."
 checks = ["make test-formal", "make test"]
 
 [[contract]]
@@ -420,4 +562,554 @@ sources = ["crates/bboxy450-term/src/stall/load.rs", "crates/bbt-supervisor/src/
 implementation_tests = ["crates/bboxy450-term/src/stall/load.rs", "crates/bbt-supervisor/src/client/tests.rs", "crates/bbt-mux/src/logic/ring_batch_tests.rs", "crates/bbt-mux/tests/logic.rs", "crates/bbt-mux/tests/capture_fairness.rs", "crates/bbt-supervisor/tests/terminal_replies.rs"]
 assumptions = "Two seats, two ordered records each, one read/parse slot per seat; A starts with a held read and history may remain held. Admission, healthy read completion and publication are separate atomic actions, individually weakly fair when enabled. A bounded owner quantum may admit multiple seats; admission is progress even before publication, and seat-local Busy retry clocks eventually become ready. CPU lanes are acquired only after read completion, hold no dependency wait, and service finite page/record quanta fairly; their exact count and throughput are implementation/performance coverage. Typed provider-down admission parks the host and an up transition resumes its pending replay; the real capture_fairness reconnect witness checks this implementation mapping. A permanently failed dependency has no progress promise; B does. The broken control restores one shared head queue, so A prevents B admission and must fail liveness. Real attachment/view incarnation (including A-to-B-to-A), bytes/page/checkpoint limits, duplicate/refused replies, cancellation/restart and live-versus-replay effects use native/API/process witnesses and existing TransportCapture/CheckpointFence contracts. The model does not prove CPU deadlines, arbitrary Rust, filesystem/OS scheduling, the supervisor disk writer or whole-system refinement."
 property = "One bounded next-sequence slot per seat; publication never skips/reorders a record, and every healthy seat drains independently of a held peer/history read."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "FetchBodyPage"
+title = "UTF-8 body continuation has no gap or overlap"
+models = ["FetchBodyPage", "BrokenFetchBodyPage"]
+sources = ["crates/bbt-mux/src/mcp/read_pages.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/mcp/knowledge.rs", "crates/bbt-mux/src/knowledge/seat_reads.rs", "crates/bboxy450-term/tests/formal_contracts/task_page_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/mcp/read_pages.rs", "crates/bbt-mux/tests/knowledge.rs", "crates/bbt-mux/tests/mcp.rs"]
+assumptions = "One immutable etag-bound body with character lengths 2/1/4 and byte boundaries 0/2/3/7. Emit is atomic; weak fairness of each Emit models a caller that continues following next with an available provider. Under that assumption the body completes; no progress claim for an unavailable caller/provider. Real encoding, response envelope, frontmatter projection, stale etags, resources and large corpus IO remain implementation checks."
+property = "The next offset equals bytes already delivered and stays at a UTF-8 boundary, ending at body length. The broken control advances offset past the emitted bytes."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "TaskAmendment"
+title = "Live task amendments: worker authority"
+models = ["TaskAmendment", "BrokenTaskAmendment"]
+sources = ["crates/bbt-mux/src/mcp/knowledge.rs", "crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-mux/src/knowledge/effects.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/messaging/ledger/suppression.rs", "crates/bboxy450-term/tests/formal_contracts/task_amend_model.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/src/messaging/service/suppression_tests.rs"]
+assumptions = "One task with eight lifecycle states, four caller classes (worker, exact delegator, same-swarm other Oracle, foreign Oracle), two amendments and two verify commands including A-B-A; host verification/report revisions start at zero. Final authorization/digest validation and publication are atomic in this projection; filesystem races after the last check, SQL, restart durability, cryptography, source bytes and real delivery/readiness use API witnesses. Weak fairness applies only to delivery to a healthy admitted receiver; no custody recovery, native readiness or wall-clock deadline is assumed. Other lifecycle operations retain implementation tests and their existing contracts; no whole-Rust refinement claim."
+property = "Only the exact delegating Oracle in the task swarm changes a nonterminal brief; lifecycle, assignee, report and verify_result are preserved. Accepted/closed briefs and stale-etag writes have no effects. Every verify change advances a protected revision, so acceptance needs a fresh report even after A-B-A. Signed amendment wakes join the root-bound delegation thread and bypass receiver inbox-only conversation policy. This independent broken control removes the worker authority guard."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "TaskAmendmentDelegator"
+title = "Live task amendments: exact delegator ownership"
+models = ["TaskAmendmentDelegator", "BrokenTaskAmendmentDelegator"]
+sources = ["crates/bbt-mux/src/mcp/knowledge.rs", "crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-mux/src/knowledge/effects.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/messaging/ledger/suppression.rs", "crates/bboxy450-term/tests/formal_contracts/task_amend_model.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/src/messaging/service/suppression_tests.rs"]
+assumptions = "One task with eight lifecycle states, four caller classes (worker, exact delegator, same-swarm other Oracle, foreign Oracle), two amendments and two verify commands including A-B-A; host verification/report revisions start at zero. Final authorization/digest validation and publication are atomic in this projection; filesystem races after the last check, SQL, restart durability, cryptography, source bytes and real delivery/readiness use API witnesses. Weak fairness applies only to delivery to a healthy admitted receiver; no custody recovery, native readiness or wall-clock deadline is assumed. Other lifecycle operations retain implementation tests and their existing contracts; no whole-Rust refinement claim."
+property = "Only the exact delegating Oracle in the task swarm changes a nonterminal brief; lifecycle, assignee, report and verify_result are preserved. Accepted/closed briefs and stale-etag writes have no effects. Every verify change advances a protected revision, so acceptance needs a fresh report even after A-B-A. Signed amendment wakes join the root-bound delegation thread and bypass receiver inbox-only conversation policy. This independent broken control removes the exact delegator ownership guard."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "TaskAmendmentTerminal"
+title = "Live task amendments: terminal record freeze"
+models = ["TaskAmendmentTerminal", "BrokenTaskAmendmentTerminal"]
+sources = ["crates/bbt-mux/src/mcp/knowledge.rs", "crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-mux/src/knowledge/effects.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/messaging/ledger/suppression.rs", "crates/bboxy450-term/tests/formal_contracts/task_amend_model.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/src/messaging/service/suppression_tests.rs"]
+assumptions = "One task with eight lifecycle states, four caller classes (worker, exact delegator, same-swarm other Oracle, foreign Oracle), two amendments and two verify commands including A-B-A; host verification/report revisions start at zero. Final authorization/digest validation and publication are atomic in this projection; filesystem races after the last check, SQL, restart durability, cryptography, source bytes and real delivery/readiness use API witnesses. Weak fairness applies only to delivery to a healthy admitted receiver; no custody recovery, native readiness or wall-clock deadline is assumed. Other lifecycle operations retain implementation tests and their existing contracts; no whole-Rust refinement claim."
+property = "Only the exact delegating Oracle in the task swarm changes a nonterminal brief; lifecycle, assignee, report and verify_result are preserved. Accepted/closed briefs and stale-etag writes have no effects. Every verify change advances a protected revision, so acceptance needs a fresh report even after A-B-A. Signed amendment wakes join the root-bound delegation thread and bypass receiver inbox-only conversation policy. This independent broken control removes the terminal record freeze guard."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "TaskAmendmentVerify"
+title = "Live task amendments: verification revision freshness"
+models = ["TaskAmendmentVerify", "BrokenTaskAmendmentVerify"]
+sources = ["crates/bbt-mux/src/mcp/knowledge.rs", "crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-mux/src/knowledge/effects.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/messaging/ledger/suppression.rs", "crates/bboxy450-term/tests/formal_contracts/task_amend_model.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/src/messaging/service/suppression_tests.rs"]
+assumptions = "One task with eight lifecycle states, four caller classes (worker, exact delegator, same-swarm other Oracle, foreign Oracle), two amendments and two verify commands including A-B-A; host verification/report revisions start at zero. Final authorization/digest validation and publication are atomic in this projection; filesystem races after the last check, SQL, restart durability, cryptography, source bytes and real delivery/readiness use API witnesses. Weak fairness applies only to delivery to a healthy admitted receiver; no custody recovery, native readiness or wall-clock deadline is assumed. Other lifecycle operations retain implementation tests and their existing contracts; no whole-Rust refinement claim."
+property = "Only the exact delegating Oracle in the task swarm changes a nonterminal brief; lifecycle, assignee, report and verify_result are preserved. Accepted/closed briefs and stale-etag writes have no effects. Every verify change advances a protected revision, so acceptance needs a fresh report even after A-B-A. Signed amendment wakes join the root-bound delegation thread and bypass receiver inbox-only conversation policy. This independent broken control removes the verification revision freshness guard."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "TaskAmendmentEtag"
+title = "Live task amendments: etag freshness"
+models = ["TaskAmendmentEtag", "BrokenTaskAmendmentEtag"]
+sources = ["crates/bbt-mux/src/mcp/knowledge.rs", "crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-mux/src/knowledge/effects.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/messaging/ledger/suppression.rs", "crates/bboxy450-term/tests/formal_contracts/task_amend_model.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/src/messaging/service/suppression_tests.rs"]
+assumptions = "One task with eight lifecycle states, four caller classes (worker, exact delegator, same-swarm other Oracle, foreign Oracle), two amendments and two verify commands including A-B-A; host verification/report revisions start at zero. Final authorization/digest validation and publication are atomic in this projection; filesystem races after the last check, SQL, restart durability, cryptography, source bytes and real delivery/readiness use API witnesses. Weak fairness applies only to delivery to a healthy admitted receiver; no custody recovery, native readiness or wall-clock deadline is assumed. Other lifecycle operations retain implementation tests and their existing contracts; no whole-Rust refinement claim."
+property = "Only the exact delegating Oracle in the task swarm changes a nonterminal brief; lifecycle, assignee, report and verify_result are preserved. Accepted/closed briefs and stale-etag writes have no effects. Every verify change advances a protected revision, so acceptance needs a fresh report even after A-B-A. Signed amendment wakes join the root-bound delegation thread and bypass receiver inbox-only conversation policy. This independent broken control removes the etag freshness guard."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ReportProvenance"
+title = "Immutable assigned-task reports and checked acceptance links"
+models = ["ReportProvenance", "BrokenReportProvenance"]
+sources = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/knowledge/effects.rs", "crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-doc/src/reports.rs"]
+implementation_tests = ["crates/bbt-mux/src/knowledge/effects.rs", "crates/bbt-mux/tests/mcp.rs", "crates/bbt-doc/tests/corpus/reports.rs"]
+assumptions = "One already reported task and two owner identities including A-B-A (revision 0..2), one absent/own/foreign report and one optional link. Preparation captures the task digest/revision; publication rechecks it. Final validation/publication is one atomic model action; external edits racing its last read and filesystem transactions are outside this abstraction; an external editor may delete/corrupt a report before acceptance. No scheduling fairness or eventual acceptance promise: each command completes or refuses. Filesystem durability, signatures, provider/authority revision fences, number allocation, full source/commit tree resolution and unbounded histories use native API and Git fixtures; no Rust refinement claim."
+property = "A worker creates reports only for its assigned task, reports cannot be rewritten, and acceptance with a link requires a present report naming that task. Broken controls remove ownership, immutability, task revision and linked acceptance guards."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "RoutingCache"
+title = "Seat routing invalidates on every committed registry mutation"
+models = ["RoutingCache", "BrokenRoutingCache"]
+sources = ["crates/bbt-mux/src/registry.rs", "crates/bbt-mux/src/registry/routing.rs", "crates/bbt-mux/src/logic.rs"]
+implementation_tests = ["crates/bbt-mux/src/registry/routing.rs", "crates/bbt-mux/src/knowledge/routing_tests.rs"]
+assumptions = "The active logic process owns registry writes; every Registry handle for the canonical account path shares a monotonic in-process epoch. Mutations commit before bumping it and return only after invalidation. Cache load/use and a completed registry write are atomic abstract actions. Epochs 0..2, two routes, two requested generations, one seat, initially empty cache; writes include A to B to A. Provenance binding caches match the requested process generation as well as the registry epoch, validate the current root/watch in memory, and retain only one entry per seat. Failed workspace registration/root persistence is never cached. Delayed loads retain the generation and epoch captured at admission. No fairness is needed for this safety property. Concurrent reads overlapping a write may linearize before it; miss entries retain their starting epoch and cannot survive its invalidation. Direct external SQLite edits/replacement are outside this routing-hint cache contract; fresh authority/grant reads remain uncached. Restart creates a fresh cache. SQLite persistence/failures, path aliasing and thread scheduling use implementation tests, not a refinement proof."
+property = "A cache hit has the current write epoch, route and requested generation, including A to B to A. The stale-cache broken control omits the epoch guard and must fail safety. API witnesses use separately constructed handles and fresh authority reads."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "InodeFence"
+title = "Cached SQLite connections never cross database inode replacement"
+models = ["InodeFence", "BrokenInodeFence"]
+sources = ["crates/bbt-mux/src/store/sqlite.rs", "crates/bbt-mux/src/store/sqlite/path_fence.rs"]
+implementation_tests = ["crates/bbt-mux/src/store/sqlite/path_fence.rs", "crates/bbt-mux/src/store/sqlite/power_tests.rs"]
+assumptions = "Two inode identities, one cached connection, initially matching path/inode and an armed unchanged watch. Path replacement and its synchronous kernel vnode notification are one abstract action; replacement can occur repeatedly including A to B to A. A zero-time kevent poll is the reuse observation, with the same subsequent check-to-use race as the old path stat. Only canonical absolute paths with all lexical ancestors watched qualify; symlink aliases, registration/poll errors and resource exhaustion fall back to path stat. Ancestor directory entry writes/rename/delete/revoke conservatively invalidate. Registration precedes a final path identity check. Non-macOS always uses the original stat. No fairness is needed for safety. Native tests cover leaf replacement while the old inode remains linked, parent/ancestor replacement, alias refusal, new SQLite values and ordinary WAL writes. Kernel kqueue correctness and arbitrary filesystem behavior are assumptions, not Rust/TLC refinement."
+property = "Reuse requires the cached inode to match the current path inode; uncertainty requires rechecking. BrokenInodeFence ignores invalidation and must fail safety. Extra directory/queue descriptors live only with leased/pooled connections; idle connections retain the existing 64-entry cap, and monitor allocation failure safely restores per-read stat."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "PluginHookBudget"
+title = "Persistent generation-bound slow-hook warnings and skips"
+models = ["PluginHookBudget", "BrokenPluginHookBudget"]
+sources = ["crates/bbt-mux/src/plugins/hook_budget.rs", "crates/bbt-mux/src/plugins/hooks.rs", "crates/bbt-mux/src/plugins/measure.rs"]
+implementation_tests = ["crates/bbt-mux/tests/plugin_host.rs", "scripts/e2e/G3.sh"]
+assumptions = "One event, three activation generations, one captured call and a counter bounded at three. Registry transactions and reset are atomic. Completion timing is abstracted to healthy/overrun; no scheduling fairness is required for safety. Restart preserves the account row. Multiple subscriptions, real clocks, bounded observational sample rings, SQLite durability and process cancellation use implementation and private app tests; no Rust refinement or timing proof is claimed."
+property = "Three consecutive measured overruns latch a skip; healthy completion clears only an unlatched counter. Re-enable/re-pin resets by generation, and a late completion cannot affect a new activation, including A-B-A. Broken controls remove generation/skip guards. G3 proves a ten-second SDK hook is cut at its declared budget, warned in Settings, and skipped after three overruns without blocking the UI."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "PluginTransportLaunch"
+title = "Asynchronous transport wrap cannot launch after activation or root replacement"
+models = ["PluginTransportLaunch", "BrokenPluginTransportLaunch"]
+sources = ["crates/bbt-mux/src/models/transport_launch.rs", "crates/bbt-mux/src/logic/plugin_transport.rs", "crates/bbt-mux/src/plugins/host.rs", "crates/bbt-proto/src/seat_state.rs"]
+implementation_tests = ["crates/bbt-mux/tests/plugin_transport.rs", "crates/bboxy450-term/tests/remote_launch.rs"]
+assumptions = "One admitted launch, three activation generations and three workspace revisions (A-B-A uses distinct revisions). Wrap completion and owner launch may interleave with disable, re-enable and workspace changes. No fairness is needed for safety. Pending/terminal retirement and a busy/free host mutex abstract queued/late completion and nonblocking owner refusal; CompleteWrap denotes a result accepted within the worker admission deadline. Command/field values are captured immutable data; actual quoting, schema bounds, SDK stdio, two-second deadlines, process effects, source hashing and journal durability use implementation witnesses. OperationRecovery covers ambiguous native outcomes and duplicate operations. Explicit restart replays retained authorized argv; exact argv persistence and replay use the process witness."
+property = "Only a current captured root and enabled activation may launch a wrap result; retired and duplicate completions cannot launch. The broken control removes the owner fence and must fail safety. The real SDK fixture proves fields to argv without network, a held wrap does not stall logic, disabling in flight prevents launch, and a repeated spawn operation returns the original seat."
+checks = ["make test-formal", "make test"]
+
+
+[[contract]]
+name = "PluginTransportProgress"
+title = "Transport admission terminates without a plugin reply or available worker"
+models = ["PluginTransportProgress", "BrokenPluginTransportProgress"]
+sources = ["crates/bbt-mux/src/models/transport_launch.rs", "crates/bbt-mux/src/logic/plugin_transport.rs", "crates/bbt-mux/src/plugins/host.rs"]
+implementation_tests = ["crates/bbt-mux/src/logic/plugin_transport.rs", "crates/bbt-mux/src/plugins/host.rs", "crates/bbt-mux/tests/plugin_transport.rs"]
+assumptions = "One admission with pending/terminal states, three activation generations and three root revisions including A-B-A, one ready result and one busy/free host mutex. Actions are atomic. Weak fairness is required for the deadline before a result is ready and for the group of owner completion/refusal actions after readiness. Plugin replies, blocking pool capacity, mutex release and owner loss are not fair or required for progress. Control reconciliation before acknowledgement is the activation linearization point. Real elapsed clocks, actual IO, cryptography, command quoting, supervisor effects and durable operation replay use runtime/process witnesses; no arbitrary Rust refinement or physical scheduling deadline proof."
+property = "Every admitted wrap eventually becomes terminal, including a held worker queue or absent reply. Late/duplicate completion after retirement cannot publish another plan. The broken control removes deadline fairness and must fail liveness. Real runtime witnesses bound held-pool admission, cancel queued work, retire a running late reply, reject an already-ready expired plan and refuse a held host mutex without waiting."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "SeatCapabilityEnvironment"
+title = "Admission never enters exec environments"
+models = ["SeatCapabilityEnvironment", "BrokenSeatCapabilityEnvironment"]
+sources = ["crates/bboxy450-harness-wake-up/src/capability.rs", "crates/bboxy450-harness-wake-up/src/launch.rs", "crates/bbt-supervisor/src/supervisor.rs", "crates/bbt-mux/src/mcp/bridge.rs", "crates/bbt-mux/src/adapters/hook.rs", "crates/bboxy450-term/tests/formal_contracts/capability_models.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/capability_file.rs", "scripts/e2e/capability_probe.py", "scripts/test-capability-control.py", "scripts/e2e/shared_codex.py", "scripts/e2e/capability_scan.py", "scripts/test-capability-scan.py"]
+assumptions = "Three distinct generation incarnations, idle/live/stopping phases and one current/old-file marker. Publish a private overlay after exclusive mkdir and descriptor validation, abandon a failed launch plan, request stop, repeated consumer reads and process-exit cleanup are atomic owner actions. The live phase covers both prepared and running overlays. No fairness or liveness claim: a process can remain live/stopping. Unix permission/uid checks, O_EXCL/O_NOFOLLOW, parser bounds, actual process ancestry and old-credential authentication are implementation witnesses, not arbitrary Rust refinement."
+property = "The value never enters an exec environment. The environment control sets it during fresh publication and violates NoAdmissionValueInEnvironment; the real environment reintroduction control fails the child process scan."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "SeatCapabilityCleanup"
+title = "Admission files share their launch overlay lifetime"
+models = ["SeatCapabilityCleanup", "BrokenSeatCapabilityCleanup"]
+sources = ["crates/bboxy450-harness-wake-up/src/capability.rs", "crates/bboxy450-harness-wake-up/src/launch.rs", "crates/bbt-supervisor/src/supervisor.rs", "crates/bbt-mux/src/mcp/bridge.rs", "crates/bbt-mux/src/adapters/hook.rs", "crates/bboxy450-term/tests/formal_contracts/capability_models.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/capability_file.rs", "crates/bboxy450-harness-wake-up/tests/seat_wiring.rs", "scripts/e2e/capability_probe.py"]
+assumptions = "Three distinct generation incarnations, idle/live/stopping phases and one current/old-file marker. Publish a private overlay after exclusive mkdir and descriptor validation, abandon a failed launch plan, request stop, repeated consumer reads and process-exit cleanup are atomic owner actions. The live phase covers both prepared and running overlays. No fairness or liveness claim: a process can remain live/stopping. Unix permission/uid checks, O_EXCL/O_NOFOLLOW, parser bounds, actual process ancestry and old-credential authentication are implementation witnesses, not arbitrary Rust refinement."
+property = "Exactly the current overlay owns the file until process exit, and no old path remains after cleanup. The omitted-cleanup control retains an old-file marker and violates OverlayOwnsCapabilityFile. The process witnesses check failed Claude wiring cleanup, replacement/close removal, new generation files and server refusal of copied old credentials."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "GitKbIndexFreshness"
+title = "GitKB plugin: the catalog index and its snapshot are served only for the store signal their export read"
+models = ["GitKbIndexFreshness", "BrokenGitKbIndexFreshness"]
+sources = ["plugins/gitkb/src/index.rs", "plugins/gitkb/src/store.rs", "plugins/gitkb/models.rs"]
+implementation_tests = ["plugins/gitkb/src/index.rs", "plugins/gitkb/tests/conformance.rs"]
+assumptions = "Three store generations stand for store signals (stat identity, index.rs store_signal; generations only advance). One call at a time reads the signal and then is served or falls back; one background build at a time reads the signal, exports and re-checks; the process may restart at any point and keeps its snapshot. Build retries (ATTEMPTS), the Listed row layer, workspace preparation, wait budgets and the export's own consistency are implementation-tested."
+property = "The committed layer and the persisted snapshot are each labelled by the generation their export read (CommittedLabelIsItsContent, SnapshotLabelIsItsContent), so a call is served only content of the signal it read (ServedContentIsTheSignalTheCallRead); a store change during an export discards that export. The broken control publishes without the post-export re-check and must fail safety. Witnesses: index.rs snapshots_round_trip_only_for_their_root_signal_and_version, filtered_calls_wait_for_a_build_in_progress and store_signal_follows_manifest_replacement; conformance.rs external edits make old refs and cursors stale. Shipped as plugins/gitkb/models/GitKbIndexFreshness.tla."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "GitKbPaging"
+title = "GitKB plugin: snapshot-bound offset cursors end, with no record twice or skipped"
+models = ["GitKbPaging", "BrokenGitKbPaging"]
+sources = ["plugins/gitkb/src/methods.rs", "plugins/gitkb/src/store.rs", "plugins/gitkb/models.rs"]
+implementation_tests = ["plugins/gitkb/tests/conformance.rs", "crates/bbt-plugin-fixture/tests/doctor.rs"]
+assumptions = "Three records and one source change that inserts a record before them; pages examine one or two records; the host follows next until it is null or refused, weakly fair. Filters, the byte budget's exact cut, cursor expiry after 128 tokens and search ranking are implementation-tested."
+property = "Within one snapshot a walk sees each record at most once (NoRecordTwice) and, when next ends, every record (NoRecordSkipped); a cursor from another snapshot is refused stale_cursor; every walk ends or is refused (EveryWalkEnds). The broken control lets a page stop before examining any record and must fail liveness. Witnesses: conformance.rs paging and stale-cursor checks; the plugin doctor's page.limit, page.cursor and page.order checks on the plugin (make check-gitkb-plugin). Shipped as plugins/gitkb/models/GitKbPaging.tla."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "GitKbAttribution"
+title = "GitKB plugin: a git-kb child carries no other call's attribution, and index builds carry none"
+models = ["GitKbAttribution", "BrokenGitKbAttribution"]
+sources = ["plugins/gitkb/src/backend.rs", "plugins/gitkb/src/main.rs", "plugins/gitkb/src/index.rs", "plugins/gitkb/models.rs"]
+implementation_tests = ["plugins/gitkb/tests/conformance.rs", "crates/bbt-plugin-fixture/tests/doctor.rs"]
+assumptions = "Two seats; one call and one call child at a time, and one index child concurrently. Today the backend environment is scrubbed and extended only while binding the root, and no call writes attribution into it, so attribution reaches no child; per-child delivery of a call's own attribution is not on main. The scrubbed allowlist itself is implementation-tested."
+property = "A call's git-kb child carries no attribution or its own call's (ChildCarriesOnlyItsOwnCallsAttribution) and an index build's children carry none (IndexChildrenAreUnattributed). The broken control has a call write its attribution into the shared backend environment and must fail safety. Witnesses: backend.rs scrubbed environment; the plugin doctor's env.children control. Shipped as plugins/gitkb/models/GitKbAttribution.tla."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "InputDedupEviction"
+title = "Bounded terminal receipts preserve fresh input progress"
+models = ["InputDedupEviction", "BrokenInputDedupEviction"]
+sources = ["crates/bbt-supervisor/src/supervisor.rs", "crates/bbt-supervisor/src/protocol.rs", "crates/bbt-mux/src/provider/mod.rs", "crates/bboxy450-term/tests/formal_contracts/input_dedup_model.rs"]
+implementation_tests = ["crates/bbt-supervisor/tests/supervisor.rs", "crates/bbt-supervisor/src/supervisor.rs", "crates/bbt-mux/tests/input_diagnostics.rs"]
+assumptions = "One supervisor actor, two receipt slots, four distinct fresh admissions and at most one pending write. Initially no receipts/admissions; states are vacant, pending, PTY-written and partial-unknown. Admission with oldest-terminal eviction is atomic; completion or timeout is a separate atomic action and can be delayed. Retained replay, conflicting bytes and Busy refusal do not mutate receipts. Admission and the completion/timeout group are weakly fair; success of a PTY write is not assumed. The finite prefix checks progress past capacity, not unbounded Rust refinement. Existing InputReceipt covers lease fencing and at-most-once effects while retained; byte digests, guard changes, process restart, transport loss and real timer/OS behavior use native witnesses. Pending exclusion, PartialUnknown eviction, exact map/deque bounds and the 4097th real PTY input are implementation-tested. Evicted-ID reuse is deliberately a new operation, witnessed by the real PTY test, not a lifetime at-most-once guarantee. Diagnostic seat identity uses a private provider/journal witness, not this state projection."
+property = "The bounded FIFO keeps the newest two admitted receipts, never evicts pending input, and admits beyond capacity once writes finish or time out. Removing only eviction leaves a full terminal map that refuses fresh input forever and must fail liveness in native and TLC."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "CodexMcpReadiness"
+title = "Every Codex launch waits for its own bboxy tool catalog"
+models = ["CodexMcpReadiness", "BrokenCodexMcpReadiness"]
+sources = ["crates/bboxy450-harness-wake-up/src/launch.rs", "crates/bbt-mux/src/logic.rs", "crates/bboxy450-term/tests/formal_contracts/launch_readiness.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp/launch.rs"]
+assumptions = "Three launch doors, two generations and one catalog readiness value. Launch, connect, failure, start and restart are atomic; delayed old-generation completions and duplicate retained operations may interleave. No fairness or eventual dependency recovery is assumed. The model abstracts Codex's required-server startup contract; native Codex implementation, physical startup latency, user config filtering and remote services are outside the projection."
+property = "A session starts only with the current generation's catalog. Restart requires fresh readiness; failure cannot start a session. The broken control restores optional startup and starts before the catalog is ready. The API witness captures real launch plans from GUI, ctl, MCP and its ctl alias, checks fresh/resume settings and replay, and authenticates orient plus the required tool catalog with each generated admission file."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "SeatLaunchEnvironment"
+title = "Caller harness session identity never crosses backend or seat exec"
+models = ["SeatLaunchEnvironment", "BrokenSeatLaunchEnvironment"]
+sources = ["crates/bboxy450-harness-wake-up/src/guard/environment.rs", "crates/bboxy450-harness-wake-up/src/guard.rs", "crates/bboxy450-harness-wake-up/src/launch.rs", "crates/bbt-supervisor/src/protocol.rs", "crates/bbt-supervisor/src/supervisor/environment.rs", "crates/bbt-supervisor/src/supervisor.rs", "crates/bbt-supervisor/src/supervisor/companion.rs", "crates/bboxy450-term/src/cockpit.rs", "crates/bboxy450-term/src/ctl/app.rs", "crates/bboxy450-term/tests/formal_contracts/launch_environment.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/cockpit/launch_environment.rs", "crates/bboxy450-term/src/cockpit/environment_tests.rs", "crates/bboxy450-term/tests/swarm_workdir/launch_context.rs", "crates/bboxy450-term/tests/swarm_workdir/agent_context.py", "scripts/rich-launch-context-control.py"]
+assumptions = "One caller marker bit, one owner with absent/fresh/retained origin and three seat births. Caller environment changes (including A-B-A), backend start/reattach/restart and seat exec are atomic snapshots; no fairness or liveness guarantee is assumed. A current owner started through another path may still carry caller markers, so seat exec scrubs independently. Every per-harness launch plan supplies immutable exact/prefix removal-rule names; the generic host consumes these after overrides. An unupgraded owner binary is outside this implementation witness and must restart to apply host changes. The string policy, every built-in harness profile, companion overrides, authentication/configuration preservation, real PTYs and process environments use implementation witnesses; this is not arbitrary Rust refinement or a proof of native harness transcript persistence. Bare plugin login terminals retain their explicit environment contract and are outside this seat policy."
+property = "Fresh backends and all newly executed seats have no caller session marker. Broken controls omit respectively the final seat scrub and backend startup scrub, and must fail safety. A separate real-App fixture executes Codex/Claude compatibility children and a loopback native model: each calls its actual admitted root MCP for orient and task_status, proving role/name/cwd/workflow and assigned task body without reading capability values. Removing only native workflow forwarding makes the actual downstream system-message assertion fail. The compatibility children retain quoted names, spaced cwd, authenticated generations 1/2 and native resume IDs. The Codex fixture emits a documented SessionStart hook with a private fixture UUID before Restart; without a native identity, Restart intentionally becomes a shell. This context check is implementation-only: the marker-bit model does not prove commercial vendor/model semantics or ACP context forwarding. A private polluted-parent supervisor launches claude/codex/zsh/pi/omp plans and companions, with and without stale overrides and a pre-existing persistence preference; captures assert exact marker absence, consumed rule data and retained config/wiring. make test-boundaries runs this private PTY witness explicitly. An unscrubbed real process is the implementation negative control."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "BackendLaunchEnvironment"
+title = "A fresh detached backend has no caller harness session identity"
+models = ["BackendLaunchEnvironment", "BrokenBackendLaunchEnvironment"]
+sources = ["crates/bboxy450-harness-wake-up/src/guard/environment.rs", "crates/bboxy450-harness-wake-up/src/guard.rs", "crates/bbt-supervisor/src/supervisor/environment.rs", "crates/bboxy450-term/src/cockpit.rs", "crates/bboxy450-term/src/ctl/app.rs", "crates/bboxy450-term/tests/formal_contracts/launch_environment.rs"]
+implementation_tests = ["crates/bboxy450-term/src/cockpit/environment_tests.rs", "crates/bboxy450-term/tests/cockpit/launch_environment.rs"]
+assumptions = "The same bounded exec-snapshot model as SeatLaunchEnvironment: one caller bit, fresh/retained/absent owner and three seat births, with arbitrary caller A-B-A and owner restart. Startup scrub and exec are one command snapshot before the backend starts. No fairness is needed for safety. An owner started outside app cleanup may be dirty; the independent seat boundary covers that case when the host supports the removal-rule protocol. User configuration and actual OS environment behavior remain process witnesses."
+property = "A freshly started backend never inherits caller harness session identity. The broken control removes the backend scrub while leaving the seat scrub intact and must fail FreshBackendHasNoCallerMarker. The private backend witness runs the actual cockpit child launcher for supervisor, logic and desktop from a polluted parent and verifies that the parent itself was not mutated."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "WheelOwnership"
+title = "Wheel events have an owner under live terminal modes"
+models = ["WheelOwnership", "BrokenWheelOwnership"]
+sources = ["crates/bboxy450-term/src/wheel.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/keyboard.rs", "crates/bboxy450-term/tests/formal_contracts/wheel_model.rs"]
+implementation_tests = ["crates/bboxy450-term/src/wheel.rs", "crates/bboxy450-term/tests/headless.rs"]
+assumptions = "One pointer pane; mouse, alternate-scroll, Shift, historical-view, overlay and current-screen identity bits. Each environment toggle and wheel dispatch is atomic; toggles explore A-B-A changes. No scheduling fairness or PTY/OS progress is assumed. Alternate includes both ALT_SCREEN and ALTERNATE_SCROLL enabled. The source generation fence is abstracted as current_screen. Exact SGR/UTF-8/legacy bytes, fractional deltas, geometry, bounded output, queue refusal, process restart and real application offset use implementation/process witnesses. Input delivery, deduplication and retries retain their existing contracts; no arbitrary Rust refinement is claimed."
+property = "A current live program receives mouse or alternate-scroll input unless Shift or a historical viewport selects host history; a covering surface owns the wheel first. A stale screen refuses explicitly. Broken restores unconditional host-history routing and must violate NoInvalidEffect."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "LatestResult"
+title = "Yarn protocol reducer and current-result freshness"
+models = ["LatestResult", "BrokenLatestResult"]
+sources = ["crates/bbt-yarn-macros/src/protocol.rs", "crates/bbt-yarn-macros/src/verify.rs", "crates/bbt-yarn/src/protocol.rs", "crates/bbt-yarn/src/verify.rs", "crates/bbt-yarn/tests/protocol.rs", "verification/protocol-contracts.toml"]
+implementation_tests = ["crates/bbt-yarn/tests/protocol.rs", "crates/bbt-yarn/tests/protocol_runtime.rs", "crates/bbt-yarn/tests/ui.rs", "scripts/test-protocol-contracts.py", "verification/fixtures/protocol-contracts-dropped-result.json", "verification/golden/latest-result.json", "crates/bbt-yarn/tests/kani/main.rs", "crates/bbt-yarn/tests/kani/proofs.rs"]
+methods = ["native_tlc_differential", "kani_bounded_proof"]
+kani_bounded_proof = { command = "make test-yarn-kani", version = "0.68.0", unwind = 4, inputs = "All generated State representations and five concrete Events, without finite reachability; RESULT-001 is the sole inductive precondition", scope = "Default invariant, panic freedom, one-step inductiveness, reject/ignore input preservation; broken freshness assertion must fail alone. Unwinding assertions stay enabled. No fairness, effect execution, allocation exhaustion, arbitrary Rust or unbounded-domain claim." }
+assumptions = "One owner, atomic step, Id={A,B}; desired/visible start None, submitted/pending start empty. Submit admits each identity once and clears visible; Cancel clears desired/visible but leaves in-flight pending work. Complete accepts only submitted, pending, currently desired identities. Rejected/ignored events stutter without effects. No fairness is assumed and no liveness is claimed. Every RHS and emitted argument reads pre-state. Guard partitions check the full declared finite parameter × guard-read state universe, independently of reachability/invariants, with an explicit 65,536 valuation limit. Effect execution, async adapters and domains larger than declared remain unmodeled. A → B → A identity reuse is explicitly rejected within this universe; generation adapters are not provided."
+property = "RESULT-001: visible.is_none() || visible == desired. Correct declaration has exactly 21 reachable states and 105 enabled labeled edges, all compared with generated Rust steps along reachable paths. Broken declaration removes pending/current-desire freshness guards from Complete::current and its complementary stale case; native BFS yields Submit(A), Submit(B), Complete(A), replaying to desired=B, visible=A and a false generated invariant. Symbolic export is independently explored by Java TLC; exact states, labeled edges and safety verdicts must agree. The finite language corpus also compares every edge for bool, domain, Option, Set and simultaneous updates, without claiming arbitrary Rust refinement."
+checks = ["make test-formal", "make test"]
+
+# Adapted from bboxy450-term, verification/contracts.toml, LogicWorker* at 954ce04e.
+# https://github.com/bboxy450/bboxy450-term — fill the implementation witness slot.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+[[contract]]
+name = "LogicWorkerRequests"
+title = "Logic worker provenance recovery preserves request age bounds"
+models = ["LogicWorkerRequests", "BrokenLogicWorkerRequests"]
+sources = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/provenance/projection.rs", "crates/bbt-mux/src/provenance/projection/recovery.rs", "crates/bbt-mux/src/provenance/engine.rs", "crates/bbt-mux/src/logic.rs", "crates/bboxy450-term/tests/formal_contracts/logic_worker_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/logic/hol_tests.rs", "crates/bbt-mux/src/provenance/projection/recovery.rs", "crates/bbt-mux/tests/logic.rs", "crates/bbt-mux/tests/provenance.rs"]
+assumptions = "H=4 history pages (also native boundary checks at H=1..4), FIFO capacity=2, B=2 request ticks, D=3 shutdown ticks; idle/serving/in-step/stopped phases, resumable cursor, remaining step work, two request ages, shutdown flag and saturating deadline all start idle/empty/zero, except history and audit pages. Request arrival, shutdown request, dispatch, yield, stop and each tick are separate atomic actions. One page or one request service costs one occupied worker tick; dispatch/yield consume no page time. Tick runs only during an occupied service or step, so this checks nonpreemptible worker occupancy, not real elapsed scheduling. Only the worker action group (serve, begin step, tick, yield, stop) is weakly fair; arrivals, shutdown requests and background audit completion have no fairness assumption. Shutdown takes priority at yield and can abandon pending requests; requests take priority over the next step. Ages saturate at B+1; the deadline saturates at D, retaining failure even after a late stop. No restart, identity changes, corruption bytes, live log growth, unbounded arrivals/capacities, OS preemption, SQLite/filesystem/crypto costs, page duration or wall-clock deadline proof. The model catches the design, not a call to unbounded recover in arbitrary Rust. Implementation witness: logic::hol_tests::logic_worker_recovery_yields_to_requests_and_shutdown in crates/bbt-mux/src/logic/hol_tests.rs runs an owned headless child with 4096 signed retained events, a missing projection cursor, post-readiness audits, concurrent GUI hello and self_status MCP dispatch, five-second shutdown and durable resume on the next Logic start. The same request/shutdown assertions failed on unfixed b342be1e (49.984 s explicit recover; hello exceeded 30 s, MCP exceeded 10 s, shutdown 12.608 s). Additional real admitted command witness: logic_worker_recovery_yields_during_admitted_knowledge_write submits knowledge_write during the 4096-row rebuild, waits for its signed write_prepared intent in the canonical stream, then checks concurrent GUI hello and self_status, the write reply against the existing 10-second MCP deadline, five-second shutdown and durable restart. Success requires the file plus matching written event; explicit unknown/backlog must retain the exact signed intent across restart without claiming publication; Earlier process evidence exposed an unknown filesystem outcome from concurrent projectors, not a write success. ProjectionWriterExclusion/Lifetime/RootAvailability now map the production per-root descriptor guard and its deterministic removed-guard witness; ordinary ready-fixture ctl reporting still must confirm success. Index::write_locked retains its 64-iteration catch-up cap and knowledge_effects applies provider IO on spawn_blocking rather than the owner. The removed-guard process control removes recovery's 16-row and 8-ms yields and must prevent timely write admission/owner replies; no formal page-cost model proves this elapsed bound. projection/recovery.rs tests separately exercise invalid JSON cursor, append collision, torn page, uncommitted part rename and SQL chain hash refusal, plus distinct state/cursor/head/hash/file length/mtime/missing/AlreadyExists diagnostic triggers. Trigger metadata is retained once per transition through paged cleanup; diagnostic bytes and filesystem costs remain implementation-only coverage. These are actual worker/API/process witnesses, not a proof of arbitrary Rust or wall-clock bounds under stalled filesystem/OS scheduling. Startup audit concurrency is capped at two independent WAL readers; pool mutex leases end before scanning, but I/O, CPU and WAL checkpoint retention remain shared. Correct steps consume one page then return; broken recover consumes H-cursor pages without returning to dispatch. Incident source 1affb986 maps projection.rs recover:205-243 and step:246-266, Engine::step and PROJECTION_BUDGET at engine.rs:37/400 (budget checked between steps), and Logic::shutdown/join at logic.rs:2282. It underestimates recover work by omitting the initial whole-log verify_chain pass, so the negative does not rely on cryptographic cost."
+property = "RequestsStayWithinWorkerTickBound: while in a provenance step, every pending request age is at most B. The broken control must produce a safety prefix with an over-age pending request in native and Java TLC. logic_worker_bounds_and_counterexamples asserts named violations, nonempty prefixes, fair cycles for liveness, and replays BeginProvenanceStep, RequestArrives, RequestShutdown, Tick, Tick, Tick through explored labeled edges: phase=in-step, pending=1, age=3, deadline=3; cursor=0 under audit lock or 3 under whole-history recovery. Correct models pass; core boundary checks pass at every H=1..4, with broken safety failing exactly H>B and broken shutdown failing exactly H>=D."
+checks = ["make test-formal", "make test"]
+
+
+[[contract]]
+name = "LogicWorkerShutdown"
+title = "Logic worker provenance recovery preserves deadline-bound shutdown"
+models = ["LogicWorkerShutdown", "BrokenLogicWorkerShutdown"]
+sources = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/provenance/projection.rs", "crates/bbt-mux/src/provenance/projection/recovery.rs", "crates/bbt-mux/src/provenance/engine.rs", "crates/bbt-mux/src/logic.rs", "crates/bboxy450-term/tests/formal_contracts/logic_worker_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/logic/hol_tests.rs", "crates/bbt-mux/src/provenance/projection/recovery.rs", "crates/bbt-mux/tests/logic.rs", "crates/bbt-mux/tests/provenance.rs"]
+assumptions = "H=4 history pages (also native boundary checks at H=1..4), FIFO capacity=2, B=2 request ticks, D=3 shutdown ticks; idle/serving/in-step/stopped phases, resumable cursor, remaining step work, two request ages, shutdown flag and saturating deadline all start idle/empty/zero, except history and audit pages. Request arrival, shutdown request, dispatch, yield, stop and each tick are separate atomic actions. One page or one request service costs one occupied worker tick; dispatch/yield consume no page time. Tick runs only during an occupied service or step, so this checks nonpreemptible worker occupancy, not real elapsed scheduling. Only the worker action group (serve, begin step, tick, yield, stop) is weakly fair; arrivals, shutdown requests and background audit completion have no fairness assumption. Shutdown takes priority at yield and can abandon pending requests; requests take priority over the next step. Ages saturate at B+1; the deadline saturates at D, retaining failure even after a late stop. No restart, identity changes, corruption bytes, live log growth, unbounded arrivals/capacities, OS preemption, SQLite/filesystem/crypto costs, page duration or wall-clock deadline proof. The model catches the design, not a call to unbounded recover in arbitrary Rust. Implementation witness: logic::hol_tests::logic_worker_recovery_yields_to_requests_and_shutdown in crates/bbt-mux/src/logic/hol_tests.rs runs an owned headless child with 4096 signed retained events, a missing projection cursor, post-readiness audits, concurrent GUI hello and self_status MCP dispatch, five-second shutdown and durable resume on the next Logic start. The same request/shutdown assertions failed on unfixed b342be1e (49.984 s explicit recover; hello exceeded 30 s, MCP exceeded 10 s, shutdown 12.608 s). Additional real admitted command witness: logic_worker_recovery_yields_during_admitted_knowledge_write submits knowledge_write during the 4096-row rebuild, waits for its signed write_prepared intent in the canonical stream, then checks concurrent GUI hello and self_status, the write reply against the existing 10-second MCP deadline, five-second shutdown and durable restart. Success requires the file plus matching written event; explicit unknown/backlog must retain the exact signed intent across restart without claiming publication; Earlier process evidence exposed an unknown filesystem outcome from concurrent projectors, not a write success. ProjectionWriterExclusion/Lifetime/RootAvailability now map the production per-root descriptor guard and its deterministic removed-guard witness; ordinary ready-fixture ctl reporting still must confirm success. Index::write_locked retains its 64-iteration catch-up cap and knowledge_effects applies provider IO on spawn_blocking rather than the owner. The removed-guard process control removes recovery's 16-row and 8-ms yields and must prevent timely write admission/owner replies; no formal page-cost model proves this elapsed bound. projection/recovery.rs tests separately exercise invalid JSON cursor, append collision, torn page, uncommitted part rename and SQL chain hash refusal, plus distinct state/cursor/head/hash/file length/mtime/missing/AlreadyExists diagnostic triggers. Trigger metadata is retained once per transition through paged cleanup; diagnostic bytes and filesystem costs remain implementation-only coverage. These are actual worker/API/process witnesses, not a proof of arbitrary Rust or wall-clock bounds under stalled filesystem/OS scheduling. Startup audit concurrency is capped at two independent WAL readers; pool mutex leases end before scanning, but I/O, CPU and WAL checkpoint retention remain shared. Correct steps consume one page then return; broken recover consumes H-cursor pages without returning to dispatch. Incident source 1affb986 maps projection.rs recover:205-243 and step:246-266, Engine::step and PROJECTION_BUDGET at engine.rs:37/400 (budget checked between steps), and Logic::shutdown/join at logic.rs:2282. It underestimates recover work by omitting the initial whole-log verify_chain pass, so the negative does not rely on cryptographic cost."
+property = "ShutdownEventuallyStopsBeforeDeadline: shutdown requested leads to phase=stopped AND deadline<D. A stop at or after D can never satisfy the response; the broken control must produce a fair liveness counterexample in native and Java TLC, not merely eventually stop. logic_worker_bounds_and_counterexamples asserts named violations, nonempty prefixes, fair cycles for liveness, and replays BeginProvenanceStep, RequestArrives, RequestShutdown, Tick, Tick, Tick through explored labeled edges: phase=in-step, pending=1, age=3, deadline=3; cursor=0 under audit lock or 3 under whole-history recovery. Correct models pass; core boundary checks pass at every H=1..4, with broken safety failing exactly H>B and broken shutdown failing exactly H>=D."
+checks = ["make test-formal", "make test"]
+
+
+[[contract]]
+name = "LogicWorkerAuditRequests"
+title = "Startup audit contention preserves request age bounds"
+models = ["LogicWorkerAuditRequests", "BrokenLogicWorkerAuditRequests"]
+sources = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/provenance/projection.rs", "crates/bbt-mux/src/provenance/projection/recovery.rs", "crates/bbt-mux/src/provenance/engine.rs", "crates/bbt-mux/src/logic.rs", "crates/bboxy450-term/tests/formal_contracts/logic_worker_model.rs", "crates/bbt-mux/src/store/events.rs"]
+implementation_tests = ["crates/bbt-mux/src/logic/hol_tests.rs", "crates/bbt-mux/src/provenance/projection/recovery.rs", "crates/bbt-mux/tests/logic.rs", "crates/bbt-mux/tests/provenance.rs"]
+assumptions = "H=4 history pages (also native boundary checks at H=1..4), FIFO capacity=2, B=2 request ticks, D=3 shutdown ticks; idle/serving/in-step/stopped phases, resumable cursor, remaining step work, two request ages, shutdown flag and saturating deadline all start idle/empty/zero, except history and audit pages. Request arrival, shutdown request, dispatch, yield, stop and each tick are separate atomic actions. One page or one request service costs one occupied worker tick; dispatch/yield consume no page time. Tick runs only during an occupied service or step, so this checks nonpreemptible worker occupancy, not real elapsed scheduling. Only the worker action group (serve, begin step, tick, yield, stop) is weakly fair; arrivals, shutdown requests and background audit completion have no fairness assumption. Shutdown takes priority at yield and can abandon pending requests; requests take priority over the next step. Ages saturate at B+1; the deadline saturates at D, retaining failure even after a late stop. No restart, identity changes, corruption bytes, live log growth, unbounded arrivals/capacities, OS preemption, SQLite/filesystem/crypto costs, page duration or wall-clock deadline proof. The model catches the design, not a call to unbounded recover in arbitrary Rust. Implementation witness: logic::hol_tests::logic_worker_recovery_yields_to_requests_and_shutdown in crates/bbt-mux/src/logic/hol_tests.rs runs an owned headless child with 4096 signed retained events, a missing projection cursor, post-readiness audits, concurrent GUI hello and self_status MCP dispatch, five-second shutdown and durable resume on the next Logic start. The same request/shutdown assertions failed on unfixed b342be1e (49.984 s explicit recover; hello exceeded 30 s, MCP exceeded 10 s, shutdown 12.608 s). Additional real admitted command witness: logic_worker_recovery_yields_during_admitted_knowledge_write submits knowledge_write during the 4096-row rebuild, waits for its signed write_prepared intent in the canonical stream, then checks concurrent GUI hello and self_status, the write reply against the existing 10-second MCP deadline, five-second shutdown and durable restart. Success requires the file plus matching written event; explicit unknown/backlog must retain the exact signed intent across restart without claiming publication; Earlier process evidence exposed an unknown filesystem outcome from concurrent projectors, not a write success. ProjectionWriterExclusion/Lifetime/RootAvailability now map the production per-root descriptor guard and its deterministic removed-guard witness; ordinary ready-fixture ctl reporting still must confirm success. Index::write_locked retains its 64-iteration catch-up cap and knowledge_effects applies provider IO on spawn_blocking rather than the owner. The removed-guard process control removes recovery's 16-row and 8-ms yields and must prevent timely write admission/owner replies; no formal page-cost model proves this elapsed bound. projection/recovery.rs tests separately exercise invalid JSON cursor, append collision, torn page, uncommitted part rename and SQL chain hash refusal, plus distinct state/cursor/head/hash/file length/mtime/missing/AlreadyExists diagnostic triggers. Trigger metadata is retained once per transition through paged cleanup; diagnostic bytes and filesystem costs remain implementation-only coverage. These are actual worker/API/process witnesses, not a proof of arbitrary Rust or wall-clock bounds under stalled filesystem/OS scheduling. Startup audit concurrency is capped at two independent WAL readers; pool mutex leases end before scanning, but I/O, CPU and WAL checkpoint retention remain shared. Startup variant: N=2 parallel audits, H pages each. The good variant keeps audits on independent connections, costing no worker ticks even if never completed. The broken control instead assumes whole-audit shared-store-lock contention: up to N*H serialized page quanta block an in-step worker, with no cursor progress. Even granting one audit page of progress per blocked tick (stronger than mere audit fairness), this changes both good one-page verdicts to failure. This is a conditional interference experiment, not evidence that current verify_history_after_ready actually holds a shared Rust mutex: it opens EventLog connections per stream. Actual SQLite lock, I/O and CPU interference need a process witness."
+property = "RequestsStayWithinWorkerTickBound: while in a provenance step, every pending request age is at most B. The broken control must produce a safety prefix with an over-age pending request in native and Java TLC. logic_worker_bounds_and_counterexamples asserts named violations, nonempty prefixes, fair cycles for liveness, and replays BeginProvenanceStep, RequestArrives, RequestShutdown, Tick, Tick, Tick through explored labeled edges: phase=in-step, pending=1, age=3, deadline=3; cursor=0 under audit lock or 3 under whole-history recovery. Correct models pass; core boundary checks pass at every H=1..4, with broken safety failing exactly H>B and broken shutdown failing exactly H>=D."
+checks = ["make test-formal", "make test"]
+
+
+[[contract]]
+name = "LogicWorkerAuditShutdown"
+title = "Startup audit contention preserves deadline-bound shutdown"
+models = ["LogicWorkerAuditShutdown", "BrokenLogicWorkerAuditShutdown"]
+sources = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/provenance/projection.rs", "crates/bbt-mux/src/provenance/projection/recovery.rs", "crates/bbt-mux/src/provenance/engine.rs", "crates/bbt-mux/src/logic.rs", "crates/bboxy450-term/tests/formal_contracts/logic_worker_model.rs", "crates/bbt-mux/src/store/events.rs"]
+implementation_tests = ["crates/bbt-mux/src/logic/hol_tests.rs", "crates/bbt-mux/src/provenance/projection/recovery.rs", "crates/bbt-mux/tests/logic.rs", "crates/bbt-mux/tests/provenance.rs"]
+assumptions = "H=4 history pages (also native boundary checks at H=1..4), FIFO capacity=2, B=2 request ticks, D=3 shutdown ticks; idle/serving/in-step/stopped phases, resumable cursor, remaining step work, two request ages, shutdown flag and saturating deadline all start idle/empty/zero, except history and audit pages. Request arrival, shutdown request, dispatch, yield, stop and each tick are separate atomic actions. One page or one request service costs one occupied worker tick; dispatch/yield consume no page time. Tick runs only during an occupied service or step, so this checks nonpreemptible worker occupancy, not real elapsed scheduling. Only the worker action group (serve, begin step, tick, yield, stop) is weakly fair; arrivals, shutdown requests and background audit completion have no fairness assumption. Shutdown takes priority at yield and can abandon pending requests; requests take priority over the next step. Ages saturate at B+1; the deadline saturates at D, retaining failure even after a late stop. No restart, identity changes, corruption bytes, live log growth, unbounded arrivals/capacities, OS preemption, SQLite/filesystem/crypto costs, page duration or wall-clock deadline proof. The model catches the design, not a call to unbounded recover in arbitrary Rust. Implementation witness: logic::hol_tests::logic_worker_recovery_yields_to_requests_and_shutdown in crates/bbt-mux/src/logic/hol_tests.rs runs an owned headless child with 4096 signed retained events, a missing projection cursor, post-readiness audits, concurrent GUI hello and self_status MCP dispatch, five-second shutdown and durable resume on the next Logic start. The same request/shutdown assertions failed on unfixed b342be1e (49.984 s explicit recover; hello exceeded 30 s, MCP exceeded 10 s, shutdown 12.608 s). Additional real admitted command witness: logic_worker_recovery_yields_during_admitted_knowledge_write submits knowledge_write during the 4096-row rebuild, waits for its signed write_prepared intent in the canonical stream, then checks concurrent GUI hello and self_status, the write reply against the existing 10-second MCP deadline, five-second shutdown and durable restart. Success requires the file plus matching written event; explicit unknown/backlog must retain the exact signed intent across restart without claiming publication; Earlier process evidence exposed an unknown filesystem outcome from concurrent projectors, not a write success. ProjectionWriterExclusion/Lifetime/RootAvailability now map the production per-root descriptor guard and its deterministic removed-guard witness; ordinary ready-fixture ctl reporting still must confirm success. Index::write_locked retains its 64-iteration catch-up cap and knowledge_effects applies provider IO on spawn_blocking rather than the owner. The removed-guard process control removes recovery's 16-row and 8-ms yields and must prevent timely write admission/owner replies; no formal page-cost model proves this elapsed bound. projection/recovery.rs tests separately exercise invalid JSON cursor, append collision, torn page, uncommitted part rename and SQL chain hash refusal, plus distinct state/cursor/head/hash/file length/mtime/missing/AlreadyExists diagnostic triggers. Trigger metadata is retained once per transition through paged cleanup; diagnostic bytes and filesystem costs remain implementation-only coverage. These are actual worker/API/process witnesses, not a proof of arbitrary Rust or wall-clock bounds under stalled filesystem/OS scheduling. Startup audit concurrency is capped at two independent WAL readers; pool mutex leases end before scanning, but I/O, CPU and WAL checkpoint retention remain shared. Startup variant: N=2 parallel audits, H pages each. The good variant keeps audits on independent connections, costing no worker ticks even if never completed. The broken control instead assumes whole-audit shared-store-lock contention: up to N*H serialized page quanta block an in-step worker, with no cursor progress. Even granting one audit page of progress per blocked tick (stronger than mere audit fairness), this changes both good one-page verdicts to failure. This is a conditional interference experiment, not evidence that current verify_history_after_ready actually holds a shared Rust mutex: it opens EventLog connections per stream. Actual SQLite lock, I/O and CPU interference need a process witness."
+property = "ShutdownEventuallyStopsBeforeDeadline: shutdown requested leads to phase=stopped AND deadline<D. A stop at or after D can never satisfy the response; the broken control must produce a fair liveness counterexample in native and Java TLC, not merely eventually stop. logic_worker_bounds_and_counterexamples asserts named violations, nonempty prefixes, fair cycles for liveness, and replays BeginProvenanceStep, RequestArrives, RequestShutdown, Tick, Tick, Tick through explored labeled edges: phase=in-step, pending=1, age=3, deadline=3; cursor=0 under audit lock or 3 under whole-history recovery. Correct models pass; core boundary checks pass at every H=1..4, with broken safety failing exactly H>B and broken shutdown failing exactly H>=D."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ProjectionWriterExclusion"
+title = "Per-root JSONL writer exclusivity"
+models = ["ProjectionWriterExclusion", "BrokenProjectionWriterExclusion"]
+sources = ["crates/bbt-mux/src/provenance/projection.rs", "crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/knowledge/workspaces.rs", "crates/bbt-mux/src/knowledge/routing.rs", "crates/bbt-mux/src/provenance/engine.rs", "crates/bboxy450-term/tests/formal_contracts/projection_writer_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/logic/ownership_tests.rs", "crates/bbt-mux/tests/storage_bus_index.rs", "crates/bboxy450-term/tests/ctl.rs", "crates/bboxy450-term/tests/formal_contracts/projection_writer_model.rs"]
+assumptions = "Two canonical roots; A admits at most two distinct operation/descriptor tokens, B one. Each root starts with owner/IO/awaiter/issued/callback/background/epoch zero. Binding epochs 0,1,2 mean A-B-A and are captured at admission. Acquire, awaiter cancel, actual IO finish, last-reference drop, late callback, background begin/end, mapping and read request/service are atomic actions. IO finish includes success, prepare/apply refusal/error, panic and pre-start cancellation; a running blocking job remains active when its awaiter disappears. Each completed-reference drop, background return and queued read service is separately weakly fair; admission, dependency IO finish, cancellation, routing and callback arrival are not fair. Background admission stops while a read is queued. Physical advisory locks are assumed to exclude cooperating descriptors on a stable canonical directory/inode; arbitrary Rust/OS refinement, hostile directory replacement, power-loss filesystem semantics, crypto costs and wall-clock fairness are not proved. Scan/reconciliation only updates Markdown mirrors/outboxes, never JSONL, and uses the existing snapshot/revision fences. The real process witness holds admitted A IO, forces an actual same-root provenance turn, verifies B write/read plus GUI/MCP, cancels its awaiter, shuts down/restarts and routes A-B-A while the blocking job still owns its descriptor. Descriptor and stale-Weak tests cover refusal/unwind, last-reference release and old-completion identity. Existing ctl confirmation assertions are retained. Legacy synchronous Index writes wait on the root-number allocator on their IO caller before taking a projection claim; owner-loop entry points lend a preclaimed Index and try that allocator nonblockingly. The unchanged cross-process NUM2 witness checks waiting and fresh unique numbers, and the real-owner witness holds this external number lock while an admitted mutation returns explicit unknown without a file and GUI/MCP progress, then confirms a new write after release. This direct-API compatibility is implementation coverage, not an added fairness assumption for dependency IO."
+property = "ExclusiveWriterA/B: a background claim cannot coexist with an effect claim or live effect IO. The broken control removes the actual acquire exclusion. Native replay AcquireA1, BeginProvenanceA reaches owner A=1 and background A=1. A reachable A-held state must retain an enabled root-B admission edge."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ProjectionWriterLifetime"
+title = "Blocking IO retains its exact projection claim"
+models = ["ProjectionWriterLifetime", "BrokenProjectionWriterLifetime"]
+sources = ["crates/bbt-mux/src/provenance/projection.rs", "crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/knowledge/workspaces.rs", "crates/bbt-mux/src/knowledge/routing.rs", "crates/bbt-mux/src/provenance/engine.rs", "crates/bboxy450-term/tests/formal_contracts/projection_writer_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/logic/ownership_tests.rs", "crates/bbt-mux/tests/storage_bus_index.rs", "crates/bboxy450-term/tests/ctl.rs", "crates/bboxy450-term/tests/formal_contracts/projection_writer_model.rs"]
+assumptions = "Two canonical roots; A admits at most two distinct operation/descriptor tokens, B one. Each root starts with owner/IO/awaiter/issued/callback/background/epoch zero. Binding epochs 0,1,2 mean A-B-A and are captured at admission. Acquire, awaiter cancel, actual IO finish, last-reference drop, late callback, background begin/end, mapping and read request/service are atomic actions. IO finish includes success, prepare/apply refusal/error, panic and pre-start cancellation; a running blocking job remains active when its awaiter disappears. Each completed-reference drop, background return and queued read service is separately weakly fair; admission, dependency IO finish, cancellation, routing and callback arrival are not fair. Background admission stops while a read is queued. Physical advisory locks are assumed to exclude cooperating descriptors on a stable canonical directory/inode; arbitrary Rust/OS refinement, hostile directory replacement, power-loss filesystem semantics, crypto costs and wall-clock fairness are not proved. Scan/reconciliation only updates Markdown mirrors/outboxes, never JSONL, and uses the existing snapshot/revision fences. The real process witness holds admitted A IO, forces an actual same-root provenance turn, verifies B write/read plus GUI/MCP, cancels its awaiter, shuts down/restarts and routes A-B-A while the blocking job still owns its descriptor. Descriptor and stale-Weak tests cover refusal/unwind, last-reference release and old-completion identity. Existing ctl confirmation assertions are retained. Legacy synchronous Index writes wait on the root-number allocator on their IO caller before taking a projection claim; owner-loop entry points lend a preclaimed Index and try that allocator nonblockingly. The unchanged cross-process NUM2 witness checks waiting and fresh unique numbers, and the real-owner witness holds this external number lock while an admitted mutation returns explicit unknown without a file and GUI/MCP progress, then confirms a new write after release. This direct-API compatibility is implementation coverage, not an added fairness assumption for dependency IO."
+property = "LiveIOKeepsClaimA1/A2/B1: every live job retains its exact token through cancellation; CompletedIOReleasesA/B conditionally progresses after IO actually ends. The broken control releases on awaiter cancel or a late callback without ownership validation. Replays cover AcquireA1, CancelA1 and completed A1, mapping to B, B1 completion, mapping back to A, A2 admission, stale DeliverA1. The latter reaches epoch=2, live A2=1, owner A=0."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ProjectionRootAvailability"
+title = "Root-B service progresses while root-A IO is held"
+models = ["ProjectionRootAvailability", "BrokenProjectionRootAvailability"]
+sources = ["crates/bbt-mux/src/provenance/projection.rs", "crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/knowledge/workspaces.rs", "crates/bbt-mux/src/knowledge/routing.rs", "crates/bbt-mux/src/provenance/engine.rs", "crates/bboxy450-term/tests/formal_contracts/projection_writer_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/logic/ownership_tests.rs", "crates/bbt-mux/tests/storage_bus_index.rs", "crates/bboxy450-term/tests/ctl.rs", "crates/bboxy450-term/tests/formal_contracts/projection_writer_model.rs"]
+assumptions = "Two canonical roots; A admits at most two distinct operation/descriptor tokens, B one. Each root starts with owner/IO/awaiter/issued/callback/background/epoch zero. Binding epochs 0,1,2 mean A-B-A and are captured at admission. Acquire, awaiter cancel, actual IO finish, last-reference drop, late callback, background begin/end, mapping and read request/service are atomic actions. IO finish includes success, prepare/apply refusal/error, panic and pre-start cancellation; a running blocking job remains active when its awaiter disappears. Each completed-reference drop, background return and queued read service is separately weakly fair; admission, dependency IO finish, cancellation, routing and callback arrival are not fair. Background admission stops while a read is queued. Physical advisory locks are assumed to exclude cooperating descriptors on a stable canonical directory/inode; arbitrary Rust/OS refinement, hostile directory replacement, power-loss filesystem semantics, crypto costs and wall-clock fairness are not proved. Scan/reconciliation only updates Markdown mirrors/outboxes, never JSONL, and uses the existing snapshot/revision fences. The real process witness holds admitted A IO, forces an actual same-root provenance turn, verifies B write/read plus GUI/MCP, cancels its awaiter, shuts down/restarts and routes A-B-A while the blocking job still owns its descriptor. Descriptor and stale-Weak tests cover refusal/unwind, last-reference release and old-completion identity. Existing ctl confirmation assertions are retained. Legacy synchronous Index writes wait on the root-number allocator on their IO caller before taking a projection claim; owner-loop entry points lend a preclaimed Index and try that allocator nonblockingly. The unchanged cross-process NUM2 witness checks waiting and fresh unique numbers, and the real-owner witness holds this external number lock while an admitted mutation returns explicit unknown without a file and GUI/MCP progress, then confirms a new write after release. This direct-API compatibility is implementation coverage, not an added fairness assumption for dependency IO."
+property = "IndependentRootReadProgress: a queued B read eventually receives a reply under weakly fair page-return/service actions even if A IO never completes. The broken control gates the read on a global idle-A predicate and must yield a fair native/Java liveness counterexample. This is conditional scheduler progress, not a wall-clock deadline."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "JsonlRepair"
+title = "Activity JSONL repair yields before continuing its durable cursor"
+models = ["JsonlRepair", "BrokenJsonlRepair"]
+sources = ["crates/bbt-mux/src/provenance/projection.rs", "crates/bbt-mux/src/provenance/projection/recovery.rs", "crates/bboxy450-term/tests/formal_contracts/provenance_models.rs"]
+implementation_tests = ["crates/bbt-mux/src/provenance/projection.rs", "crates/bbt-mux/src/provenance/projection/recovery.rs"]
+assumptions = "Three retained pages, one owner and a fixed head. A page, owner turn and publication are atomic; each is weakly fair. The canonical separate rebuild verifies/appends at most 16 rows or 8 ms per turn, with at least one row, and publishes or cleans at most 16 parts. Normal append retains the upstream 128-row/8-ms bound. Batching syncs touched file contents, then directory entries, before SQLite cursor durability. STATE.repair from upstream 2e481e4f is explicitly hidden and conservatively restarted through this one rebuild protocol; unknown legacy temporary trees are retained. Representation-adapted upstream repair_yields_and_resumes_its_durable_cursor_before_publishing and legacy_state_repair_restarts_staging_and_interrupted_publication check restart, retained progress, hidden references and exact signed sequence publication. Staged files are synced once per page before its cursor is persisted and references remain unavailable until all rows are verified and files replaced. The finite model checks turn arbitration and publication, not OS latency, signature algorithms, filesystem crash durability or arbitrary Rust refinement. Native tests reopen the store mid-repair, verify all signatures and sequence order, and retain partial/duplicate/symlink controls."
+property = "A repair page yields to the owner before the next page, and publication follows all retained pages. The broken control removes the yield guard and must violate RepairYieldsToOwner; a fair healthy run eventually publishes."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "PresentGeneration"
+title = "Yarn temporal declarations revalidate generation and assume only named case fairness"
+models = ["PresentGeneration", "BrokenPresentGeneration"]
+sources = ["crates/bbt-yarn-macros/src/protocol.rs", "crates/bbt-yarn/tests/protocol_temporal.rs", "crates/bbt-yarn/examples/verify.rs"]
+implementation_tests = ["crates/bbt-yarn/tests/protocol_temporal.rs", "crates/bbt-yarn/tests/ui.rs"]
+assumptions = "One owner; Frame={F}, Generation={First,Second}, each generation selectable once; initially unselected, visible=None and issued/queued/admitted/fetched empty. Atomic Select emits an intent; FetchAdmitted and FetchSucceeded/FailedBeforeEffect/UnknownOutcome/CancelledBeforeStart are later independent inputs. Completion order, delays, duplicates, cancellation and selection changes are arbitrary; outcomes require lifecycle guards. Presentation rechecks generation at commit, not just admission. Each generation's response is ready leads_to visible-or-deselected; therefore a successfully fetched request that remains selected eventually becomes visible. Weak fairness is only on the disjunction of Present::current parameter instances; strong fairness is only on FetchAdmitted::admit instances. Neither assumes fetch success, fair delivery of every event or a fair runtime. Infinite ignore/reject or implicit stuttering cannot satisfy a response. Terminal/quiescent predicate labels do not prune states or discharge unrelated obligations. A-B-A generation reuse is explicitly refused at this finite bound. External execution, real scheduling, retries after restart, unbounded identities and wall-clock progress remain unmodeled."
+property = "PRESENT-001 requires visible=None or selected && visible=Some(generation). Correct declaration has exactly 91 states/1365 edges. Removing only the generation comparison (and complementary stale guard) gives 99/1485 and a replayed safety counterexample. Removing only Present::current fairness preserves 91/1365 and produces a replayed closed lasso for both generation response IDs. BrokenProtocolProgress has 1 state/2 ignored-or-rejected edges, explicit WF/SF, a true quiescent predicate and a false terminal target; its response must fail. Every explicit edge in every variant is replayed through the generated step. Java TLC compares full reachable state and labeled transition sets and independent safety/liveness verdicts."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "RetryUnknown"
+title = "Unknown effect outcome retains admission identity and prevents duplicate commit"
+models = ["RetryUnknown", "BrokenRetryUnknown"]
+sources = ["crates/bbt-yarn-macros/src/protocol.rs", "crates/bbt-yarn/tests/protocol_temporal.rs", "crates/bbt-yarn/examples/verify.rs"]
+implementation_tests = ["crates/bbt-yarn/tests/protocol_temporal.rs", "crates/bbt-yarn/tests/ui.rs"]
+assumptions = "One atomic protocol owner, Id={Only}, all seven Boolean fields initially false. Begin/Retry emits a Write intent; separate WriteAdmitted claims the identity; later completion is Succeeded, FailedBeforeEffect, UnknownOutcome or CancelledBeforeStart. UnknownOutcome conservatively includes a possible external commit and retains the claim without exposing a certain success. Known failure before the effect releases the claim. Retry requires no intent/admission and an unclaimed identity; successful/uncertain claims are retained. No fairness is required for this safety property. Protocol guards and pure generated API witnesses check the finite claim contract; no actual remote I/O, persistent dedup service, restart recovery or arbitrary Rust refinement is proved."
+property = "EFFECT-ONCE-001 requires !duplicate. RetryUnknown has 6 states/42 edges. BrokenRetryUnknown relaxes only the retry claim guard for unknown outcomes: Begin, WriteAdmitted, WriteUnknownOutcome, Retry, WriteAdmitted, WriteSucceeded commits twice (16 states/112 edges). The native counterexample is replayed and the false generated invariant asserted. All edges replay through step. Known pre-effect failure permits retry; an unknown outcome does not. Every generated admission and completion event requires an exhaustive on arm; trybuild rejects an unhandled UnknownOutcome. Native and Java TLC graphs and safety verdicts must agree."
+checks = ["make test-formal", "make test"]
+
+
+[[contract]]
+name = "PresentProgress"
+title = "Successfully fetched current selection becomes visible under named presentation fairness"
+models = ["PresentProgress", "BrokenPresentProgress"]
+sources = ["crates/bbt-yarn-macros/src/protocol.rs", "crates/bbt-yarn/tests/protocol_temporal.rs", "crates/bbt-yarn/examples/verify.rs"]
+implementation_tests = ["crates/bbt-yarn/tests/protocol_temporal.rs", "crates/bbt-yarn/tests/ui.rs"]
+assumptions = "The same Frame={F}, Generation={First,Second}, one-owner atomic lifecycle as PresentGeneration. The positive declaration repeats that exact graph to pair only the presentation fairness change; strong FetchAdmitted::admit fairness remains in both variants. WF is on the disjunction of Present::current parameter instances; it does not force successful fetch completion. Each generation's ready leads_to visible-or-deselected response yields visibility only if the current request remains selected. No global runtime, per-instance, wall-clock or external execution fairness is assumed."
+property = "PresentProgress and BrokenPresentProgress both have exactly 91 states and 1365 labeled edges. Removing only Present::current weak fairness produces PRESENT-LIVE-First and PRESENT-LIVE-Second violations with prefix plus closed lasso. Every state and edge replays through the generated Rust API. The concrete lasso retains a fetched current selection without visibility; ignored stale presentation and rejected generation reuse still cannot discharge its response. Java TLC independently agrees on graphs and liveness verdicts."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ProtocolProgress"
+title = "Terminal and quiescent labels never turn fair stuttering into response progress"
+models = ["ProtocolProgress", "BrokenProtocolProgress"]
+sources = ["crates/bbt-yarn-macros/src/protocol.rs", "crates/bbt-yarn/tests/protocol_temporal.rs", "crates/bbt-yarn/examples/verify.rs"]
+implementation_tests = ["crates/bbt-yarn/tests/protocol_temporal.rs"]
+assumptions = "One Boolean visible, initially false; Wait::waiting is weakly fair, Refuse::refused strongly fair. A true quiescent predicate and false terminal predicate are ordinary state conditions. The correct waiting case sets visible, while the broken case only preserves it and ignores. Ignore, reject and implicit TLA stutters do not count as nonstuttering fairness steps. This is a finite pure-API/frontend witness, not real scheduling or effect execution."
+property = "The correct declaration has 2 states/4 edges and eventually reaches its terminal predicate. Replacing only the update by ignore yields 1 state/2 edges and the explicit response violation STUTTER-LIVE with prefix [0], cycle [0,0], despite both fairness annotations. Every explicit edge and counterexample replays through step. Native and Java TLC graphs and liveness verdicts must agree."
+checks = ["make test-formal", "make test"]
+
+
+[[contract]]
+name = "WatcherInbox"
+title = "Indexed filesystem hints retain FIFO membership through pop and counter wrap"
+models = ["WatcherInbox", "BrokenWatcherInbox"]
+sources = ["crates/bbt-mux/src/provenance/detector.rs", "crates/bbt-mux/src/index.rs", "crates/bboxy450-term/tests/formal_contracts/watcher_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/provenance/detector.rs", "crates/bbt-mux/src/index.rs", "crates/bbt-mux/tests/provenance.rs"]
+assumptions = "Two modification paths, two queued slots and a four-position wrapping head. Push, coalesce and pop are atomic under the same mutex. Fair consumer pops eventually service retained paths; event arrivals are not fair. A side index stores absolute positions and wrapping subtraction recovers deque offsets. Real capacity is 4096, root identity is part of each key, and non-modification hints keep their order. Native witnesses cover reported attribution, exact overflow counts, distinct roots and kinds, counter wrap and ignored events completing while the consumer holds the mutex. The host-owned log/*.jsonl projection and log/.projection-rebuild-v1 staging namespace never dirty the Markdown collector; staging is excluded from collection while ordinary log/*.md remains a record. Other root-relative regular non-Markdown data/metadata changes cannot alter the Markdown collector's record set; rename, directory, missing-path and rescan hints remain conservative. Filesystem delivery completeness, actual Git/OS latency, hashing and arbitrary Rust refinement remain outside this finite projection."
+property = "Every side index names its retained path, no duplicate modification is queued, and fair consumption eventually removes each path. The broken control retains an index after pop and must violate index safety. Performance is measured separately by the same 4096-path/20-commit-style burst before and after; it is not a GUI or whole-rebase latency proof."
+checks = ["make test-formal", "make test"]
+
+
+[[contract]]
+name = "WatcherSettle"
+title = "Continuous hints do not postpone dirty batches forever"
+models = ["WatcherSettle", "BrokenWatcherSettle"]
+sources = ["crates/bbt-mux/src/index/watch.rs", "crates/bboxy450-term/tests/formal_contracts/watcher_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/index/watch.rs", "crates/bbt-mux/tests/provenance.rs"]
+assumptions = "Atomic callback merge and batch capture. Two age ticks abstract the maximum debounce age; one idle tick the quiet period. Hints may arrive indefinitely. Tick and eligible admission are weakly fair; IO lane admission can add delay. Native pending-set tests cover 200 ms quiet, 1 s maximum eligibility, path deduplication and overflow. OS delivery completeness, actual wall-clock scheduling and arbitrary Rust refinement are unmodeled."
+property = "A dirty batch eventually becomes eligible and is admitted despite continuous hints. The broken control resets first-dirty age for every hint and must exhibit a fair liveness counterexample."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "WatcherChanges"
+title = "Prepared scan completion preserves newer pending changes"
+models = ["WatcherChanges", "BrokenWatcherChanges"]
+sources = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/index/watch.rs", "crates/bbt-mux/src/knowledge/routing.rs", "crates/bboxy450-term/tests/formal_contracts/watcher_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/index.rs", "crates/bbt-mux/src/knowledge/routing_tests.rs", "crates/bbt-mux/tests/provenance.rs"]
+assumptions = "One path, two filesystem revisions, atomic hint/capture/completion and eventual scan IO under weakly fair capture/completion. Native witnesses retain an edit arriving after preparation, reread restored-mtime bytes on full reconciliation, replace failed watchers before scanning, and preserve root/base identity fences. Eventual convergence is not an atomic filesystem snapshot; unbounded external failure, graph memory cost and arbitrary Rust refinement are unmodeled."
+property = "No stable filesystem change is left without a running or pending reconciliation, and each stable revision eventually becomes visible or superseded. The broken completion clears dirtiness belonging to a newer change and violates safety."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "WatcherPool"
+title = "Root reconciliation occupies at most two IO lanes"
+models = ["WatcherPool", "BrokenWatcherPool"]
+sources = ["crates/bbt-mux/src/knowledge/routing.rs", "crates/bboxy450-term/tests/formal_contracts/watcher_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/knowledge/routing_tests.rs", "crates/bbt-mux/tests/provenance.rs"]
+assumptions = "Three roots each request one operation and share two lanes. Root admission and IO completion are weakly fair. Two permanently stalled operations can consume both lanes, though the logic owner never waits on scan IO. Native tests hold two prepared completions, verify the third root queues, retain later edits, and read private control snapshots during a real 20-commit rebase. Actual latency and full runtime scheduling are unmodeled."
+property = "At most two operations run and all finitely requested roots eventually finish under completion fairness. The broken admission ignores the lane bound and must violate the two-job invariant."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "WatcherPublication"
+title = "Durable outbox ACK follows idempotent append"
+models = ["WatcherPublication", "BrokenWatcherPublication"]
+sources = ["crates/bbt-mux/src/index/outbox.rs", "crates/bbt-mux/src/logic.rs", "crates/bboxy450-term/tests/formal_contracts/watcher_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/knowledge/routing_tests.rs", "crates/bbt-mux/tests/provenance.rs"]
+assumptions = "One stable durable event ID, idempotent bus append, one transient failure, and weakly fair recovery/read/append/ACK. The native fixture holds publication IO for one root, verifies its event remains pending with the same ID, and observes another root publish. Owner-side task suppression stays serialized with native transitions. Arbitrarily persistent storage/bus failure, cross-process storage implementation and unbounded streams are unmodeled."
+property = "An event is acknowledged only after append and eventually appended/acknowledged after a transient failure. The broken ACK guard allows deletion before append and must violate safety."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "WatcherAdmission"
+title = "Unsettled filesystem hints fence knowledge mutations"
+models = ["WatcherAdmission", "BrokenWatcherAdmission"]
+sources = ["crates/bbt-mux/src/index/watch.rs", "crates/bbt-mux/src/knowledge/workspaces.rs", "crates/bbt-mux/src/knowledge/routing.rs", "crates/bbt-mux/src/logic.rs", "crates/bboxy450-term/tests/formal_contracts/watcher_model.rs"]
+implementation_tests = ["crates/bbt-mux/tests/provenance.rs", "crates/bbt-mux/src/knowledge/routing_tests.rs"]
+assumptions = "One observed change moves through clean, unsettled, settled, scanning and published phases. Admission and observation are owner-serialized; native IO remains subject to existing root identity and writer leases. No fairness is needed for this safety property. The live claim/hook/rename/delete/restart integration regression verifies artifact ID preservation during deferred reconciliation. Unobserved external changes and full arbitrary Rust refinement are unmodeled."
+property = "Knowledge mutation is never admitted from a snapshot preceding an observed unsettled change. The broken guard checks readiness instead of pending dirtiness, admits the unsettled phase, and must violate safety."
+[[contract]]
+name = "RichHost"
+title = "Harness socket delivery, session incarnation and disposable rich face"
+models = ["RichHost", "BrokenRichHost"]
+sources = ["crates/bboxy450-harness-wake-up/src/rich.rs", "crates/bboxy450-harness-wake-up/src/launch.rs", "crates/bbt-mux/src/rich.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/mcp/seats.rs", "crates/bboxy450-term/src/rich_pane.rs", "crates/bboxy450-term/src/rich_faces.rs", "crates/bboxy450-term/src/keyboard.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/window_state.rs", "crates/bbt-proto/src/gui/app.rs", "crates/bbt-proto/src/gui/ui.rs", "crates/bbt-proto/src/seat_state.rs", "crates/bboxy450-term/tests/formal_contracts/rich_host.rs"]
+implementation_tests = ["crates/bboxy450-harness-wake-up/tests/rich_socket.rs", "crates/bbt-mux/tests/mcp.rs", "crates/bboxy450-term/src/rich_faces.rs", "crates/bboxy450-term/src/keyboard.rs", "scripts/rich-host-controls.py", "crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs", "crates/bboxy450-term/tests/rich_client.rs", "crates/bboxy450-term/src/rich_faces/budgets.rs"]
+assumptions = "One message retained across three distinct session IDs labeled A/B/A, two sends, two process generations. Connection, admission, detach, reconnect, send and ack/deadline are atomic abstractions. Weak fairness of ack/deadline retires each pending delivery; reconnect is allowed but not assumed fair. Socket framing, permissions, real time, disk persistence and renderer cost remain implementation-only. Native IME eligibility/candidate geometry use the shared composer regions and private App preedit/cancel/commit witnesses; OS keystrokes and macOS IME behavior are not exercised. Fork/resume ancestry frames do not renew delivery admission; UI input names the displayed session and replay hints name its session, generation, epoch and sequence. Finite model parity is not arbitrary Rust refinement."
+property = "One effect per retained op; retry never changes its admitted session; generation replacement fences old work; detach does not erase session effects; rich face keys write zero PTY bytes. The paired broken control removes its guard and must fail safety."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "RichHostIdentity"
+title = "Harness socket delivery, session incarnation and disposable rich face"
+models = ["RichHostIdentity", "BrokenRichHostIdentity"]
+sources = ["crates/bboxy450-harness-wake-up/src/rich.rs", "crates/bboxy450-harness-wake-up/src/launch.rs", "crates/bbt-mux/src/rich.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/mcp/seats.rs", "crates/bboxy450-term/src/rich_pane.rs", "crates/bboxy450-term/src/rich_faces.rs", "crates/bboxy450-term/src/keyboard.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/window_state.rs", "crates/bbt-proto/src/gui/app.rs", "crates/bbt-proto/src/gui/ui.rs", "crates/bbt-proto/src/seat_state.rs", "crates/bboxy450-term/tests/formal_contracts/rich_host.rs"]
+implementation_tests = ["crates/bboxy450-harness-wake-up/tests/rich_socket.rs", "crates/bbt-mux/tests/mcp.rs", "crates/bboxy450-term/src/rich_faces.rs", "crates/bboxy450-term/src/keyboard.rs", "scripts/rich-host-controls.py", "crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs", "crates/bboxy450-term/tests/rich_client.rs", "crates/bboxy450-term/src/rich_faces/budgets.rs"]
+assumptions = "One message retained across three distinct session IDs labeled A/B/A, two sends, two process generations. Connection, admission, detach, reconnect, send and ack/deadline are atomic abstractions. Weak fairness of ack/deadline retires each pending delivery; reconnect is allowed but not assumed fair. Socket framing, permissions, real time, disk persistence and renderer cost remain implementation-only. Native IME eligibility/candidate geometry use the shared composer regions and private App preedit/cancel/commit witnesses; OS keystrokes and macOS IME behavior are not exercised. Fork/resume ancestry frames do not renew delivery admission; UI input names the displayed session and replay hints name its session, generation, epoch and sequence. Finite model parity is not arbitrary Rust refinement."
+property = "One effect per retained op; retry never changes its admitted session; generation replacement fences old work; detach does not erase session effects; rich face keys write zero PTY bytes. The paired broken control removes its guard and must fail safety."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "RichHostDetach"
+title = "Harness socket delivery, session incarnation and disposable rich face"
+models = ["RichHostDetach", "BrokenRichHostDetach"]
+sources = ["crates/bboxy450-harness-wake-up/src/rich.rs", "crates/bboxy450-harness-wake-up/src/launch.rs", "crates/bbt-mux/src/rich.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/mcp/seats.rs", "crates/bboxy450-term/src/rich_pane.rs", "crates/bboxy450-term/src/rich_faces.rs", "crates/bboxy450-term/src/keyboard.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/window_state.rs", "crates/bbt-proto/src/gui/app.rs", "crates/bbt-proto/src/gui/ui.rs", "crates/bbt-proto/src/seat_state.rs", "crates/bboxy450-term/tests/formal_contracts/rich_host.rs"]
+implementation_tests = ["crates/bboxy450-harness-wake-up/tests/rich_socket.rs", "crates/bbt-mux/tests/mcp.rs", "crates/bboxy450-term/src/rich_faces.rs", "crates/bboxy450-term/src/keyboard.rs", "scripts/rich-host-controls.py", "crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs", "crates/bboxy450-term/tests/rich_client.rs", "crates/bboxy450-term/src/rich_faces/budgets.rs"]
+assumptions = "One message retained across three distinct session IDs labeled A/B/A, two sends, two process generations. Connection, admission, detach, reconnect, send and ack/deadline are atomic abstractions. Weak fairness of ack/deadline retires each pending delivery; reconnect is allowed but not assumed fair. Socket framing, permissions, real time, disk persistence and renderer cost remain implementation-only. Native IME eligibility/candidate geometry use the shared composer regions and private App preedit/cancel/commit witnesses; OS keystrokes and macOS IME behavior are not exercised. Fork/resume ancestry frames do not renew delivery admission; UI input names the displayed session and replay hints name its session, generation, epoch and sequence. Finite model parity is not arbitrary Rust refinement."
+property = "One effect per retained op; retry never changes its admitted session; generation replacement fences old work; detach does not erase session effects; rich face keys write zero PTY bytes. The paired broken control removes its guard and must fail safety."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "RichHostRouting"
+title = "Harness socket delivery, session incarnation and disposable rich face"
+models = ["RichHostRouting", "BrokenRichHostRouting"]
+sources = ["crates/bboxy450-harness-wake-up/src/rich.rs", "crates/bboxy450-harness-wake-up/src/launch.rs", "crates/bbt-mux/src/rich.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/mcp/seats.rs", "crates/bboxy450-term/src/rich_pane.rs", "crates/bboxy450-term/src/rich_faces.rs", "crates/bboxy450-term/src/keyboard.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/window_state.rs", "crates/bbt-proto/src/gui/app.rs", "crates/bbt-proto/src/gui/ui.rs", "crates/bbt-proto/src/seat_state.rs", "crates/bboxy450-term/tests/formal_contracts/rich_host.rs"]
+implementation_tests = ["crates/bboxy450-harness-wake-up/tests/rich_socket.rs", "crates/bbt-mux/tests/mcp.rs", "crates/bboxy450-term/src/rich_faces.rs", "crates/bboxy450-term/src/keyboard.rs", "scripts/rich-host-controls.py", "crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs", "crates/bboxy450-term/tests/rich_client.rs", "crates/bboxy450-term/src/rich_faces/budgets.rs"]
+assumptions = "One message retained across three distinct session IDs labeled A/B/A, two sends, two process generations. Connection, admission, detach, reconnect, send and ack/deadline are atomic abstractions. Weak fairness of ack/deadline retires each pending delivery; reconnect is allowed but not assumed fair. Socket framing, permissions, real time, disk persistence and renderer cost remain implementation-only. Native IME eligibility/candidate geometry use the shared composer regions and private App preedit/cancel/commit witnesses; OS keystrokes and macOS IME behavior are not exercised. Fork/resume ancestry frames do not renew delivery admission; UI input names the displayed session and replay hints name its session, generation, epoch and sequence. Finite model parity is not arbitrary Rust refinement."
+property = "One effect per retained op; retry never changes its admitted session; generation replacement fences old work; detach does not erase session effects; rich face keys write zero PTY bytes. The paired broken control removes its guard and must fail safety."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "RichCancelFence"
+title = "Escape retains displayed session, epoch and generation before cancelling an approval"
+models = ["RichCancelFence", "BrokenRichCancelFence"]
+sources = ["crates/bboxy450-term/src/rich_pane.rs", "crates/bboxy450-term/tests/formal_contracts/rich_host.rs", "Makefile"]
+implementation_tests = ["crates/bboxy450-term/tests/rich_client.rs", "scripts/rich-cancel-control.py"]
+assumptions = "One queued Escape captured on A/e1/g1, three distinct session births A/B/A, two epochs and two process generations, one pending approval per announced incarnation. Worker dequeue/admission and UI retirement are atomic abstractions; work admitted before retirement may already be in flight. Session/epoch/generation changes, disconnect and readiness may interleave before dequeue. WF{DeliverCancel} retires the queued key without assuming network fairness. Production actor/process tests separate session, epoch and generation changes. IO ordering, bytes, renderer cost and Rust refinement remain implementation-only."
+property = "NoStaleCancelAdmission: Cancel cannot reach the current approval unless captured session, epoch and generation match a ready, nonretired owner. The broken control bypasses that admission and must fail safety. CancelRetires holds under weak fairness of dequeue."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "HarnessReportedStatus"
+title = "Generation-scoped explicit activity and honest expiry"
+models = ["HarnessReportedStatus", "BrokenHarnessReportedStatus"]
+sources = ["crates/bboxy450-harness-wake-up/src/observe.rs", "crates/bboxy450-harness-wake-up/src/harness_log.rs", "crates/bbt-mux/src/logic/harness_status.rs", "crates/bbt-mux/src/logic.rs", "crates/bboxy450-term/tests/formal_contracts/harness_status_model.rs", "crates/bbt-proto/src/seat_state.rs", "crates/bbt-ui/src/modules/pane.rs", "crates/bbt-ui/src/modules/seat_row.rs", "crates/bboxy450-term/src/scene.rs"]
+implementation_tests = ["crates/bboxy450-harness-wake-up/tests/harness_status.rs", "crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/tests/mcp/harness_status.rs", "crates/bbt-mux/tests/fixtures/harness-status.py", "crates/bbt-ui/tests/rim.rs", "crates/bbt-proto/tests/notification_episode.rs"]
+assumptions = "One seat, generations 0..2, age buckets fresh/5s/60s, four activity values, one captured log read. Reports, heartbeat, tick, exit and rebind are atomic on the logic owner. Tick is weakly fair; reports and heartbeats may be lost forever. Discovery uses the persisted term-selected endpoint (or the standalone session-named endpoint) and requires a socket whose kernel peer PID/uid and Hello session match the supervisor-owned process. Socket liveness and repeated EOF are not state heartbeats; JSONL ts_ms is the observation time. JSONL bytes, file ownership, socket discovery, real elapsed time and tool subprocesses retain implementation tests. No general Rust refinement is claimed."
+property = "After a parent Reported observation, cadence cannot replace state in that generation, including after expiry. Only another report or exit changes activity. Only an open turn expires at 60s without a report or heartbeat: freshness ends, the retained activity stays Reported, detail appends · no word for 1m and the rim dims. Idle and errored completed turns do not expire; cadence remains forbidden for the generation. Captured old-generation reads are discarded. Removing the cadence latch or expiry label fails safety. The real native seat witness runs bash sleep 22 (crossing the 20s admission deadline), polls seat_get throughout its quiet interval for active/reported/bash, and then observes idle; a JSON-mode seat suppresses OSC and requires sessions_file."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "HarnessStatusExpiry"
+title = "Explicit harness status ages without inventing idle"
+models = ["HarnessStatusExpiry", "BrokenHarnessStatusExpiry"]
+sources = ["crates/bboxy450-harness-wake-up/src/observe.rs", "crates/bboxy450-harness-wake-up/src/harness_log.rs", "crates/bbt-mux/src/logic/harness_status.rs", "crates/bbt-mux/src/logic.rs", "crates/bboxy450-term/tests/formal_contracts/harness_status_model.rs", "crates/bbt-proto/src/seat_state.rs", "crates/bbt-ui/src/modules/pane.rs", "crates/bbt-ui/src/modules/seat_row.rs", "crates/bboxy450-term/src/scene.rs"]
+implementation_tests = ["crates/bboxy450-harness-wake-up/tests/harness_status.rs", "crates/bbt-mux/tests/mcp.rs", "crates/bbt-mux/tests/mcp/harness_status.rs", "crates/bbt-mux/tests/fixtures/harness-status.py", "crates/bbt-ui/tests/rim.rs", "crates/bbt-proto/tests/notification_episode.rs"]
+assumptions = "Same three-generation, four-state, separate generation latch/freshness hold and fresh/5s/60s abstraction as HarnessReportedStatus. Tick is weakly fair. Reports and heartbeats can fail forever; an explicit state heartbeat extends freshness while socket Hello and repeated file EOF do not. The logical timeout is atomic with Tick. Actual clocks, JSONL framing, per-seat IO scheduling and process cleanup remain implementation witnesses, not refinement proofs."
+property = "A generation's last reported activity survives quiet PTY output and heartbeat-only intervals. While a turn is open, 60s without either report or heartbeat ends freshness and marks the retained state stale; a later report or exit can replace it. Closed idle/error turns never expire. The generation latch remains after freshness ends. Logic restart restores the generation-bound reported projection without authorizing input. Removing the expiry label fails safety. Native status witness also restarts logic during the quiet tool."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "GuiReplacementOwners"
+title = "GUI replacement preserves independent agent owners and proves actual new source"
+models = ["GuiReplacementOwners", "BrokenGuiReplacementOwners"]
+sources = ["crates/bboxy450-term/tests/formal_contracts/gui_replacement.rs", "crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/cockpit/gui_handoff.rs", "crates/bboxy450-term/src/gui_build.rs", "crates/bboxy450-term/build.rs", "crates/bbt-proto/src/gui/app.rs", "crates/bbt-proto/src/gui/ui.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/headless.rs", "scripts/reopen-gui.py", "Makefile"]
+implementation_tests = ["crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs", "scripts/rich-gui-handoff-control.py"]
+assumptions = "One replacement, three GUI births, Boolean backup/agent ownership, old/new installed and actually running source. Prepare, quit request, old exit, new spawn, frame readiness, timeout and rollback are atomic on the startup/installer IO owner. A weakly fair progress group resolves each pending transaction by new readiness or preserving/restoring the old GUI. The modeled agent owner comprises supervisor and native seat, not the independently replaceable logic process. Existing normal startup may refresh an older UI control schema; the private real-process witness downgrades that version and preserves supervisor/seat PID, session and generation. It does not execute an old compiled binary. Real PID/birth checks, bounded HUP detach, signed bundle checks, compiled-source receipts, original Contents inode rollback and rendering are implementation witnesses; a finite graph is not Rust/OS refinement. An unresponsive candidate retains the old backup rather than forcing termination. Legacy sessions without an admitted rich socket remain visibly unavailable with the Terminal toggle."
+property = "AgentsNeverStopped; OneGuiOwner; ReadyNamesActualSource; FailurePreservesOldBuild; ReplacementRetires. Broken controls stop the agent owner, admit a second GUI before old exit, claim new readiness from old bytes, or omit installed-byte rollback."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "GuiReplacementDuplicate"
+title = "GUI replacement preserves independent agent owners and proves actual new source"
+models = ["GuiReplacementDuplicate", "BrokenGuiReplacementDuplicate"]
+sources = ["crates/bboxy450-term/tests/formal_contracts/gui_replacement.rs", "crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/cockpit/gui_handoff.rs", "crates/bboxy450-term/src/gui_build.rs", "crates/bboxy450-term/build.rs", "crates/bbt-proto/src/gui/app.rs", "crates/bbt-proto/src/gui/ui.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/headless.rs", "scripts/reopen-gui.py", "Makefile"]
+implementation_tests = ["crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs", "scripts/rich-gui-handoff-control.py"]
+assumptions = "One replacement, three GUI births, Boolean backup/agent ownership, old/new installed and actually running source. Prepare, quit request, old exit, new spawn, frame readiness, timeout and rollback are atomic on the startup/installer IO owner. A weakly fair progress group resolves each pending transaction by new readiness or preserving/restoring the old GUI. The modeled agent owner comprises supervisor and native seat, not the independently replaceable logic process. Existing normal startup may refresh an older UI control schema; the private real-process witness downgrades that version and preserves supervisor/seat PID, session and generation. It does not execute an old compiled binary. Real PID/birth checks, bounded HUP detach, signed bundle checks, compiled-source receipts, original Contents inode rollback and rendering are implementation witnesses; a finite graph is not Rust/OS refinement. An unresponsive candidate retains the old backup rather than forcing termination. Legacy sessions without an admitted rich socket remain visibly unavailable with the Terminal toggle."
+property = "AgentsNeverStopped; OneGuiOwner; ReadyNamesActualSource; FailurePreservesOldBuild; ReplacementRetires. Broken controls stop the agent owner, admit a second GUI before old exit, claim new readiness from old bytes, or omit installed-byte rollback."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "GuiReplacementSource"
+title = "GUI replacement preserves independent agent owners and proves actual new source"
+models = ["GuiReplacementSource", "BrokenGuiReplacementSource"]
+sources = ["crates/bboxy450-term/tests/formal_contracts/gui_replacement.rs", "crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/cockpit/gui_handoff.rs", "crates/bboxy450-term/src/gui_build.rs", "crates/bboxy450-term/build.rs", "crates/bbt-proto/src/gui/app.rs", "crates/bbt-proto/src/gui/ui.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/headless.rs", "scripts/reopen-gui.py", "Makefile"]
+implementation_tests = ["crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs", "scripts/rich-gui-handoff-control.py"]
+assumptions = "One replacement, three GUI births, Boolean backup/agent ownership, old/new installed and actually running source. Prepare, quit request, old exit, new spawn, frame readiness, timeout and rollback are atomic on the startup/installer IO owner. A weakly fair progress group resolves each pending transaction by new readiness or preserving/restoring the old GUI. The modeled agent owner comprises supervisor and native seat, not the independently replaceable logic process. Existing normal startup may refresh an older UI control schema; the private real-process witness downgrades that version and preserves supervisor/seat PID, session and generation. It does not execute an old compiled binary. Real PID/birth checks, bounded HUP detach, signed bundle checks, compiled-source receipts, original Contents inode rollback and rendering are implementation witnesses; a finite graph is not Rust/OS refinement. An unresponsive candidate retains the old backup rather than forcing termination. Legacy sessions without an admitted rich socket remain visibly unavailable with the Terminal toggle."
+property = "AgentsNeverStopped; OneGuiOwner; ReadyNamesActualSource; FailurePreservesOldBuild; ReplacementRetires. Broken controls stop the agent owner, admit a second GUI before old exit, claim new readiness from old bytes, or omit installed-byte rollback."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "GuiReplacementRollback"
+title = "GUI replacement preserves independent agent owners and proves actual new source"
+models = ["GuiReplacementRollback", "BrokenGuiReplacementRollback"]
+sources = ["crates/bboxy450-term/tests/formal_contracts/gui_replacement.rs", "crates/bboxy450-term/src/cockpit/owners.rs", "crates/bboxy450-term/src/cockpit/gui_handoff.rs", "crates/bboxy450-term/src/gui_build.rs", "crates/bboxy450-term/build.rs", "crates/bbt-proto/src/gui/app.rs", "crates/bbt-proto/src/gui/ui.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/headless.rs", "scripts/reopen-gui.py", "Makefile"]
+implementation_tests = ["crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs", "scripts/rich-gui-handoff-control.py"]
+assumptions = "One replacement, three GUI births, Boolean backup/agent ownership, old/new installed and actually running source. Prepare, quit request, old exit, new spawn, frame readiness, timeout and rollback are atomic on the startup/installer IO owner. A weakly fair progress group resolves each pending transaction by new readiness or preserving/restoring the old GUI. The modeled agent owner comprises supervisor and native seat, not the independently replaceable logic process. Existing normal startup may refresh an older UI control schema; the private real-process witness downgrades that version and preserves supervisor/seat PID, session and generation. It does not execute an old compiled binary. Real PID/birth checks, bounded HUP detach, signed bundle checks, compiled-source receipts, original Contents inode rollback and rendering are implementation witnesses; a finite graph is not Rust/OS refinement. An unresponsive candidate retains the old backup rather than forcing termination. Legacy sessions without an admitted rich socket remain visibly unavailable with the Terminal toggle."
+property = "AgentsNeverStopped; OneGuiOwner; ReadyNamesActualSource; FailurePreservesOldBuild; ReplacementRetires. Broken controls stop the agent owner, admit a second GUI before old exit, claim new readiness from old bytes, or omit installed-byte rollback."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ManagedApprovalIntent"
+title = "Managed native and embedded launch presets carry the same unattended intent"
+models = ["ManagedApprovalIntent", "BrokenManagedApprovalIntent"]
+sources = ["crates/bboxy450-harness-wake-up/src/launch.rs", "crates/bboxy450-term/tests/formal_contracts/launch_environment.rs", "crates/bboxy450-harness/src/gateway/host.rs", "crates/bboxy450-harness/src/backend/acp_agent.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/swarm_workdir/launch_context.rs", "scripts/rich-launch-context-control.py", "crates/bboxy450-harness/tests/acp_launch_context.rs"]
+assumptions = "Four managed presets (Codex, Claude, embedded model, embedded ACP), a deny-default profile and one atomic planner-owned launch snapshot. No fairness or provider progress is assumed. The producer HarnessLaunchContext model separately maps admitted launcher/profile allow bits by semantic OR across three session births. CLI spelling, real scoped MCP calls, model and ACP permission semantics remain process witnesses, not arbitrary Rust or vendor conformance. The launch fixture preserves production approval argv and completes its real MCP tool under profile deny defaults; a dedicated attended UI fixture explicitly removes yolo only to exercise approval controls."
+property = "Every managed preset admits unattended outer intent and preserves its effective allow. The broken control omits embedded model/ACP intent and fails safety. A causal source removal must fail the named managed approval parity assertion before any provider/MCP turn; restored production launch must complete the real MCP call. Standalone non-seat defaults and global profiles remain outside this managed-launch rule."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "GuiBackendPreservation"
+title = "Explicit UI-only handoff cannot replace retained backend owners"
+models = ["GuiBackendPreservation", "BrokenGuiBackendPreservation"]
+sources = ["crates/bboxy450-term/src/cockpit.rs", "crates/bboxy450-term/src/cockpit/gui_handoff.rs", "scripts/reopen-gui.py", "packaging/macos/Info.plist", "crates/bboxy450-term/tests/formal_contracts/gui_replacement.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/test_account.rs", "crates/bboxy450-term/tests/swarm_workdir/rich_detach.rs", "crates/bboxy450-term/tests/formal_contracts.rs"]
+assumptions = "One GUI candidate and retained backend generation zero; owner compatibility and rollback capability are finite booleans selected before preflight. Preflight refusal/detach, attachment success/failure and rollback are atomic actions. No fairness or wall-clock bound is asserted. Kernel PID/birth identity, private custody, actual schema/PATH and GUI handshake failures, in-flight RPCs, cryptography, external process changes and compiled-binary capability metadata remain native implementation coverage. The private witnesses create their own account, supervisor, Logic, zsh seat and headless rendered GUI."
+property = "ExactBackendGenerationRetained on success and every refusal/attach-failure path. Removing only the preserve guard on failed attach advances the backend generation and must fail in native and Java TLC. UnsupportedRollbackNeverLaunched retains legacy restored bundle files without invoking an unguarded binary. Actual CLI/helper witnesses check exact public PID/birth pairs, retained seat process/generation/authority, real source/instance/frame and supported versus missing-capability rollback. Automatic ordinary-mode recovery remains separate."
 checks = ["make test-formal", "make test"]

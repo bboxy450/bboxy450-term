@@ -46,3 +46,17 @@ impl Session for Listed {
 fn main() {
     run::<AsSession<Listed>>();
 }
+
+// keeps: plugin doctor — this example has no gaps (`testkit::doctor`).
+#[cfg(test)]
+mod doctor {
+    #[test]
+    fn the_plugin_doctor_finds_no_gaps() {
+        let package = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let binary = bbt_plugin_sdk::testkit::example(package, "bboxy450-term-session-example");
+        bbt_plugin_sdk::testkit::doctor(
+            &binary,
+            &bbt_plugin_sdk::doctor::Options::package(package),
+        );
+    }
+}

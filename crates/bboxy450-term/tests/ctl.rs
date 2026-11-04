@@ -200,6 +200,7 @@ fn ctl(run: &Path, args: &[&str]) -> Vec<Value> {
     let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
         .arg("ctl")
         .args(args)
+        .env("HOME", run)
         .env("BBOXY_RUN_DIR", run)
         .output()
         .unwrap();
@@ -701,6 +702,7 @@ async fn without_ctl_the_app_writes_no_endpoint() {
     );
     let refused = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
         .args(["ctl", "seats"])
+        .env("HOME", &run)
         .env("BBOXY_RUN_DIR", &run)
         .output()
         .unwrap();
@@ -975,6 +977,7 @@ async fn ctl_capture_is_answered_by_the_window() {
                             page: None,
                             document: None,
                             document_observation: None,
+                            rich_observation: Default::default(),
                             panes: Vec::new(),
                             tree: Vec::new(),
                         })),
@@ -1035,6 +1038,7 @@ fn ctl_in(run: &Path, cwd: &Path, args: &[&str]) -> (bool, Vec<Value>) {
     let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
         .arg("ctl")
         .args(args)
+        .env("HOME", run)
         .env("BBOXY_RUN_DIR", run)
         .current_dir(cwd)
         .output()
@@ -1078,6 +1082,7 @@ async fn real_ctl_keeps_a_refusal_that_interrupts_its_request_write() {
         let child = tokio::process::Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
             .args(["ctl", "--endpoint"])
             .arg(&endpoint)
+            .env("HOME", root.path()).env("BBOXY_RUN_DIR", root.path())
             .args(["--as", "refusal fixture", "seat", "ls"])
             .env_remove("BBOXY_CTL_ISSUER")
             .stdout(std::process::Stdio::piped())
@@ -1205,7 +1210,9 @@ async fn a_wrong_capability_is_refused_with_its_reason() {
 
 #[test]
 fn ctl_help_prints_its_own_usage() {
+    let private = tempfile::tempdir().unwrap();
     let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+        .env("HOME", private.path()).env("BBOXY_RUN_DIR", private.path())
         .args(["ctl", "--help"])
         .output()
         .unwrap();
@@ -1473,6 +1480,7 @@ async fn ctl_screen_input_and_wait_drive_a_seat() {
     assert!(data["generation"].as_u64().unwrap() > 0);
     let plain = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
         .args(["ctl", "seat", "screen", &seat, "--human"])
+        .env("HOME", &run)
         .env("BBOXY_RUN_DIR", &run)
         .output()
         .unwrap();
@@ -1528,6 +1536,7 @@ async fn ctl_screen_input_and_wait_drive_a_seat() {
     // sequence moves), then one done line counting them.
     let watched = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
         .args(["ctl", "seat", "watch", &seat, "--timeout", "1500"])
+        .env("HOME", &run)
         .env("BBOXY_RUN_DIR", &run)
         .output()
         .unwrap();
@@ -1588,6 +1597,7 @@ async fn ctl_screen_input_and_wait_drive_a_seat() {
             "--timeout",
             "800",
         ])
+        .env("HOME", &run)
         .env("BBOXY_RUN_DIR", &run)
         .output()
         .unwrap();
@@ -1632,7 +1642,9 @@ async fn ctl_screen_input_and_wait_drive_a_seat() {
 /// The Codex hook-review recipe's expected list (#270): generated from the launch overlay.
 #[test]
 fn hook_list_names_the_codex_overlay_from_launch_rs() {
+    let private = tempfile::tempdir().unwrap();
     let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
+        .env("HOME", private.path()).env("BBOXY_RUN_DIR", private.path())
         .args(["hook", "--list", "codex"])
         .output()
         .unwrap();
@@ -1695,6 +1707,7 @@ fn ctl_raw(run: &Path, cwd: &Path, args: &[&str]) -> (Option<i32>, String, Strin
     let output = Command::new(env!("CARGO_BIN_EXE_bboxy450-term"))
         .arg("ctl")
         .args(args)
+        .env("HOME", run)
         .env("BBOXY_RUN_DIR", run)
         .current_dir(cwd)
         .output()
@@ -1752,6 +1765,7 @@ async fn ctl_gui_seats(
                         page: None,
                         document: None,
                         document_observation: None,
+                        rich_observation: Default::default(),
                         panes: Vec::new(),
                         tree: Vec::new(),
                         spawned: None,
@@ -1792,7 +1806,8 @@ async fn ctl_noun_verb_grammar_replies_and_errors() {
     let (code, out, _) = ctl_raw(&run, &root, &["app", "endpoint"]);
     let reply = json(&out);
     assert_eq!(code, Some(0));
-    let keys: Vec<&String> = reply["data"].as_object().unwrap().keys().collect();
+    let mut keys: Vec<&String> = reply["data"].as_object().unwrap().keys().collect();
+    keys.sort(); // Object key membership is independent of ACP-agent's JSON map feature.
     assert_eq!(keys, ["generation", "path", "run_dir"], "{reply}");
 
     // message send to a seat by id; --op makes a retry the same message.
@@ -1827,6 +1842,7 @@ async fn ctl_noun_verb_grammar_replies_and_errors() {
     assert!(json(&out)["data"].is_array());
 
     // §3: usage (2), refused (1), endpoint unavailable (4), each with a kind and a hint.
+    let absent_run = root.join("nonexistent-run");
     for (args, kind, exit) in [
         (vec!["seat", "fly", "x"], "usage", 2),
         (vec!["seat", "ls", "--bogus", "1"], "usage", 2),
@@ -1837,7 +1853,7 @@ async fn ctl_noun_verb_grammar_replies_and_errors() {
         ),
         (vec!["seat", "screen", "nobody"], "refused", 1),
         (
-            vec!["--run-dir", "/nonexistent-run", "seat", "ls"],
+            vec!["--run-dir", absent_run.to_str().unwrap(), "seat", "ls"],
             "endpoint_unavailable",
             4,
         ),
@@ -1935,6 +1951,8 @@ async fn ctl_never_prints_secrets() {
     let message = bbt_mux::Ulid::new().to_string();
     let paste = pasted.to_str().unwrap();
     let cwd = root.to_str().unwrap();
+    let absent_run = root.join("nonexistent-run");
+    let absent_endpoint = absent_run.join("gui.endpoint");
     let runs: Vec<Vec<&str>> = vec![
         vec!["app", "endpoint"],
         vec!["app", "endpoint", "--human"],
@@ -1980,10 +1998,10 @@ async fn ctl_never_prints_secrets() {
         vec!["task", "delegate", "#9999", &seat],
         vec!["e2e", "list"],
         vec!["seat", "fly"],
-        vec!["--run-dir", "/nonexistent-run", "seat", "ls"],
+        vec!["--run-dir", absent_run.to_str().unwrap(), "seat", "ls"],
         vec![
             "--endpoint",
-            "/nonexistent-run/gui.endpoint",
+            absent_endpoint.to_str().unwrap(),
             "app",
             "endpoint",
         ],

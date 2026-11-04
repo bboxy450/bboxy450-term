@@ -314,7 +314,60 @@ fn write_json(path: &Path, value: &Value) {
     std::fs::rename(temporary, path).unwrap();
 }
 
-fn check_disk(root: &Path) {
+fn fixture_disk_budget(seats: usize) -> u64 {
+    // The finite 20 MiB burst has journal/ring copies; small seats emit 64 KiB.
+    // Include compiler, SQLite and checkpoint overhead without reserving 10 GiB
+    // for the ordinary four-seat test. Enforce the budget against real files.
+    (128 + seats as u64) * 1024 * 1024
+}
+
+fn fixture_bytes(root: &Path) -> u64 {
+    let entries = match std::fs::read_dir(root) {
+        Ok(entries) => entries,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return 0,
+        Err(error) => panic!("recovery fixture directory {}: {error}", root.display()),
+    };
+    entries
+        .map(|entry| {
+            let entry = entry.unwrap();
+            // Atomic checkpoint/progress renames can retire a directory entry
+            // between enumeration and stat; do not follow links outside ours.
+            let metadata = match std::fs::symlink_metadata(entry.path()) {
+                Ok(metadata) => metadata,
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => return 0,
+                Err(error) => panic!("recovery fixture metadata: {error}"),
+            };
+            if metadata.is_dir() {
+                fixture_bytes(&entry.path())
+            } else {
+                metadata.len()
+            }
+        })
+        .sum()
+}
+
+fn check_fixture_size(root: &Path, budget: u64) -> u64 {
+    let used = fixture_bytes(root);
+    assert!(
+        used <= budget,
+        "recovery fixture exceeded disk budget: {used} bytes > {budget} bytes"
+    );
+    used
+}
+
+#[test]
+#[should_panic(expected = "recovery fixture exceeded disk budget")]
+fn recovery_disk_budget_rejects_oversized_fixture() {
+    let root = tempfile::tempdir().unwrap();
+    // A sparse file exercises actual filesystem accounting without filling it.
+    std::fs::File::create(root.path().join("oversized"))
+        .unwrap()
+        .set_len(4097)
+        .unwrap();
+    check_fixture_size(root.path(), 4096);
+}
+
+fn check_disk(root: &Path, budget: u64) {
     use std::os::unix::ffi::OsStrExt;
     let path = std::ffi::CString::new(root.as_os_str().as_bytes()).unwrap();
     let mut stat = std::mem::MaybeUninit::<libc::statvfs>::uninit();
@@ -327,9 +380,10 @@ fn check_disk(root: &Path) {
     let stat = unsafe { stat.assume_init() };
     let free = u128::from(stat.f_bavail) * u128::from(stat.f_frsize);
     assert!(
-        free >= 10 * 1024 * 1024 * 1024,
-        "recovery fixture aborted: free disk {free} below 10 GiB"
+        free >= u128::from(budget),
+        "recovery fixture aborted: free disk {free} below fixture budget {budget}"
     );
+    check_fixture_size(root, budget);
 }
 
 // keeps: spec mux-daemon
@@ -533,7 +587,8 @@ fn checkpoint_bounded_recovery() {
         .unwrap();
     let root = temp.path();
     std::fs::set_permissions(root, std::fs::Permissions::from_mode(0o700)).unwrap();
-    check_disk(root);
+    let disk_budget = fixture_disk_budget(count);
+    check_disk(root, disk_budget);
     std::fs::write(root.join("producer.rs"), PRODUCER).unwrap();
     let compiler = Command::new(std::env::var_os("RUSTC").unwrap_or_else(|| "rustc".into()))
         .args(["--edition=2024", "-O"])
@@ -586,7 +641,7 @@ fn checkpoint_bounded_recovery() {
     let mut disk_at = Instant::now();
     while !root.join("frozen.json").exists() {
         if disk_at.elapsed() >= Duration::from_secs(1) {
-            check_disk(root);
+            check_disk(root, disk_budget);
             disk_at = Instant::now();
         }
         let current = std::fs::read(root.join("progress.json")).unwrap_or_default();
@@ -824,6 +879,10 @@ fn checkpoint_bounded_recovery() {
             Some(libc::ECHILD)
         );
     }
+    println!(
+        "checkpoint_recovery storage_bytes={} disk_budget_bytes={disk_budget} seats={count}",
+        check_fixture_size(root, disk_budget)
+    );
     println!(
         "checkpoint_recovery reaped_owned_pids={:?}",
         owned_pids.values().collect::<Vec<_>>()

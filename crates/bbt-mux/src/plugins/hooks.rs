@@ -351,6 +351,7 @@ impl PluginHost {
         event: &HookEvent,
         deadline: Instant,
     ) -> d::Result<Value> {
+        let started = Instant::now();
         let candidate = &subscription.candidate;
         let hook = event.subject.as_deref().unwrap_or(&event.event);
         // A delivery refused before dispatch is a named skip; a dispatched
@@ -364,6 +365,26 @@ impl PluginHost {
             );
             reason
         };
+        let event_key = format!(
+            "{} ({:?})",
+            subscription
+                .hook
+                .subject
+                .as_deref()
+                .unwrap_or(&subscription.hook.event),
+            subscription.hook.phase
+        );
+        let warnings = self
+            .0
+            .registry
+            .hook_warnings(candidate, subscription.generation)
+            .map_err(|e| skip(error(&e.code, e.message)))?;
+        if warnings.iter().any(|w| w.event == event_key && w.skipped) {
+            return Err(skip(error(
+                "hook_budget_skipped",
+                "three consecutive overruns; re-enable the plugin to retry this event",
+            )));
+        }
         let connection = self.connection(candidate, Lane::Hooks).map_err(skip)?;
         if connection.authority.activation.generation != subscription.generation
             || !connection.shape().hooks.contains(&subscription.hook)
@@ -388,7 +409,7 @@ impl PluginHost {
         if subscription.payload {
             args["payload"] = event.payload.clone();
         }
-        self.dispatch(
+        let result = self.dispatch(
             candidate,
             &connection,
             "hook",
@@ -398,7 +419,30 @@ impl PluginHost {
             &[(&result_schema(), "invalid_provider_result")],
             budget.as_millis() as u64,
             deadline,
-        )
+        );
+        if !result.as_ref().is_err_and(|e| e.code == "provider_busy") {
+            let newly_skipped = self
+                .0
+                .registry
+                .record_hook_budget(
+                    candidate,
+                    subscription.generation,
+                    &event_key,
+                    budget.as_millis() as u64,
+                    started.elapsed().as_secs_f64() * 1000.,
+                )
+                .map_err(|e| error(&e.code, e.message))?;
+            if newly_skipped {
+                let bus = self.0.hooks.bus.lock().ok().and_then(|bus| bus.clone());
+                if let Some(bus) = bus {
+                    let _ = bus.try_publish("account", Draft::new("account/control", "plugin-host",
+                        json!({"kind":"hook_budget_skipped","candidate":candidate,
+                            "event":event_key,"generation":subscription.generation,
+                            "message":"Three consecutive hook budget overruns; skipping until re-enabled or re-pinned"})));
+                }
+            }
+        }
+        result
     }
 
     fn record(

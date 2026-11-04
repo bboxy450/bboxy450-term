@@ -16,8 +16,12 @@
 #[cfg(not(unix))]
 compile_error!("bboxy450-harness-wake-up currently requires Unix sockets and terminals");
 
+/// Private overlay admission files shared by launchers, hooks and MCP bridges.
+pub mod capability;
 /// Single-use positive readiness and guarded literal terminal input.
 pub mod guard;
+/// Read-only, process-bound harness session log observation.
+pub mod harness_log;
 /// Bounded hook events, OSC projection and caller-authenticated fallback delivery.
 pub mod hook;
 /// Isolated launch overlays, native runtime plans and owned cleanup.
@@ -251,6 +255,14 @@ pub enum Evidence {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum WakeCause {
+    /// Harness transport has no recent Hello.
+    HarnessSocketUnavailable,
+    /// Harness explicitly refused busy; retry with the same op id.
+    HarnessBusy,
+    /// The original message admission names a closed session.
+    HarnessSessionClosed,
+    /// A harness write may have happened; retain the op id.
+    HarnessAckUnknown,
     /// The retained attachment belongs to another binding.
     NativeAttachmentReplaced,
     /// This delivery identity already has an unresolved native outcome.
@@ -408,6 +420,7 @@ impl Adapter for Session {
     }
     fn observe_channels(&self) -> &'static [&'static str] {
         match self.record.kind.as_str() {
+            "bboxy450-harness" => &["7501", "sessions_file", "cadence", "exit"],
             "claude" => &["7501", "7502", "sessions_file", "cadence", "exit"],
             "codex" => &["7501", "app_server", "7502", "21337", "cadence", "exit"],
             "zsh" => &["133", "7", "cadence", "exit"],
@@ -427,7 +440,11 @@ impl Adapter for Session {
         sequence: u64,
         now_ms: u64,
     ) -> Result<Vec<Observation>> {
-        native::observe(self, event, sequence, now_ms)
+        if self.record.kind == "bboxy450-harness" {
+            harness_log::observe(self, event, sequence, now_ms)
+        } else {
+            native::observe(self, event, sequence, now_ms)
+        }
     }
     fn input_guard(&self, arbiter: &ArbiterView, now_ms: u64) -> Readiness {
         guard::check(self, arbiter, now_ms)
@@ -583,3 +600,5 @@ mod wake_cause_tests {
         );
     }
 }
+
+pub mod rich;

@@ -9,6 +9,8 @@
     reason = "test/fixture IO, not the UI thread"
 )]
 use std::{collections::BTreeMap, fs, io, path::Path};
+#[path = "corpus/reports.rs"]
+mod reports;
 
 fn record_sources(root: &Path) -> io::Result<Vec<(String, String)>> {
     fn walk(root: &Path, dir: &Path, out: &mut Vec<(String, String)>) -> io::Result<()> {
@@ -87,6 +89,7 @@ fn frontmatter_errors(root: &Path) -> io::Result<(usize, Vec<String>)> {
             }
         }
     }
+    errors.extend(reports::report_errors(&sources, ""));
     Ok((sources.len(), errors))
 }
 
@@ -102,7 +105,10 @@ fn real_bboxy_frontmatter_parses() {
     // A subprocess fixture can check actual mux-authored files without writing
     // into this repository. Ordinary corpus gates retain the real root.
     let root = corpus_root();
-    let (count, errors) = frontmatter_errors(&root).unwrap();
+    let (count, mut errors) = frontmatter_errors(&root).unwrap();
+    if std::env::var_os("BBOXY_DOC_CORPUS_ROOT").is_none() {
+        errors.extend(reports::repository_commit_errors(&root));
+    }
     assert!(count > 0, "the real .bboxy corpus must not be empty");
     assert!(errors.is_empty(), "{}", errors.join("\n"));
     println!("frontmatter: {count} Markdown records, positive unique numbers, 0 errors");
@@ -327,9 +333,24 @@ fn real_corpus_links_numeric_handles_and_legacy_ledger_anchors_resolve() {
     let mut count = 0;
     let mut errors = vec![];
     for record in &records {
+        // Artifact records are machine-local and untracked (.bboxy/.gitignore), so a
+        // record's own artifact links need not resolve in a fresh checkout.
+        let artifacts = record
+            .markdown
+            .frontmatter
+            .fields
+            .get("artifacts")
+            .and_then(|value| serde_yaml::to_string(value).ok())
+            .unwrap_or_default();
         for target in link_targets(record.markdown) {
+            if target.starts_with("artifacts/") || artifacts.contains(&format!("[[{target}]]")) {
+                continue;
+            }
             let resolved = match resolve(records.iter().copied(), &target) {
                 Ok(resolved) => resolved,
+                // Artifact records are machine-local since bcf574f5 (.bboxy/.gitignore):
+                // a link to one resolves only where that record exists on disk.
+                Err(_) if machine_local_artifact(&target) => continue,
                 Err(error) => {
                     errors.push(format!("{}: [[{target}]]: {error}", record.path));
                     continue;
@@ -416,4 +437,13 @@ fn licence_map_fixtures_keep_escaped_aliases_and_custom_term_refusals() {
         "{stdout}\n{}",
         String::from_utf8_lossy(&output.stderr)
     );
+}
+
+/// `artifacts/<ULID>` or a bare ULID: the form of an untracked artifact record link.
+fn machine_local_artifact(target: &str) -> bool {
+    let id = target.strip_prefix("artifacts/").unwrap_or(target);
+    id.len() == 26
+        && id
+            .chars()
+            .all(|c| c.is_ascii_digit() || (c.is_ascii_uppercase() && !"ILOU".contains(c)))
 }

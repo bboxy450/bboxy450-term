@@ -1,0 +1,131 @@
+<!doctype html>
+<!--
+Copyright 2026 Boxy (bboxy450) and contributors.
+SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+-->
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>harness · bboxy450-term lab</title>
+<link rel="stylesheet" href="lab.css">
+<script src="tokens.js"></script><script src="lab.js"></script><script src="components.js"></script><script src="glow.js"></script><script src="harness.js"></script><script src="harness-demo.js"></script><script src="harness-acp.js"></script>
+</head><body><script>
+const el = Lab.el;
+const REAL = HARNESS_SESSIONS['glyph-atlas'];
+// Shapes from an unattended session (no approver attached): each denial is one card, not approval · call · error lines.
+let n = 0; const id = () => '01M6HX' + String(++n).padStart(20, '0');
+const env = (event, ts) => ({ v: { major: 0, minor: 4 }, session: 'S', epoch: 1, seq: n, at: n, ts_ms: ts, cause: null, event });
+function denied() {
+  n = 0; const T = id(), out = [];
+  out.push(env({ type: 'session_started', meta: { session: 'S', cwd: '~/src/bboxy450-term', profile: 'nemotron', fork: null, protocol: { major: 0, minor: 4 }, harness: '0.1.0', created_ms: 0 } }, 0));
+  out.push(env({ type: 'profile_changed', profile: 'nemotron', model: 'nvidia/nemotron-3.5-super-vl' }, 0));
+  const notice = (t, ts) => { const i = id(); out.push(env({ type: 'item_started', turn: null, item: i, kind: 'notice', parent: null, head: null }, ts), env({ type: 'item_completed', item: i, status: { status: 'completed' }, body: { kind: 'notice', level: 'info', text: t } }, ts)); };
+  notice('mcp bboxy ready · 54 tools', 5);
+  out.push(env({ type: 'turn_started', turn: T }, 100));
+  const u = id(); out.push(env({ type: 'item_started', turn: T, item: u, kind: 'user_message', parent: null, head: null }, 100), env({ type: 'item_completed', item: u, status: { status: 'completed' }, body: { kind: 'user_message', blocks: [{ type: 'text', text: 'ok are you up?' }] } }, 100));
+  const r = id(); out.push(env({ type: 'item_started', turn: T, item: r, kind: 'reasoning', parent: null, head: null }, 200), env({ type: 'item_completed', item: r, status: { status: 'completed' }, body: { kind: 'reasoning', summary: 'Checking I am responsive. Orient first, as instructed, to read my identity and assignments.', raw: null, provider_opaque: null } }, 1400));
+  const call = (name, kind, input, t0, why) => {
+    const c = id(), a = id();
+    out.push(env({ type: 'item_started', turn: T, item: c, kind: 'tool_call', parent: null, head: { kind: 'tool_call', call_id: c, name, tool_kind: kind } }, t0));
+    out.push(env({ type: 'item_started', turn: T, item: a, kind: 'approval', parent: c, head: null }, t0 + 2));
+    out.push(env({ type: 'item_completed', item: a, status: { status: 'completed' }, body: { kind: 'approval', subject: { tool_call: c, effect: 'exec', summary: name, paths: [], command: null }, options: ['allow', 'allow_always', 'deny'], decision: { decision: 'deny', reason: why }, by: { by: 'unattended' } } }, t0 + 3));
+    out.push(env({ type: 'item_completed', item: c, status: { status: 'failed', reason: why }, body: { kind: 'tool_call', call_id: c, name, tool_kind: kind, input_raw: JSON.stringify(input), output: [{ type: 'error', text: why }], locations: [], spill: null } }, t0 + 4));
+  };
+  call('mcp__bboxy__orient', 'other', {}, 1500, 'no approver attached; on_unattended=deny');
+  call('bash', 'execute', { command: 'git log --oneline -10 && git status' }, 1600, 'no approver attached; on_unattended=deny');
+  const m = id(); out.push(env({ type: 'item_started', turn: T, item: m, kind: 'agent_message', parent: null, head: null }, 1700), env({ type: 'item_completed', item: m, status: { status: 'completed' }, body: { kind: 'agent_message', markdown: 'I am up, but this seat has **no approver attached**, so `orient` and shell calls are denied. Attach a face or a policy rule and I will continue.' } }, 2500));
+  out.push(env({ type: 'turn_ended', turn: T, reason: { reason: 'end_turn' }, usage: { input_tokens: 20112, output_tokens: 174, cached_input_tokens: 0, reasoning_tokens: 61, cost_micros_usd: 0 } }, 2600));
+  return out;
+}
+function pending() {
+  const d = denied(); const cut = d.findIndex(e => e.event.type === 'item_started' && e.event.kind === 'approval');
+  const p = d.slice(0, cut + 1);
+  // the approval is still open: the card waits in amber with its options
+  const c = p[cut - 1].event.item, a = p[cut].event.item;
+  p.push(env({ type: 'item_completed', item: a, status: { status: 'completed' }, body: { kind: 'approval', subject: { tool_call: c, effect: 'exec', summary: 'mcp__bboxy__orient {}', paths: [], command: 'mcp__bboxy__orient {}' }, options: ['allow', 'allow_always', 'deny'], decision: null, by: null } }, 1503));
+  return p;
+}
+// a provider error the harness classified: the same 404 the omp agent pasted into its reply, as a real error ending
+function errored() {
+  const src = HARNESS_SESSIONS['acp:omp'], cut = src.findIndex(e => e.event.type === 'item_started' && e.event.kind === 'agent_message');
+  const out = src.slice(0, cut).map(e => e.event.type === 'profile_changed' ? { ...e, event: { type: 'profile_changed', profile: 'minimax', model: 'minimax/minimax-m3.1-flash:free' } } : e);
+  const turn = out.find(e => e.event.type === 'turn_started').event.turn, t = out[out.length - 1].ts_ms + 1800;
+  out.push(env({ type: 'turn_ended', turn, reason: { reason: 'error', class: 'bad_request', message: 'openrouter 404 · The free launch period for MiniMax M3.1 Flash ended on Oct 22, 2026; the :free variant is retired. Use minimax/minimax-m3.1-flash.' }, usage: null }, t));
+  return out;
+}
+// the user pressed esc while the tests ran: the turn ends neutral, not red
+function interrupted() {
+  const k = REAL.findIndex(e => e.event.type === 'item_started' && e.event.kind === 'terminal'), cut = REAL.slice(0, k + 1);
+  const tool = cut[k].event.parent, turn = REAL.find(e => e.event.type === 'turn_started').event.turn, t = cut[k].ts_ms + 900;
+  cut.push(env({ type: 'item_completed', item: tool, status: { status: 'interrupted' }, body: REAL.find(e => e.event.type === 'item_completed' && e.event.item === tool).event.body }, t));
+  cut.push(env({ type: 'turn_ended', turn, reason: { reason: 'interrupted' }, usage: null }, t + 5));
+  return cut;
+}
+// a live gateway streams the call's input before its terminal starts; the stored log keeps it only on completion
+const withInput = cut => { const out = []; for (const e of cut) { out.push(e); if (e.event.type === 'item_started' && e.event.kind === 'tool_call') { const done = REAL.find(x => x.event.type === 'item_completed' && x.event.item === e.event.item); if (done && done.event.body.input_raw) out.push({ ...e, event: { type: 'item_delta', item: e.event.item, delta: { type: 'tool_input', append: done.event.body.input_raw } } }); } } return out; };
+const running = () => { const k = REAL.findIndex(e => e.event.type === 'item_started' && e.event.kind === 'terminal'); return withInput(REAL.slice(0, k + 1)); };
+const TYPED = 'also check @src/atlas.rs for the same off-by-one';
+const COMPOSE = {
+  'composer · idle': [REAL, {}],
+  'composer · focused': [REAL, { focus: true }],
+  'composer · typing': [REAL, { focus: true, text: TYPED }],
+  'composer · running': [null, { queued: ['then run clippy on the whole workspace'] }],
+  'slash menu': [REAL, { focus: true, text: '/pro', menu: 'slash', sel: 1 }],
+};
+const ACP = { 'acp · claude': 'acp:claude-acp', 'acp · codex': 'acp:codex-acp', 'acp · pi': 'acp:pi', 'acp · opencode loop': 'acp:opencode', 'acp · omp': 'acp:omp', 'mermaid': 'mermaid' };
+// every composer state on one board, composer only: the native composer's 1:1 target
+function board(body) {
+  const rows = [['idle', 'idle', {}], ['focused', 'idle', { focus: true }], ['typing', 'idle', { focus: true, text: TYPED }], ['running · queued follow-up', 'tool', { queued: ['then run clippy on the whole workspace'] }],
+    ['running · typing a follow-up', 'tool', { focus: true, text: 'and the release profile' }], ['approval pending', 'ask', {}], ['"/" menu', 'idle', { focus: true, text: '/pro', menu: 'slash', sel: 0 }]];
+  const wrap = el('div', { style: 'display:flex;flex-direction:column;gap:14px;width:760px;max-width:100%' });
+  for (const [label, phase, o] of rows) {
+    const opts = { interactive: true, profiles: Hx.DEMO_PROFILES };
+    const c = Hx.composer(opts, { profiles: () => opts.profiles, openProfiles() {} });
+    const hx = el('div', { class: 'hx', 'data-phase': phase, style: '--seat:#2EE6A8;height:auto;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--surface)' + (o.menu ? ';padding-top:340px' : '') }, c);
+    c.hx.sync(phase); c.hx.set(o);
+    wrap.append(el('div', { class: 'label', style: 'font:600 11px var(--font-mono);color:var(--fg-dim);margin-bottom:-8px' }, label), hx);
+  }
+  body.append(wrap);
+}
+function frame(w, h) { return el('div', { style: '--seat:#2EE6A8;width:' + w + 'px;height:' + h + 'px;max-width:100%;border-radius:var(--r-pill);border:1px solid var(--line);background:var(--surface);overflow:hidden' }); }
+let live = null; const FH = +new URLSearchParams(location.search).get('h') || 720;
+// The standalone app window: OS decorations off, the term's own title bar (C.titleBar, bbt_ui::modules::title_bar) and
+// global text zoom on Cmd+= / Cmd+- / Cmd+0 (90 to 160%, 10% steps), shown by a pill that fades after 900ms.
+let zoomKey = null;
+function standalone(body) {
+  const f = frame(760, FH); f.style.display = 'flex'; f.style.flexDirection = 'column';
+  let v; v = Hx.view({ interactive: true, profiles: Hx.DEMO_PROFILES, onOp: Hx.demoOps(() => v) });
+  const bar = C.titleBar({ title: 'bboxy450-harness', crumb: 'claude-acp · acpdemo', theme: 'dark' });
+  bar.querySelector('.tbtn:not(.theme)')?.remove(); bar.style.borderRadius = '0'; bar.style.border = '0'; bar.style.borderBottom = 'var(--hair-w) solid var(--line)';
+  const pill = el('div', { class: 'hx-zoom' }), host = el('div', { style: 'flex:1;min-height:0;display:flex;position:relative' }, v.node, pill);
+  v.node.style.flex = '1'; f.append(bar, host); body.append(f);
+  let z = 1, t = 0;
+  const set = n => { z = Math.round(Math.min(1.6, Math.max(0.9, n)) * 10) / 10; v.node.style.zoom = z; pill.textContent = Math.round(z * 100) + '%'; pill.classList.add('on'); clearTimeout(t); t = setTimeout(() => pill.classList.remove('on'), 900); };
+  if (zoomKey) removeEventListener('keydown', zoomKey);
+  zoomKey = e => { if (!(e.metaKey || e.ctrlKey) || !f.isConnected) return; if (e.key === '=' || e.key === '+') set(z + 0.1); else if (e.key === '-') set(z - 0.1); else if (e.key === '0') set(1); else return; e.preventDefault(); };
+  addEventListener('keydown', zoomKey);
+  requestAnimationFrame(() => HARNESS_SESSIONS['acp:claude-acp'].forEach(e => v.apply(e)));
+}
+Lab.page({ title: 'harness', wide: true,
+  note: 'Native target: harness-spec.md (sizes, tokens, motion, flat fallbacks). The rich bboxy face. bboxy450-harness envelopes (protocol Event/Item) fold into cards: one tool call is one card with its approval, terminal and diff inside; reasoning collapses to "Thought for"; usage drives the header meter. "live" replays a real scripted run of the harness binary (lab/web/harness/gen.sh) at reading pace. Click any card header to fold it.',
+  states: ['live', 'standalone window', 'empty session', 'finished', 'composer states', 'composer · idle', 'composer · focused', 'composer · typing', 'composer · running', 'slash menu', 'profiles', 'new profile', 'running tool', 'approval pending', 'denied unattended', 'error', 'interrupted',
+    'acp · claude', 'acp · codex', 'acp · pi', 'acp · opencode loop', 'acp · omp', 'mermaid', 'compact pane'],
+  render(s, body) {
+    if (live && s !== 'all') { live.stop(); live = null; }
+    if (s === 'composer states') return board(body);
+    if (s === 'standalone window') return standalone(body);
+    const f = frame(s === 'compact pane' ? 520 : 760, s === 'compact pane' ? 520 : FH);
+    let v; v = Hx.view({ compact: s === 'compact pane', interactive: true, profiles: Hx.DEMO_PROFILES, onOp: Hx.demoOps(() => v) });
+    f.append(v.node); body.append(f);
+    if (s === 'live' || s === 'compact pane') { const p = Hx.play(v, REAL, { loop: true }); if (s === 'live') live = p; return; }
+    if (s === 'profiles' || s === 'new profile') { REAL.forEach(e => v.apply(e)); requestAnimationFrame(() => { v.openProfiles(); if (s === 'new profile') v.node.querySelector('.hx-padd').click(); }); return; }
+    if (s === 'empty session') { requestAnimationFrame(() => HARNESS_SESSIONS['acp:claude-acp'].filter(e => /^(session_started|profile_changed)$/.test(e.event.type)).forEach(e => v.apply(e))); return; }
+    if (COMPOSE[s]) { const [envs, o] = COMPOSE[s]; requestAnimationFrame(() => { (envs || running()).forEach(e => v.apply(e)); v.compose(o); }); return; }
+    if (ACP[s]) { requestAnimationFrame(() => HARNESS_SESSIONS[ACP[s]].forEach(e => v.apply(e))); return; }
+    let envs = s === 'denied unattended' ? denied() : s === 'approval pending' ? pending() : s === 'error' ? errored() : s === 'interrupted' ? interrupted() : REAL;
+    if (s === 'running tool') envs = running();
+    requestAnimationFrame(() => envs.forEach(e => v.apply(e)));
+  } });
+</script></body></html>

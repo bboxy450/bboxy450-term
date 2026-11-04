@@ -14,7 +14,7 @@
 
 use std::time::Duration;
 
-const EXAMPLES: [&str; 7] = [
+const EXAMPLES: [&str; 8] = [
     "bboxy450-term-data_source-example",
     "bboxy450-term-task_system-example",
     "bboxy450-term-event_sink-example",
@@ -22,6 +22,7 @@ const EXAMPLES: [&str; 7] = [
     "bboxy450-term-repo_graph-example",
     "bboxy450-term-session-example",
     "bboxy450-term-provider-example",
+    "bboxy450-term-transport-example",
 ];
 
 // keeps: P8 SDK completeness — an example per contract, each conformant.

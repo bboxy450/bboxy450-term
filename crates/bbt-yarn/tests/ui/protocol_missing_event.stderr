@@ -1,0 +1,5 @@
+error: PRO002 event `Ping` has no on arm. Repair: add an on arm with exhaustive, disjoint cases.
+  --> tests/ui/protocol_missing_event.rs:10:59
+   |
+10 |     mod Missing { state { value: bool = false; } events { Ping; } }
+   |                                                           ^^^^

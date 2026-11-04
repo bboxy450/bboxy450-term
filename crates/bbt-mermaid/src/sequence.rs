@@ -346,7 +346,7 @@ pub(crate) fn layout(q: &Sequence, m: &dyn Measure, s: &Style) -> Result<Geometr
                 },
                 _ => Size {
                     w: (t.w + 2.0 * s.node_pad_x).max(72.0),
-                    h: t.h + 2.0 * s.node_pad_y,
+                    h: t.h.max(30.0),
                 },
             }
         })
@@ -430,6 +430,7 @@ pub(crate) fn layout(q: &Sequence, m: &dyn Measure, s: &Style) -> Result<Geometr
     let mut acts: Vec<(usize, usize, f32, f32)> = Vec::new(); // actor, level, top, bottom
     let mut frames: Vec<Frame> = Vec::new();
     let mut y = box_h + s.row_gap * 2.0;
+    let mut previous_message_y: Option<f32> = None;
     let mut k = 0;
     let mut notes = 0;
     let touch = |frames: &mut Vec<Frame>, a: f32, b: f32| {
@@ -453,6 +454,12 @@ pub(crate) fn layout(q: &Sequence, m: &dyn Measure, s: &Style) -> Result<Geometr
         })
     };
     for e in &q.events {
+        if !matches!(
+            e,
+            Event::Message { .. } | Event::Activate(_) | Event::Deactivate(_)
+        ) {
+            previous_message_y = None;
+        }
         match e {
             Event::Message {
                 from,
@@ -467,8 +474,13 @@ pub(crate) fn layout(q: &Sequence, m: &dyn Measure, s: &Style) -> Result<Geometr
                 k += 1;
                 let lines = numbered(k, text);
                 let ts = measure_lines(&lines, TextRole::Message, m);
-                y += ts.h + 6.0;
+                // Refinement pass 2: source arrows have a fixed 30px pitch,
+                // including self messages and multiline labels.
+                // Origin/policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+                let label_gap = 4.0;
+                y = previous_message_y.map_or(y + ts.h + label_gap, |previous| previous + 30.0);
                 let ay = y;
+                previous_message_y = Some(ay);
                 let (f, t) = (*from, *to);
                 let pts = if f == t {
                     let x = act_x(&active, f).map_or(c[f], |r| r.1);
@@ -494,7 +506,7 @@ pub(crate) fn layout(q: &Sequence, m: &dyn Measure, s: &Style) -> Result<Geometr
                 let lrect = if f == t {
                     Rect {
                         x: pts[0].x + 6.0,
-                        y: ay - ts.h - 3.0,
+                        y: ay - ts.h - label_gap,
                         w: ts.w,
                         h: ts.h,
                     }
@@ -502,7 +514,7 @@ pub(crate) fn layout(q: &Sequence, m: &dyn Measure, s: &Style) -> Result<Geometr
                     let mid = (pts[0].x + pts[1].x) / 2.0;
                     Rect {
                         x: mid - ts.w / 2.0,
-                        y: ay - ts.h - 3.0,
+                        y: ay - ts.h - label_gap,
                         w: ts.w,
                         h: ts.h,
                     }

@@ -34,6 +34,42 @@ fn labels(l: &c::Layout) -> String {
     }
     s
 }
+
+#[test]
+fn plugin_reference_setup_rows_match_auth_state_without_hiding_live_controls() {
+    fn find<'a>(node: &'a c::Layout, key: &str) -> Option<&'a c::Layout> {
+        if matches!(&node.kind, c::LayoutKind::Named(name) if name == key) {
+            Some(node)
+        } else {
+            node.children.iter().find_map(|child| find(child, key))
+        }
+    }
+    let mut view = Settings {
+        section: "Plugins".into(),
+        values: Records {
+            plugins: vec![plugins::Plugin {
+                name: "example".into(),
+                trust: "trusted".into(),
+                auth: Some("ok".into()),
+                ..Default::default()
+            }],
+            ..Default::default()
+        },
+        ..Default::default()
+    };
+    let reference = layout(&view);
+    assert!(find(&reference, "card0/plugin0/setup").is_none());
+    assert_eq!(find(&reference, "card0/plugin0/chips").unwrap().rect.h, 20.);
+    view.values.plugins[0].auth = Some("needs login".into());
+    assert!(labels(&layout(&view)).contains("Re-run setup"));
+    view.values.plugins[0].auth = None;
+    view.values.plugins[0].health.state = "crashed".into();
+    assert!(find(&layout(&view), "card0/plugin0/setup").is_some());
+    view.values.plugins[0].health.state = "ok".into();
+    view.values.plugins[0].auth = Some("ok".into());
+    view.values.plugins[0].actionable = true;
+    assert!(find(&layout(&view), "card0/plugin0/setup").is_some());
+}
 // keeps: spec gui-components §1.3
 #[test]
 fn account_projects_the_pinned_identity_and_recovery_limits_without_actions() {
@@ -220,15 +256,15 @@ fn plugin_and_provider_controls_refuse_without_editing_the_supplied_snapshot() {
     for (field, reason) in [
         (
             Field::PluginEnable("active-provider".into()),
-            "provider of .bboxy",
+            "current workspace registry connection",
         ),
         (
             Field::PluginEnable("example".into()),
-            "enable/disable is unavailable",
+            "current workspace registry connection",
         ),
         (
             Field::PluginTrust("never-run".into()),
-            "trust is unavailable",
+            "Trust needs a discovered executable",
         ),
         (
             Field::PluginSetup("example".into()),
@@ -236,7 +272,7 @@ fn plugin_and_provider_controls_refuse_without_editing_the_supplied_snapshot() {
         ),
         (
             Field::KnowledgeProvider(".bboxy".into()),
-            "bundled provider remains active",
+            "current Knowledge connection",
         ),
     ] {
         control.focus = Focus::Control(field);

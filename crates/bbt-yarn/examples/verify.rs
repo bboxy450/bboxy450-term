@@ -12,6 +12,70 @@ use std::collections::BTreeSet;
 use std::fmt::Write as _;
 use std::path::Path;
 
+#[path = "../tests/protocol_runtime.rs"]
+mod protocol_language;
+#[path = "../tests/protocol.rs"]
+#[allow(dead_code)] // Model export includes runtime-only declarations and contract references.
+mod protocols;
+#[path = "../tests/protocol_temporal.rs"]
+mod temporal_protocols;
+
+// Existing formal-contract metadata, shared with the project gate. No new report format.
+fn json_string(value: &str) -> String {
+    let mut result = String::from("\"");
+    for c in value.chars() {
+        match c {
+            '"' => result.push_str("\\\""),
+            '\\' => result.push_str("\\\\"),
+            c if c < ' ' => write!(&mut result, "\\u{:04x}", u32::from(c)).unwrap(),
+            c => result.push(c),
+        }
+    }
+    result.push('"');
+    result
+}
+
+fn metadata(model: &Model) -> String {
+    let variables = model
+        .variables
+        .iter()
+        .map(|v| {
+            format!(
+                "{{\"name\":{},\"min\":{},\"max\":{},\"initial\":{}}}",
+                json_string(&v.name),
+                v.min,
+                v.max,
+                v.initial,
+            )
+        })
+        .collect::<Vec<_>>()
+        .join(",");
+    let actions = model
+        .actions
+        .iter()
+        .map(|a| json_string(&a.name))
+        .collect::<Vec<_>>()
+        .join(",");
+    let invariants = model
+        .invariants
+        .iter()
+        .map(|i| json_string(&i.name))
+        .collect::<Vec<_>>()
+        .join(",");
+    let responses = model
+        .responses
+        .iter()
+        .map(|r| json_string(&r.name))
+        .collect::<Vec<_>>()
+        .join(",");
+    let fair = &model.weak_fair;
+    let strong_fair = &model.strong_fair;
+    let deadlock = model.check_deadlock;
+    format!(
+        "{{\"variables\":[{variables}],\"actions\":[{actions}],\"invariants\":[{invariants}],\"responses\":[{responses}],\"weak_fair_action_groups\":{fair:?},\"strong_fair_action_groups\":{strong_fair:?},\"check_deadlock\":{deadlock},\"implementation_refinement_proven\":false}}\n"
+    )
+}
+
 // Copied from bboxy450-tlc examples/verify.rs, within the same source project.
 // https://github.com/bboxy450/bboxy450-tlc — artifact format shared by both frontends.
 fn export(
@@ -74,6 +138,7 @@ fn export(
         )?;
     }
     std::fs::write(root.join(format!("{}.native-trace", m.name)), trace)?;
+    std::fs::write(root.join(format!("{}.metadata.json", m.name)), metadata(&m))?;
     writeln!(
         manifest,
         "{}\t{}\t{}\t{}",
@@ -111,8 +176,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         _ = sources.input => { Ok(Control::Continue) }
     };
     yield_reactor.name = "YarnBufferedYield".into();
-    for model in [reactor, yield_reactor] {
-        export(model, "pass", root, &mut manifest)?;
+    for (model, expected) in [
+        (reactor, "pass"),
+        (yield_reactor, "pass"),
+        (protocols::LatestResult::model(), "pass"),
+        (protocols::BrokenLatestResult::model(), "safety"),
+        (protocol_language::ProtocolLanguage::model(), "pass"),
+        (temporal_protocols::PresentGeneration::model(), "pass"),
+        (
+            temporal_protocols::BrokenPresentGeneration::model(),
+            "safety",
+        ),
+        (temporal_protocols::PresentProgress::model(), "pass"),
+        (
+            temporal_protocols::BrokenPresentProgress::model(),
+            "liveness",
+        ),
+        (temporal_protocols::RetryUnknown::model(), "pass"),
+        (temporal_protocols::BrokenRetryUnknown::model(), "safety"),
+        (temporal_protocols::ProtocolProgress::model(), "pass"),
+        (
+            temporal_protocols::BrokenProtocolProgress::model(),
+            "liveness",
+        ),
+    ] {
+        export(model, expected, root, &mut manifest)?;
     }
     std::fs::write(root.join("manifest.tsv"), manifest)?;
     Ok(())

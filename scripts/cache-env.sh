@@ -17,7 +17,14 @@ bboxy_cache_env() {
         export BBOXY_CARGO_TARGET_DIR
     fi
     unset CARGO_TARGET_DIR CARGO_LOG CARGO_TERM_COLOR CARGO_TERM_PROGRESS_WHEN CARGO_TERM_PROGRESS_WIDTH
-    export CARGO_BUILD_JOBS=2 CARGO_INCREMENTAL=0
+    export CARGO_BUILD_JOBS="${BBOXY_CARGO_JOBS:-2}" CARGO_INCREMENTAL=0
+    # A machine-wide build.build-dir mixes worktrees' same-named crates
+    # (rust-lang/cargo#12516) and serializes every build on one lock. Keep
+    # intermediates with this worktree's target; sccache shares dependencies.
+    if [ -z "${CARGO_BUILD_BUILD_DIR:-}" ]; then
+        CARGO_BUILD_BUILD_DIR=${BBOXY_CARGO_TARGET_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)/target}
+        export CARGO_BUILD_BUILD_DIR
+    fi
     # A full capacity-gated CI run cannot grow the optional shared cache. Do not
     # reconfigure or stop a live daemon: nested checks inherit this disposition.
     case "${BBOXY_CACHE_MODE:-auto}" in
@@ -28,7 +35,7 @@ bboxy_cache_env() {
         *) printf 'cache: configuration refused (unknown BBOXY_CACHE_MODE)\n' >&2; return 2 ;;
     esac
     if ! command -v sccache >/dev/null 2>&1; then
-        printf 'cache: off (sccache missing)\n' >&2
+        printf 'cache: off (sccache missing; run make tools)\n' >&2
         return 0
     fi
     if ! command -v python3 >/dev/null 2>&1; then
@@ -41,8 +48,11 @@ bboxy_cache_env() {
     fi
     bboxy_cache_root=$(CDPATH='' cd -- "$bboxy_cache_root" && pwd -P)
     SCCACHE_SERVER_PORT=$(printf '%s' "$bboxy_cache_root" | cksum | awk '{print 4300 + $1 % 1000}')
-    SCCACHE_DIR="$HOME/Library/Caches/bboxy450-sccache"
-    SCCACHE_CACHE_SIZE=20G
+    case "$(uname -s)" in
+        Darwin) SCCACHE_DIR=${SCCACHE_DIR:-$HOME/Library/Caches/bboxy450-sccache} ;;
+        *) SCCACHE_DIR=${SCCACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/bboxy450-sccache} ;;
+    esac
+    SCCACHE_CACHE_SIZE=${SCCACHE_CACHE_SIZE:-10G}
     SCCACHE_IGNORE_SERVER_IO_ERROR=1
     # An inherited Unix socket would override the worktree's TCP port.
     unset SCCACHE_SERVER_UDS
@@ -84,7 +94,7 @@ PY
     ); then
         export RUSTC_WRAPPER=sccache
         (python3 -I "$bboxy_cache_root/scripts/resource-ledger.py" bind-cache "$bboxy_cache_root" "$SCCACHE_SERVER_PORT" </dev/null >/dev/null 2>&1 || :) &
-        printf 'cache: on (port %s; shared local cache %s; 20G)\n' "$SCCACHE_SERVER_PORT" "$SCCACHE_DIR" >&2
+        printf 'cache: on (port %s; shared local cache %s; %s)\n' "$SCCACHE_SERVER_PORT" "$SCCACHE_DIR" "$SCCACHE_CACHE_SIZE" >&2
     else
         printf 'cache: off (%s)\n' "${bboxy_cache_reason:-server check failed}" >&2
     fi

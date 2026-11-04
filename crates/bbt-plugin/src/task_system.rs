@@ -50,20 +50,24 @@ pub struct TaskRecord {
 pub struct ListRequest {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unassigned: Option<bool>,
+    /// Operator only: merge the open unassigned tasks into the swarm's page.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub include_unassigned: Option<bool>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub swarm_id: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub status: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub assignee: Option<String>,
-    /// Exclusive ULID cursor from the previous page's `next`.
+    /// Exclusive cursor from the previous page's `next`: a task ULID, or
+    /// `<updated ms>:<ULID>` for most-recently-changed-first pages.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub after: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub limit: Option<u32>,
 }
 
-/// One page of tasks; `next` is the ULID to pass as `after`.
+/// One page of tasks; `next` is the cursor to pass as `after`.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TaskPage {
     pub items: Vec<TaskRecord>,
@@ -132,6 +136,9 @@ pub struct ReportRequest {
     pub summary: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub commit: Option<String>,
+    /// Locator of the committed immutable report document.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub report: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub verify_result: Option<TaskVerification>,
 }

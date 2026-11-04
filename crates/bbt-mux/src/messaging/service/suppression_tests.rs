@@ -68,6 +68,92 @@ fn wake(messaging: &mut Messaging, caller: &SeatRecord, id: Ulid) -> Option<Rece
     messaging.receipts(caller.id, id).unwrap().remove(0).wake
 }
 
+#[test]
+fn amendments_wake_inbox_only_receivers_and_join_only_their_root_delegation() {
+    let (_root, mut messaging, caller, receiver) = fixture();
+    messaging
+        .registry
+        .set_attention(
+            receiver.id,
+            1,
+            AttentionRule {
+                destination: format!("seats/{}/inbox", receiver.id),
+                class: bbt_proto::messaging::MessageClass::Conversation,
+                mode: WakeMode::Inbox,
+            },
+        )
+        .unwrap();
+    let task = Ulid::new();
+    let mut send = |root: &str, event: &str, now| {
+        let summary = format!("task brief {event}");
+        let mut request = SendRequest::text(format!("seats/{}/inbox", receiver.id), &summary);
+        request.kind = MessageKind::Task;
+        messaging.task_root(caller.swarm, request.id, root).unwrap();
+        messaging
+            .task_event(
+                caller.id,
+                1,
+                request,
+                Body::Task {
+                    task_id: task,
+                    event: event.into(),
+                    path: "tasks/one.md".into(),
+                    summary,
+                },
+                now,
+            )
+            .unwrap()
+    };
+    let a = send("root-a", "delegate", 1);
+    let b = send("root-b", "delegate", 2);
+    let amendment = send("root-a", "amend", 3);
+    let later = send("root-a", "delegate", 4);
+    let legacy = send("root-legacy", "amend", 5);
+    let legacy_next = send("root-legacy", "amend", 6);
+    assert_eq!(legacy.view().thread_id, legacy.view().id);
+    assert_eq!(legacy_next.view().thread_id, legacy.view().thread_id);
+    assert_eq!(amendment.view().thread_id, a.view().thread_id);
+    assert_ne!(amendment.view().thread_id, b.view().thread_id);
+    assert_ne!(amendment.view().thread_id, later.view().thread_id);
+    amendment.envelope().unwrap().verify_signature().unwrap();
+    assert_eq!(
+        wake(&mut messaging, &caller, amendment.view().id),
+        Some(ReceiptWake::Now)
+    );
+    let mut retry = SendRequest::text(format!("seats/{}/inbox", receiver.id), "task brief amend");
+    retry.id = amendment.view().id;
+    retry.kind = MessageKind::Task;
+    let replay = messaging
+        .task_event(caller.id, 1, retry, amendment.view().body.clone(), 7)
+        .unwrap();
+    assert_eq!(replay.envelope(), amendment.envelope());
+    assert_eq!(replay.sequence, amendment.sequence);
+    let mut reply = SendRequest::text("", "using the amended legacy brief");
+    reply.reply_to = Some(legacy_next.view().id);
+    let reply = messaging.send(receiver.id, 1, reply, 8).unwrap();
+    assert_eq!(reply.view().thread_id, legacy.view().thread_id);
+    let mut request = SendRequest::text(format!("seats/{}/inbox", caller.id), "forged amendment");
+    request.kind = MessageKind::Task;
+    assert!(
+        messaging
+            .task_event(
+                receiver.id,
+                1,
+                request,
+                Body::Task {
+                    task_id: task,
+                    event: "amend".into(),
+                    path: "tasks/one.md".into(),
+                    summary: "forged amendment".into(),
+                },
+                4
+            )
+            .unwrap_err()
+            .to_string()
+            .contains("oracle-class")
+    );
+}
+
 // keeps: #334 terminal authority is exactly accepted/rejected, never report prose or a reply.
 #[test]
 fn terminal_task_records_cancel_delegations_and_never_rearm_their_old_messages() {

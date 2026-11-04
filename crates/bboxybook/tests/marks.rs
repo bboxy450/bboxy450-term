@@ -216,7 +216,12 @@ fn vector_shadow_reuses_tint_translation_and_bounds_alpha_before_blur() {
         "DPR binds coverage"
     );
     let before = renderer.text_cache_stats().coverage.shadow_requests;
-    let invisible = draw(20.25, 20., amber, [0., 0.], 0.);
+    let mut invisible = draw(20.25, 20., amber, [0., 0.], 0.);
+    // Visible paths also request zero-blur coverage after 5e7addbc. Isolate
+    // the transparent shadow so its cache assertion excludes the visible mark.
+    invisible
+        .primitives
+        .retain(|p| !matches!(p, bbt_ui_model::draw::Prim::Path { .. }));
     renderer.render_to_rgba(&invisible, 128, 96, 1.).unwrap();
     assert_eq!(
         renderer.text_cache_stats().coverage.shadow_requests,

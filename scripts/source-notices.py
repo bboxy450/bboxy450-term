@@ -29,7 +29,24 @@ UPSTREAM_PREFIXES = (
 )
 UPSTREAM_FILES = {"crates/bbt-core/src/keyboard.rs"}
 FORK_PREFIXES = ("crates/bbt-yarn/", "crates/bbt-yarn-macros/")
-OWNED_FORK_FILES = {"crates/bbt-yarn/src/model.rs", "crates/bbt-yarn/examples/verify.rs", "crates/bbt-yarn/tests/model_projection.rs"}
+OWNED_FORK_FILES = {
+    "crates/bbt-yarn-macros/src/verify.rs",
+    "crates/bbt-yarn/src/verify.rs",
+    "crates/bbt-yarn/examples/protocol_contracts.rs",
+    "crates/bbt-yarn/src/concurrency.rs",
+    "crates/bbt-yarn/tests/concurrency/run.py",
+    "crates/bbt-yarn/src/model.rs",
+    "crates/bbt-yarn/examples/verify.rs",
+    "crates/bbt-yarn/tests/model_projection.rs",
+    "crates/bbt-yarn-macros/src/protocol.rs",
+    "crates/bbt-yarn/src/protocol.rs",
+    "crates/bbt-yarn/tests/protocol.rs",
+    "crates/bbt-yarn/tests/protocol_runtime.rs",
+    "crates/bbt-yarn/tests/protocol_temporal.rs",
+    "crates/bbt-yarn/tests/ui-pass/protocol_hygiene.rs",
+    "crates/bbt-yarn/tests/kani/main.rs",
+    "crates/bbt-yarn/tests/kani/proofs.rs",
+}
 STRICT_PREFIXES = ("crates/bbt-yarn/tests/ui/",)
 CHECKER_FILES = {"scripts/source-notices.py", "scripts/test-source-notices.py"}
 # The packaged web source is edited canonically; release-inputs copies are synced

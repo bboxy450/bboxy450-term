@@ -6,6 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Drive a built plugin executable over stdio, as the host does. Used by
 //! plugin conformance tests and read-only probes.
+use std::collections::BTreeMap;
 use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Child, ChildStdin, Command, Stdio};
@@ -24,6 +25,17 @@ pub fn allowed_env() -> Vec<(String, String)> {
                 || k.starts_with("LC_")
         })
         .collect()
+}
+
+/// `tools/call` params for `tool` made on behalf of a seat lending `env`
+/// (request `_meta` `bboxy450/attribution`, see
+/// [`bbt_plugin::policy::ATTRIBUTION_META`]); no `_meta` when `env` is empty.
+pub fn attributed(tool: &str, args: Value, env: &BTreeMap<String, String>) -> Value {
+    let mut params = json!({"name": tool, "arguments": args});
+    if !env.is_empty() {
+        params["_meta"] = json!({ bbt_plugin::policy::ATTRIBUTION_META: { "env": env } });
+    }
+    params
 }
 
 /// Print and parse `--shape`.
@@ -137,6 +149,58 @@ impl Client {
         }
     }
 
+    /// Send every request before reading any reply (pipelined, as a
+    /// concurrent host does), then wait at most `wait` for all replies.
+    /// Each slot is its request's reply, or `NoReply`.
+    pub fn batch(
+        &mut self,
+        requests: &[(&str, Value)],
+        wait: Duration,
+    ) -> Vec<Result<Value, Failure>> {
+        let first = self.next_id + 1;
+        let mut replies: Vec<Option<Result<Value, Failure>>> = vec![None; requests.len()];
+        for (method, params) in requests {
+            self.next_id += 1;
+            let frame = json!({"jsonrpc":"2.0","id":self.next_id,"method":method,"params":params});
+            if self.send(&frame).is_err() {
+                break;
+            }
+        }
+        let deadline = Instant::now() + wait;
+        while replies.iter().any(Option::is_none) {
+            let left = deadline.saturating_duration_since(Instant::now());
+            let Ok(reply) = self.replies.recv_timeout(left) else {
+                break;
+            };
+            let Some(slot) = reply["id"]
+                .as_u64()
+                .and_then(|id| id.checked_sub(first))
+                .and_then(|i| replies.get_mut(i as usize))
+            else {
+                continue;
+            };
+            // A second reply to one id is a protocol fault; keep the first.
+            if slot.is_none() {
+                *slot = Some(match reply.get("error") {
+                    Some(error) => Err(Failure::Protocol(error.clone())),
+                    None => Ok(reply["result"].clone()),
+                });
+            }
+        }
+        replies
+            .into_iter()
+            .map(|slot| slot.unwrap_or_else(|| Err(Failure::NoReply("batch".into()))))
+            .collect()
+    }
+
+    /// The exit code once the process has ended (`-1` for a signal), else `None`.
+    pub fn exited(&mut self) -> Option<i32> {
+        match self.child.try_wait() {
+            Ok(Some(status)) => Some(status.code().unwrap_or(-1)),
+            _ => None,
+        }
+    }
+
     /// `initialize`, then `notifications/initialized`.
     pub fn initialize(&mut self, params: Value, wait: Duration) -> Result<Value, Failure> {
         let mut params = params;
@@ -149,7 +213,18 @@ impl Client {
     /// Call a tool and return its structured result, checking that the text
     /// content is the same JSON.
     pub fn call(&mut self, tool: &str, args: Value, wait: Duration) -> Result<Value, Failure> {
-        let result = self.request("tools/call", json!({"name": tool, "arguments": args}), wait)?;
+        self.call_attributed(tool, args, &Default::default(), wait)
+    }
+
+    /// [`Client::call`] on behalf of a seat lending `env`, as the host sends it.
+    pub fn call_attributed(
+        &mut self,
+        tool: &str,
+        args: Value,
+        env: &BTreeMap<String, String>,
+        wait: Duration,
+    ) -> Result<Value, Failure> {
+        let result = self.request("tools/call", attributed(tool, args, env), wait)?;
         let structured = result["structuredContent"].clone();
         if result["isError"] == true {
             return Err(Failure::Tool(structured));
@@ -188,4 +263,55 @@ impl Drop for Client {
             let _ = self.child.wait();
         }
     }
+}
+
+/// Run the plugin doctor ([`crate::doctor::run`]) against `binary` and fail
+/// the calling test with the gap list when any gap is an error. Warnings and
+/// skipped checks are in the returned report.
+pub fn doctor(binary: &Path, options: &crate::doctor::Options) -> crate::doctor::Report {
+    let report = crate::doctor::run(binary, options);
+    assert!(report.is_clean(), "{}", report.human());
+    report
+}
+
+/// Build example `name` of the package at `manifest_dir` (small, stripped,
+/// release, in a private target beside the running test executable, shared
+/// with `bboxy450-term-plugin-fixture`'s builds) and return its executable.
+/// For tests of plugins that are examples, which have no `CARGO_BIN_EXE_*`.
+pub fn example(manifest_dir: &Path, name: &str) -> PathBuf {
+    let exe = std::env::current_exe().expect("test executable path");
+    let base = exe
+        .ancestors()
+        .find(|dir| dir.file_name().is_some_and(|n| n == "deps"))
+        .and_then(Path::parent)
+        .and_then(Path::parent)
+        .map_or_else(|| manifest_dir.join("target"), Path::to_path_buf)
+        .join("plugin-fixtures");
+    let cargo = std::env::var_os("CARGO").unwrap_or_else(|| "cargo".into());
+    let output = Command::new(cargo)
+        .args([
+            "build",
+            "--quiet",
+            "--release",
+            "--example",
+            name,
+            "--manifest-path",
+        ])
+        .arg(manifest_dir.join("Cargo.toml"))
+        .env("CARGO_PROFILE_RELEASE_OPT_LEVEL", "s")
+        .env("CARGO_PROFILE_RELEASE_STRIP", "symbols")
+        .env("CARGO_PROFILE_RELEASE_DEBUG", "false")
+        .env("CARGO_TARGET_DIR", base.join("target"))
+        .env("CARGO_BUILD_BUILD_DIR", base.join("build"))
+        .env("RUSTC_WRAPPER", "")
+        .env("RUSTC_WORKSPACE_WRAPPER", "")
+        .env_remove("CARGO_INCREMENTAL")
+        .output()
+        .expect("run cargo for the example");
+    assert!(
+        output.status.success(),
+        "example {name} build failed:\n{}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    base.join("target/release/examples").join(name)
 }

@@ -14,7 +14,7 @@ use crate::{
     policy::{RoleClass, Tier},
 };
 
-/// The seven systems briefed in P-0. Describe-only contracts stay at 0.1.
+/// App-owned systems. Describe-only contracts stay at 0.1.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Contract {
@@ -25,11 +25,12 @@ pub enum Contract {
     RepoGraph,
     DecisionModel,
     Provider,
+    Transport,
 }
 
 impl Contract {
     /// All known system tokens, also used for longest-token filename matching.
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::DataSource,
         Self::TaskSystem,
         Self::EventSink,
@@ -37,6 +38,7 @@ impl Contract {
         Self::RepoGraph,
         Self::DecisionModel,
         Self::Provider,
+        Self::Transport,
     ];
 
     /// A stable wire token; it does not depend on the app's filename prefix.
@@ -49,6 +51,7 @@ impl Contract {
             Self::RepoGraph => "repo_graph",
             Self::DecisionModel => "decision_model",
             Self::Provider => "provider",
+            Self::Transport => "transport",
         }
     }
 
@@ -72,7 +75,7 @@ impl Contract {
     pub fn tier(self) -> Tier {
         match self {
             Self::RepoGraph => Tier::Read,
-            Self::Session | Self::Provider => Tier::Transport,
+            Self::Session | Self::Provider | Self::Transport => Tier::Transport,
             _ => Tier::Export,
         }
     }
@@ -103,6 +106,7 @@ impl Contract {
             Self::RepoGraph => &["describe", "changes_since"],
             Self::Session | Self::Provider => &["describe"],
             Self::EventSink => &["deliver"],
+            Self::Transport => &["wrap"],
             Self::DecisionModel => &["choose"],
         }
     }
@@ -115,7 +119,7 @@ impl Contract {
                 format!("{} has no callable method {method}", self.name()),
             ));
         }
-        Ok(if self == Self::EventSink {
+        Ok(if matches!(self, Self::EventSink | Self::Transport) {
             RoleClass::HostOnly
         } else if self == Self::DecisionModel
             || self == Self::DataSource && method == "commit"
@@ -145,6 +149,47 @@ impl Contract {
         standalone_schema(&schema, selected)
     }
 
+    /// Decode `value` as the typed result DTO of `method`; the host's checker
+    /// and the SDK's plugin doctor both use it after schema validation.
+    pub fn decode_result(self, method: &str, value: &Value) -> Result<(), Refusal> {
+        use crate::{
+            data_source as d, decision_model as dm, event_sink as es, provider as pv,
+            repo_graph as rg, session as ss, task_system as ts, transport as tr,
+        };
+        fn decode<T: serde::de::DeserializeOwned>(value: &Value) -> Result<(), Refusal> {
+            serde_json::from_value::<T>(value.clone())
+                .map(|_| ())
+                .map_err(|e| Refusal::new("result_type_mismatch", e.to_string()))
+        }
+        match (self, method) {
+            (Self::DataSource, "resolve") => decode::<d::RecordRef>(value),
+            (Self::DataSource, "fetch") => decode::<d::Record>(value),
+            (Self::DataSource, "search") => decode::<d::Page<d::SearchHit>>(value),
+            (Self::DataSource, "list") => decode::<d::Page<d::RecordRef>>(value),
+            (Self::DataSource, "links") => decode::<d::Links>(value),
+            (Self::DataSource, "graph") => decode::<d::GraphPage>(value),
+            (Self::DataSource, "write") => decode::<d::WriteResult>(value),
+            (Self::DataSource, "commit") => decode::<d::CommitResult>(value),
+            (Self::DataSource, "changes_since") => decode::<d::Changes>(value),
+            (Self::RepoGraph, "changes_since") => decode::<rg::Changes>(value),
+            (Self::TaskSystem, "changes_since") => decode::<ts::Changes>(value),
+            (Self::TaskSystem, "list") => decode::<ts::TaskPage>(value),
+            (Self::TaskSystem, _) if self.methods().contains(&method) => {
+                decode::<ts::TaskRecord>(value)
+            }
+            (Self::RepoGraph, "describe") => decode::<rg::DescribeResult>(value),
+            (Self::Session, "describe") => decode::<ss::DescribeResult>(value),
+            (Self::Provider, "describe") => decode::<pv::DescribeResult>(value),
+            (Self::DecisionModel, "choose") => decode::<dm::ChooseResult>(value),
+            (Self::EventSink, "deliver") => decode::<es::DeliverResult>(value),
+            (Self::Transport, "wrap") => decode::<tr::WrapResult>(value),
+            _ => Err(Refusal::new(
+                "unknown_method",
+                format!("{} {method}", self.name()),
+            )),
+        }
+    }
+
     /// The sole JSON Schema document for this contract and version.
     pub fn schema(self) -> &'static str {
         match self {
@@ -155,6 +200,7 @@ impl Contract {
             Self::RepoGraph => include_str!("../schemas/repo_graph-1.0.schema.json"),
             Self::DecisionModel => include_str!("../schemas/decision_model-1.0.schema.json"),
             Self::Provider => include_str!("../schemas/provider-0.1.schema.json"),
+            Self::Transport => include_str!("../schemas/transport-1.0.schema.json"),
         }
     }
 }

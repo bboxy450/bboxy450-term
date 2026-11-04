@@ -25,6 +25,11 @@ fn main() {
 fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let command = args.first().map(String::as_str).unwrap_or("gallery");
+    if command == "toolkit" {
+        let out=PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/bboxybook/toolkit".into()));
+        parity::replay_images(&out,&bboxybook::toolkit::cases())?;
+        return Ok(());
+    }
     if command == "documents" {
         let out = PathBuf::from(
             value(&args, "--out").unwrap_or_else(|| "target/bboxybook/documents".into()),
@@ -181,6 +186,8 @@ fn run() -> Result<()> {
         } else {
             match std::env::var("BBOXYBOOK_GALLERY").ok().as_deref() {
                 Some("providers") => provider_cases(),
+                Some("startup") => bboxybook::startup::cases(),
+                Some("toolkit") => bboxybook::toolkit::cases(),
                 Some("close") => bboxybook::close::cases(),
                 Some("paths") => bboxybook::paths::cases(),
                 Some("graphs") => bboxybook::graphs::cases(),

@@ -22,6 +22,7 @@ JSON Schema in `schemas/` that both the host and the SDK use.
 | `repo_graph` 1.0 | repositories under a root and their relations | describe, changes_since | `RepoGraph` / `AsRepoGraph` | `bboxy450-term-repo_graph-example` |
 | `session` 0.1 | external harness sessions | describe | `Session` / `AsSession` | `bboxy450-term-session-example` |
 | `provider` 0.1 | hosts seats may run on | describe | `Provider` / `AsProvider` | `bboxy450-term-provider-example` |
+| `transport` 1.0 | host-only command wrapper with declared launcher fields | wrap | `Transport` / `AsTransport` | `bboxy450-term-transport-example` |
 
 The executable is named `bboxy450-term-<contract>-<provider>`
 (`[a-z0-9-]` provider). Authority never crosses a contract: `root`, `author`,
@@ -139,6 +140,11 @@ ctx.span("scan");` times the step until the guard drops. Spans travel beside
 the result (`_meta.bboxy450.spans`) only when the host enabled trace at
 `initialize`; at most 32 per call, kept only inside the host's `plugin` phase.
 
+A call made for a seat may carry that seat's ATC session attribution
+(`_meta["bboxy450/attribution"]`). `ctx.attribution()` returns it, validated
+and limited to the names `git-kb` reads for activity export; it is empty for
+operator and host calls. Set it only on that call's own child processes.
+
 ### 8. Skills
 
 `Manifest::skill(Skill { name, description, content })` embeds a `SKILL.md`
@@ -149,6 +155,8 @@ plugin and its pin, and they grant no authority.
 ### 9. Test it
 
 - Unit-test the trait methods directly with `Ctx::detached(budget)`.
+- Smoke-test the built plugin offline with the plugin doctor
+  (`testkit::doctor`, `make plugin-doctor`; see "Smoke-test your plugin").
 - `testkit::Client::spawn(binary, data_dir, &testkit::allowed_env())` drives
   the built executable over stdio (`initialize`, `call`, `close`), exactly as
   the host does; `testkit::shape(binary)` reads the descriptor.
@@ -172,6 +180,52 @@ both the native `bboxy450-tlc` checker and Java TLC; see
 `verification/README.md`. Change a lifecycle or concurrency rule only with
 its model and a broken control that must fail.
 
+## Smoke-test your plugin
+
+The plugin doctor runs your plugin through the host contract offline, with no
+running app, and prints every gap it finds: the check, the evidence it saw and
+how to fix it. From this repository:
+
+```sh
+make plugin-doctor PLUGIN=path/to/bboxy450-term-<contract>-<provider>   # or a package directory
+```
+
+`JSON=1` prints JSON for CI; the exit status is 1 when any gap is an error.
+`DOCTOR_ARGS` passes `--root <dir>` (a real root, read-only), `--scratch <dir>`
+(a disposable root it may write to), `--child <name>` (a program your plugin
+starts through `PATH`, to check what environment it receives) and `--models
+<dir>`. Without a root it uses a temporary one of its own. A package directory
+is built first and its `models/*.tla` are checked with the native
+`bboxy450-tlc` and, when `make test-formal` has fetched it, Java TLC.
+The tool itself is the SDK example `bboxy450-term-plugin-doctor`
+(`cargo run -p bboxy450-term-plugin-sdk --example bboxy450-term-plugin-doctor -- <path>`).
+
+It checks the descriptor, name and trust digest; the tool catalogue and
+skills; that every method, tool, hook and health answers a valid typed DTO;
+that every failure is a typed refusal (never a panic or protocol error, which
+tear the connection down); deadlines (`min(timeout_ms, 2 s)`, cold start
+included); result size; `limit`, cursors and keyset order across page sizes;
+stable ids, digests and etags; that a write reads back exactly as written
+with no shadow fields and an unmappable status is refused; `retry_after_ms` on
+pending and busy refusals; pipelined calls; the scrubbed environment and
+attribution reaching children; and shipped models. `--list` prints every check
+id.
+
+Run the same checks from your own `cargo test`, which fails with the gap list:
+
+```rust,ignore
+// tests/doctor.rs in your plugin package
+#[test]
+fn the_plugin_doctor_finds_no_gaps() {
+    let binary = std::path::Path::new(env!("CARGO_BIN_EXE_bboxy450-term-data_source-mine"));
+    let options = bbt_plugin_sdk::doctor::Options::package(env!("CARGO_MANIFEST_DIR"));
+    bbt_plugin_sdk::testkit::doctor(binary, &options);
+}
+```
+
+A plugin that is an example has no `CARGO_BIN_EXE_*`; build it with
+`testkit::example(package_dir, name)` first, as every example here does.
+
 ## Using the result in the app
 
 `bboxy450-term ctl plugin trust <path>` copies and pins the binary,
@@ -181,3 +235,11 @@ its model and a broken control that must fail.
 
 Project-owned contributions use the [Respectful Slop License 1.0-Draft](LICENSE);
 see [ATTRIBUTION.md](ATTRIBUTION.md) and [NOTICE](NOTICE).
+
+Transport parameters are declared with `Manifest::transport_field(name, label, default)`.
+Version 1 uses text fields (`kind: "text"`); omitting kind defaults to text for
+existing declarations. Other kinds refuse with `invalid_transport_fields`.
+The trusted shape supplies defaults and field names; unknown or missing fields
+are refused before `wrap`. Return literal argv, never a shell-expanded field.
+Settings > Machines lists discovered transports, and enabled transports appear
+as `plugin:<provider>` Via choices. Built-in ssh/mosh/et remain available.

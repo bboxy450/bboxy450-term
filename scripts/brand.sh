@@ -25,7 +25,10 @@ for p in json.load(sys.stdin)["packages"]:
     if n in {"bboxy450-mux", "bboxy450-proto"}:
         print(n + ": app-specific package needs bboxy450-term-* (decision 362)"); bad += 1
     for target in p["targets"]:
-        if "bin" in target["kind"] and target["name"] != n:
+        # A feature-gated test executable is never installed by the default build.
+        fixture = (n == "bboxy450-harness" and target["name"] == "mcp-fixture"
+                   and target.get("required-features") == ["test-fixtures"])
+        if "bin" in target["kind"] and target["name"] != n and not fixture:
             print(n + ": installed binary " + target["name"] + " must match package (decision 362)"); bad += 1
     if n.startswith("bboxy450-"): continue
     pub = rows.get(n)

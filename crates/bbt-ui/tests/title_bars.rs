@@ -38,6 +38,117 @@ fn layout(bar: TitleBar, width: f32) -> c::Layout {
         .layout(Rect::new(3., 7., width, 0.), context(), &Metrics)
         .unwrap()
 }
+
+#[test]
+fn usage_strip_renders_snapshot_hides_absent_accounts_and_retains_error_reason() {
+    use bbt_ui_model::usage::{UsageMetric, UsageStrip};
+    let metric = |label: &str, percent| UsageMetric {
+        label: label.into(),
+        percent,
+        projected: None,
+        windows: Vec::new(),
+        stale: false,
+        reason: None,
+    };
+    let mut strip = UsageStrip {
+        machine: vec![
+            metric("CPU", Some(42)),
+            metric("MEM", Some(80)),
+            metric("DISK", Some(95)),
+        ],
+        providers: vec![
+            // 40% used but on pace to run out: Tachyon lifts green to yellow.
+            UsageMetric {
+                projected: Some(120),
+                ..metric("claude", Some(40))
+            },
+            UsageMetric {
+                label: "codex".into(),
+                percent: None,
+                projected: None,
+                windows: Vec::new(),
+                stale: false,
+                reason: Some("Run `codex login`".into()),
+            },
+            UsageMetric {
+                stale: true,
+                ..metric("grok", Some(91))
+            },
+        ],
+    };
+    assert!(
+        strip
+            .accessible_label()
+            .contains("Codex —: Run `codex login`")
+    );
+    assert!(
+        strip
+            .accessible_label()
+            .contains("Claude 40% used, at this pace, limit before reset")
+    );
+    let solve = |strip: &UsageStrip| {
+        TitleBar::default()
+            .element_with_usage(context(), strip)
+            .layout(Rect::new(3., 7., 1600., 0.), context(), &Metrics)
+            .unwrap()
+    };
+    let wide = solve(&strip);
+    let debug = format!("{wide:?}");
+    for text in [
+        "CPU 42%",
+        "MEM 80%",
+        "DISK 95%",
+        "Claude 40%",
+        "Codex —",
+        "Grok 91% used",
+        "Run `codex login`",
+    ] {
+        assert!(debug.contains(text), "{text}");
+    }
+    assert!(find(&wide, "bar/usage").rect.right() <= find(&wide, "bar/tbtn1").rect.x);
+    fn color(n: &c::Layout) -> [f32; 4] {
+        if let c::LayoutKind::Text { runs, .. } = &n.kind {
+            return runs[0].style.color;
+        }
+        color(&n.children[0])
+    }
+    let waiting = bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.state.waiting).0;
+    let errored = bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.state.errored).0;
+    assert_eq!(color(find(&wide, "bar/usage/MEM")), waiting);
+    assert_eq!(color(find(&wide, "bar/usage/DISK")), errored);
+    // Tachyon bands color the rings: grok 91% red; claude 40% lifted to yellow by pace.
+    use bbt_ui::modules::title_bar::{band_color, usage_breakdown};
+    let rgba = |h: &str| Some(bbt_ui::Color::Rgba(bbt_ui_model::draw::Color::hex(h).0));
+    assert_eq!(band_color(&strip.providers[2]), rgba("#FF453A"));
+    assert_eq!(band_color(&strip.providers[0]), rgba("#FFD60A"));
+    for ring in [
+        "bar/usage/claude/ring",
+        "bar/usage/grok/ring",
+        "bar/usage/claude/name",
+        "bar/usage/grok/name",
+    ] {
+        assert!(debug.contains(ring), "{ring}");
+    }
+    assert!(!debug.contains(" left"));
+    strip.providers.retain(|m| m.label != "grok");
+    let layout = solve(&strip);
+    assert!(!format!("{layout:?}").contains("bar/usage/grok"));
+
+    // The hover breakdown lists each window with its reset, bar, used and pace.
+    strip.providers[0].windows = vec![bbt_ui_model::usage::UsageWindow {
+        label: "Weekly".into(),
+        percent: 40,
+        projected: Some(91),
+        resets: Some("Resets Fri 8:00 AM".into()),
+    }];
+    let breakdown = usage_breakdown(&strip, 300.)
+        .layout(Rect::new(0., 0., 300., 0.), context(), &Metrics)
+        .unwrap();
+    let text = format!("{breakdown:?}");
+    for want in ["Claude", "Weekly", "Resets Fri 8:00 AM", "40% Used", "At this pace, ~91% by reset", "Click to refresh accounts"] {
+        assert!(text.contains(want), "{want}");
+    }
+}
 // keeps: spec gui-components §1.3
 #[test]
 fn narrow_bar_wraps_title_and_ellipsizes_crumb_without_shrinking_controls() {
@@ -129,4 +240,37 @@ fn old_titlebar_is_a_component_delegate() {
     for forbidden in ["out.rect", "out.line", "Prim::", "text(", "icon("] {
         assert!(!body.contains(forbidden));
     }
+}
+#[test]
+fn breakdown_rows_span_the_width() {
+    use bbt_ui::modules::title_bar::usage_breakdown;
+    use bbt_ui_model::usage::{UsageMetric, UsageStrip, UsageWindow};
+    let strip = UsageStrip {
+        machine: vec![],
+        providers: vec![UsageMetric {
+            label: "claude".into(),
+            percent: Some(40),
+            projected: Some(91),
+            windows: vec![UsageWindow {
+                label: "Weekly".into(),
+                percent: 40,
+                projected: Some(91),
+                resets: Some("Resets Fri 8:00 AM".into()),
+            }],
+            stale: false,
+            reason: None,
+        }],
+    };
+    let l = usage_breakdown(&strip, 300.)
+        .layout(Rect::new(0., 0., 300., 0.), context(), &Metrics)
+        .unwrap();
+    // The reset text ends at the right edge, like Tachyon's popover.
+    fn text_right(n: &c::Layout, want: &str) -> Option<f32> {
+        if format!("{:?}", n.kind).contains(want) && n.children.is_empty() {
+            return Some(n.rect.right());
+        }
+        n.children.iter().find_map(|c| text_right(c, want))
+    }
+    let right = text_right(&l, "Resets Fri 8:00 AM").unwrap();
+    assert!((right - 300.).abs() < 1., "resets ends at {right}");
 }

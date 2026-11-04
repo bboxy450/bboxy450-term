@@ -26,6 +26,13 @@ fn native(cursor: Cursor) -> winit::window::CursorIcon {
 
 impl App {
     pub(super) fn cursor_at(&self, at: [f32; 2]) -> Cursor {
+        if self.startup.visible {
+            return if self.startup_action_at(at).is_some() {
+                Cursor::Pointer
+            } else {
+                Cursor::Default
+            };
+        }
         if self.app_overlays.open() {
             return self.app_overlays.cursor(at);
         }
@@ -207,6 +214,9 @@ impl App {
     }
 
     pub(super) fn pointer_left(&mut self) {
+        if self.titlebar.hit(self.pointer) == Some(crate::desktop_window::Hit::Usage) {
+            self.request_redraw();
+        }
         self.pointer_inside = false;
         self.update_cursor();
     }
@@ -285,6 +295,7 @@ mod tests {
             &["--headless".into()],
             Verify::default(),
         );
+        app.startup.attached();
         let records: Vec<_> = (1..=2)
             .map(|id| {
                 bbt_proto::SeatRecord::new(
@@ -507,6 +518,7 @@ mod tests {
             "available",
             vec![
                 SpawnField {
+                    parameter: None,
                     key: FieldKey::Role,
                     value: "executor".into(),
                     source: Source::BuiltIn,
@@ -514,6 +526,7 @@ mod tests {
                     fixed: true
                 },
                 SpawnField {
+                    parameter: None,
                     key: FieldKey::Command,
                     value: "zsh".into(),
                     source: Source::BuiltIn,

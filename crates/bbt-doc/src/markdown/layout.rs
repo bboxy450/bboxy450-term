@@ -217,6 +217,55 @@ impl Markdown {
             ..Default::default()
         }
     }
+    /// Compose a previously prepared body. No lexing or IO occurs here.
+    pub fn highlighted_body_element(
+        &self,
+        highlights: &crate::highlight::Highlights,
+        ctx: ui::Context,
+        m: &dyn c::Measure,
+        width: f32,
+    ) -> c::Element {
+        let table_width = finite_width(width);
+        Render {
+            ctx,
+            m,
+            width: table_width.min(STYLE.spacing.doc_measure as f32),
+            table_width,
+            fragment_words: false,
+            diagrams: &[],
+            record_links: None,
+            scrolls: None,
+            provenance_expanded: false,
+            highlights: Some(highlights),
+            wide_figures: false,
+        }
+        .blocks(&self.blocks, "")
+    }
+    /// A conversation transcript: highlighted like `highlighted_body_element`, but a
+    /// host with no inner horizontal scroll gives diagrams the full column.
+    pub fn transcript_body_element(
+        &self,
+        highlights: &crate::highlight::Highlights,
+        ctx: ui::Context,
+        m: &dyn c::Measure,
+        width: f32,
+    ) -> c::Element {
+        let table_width = finite_width(width);
+        Render {
+            ctx,
+            m,
+            width: table_width.min(STYLE.spacing.doc_measure as f32),
+            table_width,
+            fragment_words: false,
+            diagrams: &[],
+            record_links: None,
+            scrolls: None,
+            provenance_expanded: false,
+            highlights: Some(highlights),
+            wide_figures: true,
+        }
+        .blocks(&self.blocks, "")
+    }
     /// Entire Markdown presentation, including generic YAML fields.
     pub fn element(&self, ctx: ui::Context, m: &dyn c::Measure, width: f32) -> c::Element {
         self.element_with_title(ctx, m, width, None)
@@ -240,6 +289,8 @@ impl Markdown {
             record_links: None,
             scrolls: None,
             provenance_expanded: false,
+            highlights: None,
+            wide_figures: false,
         };
         let mut children = vec![];
         if !self.frontmatter.fields.is_empty() || self.frontmatter.error.is_some() {
@@ -282,6 +333,8 @@ impl Markdown {
             record_links: None,
             scrolls: None,
             provenance_expanded: false,
+            highlights: None,
+            wide_figures: false,
         };
         r.blocks(self.display_blocks(title), "")
     }
@@ -305,6 +358,8 @@ impl Markdown {
             record_links: Some(links),
             scrolls: None,
             provenance_expanded: false,
+            highlights: None,
+            wide_figures: false,
         }
         .blocks(self.display_blocks(title), "")
     }
@@ -329,6 +384,8 @@ impl Markdown {
             record_links: Some(links),
             scrolls: Some(scrolls),
             provenance_expanded: false,
+            highlights: None,
+            wide_figures: false,
         };
         self.hosted_body(title, &r)
     }
@@ -353,6 +410,8 @@ impl Markdown {
             record_links: Some(links),
             scrolls: Some(control.horizontal()),
             provenance_expanded: control.provenance_expanded,
+            highlights: None,
+            wide_figures: false,
         };
         self.hosted_body(title, &r)
     }
@@ -453,6 +512,8 @@ impl Markdown {
                     record_links: None,
                     scrolls: None,
                     provenance_expanded: false,
+                    highlights: None,
+                    wide_figures: false,
                 };
                 let extra: Vec<_> = self
                     .frontmatter
@@ -508,11 +569,15 @@ struct Render<'a> {
     m: &'a dyn c::Measure,
     width: f32,
     table_width: f32,
+    /// A transcript host without inner horizontal scroll: diagrams take the
+    /// enclosing column like tables instead of the reading measure.
+    wide_figures: bool,
     fragment_words: bool,
     diagrams: &'a [Diagram],
     record_links: Option<&'a ui::modules::document_modal::controller::RecordLinks>,
     scrolls: Option<&'a std::collections::BTreeMap<String, f32>>,
     provenance_expanded: bool,
+    highlights: Option<&'a crate::highlight::Highlights>,
 }
 #[derive(Clone)]
 enum Piece {
@@ -536,9 +601,14 @@ impl Render<'_> {
         // Tables use their actual enclosing column. Keep ordinary prose and
         // true-size figure viewports on their existing readable measure.
         // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-        let wide_tables = blocks
-            .iter()
-            .any(|b| matches!(&b.kind, BlockKind::Table { .. }));
+        let wide_block = |b: &Block| match &b.kind {
+            BlockKind::Table { .. } => true,
+            BlockKind::Code { info, .. } => {
+                self.wide_figures && info.split_whitespace().next() == Some("mermaid")
+            }
+            _ => false,
+        };
+        let wide_tables = blocks.iter().any(wide_block);
         let width = if wide_tables {
             self.table_width
         } else {
@@ -553,7 +623,7 @@ impl Render<'_> {
                 format!("{prefix}/block{i}")
             };
             let (e, top, bottom) = self.block(b, &key);
-            let e = if width > self.width && !matches!(&b.kind, BlockKind::Table { .. }) {
+            let e = if width > self.width && !wide_block(b) {
                 row(
                     format!("{key}/measure"),
                     plain([0.; 4]),
@@ -643,7 +713,16 @@ impl Render<'_> {
                         named(
                             key,
                             crate::mermaid::element_with_key(
-                                key, text, self.width, self.ctx, self.m, options,
+                                key,
+                                text,
+                                if self.wide_figures {
+                                    self.table_width
+                                } else {
+                                    self.width
+                                },
+                                self.ctx,
+                                self.m,
+                                options,
                             ),
                         ),
                         0.,
@@ -651,7 +730,7 @@ impl Render<'_> {
                     )
                 } else {
                     (
-                        self.code(key, text, 1.6),
+                        self.code_spans(key, text, 1.6, self.highlights.and_then(|h| h.spans(b))),
                         ui::TypeStep::Caption.pixels(),
                         ui::TypeStep::Caption.pixels(),
                     )
@@ -839,7 +918,9 @@ impl Render<'_> {
                 }
                 Inline::SoftBreak => out.push(text(" ".into(), f)),
                 Inline::HardBreak => out.push(Piece::Break),
-                Inline::Image { asset: Some(asset), .. } => out.push(Piece::Image(asset.clone())),
+                Inline::Image {
+                    asset: Some(asset), ..
+                } => out.push(Piece::Image(asset.clone())),
                 Inline::Image { target, alt, .. } => out.push(text(
                     format!("[image: {alt}] ({target})"),
                     ui::Text {
@@ -902,15 +983,31 @@ impl Render<'_> {
                     lines.push(Self::flow(key, std::mem::take(&mut children)));
                 }
                 Piece::Image(asset) => {
-                    if !children.is_empty() { lines.push(Self::flow(key, std::mem::take(&mut children))); }
+                    if !children.is_empty() {
+                        lines.push(Self::flow(key, std::mem::take(&mut children)));
+                    }
                     let name = format!("{key}/image{i}");
-                    let image = c::Element::ImageRect { asset: asset.key, size:[asset.width as f32,asset.height as f32], radius:ui::Length::Px(0.) };
-                    lines.push(named(&name,c::Element::ScrollView(c::ScrollView {
-                        viewport:[self.width.min(asset.width as f32),asset.height as f32],
-                        offset:[self.scrolls.and_then(|s|s.get(&name)).copied().unwrap_or(0.),0.],
-                        content_width:Some(asset.width as f32),content:Box::new(image),
-                    })));
-                    i+=1;
+                    let image = c::Element::ImageRect {
+                        asset: asset.key,
+                        size: [asset.width as f32, asset.height as f32],
+                        radius: ui::Length::Px(0.),
+                    };
+                    lines.push(named(
+                        &name,
+                        c::Element::ScrollView(c::ScrollView {
+                            viewport: [self.width.min(asset.width as f32), asset.height as f32],
+                            offset: [
+                                self.scrolls
+                                    .and_then(|s| s.get(&name))
+                                    .copied()
+                                    .unwrap_or(0.),
+                                0.,
+                            ],
+                            content_width: Some(asset.width as f32),
+                            content: Box::new(image),
+                        }),
+                    ));
+                    i += 1;
                 }
                 Piece::Wiki {
                     target,
@@ -1137,12 +1234,40 @@ impl Render<'_> {
         )
     }
     fn code(&self, key: &str, value: &str, line_height: f32) -> c::Element {
+        self.code_spans(key, value, line_height, None)
+    }
+    fn code_spans(
+        &self,
+        key: &str,
+        value: &str,
+        line_height: f32,
+        spans: Option<&[crate::highlight::Span]>,
+    ) -> c::Element {
         let value = value.strip_suffix('\n').unwrap_or(value);
         let f = ui::Text {
             line_height,
             ..font(ui::TypeStep::Caption, 400, true, ui::Color::Foreground)
         };
         let mut literal = c::Text::new(value, f);
+        if let Some(spans) = spans {
+            let mut remaining = value.len();
+            literal.runs = spans
+                .iter()
+                .filter_map(|span| {
+                    let n = remaining.min(span.text.len());
+                    remaining -= n;
+                    (n > 0).then(|| c::TextRun {
+                        value: span.text[..n].into(),
+                        style: ui::Text {
+                            weight: if span.bold { 700 } else { 400 },
+                            italic: span.italic,
+                            paint: ui::Paint::solid(ui::Color::Rgba(span.color)),
+                            ..f
+                        },
+                    })
+                })
+                .collect();
+        }
         literal.wrap = false;
         literal.preserve_whitespace = true;
         let e = named(format!("{key}/text"), c::Element::Text(literal));
@@ -1405,9 +1530,9 @@ impl Render<'_> {
                     line += width;
                 }
                 Piece::Image(asset) => {
-                    minimum=minimum.max(asset.width as f32);
-                    hard=hard.max(asset.width as f32);
-                    line+=asset.width as f32;
+                    minimum = minimum.max(asset.width as f32);
+                    hard = hard.max(asset.width as f32);
+                    line += asset.width as f32;
                 }
                 Piece::Break => {
                     minimum = minimum.max(word);

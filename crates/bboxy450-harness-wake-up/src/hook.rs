@@ -18,9 +18,10 @@ use std::time::{Duration, Instant};
 
 /// Maximum serialized bounded hook payload, in bytes.
 pub const MAX_RAW: usize = 64 * 1024;
-/// Raw CLI hook ingress can include verbose tool content discarded before framing.
-/// The retained frame stays at MAX_RAW and the shared hook deadline stays 50 ms.
-pub const MAX_INPUT: usize = 2 * 1024 * 1024;
+/// Raw CLI hook ingress can include verbose tool content discarded before framing:
+/// a Write of a large file or a long PostToolUse response exceeded 2 MiB and lost its
+/// state transition. The retained frame stays at MAX_RAW and the deadline stays 50 ms.
+pub const MAX_INPUT: usize = 16 * 1024 * 1024;
 /// Maximum encoded terminal hook frame, in bytes.
 pub const MAX_OSC: usize = 4096;
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -802,6 +803,14 @@ mod input_tests {
         assert!(input["f00"]["bboxy_truncated_bytes"].as_u64().unwrap() > TOOL_INPUT_FIELD as u64);
         assert_eq!(input.len(), TOOL_INPUT_FIELDS + 1);
         assert!(decode_input(&vec![b' '; MAX_INPUT + 1]).is_err());
+        // A verbose tool hook above the old 2 MiB ingress still records its transition.
+        let big = serde_json::to_vec(&serde_json::json!({"hook_event_name":"PostToolUse",
+            "session_id":"s","tool_name":"Write","tool_input":{"file_path":"/x","content":"x".repeat(3 << 20)},
+            "tool_response":{"filePath":"/x","content":"x".repeat(3 << 20)}}))
+        .unwrap();
+        let event = prepare(decode_input(&big).unwrap(), "claude").unwrap();
+        assert_eq!(event.event, "PostToolUse");
+        assert!(serde_json::to_vec(&event).unwrap().len() <= MAX_RAW);
         assert!(
             prepare(
                 serde_json::json!({"event":"Stop","last_message":"x".repeat(MAX_RAW)}),

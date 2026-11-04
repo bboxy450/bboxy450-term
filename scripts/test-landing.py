@@ -1,3 +1,6 @@
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# LicenseRef-Respectful-Slop-1.0-Draft; credit copied/adapted/translated reuse.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 # Copyright 2026 Boxy (bboxy450) and contributors.
 # SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
 # Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
@@ -6,6 +9,7 @@
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """Landing contracts exercised only on private throwaway repositories (#323 §12)."""
 import importlib.util
+import contextlib
 import io
 import atexit
 import hashlib
@@ -14,18 +18,25 @@ import os
 import platform
 from pathlib import Path
 import subprocess
+import threading
 import shutil
 import tempfile
 import shlex
 import sys
 import time
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 from concurrent.futures import ThreadPoolExecutor
 
 sys.dont_write_bytecode = True
 
 SOURCE = Path(__file__).with_name("landing.py")
+# The copy loop and production trigger both consume this tuple. Keep it literal
+# so landing.py can read the declaration without importing this fixture runner.
+FIXTURE_SCRIPTS = ("landing.py", "formal.py", "formal-stage.py", "harness-submodule.py", "presubmit.sh", "land.sh",
+                   "quarantine.py", "quarantine.sh", "quarantine-test.sh", "main_watch.py", "main-watch.sh",
+                   "landing_recovery.py", "main-red-bounded.sh", "release-inputs.py", "verify-signatures.py",
+                   "verify-signatures-core.py", "test-landing-budget-controls.py")
 spec = importlib.util.spec_from_file_location("landing", SOURCE)
 landing = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(landing)
@@ -114,19 +125,28 @@ class Repository:
         self.state.mkdir()
         self.environment = dict(os.environ, BBOXY_LANDING_STATE_DIR=str(self.state),
                                 CARGO_TARGET_DIR=str(self.state / "target"),
-                                RUSTC_WRAPPER="", RUSTC_WORKSPACE_WRAPPER="")
+                                RUSTC_WRAPPER="", RUSTC_WORKSPACE_WRAPPER="",
+                                BBOXY_TEST_RUNNER="cargo",  # fixtures fake libtest output
+                                BBOXY_GATE_SLOTS="3", BBOXY_GATE_WAIT="0")
         self.environment.pop("BBOXY_CARGO_TARGET_DIR", None)
-        for name in ("landing.py", "formal.py", "presubmit.sh", "land.sh", "quarantine.py", "quarantine.sh", "quarantine-test.sh",
-                     "main_watch.py", "main-watch.sh", "landing_recovery.py", "main-red-bounded.sh"):
+        # A parent make test may pass TARGET_DIR on its command line. GNU Make
+        # exports those overrides through MAKEFLAGS; no private repository may
+        # inherit them and write another fixture's formal evidence.
+        for name in ("MAKEFLAGS", "MFLAGS", "GNUMAKEFLAGS", "MAKEOVERRIDES", "MAKELEVEL",
+                     "TARGET_DIR", "CI_LOG", "CI_ARGS", "CARGO_BUILD_BUILD_DIR"):
+            self.environment.pop(name, None)
+        for name in FIXTURE_SCRIPTS:
             target = self.root / "scripts" / name
             target.parent.mkdir(exist_ok=True)
-            shutil.copy2(SOURCE.with_name(name), target)
+            source = "verify-signatures.py" if name == "verify-signatures-core.py" else name
+            shutil.copy2(SOURCE.with_name(source), target)
         self.write("scripts/cache-env.sh", "# isolated fixture; never the production cache policy\nexport CARGO_BUILD_JOBS=2\n")
         shell = '#!/bin/sh\nprintf "%s\\n" "$0 $*" >> "$BBOXY_LANDING_STATE_DIR/shell.log"\n'
-        for name in ("invariants", "layering", "pending-flags", "kill-own-pids", "licenses",
+        for name in ("invariants", "layering", "pending-flags", "kill-own-pids", "generated-sources", "licenses",
                      "brand", "images", "cross-os", "never-block", "lab-check"):
             self.write(f"scripts/{name}.sh", shell)
-        self.write("scripts/test-landing.py", 'print("nested fixture checks")\n')
+        self.write("scripts/test-landing.py", f'FIXTURE_SCRIPTS = {FIXTURE_SCRIPTS!r}\nprint("nested fixture checks")\n')
+        self.write("scripts/test-landing-budget-controls.py", 'print("nested budget controls")\n')
         self.write("verification/corpus.toml", '[[model]]\nname="Fixture"\nexpected="pass"\n')
         self.write("verification/coverage.toml", "".join(
             f'[[crate]]\nname="{name}"\nstatus="implementation-tests"\nmodels=[]\nscope="private fixture"\nsources=["crates/{name}/src/lib.rs"]\n'
@@ -150,7 +170,7 @@ data={"source":sha,"dirty":False,"tlc":pins["tlc"],"java":next(iter(pins["java"]
 archive=formal.archive_evidence(target,root)
 print("formal: receipt "+json.dumps(formal.evidence_receipt(archive,root,require_clean=False),sort_keys=True))
 ''')
-        self.write("Makefile", 'test-formal:\n\t@python3 -I scripts/fixture-formal.py "$(TARGET_DIR)"\n')
+        self.write("Makefile", 'test:\n\t@sh scripts/ci-local.sh > "$(CI_LOG)" 2>&1\n\ntest-harness-native:\n\t@true\ntest-formal:\n\t@python3 -I scripts/formal-stage.py export -- python3 -c "pass"\n\t@python3 -I scripts/formal-stage.py self-tests -- python3 -c "pass"\n\t@python3 -I scripts/formal-stage.py verify -- python3 -c "pass"\n\t@python3 -I scripts/formal-stage.py parity -- python3 -I scripts/fixture-formal.py "$(TARGET_DIR)"\n')
         self.write("scripts/ci-local.sh", '''#!/bin/sh
 set -eu
 sha=$(git rev-parse HEAD)
@@ -192,13 +212,28 @@ if args[0]=="test" and cfg.get("quarantine"):
         raise SystemExit(0)
     print("test "+name+" ... FAILED\\ntest result: FAILED. 0 passed; 1 failed; 0 ignored")
     raise SystemExit(101)
+if args[0]=="test" and cfg.get("coverage_real"):
+    actual=list(args)
+    if cfg.get("coverage_filtered") and "--exact" not in actual:
+        if "--" not in actual:actual.append("--")
+        actual += ["--skip","ctl_once"]
+    child=subprocess.Popen([REAL,*actual],stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True)
+    for line in child.stdout:
+        if "Running tests/ctl.rs (" in line:
+            with (state/"ctl-runs").open("a") as stream:stream.write("ctl\\n")
+        print(line,end="",flush=True)
+    child.stdout.close()
+    raise SystemExit(child.wait())
 if cfg.get("block")==args[0] and (not cfg.get("block_once") or not (state/"blocked-once").exists()):
     if cfg.get("block_once"):
         target=pathlib.Path(os.environ["BBOXY_CARGO_TARGET_DIR"])
         target.mkdir(parents=True,exist_ok=True)
         (target/"warm-build-artifact").write_text("first attempt")
     (state/"blocked-once").write_text("blocked")
-    (state/"blocked.pid").write_text(str(os.getpid()))
+    pid_file=state/"blocked.pid"
+    pid_part=state/"blocked.pid.writing"
+    pid_part.write_text(str(os.getpid()))
+    pid_part.replace(pid_file)
     if cfg.get("test_started"):print("Running tests/fixture.rs (fixture-binary)\\nrunning 1 test",flush=True)
     signal.pause()
 if cfg.get("block_once") and cfg.get("block")==args[0]:
@@ -602,16 +637,33 @@ except Exception as error:
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("golden_dispatch_tests_missing", result.stdout + result.stderr)
 
-    def test_script_only_cut_runs_its_fixtures_and_only_non_cargo_invariants(self):
-        self.cut("scripts/fixture-gate.sh")
+    def test_landing_script_cut_runs_its_fixtures_and_only_non_cargo_invariants(self):
+        self.cut("scripts/main_watch.py")
         result = self.repo.presubmit()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("nested fixture checks", result.stdout)
-        self.assertIn("invariants.sh --affected \n", (self.repo.state / "shell.log").read_text())
+        self.assertIn("invariants.sh --affected  --covered-tests ", (self.repo.state / "shell.log").read_text())
         self.assertFalse((self.repo.state / "cargo.jsonl").exists())
 
+    def test_script_only_report_trailer_selects_the_committed_tree_gate(self):
+        self.repo.write("scripts/fixture-gate.sh", "// fixture cut\n")
+        self.repo.commit("Fixture report candidate\n\nReport: [[reports/2026-10-31-work]]")
+        result = self.repo.presubmit()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        calls = [json.loads(line) for line in (self.repo.state / "cargo.jsonl").read_text().splitlines()]
+        self.assertEqual(len(calls), 1)
+        self.assertIn("reports::committed_report_trailers_resolve_in_their_own_trees", calls[0])
+
+    def test_script_only_report_gate_failure_refuses_presubmit(self):
+        self.repo.write("scripts/fixture-gate.sh", "// fixture cut\n")
+        self.repo.commit("Fixture report candidate\n\nReport: [[missing]]")
+        (self.repo.state / "behavior.json").write_text('{"fail":"test"}')
+        result = self.repo.presubmit()
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("reports::committed_report_trailers_resolve_in_their_own_trees", result.stdout + result.stderr)
+
     def test_formal_failure_refuses_a_scoped_presubmit_before_cargo(self):
-        self.repo.write("Makefile", "test-formal:\n\t@exit 23\n")
+        self.repo.write("Makefile", "test-harness-native:\n\t@true\ntest-formal:\n\t@exit 23\n")
         self.cut("crates/c/src/lib.rs")
         result = self.repo.presubmit()
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -622,7 +674,8 @@ except Exception as error:
         self.cut("crates/c/src/lib.rs")
         result = self.repo.presubmit()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        self.assertIn("invariants.sh --affected c\n", (self.repo.state / "shell.log").read_text())
+        self.assertRegex((self.repo.state / "shell.log").read_text(),
+                         r"invariants\.sh --affected c --covered-tests [^\n]+/quarantine-coverage\.json\n")
 
     def test_ci_command_trace_executes_the_original_check_once_and_keeps_its_exit(self):
         shutil.copy2(SOURCE.with_name('ci-local.sh'), self.repo.root / 'scripts/ci-local.sh')
@@ -679,26 +732,76 @@ except Exception as error:
         self.assertEqual(record["verdict"], "red")
         self.assertNotIn('"clippy"', (self.repo.state / "cargo.jsonl").read_text())
 
-    def test_deadline_is_enforced_and_does_not_kill_an_unrelated_process(self):
-        # keeps: #323 §3 deadline; kill-only-own-pids. A real blocked child,
-        # not a wall-clock performance assertion or an arbitrary test sleep.
+    def deadline_fixture(self, *, parent_only=False):
+        # Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+        # keeps: #323 §3 and kill-only-own-pids. The fake build supplies its
+        # elapsed compile time after its real child is paused. Host scheduling
+        # cannot choose which clock expires. The wall clock only bounds a
+        # broken fixture that never reaches that observation.
         self.cut("crates/c/src/lib.rs")
         (self.repo.state / "behavior.json").write_text('{"block":"test"}')
-        (self.repo.state / "fixture.json").write_text('{"timeout_seconds":0.5}')
-        control = subprocess.Popen(["python3", "-c", "import signal; signal.pause()"])
+        marker = self.repo.state / "blocked.pid"
+        owned_pids = set()
+        ceiling = time.monotonic() + 45
+        original_clock = landing.TwoClocks
+        class ReportedBuild(original_clock):
+            def __init__(clock, started):
+                super().__init__(started)
+                clock.previous = marker.read_text() if marker.exists() else None
+            def expired(clock, ended, build_cap, run_bound):
+                observed = marker.read_text() if marker.exists() else None
+                if observed is not None and observed != clock.previous:
+                    owned_pids.add(int(observed))
+                    clock.event({"at": max(clock.at, ended), "phase": "compile"})
+                    clock.event({"at": clock.at + build_cap + 1, "phase": "other"})
+                    return super().expired(clock.at, build_cap, run_bound)
+                if ended > ceiling:
+                    raise AssertionError("fake build never entered its paused child")
+                return None
+        def alive(pid):
+            row = subprocess.run(["ps", "-ww", "-p", str(pid), "-o", "stat=", "-o", "command="],
+                                 text=True, capture_output=True, check=False).stdout.strip()
+            return bool(row) and not row.startswith("Z") and str(self.repo.bin / "cargo") in row
+        def parent_stop(child):
+            child.terminate()
+            child.wait(timeout=5)
+        control = subprocess.Popen([sys.executable, "-c", "import signal; signal.pause()"])
         try:
-            result = self.repo.presubmit()
-            self.assertEqual(result.returncode, 124, result.stdout + result.stderr)
-            self.assertIn("build_cap", result.stderr)
-            self.assertIsNone(control.poll())
+            with patch.dict(os.environ, self.repo.environment, clear=True), \
+                 patch.object(landing, "TwoClocks", ReportedBuild), \
+                 patch.object(landing, "repository", return_value=self.repo.root), \
+                 patch.object(landing, "stop_worker", parent_stop if parent_only else landing.stop_worker), \
+                 patch("sys.stdout", io.StringIO()):
+                code = landing.presubmit(self.repo.base)
+            rows = [json.loads(line) for line in (self.repo.state / "presubmit.log").read_text().splitlines()]
+            self.assertEqual(code, 124)
+            self.assertEqual(len(rows), 2)
+            self.assertEqual([row["attempt"] for row in rows], [0, 1])
+            self.assertEqual(rows[-1]["finding"], "recurring_build_cap")
+            record = rows[-1]
+            self.assertEqual(record["exit"], 124)
+            self.assertEqual(record["error"], "build_cap")
+            self.assertGreaterEqual(record["compile_seconds"], 1800)
+            self.assertIsNone(control.poll(), "unrelated process was killed")
+            self.assertEqual(len(owned_pids), 2, "both real build children must enter")
+            until = time.monotonic() + 3
+            while any(alive(pid) for pid in owned_pids) and time.monotonic() < until:
+                time.sleep(0.01)
+            self.assertFalse(any(alive(pid) for pid in owned_pids), "owned build child survived the deadline")
         finally:
             control.terminate()
             control.wait()
-        record = json.loads((self.repo.state / "presubmit.log").read_text().splitlines()[-1])
-        self.assertEqual(record["error"], "build_cap")
-        self.assertEqual(record["exit"], 124)
-        self.assertEqual(record["finding"], "recurring_build_cap")
-        self.assertEqual(len((self.repo.state / "presubmit.log").read_text().splitlines()), 2)
+            for owned in owned_pids:
+                if alive(owned):
+                    os.kill(owned, 15)  # exact PID created and recorded by this fixture
+
+    def test_deadline_is_enforced_and_does_not_kill_an_unrelated_process(self):
+        self.deadline_fixture()
+
+    def test_deadline_broken_control_detects_a_surviving_owned_child(self):
+        # Deliberately stop only the worker, leaving its paused build child.
+        with self.assertRaisesRegex(AssertionError, "owned build child survived"):
+            self.deadline_fixture(parent_only=True)
 
     def test_build_cap_retries_once_warm_with_the_same_target_and_then_passes(self):
         self.repo.remote()
@@ -784,6 +887,11 @@ class GateReceiptTests(unittest.TestCase):
         self.addCleanup(repo.close)
         repo.tooling()
         shutil.copy2(SOURCE.with_name("ci-local.sh"), repo.root / "scripts/ci-local.sh")
+        control_marker = repo.state / "capability-control-ran"
+        control_target = '\ntest-capability-control:\n\t@touch ' + shlex.quote(str(control_marker)) + '\n'
+        scan_target = '\ntest-capability-scan:\n\t@true\n'
+        normal_makefile = (repo.root / 'Makefile').read_text() + scan_target
+        repo.write('Makefile', normal_makefile + control_target)
         repo.write("scripts/ui-lint.sh", "#!/bin/sh\nexit 0\n")
         binary = Path(repo.environment["CARGO_TARGET_DIR"]) / "debug/bboxy450-term"
         binary.parent.mkdir(parents=True)
@@ -794,10 +902,22 @@ class GateReceiptTests(unittest.TestCase):
         result = subprocess.run(["sh", "scripts/ci-local.sh"], cwd=repo.root,
                                 env=environment, text=True, capture_output=True, timeout=15)
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue(control_marker.is_file(), 'canonical CI must execute the capability control')
+        self.assertIn('"make", "test-capability-control"', result.stdout)
         log = repo.state / "actual-ci.log"
         log.write_text(result.stdout + result.stderr)
         self.assertEqual(landing.gate_proof(log, sha, repo.root)["tested_sha"], sha)
-        repo.write("Makefile", "test-formal:\n\t@exit 23\n")
+        repo.write('Makefile', normal_makefile + '\ntest-capability-control:\n\t@exit 29\n')
+        control_failed = repo.commit('Fixture failing capability control')
+        result = subprocess.run(['sh', 'scripts/ci-local.sh'], cwd=repo.root,
+                                env=environment, text=True, capture_output=True, timeout=15)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('"make", "test-capability-control"', result.stdout)
+        self.assertNotIn('"make", "test-formal"', result.stdout)
+        log.write_text(result.stdout + result.stderr)
+        with self.assertRaisesRegex(landing.Refusal, 'gate_log_not_green'):
+            landing.gate_proof(log, control_failed)
+        repo.write("Makefile", "test-harness-native:\n\t@true\ntest-formal:\n\t@exit 23\n" + scan_target + control_target)
         formal_failed = repo.commit("Fixture failing formal gate")
         result = subprocess.run(["sh", "scripts/ci-local.sh"], cwd=repo.root,
                                 env=environment, text=True, capture_output=True, timeout=15)
@@ -820,6 +940,23 @@ class GateReceiptTests(unittest.TestCase):
         self.assertIn("dirty source tree", result.stderr)
         self.assertNotIn("ci-local: source", result.stdout)
 
+    def test_real_ci_runs_budget_controls_and_propagates_failure(self):
+        repo = Repository()
+        self.addCleanup(repo.close)
+        repo.tooling()
+        shutil.copy2(SOURCE.with_name("ci-local.sh"), repo.root / "scripts/ci-local.sh")
+        repo.write("scripts/ui-lint.sh", "#!/bin/sh\nexit 0\n")
+        binary = Path(repo.environment["CARGO_TARGET_DIR"]) / "debug/bboxy450-term"
+        binary.parent.mkdir(parents=True)
+        binary.write_text("#!/bin/sh\nexit 0\n")
+        binary.chmod(0o700)
+        repo.write("scripts/test-landing-budget-controls.py", 'print("budget-control-sentinel")\nraise SystemExit(19)\n')
+        repo.commit("Fixture failing budget controls")
+        result = subprocess.run(["sh", "scripts/ci-local.sh"], cwd=repo.root,
+                                env=dict(repo.environment, BBOXY_GATE_SLOT="none"), capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 19, "budget controls did not block full CI: " + result.stdout + result.stderr)
+        self.assertIn("budget-control-sentinel", result.stdout)
+
 
 class SlotTests(unittest.TestCase):
     def setUp(self):
@@ -835,9 +972,10 @@ import json,os,pathlib,subprocess
 state=pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR'])
 target=pathlib.Path(os.environ['BBOXY_CARGO_TARGET_DIR'])
 assert 'CARGO_TARGET_DIR' not in os.environ
-assert not list(target.iterdir()), 'a candidate inherited an old target'
+previous=target/'candidate-artifact'
 row={'tree':str(pathlib.Path.cwd().resolve()),'target':str(target.resolve()),
-     'sha':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip()}
+     'sha':subprocess.check_output(['git','rev-parse','HEAD'],text=True).strip(),
+     'warm':previous.read_text() if previous.exists() else None}
 with (state/'slot-calls.jsonl').open('a') as stream:stream.write(json.dumps(row)+'\\n')
 (target/'candidate-artifact').write_text(row['sha'])
 PY
@@ -856,7 +994,7 @@ printf 'ci-local: result %s normal 0\\n' "$sha"
         self.assertEqual(landing.gate_proof(log, sha, self.repo.root)["tested_sha"], sha)
         return json.loads((self.repo.state / "slot-calls.jsonl").read_text().splitlines()[-1])
 
-    def test_two_commits_reuse_slot_paths_with_empty_targets_and_keep_the_caller(self):
+    def test_two_commits_reuse_warm_slot_paths_and_keep_the_caller(self):
         unrelated = self.repo.state / "target/caller-artifact"
         unrelated.parent.mkdir()
         unrelated.write_text("retained")
@@ -870,11 +1008,14 @@ printf 'ci-local: result %s normal 0\\n' "$sha"
         self.assertEqual(first["tree"], second["tree"])
         self.assertEqual(first["target"], second["target"])
         self.assertNotEqual(first["sha"], second["sha"])
+        self.assertEqual(second["warm"], first["sha"])  # the second candidate builds on the first's target
         self.assertEqual(unrelated.read_text(), "retained")
-        self.assertFalse(slot.exists())
-        self.assertNotIn(str(slot / "tree"), run("git", "worktree", "list", "--porcelain", cwd=self.repo.root))
+        # Release drops ownership only; the checkout and target stay warm for the next gate.
+        self.assertFalse((slot / "pid").exists())
+        self.assertTrue((slot / "target").is_dir())
+        self.assertIn(str(slot / "tree"), run("git", "worktree", "list", "--porcelain", cwd=self.repo.root))
 
-    def test_dead_owner_reclaims_its_known_tree_and_target(self):
+    def test_dead_owner_slot_is_reused_warm(self):
         dead = subprocess.Popen([sys.executable, "-c", "pass"])
         self.assertEqual(dead.wait(timeout=5), 0)
         slot = self.slots / "bboxy450-gate-slot-1"
@@ -886,7 +1027,8 @@ printf 'ci-local: result %s normal 0\\n' "$sha"
         run("git", "worktree", "add", "--detach", str(slot / "tree"), self.repo.base, cwd=self.repo.root)
         row = self.gate(self.repo.base)
         self.assertEqual(row["tree"], str(slot / "tree"))
-        self.assertFalse(slot.exists())
+        self.assertEqual((slot / "target/old-artifact").read_text(), "retired")
+        self.assertFalse((slot / "pid").exists())
 
     def test_live_owner_and_held_transition_are_skipped_without_deletion(self):
         live = self.slots / "bboxy450-gate-slot-1"
@@ -973,27 +1115,115 @@ class LandTests(unittest.TestCase):
         self.assertEqual(self.repo.remote_head(), self.repo.base)
         self.assertFalse((self.repo.state / "landings.log").exists())
 
-    def test_narrow_cold_log_is_no_longer_accepted(self):
+    def test_scoped_exact_full_gate_supersedes_a_timed_out_presubmit(self):
         sha = self.cut()
         (self.repo.state / "presubmit.log").write_text(json.dumps({
             "sha": sha, "error": "presubmit_timeout", "exit": 124,
             "compile_seconds": 900., "tests_started": False}) + '\n')
-        result = self.repo.land("--gate-log", self.gate_log(sha))
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("gate_log_requires_wide_cut", result.stderr)
-        self.assertEqual(self.repo.remote_head(), self.repo.base)
+        proof = self.gate_log(sha)
+        result = self.repo.land("--gate-log", proof)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.repo.remote_head(), sha)
         self.assertEqual(self.cargo_test_count(), 0)
+        record = json.loads((self.repo.state / "landings.log").read_text())
+        self.assertEqual(record["tested_sha"], sha)
+        self.assertEqual(record["gate_log_sha256"], hashlib.sha256(proof.read_bytes()).hexdigest())
+        self.assertEqual(record["tier"], "code")
 
-    def test_run_timeout_does_not_push_or_accept_a_provided_gate(self):
+    def test_full_code_cut_runs_normal_make_after_initial_rebase(self):
+        old = self.cut()
+        self.repo.movement(".bboxy/other.md")
+        hook = json.loads((self.repo.state / "behavior.json").read_text())["hook"]
+        run("sh", hook, cwd=self.repo.root)
+        (self.repo.state / "behavior.json").unlink()
+        (self.repo.state / "fixture.json").write_text('{"timeout_seconds":0.0001}')
+        result = self.repo.land("--full")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        sha = self.repo.remote_head()
+        self.assertNotEqual(sha, old)
+        self.assertEqual(self.cargo_test_count(), 1)
+        record = json.loads((self.repo.state / "landings.log").read_text())
+        self.assertEqual(record["tier"], "code")
+        self.assertEqual(record["tested_sha"], sha)
+        self.assertEqual(record["formal"]["source"], sha)
+        proof = Path(record["gate_log"]).read_text()
+        self.assertIn(f"ci-local: source {sha} normal", proof)
+        self.assertEqual(proof.splitlines()[-1], f"ci-local: result {sha} normal 0")
+
+    def test_private_make_overrides_stay_private_with_a_shared_path_control(self):
+        parent = self.repo.state / "inherited-parent-target"
+        overrides = " -- TARGET_DIR=" + str(parent)
+        with patch.dict(os.environ, {"MAKEFLAGS": overrides, "MAKELEVEL": "7",
+                                    "TARGET_DIR": str(parent), "CI_LOG": str(parent / "ci.log"),
+                                    "CI_ARGS": "--slow"}):
+            other = Repository()
+            self.addCleanup(other.close)
+            other.tooling()
+        other.remote()
+        other.write("crates/c/src/lib.rs", "// isolated inherited Make flags\n")
+        other.commit("Fixture private Make overrides")
+        result = other.land()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertFalse(parent.exists(), "private formal check wrote a parent target")
+        # Deliberately restore the inheritance: the same real Make path now
+        # writes evidence into the shared parent. This is the collision witness.
+        other.environment["MAKEFLAGS"] = overrides
+        other.environment["TARGET_DIR"] = str(parent)
+        other.write("crates/c/src/lib.rs", "// deliberately shared Make target\n")
+        other.commit("Fixture broken Make isolation")
+        result = other.land()
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertTrue((parent / "formal/evidence.json").is_file())
+
+    def test_full_failed_make_cannot_push(self):
+        self.cut()
+        (self.repo.state / "behavior.json").write_text('{"fail":"test"}')
+        result = self.repo.land("--full")
+        self.assertEqual(result.returncode, 77, result.stdout + result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
+        self.assertFalse((self.repo.state / "landings.log").exists())
+
+    def test_full_disjoint_movement_reuses_rust_and_refreshes_formal(self):
+        self.cut()
+        self.repo.movement(".bboxy/other.md")
+        result = self.repo.land("--full")
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.cargo_test_count(), 1)
+        record = json.loads((self.repo.state / "landings.log").read_text())
+        self.assertEqual(record["formal"]["source"], self.repo.remote_head())
+        self.assertNotEqual(record["tested_sha"], self.repo.remote_head())
+
+    def test_scoped_stale_full_gate_cannot_supersede_a_run_timeout(self):
         sha = self.cut()
         (self.repo.state / "behavior.json").write_text('{"block":"test","test_started":true}')
         (self.repo.state / "fixture.json").write_text('{"timeout_seconds":3}')
         result = self.repo.land()
         self.assertEqual(result.returncode, 77, result.stdout + result.stderr)
-        result = self.repo.land("--gate-log", self.gate_log(sha))
+        result = self.repo.land("--gate-log", self.gate_log(self.repo.base))
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn("gate_log_requires_wide_cut", result.stderr)
+        self.assertIn("gate_log_source_mismatch", result.stderr)
         self.assertEqual(self.repo.remote_head(), self.repo.base)
+
+    def test_scoped_source_binding_has_a_broken_control(self):
+        sha = self.cut()
+        proof = self.gate_log(sha)
+        proof.write_text(proof.read_text().replace(f"ci-local: source {sha}", "ci-local: source " + "0" * 40))
+        result = self.repo.land("--gate-log", proof)
+        self.assertIn("gate_log_source_mismatch", result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
+        # The result and formal receipt still match HEAD. Removing just the
+        # source binding must make this real private landing accept the bad log.
+        tool = self.repo.root / "scripts/landing.py"
+        original = tool.read_text()
+        guard = 'if sources != [[sha, "normal"]]:'
+        self.assertEqual(original.count(guard), 1)
+        tool.write_text(original.replace(guard, 'if False: # deliberately broken source binding'))
+        broken = self.repo.commit("Fixture broken source binding")
+        proof = self.gate_log(broken)
+        proof.write_text(proof.read_text().replace(f"ci-local: source {broken}", "ci-local: source " + "0" * 40))
+        result = self.repo.land("--gate-log", proof)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.repo.remote_head(), broken)
 
     def test_wide_exact_green_log_is_reused_and_hashed_without_another_gate(self):
         sha = self.cut("crates/a/src/lib.rs")
@@ -1073,17 +1303,145 @@ class LandTests(unittest.TestCase):
         self.assertEqual(result.returncode, 77, result.stdout + result.stderr)
         self.assertEqual(self.repo.remote_head(), self.repo.base)
 
-    def test_wide_rebase_cannot_reuse_a_green_log_from_the_old_candidate(self):
+    def test_records_rebase_accepts_gate_and_runs_only_records_checks(self):
+        self.repo.write("scripts/generated-sources.sh", (self.repo.root / "scripts/generated-sources.sh").read_text()
+                        + "test ! -e .bboxy/untracked-invalid.md\n")
         sha = self.cut("crates/a/src/lib.rs")
         proof = self.gate_log(sha)
-        self.repo.movement(".bboxy/other.md")
+        # Checks must inspect committed C', not unrelated untracked records in
+        # the author's worktree. The generated-sources witness above enforces it.
+        self.repo.write(".bboxy/untracked-invalid.md", "# Not a committed record\n")
+        name = ".bboxy/decisions/unreferenced-record.md"
+        self.repo.movement(name, contents="---\ntype: decision\nnumber: 1\n---\n# Fixture record\n")
         hook = json.loads((self.repo.state / "behavior.json").read_text())["hook"]
         run("sh", hook, cwd=self.repo.root)
+        (self.repo.state / "behavior.json").unlink()
+        result = self.repo.land("--gate-log", proof)
+        self.assertEqual(result.returncode, 0, "records-only gate was refused: " + result.stdout + result.stderr)
+        self.assertNotEqual(self.repo.remote_head(), sha)
+        record = json.loads((self.repo.state / "landings.log").read_text())
+        self.assertEqual(record["gate_log_source"], sha)
+        self.assertEqual(record["tested_sha"], sha)
+        self.assertEqual(record["records_delta"], [name])
+        self.assertEqual(record["records_checks_exit"], 0)
+        self.assertEqual(record["formal"]["source"], self.repo.remote_head())
+        # The old evidence stays strict; only the guarded R5 route produces a
+        # new current-source receipt, without rerunning its checked models.
+        with self.assertRaises(landing.Refusal):
+            landing.formal_receipt(proof.read_text(), sha, self.repo.root)
+        landing.verify_formal_receipt(record["formal"], self.repo.remote_head(), self.repo.root)
+        calls = [json.loads(s) for s in (self.repo.state / "cargo.jsonl").read_text().splitlines()]
+        for argv in calls:
+            self.assertEqual(argv[1:3], ["--target-dir", str((self.repo.state / "slots/bboxy450-gate-slot-1/target").resolve())])
+        self.assertEqual([argv[:1] + argv[3:] for argv in calls], [["test", "-p", "bboxy450-doc", "--locked", "--test", "corpus", "-q"],
+                                 ["test", "-p", "bboxy450-mermaid", "--locked", "-q"]])
+        scripts = (self.repo.state / "shell.log").read_text().splitlines()
+        self.assertEqual(scripts, ["scripts/" + name + ".sh " for name in (
+            "layering", "pending-flags", "kill-own-pids", "generated-sources", "licenses", "brand",
+            "images", "cross-os", "never-block")])
+        self.assertNotIn("formal-phase:", result.stdout, "records rebase reran formal export")
+        self.assertNotIn("nested fixture checks", result.stdout)
+
+    def test_records_gate_refuses_a_byte_outside_records(self):
+        sha = self.cut("crates/a/src/lib.rs")
+        proof = self.gate_log(sha)
+        # Outside the formal source inventory: this must be stopped by R5's
+        # tree predicate itself, rather than the separate evidence hash check.
+        self.repo.write("crates/c/uninventoried.txt", "x")
+        self.repo.commit("Fixture one-byte non-record delta")
+        result = self.repo.land("--gate-log", proof)
+        self.assertNotEqual(result.returncode, 0, "non-records delta was accepted")
+        self.assertIn("gate_log_source_mismatch", result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
+
+    def test_records_gate_refuses_a_changed_rust_source(self):
+        sha = self.cut("crates/a/src/lib.rs")
+        proof = self.gate_log(sha)
+        self.cut("crates/c/src/lib.rs")
         result = self.repo.land("--gate-log", proof)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("gate_log_source_mismatch", result.stderr)
-        self.assertNotEqual(self.repo.remote_head(), sha)
         self.assertEqual(self.cargo_test_count(), 0)
+
+    def test_records_gate_refuses_a_record_named_by_code(self):
+        name = ".bboxy/specs/e2e-acceptance.md"
+        self.repo.write("crates/a/src/lib.rs", f'const RECORD: &str = "{name}";\n')
+        self.repo.write(name, "original fixture")
+        sha = self.repo.commit("Fixture named record")
+        proof = self.gate_log(sha)
+        self.repo.write(name, "changed fixture")
+        self.repo.commit("Fixture changed named record")
+        result = self.repo.land("--gate-log", proof)
+        self.assertNotEqual(result.returncode, 0, "code-named record was accepted")
+        self.assertIn("gate_log_source_mismatch", result.stderr)
+        self.assertEqual(self.cargo_test_count(), 0)
+
+    def test_records_gate_refuses_a_new_executable_invariant(self):
+        sha = self.cut("crates/a/src/lib.rs")
+        proof = self.gate_log(sha)
+        self.repo.write(".bboxy/invariants/new-gate.md",
+                        "---\ntype: invariant\nnumber: 1\ncheck: cargo test -p a fixture\n---\n# New gate\n")
+        self.repo.commit("Fixture new executable invariant after full gate")
+        result = self.repo.land("--gate-log", proof)
+        self.assertNotEqual(result.returncode, 0, "executable invariant delta was accepted")
+        self.assertIn("gate_log_source_mismatch: executable gate record", result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
+        self.assertEqual(self.cargo_test_count(), 0)
+
+    def test_records_gate_refuses_submodule_delta_despite_ignore_config(self):
+        first = self.cut("crates/a/src/lib.rs")
+        run("git", "update-index", "--add", "--cacheinfo", "160000", self.repo.base,
+            "vendor/fixture", cwd=self.repo.root)
+        run("git", "commit", "-q", "-m", "Fixture first gitlink", cwd=self.repo.root)
+        source = run("git", "rev-parse", "HEAD", cwd=self.repo.root)
+        run("git", "update-index", "--cacheinfo", "160000", first,
+            "vendor/fixture", cwd=self.repo.root)
+        run("git", "commit", "-q", "-m", "Fixture changed gitlink", cwd=self.repo.root)
+        candidate = run("git", "rev-parse", "HEAD", cwd=self.repo.root)
+        run("git", "config", "diff.ignoreSubmodules", "all", cwd=self.repo.root)
+        with self.assertRaisesRegex(landing.Refusal, "non-records tree delta",
+                                    msg="ignored submodule delta was accepted"):
+            landing.records_gate_delta(self.repo.root, source, candidate)
+
+    def test_records_gate_refuses_failed_records_checks(self):
+        sha = self.cut("crates/a/src/lib.rs")
+        proof = self.gate_log(sha)
+        name = ".bboxy/decisions/bad-record.md"
+        self.repo.write(name, "# Missing frontmatter")
+        self.repo.commit("Fixture invalid records delta")
+        (self.repo.state / "behavior.json").write_text(json.dumps({"corpus_frontmatter": name}))
+        result = self.repo.land("--gate-log", proof)
+        self.assertNotEqual(result.returncode, 0, "failed records checks were accepted")
+        self.assertIn("gate_log_source_mismatch", result.stderr)
+        self.assertEqual(self.repo.remote_head(), self.repo.base)
+
+    def test_records_gate_refuses_secret_like_changed_record(self):
+        sha = self.cut("crates/a/src/lib.rs")
+        proof = self.gate_log(sha)
+        self.repo.write(".bboxy/decisions/secret-fixture.md", "---\ntype: decision\nnumber: 1\n---\ntoken: " + "a" * 40)
+        self.repo.commit("Fixture synthetic secret-like record")
+        result = self.repo.land("--gate-log", proof)
+        self.assertNotEqual(result.returncode, 0, "secret-like record was accepted")
+        self.assertIn("records secret scan failed", result.stderr)
+        self.assertNotIn("a" * 40, result.stdout + result.stderr)
+
+    def test_records_gate_refuses_non_records_rename_and_mode(self):
+        self.cut("crates/a/src/lib.rs")
+        self.repo.write("crates/c/original.txt", "x")
+        sha = self.repo.commit("Fixture rename and mode baseline")
+        proof = self.gate_log(sha)
+        run("git", "mv", "crates/c/original.txt", "crates/c/renamed.txt", cwd=self.repo.root)
+        self.repo.commit("Fixture non-record rename")
+        result = self.repo.land("--gate-log", proof)
+        self.assertIn("gate_log_source_mismatch", result.stderr)
+        self.assertNotEqual(result.returncode, 0)
+        run("git", "mv", "crates/c/renamed.txt", "crates/c/original.txt", cwd=self.repo.root)
+        path = self.repo.root / "crates/c/original.txt"
+        path.chmod(0o755)
+        self.repo.commit("Fixture non-record mode delta")
+        result = self.repo.land("--gate-log", proof)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("gate_log_source_mismatch", result.stderr)
 
     def test_wide_moved_main_reuses_the_full_green_for_disjoint_changes(self):
         self.cut("crates/a/src/lib.rs")
@@ -1107,7 +1465,8 @@ class LandTests(unittest.TestCase):
         self.assertEqual([call[call.index("-p") + 1] for call in tests if "-p" in call], ["c"])
         checks = [json.loads(line) for line in (self.repo.state / "presubmit.log").read_text().splitlines()]
         self.assertEqual(checks[-1]["affected"], ["c"])
-        self.assertIn("invariants.sh --affected c\n", (self.repo.state / "shell.log").read_text())
+        self.assertRegex((self.repo.state / "shell.log").read_text(),
+                         r"invariants\.sh --affected c --covered-tests [^\n]+/quarantine-coverage\.json\n")
 
     def test_moved_scope_uses_the_rebased_dependency_graph(self):
         self.cut()
@@ -1175,8 +1534,9 @@ class LandTests(unittest.TestCase):
 
     def test_a_script_move_replays_script_fixtures_but_keeps_the_green_rust(self):
         self.cut()
-        self.cut('scripts/fixture-gate.sh')
-        self.repo.movement('scripts/unrelated-helper.sh')
+        self.repo.write('scripts/main_watch.py', (self.repo.root / 'scripts/main_watch.py').read_text() + '\n# fixture copied script cut\n')
+        self.repo.commit('Fixture copied script cut')
+        self.repo.movement('scripts/main-watch.sh', contents=(self.repo.root / 'scripts/main-watch.sh').read_text() + '\n# incoming copied script\n')
         result = self.repo.land()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertEqual(self.cargo_test_count(), 1)
@@ -1186,7 +1546,8 @@ class LandTests(unittest.TestCase):
             ['python3', '-I', 'scripts/test-landing.py', '--all']]})
 
     def test_a_record_only_move_reuses_a_script_cuts_fixture_result(self):
-        self.cut('scripts/fixture-gate.sh')
+        self.repo.write('scripts/main_watch.py', (self.repo.root / 'scripts/main_watch.py').read_text() + '\n# fixture copied script cut\n')
+        self.repo.commit('Fixture copied script cut')
         self.repo.movement('.bboxy/other.md')
         result = self.repo.land()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
@@ -1224,8 +1585,12 @@ class LandTests(unittest.TestCase):
         self.assertEqual(result.returncode, 77, result.stdout + result.stderr)
         self.assertEqual(self.cargo_test_count(), 1)
         checks = [json.loads(line) for line in (self.repo.state / 'presubmit.log').read_text().splitlines()]
-        self.assertEqual(checks[-1]['recheck'], {'affected': [], 'commands': [
-            ['sh', 'scripts/invariants.sh', '--affected', 'c', 'fixture']]})
+        self.assertEqual(checks[-1]['recheck']['affected'], [])
+        commands = checks[-1]['recheck']['commands']
+        self.assertEqual(len(commands), 1)
+        self.assertEqual(commands[0][:5], ['sh', 'scripts/invariants.sh', '--affected', 'c', '--covered-tests'])
+        self.assertEqual(Path(commands[0][5]).name, 'quarantine-coverage.json')
+        self.assertEqual(commands[0][6:], ['fixture'])
 
     def test_signed_cut_pushes_once_logs_and_announces_after_slot_release(self):
         # keeps: #323 §5 fast-forward/signature/log/communication contract.
@@ -1237,7 +1602,7 @@ class LandTests(unittest.TestCase):
         self.assertEqual(record["sha"], sha)
         self.assertEqual(record["author_key"], fixture_identity()[0].upper())
         self.assertEqual(record["affected"], ["c"])
-        self.assertFalse(list((self.repo.state / "slots").glob("bboxy450-gate-slot-*")))
+        self.assertFalse(list((self.repo.state / "slots").glob("bboxy450-gate-slot-*/pid")))
         self.assertTrue((self.repo.state / "announced" / (sha + ".json")).exists())
 
     def test_red_main_refuses_before_any_check_or_push(self):
@@ -1312,6 +1677,24 @@ class LandTests(unittest.TestCase):
         self.assertEqual(self.cargo_test_count(), 6)
         record = json.loads((self.repo.state / 'landings.log').read_text())
         self.assertEqual(record['incremental_rechecks'], 5)
+
+    def test_one_default_slot_queues_until_its_owner_exits(self):
+        self.cut()
+        slot = self.repo.state / "slots" / "bboxy450-gate-slot-1"
+        slot.mkdir(parents=True)
+        holder = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(4)"])
+        (slot / "pid").write_text(str(holder.pid))
+        reaper = threading.Thread(target=holder.wait)  # an unreaped zombie still answers kill(pid, 0)
+        reaper.start()
+        environment = dict(self.repo.environment)
+        for name in ("BBOXY_GATE_SLOTS", "BBOXY_GATE_WAIT"):
+            environment.pop(name)
+        result = subprocess.run(["sh", "scripts/land.sh"], cwd=self.repo.root, env=environment,
+                                capture_output=True, text=True, timeout=50)
+        reaper.join(timeout=5)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("queued, waiting for a gate slot", result.stdout)
+        self.assertFalse((self.repo.state / "slots" / "bboxy450-gate-slot-2").exists())
 
     def test_busy_slots_are_75_without_a_check(self):
         self.cut()
@@ -1389,6 +1772,77 @@ class LandTests(unittest.TestCase):
         self.assertEqual(len(calls),1);self.assertEqual(plans,[])
 
 
+class IgnoredIntegrationTests(unittest.TestCase):
+    def invoke(self, cases, *, extra=(), prefix=(), allow=True, run_code=4, listing_code=0, malformed=False):
+        spec = importlib.util.spec_from_file_location("ignored_quarantine", SOURCE.with_name("quarantine.py"))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        api = Mock()
+        api.metadata.return_value = {}
+        payload = {"rust-suites": {"fixture::native": {"testcases": cases}}}
+        api.command.return_value = subprocess.CompletedProcess(
+            [], listing_code, "{" if malformed else json.dumps(payload), "")
+        with tempfile.TemporaryDirectory(prefix="ignored-integration-") as directory:
+            api.repository.return_value = Path(directory)
+            arguments = ["--locked", "-p", "fixture", "--test", "native", *extra]
+            if allow:
+                arguments.insert(0, "--allow-ignored-only")
+            arguments = [*prefix, *arguments]
+            with patch.object(module, "nextest", return_value=True), \
+                    patch.object(module.subprocess, "run", return_value=subprocess.CompletedProcess([], run_code)) as run, \
+                    patch.dict(os.environ, {"BBOXY_PRESUBMIT_COVERAGE": "", "BBOXY_PRESUBMIT_ATTEMPT": ""}), \
+                    contextlib.redirect_stdout(io.StringIO()) as output:
+                code = module.test(arguments, api)
+        return code, api.command, run.call_args[0][0], output.getvalue()
+
+    @staticmethod
+    def ignored():
+        return {"native_case": {"kind": "test", "ignored": True,
+                "filter-match": {"status": "mismatch", "reason": "ignored"}}}
+
+    def test_explicit_lean_opt_in_accepts_verified_ignored_target_without_forwarding_flag(self):
+        code, listing, argv, output = self.invoke(self.ignored())
+        self.assertEqual(code, 0)
+        self.assertNotIn("--allow-ignored-only", argv)
+        self.assertNotIn("--no-fail-fast", listing.call_args[0][0])
+        self.assertIn("all 1 selected tests are ignored; compiled only", output)
+
+    def test_normal_runner_keeps_no_tests_failure(self):
+        code, listing, _, _ = self.invoke(self.ignored(), allow=False)
+        self.assertEqual(code, 4)
+        listing.assert_not_called()
+
+    def test_target_override_can_precede_the_lean_opt_in(self):
+        code, _, argv, _ = self.invoke(self.ignored(), prefix=("--target-dir", "private-target"))
+        self.assertEqual(code, 0)
+        self.assertNotIn("--allow-ignored-only", argv)
+
+    def test_explicit_filters_cannot_be_mistaken_for_ignored_tests(self):
+        for extra in [("--", "missing_case"), ("missing_case",), ("-E", "test(missing_case)")]:
+            with self.subTest(extra=extra):
+                code, listing, _, _ = self.invoke(self.ignored(), extra=extra)
+                self.assertEqual(code, 4)
+                listing.assert_not_called()
+
+    def test_empty_or_filtered_metadata_keeps_no_tests_failure(self):
+        for cases in [{}, {"case": {"kind": "test", "ignored": False}},
+                      {"case": {"kind": "test", "ignored": True, "filter-match": {"reason": "expression"}}},
+                      {"case": {"kind": "bench", "ignored": True, "filter-match": {"reason": "ignored"}}}]:
+            with self.subTest(cases=cases):
+                self.assertEqual(self.invoke(cases)[0], 4)
+
+    def test_missing_or_malformed_listing_fails_closed(self):
+        self.assertEqual(self.invoke(self.ignored(), listing_code=101)[0], 4)
+        self.assertEqual(self.invoke(self.ignored(), malformed=True)[0], 4)
+
+    def test_build_and_test_failures_are_never_accepted_as_ignored(self):
+        for run_code in [100, 101]:
+            with self.subTest(run_code=run_code):
+                code, listing, _, _ = self.invoke(self.ignored(), run_code=run_code)
+                self.assertEqual(code, run_code)
+                listing.assert_not_called()
+
+
 class QuarantineTests(unittest.TestCase):
     def setUp(self):
         self.repo = Repository()
@@ -1404,6 +1858,24 @@ class QuarantineTests(unittest.TestCase):
     def listed(self, expires="2999-01-01"):
         with (self.repo.root / ".bboxy/quarantine.md").open("a") as stream:
             stream.write(f"| `fixture_test` | c | Fixture | [[#123]] | 2026-01-01 | {expires} | fixture proof |\n")
+
+    def test_nextest_junit_maps_binary_ids_to_coverage_rows(self):
+        spec = importlib.util.spec_from_file_location("fixture_quarantine", SOURCE.with_name("quarantine.py"))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        junit = self.repo.state / "junit.xml"
+        junit.write_text("""<testsuites>
+<testsuite name="c"><testcase name="tests::unit"/></testsuite>
+<testsuite name="c::ctl"><testcase name="once"><failure type="test failure"/></testcase>
+<testcase name="slow"><skipped/></testcase></testsuite>
+<testsuite name="c::bin/tool"><testcase name="main_test"/></testsuite>
+<testsuite name="c::example/demo"><testcase name="ignored_kind"/></testsuite>
+</testsuites>""")
+        packages = {"c": {"targets": [{"name": "c_lib", "kind": ["lib"]}]}}
+        rows = module.junit_tests(junit, packages)
+        self.assertEqual([(r["kind"], r["target"], r["test"], r["result"]) for r in rows],
+                         [("lib", "c_lib", "tests::unit", "ok"), ("test", "ctl", "once", "FAILED"),
+                          ("test", "ctl", "slow", "ignored"), ("bin", "tool", "main_test", "ok")])
 
     def test_add_runs_exact_test_links_task_and_expires_in_seven_days(self):
         result = self.repo.cli("quarantine", "add", "fixture_test", "--owner", "Fixture", "--task", "123")
@@ -1961,7 +2433,7 @@ class ParityTests(unittest.TestCase):
         with patch.object(landing,"repository",return_value=self.root),patch.object(landing,"affected",return_value=data),patch.object(landing,"records_checks") as records,patch.object(landing,"scoped_parity") as parity:
             self.assertEqual(landing.presubmit_worker("base",self.root/"result.json",plan),0)
         records.assert_not_called();parity.assert_called_once()
-        self.assertEqual(self.calls,[["make", "test-formal"]])
+        self.assertEqual(self.calls,[["make", "test-formal", "FORMAL_REUSE=1"]])
 
     def test_recheck_rejects_page_paths_outside_lab(self):
         data={**self.data(["lab/web/components.js"]),"affected":[],"parity":"yes"}
@@ -2024,6 +2496,196 @@ class PublishingIdentityTests(unittest.TestCase):
         with self.assertRaisesRegex(landing.Refusal, "unapproved_origin"):
             self.publish("Gonzih", "https://github.com/unapproved-fixture/project.git")
 
+
+
+class BudgetClockTests(unittest.TestCase):
+    def phases(self, missing=False):
+        counter = [0.]
+        class Stream:
+            def __iter__(self):
+                for step in ("export", "self-tests", "verify", "parity"):
+                    if not (missing and step == "verify"):
+                        yield landing.FORMAL_PHASE_PREFIX + json.dumps({"event":"start","step":step}) + "\n"
+                    counter[0] += 20.
+                    yield "fixture work\n"
+                    if not (missing and step == "verify"):
+                        yield landing.FORMAL_PHASE_PREFIX + json.dumps({"event":"end","step":step}) + "\n"
+            def close(self): pass
+        class Child:
+            stdout = Stream()
+            returncode = 0
+            def wait(self): return 0
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "phases.jsonl"
+            with patch.object(landing, "ledger_module", return_value=None), \
+                 patch.object(landing.subprocess, "Popen", return_value=Child()), \
+                 patch.object(landing.time, "monotonic", side_effect=lambda:counter[0]):
+                self.assertEqual(landing.measured_command(["make","test-formal"], Path(directory), path,
+                    stream=io.StringIO(), stage="formal"), 0)
+            clocks = landing.TwoClocks(0.)
+            for line in path.read_text().splitlines(): clocks.event(json.loads(line))
+            return clocks, clocks.totals(counter[0])
+
+    def test_four_formal_substeps_sum_to_the_formal_stage(self):
+        _, totals = self.phases()
+        self.assertEqual(totals["stage_seconds"]["formal"],80.)
+        self.assertEqual(sum(totals["formal_step_seconds"].values()),80.)
+        self.assertLess(totals["unclassified_seconds"],1.)
+
+    def test_missing_substep_is_unclassified_and_advisory(self):
+        _, totals = self.phases(missing=True)
+        self.assertEqual(totals["unclassified_seconds"],20.,"missing phase was silently classified")
+        findings=landing.budget_findings(totals,4.,5.)
+        self.assertTrue(any(row["kind"]=="unclassified" for row in findings),
+                        "missing phase had no finding")
+        self.assertEqual(findings[0]["load_average_start"],4.)
+
+    def test_stage_allocation_is_advisory_but_900_seconds_still_blocks(self):
+        clocks=landing.TwoClocks(0.)
+        clocks.event({"at":0.,"phase":"other","stage":"formal","substep":"parity"})
+        totals=clocks.totals(291.)
+        self.assertTrue(landing.budget_findings(totals,4.,5.))
+        self.assertIsNone(clocks.expired(291.,1800.,900.))
+        self.assertEqual(clocks.expired(901.,1800.,900.),"presubmit_timeout","900 second run bound was bypassed")
+
+    def test_formal_stage_wrapper_emits_both_boundaries(self):
+        result=subprocess.run([sys.executable,"-I",str(SOURCE.with_name("formal-stage.py")),
+            "verify","--",sys.executable,"-c","print('fixture')"],capture_output=True,text=True)
+        self.assertEqual(result.returncode,0,result.stderr)
+        events=[json.loads(line[len(landing.FORMAL_PHASE_PREFIX):]) for line in result.stdout.splitlines()
+                if line.startswith(landing.FORMAL_PHASE_PREFIX)]
+        self.assertEqual([e["event"] for e in events],["start","end"])
+
+
+class BudgetPresubmitTests(unittest.TestCase):
+    def setUp(self):
+        self.repo=Repository()
+        self.addCleanup(self.repo.close)
+        self.repo.tooling()
+        self.repo.environment["BBOXY_CARGO_TARGET_DIR"]=str(self.repo.state/"target")
+        self.repo.environment.pop("CARGO_TARGET_DIR",None)
+        self.repo.environment.update(RUSTC_WRAPPER="",RUSTC_WORKSPACE_WRAPPER="")
+
+    def cut(self,path,text):
+        self.repo.write(path,text)
+        return self.repo.commit("Fixture budget code cut")
+
+    def coverage_fixture(self,*,filtered=False,ignored=False):
+        shutil.copyfile(SOURCE.with_name("invariants.sh"),self.repo.root/"scripts/invariants.sh")
+        self.repo.write("crates/c/tests/ctl.rs",("#[ignore]\n" if ignored else "")+"#[test] fn ctl_once() {}\n")
+        suffix=" --ignored" if ignored else ""
+        self.repo.write(".bboxy/invariants/ctl-once.md",
+            "---\ntype: invariant\ncheck: cargo test -p c --locked --test ctl ctl_once -- --exact"+suffix+"\n---\n")
+        self.repo.base=self.repo.commit("Fixture coverage and invariant")
+        (self.repo.state/"behavior.json").write_text(json.dumps({
+            "coverage_real":True,"coverage_filtered":filtered,"coverage_ignored":ignored}))
+        self.cut("crates/c/src/lib.rs","pub fn value()->u8 {2}\n")
+
+    def dry_run(self):
+        result=subprocess.run(["sh","scripts/presubmit.sh",self.repo.base],cwd=self.repo.root,
+            env=self.repo.environment,capture_output=True,text=True,timeout=45)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        record=json.loads((self.repo.state/"presubmit.log").read_text().splitlines()[-1])
+        self.assertEqual(record,json.loads(Path(record["result"]).read_text()))
+        return record,result
+
+    def test_observed_ctl_runs_once(self):
+        self.coverage_fixture()
+        record,result=self.dry_run()
+        self.assertEqual((self.repo.state/"ctl-runs").read_text().splitlines(),["ctl"],
+                         "ctl binary ran twice")
+        self.assertIn("covered in this presubmit",result.stdout)
+        self.assertIn("stage_seconds",record)
+        self.assertIn("load_average_start",record)
+        self.assertIn("load_average_end",record)
+        self.assertEqual(record["stage_seconds"]["formal"],sum(record["formal_step_seconds"].values()))
+
+    def test_filtered_invariant_still_runs(self):
+        self.coverage_fixture(filtered=True)
+        self.dry_run()
+        self.assertEqual(len((self.repo.state/"ctl-runs").read_text().splitlines()),2,
+                         "filtered invariant was skipped")
+
+    def test_ignored_invariant_still_runs(self):
+        # Exercise the exact product discriminator as well as the process
+        # witness (whose explicit --ignored command stays outside batching).
+        source = SOURCE.with_name("invariants.sh").read_text().split("<<'PY_INVARIANTS'\n", 1)[1]
+        module = landing.ast.parse(source)
+        function = next(node for node in module.body if isinstance(node, landing.ast.FunctionDef) and node.name == "covered")
+        namespace = {}
+        exec(compile(landing.ast.Module(body=[function], type_ignores=[]), "invariant coverage discriminator", "exec"), namespace)
+        check = {"env": {}, "packages": ["c"], "targets": [("--test", "ctl")], "test": "ctl_once"}
+        observed = [{"package": "c", "kind": "test", "target": "ctl", "test": "ctl_once", "result": "ignored"}]
+        self.assertFalse(namespace["covered"](check, observed), "ignored result suppressed the invariant")
+        self.coverage_fixture(ignored=True)
+        self.dry_run()
+        self.assertEqual(len((self.repo.state/"ctl-runs").read_text().splitlines()),2,
+                         "ignored invariant was skipped")
+
+
+    def stale_coverage(self,field):
+        self.coverage_fixture()
+        record,_=self.dry_run()
+        path=Path(record["result"]).parent/"quarantine-coverage.json"
+        data=json.loads(path.read_text())
+        environment=dict(self.repo.environment)
+        environment.update(BBOXY_PRESUBMIT_ATTEMPT=data["attempt"],BBOXY_CARGO_TARGET_DIR=data["target"])
+        data[field]+="-stale";path.write_text(json.dumps(data))
+        result=subprocess.run(["sh","scripts/invariants.sh","--affected","c","--covered-tests",str(path)],
+            cwd=self.repo.root,env=environment,capture_output=True,text=True,timeout=45)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertEqual(len((self.repo.state/"ctl-runs").read_text().splitlines()),2,
+                         "coverage from another "+field+" skipped the invariant")
+
+    def test_another_attempt_cannot_discharge_the_invariant(self):
+        self.stale_coverage("attempt")
+
+    def test_another_target_cannot_discharge_the_invariant(self):
+        self.stale_coverage("target")
+
+    def test_brand_cut_skips_landing_fixtures(self):
+        file=self.repo.root/"scripts/brand.sh"
+        self.cut("scripts/brand.sh",file.read_text()+"\n# ordinary helper cut\n")
+        _,result=self.dry_run()
+        self.assertNotIn("nested fixture checks",result.stdout,"unrelated script ran landing fixtures")
+
+    def test_harness_helper_cut_runs_landing_fixtures(self):
+        file=self.repo.root/"scripts/harness-submodule.py"
+        self.cut("scripts/harness-submodule.py",file.read_text()+"\n# copied helper cut\n")
+        _,result=self.dry_run()
+        self.assertIn("nested fixture checks",result.stdout,"copied harness helper skipped fixtures")
+
+    def test_main_watch_cut_runs_landing_fixtures(self):
+        file=self.repo.root/"scripts/main_watch.py"
+        self.cut("scripts/main_watch.py",file.read_text()+"\n# copied watcher cut\n")
+        _,result=self.dry_run()
+        self.assertIn("nested fixture checks",result.stdout,"copied watcher skipped fixtures")
+
+    def test_added_fixture_copy_automatically_triggers(self):
+        name = "new-copied-fixture.py"
+        self.assertFalse(landing.landing_machinery(["scripts/" + name], self.repo.root))
+        path = self.repo.root / "scripts/test-landing.py"
+        text = path.read_text().replace("FIXTURE_SCRIPTS = (", 'FIXTURE_SCRIPTS = ("' + name + '", ', 1)
+        path.write_text(text)
+        self.assertTrue(landing.landing_machinery(["scripts/" + name], self.repo.root),
+                        "added fixture copy did not trigger")
+
+    def test_landing_machinery_cut_runs_fixtures(self):
+        self.cut("scripts/landing.py",(self.repo.root/"scripts/landing.py").read_text()+"\n# landing machinery fixture\n")
+        _,result=self.dry_run()
+        self.assertIn("nested fixture checks",result.stdout)
+
+    def test_allocation_overrun_is_advisory(self):
+        sha=self.cut("crates/c/src/lib.rs","pub fn value()->u8 {2}\n")
+        data=landing.affected(self.repo.base+"..HEAD",root=self.repo.root)
+        with patch.dict(os.environ,self.repo.environment), \
+             patch.dict(landing.STAGE_ALLOCATIONS,{"formal":0.}), \
+             contextlib.redirect_stdout(io.StringIO()):
+            record=landing.presubmit_attempt(self.repo.root,sha,self.repo.base,data,1800.,900.,0,"budget-fixture",
+                                             environment=self.repo.environment)
+        self.assertTrue(any(row["kind"]=="stage_allocation" for row in record["findings"]))
+        self.assertEqual(record["exit"],0,"stage advisory blocked presubmit")
+        self.assertEqual(json.loads(Path(record["result"]).read_text())["exit"],0)
 
 def fixture_suite(extended=False):
     # Every test has an independent mktemp repo and local bare origin. Isolated

@@ -105,13 +105,135 @@ impl Scene {
         add("settings".into(), "top/span1", sidebar.rect);
         add("new-swarm".into(), "new-swarm", viewport);
         for (slot, layout) in self.pane_keys().zip(layouts.iter().skip(2)) {
-            if let Slot::Seat(id) = slot
-                && let Some(control) = named(layout, "pane/strip/mute")
-            {
-                result.push((format!("pane-mute:{id}"), control.rect));
+            if let Slot::Seat(id) = slot {
+                for action in ["view", "mute"] {
+                    if let Some(control) = named(layout, &format!("pane/strip/{action}")) {
+                        result.push((format!("pane-{action}:{id}"), control.rect));
+                    }
+                }
             }
         }
         result
+    }
+}
+
+#[cfg(test)]
+mod view_switch_tests {
+    use super::*;
+    use ui::modules::strip::ViewTarget;
+
+    fn labels(layout: &c::Layout) -> String {
+        let mut text = String::new();
+        if let c::LayoutKind::Text { runs, .. } = &layout.kind {
+            for run in runs {
+                text.push_str(&run.text);
+            }
+        }
+        for child in &layout.children {
+            text.push_str(&labels(child));
+        }
+        text
+    }
+
+    #[test]
+    fn view_switch_header_geometry_and_hits() {
+        let ids = [0, 1, 2].map(SeatId::from_u128);
+        let mut scene = Scene::new();
+        scene.seats.truncate(3);
+        scene.seat_index.retain(|_, index| *index < 3);
+        for seat in &mut scene.seats {
+            seat.may_mute = true;
+            seat.shortcut = Some("8".into());
+            seat.interrupt_sent = true;
+            seat.name = "A very long operator supplied pane name".into();
+            seat.title = "A long transcript title that must yield to header actions".into();
+        }
+        let mut evidence = vec![];
+        for count in [1, 3] {
+            scene.tree = Some(if count == 1 {
+                SplitNode::Leaf(ids[0])
+            } else {
+                SplitNode::split(
+                    Axis::Row,
+                    1. / 3.,
+                    SplitNode::Leaf(ids[0]),
+                    SplitNode::split(
+                        Axis::Row,
+                        0.5,
+                        SplitNode::Leaf(ids[1]),
+                        SplitNode::Leaf(ids[2]),
+                    ),
+                )
+            });
+            for width in [200., 320., 800.] {
+                for target in [ViewTarget::Terminal, ViewTarget::Harness] {
+                    scene.set_pane_views(BTreeMap::from([(ids[0], target), (ids[1], target)]));
+                    let size = [
+                        scene.sidebar_width + (width + scene.rim) * count as f32,
+                        700.,
+                    ];
+                    let layouts = scene.layout(size, false).unwrap();
+                    let regions = scene.navigation_regions(&layouts);
+                    for (index, pane) in layouts.iter().skip(2).enumerate() {
+                        let id = ids[index];
+                        let mute = named(pane, "pane/strip/mute").unwrap().rect;
+                        let view = named(pane, "pane/strip/view");
+                        if index == 2 {
+                            assert!(view.is_none(), "ordinary terminal header changed");
+                            assert!(
+                                !regions
+                                    .iter()
+                                    .any(|(key, _)| key == &format!("pane-view:{id}"))
+                            );
+                            continue;
+                        }
+                        let view = view.expect("eligible header control");
+                        assert_eq!(labels(view), target.label());
+                        let identity = named(pane, "pane/strip/identity").unwrap().rect;
+                        let close = named(pane, "pane/strip/close").unwrap().rect;
+                        let body = pane_body(pane).unwrap();
+                        assert!(close.right() <= identity.x && identity.right() <= view.rect.x);
+                        assert!(view.rect.right() < mute.x, "view and mute overlap");
+                        assert!(view.rect.x >= pane.rect.x && mute.right() <= pane.rect.right());
+                        assert!(view.rect.bottom() <= body.y, "control overlays transcript");
+                        assert!(
+                            view.rect.h >= 20. && view.rect.w >= 48.,
+                            "compact readable hit target"
+                        );
+                        assert!(
+                            (view.rect.y + view.rect.h / 2. - mute.y - mute.h / 2.).abs() < 0.01
+                        );
+                        let hit = [
+                            view.rect.x + view.rect.w / 2.,
+                            view.rect.y + view.rect.h / 2.,
+                        ];
+                        assert_eq!(
+                            regions
+                                .iter()
+                                .find(|(_, rect)| {
+                                    hit[0] >= rect.x
+                                        && hit[0] < rect.right()
+                                        && hit[1] >= rect.y
+                                        && hit[1] < rect.bottom()
+                                })
+                                .map(|(key, _)| key.as_str()),
+                            Some(format!("pane-view:{id}").as_str()),
+                        );
+                        assert!(
+                            regions
+                                .iter()
+                                .any(|(key, rect)| key == &format!("pane-mute:{id}")
+                                    && *rect == mute)
+                        );
+                        evidence.push(serde_json::json!({"panes":count,"requested_width":width,"target":target.label(),"identity":format!("{identity:?}"),"control":format!("{:?}",view.rect),"mute":format!("{mute:?}")}));
+                    }
+                }
+            }
+        }
+        if let Ok(path) = std::env::var("BBOXY_VIEW_SWITCH_GEOMETRY") {
+            std::fs::write(path, serde_json::to_vec_pretty(&evidence).unwrap()).unwrap();
+        }
+        assert_eq!(evidence.len(), 18);
     }
 }
 

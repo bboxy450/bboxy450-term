@@ -7,6 +7,8 @@
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """Negative controls for false-green formal verification infrastructure."""
 import importlib.util
+import contextlib
+from concurrent.futures import ThreadPoolExecutor
 import io
 import json
 from pathlib import Path
@@ -28,16 +30,75 @@ publisher_spec.loader.exec_module(publisher)
 
 
 class GateTests(unittest.TestCase):
+    def test_concurrent_tlc_standard_module_cleanup_has_private_ownership(self):
+        with tempfile.TemporaryDirectory() as own:
+            root = Path(own)
+            java = root / "java-fixture"
+            java.write_text(f"#!{sys.executable}\n" + r'''
+# bboxy450-term fixture; origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+import os, sys, time
+from pathlib import Path
+name=sys.argv[-1]
+tmp=Path(next(arg.split("=",1)[1] for arg in sys.argv if arg.startswith("-Djava.io.tmpdir=")))
+module=tmp/"Integers.tla"
+module.write_text(str(os.getpid()))
+barrier=Path.cwd().parent
+(barrier/(name+".ready")).touch()
+deadline=time.monotonic()+3
+def wait(path):
+    while not path.exists():
+        if time.monotonic()>deadline: raise RuntimeError("fixture barrier timeout")
+        time.sleep(.002)
+wait(barrier/"Reader.ready")
+wait(barrier/"Cleaner.ready")
+if name=="Cleaner":
+    module.unlink()
+    (barrier/"cleaned").touch()
+else:
+    wait(barrier/"cleaned")
+    if not module.exists() or module.read_text()!=str(os.getpid()):
+        print("standard module lost to another TLC process")
+        sys.exit(150)
+print("Model checking completed. No error has been found.")
+''')
+            java.chmod(0o700)
+            for name in ("Reader", "Cleaner"):
+                (root / name).mkdir()
+
+            def run_pair():
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    jobs = [pool.submit(formal.tlc, java, root / "unused.jar", root / name, name, False)
+                            for name in ("Reader", "Cleaner")]
+                    return [job.result() for job in jobs]
+
+            self.assertEqual([formal.verdict(row) for row in run_pair()], ["pass", "pass"])
+            self.assertFalse(list((root / "Reader").glob("tlc-*")))
+            self.assertFalse(list((root / "Cleaner").glob("tlc-*")))
+            for name in ("Reader.ready", "Cleaner.ready", "cleaned"):
+                (root / name).unlink()
+            # Broken control: both JVMs own the same extraction directory.
+            shared = root / "shared"
+            shared.mkdir()
+            with mock.patch.object(formal.tempfile, "TemporaryDirectory",
+                                   side_effect=lambda *a, **k: contextlib.nullcontext(str(shared))):
+                reader, cleaner = run_pair()
+            self.assertEqual(formal.verdict(cleaner), "pass")
+            self.assertEqual(reader.returncode, 150)
+            with self.assertRaisesRegex(ValueError, "TLC tool failure"):
+                formal.verdict(reader)
+
     def test_frontend_inventory_keeps_project_contracts_out_of_standalone_checker(self):
         root = Path(__file__).resolve().parents[1]
-        rows = formal.tomllib.loads((root / "verification/corpus.toml").read_text())["model"]
+        rows = formal.corpus(root)
         # Standalone exports omit frontend labels because only checker cases remain.
         if not (root / "crates/bboxy450-term").exists():
             return
         self.assertEqual({row["frontend"] for row in rows}, {"checker", "yarn", "project"})
         project = {n for c in formal.contracts(root, {r["name"] for r in rows}) for n in c["models"]}
         self.assertEqual({r["name"] for r in rows if r["frontend"] == "project"}, project)
-        self.assertEqual(len([r for r in rows if r["frontend"] == "checker"]), 12)
+        # 12 original checker cases plus IteMax, QuantifiedScan and
+        # StrongFairFlicker with their broken controls (9c constructs).
+        self.assertEqual(len([r for r in rows if r["frontend"] == "checker"]), 18)
 
     def test_project_contracts_require_executed_pairs_and_real_evidence_paths(self):
         with tempfile.TemporaryDirectory() as own:
@@ -238,6 +299,114 @@ class GateTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "did not emit"):
                 formal.dot_graph(dot, 1)
 
+
+
+class ModelReuseTests(unittest.TestCase):
+    def setUp(self):
+        self.temp=tempfile.TemporaryDirectory(prefix="formal-reuse-fixture-")
+        self.addCleanup(self.temp.cleanup)
+        self.root=Path(self.temp.name)/"models";self.root.mkdir()
+        self.store=Path(self.temp.name)/"archive";self.store.mkdir()
+        self.checker=Path(self.temp.name)/"checker";self.checker.mkdir()
+        for name in ("scripts/formal.py", "scripts/test-formal.py", "crates/bboxy450-tlc/src/lib.rs", "crates/bbt-yarn/src/model.rs"):
+            path=self.checker/name;path.parent.mkdir(parents=True,exist_ok=True);path.write_text("fixture checker\n")
+        subprocess.run(["git","init","-q",str(self.checker)],check=True)
+        subprocess.run(["git","add","."],cwd=self.checker,check=True)
+        checker_patch=mock.patch.object(formal,"ROOT",self.checker);checker_patch.start();self.addCleanup(checker_patch.stop)
+        self.pins={"tlc":{"version":"fixture"},"java":{
+            formal.platform.system()+"-"+formal.platform.machine():{"version":"fixture"}}}
+        self.rows=[(name,"pass","1","1") for name in ("One","Two")]
+        for name,_,_,_ in self.rows:
+            for suffix,text in [(".tla","---- MODULE "+name+" ----\n"),
+                                (".cfg","fixture config\n"),("Graph.cfg","fixture graph\n"),
+                                (".states","0\n"),(".edges","")]:
+                (self.root/(name+suffix)).write_text(text)
+
+    def reference(self,java,jar,root,name,graph):
+        if graph:(root/(name+".dot")).write_text('digraph {\n1 [label="v0 = 0"];\n}\n')
+        (root/(name+("Graph" if graph else "")+".log")).write_text("Model checking completed. No error has been found.")
+        return subprocess.CompletedProcess([],0,"Model checking completed. No error has been found.","")
+
+    def check(self,reuse):
+        return [formal.check_model(self.root,row,set(),None,None,self.pins,self.store,reuse=reuse)
+                for row in self.rows]
+
+    def archive(self,rows):
+        data={"source":"a"*40,"dirty":False,"tlc":self.pins["tlc"],
+              "java":next(iter(self.pins["java"].values())),"tool_pins":self.pins,
+              "checker_sha256":formal.checker_sha256(),"models":rows}
+        raw=json.dumps(data).encode();digest=formal.hashlib.sha256(raw).hexdigest()
+        path=self.store/digest;(path/"models").mkdir(parents=True)
+        (path/"evidence.json").write_bytes(raw)
+        for file in self.root.iterdir():formal.shutil.copyfile(file,path/"models"/file.name)
+        formal.publish_model_index(self.store,path,data)
+        return digest
+
+    def warm(self):
+        with mock.patch.object(formal,"tlc",side_effect=self.reference) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            rows=self.check(False)
+        self.assertEqual(run.call_count,4)
+        return self.archive(rows)
+
+    def test_identical_models_reuse_archived_verdicts(self):
+        digest=self.warm()
+        with mock.patch.object(formal,"tlc",side_effect=self.reference) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            rows=self.check(True)
+        self.assertEqual(run.call_count,0,"identical models were rechecked")
+        self.assertTrue(all(row["reused_from"]==digest for row in rows))
+
+    def test_changed_tla_rechecks_only_the_changed_model(self):
+        digest=self.warm()
+        with (self.root/"One.tla").open("a") as stream:stream.write(" ")
+        with mock.patch.object(formal,"tlc",side_effect=self.reference) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            rows=self.check(True)
+        self.assertEqual(run.call_count,2,"changed TLA reused stale evidence")
+        self.assertNotIn("reused_from",rows[0])
+        self.assertEqual(rows[1]["reused_from"],digest)
+
+    def test_changed_tool_pin_rechecks_every_model(self):
+        self.warm();self.pins["tlc"]["version"]="changed"
+        with mock.patch.object(formal,"tlc",side_effect=self.reference) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            rows=self.check(True)
+        self.assertEqual(run.call_count,4,"changed tool pins reused evidence")
+        self.assertTrue(all("reused_from" not in row for row in rows))
+
+    def test_changed_checker_harness_rechecks_every_model(self):
+        self.warm()
+        with (self.checker/"scripts/formal.py").open("a") as stream:stream.write(" ")
+        with mock.patch.object(formal,"tlc",side_effect=self.reference) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            rows=self.check(True)
+        self.assertEqual(run.call_count,4,"changed checker harness reused evidence")
+        self.assertTrue(all("reused_from" not in row for row in rows))
+
+    def test_every_checker_source_family_changes_the_digest(self):
+        baseline=formal.checker_sha256()
+        for name in ("scripts/test-formal.py", "crates/bboxy450-tlc/src/lib.rs", "crates/bbt-yarn/src/model.rs"):
+            path=self.checker/name;original=path.read_bytes();path.write_bytes(original+b" ")
+            self.assertNotEqual(formal.checker_sha256(),baseline,name+" did not invalidate checker evidence")
+            path.write_bytes(original)
+
+    def test_postsubmit_rechecks_and_records_no_reuse(self):
+        self.warm()
+        with mock.patch.object(formal,"tlc",side_effect=self.reference) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            rows=self.check(False)
+        self.assertEqual(run.call_count,4,"postsubmit reused a verdict")
+        self.assertTrue(all("reused_from" not in row for row in rows),"postsubmit reused a verdict")
+        source=Path(__file__).with_name("ci-local.sh").read_text()
+        self.assertIn('make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR" FORMAL_REUSE=0',source)
+
+    def test_expectation_metadata_and_export_configs_are_key_inputs(self):
+        key=formal.model_reuse_key(self.root,"One","pass",None,self.pins)
+        self.assertNotEqual(key,formal.model_reuse_key(self.root,"One","safety",None,self.pins))
+        self.assertNotEqual(key,formal.model_reuse_key(self.root,"One","pass",{"bounds":[1]},self.pins))
+        (self.root/"One.cfg").write_text("changed config")
+        self.assertNotEqual(key,formal.model_reuse_key(self.root,"One","pass",None,self.pins))
 
 if __name__ == "__main__":
     unittest.main()

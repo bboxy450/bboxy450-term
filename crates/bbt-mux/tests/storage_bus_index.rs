@@ -81,7 +81,9 @@ fn signed_events_dedupe_forever_reject_conflicts_tampering_and_torn_database() {
     )
     .unwrap();
     drop(db);
-    assert!(EventLog::open(temp.path()).is_err());
+    // Before the checkpoint, corruption is found by the historical audit,
+    // rather than an unbounded startup scan (events.rs tests its diagnostic).
+    assert!(EventLog::open(temp.path()).unwrap().verify_chain().is_err());
     let torn = tempfile::tempdir().unwrap();
     std::fs::write(
         torn.path().join("events.sqlite"),

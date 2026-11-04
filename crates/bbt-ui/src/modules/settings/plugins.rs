@@ -607,11 +607,16 @@ impl Settings {
                 )
                 .into(),
             );
-            if plugin.auth.is_some() && plugin.trust == "trusted"
+            // Adapted from bboxy450-term lab/web/components.js (Plugins):
+            // https://github.com/bboxy450/bboxy450-term/blob/main/lab/web/components.js
+            // Reference snapshots show setup only when needed; live authorized
+            // plugins also retain their explicit setup action.
+            if plugin.can_set_up(plugin.control_key())
+                || plugin.auth.as_deref() == Some("needs login")
                 || plugin.health.state == "crashed"
             {
                 chips.push(
-                    b.button(&format!("{key}/setup"), "Run setup", None, "quiet")
+                    b.button(&format!("{key}/setup"), "Re-run setup", None, "quiet")
                         .into(),
                 );
             }

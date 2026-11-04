@@ -14,6 +14,7 @@ pub(super) fn install(db: &rusqlite::Connection) -> Result<()> {
         CREATE TABLE IF NOT EXISTS msg_task_state(task TEXT PRIMARY KEY,status TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS msg_task_roots(message TEXT PRIMARY KEY,root TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS msg_task_state_roots(root TEXT NOT NULL,task TEXT NOT NULL,status TEXT NOT NULL,PRIMARY KEY(root,task));
+        CREATE INDEX IF NOT EXISTS msg_task_amendments ON msg_messages(COALESCE(json_extract(CAST(envelope AS TEXT),'$.body.task_id'),json_extract(CAST(envelope AS TEXT),'$.intent.body.task_id'))) WHERE COALESCE(json_extract(CAST(envelope AS TEXT),'$.body.event'),json_extract(CAST(envelope AS TEXT),'$.intent.body.event'))='amend';
         CREATE INDEX IF NOT EXISTS msg_task_delegations ON msg_messages(COALESCE(json_extract(CAST(envelope AS TEXT),'$.body.task_id'),json_extract(CAST(envelope AS TEXT),'$.intent.body.task_id'))) WHERE COALESCE(json_extract(CAST(envelope AS TEXT),'$.body.event'),json_extract(CAST(envelope AS TEXT),'$.intent.body.event'))='delegate';")?;
     Ok(())
 }
@@ -145,6 +146,37 @@ pub(super) fn admitted(
 }
 
 impl Ledger {
+    /// Amendments join the latest delegation in this exact knowledge root.
+    /// The host binds `message` to its root before publishing a task event.
+    pub(crate) fn task_thread(&self, message: Ulid, task: Ulid) -> Result<Option<Ulid>> {
+        let db = self.store.connection()?;
+        // Prefer the current delegation. Legacy records without a retained
+        // delegation keep the first amendment's real message as their root.
+        // Both queries seek by task ID rather than scanning retained history.
+        for (event, index) in [
+            ("delegate", "msg_task_delegations"),
+            ("amend", "msg_task_amendments"),
+        ] {
+            let query = format!(
+                "SELECT COALESCE(json_extract(CAST(m.envelope AS TEXT),'$.thread_id'),json_extract(CAST(m.envelope AS TEXT),'$.intent.request.thread_id'),m.id) FROM msg_messages m INDEXED BY {index} LEFT JOIN msg_task_roots r ON r.message=m.id WHERE COALESCE(json_extract(CAST(m.envelope AS TEXT),'$.body.event'),json_extract(CAST(m.envelope AS TEXT),'$.intent.body.event'))='{event}' AND COALESCE(json_extract(CAST(m.envelope AS TEXT),'$.body.task_id'),json_extract(CAST(m.envelope AS TEXT),'$.intent.body.task_id'))=?1 AND r.root IS (SELECT root FROM msg_task_roots WHERE message=?2) ORDER BY m.seq DESC LIMIT 1"
+            );
+            let thread: Option<String> = db
+                .query_row(
+                    &query,
+                    params![task.to_string(), message.to_string()],
+                    |row| row.get(0),
+                )
+                .optional()?;
+            if let Some(id) = thread {
+                return id
+                    .parse()
+                    .map(Some)
+                    .map_err(|_| invalid("invalid task thread"));
+            }
+        }
+        Ok(None)
+    }
+
     /// Bind a terminal-authored Task wake before admission, never from message prose.
     pub(crate) fn bind_legacy_task_roots(&self, startup: &str) -> Result<()> {
         self.store.connection()?.execute("INSERT INTO msg_task_roots(message,root) SELECT id,?1 FROM msg_messages WHERE COALESCE(json_extract(CAST(envelope AS TEXT),'$.body.task_id'),json_extract(CAST(envelope AS TEXT),'$.intent.body.task_id')) IS NOT NULL ON CONFLICT(message) DO NOTHING",[startup])?;

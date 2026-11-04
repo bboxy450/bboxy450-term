@@ -152,6 +152,8 @@ pub struct Records {
     pub machine_defaults: std::collections::BTreeMap<String, Machine>,
     #[serde(skip)]
     pub machine_controls: bool,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub plugin_transports: Vec<machines::PluginTransport>,
     pub roles: Vec<(String, Role)>,
     pub harness: Vec<(String, Harness)>,
     pub plugins: Vec<plugins::Plugin>,
@@ -305,14 +307,7 @@ fn natural(e: c::Element) -> c::Item {
     }
 }
 fn icon(k: &str, name: &str, size: f32, co: ui::Color) -> c::Element {
-    named(
-        k,
-        c::Element::Icon {
-            name: name.into(),
-            paint: ui::Paint::solid(co),
-            size: ui::Length::Px(size),
-        },
-    )
+    named(k, super::harness::mark(name, size, ui::Paint::solid(co)))
 }
 fn surface(
     fill: ui::Color,
@@ -1097,7 +1092,7 @@ impl Build<'_> {
             vec![
                 named(
                     format!("{k}/hname"),
-                    txt(
+                    wrap(
                         "",
                         label,
                         ui::Text {
@@ -2670,7 +2665,7 @@ impl Settings {
             "",
             plain(None, [0.; 4], 0.),
             4.,
-            ["claude", "codex", "pi", "omp", "zsh"]
+            super::harness::HARNESSES
                 .iter()
                 .map(|i| {
                     fixed(

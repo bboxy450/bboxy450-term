@@ -25,6 +25,7 @@ pub mod error_journal;
 #[cfg(feature = "runtime")]
 pub mod fault;
 mod meter;
+pub mod qos;
 #[cfg(feature = "runtime")]
 mod queues;
 mod wake;
@@ -54,6 +55,8 @@ pub fn handle() -> &'static Handle {
             Builder::new_multi_thread()
                 .worker_threads(2)
                 .thread_name("bbt-io")
+                // These workers carry terminal frames between processes.
+                .on_thread_start(crate::qos::interactive_thread)
                 .enable_all()
                 .build()
                 .expect("start bbt IO runtime")

@@ -16,7 +16,8 @@ use super::*;
 /// Version 10 adds saved Tasks/Chat folds; version 11 adds the Cmd-V logical chord.
 // Version 12: disclosure acknowledgements observe settled live-clock frames;
 // frozen clocks expose the requested intermediate frame for deterministic ctl.
-pub const UI_CONTROL_VERSION: u16 = 13;
+// Version 14: native wheel input and private shared HarnessView observations.
+pub const UI_CONTROL_VERSION: u16 = 14;
 pub const MAX_SECTION_WHEEL_DY: f32 = 32768.;
 
 /// The completed frame which acknowledged a focus command.
@@ -156,6 +157,7 @@ impl UiRequest {
                     || pick.cwd.len() > 4096
                     || pick.name.as_ref().is_some_and(|name| name.len() > 1024)
                     || pick.role.as_ref().is_some_and(|role| role.len() > 128)
+                    || pick.resume.as_ref().is_some_and(|id| id.len() > 128)
                     || pick.swarm == Some(Ulid::nil()) =>
             {
                 Err("invalid_ui_spawn: invalid launch inputs")
@@ -217,6 +219,8 @@ pub enum UiInput {
     Commit { text: String },
     CancelComposition,
     Click { x: u32, y: u32, #[serde(default)] modifiers: UiModifiers },
+    /// Logical pixel wheel event through the same native App routing path.
+    Wheel { x: u32, y: u32, dy: i32 },
 }
 
 fn standard_location() -> String { "Standard".into() }
@@ -249,6 +253,7 @@ impl UiInput {
             }),
             Self::Commit { text } => bounded(text),
             Self::Click { x, y, .. } => *x <= 32768 && *y <= 32768,
+            Self::Wheel { x, y, dy } => *x <= 32768 && *y <= 32768 && dy.unsigned_abs() <= 32768,
             Self::CancelComposition => true,
         };
         if valid { Ok(()) } else { Err("invalid_ui_input: invalid or oversized native input fields") }
@@ -349,6 +354,9 @@ pub struct UiSpawn {
     pub cwd: String,
     pub swarm: Option<Ulid>,
     pub place: SpawnPlace,
+    /// The native Claude session or Codex thread to resume.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub resume: Option<String>,
 }
 
 /// The captured target of a spawn whose pane the reply's frame contains.
@@ -488,6 +496,23 @@ pub enum UiTarget {
     Docs(String),
 }
 
+/// Bounded rich face evidence; the replay cursor never grants input authority.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UiRichObservation {
+    pub face: super::PaneFace,
+    pub ready: bool,
+    pub cursor: Option<super::RichCursor>,
+    pub retained_items: usize,
+    pub paint_count: usize,
+    pub error: Option<String>,
+    pub focused: bool,
+    pub composer_len: usize,
+    pub scroll: [f32; 2],
+    pub approval_choices: Vec<[f32; 4]>,
+    pub ime_allowed: bool,
+    pub ime_caret: Option<[f32; 4]>,
+}
+
 /// The GUI's solved tree, not a reconstruction by logic or ctl.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UiLayout {
@@ -525,6 +550,9 @@ pub struct UiLayout {
     /// Debug/headless private-fixture document facts from this produced frame.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub document_observation: Option<UiDocumentObservation>,
+    /// Private test-account facts from the actual rich subscriber consumed for this frame.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub rich_observation: std::collections::BTreeMap<Ulid, UiRichObservation>,
     pub panes: Vec<UiPane>,
     pub tree: Vec<UiLayoutNode>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

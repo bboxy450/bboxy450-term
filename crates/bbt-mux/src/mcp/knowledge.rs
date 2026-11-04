@@ -14,6 +14,12 @@ use super::{Call, SeatActor};
 use crate::knowledge::{DataSource, data_source as d};
 use crate::registry::Class;
 
+/// What every knowledge result's identifiers mean (review 5004 finding 4).
+const IDENTIFIERS: &str = "Identifiers: id is the bboxy ULID, external_id the provider's native ID (the GitKB UUID), slug the root-relative path without .md.";
+/// The locator forms that address one document.
+const LOCATOR: &str =
+    "A locator is a slug, a path ending .md, #N, the id (ULID) or the external_id.";
+
 pub(crate) fn handles(tool: &str) -> bool {
     matches!(
         tool,
@@ -47,20 +53,23 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
     definition["properties"]["frontmatter"]["properties"] = json!({"type":type_schema});
     definition["properties"]["frontmatter"]["required"] = json!(["type"]);
     let write_help = if actor.role.class == Class::Oracle {
-        "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.md; the Index returns its numbered final path. Tasks are created open; only open brief/verify/allowed_paths edits are generic. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools. Updates retain type, ref and etag."
+        "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.md; the Index returns its numbered final path. Reports are append-only at reports/YYYY-MM-DD-slug.md; corrections create a new report with supersedes. Tasks are created open; their delegating seat may amend only brief/verify/allowed_paths while nonterminal. Amendments wake the assignee in the task thread; changed verify requires a fresh report. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools. Updates retain type, ref and etag."
     } else {
-        "Create/update e2e, comment, research, note and artifact records as your seat. For your assigned task preserve every other field and the body, changing only report.summary, report.commit and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools. Updates retain type, ref and etag."
+        "Create/update e2e, comment, research, note and artifact records as your seat. Create append-only reports at reports/YYYY-MM-DD-slug.md for your assigned task; corrections create a new report with supersedes. For your assigned task preserve every other field and the body, changing only report.summary, report.commit, report.report and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools. Updates retain type, ref and etag."
     };
+    let write_help = format!(
+        "{write_help} Research is a supported type: use research/<topic>.md with parent/children for its document tree, derived_from for origins, and links with rel used/evidence for cited sources. Specs and tasks retain derived_from links to their research or spec; these relations feed the provenance graph. The host stamps authorship and signed provenance. Create takes path (slug.md); update takes the ref a fetch or search returned. {IDENTIFIERS}"
+    );
     let mut tools = vec![
         json!({"name":"knowledge_status","description":"Inspect this swarm's selected knowledge provider, root and revision, available providers, plugin activation/check state and failures. Read-only; trust, check, enable and selection use operator controls.",
             "inputSchema":{"type":"object","properties":{},"required":[],"additionalProperties":false},
             "outputSchema":{"type":"object","additionalProperties":true},
             "annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}),
-        json!({"name":"knowledge_fetch","description":"Read a knowledge-root document by path, #N, ID or unambiguous slug, with exact frontmatter, Markdown, etag and confined resource links.",
-            "inputSchema":{"type":"object","properties":{"locator":{"type":"string","minLength":1,"maxLength":4096}},"required":["locator"],"additionalProperties":false},
+        json!({"name":"knowledge_fetch","description":format!("Read a knowledge-root document. {LOCATOR} The body comes in pages of at most 16 KiB: while truncated is true, call again with next as body_offset and the returned etag. Other truncated projections are flagged. GitKB records also carry relationships (references, depends_on, blocks, parent) as git-kb show reports them. {IDENTIFIERS}"),
+            "inputSchema":{"type":"object","properties":{"locator":{"type":"string","minLength":1,"maxLength":4096},"body_offset":{"type":"integer","minimum":0},"etag":{"type":"string","maxLength":4096}},"required":["locator"],"additionalProperties":false},
             "outputSchema":{"type":"object","additionalProperties":true},
             "annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}),
-        json!({"name":"knowledge_search","description":"Search the current knowledge root using plain text and type:/status:/since: terms. Results are bounded pages; next is an opaque cursor for this query/root snapshot.",
+        json!({"name":"knowledge_search","description":format!("Search the current knowledge root using plain text and type:/status:/since: terms. Results are bounded pages; next is an opaque cursor for this query/root snapshot. Each item's ref addresses its document. {IDENTIFIERS}"),
             "inputSchema":{"type":"object","properties":{"query":{"type":"string","maxLength":4096},"cursor":{"type":"string","maxLength":16384},"limit":{"type":"integer","minimum":1,"maximum":128}},"required":["query"],"additionalProperties":false},
             "outputSchema":{"type":"object","additionalProperties":true},
             "annotations":{"readOnlyHint":true,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}),
@@ -69,7 +78,7 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
             "annotations":{"readOnlyHint":false,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}),
     ];
     if actor.role.class == Class::Oracle {
-        tools.push(json!({"name":"knowledge_commit","description":"Commit only the explicitly named documents through this swarm's selected source. Requires Oracle authority; never pushes.",
+        tools.push(json!({"name":"knowledge_commit","description":format!("Commit only the explicitly named documents through this swarm's selected source. Each of locators: {LOCATOR} Requires Oracle authority; never pushes. {IDENTIFIERS}"),
             "inputSchema":{"type":"object","additionalProperties":false,"properties":{"op_id":{"type":"string"},"locators":{"type":"array","minItems":1,"maxItems":32,"items":{"type":"string","minLength":1,"maxLength":4096}},"message":{"type":"string","minLength":1,"maxLength":4096}},"required":["op_id","locators","message"]},
             "outputSchema":{"type":"object","additionalProperties":true},"annotations":{"readOnlyHint":false,"idempotentHint":true,"destructiveHint":false,"openWorldHint":false}}));
     }
@@ -80,6 +89,9 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
 #[serde(deny_unknown_fields)]
 struct Fetch {
     locator: String,
+    #[serde(default)]
+    body_offset: usize,
+    etag: Option<String>,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -226,6 +238,26 @@ pub(crate) fn prepare(call: &Call) -> Result<Request, String> {
     }
 }
 
+pub(crate) fn fetch_page_args(call: &Call) -> Result<(usize, Option<String>), String> {
+    let args: Fetch = super::tools::parse(&call.args)?;
+    if args.etag.as_ref().is_some_and(|e| e.len() > 4096) {
+        return Err("etag exceeds bound".into());
+    }
+    Ok((args.body_offset, args.etag))
+}
+
+pub(crate) fn fetch_page(
+    source: &dyn DataSource,
+    locator: String,
+    call: &Call,
+) -> d::Result<Value> {
+    let (offset, etag) =
+        fetch_page_args(call).map_err(|e| d::CommandError::new("invalid_arguments", e))?;
+    let value = serde_json::to_value(fetch(source, locator)?)
+        .map_err(|e| d::CommandError::new("invalid_record", e.to_string()))?;
+    super::read_pages::body_page(value, offset, etag.as_deref())
+}
+
 pub(crate) fn fetch(source: &dyn DataSource, locator: String) -> d::Result<d::Record> {
     // Do not reflect outside-root candidates or parse failures into a scoped
     // tool response. The lower provider still retains its full command error.
@@ -255,7 +287,7 @@ pub(crate) fn fetch(source: &dyn DataSource, locator: String) -> d::Result<d::Re
 }
 
 const WORKER_TYPES: &[&str] = &[
-    "e2e", "comment", "research", "note", "artifact", "task", "bug", "epic",
+    "e2e", "comment", "research", "note", "artifact", "report", "task", "bug", "epic",
 ];
 
 pub(crate) enum WritePlan {
@@ -292,6 +324,12 @@ pub(crate) fn write_plan(
             "record type is outside the caller's write table",
         ));
     }
+    if kind == "report" && current.is_some() {
+        return Err(denied(
+            "report_append_only",
+            "reports are append-only; create a new report with supersedes",
+        ));
+    }
     if matches!(kind, "task" | "bug" | "epic") {
         if actor.role.class == Class::Worker {
             let old = current.ok_or_else(|| {
@@ -306,12 +344,15 @@ pub(crate) fn write_plan(
             {
                 return Err(denied(
                     "task_field_protected",
-                    "only report.summary, report.commit and verify_result may change; the task brief is protected",
+                    "only report.summary, report.commit, report.report and verify_result may change; the task brief is protected",
                 ));
             }
             let mut args = json!({"task_path":old.reference.path,"summary":request.frontmatter["report"]["summary"]});
             if let Some(commit) = request.frontmatter["report"].get("commit") {
                 args["commit"] = commit.clone();
+            }
+            if let Some(report) = request.frontmatter["report"].get("report") {
+                args["report"] = report.clone();
             }
             if let Some(verification) = request.frontmatter.get("verify_result") {
                 args["verify_result"] = verification.clone();
@@ -335,10 +376,15 @@ pub(crate) fn write_plan(
                     .expect("validated frontmatter")
                     .remove(field);
             }
-            if old.frontmatter["status"] != "open" || before != after {
+            if !matches!(
+                old.frontmatter["status"].as_str(),
+                Some("open" | "claimed" | "running" | "reported" | "rejected" | "blocked")
+            ) || old.frontmatter["delegated_by"] != format!("seat:{}", actor.seat_id)
+                || before != after
+            {
                 return Err(denied(
                     "task_field_protected",
-                    "only an open task's brief, verify and allowed_paths may be edited; use task_* for lifecycle and assignment",
+                    "only the delegating Oracle seat may amend a nonterminal task's brief, verify and allowed_paths; use task_* for lifecycle and assignment",
                 ));
             }
         } else {
@@ -436,6 +482,7 @@ fn task_report_remainder(metadata: &Value) -> d::Result<Value> {
             .ok_or_else(|| denied("task_field_protected", "report must be an object"))?;
         report.remove("summary");
         report.remove("commit");
+        report.remove("report");
         if report.is_empty() {
             object.remove("report");
         }
@@ -506,5 +553,49 @@ pub(crate) fn bounded(op: crate::Ulid, value: Value, applied: bool) -> Value {
             "response_bound",
             "knowledge result exceeds the MCP response bound",
         ),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::messaging::wire::IssuerKind;
+    use crate::registry::Role;
+
+    // keeps: review 5004 finding 4 — every knowledge tool says which identifiers it takes.
+    #[test]
+    fn every_knowledge_tool_names_the_identifiers_it_accepts() {
+        let actor = SeatActor {
+            seat_id: crate::Ulid::from(1_u128),
+            process_generation: 1,
+            swarm_id: crate::Ulid::from(2_u128),
+            role: Role {
+                name: "oracle".into(),
+                class: Class::Oracle,
+            },
+            grant_epoch: 1,
+            issuer_kind: IssuerKind::LocalDev,
+        };
+        let tools = catalogue(&actor);
+        for name in [
+            "knowledge_fetch",
+            "knowledge_search",
+            "knowledge_write",
+            "knowledge_commit",
+        ] {
+            let tool = tools.iter().find(|t| t["name"] == name).unwrap();
+            let text = tool["description"].as_str().unwrap();
+            for term in ["ULID", "external_id", "slug"] {
+                assert!(
+                    text.contains(term),
+                    "{name} description lacks {term}: {text}"
+                );
+            }
+        }
+        let fetch = tools
+            .iter()
+            .find(|t| t["name"] == "knowledge_fetch")
+            .unwrap();
+        assert!(fetch["description"].as_str().unwrap().contains("truncated"));
     }
 }

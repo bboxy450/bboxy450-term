@@ -18,7 +18,53 @@ static REFERENCE: LazyLock<Vec<Plugin>> = LazyLock::new(|| {
     serde_json::from_str(include_str!("plugin-reference.json"))
         .expect("pinned public plugin fixtures")
 });
+pub fn transports(
+    model: Option<&crate::model::Model>,
+) -> Vec<bbt_ui::modules::settings::machines::PluginTransport> {
+    use bbt_ui::modules::settings::machines::{PluginParameter, PluginTransport};
+    let Some(model) = model else {
+        return Vec::new();
+    };
+    let scope = match model.ui.window.stage.swarm {
+        Some(s) => model.swarm_scope(s).ok().map(Some),
+        None => Some(None),
+    };
+    if Some(model.plugin_scope) != scope {
+        return Vec::new();
+    }
+    model
+        .plugin_registry
+        .iter()
+        .flat_map(|entries| entries.iter())
+        .filter_map(|entry| {
+            let name = entry
+                .candidate
+                .name
+                .as_ref()
+                .filter(|n| n.system == bbt_proto::gui::PluginContract::Transport)?;
+            let shape = entry.trust.as_ref().and_then(|t| t.shape.as_ref());
+            Some(PluginTransport {
+                id: format!("plugin:{}", name.provider),
+                name: shape.map_or_else(|| name.provider.clone(), |s| s.name.clone()),
+                status: serde_json::to_value(entry.state()).ok()?.as_str()?.into(),
+                fields: shape
+                    .map(|s| {
+                        s.spawn_fields
+                            .iter()
+                            .map(|f| PluginParameter {
+                                name: f.name.clone(),
+                                label: f.label.clone(),
+                                default: f.default.clone(),
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+            })
+        })
+        .collect()
+}
 pub(super) fn project(out: &mut Records, model: Option<&crate::model::Model>) {
+    out.plugin_transports = transports(model);
     if let Some(model) = model {
         let scope = match model.ui.window.stage.swarm {
             Some(s) => model.swarm_scope(s).ok().map(Some),
@@ -47,7 +93,7 @@ pub(super) fn project(out: &mut Records, model: Option<&crate::model::Model>) {
                 |detail| format!("reference fixture · {detail}"),
             ));
         }
-        out.plugin_notice = Some("Reference fixtures — these plugins and timings are examples. Plugin discovery, trust, enable and setup are unavailable in this build.".into());
+        out.plugin_notice = Some("Reference fixtures — these plugins and timings are examples. Workspace Settings uses the live plugin registry for discovery, trust, enable and setup.".into());
     }
     let snapshot = model.and_then(|model| model.e2e.as_ref());
     let (answering, read) = match snapshot {
@@ -73,7 +119,7 @@ pub(super) fn project(out: &mut Records, model: Option<&crate::model::Model>) {
             answering: answering.into(),
             digests: None,
             refused: Some(format!(
-                "Provider switching is unavailable in this build; the bundled provider remains active.{read}"
+                "No live Knowledge provider control is attached to this reference snapshot.{read}"
             )),
             pending: None,
         }],
@@ -337,7 +383,15 @@ fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
                 State::NeedsRetrust => "needs re-trust",
                 State::Unchecked => "descriptor unchecked",
                 State::Disabled => "disabled",
-                State::Enabled => "enabled · not started",
+                State::Enabled
+                    if calls
+                        .iter()
+                        .any(|call| call.outcome.as_deref() == Some("failed")) =>
+                {
+                    "degraded"
+                }
+                State::Enabled if !calls.is_empty() => "called · health not queried",
+                State::Enabled => "enabled · unmeasured",
             }
             .into(),
             say: Some(
@@ -360,10 +414,33 @@ fn plugin(entry: &bbt_proto::gui::PluginEntry) -> Plugin {
         // Host phase spans are measured for every call; a flame graph needs one.
         trace: shape.is_some_and(|s| s.trace) || calls.iter().any(|call| !call.spans.is_empty()),
         calls,
-        alerts: if state == State::NeedsRetrust {
-            vec!["Binary changed; explicit trust of the current digest is required.".into()]
-        } else {
-            vec![]
+        alerts: {
+            let mut alerts = Vec::new();
+            if state == State::NeedsRetrust {
+                alerts.push(
+                    "Binary changed; explicit trust of the current digest is required.".into(),
+                );
+            }
+            alerts.extend(entry.hook_warnings.iter().map(|warning| {
+                format!(
+                    "Slow hook {}: {:.0} ms exceeds {} ms budget ({} consecutive overrun{}){}",
+                    warning.event,
+                    warning.elapsed_ms,
+                    warning.budget_ms,
+                    warning.consecutive_overruns,
+                    if warning.consecutive_overruns == 1 {
+                        ""
+                    } else {
+                        "s"
+                    },
+                    if warning.skipped {
+                        "; skipped until you re-enable the plugin or trust a new binary"
+                    } else {
+                        ""
+                    }
+                )
+            }));
+            alerts
         },
         ..Default::default()
     }

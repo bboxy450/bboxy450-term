@@ -31,11 +31,16 @@ use tokio::{
 };
 
 pub mod desktop;
+#[cfg(test)]
+mod environment_tests;
 mod fixture_hosts;
+pub mod gui_handoff;
 mod owners;
 mod shell_path;
+pub mod startup;
 use owners::ManagedChild as Child;
 pub use owners::{Exit as ProcessExit, Process};
+use startup::{Phase, Progress};
 
 /// A read-only lock observation for ctl's local launcher, not backend discovery.
 pub fn frontend_running(run_dir: &std::path::Path) -> Result<Option<bool>> {
@@ -43,7 +48,7 @@ pub fn frontend_running(run_dir: &std::path::Path) -> Result<Option<bool>> {
     owners::frontend_running(run_dir)
 }
 
-const STARTUP_TIMEOUT: Duration = Duration::from_secs(30);
+const STARTUP_TIMEOUT: Duration = Duration::from_secs(180);
 const GUI_WRITE_CAPACITY: usize = 64;
 
 /// App-defined, bounded UI-to-IO messages. A full sender returns ownership to
@@ -503,7 +508,8 @@ fn fixture_hosts_default() -> bool {
 // Provider status and matching source context must also reach retained owners (#78).
 // Original-operation recovery must reach a healthy retained logic owner (#74).
 // Own-seat diagnostic paging must reach a healthy retained logic owner (#75).
-const MCP_CONTROL_VERSION: u16 = 13;
+// Bounded JSONL repair must replace a blocking retained owner without replacing PTYs.
+const MCP_CONTROL_VERSION: u16 = 15;
 /// The one-line private startup reply. Never log its capability.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LogicReady {
@@ -764,27 +770,46 @@ async fn logic_main() -> Result<()> {
         repository: bootstrap.config.repository,
         ring: Default::default(),
     };
-    let logic = if bootstrap.fixture_hosts {
-        Logic::start_custodied_with_fixture_store(
-            connection,
-            logic_config,
-            store,
-            bbt_rt::handle(),
-        )?
-    } else if let Some(store) = store {
-        Logic::start_custodied_with_store(connection, logic_config, store, bbt_rt::handle())?
-    } else {
-        Logic::start_custodied(connection, logic_config, bbt_rt::handle())?
+    let emit = |stream: &str, verified, total, restoring| {
+        use std::io::Write;
+        let record = startup::ProgressLine {
+            startup_progress: startup::HistoryProgress {
+                stream: stream.into(),
+                verified,
+                total,
+                restoring,
+            },
+        };
+        if let Ok(bytes) = serde_json::to_vec(&record) {
+            let mut output = std::io::stdout().lock();
+            let _ = output
+                .write_all(&bytes)
+                .and_then(|_| output.write_all(b"\n"))
+                .and_then(|_| output.flush());
+        }
     };
+    let logic = Logic::start_custodied_with_progress(
+        connection,
+        logic_config,
+        store,
+        bootstrap.fixture_hosts,
+        bbt_rt::handle(),
+        &mut |stream, verified, total| emit(stream, verified, total, false),
+        &mut |operation, completed, total| emit(operation, completed, total, true),
+    )?;
     if bootstrap.recover_seats {
+        emit("Resuming saved sessions", 0, 0, true);
         logic.client.recover_seats().await?;
     }
     let observer_supervisor = bootstrap.supervisor.pid;
-    logic.client.set_attention_observer_guard(std::sync::Arc::new(move |pid| {
-        desktop::admit_observer(&observer_config, pid, observer_supervisor)
-    }));
+    logic
+        .client
+        .set_attention_observer_guard(std::sync::Arc::new(move |pid| {
+            desktop::admit_observer(&observer_config, pid, observer_supervisor)
+        }));
     // The operator's ctl door, only when asked for (decision #260, invariant #261): the
     // window is logic's parent, and the supervisor names whose descendants are seats.
+    emit("Opening control endpoint", 0, 0, true);
     let door = if bootstrap.config.ctl {
         let peers = bbt_mux::ctl_door::Peers {
             supervisor: bootstrap.supervisor.pid,
@@ -823,6 +848,7 @@ async fn logic_main() -> Result<()> {
     };
     owners::write(&config, "logic", &ready)?;
     write_json(&mut tokio::io::stdout(), &ready).await?;
+    bbt_mux::store::events::verify_history_after_ready(&run_dir, bbt_rt::handle());
     // SIGTERM and SIGINT stop logic in order too, so the ctl door closes and its
     // gui.endpoint is removed (invariant #261), as on the window's stop.
     let mut terminate = signal(SignalKind::terminate())?;
@@ -840,8 +866,70 @@ async fn logic_main() -> Result<()> {
     Ok(())
 }
 
+/// Public kernel identities only; capabilities remain in product-owned custody.
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub struct BackendIdentity {
+    supervisor: owners::ProcessIdentity,
+    logic: owners::ProcessIdentity,
+}
+impl BackendIdentity {
+    fn current(config: &Config) -> Result<Self> {
+        if !owners::supervisor_held(config)? {
+            return Err(invalid(
+                "preserve_backend: live supervisor required; cold startup refused",
+            ));
+        }
+        Ok(Self {
+            supervisor: owners::read::<SupervisorReady>(config, "supervisor")?
+                .ok_or_else(|| invalid("preserve_backend: supervisor owner unavailable"))?
+                .process,
+            logic: owners::read::<LogicReady>(config, "logic")?
+                .ok_or_else(|| invalid("preserve_backend: live Logic owner required"))?
+                .process,
+        })
+    }
+    fn check(&self, config: &Config) -> Result<()> {
+        if Self::current(config)? != *self {
+            return Err(invalid("preserve_backend: backend owner changed"));
+        }
+        Ok(())
+    }
+}
+fn logic_compatible(ready: &LogicReady, launch_path: &std::ffi::OsStr) -> bool {
+    ready.mcp_control_version == MCP_CONTROL_VERSION
+        && ready.gui_state_version == bbt_proto::gui::WINDOW_STATE_VERSION
+        && ready.swarm_metadata_version == bbt_proto::gui::SWARM_METADATA_VERSION
+        && ready.ui_control_version == bbt_proto::gui::UI_CONTROL_VERSION
+        && ready.swarm_workspace_version == bbt_proto::gui::SWARM_WORKSPACE_VERSION
+        && ready.launch_path_fingerprint.as_deref()
+            == Some(shell_path::fingerprint(launch_path).as_str())
+}
+/// Read-only compatibility/non-claiming handshake before the old GUI is detached.
+pub async fn preserve_backend_preflight(config: &Config) -> Result<BackendIdentity> {
+    let identity = BackendIdentity::current(config)?;
+    let path = shell_path::load(config).await;
+    let mut ready = owners::read::<LogicReady>(config, "logic")?
+        .ok_or_else(|| invalid("preserve_backend: Logic owner unavailable"))?
+        .ready;
+    if !logic_compatible(&ready, &path) {
+        return Err(invalid(
+            "preserve_backend: incompatible Logic schema or launch PATH; refresh forbidden",
+        ));
+    }
+    let io = tokio::time::timeout(
+        Duration::from_secs(5),
+        attach_gui(config, &mut ready, false),
+    )
+    .await
+    .map_err(|_| invalid("preserve_backend: non-claiming attach timed out"))??;
+    drop(io);
+    identity.check(config)?;
+    Ok(identity)
+}
+
 /// The IO owner, never stored on or dropped from the UI thread.
 pub struct Session {
+    preserved_backend: Option<BackendIdentity>,
     pub supervisor: Process,
     pub desktop_supervisor: std::sync::Arc<std::sync::atomic::AtomicU32>,
     pub logic: Process,
@@ -865,6 +953,8 @@ pub struct Session {
     supervisor_exited: bool,
     logic_exited: bool,
     disconnected: bool,
+    progress: Progress,
+    reconnect_attempt: u32,
 }
 struct StartedSupervisor {
     child: Child,
@@ -904,13 +994,45 @@ impl Drop for Session {
 }
 impl Session {
     /// Spawn both private processes and connect their admitted GUI endpoint.
-    pub async fn start(mut config: Config) -> Result<Self> {
+    pub async fn start(config: Config) -> Result<Self> {
+        Self::start_with_progress(config, std::sync::Arc::new(|_| {})).await
+    }
+    pub async fn start_with_progress(config: Config, progress: Progress) -> Result<Self> {
+        let args: Vec<_> = std::env::args().skip(1).collect();
+        let (preserve, expected) = gui_handoff::preservation(&args)?;
+        Self::start_policy(config, progress, preserve, expected).await
+    }
+    pub async fn start_preserving_backend(
+        config: Config,
+        expected: BackendIdentity,
+    ) -> Result<Self> {
+        Self::start_policy(config, std::sync::Arc::new(|_| {}), true, Some(expected)).await
+    }
+    async fn start_policy(
+        mut config: Config,
+        progress: Progress,
+        preserve: bool,
+        expected: Option<BackendIdentity>,
+    ) -> Result<Self> {
         bbt_rt::assert_not_ui_thread();
+        progress(Phase::StartingSupervisor);
         // Refuse before any custody or child process opens, including direct callers.
         config.repository = checked_repository(&config.repository)?;
         if let Some(directory) = &config.test_account {
             bbt_mux::identity::TestAccount::prepare_directory(directory)?;
         }
+        let preserved_backend = if preserve {
+            let current = preserve_backend_preflight(&config).await?;
+            if expected
+                .as_ref()
+                .is_some_and(|expected| *expected != current)
+            {
+                return Err(invalid("preserve_backend: preflight owner changed"));
+            }
+            Some(current)
+        } else {
+            None
+        };
         let frontend = match owners::FrontendLock::claim(&config)? {
             Some(lock) => lock,
             None => {
@@ -939,6 +1061,7 @@ impl Session {
                 .ok_or_else(|| invalid("live supervisor has no matching private run owner record; no second supervisor started"))?;
                 let mut ready = record.ready.clone();
                 ready.pid = record.process.pid();
+                progress(Phase::AdoptingSupervisor(ready.pid));
                 (
                     Process::adopted(&config, "supervisor", record),
                     None,
@@ -946,6 +1069,11 @@ impl Session {
                     true,
                 )
             } else {
+                if preserve {
+                    return Err(invalid(
+                        "preserve_backend: supervisor disappeared; startup forbidden",
+                    ));
+                }
                 let owner = start_supervisor(&config, &launch_path).await?;
                 (
                     Process::Child(owner.child),
@@ -955,15 +1083,18 @@ impl Session {
                 )
             };
         let mut existing = owners::read::<LogicReady>(&config, "logic")?.filter(|_| attached);
-        if existing.as_ref().is_some_and(|record| {
-            record.ready.mcp_control_version != MCP_CONTROL_VERSION
-                || record.ready.gui_state_version != bbt_proto::gui::WINDOW_STATE_VERSION
-                || record.ready.swarm_metadata_version != bbt_proto::gui::SWARM_METADATA_VERSION
-                || record.ready.ui_control_version != bbt_proto::gui::UI_CONTROL_VERSION
-                || record.ready.swarm_workspace_version != bbt_proto::gui::SWARM_WORKSPACE_VERSION
-                || record.ready.launch_path_fingerprint.as_deref()
-                    != Some(shell_path::fingerprint(&launch_path).as_str())
-        }) {
+        if existing
+            .as_ref()
+            .is_some_and(|record| !logic_compatible(&record.ready, &launch_path))
+        {
+            if preserve {
+                return Err(invalid(
+                    "preserve_backend: incompatible Logic; refresh forbidden",
+                ));
+            }
+            progress(Phase::RefreshingLogic(
+                "Control service, launch environment or GUI schema changed".into(),
+            ));
             let record = existing.take().unwrap();
             let mut old_logic = Process::adopted(&config, "logic", record);
             // Refresh logic only: the supervisor retains every live PTY and process.
@@ -975,15 +1106,23 @@ impl Session {
         let (mut logic, logic_control, endpoint, io) = if let Some(record) = existing {
             let mut endpoint = record.ready.clone();
             let mut process = Process::adopted(&config, "logic", record);
+            progress(Phase::AttachingGui);
             match attach_gui(&config, &mut endpoint, true).await {
                 Ok(io) => (process, None, endpoint, io),
                 Err(error) => {
+                    if preserve {
+                        return Err(invalid(format!(
+                            "preserve_backend: GUI attach failed; refresh forbidden: {error}"
+                        )));
+                    }
+                    progress(Phase::RefreshingLogic(error.to_string()));
                     eprintln!(
                         "logic endpoint unavailable: {error}; refreshing logic, retaining supervisor and seats"
                     );
                     stop_logic_for_refresh(&mut process, &mut None).await?;
                     let owner =
-                        start_logic(&config, &supervisor_ready, false, &launch_path).await?;
+                        start_logic(&config, &supervisor_ready, false, &launch_path, &progress)
+                            .await?;
                     (
                         Process::Child(owner.child),
                         owner.control,
@@ -993,7 +1132,13 @@ impl Session {
                 }
             }
         } else {
-            let owner = start_logic(&config, &supervisor_ready, false, &launch_path).await?;
+            if preserve {
+                return Err(invalid(
+                    "preserve_backend: Logic owner disappeared; startup forbidden",
+                ));
+            }
+            let owner =
+                start_logic(&config, &supervisor_ready, false, &launch_path, &progress).await?;
             (
                 Process::Child(owner.child),
                 owner.control,
@@ -1003,7 +1148,11 @@ impl Session {
         };
         supervisor.preserve_on_drop();
         logic.preserve_on_drop();
+        if let Some(identity) = &preserved_backend {
+            identity.check(&config)?;
+        }
         Ok(Self {
+            preserved_backend,
             config,
             launch_path,
             _frontend: frontend,
@@ -1026,6 +1175,8 @@ impl Session {
             supervisor_exited: false,
             logic_exited: false,
             disconnected: false,
+            progress,
+            reconnect_attempt: 0,
         })
     }
 
@@ -1050,7 +1201,7 @@ impl Session {
                 _ => {}
             }
         } else if self.io.disconnected || self.io.outgoing.is_closed() {
-            self.gui_lost();
+            self.gui_lost("GUI writer closed".into());
         }
         result
     }
@@ -1068,7 +1219,7 @@ impl Session {
                 }
                 Err(error) if error.is::<Busy>() => return Ok(true),
                 Err(error) => {
-                    self.gui_lost();
+                    self.gui_lost(error.to_string());
                     return Err(error);
                 }
             }
@@ -1107,14 +1258,14 @@ impl Session {
     /// The supervisor is gone, so logic must be replaced with it.
     fn disconnect(&mut self) -> Result<()> {
         self.close_io();
-        if !self.logic_exited {
+        if !self.logic_exited && self.preserved_backend.is_none() {
             self.logic.start_kill()?;
         }
         Ok(())
     }
     /// Only the GUI connection was lost. Logic owns every seat's hooks and MCP,
     /// so reattach to it; it is replaced only when reattachment fails (#79).
-    fn gui_lost(&mut self) {
+    fn gui_lost(&mut self, reason: String) {
         self.close_io();
         if self.logic_exited || self.supervisor_exited || self.recovery.is_some() {
             return;
@@ -1123,13 +1274,36 @@ impl Session {
         let endpoint = self.endpoint.clone();
         let watches = self.watches.clone();
         self.reattaching = true;
+        self.reconnect_attempt += 1;
+        (self.progress)(Phase::Reconnecting {
+            attempt: self.reconnect_attempt,
+            reason,
+        });
+        let progress = self.progress.clone();
+        let preserved = self.preserved_backend.clone();
         self.recovery = Some(tokio::spawn(async move {
-            tokio::time::timeout(STARTUP_TIMEOUT, reattach(config, endpoint, watches))
-                .await
-                .map_err(|_| invalid("GUI reattach timed out"))?
+            if let Some(identity) = &preserved {
+                identity.check(&config)?;
+            }
+            let result = tokio::time::timeout(
+                STARTUP_TIMEOUT,
+                reattach(config.clone(), endpoint, watches, progress),
+            )
+            .await
+            .map_err(|_| invalid("GUI reattach timed out"))??;
+            if let Some(identity) = &preserved {
+                identity.check(&config)?;
+            }
+            Ok(result)
         }));
     }
     fn restart_if_ready(&mut self) {
+        if self.preserved_backend.is_some() {
+            if self.logic_exited || self.supervisor_exited {
+                self.recovery_failed = true;
+            }
+            return;
+        }
         if !self.logic_exited || self.recovery.is_some() || self.recovery_failed {
             return;
         }
@@ -1139,15 +1313,26 @@ impl Session {
         let ready = self.supervisor_ready.clone();
         let replace_supervisor = self.supervisor_exited;
         let watches = self.watches.clone();
+        let progress = self.progress.clone();
         self.recovery = Some(tokio::spawn(async move {
             tokio::time::sleep(Duration::from_millis(100)).await;
-            tokio::time::timeout(
-                STARTUP_TIMEOUT,
-                recover(config, ready, replace_supervisor, watches, launch_path),
+            recover(
+                config,
+                ready,
+                replace_supervisor,
+                watches,
+                launch_path,
+                progress,
             )
             .await
-            .map_err(|_| invalid("recovery startup timed out"))?
         }));
+    }
+    /// Retry a failed recovery without abandoning retained owners or watches.
+    pub fn retry_startup(&mut self) {
+        if self.recovery_failed {
+            self.recovery_failed = false;
+            self.restart_if_ready();
+        }
     }
     async fn next_event(&mut self) -> Result<Event> {
         loop {
@@ -1164,6 +1349,7 @@ impl Session {
                     self.supervisor_exited = true;
                     if let Some(task) = self.recovery.take() { task.abort(); }
                     self.reattaching = false;
+                    (self.progress)(Phase::Reconnecting { attempt: self.reconnect_attempt.saturating_add(1), reason: "Supervisor exited".into() });
                     self.disconnect()?;
                     self.restart_if_ready();
                     Ok(Event::Exited {process:"supervisor",status:status?})
@@ -1174,13 +1360,14 @@ impl Session {
                     self.io.disconnected = true;
                     self.io.reader_task.abort();
                     self.io.writer_task.abort();
+                    (self.progress)(Phase::RefreshingLogic("Logic exited".into()));
                     self.restart_if_ready();
                     Ok(Event::Exited {process:"logic",status:status?})
                 }
                 result=async { self.recovery.as_mut().unwrap().await }, if self.recovery.is_some() => {
                     self.recovery = None;
                     let reattached = std::mem::take(&mut self.reattaching);
-                    match result.map_err(|error| invalid(format!("recovery task stopped: {error}")))? {
+                    match result.unwrap_or_else(|error| Err(invalid(format!("recovery task stopped: {error}")))) {
                         Ok(recovered) => {
                             if let Some(supervisor) = recovered.supervisor {
                                 self.supervisor = Process::Child(supervisor.child);
@@ -1210,7 +1397,13 @@ impl Session {
                             Ok(Event::Reply(Box::new(GuiReply::Seats(recovered.seats))))
                         }
                         // Fall back to replacing logic; restart follows its observed exit.
+                        Err(error) if reattached && self.preserved_backend.is_some() => {
+                            self.recovery_failed = true;
+                            (self.progress)(Phase::Failed(format!("preserve_backend: GUI reattach failed: {error}")));
+                            Ok(Event::Disconnected(format!("preserve_backend: GUI reattach failed; owners retained: {error}")))
+                        }
                         Err(error) if reattached => {
+                            (self.progress)(Phase::RefreshingLogic(format!("GUI reattach failed: {error}")));
                             if !self.logic_exited {
                                 self.logic.start_kill()?;
                             }
@@ -1218,13 +1411,14 @@ impl Session {
                         }
                         Err(error) => {
                             self.recovery_failed = true;
+                            (self.progress)(Phase::Failed(format!("Recovery failed: {error}")));
                             Ok(Event::Disconnected(format!("recovery failed: {error}")))
                         }
                     }
                 }
                 ready=writer_ready, if writer_blocked && !self.disconnected => { ready?; continue; }
                 event=self.io.event(), if !self.disconnected => {
-                    if matches!(event,Event::Disconnected(_)) { self.gui_lost(); }
+                    if let Event::Disconnected(reason) = &event { self.gui_lost(reason.clone()); }
                     Ok(event)
                 }
                 else => std::future::pending().await,
@@ -1336,6 +1530,12 @@ impl Session {
 
     /// Explicit hard quit: stop and reap both backend owners and their seats.
     pub async fn shutdown(mut self) -> Result<()> {
+        if self.preserved_backend.is_some() {
+            self.close_io();
+            return Err(invalid(
+                "preserve_backend: backend shutdown forbidden; GUI detached",
+            ));
+        }
         if let Some(task) = self.recovery.take() {
             task.abort();
             if let Ok(Ok(recovered)) = task.await {
@@ -1380,7 +1580,11 @@ async fn attach_gui_mode(
     let stream = UnixStream::connect(endpoint.root.join("gui.sock")).await?;
     let mut io = GuiIo::new(stream, endpoint.capability);
     let id = bbt_mux::Ulid::new();
-    io.try_send(GuiAction::GuiHello { id, claim, observer })?;
+    io.try_send(GuiAction::GuiHello {
+        id,
+        claim,
+        observer,
+    })?;
     tokio::time::timeout(STARTUP_TIMEOUT, async {
         loop {
             match io.event().await {
@@ -1432,7 +1636,9 @@ async fn start_logic(
     ready: &SupervisorReady,
     recover_seats: bool,
     launch_path: &std::ffi::OsStr,
+    progress: &Progress,
 ) -> Result<StartedLogic> {
+    progress(Phase::StartingLogic);
     let mut child = child(config, "logic", launch_path)?;
     let fixture_hosts = fixture_hosts::enabled(
         std::env::args().any(|arg| arg == "--smoke"),
@@ -1449,11 +1655,40 @@ async fn start_logic(
     )
     .await?;
     let mut output = BufReader::new(child.stdout.take().unwrap());
-    let line = tokio::time::timeout(STARTUP_TIMEOUT, read_line(&mut output))
-        .await
-        .map_err(|_| invalid("logic startup timed out waiting for its readiness line"))??
-        .ok_or_else(|| invalid("logic exited during startup"))?;
-    let mut endpoint: LogicReady = serde_json::from_slice(&line)?;
+    let mut deadline = tokio::time::Instant::now() + STARTUP_TIMEOUT;
+    let mut last_progress: Option<startup::HistoryProgress> = None;
+    let mut endpoint: LogicReady = loop {
+        let line = tokio::time::timeout_at(deadline, read_line(&mut output))
+            .await
+            .map_err(|_| invalid("logic startup timed out: no progress for 180 s"))??
+            .ok_or_else(|| invalid("logic exited during startup"))?;
+        if let Ok(record) = serde_json::from_slice::<startup::ProgressLine>(&line) {
+            let p = record.startup_progress;
+            if p.verified > p.total {
+                return Err(invalid("invalid logic startup progress"));
+            }
+            if p.advances(last_progress.as_ref()) {
+                deadline = tokio::time::Instant::now() + STARTUP_TIMEOUT;
+                progress(if p.restoring {
+                    Phase::RestoringState {
+                        operation: p.stream.clone(),
+                        completed: p.verified,
+                        total: p.total,
+                    }
+                } else {
+                    Phase::VerifyingHistory {
+                        stream: p.stream.clone(),
+                        verified: p.verified,
+                        total: p.total,
+                    }
+                });
+                last_progress = Some(p);
+            }
+            continue;
+        }
+        break serde_json::from_slice(&line)?;
+    };
+    progress(Phase::AttachingGui);
     let io = attach_gui(config, &mut endpoint, true).await?;
     let control = child.stdin.take();
     Ok(StartedLogic {
@@ -1469,8 +1704,10 @@ async fn recover(
     replace_supervisor: bool,
     watches: BTreeMap<SeatId, View>,
     launch_path: std::ffi::OsString,
+    progress: Progress,
 ) -> Result<Recovered> {
     let supervisor = if replace_supervisor {
+        progress(Phase::StartingSupervisor);
         Some(start_supervisor(&config, &launch_path).await?)
     } else {
         None
@@ -1478,8 +1715,14 @@ async fn recover(
     let ready = supervisor
         .as_ref()
         .map_or(&ready, |supervisor| &supervisor.ready);
-    let mut logic = start_logic(&config, ready, replace_supervisor, &launch_path).await?;
-    let (seats, watches) = catalogue(&mut logic.io, &mut logic.endpoint, watches).await?;
+    let mut logic =
+        start_logic(&config, ready, replace_supervisor, &launch_path, &progress).await?;
+    let (seats, watches) = tokio::time::timeout(
+        STARTUP_TIMEOUT,
+        catalogue(&mut logic.io, &mut logic.endpoint, watches),
+    )
+    .await
+    .map_err(|_| invalid("GUI catalogue timed out"))??;
     Ok(Recovered {
         supervisor,
         logic: Some((logic.child, logic.control)),
@@ -1493,7 +1736,9 @@ async fn reattach(
     config: Config,
     mut endpoint: LogicReady,
     watches: BTreeMap<SeatId, View>,
+    progress: Progress,
 ) -> Result<Recovered> {
+    progress(Phase::AttachingGui);
     let mut io = attach_gui(&config, &mut endpoint, true).await?;
     let (seats, watches) = catalogue(&mut io, &mut endpoint, watches).await?;
     Ok(Recovered {
@@ -1592,6 +1837,7 @@ fn child(config: &Config, entry: &str, launch_path: &std::ffi::OsStr) -> Result<
     if let Some(root) = &config.shell_config {
         command.env("ZDOTDIR", root);
     }
+    bbt_mux::adapters::guard::environment::scrub_command(command.as_std_mut());
     Ok(command
         .arg(entry)
         .stdin(Stdio::piped())

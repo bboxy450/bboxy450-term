@@ -19,4 +19,4 @@ pub use tab::*;
 pub use window::*;
 
 mod spawn;
-pub use spawn::{FieldKey, Source, SpawnField, SpawnParams, ValueChoice};
+pub use spawn::{FieldKey, Source, SpawnField, SpawnParams, TransportParameter, ValueChoice};

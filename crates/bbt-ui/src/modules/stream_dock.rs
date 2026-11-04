@@ -1193,21 +1193,25 @@ fn task_item(item: &WorkItem, k: &str, delegate: bool) -> c::Element {
             text_style(t.caption as f32, 400, false, ui::Color::Foreground),
         )),
     ];
-    if !item.assignee.is_empty() {
-        cells.push(
-            label(
-                format!("{k}/eass"),
-                if item.state == "claimed" {
-                    format!("→ {}", item.assignee)
-                } else {
-                    item.assignee.clone()
-                },
-                text_style(t.small as f32, 400, false, ui::Color::Muted),
-                false,
-            )
-            .into(),
-        );
-    }
+    // State and responsibility in words: who holds it, who delegated it, or nobody yet.
+    let who = match (&item.delegated_by, item.assignee.as_str()) {
+        (_, "") => "unassigned".to_owned(),
+        (Some(by), assignee) => format!("delegated by {by} → {assignee}"),
+        (None, assignee) => assignee.to_owned(),
+    };
+    cells.push(
+        label(
+            format!("{k}/eass"),
+            if item.state == "claimed" || item.state.is_empty() {
+                who
+            } else {
+                format!("{} · {who}", item.state)
+            },
+            text_style(t.small as f32, 400, false, ui::Color::Muted),
+            false,
+        )
+        .into(),
+    );
     if item.state == "claimed" {
         cells.push(
             badge(

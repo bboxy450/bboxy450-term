@@ -6,6 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Bounded newline JSON-RPC on stdio, forwarding to the private seat endpoint.
 
+use std::collections::BTreeMap;
 use std::io::{self, BufRead, BufReader, Write};
 use std::os::unix::net::UnixStream;
 use std::path::PathBuf;
@@ -28,6 +29,18 @@ pub struct Config {
     pub generation: u64,
     pub capability: [u8; 32],
 }
+/// The seat attribution in `vars`: only the names git-kb reads for ATC session
+/// activity export ([`bbt_plugin::policy::ATTRIBUTION_ENV`]), validated and
+/// bounded; non-UTF-8 values are dropped.
+pub fn attribution(
+    vars: impl IntoIterator<Item = (std::ffi::OsString, std::ffi::OsString)>,
+) -> BTreeMap<String, String> {
+    let vars: Vec<(String, String)> = vars
+        .into_iter()
+        .filter_map(|(k, v)| Some((k.into_string().ok()?, v.into_string().ok()?)))
+        .collect();
+    bbt_plugin::policy::attribution_env(vars.iter().map(|(k, v)| (k.as_str(), v.as_str())))
+}
 impl Config {
     pub fn from_env() -> io::Result<Self> {
         let bad = || io::Error::other("missing or invalid BBOXY MCP admission environment");
@@ -42,18 +55,10 @@ impl Config {
             .map_err(|_| bad())?
             .parse::<u64>()
             .map_err(|_| bad())?;
-        let cap = std::env::var("BBOXY_CAPABILITY").map_err(|_| bad())?;
-        if seat == Ulid::nil()
-            || generation == 0
-            || cap.len() != 64
-            || !cap.bytes().all(|b| b.is_ascii_hexdigit())
-        {
+        if seat == Ulid::nil() || generation == 0 {
             return Err(bad());
         }
-        let mut capability = [0; 32];
-        for (i, byte) in capability.iter_mut().enumerate() {
-            *byte = u8::from_str_radix(&cap[i * 2..i * 2 + 2], 16).map_err(|_| bad())?;
-        }
+        let capability = bboxy450_harness_wake_up::capability::from_env()?;
         Ok(Self {
             socket: socket.into(),
             seat,
@@ -102,6 +107,8 @@ fn rpc_error(id: Value, code: i64, message: &str) -> Value {
 pub struct Bridge {
     config: Config,
     initialized: bool,
+    /// The harness's ATC session attribution, sent beside every call.
+    attribution: BTreeMap<String, String>,
 }
 /// Only fixed phase names and OS categories cross the diagnostic boundary;
 /// paths, request bytes and the admission capability never do.
@@ -159,7 +166,14 @@ impl Bridge {
         Self {
             config,
             initialized: false,
+            attribution: BTreeMap::new(),
         }
+    }
+    /// Lend `attribution` (from [`attribution`]) to the plugin calls made
+    /// for this bridge's calls.
+    pub fn with_attribution(mut self, attribution: BTreeMap<String, String>) -> Self {
+        self.attribution = attribution;
+        self
     }
     fn forward(&self, action: Action) -> Result<Value, TransportFailure> {
         let started = Instant::now();
@@ -213,6 +227,9 @@ impl Bridge {
     pub fn handle(&mut self, bytes: &[u8]) -> Option<Value> {
         let reply = self.handle_inner(bytes);
         if let Some(response) = &reply
+            // Unsupported optional methods are capability probes, not failed
+            // tool operations. Preserve their JSON-RPC response without noise.
+            && response["error"]["code"] != -32601
             && (response.get("error").is_some()
                 || response["result"]["isError"] == true
                 || response["result"]["kind"] == "Refused"
@@ -301,6 +318,7 @@ impl Bridge {
                         tool: tool.into(),
                         args,
                     },
+                    attribution: self.attribution.clone(),
                 }) {
                     Ok(reply) if reply["isError"] == true => {
                         let mut error = rpc_error(
@@ -387,7 +405,8 @@ impl Bridge {
                 if call.validate().is_err() {
                     return Some(rpc_error(id, -32602, "Invalid control call"));
                 }
-                match self.forward(Action::Call { call }) {
+                let attribution = self.attribution.clone();
+                match self.forward(Action::Call { call, attribution }) {
                     Ok(result) => Ok(result),
                     Err(error) => {
                         let mut response = rpc_error(
@@ -435,7 +454,10 @@ impl Bridge {
 
 pub fn run_cli() -> io::Result<()> {
     let config = Config::from_env()?;
-    Bridge::new(config).run(&mut io::stdin().lock(), &mut io::stdout().lock())
+    // Captured once, from the harness that spawned this bridge.
+    Bridge::new(config)
+        .with_attribution(attribution(std::env::vars_os()))
+        .run(&mut io::stdin().lock(), &mut io::stdout().lock())
 }
 
 #[cfg(test)]
@@ -455,5 +477,84 @@ mod diagnostic_tests {
             failure.operation
         );
         assert_eq!(failure.seat, Some(Ulid::from(7_u128).to_string()));
+    }
+}
+
+#[cfg(test)]
+mod attribution_tests {
+    use super::*;
+    use std::ffi::OsString;
+    use std::os::unix::ffi::OsStringExt;
+
+    // keeps: seat attribution — the bridge captures only the allowlisted ATC
+    // session names, drops malformed or oversized values and never a secret,
+    // and sends them beside the call only when present.
+    #[test]
+    fn bridge_captures_only_valid_allowlisted_attribution() {
+        let os = |k: &str, v: &str| (OsString::from(k), OsString::from(v));
+        let captured = attribution([
+            os("ATC_SESSION_ID", "xses-1"),
+            os("SESSION_ACTIVITY_PROVIDER", "claude"),
+            os(
+                "SESSION_ACTIVITY_SINK_ARGS_JSON",
+                r#"["activity","record","--json"]"#,
+            ),
+            os("SESSION_ACTIVITY_SINK_COMMAND", "/opt/atc dir/atc"),
+            os("ATC_TOKEN", "secret-token"),
+            os("ATC_REGISTRY_PATH", "/private/registry.db"),
+            os("BBOXY_CAPABILITY", "secret-capability"),
+            os("SESSION_ACTIVITY_RESOURCE_KIND", "external\nINJECTED=1"),
+            os(
+                "SESSION_ACTIVITY_CONTEXT_FILE",
+                &"x".repeat(bbt_plugin::policy::ATTRIBUTION_VALUE_BYTES + 1),
+            ),
+            os("GITKB_AGENT_ID", "{not json"),
+            (
+                OsString::from("SESSION_ACTIVITY_RESOURCE_ID"),
+                OsString::from_vec(vec![0xff, 0xfe]),
+            ),
+        ]);
+        assert_eq!(
+            captured,
+            BTreeMap::from(
+                [
+                    ("ATC_SESSION_ID", "xses-1"),
+                    ("GITKB_AGENT_ID", "{not json"),
+                    ("SESSION_ACTIVITY_PROVIDER", "claude"),
+                    (
+                        "SESSION_ACTIVITY_SINK_ARGS_JSON",
+                        r#"["activity","record","--json"]"#
+                    ),
+                    ("SESSION_ACTIVITY_SINK_COMMAND", "/opt/atc dir/atc"),
+                ]
+                .map(|(k, v)| (k.to_owned(), v.to_owned()))
+            )
+        );
+        assert!(
+            attribution([os("SESSION_ACTIVITY_SINK_ARGS_JSON", r#"{"a":1}"#)]).is_empty(),
+            "sink arguments must be a JSON string array"
+        );
+        let call = || Call {
+            op_id: Ulid::from(7_u128),
+            tool: "knowledge_write".into(),
+            args: json!({}),
+        };
+        let wire = serde_json::to_value(Action::Call {
+            call: call(),
+            attribution: captured.clone(),
+        })
+        .unwrap();
+        assert_eq!(wire["attribution"]["ATC_SESSION_ID"], "xses-1");
+        assert!(!wire.to_string().contains("secret"));
+        let plain = serde_json::to_value(Action::Call {
+            call: call(),
+            attribution: BTreeMap::new(),
+        })
+        .unwrap();
+        assert!(plain.get("attribution").is_none(), "{plain}");
+        let Action::Call { attribution, .. } = serde_json::from_value(wire).unwrap() else {
+            panic!("call round trip");
+        };
+        assert_eq!(attribution, captured);
     }
 }

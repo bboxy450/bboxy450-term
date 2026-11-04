@@ -445,7 +445,8 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
             .as_array()
             .unwrap()
             .len(),
-        9
+        11,
+        "nine data_source methods plus create_next and sync_status"
     );
 
     // Unsigned write refusal; create with native fields.
@@ -470,9 +471,15 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
         raw["document"]["frontmatter"]["nested"],
         json!({"preserved": [1, true, "x"]})
     );
+    // The host proof stays in the plugin data dir, never in the document.
+    assert!(
+        raw["document"]["frontmatter"]
+            .get("bboxy_signed_record")
+            .is_none()
+    );
     assert_eq!(
-        raw["document"]["frontmatter"]["bboxy_signed_record"],
-        one["signed_record"]
+        one["signed_record"],
+        "fixture opaque host proof notes/shared"
     );
     assert!(one["frontmatter"].get("bboxy_signed_record").is_none());
 
@@ -528,7 +535,7 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
         "stale_cursor",
     );
 
-    // Lifecycle with native bboxy_status/status.
+    // Lifecycle through GitKB's native status alone.
     for status in ["claimed", "running", "reported", "accepted"] {
         let r = client.resolve(&task_slug);
         task = client.call("fetch", json!({ "ref": r }));
@@ -548,16 +555,16 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
         assert_eq!(task["external_id"], "01563e3a-b5d3-d676-4c61-efb99302bd5c");
         let actual = fx.source(&a, &task_slug, "workspace");
         let native = &actual["document"]["frontmatter"];
-        assert_eq!(native["bboxy_status"], status);
+        assert!(native.get("bboxy_status").is_none());
+        assert!(native.get("bboxy_signed_record").is_none());
         assert_eq!(
             native["status"],
-            if status == "accepted" {
-                "completed"
-            } else {
+            if status == "running" {
                 "active"
+            } else {
+                status
             }
         );
-        assert_eq!(native["bboxy_signed_record"], proof.as_str());
         if status == "running" {
             // Status filters accept the portable or the native value.
             for filter in [
@@ -657,6 +664,11 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
 
     // Explicit native commit writes only the selected task.
     let task_ref = client.resolve(&task_slug);
+    assert!(task_ref["updated_at"].is_u64(), "{task_ref}");
+    assert_eq!(
+        scoped["nodes"][0]["ref"]["updated_at"],
+        task_ref["updated_at"]
+    );
     let commit = client.call(
         "commit",
         json!({"refs": [task_ref], "message": "Commit only selected fixture task"}),
@@ -668,10 +680,7 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
     );
     let committed = fx.source(&a, &task_slug, "committed");
     assert_eq!(committed["exists"], true);
-    assert_eq!(
-        committed["document"]["frontmatter"]["bboxy_status"],
-        "accepted"
-    );
+    assert_eq!(committed["document"]["frontmatter"]["status"], "accepted");
     assert_eq!(fx.source(&a, "notes/shared", "committed")["exists"], false);
     assert_eq!(other.resolve("notes/shared")["id"], sibling["id"]);
     other.refuse(
@@ -781,6 +790,16 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
     // Links.
     let current_ref = client.resolve("notes/shared");
     let current = client.call("fetch", json!({ "ref": current_ref }));
+    // updated_at: epoch milliseconds, equal on every path, advanced by a write.
+    assert!(old["updated_at"].is_u64(), "{old}");
+    assert!(
+        current_ref["updated_at"].as_u64() > old["updated_at"].as_u64(),
+        "a write advances updated_at: {old} then {current_ref}"
+    );
+    assert_eq!(current["updated_at"], current_ref["updated_at"]);
+    let listed = client.collect("list", json!({"filter": {"type": "note"}}));
+    let listed = listed.iter().find(|r| r["slug"] == "notes/shared").unwrap();
+    assert_eq!(listed["updated_at"], current_ref["updated_at"]);
     let linked = client.call(
         "write",
         json!({"ref": reference(&current), "etag": current["etag"], "frontmatter": current["frontmatter"],
@@ -973,6 +992,9 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
                "signed_record": "fixture committed update"}),
     );
 
+    // Catalog index: identical results to the backend path, and freshness.
+    conns.extend(index_checks(fx));
+
     // Traced backend with a hostile environment proves child env and cwd.
     let trace = fx.run.join("backend-trace.tsv");
     let wrapper = fx.run.join("traced-git-kb");
@@ -1021,6 +1043,9 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
         .connect(&a, Some(&traced_plugin), Some(hostile), false)
         .unwrap();
     traced.resolve("notes/shared");
+    // The background export also runs through the traced backend; let it
+    // finish so no backend start can race the pin check below.
+    wait_ready(&mut traced);
     let rows: Vec<Vec<String>> = std::fs::read_to_string(&trace)
         .unwrap()
         .lines()
@@ -1124,6 +1149,8 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
         "committed/workspace source transition",
         "batched and exact references agree",
         "real selected-only commit, unrelated pending source preserved",
+        "catalog index equals the backend path; workspace and commit freshness",
+        "committed references digest id and version; an external commit makes them stale",
         "disposable native bootstrap",
         "scrubbed native process environment and private cwd",
         "backend hash pin on existing and new clients",
@@ -1136,6 +1163,754 @@ fn truthy(value: &Value) -> bool {
     !(value.is_null() || value == "" || value == false)
 }
 
+/// The plugin's index facts from `health`.
+fn index_facts(conn: &mut Conn) -> Value {
+    conn.client.call("health", json!({}), WAIT).unwrap()["index"].clone()
+}
+
+/// Poll `health` until the committed index matches the current store.
+fn wait_ready(conn: &mut Conn) -> Value {
+    for _ in 0..400 {
+        let facts = index_facts(conn);
+        if facts["ready"] == true {
+            return facts;
+        }
+        std::thread::sleep(Duration::from_millis(25));
+    }
+    panic!("index did not become ready: {}", index_facts(conn));
+}
+
+/// A native workspace write through the real CLI (another editor).
+fn native_write(fx: &mut Fixture, root: &Path, slug: &str, fields: &str, update: bool) {
+    let mut args = vec![
+        "workspace",
+        "write",
+        slug,
+        "--stdin",
+        "--origin-id",
+        "index-fixture-editor",
+        "--json",
+        "--create-if-missing",
+    ];
+    let mut identity = String::new();
+    let generation;
+    if update {
+        // A cleared workspace has no document: the committed one supplies the
+        // identity, and the absent workspace generation guards the write.
+        let source = fx.source(root, slug, "workspace");
+        let id = match source["document"]["id"].as_str() {
+            Some(id) => id.to_owned(),
+            None => fx.source(root, slug, "committed")["document"]["id"]
+                .as_str()
+                .unwrap()
+                .to_owned(),
+        };
+        identity = format!("id: {id}\n");
+        generation = source["generation"].as_str().unwrap().to_owned();
+        args.extend(["--if-generation", &generation]);
+    }
+    let raw = format!("---\n{identity}slug: {slug}\ntitle: {slug}\n{fields}---\nbody {slug}\n");
+    fx.cli(root, &args, Some(&raw));
+}
+
+/// Index-served filters equal the backend path (`BBOXY_GITKB_INDEX=off`),
+/// including the native semantics for a committed document edited in its
+/// workspace and a workspace-only document; workspace writes change only
+/// the workspace signal, commits change the store signal and fall back
+/// until the rebuild.
+fn index_checks(fx: &mut Fixture) -> Vec<Conn> {
+    let root = fx.project("root-index");
+    for (slug, fields) in [
+        ("tasks/a", "type: task\nstatus: active\nassignee: alice\n"),
+        (
+            "tasks/b",
+            "type: task\nstatus: draft\nassignee: bob\nbboxy_status: claimed\n",
+        ),
+        ("tasks/c", "type: task\nstatus: active\nassignee: carol\n"),
+        (
+            "tasks/d",
+            "type: task\nstatus: Active\nassignee: seat:01JABCDEFGHJKMNPQRSTVWXYZ0\n",
+        ),
+        (
+            "tasks/e",
+            "type: task\nstatus: active\nassignee: '123'\nswarm: x y\n",
+        ),
+        ("bugs/h", "type: bug\nstatus: active\nassignee: bob\n"),
+        ("notes/n", "type: note\nstatus: draft\nassignee: carol\n"),
+    ] {
+        native_write(fx, &root, slug, fields, false);
+    }
+    fx.cli(
+        &root,
+        &[
+            "commit",
+            "--json",
+            "-m",
+            "Index fixture",
+            "--",
+            "tasks/a",
+            "tasks/b",
+            "tasks/c",
+            "tasks/d",
+            "tasks/e",
+            "bugs/h",
+            "notes/n",
+        ],
+        None,
+    );
+    // Committed alice, workspace carol: native filters use the committed value.
+    native_write(
+        fx,
+        &root,
+        "tasks/a",
+        "type: task\nstatus: completed\nassignee: carol\nswarm: s9\n",
+        true,
+    );
+    native_write(
+        fx,
+        &root,
+        "tasks/w",
+        "type: task\nstatus: active\nassignee: carol\nswarm: s9\n",
+        false,
+    );
+    let mut off_env = fx.env.clone();
+    off_env.push(("BBOXY_GITKB_INDEX".into(), "off".into()));
+    let mut on_env = fx.env.clone();
+    on_env.push(("BBOXY_GITKB_INDEX".into(), "on".into()));
+    let mut on = fx.connect(&root, None, Some(on_env), false).unwrap();
+    // A cold process's first filtered read waits for the build in progress
+    // instead of taking the per-call backend path.
+    let carol_task = json!({"filter": {"type": "task", "assignee": "carol"}});
+    assert_eq!(
+        slugs(&on.collect("list", carol_task.clone()), ""),
+        ["tasks/c", "tasks/w"]
+    );
+    let cold = index_facts(&mut on);
+    assert_eq!(cold["fallbacks"], 0, "{cold}");
+    assert_eq!(cold["served"], 1, "{cold}");
+    let mut off = fx.connect(&root, None, Some(off_env), false).unwrap();
+    assert_eq!(index_facts(&mut off)["enabled"], false);
+    let ready = wait_ready(&mut on);
+    assert_eq!(ready["documents"], 7, "{ready}");
+    let filters = || {
+        let mut all = vec![
+            json!({"type": "task"}),
+            json!({"assignee": "carol"}),
+            json!({"swarm": "s9"}),
+            json!({"swarm": "x y"}),
+            json!({"type": "task", "status": "running"}),
+            json!({"status": "active"}),
+            json!({"type": "task", "status": "open"}),
+            json!({"type": "task", "status": "claimed"}),
+            json!({"type": "task", "status": "completed"}),
+            json!({"type": "task", "status": "claimed", "assignee": "bob"}),
+        ];
+        for assignee in [
+            "alice",
+            "carol",
+            "bob",
+            "123",
+            "seat:01JABCDEFGHJKMNPQRSTVWXYZ0",
+            "01JABCDEFGHJKMNPQRSTVWXYZ0",
+            "seat:01JZZZZZZZZZZZZZZZZZZZZZZZ",
+        ] {
+            for kind in ["task", "bug", "epic"] {
+                all.push(json!({"type": kind, "assignee": assignee}));
+            }
+        }
+        all
+    };
+    let compare = |on: &mut Conn, off: &mut Conn| {
+        for filter in filters() {
+            let request = json!({ "filter": filter });
+            let served = index_facts(on)["served"].as_u64().unwrap();
+            let indexed = on.collect("list", request.clone());
+            assert_eq!(indexed, off.collect("list", request.clone()), "{filter}");
+            let search = json!({"query": "body type:task", "filter": filter});
+            assert_eq!(
+                on.collect("search", search.clone()),
+                off.collect("search", search),
+                "{filter}"
+            );
+            // Values native parsing might type or split use the backend.
+            let indexed = filter["swarm"] != "x y" && filter["assignee"] != "123";
+            let now = index_facts(on)["served"].as_u64().unwrap();
+            assert_eq!(now > served, indexed, "{filter}");
+        }
+        let graph = json!({"scope": {"kind": "type", "graph": "markdown", "type": "task"}});
+        assert_eq!(on.call("graph", graph.clone()), off.call("graph", graph));
+    };
+    compare(&mut on, &mut off);
+    let carol = json!({"filter": {"type": "task", "assignee": "carol"}});
+    assert_eq!(
+        slugs(&on.collect("list", carol.clone()), ""),
+        ["tasks/c", "tasks/w"]
+    );
+
+    // A workspace write changes the workspace signal, not the store signal.
+    let before = index_facts(&mut on);
+    native_write(
+        fx,
+        &root,
+        "tasks/x",
+        "type: task\nstatus: active\nassignee: carol\n",
+        false,
+    );
+    let written = index_facts(&mut on);
+    assert_eq!(written["store_signal"], before["store_signal"]);
+    assert_ne!(written["workspace_signal"], before["workspace_signal"]);
+    assert_eq!(written["ready"], true);
+    assert_eq!(
+        slugs(&on.collect("list", carol.clone()), ""),
+        ["tasks/c", "tasks/w", "tasks/x"]
+    );
+    // A commit changes the store signal; filters fall back until the rebuild.
+    fx.cli(
+        &root,
+        &["commit", "--json", "-m", "Commit workspace edit", "tasks/a"],
+        None,
+    );
+    let committed = index_facts(&mut on);
+    assert_ne!(committed["store_signal"], written["store_signal"]);
+    // The next filtered call starts the rebuild and waits for it within its
+    // budget instead of falling back.
+    let count = |facts: &Value, key: &str| facts[key].as_u64().unwrap();
+    let listed = on.collect("list", carol.clone());
+    assert_eq!(listed, off.collect("list", carol.clone()));
+    assert_eq!(
+        slugs(&listed, ""),
+        ["tasks/a", "tasks/c", "tasks/w", "tasks/x"]
+    );
+    let after = wait_ready(&mut on);
+    assert_eq!(count(&after, "fallbacks"), count(&committed, "fallbacks"));
+    assert_eq!(count(&after, "waits"), count(&committed, "waits") + 1);
+    assert!(count(&after, "served") > count(&committed, "served"));
+    assert_eq!(after["indexed_signal"], after["store_signal"]);
+    assert!(after["builds"].as_u64().unwrap() >= 2, "{after}");
+    compare(&mut on, &mut off);
+
+    // A committed-only reference digests its native id and version: an
+    // external commit bumps the version, so the old reference goes stale,
+    // and index-served graph nodes carry the new committed reference.
+    fx.cli_text(&root, &["clear", "tasks/c", "--force"], None);
+    let old = on.resolve("tasks/c");
+    assert_eq!(
+        on.call("fetch", json!({ "ref": old }))["gitkb"]["source"]["kind"],
+        "committed"
+    );
+    native_write(
+        fx,
+        &root,
+        "tasks/c",
+        "type: task\nstatus: active\nassignee: carol\nswarm: s7\n",
+        true,
+    );
+    fx.cli(
+        &root,
+        &["commit", "--json", "-m", "External commit", "tasks/c"],
+        None,
+    );
+    fx.cli_text(&root, &["clear", "tasks/c", "--force"], None);
+    on.refuse("fetch", json!({ "ref": old }), "stale_ref");
+    off.refuse("fetch", json!({ "ref": old }), "stale_ref");
+    let new = on.resolve("tasks/c");
+    assert_ne!(new["digest"], old["digest"]);
+    assert_eq!(new, off.resolve("tasks/c"));
+    // A filtered read starts the rebuild for the new store state.
+    on.collect("list", carol.clone());
+    wait_ready(&mut on);
+    let graph = json!({"scope": {"kind": "type", "graph": "markdown", "type": "task"}});
+    let node = on.call("graph", graph)["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|n| n["ref"]["slug"] == "tasks/c")
+        .cloned()
+        .unwrap();
+    assert_eq!(node["ref"], new);
+    let record = on.call("fetch", json!({ "ref": new }));
+    assert_eq!(node["frontmatter"], record["frontmatter"]);
+    assert_eq!(record["frontmatter"]["swarm"], "s7");
+    vec![on, off]
+}
+
+/// A portable ULID, a native canonical UUID and a slug, as every result uses them.
+fn identity_ok(item: &Value) -> bool {
+    let ulid = item["id"].as_str().is_some_and(|id| {
+        id.len() == 26
+            && id
+                .bytes()
+                .all(|b| b"0123456789ABCDEFGHJKMNPQRSTVWXYZ".contains(&b))
+    });
+    let uuid = item["external_id"]
+        .as_str()
+        .is_some_and(|id| id.len() == 36 && id.matches('-').count() == 4);
+    ulid && uuid && item["slug"].is_string()
+}
+
+/// `git-kb show <slug> --json` relationships.
+fn native_relationships(fx: &mut Fixture, root: &Path, slug: &str) -> Value {
+    let doc = fx.cli(root, &["show", slug, "--json"], None)["documents"][0].clone();
+    json!({"references": doc["references"], "depends_on": doc["depends_on"],
+           "blocks": doc["blocks"], "parent": doc["parent"]})
+}
+
+/// The git-kb CLI side-by-side review (task 5004): one check per finding,
+/// each reporting RED with its evidence instead of stopping the run.
+fn review_checks(fx: &mut Fixture) -> Vec<String> {
+    let root = fx.project("review");
+    let mut conn = fx.connect(&root, None, None, false).unwrap();
+    let mut red = Vec::new();
+    let mut expect = |finding: &str, ok: bool, evidence: String| {
+        eprintln!(
+            "finding {finding}: {} {evidence}",
+            if ok { "GREEN" } else { "RED" }
+        );
+        if !ok {
+            red.push(format!("{finding}: {evidence}"));
+        }
+    };
+
+    // 1. The signed record stays out of the document.
+    let created = conn.call(
+        "write",
+        json!({"path": "notes/signed.md", "frontmatter": {"type": "note", "title": "Signed",
+               "authorship": {"kind": "seat"}}, "body": "first\n",
+               "signed_record": "review proof one"}),
+    );
+    let record = created["record"].clone();
+    let raw = fx.source(&root, "notes/signed", "workspace");
+    let native = raw["document"]["frontmatter"].clone();
+    expect(
+        "1 no bboxy_signed_record in the document",
+        native.get("bboxy_signed_record").is_none()
+            && !raw["rawContent"]
+                .as_str()
+                .unwrap()
+                .contains("review proof one"),
+        format!("native frontmatter {native}"),
+    );
+    expect(
+        "1 seat attribution kept",
+        native["authorship"] == json!({"kind": "seat"}),
+        format!("authorship {}", native["authorship"]),
+    );
+    let fetched = conn.call("fetch", json!({"ref": reference(&record)}));
+    expect(
+        "1 fetch returns the proof for this version",
+        fetched["signed_record"] == "review proof one",
+        format!("signed_record {}", fetched["signed_record"]),
+    );
+    // Another editor changes only the body and keeps every frontmatter line.
+    let source = raw["rawContent"]
+        .as_str()
+        .unwrap()
+        .replace("first\n", "edited\n");
+    let generation = raw["generation"].as_str().unwrap().to_owned();
+    fx.cli(
+        &root,
+        &[
+            "workspace",
+            "write",
+            "notes/signed",
+            "--stdin",
+            "--origin-id",
+            "review-editor",
+            "--if-generation",
+            &generation,
+            "--json",
+        ],
+        Some(&source),
+    );
+    let edited = conn.resolve("notes/signed");
+    let after = conn.call("fetch", json!({"ref": edited}));
+    expect(
+        "1 a CLI edit leaves no stale proof",
+        after.get("signed_record").is_none(),
+        format!("signed_record after CLI edit {}", after["signed_record"]),
+    );
+
+    // 2. Next numbered slug in a family, with the CLI's allocation fields.
+    let next = conn
+        .client
+        .call(
+            "tool_create_next",
+            json!({"family": "tasks/demo", "title": "First"}),
+            WAIT,
+        )
+        .map_err(|f| format!("{f:?}"));
+    match &next {
+        Ok(next) => expect(
+            "2 create next in family",
+            next["slug"] == "tasks/demo-1"
+                && next["authority"] == "local"
+                && next.get("sync_required").is_some()
+                && identity_ok(&next["ref"]),
+            format!("{next}"),
+        ),
+        Err(failure) => expect("2 create next in family", false, failure.clone()),
+    }
+
+    // 3. One status vocabulary: one native status, every host state round-trips.
+    let task = conn.call(
+        "write",
+        json!({"path": "tasks/status.md", "frontmatter": {"type": "task", "title": "Status",
+               "status": "open"}, "body": "s\n", "signed_record": "review status"}),
+    )["record"]
+        .clone();
+    let mut current = task;
+    for (host, gitkb) in [
+        ("open", "backlog"),
+        ("claimed", "claimed"),
+        ("running", "active"),
+        ("reported", "reported"),
+        ("rejected", "rejected"),
+        ("accepted", "accepted"),
+        ("blocked", "blocked"),
+        ("done", "completed"),
+    ] {
+        let mut fm = current["frontmatter"].clone();
+        fm["status"] = host.into();
+        let written = conn.result(
+            "write",
+            json!({"ref": reference(&current), "etag": current["etag"], "frontmatter": fm,
+                   "body": current["body"], "signed_record": format!("review {host}")}),
+        );
+        let Ok(written) = written else {
+            expect("3 status round trip", false, format!("{host}: {written:?}"));
+            continue;
+        };
+        current = written["record"].clone();
+        let native =
+            fx.source(&root, "tasks/status", "workspace")["document"]["frontmatter"].clone();
+        expect(
+            "3 status round trip",
+            current["frontmatter"]["status"] == host
+                && native["status"] == gitkb
+                && native.get("bboxy_status").is_none(),
+            format!(
+                "{host}: read {} native {native}",
+                current["frontmatter"]["status"]
+            ),
+        );
+    }
+    let mut fm = current["frontmatter"].clone();
+    fm["status"] = "investigating".into();
+    let refused = conn.result(
+        "write",
+        json!({"ref": reference(&current), "etag": current["etag"], "frontmatter": fm,
+               "body": current["body"], "signed_record": "review unknown"}),
+    );
+    expect(
+        "3 a status the host does not know is refused",
+        matches!(&refused, Err(Failure::Tool(v)) if v["code"] == "unmappable_status"),
+        format!("{refused:?}"),
+    );
+    native_write(
+        fx,
+        &root,
+        "tasks/legacy",
+        "type: task\nstatus: active\nbboxy_status: claimed\n",
+        false,
+    );
+    native_write(
+        fx,
+        &root,
+        "tasks/drafted",
+        "type: task\nstatus: draft\n",
+        false,
+    );
+    let legacy = conn.resolve("tasks/legacy");
+    let legacy = conn.call("fetch", json!({"ref": legacy}));
+    let drafted = conn.resolve("tasks/drafted");
+    let drafted = conn.call("fetch", json!({"ref": drafted}));
+    expect(
+        "3 legacy bboxy_status reads through native status",
+        legacy["frontmatter"]["status"] == "running" && drafted["frontmatter"]["status"] == "open",
+        format!(
+            "legacy {} drafted {}",
+            legacy["frontmatter"]["status"], drafted["frontmatter"]["status"]
+        ),
+    );
+    // An unknown native status reads as open and stays raw in the document,
+    // also through an update that keeps the task open.
+    native_write(
+        fx,
+        &root,
+        "tasks/investigating",
+        "type: task\nstatus: investigating\n",
+        false,
+    );
+    let unknown = conn.resolve("tasks/investigating");
+    let unknown = conn.call("fetch", json!({"ref": unknown}));
+    let mut fm = unknown["frontmatter"].clone();
+    fm["title"] = "Investigating, retitled".into();
+    let kept = conn.result(
+        "write",
+        json!({"ref": reference(&unknown), "etag": unknown["etag"], "frontmatter": fm,
+               "body": unknown["body"], "signed_record": "review investigating"}),
+    );
+    let raw =
+        fx.source(&root, "tasks/investigating", "workspace")["document"]["frontmatter"]["status"]
+            .clone();
+    let open_items = slugs(
+        &conn.collect(
+            "list",
+            json!({"filter": {"type": "task", "status": "open"}}),
+        ),
+        "",
+    );
+    expect(
+        "3 an unknown native status reads open and stays raw",
+        unknown["frontmatter"]["status"] == "open"
+            && matches!(&kept, Ok(v) if v["record"]["frontmatter"]["status"] == "open" && v["lossy"] == false)
+            && raw == "investigating"
+            && ["tasks/investigating", "tasks/drafted"]
+                .iter()
+                .all(|s| open_items.iter().any(|o| o == s)),
+        format!(
+            "read {} kept {kept:?} raw {raw} open {open_items:?}",
+            unknown["frontmatter"]["status"]
+        ),
+    );
+
+    // 4. id is the ULID, external_id the UUID, slug the path, in every result.
+    let listed = conn.collect("list", json!({}));
+    let searched = conn.collect("search", json!({"query": "Signed"}));
+    let graph = conn.call(
+        "graph",
+        json!({"scope": {"kind": "all", "graph": "markdown"}}),
+    );
+    let changes = conn.call("changes_since", json!({"cursor": "0"}));
+    let mut results: Vec<Value> = vec![
+        record.clone(),
+        fetched.clone(),
+        conn.resolve("notes/signed"),
+    ];
+    results.extend(listed);
+    results.extend(searched.iter().map(|hit| hit["ref"].clone()));
+    results.extend(
+        graph["nodes"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|n| n["ref"].clone()),
+    );
+    let bad: Vec<&Value> = results.iter().filter(|r| !identity_ok(r)).collect();
+    let nodes_ok = graph["nodes"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .all(|n| n["id"] == n["ref"]["id"]);
+    expect(
+        "4 identifiers consistent in every result",
+        bad.is_empty() && nodes_ok && changes["changed"] == json!([]),
+        format!("{} results, inconsistent {bad:?}", results.len()),
+    );
+    for locator in [
+        "notes/signed",
+        "notes/signed.md",
+        record["id"].as_str().unwrap(),
+        record["external_id"].as_str().unwrap(),
+    ] {
+        expect(
+            "4 slug and ULID both address a doc",
+            conn.resolve(locator)["id"] == record["id"],
+            locator.to_owned(),
+        );
+    }
+
+    // 7. Fetch relationships equal `git-kb show <slug> --json`.
+    native_write(
+        fx,
+        &root,
+        "tasks/parent",
+        "type: task\nstatus: active\n",
+        false,
+    );
+    native_write(
+        fx,
+        &root,
+        "tasks/child",
+        "type: task\nstatus: active\nparent: tasks/parent\ndepends_on: [tasks/status]\n",
+        false,
+    );
+    native_write(
+        fx,
+        &root,
+        "tasks/orphan",
+        "type: task\nstatus: active\nparent: tasks/missing-2092\n",
+        false,
+    );
+    fx.cli(
+        &root,
+        &[
+            "commit",
+            "--json",
+            "-m",
+            "review relationships",
+            "--",
+            "tasks/parent",
+            "tasks/child",
+            "tasks/orphan",
+            "tasks/status",
+        ],
+        None,
+    );
+    for slug in [
+        "tasks/child",
+        "tasks/orphan",
+        "tasks/parent",
+        "tasks/status",
+    ] {
+        let expected = native_relationships(fx, &root, slug);
+        let r = conn.resolve(slug);
+        let fetched = conn.call("fetch", json!({"ref": r}));
+        expect(
+            "7 fetch relationships equal git-kb show",
+            fetched["relationships"] == expected,
+            format!(
+                "{slug}: plugin {} git-kb {expected}",
+                fetched["relationships"]
+            ),
+        );
+    }
+
+    // Doctor: identical fetches of a workspace record keep its timestamps;
+    // a committed document's checkout carries the committed created_at.
+    for slug in ["notes/signed", "tasks/child"] {
+        let r = conn.resolve(slug);
+        let first = conn.call("fetch", json!({"ref": r}));
+        std::thread::sleep(Duration::from_millis(1100));
+        let second = conn.call("fetch", json!({"ref": r}));
+        let times = |v: &Value| {
+            (
+                v["gitkb"]["created_at"].clone(),
+                v["gitkb"]["modified_at"].clone(),
+            )
+        };
+        let source = first["gitkb"]["source"]["kind"].clone();
+        expect(
+            "doctor identical workspace fetches keep created_at and modified_at",
+            source == "workspace"
+                && times(&first) == times(&second)
+                && first["gitkb"]["created_at"].is_string(),
+            format!(
+                "{slug} {source}: {:?} then {:?}",
+                times(&first),
+                times(&second)
+            ),
+        );
+    }
+    let committed = fx.cli(
+        &root,
+        &[
+            "show",
+            "--source",
+            "committed",
+            "--raw-content",
+            "--json",
+            "--",
+            "tasks/child",
+        ],
+        None,
+    )["document"]["created_at"]
+        .clone();
+    let r = conn.resolve("tasks/child");
+    let checkout = conn.call("fetch", json!({"ref": r}));
+    expect(
+        "doctor a checkout carries the committed created_at",
+        checkout["gitkb"]["created_at"] == committed,
+        format!(
+            "plugin {} committed {committed}",
+            checkout["gitkb"]["created_at"]
+        ),
+    );
+
+    // 8. A read-only sync check reads the remote from the KB config.
+    let none = conn.client.call(
+        "tool_sync_status",
+        json!({"pathspec": "tasks/demo-1"}),
+        WAIT,
+    );
+    expect(
+        "8 no configured remote is refused, never origin",
+        matches!(&none, Err(Failure::Tool(v)) if v["code"] == "remote_unconfigured"),
+        format!("{none:?}"),
+    );
+    fx.cli_text(
+        &root,
+        &["remote", "add", "review", "http://127.0.0.1:9/none/kb"],
+        None,
+    );
+    let one = conn.client.call(
+        "tool_sync_status",
+        json!({"pathspec": "tasks/demo-1"}),
+        LONG,
+    );
+    expect(
+        "8 sync status for a pathspec",
+        matches!(&one, Ok(v) if v["remote"] == "review"
+            && v["command"] == json!(["sync", "status", "review", "tasks/demo-1", "--json"])
+            && v["status"].is_object()),
+        format!("{one:?}"),
+    );
+    // 2. A remote-reserved family offline falls back to a provisional slug.
+    let mut config = std::fs::read_to_string(root.join(".kb/config.toml")).unwrap();
+    config = config.replace("families = []\n", "");
+    config.push_str(
+        "\n[[slug_authority.families]]\nprefix = \"tasks/prov\"\nremote = \"review\"\n\
+         reservation = \"try\"\noffline_fallback = \"provisional\"\n",
+    );
+    std::fs::write(root.join(".kb/config.toml"), config).unwrap();
+    let provisional = conn.client.call(
+        "tool_create_next",
+        json!({"family": "tasks/prov", "title": "Offline"}),
+        LONG,
+    );
+    expect(
+        "2 provisional allocation keeps the CLI's authority and sync_required",
+        matches!(&provisional, Ok(v) if v["slug"] == "tasks/prov-1"
+            && v["authority"] == "local_provisional" && v["sync_required"] == true),
+        format!("{provisional:?}"),
+    );
+    fx.cli_text(
+        &root,
+        &["remote", "add", "second", "http://127.0.0.1:9/none/kb2"],
+        None,
+    );
+    let two = conn.client.call(
+        "tool_sync_status",
+        json!({"pathspec": "tasks/demo-1"}),
+        WAIT,
+    );
+    let unknown = conn.client.call(
+        "tool_sync_status",
+        json!({"pathspec": "tasks/demo-1", "remote": "origin"}),
+        WAIT,
+    );
+    expect(
+        "8 several remotes need an explicit configured one",
+        matches!(&two, Err(Failure::Tool(v)) if v["code"] == "remote_required")
+            && matches!(&unknown, Err(Failure::Tool(v)) if v["code"] == "unknown_remote"),
+        format!("{two:?} / {unknown:?}"),
+    );
+    assert_eq!(conn.close(), Some(0));
+    red
+}
+
+#[test]
+#[ignore = "real GitKB fixtures; run through make check-gitkb-plugin"]
+fn review() {
+    let mut fx = Fixture::new();
+    eprintln!("private fixture: {}", fx.run.display());
+    let red = review_checks(&mut fx);
+    assert!(red.is_empty(), "review findings still red: {red:#?}");
+    if std::env::var_os("BBOXY_GITKB_RETAIN").is_none() {
+        std::fs::remove_dir_all(&fx.run).unwrap();
+    }
+}
+
 #[test]
 #[ignore = "real GitKB fixtures; run through make check-gitkb-plugin"]
 fn conformance() {
@@ -1143,7 +1918,12 @@ fn conformance() {
     let retain = std::env::var_os("BBOXY_GITKB_RETAIN").is_some();
     eprintln!("private fixture: {}", fx.run.display());
     let mut conns = Vec::new();
-    let checks = check(&mut fx, &mut conns);
+    let mut checks = check(&mut fx, &mut conns);
+    let red = review_checks(&mut fx);
+    assert!(red.is_empty(), "review findings red: {red:#?}");
+    checks.push(
+        "git-kb CLI review: signed record, next slug, status table, ids, relationships, sync",
+    );
     for conn in conns {
         assert_eq!(conn.close(), Some(0), "plugin exits cleanly on stdin EOF");
     }
@@ -1166,6 +1946,137 @@ fn conformance() {
                "plugin_sha256": report["plugin_sha256"]})
     );
     if !retain {
+        std::fs::remove_dir_all(&fx.run).unwrap();
+    }
+}
+
+/// A capture sink: each run stores its stdin payload and its environment.
+fn capture_sink(dir: &Path) -> PathBuf {
+    let sink = dir.join("activity-sink");
+    std::fs::create_dir_all(dir.join("captured")).unwrap();
+    std::fs::write(
+        &sink,
+        format!(
+            "#!/bin/sh\nf=$(mktemp '{0}/captured/run.XXXXXX')\ncat > \"$f.json\"\nenv > \"$f.env\"\necho \"$@\" > \"$f.args\"\n",
+            dir.display()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&sink, std::fs::Permissions::from_mode(0o700)).unwrap();
+    sink
+}
+
+/// Captured sink runs not seen before, as (payload, environment) pairs.
+fn captured(dir: &Path, seen: &mut BTreeSet<PathBuf>) -> Vec<(Value, String)> {
+    let mut runs = Vec::new();
+    let mut paths: Vec<_> = std::fs::read_dir(dir.join("captured"))
+        .unwrap()
+        .map(|entry| entry.unwrap().path())
+        .filter(|path| path.extension().is_some_and(|e| e == "json"))
+        .collect();
+    paths.sort();
+    for path in paths {
+        if seen.insert(path.clone()) {
+            let payload = serde_json::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+            let env = std::fs::read_to_string(path.with_extension("env")).unwrap();
+            runs.push((payload, env));
+        }
+    }
+    runs
+}
+
+// keeps: seat attribution — a seat's write and commit through the plugin
+// export GitKB activity to that seat's ATC sink; an unattributed one exports none.
+#[test]
+#[ignore = "real GitKB fixtures; run with the check-gitkb-plugin environment and --exact attribution_reaches_the_gitkb_activity_sink"]
+fn attribution_reaches_the_gitkb_activity_sink() {
+    let mut fx = Fixture::new();
+    let root = fx.project("attributed");
+    let sink = capture_sink(&fx.run);
+    let lent = |seat: &str| -> std::collections::BTreeMap<String, String> {
+        [
+            ("SESSION_ACTIVITY_RESOURCE_ID", format!("xses-attr-{seat}")),
+            ("SESSION_ACTIVITY_RESOURCE_KIND", "external".into()),
+            ("SESSION_ACTIVITY_PROVIDER", format!("provider-{seat}")),
+            ("SESSION_ACTIVITY_SINK_COMMAND", sink.display().to_string()),
+            (
+                "SESSION_ACTIVITY_SINK_ARGS_JSON",
+                r#"["activity","record","--json"]"#.into(),
+            ),
+            ("ATC_SESSION_ID", format!("xses-attr-{seat}")),
+            ("GITKB_AGENT_ID", format!("agent-{seat}")),
+            ("ATC_TOKEN", "secret-token-must-not-pass".into()),
+        ]
+        .map(|(k, v)| (k.to_owned(), v))
+        .into()
+    };
+    let mut conn = fx.connect(&root, None, None, false).expect("initialize");
+    let mut seen = BTreeSet::new();
+    let mut evidence = Vec::new();
+    for (slug, seat) in [
+        ("notes/attr-a", Some("a")),
+        ("notes/attr-none", None),
+        ("notes/attr-b", Some("b")),
+    ] {
+        let env = seat.map(lent).unwrap_or_default();
+        let write = conn
+            .client
+            .call_attributed(
+                "data_source_write",
+                with_unknown(json!({"path": format!("{slug}.md"),
+                    "frontmatter": {"type": "note", "title": slug},
+                    "body": format!("# {slug}\n"),
+                    "signed_record": format!("fixture opaque host proof {slug}")})),
+                &env,
+                WAIT,
+            )
+            .unwrap_or_else(|f| panic!("write {slug}: {f:?}"));
+        let commit = conn
+            .client
+            .call_attributed(
+                "data_source_commit",
+                with_unknown(json!({"refs": [reference(&write["record"])],
+                    "message": format!("attributed commit {slug}")})),
+                &env,
+                LONG,
+            )
+            .unwrap_or_else(|f| panic!("commit {slug}: {f:?}"));
+        assert!(truthy(&commit["commit"]), "{commit}");
+        let runs = captured(&fx.run, &mut seen);
+        match seat {
+            None => assert!(runs.is_empty(), "an unattributed commit exported {runs:?}"),
+            Some(seat) => {
+                assert!(!runs.is_empty(), "the attributed commit exported nothing");
+                for (payload, env) in &runs {
+                    assert_eq!(payload["source"], "gitkb", "{payload}");
+                    assert_eq!(
+                        payload["resource_id"],
+                        format!("xses-attr-{seat}"),
+                        "{payload}"
+                    );
+                    assert_eq!(payload["provider"], format!("provider-{seat}"), "{payload}");
+                    assert!(!env.contains("secret-token"), "{env}");
+                    assert!(
+                        env.contains(&format!("ATC_SESSION_ID=xses-attr-{seat}\n")),
+                        "{env}"
+                    );
+                    assert!(
+                        env.contains(&format!("GITKB_AGENT_ID=agent-{seat}\n")),
+                        "{env}"
+                    );
+                    let other = if seat == "a" { "b" } else { "a" };
+                    assert!(!env.contains(&format!("attr-{other}")), "{env}");
+                }
+                evidence.extend(runs.into_iter().map(|(payload, _)| payload));
+            }
+        }
+    }
+    assert_eq!(conn.close(), Some(0));
+    println!(
+        "{}",
+        serde_json::to_string_pretty(&json!({"sink_payloads": evidence})).unwrap()
+    );
+    if std::env::var_os("BBOXY_GITKB_RETAIN").is_none() {
         std::fs::remove_dir_all(&fx.run).unwrap();
     }
 }

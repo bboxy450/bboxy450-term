@@ -28,6 +28,7 @@ impl Source {
             path: "e2e/one.md".into(),
             digest: "a".repeat(64),
             external_id: None,
+            updated_at: None,
         }
     }
     fn forbidden<T>(&self) -> d::Result<T> {
@@ -52,6 +53,7 @@ impl DataSource for Source {
             etag: "a".repeat(64),
             resources: vec![],
             parse_error: None,
+            relationships: None,
         })
     }
     fn list(&self, _: d::ListRequest) -> d::Result<d::Page<d::RecordRef>> {

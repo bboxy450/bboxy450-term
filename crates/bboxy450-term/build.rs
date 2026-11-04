@@ -14,7 +14,10 @@ fn main() {
     let workspace = manifest.join("../..");
     // Development consumes the canonical workspace inputs. Published crates
     // carry the same bytes locally and do not read outside their package.
-    let root = if workspace.join("crates/bboxy450-term/Cargo.toml").canonicalize().ok()
+    let root = if workspace
+        .join("crates/bboxy450-term/Cargo.toml")
+        .canonicalize()
+        .ok()
         == manifest.join("Cargo.toml").canonicalize().ok()
     {
         workspace
@@ -22,6 +25,51 @@ fn main() {
         manifest.join("release-inputs")
     };
     println!("cargo:rustc-env=BBOXY_INPUT_ROOT={}", root.display());
+    let git = |args: &[&str]| {
+        std::process::Command::new("git")
+            .args(args)
+            .current_dir(&root)
+            .output()
+            .ok()
+            .filter(|o| o.status.success())
+            .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_owned())
+    };
+    let mut revision = "unavailable".to_owned();
+    if git(&["rev-parse", "--show-toplevel"])
+        .as_deref()
+        .map(PathBuf::from)
+        .and_then(|p| p.canonicalize().ok())
+        == root.canonicalize().ok()
+    {
+        if let Some(head) = git(&["rev-parse", "HEAD"]) {
+            revision = head;
+            if git(&["status", "--porcelain"]).is_none_or(|s| !s.is_empty()) {
+                revision.push_str("-dirty");
+            }
+        }
+        // Git refs AND source inputs invalidate the stamp. Ignored build output
+        // is excluded, including each submodule's target directory.
+        for args in [
+            ["rev-parse", "--git-path", "HEAD"],
+            ["rev-parse", "--git-path", "index"],
+        ] {
+            if let Some(path) = git(&args) {
+                println!("cargo:rerun-if-changed={}", root.join(path).display());
+            }
+        }
+        if let Some(reference) = git(&["symbolic-ref", "-q", "HEAD"])
+            && let Some(path) = git(&["rev-parse", "--git-path", &reference])
+        {
+            println!("cargo:rerun-if-changed={}", root.join(path).display());
+        }
+        if let Some(files) = git(&["ls-files", "--recurse-submodules"]) {
+            for path in files.lines() {
+                println!("cargo:rerun-if-changed={}", root.join(path).display());
+            }
+        }
+    }
+    println!("cargo:rustc-env=BBOXY_GUI_SOURCE={revision}");
+
     let source = root.join("lab/web/components.js");
     println!("cargo:rerun-if-changed={}", source.display());
     println!(

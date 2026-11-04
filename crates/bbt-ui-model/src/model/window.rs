@@ -71,8 +71,16 @@ pub struct PurgeModal {
 pub struct Strip {
     pub seat: SeatId,
 }
+/// A per-pane view preference; changing it never changes a process owner.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PaneFace {
+    Terminal,
+    HarnessRich,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PaneBody {
+    HarnessRich,
     Terminal,
     Settings(SettingsTab),
 }

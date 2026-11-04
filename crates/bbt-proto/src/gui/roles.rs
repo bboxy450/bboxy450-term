@@ -50,8 +50,11 @@ impl RoleCatalog {
             ("oracle", Oracle, "Supervise the swarm. Brief executors, verify evidence, and coordinate work.", "#F7C442", "♔"),
             ("architect", Oracle, "Define interfaces, specifications, invariants, and the evidence that verifies them.", "#A78BFA", "♜"),
             ("creativity", Worker, "Explore alternatives and supply creative possibilities within the assigned brief.", "#FF69B4", "♝"),
-            ("executor", Worker, "Implement scoped assignments, run verification, and report evidence to the Oracle.", "#43D9A3", "♟"),
+            ("researcher", Worker, "Research in the open through the built-in knowledge tools. Before investigating, create a type: research root document under research/ stating the question and plan. Grow a linked tree of child research documents as evidence arrives; keep the root index current with parent/children links. Record sources with URLs or file:line references, dates, methods, alternatives, uncertainties and contradictory findings. Use derived_from and typed links (used/evidence) to preserve the graph from source evidence to research findings. Downstream specs, tasks and future dream records must link back to the research or spec they derive from, so every idea can be traced to its origins. Use knowledge_write so the host records authorship and signed provenance; never invent signatures or erase lineage. Check the links with graph_read (markdown). Stay within the brief; hand findings to the Oracle for protected specs/tasks, and do not implement, delegate or land changes unless explicitly instructed.", "#43D9A3", "♗"),
+            ("executor", Worker, "Implement the scoped assignment and verify it. Work silently: send no acknowledgements, progress or status messages. Message once, only when blocked (the evidence and the exact decision needed) or when done (task_report with evidence).", "#43D9A3", "♟"),
+            ("qa", Worker, "Test the assigned change like a user would. Run the real app and drive the desktop through ctl, flags, sockets and captures; exercise the edge cases, try to break it, and reproduce every failure with exact steps. Report what you ran, what you saw and what is broken, with evidence. Do not fix product code unless the brief says so.", "#38BDF8", "♞"),
             ("shell", Worker, "", "#7397D4", ""),
+            ("solo", Oracle, "Own the whole task alone: research, plan, design, implement, verify with real evidence, and land. Do not delegate or spawn other seats unless the operator asks. Report files, commands, and results.", "#F7C442", "♚"),
         ].into_iter().map(|(name, class, prompt, color, mark)| (name.into(), RoleDefinition {
             class, prompt: prompt.into(), send: String::new(), color: color.into(), mark: mark.into(),
         })).collect();
@@ -60,6 +63,7 @@ impl RoleCatalog {
             ("codex", "executor"),
             ("pi", "executor"),
             ("omp", "executor"),
+            ("bboxy450-harness", "executor"),
             ("zsh", "shell"),
         ]
         .into_iter()
@@ -68,10 +72,19 @@ impl RoleCatalog {
                 kind.into(),
                 HarnessRoles {
                     default_role: default.into(),
-                    available_roles: ["oracle", "architect", "creativity", "executor", "shell"]
-                        .into_iter()
-                        .map(String::from)
-                        .collect(),
+                    available_roles: [
+                        "oracle",
+                        "architect",
+                        "creativity",
+                        "researcher",
+                        "executor",
+                        "qa",
+                        "shell",
+                        "solo",
+                    ]
+                    .into_iter()
+                    .map(String::from)
+                    .collect(),
                 },
             )
         })
@@ -201,7 +214,7 @@ mod tests {
             .push("Coordinator".into());
         catalog.harnesses.get_mut("codex").unwrap().default_role = "Coordinator".into();
         catalog.validate().unwrap();
-        for kind in ["pi", "omp", "custom"] {
+        for kind in ["pi", "omp", "bboxy450-harness", "custom"] {
             let mut configured = catalog.clone();
             configured.harnesses.insert(
                 kind.into(),

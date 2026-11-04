@@ -107,17 +107,44 @@ GitKB and portable document semantics:
 | Full slug | First-class locator and relative `slug.md` path; updates retain native identity |
 | Native frontmatter number | Preserved; numbered family suffix is a fallback handle; collisions return candidates |
 | No numeric handle | `number: null`; no separate numbering ledger |
-| Explicit workspace or committed source | Source-aware digest and GitKB generation `etag`; no fallback from a deleted workspace |
+| Explicit workspace or committed source | Source-aware digest (committed: native id and version; workspace: bytes) and GitKB generation `etag`; no fallback from a deleted workspace |
 | Frontmatter and Markdown | Native parsed frontmatter/body preserved, with canonical metadata under `gitkb` |
 | Typed native graph relationships | Portable edges with native relationship names; unweighted native edges have weight 1 |
-| Native task status | Draft/backlog → open, active → running, completed → done |
-| Host lifecycle status | Native extension `bboxy_status`; outward portable `status` |
-| Host-signed write intent | Exact opaque `bboxy_signed_record` string; dedicated `signed_record` result field |
+| Native task status | The one table below, both ways; only native `status` is stored |
+| Host-signed write intent | Kept outside the KB in the plugin data dir (`signed/`), per document id and version digest; returned as `signed_record` |
+| Resolved relationships | `relationships`: `references`, `depends_on`, `blocks`, `parent` as `git-kb show <slug> --json` reports them |
 
-The proof and native lifecycle extension are removed from ordinary outward
-frontmatter after projection, so repeated task transitions do not recursively
-nest proofs. The host must verify its proof and acceptance evidence. A native
-completed task does not become host-accepted merely because it completed.
+| Host status | GitKB status |
+|---|---|
+| open | backlog |
+| claimed | claimed |
+| running | active |
+| reported | reported |
+| accepted | accepted |
+| rejected | rejected |
+| blocked | blocked |
+| done | completed |
+
+GitKB `status` is free text, so every host state has a native value: GitKB's
+own word where one exists, else the host state verbatim. `accepted` stays apart
+from `done` because the host tells them apart (an accepted verification is
+never replaced by reconciliation). Reads invert the table exactly, so every
+host state round-trips. `draft` and any status outside the table (for example
+`investigating`) read as `open`; the document keeps its raw value, also through
+an update that keeps the task open. Only a status the host itself does not
+know is refused, with `unmappable_status`, before any write. A legacy
+`bboxy_status` or `bboxy_signed_record` field in an older document is dropped
+unread; the native `status` alone is read. A proof is returned only for the
+exact version it signed, so another editor's change leaves no stale proof.
+Frontmatter mirrors the source YAML, so it can still show a `parent` whose
+target GitKB does not resolve; `relationships.parent` then is null, as in
+`git-kb show`.
+
+Seat tools beyond the contract: `plugin_tool_gitkb_create_next` (Oracle) runs
+`git-kb create task --next <family> --title <title> --json` and returns its
+`slug`, `authority` and `sync_required` unchanged. `plugin_tool_gitkb_sync_status`
+runs read-only `git-kb sync status <remote> <pathspec> --json` against the KB's
+only configured remote or the named configured one, never assuming `origin`.
 
 Writes use `git-kb workspace write --stdin --if-generation`; creation uses its
 atomic `--create-if-missing` path. Updates to committed-only records first use
@@ -146,10 +173,19 @@ examines at least one record, and keeps scanning past filtered-out records, so
 empty pages with a `next` cursor occur only when the budget ran out. Follow
 `next` through them as well.
 
-Committed-only records (no workspace file) are read in one batched
-`git-kb show --raw-content --json -- <slug>...` call; their raw bytes equal the
-committed source, so their references and digests equal an exact read's.
-Records with a workspace file use the exact source-aware read. A per-process
+A committed-source `RecordRef` digest is the SHA-256 of canonical
+`[root, {"kind": "committed"}, native id, version]`: GitKB bumps a document's
+version on every commit of it, so a commit makes an old reference stale
+without reading bytes. A workspace-source digest remains
+`[root, documentSource, raw bytes]`. Fetch and reference checks compute the same
+digests, so list, search and graph references equal an exact read's. Every
+reference also carries `updated_at` in epoch milliseconds: a committed source's
+GitKB `modified_at` (which each commit advances; `list`, `export` and `show`
+agree), a workspace source's file modification time (GitKB reports read time
+as a workspace `modified_at`). Index snapshots are format 3 for it.
+Committed-only records (no workspace file) come from the index below, or from
+one batched `git-kb show --raw-content --json -- <slug>...` call. Records with a
+workspace file use the exact source-aware read. A per-process
 cache keyed by slug and the record's full catalog row (including the committed
 `modified_at` or the exact workspace file stat) reuses earlier summaries and
 exact graph records; `fetch`, `write`, `commit` and reference checks always read
@@ -157,6 +193,95 @@ exactly. Known gap: a document deleted in the workspace but not yet committed ha
 no workspace file, so a listing shows its committed reference and an exact fetch
 then answers `not_found`; detecting it needs `git-kb status`, which costs about a
 second on a large KB.
+
+Catalogs, filtered or not, come from an in-memory index once it is ready,
+instead of one `git-kb list` per call. `initialize` starts a background thread that
+runs `git-kb export --format jsonl` (all committed documents; 4.0 s and 61 MB
+for Harmony's 3691) and keeps only each document's native id and its
+`assignee`, `swarm` and legacy `bboxy_status` values. Output is capped at 1 GiB,
+lines at 64 MiB and documents at one million; malformed and duplicate lines
+are counted under `health.index.skipped` and those documents stay
+candidates. One unfiltered native `git-kb list` supplies the exact catalog
+rows (title order, type, status, ids), so index-built catalogs have the same
+rows and snapshots as the backend path. The index reproduces native 0.2.19
+prefilter semantics measured on a private fixture: `--type` and `--status`
+lowercase their input and compare the row exactly; `--where` compares the
+committed frontmatter of committed documents, even when their workspace file
+differs, and the workspace source of workspace-only documents. A document
+whose values are unknown stays a candidate. Items, summaries and `RecordRef`
+digests still come from the batched or exact reads above, which apply the
+authoritative filter, so a committed value is never served for a
+workspace-backed record.
+
+Freshness: the committed layer is valid for one store signal, the (device,
+inode, size, modification and change times) of `.kb/store`, its
+`manifest.json`, `documents`, `commits`, `refs` and `refs/document-tips.json`.
+A native commit renames a new manifest and tips into place; workspace writes,
+`rm` of a committed document and every read leave them unchanged (measured).
+GitKB's `.kb/.cache` database is excluded because reads rewrite it. The row
+layer is also keyed by the exact workspace file stats. A changed store signal
+starts one background rebuild. While a build runs (including a cold process's
+first reads), a call that needs `--where` fields waits for it, at most 700 ms
+and never past its own deadline less 800 ms; it takes the backend path only
+when the build fails, finishes for another store signal, has not finished by
+then or the call is cancelled, and whenever the store or workspace moves
+while rows refresh. The host's per-call deadline is the declared 2 s,
+shortened to whatever its operation (an 8 s task list) has left, and the
+plugin cannot see that remainder; short waits keep each cold call near one
+second. A cold Harmony process answered the host's 126-call task list in
+4.0 s from spawn with no call over the host's deadline (initialize 0.74 s,
+build ready 2.97 s, slowest call 0.72 s), and a respawn that loaded the
+snapshot in 1.15 s (slowest call 0.11 s, no fallback). Each finished build is
+saved to the plugin's private data directory (its cwd) as
+`gitkb-index-<root digest>.json`: a private file written and renamed into
+place, holding the format version, root, store signal, each committed
+document (id, version, title, type, frontmatter, snippet) and the derived
+edges. `initialize` loads it synchronously only for the same root, version
+and current store signal (Harmony: 14 ms), so a respawned
+process, for example after the host closed its client on a refusal, serves
+filtered calls at once; anything else is ignored and rebuilt.
+
+The same export also serves whole records. Export frontmatter is GitKB's
+parsed frontmatter plus graph-only relationship keys (`references`,
+`children`, `parent`, `in`, `depends_on`, `blocked_by`, `implements`,
+`blocks`); without those keys it equals `show --source committed`
+frontmatter, and id, version, title, type and body are equal too, for every
+one of Harmony's 3691 committed documents (measured). List and search
+summaries and graph nodes of committed-only records therefore need no read:
+they apply the exact read's projection to that frontmatter. Their outgoing
+graph edges are derived from the relationship keys: `references`,
+`children` (`parent_of`), `depends_on`, `implements` and `blocks` point from
+the document, and `in: {container: rank}` makes a `contains` edge from each
+container; code and commit targets are omitted as before. This equals
+GitKB's per-document `graph --direction out` read for every committed-only
+Harmony document. Workspace-backed records are read exactly in the
+background at initialize, 8 at a time, with their own per-document native
+edge read unless GitKB reports a clean, current checkout (then their
+committed edges apply); each is valid for the file stat it was read at, and
+saved as `gitkb-workspace-<root digest>.json`, so a respawn reads only files
+that changed. Until the committed layer and the workspace records are ready, a
+graph call waits up to 700 ms for them and then returns a one-node page. Page
+edges are sorted. The backend path still reads edges with one native call for
+a page's members, and GitKB 0.2.19 answers a multi-document read with fewer
+edges (a document already reached from another is not expanded): 15 of 16
+measured Harmony pages lack some per-document edges there.
+
+Harmony, the host's Tasks reads replayed from spawn (the wide unassigned
+inventory, graph Type task, bug and epic, 128 per page until the last, then
+the 126 per-seat lists), each call timed against the host's budget: cold with
+no snapshot, 6.2 s for the wide read (index ready 3.1 s, workspace records
+5.1 s) and 0 calls over the host deadline; respawned with snapshots, 1.19 s
+including the 0.76 s initialize (17 ms per 128-node page after the first,
+which refreshes the rows), and 0.28 s for the lists; the backend path takes
+16.3 s with 12 calls over the deadline. Filters
+the index cannot prove equal (`since`, other fields, values with spaces or
+quotes, numbers and `true`/`false`/`null`) always take the backend path.
+`health.index` reports readiness, build and ready times, served and fallback
+counts and both signals. `BBOXY_GITKB_INDEX=off` in the plugin's own
+environment (not forwarded by the host) disables the index, for comparison.
+`make check-gitkb-plugin` compares index and backend results on a fixture,
+and `make probe-gitkb-harmony` replays the host task list's 126 filtered
+calls against both.
 
 Status filters match the portable status (`running`) or the native one
 (`active`), so `status:active` and `type:task status:running` both select active

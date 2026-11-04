@@ -49,11 +49,12 @@ macro_rules! task_commands {
             TaskGet {
                 task: String,
             },
-            /// `task report <#N|path|id> --summary TEXT [--commit SHA] [--verify-result JSON]`.
+            /// `task report <#N|path|id> --summary TEXT [--commit SHA] [--report LOCATOR] [--verify-result JSON]`.
             TaskReport {
                 task: String,
                 summary: String,
                 commit: Option<String>,
+                report: Option<String>,
                 verify_result: Option<TaskVerification>,
             },
             TaskAccept {
@@ -101,6 +102,7 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
             summary: flag("summary")
                 .ok_or_else(|| format!("{USAGE_PREFIX}task report needs --summary TEXT"))?,
             commit: flag("commit"),
+            report: flag("report"),
             verify_result: flag("verify-result")
                 .map(|value| {
                     serde_json::from_str(&value)
@@ -180,10 +182,11 @@ pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, S
             loop {
                 let TaskResponse::Items { items, next } = client.task(TaskRequest::List {
                     unassigned: false,
+                    include_unassigned: false,
                     swarm_id: None,
                     status: None,
                     assignee: None,
-                    after,
+                    after: after.clone(),
                     limit: Some(PAGE),
                 })?
                 else {
@@ -191,7 +194,7 @@ pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, S
                 };
                 cards.extend(items);
                 match next {
-                    Some(next) if Some(next) != after => after = Some(next),
+                    Some(next) if after.as_ref() != Some(&next) => after = Some(next),
                     _ => break,
                 }
             }
@@ -263,10 +266,11 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
             loop {
                 let TaskResponse::Items { items, next } = client.task(TaskRequest::List {
                     unassigned,
+                    include_unassigned: false,
                     swarm_id: None,
                     status: status.clone(),
                     assignee: assignee.clone(),
-                    after,
+                    after: after.clone(),
                     limit: Some(PAGE),
                 })?
                 else {
@@ -274,7 +278,7 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
                 };
                 cards.extend(items);
                 match next {
-                    Some(next) if Some(next) != after => after = Some(next),
+                    Some(next) if after.as_ref() != Some(&next) => after = Some(next),
                     _ => break,
                 }
             }
@@ -297,11 +301,13 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
             task,
             summary,
             commit,
+            report,
             verify_result,
         } => serde_json::to_value(client.task(TaskRequest::Report {
             task_path: task,
             summary,
             commit,
+            report,
             verify_result,
         })?)
         .map_err(|e| e.to_string())?,

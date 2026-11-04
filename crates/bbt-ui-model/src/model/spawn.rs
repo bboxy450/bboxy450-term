@@ -16,6 +16,7 @@ pub enum FieldKey {
     Command,
     Arguments,
     Environment,
+    TransportParam(u8),
 }
 impl FieldKey {
     pub fn label(self) -> &'static str {
@@ -29,6 +30,7 @@ impl FieldKey {
             Self::Command => "Command",
             Self::Arguments => "Arguments",
             Self::Environment => "Environment",
+            Self::TransportParam(_) => "Transport parameter",
         }
     }
 }
@@ -56,6 +58,12 @@ pub struct ValueChoice {
     pub purpose: String,
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TransportParameter {
+    pub owner: String,
+    pub name: String,
+    pub label: String,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SpawnField {
     pub key: FieldKey,
     pub value: String,
@@ -63,6 +71,15 @@ pub struct SpawnField {
     /// None means inline text; Some means a value list.
     pub choices: Option<Vec<ValueChoice>>,
     pub fixed: bool,
+    pub parameter: Option<TransportParameter>,
+}
+
+impl SpawnField {
+    pub fn label(&self) -> &str {
+        self.parameter
+            .as_ref()
+            .map_or_else(|| self.key.label(), |p| p.label.as_str())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

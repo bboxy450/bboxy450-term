@@ -72,16 +72,76 @@ struct Fixture {
     capability: [u8; 32],
     task: Ulid,
     task_path: String,
+    board_size: usize,
 }
 impl Fixture {
     async fn new() -> Self {
+        Self::start(false).await
+    }
+    async fn start(board: bool) -> Self {
         let root = tempfile::tempdir().unwrap();
         let repository = root.path().join("repository");
         std::fs::create_dir_all(repository.join(".bboxy/tasks")).unwrap();
         let own = SeatRecord::new(Ulid::new(), Ulid::new(), "Actual executor", "zsh");
         let task = Ulid::new();
         let task_path = format!(".bboxy/tasks/{task}.md");
-        std::fs::write(repository.join(&task_path), format!("---\nid: {task}\ntype: task\nnumber: 1\ntitle: Owned UI fixture\nstatus: open\nverify: 'true'\n---\nDo the fixture work.\n")).unwrap();
+        let assignment = if board {
+            format!("assignee: seat:{}\nswarm: {}\n", own.id, own.swarm)
+        } else {
+            String::new()
+        };
+        std::fs::write(repository.join(&task_path), format!("---\nid: {task}\ntype: task\nnumber: 1\ntitle: Owned UI fixture\nstatus: open\n{assignment}verify: 'true'\n---\nDo the fixture work.\n")).unwrap();
+        let mut board_size = 1;
+        if board {
+            let documents = if let Some(source) = std::env::var_os("BBOXY_TASK_BOARD_SOURCE") {
+                let mut documents = Vec::new();
+                for directory in ["tasks", "bugs", "epics"] {
+                    let directory = std::path::Path::new(&source).join(directory);
+                    if !directory.is_dir() {
+                        continue;
+                    }
+                    for entry in std::fs::read_dir(directory).unwrap() {
+                        let path = entry.unwrap().path();
+                        if path.extension().is_some_and(|extension| extension == "md") {
+                            let document = bbt_mux::index::Document::parse(
+                                "tasks/snapshot.md",
+                                &std::fs::read_to_string(path).unwrap(),
+                            );
+                            if document.error.is_none()
+                                && matches!(
+                                    document.metadata["type"].as_str(),
+                                    Some("task" | "bug" | "epic")
+                                )
+                                && document.metadata["id"].as_str() == Some(document.id.as_str())
+                            {
+                                documents.push(document);
+                            }
+                        }
+                    }
+                }
+                documents
+            } else {
+                (2..=90).map(|number| bbt_mux::index::Document::parse(
+                    "tasks/large.md", &format!("---\nid: {}\ntype: task\nnumber: {number}\ntitle: Large board task {number}\nstatus: open\nhistory: {}\n---\n{}",
+                        Ulid::new(), "history ".repeat(2048), "body".repeat(4096)),
+                )).collect()
+            };
+            for mut document in documents {
+                // Copy source body/history without touching the source account.
+                // Normalize ownership/state/number to this throwaway GUI identity.
+                board_size += 1;
+                document.metadata["number"] = serde_json::json!(board_size);
+                document.metadata["status"] = serde_json::json!("open");
+                document.metadata["assignee"] = serde_json::json!(format!("seat:{}", own.id));
+                document.metadata["delegated_by"] = serde_json::Value::Null;
+                document.metadata["swarm"] = serde_json::json!(own.swarm);
+                std::fs::write(
+                    repository.join(format!(".bboxy/tasks/{}.md", document.id)),
+                    format!("---\n{}\n---\n{}", document.metadata, document.body),
+                )
+                .unwrap();
+            }
+        }
         let supervisor = Supervisor::start(bbt_mux::Config {
             journal_directory: Some(root.path().join("supervisor-journal")),
             ..Default::default()
@@ -91,14 +151,21 @@ impl Fixture {
             supervisor.connect().unwrap(),
             LogicConfig {
                 run_dir: root.path().join("run"),
-                repository,
+                repository: repository.clone(),
                 ring: Default::default(),
             },
             Arc::new(Keys::default()),
             &tokio::runtime::Handle::current(),
         )
         .unwrap();
-        let mut launch = LaunchSpec::new("/bin/zsh", root.path());
+        let mut launch = LaunchSpec::new(
+            "/bin/zsh",
+            if board {
+                repository.as_path()
+            } else {
+                root.path()
+            },
+        );
         launch.seat = own.id;
         launch.args = vec![
             "-f".into(),
@@ -122,6 +189,7 @@ impl Fixture {
             capability: endpoint.capability,
             task,
             task_path,
+            board_size,
         }
     }
     fn logic(&self) -> &Logic {
@@ -173,20 +241,31 @@ impl Fixture {
     }
     async fn task_refresh(&mut self, records: &mut Records, results: &mut Results) {
         records.refresh();
-        for _ in 0..4 {
-            let commands = records.commands();
-            if commands.is_empty() {
-                return;
+        self.task_refresh_more(records, results).await;
+    }
+    /// Settle the reads already queued, such as a scrolled-in older page.
+    async fn task_refresh_more(&mut self, records: &mut Records, results: &mut Results) {
+        tokio::time::timeout(Duration::from_secs(30), async {
+            loop {
+                // Drive the same transient-read timer as the native/headless UI.
+                // A mounting workspace can otherwise look like a settled empty board.
+                if let Some((epoch, delay)) = records.take_retry() {
+                    eprintln!("GUI fixture: transient task read retries after {delay:?}");
+                    tokio::time::sleep(delay).await;
+                    assert!(records.retry_ready(epoch));
+                }
+                let commands = records.commands();
+                if commands.is_empty() {
+                    return;
+                }
+                for command in commands {
+                    self.command(command, results).await;
+                }
+                records.replies(results);
             }
-            for command in commands {
-                self.command(command, results).await;
-            }
-            records.replies(results);
-        }
-        assert!(
-            records.commands().is_empty(),
-            "bounded fixture reads settled"
-        );
+        })
+        .await
+        .expect("bounded fixture reads settled");
     }
     async fn report(&self, verified: bool) {
         let mut args = serde_json::json!({"task_path":self.task_path,"summary":"Actual MCP report shown in the native review card","commit":"0123456789012345678901234567890123456789"});
@@ -211,6 +290,44 @@ impl Fixture {
         assert_eq!(result["isError"], false, "{result}");
     }
 }
+
+// keeps: the real GUI task wire and sidebar retain a board larger than the live
+// 66-task reproduction. An optional read-only snapshot preserves source bodies
+// and history while confining identity and all writes to this private account.
+#[ignore = "night: real boundary, test-policy #327 B2"]
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn task_list_large_board_renders_through_the_real_gui_socket() {
+    let mut f = Fixture::start(true).await;
+    assert!(f.board_size >= 66);
+    let mut records = Records::default();
+    records.select(f.scope);
+    let mut results = Results::default();
+    f.task_refresh(&mut records, &mut results).await;
+    assert_eq!(
+        records.tasks().len(),
+        messaging::TASK_PAGE.min(f.board_size)
+    );
+    // Scrolling pages older tasks in until the board is complete.
+    while records.task_next.is_some() {
+        records.more_tasks();
+        f.task_refresh_more(&mut records, &mut results).await;
+    }
+    assert!(records.issue.is_none(), "{:?}", records.issue);
+    assert_eq!(records.omitted, 0);
+    assert_eq!(records.tasks().len(), f.board_size);
+    assert_eq!(
+        records
+            .entries(&Default::default(), None)
+            .iter()
+            .filter(|entry| { matches!(entry, Entry::Task { .. }) })
+            .count(),
+        f.board_size
+    );
+    eprintln!(
+        "task board: {} source tasks rendered through the private GUI socket",
+        f.board_size
+    );
+}
 impl Drop for Fixture {
     fn drop(&mut self) {
         if let Some(logic) = self.logic.take() {
@@ -221,6 +338,131 @@ impl Drop for Fixture {
         }
     }
 }
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn chat_timestamp_from_real_service_matches_envelope_across_gui_and_mcp() {
+    use bbt_proto::messaging::SendRequest;
+
+    bboxy450_term::local_time::initialize();
+    let mut f = Fixture::new().await;
+    let channel = format!("swarms/{}", f.own.swarm);
+    let mut message = SendRequest::text(channel.clone(), "Timestamp fixture");
+    message.kind = MessageKind::Decision;
+    let id = message.id;
+    let GuiReply::Messaging {
+        response: Response::Stored { message: stored },
+        ..
+    } = f
+        .action(
+            id,
+            GuiAction::Messaging {
+                id,
+                swarm_id: f.scope,
+                request: Request::Send { message },
+            },
+        )
+        .await
+    else {
+        panic!("real service stores the signed message")
+    };
+    let envelope = stored.envelope().expect("signed fixture envelope");
+    let seconds = envelope.timestamp;
+    let expected_ms = seconds * 1000;
+    let expected_time = bboxy450_term::local_time::hm(expected_ms);
+    assert_ne!(expected_time, "—");
+
+    let row = f
+        .logic()
+        .client
+        .gui_message_row(f.own.swarm, id)
+        .await
+        .unwrap();
+    let view = messaging::message_view(&row, &Default::default());
+    assert_eq!(view.ts, Some(expected_ms));
+    assert_eq!(view.time, expected_time);
+    // The existing row JSON remains seconds for old GUI/ctl consumers.
+    assert_eq!(serde_json::to_value(&row).unwrap()["ts"], seconds);
+
+    let op = Ulid::new();
+    let GuiReply::Messaging {
+        response: Response::Recent { page, rows, .. },
+        ..
+    } = f
+        .action(
+            op,
+            GuiAction::Messaging {
+                id: op,
+                swarm_id: f.scope,
+                request: Request::Recent {
+                    channel: Some(channel.clone()),
+                    before: None,
+                    limit: 128,
+                },
+            },
+        )
+        .await
+    else {
+        panic!("GUI recent readback")
+    };
+    let row = rows
+        .iter()
+        .find(|row| row.id == id)
+        .expect("canonical GUI row");
+    assert_eq!(
+        messaging::message_view(row, &Default::default()).time,
+        expected_time
+    );
+    assert_eq!(
+        page.items
+            .iter()
+            .find(|message| message.view().id == id)
+            .unwrap()
+            .envelope()
+            .unwrap()
+            .timestamp,
+        seconds
+    );
+    let mut history = messaging::History::default();
+    history.select(f.scope);
+    // A fresh canonical read can precede bus publication. Drive the actual
+    // history response path, which also admits rows without a bus position.
+    let mut results = Results::default();
+    for command in history.commands() {
+        f.command(command, &mut results).await;
+    }
+    assert!(history.replies(&results));
+    assert!(history.entries(&Default::default(), &Default::default(), &[]).iter()
+        .any(|entry| matches!(entry, Entry::Message { data, .. }
+            if data.message_ids.contains(&id.to_string()) && data.ts == Some(expected_ms) && data.time == expected_time)));
+
+    // MCP message_list and ctl both expose Request::List's retained envelope,
+    // whose seconds and signed bytes must remain unchanged.
+    let listed = f
+        .logic()
+        .client
+        .control_call(
+            f.own.id,
+            f.own.generation,
+            bbt_mux::mcp::Call {
+                op_id: Ulid::new(),
+                tool: "message_list".into(),
+                args: serde_json::json!({"channel": channel, "limit": 128}),
+            },
+        )
+        .await
+        .unwrap();
+    assert_eq!(listed["isError"], false, "{listed}");
+    let listed: Response = serde_json::from_value(listed["structuredContent"].clone()).unwrap();
+    let Response::Messages { page } = listed else {
+        panic!("MCP messages")
+    };
+    let listed = page
+        .items
+        .iter()
+        .find(|message| message.view().id == id)
+        .unwrap();
+    assert_eq!(listed.envelope().unwrap(), envelope);
+}
+
 // keeps: spec l9-messaging-tasks §5
 #[ignore = "night: real boundary, test-policy #327 B2"]
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -295,21 +537,16 @@ async fn composed_decision_and_task_delegation_cross_the_real_gui_boundary() {
 
     let mut records = Records::default();
     records.select(f.scope);
-    for command in records.commands() {
-        f.command(command, &mut results).await;
-    }
-    records.replies(&results);
-    assert!(
-        records.tasks().is_empty(),
-        "an unassigned task is not in a swarm inventory"
-    );
+    // The swarm-scoped read retries while the workspace opens.
+    f.task_refresh(&mut records, &mut results).await;
     let unassigned = records
-        .unassigned()
+        .tasks()
         .iter()
         .find(|card| card.id == f.task)
-        .expect("operator read-only inventory");
+        .expect("the operator's one view includes open unassigned tasks")
+        .clone();
     assert!(unassigned.assignee.is_none());
-    let attachment = messaging::task_attachment(unassigned);
+    let attachment = messaging::task_attachment(&unassigned);
     let refused = f
         .logic()
         .client
@@ -393,18 +630,16 @@ async fn composed_decision_and_task_delegation_cross_the_real_gui_boundary() {
             .receipts
             .is_some_and(|r| r.delivered > 0)
     );
-    records.refresh();
-    for command in records.commands() {
-        f.command(command, &mut results).await;
-    }
-    records.replies(&results);
-    assert!(
-        records.unassigned().is_empty(),
-        "delegation removes it from the unscoped inventory"
+    f.task_refresh(&mut records, &mut results).await;
+    assert_eq!(
+        records.tasks().front().map(|card| card.id),
+        Some(f.task),
+        "the delegated task is the most recent change, at the top"
     );
     let card = records
         .task(f.task)
         .expect("shared TaskCard read after delegation");
+    assert!(card.assignee.is_some() && card.delegated_by.is_some());
     let (task_row, verify) = messaging::task_row(card);
     assert_eq!(task_row.state, "claimed");
     assert_eq!(verify, None);

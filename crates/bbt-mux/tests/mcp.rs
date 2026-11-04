@@ -8,8 +8,12 @@
 
 use bbt_mux::messaging::wire::EnvelopeExt;
 mod common;
+#[path = "mcp/harness_status.rs"]
+mod harness_status;
 #[path = "common/record_supervisor.rs"]
 mod record_supervisor;
+#[path = "mcp/launch.rs"]
+mod launch_tests;
 use record_supervisor::RecordLink;
 use std::io::{Cursor, Read, Write};
 use std::os::unix::net::UnixStream;
@@ -44,6 +48,7 @@ struct Fixture {
     task: Ulid,
     foreign_task: Ulid,
     input_attempts: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    pty_bytes: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     history_gap: std::sync::Arc<std::sync::atomic::AtomicBool>,
     native_runtime: NativeRuntimes,
     _temp: tempfile::TempDir,
@@ -59,6 +64,13 @@ impl Fixture {
         Self::open(true, lose)
     }
     fn open(real: bool, lose: bool) -> Self {
+        Self::open_seeded(real, lose, |_, _| {})
+    }
+    fn open_seeded(
+        real: bool,
+        lose: bool,
+        seed: impl FnOnce(&std::path::Path, &SeatRecord),
+    ) -> Self {
         let temp = tempfile::tempdir().unwrap();
         let repository = temp.path().join("repository");
         std::fs::create_dir_all(repository.join(".bboxy/tasks")).unwrap();
@@ -82,6 +94,7 @@ impl Fixture {
             let number = number + 1;
             std::fs::write(repository.join(format!(".bboxy/tasks/{id}.md")),format!("---\nid: {id}\ntype: task\nnumber: {number}\ntitle: {title}\nstatus: running\nassignee: {seat}\nverify: 'true'\n---\nSynthetic fixture brief only.\n")).unwrap();
         }
+        seed(&repository, &own);
         let config = LogicConfig {
             run_dir: temp.path().join("run"),
             repository,
@@ -96,6 +109,7 @@ impl Fixture {
             real.then(|| Supervisor::start(common::capture_config(temp.path())).unwrap());
         let record_link = (!real).then(RecordLink::default);
         let input_attempts = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        let pty_bytes = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
         let history_gap = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
         let native_runtime =
             std::sync::Arc::new(std::sync::Mutex::new(std::collections::BTreeMap::new()));
@@ -107,6 +121,7 @@ impl Fixture {
                 },
                 lose,
                 attempts: input_attempts.clone(),
+                pty_bytes: pty_bytes.clone(),
                 history_gap: history_gap.clone(),
                 native_runtime: native_runtime.clone(),
             },
@@ -141,6 +156,7 @@ impl Fixture {
             task,
             foreign_task,
             input_attempts,
+            pty_bytes,
             history_gap,
             native_runtime,
             _temp: temp,
@@ -291,6 +307,7 @@ impl Fixture {
                     client: self.connection(),
                     lose: false,
                     attempts: self.input_attempts.clone(),
+                    pty_bytes: self.pty_bytes.clone(),
                     history_gap: self.history_gap.clone(),
                     native_runtime: self.native_runtime.clone(),
                 },
@@ -324,6 +341,7 @@ struct LostInputReceipt {
     client: Connection,
     lose: bool,
     attempts: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    pty_bytes: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     history_gap: std::sync::Arc<std::sync::atomic::AtomicBool>,
     native_runtime: NativeRuntimes,
 }
@@ -331,6 +349,10 @@ impl bbt_mux::logic::SupervisorConnection for LostInputReceipt {
     fn request(&mut self, action: bbt_mux::Action) -> bbt_mux::store::Result<bbt_mux::Reply> {
         let input = matches!(action, bbt_mux::Action::GuardedInput { .. });
         let mut result = self.client.request(action)?;
+        if let bbt_mux::Reply::Input { receipt } = &result {
+            self.pty_bytes
+                .fetch_add(receipt.bytes_written, std::sync::atomic::Ordering::SeqCst);
+        }
         // This RPC fixture hosts its native server in the test process. Supply
         // its explicit host facts at the existing fake transport boundary; real
         // companion subprocess ownership/reaping is checked in supervisor tests.
@@ -762,6 +784,7 @@ fn gui_operator_dm_replays_once_and_tasks_share_mcp_verification() {
     assert_eq!(document.metadata["authorship"]["kind"], "local-dev");
     let listed = f.gui_task(TaskRequest::List {
         unassigned: false,
+        include_unassigned: false,
         swarm_id: Some(f.own.swarm),
         status: Some("accepted".into()),
         assignee: None,
@@ -928,6 +951,7 @@ fn mcp_seat_controls_enforce_catalogue_scope_generation_and_strict_arguments() {
         "seat_spawn",
         "seat_split",
         "seat_focus",
+        "seat_close",
         "layout_read",
         "ctl",
         "seat_mute",
@@ -1395,7 +1419,10 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     initialize(&mut bridge);
     let list = rpc(&mut bridge, 2, "tools/list", json!({}));
     let tools = list["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 28);
+    assert_eq!(tools.len(), 30);
+    assert!(tools.iter().any(|tool| tool["name"] == "harness_profiles"));
+    assert!(tools.iter().any(|tool| tool["name"] == "usage_read"
+        && tool["annotations"]["readOnlyHint"] == true));
     assert!(tools.iter().any(|tool| tool["name"] == "knowledge_status"));
     assert!(
         tools
@@ -1852,6 +1879,7 @@ fn mcp_socket_refuses_bad_capabilities_and_generations_and_audit_does_not_store_
                     tool: "message_send".into(),
                     args: json!({"destination":format!("seats/{}/inbox",fixture.peer.id),"text":"must not execute"}),
                 },
+                attribution: Default::default(),
             },
         ] {
             let mut stream = UnixStream::connect(&endpoint.path).unwrap();
@@ -2109,18 +2137,15 @@ fn mcp_installed_claude_and_codex_call_orient() {
         ] {
             command.env_remove(name);
         }
+        let admission = tempfile::tempdir_in(private_home.path()).unwrap();
+        let capability_file =
+            bboxy450_harness_wake_up::capability::create(admission.path(), &endpoint.capability)
+                .unwrap();
         command
             .env("BBOXY_SOCK", &endpoint.path)
             .env("BBOXY_SEAT_ID", seat.to_string())
             .env("BBOXY_GENERATION", endpoint.generation.to_string())
-            .env(
-                "BBOXY_CAPABILITY",
-                endpoint
-                    .capability
-                    .iter()
-                    .map(|b| format!("{b:02x}"))
-                    .collect::<String>(),
-            );
+            .env("BBOXY_CAPABILITY_FILE", capability_file);
         if program == "claude" {
             command
                 .args([
@@ -2141,7 +2166,7 @@ fn mcp_installed_claude_and_codex_call_orient() {
         } else {
             command.args(["exec","--ephemeral","--json","-s","read-only","-c","approval_policy=\"never\"","-c"])
                 .arg(format!("mcp_servers.bboxy.command={}",json!(exe)))
-                .args(["-c","mcp_servers.bboxy.args=[\"mcp\"]","-c","mcp_servers.bboxy.env_vars=[\"BBOXY_SOCK\",\"BBOXY_CAPABILITY\",\"BBOXY_SEAT_ID\",\"BBOXY_GENERATION\"]","-c","mcp_servers.bboxy.enabled_tools=[\"orient\"]"])
+                .args(["-c","mcp_servers.bboxy.args=[\"mcp\"]","-c","mcp_servers.bboxy.env_vars=[\"BBOXY_SOCK\",\"BBOXY_CAPABILITY_FILE\",\"BBOXY_SEAT_ID\",\"BBOXY_GENERATION\"]","-c","mcp_servers.bboxy.enabled_tools=[\"orient\"]"])
                 .arg(prompt);
         }
         let (status, out, err) = bounded_client(command, Duration::from_secs(120), &private_home);
@@ -2462,8 +2487,8 @@ fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_r
         .runtime
         .block_on(f.client().control_catalogue(oracle, 1))
         .unwrap();
-    assert_eq!(worker["tools"].as_array().unwrap().len(), 28);
-    assert_eq!(admin["tools"].as_array().unwrap().len(), 48);
+    assert_eq!(worker["tools"].as_array().unwrap().len(), 30);
+    assert_eq!(admin["tools"].as_array().unwrap().len(), 51);
     for catalogue in [&worker, &admin] {
         let status = catalogue["tools"]
             .as_array()
@@ -4138,9 +4163,33 @@ fn mcp_fixture_first_turn_orients_reports_and_retains_signed_task_receipts() {
 #[test]
 fn mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_only() {
     let f = Fixture::new();
+    // These external fixture edits bypass the native writer. Observe their exact
+    // digest before the next mutation instead of racing the asynchronous index.
+    let write = |metadata| {
+        let expected = f.task_file(metadata);
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let observed = f.call(
+                f.oracle.id,
+                Ulid::new(),
+                "knowledge_fetch",
+                json!({"locator":f.task_path()}),
+            );
+            if observed["isError"] == false
+                && observed["structuredContent"]["digest"] == expected.digest
+            {
+                break;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "fixture edit not indexed: {observed}"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    };
     let mut metadata = f.task_metadata();
     metadata["acceptance"] = json!(["criterion 1",{"criterion":"specs/fixture.md:7","spec":"specs/fixture.md","line":7}]);
-    f.task_file(metadata);
+    write(metadata);
     let accept = || {
         f.mutate(
             f.oracle.id,
@@ -4181,10 +4230,10 @@ fn mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_onl
     assert_eq!(data(accept())["task_status"], "accepted");
     assert_eq!(f.task_document().metadata["status"], "accepted");
     // Legacy tasks without a criteria list still need the exact command and zero.
-    f.task_file(f.task_metadata());
+    write(f.task_metadata());
     data(f.report(verification("true", 0, json!([]))));
     assert_eq!(data(accept())["task_status"], "accepted");
-    f.task_file(f.task_metadata());
+    write(f.task_metadata());
     data(f.report(verification("true", 0, json!([]))));
     data(f.mutate(
         f.oracle.id,
@@ -4212,6 +4261,72 @@ fn mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_onl
     );
     assert!(f.task_document().metadata.get("verify_result").is_none());
     assert!(accept().to_string().contains("recorded verify_result"));
+}
+
+// keeps: spec mcp-control-plane — task_list over the native provider is most
+// recently changed first (frontmatter `updated`, then ID), `after` pages
+// exactly, and a transition moves its task to the top.
+#[test]
+fn mcp_task_list_is_most_recently_changed_first_and_a_transition_moves_it_to_the_top() {
+    let f = Fixture::new();
+    f.task_file(f.task_metadata());
+    let mut metadata = f.task_metadata();
+    metadata["updated"] = json!("2026-10-01T00:00:00Z");
+    f.task_file(metadata.clone());
+    // Newer IDs changed earlier: ID order alone would list them backwards.
+    let mut pair = [Ulid::new(), Ulid::new()];
+    pair.sort();
+    let [newer, newest] = pair;
+    for (id, number, updated) in [
+        (newer, 2, "2026-10-03T00:00:00Z"),
+        (newest, 3, "2026-10-02T00:00:00.500Z"),
+    ] {
+        let mut other = metadata.clone();
+        other["id"] = json!(id);
+        other["number"] = json!(number);
+        other["updated"] = json!(updated);
+        std::fs::write(
+            f.config.repository.join(format!(".bboxy/tasks/{id}.md")),
+            format!(
+                "---\n{}---\nBrief.\n",
+                serde_yaml::to_string(&other).unwrap()
+            ),
+        )
+        .unwrap();
+    }
+    let list = |after: &Value| {
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            let page = data(f.call(
+                f.oracle.id,
+                Ulid::new(),
+                "task_list",
+                json!({"limit":2,"after":after}),
+            ));
+            if after.is_null() && page["next"].is_null() && Instant::now() < deadline {
+                std::thread::sleep(Duration::from_millis(20)); // The index has not seen every file yet.
+                continue;
+            }
+            return page;
+        }
+    };
+    let ids = |page: &Value| -> Vec<String> {
+        page["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|item| item["id"].as_str().unwrap().to_owned())
+            .collect()
+    };
+    let first = list(&Value::Null);
+    assert_eq!(ids(&first), [newer.to_string(), newest.to_string()]);
+    let rest = list(&first["next"]);
+    assert_eq!(ids(&rest), [f.task.to_string()]);
+    assert!(rest["next"].is_null());
+    // The oldest change is reported now: it moves to the top.
+    data(f.report(verification("true", 0, json!([]))));
+    let moved = list(&Value::Null);
+    assert_eq!(ids(&moved)[0], f.task.to_string());
 }
 
 // keeps: spec mcp-control-plane
@@ -4712,10 +4827,33 @@ fn mcp_oracle_controls_remain_seat_bound_through_the_ctl_alias() {
             json!({"seat_id":f.peer.id,"expected_process_generation":"2"}),
             "stale target",
         ),
+        (
+            f.own.id,
+            "seat_close",
+            f.target(f.peer.id),
+            "oracle-class authority",
+        ),
+        (
+            f.oracle.id,
+            "ctl",
+            json!({"command":"seat_close","arguments":f.target(f.outside.id)}),
+            "outside caller swarm",
+        ),
+        (
+            f.oracle.id,
+            "seat_close",
+            f.target(f.oracle.id),
+            "cannot close itself",
+        ),
     ] {
         refused(f.mutate(caller, Ulid::new(), tool, args), reason);
     }
     let no_window = f.mutate(f.oracle.id, Ulid::new(), "seat_focus", f.target(f.peer.id));
+    assert_eq!(
+        no_window["structuredContent"]["error"]["code"],
+        "unavailable"
+    );
+    let no_window = f.mutate(f.oracle.id, Ulid::new(), "seat_close", f.target(f.peer.id));
     assert_eq!(
         no_window["structuredContent"]["error"]["code"],
         "unavailable"
@@ -4826,7 +4964,15 @@ fn seat_orchestration_fixture() {
 }
 
 fn isolated_seat_fixture(mode: &str) {
-    let temp = tempfile::tempdir().unwrap();
+    // Darwin sockaddr_un is 104 bytes; this fixture owns a short private HOME.
+    let temp = if mode.starts_with("harness") {
+        tempfile::Builder::new()
+            .prefix("bhx-")
+            .tempdir_in("/tmp")
+            .unwrap()
+    } else {
+        tempfile::tempdir().unwrap()
+    };
     let mut command = std::process::Command::new(std::env::current_exe().unwrap());
     command
         .args([
@@ -4842,6 +4988,16 @@ fn isolated_seat_fixture(mode: &str) {
         .env("CODEX_HOME", temp.path().join("codex"))
         .env("BBOXY_TEST_CUSTODY", "memory")
         .env("BBOXY_MCP_SEAT_FIXTURE", mode);
+    if mode.starts_with("harness") {
+        if let Some(control) = std::env::var_os("BBOXY_RICH_TEST_CONTROL") {
+            command.env("BBOXY_RICH_TEST_CONTROL", control);
+        }
+        command.env(
+            "BBOXY_HARNESS_TEST_BIN",
+            std::env::var_os("BBOXY_HARNESS_TEST_BIN")
+                .expect("make test-harness-native builds the harness"),
+        );
+    }
     // Leave the child time to report its own 120-second guard and clean up.
     let (status, stdout, stderr) = bounded_client(command, Duration::from_secs(240), &temp);
     assert!(
@@ -4850,6 +5006,14 @@ fn isolated_seat_fixture(mode: &str) {
         String::from_utf8_lossy(&stdout),
         String::from_utf8_lossy(&stderr)
     );
+    if mode.starts_with("harness") {
+        for line in String::from_utf8_lossy(&stderr)
+            .lines()
+            .filter(|line| line.starts_with("harness-native:"))
+        {
+            eprintln!("{line}");
+        }
+    }
 }
 
 // keeps: spec mcp-control-plane
@@ -4897,8 +5061,743 @@ fn mcp_seat_isolated_process() {
         "spawn" => seat_spawn_fixture(),
         "orchestrate" => seat_orchestration_fixture(),
         "native" => seat_native_fixture(),
+        "harness" => seat_harness_fixture(false, None),
+        "harness-owner" => seat_harness_fixture(true, None),
+        "harness-status" => seat_harness_fixture(false, Some(false)),
+        "harness-status-log" => seat_harness_fixture(false, Some(true)),
+        "harness-status-phase" => harness_status::run(),
         _ => panic!("unknown fixture mode"),
     }
+}
+
+// keeps: harness interfaces/embed-seat.md §4/§6; HarnessEmbedLifecycle (imported).
+#[test]
+#[ignore = "real private PTY; make test-harness-native builds the pinned harness and runs this in full CI"]
+fn mcp_harness_seat_completes_and_closes_without_orphans() {
+    isolated_seat_fixture("harness");
+}
+
+// keeps: app-harness #348; HarnessReportedStatus. Both runs use a real, quiet
+// tool beyond 20 seconds. Relocated logs prove OSC alone; JSON mode proves log alone.
+#[test]
+#[ignore = "real private PTY and scripted tool; make test-harness-native"]
+fn mcp_harness_seat_status_survives_quiet_tool() {
+    isolated_seat_fixture("harness-status");
+    isolated_seat_fixture("harness-status-log");
+}
+
+// Only exact process groups created and recorded by this private fixture.
+struct OwnedHarnessGroups(Vec<i32>);
+impl Drop for OwnedHarnessGroups {
+    fn drop(&mut self) {
+        for pgid in &self.0 {
+            // SAFETY: each group was recorded from this fixture's own live child.
+            unsafe {
+                libc::kill(-*pgid, libc::SIGKILL);
+            }
+        }
+    }
+}
+
+// keeps: harness embed-seat §3/§6; HarnessCancelTreeGroup and HarnessEmbedLifecycle.
+#[test]
+#[ignore = "real private PTY; make test-harness-native runs both close routes"]
+fn mcp_harness_seat_owner_close_retires_hup_ignoring_tool_and_recovers() {
+    isolated_seat_fixture("harness-owner");
+}
+
+fn seat_harness_fixture(owner_close: bool, quiet: Option<bool>) {
+    use std::os::unix::fs::PermissionsExt;
+    let home = PathBuf::from(std::env::var_os("HOME").unwrap());
+    let binary = PathBuf::from(std::env::var_os("BBOXY_HARNESS_TEST_BIN").unwrap());
+    assert!(binary.is_absolute() && binary.is_file());
+    let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../bboxy450-harness/tests/fixtures/sse/text.sse")
+        .canonicalize()
+        .unwrap();
+    let bin = home.join("bin");
+    std::fs::create_dir(&bin).unwrap();
+    let quote = |p: &std::path::Path| format!("'{}'", p.to_str().unwrap().replace('\'', "'\\''"));
+    // Only this disposable home sees the scripted-provider launcher. The adapter
+    // still launches its production argv [bboxy450-harness, seat]. No key/network.
+    let shim = bin.join("bboxy450-harness");
+    let tool_pid_path = home.join("tool-pid");
+    let command = if quiet.is_some() {
+        format!(
+            "bash -c {}",
+            quote(std::path::Path::new(&format!(
+                "printf '%s\\n' \"$$\" > {0}.tmp; mv {0}.tmp {0}; sleep 22",
+                quote(&tool_pid_path)
+            ))),
+        )
+    } else {
+        format!(
+            "trap '' HUP; trap '' TERM; printf '%s\\n' \"$$\" > {0}.tmp; mv {0}.tmp {0}; sleep 600",
+            quote(&tool_pid_path)
+        )
+    };
+    let tool_call = json!({"choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"owned-hup-tool","type":"function","function":{"name":"bash","arguments":serde_json::to_string(&json!({"command":command})).unwrap()}}]},"finish_reason":null}]});
+    std::fs::write(home.join("tool.sse"), format!("data: {tool_call}\n\ndata: {{\"choices\":[{{\"index\":0,\"delta\":{{}},\"finish_reason\":\"tool_calls\"}}]}}\n\ndata: [DONE]\n\n")).unwrap();
+    let fixture_mcp = binary.parent().unwrap().join("mcp-fixture");
+    assert!(fixture_mcp.is_file());
+    // The production MCP file names current_exe, which is libtest here. Substitute
+    // the pinned harness's stdio fixture so this test never launches libtest as
+    // an MCP server. Keep the original overlay untouched for inspection.
+    let mut script = format!(
+        "#!/usr/bin/python3\nBINARY={}\nFIXTURE={}\nMCP={}\nHOME={}\nOWNER={}\n",
+        serde_json::to_string(&binary).unwrap(),
+        serde_json::to_string(&fixture).unwrap(),
+        serde_json::to_string(&fixture_mcp).unwrap(),
+        serde_json::to_string(&home).unwrap(),
+        if owner_close { "True" } else { "False" }
+    );
+    script.push_str(&format!(
+        "QUIET={}\nJSON={}\n",
+        if quiet.is_some() { "True" } else { "False" },
+        if quiet == Some(true) { "True" } else { "False" }
+    ));
+    script.push_str(r#"import json, os, sys
+from pathlib import Path
+args = sys.argv[1:]
+index = args.index('--mcp-config') + 1
+original = Path(args[index])
+config = json.loads(original.read_text())
+assert config['mcpServers']['bboxy']['args'] == ['mcp']
+Path(HOME, 'launcher-argv.json').write_text(json.dumps(args))
+config['mcpServers']['bboxy'] = {'command': MCP, 'args': ['normal'], 'env': {'MCP_SPAWNS': str(Path(HOME, 'mcp-pids'))}}
+private = Path(HOME, 'fixture-mcp.json')
+private.write_text(json.dumps(config))
+private.chmod(0o600)
+args[index] = str(private)
+args.extend(['--scripted', FIXTURE])
+if OWNER:
+    # Fixture-only authority for its owned tool; the production argv above has
+    # no permission selector and is asserted separately by the launch-kit test.
+    args.extend(['--scripted', str(Path(HOME, 'tool.sse')), '--yolo'])
+if QUIET:
+    args.extend(['--scripted', str(Path(HOME, 'tool.sse')), '--scripted', FIXTURE, '--yolo'])
+if QUIET and not JSON:
+    # The production log observer cannot find this native CLI override.
+    # The engine still records its log; status must come only from OSC.
+    args.extend(['--sessions', str(Path(HOME, 'osc-only-sessions'))])
+if JSON:
+    args.append('--json')
+os.execv(BINARY, [BINARY, *args])
+"#);
+    std::fs::write(&shim, script).unwrap();
+    std::fs::set_permissions(&shim, std::fs::Permissions::from_mode(0o700)).unwrap();
+    std::fs::write(
+        home.join(".zprofile"),
+        format!("export PATH={}:$PATH\n", quote(&bin)),
+    )
+    .unwrap();
+    let mut f = Fixture::real();
+    let baseline = f.registry().list().unwrap().len();
+    refused(f.mutate(f.oracle.id, Ulid::new(), "seat_spawn", json!({
+        "swarm_id": f.own.swarm, "approved_profile": "unknown-harness", "cwd": f._temp.path()
+    })), "unapproved spawn profile");
+    assert_eq!(f.registry().list().unwrap().len(), baseline);
+    let result = data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "seat_spawn",
+        json!({
+            "swarm_id": f.own.swarm, "approved_profile": "bboxy450-harness", "cwd": f._temp.path()
+        }),
+    ));
+    assert_eq!(result["status"], "applied", "{result}");
+    let seat: Ulid = serde_json::from_value(result["seat_id"].clone()).unwrap();
+    let pid = result["pid"].as_u64().unwrap() as i32;
+    // SAFETY: observe only the exact process spawned by this private fixture.
+    let pgid = unsafe { libc::getpgid(pid) };
+    assert!(pgid > 0);
+    let mut groups = OwnedHarnessGroups(vec![pgid]);
+    f.wait_screen(
+        seat,
+        if quiet == Some(true) {
+            "session_started"
+        } else {
+            "session "
+        },
+    );
+    let sessions = if quiet == Some(false) {
+        home.join("osc-only-sessions")
+    } else {
+        home.join(".bboxy450-harness/sessions")
+    };
+    let logs: Vec<_> = std::fs::read_dir(&sessions)
+        .unwrap()
+        .map(|e| e.unwrap().path())
+        .filter(|p| p.extension().is_some_and(|ext| ext == "jsonl"))
+        .collect();
+    assert_eq!(logs.len(), 1, "private session discovery");
+    let session: Ulid = logs[0]
+        .file_stem()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .parse()
+        .unwrap();
+    let role = f.registry().get(seat).unwrap().role;
+    assert_eq!(role.name, "executor");
+    assert_eq!(role.class, Class::Worker);
+    let attempts = f.input_attempts.load(std::sync::atomic::Ordering::SeqCst);
+    let zero_bytes = f.pty_bytes.load(std::sync::atomic::Ordering::SeqCst);
+    let until = Instant::now() + Duration::from_secs(8);
+    while f
+        .registry()
+        .get(seat)
+        .unwrap()
+        .harness_session_id
+        .as_deref()
+        != Some(&session.to_string())
+    {
+        assert!(Instant::now() < until, "Hello session was not persisted");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    if std::env::var("BBOXY_RICH_TEST_CONTROL").as_deref() == Ok("pty-fallback") {
+        f.runtime
+            .block_on(f.client().gui_input(
+                seat,
+                1,
+                Ulid::new(),
+                b"deliberate invalid PTY fallback\r".to_vec(),
+            ))
+            .unwrap();
+    }
+    let message = Ulid::new();
+    let admitted = f.mutate(
+        f.oracle.id,
+        message,
+        "seat_input_text",
+        f.input_args(seat, "complete one scripted turn", true),
+    );
+    assert_eq!(admitted["isError"], false, "{admitted}");
+    assert_eq!(
+        admitted["structuredContent"]["native_id"],
+        message.to_string()
+    );
+    if quiet != Some(true) {
+        f.wait_screen(seat, "Done.");
+    }
+    let duplicate = f.mutate(
+        f.oracle.id,
+        message,
+        "seat_input_text",
+        f.input_args(seat, "complete one scripted turn", true),
+    );
+    assert_eq!(duplicate["isError"], false, "{duplicate}");
+    assert!(
+        duplicate["structuredContent"]["note"]
+            .as_str()
+            .unwrap()
+            .contains("duplicate=true")
+    );
+    if quiet != Some(true) {
+        f.wait_screen(seat, "✓ Done");
+    }
+    assert_eq!(
+        f.input_attempts.load(std::sync::atomic::Ordering::SeqCst),
+        attempts,
+        "socket turn and replay wrote zero PTY bytes"
+    );
+    let socket = f
+        .runtime
+        .block_on(f.client().gui_seat(seat))
+        .unwrap()
+        .rich_socket
+        .unwrap();
+    let mut wire = std::os::unix::net::UnixStream::connect(&socket).unwrap();
+    wire.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+    use std::io::{BufRead, Write};
+    writeln!(
+        wire,
+        "{}",
+        json!({"v":{"major":1,"minor":1},"subscribe":{"ephemeral":false,"after":null}})
+    )
+    .unwrap();
+    let mut reader = std::io::BufReader::new(wire.try_clone().unwrap());
+    let mut line = String::new();
+    reader.read_line(&mut line).unwrap();
+    let hello: Value = serde_json::from_str(&line).unwrap();
+    assert_eq!(hello["meta"]["session"], session.to_string());
+    writeln!(wire,"{}",json!({"v":hello["v"],"op_id":message,"session":session,"op":{"type":"user_turn","blocks":[{"type":"text","text":"complete one scripted turn"}],"mode":"queue"}})).unwrap();
+    loop {
+        line.clear();
+        reader.read_line(&mut line).unwrap();
+        let value: Value = serde_json::from_str(&line).unwrap();
+        if value["op_id"] == json!(message) {
+            assert_eq!(value["ack"]["duplicate"], true, "{value}");
+            break;
+        }
+    }
+    let until = Instant::now() + Duration::from_secs(8);
+    let events: Vec<Value> = loop {
+        let events: Vec<Value> = std::fs::read_to_string(sessions.join(format!("{session}.jsonl")))
+            .unwrap()
+            .lines()
+            .map(|l| serde_json::from_str(l).unwrap())
+            .collect();
+        let ended = events
+            .iter()
+            .find(|e| e["event"]["type"] == "turn_queued" && e["cause"] == json!(message))
+            .is_some_and(|queued| {
+                events.iter().any(|e| {
+                    e["event"]["type"] == "turn_ended"
+                        && e["event"]["turn"] == queued["event"]["turn"]
+                })
+            });
+        if ended {
+            break events;
+        }
+        assert!(Instant::now() < until, "native causal turn did not end");
+        std::thread::sleep(Duration::from_millis(20));
+    };
+    let queued: Vec<_> = events
+        .iter()
+        .filter(|e| e["event"]["type"] == "turn_queued" && e["cause"] == json!(message))
+        .collect();
+    assert_eq!(
+        queued.len(),
+        1,
+        "one causal admission for the retained message"
+    );
+    let turn = &queued[0]["event"]["turn"];
+    for kind in ["turn_started", "turn_ended"] {
+        assert_eq!(
+            events
+                .iter()
+                .filter(|e| e["event"]["type"] == kind && &e["event"]["turn"] == turn)
+                .count(),
+            1,
+            "{kind} linked to queued message by turn id"
+        );
+    }
+    drop(reader);
+    drop(wire);
+    assert_eq!(
+        f.pty_bytes.load(std::sync::atomic::Ordering::SeqCst),
+        zero_bytes,
+        "all PTY writer receipts: zero bytes for socket delivery and duplicates"
+    );
+    let launch: Vec<String> =
+        serde_json::from_slice(&std::fs::read(home.join("launcher-argv.json")).unwrap()).unwrap();
+    assert!(
+        launch
+            .windows(2)
+            .any(|pair| pair[0] == "--append-system-prompt"
+                && pair[1].contains("ROLE: EXECUTOR")
+                && pair[1].contains("orient"))
+    );
+    let until = Instant::now() + Duration::from_secs(10);
+    let mcp_pid: i32 = loop {
+        if let Ok(text) = std::fs::read_to_string(home.join("mcp-pids"))
+            && let Ok(pid) = text.trim().parse()
+        {
+            break pid;
+        }
+        assert!(Instant::now() < until, "private MCP fixture did not start");
+        std::thread::sleep(Duration::from_millis(5));
+    };
+    // SAFETY: observe only the exact MCP fixture PID recorded in our private home.
+    let mcp_pgid = unsafe { libc::getpgid(mcp_pid) };
+    assert!(mcp_pgid > 0 && mcp_pgid != pgid);
+    groups.0.push(mcp_pgid);
+    let log_path = sessions.join(format!("{session}.jsonl"));
+    let completed: Vec<Value> = std::fs::read_to_string(&log_path)
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str::<Value>(line).unwrap())
+        .filter(|event| event["event"]["type"] == "item_completed")
+        .collect();
+    assert!(!completed.is_empty());
+    if quiet.is_some() {
+        let consumer =
+            bboxy450_harness_wake_up::rich::Connection::start(socket.clone(), f.runtime.handle());
+        let turn = f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "seat_input_text",
+            f.input_args(seat, "run a quiet tool", true),
+        );
+        assert_eq!(turn["isError"], false, "{turn}");
+        let until = Instant::now() + Duration::from_secs(10);
+        while !tool_pid_path.is_file() {
+            assert!(
+                Instant::now() < until,
+                "quiet tool did not start: {}",
+                f.screen(seat)
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        let started = Instant::now();
+        let read = |f: &Fixture| {
+            data(f.call(
+                f.oracle.id,
+                Ulid::new(),
+                "seat_get",
+                json!({"seat_id":seat}),
+            ))
+        };
+        // Allow the independent log reader one publication interval.
+        let until = Instant::now() + Duration::from_secs(2);
+        loop {
+            let status = read(&f);
+            if status["adapter"]["detail"]
+                .as_str()
+                .is_some_and(|detail| detail.contains("bash"))
+            {
+                break;
+            }
+            assert!(Instant::now() < until, "tool detail not reported: {status}");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        if quiet == Some(false) {
+            assert!(
+                !home
+                    .join(format!(".bboxy450-harness/sessions/{session}.jsonl"))
+                    .exists(),
+                "OSC-only fixture must leave the observer's log path absent"
+            );
+        }
+        let native_head = std::fs::read_to_string(&log_path)
+            .unwrap()
+            .lines()
+            .last()
+            .map(|l| serde_json::from_str::<Value>(l).unwrap())
+            .unwrap();
+        let mut liveness_checked = false;
+        let mut samples = 0;
+        let mut restarted = false;
+        while started.elapsed() < Duration::from_secs(22) {
+            if !liveness_checked && started.elapsed() >= Duration::from_secs(21) {
+                let hello = consumer
+                    .client
+                    .hello()
+                    .expect("durable-only term consumer expired during the quiet tool");
+                assert_eq!(hello.session, session);
+                assert!(hello.last_frame.elapsed() < Duration::from_secs(12));
+                let last: Value = serde_json::from_str(
+                    std::fs::read_to_string(&log_path)
+                        .unwrap()
+                        .lines()
+                        .last()
+                        .unwrap(),
+                )
+                .unwrap();
+                assert_eq!(
+                    last["seq"], native_head["seq"],
+                    "transport Status fabricated semantic progress"
+                );
+                assert_eq!(
+                    last["ts_ms"], native_head["ts_ms"],
+                    "transport Status freshened native event time"
+                );
+                eprintln!(
+                    "harness-native: durable_only_live_ms={} frame_age_ms={} semantic_seq={}",
+                    started.elapsed().as_millis(),
+                    hello.last_frame.elapsed().as_millis(),
+                    last["seq"]
+                );
+                liveness_checked = true;
+            }
+            if quiet == Some(false) && !restarted && started.elapsed() >= Duration::from_secs(8) {
+                f.restart();
+                restarted = true;
+            }
+            let status = read(&f);
+            let adapter = &status["adapter"];
+            // A tool may finish just before the poll which crosses 20 seconds.
+            if adapter["state"] == "idle" {
+                assert!(
+                    started.elapsed() >= Duration::from_millis(19_800),
+                    "early idle: {status}"
+                );
+                break;
+            }
+            assert_eq!(adapter["state"], "active", "{status}");
+            assert_eq!(adapter["grade"], "reported", "{status}");
+            if quiet == Some(true) {
+                assert_eq!(adapter["source"], "sessions_file", "{status}");
+            } else {
+                assert!(adapter["source"] == "7501", "{status}");
+            }
+            assert!(
+                adapter["detail"]
+                    .as_str()
+                    .is_some_and(|detail| detail.contains("bash")),
+                "{status}"
+            );
+            samples += 1;
+            std::thread::sleep(Duration::from_millis(200));
+        }
+        assert!(
+            liveness_checked,
+            "the actual term consumer must cross its 20s freshness deadline"
+        );
+        assert!(
+            samples >= 80,
+            "insufficient quiet interval samples: {samples}"
+        );
+        let until = Instant::now() + Duration::from_secs(5);
+        loop {
+            let status = read(&f);
+            if status["adapter"]["state"] == "idle"
+                && (quiet != Some(true) || status["adapter"]["source"] == "sessions_file")
+            {
+                assert_eq!(status["adapter"]["detail"], Value::Null);
+                assert_eq!(status["adapter"]["grade"], "reported");
+                break;
+            }
+            assert!(
+                Instant::now() < until,
+                "turn did not become reported idle: {status}"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        eprintln!(
+            "harness-native: quiet_tool_ms={} samples={samples} osc_suppressed={}",
+            started.elapsed().as_millis(),
+            quiet == Some(true)
+        );
+    }
+    if owner_close {
+        f.runtime
+            .block_on(f.client().gui_input(
+                seat,
+                1,
+                Ulid::new(),
+                b"run the owned HUP-ignoring tool\r".to_vec(),
+            ))
+            .unwrap();
+        let until = Instant::now() + Duration::from_secs(10);
+        let tool_pid: i32 = loop {
+            if let Ok(text) = std::fs::read_to_string(&tool_pid_path)
+                && let Ok(pid) = text.trim().parse()
+            {
+                break pid;
+            }
+            assert!(
+                Instant::now() < until,
+                "owned tool did not start: {}",
+                f.screen(seat)
+            );
+            std::thread::sleep(Duration::from_millis(5));
+        };
+        // SAFETY: this PID was recorded by our own scripted tool in our private HOME.
+        let tool_pgid = unsafe { libc::getpgid(tool_pid) };
+        assert!(tool_pgid > 0 && tool_pgid != pgid && tool_pgid != mcp_pgid);
+        groups.0.push(tool_pgid);
+    }
+    if !owner_close {
+        std::fs::remove_file(&socket).unwrap();
+        std::thread::sleep(Duration::from_millis(250));
+        let unavailable = f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "seat_input_text",
+            f.input_args(seat, "no fallback", true),
+        );
+        assert_eq!(
+            unavailable["structuredContent"]["cause"], "harness-socket-unavailable",
+            "{unavailable}"
+        );
+        assert_eq!(
+            f.pty_bytes.load(std::sync::atomic::Ordering::SeqCst),
+            zero_bytes
+        );
+        let mut previous = session;
+        for profile in ["other", "scripted"] {
+            f.runtime
+                .block_on(f.client().gui_input(
+                    seat,
+                    1,
+                    Ulid::new(),
+                    format!("/profile {profile}\r").into_bytes(),
+                ))
+                .unwrap();
+            let until = Instant::now() + Duration::from_secs(8);
+            let next = loop {
+                if let Some(id) = f
+                    .registry()
+                    .get(seat)
+                    .unwrap()
+                    .harness_session_id
+                    .and_then(|s| s.parse::<Ulid>().ok())
+                    && id != previous
+                {
+                    break id;
+                }
+                assert!(
+                    Instant::now() < until,
+                    "profile rebound not announced: {}",
+                    f.screen(seat)
+                );
+                std::thread::sleep(Duration::from_millis(10));
+            };
+            assert_ne!(next, session, "A/B/A has a third session incarnation");
+            let baseline = f.pty_bytes.load(std::sync::atomic::Ordering::SeqCst);
+            let stale = f.mutate(
+                f.oracle.id,
+                message,
+                "seat_input_text",
+                f.input_args(seat, "complete one scripted turn", true),
+            );
+            assert_eq!(
+                stale["structuredContent"]["cause"], "harness-session-closed",
+                "{stale}"
+            );
+            assert_eq!(
+                f.pty_bytes.load(std::sync::atomic::Ordering::SeqCst),
+                baseline,
+                "stale resend wrote zero PTY bytes"
+            );
+            previous = next;
+        }
+    }
+    let start = Instant::now();
+    if owner_close {
+        f.runtime
+            .block_on(f.client().close(
+                seat,
+                1,
+                Ulid::new(),
+                bbt_mux::registry::Position {
+                    swarm: f.own.swarm,
+                    tab: Ulid::new(),
+                    split_path: vec![],
+                    ratios: vec![],
+                    layout_revision: 0,
+                },
+                0,
+            ))
+            .unwrap();
+    } else {
+        // A cooked EOF at the empty prompt is the documented Op::Close route.
+        f.runtime
+            .block_on(f.client().gui_input(seat, 1, Ulid::new(), vec![4]))
+            .unwrap();
+    }
+    loop {
+        let retired = groups.0.iter().all(|pgid| {
+            // SAFETY: observe only groups created and recorded by this fixture.
+            (unsafe { libc::kill(-*pgid, 0) }) == -1
+                && std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH)
+        });
+        if retired {
+            break;
+        }
+        assert!(
+            start.elapsed() < Duration::from_secs(2),
+            "owned groups {:?} survived close",
+            groups.0
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    let close_elapsed = start.elapsed();
+    assert!(close_elapsed < Duration::from_secs(2));
+    groups.0.clear(); // Every original group is gone; never signal a recycled ID.
+    let observe_exit = || {
+        let observer = f.supervisor.as_ref().unwrap().connect().unwrap();
+        let bbt_supervisor::Reply::Seats { seats } = observer
+            .request(bbt_supervisor::Action::ListOwnedSeats)
+            .unwrap()
+        else {
+            panic!("seat metadata missing")
+        };
+        seats
+            .iter()
+            .find(|s| s.seat == seat)
+            .unwrap()
+            .exited
+            .clone()
+            .unwrap()
+    };
+    if owner_close {
+        let private_home = tempfile::Builder::new()
+            .prefix("hresume-")
+            .tempdir_in("/tmp")
+            .unwrap();
+        let resumed=data(f.mutate(f.oracle.id,Ulid::new(),"seat_spawn",json!({"swarm_id":f.own.swarm,"approved_profile":"bboxy450-harness","cwd":f._temp.path(),"resume":session.to_string()})));
+        assert_eq!(resumed["status"], "applied", "{resumed}");
+        let resumed_seat: Ulid = serde_json::from_value(resumed["seat_id"].clone()).unwrap();
+        let resumed_pid = resumed["pid"].as_u64().unwrap() as i32;
+        // SAFETY: this PID is the exact replacement admitted by this fixture.
+        let resumed_group = unsafe { libc::getpgid(resumed_pid) };
+        assert!(resumed_group > 0);
+        groups.0.push(resumed_group);
+        f.wait_screen(resumed_seat, "Done.");
+        let until = Instant::now() + Duration::from_secs(8);
+        while f
+            .registry()
+            .get(resumed_seat)
+            .unwrap()
+            .harness_session_id
+            .as_deref()
+            != Some(&session.to_string())
+        {
+            assert!(Instant::now() < until, "resumed Hello not persisted");
+            std::thread::sleep(Duration::from_millis(20));
+        }
+        f.runtime
+            .block_on(f.client().gui_input(resumed_seat, 1, Ulid::new(), vec![4]))
+            .unwrap();
+        let until = Instant::now() + Duration::from_secs(2);
+        loop {
+            // SAFETY: observe only the recorded replacement group.
+            if unsafe { libc::kill(-resumed_group, 0) } == -1
+                && std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH)
+            {
+                break;
+            }
+            assert!(Instant::now() < until, "replacement group did not exit");
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        groups.0.clear();
+        let mut check = std::process::Command::new(&binary);
+        check
+            .arg("check-transcript")
+            .arg(&log_path)
+            .env_clear()
+            .env("HOME", private_home.path())
+            .env("PATH", "/usr/bin:/bin")
+            .stdin(std::process::Stdio::null());
+        let (checked, _, errors) = bounded_client(check, Duration::from_secs(10), &private_home);
+        assert!(
+            checked.success(),
+            "recovered transcript failed protocol laws: {}",
+            String::from_utf8_lossy(&errors)
+        );
+        let recovered: Vec<Value> = std::fs::read_to_string(&log_path)
+            .unwrap()
+            .lines()
+            .map(|line| serde_json::from_str(line).unwrap())
+            .collect();
+        assert!(
+            completed.iter().all(|item| recovered.contains(item)),
+            "manual recovery lost completed items"
+        );
+    } else {
+        let exited = observe_exit();
+        assert_eq!(exited.code, 0, "{exited:?}");
+        assert_eq!(exited.signal, None);
+        let log = std::fs::read_to_string(&log_path).unwrap();
+        let closed: Value = serde_json::from_str(log.lines().last().unwrap()).unwrap();
+        assert_eq!(
+            closed["event"]["type"], "session_closed",
+            "close must be durable"
+        );
+    }
+    let exited = observe_exit();
+    eprintln!(
+        "harness-native: route={} exit={exited:?} close={close_elapsed:?}; every group ESRCH; completed turn; unknown profile refused; socket Hello persisted; correlated Ack; duplicate Ack; one cause-bound turn; zero PTY bytes{}",
+        if owner_close { "owner" } else { "Ctrl-D" },
+        if owner_close {
+            "; HUP-ignoring tool retired; seat_spawn resume preserved completed items; check-transcript=0"
+        } else {
+            ""
+        }
+    );
 }
 
 fn seat_spawn_fixture() {
@@ -4948,6 +5847,20 @@ fn seat_spawn_fixture() {
             "tool schema",
         );
     }
+    let mut invalid = args.clone();
+    invalid["approved_profile"] = json!("zsh");
+    invalid["resume"] = json!("3dac58c8-f6a4-4fe6-9863-8c72a5216d5e");
+    refused(
+        f.mutate(f.oracle.id, Ulid::new(), "seat_spawn", invalid),
+        "resume applies to claude and codex",
+    );
+    let mut invalid = args.clone();
+    invalid["approved_profile"] = json!("claude");
+    invalid["resume"] = json!("two words");
+    refused(
+        f.mutate(f.oracle.id, Ulid::new(), "seat_spawn", invalid),
+        "resume: a session id",
+    );
     let mut invalid = args;
     invalid["approved_profile"] = json!("arbitrary");
     refused(
@@ -6405,7 +7318,8 @@ fn mcp_knowledge266_oracle_task_creation_and_open_brief_edits_do_not_delegate_or
     ));
     let claimed = data(knowledge_fetch(&f, f.oracle.id, "tasks/new.md"));
     let mut bad = knowledge_update_args(&claimed);
-    bad["body"] = json!("cannot edit claimed brief");
+    bad["body"] = json!("brief amendment cannot change lifecycle");
+    bad["frontmatter"]["status"] = json!("accepted");
     knowledge_denied(
         f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", bad),
         "task_field_protected",
@@ -6414,6 +7328,250 @@ fn mcp_knowledge266_oracle_task_creation_and_open_brief_edits_do_not_delegate_or
         data(knowledge_fetch(&f, f.oracle.id, "tasks/new.md"))["frontmatter"]["status"],
         "claimed"
     );
+}
+
+// Live amendments use the same authenticated write, task and delivery boundaries.
+#[test]
+fn mcp_task_amend_nonterminal_states_preserve_fields_and_wake_in_the_signed_task_thread() {
+    for state in ["claimed", "running", "reported", "rejected", "blocked"] {
+        let mut f = Fixture::new();
+        let mut metadata = f.task_metadata();
+        metadata["status"] = json!("open");
+        metadata["assignee"] = json!("none");
+        f.task_file(metadata);
+        let delegated = data(f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "task_delegate",
+            json!({"task_path":f.task_path(),"seat_id":f.own.id}),
+        ));
+        let inbox = data(f.call(f.own.id, Ulid::new(), "message_list", json!({})));
+        let thread = inbox["page"]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|m| m["envelope"]["id"] == delegated["message_ids"][0])
+            .unwrap()["envelope"]["thread_id"]
+            .clone();
+        let mut metadata = f.task_document().metadata;
+        metadata["status"] = json!(state);
+        metadata["report"] = json!({"summary":"preserved report"});
+        metadata["verify_result"] = verification("true", 0, json!([]));
+        f.task_file(metadata);
+        data(f.mutate(f.own.id, Ulid::new(), "attention_set", json!({
+            "destination":format!("seats/{}/inbox",f.own.id),"class":"conversation","mode":"inbox"
+        })));
+        let original = data(knowledge_fetch(&f, f.oracle.id, "#1"));
+        let mut args = knowledge_update_args(&original);
+        args["body"] = json!("Amended brief: new test path approved.");
+        args["frontmatter"]["verify"] = json!("true && true");
+        args["frontmatter"]["allowed_paths"] = json!(["fixture/**", "extra/tests/**"]);
+        let op = Ulid::new();
+        let result = f.mutate(f.oracle.id, op, "knowledge_write", args.clone());
+        let amended = data(result.clone())["record"].clone();
+        assert_eq!(amended["body"], args["body"], "{state}");
+        assert_eq!(amended["frontmatter"]["verify_revision"], 1);
+        for field in [
+            "status",
+            "assignee",
+            "delegated_by",
+            "report",
+            "verify_result",
+            "custom",
+        ] {
+            assert_eq!(
+                amended["frontmatter"][field], original["frontmatter"][field],
+                "{state}: {field}"
+            );
+        }
+        assert_item_signature(&f.task_document(), f.oracle.id);
+        assert_eq!(
+            f.mutate(f.oracle.id, op, "knowledge_write", args.clone()),
+            result
+        );
+        f.restart();
+        assert_eq!(f.mutate(f.oracle.id, op, "knowledge_write", args), result);
+        let current = data(f.call(
+            f.own.id,
+            Ulid::new(),
+            "task_status",
+            json!({"task_path":f.task_path()}),
+        ));
+        assert_eq!(current["body"], amended["body"]);
+        assert_eq!(
+            current["metadata"]["allowed_paths"],
+            amended["frontmatter"]["allowed_paths"]
+        );
+        let inbox = data(f.call(f.own.id, Ulid::new(), "message_list", json!({})));
+        let notices: Vec<_> = inbox["page"]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|m| m["envelope"]["body"]["event"] == "amend")
+            .collect();
+        assert_eq!(notices.len(), 1, "{state}: {inbox}");
+        let notice = &notices[0]["envelope"];
+        assert_eq!(notice["thread_id"], thread);
+        assert_eq!(notice["seat"], json!(f.oracle.id));
+        assert_eq!(notice["body"]["task_id"], json!(f.task));
+        let summary = notice["body"]["summary"].as_str().unwrap();
+        for changed in [
+            "brief changed",
+            "brief body",
+            "verify:",
+            "allowed_paths:",
+            "extra/tests/**",
+            "fresh report",
+        ] {
+            assert!(summary.contains(changed), "{summary}");
+        }
+        let envelope: bbt_mux::messaging::wire::Envelope =
+            serde_json::from_value(notice.clone()).unwrap();
+        envelope.verify_signature().unwrap();
+        let receipts = data(f.call(
+            f.oracle.id,
+            Ulid::new(),
+            "message_receipts",
+            json!({"message":notice["id"]}),
+        ));
+        assert!(
+            receipts["page"]["items"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|r| r["wake"] == "now"),
+            "{receipts}"
+        );
+    }
+}
+
+#[test]
+fn mcp_task_amend_rejects_workers_nondelegators_terminal_and_stale_etag() {
+    let f = Fixture::new();
+    f.task_file(f.task_metadata());
+    let record = data(knowledge_fetch(&f, f.oracle.id, "#1"));
+    let mut args = knowledge_update_args(&record);
+    args["body"] = json!("amended");
+    for actor in [f.own.id, f.peer.id, f.outside.id] {
+        knowledge_denied(
+            f.mutate(actor, Ulid::new(), "knowledge_write", args.clone()),
+            "task_field_protected",
+        );
+    }
+    for seat in [f.peer.id, f.outside.id] {
+        f.registry()
+            .update(seat, |r| {
+                r.role.class = Class::Oracle;
+                r.role.name = "architect".into();
+                Ok(())
+            })
+            .unwrap();
+        knowledge_denied(
+            f.mutate(seat, Ulid::new(), "knowledge_write", args.clone()),
+            "task_field_protected",
+        );
+    }
+    for (field, value) in [
+        ("status", json!("accepted")),
+        ("assignee", json!(format!("seat:{}", f.peer.id))),
+        ("delegated_by", json!(format!("seat:{}", f.peer.id))),
+        ("report", json!({"summary":"forged"})),
+        ("verify_result", verification("true", 0, json!([]))),
+        ("verify_revision", json!(0)),
+        ("custom", json!("forged")),
+    ] {
+        let mut forged = args.clone();
+        forged["frontmatter"][field] = value;
+        knowledge_denied(
+            f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", forged),
+            "task_field_protected",
+        );
+    }
+    assert_eq!(
+        data(knowledge_fetch(&f, f.oracle.id, "#1"))["etag"],
+        record["etag"]
+    );
+    let amended =
+        data(f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", args))["record"].clone();
+    let mut stale = knowledge_update_args(&amended);
+    stale["etag"] = record["etag"].clone();
+    stale["body"] = json!("stale amendment");
+    knowledge_denied(
+        f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", stale),
+        "etag_mismatch",
+    );
+    assert_eq!(
+        data(knowledge_fetch(&f, f.oracle.id, "#1"))["etag"],
+        amended["etag"]
+    );
+    for status in ["accepted", "done", "closed"] {
+        let mut metadata = f.task_metadata();
+        metadata["status"] = json!(status);
+        f.task_file(metadata);
+        let closed = data(knowledge_fetch(&f, f.oracle.id, "#1"));
+        let mut args = knowledge_update_args(&closed);
+        args["body"] = json!("cannot reopen closed task");
+        knowledge_denied(
+            f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", args),
+            "task_field_protected",
+        );
+        assert_eq!(
+            data(knowledge_fetch(&f, f.oracle.id, "#1"))["etag"],
+            closed["etag"]
+        );
+    }
+    // Even the exact delegator cannot cross the assignee's swarm boundary.
+    let mut metadata = f.task_metadata();
+    metadata["delegated_by"] = json!(format!("seat:{}", f.outside.id));
+    f.task_file(metadata);
+    let foreign = data(knowledge_fetch(&f, f.oracle.id, "#1"));
+    let mut args = knowledge_update_args(&foreign);
+    args["body"] = json!("cross swarm");
+    knowledge_denied(
+        f.mutate(f.outside.id, Ulid::new(), "knowledge_write", args),
+        "task_field_protected",
+    );
+}
+
+#[test]
+fn mcp_task_amend_verify_requires_a_fresh_report_even_after_a_b_a() {
+    let f = Fixture::new();
+    f.task_file(f.task_metadata());
+    data(f.report(verification("true", 0, json!([]))));
+    for command in ["true && true", "true"] {
+        let old = data(knowledge_fetch(&f, f.oracle.id, "#1"));
+        let mut args = knowledge_update_args(&old);
+        args["frontmatter"]["verify"] = json!(command);
+        let amended =
+            data(f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", args))["record"].clone();
+        assert_eq!(
+            amended["frontmatter"]["report"],
+            old["frontmatter"]["report"]
+        );
+        assert_eq!(
+            amended["frontmatter"]["verify_result"],
+            old["frontmatter"]["verify_result"]
+        );
+        refused(
+            f.mutate(
+                f.oracle.id,
+                Ulid::new(),
+                "task_accept",
+                json!({"task_path":f.task_path()}),
+            ),
+            "fresh report",
+        );
+    }
+    assert_eq!(f.task_document().metadata["verify_revision"], 2);
+    data(f.report(verification("true", 0, json!([]))));
+    assert_eq!(f.task_document().metadata["report"]["verify_revision"], 2);
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_accept",
+        json!({"task_path":f.task_path()}),
+    ));
+    assert_eq!(f.task_document().metadata["status"], "accepted");
 }
 
 // keeps: decision #266
@@ -7444,5 +8602,497 @@ fn indexed_task_acceptance_cancels_the_pending_delegation_with_a_done_reason() {
         assert_eq!(receipt["evidence"], "recipient-stored");
         assert_eq!(receipt["wake"], "none");
         assert_eq!(receipt["reason"], "done");
+    }
+}
+
+// Reports use the normal authenticated Index, provider and task lifecycle.
+#[test]
+fn report_document_create_fetch_search_ownership_and_append_only() {
+    let f = Fixture::new();
+    f.task_file(f.task_metadata());
+    let create = json!({"path":"reports/2026-10-31-work.md", "frontmatter":{
+        "type":"report", "task":"#1", "commits":[], "verify":{"command":"true","exit_code":0},
+        "author":format!("seat:{}", f.own.id), "created":"2026-10-31T00:00:00Z"
+    }, "body":"Files and mechanisms. Commands and actual exits. Criterion evidence. Gaps."});
+    let mut other = create.clone();
+    other["frontmatter"]["author"] = json!(format!("seat:{}", f.peer.id));
+    knowledge_denied(
+        f.mutate(f.peer.id, Ulid::new(), "knowledge_write", other),
+        "report_task_denied",
+    );
+    let mut spoof = create.clone();
+    spoof["frontmatter"]["author"] = json!(format!("seat:{}", f.peer.id));
+    knowledge_denied(
+        f.mutate(f.own.id, Ulid::new(), "knowledge_write", spoof),
+        "report_author_mismatch",
+    );
+    let op = Ulid::new();
+    let result = f.mutate(f.own.id, op, "knowledge_write", create.clone());
+    let record = data(result.clone())["record"].clone();
+    let number = record["frontmatter"]["number"].as_u64().unwrap();
+    assert!(number > 1);
+    assert_eq!(
+        f.mutate(f.own.id, op, "knowledge_write", create.clone()),
+        result
+    );
+    let fetched = data(knowledge_fetch(&f, f.own.id, "[[reports/2026-10-31-work]]"));
+    assert_eq!(fetched["body"], create["body"]);
+    let search = data(knowledge_search(
+        &f,
+        f.own.id,
+        json!({"query":"type:report"}),
+    ));
+    assert_eq!(search["items"].as_array().unwrap().len(), 1, "{search}");
+    for actor in [f.own.id, f.oracle.id] {
+        let mut update = knowledge_update_args(&fetched);
+        update["body"] = json!("Attempted correction in place");
+        knowledge_denied(
+            f.mutate(actor, Ulid::new(), "knowledge_write", update),
+            "report_append_only",
+        );
+    }
+    assert_eq!(
+        data(knowledge_fetch(&f, f.own.id, &format!("#{number}")))["body"],
+        create["body"]
+    );
+    let mut correction = create;
+    correction["path"] = json!("reports/2026-10-31-work-correction.md");
+    correction["frontmatter"]["supersedes"] = json!(format!("#{number}"));
+    assert!(data(f.mutate(f.own.id, Ulid::new(), "knowledge_write", correction))["record"]["frontmatter"]["number"].as_u64().unwrap() > number);
+}
+
+#[test]
+fn task_accept_requires_linked_report_to_exist_and_name_this_task() {
+    let f = Fixture::new();
+    f.task_file(f.task_metadata());
+    let report = |link: &str| {
+        f.mutate(
+            f.own.id,
+            Ulid::new(),
+            "task_report",
+            json!({
+                "task_path":"#1", "summary":"See full committed report", "report":link,
+                "verify_result":verification("true", 0, json!([]))
+            }),
+        )
+    };
+    data(report("[[reports/2026-10-31-missing]]"));
+    let missing = f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_accept",
+        json!({"task_path":"#1"}),
+    );
+    assert_eq!(missing["isError"], true, "{missing}");
+    assert!(
+        missing.to_string().contains("linked report unavailable"),
+        "{missing}"
+    );
+    let record = data(f.mutate(f.own.id, Ulid::new(), "knowledge_write", json!({
+        "path":"reports/2026-10-31-work.md", "frontmatter":{
+            "type":"report", "task":"#1", "commits":[], "verify":{"command":"true","exit_code":0},
+            "author":format!("seat:{}", f.own.id), "created":"2026-10-31T00:00:00Z"
+        }, "body":"Full evidence"
+    })))["record"].clone();
+    let mut other = f.task_metadata();
+    other["id"] = json!(Ulid::new());
+    other["number"] = json!(1000);
+    let other_path = f.config.repository.join(".bboxy/tasks/other.md");
+    std::fs::write(
+        &other_path,
+        format!(
+            "---\n{}---\nOther brief",
+            serde_yaml::to_string(&other).unwrap()
+        ),
+    )
+    .unwrap();
+    // A filesystem editor can corrupt an immutable record: acceptance must read
+    // the real report again, rather than trust the earlier task_report call.
+    let path = f
+        .config
+        .repository
+        .join(".bboxy/reports/2026-10-31-work.md");
+    let mut metadata = record["frontmatter"].clone();
+    metadata["task"] = json!("#1000");
+    std::fs::write(
+        &path,
+        format!(
+            "---\n{}---\nFull evidence",
+            serde_yaml::to_string(&metadata).unwrap()
+        ),
+    )
+    .unwrap();
+    data(report("[[reports/2026-10-31-work]]"));
+    assert_eq!(
+        f.task_document().metadata["report"]["report"],
+        "[[reports/2026-10-31-work]]"
+    );
+    let mismatch = f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_accept",
+        json!({"task_path":"#1"}),
+    );
+    assert_eq!(mismatch["isError"], true, "{mismatch}");
+    assert!(
+        mismatch.to_string().contains("different task"),
+        "{mismatch}"
+    );
+    metadata["task"] = json!("#1");
+    std::fs::write(
+        &path,
+        format!(
+            "---\n{}---\nFull evidence",
+            serde_yaml::to_string(&metadata).unwrap()
+        ),
+    )
+    .unwrap();
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_accept",
+        json!({"task_path":"#1"}),
+    ));
+    assert_eq!(f.task_document().metadata["status"], "accepted");
+}
+
+// keeps: #769; complete signed message pages and SQLite receipt cursors.
+#[test]
+fn mcp_read_byte_pages_messages_and_receipts() {
+    let f = Fixture::new();
+    let mut expected = std::collections::BTreeMap::new();
+    for _ in 0..140 {
+        let id = Ulid::new();
+        let sent = data(f.mutate(
+            f.oracle.id,
+            id,
+            "message_send",
+            json!({"destination":format!("seats/{}/inbox",f.own.id),"text":"x".repeat(16384)}),
+        ));
+        expected.insert(id.to_string(), sent["message"]["envelope"].clone());
+    }
+    let mut after = json!(0);
+    let mut seen = std::collections::BTreeSet::new();
+    let mut originals = Vec::new();
+    loop {
+        let reply = f.call(
+            f.oracle.id,
+            Ulid::new(),
+            "message_list",
+            json!({"after":after,"limit":128}),
+        );
+        assert!(serde_json::to_vec(&reply).unwrap().len() < bbt_mux::mcp::MAX_RESULT);
+        let page = data(reply)["page"].clone();
+        for row in page["items"].as_array().unwrap() {
+            let id = row["envelope"]["id"].as_str().unwrap();
+            if let Some(envelope) = expected.get(id) {
+                assert!(seen.insert(id.to_owned()));
+                assert_eq!(&row["envelope"], envelope);
+                originals.push(row.clone());
+            }
+        }
+        if page["next"].is_null() {
+            break;
+        }
+        assert_ne!(after, page["next"]);
+        after = page["next"].clone();
+    }
+    assert_eq!(seen.len(), 140);
+    let control = json!({"page":{"items":&originals[..25],"next":25}});
+    assert!(serde_json::to_vec(&control).unwrap().len() < 512 * 1024);
+    assert!(
+        serde_json::to_vec(
+            &json!({"content":[{"text":control.to_string()}],"structuredContent":control})
+        )
+        .unwrap()
+        .len()
+            > 512 * 1024
+    );
+
+    let message = expected.keys().next().unwrap().parse::<Ulid>().unwrap();
+    let account =
+        SqliteStore::open(&f.config.run_dir.join(format!("swarm-{}", f.own.swarm))).unwrap();
+    let mut db = account.connection().unwrap();
+    let (rowid,raw):(i64,Vec<u8>)=db.query_row("SELECT d.rowid,d.data FROM msg_deliveries d JOIN msg_messages m ON m.seq=d.message WHERE m.id=?1 LIMIT 1",[message.to_string()],|r| Ok((r.get(0)?,r.get(1)?))).unwrap();
+    let template: Value = serde_json::from_slice(&raw).unwrap();
+    let tx = db.transaction().unwrap();
+    for n in 0..129 {
+        let mut receipt = template.clone();
+        receipt["agent"] = json!(format!("byte-fixture-{n}"));
+        receipt["evidence"] = json!("sender-stored");
+        receipt["wake"] = json!("none");
+        receipt["reason"] = json!("policy");
+        receipt.as_object_mut().unwrap().remove("until");
+        receipt["note"] = json!("x".repeat(if n == 128 { 2 * 1024 * 1024 } else { 16384 }));
+        tx.execute("INSERT INTO msg_deliveries SELECT message,recipient,?1,'sender-stored',class,held,eligible_ms,batch_key,attempt,?2 FROM msg_deliveries WHERE rowid=?3",rusqlite::params![format!("byte-fixture-{n}"),serde_json::to_vec(&receipt).unwrap(),rowid]).unwrap();
+    }
+    tx.commit().unwrap();
+    let total: i64 =db.query_row("SELECT COUNT(*) FROM msg_deliveries d JOIN msg_messages m ON m.seq=d.message WHERE m.id=?1",[message.to_string()],|r| r.get(0)).unwrap();
+    drop(db);
+    let mut after = json!(0);
+    let mut keys = std::collections::BTreeSet::new();
+    let mut truncated = 0;
+    loop {
+        let reply = f.call(
+            f.oracle.id,
+            Ulid::new(),
+            "message_receipts",
+            json!({"message":message,"after":after,"limit":128}),
+        );
+        assert!(serde_json::to_vec(&reply).unwrap().len() < bbt_mux::mcp::MAX_RESULT);
+        let page = data(reply)["page"].clone();
+        for row in page["items"].as_array().unwrap() {
+            assert!(keys.insert(json!([row["recipient"], row["agent"]]).to_string()));
+            truncated += usize::from(row["receipt_truncated"] == true);
+        }
+        if page["next"].is_null() {
+            break;
+        }
+        assert_ne!(after, page["next"]);
+        after = page["next"].clone();
+    }
+    assert_eq!(keys.len(), usize::try_from(total).unwrap());
+    assert_eq!(truncated, 1);
+}
+
+// keeps: #769; unchanged 128 KiB encoded capture budget stays below MAX_RESULT.
+#[test]
+#[ignore = "night: real boundary; explicit test-task-pages-history runs unattended"]
+fn mcp_history_byte_pages_reconstruct_two_mib() {
+    use base64::Engine;
+    let f = Fixture::real();
+    let target=f.spawn_fixture("zsh", "dd if=/dev/zero bs=32768 count=64 2>/dev/null | tr '\\000' x; printf '\\nHISTORY-BYTE-DONE\\n'; IFS= read -r line");
+    f.wait_screen(target.id, "HISTORY-BYTE-DONE");
+    let mut args = f.target(target.id);
+    args["limit_records"] = json!(128);
+    let mut output = Vec::new();
+    let mut all = Vec::new();
+    for n in 0..256 {
+        let reply = f.call(f.oracle.id, Ulid::new(), "history_read", args.clone());
+        assert!(serde_json::to_vec(&reply).unwrap().len() < bbt_mux::mcp::MAX_RESULT);
+        let page = data(reply);
+        assert!(page["gaps"].as_array().unwrap().is_empty());
+        for row in page["records"].as_array().unwrap() {
+            all.push(row.clone());
+            if row["kind"] == "output" {
+                output.extend(
+                    base64::engine::general_purpose::STANDARD
+                        .decode(row["bytes"].as_str().unwrap())
+                        .unwrap(),
+                );
+            }
+        }
+        if page["next"].is_null() {
+            break;
+        }
+        assert!(n < 255, "capture failed to finish");
+        args["cursor"] = page["next"].clone();
+    }
+    assert_eq!(
+        output.iter().filter(|b| **b == b'x').count(),
+        2 * 1024 * 1024
+    );
+    assert!(
+        output
+            .windows(b"HISTORY-BYTE-DONE".len())
+            .any(|s| s == b"HISTORY-BYTE-DONE")
+    );
+    let control = json!({"records":all,"next":null});
+    assert!(
+        serde_json::to_vec(
+            &json!({"content":[{"text":control.to_string()}],"structuredContent":control})
+        )
+        .unwrap()
+        .len()
+            > bbt_mux::mcp::MAX_RESULT
+    );
+}
+
+// keeps: #769; real admitted fetch reconstructs an immutable UTF-8 body.
+#[test]
+fn mcp_read_byte_pages_knowledge_fetch() {
+    let f = Fixture::new();
+    let id = Ulid::new();
+    let body = format!(
+        "{}{}FETCH-BYTE-END",
+        "é".repeat(600_000),
+        "\\\"\n".repeat(1000)
+    );
+    let metadata =
+        json!({"id":id,"type":"note","title":"byte fetch","history":"x".repeat(600_000)});
+    let text = format!("---\n{metadata}\n---\n{body}");
+    assert!(text.len() < 2 * 1024 * 1024);
+    let directory = f.config.repository.join(".bboxy/notes");
+    std::fs::create_dir_all(&directory).unwrap();
+    std::fs::write(directory.join("byte-fetch.md"), text).unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let mut page = loop {
+        let reply = f.call(
+            f.own.id,
+            Ulid::new(),
+            "knowledge_fetch",
+            json!({"locator":"notes/byte-fetch.md"}),
+        );
+        if reply["isError"] == false {
+            break data(reply);
+        }
+        assert!(Instant::now() < deadline, "{reply}");
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    let etag = page["etag"].clone();
+    let mut output = String::new();
+    let mut offset = 0;
+    loop {
+        assert_eq!(page["body_offset"], offset);
+        assert_eq!(page["frontmatter_truncated"], true);
+        output.push_str(page["body"].as_str().unwrap());
+        if page["next"].is_null() {
+            break;
+        }
+        offset = page["next"].as_u64().unwrap() as usize;
+        assert_eq!(offset, output.len());
+        let reply = f.call(
+            f.own.id,
+            Ulid::new(),
+            "knowledge_fetch",
+            json!({"locator":"notes/byte-fetch.md","body_offset":offset,"etag":etag}),
+        );
+        assert!(serde_json::to_vec(&reply).unwrap().len() < bbt_mux::mcp::MAX_RESULT);
+        page = data(reply);
+    }
+    assert_eq!(output, body);
+    let stale = f.call(
+        f.own.id,
+        Ulid::new(),
+        "knowledge_fetch",
+        json!({"locator":"notes/byte-fetch.md","body_offset":offset,"etag":"changed"}),
+    );
+    assert_eq!(stale["structuredContent"]["error"]["code"], "stale_body");
+    let boundary = f.call(
+        f.own.id,
+        Ulid::new(),
+        "knowledge_fetch",
+        json!({"locator":"notes/byte-fetch.md","body_offset":1,"etag":etag}),
+    );
+    assert_eq!(
+        boundary["structuredContent"]["error"]["code"],
+        "invalid_body_offset"
+    );
+}
+
+// keeps: #769; detail history cannot exceed the read envelope.
+#[test]
+fn mcp_read_byte_pages_task_detail_keeps_active_report() {
+    let f = Fixture::new();
+    let metadata = json!({"id":f.task,"type":"task","number":1,"title":"byte detail","status":"running","assignee":f.own.id,"verify":"true","verify_result":{"command":"true","exit_code":0},"report":{"summary":"active result"},"history":"x".repeat(300_000)});
+    std::fs::write(
+        f.config
+            .repository
+            .join(format!(".bboxy/tasks/{}.md", f.task)),
+        format!("---\n{metadata}\n---\nTask brief.\n"),
+    )
+    .unwrap();
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let reply = loop {
+        let reply = f.call(
+            f.own.id,
+            Ulid::new(),
+            "task_status",
+            json!({"task_id":f.task}),
+        );
+        if reply["isError"] == false {
+            break reply;
+        }
+        assert!(Instant::now() < deadline, "{reply}");
+        std::thread::sleep(Duration::from_millis(10));
+    };
+    assert!(serde_json::to_vec(&reply).unwrap().len() < bbt_mux::mcp::MAX_RESULT);
+    let detail = data(reply);
+    assert_eq!(detail["metadata_truncated"], true);
+    assert_eq!(detail["metadata"]["report"]["summary"], "active result");
+    assert_eq!(detail["metadata"]["verify_result"]["exit_code"], 0);
+}
+
+// keeps: #769; every public document/execution graph follows byte-short pages.
+#[test]
+fn mcp_read_byte_pages_all_graphs_retain_the_full_corpus() {
+    let mut expected = std::collections::BTreeSet::new();
+    // Seed before the watcher starts: this checks read paging, not how quickly
+    // eighty separate filesystem mutations publish under a busy workspace run.
+    let f = Fixture::open_seeded(false, false, |repository, own| {
+        for n in 0..80 {
+            let id = Ulid::new();
+            expected.insert(id.to_string());
+            let metadata = json!({"id":id,"type":"task","number":1000+n,"title":"\0".repeat(512),"status":"open","assignee":own.id});
+            std::fs::write(
+                repository.join(format!(".bboxy/tasks/bytes-{n:03}.md")),
+                format!("---\n{metadata}\n---\n{}", "graph-byte ".repeat(3000)),
+            )
+            .unwrap();
+        }
+    });
+    let deadline = Instant::now() + Duration::from_secs(120);
+    loop {
+        let mut cursor = Value::Null;
+        let mut ready = std::collections::BTreeSet::new();
+        loop {
+            let reply = f.call(
+                f.oracle.id,
+                Ulid::new(),
+                "knowledge_search",
+                json!({"query":"graph-byte","cursor":cursor,"limit":128}),
+            );
+            assert_ne!(
+                reply["structuredContent"]["error"]["code"],
+                "response_bound"
+            );
+            if reply["isError"] != false {
+                break;
+            }
+            let page = data(reply);
+            for hit in page["items"].as_array().unwrap() {
+                ready.insert(hit["ref"]["id"].as_str().unwrap().to_owned());
+            }
+            cursor = page["next"].clone();
+            if cursor.is_null() {
+                break;
+            }
+        }
+        if ready == expected {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "corpus publication did not settle: {} of {}",
+            ready.len(),
+            expected.len()
+        );
+        std::thread::sleep(Duration::from_millis(10));
+    }
+    for graph in ["execution", "task", "markdown"] {
+        let mut after = Value::Null;
+        let mut seen = std::collections::BTreeSet::new();
+        let mut pages = 0;
+        loop {
+            let reply = f.call(
+                f.oracle.id,
+                Ulid::new(),
+                "graph_read",
+                json!({"graph":graph,"after":after,"limit":128}),
+            );
+            assert!(serde_json::to_vec(&reply).unwrap().len() < bbt_mux::mcp::MAX_RESULT);
+            let page = data(reply);
+            for node in page["nodes"].as_array().unwrap() {
+                assert!(seen.insert(node["id"].as_str().unwrap().to_owned()));
+            }
+            pages += 1;
+            assert!(pages < 128);
+            if page["next"].is_null() {
+                break;
+            }
+            after = page["next"].clone();
+        }
+        assert!(pages > 1, "{graph} did not exercise a byte cut");
+        assert!(expected.is_subset(&seen), "{graph} omitted fixture tasks");
     }
 }

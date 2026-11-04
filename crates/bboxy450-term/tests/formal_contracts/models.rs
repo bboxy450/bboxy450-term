@@ -9,6 +9,9 @@
 use Expr::{Bool, Int, Var};
 use bboxy450_tlc::{Action, Expr, Invariant, Model, Response, Variable};
 
+#[path = "harness_status_model.rs"]
+mod harness_status_model;
+
 #[path = "notification_models.rs"]
 mod notification_models;
 
@@ -17,6 +20,52 @@ mod seat_models;
 
 #[path = "plugin_models.rs"]
 mod plugin_models;
+
+#[path = "task_page_model.rs"]
+mod task_page_model;
+
+#[path = "report_models.rs"]
+mod report_models;
+
+#[path = "task_amend_model.rs"]
+mod task_amend_model;
+
+#[path = "capability_models.rs"]
+mod capability_models;
+#[path = "usage_models.rs"]
+mod usage_models;
+#[path = "gui_replacement.rs"]
+mod gui_replacement;
+#[path = "rich_host.rs"]
+mod rich_host;
+#[path = "launch_environment.rs"]
+mod launch_environment;
+#[path = "launch_readiness.rs"]
+mod launch_readiness;
+
+#[path = "gitkb_models.rs"]
+mod gitkb_models;
+
+#[path = "input_dedup_model.rs"]
+mod input_dedup_model;
+
+#[path = "wheel_model.rs"]
+mod wheel_model;
+
+#[path = "provenance_models.rs"]
+mod provenance_models;
+
+#[path = "event_log_model.rs"]
+mod event_log_model;
+
+#[path = "logic_worker_model.rs"]
+mod logic_worker_model;
+
+#[path = "projection_writer_model.rs"]
+mod projection_writer_model;
+
+#[path = "watcher_model.rs"]
+mod watcher_model;
 
 fn eq(i: usize, n: i64) -> Expr {
     Var(i).eq(Int(n))
@@ -41,6 +90,7 @@ fn model(name: &str, broken: bool, vars: &[(&str, i64, i64)]) -> Model {
         invariants: vec![],
         responses: vec![],
         weak_fair: vec![],
+        strong_fair: vec![],
         // Completed operations may quiesce; TLA stuttering is still explored for liveness.
         check_deadlock: false,
     }
@@ -150,6 +200,119 @@ fn notification(b: bool) -> Model {
     safe(&mut m, "ProcessedWasSubmitted", Var(4).le(Var(0)));
     m
 }
+// A namespace change invalidates the cached inode before reuse.
+fn inode_fence(b: bool) -> Model {
+    let mut m = model(
+        "InodeFence",
+        b,
+        &[
+            ("path_inode", 1, 0),
+            ("cached_inode", 1, 0),
+            ("changed", 1, 0),
+            ("watching", 1, 1),
+            ("bad", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "ReplacePathComponent",
+        Bool(true),
+        &[(0, Int(1).minus(Var(0))), (2, Int(1))],
+    );
+    action(
+        &mut m,
+        "WatchUnavailable",
+        Bool(true),
+        &[(3, Int(0)), (2, Int(1))],
+    );
+    let reuse = if b {
+        Bool(true)
+    } else {
+        eq(2, 0).and(eq(3, 1))
+    };
+    action(
+        &mut m,
+        "ReuseWrongInode",
+        reuse.clone().and(Var(0).eq(Var(1)).negate()),
+        &[(4, Int(1))],
+    );
+    action(
+        &mut m,
+        "RecheckPath",
+        reuse.negate(),
+        &[(1, Var(0)), (2, Int(0))],
+    );
+    no_bad(&mut m, 4);
+    m
+}
+// Owner writes have a monotonically increasing epoch, even when A returns.
+fn routing_cache(b: bool) -> Model {
+    let mut m = model(
+        "RoutingCache",
+        b,
+        &[
+            ("epoch", 2, 0),
+            ("route", 1, 0),
+            ("cache_epoch", 2, 0),
+            ("cache_route", 1, 0),
+            ("valid", 1, 0),
+            ("bad", 1, 0),
+            ("load_epoch", 2, 0),
+            ("load_route", 1, 0),
+            ("loading", 1, 0),
+            ("generation", 1, 0),
+            ("cached_generation", 1, 0),
+            ("load_generation", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "RegistryWrite",
+        Var(0).lt(Int(2)),
+        &[(0, Var(0).plus(Int(1))), (1, Int(1).minus(Var(1)))],
+    );
+    action(
+        &mut m,
+        "NewRequestedGeneration",
+        Bool(true),
+        &[(9, Int(1).minus(Var(9)))],
+    );
+    let hit = eq(4, 1)
+        .and(Var(10).eq(Var(9)))
+        .and(if b { Bool(true) } else { Var(2).eq(Var(0)) });
+    let current = Var(2)
+        .eq(Var(0))
+        .and(Var(3).eq(Var(1)))
+        .and(Var(10).eq(Var(9)));
+    action(
+        &mut m,
+        "UseStaleRoute",
+        hit.clone().and(current.clone().negate()),
+        &[(5, Int(1))],
+    );
+    action(&mut m, "UseCurrentRoute", hit.clone().and(current), &[]);
+    action(
+        &mut m,
+        "StartLoad",
+        hit.negate().and(eq(8, 0)),
+        &[(6, Var(0)), (7, Var(1)), (8, Int(1)), (11, Var(9))],
+    );
+    action(
+        &mut m,
+        "CompleteLoad",
+        eq(8, 1),
+        &[
+            (2, Var(6)),
+            (3, Var(7)),
+            (4, Int(1)),
+            (8, Int(0)),
+            (10, Var(11)),
+        ],
+    );
+    no_bad(&mut m, 5);
+    m
+}
+
 fn workspace(b: bool) -> Model {
     let mut m = model(
         "WorkspaceFence",
@@ -226,57 +389,9 @@ fn workspace(b: bool) -> Model {
     no_bad(&mut m, 6);
     m
 }
+// Shipped by bboxy450-term-mux (`models/PluginActivation.tla`).
 fn plugin(b: bool) -> Model {
-    let mut m = model(
-        "PluginActivation",
-        b,
-        &[
-            ("source_digest", 2, 1),
-            ("approved_digest", 2, 1),
-            ("enabled", 1, 1),
-            ("generation", 2, 1),
-            ("job_generation", 2, 0),
-            ("job_digest", 2, 0),
-            ("job", 2, 0),
-            ("bad", 1, 0),
-        ],
-    );
-    action(
-        &mut m,
-        "StartInspection",
-        all([eq(6, 0), eq(2, 1)]),
-        &[(4, Var(3)), (5, Var(0)), (6, Int(1))],
-    );
-    action(&mut m, "Disable", eq(2, 1), &[(2, Int(0)), (3, Int(2))]);
-    action(&mut m, "SourceChanged", eq(0, 1), &[(0, Int(2))]);
-    let valid = all([
-        eq(2, 1),
-        Var(4).eq(Var(3)),
-        Var(5).eq(Var(0)),
-        Var(5).eq(Var(1)),
-    ]);
-    action(
-        &mut m,
-        "AcceptCurrentInspection",
-        all([eq(6, 1), valid.clone()]),
-        &[(6, Int(2))],
-    );
-    action(
-        &mut m,
-        "RefuseOldInspection",
-        all([eq(6, 1), valid.clone().negate()]),
-        &[(6, Int(2))],
-    );
-    if b {
-        action(
-            &mut m,
-            "AcceptOldInspection",
-            all([eq(6, 1), valid.negate()]),
-            &[(7, Int(1))],
-        );
-    }
-    no_bad(&mut m, 7);
-    m
+    plugin_models::plugin_activation(b)
 }
 fn token(b: bool) -> Model {
     let mut m = model(
@@ -1695,7 +1810,8 @@ fn native_frame_observation(b: bool) -> Model {
 }
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 35] = [
+    let families: [fn(bool) -> Model; 39] = [
+        seat_models::diagnostic_routing,
         native_surface_resize,
         crate_publication,
         native_frame_observation,
@@ -1709,6 +1825,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         graph_query_cursors,
         document_feed,
         native_input,
+        wheel_model::wheel_ownership,
         sidebar_reveal,
         async_render_preparation,
         render_line_plan,
@@ -1719,6 +1836,8 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         notification,
         notification_models::recovery,
         notification_models::lifecycle,
+        inode_fence,
+        routing_cache,
         workspace,
         plugin,
         token,
@@ -1743,6 +1862,12 @@ pub fn cases() -> Vec<(Model, &'static str)> {
             ]
         })
         .collect::<Vec<_>>();
+    // Toolkit registration stays away from concurrent module append sites.
+    cases.extend(toolkit_models::cases());
+    cases.extend([
+        (input_dedup_model::input_dedup_eviction(false), "pass"),
+        (input_dedup_model::input_dedup_eviction(true), "liveness"),
+    ]);
     cases.extend([
         (import_staging(false), "pass"),
         (import_staging(true), "safety"),
@@ -1751,6 +1876,22 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     ]);
     // Plugin-system families live beside their own contract module.
     cases.extend(plugin_models::cases());
+    cases.extend(task_page_model::cases());
+    cases.extend(report_models::cases());
+    cases.extend(task_amend_model::cases());
+    cases.extend(capability_models::cases());
+    cases.extend(gitkb_models::cases());
+    cases.extend(usage_models::cases());
+    cases.extend(rich_host::cases());
+    cases.extend(gui_replacement::cases());
+    cases.extend(launch_environment::cases());
+    cases.extend(launch_readiness::cases());
+    cases.extend(provenance_models::cases());
+    cases.extend(event_log_model::cases());
+    cases.extend(logic_worker_model::cases());
+    cases.extend(projection_writer_model::cases());
+    cases.extend(watcher_model::cases());
+    cases.extend(harness_status_model::cases());
     cases
 }
 
@@ -1826,3 +1967,6 @@ fn native_surface_resize(b: bool) -> Model {
     safe(&mut m, "PresentedExtentMatchesTarget", eq(6, 0));
     m
 }
+
+#[path = "toolkit_models.rs"]
+mod toolkit_models;

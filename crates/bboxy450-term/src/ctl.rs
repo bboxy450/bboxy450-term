@@ -63,8 +63,8 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   seat ls
   seat attention <seat>                  read policy, defaults and pending digest summary
   seat attention <seat> <direct|destination> <conversation|event> <wake|inbox|digest|default>
-  seat spawn <claude|codex|zsh> [--place right|down|tab|space] [--role oracle|architect|creativity|executor|shell]
-             [--name NAME] [--cwd DIR] [--swarm ID]
+  seat spawn <claude|codex|zsh> [--place right|down|tab|space] [--role oracle|architect|creativity|researcher|executor|shell|solo]
+             [--name NAME] [--cwd DIR] [--swarm ID] [--resume SESSION-ID]   claude/codex only
   seat screen <seat> [--human]            the visible screen, cursor and title
   seat type <seat> <text>                 types the text as written
   seat key <seat> <key>...                enter esc tab backspace space up down left right home end
@@ -100,7 +100,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   task list [--unassigned | --seat SEAT | --status STATUS]
   task get <#N|path|id>
   task status <#N|path|id>
-  task report <#N|path|id> --summary TEXT [--commit SHA] [--verify-result JSON]
+  task report <#N|path|id> --summary TEXT [--commit SHA] [--report LOCATOR] [--verify-result JSON]
                                           JSON: command, exit_code, optional evidence entries
   task accept <#N|path|id>
   task reject <#N|path|id> --reason TEXT
@@ -509,13 +509,15 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             ));
         }
     }
-    if flags
-        .keys()
-        .any(|key| matches!(key.as_str(), "summary" | "commit" | "verify-result"))
-        && !matches!(&command, Command::TaskReport { .. })
+    if flags.keys().any(|key| {
+        matches!(
+            key.as_str(),
+            "summary" | "commit" | "report" | "verify-result"
+        )
+    }) && !matches!(&command, Command::TaskReport { .. })
     {
         return Err(format!(
-            "{USAGE_PREFIX}--summary, --commit and --verify-result apply only to task report"
+            "{USAGE_PREFIX}--summary, --commit, --report and --verify-result apply only to task report"
         ));
     }
     if flags.contains_key("reason")
@@ -560,6 +562,9 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
         return Err(format!(
             "{USAGE_PREFIX}--grant and --tier apply only to plugin trust"
         ));
+    }
+    if flags.contains_key("resume") && !matches!(&command, Command::Spawn { .. } | Command::SpawnAt(_)) {
+        return Err(format!("{USAGE_PREFIX}--resume applies only to seat spawn"));
     }
     if flags.contains_key("to") && !matches!(&command, Command::UiCompose { .. }) {
         return Err(format!("{USAGE_PREFIX}--to applies only to ui compose"));
@@ -611,6 +616,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "commit",
             "message",
             "verify-result",
+            "report",
             "reason",
             "disposition",
             "evidence",
@@ -620,6 +626,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "owner-seat",
             "grant",
             "tier",
+            "resume",
         ]
         .contains(&k.as_str())
     }) {
@@ -1637,8 +1644,17 @@ fn diagnostic_endpoint(args: &[String]) -> Option<PathBuf> {
     endpoint
 }
 
+/// A usage refusal can carry the whole help page; the journal keeps its first line.
+fn journal_line(reason: &str) -> &str {
+    if reason.starts_with(USAGE_PREFIX) {
+        reason.lines().next().unwrap_or(reason)
+    } else {
+        reason
+    }
+}
+
 pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
-    if args.iter().any(|arg| arg == "--help" || arg == "-h") {
+    if args.iter().any(|arg| arg == "--help" || arg == "-h") || args == ["help"] {
         return print_line(format_args!("{USAGE}")).map(|_| ());
     }
     let parsed = parse_full(args);
@@ -1674,7 +1690,7 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
         {
             bbt_rt::error_journal::report_to(
                 root,
-                bbt_rt::error_journal::Failure::new("ctl", &failure_operation, reason),
+                bbt_rt::error_journal::Failure::new("ctl", &failure_operation, journal_line(reason)),
             );
         }
         return match result {
@@ -1726,7 +1742,7 @@ pub fn main(args: &[String], default_endpoint: &Path) -> Result<(), String> {
         if let Some(root) = &failure_root {
             bbt_rt::error_journal::report_to(
                 root,
-                bbt_rt::error_journal::Failure::new("ctl", &failure_operation, &reason),
+                bbt_rt::error_journal::Failure::new("ctl", &failure_operation, journal_line(&reason)),
             );
         }
         let (op, fail) = operation_failure(op, &reason);
@@ -1880,6 +1896,12 @@ fn run_verb(
             ..
         } = &parsed.command
         {
+            // This read bypasses the door, so refuse a seat here as the door would: an
+            // unfiltered read acknowledges the operator's journal. Seats use MCP
+            // diagnostic_errors, which reads only their own rows.
+            if std::env::var_os("BBOXY_SEAT_ID").is_some() {
+                return Err(bbt_mux::ctl_door::REFUSAL.into());
+            }
             let root = endpoint_file
                 .parent()
                 .ok_or("diagnostics run directory unavailable")?;
@@ -2189,6 +2211,14 @@ mod tests {
     fn args(s: &str) -> Vec<String> {
         s.split(' ').map(Into::into).collect()
     }
+    #[test]
+    fn journal_keeps_one_usage_line_and_whole_other_reasons() {
+        let page = parse_full(&args("help me")).unwrap_err();
+        assert!(page.starts_with(USAGE_PREFIX) && page.lines().count() > 1, "{page}");
+        assert_eq!(journal_line(&page), page.lines().next().unwrap());
+        let timeout = format!("{TIMEOUT_PREFIX}op\nmessage");
+        assert_eq!(journal_line(&timeout), timeout);
+    }
     /// ctl-cli §1: one table, each verb once, each naming one real window action, and every
     /// verb in it parses.
     #[test]
@@ -2471,6 +2501,8 @@ mod tests {
                 "actual output",
                 "--commit",
                 "abc123",
+                "--report",
+                "[[reports/2026-10-31-work]]",
                 "--verify-result",
                 &encoded,
                 "--op",
@@ -2487,6 +2519,7 @@ mod tests {
                 task: "#1".into(),
                 summary: "actual output".into(),
                 commit: Some("abc123".into()),
+                report: Some("[[reports/2026-10-31-work]]".into()),
                 verify_result: Some(verification),
             }
         );
@@ -2498,6 +2531,7 @@ mod tests {
             "task report #1 --summary x --verify-result nope",
             "task report #1 --summary x --verify-result {}",
             "task accept #1 --verify-result {}",
+            "task accept #1 --report missing",
             "task status #1 --reason x",
             "task reject #1 --reason x --summary unused",
         ] {
@@ -2682,6 +2716,7 @@ mod tests {
                 swarm: None,
                 new_tab: false,
                 role: None,
+                resume: None,
             }
         );
         assert_eq!(
@@ -3106,5 +3141,47 @@ mod placement_parser_tests {
             parse_full(&args).unwrap().command,
             Command::Spawn { new_tab: false, .. }
         ));
+    }
+
+    // keeps: spec ctl-cli §1 — `seat spawn --resume` names the native session to resume
+    #[test]
+    fn seat_spawn_resume_carries_the_native_id_and_refuses_zsh_and_bad_ids() {
+        let args = |s: &str| s.split(' ').map(str::to_owned).collect::<Vec<_>>();
+        let id = "019a1b2c-3d4e-7f60-8a9b-0c1d2e3f4a5b";
+        for harness in ["claude", "codex"] {
+            for line in [format!("seat spawn {harness} --resume {id} --role oracle"), format!("spawn {harness} --resume {id}")] {
+                let Command::Spawn { resume, .. } = parse_full(&args(&line)).unwrap().command else {
+                    panic!("{line}: not a backend spawn")
+                };
+                assert_eq!(resume.as_deref(), Some(id), "{line}");
+            }
+        }
+        assert!(matches!(parse_full(&args("seat spawn claude")).unwrap().command,
+            Command::Spawn { resume: None, .. }));
+        // A resumed seat can open in its own tab or space (the GUI owner places it).
+        for (place, expected) in [("tab", bbt_proto::gui::SpawnPlace::Tab), ("space", bbt_proto::gui::SpawnPlace::Space)] {
+            let line = format!("seat spawn claude --resume {id} --place {place}");
+            let Command::SpawnAt(pick) = parse_full(&args(&line)).unwrap().command else {
+                panic!("{line}: not a placed spawn")
+            };
+            assert_eq!((pick.resume.as_deref(), pick.place), (Some(id), expected), "{line}");
+        }
+        let long = "a".repeat(129);
+        for bad in [
+            vec!["seat", "spawn", "zsh", "--resume", id],
+            vec!["spawn", "zsh", "--resume", id],
+            vec!["seat", "spawn", "claude", "--resume", ""],
+            vec!["seat", "spawn", "claude", "--resume", "a b"],
+            vec!["seat", "spawn", "codex", "--resume", "a\u{7}b"],
+            vec!["seat", "spawn", "codex", "--resume", &long],
+            vec!["seat", "spawn", "zsh", "--resume", id, "--place", "tab"],
+            vec!["seat", "spawn", "claude", "--resume", "a b", "--place", "tab"],
+            vec!["seat", "ls", "--resume", id],
+        ] {
+            let words: Vec<String> = bad.iter().map(|s| s.to_string()).collect();
+            let error = parse_full(&words).unwrap_err();
+            assert!(error.starts_with(USAGE_PREFIX) && error.contains("--resume"), "{bad:?}: {error}");
+        }
+        assert!(parse_full(&args(&format!("seat spawn codex --resume {}", "a".repeat(128)))).is_ok());
     }
 }

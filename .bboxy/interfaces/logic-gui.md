@@ -7,7 +7,7 @@ status: baselined
 links:
   - { to: "[[interfaces]]", rel: index }
 created: "2026-10-26T16:18:20Z"
-updated: "2026-10-29T19:48:09Z"
+updated: "2026-11-03T17:44:00Z"
 ---
 # ICD: logic ↔ GUI
 
@@ -161,3 +161,23 @@ complete on a separate per-seat lane (one outstanding page per seat; excess
 admission is Busy), and never hold ingestion waiting for storage. A failed/stale
 history completion cannot advance live playback. Timing and frame verdicts are
 unchanged. Owners: logic and GUI under the direct operator #47 brief.
+
+## Startup observations (operator brief, 2026-11-03)
+
+The app cockpit and its private logic child add stdout lines of the form
+`{"startup_progress":{"stream":"account","verified":128,"total":512}}`
+before the existing readiness object. Readiness fields and meanings are unchanged;
+the app consumes progress records until it receives that readiness object. Counts
+describe successfully signature/chain-verified rows of one stream in a consistent
+SQLite read snapshot, starting at zero, every 128 rows and at completion. No timer
+heartbeat claims verification progress. These records contain no capabilities.
+
+The logic readiness deadline is 30 seconds without advancing progress; duplicate
+counts do not extend it. Supervisor readiness, GUI hello and catalogue admission
+retain bounded waits. Recovery uses those per-phase waits instead of imposing a
+second 30-second total limit over an advancing logic bootstrap. Cockpit phase
+observations drive a theme-token modal over the retained scene; failures stay
+visible with app/logic log paths and explicit Retry/Quit. Retry uses local control
+and does not depend on a working GUI socket. Formal/parity and process evidence
+for this amendment are waived for this merge by the operator's speed exception
+and remain owed; the required evidence is the build and focused modal-model test.

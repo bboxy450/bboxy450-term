@@ -9,19 +9,8 @@
 // A plugin is its own process with no UI thread; blocking stdio is its job.
 #![allow(clippy::disallowed_methods)]
 
-mod raw;
-mod reference;
-mod root;
-
-use bbt_plugin_fixture::{Kind, Knobs};
+use bbt_plugin_fixture::Knobs;
 
 fn main() {
-    let knobs = Knobs::compiled(option_env!("BBOXY_PLUGIN_FIXTURE"));
-    match knobs.kind {
-        Kind::Reference => reference::main(&knobs),
-        Kind::Root => root::main(knobs),
-        Kind::Inspect => raw::inspect(&knobs),
-        Kind::Demux => raw::demux(),
-        Kind::Callback => raw::callback(),
-    }
+    bbt_plugin_fixture::run_fixture(Knobs::compiled(option_env!("BBOXY_PLUGIN_FIXTURE")));
 }

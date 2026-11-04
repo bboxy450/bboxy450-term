@@ -300,6 +300,9 @@ pub struct Shape {
     pub skills: Vec<Skill>,
     #[serde(default)]
     pub hooks: Vec<Hook>,
+    /// Transport-owned launcher parameters, cached with the trusted shape.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub spawn_fields: Vec<crate::transport::Field>,
     #[serde(default)]
     pub auth: Option<Auth>,
     pub health_command: String,
@@ -314,6 +317,38 @@ pub struct Shape {
     /// needs the operator's grant at trust.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub host_api: Vec<String>,
+}
+
+/// Parse and validate a `--shape` descriptor exactly as the host does at trust
+/// and in `plugin check`: the bundled [`SCHEMA`], [`Shape::validate`], known
+/// contract methods and compiling argument and result schemas.
+pub fn parse_descriptor(value: Value, name: &PluginName) -> Result<Shape, Refusal> {
+    let compile = |schema: &Value, code: &str| {
+        jsonschema::validator_for(schema).map_err(|e| Refusal::new(code, e.to_string()))
+    };
+    let schema: Value = serde_json::from_str(SCHEMA).expect("bundled shape schema");
+    compile(&schema, "invalid_json_schema")?
+        .validate(&value)
+        .map_err(|e| Refusal::new("invalid_shape", e.to_string()))?;
+    let shape: Shape =
+        serde_json::from_value(value).map_err(|e| Refusal::new("invalid_shape", e.to_string()))?;
+    shape.validate(name)?;
+    for system in &shape.systems {
+        let contract = Contract::named(&system.contract)?;
+        for command in &system.commands {
+            if contract.method_schema(&command.name, false).is_none()
+                || contract.method_schema(&command.name, true).is_none()
+            {
+                return Err(Refusal::new(
+                    "unknown_method",
+                    format!("{} {}", system.contract, command.name),
+                ));
+            }
+            compile(&command.args, "invalid_argument_schema")?;
+            compile(&command.result, "invalid_result_schema")?;
+        }
+    }
+    Ok(shape)
 }
 
 impl Shape {
@@ -334,6 +369,14 @@ impl Shape {
             ));
         }
         skills::validate(&self.skills)?;
+        crate::transport::validate_fields(&self.spawn_fields)?;
+        if !self.spawn_fields.is_empty() && !self.systems.iter().any(|s| s.contract == "transport")
+        {
+            return Err(Refusal::new(
+                "transport_fields_without_contract",
+                "spawn_fields requires the transport contract",
+            ));
+        }
         if self.name.is_empty()
             || self.version.is_empty()
             || self.systems.is_empty()

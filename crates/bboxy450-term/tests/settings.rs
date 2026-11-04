@@ -610,6 +610,7 @@ fn settings_projects_missing_identity_honestly_and_uses_the_backend_role_default
         ("claude", "oracle"),
         ("codex", "executor"),
         ("zsh", "shell"),
+        ("bboxy450-harness", "executor"),
     ] {
         assert_eq!(
             records
@@ -629,13 +630,14 @@ fn settings_projects_missing_identity_honestly_and_uses_the_backend_role_default
             .iter()
             .map(|(name, _)| name.as_str())
             .collect::<Vec<_>>(),
-        ["claude", "codex", "pi", "omp", "zsh"]
+        bboxy450_term::settings::roles::HARNESSES
     );
     for (kind, wake, source, hooks) in [
         ("claude", "socket", "reported", true),
         ("codex", "app-server", "reported", true),
         ("pi", "pty", "output cadence", false),
         ("omp", "pty", "output cadence", false),
+        ("bboxy450-harness", "pty", "output cadence", false),
     ] {
         let harness = &records
             .harness
@@ -845,6 +847,7 @@ fn settings_persisted_policy_drives_attention_and_keeps_focus_and_mute_suppressi
     let mut seats: Vec<_> = [(1, "codex"), (2, "claude")]
         .into_iter()
         .map(|(id, harness)| GuiSeat {
+            rich_socket: None,
             notification_episode: None,
             attention: None,
             record: bbt_proto::registry::SeatRecord::new(
@@ -860,6 +863,7 @@ fn settings_persisted_policy_drives_attention_and_keeps_focus_and_mute_suppressi
                 grade: Grade::Shim,
                 title: String::new(),
                 detail: None,
+                stale: false,
                 turn_open: true,
                 observed_ms: 10,
                 subagents: vec![],

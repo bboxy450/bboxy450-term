@@ -37,10 +37,10 @@ impl SpawnParams {
         params.refresh();
         params
     }
-    pub(crate) fn refresh(&mut self) {
+    pub fn refresh(&mut self) {
         if let Some(index) = self.choosing {
             self.choice_crumb = Item {
-                label: self.fields[index].key.label().into(),
+                label: self.fields[index].label().into(),
                 ..Default::default()
             };
         }
@@ -68,10 +68,22 @@ impl SpawnParams {
             self.fields
                 .iter()
                 .enumerate()
+                .filter(|(_, field)| {
+                    let plugin = self.fields.iter().any(|f| {
+                        f.key == bbt_ui_model::FieldKey::Via && f.value.starts_with("plugin:")
+                    });
+                    !(plugin
+                        && matches!(
+                            field.key,
+                            bbt_ui_model::FieldKey::Connect
+                                | bbt_ui_model::FieldKey::Port
+                                | bbt_ui_model::FieldKey::Key
+                        ))
+                })
                 .map(|(i, field)| Item {
                     id: format!("param:{i}"),
                     harness: "zsh".into(),
-                    label: field.key.label().into(),
+                    label: field.label().into(),
                     sub: if field.value.is_empty() {
                         "—".into()
                     } else {

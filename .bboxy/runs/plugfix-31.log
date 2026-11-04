@@ -1,0 +1,12 @@
+issue=31
+baseline=focused slow-hook test exited 101: slow hook did not raise a registry warning
+make test-settings-plugins=0; registry persistence and host audit/skip witnesses passed; SDK G3 custom runner and native e2e night both full pass
+make test-formal-contracts=0; 7 native contract checks and strict lint passed
+make test-licenses=0; 9 license refusal fixtures passed; standard notices refreshed
+concurrent fixture copy=0; 8 writers, exact final bytes, one destination file
+full native/TLC parity and affected presubmit=pending signed batch landing
+sha256 scripts/e2e/G3.sh 849a9f6d03afe081ed32e73cb70b46fe7382b311df15b4fb6b692f87c3f79752
+sha256 scripts/e2e/plugins.py cc1b0f40f20a42a9d22e0f2229e2a755e92274eedbccf9445becec89d59e063c
+sha256 target/debug/bboxy450-term c9fda5746f1cb06f70962a9bc3d10561688a1a4b80e0ca0108d9a7fa8a1d58f9
+sha256 target/g3-plugins/bboxy450-term-repo_graph-reference e8115129cec721f45a18baed8f16c30750553347c9f10543ac1d361edf4b4825
+sha256 target/g3-plugins/bboxy450-term-repo_graph-untrusted 7e4898d71ef56a39578507683dbc536bde9f3b11518653bbadf245fb82ac63e1

@@ -37,6 +37,10 @@ impl Parsers {
     pub fn contains(&self, id: Ulid) -> bool {
         self.0.contains_key(&id)
     }
+    #[cfg(test)]
+    pub(super) fn waiting_for_cpu(&self, id: Ulid) -> bool {
+        self.0.get(&id).is_some_and(|job| !job.task.is_finished())
+    }
     pub fn retire(&mut self, id: Ulid) {
         self.0.remove(&id);
     }

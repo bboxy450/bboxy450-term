@@ -303,6 +303,7 @@ fn add_view(worker: &mut Worker, id: Ulid) {
             tap,
             replies: VecDeque::new(),
             native_reader: None,
+            rich_connection: None, rich_delivery: None, rich_socket: None,
             shared_codex_runtime: None,
             state,
             view_generation: Ulid::new(),
@@ -333,6 +334,17 @@ fn ring_reads_progress_independently() {
 #[test]
 fn ring_reads_progress_independently_per_host() {
     sweep(true);
+}
+
+#[test]
+fn independent_readers_drain_the_small_turn_bound_instance() {
+    sweep_with(4, true, None);
+}
+
+#[test]
+#[should_panic(expected = "runnable owner turn bound exceeded")]
+fn starved_reader_fails_the_turn_bound() {
+    sweep_with(4, false, Some(Ulid::from(1u128)));
 }
 
 // keeps: invariant ring-reads-batched — #47 supersedes the aggregate barrier
@@ -379,20 +391,38 @@ fn held_seat_does_not_block_other_seat() {
     }
     assert_eq!(worker.views[&Ulid::from(1u128)].sequence, 0);
     assert_eq!(worker.views[&Ulid::from(2u128)].sequence, 2);
+    // An I/O refusal is transient: once its retry time passes the same seat
+    // reads its ring again and catches up, instead of freezing for good.
+    calls.lock().unwrap().hold = None;
+    worker.views.get_mut(&Ulid::from(1u128)).unwrap().ring_retry_at = Instant::now();
+    let until = Instant::now() + Duration::from_secs(2);
+    while worker.views[&Ulid::from(1u128)].sequence < 2 {
+        worker.ingest_one(&mut pending, &mut false).unwrap();
+        assert!(Instant::now() < until, "seat stayed frozen after an I/O refusal");
+        std::thread::yield_now();
+    }
+    assert!(worker.views[&Ulid::from(1u128)].ring_refusal.is_none());
 }
 
 fn sweep(two_hosts: bool) {
-    const SEATS: usize = 967;
+    sweep_with(967, two_hosts, None);
+}
+
+fn sweep_with(seats: usize, two_hosts: bool, hold: Option<Ulid>) {
+    assert!((2..=967).contains(&seats));
     let root = tempfile::tempdir().unwrap();
     let runtime = tokio::runtime::Builder::new_multi_thread()
         .worker_threads(2)
         .enable_all()
         .build()
         .unwrap();
-    let calls = Arc::new(Mutex::new(Calls::default()));
+    let calls = Arc::new(Mutex::new(Calls {
+        hold,
+        ..Default::default()
+    }));
     let mut worker = worker(root.path(), &runtime, calls.clone());
     let mut pending = PendingSeats::default();
-    for n in 1..=SEATS {
+    for n in 1..=seats {
         let id = Ulid::from(n as u128);
         add_view(&mut worker, id);
         let host = if two_hosts && n % 2 == 0 {
@@ -411,13 +441,35 @@ fn sweep(two_hosts: bool) {
         };
         pending.push(host, notification(id), 1, 1).unwrap();
     }
-    pending.set_watched((1..=50).map(|n| (Ulid::from(n as u128), 1)).collect());
-    let until = Instant::now() + Duration::from_secs(15);
+    pending.set_watched(
+        (1..=50.min(seats))
+            .map(|n| (Ulid::from(n as u128), 1))
+            .collect(),
+    );
+    // Each seat has at most three owner handoffs: admit its immediate ring
+    // read, publish the history page, then publish the live notification.
+    // A rotating 3:1 watched/background queue serves each runnable handoff
+    // within (WATCHED_QUANTA + 1) * seats turns. Parser CPU scheduling is a
+    // separate dependency, not owner starvation; count once its result is ready.
+    let turn_bound = 3 * (PendingSeats::WATCHED_QUANTA + 1) * seats;
+    let mut runnable_turns = BTreeMap::<Ulid, usize>::new();
+    let until = Instant::now() + Duration::from_secs(300);
     while !pending.is_empty() {
         assert!(
             Instant::now() < until,
-            "all independent seat readers must advance"
+            "ring sweep hang guard expired ({} pending)",
+            pending.seats.len()
         );
+        for (_, id) in pending.seats.keys() {
+            if !worker.parsers.waiting_for_cpu(*id) {
+                let turns = runnable_turns.entry(*id).or_default();
+                *turns += 1;
+                assert!(
+                    *turns <= turn_bound,
+                    "runnable owner turn bound exceeded for {id}: {turns} > {turn_bound}"
+                );
+            }
+        }
         let before: u64 = worker.views.values().map(|v| v.sequence).sum();
         let mut progress = false;
         worker.ingest_one(&mut pending, &mut progress).unwrap();
@@ -426,6 +478,11 @@ fn sweep(two_hosts: bool) {
             after - before <= 2,
             "one parsed seat page/notification per turn"
         );
+        // Parsing runs on Tokio workers. Yield an idle owner turn instead of
+        // rescanning every view in a busy loop while those workers are pending.
+        if !progress {
+            std::thread::sleep(Duration::from_millis(1));
+        }
     }
     assert!(pending.is_empty(), "all deterministic pages must advance");
     for (&id, view) in &worker.views {
@@ -455,7 +512,7 @@ fn sweep(two_hosts: bool) {
         calls.singleton, 0,
         "hot sweep must not issue singleton ReadRing"
     );
-    let bound = SEATS;
+    let bound = seats;
     assert!(
         calls.batches.iter().all(|batch| batch.len() == 1),
         "a seat completion must not wait for a batch peer"
@@ -470,7 +527,7 @@ fn sweep(two_hosts: bool) {
         );
     }
     println!(
-        "seats={SEATS} hosts={} rpc={} bound={bound} singleton={}",
+        "seats={seats} hosts={} rpc={} bound={bound} singleton={}",
         if two_hosts { 2 } else { 1 },
         calls.batches.len(),
         calls.singleton
@@ -480,7 +537,11 @@ fn sweep(two_hosts: bool) {
         "{} batch requests",
         calls.batches.len()
     );
-    assert_eq!(calls.batches.iter().map(Vec::len).sum::<usize>(), SEATS);
+    assert_eq!(calls.batches.iter().map(Vec::len).sum::<usize>(), seats);
+    println!(
+        "runnable_owner_turns_max={} bound={turn_bound}",
+        runnable_turns.values().copied().max().unwrap_or(0)
+    );
 }
 
 // keeps: spec mux-daemon

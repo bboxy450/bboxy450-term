@@ -44,11 +44,7 @@ pub fn role_label(role: Option<&str>, harness: &str) -> String {
 }
 /// The baked icon for a seat's harness kind; a plugin login shows the key.
 pub fn harness_icon(harness: &str) -> String {
-    if harness == "plugin-login" {
-        "key".into()
-    } else {
-        harness.into()
-    }
+    super::harness::icon(harness).into()
 }
 /// Role text keeps its intrinsic width; the adjacent first name yields first.
 pub(crate) fn fixed_role(element: c::Element) -> c::Item {
@@ -132,11 +128,7 @@ fn shrink(element: c::Element, grow: f32, min: f32, max: Option<f32>) -> c::Item
     }
 }
 fn icon(name: &str, size: f32, color: ui::Color) -> c::Element {
-    c::Element::Icon {
-        name: name.into(),
-        paint: ui::Paint::solid(color),
-        size: ui::Length::Px(size),
-    }
+    super::harness::mark(name, size, ui::Paint::solid(color))
 }
 fn chip(value: &str, color: ui::Color, alpha: f32, border: bool, mono: bool) -> c::Element {
     let mut s = plain(Some(14.), [0., 5., 0., 5.], STYLE.radius.tag as f32);
@@ -205,10 +197,10 @@ pub(crate) fn keyboard_badge(
 }
 pub fn role_color(role: &str) -> ui::Color {
     rgba(match role {
-        "oracle" => TOKENS.color.role.oracle,
+        "oracle" | "solo" => TOKENS.color.role.oracle,
         "creativity" => TOKENS.color.role.creativity,
         "architect" => TOKENS.color.role.architect,
-        "executor" => TOKENS.color.role.executor,
+        "executor" | "researcher" => TOKENS.color.role.executor,
         _ => TOKENS.color.role.unsigned,
     })
 }
@@ -234,6 +226,8 @@ pub struct SeatRow {
     pub title: String,
     pub activity: Activity,
     pub grade: Grade,
+    /// Freshness can expire while the last reported activity stays visible.
+    pub stale: bool,
     pub color: Option<[f32; 4]>,
     pub where_: Option<String>,
     pub link: Option<super::link::LinkState>,
@@ -276,6 +270,7 @@ impl SeatRow {
             title: String::new(),
             activity: Activity::Idle,
             grade: Grade::Reported,
+            stale: false,
             color: None,
             where_: None,
             link: None,
@@ -370,6 +365,7 @@ impl SeatRow {
         // The alive rim (rim-glow §8): rows stack edge to edge, so no outer half and no bloom;
         // an idle, unfocused row carries none at rest but still takes the swell.
         style.overrides.rim = Some(ui::Rim {
+            inferred_multiplier: if self.stale { 0.5 } else { 1. },
             swell: self.swell,
             attention: self.attention,
             ..ui::Rim::block(
@@ -417,14 +413,7 @@ impl SeatRow {
                 .into(),
             );
         }
-        let tile_color = match self.harness.as_str() {
-            "claude" => rgba("#D97757"),
-            "codex" => rgba("#1F2937"),
-            "pi" => rgba("#7C3AED"),
-            "omp" => rgba("#0EA5E9"),
-            "zsh" => rgba("#111827"),
-            _ => ui::Color::Surface2,
-        };
+        let tile_color = super::harness::tile(&self.harness).map_or(ui::Color::Surface2, rgba);
         let mut tile = plain(Some(16.), [0.; 4], STYLE.radius.tag as f32);
         tile.overrides.width = Some(ui::Length::Px(16.));
         tile.overrides.fill = Some(ui::Paint::solid(tile_color));

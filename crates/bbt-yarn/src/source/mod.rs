@@ -360,11 +360,24 @@ impl<T, const N: usize> BacklogSource for FixedQueue<T, N> {
     }
 }
 
-#[cfg(all(feature = "tokio", not(target_os = "none")))]
+#[cfg(any(
+    all(feature = "tokio", not(target_os = "none")),
+    all(test, any(loom, shuttle))
+))]
 mod tokio_impl;
 
-#[cfg(all(feature = "tokio", not(target_os = "none")))]
+#[cfg(any(
+    all(feature = "tokio", not(target_os = "none")),
+    all(test, any(loom, shuttle))
+))]
 pub use tokio_impl::{
-    AlreadyArmedReceiver, Cancellation, Mpsc, MpscReceiver, OneShot, OptionalDeadline,
-    OptionalMpsc, OptionalOneShot, cancellation, mpsc, one_shot,
+    AlreadyArmedReceiver, Mpsc, MpscReceiver, OneShot, OptionalMpsc, OptionalOneShot, mpsc,
+    one_shot,
 };
+
+#[cfg(all(
+    feature = "tokio",
+    not(target_os = "none"),
+    not(all(test, any(loom, shuttle)))
+))]
+pub use tokio_impl::{Cancellation, OptionalDeadline, cancellation};

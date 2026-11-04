@@ -25,6 +25,10 @@ impl App {
         let Some(seat) = self.focus.stage.as_ref().and_then(|stage| stage.focused) else {
             return;
         };
+        if self.rich_face(seat) {
+            if let Ok(Some(bboxy450_term_desktop::ClipboardContent::Text(text)))=self.clipboard_content() && let Some(pane)=self.rich_panes.get(&seat){pane.send(bboxy450_term::rich_pane::Input::Edit(EditCommand::Insert(text)));}
+            return;
+        }
         if !self.terminal_context(seat) {
             return;
         }
@@ -87,6 +91,7 @@ impl App {
         })
     }
     fn terminal_context(&self, seat: SeatId) -> bool {
+        if self.rich_face(seat) { return false; }
         if self.app_overlays.open()
             || self.document.open
             || self.launcher.is_some()
@@ -277,6 +282,7 @@ mod tests {
             return;
         }
         let (mut app, _) = crate::lazy_projection_tests::fixture();
+        app.startup.attached();
         app.test_account = true;
         let seat = SeatId::from_u128(1);
         let record =

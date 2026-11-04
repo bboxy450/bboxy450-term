@@ -16,12 +16,21 @@
 // Test-support IO and a nested Cargo build; never UI code.
 #![allow(clippy::disallowed_methods)]
 
+pub mod doctor;
+mod raw;
+mod reference;
+mod root;
+mod sdk_hook;
+
 use std::fs;
 use std::io::Write;
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::Mutex;
+use std::sync::{
+    Mutex,
+    atomic::{AtomicU64, Ordering},
+};
 use std::time::{Duration, Instant};
 
 use serde::{Deserialize, Serialize};
@@ -41,12 +50,17 @@ pub enum Kind {
     Reference,
     /// A credential-free data_source over the Markdown files of its root.
     Root,
+    /// SDK-served repo_graph with a hook attempting ten seconds of work.
+    SdkHook,
     /// A shape-only descriptor for inspection tests.
     Inspect,
     /// Out-of-order replies, a host request and a stray ID (client tests).
     Demux,
     /// Asks the host `host/<tool name>` while serving each call.
     Callback,
+    /// The plugin doctor's red/green controls: `fault` names the doctor
+    /// check it breaks (see `doctor.rs`); no fault is the clean plugin.
+    Doctor,
 }
 
 /// Every behaviour knob. Absent fields keep the reference behaviour.
@@ -173,7 +187,12 @@ impl Knobs {
             fs::create_dir_all(parent).expect("fixture plugin directory");
         }
         // A fresh file (never an overwritten one): exec of a replaced inode is safe.
-        let staged = path.with_extension("fixture-copy");
+        static COPIES: AtomicU64 = AtomicU64::new(0);
+        let staged = path.with_extension(format!(
+            "fixture-copy-{}-{}",
+            std::process::id(),
+            COPIES.fetch_add(1, Ordering::Relaxed)
+        ));
         fs::copy(&built, &staged).expect("copy fixture plugin");
         fs::set_permissions(&staged, fs::Permissions::from_mode(0o700))
             .expect("fixture plugin mode");
@@ -423,4 +442,20 @@ pub fn wait_for(path: &Path, limit: Duration) -> bool {
         std::thread::sleep(Duration::from_millis(5));
     }
     path.exists()
+}
+
+/// Run a private fixture variant. The handlers live in this library so changing
+/// compiled knobs rebuilds only the small executable, not the SDK servers.
+// Copied from bboxy450-term, crates/bbt-plugin-fixture/src/main.rs (8f4d688c).
+// Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+pub fn run_fixture(knobs: Knobs) {
+    match knobs.kind {
+        Kind::Reference => reference::main(&knobs),
+        Kind::Root => root::main(knobs),
+        Kind::SdkHook => sdk_hook::main(knobs),
+        Kind::Inspect => raw::inspect(&knobs),
+        Kind::Demux => raw::demux(),
+        Kind::Callback => raw::callback(),
+        Kind::Doctor => doctor::main(&knobs),
+    }
 }

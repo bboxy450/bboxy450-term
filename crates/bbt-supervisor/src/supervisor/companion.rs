@@ -49,9 +49,11 @@ impl Companion {
             .current_dir(&spec.cwd)
             .envs(&spec.env)
             .envs(&service.env)
+            .env_remove("BBOXY_CAPABILITY")
             .stdin(Stdio::null())
             .stdout(Stdio::null())
             .stderr(Stdio::null());
+        super::environment::scrub_command(&mut command);
         // The private tty is a lifetime guard, never input or output. Closing its
         // sole master on supervisor death hangs up this service's own group.
         // Keep the slave across exec: closing it loses the hangup association on
@@ -71,7 +73,7 @@ impl Companion {
                 Ok(())
             });
         }
-        let child = command.spawn().map_err(super::pty_error)?;
+        let child = bbt_rt::qos::with_seat_qos(|| command.spawn()).map_err(super::pty_error)?;
         drop(slave);
         Ok(Some(Self {
             info: CompanionInfo {

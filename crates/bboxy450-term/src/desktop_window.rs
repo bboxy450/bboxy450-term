@@ -17,6 +17,7 @@ pub(super) enum Hit {
     Fullscreen,
     Sidebar,
     Theme,
+    Usage,
     Background,
 }
 
@@ -26,6 +27,7 @@ pub(super) enum Intent {
     Titlebar(TitlebarAction),
     Sidebar,
     Theme,
+    Usage,
     /// The caller may start an OS drag only for a physical mouse-down event.
     Drag,
 }
@@ -61,6 +63,7 @@ impl Titlebar {
             (Hit::Fullscreen, "bar/win/i2"),
             (Hit::Sidebar, "bar/tbtn"),
             (Hit::Theme, "bar/tbtn1"),
+            (Hit::Usage, "bar/usage"),
         ]
         .into_iter()
         .filter_map(|(hit, key)| {
@@ -90,7 +93,7 @@ impl Titlebar {
     pub(super) fn actionable(&self, at: [f32; 2]) -> bool {
         matches!(
             self.hit(at),
-            Some(Hit::Close | Hit::Minimize | Hit::Fullscreen)
+            Some(Hit::Close | Hit::Minimize | Hit::Fullscreen | Hit::Usage)
         )
     }
 
@@ -120,6 +123,7 @@ impl Titlebar {
                 Hit::Fullscreen => Intent::Window(Action::ToggleFullscreen),
                 Hit::Sidebar => Intent::Sidebar,
                 Hit::Theme => Intent::Theme,
+                Hit::Usage => Intent::Usage,
                 Hit::Background => unreachable!(),
             });
         }
@@ -144,13 +148,43 @@ fn near(a: [f32; 2], b: [f32; 2]) -> bool {
 }
 
 impl crate::App {
+    /// The title-bar theme button cycles the saved appearance setting
+    /// auto → light → dark → auto, through the same path as Settings.
+    fn cycle_theme(&mut self) {
+        let next = match self.preferences.preferences.appearance.theme.as_str() {
+            "light" => "dark",
+            "dark" => "auto",
+            _ => "light",
+        };
+        match self
+            .preferences
+            .edit(bbt_ui::modules::settings::controller::Patch::Theme(next.into()))
+        {
+            Ok(request) => match &self.preferences_io {
+                Some(io) => {
+                    if let Err(reason) = io.submit(request) {
+                        self.preferences.refused(reason);
+                    }
+                }
+                None => self
+                    .preferences
+                    .refused("Settings persistence is unavailable"),
+            },
+            Err(reason) => self.preferences.refused(reason),
+        }
+        self.apply_preferences();
+        self.request_redraw();
+    }
+
     /// Native mouse-down and ctl click use identical hit/gesture dispatch. Only the
     /// native caller may consume an NSEvent to begin a window drag.
     pub(super) fn titlebar_pressed(&mut self, at: [f32; 2], native_drag: bool) -> bool {
-        if matches!(
-            self.titlebar.hit(at),
-            None | Some(Hit::Sidebar | Hit::Theme)
-        ) {
+        if self.titlebar.hit(at) == Some(Hit::Theme) {
+            self.titlebar.click = None;
+            self.cycle_theme();
+            return true;
+        }
+        if matches!(self.titlebar.hit(at), None | Some(Hit::Sidebar)) {
             // Sidebar/theme are retained controls, so they can never be a
             // draggable background or the second half of a title-bar gesture.
             self.titlebar.click = None;
@@ -163,6 +197,11 @@ impl crate::App {
             bboxy450_term_desktop::titlebar_action(),
         );
         match intent {
+            Some(Intent::Usage) => {
+                if let Some(worker) = &self.usage_worker {
+                    worker.refresh();
+                }
+            }
             Some(Intent::Window(action)) => {
                 let _ = self
                     .proxy
@@ -200,6 +239,26 @@ mod tests {
             ],
             click: None,
         }
+    }
+
+    #[test]
+    fn usage_clicks_refresh_instead_of_dragging_or_double_clicking_the_window() {
+        let mut bar = titlebar();
+        bar.controls
+            .push((Hit::Usage, Rect::new(180., 8., 170., 26.)));
+        let now = Instant::now();
+        for _ in 0..2 {
+            assert_eq!(
+                bar.press(
+                    [240., 19.],
+                    now,
+                    Duration::from_millis(500),
+                    TitlebarAction::Zoom
+                ),
+                Some(Intent::Usage)
+            );
+        }
+        assert!(bar.actionable([240., 19.]));
     }
 
     // keeps: operator standard title-bar behavior — controls never begin window gestures.

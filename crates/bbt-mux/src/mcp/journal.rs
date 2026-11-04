@@ -9,15 +9,30 @@
 use rusqlite::{OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
+use std::sync::{
+    Arc,
+    atomic::{AtomicBool, Ordering},
+};
 use ulid::Ulid;
 
 use super::{Call, MAX_RESULT, Principal, error};
 use crate::store::{Result, digest, events::Draft, sqlite::SqliteStore};
 
+// ACP-agent enables insertion-ordered JSON maps upstream. Preserve the existing
+// journal's sorted argument bytes so reordered retries and retained ops agree.
+fn args_digest(args: &Value) -> Result<String> {
+    let mut canonical = args.clone();
+    canonical.sort_all_objects();
+    Ok(digest(&serde_json::to_vec(&canonical)?))
+}
+
 #[derive(Clone)]
 pub(crate) struct Journal {
     store: SqliteStore,
     root: Option<RootContext>,
+    // Shared by every clone: set after an audit commits, so the publisher
+    // opens only databases that may hold unpublished audits.
+    audit_pending: Arc<AtomicBool>,
 }
 #[derive(Clone)]
 struct RootContext {
@@ -73,7 +88,11 @@ enum Mode {
 
 impl Journal {
     pub fn new(store: SqliteStore) -> Self {
-        Self { store, root: None }
+        Self {
+            store,
+            root: None,
+            audit_pending: Arc::new(AtomicBool::new(true)),
+        }
     }
     /// Root IDs come only from the backend's admitted workspace, never tool args.
     /// Operation keys remain global so a cwd change cannot repeat an old effect.
@@ -84,6 +103,7 @@ impl Journal {
                 id: root_id.into(),
                 startup: startup_root_id.into(),
             }),
+            audit_pending: self.audit_pending.clone(),
         }
     }
     pub(crate) fn root_id(&self) -> Option<&str> {
@@ -175,7 +195,7 @@ impl Journal {
         Ok(Some(
             if old.actor.same_authority(actor)
                 && old.tool == call.tool
-                && old.args_digest == digest(&serde_json::to_vec(&call.args)?)
+                && old.args_digest == args_digest(&call.args)?
                 && self.accepts_root(old.root_id.as_deref())
             {
                 old.result
@@ -243,7 +263,7 @@ impl Journal {
         let event = audit(
             actor,
             call,
-            &digest(&serde_json::to_vec(&call.args)?),
+            &args_digest(&call.args)?,
             &result,
             replay,
             false,
@@ -256,6 +276,7 @@ impl Journal {
             ],
         )?;
         tx.commit()?;
+        self.audit_pending.store(true, Ordering::Release);
         Ok(result)
     }
 
@@ -365,7 +386,7 @@ impl Journal {
         let admitted: Entry = serde_json::from_slice(&admitted)?;
         if admitted.actor != actor
             || admitted.tool != call.tool
-            || admitted.args_digest != digest(&serde_json::to_vec(&call.args)?)
+            || admitted.args_digest != args_digest(&call.args)?
             || !self.accepts_root(admitted.root_id.as_deref())
         {
             return Err(crate::store::invalid(
@@ -375,7 +396,7 @@ impl Journal {
         let entry = Entry {
             actor: actor.clone(),
             tool: call.tool.clone(),
-            args_digest: digest(&serde_json::to_vec(&call.args)?),
+            args_digest: args_digest(&call.args)?,
             result: result.clone(),
             root_id: self.root_id().map(str::to_owned),
             native_unlock: admitted.native_unlock,
@@ -402,6 +423,7 @@ impl Journal {
             ],
         )?;
         tx.commit()?;
+        self.audit_pending.store(true, Ordering::Release);
         Ok(result)
     }
 
@@ -418,7 +440,7 @@ impl Journal {
         retained_allowed: impl FnOnce(&Value) -> bool,
         native: Option<(String, crate::identity::unlock::Reference)>,
     ) -> Result<(Value, bool)> {
-        let hash = digest(&serde_json::to_vec(&call.args)?);
+        let hash = args_digest(&call.args)?;
         let key = format!("control/op/{}", call.op_id);
         // The lookup and result publication use the same write transaction, so
         // overlapping logic owners cannot return two results for one op_id.
@@ -461,6 +483,11 @@ impl Journal {
             }
         } else {
             let value = dispatch();
+            let value = if call.tool == "history_read" {
+                super::read_pages::history_result(value)
+            } else {
+                value
+            };
             let value = if serde_json::to_vec(&value)?.len() > MAX_RESULT {
                 error(
                     call.op_id,
@@ -538,6 +565,7 @@ impl Journal {
             ],
         )?;
         tx.commit()?;
+        self.audit_pending.store(true, Ordering::Release);
         Ok((result, fresh))
     }
 
@@ -766,6 +794,27 @@ impl Journal {
         Ok(())
     }
 
+    /// Unpublished audits, or none without touching the database when no audit
+    /// committed since the last drain. A drained batch shorter than `limit`
+    /// clears the flag; a later commit sets it again.
+    pub fn pending_if_any(&self, limit: usize) -> Result<Vec<Draft>> {
+        if !self.audit_pending.swap(false, Ordering::AcqRel) {
+            return Ok(Vec::new());
+        }
+        let events = self.pending(limit).inspect_err(|_| {
+            self.audit_pending.store(true, Ordering::Release);
+        })?;
+        if events.len() >= limit.min(128) {
+            self.audit_pending.store(true, Ordering::Release);
+        }
+        Ok(events)
+    }
+
+    /// Keep the journal in the next publication pass after a failed publish.
+    pub fn mark_pending(&self) {
+        self.audit_pending.store(true, Ordering::Release);
+    }
+
     pub fn pending(&self, limit: usize) -> Result<Vec<Draft>> {
         let db = self.store.connection()?;
         let mut q = db.prepare(
@@ -831,6 +880,17 @@ mod tests {
     use crate::messaging::wire::IssuerKind;
     use crate::registry::{Class, Role};
     use crate::store::Store;
+
+    #[test]
+    fn argument_digest_keeps_legacy_sorted_bytes_for_nested_reordered_json() {
+        let a: Value = serde_json::from_str(r#"{"z":2,"a":[{"z":1,"a":0}]}"#).unwrap();
+        let b: Value = serde_json::from_str(r#"{"a":[{"a":0,"z":1}],"z":2}"#).unwrap();
+        let expected = digest(br#"{"a":[{"a":0,"z":1}],"z":2}"#);
+        assert_eq!(args_digest(&a).unwrap(), expected);
+        assert_eq!(args_digest(&b).unwrap(), expected);
+        let changed: Value = serde_json::from_str(r#"{"a":[{"a":0,"z":3}],"z":2}"#).unwrap();
+        assert_ne!(args_digest(&changed).unwrap(), expected);
+    }
 
     fn effect_fixture() -> (tempfile::TempDir, SqliteStore, Actor, Call) {
         let temp = tempfile::tempdir().unwrap();
@@ -1594,6 +1654,41 @@ mod tests {
         assert_eq!(events[1].payload["outcome"], "replay");
         reopened.published(events[0].id).unwrap();
         assert_eq!(reopened.pending(128).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn idle_journal_is_not_opened_until_an_audit_commits_or_a_publish_fails() {
+        let temp = tempfile::tempdir().unwrap();
+        let store = SqliteStore::open(temp.path()).unwrap();
+        let journal = Journal::new(store.clone());
+        let clone = journal.with_root("root-A", "startup");
+        assert!(journal.pending_if_any(32).unwrap().is_empty());
+        // Written behind the journal's back: an idle journal does not read it.
+        let event = Draft::new("seat/fixture/control", "mcp", json!({"call":1}));
+        store
+            .put(
+                &format!("control/audit/{}", event.id),
+                &serde_json::to_vec(&event).unwrap(),
+            )
+            .unwrap();
+        assert!(journal.pending_if_any(32).unwrap().is_empty());
+        // A failed publish (or any clone's commit) marks the shared flag.
+        clone.mark_pending();
+        assert_eq!(journal.pending_if_any(32).unwrap().len(), 1);
+        assert!(journal.pending_if_any(32).unwrap().is_empty());
+        // A full batch keeps the journal in the next pass.
+        for n in 0..3 {
+            let event = Draft::new("seat/fixture/control", "mcp", json!({"call":n}));
+            store
+                .put(
+                    &format!("control/audit/{}", event.id),
+                    &serde_json::to_vec(&event).unwrap(),
+                )
+                .unwrap();
+        }
+        journal.mark_pending();
+        assert_eq!(journal.pending_if_any(2).unwrap().len(), 2);
+        assert_eq!(journal.pending_if_any(2).unwrap().len(), 2);
     }
 
     // keeps: spec mcp-control-plane

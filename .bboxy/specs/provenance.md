@@ -4,7 +4,7 @@ type: "spec"
 number: 111
 title: "Provenance — decided"
 created: "2026-10-21T22:41:36Z"
-updated: "2026-10-24T00:10:38Z"
+updated: "2026-11-03T23:01:32Z"
 links:
   - { to: "[[d30-artifact-provenance-scope]]", rel: decision }
 ---
@@ -35,6 +35,14 @@ Written only by the terminal. `derived_from` must be complete for `accepted`. Me
 ## 2. Activity log (P2, now unsigned lines + signed checkpoints; later signed lines)
 
 `.bboxy/log/<date>.jsonl`, one PROV-shaped activity per status transition, per artifact event, per delegate/report/accept: `{seq, prev_hash, ts, activity, agent: seat, used: [...], generated: [...], task, commit?, verify_result?}`, hash-chained. Daily checkpoint: Merkle root of the day signed, now by the operator's primary via `gpg --detach-sign`, later by the device key automatically. Export shape is Rekor v2 tiles; Rekor v2's filesystem backend means a local tile log is a real instance of the model, so export is a later step, not a redesign.
+
+Recovery (2026-11-03): the signed SQLite stream is authoritative; JSONL is a repairable view. The single canonical recovery protocol retains a fixed head, verified cursor and published-part count in `provenance/jsonl/rebuild/v1`, using the reserved `.projection-rebuild-v1` directory. Recovery verifies/appends at most 16 rows or 8 ms per call (at least one row); normal append processes at most 128 rows or 8 ms. Each bounded page collects touched files, syncs their contents, syncs directory entries, then commits its corresponding SQLite cursor. Directory sync alone does not make file contents durable.
+
+Cleanup and publication each process at most 16 parts per turn, with the publication time budget checked between parts. Source and destination directory entries are synced before recording published progress. No staged reference is advertised until every canonical row passed SQL sequence/hash/prev and envelope verification and all staged parts were replaced. A torn page or interrupted uncommitted rename restarts bounded reconstruction; committed publication can resume from its retained count. Once-per-transition trigger metadata distinguishes missing/invalid state, cursor/head/hash mismatches, missing/length/mtime file mismatches and append collisions without document contents.
+
+Upstream `STATE.repair` is explicitly recognized, including partial staging and interrupted publication. Its staged cursor and references are hidden, and the projection restarts conservatively from signed canonical events through the separate rebuild protocol; serde must never silently treat that cursor as published. Legacy temporary trees are retained untouched because their ownership is not established by the new reserved directory. They are not advertised as canonical references. The per-canonical-root nonblocking writer descriptor covers actual document IO and background recovery across cancellation/restart; busy work defers/refuses before admission while other roots and control reads progress. See [[decisions/d19427-canonical-paged-jsonl-recovery-integration]].
+
+The logic owner serves cockpit/control requests between recovery turns. Filesystem sync latency, signature costs and OS scheduling remain outside the elapsed-time proof; finite native/TLC page models do not prove arbitrary Rust refinement.
 
 ## 3. Commits (P3: option A now, option B later)
 

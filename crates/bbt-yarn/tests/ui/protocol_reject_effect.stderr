@@ -1,0 +1,5 @@
+error: PRO008 reject/ignore cannot update fields or emit effects. Repair: preserve every field and remove set/emit from this case.
+  --> tests/ui/protocol_reject_effect.rs:10:102
+   |
+10 |     mod Effectful { state { value: bool = false; } events { Ping; } effects { Work; } on Ping { case all when true => { preserve val...
+   |                                                                                                      ^^^

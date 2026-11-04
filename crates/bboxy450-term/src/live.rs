@@ -94,6 +94,7 @@ pub struct CommandSender {
     workspace: tokio::sync::watch::Sender<Option<KnowledgeContext>>,
     context: tokio::sync::watch::Sender<Option<bboxy450_term::settings::ContextUpdate>>,
     desktop: tokio::sync::watch::Sender<Option<cockpit::desktop::Context>>,
+    startup_retry: Arc<tokio::sync::Notify>,
     // UI loss detaches even when the queue and retained retry slot are full.
     // Only an explicit hard-quit signal stops the backend owners.
     _stop: oneshot::Sender<CloseMode>,
@@ -113,6 +114,9 @@ struct KnowledgeDemand {
     notify: tokio::sync::Notify,
 }
 impl CommandSender {
+    pub fn retry_startup(&self) {
+        self.startup_retry.notify_one();
+    }
     pub fn detach(self, state: Option<bbt_proto::gui::WindowState>) {
         let _ = self._stop.send(CloseMode::Detach(state.map(Box::new)));
     }
@@ -169,6 +173,7 @@ impl std::ops::Deref for CommandSender {
     }
 }
 struct Commands {
+    startup_retry: Arc<tokio::sync::Notify>,
     messages: mpsc::Receiver<UiMsg>,
     stop: oneshot::Receiver<CloseMode>,
     knowledge: Arc<KnowledgeDemand>,
@@ -177,6 +182,7 @@ struct Commands {
     desktop: tokio::sync::watch::Receiver<Option<cockpit::desktop::Context>>,
 }
 fn command_channel() -> (CommandSender, Commands) {
+    let startup_retry = Arc::new(tokio::sync::Notify::new());
     let (sender, messages) = mpsc::channel(COMMAND_CAPACITY);
     let (context, contexts) = tokio::sync::watch::channel(None);
     let (desktop, desktop_contexts) = tokio::sync::watch::channel(None);
@@ -185,6 +191,7 @@ fn command_channel() -> (CommandSender, Commands) {
     let knowledge = Arc::new(KnowledgeDemand::default());
     (
         CommandSender {
+            startup_retry: startup_retry.clone(),
             sender,
             knowledge: knowledge.clone(),
             workspace,
@@ -193,6 +200,7 @@ fn command_channel() -> (CommandSender, Commands) {
             _stop: stop,
         },
         Commands {
+            startup_retry,
             messages,
             stop: stopped,
             knowledge,
@@ -201,6 +209,12 @@ fn command_channel() -> (CommandSender, Commands) {
             desktop: desktop_contexts,
         },
     )
+}
+
+#[cfg(test)]
+pub(super) fn disconnected_commands() -> CommandSender {
+    // The UI admission fixture retains its bounded intents while disconnected.
+    command_channel().0
 }
 
 pub fn start(
@@ -233,14 +247,62 @@ pub fn start_with_sink(
     ctl: bool,
     rendering: oneshot::Receiver<RenderContext>,
 ) -> CommandSender {
-    let (sender, commands) = command_channel();
+    let (sender, mut commands) = command_channel();
     bbt_rt::handle().spawn(async move {
         let result = async {
-            let mut config = cockpit::Config::discover(run_dir)?;
-            config.ctl = ctl;
+            let args: Vec<_> = std::env::args().collect();
+            let startup_run = run_dir
+                .clone()
+                .or_else(|| {
+                    cockpit::Config::test_account_from_args(&args)
+                        .ok()
+                        .flatten()
+                        .map(|root| root.join("run"))
+                })
+                .or_else(|| {
+                    bbt_mux::transport::default_socket_path()
+                        .ok()
+                        .and_then(|socket| socket.parent().map(Path::to_path_buf))
+                });
+            if let Some(run_dir) = startup_run {
+                events(UiEvent::Startup {
+                    phase: cockpit::startup::Phase::StartingSupervisor,
+                    run_dir,
+                });
+            }
+            let (config, session) = loop {
+                let started = tokio::select! {
+                  result = async {
+                    let mut config = cockpit::Config::discover(run_dir.clone())?;
+                    config.ctl = ctl;
+                    let progress_events = events.clone();
+                    let progress_run = config.run_dir.clone();
+                    let progress: cockpit::startup::Progress = Arc::new(move |phase| {
+                        progress_events(UiEvent::Startup {
+                            phase,
+                            run_dir: progress_run.clone(),
+                        });
+                    });
+                    let session = Session::start_with_progress(config.clone(), progress).await?;
+                    Ok::<_, bbt_mux::store::Error>((config, session))
+                  } => result,
+                  _ = &mut commands.stop => return Ok(()),
+                };
+                match started {
+                    Ok(ready) => break ready,
+                    Err(error) => {
+                        logger.write(format!("cockpit startup failed: {error}"));
+                        events(UiEvent::StartupFailed(error.to_string()));
+                        // Failure remains visible; retry/quit never require a backend socket.
+                        tokio::select! {
+                            _ = commands.startup_retry.notified() => {},
+                            _ = &mut commands.stop => return Ok(()),
+                        }
+                    }
+                }
+            };
             let cwd = config.repository.clone();
             let desktop_config = config.clone();
-            let session = Session::start(config).await?;
             // Desktop setup is best effort and runs beside the IO owner. It
             // never gates backend readiness, messaging or the frame loop.
             let desktop_events = events.clone();
@@ -249,9 +311,12 @@ pub fn start_with_sink(
                 session.desktop_supervisor.clone(),
                 move |message| {
                     desktop_events(match message {
-                        cockpit::desktop::Message::Action(action) => UiEvent::DesktopAction(action, None),
-                        cockpit::desktop::Message::NotificationClicked { id, episode } =>
-                            UiEvent::DesktopNotification { id, episode },
+                        cockpit::desktop::Message::Action(action) => {
+                            UiEvent::DesktopAction(action, None)
+                        }
+                        cockpit::desktop::Message::NotificationClicked { id, episode } => {
+                            UiEvent::DesktopNotification { id, episode }
+                        }
                     });
                 },
             );
@@ -785,6 +850,9 @@ fn discard_uncertain_actions(outgoing: &mut VecDeque<GuiAction>) {
 }
 
 const CONTROL_RETRY: Duration = Duration::from_millis(100);
+/// Pause before attaching events again while logic still holds the drain of a
+/// connection it has not yet seen die.
+const ATTACH_RETRY: Duration = Duration::from_millis(500);
 
 struct DesiredPane {
     view: Option<View>,
@@ -1146,6 +1214,7 @@ async fn run_with_control(
         &updates,
     )?;
     let mut lost = false;
+    let mut attach_retry: Option<Instant> = None;
     let mut retained = VecDeque::new();
     let mut controls = PaneControls::default();
     let mut history = History::default();
@@ -1291,15 +1360,21 @@ async fn run_with_control(
             current.e2e_scope = knowledge_watch.scope();
             updates.publish(model.clone());
         }
+        if attach_retry.is_some_and(|at| Instant::now() >= at) && !lost {
+            attach_retry = None;
+            attach_events(&mut model, &mut outgoing);
+        }
         let retry_at = controls
             .deadline(&grids, &outgoing)
             .into_iter()
             .chain(history.deadline())
             .chain(knowledge_watch.deadline())
+            .chain(attach_retry)
             .min();
         let writer_ready = session.writer_ready();
         let result:Result<()>=async {
             tokio::select! {
+                _=commands.startup_retry.notified()=> { session.retry_startup(); },
                 changed=commands.workspace.changed()=> {
                     if changed.is_ok() && let Some(context)=commands.workspace.borrow_and_update().clone() {
                         let previous = knowledge_watch.scope();
@@ -1591,7 +1666,12 @@ async fn run_with_control(
                                 let next=status.roots.first().map(|r|r.revision);
                                 if previous.is_none() || next>=previous {
                                     if previous != next { knowledge_watch.source_changed(); }
+                                    let changed=model.knowledge_roots.as_deref()!=Some(&status) || model.knowledge_scope!=scope;
                                     let current=Arc::make_mut(&mut model);current.knowledge_roots=Some(Arc::new(status));current.knowledge_scope=scope;
+                                    // A status this owner queued itself (scope bind or a
+                                    // knowledge-provider event) has no pending operation
+                                    // result, so operation_reply would not publish it.
+                                    if changed { updates.publish(model.clone()); }
                                 }
                                 operation_reply(&mut model,&updates,op,bboxy450_term::messaging::Reply::KnowledgeControl);
                             }
@@ -1740,7 +1820,12 @@ async fn run_with_control(
                                 history_refused(&mut model,seat,&reason);
                                 publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                             }
-                            if event_model(&mut model).attach_result(op,Some(&reason)) {updates.publish(model.clone());}
+                            if event_model(&mut model).attach_result(op,Some(&reason)) {
+                                updates.publish(model.clone());
+                                // A reattach can race logic's release of the dead
+                                // connection's drain: retry until that lease ends.
+                                if reason.starts_with("GuiConsumerAttached:") {attach_retry=Some(Instant::now()+ATTACH_RETRY);}
+                            }
                             controls.refused(&reason,Instant::now());
                              if Arc::make_mut(&mut model).spawn_rejected(op,reason.clone()) {
                                  publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
@@ -2554,6 +2639,7 @@ mod tests {
         let mut record = bbt_proto::registry::SeatRecord::new(Ulid(42), Ulid(1), "muted", "zsh");
         record.muted = true;
         let snapshot = GuiReply::Seat(GuiSeat {
+            rich_socket: None,
             notification_episode: None,
             record,
             attention: None,
@@ -2564,6 +2650,7 @@ mod tests {
                 grade: bbt_ui_model::Grade::Reported,
                 title: String::new(),
                 detail: None,
+                stale: false,
                 turn_open: false,
                 observed_ms: 0,
                 subagents: vec![],
@@ -3077,6 +3164,44 @@ mod tests {
     }
     use std::{os::unix::fs::PermissionsExt, time::Duration};
 
+    /// The app binary Cargo built for this test's profile:
+    /// `<target dir>/<profile>/bboxy450-term`. This unit test runs from
+    /// `<build dir>/<profile>/deps`. The build dir is the target dir unless
+    /// `CARGO_BUILD_BUILD_DIR` moves it (as `make land` does); the target dir
+    /// is Cargo's `CARGO_TARGET_DIR` or `CARGO_BUILD_TARGET_DIR`, else the
+    /// gate's `BBOXY_CARGO_TARGET_DIR` (which it passes as `--target-dir`),
+    /// else the workspace's `target`.
+    fn app_binary() -> PathBuf {
+        let exe = std::env::current_exe().unwrap();
+        let profile = exe.parent().and_then(Path::parent).unwrap();
+        let sibling = profile.join("bboxy450-term");
+        let Some(build) = std::env::var_os("CARGO_BUILD_BUILD_DIR").map(PathBuf::from) else {
+            return sibling;
+        };
+        let workspace = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+        let absolute = |dir: PathBuf| {
+            if dir.is_absolute() {
+                dir
+            } else {
+                workspace.join(dir)
+            }
+        };
+        let build = absolute(build).canonicalize().unwrap_or_default();
+        let canonical = profile.canonicalize().unwrap_or_default();
+        let Ok(relative) = canonical.strip_prefix(&build) else {
+            return sibling;
+        };
+        let target = [
+            "CARGO_TARGET_DIR",
+            "CARGO_BUILD_TARGET_DIR",
+            "BBOXY_CARGO_TARGET_DIR",
+        ]
+        .into_iter()
+        .find_map(|name| std::env::var_os(name).filter(|v| !v.is_empty()))
+        .map_or_else(|| workspace.join("target"), |dir| absolute(dir.into()));
+        target.join(relative).join("bboxy450-term")
+    }
+
     // keeps: spec c1-live-seats §2a
     #[test]
     fn queued_unwatch_after_a_rewatch_is_not_lost_to_deduplication() {
@@ -3183,6 +3308,7 @@ mod tests {
         use bbt_proto::events::*;
         let make_row = |sequence, activity| {
             let seat = GuiSeat {
+                rich_socket: None,
                 notification_episode: None,
                 attention: None,
                 record: bbt_proto::SeatRecord::new(Ulid(3), Ulid(1), "question fixture", "claude"),
@@ -3193,6 +3319,7 @@ mod tests {
                     grade: bbt_proto::Grade::Shim,
                     title: String::new(),
                     detail: Some("May I continue?".into()),
+                    stale: false,
                     turn_open: true,
                     observed_ms: sequence,
                     subagents: vec![],
@@ -3302,7 +3429,7 @@ mod tests {
                 priority_class: bbt_proto::registry::Class::Worker,
                 priority: 0,
                 text: format!("arrival in {channel}"),
-                ts: 1000,
+                ts_ms: 1_000_000,
                 receipts: ReceiptSummary::default(),
             };
             GuiEventRecord::Event(Box::new(GuiEventEnvelope {
@@ -3538,13 +3665,7 @@ mod tests {
             .await
             .unwrap();
         }
-        let binary = std::env::current_exe()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("bboxy450-term");
+        let binary = app_binary();
         assert!(
             binary.is_file(),
             "build the app before its real-process test"
@@ -3733,6 +3854,171 @@ mod tests {
         eprintln!(
             "PASS A3: one live record per promise; screen == ctl JSON; terminal group + global summary; doc/task wakes amber -> red -> green; provider fault red; close/reopen recovers; children reaped"
         );
+    }
+
+    /// The real provider-change path: `ctl knowledge reset` bumps the root's
+    /// revision, logic publishes `activity/knowledge-provider`, this IO owner
+    /// re-reads the status and must PUBLISH it (an internally queued status
+    /// has no pending operation result to publish it), and the Tasks section
+    /// then re-reads on the changed revision.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "real-process provider event integration owns its runtime and child processes"
+    )]
+    async fn knowledge_provider_events_publish_the_status_and_reread_tasks() {
+        use serde_json::Value;
+        let root = tempfile::Builder::new()
+            .prefix("provider-event-")
+            .tempdir()
+            .unwrap();
+        let repository = root.path().join("repository");
+        let run_dir = root.path().join("run");
+        tokio::fs::create_dir_all(repository.join(".bboxy/tasks"))
+            .await
+            .unwrap();
+        let binary = app_binary();
+        assert!(
+            binary.is_file(),
+            "build the app before its real-process test"
+        );
+        let executable = root.path().join("test-app");
+        tokio::fs::write(
+            &executable,
+            format!(
+                "#!/bin/sh\nBBOXY_TEST_CUSTODY=memory exec '{}' \"$@\"\n",
+                binary.to_string_lossy().replace('\'', "'\\''")
+            ),
+        )
+        .await
+        .unwrap();
+        tokio::fs::set_permissions(&executable, std::fs::Permissions::from_mode(0o700))
+            .await
+            .unwrap();
+        let session = Session::start(cockpit::Config {
+            executable,
+            socket: run_dir.join("mux.sock"),
+            run_dir: run_dir.clone(),
+            repository: repository.clone(),
+            shell_config: None,
+            ctl: true,
+            test_account: None,
+        })
+        .await
+        .unwrap();
+        eprintln!(
+            "provider-event owned supervisor={} logic={}",
+            session.supervisor.id().unwrap(),
+            session.logic.id().unwrap()
+        );
+        let context = Arc::new(DeviceContext::new().await.unwrap());
+        let (updates, publication) = publications();
+        let (sender, commands) = command_channel();
+        let (render, rendering) = oneshot::channel();
+        render
+            .send(RenderContext {
+                context,
+                scale: 1.,
+                theme: bbt_ui_model::tokens::Theme::Dark,
+            })
+            .ok()
+            .unwrap();
+        let task_updates = updates.clone();
+        let io = tokio::spawn(async move {
+            run(
+                task_updates,
+                commands,
+                Logger::new(),
+                session,
+                repository,
+                rendering,
+                |_| {},
+                |_| {},
+            )
+            .await
+        });
+        let ctl = |args: Vec<String>| {
+            let binary = binary.clone();
+            let run_dir = run_dir.clone();
+            tokio::task::spawn_blocking(move || {
+                let output = std::process::Command::new(binary)
+                    .arg("ctl")
+                    .args(args)
+                    .env("BBOXY_RUN_DIR", run_dir)
+                    .output()
+                    .unwrap();
+                let text = String::from_utf8(output.stdout).unwrap();
+                let line = text.lines().next().unwrap_or("{}").to_owned();
+                serde_json::from_str::<Value>(&line).unwrap()
+            })
+        };
+        let mut current = Arc::new(Model::default());
+        until(&updates, &publication, &mut current, |m| {
+            matches!(
+                m.events.state(),
+                bboxy450_term::model::EventLaneState::Active
+            )
+        })
+        .await;
+        let status = ctl(vec!["knowledge".into(), "status".into()])
+            .await
+            .unwrap();
+        let root_id = status["data"]["status"]["roots"][0]["id"]
+            .as_str()
+            .unwrap_or_else(|| panic!("{status}"))
+            .to_owned();
+        let mut records = bboxy450_term::messaging::Records::default();
+        records.select(bbt_proto::SwarmId::from_u128(7));
+        // Answer the selection's startup reads so a later read is not deduplicated.
+        let mut results = bboxy450_term::messaging::Results::default();
+        for command in records.commands() {
+            if let UiMsg::Task { id, .. } = command {
+                results.push(
+                    id,
+                    bboxy450_term::messaging::Reply::Task(
+                        bbt_proto::messaging::TaskResponse::Items {
+                            items: vec![],
+                            next: None,
+                        },
+                    ),
+                );
+            }
+        }
+        records.replies(&results);
+        for (pass, reread) in [(1u64, false), (2, true)] {
+            let reset = ctl(vec!["knowledge".into(), "reset".into(), root_id.clone()])
+                .await
+                .unwrap();
+            assert_eq!(reset["ok"], true, "{reset}");
+            until(&updates, &publication, &mut current, |m| {
+                m.knowledge_roots
+                    .as_ref()
+                    .and_then(|s| s.roots.first())
+                    .is_some_and(|r| r.revision >= pass)
+            })
+            .await;
+            assert_eq!(
+                records.knowledge(current.knowledge_roots.as_deref()),
+                reread,
+                "pass {pass}: first observation records, a change re-reads"
+            );
+        }
+        assert!(
+            records.commands().iter().any(|c| matches!(
+                c,
+                UiMsg::Task {
+                    request: bbt_proto::messaging::TaskRequest::List { .. },
+                    ..
+                }
+            )),
+            "the provider change queued a Tasks read"
+        );
+        sender.shutdown();
+        tokio::time::timeout(Duration::from_secs(30), io)
+            .await
+            .unwrap()
+            .unwrap()
+            .unwrap();
     }
 
     fn lines(screen: &bbt_proto::Screen) -> Vec<String> {
@@ -4092,13 +4378,7 @@ mod tests {
         )
         .await
         .unwrap();
-        let binary = std::env::current_exe()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("bboxy450-term");
+        let binary = app_binary();
         assert!(
             binary.is_file(),
             "build the app before its real-process scroll test"
@@ -4301,13 +4581,7 @@ mod tests {
         tokio::fs::write(shell_config.join(".zshrc"), "PROMPT='> '\nRPROMPT=''\n")
             .await
             .unwrap();
-        let binary = std::env::current_exe()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .parent()
-            .unwrap()
-            .join("bboxy450-term");
+        let binary = app_binary();
         assert!(
             binary.is_file(),
             "build the app binary before this real-process test"

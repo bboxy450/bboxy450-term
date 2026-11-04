@@ -18,6 +18,28 @@ use crate::{
 };
 use serde_json::Value;
 
+#[cfg(test)]
+pub(super) type ApplyHook = Arc<
+    dyn Fn(&Path, &Call, &std::sync::Weak<crate::provenance::projection::WriterLease>)
+        + Send
+        + Sync,
+>;
+#[cfg(test)]
+pub(super) static APPLY_HOOK: std::sync::Mutex<Option<ApplyHook>> = std::sync::Mutex::new(None);
+
+pub(super) fn release_claim(
+    claims: &mut BTreeMap<String, std::sync::Weak<crate::provenance::projection::WriterLease>>,
+    root: &str,
+    completed: &std::sync::Weak<crate::provenance::projection::WriterLease>,
+) {
+    if claims
+        .get(root)
+        .is_some_and(|current| current.ptr_eq(completed))
+    {
+        claims.remove(root);
+    }
+}
+
 pub(super) enum EffectReply {
     SeatControl {
         seat: Ulid,
@@ -81,11 +103,14 @@ impl EffectReply {
 }
 pub(super) struct Context {
     port: WorkspacePort,
+    claim: std::sync::Weak<crate::provenance::projection::WriterLease>,
     revision: u64,
     actor: Actor,
     call: Call,
     journal: Journal,
     reply: EffectReply,
+    /// The seat's attribution for both IO phases; none for the operator.
+    attribution: crate::plugins::attribution::Attribution,
 }
 pub(super) enum Completion {
     Prepared(Context, d::Result<Prepared>),
@@ -97,7 +122,12 @@ pub(super) enum Completion {
         effects::Applied,
     ),
 }
-fn io<T>(job: impl FnOnce() -> d::Result<T>) -> d::Result<T> {
+/// One IO phase, its plugin calls carrying the seat's `attribution`.
+fn io<T>(
+    attribution: crate::plugins::attribution::Attribution,
+    job: impl FnOnce() -> d::Result<T>,
+) -> d::Result<T> {
+    let job = || crate::plugins::attribution::scope(attribution, job);
     std::panic::catch_unwind(std::panic::AssertUnwindSafe(job)).unwrap_or_else(|_| {
         Err(d::CommandError::new(
             "unknown",
@@ -143,6 +173,11 @@ impl Worker {
         })();
         self.start_document_effect(prepared, call, reply);
     }
+    pub(super) fn effect_root_busy(&self, root: &str) -> bool {
+        self.effect_roots
+            .get(root)
+            .is_some_and(|claim| claim.strong_count() != 0)
+    }
     fn start_document_effect(
         &mut self,
         prepared: Result<(Actor, WorkspacePort, Journal)>,
@@ -163,22 +198,33 @@ impl Worker {
                 return Ok(Err(value));
             }
             self.workspaces.write_ready(&self.registry, &port.binding)?;
-            let port = self.scan_port(&port.binding)?;
-            if self.effect_roots.contains(&port.binding.root_id) || self.effect_roots.len() >= 8 {
+            let mut port = self.scan_port(&port.binding)?;
+            self.effect_roots
+                .retain(|_, claim| claim.strong_count() != 0);
+            if self.effect_root_busy(&port.binding.root_id) || self.effect_roots.len() >= 8 {
                 return Ok(Err(mcp::error(
                     call.op_id,
                     "provider_busy",
                     "A document effect is already admitted for this root, or effect capacity is occupied; no effect admitted.",
                 )));
             }
+            let Some(writer) = port.index.try_projection_writer()? else {
+                return Ok(Err(mcp::error(
+                    call.op_id,
+                    "provider_busy",
+                    "Projection writer occupied; no effect admitted.",
+                )));
+            };
+            let claim = Arc::downgrade(&writer);
+            port.index = Arc::new((*port.index).clone().owned_projection(writer)?);
             let revision = port.host.revision()?;
             let (value, fresh) = journal.admit(&actor, &call)?;
             if !fresh {
                 return Ok(Err(value));
             }
-            Ok(Ok((port, revision)))
+            Ok(Ok((port, revision, claim)))
         })();
-        let (port, revision) = match admitted {
+        let (port, revision, claim) = match admitted {
             Ok(Ok(admitted)) => admitted,
             Ok(Err(value)) => {
                 reply.send(&call, Ok(value));
@@ -189,19 +235,26 @@ impl Worker {
                 return;
             }
         };
-        self.effect_roots.insert(port.binding.root_id.clone());
+        self.effect_roots
+            .insert(port.binding.root_id.clone(), claim.clone());
+        let attribution = match &actor {
+            Actor::Seat(seat) => self.attribution_of(seat.seat_id, seat.process_generation),
+            _ => None,
+        };
         let context = Context {
             port,
+            claim,
             revision,
             actor,
             call,
             journal,
             reply,
+            attribution,
         };
         let registry = self.registry.clone();
         self.effect_jobs.spawn_blocking_on(
             move || {
-                let result = io(|| {
+                let result = io(context.attribution.clone(), || {
                     let source = context.port.host.source_at(
                         &context.port.index,
                         &registry,
@@ -256,7 +309,11 @@ impl Worker {
         Ok(())
     }
     fn finish_document_effect(&mut self, context: Context, value: Value) {
-        self.effect_roots.remove(&context.port.binding.root_id);
+        release_claim(
+            &mut self.effect_roots,
+            &context.port.binding.root_id,
+            &context.claim,
+        );
         let value = context
             .journal
             .complete(&context.actor, &context.call, value);
@@ -301,7 +358,18 @@ impl Worker {
                     let registry = self.registry.clone();
                     self.effect_jobs.spawn_blocking_on(
                         move || {
-                            let result = io(|| {
+                            let result = io(context.attribution.clone(), || {
+                                #[cfg(test)]
+                                {
+                                    let hook = APPLY_HOOK.lock().unwrap().clone();
+                                    if let Some(hook) = hook {
+                                        hook(
+                                            context.port.index.knowledge_root(),
+                                            &context.call,
+                                            &context.claim,
+                                        );
+                                    }
+                                }
                                 let author = match &context.actor {
                                     Actor::Seat(actor) => crate::provenance::author::Author::seat(
                                         actor.seat_id,

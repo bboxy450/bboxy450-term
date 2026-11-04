@@ -22,8 +22,9 @@ mod headless;
 mod live;
 mod log;
 mod navigation;
-mod pointer_cursor;
 mod perf_fixture;
+mod pointer_cursor;
+mod rich_faces;
 mod scene;
 mod settings_destinations;
 mod settings_roles;
@@ -32,8 +33,11 @@ mod sidebar_chat;
 mod sidebar_vertical;
 mod spawn_gate;
 mod stall;
+mod startup_modal;
 mod swarm_folder;
 mod terminal_clipboard;
+mod usage_strip;
+mod wheel;
 
 use bboxy450_term::launcher::{
     CaretMove, Command as LauncherCommand, Controller as LauncherController,
@@ -79,6 +83,7 @@ use winit::{
 
 #[derive(Debug)]
 pub enum UiEvent {
+    Usage(bboxy450_usage::poller::Update),
     DocumentRetry(u64),
     TaskRetry(u64),
     SeatTaskRetry(bbt_mux::Ulid),
@@ -114,6 +119,11 @@ pub enum UiEvent {
     BackendStopped(Result<(), String>),
     BackendLost(String),
     BackendReady,
+    Startup {
+        phase: bboxy450_term::cockpit::startup::Phase,
+        run_dir: std::path::PathBuf,
+    },
+    StartupFailed(String),
     BackendInfo {
         generation: u64,
         custody_backend: String,
@@ -121,6 +131,7 @@ pub enum UiEvent {
     SmokeDeadline,
     VerifyGridDeadline,
     VerifyScrollTop,
+    VerifyWheel,
     VerifyClose,
     VerifyFailed(String),
     Capture,
@@ -407,6 +418,7 @@ fn app_status(
     windows: usize,
 ) -> bbt_proto::gui::AppStatus {
     bbt_proto::gui::AppStatus {
+        gui: Some(bboxy450_term::gui_build::identity()),
         running: true,
         mode: mode.into(),
         unattended,
@@ -476,9 +488,14 @@ fn notification_foreground_admission(
 
 /// Logic publishes this label only after validating the signed test-run context.
 fn notification_test_account(selected: bool, identity: Option<&bbt_proto::GuiIdentity>) -> bool {
-    selected && identity.is_some_and(|identity| {
-        matches!(identity.state, bbt_proto::GuiIdentityState::LocalDev | bbt_proto::GuiIdentityState::Certified)
-            && identity.reason.as_deref()
+    selected
+        && identity.is_some_and(|identity| {
+            matches!(
+                identity.state,
+                bbt_proto::GuiIdentityState::LocalDev | bbt_proto::GuiIdentityState::Certified
+            ) && identity
+                .reason
+                .as_deref()
                 .and_then(|reason| reason.split(" · ").next())
                 .and_then(|label| label.strip_prefix("test-account:"))
                 .is_some_and(|run| {
@@ -511,12 +528,18 @@ mod notification_foreground_tests {
             "test-account:00000000000000000000000000",
         ] {
             identity.reason = Some(reason.into());
-            assert!(!notification_test_account(true, Some(&identity)), "{reason}");
+            assert!(
+                !notification_test_account(true, Some(&identity)),
+                "{reason}"
+            );
         }
         identity.reason = Some(format!("test-account:{}", bbt_mux::Ulid(1)));
         for state in [GuiIdentityState::Held, GuiIdentityState::Pending] {
             identity.state = state;
-            assert!(!notification_test_account(true, Some(&identity)), "{state:?}");
+            assert!(
+                !notification_test_account(true, Some(&identity)),
+                "{state:?}"
+            );
         }
     }
 
@@ -570,11 +593,17 @@ fn close_request(
             .closes
             .undo_in(&model.ui, seat, now)
             .map(|_| live::UiMsg::UndoClose { seat })
+    } else if model.ui.tab_of(seat).is_none() && model.closes.pending(seat) {
+        // A repeated close of a seat already closing: name it, not MissingTab.
+        Err("a close is already pending or in grace; seat undo-close restores it".into())
     } else {
         scene
             .close_intent(model, seat, id, now)
             .map(live::UiMsg::Close)
-            .map_err(|reason| reason.to_string())
+            .map_err(|reason| match reason {
+                bbt_ui_model::EditError::MissingTab => "seat has no tab in this window".into(),
+                reason => reason.to_string(),
+            })
     }
 }
 
@@ -1201,25 +1230,7 @@ fn input_modifiers(mods: ModifiersState) -> Modifiers {
         shift: mods.shift_key(),
     }
 }
-const LAUNCHABLES: [(&str, &str, &str, &str, &str); 5] = [
-    (
-        "claude",
-        "Claude",
-        "oracle by default",
-        "#D97757",
-        "Suggestions",
-    ),
-    (
-        "codex",
-        "Codex",
-        "executor by default",
-        "#1F2937",
-        "Suggestions",
-    ),
-    ("pi", "pi", "executor by default", "#7C3AED", "Harnesses"),
-    ("omp", "omp", "executor by default", "#0EA5E9", "Harnesses"),
-    ("zsh", "zsh", "shell by default", "#111827", "Shells"),
-];
+use bbt_ui::modules::harness::launchables;
 fn default_spawn(
     id: &str,
     modifiers: Modifiers,
@@ -1235,7 +1246,7 @@ fn default_spawn(
         Some(_) => return None,
         None => (id, None),
     };
-    for (kind, _, _, _, _) in LAUNCHABLES {
+    for (kind, _, _, _, _) in launchables() {
         let location = if id == kind {
             Some(bbt_proto::Where::Local)
         } else {
@@ -1317,9 +1328,15 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
         && shortcut == Some('v')
         && ((command && !mods.control_key() && !mods.shift_key())
             || (cfg!(not(target_os = "macos"))
-                && mods.control_key() && mods.shift_key() && !command))
+                && mods.control_key()
+                && mods.shift_key()
+                && !command))
     {
-        return if repeat { RoutedKey::Local } else { RoutedKey::TerminalPaste };
+        return if repeat {
+            RoutedKey::Local
+        } else {
+            RoutedKey::TerminalPaste
+        };
     }
     if command && !mods.alt_key() && !mods.control_key() {
         // Follow the active layout: plus can be a shifted '=' or an unshifted
@@ -1416,8 +1433,7 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
             };
         }
     }
-    if query.is_none() && mods.shift_key() && !command && !mods.alt_key() && !mods.control_key()
-    {
+    if query.is_none() && mods.shift_key() && !command && !mods.alt_key() && !mods.control_key() {
         let motion = match key {
             Key::Named(NamedKey::PageUp) => Some(ScrollKey::PageUp),
             Key::Named(NamedKey::PageDown) => Some(ScrollKey::PageDown),
@@ -1677,12 +1693,16 @@ fn route_settings(input: &keyboard::Input<'_>, modes: u64, editing: bool) -> Rou
 }
 fn route_document(input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
     use bbt_ui::modules::document_modal::controller::Action;
-    let mods=input.modifiers.state;
+    let mods = input.modifiers.state;
     if input.state.is_pressed() && !input.repeat && !mods.alt_key() && !mods.control_key() {
-        if mods.super_key() && keyboard::shortcut_key(input)==Some('c') {
-            return RoutedKey::Document(if mods.shift_key() {Action::CopyPath} else {Action::Copy});
+        if mods.super_key() && keyboard::shortcut_key(input) == Some('c') {
+            return RoutedKey::Document(if mods.shift_key() {
+                Action::CopyPath
+            } else {
+                Action::Copy
+            });
         }
-        if matches!(input.logical_key,Key::Named(NamedKey::Enter)) && !mods.shift_key() {
+        if matches!(input.logical_key, Key::Named(NamedKey::Enter)) && !mods.shift_key() {
             return RoutedKey::Document(Action::Feed);
         }
     }
@@ -1863,25 +1883,60 @@ fn launcher_items(
 
 // bboxy450-term — https://github.com/bboxy450/bboxy450-term
 // Retain source credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-fn configure_machine_items(items: &mut Vec<bbt_ui::modules::launcher::Item>, machines: &std::collections::BTreeMap<String, bbt_ui::modules::settings::Machine>) {
+fn configure_machine_items(
+    items: &mut Vec<bbt_ui::modules::launcher::Item>,
+    machines: &std::collections::BTreeMap<String, bbt_ui::modules::settings::Machine>,
+) {
     use bbt_ui::modules::launcher::Item;
-    if machines.is_empty() { return; }
-    let local: Vec<_> = items.iter().filter(|item| LAUNCHABLES.iter().any(|(id, ..)| *id == item.id)).cloned().collect();
+    if machines.is_empty() {
+        return;
+    }
+    let local: Vec<_> = items
+        .iter()
+        .filter(|item| launchables().any(|(id, ..)| id == item.id))
+        .cloned()
+        .collect();
     if !items.iter().any(|item| item.id == "ssh") {
-        items.push(Item { id: "ssh".into(), label: "SSH".into(), harness: "ssh".into(), kind: "Remote".into(), section: Some("Remote".into()), sub: "pick a machine, then a harness".into(), children: Some(vec![]), ..Default::default() });
+        items.push(Item {
+            id: "ssh".into(),
+            label: "SSH".into(),
+            harness: "ssh".into(),
+            kind: "Remote".into(),
+            section: Some("Remote".into()),
+            sub: "pick a machine, then a harness".into(),
+            children: Some(vec![]),
+            ..Default::default()
+        });
     }
     let root = items.iter_mut().find(|item| item.id == "ssh").unwrap();
     let hosts = root.children.get_or_insert_with(Vec::new);
     fn prefix(item: &mut Item, machine: &str) {
         item.id = format!("{machine}:{}", item.id);
         item.parameters = true;
-        if let Some(children) = &mut item.children { for child in children { prefix(child, machine); } }
+        if let Some(children) = &mut item.children {
+            for child in children {
+                prefix(child, machine);
+            }
+        }
     }
     for (id, machine) in machines {
-        if let Some(host) = hosts.iter_mut().find(|host| host.id == *id) { host.sub = machine.connect.clone(); continue; }
+        if let Some(host) = hosts.iter_mut().find(|host| host.id == *id) {
+            host.sub = machine.connect.clone();
+            continue;
+        }
         let mut choices = local.clone();
-        for choice in &mut choices { prefix(choice, id); }
-        hosts.push(Item { id: id.clone(), label: id.trim_start_matches("ssh:").into(), sub: machine.connect.clone(), harness: "ssh".into(), kind: "Machine".into(), children: Some(choices), ..Default::default() });
+        for choice in &mut choices {
+            prefix(choice, id);
+        }
+        hosts.push(Item {
+            id: id.clone(),
+            label: id.trim_start_matches("ssh:").into(),
+            sub: machine.connect.clone(),
+            harness: "ssh".into(),
+            kind: "Machine".into(),
+            children: Some(choices),
+            ..Default::default()
+        });
     }
 }
 
@@ -1931,8 +1986,7 @@ fn launcher_items_for(
         .collect()
     }
     let launchables = || {
-        LAUNCHABLES
-            .into_iter()
+        launchables()
             .map(|(id, label, sub, tile, section)| Item {
                 id: id.into(),
                 label: label.into(),
@@ -2137,7 +2191,7 @@ fn preset_launcher_items(
     preset: Option<bbt_proto::seat_state::Side>,
 ) -> Vec<bbt_ui::modules::launcher::Item> {
     if preset.is_some() {
-        items.retain(|it| LAUNCHABLES.iter().any(|(id, _, _, _, _)| *id == it.id));
+        items.retain(|it| launchables().any(|(id, _, _, _, _)| id == it.id));
         for item in &mut items {
             item.children = None;
             item.parameters = true;
@@ -2198,6 +2252,12 @@ impl UiProxy {
     }
 }
 struct App {
+    rich_panes: BTreeMap<SeatId, bboxy450_term::rich_pane::Pane>,
+    rich_focused: BTreeMap<SeatId, bool>,
+    pane_faces: BTreeMap<bbt_mux::Ulid, bbt_proto::gui::PaneFace>,
+    rich_round: usize,
+    rich_cursors: BTreeMap<bbt_mux::Ulid, bbt_proto::gui::RichCursor>,
+    usage_worker: Option<bboxy450_usage::poller::Worker>,
     proxy: UiProxy,
     inbox: UiInbox,
     wake_counters: std::cell::RefCell<stall::WakeCounters>,
@@ -2216,7 +2276,8 @@ struct App {
     pane_sizes: BTreeMap<SeatId, (u64, u16, u16)>,
     pane_bounds: Vec<(SeatId, Rect)>,
     focus_bounds: Vec<(SeatId, Rect)>,
-    scroll_wheel: Option<(SeatId, f64)>,
+    scroll_wheel: Option<wheel::Intent>,
+    wheel_log_at: Option<Instant>,
     focus: FocusState,
     notifications: Option<bboxy450_term::notifications::Worker>,
     frontmost: bool,
@@ -2260,7 +2321,7 @@ struct App {
     local_page_layout: Option<scene::LocalPageLayout>,
     document: documents::Host,
     document_return: Option<Stage>,
-    document_recipient: Option<(SeatId,u64)>,
+    document_recipient: Option<(SeatId, u64)>,
     document_layout: Option<scene::DocumentLayout>,
     app_overlays: app_overlays::Host,
     composer: ComposeController,
@@ -2316,6 +2377,9 @@ struct App {
     cursor_icon: std::cell::Cell<bbt_ui::cursor::Cursor>,
     query_dragging: bool,
     backend_lost: bool,
+    startup: bboxy450_term::cockpit::startup::Modal,
+    startup_layout: Option<bbt_ui::components::Layout>,
+    startup_tick: Instant,
     app_generation: u64,
     app_custody: String,
     app_ready_sent: bool,
@@ -2411,8 +2475,14 @@ impl App {
             let _ = time_proxy.send_event(UiEvent::LocalTimeReady);
         }));
         Self {
+            rich_panes: BTreeMap::new(),
+            rich_focused: BTreeMap::new(),
+            pane_faces: BTreeMap::new(),
+            rich_round: 0,
+            rich_cursors: BTreeMap::new(),
             proxy,
             inbox,
+            usage_worker: None,
             wake_counters: Default::default(),
             logger,
             prepared,
@@ -2429,6 +2499,7 @@ impl App {
             pane_bounds: vec![],
             focus_bounds: vec![],
             scroll_wheel: None,
+            wheel_log_at: None,
             focus: FocusState::default(),
             notifications: None,
             frontmost: false,
@@ -2537,6 +2608,12 @@ impl App {
             cursor_icon: Default::default(),
             query_dragging: false,
             backend_lost: false,
+            startup: bboxy450_term::cockpit::startup::Modal::new(
+                Instant::now(),
+                !fake && !animate && !args.iter().any(|arg| arg == "--stall-test"),
+            ),
+            startup_layout: None,
+            startup_tick: Instant::now(),
             app_generation: 0,
             app_custody: "unknown".into(),
             app_ready_sent: false,
@@ -2581,7 +2658,7 @@ impl App {
             capture_pending: true,
             ctl_captures: Vec::new(),
             ctl_focus: Default::default(),
-            ui_observe: args.iter().any(|arg| arg == "--ctl"),
+            ui_observe: !args.iter().any(|arg| arg == "--no-ctl"),
             frame_observations: Default::default(),
             ui_frame: None,
             ui_wait: None,
@@ -2633,9 +2710,22 @@ impl App {
     ) {
         if !self.document.open {
             self.document_return = self.focus.stage.clone();
-            self.document_recipient=self.focus.stage.as_ref().and_then(|s|s.focused)
-                .and_then(|seat|Some((seat,self.live_state.as_ref()?.ui.seats.get(&seat)?.process_generation)));
-
+            self.document_recipient =
+                self.focus
+                    .stage
+                    .as_ref()
+                    .and_then(|s| s.focused)
+                    .and_then(|seat| {
+                        Some((
+                            seat,
+                            self.live_state
+                                .as_ref()?
+                                .ui
+                                .seats
+                                .get(&seat)?
+                                .process_generation,
+                        ))
+                    });
         }
         match binding {
             Ok(scope) => self.document.show_scoped(target, scope),
@@ -2669,7 +2759,7 @@ impl App {
     }
     fn close_document(&mut self) {
         self.document.close();
-        self.document_recipient=None;
+        self.document_recipient = None;
         if let Some(stage) = self.document_return.take()
             && let Some(model) = &self.live_state
         {
@@ -2929,8 +3019,7 @@ impl App {
             ),
             ..Default::default()
         };
-        view.launch = LAUNCHABLES
-            .into_iter()
+        view.launch = launchables()
             .map(
                 |(harness, label, _, tile, _)| bbt_ui::modules::settings::Launch {
                     harness: harness.into(),
@@ -2940,10 +3029,8 @@ impl App {
             )
             .collect();
         for (id, harness) in &mut view.values.harness {
-            if let Some((_, _, _, tile, _)) =
-                LAUNCHABLES.iter().find(|(kind, _, _, _, _)| kind == id)
-            {
-                harness.tile = (*tile).into();
+            if let Some((_, _, _, tile, _)) = launchables().find(|(kind, _, _, _, _)| kind == id) {
+                harness.tile = tile.into();
             }
         }
         if let Some(model) = self.live_state.as_deref() {
@@ -2988,7 +3075,7 @@ impl App {
             view.values.plugin_notice = Some("Plugin registry connection unavailable; retained observations cannot authorize a control.".into());
             for root in &mut view.values.knowledge.roots {
                 root.answering = "read connection unavailable".into();
-                root.refused = Some("Knowledge connection is unavailable; the retained view cannot confirm current reads. Provider switching is unavailable in this build.".into());
+                root.refused = Some("Knowledge connection is unavailable; the retained view cannot confirm current reads or authorize a provider change. Reconnect before changing providers.".into());
             }
         }
         view
@@ -2996,17 +3083,21 @@ impl App {
     fn settings_ime(&self) -> bool {
         matches!(&self.local_tab,Some(LocalTab::Settings {controller,..}) if controller.editing())
     }
+    fn text_ime_allowed(&self) -> bool {
+        if self.app_overlays.open() {
+            self.app_overlays.focused_field().is_some()
+        } else {
+            !self.document.open
+                && (self.launcher.is_some()
+                    || self.composer.view.focus
+                    || self.reject_focus
+                    || self.settings_ime()
+                    || self.rich_target().is_some())
+        }
+    }
     fn sync_text_ime(&self) {
         if let Some(window) = &self.window {
-            window.set_ime_allowed(if self.app_overlays.open() {
-                self.app_overlays.focused_field().is_some()
-            } else {
-                !self.document.open
-                    && (self.launcher.is_some()
-                        || self.composer.view.focus
-                        || self.reject_focus
-                        || self.settings_ime())
-            });
+            window.set_ime_allowed(self.text_ime_allowed());
         }
     }
     fn settings_action(&mut self, action: settings_controller::Action) {
@@ -3386,7 +3477,6 @@ impl App {
             self.task_records
                 .tasks()
                 .iter()
-                .chain(self.task_records.unassigned())
                 .map(messaging::task_attachment)
                 .chain(self.message_history.artifacts().cloned())
                 .collect(),
@@ -3660,12 +3750,7 @@ impl App {
         }
         self.task_reads();
         self.refresh_conversation();
-        if let Some(window) = &self.window {
-            window.set_ime_allowed(
-                !self.document.open
-                    && (self.launcher.is_some() || self.composer.view.focus || self.reject_focus),
-            );
-        }
+        self.sync_text_ime();
         self.request_redraw();
     }
     fn review_task(&mut self, id: bbt_mux::Ulid, reason: Option<String>) {
@@ -3883,11 +3968,7 @@ impl App {
                 }
             }
             self.refresh_conversation();
-            if let Some(window) = &self.window {
-                window.set_ime_allowed(
-                    self.launcher.is_some() || self.composer.view.focus || self.reject_focus,
-                );
-            }
+            self.sync_text_ime();
             self.request_redraw();
             return;
         }
@@ -3937,9 +4018,7 @@ impl App {
             &self.composer_client.protected_image_paths(),
         );
         self.composer_notice();
-        if let Some(window) = &self.window {
-            window.set_ime_allowed(self.launcher.is_some() || self.composer.view.focus);
-        }
+        self.sync_text_ime();
         self.request_redraw();
     }
     /// Native sends and the UI relay admit the same prepared composer batch.
@@ -4159,7 +4238,10 @@ impl App {
             self.focus.stage.as_ref(),
         ));
         if let Some(launcher) = &mut self.launcher {
-            configure_machine_items(&mut launcher.launcher.items, &self.preferences.preferences.machines);
+            configure_machine_items(
+                &mut launcher.launcher.items,
+                &self.preferences.preferences.machines,
+            );
             settings_roles::configure_items(
                 &mut launcher.launcher.items,
                 &self.preferences.preferences.role_catalog(),
@@ -4222,11 +4304,7 @@ impl App {
             }
             None => {}
         }
-        if let Some(window) = &self.window {
-            window.set_ime_allowed(
-                self.composer.view.focus || self.reject_focus || self.settings_ime(),
-            );
-        }
+        self.sync_text_ime();
         self.request_redraw();
     }
     fn launcher_command(&mut self, command: LauncherCommand) {
@@ -4406,11 +4484,18 @@ impl App {
         }
     }
     fn update_launcher_runs(&mut self) {
+        let transports = bboxy450_term::settings::registry::transports(self.live_state.as_deref());
         if let Some(params) = self
             .launcher
             .as_mut()
             .and_then(|l| l.launcher.params.as_mut())
         {
+            if bboxy450_term::spawn_params::refresh_transport_fields(
+                &mut params.fields,
+                &transports,
+            ) {
+                params.refresh();
+            }
             let home = std::env::var("HOME").unwrap_or_default();
             params.runs = self.launch_directory_error.clone().unwrap_or_else(|| {
                 bboxy450_term::spawn_params::Resolved::from_fields(&params.fields, &home)
@@ -4419,8 +4504,15 @@ impl App {
         }
     }
     fn launcher_machine(&self, id: &str) -> Option<(String, String)> {
-        if let Some((_, machine)) = bboxy450_term::spawn_params::machine_target(id, &self.preferences.preferences.machines) {
-            return Some((machine.clone(), self.preferences.preferences.machines[&machine].connect.clone()));
+        if let Some((_, machine)) =
+            bboxy450_term::spawn_params::machine_target(id, &self.preferences.preferences.machines)
+        {
+            return Some((
+                machine.clone(),
+                self.preferences.preferences.machines[&machine]
+                    .connect
+                    .clone(),
+            ));
         }
         let model = self.live_state.as_deref()?;
         let live::UiMsg::Spawn {
@@ -4478,14 +4570,25 @@ impl App {
                     connect: route,
                     ..Default::default()
                 });
-            bboxy450_term::spawn_params::with_machine(fields, &defaults)
+            bboxy450_term::spawn_params::with_machine_transports(
+                fields,
+                &defaults,
+                &bboxy450_term::settings::registry::transports(model),
+            )
         } else {
             fields
         }
     }
     fn configured_launcher_target(&self, id: &str) -> Option<(String, Option<bbt_proto::SwarmId>)> {
-        if let Some((harness, _)) = bboxy450_term::spawn_params::machine_target(id, &self.preferences.preferences.machines) {
-            let (_, swarm, _) = bboxy450_term::launcher::captured_placement(id, Default::default(), self.live_state.as_deref(), self.launcher_stage.as_ref());
+        if let Some((harness, _)) =
+            bboxy450_term::spawn_params::machine_target(id, &self.preferences.preferences.machines)
+        {
+            let (_, swarm, _) = bboxy450_term::launcher::captured_placement(
+                id,
+                Default::default(),
+                self.live_state.as_deref(),
+                self.launcher_stage.as_ref(),
+            );
             return Some((harness, swarm));
         }
         match spawn_pick(
@@ -4546,7 +4649,12 @@ impl App {
             modifiers.command = !modifiers.alt;
             modifiers.shift = side == bbt_proto::seat_state::Side::Bottom;
         }
-        let (_, swarm, placement) = bboxy450_term::launcher::captured_placement(id, modifiers, model, self.launcher_stage.as_ref());
+        let (_, swarm, placement) = bboxy450_term::launcher::captured_placement(
+            id,
+            modifiers,
+            model,
+            self.launcher_stage.as_ref(),
+        );
         let op = bbt_mux::Ulid::new();
         let placement = Some(placement);
         let swarm = swarm.unwrap_or_else(|| bbt_proto::SwarmId::from_u128(bbt_mux::Ulid::new().0));
@@ -4690,6 +4798,7 @@ impl App {
             }
             Err(error) => self.logger.write(format!("focus refused: {error}")),
         }
+        self.sync_text_ime();
     }
     fn attention_focus_events(&mut self, events: &[InputEvent], explicit: bool) {
         let Some(model) = &self.live_state else {
@@ -4750,7 +4859,9 @@ impl App {
             cfg!(debug_assertions),
             notification_test_account(
                 self.test_account,
-                self.live_state.as_ref().and_then(|model| model.identity.as_ref()),
+                self.live_state
+                    .as_ref()
+                    .and_then(|model| model.identity.as_ref()),
             ),
             self.recording_active(),
             self.window.is_some(),
@@ -4861,8 +4972,8 @@ impl App {
                 && !self.document.open
                 && self.launcher.is_none()
                 && !self.app_overlays.open())
-                .then(|| self.focus.stage.as_ref().and_then(|stage| stage.focused))
-                .flatten();
+            .then(|| self.focus.stage.as_ref().and_then(|stage| stage.focused))
+            .flatten();
             commands.desktop_context(bboxy450_term::cockpit::desktop::Context {
                 policy: policy.clone(),
                 frontmost: self.frontmost,
@@ -4951,7 +5062,9 @@ impl App {
                     Some((SeatId::from_u128(id.0), Instant::now(), Some(episode)));
                 self.apply_notification_click();
             }
-            Err(_) => self.logger.write("notification focus refused: invalid seat id"),
+            Err(_) => self
+                .logger
+                .write("notification focus refused: invalid seat id"),
         }
     }
     fn apply_notification_click(&mut self) {
@@ -4968,7 +5081,9 @@ impl App {
                 || (cfg!(debug_assertions)
                     && notification_test_account(
                         self.test_account,
-                        self.live_state.as_ref().and_then(|model| model.identity.as_ref()),
+                        self.live_state
+                            .as_ref()
+                            .and_then(|model| model.identity.as_ref()),
                     )
                     && std::env::args().any(|arg| arg == "--desktop-fixture")),
             expected,
@@ -5126,7 +5241,9 @@ impl App {
             self.close_seat(seat, bbt_mux::Ulid::new(), false);
         }
     }
-    fn queue(&mut self, message: live::UiMsg) { self.try_queue(message); }
+    fn queue(&mut self, message: live::UiMsg) {
+        self.try_queue(message);
+    }
     /// Local bounded admission only; transport/PTY completion remains asynchronous.
     fn try_queue(&mut self, mut message: live::UiMsg) -> bool {
         if self.closing || self.live_commands.is_none() {
@@ -5151,7 +5268,7 @@ impl App {
             .ui_collect
             .as_ref()
             .and_then(|_| UiEffect::from_message(&message, self.live_state.as_deref()));
-        let admitted=match queue_pending(&mut self.pending_commands, message) {
+        let admitted = match queue_pending(&mut self.pending_commands, message) {
             Err(kind) => {
                 self.admission_refusals.record(kind);
                 self.logger.write(self.admission_refusals.report());
@@ -5490,7 +5607,7 @@ impl App {
         );
         self.install_desktop_menu();
         if !self.document.open
-            && (self.launcher.is_some() || self.composer.view.focus || self.settings_ime())
+            && self.text_ime_allowed()
         {
             window.set_ime_allowed(true);
             self.logger.write("debug text field open");
@@ -5566,6 +5683,8 @@ impl App {
     fn install_gpu(&mut self) -> Result<(), String> {
         if let Some(result) = self.prepared.take() {
             let (mut gpu, scene) = result?;
+            let mut scene = scene;
+            scene.inherit_usage(&mut self.scene);
             self.scene = scene;
             self.apply_preferences();
             let size = self.window.as_ref().unwrap().inner_size();
@@ -5573,8 +5692,11 @@ impl App {
             // Configure before the IO preparer can submit to this queue. wgpu
             // refuses configuration if concurrent submission keeps it nonempty.
             if let Some(sender) = self.render_context.take() {
-                let theme = self.preferences.preferences.context(
-                    self.verify.theme.unwrap_or(self.system_theme)).theme;
+                let theme = self
+                    .preferences
+                    .preferences
+                    .context(self.verify.theme.unwrap_or(self.system_theme))
+                    .theme;
                 let _ = sender.send(live::RenderContext {
                     context: gpu.shared_context(),
                     scale: self.window.as_ref().unwrap().scale_factor() as f32,
@@ -5660,6 +5782,8 @@ impl App {
             {
                 self.window_restored = true;
                 self.window_first_frame = true;
+                self.pane_faces = saved.pane_faces.clone();
+                self.rich_cursors = saved.rich_cursors.clone();
                 self.window_last = Some((**saved).clone());
                 if let Some(window) = &self.window {
                     self.restored_size = Some(saved.size);
@@ -5816,6 +5940,10 @@ impl App {
                 .and_then(provider_revision);
             let current_provider = state.knowledge_roots.as_deref().and_then(provider_revision);
             let root_changed = previous_provider.is_some() && previous_provider != current_provider;
+            // The status the knowledge-provider event refreshes: a changed
+            // provider selection or revision re-reads the Tasks section.
+            self.task_records
+                .knowledge(state.knowledge_roots.as_deref());
             if root_changed && self.document.open {
                 self.document.unavailable(
                     "document_source_changed: provider changed; open the record again",
@@ -5965,10 +6093,15 @@ impl App {
             if self.document.open || self.launcher.is_some() || self.local_tab.is_some() {
                 return false;
             }
-            let kitty = self.focus.stage.as_ref().and_then(|stage| stage.focused)
+            let kitty = self
+                .focus
+                .stage
+                .as_ref()
+                .and_then(|stage| stage.focused)
                 .and_then(|seat| self.live_state.as_ref()?.screens.get(&seat))
                 .is_some_and(|screen| kitty_owns_all_keys(screen.modes));
-            if !kitty && input.state.is_pressed()
+            if !kitty
+                && input.state.is_pressed()
                 && !input.repeat
                 && (matches!(input.logical_key, Key::Named(NamedKey::ContextMenu))
                     || (matches!(input.logical_key, Key::Named(NamedKey::F10))
@@ -6057,7 +6190,8 @@ impl App {
     }
     fn terminal_copy_shortcut(&self, input: &keyboard::Input<'_>) -> bool {
         terminal_copy_chord(input, || {
-            self.ui_selection.text().is_some() || (!self.document.open && self.terminal_copy_text().is_some())
+            self.ui_selection.text().is_some()
+                || (!self.document.open && self.terminal_copy_text().is_some())
         })
     }
     /// Choose a UI command without changing the physical keyboard lifecycle.
@@ -6721,6 +6855,7 @@ impl App {
         }
         if matches!(request, UiRequest::Seats) {
             let sources = self.drain();
+            self.rich_drain();
             self.dispatch_wake_sources(&sources);
             self.answer_seats(id);
             return false;
@@ -6937,6 +7072,9 @@ impl App {
     }
     // Shared by the winit callback and the private ctl normalized-input seam.
     fn ime_input(&mut self, event: Ime) {
+        if self.startup.visible || self.rich_ime(&event) {
+            return;
+        }
         match event {
             event if self.app_overlays.open() => match event {
                 Ime::Preedit(text, cursor) => {
@@ -7004,6 +7142,32 @@ impl App {
         }
     }
     fn key_input(&mut self, input: &keyboard::Input<'_>) -> Option<RoutedKey> {
+        if self.startup.visible {
+            // Startup owns the normalized key and its repeat/release lifecycle,
+            // including keys still held when the backend attaches.
+            self.keyboard.consumed(input.physical_key, input.state);
+            if input.state.is_pressed() && !input.repeat {
+                let mods = input.modifiers.state;
+                if mods.super_key()
+                    && !mods.shift_key()
+                    && keyboard::shortcut_key(input) == Some('q')
+                {
+                    return Some(if mods.alt_key() {
+                        RoutedKey::HardQuit
+                    } else {
+                        RoutedKey::Quit
+                    });
+                }
+                if input.logical_key == Key::Named(NamedKey::Enter) {
+                    self.retry_startup();
+                }
+            }
+            return None;
+        }
+        if self.rich_key(input) {
+            self.keyboard.consumed(input.physical_key, input.state);
+            return None;
+        }
         if self.overlay_key(input) {
             self.keyboard.consumed(input.physical_key, input.state);
             return None;
@@ -7135,6 +7299,10 @@ impl App {
                             self.pointer_pressed([*x as f32, *y as f32]);
                             self.pointer_released();
                             self.modifiers = original;
+                        }
+                        UiInput::Wheel { x, y, dy } => {
+                            self.pointer = [*x as f32, *y as f32];
+                            self.mouse_wheel(MouseScrollDelta::PixelDelta(winit::dpi::PhysicalPosition::new(0., f64::from(*dy))));
                         }
                     }
                 }
@@ -7427,27 +7595,40 @@ impl App {
                     scroll: model
                         .scroll
                         .position(*seat, model.history.get(seat).map(Arc::as_ref)),
-                    rendered: model.prepared_screens.get(seat).and_then(|source| {
-                        self.frame_observations
-                            .read(*seat, source, &mut terminal_text)
-                            .map(|mut rendered| {
-                                rendered.pixel_size =
-                                    model.frames.get(seat).map(|grid| [grid.width, grid.height]);
-                                rendered
+                    rendered: model
+                        .prepared_screens
+                        .get(seat)
+                        .filter(|_| !self.rich_face(*seat))
+                        .and_then(|source| {
+                            self.frame_observations
+                                .read(*seat, source, &mut terminal_text)
+                                .map(|mut rendered| {
+                                    rendered.pixel_size = model
+                                        .frames
+                                        .get(seat)
+                                        .map(|grid| [grid.width, grid.height]);
+                                    rendered
+                                })
+                        }),
+                    historical: model
+                        .history
+                        .get(seat)
+                        .filter(|_| !self.rich_face(*seat))
+                        .and_then(|history| {
+                            let source = model.prepared_screens.get(seat)?;
+                            if !Arc::ptr_eq(&source.screen, &history.screen) {
+                                return None;
+                            }
+                            let grid = model.frames.get(seat)?;
+                            Some(bbt_proto::gui::UiHistoricalScreen {
+                                top_row: history.top_row,
+                                lines: bboxy450_term::frame_observation::bounded_lines(
+                                    source,
+                                    &mut terminal_text,
+                                ),
+                                pixel_size: [grid.width, grid.height],
                             })
-                    }),
-                    historical: model.history.get(seat).and_then(|history| {
-                        let source = model.prepared_screens.get(seat)?;
-                        if !Arc::ptr_eq(&source.screen, &history.screen) {
-                            return None;
-                        }
-                        let grid = model.frames.get(seat)?;
-                        Some(bbt_proto::gui::UiHistoricalScreen {
-                            top_row: history.top_row,
-                            lines: bboxy450_term::frame_observation::bounded_lines(source, &mut terminal_text),
-                            pixel_size: [grid.width, grid.height],
-                        })
-                    }),
+                        }),
                 })
             })
             .collect();
@@ -7489,7 +7670,10 @@ impl App {
         );
         let layout = UiLayout {
             sidebar_sections: self.sidebar_section_positions(),
-            notification_frontmost: self.notification_foreground_allowed().is_ok().then_some(self.frontmost),
+            notification_frontmost: self
+                .notification_foreground_allowed()
+                .is_ok()
+                .then_some(self.frontmost),
             sidebar_open: self.scene.sidebar_open(),
             regions: self.interaction_regions(),
             test_clipboard: None,
@@ -7524,7 +7708,7 @@ impl App {
                         .fields
                         .iter()
                         .map(|f| bbt_proto::gui::UiSpawnField {
-                            label: f.key.label().into(),
+                            label: f.label().into(),
                             value: f.value.clone(),
                             source: f.source.label().into(),
                             fixed: f.fixed,
@@ -7542,6 +7726,7 @@ impl App {
             }),
             document: self.document.open.then(|| self.document.target.clone()),
             document_observation,
+            rich_observation: self.rich_observation(),
             panes,
             tree,
             spawned: None,
@@ -7585,6 +7770,7 @@ impl App {
         Ok(layout)
     }
     fn solve_ui(&mut self, logical: [f32; 2]) -> Result<Vec<bbt_ui::components::Layout>, String> {
+        self.scene.set_pane_views(self.rich_header_views());
         self.clock_frame = self.clock.frame();
         self.scene.advance_sidebar_motion(self.clock_frame.now);
         self.scene.sidebar_layout = self.effective_sidebar_layout();
@@ -7692,6 +7878,7 @@ impl App {
         self.sidebar_viewport = self.scene.sidebar_extent(&layouts);
         self.sidebar_resize_region = self.scene.sidebar_resize_region(&layouts, logical);
         self.pane_bounds = bounds;
+        self.rich_sync();
         self.solve_launcher(logical)?;
         self.solve_app_overlay(logical)?;
         if self.document.open {
@@ -7718,6 +7905,8 @@ impl App {
                 logical,
                 self.window_last.as_ref(),
             );
+            state.pane_faces = self.pane_faces.clone();
+            state.rich_cursors = self.rich_cursors.clone();
             state.sidebar_scroll = self.scene.sidebar_scroll;
             state.sidebar_width = self.scene.sidebar_width;
             state.open_swarms = self
@@ -7842,7 +8031,10 @@ impl App {
             let native = self.pacer.as_ref().is_some_and(DisplayLink::is_metal);
             self.pacer.take();
             if native {
-                self.gpu.as_mut().unwrap().resize_native(size.width, size.height)?;
+                self.gpu
+                    .as_mut()
+                    .unwrap()
+                    .resize_native(size.width, size.height)?;
             } else {
                 self.gpu.as_mut().unwrap().resize(size.width, size.height);
             }
@@ -7869,6 +8061,7 @@ impl App {
         let projections_before =
             bbt_rt::diagnostics::calls(bbt_rt::diagnostics::Phase::UiProjection);
         let sources = self.drain();
+        self.rich_drain();
         // A native redraw can consume data before its queued Wake arrives.
         // If no drawable is pending, preserve that invalidation before the
         // later empty Wake is ignored.
@@ -7921,11 +8114,15 @@ impl App {
         let scale = self.window.as_ref().unwrap().scale_factor() as f32;
         let logical = [size.width as f32 / scale, size.height as f32 / scale];
         let start = Instant::now();
-        if let Some(prepared)=&self.document.prepared
-            && let Err(reason)=self.gpu.as_mut().unwrap().install_document_images(&prepared.images)
+        if let Some(prepared) = &self.document.prepared
+            && let Err(reason) = self
+                .gpu
+                .as_mut()
+                .unwrap()
+                .install_document_images(&prepared.images)
         {
             self.document.image_failed(reason);
-            self.document_layout=None;
+            self.document_layout = None;
         }
         let layouts = self.solve_ui(logical)?;
         let bounds = self.pane_bounds.clone();
@@ -7983,6 +8180,14 @@ impl App {
                 winit::dpi::LogicalSize::new(caret.w, caret.h),
             );
         }
+        if let Some(pane) = self.rich_target().and_then(|id| self.rich_panes.get(&id))
+            && let Some(caret) = pane.snapshot.ime_caret
+        {
+            self.window.as_ref().unwrap().set_ime_cursor_area(
+                winit::dpi::LogicalPosition::new(pane.rect.x + caret.x, pane.rect.y + caret.y),
+                winit::dpi::LogicalSize::new(caret.w, caret.h),
+            );
+        }
         phases.layout = start.elapsed();
         let overlay = self.overlay.then(|| {
             perf_hud(
@@ -8004,25 +8209,56 @@ impl App {
             vec![]
         };
         pane_overlay.extend(self.paint_terminal_selection());
+        pane_overlay.extend(self.rich_paints());
         let (document_paints, document_observation) =
             self.document_paint(self.meter.total_frames() + 1);
-        pane_overlay.extend(self.scene.foreground_with_document(
+        // The conversation dock is painted between the pane foreground and the
+        // rims; it travels as its own retained list so the GPU can keep it in
+        // a layer while it is unchanged (gpu::draw_overlay).
+        let retained = self
+            .conversation_layout
+            .as_ref()
+            .map(|layout| layout.painted().clone());
+        let mut overlay_after = self.scene.foreground_with_document(
             logical,
             self.launcher_layout.as_ref(),
             overlay.as_ref(),
-            self.conversation_layout.as_ref(),
+            None,
             document_paints,
             rims,
-        ));
-        pane_overlay.push(bbt_ui::components::Paint::Draw(
+        );
+        overlay_after.push(bbt_ui::components::Paint::Draw(
             self.ui_selection.paint(self.scene.text_metrics()),
         ));
-        pane_overlay.extend(self.scene.error_overlay(logical, self.unread_errors));
-        pane_overlay.extend(self.paint_app_overlay());
+        overlay_after.extend(self.scene.error_overlay(logical, self.unread_errors));
+        overlay_after.extend(self.paint_app_overlay());
+        if self.pointer_inside {
+            match self.titlebar.hit(self.pointer) {
+                Some(desktop_window::Hit::Usage) => {
+                    overlay_after.extend(self.scene.usage_tooltip(self.solved_size))
+                }
+                Some(desktop_window::Hit::Theme) => {
+                    overlay_after.extend(self.scene.theme_tooltip(self.solved_size))
+                }
+                _ => {}
+            }
+        }
+        overlay_after.extend(self.paint_startup_modal()?);
+        let mut retained = retained;
         if !live {
             ops.append(&mut pane_overlay);
+            if let Some(list) = retained.take() {
+                ops.extend(list.iter().cloned());
+            }
+            ops.append(&mut overlay_after);
         }
         phases.draw = start.elapsed();
+        let terminal_bounds: Vec<_> = self
+            .pane_bounds
+            .iter()
+            .filter(|(id, _)| !self.rich_face(*id))
+            .copied()
+            .collect();
         if let Some((encode, wait)) = self.gpu.as_mut().unwrap().draw(
             ops,
             scale,
@@ -8031,9 +8267,11 @@ impl App {
             self.meter.total_frames() + 1,
             self.live_state.as_ref().map(|model| gpu::Panes {
                 model,
-                bounds: &self.pane_bounds,
+                bounds: &terminal_bounds,
                 focused: self.scene.focused(),
                 overlay: pane_overlay,
+                retained,
+                overlay_after,
             }),
         )? {
             self.redraw_pending.set(false);
@@ -8042,7 +8280,10 @@ impl App {
             phases.encode = encode;
             phases.present_wait = wait;
             if let Some((phase, time)) = self.meter.record(Instant::now(), phases) {
-                self.logger.write(format!("hitch frame={} phase={phase} {:.3}ms cpu={:.3}ms drain={:.3} layout={:.3} draw={:.3} encode={:.3} present_wait={:.3}",self.meter.total_frames(),time.as_secs_f64()*1000.,phases.cpu().as_secs_f64()*1000.,phases.drain.as_secs_f64()*1000.,phases.layout.as_secs_f64()*1000.,phases.draw.as_secs_f64()*1000.,phases.encode.as_secs_f64()*1000.,phases.present_wait.as_secs_f64()*1000.));
+                let gpu = self.gpu.as_ref().unwrap();
+                let (p, e) = (gpu.passes, gpu.last_split);
+                let ms = |d: Duration| d.as_secs_f64() * 1000.;
+                self.logger.write(format!("hitch frame={} phase={phase} {:.3}ms cpu={:.3}ms drain={:.3} layout={:.3} draw={:.3} encode={:.3} present_wait={:.3} chrome={:.3} cells={:.3} overlay={:.3} composite={:.3} submit={:.3} passes={} flat={} clear={} path={} group={} blur={} material={} cells_p={} copy={} mask_misses={} shadow_req={} retained={:?}",self.meter.total_frames(),ms(time),ms(phases.cpu()),ms(phases.drain),ms(phases.layout),ms(phases.draw),ms(phases.encode),ms(phases.present_wait),ms(e.chrome),ms(e.cells),ms(e.overlay),ms(e.composite),ms(e.submit),p.passes(),p.flat,p.clear,p.path,p.group,p.blur,p.material,p.cells,p.copy,e.mask_misses,e.shadow_requests,e.retained));
             }
             // Under the meter, the render-pass mix of every 120th frame (R12-3 profiling).
             if self.overlay && self.meter.total_frames().is_multiple_of(120) {
@@ -8143,6 +8384,9 @@ impl App {
                 }
                 let layout = self.ui_layout(logical, &layouts, document_observation);
                 self.present_ui(self.meter.total_frames(), layout);
+                // An effect can settle during painting (a sidebar animation ending) with
+                // no backend wake to drain; poll here so its frame target is still set.
+                self.poll_ui_frame(self.meter.total_frames());
             }
             if !self.app_ready_sent
                 && !self.backend_lost
@@ -8198,6 +8442,10 @@ impl ApplicationHandler<UiEvent> for App {
         let _callback = bbt_rt::diagnostics::callback(bbt_rt::diagnostics::Phase::AboutToWait);
         self.apply_notification_click();
         self.sync_role_settings();
+        if self.startup.visible && Instant::now() >= self.startup_tick {
+            self.startup_tick = Instant::now() + Duration::from_secs(1);
+            self.request_redraw();
+        }
         let pending = self.custody.wake_at();
         if let Some(message) = self.custody.next(Instant::now(), !self.backend_lost) {
             self.queue(message);
@@ -8214,6 +8462,7 @@ impl ApplicationHandler<UiEvent> for App {
                 .into_iter()
                 .chain(self.custody.wake_at())
                 .chain(self.role_settings.wake_at())
+                .chain(self.startup.visible.then_some(self.startup_tick))
                 .min()
                 .map_or(ControlFlow::Wait, ControlFlow::WaitUntil),
         );
@@ -8239,6 +8488,10 @@ impl ApplicationHandler<UiEvent> for App {
             _ => bbt_rt::diagnostics::Phase::UserOther,
         });
         match event {
+            UiEvent::Usage(update) => {
+                self.scene.apply_usage(update);
+                self.request_redraw();
+            }
             UiEvent::SeatTaskRetry(op) => {
                 self.retry_seat_tasks(op);
             }
@@ -8257,6 +8510,15 @@ impl ApplicationHandler<UiEvent> for App {
             }
             UiEvent::SwarmMetadataReply { op, result } => self.overlay_metadata_reply(op, result),
             UiEvent::DesktopAction(action, scancode) => {
+                if self.startup.visible
+                    && !matches!(
+                        action,
+                        bboxy450_term_desktop::Action::CloseWindow
+                            | bboxy450_term_desktop::Action::HardQuit
+                    )
+                {
+                    return;
+                }
                 self.consume_desktop_font_key(action, scancode);
                 if let Some(hard) = self.desktop_action(action) {
                     if hard {
@@ -8464,6 +8726,7 @@ impl ApplicationHandler<UiEvent> for App {
                     self.capture_now(ask, step);
                 }
             }
+            UiEvent::VerifyWheel => self.verify_wheel(),
             UiEvent::VerifyScrollTop => {
                 self.logger.write(format!(
                     "scroll verification start: frame={}",
@@ -8500,6 +8763,7 @@ impl ApplicationHandler<UiEvent> for App {
                     self.fail(error, event_loop);
                     return;
                 }
+                self.rich_drain();
                 self.dispatch_wake_sources(&sources);
             }
             UiEvent::BeginIdle => {
@@ -8634,6 +8898,16 @@ impl ApplicationHandler<UiEvent> for App {
             UiEvent::Quit => event_loop.exit(),
             UiEvent::SmokeDeadline => self.fail(self.idle_quiet.deadline_error(), event_loop),
             UiEvent::BackendStopped(result) => {
+                if !self.closing
+                    && let Err(error) = &result
+                {
+                    self.logger
+                        .write(format!("backend startup failed: {error}"));
+                    self.startup.fail(error.clone());
+                    self.backend_lost = true;
+                    self.request_redraw();
+                    return;
+                }
                 if self.admission_refusals.input != 0 || self.admission_refusals.spawn != 0 {
                     let mut report = self.admission_refusals.report();
                     if let Err(error) = result {
@@ -8659,6 +8933,15 @@ impl ApplicationHandler<UiEvent> for App {
                 self.logger
                     .write(format!("backend lost; retaining last pane frame: {reason}"));
                 self.backend_lost = true;
+                if !self.startup.visible {
+                    self.startup.update(
+                        bboxy450_term::cockpit::startup::Phase::Reconnecting {
+                            attempt: 1,
+                            reason: reason.clone(),
+                        },
+                        Instant::now(),
+                    );
+                }
                 self.overlay_backend_lost();
                 self.command_retry.cancel();
                 self.custody.next(Instant::now(), false);
@@ -8669,11 +8952,22 @@ impl ApplicationHandler<UiEvent> for App {
             }
             UiEvent::BackendReady => {
                 self.backend_lost = false;
+                self.startup.attached();
                 self.sync_role_settings();
                 self.scene.backend_ready();
                 self.conversation_reads(false);
                 self.task_reads();
                 self.flush_commands();
+                self.request_redraw();
+            }
+            UiEvent::Startup { phase, run_dir } => {
+                self.startup.run_dir = Some(run_dir);
+                self.startup.update(phase, Instant::now());
+                self.request_redraw();
+            }
+            UiEvent::StartupFailed(reason) => {
+                self.startup.fail(reason);
+                self.backend_lost = true;
                 self.request_redraw();
             }
             UiEvent::BackendInfo {
@@ -8687,6 +8981,26 @@ impl ApplicationHandler<UiEvent> for App {
     }
     fn window_event(&mut self, event_loop: &ActiveEventLoop, _: WindowId, event: WindowEvent) {
         let _callback = stall::window_callback(&event);
+        if self.startup.visible {
+            match &event {
+                WindowEvent::MouseInput {
+                    state: ElementState::Pressed,
+                    button: MouseButton::Left,
+                    ..
+                } => {
+                    match self.startup_action_at(self.pointer) {
+                        Some("startup/quit") => self.request_close(event_loop),
+                        Some("startup/retry") => self.retry_startup(),
+                        _ => {}
+                    }
+                    return;
+                }
+                WindowEvent::MouseWheel { .. }
+                | WindowEvent::MouseInput { .. }
+                | WindowEvent::Ime(_) => return,
+                _ => {}
+            }
+        }
         if self.smoke && !self.cadence_test {
             if let WindowEvent::Occluded(occluded) = &event {
                 // A locked display can toggle occlusion throughout the night.
@@ -8740,6 +9054,10 @@ impl ApplicationHandler<UiEvent> for App {
             }
             WindowEvent::Occluded(occluded) => {
                 self.occluded = occluded;
+                if occluded {
+                    self.rich_panes.clear();
+                    self.rich_focused.clear();
+                }
                 if let Some(pacer) = &mut self.pacer
                     && let Err(error) =
                         pacer.set_active(self.animate && !occluded && !self.clock.is_frozen())
@@ -8762,14 +9080,29 @@ impl ApplicationHandler<UiEvent> for App {
             }
             WindowEvent::CursorLeft { .. } => self.pointer_left(),
             WindowEvent::CursorMoved { position, .. } => {
+                let tip = |hit| {
+                    matches!(
+                        hit,
+                        Some(desktop_window::Hit::Usage | desktop_window::Hit::Theme)
+                    )
+                    .then_some(hit)
+                    .flatten()
+                };
+                let was_tip = tip(self.titlebar.hit(self.pointer));
                 let scale = self
                     .window
                     .as_ref()
                     .map_or(1., |window| window.scale_factor()) as f32;
                 self.pointer = [position.x as f32 / scale, position.y as f32 / scale];
+                if was_tip != tip(self.titlebar.hit(self.pointer)) {
+                    self.request_redraw();
+                }
                 self.titlebar.moved(self.pointer);
                 self.pointer_inside = true;
                 self.update_cursor();
+                if self.startup.visible {
+                    return;
+                }
                 if self.overlay_hover(self.pointer) {
                     return;
                 }
@@ -8859,154 +9192,7 @@ impl ApplicationHandler<UiEvent> for App {
                     self.launcher_command(LauncherCommand::Hover(index));
                 }
             }
-            WindowEvent::MouseWheel { .. } if self.app_overlays.open() => {}
-            WindowEvent::MouseWheel { delta, .. } if self.launcher.is_some() => {
-                let dy = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => -y * 28.,
-                    MouseScrollDelta::PixelDelta(p) => {
-                        -p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
-                    }
-                };
-                self.scroll_launcher(dy);
-            }
-            WindowEvent::MouseWheel { delta, .. } if self.document.open => {
-                let [mut dx, mut dy] = match delta {
-                    MouseScrollDelta::LineDelta(x, y) => [-x * 28., -y * 28.],
-                    MouseScrollDelta::PixelDelta(p) => {
-                        let scale = self.window.as_ref().map_or(1., |w| w.scale_factor() as f32);
-                        [-p.x as f32 / scale, -p.y as f32 / scale]
-                    }
-                };
-                if self.modifiers.shift_key() && dx == 0. {
-                    dx = dy;
-                    dy = 0.;
-                }
-                if let Some(layout) = &self.document_layout {
-                    let horizontal = layout.regions.horizontal_at(self.pointer).cloned();
-                    let extent = layout.regions.extent;
-                    let root_dx = if horizontal.as_ref().is_some_and(|r| r.root) {
-                        dx
-                    } else {
-                        0.
-                    };
-                    let mut changed = self.document.scroll.scroll([root_dx, dy], extent);
-                    if let Some(region) = horizontal.filter(|r| !r.root) {
-                        changed |= self.document.scroll.pan(&region.key, dx, region.max);
-                    }
-                    if changed {
-                        self.document_layout = None;
-                        self.request_redraw();
-                    }
-                }
-            }
-            WindowEvent::MouseWheel { delta, .. }
-                if self.launcher.is_none()
-                    && self.sidebar_viewport.is_some_and(|(r, _)| {
-                        self.pointer[0] >= r.x
-                            && self.pointer[0] < r.right()
-                            && self.pointer[1] >= r.y
-                            && self.pointer[1] < r.bottom()
-                    }) =>
-            {
-                let dy = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => -y * 28.,
-                    MouseScrollDelta::PixelDelta(p) => {
-                        -p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
-                    }
-                };
-                self.scroll_sidebar(dy);
-            }
-            WindowEvent::MouseWheel { delta, .. }
-                if self.launcher.is_none()
-                    && self
-                        .local_page_layout
-                        .as_ref()
-                        .is_some_and(|p| p.contains(self.pointer)) =>
-            {
-                let delta = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => -y * 28.,
-                    MouseScrollDelta::PixelDelta(p) => {
-                        -p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
-                    }
-                };
-                self.local_scroll(delta);
-            }
-            WindowEvent::MouseWheel { .. }
-                if self.launcher.is_none()
-                    && self
-                        .local_page_layout
-                        .as_ref()
-                        .is_some_and(|p| p.focuses(self.pointer)) => {}
-            WindowEvent::MouseWheel { delta, .. }
-                if self.launcher.is_none()
-                    && self.conversation_layout.as_ref().is_some_and(|layout| {
-                        let r = layout.regions.body;
-                        self.pointer[0] >= r.x
-                            && self.pointer[0] < r.right()
-                            && self.pointer[1] >= r.y
-                            && self.pointer[1] < r.bottom()
-                    }) =>
-            {
-                let dy = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => -y * 28.,
-                    MouseScrollDelta::PixelDelta(p) => {
-                        -p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
-                    }
-                };
-                self.scroll_composer_body(dy);
-            }
-            WindowEvent::MouseWheel { delta, .. }
-                if self.launcher.is_none()
-                    && self.conversation_layout.as_ref().is_some_and(|layout| {
-                        layout.actions.contains("conversation/rows", self.pointer)
-                            || layout.actions.contains("conversation/tasks", self.pointer)
-                    }) =>
-            {
-                let dy = match delta {
-                    MouseScrollDelta::LineDelta(_, y) => y * 28.,
-                    MouseScrollDelta::PixelDelta(p) => {
-                        p.y as f32 / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
-                    }
-                };
-                let tasks = self.conversation_layout.as_ref().is_some_and(|layout| {
-                    layout.actions.contains("conversation/tasks", self.pointer)
-                });
-                let _ = self.scroll_sidebar_section(tasks, -dy);
-            }
-            WindowEvent::MouseWheel { delta, .. } if self.launcher.is_none() => {
-                if let Some((seat, rect)) = self.focus_bounds.iter().find(|(_, rect)| {
-                    self.pointer[0] >= rect.x
-                        && self.pointer[0] < rect.right()
-                        && self.pointer[1] >= rect.y
-                        && self.pointer[1] < rect.bottom()
-                }) {
-                    let seat = *seat;
-                    let rows = self
-                        .live_state
-                        .as_ref()
-                        .and_then(|model| model.screens.get(&seat))
-                        .map_or(1, |screen| screen.rows.max(1));
-                    let lines = match delta {
-                        MouseScrollDelta::LineDelta(_, y) => f64::from(y),
-                        MouseScrollDelta::PixelDelta(position) => {
-                            let scale = self.window.as_ref().map_or(1., |w| w.scale_factor());
-                            position.y / (f64::from(rect.h) / rows as f64 * scale).max(1.)
-                        }
-                    };
-                    if lines.is_finite() {
-                        let remainder = self.scroll_wheel.get_or_insert((seat, 0.));
-                        if remainder.0 != seat {
-                            *remainder = (seat, 0.);
-                        }
-                        remainder.1 += lines;
-                        let whole = remainder.1.trunc() as i64;
-                        remainder.1 -= whole as f64;
-                        if whole != 0 {
-                            self.scroll_pane(seat, ScrollRequest::lines(whole));
-                        }
-                    }
-                }
-            }
+            WindowEvent::MouseWheel { delta, .. } => self.mouse_wheel(delta),
             WindowEvent::MouseInput {
                 state: ElementState::Pressed,
                 button: MouseButton::Left,
@@ -9033,15 +9219,29 @@ impl ApplicationHandler<UiEvent> for App {
             } => self.overlay_right_click(self.pointer),
             WindowEvent::Ime(event) => self.ime_input(event),
             WindowEvent::KeyboardInput { event, .. } => {
+                let input = self.keyboard.event(&event, self.modifiers);
+                if self.startup.visible {
+                    if input.state.is_pressed() && !input.repeat {
+                        match route_key(&input, 0, None) {
+                            RoutedKey::Quit => self.request_close(event_loop),
+                            RoutedKey::HardQuit => self.request_shutdown(event_loop),
+                            _ if input.logical_key == Key::Named(NamedKey::Enter) => {
+                                self.retry_startup()
+                            }
+                            _ => {}
+                        }
+                    }
+                    return;
+                }
                 if event.state == ElementState::Pressed {
                     self.cancel_ui(
                         "ui_frame_refused: physical keyboard input superseded this request",
                     );
                 }
-                let input = self.keyboard.event(&event, self.modifiers);
                 // Verification-only resize exercises the real OS Resized event
                 // on borderless windows whose native edge is hard to grab.
                 if event.state.is_pressed()
+                    && !self.startup.visible
                     && self.capture.is_some()
                     && self.modifiers.super_key()
                     && self.modifiers.shift_key()
@@ -9063,6 +9263,7 @@ impl ApplicationHandler<UiEvent> for App {
                 // The existing --capture path can be refreshed after an
                 // interactive verification scene (no readback on the UI).
                 if event.state.is_pressed()
+                    && !self.startup.visible
                     && self.capture.is_some()
                     && self.modifiers.super_key()
                     && self.modifiers.shift_key()
@@ -9393,6 +9594,7 @@ Debug and verification only, never for normal use:
   --theme light|dark   terminal palette for live verification (default: dark)
   --grid-size COLSxROWS fit one live pane by resizing the real window; 10s deadline
   --grid-hash          write actual visible-screen hashes to PNG's .grid.json
+  --wheel-after SECS   private test-account wheel up in each visible pane
   --scroll-top-after SECS scroll panes to the capture's first row (0..300)
   --quit-after SECS    close this verification instance cleanly (0..300)
   BBOXY_VERIFY_INPUT   env: bytes typed into each new seat once, \\n sent as Return
@@ -9413,6 +9615,7 @@ struct Verify {
     grid_ready: bool,
     capture_started: bool,
     scroll_after: Option<Duration>,
+    wheel_after: Option<Duration>,
     quit_after: Option<Duration>,
     scroll_due: bool,
     scrolled: std::collections::BTreeSet<(SeatId, u64)>,
@@ -9472,6 +9675,7 @@ impl Verify {
             grid_size,
             grid_hash: args.iter().any(|arg| arg == "--grid-hash"),
             scroll_after: seconds("--scroll-top-after")?,
+            wheel_after: seconds("--wheel-after")?,
             quit_after: seconds("--quit-after")?,
             ..Default::default()
         })
@@ -9494,6 +9698,7 @@ impl App {
             }
             for (after, event) in [
                 (self.verify.scroll_after, UiEvent::VerifyScrollTop),
+                (self.verify.wheel_after, UiEvent::VerifyWheel),
                 (self.verify.quit_after, UiEvent::VerifyClose),
             ] {
                 if let Some(after) = after {
@@ -9724,16 +9929,18 @@ fn screen_hash(screen: &bbt_proto::Screen) -> String {
 }
 
 fn diagnostic_root(args: &[String]) -> Result<std::path::PathBuf, String> {
+    // Validate private custody before choosing any fallback. In particular an
+    // inherited seat run must never win over an explicit throwaway account.
+    let account =
+        bboxy450_term::cockpit::Config::test_account_from_args(args).map_err(|e| e.to_string())?;
     if let Some(path) = args.windows(2).find(|p| p[0] == "--run-dir").map(|p| &p[1]) {
         return Ok(path.into());
     }
+    if let Some(account) = account {
+        return Ok(account.join("run"));
+    }
     if let Some(path) = std::env::var_os("BBOXY_RUN_DIR") {
         return Ok(path.into());
-    }
-    if let Some(account) =
-        bboxy450_term::cockpit::Config::test_account_from_args(args).map_err(|e| e.to_string())?
-    {
-        return Ok(account.join("run"));
     }
     bbt_mux::transport::default_socket_path()
         .map_err(|e| e.to_string())?
@@ -9761,7 +9968,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         return Err("--desktop-fixture requires a debug build and --test-account".into());
     }
     let diagnostics_root = diagnostic_root(&hook_args).ok();
-    if let Some(root) = &diagnostics_root {
+    // Private backends read their authoritative run from stdin. Let their
+    // bootstrap configure the once-only producer, rather than pinning an
+    // unrelated inherited run before that configuration has arrived.
+    if !hook_args
+        .first()
+        .is_some_and(|arg| matches!(arg.as_str(), "supervisor" | "logic" | "desktop"))
+        && let Some(root) = &diagnostics_root
+    {
         bbt_rt::error_journal::configure(root);
     }
     if let Some(result) = stall::private_entry(&hook_args) {
@@ -9854,13 +10068,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         return Ok(());
     }
-    let notification_test_account = bboxy450_term::cockpit::Config::test_account_from_args(&hook_args)
-        .map_err(|error| error as Box<dyn std::error::Error>)?
-        .is_some();
+    if let Some(status) = bboxy450_term::cockpit::gui_handoff::probe(&hook_args).map_err(|error| error as Box<dyn std::error::Error>)? {
+        println!("{}", serde_json::to_string(&status)?);
+        return Ok(());
+    }
+    let notification_test_account =
+        bboxy450_term::cockpit::Config::test_account_from_args(&hook_args)
+            .map_err(|error| error as Box<dyn std::error::Error>)?
+            .is_some();
     bboxy450_term::cockpit::Config::repository_from_args(&hook_args)
         .map_err(|error| error as Box<dyn std::error::Error>)?;
     let record_notifications = notification_recording(&hook_args)?;
     let verify = Verify::from_args(&hook_args)?;
+    bboxy450_term::cockpit::gui_handoff::prepare(&hook_args).map_err(|error| error as Box<dyn std::error::Error>)?;
     if hook_args.iter().any(|arg| arg == "--headless") {
         return headless::run(&hook_args).map_err(Into::into);
     }
@@ -9878,6 +10098,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
     let event_loop = event_loop_builder.build()?;
     let proxy = event_loop.create_proxy();
+    let handoff_proxy = proxy.clone();
+    bbt_rt::handle().spawn(async move {
+        use tokio::signal::unix::{SignalKind, signal};
+        if let Ok(mut close) = signal(SignalKind::hangup()) {
+            close.recv().await;
+            let _ = handoff_proxy.send_event(UiEvent::DesktopAction(
+                bboxy450_term_desktop::Action::CloseWindow,
+                None,
+            ));
+        }
+    });
+
     let diagnostics_proxy = proxy.clone();
     let _diagnostics = diagnostics_root.and_then(|root| {
         bbt_rt::error_journal::Server::start(root, move |n| {
@@ -9998,8 +10230,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 args.windows(2)
                     .find(|pair| pair[0] == "--run-dir")
                     .map(|pair| std::path::PathBuf::from(&pair[1])),
-                // The operator's ctl door (decision #260): opt-in, closed by default.
-                args.iter().any(|arg| arg == "--ctl"),
+                // The operator's ctl door (decision #260): on by default since 2026-11-02 (operator); --no-ctl closes it.
+                !args.iter().any(|arg| arg == "--no-ctl"),
                 rendering,
             )),
         )
@@ -10046,6 +10278,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     app.pacing = pacing;
     app.render_context = (!fake && !animate).then_some(render_context);
     app.stall = stall;
+    if !fake
+        && !animate
+        && bboxy450_term::cockpit::Config::test_account_from_args(&args)
+            .is_ok_and(|account| account.is_none())
+    {
+        app.start_usage();
+    }
     if let Some(pair) = args.windows(2).find(|pair| pair[0] == "--settings") {
         app.open_settings(&pair[1]);
     }
@@ -10319,6 +10558,160 @@ mod lazy_projection_tests {
             messaging::Status::Unknown(_)
         ));
         assert!(!app.composer_client.retry().is_empty());
+    }
+    #[test]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "private home and isolated UI registration"
+    )]
+    fn startup_modal_owns_normalized_keys_and_cursors_until_attachment() {
+        const CHILD: &str = "BBOXY_STARTUP_INPUT_TEST_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let home = tempfile::tempdir().unwrap();
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", "lazy_projection_tests::startup_modal_owns_normalized_keys_and_cursors_until_attachment", "--nocapture", "--test-threads=1"])
+                .env(CHILD, "1")
+                .env("HOME", home.path())
+                .env("ZDOTDIR", home.path())
+                .env("CODEX_HOME", home.path().join(".codex"))
+                .env("CLAUDE_CONFIG_DIR", home.path().join(".claude"))
+                .output().unwrap();
+            assert!(
+                output.status.success(),
+                "{}\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return;
+        }
+        let (mut app, _) = fixture();
+        app.test_account = true;
+        let seat = SeatId::from_u128(1);
+        let record =
+            bbt_proto::SeatRecord::new(bbt_mux::Ulid(1), bbt_mux::Ulid(90), "covered seat", "zsh");
+        let mut model = bboxy450_term::model::build_at(
+            &[record],
+            &bboxy450_term::grids::Grids::new(),
+            &Default::default(),
+            Instant::now(),
+            1000,
+        );
+        model.identity = Some(bbt_proto::GuiIdentity {
+            state: bbt_proto::GuiIdentityState::LocalDev,
+            private_test_run: Some(bbt_mux::Ulid(99)),
+            reason: None,
+        });
+        let mut term = bbt_core::Term::new(40, 2, 0);
+        term.advance(b"\x1b[>11u");
+        model.screens.insert(
+            seat,
+            Arc::new(bbt_proto::Screen::from_term(
+                &term,
+                String::new(),
+                None,
+                None,
+            )),
+        );
+        app.scene.set_model(&model, &model.ui.window.stage);
+        app.focus.stage = Some(model.ui.window.stage.clone());
+        app.live_state = Some(Arc::new(model));
+        app.solve_ui([1200., 900.]).unwrap();
+        app.live_commands = Some(live::disconnected_commands());
+        let pending = app.pending_commands.len();
+        let rect = app.navigation_regions[0].1;
+        let covered = [rect.x + rect.w / 2., rect.y + rect.h / 2.];
+        assert!(
+            app.startup.visible,
+            "real headless cold start must remain modal"
+        );
+        assert_eq!(app.cursor_at(covered), bbt_ui::cursor::Cursor::Default);
+        use bbt_proto::gui::{UiInput, UiKeyEvent, UiRequest};
+        let key = |event| UiInput::Key {
+            logical: "a".into(),
+            physical: "KeyA".into(),
+            unmodified: "a".into(),
+            text: Some("a".into()),
+            text_all_modifiers: Some("a".into()),
+            event,
+            modifiers: Default::default(),
+            location: "Standard".into(),
+        };
+        let inject = |app: &mut App, input| {
+            app.apply_ui(bbt_mux::Ulid(100), UiRequest::Input(vec![input]))
+                .unwrap();
+        };
+        // Exercise ctl's admitted normalized-input API, which never visits winit.
+        inject(&mut app, key(UiKeyEvent::Press));
+        assert_eq!(app.pending_commands.len(), pending);
+        assert!(app.key_input(&chrome_input("cmd-t").unwrap()).is_none());
+        assert!(app.launcher.is_none());
+        let mut quit = test_key(
+            &Key::Character("q".into()),
+            PhysicalKey::Code(KeyCode::KeyQ),
+            None,
+            ModifiersState::SUPER,
+            false,
+        );
+        assert_eq!(app.key_input(&quit), Some(RoutedKey::Quit));
+        quit.modifiers.state.insert(ModifiersState::ALT);
+        assert_eq!(app.key_input(&quit), Some(RoutedKey::HardQuit));
+        quit.repeat = true;
+        assert!(app.key_input(&quit).is_none());
+        quit.state = ElementState::Released;
+        assert!(app.key_input(&quit).is_none());
+
+        app.startup.fail("private startup failure".into());
+        app.startup.attached();
+        assert!(
+            app.startup.visible,
+            "attachment cannot clear a sticky failure"
+        );
+        assert_eq!(app.cursor_at(covered), bbt_ui::cursor::Cursor::Default);
+        app.paint_startup_modal().unwrap();
+        fn region(layout: &bbt_ui::components::Layout, key: &str) -> Option<Rect> {
+            if matches!(&layout.kind, bbt_ui::components::LayoutKind::Named(name) if name == key) {
+                return Some(layout.rect);
+            }
+            layout.children.iter().find_map(|child| region(child, key))
+        }
+        for key in ["startup/quit", "startup/retry"] {
+            let rect = region(app.startup_layout.as_ref().unwrap(), key).unwrap();
+            let at = [rect.x + rect.w / 2., rect.y + rect.h / 2.];
+            assert_eq!(app.startup_action_at(at), Some(key));
+            assert_eq!(app.cursor_at(at), bbt_ui::cursor::Cursor::Pointer);
+        }
+        app.composer
+            .handle(ComposeCommand::Focus(ComposeField::Body));
+        inject(
+            &mut app,
+            UiInput::Commit {
+                text: "covered text".into(),
+            },
+        );
+        assert!(app.composer.view.text.is_empty());
+        app.composer.handle(ComposeCommand::Blur);
+        let mut enter = chrome_input("enter").unwrap();
+        enter.repeat = true;
+        assert!(app.key_input(&enter).is_none());
+        assert!(app.startup.error.is_some());
+        enter.repeat = false;
+        assert!(app.key_input(&enter).is_none());
+        assert!(app.startup.error.is_none());
+        assert!(app.startup.visible, "Retry remains modal until attachment");
+        assert_eq!(app.pending_commands.len(), pending);
+        app.startup.attached();
+        assert!(!app.startup.visible);
+        assert_eq!(app.cursor_at(covered), bbt_ui::cursor::Cursor::Pointer);
+        inject(&mut app, key(UiKeyEvent::Repeat));
+        inject(&mut app, key(UiKeyEvent::Release));
+        assert!(
+            app.pending_commands.len() == pending,
+            "modal-owned repeats/releases must not leak after attachment"
+        );
+        inject(&mut app, key(UiKeyEvent::Press));
+        assert!(
+            matches!(app.pending_commands.back(), Some(live::UiMsg::Input { bytes, .. }) if bytes == b"\x1b[97u")
+        );
     }
     pub(super) fn fixture() -> (App, Arc<Latest<Arc<bboxy450_term::model::Model>>>) {
         struct QuietWake;
@@ -10652,7 +11045,7 @@ mod verification_tests {
             reads.extend(records.commands());
             reads
         });
-        assert_eq!(backlog.len(), 7); // cursor, page, message list, four record reads
+        assert_eq!(backlog.len(), 6); // cursor, page, message list, three record reads
         assert!(matches!(backlog[0], live::UiMsg::EventCursor { .. }));
         assert!(matches!(
             backlog[1],
@@ -12285,7 +12678,14 @@ mod launcher_host_tests {
             "readiness and native responses only emit an explicit focus intent"
         );
         assert!(matches!(
-            notification_target(seat, now, now + Duration::from_secs(30), Some(&model), true, None),
+            notification_target(
+                seat,
+                now,
+                now + Duration::from_secs(30),
+                Some(&model),
+                true,
+                None
+            ),
             NotificationTarget::Refused(_)
         ));
         model.ui.seats.get_mut(&seat).unwrap().lifecycle = bbt_ui_model::Lifecycle::ClosedRetained;
@@ -12310,10 +12710,14 @@ mod launcher_host_tests {
             ordinal: 1,
         };
         let mut current = bbt_proto::GuiSeat {
+            rich_socket: None,
             notification_episode: Some(episode),
             attention: None,
             record: bbt_proto::registry::SeatRecord::new(
-                bbt_mux::Ulid(1), bbt_mux::Ulid(2), "fixture", "codex",
+                bbt_mux::Ulid(1),
+                bbt_mux::Ulid(2),
+                "fixture",
+                "codex",
             ),
             state: bbt_proto::SeatState {
                 generation,
@@ -12322,6 +12726,7 @@ mod launcher_host_tests {
                 grade: bbt_proto::Grade::Shim,
                 title: String::new(),
                 detail: None,
+                stale: false,
                 turn_open: true,
                 observed_ms: 10,
                 subagents: vec![],
@@ -12541,7 +12946,7 @@ mod default_spawn_tests {
 
     #[test]
     fn default_picks_are_keyed_by_id_and_leave_placement_and_navigation_deferred() {
-        for (kind, _, _, _, _) in LAUNCHABLES {
+        for (kind, _, _, _, _) in launchables() {
             assert!(
                 matches!(default_spawn(kind, Modifiers::default(), None), Some(live::UiMsg::Spawn { harness_kind, name: None, location: bbt_proto::Where::Local, .. }) if harness_kind == kind)
             );
@@ -12580,15 +12985,40 @@ mod default_spawn_tests {
     #[test]
     fn configured_machine_rows_launch_and_disable_without_a_provider_snapshot() {
         let mut items = launcher_items(None);
-        let machines = std::collections::BTreeMap::from([("ssh:fixture".into(), bbt_ui::modules::settings::Machine { connect: "user@fixture.invalid".into(), ..Default::default() })]);
+        let machines = std::collections::BTreeMap::from([(
+            "ssh:fixture".into(),
+            bbt_ui::modules::settings::Machine {
+                connect: "user@fixture.invalid".into(),
+                ..Default::default()
+            },
+        )]);
         configure_machine_items(&mut items, &machines);
-        let hosts = items.iter().find(|item| item.id == "ssh").unwrap().children.as_ref().unwrap();
+        let hosts = items
+            .iter()
+            .find(|item| item.id == "ssh")
+            .unwrap()
+            .children
+            .as_ref()
+            .unwrap();
         assert_eq!(hosts.len(), 1);
-        let codex = hosts[0].children.as_ref().unwrap().iter().find(|row| row.harness == "codex").unwrap();
+        let codex = hosts[0]
+            .children
+            .as_ref()
+            .unwrap()
+            .iter()
+            .find(|row| row.harness == "codex")
+            .unwrap();
         assert_eq!(codex.id, "ssh:fixture:codex");
         assert!(codex.parameters);
-        assert_eq!(bboxy450_term::spawn_params::machine_target(&codex.id, &machines), Some(("codex".into(), "ssh:fixture".into())));
-        settings_destinations::filter(&mut items, &std::collections::BTreeSet::from(["ssh:fixture".into()]), &[]);
+        assert_eq!(
+            bboxy450_term::spawn_params::machine_target(&codex.id, &machines),
+            Some(("codex".into(), "ssh:fixture".into()))
+        );
+        settings_destinations::filter(
+            &mut items,
+            &std::collections::BTreeSet::from(["ssh:fixture".into()]),
+            &[],
+        );
         assert!(!items.iter().any(|item| item.id == "ssh"));
     }
 
@@ -12802,17 +13232,32 @@ mod composer_host_tests {
     fn terminal_paste_shortcut_keeps_composer_routing_and_owns_repeat_and_release() {
         let mut input = chrome_input("cmd-v").unwrap();
         let mut keyboard = keyboard::State::default();
-        assert_eq!(route_input(&mut keyboard, &input, 31 << 18, None), RoutedKey::TerminalPaste);
-        assert_eq!(route_composer(&input, 0, ComposeField::Body), RoutedKey::ComposerPaste);
+        assert_eq!(
+            route_input(&mut keyboard, &input, 31 << 18, None),
+            RoutedKey::TerminalPaste
+        );
+        assert_eq!(
+            route_composer(&input, 0, ComposeField::Body),
+            RoutedKey::ComposerPaste
+        );
         input.repeat = true;
-        assert_eq!(route_input(&mut keyboard, &input, 31 << 18, None), RoutedKey::Local);
+        assert_eq!(
+            route_input(&mut keyboard, &input, 31 << 18, None),
+            RoutedKey::Local
+        );
         input.repeat = false;
         input.state = ElementState::Released;
         input.modifiers.state = ModifiersState::empty();
-        assert_eq!(route_input(&mut keyboard, &input, 31 << 18, None), RoutedKey::Local);
+        assert_eq!(
+            route_input(&mut keyboard, &input, 31 << 18, None),
+            RoutedKey::Local
+        );
         input.state = ElementState::Pressed;
         input.modifiers.state = ModifiersState::CONTROL;
-        assert!(!matches!(route_key(&input, 0, None), RoutedKey::TerminalPaste));
+        assert!(!matches!(
+            route_key(&input, 0, None),
+            RoutedKey::TerminalPaste
+        ));
     }
     #[test]
     fn image_paste_shortcut_is_owned_by_composer_and_repeat_is_suppressed() {
@@ -12943,6 +13388,7 @@ mod composer_host_tests {
             id: bbt_mux::Ulid::new(),
             request: bbt_proto::messaging::TaskRequest::List {
                 unassigned: false,
+                include_unassigned: false,
                 swarm_id: None,
                 status: None,
                 assignee: None,
@@ -13155,37 +13601,80 @@ mod ctl_ui_key_tests {
     use super::*;
     #[test]
     fn document_feed_rejects_a_replaced_harness_and_unavailable_queue_without_closing() {
-        if crate::lazy_projection_tests::isolated_ui_case("ctl_ui_key_tests::document_feed_rejects_a_replaced_harness_and_unavailable_queue_without_closing") { return; }
+        if crate::lazy_projection_tests::isolated_ui_case(
+            "ctl_ui_key_tests::document_feed_rejects_a_replaced_harness_and_unavailable_queue_without_closing",
+        ) {
+            return;
+        }
         use bbt_ui::modules::document_modal::controller::Action;
-        let (mut app,_)=crate::lazy_projection_tests::fixture();
-        app.test_account=true;
-        let seat=SeatId::from_u128(1);
-        let record=bbt_proto::SeatRecord::new(bbt_mux::Ulid(1),bbt_mux::Ulid(90),"original harness","zsh");
-        let mut model=bboxy450_term::model::build_at(&[record],&bboxy450_term::grids::Grids::new(),&Default::default(),Instant::now(),1000);
-        model.screens.insert(seat,Arc::new(bbt_proto::Screen::from_term(&bbt_core::Term::new(40,10,0),String::new(),None,None)));
-        app.focus.stage=Some(model.ui.window.stage.clone());
-        app.live_state=Some(Arc::new(model));
-        app.open_document_bound("#1".into(),Ok(None));
-        let captured=app.document_recipient.unwrap();
-        let markdown=bbt_doc::parse("**exact body** 日本語\n");
-        app.document.error=None;
-        app.document.prepared=Some(Arc::new(bboxy450_term::documents::Prepared {
-            reference:bbt_mux::knowledge::data_source::RecordRef {id:"id".into(),number:Some(1),slug:"doc".into(),path:"notes/doc.md".into(),digest:"digest".into(),external_id:None},
-            etag:Some("etag".into()),document:markdown.document("notes/doc.md"),markdown,targets:vec![],images:vec![],
+        let (mut app, _) = crate::lazy_projection_tests::fixture();
+        app.test_account = true;
+        let seat = SeatId::from_u128(1);
+        let record = bbt_proto::SeatRecord::new(
+            bbt_mux::Ulid(1),
+            bbt_mux::Ulid(90),
+            "original harness",
+            "zsh",
+        );
+        let mut model = bboxy450_term::model::build_at(
+            &[record],
+            &bboxy450_term::grids::Grids::new(),
+            &Default::default(),
+            Instant::now(),
+            1000,
+        );
+        model.screens.insert(
+            seat,
+            Arc::new(bbt_proto::Screen::from_term(
+                &bbt_core::Term::new(40, 10, 0),
+                String::new(),
+                None,
+                None,
+            )),
+        );
+        app.focus.stage = Some(model.ui.window.stage.clone());
+        app.live_state = Some(Arc::new(model));
+        app.open_document_bound("#1".into(), Ok(None));
+        let captured = app.document_recipient.unwrap();
+        let markdown = bbt_doc::parse("**exact body** 日本語\n");
+        app.document.error = None;
+        app.document.prepared = Some(Arc::new(bboxy450_term::documents::Prepared {
+            reference: bbt_mux::knowledge::data_source::RecordRef {
+                id: "id".into(),
+                number: Some(1),
+                slug: "doc".into(),
+                path: "notes/doc.md".into(),
+                digest: "digest".into(),
+                external_id: None,
+                updated_at: None,
+            },
+            etag: Some("etag".into()),
+            document: markdown.document("notes/doc.md"),
+            markdown,
+            targets: vec![],
+            images: vec![],
         }));
-        for generation in [captured.1+1,captured.1+2] {
-            Arc::make_mut(app.live_state.as_mut().unwrap()).ui.seats.get_mut(&seat).unwrap().process_generation=generation;
+        for generation in [captured.1 + 1, captured.1 + 2] {
+            Arc::make_mut(app.live_state.as_mut().unwrap())
+                .ui
+                .seats
+                .get_mut(&seat)
+                .unwrap()
+                .process_generation = generation;
             app.document_action(Action::Feed);
             assert!(app.document.open);
             assert!(app.document.notice.as_deref().unwrap().contains("changed"));
             assert!(app.pending_commands.is_empty());
         }
-        app.document_recipient=Some((seat,captured.1+2));
+        app.document_recipient = Some((seat, captured.1 + 2));
         app.document_action(Action::Feed);
         assert!(app.document.open);
         assert!(app.document.notice.as_deref().unwrap().contains("queue"));
         app.document_action(Action::Copy);
-        assert_eq!(app.private_clipboard.as_deref(),Some("**exact body** 日本語\n"));
+        assert_eq!(
+            app.private_clipboard.as_deref(),
+            Some("**exact body** 日本語\n")
+        );
         app.document_action(Action::Close);
         assert!(!app.document.open);
         assert!(app.document_recipient.is_none());
@@ -13437,3 +13926,6 @@ mod ctl_ui_key_tests {
         ));
     }
 }
+
+#[cfg(test)]
+mod harness_branding_tests;

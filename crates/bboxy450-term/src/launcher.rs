@@ -121,7 +121,7 @@ pub fn operator_placement(
                 pick.cwd
             },
             location: bbt_proto::Where::Local,
-            resume: None,
+            resume: pick.resume,
             placement: Some(placement),
         },
         layout_revision,
@@ -228,6 +228,7 @@ mod operator_tests {
             cwd: "/chosen cwd".into(),
             swarm: None,
             place,
+            resume: None,
         }
     }
     // keeps: spec c1-live-seats §2a (captured operator placement)
@@ -248,6 +249,13 @@ mod operator_tests {
         assert_eq!(plan.spec.cwd, "/chosen cwd");
         assert_eq!(plan.spec.name.as_deref(), Some("chosen name"));
         assert_eq!(plan.spec.role.as_deref(), Some("shell"));
+        assert_eq!(plan.spec.resume, None);
+        // A placed resume carries the native id into the spec the backend launches.
+        let mut resumed = pick(SpawnPlace::Tab);
+        resumed.resume = Some("019a1b2c-3d4e-7f60-8a9b-0c1d2e3f4a5b".into());
+        let resumed = operator_placement(resumed, &model, &stage, 25).unwrap();
+        assert_eq!(resumed.spec.resume.as_deref(), Some("019a1b2c-3d4e-7f60-8a9b-0c1d2e3f4a5b"));
+        assert!(matches!(resumed.spec.placement, Some(Placement::NewTab { .. })));
         // Resolve the pending request after focus moved. The published model
         // must still split the original anchor and retain its sibling ratio.
         let op = bbt_mux::Ulid(100);

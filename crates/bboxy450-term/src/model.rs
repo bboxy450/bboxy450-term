@@ -2336,6 +2336,7 @@ mod tests {
         assert!(next.ui.window.sidebar.open.is_empty());
         assert_eq!(next.ui.seats[&id].name, "renamed");
         let mut seat = GuiSeat {
+            rich_socket: None,
             notification_episode: None,
             attention: None,
             record: record.clone(),
@@ -2346,6 +2347,7 @@ mod tests {
                 grade: ui::Grade::Reported,
                 title: "permission".into(),
                 detail: None,
+                stale: false,
                 turn_open: true,
                 observed_ms: 100,
                 subagents: vec![],

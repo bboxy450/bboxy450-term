@@ -222,6 +222,9 @@ fn items(v: &Value, ctx: ui::Context) -> Result<Vec<c::Item>> {
         .collect()
 }
 pub fn element(v: &Value, ctx: ui::Context) -> Result<c::Element> {
+    if let Some(input) = v.get("startup") {
+        return Ok(serde_json::from_value::<ui::modules::startup::Startup>(input.clone())?.element(ctx)?);
+    }
     Ok(match v["kind"].as_str().ok_or("component kind missing")? {
         "text" => {
             let o = &v["options"];
@@ -445,6 +448,8 @@ pub fn layout_case(case: &Case) -> Result<c::Layout> {
 fn gallery_node(layout: &c::Layout) -> &c::Layout {
     if matches!(&layout.kind,c::LayoutKind::Named(n)if n=="__mask_width") {
         &layout.children[0].children[0]
+    } else if matches!(&layout.kind, c::LayoutKind::Named(_)) {
+        gallery_node(&layout.children[0])
     } else {
         layout
     }

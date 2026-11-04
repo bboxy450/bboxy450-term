@@ -1,0 +1,5 @@
+error: PRO005 event `Ping` guards overlap (2 matching cases); checked universe: parameters [enabled: bool (2)] × guard state []; 2 valuations, all declared values without reachability/invariant pruning. Repair: partition this entire finite universe into exactly one case per valuation.
+  --> tests/ui/protocol_overlap.rs:10:85
+   |
+10 |     mod Overlap { state { ready: bool = false; } events { Ping(enabled: bool); } on Ping(enabled) { case first when enabled => { pre...
+   |                                                                                     ^^^^

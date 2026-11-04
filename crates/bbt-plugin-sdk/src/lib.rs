@@ -9,11 +9,43 @@
 //! cancellation, deadlines, limits and refusal encoding. Contract types and
 //! schemas come from `bboxy450-plugin`, so the host and plugins share one
 //! definition of every contract.
+//!
+//! # Test your plugin against bboxy450
+//!
+//! The [`doctor`] runs a built plugin through the host contract offline (no
+//! app) and lists concrete gaps: check id, evidence and fix. From a test,
+//! [`testkit::doctor`] fails with that list on any error-severity gap. In a
+//! plugin package's `tests/doctor.rs` the binary is
+//! `env!("CARGO_BIN_EXE_<name>")`, and `Options::package(env!("CARGO_MANIFEST_DIR"))`
+//! also checks the package's name rules and shipped `models/*.tla`:
+//!
+//! ```should_panic
+//! use bbt_plugin_sdk::{doctor::Options, testkit};
+//! // A binary that is not there is a gap list, and the helper fails the test.
+//! let binary = std::path::Path::new("target/debug/bboxy450-term-data_source-missing");
+//! testkit::doctor(binary, &Options::default());
+//! ```
+//!
+//! The same checks without failing, to read the gaps yourself:
+//!
+//! ```
+//! use bbt_plugin_sdk::doctor::{self, Options};
+//! let report = doctor::run(std::path::Path::new("not-a-plugin"), &Options::default());
+//! assert!(!report.is_clean());
+//! assert_eq!(report.of("shape.name")[0].check, "shape.name");
+//! println!("{}", report.human());
+//! ```
+//!
+//! From the command line: `make plugin-doctor PLUGIN=<binary-or-package>`
+//! (`JSON=1` for CI). The SDK README's "Smoke-test your plugin" has the details.
 
 // A plugin is its own process with no UI thread; blocking stdio is its job.
 #![allow(clippy::disallowed_methods)]
 
 pub mod contracts;
+pub mod doctor;
+#[cfg(feature = "model")]
+pub mod models;
 mod runtime;
 pub mod testkit;
 
@@ -22,6 +54,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::{Duration, Instant};
 
 pub use bbt_plugin::contracts::Contract;
+pub use bbt_plugin::data_source::timestamp_millis;
 pub use bbt_plugin::policy::{Hook, Phase, RoleClass};
 pub use bbt_plugin::shape::{Command, Shape, System, Tool};
 pub use bbt_plugin::skills::Skill;
@@ -108,6 +141,8 @@ pub struct Ctx {
     /// Present only when the trusted shape declares `trace` and the host
     /// asked for spans at `initialize`.
     spans: Option<Arc<std::sync::Mutex<Vec<Value>>>>,
+    /// The calling seat's attribution; empty for operator and host calls.
+    attribution: Arc<std::collections::BTreeMap<String, String>>,
 }
 
 impl Ctx {
@@ -119,7 +154,26 @@ impl Ctx {
             link: None,
             started,
             spans: None,
+            attribution: Arc::default(),
         }
+    }
+
+    /// This call's seat attribution, filtered by
+    /// [`bbt_plugin::policy::attribution_env`]; tests use it to inject one.
+    pub fn with_attribution(mut self, env: std::collections::BTreeMap<String, String>) -> Self {
+        self.attribution = Arc::new(bbt_plugin::policy::attribution_env(
+            env.iter().map(|(k, v)| (k.as_str(), v.as_str())),
+        ));
+        self
+    }
+
+    /// The environment the calling seat lends to this call (request `_meta`
+    /// `bboxy450/attribution`): only names in
+    /// [`bbt_plugin::policy::ATTRIBUTION_ENV`], validated; empty when the
+    /// operator or the host made the call. Apply it to a child process of
+    /// this call only, never to shared or background work.
+    pub fn attribution(&self) -> &std::collections::BTreeMap<String, String> {
+        &self.attribution
     }
 
     pub(crate) fn with_link(mut self, link: Arc<runtime::Link>) -> Self {
@@ -303,6 +357,7 @@ pub struct Manifest {
     pub tools: Vec<Tool>,
     /// Harness and bus events delivered to [`Plugin::on_hook`].
     pub hooks: Vec<Hook>,
+    pub spawn_fields: Vec<bbt_plugin::transport::Field>,
     /// Host API methods requested for [`Ctx::host`].
     pub host_api: Vec<String>,
     /// Prefix of embedded skill resource URIs, e.g. `gitkb`.
@@ -337,6 +392,7 @@ impl Manifest {
             skills: Vec::new(),
             tools: Vec::new(),
             hooks: Vec::new(),
+            spawn_fields: Vec::new(),
             host_api: Vec::new(),
             resource_scheme: scheme,
             signed_writer: false,
@@ -456,9 +512,20 @@ impl Manifest {
         self
     }
 
+    /// Declare a v1 text transport launcher parameter. None requires a value.
+    pub fn transport_field(mut self, name: &str, label: &str, default: Option<&str>) -> Self {
+        self.spawn_fields.push(bbt_plugin::transport::Field {
+            name: name.into(),
+            label: label.into(),
+            kind: "text".into(),
+            default: default.map(str::to_owned),
+        });
+        self
+    }
+
     /// Request a host API method (`records.search`, `records.fetch`,
     /// `events.publish`, `messages.send`) for [`Ctx::host`]. The operator
-    /// still grants it (and, for `messages.send`, each destination).
+    /// grants it (and, for `messages.send`, each destination).
     pub fn host_api(mut self, method: &str) -> Self {
         self.host_api.push(method.into());
         self
@@ -567,6 +634,7 @@ impl Manifest {
             "shape_version": SHAPE_VERSION,
             "systems": systems,
             "hooks": self.hooks,
+            "spawn_fields": self.spawn_fields,
             "health_command": "health",
             "signed_writer": self.signed_writer,
             "fixture_bootstrap": self.fixture_bootstrap,

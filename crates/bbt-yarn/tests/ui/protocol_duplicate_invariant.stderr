@@ -1,0 +1,5 @@
+error: PRO006 duplicate invariant id `SAME`. Repair: give each invariant a unique stable id.
+  --> tests/ui/protocol_duplicate_invariant.rs:10:187
+   |
+10 | ...nvariant(id = "SAME")] fn first() { value } #[invariant(id = "SAME")] fn second() { !value } }
+   |                                                                 ^^^^^^

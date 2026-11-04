@@ -30,6 +30,8 @@ type Checked<T> = std::result::Result<T, String>;
 pub(crate) const TASK_LIST_BUDGET: Duration = Duration::from_secs(8);
 /// Code of the named refusal when [`TASK_LIST_BUDGET`] runs out.
 pub(crate) const DEADLINE_EXCEEDED: &str = "deadline_exceeded";
+/// Leave room for captured workspace/authority fields added after preparation.
+const TASK_PAGE_BYTES: usize = super::MAX_RESULT - 16 * 1024;
 
 /// Refusal code for a task read failure message: the named deadline or `rejected`.
 pub(crate) fn failure_code(reason: &str) -> &'static str {
@@ -48,27 +50,87 @@ mod inventory_tests;
 pub(crate) trait TaskDocuments {
     fn import_root(&self) -> Checked<std::path::PathBuf>;
     fn locate(&self, locator: &str) -> Checked<Document>;
+    fn record(&self, locator: &str) -> Checked<Document> {
+        self.locate(locator)
+    }
     /// [`TaskDocuments::locate`] bounded by `deadline` (local sources need no bound).
     fn locate_before(&self, locator: &str, _deadline: Instant) -> Checked<Document> {
         self.locate(locator)
     }
-    /// Return an authorized page plus one lookahead, with no unrelated body reads.
-    fn documents(&self, registry: &Registry, actor: &Actor, args: &List) -> Checked<Vec<Document>>;
+    /// Return an authorized page plus one lookahead, most recently changed
+    /// first, with no unrelated body reads.
+    fn documents(
+        &self,
+        registry: &Registry,
+        actor: &Actor,
+        args: &List,
+    ) -> Checked<Vec<(Recency, Document)>>;
+}
+
+/// A task's place in the recent-first inventory: when it last changed
+/// (`RecordRef::updated_at`, else the creation time its ULID carries), then
+/// its unique ID. Larger is newer; pages descend, so `next` is exact.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub(crate) struct Recency(u64, Ulid);
+impl Recency {
+    fn of(reference: &d::RecordRef) -> Checked<Self> {
+        let id = reference
+            .id
+            .parse::<Ulid>()
+            .map_err(|_| "invalid task reference ID")?;
+        Ok(Self(reference.updated_at.unwrap_or(id.timestamp_ms()), id))
+    }
+    /// The opaque `next` cursor: `<updated ms>:<ULID>`.
+    fn cursor(self) -> String {
+        format!("{}:{}", self.0, self.1)
+    }
+    /// A `next` cursor, or a bare task ULID (its creation time and ID).
+    fn parse(text: &str) -> Checked<Self> {
+        let invalid = || "after must be a task_list next cursor".to_owned();
+        match text.split_once(':') {
+            Some((at, id)) if !at.is_empty() && at.bytes().all(|b| b.is_ascii_digit()) => Ok(Self(
+                at.parse().map_err(|_| invalid())?,
+                id.parse().map_err(|_| invalid())?,
+            )),
+            Some(_) => Err(invalid()),
+            None => {
+                let id: Ulid = text.parse().map_err(|_| invalid())?;
+                Ok(Self(id.timestamp_ms(), id))
+            }
+        }
+    }
 }
 impl TaskDocuments for Index {
+    fn record(&self, locator: &str) -> Checked<Document> {
+        ProviderTasks(&crate::knowledge::BboxySource::new(self), None).record(locator)
+    }
     fn import_root(&self) -> Checked<std::path::PathBuf> {
         Ok(self.knowledge_root().to_owned())
     }
     fn locate(&self, locator: &str) -> Checked<Document> {
         locate_index(self, locator)
     }
-    fn documents(&self, registry: &Registry, actor: &Actor, args: &List) -> Checked<Vec<Document>> {
+    fn documents(
+        &self,
+        registry: &Registry,
+        actor: &Actor,
+        args: &List,
+    ) -> Checked<Vec<(Recency, Document)>> {
         let source = crate::knowledge::BboxySource::new(self);
         ProviderTasks(&source, None).documents(registry, actor, args)
     }
 }
 pub(crate) struct ProviderTasks<'a>(pub &'a dyn DataSource, pub Option<Ulid>);
 impl TaskDocuments for ProviderTasks<'_> {
+    fn record(&self, locator: &str) -> Checked<Document> {
+        let reference = self
+            .0
+            .resolve(d::ResolveRequest {
+                locator: locator.into(),
+            })
+            .map_err(|e| e.to_string())?;
+        self.fetch_record(reference, None)
+    }
     fn import_root(&self) -> Checked<std::path::PathBuf> {
         self.0.import_root().map_err(|error| error.to_string())
     }
@@ -91,7 +153,12 @@ impl TaskDocuments for ProviderTasks<'_> {
         })?;
         self.fetch(reference, Some(deadline))
     }
-    fn documents(&self, registry: &Registry, actor: &Actor, args: &List) -> Checked<Vec<Document>> {
+    fn documents(
+        &self,
+        registry: &Registry,
+        actor: &Actor,
+        args: &List,
+    ) -> Checked<Vec<(Recency, Document)>> {
         if self
             .1
             .is_some_and(|scope| args.swarm_id.is_some_and(|swarm| swarm != scope))
@@ -104,6 +171,7 @@ impl TaskDocuments for ProviderTasks<'_> {
             .or_else(|| actor.seat().map(|seat| seat.swarm_id));
         let assignee = args.assignee.as_deref().map(seat_reference).transpose()?;
         let limit = tools::page_limit(args.limit)?;
+        let after = args.cursor()?;
         let deadline = Instant::now() + TASK_LIST_BUDGET;
         let mut candidates = BTreeMap::new();
         // Native imports retain unassigned tasks with a scoped delegator. Their
@@ -112,6 +180,7 @@ impl TaskDocuments for ProviderTasks<'_> {
         let native_inventory =
             assignee.is_none() && actor.class() == Class::Oracle && self.0.import_root().is_ok();
         if args.unassigned
+            || args.include_unassigned
             || assignee == Some(None)
             || scope.is_none() && assignee.is_none()
             || native_inventory
@@ -157,7 +226,7 @@ impl TaskDocuments for ProviderTasks<'_> {
                             && is_task(&metadata)
                             && metadata.metadata["status"].as_str().is_some();
                         if !complete || listed(&metadata, registry, actor, args, assignee, scope) {
-                            task_candidate(&mut candidates, reference, args.after)?;
+                            task_candidate(&mut candidates, reference, after)?;
                         }
                     }
                     cursor = page.next;
@@ -200,7 +269,7 @@ impl TaskDocuments for ProviderTasks<'_> {
                             };
                             let page = within(deadline, || self.0.list_until(request, deadline))?;
                             for reference in page.items {
-                                task_candidate(&mut candidates, reference, args.after)?;
+                                task_candidate(&mut candidates, reference, after)?;
                             }
                             cursor = page.next;
                             let Some(next) = &cursor else { break };
@@ -215,11 +284,17 @@ impl TaskDocuments for ProviderTasks<'_> {
                 }
             }
         }
+        // Rank from references alone, then fetch only what the page needs.
+        let mut ranked = candidates
+            .into_values()
+            .map(|reference| Ok((Recency::of(&reference)?, reference)))
+            .collect::<Checked<Vec<_>>>()?;
+        ranked.sort_unstable_by_key(|(rank, _)| std::cmp::Reverse(*rank));
         let mut result = Vec::new();
-        for reference in candidates.into_values() {
+        for (rank, reference) in ranked {
             let document = self.fetch_record(reference, Some(deadline))?;
             if listed(&document, registry, actor, args, assignee, scope) {
-                result.push(document);
+                result.push((rank, document));
                 if result.len() > limit {
                     break;
                 }
@@ -231,6 +306,9 @@ impl TaskDocuments for ProviderTasks<'_> {
 impl ProviderTasks<'_> {
     fn fetch(&self, reference: d::RecordRef, deadline: Option<Instant>) -> Checked<Document> {
         let doc = self.fetch_record(reference, deadline)?;
+        if !is_task(&doc) {
+            return Err("record is not a task".into());
+        }
         task_state(doc.metadata["status"].as_str().unwrap_or_default())?;
         Ok(doc)
     }
@@ -268,9 +346,6 @@ impl ProviderTasks<'_> {
             error: record.parse_error,
             links: Vec::new(),
         };
-        if !is_task(&doc) {
-            return Err("record is not a task".into());
-        }
         Ok(doc)
     }
 }
@@ -299,13 +374,11 @@ fn within<T>(deadline: Instant, read: impl FnOnce() -> d::Result<T>) -> Checked<
 fn task_candidate(
     candidates: &mut BTreeMap<String, d::RecordRef>,
     reference: d::RecordRef,
-    after: Option<Ulid>,
+    after: Option<Recency>,
 ) -> Checked<()> {
-    let id = reference
-        .id
-        .parse::<Ulid>()
-        .map_err(|_| "invalid task reference ID")?;
-    if after.is_some_and(|after| id <= after) {
+    // `after` continues with strictly older tasks.
+    let rank = Recency::of(&reference)?;
+    if after.is_some_and(|after| rank >= after) {
         return Ok(());
     }
     if let Some(old) = candidates.insert(reference.id.clone(), reference.clone())
@@ -327,47 +400,62 @@ fn listed(
     assignee: Option<Option<Ulid>>,
     scope: Option<Ulid>,
 ) -> bool {
+    let open_unassigned = || {
+        doc.error.is_none()
+            && doc.metadata["status"] == "open"
+            && matches!(reference(doc, "assignee"), Ok(None))
+    };
     is_task(doc)
         // Historical task/bug/epic Markdown can predate the native lifecycle.
         // Keep it addressable as knowledge, without poisoning the entire task page
         // or inventing an actionable state. Direct reads/transitions stay strict.
         // Origin: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
         && task_state(doc.metadata["status"].as_str().unwrap_or_default()).is_ok()
-        && !scope.is_some_and(|scope| {
-            doc.metadata["swarm"]
-                .as_str()
-                .is_some_and(|value| value != scope.to_string())
-        })
-        && if args.unassigned {
-            doc.error.is_none()
-                && doc.metadata["status"] == "open"
-                && matches!(reference(doc, "assignee"), Ok(None))
-        } else {
-            authorize(doc, registry, actor).is_ok()
-        }
-        && (args.unassigned
-            || scope.is_none_or(|swarm| {
-                reference(doc, "assignee")
-                    .ok()
-                    .flatten()
-                    .and_then(|seat| registry.get(seat).ok())
-                    .is_some_and(|seat| seat.swarm == swarm)
-                    || assignee == Some(None) && actor.seat().is_some()
-                    || actor.class() == Class::Oracle
-                        && reference(doc, "assignee").ok() == Some(None)
-                        && (doc.metadata["swarm"] == json!(swarm)
-                            || reference(doc, "delegated_by")
-                                .ok()
-                                .flatten()
-                                .and_then(|seat| registry.get(seat).ok())
-                                .is_some_and(|seat| seat.swarm == swarm))
-            }))
         && args
             .status
             .as_ref()
             .is_none_or(|status| doc.metadata["status"] == *status)
+        // The operator's one view: the swarm's assigned and delegated work
+        // (delegation never leaves a swarm) plus the account's open unassigned tasks.
+        && (args.include_unassigned && open_unassigned()
+            || scoped(doc, registry, actor, args, assignee, scope, open_unassigned))
+}
+
+fn scoped(
+    doc: &Document,
+    registry: &Registry,
+    actor: &Actor,
+    args: &List,
+    assignee: Option<Option<Ulid>>,
+    scope: Option<Ulid>,
+    open_unassigned: impl Fn() -> bool,
+) -> bool {
+    !scope.is_some_and(|scope| {
+        doc.metadata["swarm"]
+            .as_str()
+            .is_some_and(|value| value != scope.to_string())
+    }) && if args.unassigned {
+        open_unassigned()
+    } else {
+        authorize(doc, registry, actor).is_ok()
+    } && (args.unassigned
+        || scope.is_none_or(|swarm| {
+            reference(doc, "assignee")
+                .ok()
+                .flatten()
+                .and_then(|seat| registry.get(seat).ok())
+                .is_some_and(|seat| seat.swarm == swarm)
+                || assignee == Some(None) && actor.seat().is_some()
+                || actor.class() == Class::Oracle
+                    && reference(doc, "assignee").ok() == Some(None)
+                    && (doc.metadata["swarm"] == json!(swarm)
+                        || reference(doc, "delegated_by")
+                            .ok()
+                            .flatten()
+                            .and_then(|seat| registry.get(seat).ok())
+                            .is_some_and(|seat| seat.swarm == swarm))
+        }))
         && assignee.is_none_or(|id| reference(doc, "assignee").ok() == Some(id))
-        && args.after.is_none_or(|id| doc.id > id.to_string())
 }
 
 pub(crate) fn handles(tool: &str) -> bool {
@@ -399,8 +487,8 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     let mut definitions = vec![
         (
             "task_report",
-            "Report your assigned task; records evidence and wakes its delegator. Reporting never accepts a task.",
-            json!({"task_path":path,"summary":text,"commit":{"type":"string","maxLength":128},"verify_result":verification}),
+            "Report your assigned task with a summary and optional report locator for the committed full report. Stores the link and wakes its delegator; acceptance checks that the report exists and names this task.",
+            json!({"task_path":path,"summary":text,"commit":{"type":"string","maxLength":128},"report":path,"verify_result":verification}),
             vec!["task_path", "summary"],
         ),
         (
@@ -411,8 +499,8 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
         ),
         (
             "task_list",
-            "Page tasks assigned to seats in the captured swarm; workers see only their current assignments. Only the account operator may request the read-only open unassigned inventory.",
-            json!({"unassigned":{"type":"boolean"},"swarm_id":id,"status":{"type":"string","maxLength":32},"assignee":{"type":"string","maxLength":64},"after":id,"limit":{"type":"integer","minimum":1,"maximum":128}}),
+            "Page lean task summaries assigned to seats in the captured swarm, most recently changed first (ties by newer ID); workers see only their current assignments. Pass next back as after to continue with strictly older tasks; task_status reads bodies and full metadata. Pages are bounded by bytes and item count. Only the account operator may request the read-only open unassigned inventory, alone (unassigned) or merged into the swarm's page (include_unassigned).",
+            json!({"unassigned":{"type":"boolean"},"include_unassigned":{"type":"boolean"},"swarm_id":id,"status":{"type":"string","maxLength":32},"assignee":{"type":"string","maxLength":64},"after":{"type":"string","pattern":"^(?:[0-9]{1,20}:)?[0-7][0-9A-HJKMNP-TV-Z]{25}$"},"limit":{"type":"integer","minimum":1,"maximum":128}}),
             vec![],
         ),
         (
@@ -427,7 +515,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
             ("task_import_context", "Read the exact selected bundled knowledge root for an authenticated import; Oracle-class only, no other root is exposed.", json!({}), vec![]),
             ("task_delegate", "Assign a scoped task and send its signed brief. Omit role to use the target’s current role; an explicit role must be that exact role or an authorized legacy executor/oracle/creativity override.", json!({"task_path":path,"seat_id":id,"role":{"type":"string","minLength":1,"maxLength":128,"description":"The target's exact current role, or an authorized legacy executor/oracle/creativity override."}}), vec!["task_path","seat_id"]),
             ("task_reassign", "Move responsibility to an existing seat, releasing the old assignee and waking the new one.", json!({"task_path":path,"seat_id":id}), vec!["task_path","seat_id"]),
-            ("task_accept", "Accept only a reported task with matching verify command, recorded exit zero and evidence for every declared criterion.", json!({"task_path":path}), vec!["task_path"]),
+            ("task_accept", "Accept only a reported task with matching verify command, recorded exit zero, evidence for every declared criterion and a valid matching report when linked.", json!({"task_path":path}), vec!["task_path"]),
             ("task_reject", "Reject a scoped task with a recorded reason and wake its assignee.", json!({"task_path":path,"reason":text}), vec!["task_path","reason"]),
             ("task_reconcile", "Record an evidenced historical disposition as done, without fresh acceptance or historical wakes.", json!({"task_path":path,"disposition":{"enum":["implemented","superseded","cancelled"]},"reason":text,"evidence":{"type":"array","minItems":1,"maxItems":128,"items":text}}), vec!["task_path","disposition","reason","evidence"]),
             ("task_import", "Atomically import pinned local source records and audited dispositions into the exact selected knowledge root; no historical wakes.", json!({"expected_root":path,"manifest_path":path,"audit_path":path,"source_dir":path,"bundle_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"owner_seat":id}), vec!["expected_root","manifest_path","audit_path","source_dir","bundle_sha256","owner_seat"]),
@@ -457,11 +545,18 @@ struct Status {
 pub(crate) struct List {
     #[serde(default)]
     unassigned: bool,
+    #[serde(default)]
+    include_unassigned: bool,
     swarm_id: Option<Ulid>,
     status: Option<String>,
     assignee: Option<String>,
-    after: Option<Ulid>,
+    after: Option<String>,
     limit: Option<usize>,
+}
+impl List {
+    fn cursor(&self) -> Checked<Option<Recency>> {
+        self.after.as_deref().map(Recency::parse).transpose()
+    }
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -487,6 +582,7 @@ pub(crate) struct Report {
     task_path: String,
     summary: String,
     commit: Option<String>,
+    report: Option<String>,
     verify_result: Option<Verification>,
 }
 #[derive(Deserialize)]
@@ -808,6 +904,18 @@ pub(crate) fn prepare(
                     );
                 }
             }
+            if args.include_unassigned {
+                if !matches!(actor, Actor::Operator { .. }) {
+                    return Err("unassigned task inventory requires the account operator".into());
+                }
+                if args.unassigned || args.assignee.is_some() {
+                    return Err(
+                        "include_unassigned merges the swarm's page; omit unassigned and assignee"
+                            .into(),
+                    );
+                }
+            }
+            let after = args.cursor()?;
             if args
                 .swarm_id
                 .is_some_and(|id| actor.seat().is_some_and(|seat| id != seat.swarm_id))
@@ -824,30 +932,32 @@ pub(crate) fn prepare(
             let limit = tools::page_limit(args.limit)?;
             let mut docs = index.documents(registry, actor, &args)?;
             // Provider selection is an IO optimization, never read authority.
-            docs.retain(|doc| {
-                listed(
-                    doc,
-                    registry,
-                    actor,
-                    &args,
-                    assignee,
-                    args.swarm_id
-                        .or_else(|| actor.seat().map(|seat| seat.swarm_id)),
-                )
+            docs.retain(|(rank, doc)| {
+                after.is_none_or(|after| *rank < after)
+                    && listed(
+                        doc,
+                        registry,
+                        actor,
+                        &args,
+                        assignee,
+                        args.swarm_id
+                            .or_else(|| actor.seat().map(|seat| seat.swarm_id)),
+                    )
             });
-            docs.sort_by(|a, b| a.id.cmp(&b.id));
-            let more = docs.len() > limit;
-            docs.truncate(limit);
-            let items: Vec<_> = docs.iter().map(projection).collect();
-            return Ok(Prepared::Read(
-                json!({"items":items,"next":if more { docs.last().map(|d|&d.id) } else { None }}),
-            ));
+            docs.sort_by_key(|(rank, _)| std::cmp::Reverse(*rank));
+            return Ok(Prepared::Read(list_page(&docs, limit, TASK_PAGE_BYTES)?));
         }
         "task_report" => {
-            let args: Report = tools::parse(&call.args)?;
+            let mut args: Report = tools::parse(&call.args)?;
             bounded(&args.summary, 16384, "summary")?;
             if let Some(commit) = &args.commit {
                 single_line(commit, 128, "commit")?;
+            }
+            if let Some(report) = &mut args.report {
+                bounded(report, 4096, "report")?;
+                if !(report.starts_with("[[") && report.ends_with("]]")) {
+                    *report = format!("[[{}]]", report.trim());
+                }
             }
             if let Some(result) = &args.verify_result {
                 result.validate()?;
@@ -876,8 +986,10 @@ pub(crate) fn prepare(
         }
         "task_accept" => {
             let args: TaskPath = tools::parse(&call.args)?;
+            let document = task(&args.task_path)?;
+            linked_report(index, &document)?;
             Effect::Task {
-                document: task(&args.task_path)?,
+                document,
                 action: Box::new(Action::Accept),
             }
         }
@@ -1075,8 +1187,11 @@ pub(crate) fn authorize(doc: &Document, registry: &Registry, actor: &Actor) -> C
     Ok(())
 }
 fn validate_task_role(target: &SeatRecord, role: &str) -> Checked<()> {
-    if (!matches!(role, "executor" | "oracle" | "creativity") && role != target.role.name)
-        || (role == "oracle" && target.role.class != Class::Oracle)
+    if (!matches!(
+        role,
+        "executor" | "oracle" | "creativity" | "researcher" | "qa" | "solo"
+    ) && role != target.role.name)
+        || (matches!(role, "oracle" | "solo") && target.role.class != Class::Oracle)
     {
         return Err("requested task role exceeds target authority".into());
     }
@@ -1093,7 +1208,79 @@ fn target(registry: &Registry, actor: &Actor, id: Ulid) -> Checked<SeatRecord> {
     Ok(target)
 }
 fn projection(doc: &Document) -> Value {
-    json!({"id":doc.id,"path":format!(".bboxy/{}",doc.path),"metadata":doc.metadata,"body":tools::clip(&doc.body,16384),"body_truncated":doc.body.len()>16384})
+    super::read_pages::task_detail(
+        json!({"id":doc.id,"path":format!(".bboxy/{}",doc.path),"metadata":doc.metadata,"body":tools::clip(&doc.body,16384),"body_truncated":doc.body.len()>16384}),
+    )
+}
+
+/// Summary shared by MCP, the GUI TaskCard adapter and `ctl task list`.
+/// Keep full reports, verification evidence and provenance on task_status only.
+/// body_truncated marks every list item as a partial read, including empty bodies.
+fn list_projection(doc: &Document) -> Value {
+    let mut metadata = serde_json::Map::new();
+    for field in [
+        "id",
+        "type",
+        "title",
+        "status",
+        "role",
+        "assignee",
+        "delegated_by",
+        "swarm",
+        "updated",
+    ] {
+        if let Some(value) = doc.metadata[field].as_str() {
+            let summary = tools::clip(value, if field == "title" { 4096 } else { 2048 });
+            metadata.insert(field.into(), json!(summary));
+        }
+    }
+    if let Some(number) = doc.metadata["number"].as_u64() {
+        metadata.insert("number".into(), json!(number));
+    }
+    if let Some(exit_code) = doc.metadata["verify_result"]["exit_code"].as_i64() {
+        metadata.insert("verify_result".into(), json!({"exit_code":exit_code}));
+    }
+    // An external provider can supply an arbitrarily long path. The stable ID
+    // remains an exact task_status locator when that path cannot fit a card.
+    let path = if doc.path.len() <= 4096 {
+        format!(".bboxy/{}", doc.path)
+    } else {
+        doc.id.clone()
+    };
+    json!({"id":doc.id,"path":path,"metadata":metadata,"body":"","body_truncated":true})
+}
+
+// Origin: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// Keep reuse credit attached: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+fn list_page(docs: &[(Recency, Document)], limit: usize, byte_bound: usize) -> Checked<Value> {
+    // MCP carries JSON twice: structuredContent and an escaped text copy. Count
+    // both, reserving a full cursor even for the eventual terminal page.
+    let mut bytes = serde_json::to_vec(&super::success(
+        Ulid::nil(),
+        json!({"items":[],"next":Recency(u64::MAX, Ulid::nil()).cursor()}),
+    ))
+    .map_err(|e| e.to_string())?
+    .len();
+    let mut items = Vec::new();
+    for (_, doc) in docs.iter().take(limit) {
+        let item = list_projection(doc);
+        let encoded = serde_json::to_string(&item).map_err(|e| e.to_string())?;
+        let item_bytes = encoded.len()
+            + serde_json::to_vec(&encoded)
+                .map_err(|e| e.to_string())?
+                .len()
+            - 2
+            + usize::from(!items.is_empty()) * 2;
+        if bytes + item_bytes > byte_bound {
+            break;
+        }
+        bytes += item_bytes;
+        items.push(item);
+    }
+    // Every bounded summary fits by itself; never skip the item that cut a page.
+    debug_assert!(docs.is_empty() || !items.is_empty());
+    let next = (items.len() < docs.len()).then(|| docs[items.len() - 1].0.cursor());
+    Ok(json!({"items":items,"next":next}))
 }
 fn task_state(state: &str) -> Checked<()> {
     if matches!(
@@ -1191,7 +1378,10 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
                 return Err("closed task cannot be reported".into());
             }
             doc.metadata["status"] = json!("reported");
-            doc.metadata["report"] = json!({"summary":report.summary,"commit":report.commit,"reported_by":actor.reference(),"op_id":call.op_id});
+            doc.metadata["report"] = json!({"summary":report.summary,"commit":report.commit,"reported_by":actor.reference(),"op_id":call.op_id,"verify_revision":verify_revision(&doc.metadata)?});
+            if let Some(link) = &report.report {
+                doc.metadata["report"]["report"] = json!(link);
+            }
             if let Some(result) = &report.verify_result {
                 doc.metadata["verify_result"] = json!(result);
             } else {
@@ -1200,7 +1390,7 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
                     .unwrap()
                     .remove("verify_result");
             }
-            doc.body.push_str(&format!("\n\n## Report from {}\n\n{}\n\n```json\n{}\n```\n",actor.reference(),report.summary,serde_json::to_string_pretty(&json!({"op_id":call.op_id,"commit":report.commit,"verify_result":report.verify_result})).unwrap()));
+            doc.body.push_str(&format!("\n\n## Report from {}\n\n{}\n\n```json\n{}\n```\n",actor.reference(),report.summary,serde_json::to_string_pretty(&json!({"op_id":call.op_id,"commit":report.commit,"report":report.report,"verify_result":report.verify_result})).unwrap()));
             notices.push((
                 delegator,
                 "report",
@@ -1321,7 +1511,101 @@ fn clear_report(metadata: &mut Value) {
         map.remove(key);
     }
 }
+
+/// Host-owned revisions prevent accepting an old report after verify changes A → B → A.
+/// Legacy tasks/reports start at revision zero; malformed revisions fail closed.
+fn verify_revision(metadata: &Value) -> Checked<u64> {
+    metadata.get("verify_revision").map_or(Ok(0), |revision| {
+        revision
+            .as_u64()
+            .ok_or_else(|| "invalid verify revision".into())
+    })
+}
+
+/// The knowledge write table and task swarm checks run before this plan is built.
+/// Reuse signed task publication, digest fencing and durable task wakes.
+pub(crate) fn amendment(
+    mut document: Document,
+    previous: &crate::knowledge::data_source::Record,
+    call: &Call,
+) -> Checked<Option<Plan>> {
+    let mut changes = Vec::new();
+    if document.body != previous.body {
+        changes.push("brief body".to_owned());
+    }
+    if document.metadata["verify"] != previous.frontmatter["verify"] {
+        document.metadata["verify_revision"] = json!(
+            verify_revision(&previous.frontmatter)?
+                .checked_add(1)
+                .ok_or("verify revision exhausted")?
+        );
+        changes.push(format!(
+            "verify: {} → {} (fresh report required)",
+            tools::clip(&previous.frontmatter["verify"].to_string(), 512),
+            tools::clip(&document.metadata["verify"].to_string(), 512)
+        ));
+    }
+    if document.metadata["allowed_paths"] != previous.frontmatter["allowed_paths"] {
+        changes.push(format!(
+            "allowed_paths: {} → {}",
+            tools::clip(&previous.frontmatter["allowed_paths"].to_string(), 2048),
+            tools::clip(&document.metadata["allowed_paths"].to_string(), 2048)
+        ));
+    }
+    if changes.is_empty() {
+        return Ok(None);
+    }
+    let task_id: Ulid = document.id.parse().map_err(|_| "invalid task ID")?;
+    let path = format!(".bboxy/{}", document.path);
+    let wakes = reference(&document, "assignee")?
+        .map(|seat| {
+            let to = Recipient::Seat(seat);
+            Wake {
+                id: wake_id(call.op_id, to, "amend"),
+                to,
+                task_id,
+                event: "amend".into(),
+                path: path.clone(),
+                summary: format!(
+                    "Task {task_id} brief changed: {path}\nChanged: {}.\nFetch the amended task record; it is your current brief, scope and verification.",
+                    changes.join("; ")
+                ),
+            }
+        })
+        .into_iter()
+        .collect();
+    Ok(Some(Plan {
+        data: json!({}),
+        writes: vec![Update {
+            path: document.path,
+            metadata: document.metadata,
+            body: document.body,
+            expected: Some(document.digest),
+        }],
+        wakes,
+    }))
+}
+/// Recheck the actual linked record at admission and immediately before publication.
+pub(crate) fn linked_report(index: &impl TaskDocuments, document: &Document) -> Checked<()> {
+    if let Some(link) = document.metadata["report"]
+        .get("report")
+        .filter(|v| !v.is_null())
+    {
+        let report = index
+            .record(link.as_str().ok_or("report locator must be a string")?)
+            .map_err(|e| format!("linked report unavailable: {e}"))?;
+        bbt_doc::reports::validate(&report.path, &report.metadata)?;
+        let target = index.locate(bbt_doc::reports::locator(&report.metadata["task"])?)?;
+        if target.id != document.id || target.path != document.path {
+            return Err("linked report names a different task".into());
+        }
+    }
+    Ok(())
+}
 fn acceptance(doc: &Document) -> Checked<()> {
+    if verify_revision(&doc.metadata["report"])? != verify_revision(&doc.metadata)? {
+        return Err("task verify changed after reporting; a fresh report is required".into());
+    }
     let result: Verification = serde_json::from_value(doc.metadata["verify_result"].clone())
         .map_err(|_| "acceptance requires a recorded verify_result")?;
     result.validate()?;

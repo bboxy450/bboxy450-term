@@ -150,6 +150,10 @@ pub struct Session {
     pub(crate) dialog_key: Option<String>,
     pub(crate) pending: std::collections::BTreeMap<String, String>,
     pub(crate) last_output_ms: u64,
+    // A generation that speaks explicitly never falls back to output timing.
+    reported_ms: Option<u64>,
+    // Expiry ends freshness, not the generation's prohibition on cadence.
+    reported_fresh: bool,
     pub(crate) uncertain: std::collections::BTreeSet<Ulid>,
     replies: Vec<Vec<u8>>,
     history: VecDeque<Observation>,
@@ -183,6 +187,8 @@ impl Session {
             dialog_key: None,
             pending: Default::default(),
             last_output_ms: 0,
+            reported_ms: None,
+            reported_fresh: false,
             replies: Vec::new(),
             history: VecDeque::new(),
             uncertain: Default::default(),
@@ -194,12 +200,21 @@ impl Session {
     /// Refuses an invalid replacement identity.
     pub fn rebind(&mut self, binding: Binding) -> Result<()> {
         binding.validate()?;
+        if binding.generation != self.binding.generation {
+            self.reported_ms = None;
+            self.reported_fresh = false;
+            self.status.source = "unobserved".into();
+            self.status.state = State::Idle;
+            self.status.grade = Grade::Inferred;
+            self.status.detail = None;
+            self.status.turn_open = false;
+            self.status.waiting_kind = None;
+        }
         self.binding = binding;
         self.invalidate();
         self.dialog = false;
         self.dialog_key = None;
         self.pending.clear();
-        self.status.source = "unobserved".into();
         self.status.subagents.clear();
         Ok(())
     }
@@ -287,6 +302,28 @@ impl Session {
                 });
             }
         } else {
+            if self.reported_ms.is_some() && obs.grade < Grade::Reported {
+                return false;
+            }
+            if obs.grade == Grade::Reported
+                && self.status.source == "stale"
+                && obs.source != "exit"
+                && obs.observed_ms <= self.reported_ms.unwrap_or(self.status.observed_ms)
+            {
+                return false;
+            }
+            // The native log names the open item. A matching phase OSC is a
+            // state heartbeat, not a newer tool description or native event time.
+            if self.record.kind == "bboxy450-harness"
+                && obs.source == "7501"
+                && self.status.source == "sessions_file"
+                && self.status.turn_open
+                && self.status.detail.is_some()
+                && obs.state == self.status.state
+            {
+                self.heartbeat(obs.observed_ms);
+                return false;
+            }
             if obs.state == State::Waiting {
                 self.dialog = true;
                 self.invalidate();
@@ -294,24 +331,34 @@ impl Session {
             if obs.resolves {
                 self.dialog = false;
             }
-            let lower_recent = obs.grade < self.status.grade
+            let lower_recent = self.record.kind != "bboxy450-harness"
+                && obs.grade < self.status.grade
                 && obs.observed_ms.saturating_sub(self.status.observed_ms) < 5000;
             let off_pty_tie = obs.grade == Grade::Reported
                 && obs.source != "7501"
+                // A complete harness log head has its own native timestamp;
+                // comparing it to OSC's later PTY read time loses tool detail.
+                && !(self.record.kind == "bboxy450-harness" && obs.source == "sessions_file")
                 && self.status.source == "7501"
                 && obs.sequence == self.status.sequence
                 && obs.observed_ms <= self.status.observed_ms;
             if !lower_recent && !off_pty_tie && (!self.dialog || obs.state == State::Waiting) {
+                if obs.grade == Grade::Reported {
+                    self.reported_ms = Some(self.reported_ms.unwrap_or(0).max(obs.observed_ms));
+                    self.reported_fresh = !matches!(obs.source.as_str(), "stale" | "exit");
+                }
                 self.status.state = obs.state;
                 self.status.grade = obs.grade;
                 self.status.source = obs.source.clone();
                 self.status.sequence = obs.sequence;
-                self.status.observed_ms = obs.observed_ms;
+                self.status.observed_ms = if self.record.kind == "bboxy450-harness" {
+                    obs.observed_ms
+                } else {
+                    self.status.observed_ms.max(obs.observed_ms)
+                };
                 self.status.waiting_kind = obs.waiting_kind;
                 self.status.turn_open = matches!(obs.state, State::Active | State::Waiting);
-                if let Some(detail) = &obs.detail {
-                    self.status.detail = Some(short(detail, 192));
-                }
+                self.status.detail = obs.detail.as_deref().map(|detail| short(detail, 192));
                 if obs.clear {
                     self.status.subagents.clear();
                 }
@@ -348,9 +395,36 @@ impl Session {
         self.invalidate();
         obs
     }
-    /// Refresh inferred activity only when the record explicitly selects cadence-based state.
+    /// Refresh the age of explicit state after a matching native heartbeat.
+    /// A heartbeat does not invent activity or resolve a dialog.
+    pub fn heartbeat(&mut self, now_ms: u64) {
+        if self.status.source != "exit" && self.reported_fresh && self.reported_ms.is_some() {
+            self.reported_ms = Some(self.reported_ms.unwrap_or(0).max(now_ms));
+        }
+    }
+    /// Mark explicit state stale after 60 seconds; cadence is only a pre-report fallback.
     pub fn tick(&mut self, sequence: u64, now_ms: u64) {
-        if self.record.state_source == super::StateSource::Cadence {
+        if let Some(reported_ms) = self.reported_ms {
+            if self.reported_fresh
+                && self.status.turn_open
+                && now_ms.saturating_sub(reported_ms) >= 60_000
+            {
+                self.status.detail = Some(short(
+                    &format!(
+                        "{}· no word for 1m",
+                        self.status
+                            .detail
+                            .as_ref()
+                            .map(|d| format!("{} ", short(d, 173)))
+                            .unwrap_or_default(),
+                    ),
+                    192,
+                ));
+                self.status.source = "stale".into();
+                self.reported_fresh = false;
+                self.invalidate();
+            }
+        } else if self.record.state_source == super::StateSource::Cadence {
             let state = if now_ms.saturating_sub(self.last_output_ms) < 2000 {
                 State::Active
             } else {

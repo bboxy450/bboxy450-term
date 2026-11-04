@@ -399,14 +399,7 @@ fn fraction(w: f32) -> c::Extent {
     c::Extent::Flex(w)
 }
 fn icon(key: &str, name: &str, size: f32, col: ui::Color) -> c::Element {
-    named(
-        key,
-        c::Element::Icon {
-            name: name.into(),
-            paint: ui::Paint::solid(col),
-            size: ui::Length::Px(size),
-        },
-    )
+    named(key, super::harness::mark(name, size, ui::Paint::solid(col)))
 }
 
 impl GraphTab {
@@ -448,7 +441,8 @@ impl GraphTab {
                 self.harnesses
                     .iter()
                     .find(|h| h.name == s.harness)
-                    .and_then(|h| h.tile.as_deref()),
+                    .and_then(|h| h.tile.as_deref())
+                    .or_else(|| super::harness::tile(&s.harness)),
                 ui::Color::Surface2,
             )));
             let tile = row(

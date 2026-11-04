@@ -21,7 +21,7 @@ use std::path::{Component, Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::Duration;
 
-use bbt_plugin_fixture::Knobs;
+use crate::Knobs;
 use bbt_plugin_sdk::{Contract, Ctx, Init, Manifest, Plugin, Refusal, Skill};
 use regex::Regex;
 use serde_json::{Map, Value, json};
@@ -754,6 +754,12 @@ fn filtered<'a>(rows: &'a [Value], filters: &'a Value) -> impl Iterator<Item = &
             if k == "assignee" {
                 have.strip_prefix("seat:").unwrap_or(&have)
                     == want.strip_prefix("seat:").unwrap_or(&want)
+            } else if k == "status"
+                && KNOBS.get().is_some_and(|knobs| knobs.harmony)
+                && matches!(have.as_str(), "active" | "running")
+                && matches!(want.as_str(), "active" | "running")
+            {
+                true
             } else {
                 have == want
             }
@@ -908,7 +914,11 @@ impl Plugin for RootFixture {
         args: Value,
         ctx: &Ctx,
     ) -> Result<Value, Refusal> {
-        trace("call", json!({"method": method}));
+        let mut fields = json!({"method": method});
+        if !ctx.attribution().is_empty() {
+            fields["attribution"] = json!(ctx.attribution());
+        }
+        trace("call", fields);
         // A no-op unless the shape declares trace and the host enabled it.
         let _span = ctx.span(&format!("root.{method}"));
         if method == "fetch" {

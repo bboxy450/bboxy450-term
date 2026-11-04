@@ -40,6 +40,8 @@ macro_rules! seat_commands {
                 new_tab: bool,
                 /// A role preset (#262); the backend resolves and guards it as the launcher does.
                 role: Option<String>,
+                /// `--resume ID`: the native Claude session or Codex thread to resume.
+                resume: Option<String>,
             },
             /// An explicit placement is captured by the attached GUI, never guessed here.
             SpawnAt(Box<bbt_proto::gui::UiSpawn>),
@@ -145,6 +147,7 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
         cwd: flag("cwd").map(PathBuf::from),
         swarm,
         role: flag("role"),
+        resume: resume(harness, flag("resume"))?,
         new_tab: match flag("placement").as_deref() {
             None => false,
             Some("new-tab") => true,
@@ -293,6 +296,7 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
     }
     ["seat", "ls"] => Command::Seats,
     ["seat", "spawn", harness] => {
+        let resume = resume(harness, flag("resume"))?;
         if let Some(place) = flag("place").or(flag("placement")) {
             use bbt_proto::gui::{SpawnPlace, UiSpawn};
             let place = match place.as_str() {
@@ -303,7 +307,7 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
                 _ => return Err(format!("{USAGE_PREFIX}--place: expected right|down|tab|space")),
             };
             let pick = UiSpawn {
-                harness: harness.into(), name: flag("name"), role: flag("role"), swarm, place,
+                harness: harness.into(), name: flag("name"), role: flag("role"), swarm, place, resume,
                 cwd: flag("cwd").map(|path| std::path::absolute(path)
                     .map(|path|path.to_string_lossy().into_owned())
                     .map_err(|e|format!("{USAGE_PREFIX}--cwd: {e}"))).transpose()?.unwrap_or_default(),
@@ -314,7 +318,7 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
             Command::SpawnAt(pick)
         } else {
             // The no-placement backend lane also serves bare Session callers.
-            Command::Spawn {harness:harness.into(),name:flag("name"),cwd:flag("cwd").map(PathBuf::from),swarm,role:flag("role"),new_tab:false}
+            Command::Spawn {harness:harness.into(),name:flag("name"),cwd:flag("cwd").map(PathBuf::from),swarm,role:flag("role"),resume,new_tab:false}
         }
     },
     ["seat", "capture", target, path] => Command::Capture {
@@ -329,6 +333,20 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
     }))
 }
 
+/// `--resume ID`: a native session or thread id for a harness that resumes; never zsh.
+fn resume(harness: &str, id: Option<String>) -> Result<Option<String>, String> {
+    let Some(id) = id else { return Ok(None) };
+    if harness == "zsh" {
+        return Err(format!("{USAGE_PREFIX}--resume applies to claude and codex, not zsh"));
+    }
+    if id.is_empty() || id.len() > 128 || id.chars().any(|c| c.is_whitespace() || c.is_control()) {
+        return Err(format!(
+            "{USAGE_PREFIX}--resume: a session id of 1 to 128 characters, no spaces or control characters"
+        ));
+    }
+    Ok(Some(id))
+}
+
 /// The flat (pre-grammar) form of this noun's commands; the others are noun-verb only.
 pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, String> {
     Ok(match command {
@@ -339,6 +357,7 @@ pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, S
             swarm,
             new_tab,
             role,
+            resume,
         } => {
             // The launcher's defaults (live.rs `spawn_spec`): the first seat's swarm, else a
             // new one; the backend validates the spec as it does for the GUI.
@@ -364,7 +383,7 @@ pub(super) fn run(client: &mut Client, command: Command) -> Result<Vec<Value>, S
                 role,
                 cwd: cwd.to_string_lossy().into_owned(),
                 location: Where::Local,
-                resume: None,
+                resume,
                 placement: new_tab.then(|| bbt_proto::seat_state::Placement::NewTab {
                     tab: bbt_proto::TabId::from_u128(Ulid::new().0),
                 }),

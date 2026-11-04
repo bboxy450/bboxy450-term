@@ -65,14 +65,7 @@ fn flexible(element: c::Element, grow: f32) -> c::Item {
     }
 }
 fn icon(key: &str, name: &str, size: f32, color: ui::Color, alpha: f32) -> c::Element {
-    named(
-        key,
-        c::Element::Icon {
-            name: name.into(),
-            paint: paint(color, alpha),
-            size: ui::Length::Px(size),
-        },
-    )
+    named(key, super::harness::mark(name, size, paint(color, alpha)))
 }
 fn pill(
     key: &str,
@@ -120,6 +113,20 @@ fn pill(
     named(format!("pane/strip/{key}"), c::Element::Box(b))
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewTarget {
+    Terminal,
+    Harness,
+}
+impl ViewTarget {
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Terminal => "Terminal",
+            Self::Harness => "Harness",
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Strip {
     pub seat: SeatRow,
@@ -127,6 +134,8 @@ pub struct Strip {
     pub waiting_description: Option<String>,
     pub may_interrupt: bool,
     pub may_mute: bool,
+    /// Host capability and target view; absent on ordinary terminal seats.
+    pub view_target: Option<ViewTarget>,
 }
 impl Strip {
     pub fn new(seat: SeatRow) -> Self {
@@ -136,6 +145,7 @@ impl Strip {
             waiting_description: None,
             may_interrupt: false,
             may_mute,
+            view_target: None,
         }
     }
     pub fn element(&self, ctx: ui::Context) -> c::Element {
@@ -276,6 +286,16 @@ impl Strip {
                 .into(),
             );
         }
+        if self.view_target.is_some() {
+            // The identity yields to actions in narrow splits. Its clip keeps a
+            // long role/title from painting beneath the reserved view control.
+            let mut identity = c::Box::new(plain(None, [0.; 4], 0.), children.drain(1..).collect());
+            identity.clip = true;
+            children.push(flexible(
+                named("pane/strip/identity", c::Element::Box(identity)),
+                1.,
+            ));
+        }
         if self.may_interrupt {
             let mut square = plain(Some(8.), [0.; 4], 1.5);
             square.overrides.width = Some(ui::Length::Px(8.));
@@ -296,6 +316,17 @@ impl Strip {
             // Centre the 8px square inside the 14px hit target.
             outer.style.overrides.padding = Some([ui::Length::Px(3.); 4]);
             children.push(named("pane/strip/stop", c::Element::Box(outer)).into());
+        }
+        if let Some(target) = self.view_target {
+            children.push(fixed_role(pill(
+                "view",
+                target.label(),
+                STYLE.r#type.small as f32,
+                1.,
+                7.,
+                Some(20.),
+                false,
+            )));
         }
         if self.may_mute {
             let alpha = if seat.authority.is_some() {

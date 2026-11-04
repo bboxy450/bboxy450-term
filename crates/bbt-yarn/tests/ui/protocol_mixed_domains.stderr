@@ -1,0 +1,5 @@
+error: PRO008 protocol type mismatch: expected A, found B. Repair: use a value from the declared type and domain.
+  --> tests/ui/protocol_mixed_domains.rs:10:124
+   |
+10 |     mod Mixed { domain A { X } domain B { X } state { value: A = A::X; } events { Ping; } on Ping { case all when value == B::X => {...
+   |                                                                                                                            ^

@@ -20,6 +20,7 @@ use crate::{
 use serde::{Deserialize, Serialize};
 
 pub mod mapping;
+pub use bboxy450_harness_wake_up::capability;
 pub use bboxy450_harness_wake_up::{
     ArbiterView, Binding, Endpoint, NativeAttachment, Priority, Readiness, ReadyToken, StateSource,
     WakeCause, WakeMethod, native_available,
@@ -58,14 +59,23 @@ pub fn validate_role(_kind: &str, role: &Role) -> Result<()> {
 /// Standalone starting presets; runtime authority comes from the saved catalog.
 pub fn role_preset(name: &str) -> Result<Role> {
     let class = match name {
-        "oracle" | "architect" => Class::Oracle,
-        "creativity" | "executor" | "shell" => Class::Worker,
+        "oracle" | "architect" | "solo" => Class::Oracle,
+        "creativity" | "researcher" | "executor" | "qa" | "shell" => Class::Worker,
         _ => return Err(invalid("unknown_role_preset")),
     };
     Ok(Role {
         name: name.into(),
         class,
     })
+}
+
+/// The app bundle ships bboxy450-harness beside its own executable; prefer it to PATH.
+fn bundled_harness() -> Option<String> {
+    let path = std::env::current_exe()
+        .ok()?
+        .parent()?
+        .join("bboxy450-harness");
+    path.is_file().then(|| path.to_string_lossy().into_owned())
 }
 
 impl HarnessRecord {
@@ -78,13 +88,30 @@ impl HarnessRecord {
     }
 
     pub fn builtin(kind: &str) -> Result<Self> {
-        if matches!(kind, "pi" | "omp") {
+        if matches!(kind, "pi" | "omp" | "bboxy450-harness") {
             return Ok(Self {
                 kind: kind.into(),
                 name: kind.into(),
-                command: vec![kind.into()],
-                tile: "#7397d4".into(),
-                icon: kind.into(),
+                command: if kind == "bboxy450-harness" {
+                    vec![
+                        bundled_harness().unwrap_or_else(|| kind.into()),
+                        "seat".into(),
+                    ]
+                } else {
+                    vec![kind.into()]
+                },
+                tile: if kind == "bboxy450-harness" {
+                    "#168BFF"
+                } else {
+                    "#7397d4"
+                }
+                .into(),
+                icon: if kind == "bboxy450-harness" {
+                    "bboxy"
+                } else {
+                    kind
+                }
+                .into(),
                 default_role: role_preset("executor")?,
                 wake_method: WakeMethod::Pty,
                 state_source: StateSource::Cadence,
@@ -217,11 +244,18 @@ impl Adapter for Session {
 mod configured_harness_tests {
     use super::*;
     #[test]
-    fn advertised_pi_and_omp_reuse_generic_pty_records() {
-        for kind in ["pi", "omp"] {
+    fn advertised_generic_pty_records() {
+        for kind in ["pi", "omp", "bboxy450-harness"] {
             let harness = HarnessRecord::builtin(kind).unwrap();
             harness.validate().unwrap();
-            assert_eq!(harness.command, [kind]);
+            assert_eq!(
+                harness.command,
+                if kind == "bboxy450-harness" {
+                    vec![kind, "seat"]
+                } else {
+                    vec![kind]
+                }
+            );
             assert_eq!(harness.wake_method, WakeMethod::Pty);
             assert_eq!(harness.state_source, StateSource::Cadence);
             assert_eq!(harness.default_role, role_preset("executor").unwrap());

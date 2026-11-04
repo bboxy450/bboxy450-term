@@ -25,7 +25,9 @@ struct Fixture {
 }
 impl Fixture {
     fn new() -> Self {
-        let directory = tempfile::tempdir().unwrap();
+        Self::with_directory(tempfile::tempdir().unwrap())
+    }
+    fn with_directory(directory: tempfile::TempDir) -> Self {
         let root = directory.path().canonicalize().unwrap();
         for name in [
             "home",
@@ -59,7 +61,18 @@ impl Fixture {
         }
     }
     fn command(&self) -> Command {
-        let mut command = Command::new(BIN);
+        // A fixture may copy the current app beside its private native launcher.
+        // This exercises bundled-binary resolution without changing the shared target.
+        let private = self.root.join("bin/bboxy450-term");
+        let mut command = Command::new(if private.is_file() {
+            private
+        } else {
+            PathBuf::from(BIN)
+        });
+        self.environment(&mut command);
+        command
+    }
+    fn environment(&self, command: &mut Command) {
         command
             .env_clear()
             .env("HOME", self.root.join("home"))
@@ -71,7 +84,6 @@ impl Fixture {
             .env("LANG", "en_US.UTF-8")
             .current_dir(&self.root)
             .stdin(Stdio::null());
-        command
     }
     fn ctl(&self, args: &[&str]) -> Value {
         let output = self
@@ -1874,6 +1886,27 @@ fn command_w_closes_only_the_focused_seat_and_undo_keeps_the_same_process() {
 #[test]
 #[ignore = "private ctl mute buttons, shortcut, retained policy and operator input; make test-seat-mute"]
 fn seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart() {
+    fn assert_chat_notice(fixture: &Fixture, text: &str) {
+        fn chat(node: &Value) -> Option<&Value> {
+            if node["kind"] == "named:conversation/chat-section" {
+                return Some(node);
+            }
+            node["children"].as_array()?.iter().find_map(chat)
+        }
+        let until = Instant::now() + Duration::from_secs(10);
+        loop {
+            let frame = fixture.ctl(&["ui", "layout"]);
+            let visible = frame["tree"].as_array().unwrap().iter().find_map(chat);
+            if visible.is_some_and(|node| node.to_string().contains(text)) {
+                return;
+            }
+            assert!(
+                Instant::now() < until,
+                "missing chat notice {text:?}: {frame}"
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    }
     let mut fixture = Fixture::new();
     fixture.start();
     let swarm = fixture.ctl(&["ui", "layout"])["swarm"]
@@ -1884,6 +1917,21 @@ fn seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart()
     let second = fixture.spawn("claude", &swarm, None);
     fixture.ctl(&["ui", "focus", &first]);
     let before = fixture.ctl(&["seat", "ls"]);
+    let name = |seat: &str| {
+        before
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|row| row["record"]["id"] == seat)
+            .unwrap()["record"]["name"]
+            .as_str()
+            .unwrap()
+            .to_owned()
+    };
+    let first_muted = format!("{} muted", name(&first));
+    let first_unmuted = format!("{} unmuted", name(&first));
+    let second_muted = format!("{} muted", name(&second));
+    let second_unmuted = format!("{} unmuted", name(&second));
     let owners = fixture.owners();
     let muted = |fixture: &Fixture, seat: &str| {
         fixture
@@ -1902,9 +1950,11 @@ fn seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart()
         "muting another row never moves focus"
     );
     assert!(muted(&fixture, &second));
+    assert_chat_notice(&fixture, &second_muted);
     assert!(!muted(&fixture, &first));
     click_region(&fixture, &format!("pane-mute:{first}"));
     assert!(muted(&fixture, &first));
+    assert_chat_notice(&fixture, &first_muted);
     capture_navigation(&fixture, "seat-mute-controls");
     if let Some(directory) = std::env::var_os("BBOXY_SWARM_EVIDENCE") {
         fs::write(
@@ -1926,6 +1976,8 @@ fn seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart()
     fixture.ctl(&["ui", "key", "cmd-m"]);
     assert!(!muted(&fixture, &first));
     assert!(muted(&fixture, &second));
+    assert_chat_notice(&fixture, &first_unmuted);
+    capture_navigation(&fixture, "seat-unmute-chat-text");
     let mut old = fixture.app.take().unwrap();
     old.kill().unwrap();
     old.wait().unwrap();
@@ -1933,8 +1985,13 @@ fn seat_mute_buttons_and_shortcut_keep_operator_control_and_survive_ui_restart()
     assert_eq!(fixture.owners(), owners);
     assert!(!muted(&fixture, &first));
     assert!(muted(&fixture, &second));
+    assert_chat_notice(&fixture, &first_muted);
+    assert_chat_notice(&fixture, &first_unmuted);
+    assert_chat_notice(&fixture, &second_muted);
     click_region(&fixture, &format!("seat-mute:{second}"));
     assert!(!muted(&fixture, &second));
+    assert_chat_notice(&fixture, &second_unmuted);
+    capture_navigation(&fixture, "seat-mute-chat-restored");
     let after = fixture.ctl(&["seat", "ls"]);
     for seat in [&first, &second] {
         let identity = |rows: &Value| {
@@ -2385,7 +2442,8 @@ fn task_migration_catalogue_upgrade_retains_all_seats_and_shell_state() {
             .lines()
             .filter_map(|line| line.split_once('='))
             .collect();
-        let cap = fields["BBOXY_CAPABILITY"];
+        let cap = fs::read_to_string(fields["BBOXY_CAPABILITY_FILE"]).unwrap();
+        let cap = cap.trim();
         let mut bridge = Bridge::new(Config {
             socket: fields["BBOXY_SOCK"].into(),
             seat: seat.parse().unwrap(),
@@ -2684,7 +2742,8 @@ fn oracle_mcp_splits_focuses_and_reattaches_without_restarting_harnesses() {
         .lines()
         .filter_map(|l| l.split_once('='))
         .collect();
-    let cap = admission["BBOXY_CAPABILITY"];
+    let cap = fs::read_to_string(admission["BBOXY_CAPABILITY_FILE"]).unwrap();
+    let cap = cap.trim();
     let capability =
         std::array::from_fn(|i| u8::from_str_radix(&cap[i * 2..i * 2 + 2], 16).unwrap());
     let mut bridge = Bridge::new(Config {
@@ -2979,7 +3038,8 @@ fn signed_mentions_refresh_retains_sessions_and_shell_state() {
         .lines()
         .filter_map(|line| line.split_once('='))
         .collect();
-    let cap = admission["BBOXY_CAPABILITY"];
+    let cap = fs::read_to_string(admission["BBOXY_CAPABILITY_FILE"]).unwrap();
+    let cap = cap.trim();
     let capability =
         std::array::from_fn(|i| u8::from_str_radix(&cap[i * 2..i * 2 + 2], 16).unwrap());
     let mut bridge = Bridge::new(Config {
@@ -4658,3 +4718,8 @@ fn ui_selection_copies_read_only_settings_text_through_native_copy() {
     f.ctl(&["app", "stop"]);
     assert!(f.app.as_mut().unwrap().wait().unwrap().success());
 }
+
+#[path = "swarm_workdir/rich_detach.rs"]
+mod rich_detach;
+#[path = "swarm_workdir/launch_context.rs"]
+mod launch_context;

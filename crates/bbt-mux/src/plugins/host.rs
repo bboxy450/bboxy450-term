@@ -135,10 +135,16 @@ fn seat_tools(entry: &Entry, record: &TrustRecord) -> Vec<SeatTool> {
             ) else {
                 continue;
             };
+            // Which identifiers a data_source method accepts (review 5004 finding 4).
+            let identifiers = if contract == Contract::DataSource {
+                " resolve takes a locator: a slug, a path ending .md, #N, the id (bboxy ULID) or the external_id (the provider's native ID); the other methods take the ref resolve returns. In every result id is the bboxy ULID, external_id the native ID and slug the path without .md."
+            } else {
+                ""
+            };
             tools.push(SeatTool {
                 name: seat,
                 description: format!(
-                    "{} {} from the {} plugin.",
+                    "{} {} from the {} plugin.{identifiers}",
                     contract.name(),
                     command.name,
                     name.provider
@@ -175,6 +181,14 @@ fn seat_tools(entry: &Entry, record: &TrustRecord) -> Vec<SeatTool> {
 struct Authority {
     activation: Activation,
     record: TrustRecord,
+}
+
+/// A wrap result retains the authority that produced it until the launch owner
+/// checks its captured root and this activation immediately before spawning.
+pub struct TransportPlan {
+    pub argv: Vec<String>,
+    candidate: String,
+    authority: Authority,
 }
 
 /// Each plugin has up to one connection per lane.
@@ -649,6 +663,12 @@ impl PluginHost {
                 .map_err(|_| error("provider_closed", "the hook lane is closed"))?,
         };
         trace.mark("admit");
+        // Read on this thread: the calling seat's scope, if any.
+        let params = crate::plugins::attribution::tools_call(
+            wire,
+            args,
+            &crate::plugins::attribution::current(),
+        );
         // A transport failure closes the connection; a plugin refusal does not.
         let outcome: Result<Value, (d::CommandError, bool)> = self.0.handle.block_on(async {
             let shared = connection
@@ -668,7 +688,7 @@ impl PluginHost {
                 ));
             }
             let outer = shared
-                .request("tools/call", json!({"name":wire,"arguments":args}), budget)
+                .request("tools/call", params, budget)
                 .await
                 .map_err(|reason| (refused(reason), true))?;
             trace.mark("plugin");
@@ -735,6 +755,88 @@ impl PluginHost {
                 self.drop_connection(candidate, connection);
                 Err(reason)
             }
+        }
+    }
+
+    /// Host-only transport resolution on an IO worker; field names/defaults
+    /// come from the trusted shape, never from a plugin's returned argv.
+    pub fn wrap_transport(
+        &self,
+        provider: &str,
+        fields: &std::collections::BTreeMap<String, String>,
+        command: Vec<String>,
+        deadline: Instant,
+    ) -> d::Result<TransportPlan> {
+        let entries = self
+            .0
+            .registry
+            .refresh()
+            .map_err(|e| error(&e.code, e.message))?;
+        let matching: Vec<_> = entries
+            .iter()
+            .filter(|e| {
+                e.candidate
+                    .name
+                    .as_ref()
+                    .is_some_and(|n| n.system == Contract::Transport && n.provider == provider)
+            })
+            .collect();
+        let entry = match matching.as_slice() {
+            [entry] if entry.state() == bbt_plugin::registry::State::Enabled => *entry,
+            _ => {
+                return Err(error(
+                    "transport_unavailable",
+                    "transport must be uniquely discovered, trusted, checked and enabled",
+                ));
+            }
+        };
+        let candidate = entry.candidate.id.clone();
+        let (authority, _) = self.authorize(&candidate)?;
+        let shape = authority.record.shape.as_ref().expect("authorized shape");
+        let fields = bbt_plugin::transport::resolve_fields(&shape.spawn_fields, fields)
+            .map_err(|e| error(&e.code, e.message))?;
+        let result = self.call(
+            &candidate,
+            Contract::Transport,
+            "wrap",
+            json!({"fields":fields,"command":command}),
+            deadline,
+        )?;
+        if self.authorize(&candidate)?.0 != authority {
+            return Err(error(
+                "transport_changed",
+                "transport authority changed during wrap",
+            ));
+        }
+        let result: bbt_plugin::transport::WrapResult = serde_json::from_value(result)
+            .map_err(|e| error("invalid_provider_result", e.to_string()))?;
+        Ok(TransportPlan {
+            argv: result.argv,
+            candidate,
+            authority,
+        })
+    }
+
+    /// No IO on the launch owner: plugin control reconciliation removes a
+    /// superseded connection before acknowledging the disable/re-pin.
+    pub fn transport_plan_current(&self, plan: &TransportPlan) -> d::Result<()> {
+        let state = self.0.state.try_lock().map_err(|_| {
+            error(
+                "transport_unavailable",
+                "host connection state busy or unavailable before launch",
+            )
+        })?;
+        if state
+            .connections
+            .get(&(plan.candidate.clone(), Lane::Calls))
+            .is_some_and(|c| c.authority == plan.authority)
+        {
+            Ok(())
+        } else {
+            Err(error(
+                "transport_changed",
+                "activation changed before launch",
+            ))
         }
     }
 
@@ -831,5 +933,73 @@ impl PluginHost {
                 connection.close().await;
             }
         });
+    }
+}
+
+#[cfg(test)]
+mod transport_owner_tests {
+    use super::*;
+
+    #[test]
+    fn a_busy_connection_snapshot_never_blocks_the_launch_owner() {
+        let temp = tempfile::tempdir().unwrap();
+        let runtime = tokio::runtime::Builder::new_multi_thread()
+            .worker_threads(2)
+            .enable_all()
+            .build()
+            .unwrap();
+        let registry = Registry::new(
+            SqliteStore::open(&temp.path().join("account")).unwrap(),
+            DiscoveryRoots::new(temp.path(), temp.path()),
+        )
+        .unwrap();
+        let host = PluginHost::new(
+            registry,
+            temp.path(),
+            runtime.handle().clone(),
+            ProviderConfig::default(),
+        )
+        .unwrap();
+        // The contention branch does not inspect a plan's authority. This
+        // private record is data only; no plugin is installed or executed.
+        let source = temp.path().join("candidate").to_string_lossy().into_owned();
+        let name = serde_json::json!({"system":"transport","provider":"private"});
+        let authority = Authority {
+            activation: serde_json::from_value(serde_json::json!({
+                "candidate":"private", "source":source, "scope":"repository",
+                "name":name.clone(), "sha256":"a".repeat(64), "generation":1,
+                "desired_enabled":true, "needs_retrust":false, "inspection":null
+            }))
+            .unwrap(),
+            record: serde_json::from_value(serde_json::json!({
+                "sha256":"a".repeat(64), "source":source, "copy":source,
+                "data_dir":source, "name":name, "scope":"repository",
+                "approved_tier":"transport"
+            }))
+            .unwrap(),
+        };
+        let plan = TransportPlan {
+            argv: vec!["/bin/true".into()],
+            candidate: "private".into(),
+            authority,
+        };
+        let held = host.0.state.lock().unwrap();
+        let worker = host.clone();
+        let (tx, rx) = std::sync::mpsc::channel();
+        let thread = std::thread::spawn(move || {
+            let _ = tx.send(worker.transport_plan_current(&plan));
+        });
+        let observed = rx.recv_timeout(std::time::Duration::from_secs(5));
+        drop(held); // Also releases a deliberately blocking implementation before assertion.
+        thread.join().unwrap();
+        host.close();
+        runtime.shutdown_timeout(std::time::Duration::from_secs(3));
+        assert_eq!(
+            observed
+                .expect("launch owner waited for the connection mutex")
+                .unwrap_err()
+                .code,
+            "transport_unavailable"
+        );
     }
 }

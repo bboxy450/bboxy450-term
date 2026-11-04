@@ -18,6 +18,15 @@ use ulid::Ulid;
 use super::{Events, Result, digest, invalid, now_ms, sqlite};
 
 pub const MAX_EVENT_BYTES: usize = 1024 * 1024;
+/// First-upgrade work is bounded independently of retained history. The prefix
+/// is audited after logic publishes readiness; this anchor is not a full audit.
+const STARTUP_TAIL_ROWS: u64 = 128;
+
+#[derive(Debug, PartialEq)]
+struct Checkpoint {
+    seq: u64,
+    hash: String,
+}
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Draft {
@@ -110,6 +119,21 @@ pub struct EventLog {
 
 impl EventLog {
     pub fn open(directory: &Path) -> Result<Self> {
+        Ok(Self::open_counted(directory)?.0)
+    }
+
+    /// Startup verification is bounded by the checkpoint, so progress reports
+    /// the verified suffix once rather than streaming retained history.
+    pub(crate) fn open_with_progress(
+        directory: &Path,
+        progress: &mut dyn FnMut(u64, u64),
+    ) -> Result<Self> {
+        let (log, verified) = Self::open_counted(directory)?;
+        progress(verified, verified);
+        Ok(log)
+    }
+
+    fn open_counted(directory: &Path) -> Result<(Self, u64)> {
         bbt_rt::assert_not_ui_thread();
         std::fs::create_dir_all(directory)?;
         let log = Self {
@@ -127,9 +151,147 @@ impl EventLog {
           CREATE TABLE IF NOT EXISTS pending(consumer TEXT NOT NULL REFERENCES consumers(name), seq INTEGER NOT NULL REFERENCES events(seq), delivered_at INTEGER NOT NULL, deliveries INTEGER NOT NULL, PRIMARY KEY(consumer,seq));
           CREATE TABLE IF NOT EXISTS stream(first_seq INTEGER NOT NULL,cold TEXT);
           INSERT INTO stream SELECT 1,NULL WHERE NOT EXISTS(SELECT 1 FROM stream);", "unsupported event schema")?;
-        drop(db);
-        log.verify_chain()?;
-        Ok(log)
+        // ensure_schema deliberately skips DDL for user_version=1. Migrate
+        // separately, additively, without taking a writer on subsequent opens.
+        let migrated: bool = db.query_row(
+            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='verification_checkpoint')",
+            [], |row| row.get(0),
+        )?;
+        if !migrated {
+            db.execute_batch("CREATE TABLE IF NOT EXISTS verification_checkpoint(
+                id INTEGER PRIMARY KEY CHECK(id=1), seq INTEGER NOT NULL CHECK(seq>=0), hash TEXT NOT NULL)")?;
+        }
+        let tx = db.transaction()?;
+        let checkpoint = tx
+            .query_row(
+                "SELECT seq,hash FROM verification_checkpoint WHERE id=1",
+                [],
+                |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?)),
+            )
+            .optional()?
+            .map(|(seq, hash)| -> Result<_> {
+                Ok(Checkpoint {
+                    seq: seq.try_into()?,
+                    hash,
+                })
+            })
+            .transpose()?;
+        // A range starting at zero must not silently exclude nonpositive rows.
+        let first: Option<i64> = tx
+            .query_row("SELECT seq FROM events ORDER BY seq LIMIT 1", [], |row| {
+                row.get(0)
+            })
+            .optional()?;
+        if first.is_some_and(|seq| seq != 1) {
+            return Err(invalid("broken event chain: missing genesis"));
+        }
+        let anchor = if let Some(checkpoint) = &checkpoint {
+            Self::check_checkpoint(&tx, checkpoint)?;
+            Checkpoint {
+                seq: checkpoint.seq,
+                hash: checkpoint.hash.clone(),
+            }
+        } else {
+            // Indexed reverse seek: at most 129 rows, never COUNT/OFFSET(history).
+            let anchor = tx
+                .query_row(
+                    "SELECT seq,hash FROM events ORDER BY seq DESC LIMIT 1 OFFSET ?1",
+                    [super::sqlint(STARTUP_TAIL_ROWS)?],
+                    |row| Ok((row.get::<_, i64>(0)?, row.get::<_, String>(1)?)),
+                )
+                .optional()?;
+            let anchor = match anchor {
+                Some((seq, hash)) => Checkpoint {
+                    seq: seq.try_into()?,
+                    hash,
+                },
+                None => Checkpoint {
+                    seq: 0,
+                    hash: String::new(),
+                },
+            };
+            Self::check_checkpoint(&tx, &anchor)?;
+            anchor
+        };
+        let (verified, count) = Self::verify_after(&tx, anchor)?;
+        if checkpoint.as_ref() != Some(&verified) {
+            tx.execute(
+                "INSERT INTO verification_checkpoint(id,seq,hash) VALUES(1,?1,?2)
+                 ON CONFLICT(id) DO UPDATE SET seq=excluded.seq,hash=excluded.hash",
+                params![super::sqlint(verified.seq)?, verified.hash],
+            )?;
+        }
+        tx.commit()?;
+        Ok((log, count))
+    }
+
+    fn check_checkpoint(db: &rusqlite::Connection, checkpoint: &Checkpoint) -> Result<()> {
+        if checkpoint.seq == 0 {
+            return if checkpoint.hash.is_empty() {
+                Ok(())
+            } else {
+                Err(invalid("invalid event checkpoint genesis hash"))
+            };
+        }
+        let row = db
+            .query_row(
+                "SELECT payload,hash,prev FROM events WHERE seq=?1",
+                [super::sqlint(checkpoint.seq)?],
+                |row| {
+                    Ok((
+                        row.get::<_, Vec<u8>>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, String>(2)?,
+                    ))
+                },
+            )
+            .optional()?
+            .ok_or_else(|| invalid("event checkpoint row missing"))?;
+        if row.0.len() > MAX_EVENT_BYTES {
+            return Err(invalid("oversized stored event"));
+        }
+        let record: Envelope = serde_json::from_slice(&row.0)?;
+        // Rehash the payload too: comparing only the SQL hash would miss a
+        // payload changed while its cached SQL hash stayed unchanged. The
+        // checkpoint hash binds the already-verified signature without another
+        // Ed25519 verification of the checkpoint row.
+        if row.1 != checkpoint.hash
+            || record.hash()? != checkpoint.hash
+            || record.seq != checkpoint.seq
+            || record.prev != row.2
+        {
+            return Err(invalid("event checkpoint hash mismatch"));
+        }
+        Ok(())
+    }
+
+    fn verify_after(db: &rusqlite::Connection, mut head: Checkpoint) -> Result<(Checkpoint, u64)> {
+        let mut stmt =
+            db.prepare("SELECT seq,payload,hash,prev FROM events WHERE seq>?1 ORDER BY seq")?;
+        let mut rows = stmt.query([super::sqlint(head.seq)?])?;
+        let mut count = 0;
+        while let Some(row) = rows.next()? {
+            let seq: u64 = row.get::<_, i64>(0)?.try_into()?;
+            let bytes: Vec<u8> = row.get(1)?;
+            if bytes.len() > MAX_EVENT_BYTES {
+                return Err(invalid("oversized stored event"));
+            }
+            let record: Envelope = serde_json::from_slice(&bytes)?;
+            let hash: String = row.get(2)?;
+            let prev: String = row.get(3)?;
+            if seq != head.seq + 1
+                || record.seq != seq
+                || prev != head.hash
+                || record.prev != head.hash
+                || hash != record.hash()?
+            {
+                return Err(invalid(format!("broken event chain at sequence {seq}")));
+            }
+            record.verify()?;
+            count += 1;
+            head = Checkpoint { seq, hash };
+        }
+        Ok((head, count))
     }
     pub fn last_sequence(&self) -> Result<u64> {
         Ok(sqlite::open(&self.path)?
@@ -147,6 +309,53 @@ impl EventLog {
             )
             .optional()?;
         bytes.map(|b| Ok(serde_json::from_slice(&b)?)).transpose()
+    }
+
+    /// A bounded genesis-to-head audit page for resumable projection repair.
+    /// Unlike `after`, this also checks the SQL sequence/hash/prev columns.
+    pub(crate) fn verified_page(
+        &self,
+        sequence: u64,
+        previous: &str,
+        limit: usize,
+    ) -> Result<Vec<Envelope>> {
+        let db = sqlite::open(&self.path)?;
+        if sequence == 0 {
+            let first: Option<i64> =
+                db.query_row("SELECT MIN(seq) FROM events", [], |r| r.get(0))?;
+            if first.is_some_and(|seq| seq != 1) {
+                return Err(invalid("broken event chain: missing genesis"));
+            }
+        }
+        let mut stmt = db.prepare(
+            "SELECT seq,payload,hash,prev FROM events WHERE seq>?1 ORDER BY seq LIMIT ?2",
+        )?;
+        let mut rows = stmt.query(params![super::sqlint(sequence)?, limit.min(128) as i64])?;
+        let (mut sequence, mut previous) = (sequence, previous.to_owned());
+        let mut page = Vec::new();
+        while let Some(row) = rows.next()? {
+            let seq: u64 = row.get::<_, i64>(0)?.try_into()?;
+            let bytes: Vec<u8> = row.get(1)?;
+            if bytes.len() > MAX_EVENT_BYTES {
+                return Err(invalid("oversized stored event"));
+            }
+            let record: Envelope = serde_json::from_slice(&bytes)?;
+            let hash: String = row.get(2)?;
+            let prev: String = row.get(3)?;
+            if seq != sequence + 1
+                || record.seq != seq
+                || prev != previous
+                || record.prev != previous
+                || hash != record.hash()?
+            {
+                return Err(invalid("broken event chain"));
+            }
+            record.verify()?;
+            sequence = seq;
+            previous = hash;
+            page.push(record);
+        }
+        Ok(page)
     }
 }
 
@@ -191,6 +400,7 @@ impl Events for EventLog {
             prev,
             key,
         )?;
+        let hash = envelope.hash()?;
         tx.execute(
             "INSERT INTO events VALUES(?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
             params![
@@ -203,8 +413,14 @@ impl Events for EventLog {
                 envelope.provenance.signer.as_slice(),
                 envelope.provenance.sig,
                 envelope.prev,
-                envelope.hash()?
+                hash
             ],
+        )?;
+        // A locally signed append extends a verified head atomically. Never
+        // jump over rows imported by an older writer: open must verify those.
+        tx.execute(
+            "UPDATE verification_checkpoint SET seq=?1,hash=?2 WHERE id=1 AND seq=?3 AND hash=?4",
+            params![super::sqlint(envelope.seq)?, hash, last, envelope.prev],
         )?;
         tx.commit()?;
         Ok(envelope)
@@ -255,6 +471,296 @@ impl Events for EventLog {
             previous = hash;
         }
         Ok(sequence)
+    }
+}
+
+fn history_failure(root: &Path, path: &Path, error: impl std::fmt::Display) {
+    let message = format!("events.sqlite at {}: {error}", path.display());
+    // stderr remains visible if the bounded diagnostic datagram cannot be sent.
+    eprintln!("event history verification failed: {message}");
+    bbt_rt::error_journal::report_to(
+        root,
+        bbt_rt::error_journal::Failure::new("event_log", "verify_history", message),
+    );
+}
+
+/// Start at most two historical audits at a time. Call only
+/// after writing the logic readiness line. No task is joined by the bus/logic
+/// owner; a failed stream cannot stop other streams' audits or message traffic.
+/// Each process start audits from genesis, even when a checkpoint already exists.
+pub fn verify_history_after_ready(root: &Path, runtime: &tokio::runtime::Handle) {
+    let root = root.to_owned();
+    runtime.spawn(async move {
+        let scan_root = root.clone();
+        let paths = tokio::task::spawn_blocking(move || -> std::io::Result<Vec<PathBuf>> {
+            std::fs::read_dir(scan_root)?
+                .map(|entry| entry.map(|e| e.path().join("events.sqlite")))
+                .filter(|path| match path {
+                    Ok(path) => path.is_file(),
+                    Err(_) => true,
+                })
+                .collect()
+        })
+        .await;
+        let paths = match paths {
+            Ok(Ok(paths)) => paths,
+            Ok(Err(error)) => {
+                history_failure(&root, &root, error);
+                return;
+            }
+            Err(error) => {
+                history_failure(&root, &root, error);
+                return;
+            }
+        };
+        let mut audits = tokio::task::JoinSet::new();
+        for path in paths {
+            if audits.len() == 2
+                && let Some(Err(error)) = audits.join_next().await
+            {
+                history_failure(&root, &root, error);
+            }
+            let root = root.clone();
+            audits.spawn_blocking(move || {
+                // Separate WAL reader connections; the pool mutex is released
+                // before scanning, and no writer transaction is held here.
+                if let Err(error) = (EventLog { path: path.clone() }).verify_chain() {
+                    history_failure(&root, &path, error);
+                }
+            });
+        }
+        while let Some(result) = audits.join_next().await {
+            if let Err(error) = result {
+                history_failure(&root, &root, error);
+            }
+        }
+    });
+}
+
+#[cfg(test)]
+mod checkpoint_tests {
+    use super::*;
+
+    fn populated(directory: &Path, count: u64) -> EventLog {
+        let log = EventLog::open(directory).unwrap();
+        let key = SigningKey::from_bytes(&[27; 32]); // public fixture, no custody
+        for n in 0..count {
+            log.append(Draft::new("fixture/event", "fixture", Value::from(n)), &key)
+                .unwrap();
+        }
+        log
+    }
+
+    fn checkpoint_at(log: &EventLog, seq: u64) {
+        sqlite::open(&log.path).unwrap().execute(
+            "UPDATE verification_checkpoint SET seq=?1,hash=(SELECT hash FROM events WHERE seq=?1) WHERE id=1",
+            [super::super::sqlint(seq).unwrap()],
+        ).unwrap();
+    }
+
+    fn corrupt_payload(log: &EventLog, seq: u64) {
+        let mut record = log.at(seq).unwrap().unwrap();
+        record.event.source = "tampered".into();
+        let db = sqlite::open(&log.path).unwrap();
+        db.execute_batch("DROP TRIGGER immutable_update").unwrap();
+        db.execute(
+            "UPDATE events SET payload=?1 WHERE seq=?2",
+            params![
+                serde_json::to_vec(&record).unwrap(),
+                super::super::sqlint(seq).unwrap()
+            ],
+        )
+        .unwrap();
+    }
+
+    // keeps: contract EventLogCheckpoint
+    #[test]
+    fn opening_n_rows_with_checkpoint_n_minus_one_verifies_exactly_one() {
+        let temp = tempfile::tempdir().unwrap();
+        let log = populated(temp.path(), 512);
+        checkpoint_at(&log, 511);
+        let (reopened, verified) = EventLog::open_counted(temp.path()).unwrap();
+        assert_eq!(
+            verified, 1,
+            "counts completed Envelope::verify calls in open"
+        );
+        assert_eq!(reopened.last_sequence().unwrap(), 512);
+        assert_eq!(EventLog::open_counted(temp.path()).unwrap().1, 0);
+    }
+
+    // keeps: contract EventLogCheckpoint
+    #[test]
+    fn checkpoint_hash_and_checkpoint_payload_tampering_are_rejected_on_open() {
+        for payload in [false, true] {
+            let temp = tempfile::tempdir().unwrap();
+            let log = populated(temp.path(), 8);
+            checkpoint_at(&log, 7);
+            if payload {
+                corrupt_payload(&log, 7); // unchanged SQL hash must not conceal this
+            } else {
+                let db = sqlite::open(&log.path).unwrap();
+                db.execute_batch(
+                    "DROP TRIGGER immutable_update; UPDATE events SET hash='tampered' WHERE seq=7",
+                )
+                .unwrap();
+            }
+            assert!(
+                EventLog::open(temp.path())
+                    .unwrap_err()
+                    .to_string()
+                    .contains("checkpoint hash mismatch")
+            );
+        }
+    }
+
+    // keeps: contract EventLogCheckpoint
+    #[test]
+    fn suffix_tampering_linkage_gaps_and_invalid_signatures_are_rejected_on_open() {
+        for fault in ["payload", "prev", "gap", "signature", "missing_checkpoint"] {
+            let temp = tempfile::tempdir().unwrap();
+            let log = populated(temp.path(), 8);
+            checkpoint_at(&log, 6);
+            let db = sqlite::open(&log.path).unwrap();
+            db.execute_batch("DROP TRIGGER immutable_update; DROP TRIGGER immutable_delete")
+                .unwrap();
+            match fault {
+                "payload" => corrupt_payload_without_trigger(&log, &db, 7),
+                "prev" => {
+                    db.execute("UPDATE events SET prev='wrong' WHERE seq=7", [])
+                        .unwrap();
+                }
+                "gap" => {
+                    db.execute("DELETE FROM events WHERE seq=7", []).unwrap();
+                }
+                "missing_checkpoint" => {
+                    db.execute("DELETE FROM events WHERE seq=6", []).unwrap();
+                }
+                "signature" => {
+                    let mut row = log.at(8).unwrap().unwrap();
+                    row.provenance.sig[0] ^= 1;
+                    // Keep every chain/hash check valid so Envelope::verify is
+                    // the only check that can reject this forged last row.
+                    db.execute(
+                        "UPDATE events SET payload=?1,hash=?2 WHERE seq=8",
+                        params![serde_json::to_vec(&row).unwrap(), row.hash().unwrap()],
+                    )
+                    .unwrap();
+                }
+                _ => unreachable!(),
+            }
+            assert!(EventLog::open(temp.path()).is_err(), "fault={fault}");
+            let retained: i64 = db
+                .query_row(
+                    "SELECT seq FROM verification_checkpoint WHERE id=1",
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            assert_eq!(
+                retained, 6,
+                "a refused open must not advance its checkpoint"
+            );
+        }
+    }
+
+    fn corrupt_payload_without_trigger(log: &EventLog, db: &rusqlite::Connection, seq: u64) {
+        let mut row = log.at(seq).unwrap().unwrap();
+        row.event.source = "tampered".into();
+        db.execute(
+            "UPDATE events SET payload=?1 WHERE seq=?2",
+            params![
+                serde_json::to_vec(&row).unwrap(),
+                super::super::sqlint(seq).unwrap()
+            ],
+        )
+        .unwrap();
+    }
+
+    // keeps: contract EventLogCheckpoint
+    #[test]
+    fn old_format_without_checkpoint_table_has_bounded_additive_upgrade() {
+        let temp = tempfile::tempdir().unwrap();
+        let log = populated(temp.path(), 512);
+        let db = sqlite::open(&log.path).unwrap();
+        db.execute_batch("DROP TABLE verification_checkpoint")
+            .unwrap();
+        assert_eq!(
+            db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
+        let old_schema: Vec<(String, String)> = db
+            .prepare("SELECT name,sql FROM sqlite_master WHERE sql IS NOT NULL ORDER BY name")
+            .unwrap()
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+            .unwrap()
+            .collect::<std::result::Result<_, _>>()
+            .unwrap();
+        drop(db);
+        assert_eq!(
+            EventLog::open_counted(temp.path()).unwrap().1,
+            STARTUP_TAIL_ROWS
+        );
+        let db = sqlite::open(&log.path).unwrap();
+        for (name, sql) in old_schema {
+            assert_eq!(
+                db.query_row(
+                    "SELECT sql FROM sqlite_master WHERE name=?1",
+                    [&name],
+                    |r| r.get::<_, String>(0)
+                )
+                .unwrap(),
+                sql
+            );
+        }
+        assert!(
+            db.execute("UPDATE events SET subject='forbidden'", [])
+                .is_err()
+        );
+        assert!(db.execute("DELETE FROM events", []).is_err());
+        assert_eq!(log.verify_chain().unwrap(), 512);
+    }
+
+    // keeps: contract EventLogCheckpoint
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn historical_tampering_is_reported_after_ready_with_and_without_a_checkpoint() {
+        for legacy in [false, true] {
+            let root = tempfile::tempdir().unwrap();
+            let stream = root.path().join("retained");
+            let log = populated(&stream, 256);
+            corrupt_payload(&log, 1);
+            if legacy {
+                sqlite::open(&log.path)
+                    .unwrap()
+                    .execute_batch("DROP TABLE verification_checkpoint")
+                    .unwrap();
+            }
+            let (_, verified) = EventLog::open_counted(&stream).unwrap();
+            assert_eq!(verified, if legacy { STARTUP_TAIL_ROWS } else { 0 });
+            // A private real error-journal transport observes the detached audit.
+            let sink = std::os::unix::net::UnixDatagram::bind(root.path().join("diagnostics.sock"))
+                .unwrap();
+            sink.set_read_timeout(Some(std::time::Duration::from_secs(10)))
+                .unwrap();
+            verify_history_after_ready(root.path(), &tokio::runtime::Handle::current());
+            let mut bytes = vec![0; bbt_rt::error_journal::MAX_RECORD];
+            let len = sink.recv(&mut bytes).unwrap();
+            let failure: Value = serde_json::from_slice(&bytes[..len]).unwrap();
+            assert_eq!(failure["source"], "event_log");
+            assert_eq!(failure["operation"], "verify_history");
+            assert!(
+                failure["message"]
+                    .as_str()
+                    .unwrap()
+                    .contains("events.sqlite")
+            );
+            assert!(
+                failure["message"]
+                    .as_str()
+                    .unwrap()
+                    .contains("broken event chain")
+            );
+        }
     }
 }
 
