@@ -20,7 +20,10 @@ store records outside the local filesystem. Missing or unavailable records are
 not evidence that another workspace is empty or that a mutation succeeded.
 
 Use `knowledge_write` for permitted document changes, preserving the record's
-reference, type and etag. Task assignment, reports, acceptance and rejection use
+reference, type and etag. Paths require document-type directories:
+`tasks/<slug>.md`, `specs/<slug>.md`,
+`research/<slug>.md`, `notes/<slug>.md`, etc. Top-level slugs are refused on
+both create and update. Task assignment, reports, acceptance and rejection use
 the corresponding `task_*` tools. The host owns custody, signatures, role
 checks and acceptance; a storage plugin cannot grant those powers. Native
 historical bulk-import tools may be unavailable for an external provider.

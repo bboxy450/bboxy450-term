@@ -9,7 +9,9 @@
 mod bboxy;
 pub(crate) mod commit;
 pub(crate) mod effects;
+mod paths;
 mod read;
+pub(crate) use paths::validate as validate_document_path;
 pub(crate) mod roots;
 pub(crate) mod seat_reads;
 pub mod workspaces;

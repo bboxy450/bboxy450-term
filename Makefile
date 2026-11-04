@@ -2015,6 +2015,13 @@ push-branch:
 	GIT_TERMINAL_PROMPT=0 git push --set-upstream origin "HEAD:refs/heads/$$push_branch"
 
 .PHONY: test-kb-reports check-kb-reports
+.PHONY: test-kb-paths
+test-kb-paths:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked --release -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' document_type_prefix; \
+	cargo test --locked --release -p bboxy450-term-mux --test knowledge --target-dir '$(TARGET_DIR)' document_type_prefix; \
+	cargo check --locked --release -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP)
+
 test-kb-reports:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-doc --test corpus --target-dir '$(TARGET_DIR)'; \

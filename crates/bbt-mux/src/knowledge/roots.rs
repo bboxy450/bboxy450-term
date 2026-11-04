@@ -123,6 +123,17 @@ impl DataSource for BoundSource<'_> {
         self.call(|s| s.changes_since(r))
     }
     fn write(&self, r: d::WriteRequest, c: &super::WriteContext<'_>) -> d::Result<d::WriteResult> {
+        if let Some(path) = r
+            .reference
+            .as_ref()
+            .map(|reference| reference.path.as_str())
+            .or(r.path.as_deref())
+        {
+            super::validate_document_path(
+                path,
+                r.frontmatter["type"].as_str().unwrap_or_default(),
+            )?;
+        }
         self.host.current(self.revision.clone()?)?;
         self.call(|s| s.write(r, c)).map_err(|error| {
             if error.code == "root_changed" {

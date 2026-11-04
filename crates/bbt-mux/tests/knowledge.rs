@@ -70,6 +70,52 @@ impl Fixture {
     }
 }
 
+#[test]
+fn document_type_prefix_refuses_native_creates_and_legacy_updates_without_effects() {
+    let mut f = Fixture::new();
+    let key = f.key.clone();
+    let context = WriteContext::seat(Ulid(900), Some(1), &key);
+    let request = |path: &str| d::WriteRequest {
+        reference: None,
+        path: Some(path.into()),
+        frontmatter: json!({"id":Ulid(100).to_string(),"type":"note"}),
+        body: "body".into(),
+        etag: None,
+    };
+    for path in ["a.md", "misc/a.md"] {
+        let error = BboxySource::new(&f.index)
+            .write(request(path), &context)
+            .unwrap_err();
+        assert_eq!(error.code, "document_type_prefix_required");
+        assert!(!f.root.join(path).exists());
+    }
+    let created = BboxySource::new(&f.index)
+        .write(request("notes/a.md"), &context)
+        .unwrap();
+    assert_eq!(
+        created.record.reference.number,
+        Some(1),
+        "refused writes allocate no number"
+    );
+    f.seed(101, "legacy.md", json!({}), "existing");
+    let reference = f.resolve("legacy.md");
+    let before = std::fs::read(f.root.join("legacy.md")).unwrap();
+    let error = BboxySource::new(&f.index)
+        .write(
+            d::WriteRequest {
+                reference: Some(reference.clone()),
+                path: None,
+                frontmatter: json!({"id":reference.id,"type":"note"}),
+                body: "changed".into(),
+                etag: Some(reference.digest),
+            },
+            &context,
+        )
+        .unwrap_err();
+    assert_eq!(error.code, "document_type_prefix_required");
+    assert_eq!(std::fs::read(f.root.join("legacy.md")).unwrap(), before);
+}
+
 // keeps: spec knowledge-base §6
 #[test]
 fn duplicate_numbers_are_scoped_conflicts_and_do_not_poison_healthy_reads() {

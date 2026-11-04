@@ -1069,6 +1069,10 @@ impl DataSource for BboxySource<'_> {
                 )
             }
         };
+        super::validate_document_path(
+            &path,
+            request.frontmatter["type"].as_str().unwrap_or_default(),
+        )?;
         // Resource admission precedes the effect, so a missing/escaping image
         // cannot make an applied write look like an ordinary rejected write.
         self.resources(&Document {

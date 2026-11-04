@@ -58,7 +58,7 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
         "Create/update e2e, comment, research, note and artifact records as your seat. Create append-only reports at reports/YYYY-MM-DD-slug.md for your assigned task; corrections create a new report with supersedes. For your assigned task preserve every other field and the body, changing only report.summary, report.commit, report.report and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools. Updates retain type, ref and etag."
     };
     let write_help = format!(
-        "{write_help} Research is a supported type: use research/<topic>.md with parent/children for its document tree, derived_from for origins, and links with rel used/evidence for cited sources. Specs and tasks retain derived_from links to their research or spec; these relations feed the provenance graph. The host stamps authorship and signed provenance. Create takes path (slug.md); update takes the ref a fetch or search returned. {IDENTIFIERS}"
+        "{write_help} Research is a supported type: use research/<topic>.md with parent/children for its document tree, derived_from for origins, and links with rel used/evidence for cited sources. Specs and tasks retain derived_from links to their research or spec; these relations feed the provenance graph. The host stamps authorship and signed provenance. Create takes a document-type path (tasks/slug.md, specs/slug.md, notes/slug.md, etc.); update takes the ref a fetch or search returned. Top-level slugs are refused. {IDENTIFIERS}"
     );
     let mut tools = vec![
         json!({"name":"knowledge_status","description":"Inspect this swarm's selected knowledge provider, root and revision, available providers, plugin activation/check state and failures. Read-only; trust, check, enable and selection use operator controls.",
@@ -212,6 +212,11 @@ pub(crate) fn prepare(call: &Call) -> Result<Request, String> {
             {
                 return Err("knowledge write requires a record type".into());
             }
+            crate::knowledge::validate_document_path(
+                path,
+                metadata["type"].as_str().unwrap_or_default(),
+            )
+            .map_err(|error| format!("{}: {}", error.code, error.message))?;
             let id = args
                 .reference
                 .as_ref()
@@ -561,6 +566,29 @@ mod tests {
     use super::*;
     use crate::messaging::wire::IssuerKind;
     use crate::registry::Role;
+
+    #[test]
+    fn document_type_prefix_is_required_for_create_and_update() {
+        for update in [false, true] {
+            let mut args = json!({"frontmatter":{"type":"note"},"body":"body"});
+            if update {
+                args["ref"] = json!({"id":crate::Ulid::from(4_u128).to_string(),"number":1,"slug":"a","path":"a.md","digest":"0".repeat(64)});
+            } else {
+                args["path"] = json!("a.md");
+            }
+            let call = Call {
+                op_id: crate::Ulid::from(5_u128),
+                tool: "knowledge_write".into(),
+                args,
+            };
+            assert!(
+                prepare(&call)
+                    .err()
+                    .unwrap()
+                    .contains("document_type_prefix_required")
+            );
+        }
+    }
 
     // keeps: review 5004 finding 4 — every knowledge tool says which identifiers it takes.
     #[test]
