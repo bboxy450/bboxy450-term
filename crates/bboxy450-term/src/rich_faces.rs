@@ -275,18 +275,6 @@ impl App {
         let Some(id) = self.rich_target() else {
             return false;
         };
-        if input.state.is_pressed()
-            && input.logical_key == Key::Named(NamedKey::Tab)
-            && !input
-                .modifiers
-                .state
-                .intersects(ModifiersState::SUPER | ModifiersState::CONTROL | ModifiersState::ALT)
-        {
-            if let Some(pane) = self.rich_panes.get(&id) {
-                pane.send(Input::Tab);
-            }
-            return true;
-        }
         match keyboard::rich_key(input) {
             keyboard::RichKey::Global => return false,
             keyboard::RichKey::Paste => {

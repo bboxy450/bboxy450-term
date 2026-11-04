@@ -595,6 +595,13 @@ pub fn rich_key(input: &Input<'_>) -> RichKey {
         return RichKey::Paste;
     }
     let action = match &input.logical_key {
+        Key::Named(NamedKey::Tab)
+            if !input.modifiers.state.intersects(
+                ModifiersState::SUPER | ModifiersState::CONTROL | ModifiersState::ALT,
+            ) =>
+        {
+            Some(P::Tab)
+        }
         Key::Named(NamedKey::Enter)
             if input
                 .modifiers

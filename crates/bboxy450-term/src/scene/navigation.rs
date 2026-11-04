@@ -136,7 +136,10 @@ mod view_switch_tests {
     }
 
     #[test]
-    #[allow(clippy::disallowed_methods, reason = "unattended geometry evidence IO, never a UI turn")]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "unattended geometry evidence IO, never a UI turn"
+    )]
     fn view_switch_header_geometry_and_hits() {
         let ids = [0, 1, 2].map(SeatId::from_u128);
         let mut scene = Scene::new();
