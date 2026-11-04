@@ -14,6 +14,50 @@ broken_controls = "Remove the Signal fixture's post-registration readiness reche
 limits = "The shim explores the real Yarn adapter/macro code, not Tokio's internal atomics, lock-free queues, cancellation tree, timers, cooperative budget or OS scheduler. Channel synchronization is one mutex transaction and has no capacity/backpressure semantics; the bounded Receiver name only selects the real adapter enum branch. std Arc reference counts for Wake objects are not instrumented. Existing normal Tokio runtime/source tests remain independent API witnesses. No arbitrary Rust correctness, full memory-model, unbounded fairness or formal refinement claim."
 
 [[contract]]
+name = "WakeCircuitSelf"
+title = "Self-notification suppression and durable recipient-local wake circuit breaker"
+models = ["WakeCircuitSelf", "BrokenWakeCircuitSelf"]
+sources = ["crates/bbt-mux/src/messaging/ledger/circuit.rs", "crates/bbt-mux/src/messaging/ledger.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bboxy450-term/tests/formal_contracts/wake_circuit_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/messaging/service/circuit_tests.rs"]
+assumptions = "One recipient, limit two (production eight), two operator-reset epochs, one native call in flight. Admission/reservation/journaling, completion and operator reset are separate atomic actions. A reservation survives restart or native-unknown; only a proven pre-effect failure can refund its own epoch. No fairness is needed for safety. Time is abstracted to an expired nonlatched window versus a latched window; wall-clock and SQLite/native transport behavior use the real API witnesses. The model does not prove arbitrary Rust, token/dollar bounds, cancellation of already admitted native work, or model-internal loops without messaging."
+property = "Self messages never wake their sender; automatic reservations cannot exceed the bound; elapsed time, restart, ACK, policy edit and replay cannot rearm a latched loop; unknown native outcomes cannot release credit; stale completions preserve reset epochs. Direct operator conversation remains deliverable. Correct models pass and independent self/budget/latch/refund controls fail safety. API witnesses cover retained messages, private reopen, unknown/no-effect results, duplicate reset, zero-time/window rollover and independent recipients."
+checks = ["make test-formal", "make test"]
+
+
+[[contract]]
+name = "WakeCircuitBudget"
+title = "Self-notification suppression and durable recipient-local wake circuit breaker"
+models = ["WakeCircuitBudget", "BrokenWakeCircuitBudget"]
+sources = ["crates/bbt-mux/src/messaging/ledger/circuit.rs", "crates/bbt-mux/src/messaging/ledger.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bboxy450-term/tests/formal_contracts/wake_circuit_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/messaging/service/circuit_tests.rs"]
+assumptions = "One recipient, limit two (production eight), two operator-reset epochs, one native call in flight. Admission/reservation/journaling, completion and operator reset are separate atomic actions. A reservation survives restart or native-unknown; only a proven pre-effect failure can refund its own epoch. No fairness is needed for safety. Time is abstracted to an expired nonlatched window versus a latched window; wall-clock and SQLite/native transport behavior use the real API witnesses. The model does not prove arbitrary Rust, token/dollar bounds, cancellation of already admitted native work, or model-internal loops without messaging."
+property = "Self messages never wake their sender; automatic reservations cannot exceed the bound; elapsed time, restart, ACK, policy edit and replay cannot rearm a latched loop; unknown native outcomes cannot release credit; stale completions preserve reset epochs. Direct operator conversation remains deliverable. Correct models pass and independent self/budget/latch/refund controls fail safety. API witnesses cover retained messages, private reopen, unknown/no-effect results, duplicate reset, zero-time/window rollover and independent recipients."
+checks = ["make test-formal", "make test"]
+
+
+[[contract]]
+name = "WakeCircuitLatch"
+title = "Self-notification suppression and durable recipient-local wake circuit breaker"
+models = ["WakeCircuitLatch", "BrokenWakeCircuitLatch"]
+sources = ["crates/bbt-mux/src/messaging/ledger/circuit.rs", "crates/bbt-mux/src/messaging/ledger.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bboxy450-term/tests/formal_contracts/wake_circuit_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/messaging/service/circuit_tests.rs"]
+assumptions = "One recipient, limit two (production eight), two operator-reset epochs, one native call in flight. Admission/reservation/journaling, completion and operator reset are separate atomic actions. A reservation survives restart or native-unknown; only a proven pre-effect failure can refund its own epoch. No fairness is needed for safety. Time is abstracted to an expired nonlatched window versus a latched window; wall-clock and SQLite/native transport behavior use the real API witnesses. The model does not prove arbitrary Rust, token/dollar bounds, cancellation of already admitted native work, or model-internal loops without messaging."
+property = "Self messages never wake their sender; automatic reservations cannot exceed the bound; elapsed time, restart, ACK, policy edit and replay cannot rearm a latched loop; unknown native outcomes cannot release credit; stale completions preserve reset epochs. Direct operator conversation remains deliverable. Correct models pass and independent self/budget/latch/refund controls fail safety. API witnesses cover retained messages, private reopen, unknown/no-effect results, duplicate reset, zero-time/window rollover and independent recipients."
+checks = ["make test-formal", "make test"]
+
+
+[[contract]]
+name = "WakeCircuitRefund"
+title = "Self-notification suppression and durable recipient-local wake circuit breaker"
+models = ["WakeCircuitRefund", "BrokenWakeCircuitRefund"]
+sources = ["crates/bbt-mux/src/messaging/ledger/circuit.rs", "crates/bbt-mux/src/messaging/ledger.rs", "crates/bbt-mux/src/messaging/service.rs", "crates/bboxy450-term/tests/formal_contracts/wake_circuit_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/messaging/service/circuit_tests.rs"]
+assumptions = "One recipient, limit two (production eight), two operator-reset epochs, one native call in flight. Admission/reservation/journaling, completion and operator reset are separate atomic actions. A reservation survives restart or native-unknown; only a proven pre-effect failure can refund its own epoch. No fairness is needed for safety. Time is abstracted to an expired nonlatched window versus a latched window; wall-clock and SQLite/native transport behavior use the real API witnesses. The model does not prove arbitrary Rust, token/dollar bounds, cancellation of already admitted native work, or model-internal loops without messaging."
+property = "Self messages never wake their sender; automatic reservations cannot exceed the bound; elapsed time, restart, ACK, policy edit and replay cannot rearm a latched loop; unknown native outcomes cannot release credit; stale completions preserve reset epochs. Direct operator conversation remains deliverable. Correct models pass and independent self/budget/latch/refund controls fail safety. API witnesses cover retained messages, private reopen, unknown/no-effect results, duplicate reset, zero-time/window rollover and independent recipients."
+checks = ["make test-formal", "make test"]
+
+
+[[contract]]
 name = "EventLogCheckpoint"
 title = "Checkpointed event-log startup and post-readiness historical audit"
 models = ["EventLogCheckpoint", "BrokenEventLogCheckpoint"]

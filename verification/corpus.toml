@@ -1014,12 +1014,20 @@ frontend = "project"
 
 [[model]]
 name = "WatcherSettle"
+expected = "pass"
+frontend = "project"
+
+[[model]]
 name = "RichHost"
 expected = "pass"
 frontend = "project"
 
 [[model]]
 name = "BrokenWatcherSettle"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "BrokenRichHost"
 expected = "safety"
 frontend = "project"
@@ -1146,6 +1154,10 @@ frontend = "project"
 
 [[model]]
 name = "WatcherChanges"
+expected = "pass"
+frontend = "project"
+
+[[model]]
 name = "GuiBackendPreservation"
 expected = "pass"
 frontend = "project"
@@ -1182,6 +1194,10 @@ frontend = "project"
 
 [[model]]
 name = "BrokenWatcherAdmission"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "BrokenGuiBackendPreservation"
 expected = "safety"
 frontend = "project"
@@ -1203,5 +1219,45 @@ frontend = "project"
 
 [[model]]
 name = "BrokenTieredSeatRecovery"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "WakeCircuitSelf"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenWakeCircuitSelf"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "WakeCircuitBudget"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenWakeCircuitBudget"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "WakeCircuitLatch"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenWakeCircuitLatch"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "WakeCircuitRefund"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenWakeCircuitRefund"
 expected = "safety"
 frontend = "project"

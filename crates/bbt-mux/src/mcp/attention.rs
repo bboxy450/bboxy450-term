@@ -25,14 +25,14 @@ pub(crate) fn catalogue() -> Vec<Value> {
     [
         (
             "attention_get",
-            "Read your receiver-owned wake overrides and role defaults. Inbox storage and operator mute are separate from waking a model.",
+            "Read your receiver-owned wake overrides, role defaults and durable automatic wake circuit state. Self-authored messages never wake you; a tripped circuit retains peer messages in your inbox until a fresh direct operator conversation resets it.",
             json!({}),
             json!([]),
             true,
         ),
         (
             "attention_set",
-            "Set one destination and class to wake, inbox or digest for your own seat only. Conversation from the operator, delegated work and replies in your own thread always wake. This never mutes traffic or changes channel grants.",
+            "Set one destination and class to wake, inbox or digest for your own seat only. Operator conversation always wakes. Peer delegation and own-thread replies override receiver policy, subject to the automatic wake circuit breaker. Self-authored messages stay in the inbox. Policy edits cannot reset the breaker. This never mutes traffic or changes channel grants.",
             json!({
                 "destination":{"type":"string","minLength":1,"maxLength":230},
                 "class":{"enum":["conversation","event"]},

@@ -1,0 +1,44 @@
+{
+  "commands": [
+    {
+      "command": "make test-wake-circuit-breaker",
+      "exit_code": 0,
+      "log": "/tmp/sable-wake-circuit-targeted-final.log",
+      "sha256": "bf3d12fe51feaf49981a2f74fa5716c01b84f2d59dcd465dd38659f8d32360e8"
+    },
+    {
+      "command": "make test-licenses",
+      "exit_code": 0,
+      "log": "/tmp/sable-wake-circuit-licenses.log",
+      "sha256": "8d020bd0108031ab756249c985d31396fced876a667a060b12f2f61e1c617c7a"
+    },
+    {
+      "command": "make test-wake-circuit-breaker",
+      "mutation": "reserve ninth automatic wake by changing count >= LIMIT to count > LIMIT",
+      "exit_code": 2,
+      "expected": "assertion failure; compilation success",
+      "log_sha256": "de51cf346c23b411d29edfba6a3de44754a9d21d68f2a04d9d7ca13a686bfc5a"
+    }
+  ],
+  "coverage": {
+    "circuit_tests": {
+      "passed": 7,
+      "failed": 0
+    },
+    "existing_messaging_policy_tests": {
+      "passed": 37,
+      "failed": 0,
+      "ignored": 1
+    }
+  },
+  "source_sha256": {
+    "crates/bbt-mux/src/messaging/ledger/circuit.rs": "7ef68e79ba2b94e674821b097be90cc07e3ae922cc4f5a93a0b1b70ab26137bd",
+    "crates/bbt-mux/src/messaging/ledger.rs": "723dfeadac50557076b268725267c548b1f9b28d127902799f2255195771f101",
+    "crates/bbt-mux/src/messaging/service.rs": "b8ba7b1ff36b8e80839f7d22802631524150b9e0889d32995b410c33a5a88051",
+    "crates/bbt-mux/src/messaging/service/circuit_tests.rs": "f601c9d3fe77e03a8fbe09519cd4a3bda97b8c07c65d6071c690ffa253777c0b",
+    "crates/bboxy450-term/tests/formal_contracts/wake_circuit_model.rs": "1bdc160aa5fd9e3db3e84f283bde283613738039ca46b8921b6b282077bc9c02"
+  },
+  "formal_inventory_repair": "Four pre-existing concatenated model records made corpus.toml invalid TOML. Restored separate headers/expected verdicts without removing any model; eight circuit cases added.",
+  "limits": "Automatic message wake admission only; no token-cost bound, no arbitrary Rust refinement, no recall of already queued native turns.",
+  "task_tooling": "Direct operator request recorded in notes/2026-11-04-wake-circuit-breaker.md; live authenticated solo/oracle role, no task_delegate or ctl in exposed tool catalogue."
+}

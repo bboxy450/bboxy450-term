@@ -24,6 +24,7 @@ use crate::{
     store::{Result, Store, events::Draft, invalid, sqlint, sqlite::SqliteStore},
 };
 
+mod circuit;
 #[cfg(test)]
 mod power_tests;
 mod suppression;
@@ -232,6 +233,7 @@ impl Ledger {
         {
             let db = ledger.store.connection()?;
             suppression::install(&db)?;
+            circuit::install(&db)?;
         }
         ledger.recover()?;
         ledger.classify_legacy()?;
@@ -888,6 +890,7 @@ impl Ledger {
         if busy {
             return Ok(None);
         }
+        circuit::suppress(&tx, recipient, now)?;
         let (credit, at, streak): (u64, u64, u64) = tx
             .query_row(
                 "SELECT credit,at_ms,streak FROM msg_scheduler WHERE recipient=?1",
@@ -915,7 +918,10 @@ impl Ledger {
             (Some(_), Some(w)) if streak >= 4 => w,
             (Some(o), _) => o,
             (_, Some(w)) => w,
-            (_, _) => return Ok(None),
+            (_, _) => {
+                tx.commit()?;
+                return Ok(None);
+            }
         };
         let class = if first.class == Class::Oracle && credit >= 1000 {
             Class::Oracle
@@ -1016,6 +1022,11 @@ impl Ledger {
             digest,
             wake_members,
         };
+        if !circuit::reserve(&tx, &work, now)? {
+            circuit::suppress(&tx, recipient, now)?;
+            tx.commit()?;
+            return Ok(None);
+        }
         tx.execute(
             "INSERT INTO msg_attempts(id,recipient,data) VALUES(?1,?2,?3)",
             params![
@@ -1059,6 +1070,13 @@ impl Ledger {
         tx.commit()?;
         Ok(Some(work))
     }
+    pub(crate) fn circuit_view(&self, recipient: Ulid) -> Result<serde_json::Value> {
+        let db = self.store.connection()?;
+        Ok(serde_json::to_value(circuit::status(
+            &db,
+            Recipient::Seat(recipient),
+        )?)?)
+    }
     pub fn finish(
         &self,
         work: &Work,
@@ -1092,6 +1110,7 @@ impl Ledger {
             }
             return Ok(());
         }
+        circuit::finish(&tx, work.id, outcome.evidence == Evidence::RecipientStored)?;
         for message in &work.messages {
             let bytes: Vec<u8> = tx.query_row(
                 "SELECT data FROM msg_deliveries WHERE message=?1 AND recipient=?2 AND agent=?3",
@@ -1664,6 +1683,17 @@ fn insert_deliveries(
     });
     for route in delivery.routes {
         let remote_pending = same_device.is_some_and(|local| !local.contains(&route.recipient));
+        let circuit_note = if remote_pending {
+            None
+        } else {
+            circuit::admission(
+                tx,
+                sender,
+                route.recipient,
+                envelope.context,
+                envelope.kind.class(),
+            )?
+        };
         let mut receipt = Receipt {
             message_sequence: sequence,
             message: envelope.id,
@@ -1701,7 +1731,11 @@ fn insert_deliveries(
             },
         };
         if !remote_pending {
-            if let Some(reason) = suppression::reason(tx, message, route.recipient)? {
+            if circuit_note.is_some() {
+                receipt.wake = Some(ReceiptWake::None {
+                    reason: Some(bbt_proto::messaging::WakeReason::Policy),
+                });
+            } else if let Some(reason) = suppression::reason(tx, message, route.recipient)? {
                 receipt.wake = Some(ReceiptWake::None {
                     reason: Some(reason),
                 });
@@ -1723,6 +1757,9 @@ fn insert_deliveries(
         } else {
             receipt.evidence = Evidence::RecipientStored;
             receipt.note = "recipient inbox committed before scheduling".into();
+        }
+        if let Some(note) = circuit_note {
+            receipt.note = note.into();
         }
         if !remote_pending && receipt.arrivals.iter().all(|a| a.paused) {
             receipt.held = Some("subscription paused".into());

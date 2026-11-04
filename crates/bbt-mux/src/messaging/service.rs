@@ -3058,6 +3058,10 @@ impl Messaging {
     /// One explicitly selected seat, read without another consumer or scheduler mutation.
     pub fn attention_view(&self, record: &SeatRecord) -> Result<serde_json::Value> {
         let mut value = crate::mcp::attention::view(record).map_err(invalid)?;
+        value["circuit_breaker"] = match self.swarms.get(&record.swarm) {
+            Some(swarm) => swarm.ledger.circuit_view(record.id)?,
+            None => serde_json::Value::Null,
+        };
         let summary = self.deferred_view(record)?;
         value["deferred"] = summary
             .as_ref()
@@ -4375,6 +4379,8 @@ mod thread_tests {
     }
 }
 
+#[cfg(test)]
+mod circuit_tests;
 #[cfg(test)]
 mod suppression_tests;
 

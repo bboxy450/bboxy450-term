@@ -1693,6 +1693,13 @@ test-yarn-model:
 	cargo check --locked -p bboxy450-yarn --no-default-features --features model --target-dir '$(TARGET_DIR)'; \
 	cargo clippy --locked -p bboxy450-tlc -p bboxy450-yarn -p bboxy450-yarn-macros --features bboxy450-yarn/model --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 
+test-wake-circuit-breaker: tools init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked -p bboxy450-term-mux --lib -E 'test(circuit_)' --target-dir '$(TARGET_DIR)'; \
+	cargo nextest run --locked -p bboxy450-term-mux --test messaging_flow --test messaging_suppression --test attention_policy --target-dir '$(TARGET_DIR)'
+
+.PHONY: test-wake-circuit-breaker
+
 test-formal-contracts:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)'; \
