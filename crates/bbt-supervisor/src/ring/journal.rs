@@ -296,6 +296,7 @@ impl Journal {
         self.buffer.extend_from_slice(bytes);
         Ok(())
     }
+    #[allow(clippy::redundant_closure_call, reason = "cfg(test) injects partial writes inside this rollback boundary")]
     fn flush_buffer(&mut self) -> Result<()> {
         if !self.buffer.is_empty() {
             // write_all may have written a prefix before ENOSPC. Retain the
