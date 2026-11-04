@@ -32,6 +32,8 @@ impl App {
                         composer_len: pane.snapshot.composer_len,
                         scroll: pane.snapshot.scroll,
                         approval_choices: pane.snapshot.approval_choices.clone(),
+                        ime_allowed: self.text_ime_allowed(),
+                        ime_caret: pane.snapshot.ime_caret.map(|r| [r.x, r.y, r.w, r.h]),
                     },
                 ))
             })
@@ -94,6 +96,7 @@ impl App {
         self.rich_panes
             .retain(|id, _| visible.iter().any(|(s, _, _, _)| s == id));
         let focused = self.rich_target();
+        let mut focus_changed = false;
         for (id, rect, generation, path) in visible {
             if self
                 .rich_panes
@@ -135,10 +138,14 @@ impl App {
                 && pane.send(Input::Focus(focused == Some(id)))
             {
                 self.rich_focused.insert(id, focused == Some(id));
+                focus_changed = true;
             }
         }
         self.rich_focused
             .retain(|id, _| self.rich_panes.contains_key(id));
+        if focus_changed {
+            self.sync_text_ime();
+        }
     }
     pub(super) fn rich_drain(&mut self) {
         let start = Instant::now();
@@ -212,12 +219,13 @@ impl App {
         }
         ops
     }
-    fn rich_target(&self) -> Option<SeatId> {
+    pub(super) fn rich_target(&self) -> Option<SeatId> {
         if self.app_overlays.open()
             || self.document.open
             || self.launcher.is_some()
             || self.local_tab.is_some()
             || self.composer.view.focus
+            || self.reject_focus
         {
             return None;
         }
@@ -285,6 +293,7 @@ impl App {
                 };
                 self.pane_faces.insert(bbt_mux::Ulid(id.0.0), face);
                 self.rich_sync();
+                self.sync_text_ime();
                 self.request_redraw();
                 return true;
             }

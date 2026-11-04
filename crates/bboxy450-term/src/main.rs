@@ -3083,17 +3083,21 @@ impl App {
     fn settings_ime(&self) -> bool {
         matches!(&self.local_tab,Some(LocalTab::Settings {controller,..}) if controller.editing())
     }
+    fn text_ime_allowed(&self) -> bool {
+        if self.app_overlays.open() {
+            self.app_overlays.focused_field().is_some()
+        } else {
+            !self.document.open
+                && (self.launcher.is_some()
+                    || self.composer.view.focus
+                    || self.reject_focus
+                    || self.settings_ime()
+                    || self.rich_target().is_some())
+        }
+    }
     fn sync_text_ime(&self) {
         if let Some(window) = &self.window {
-            window.set_ime_allowed(if self.app_overlays.open() {
-                self.app_overlays.focused_field().is_some()
-            } else {
-                !self.document.open
-                    && (self.launcher.is_some()
-                        || self.composer.view.focus
-                        || self.reject_focus
-                        || self.settings_ime())
-            });
+            window.set_ime_allowed(self.text_ime_allowed());
         }
     }
     fn settings_action(&mut self, action: settings_controller::Action) {
@@ -3746,12 +3750,7 @@ impl App {
         }
         self.task_reads();
         self.refresh_conversation();
-        if let Some(window) = &self.window {
-            window.set_ime_allowed(
-                !self.document.open
-                    && (self.launcher.is_some() || self.composer.view.focus || self.reject_focus),
-            );
-        }
+        self.sync_text_ime();
         self.request_redraw();
     }
     fn review_task(&mut self, id: bbt_mux::Ulid, reason: Option<String>) {
@@ -3969,11 +3968,7 @@ impl App {
                 }
             }
             self.refresh_conversation();
-            if let Some(window) = &self.window {
-                window.set_ime_allowed(
-                    self.launcher.is_some() || self.composer.view.focus || self.reject_focus,
-                );
-            }
+            self.sync_text_ime();
             self.request_redraw();
             return;
         }
@@ -4023,9 +4018,7 @@ impl App {
             &self.composer_client.protected_image_paths(),
         );
         self.composer_notice();
-        if let Some(window) = &self.window {
-            window.set_ime_allowed(self.launcher.is_some() || self.composer.view.focus);
-        }
+        self.sync_text_ime();
         self.request_redraw();
     }
     /// Native sends and the UI relay admit the same prepared composer batch.
@@ -4311,11 +4304,7 @@ impl App {
             }
             None => {}
         }
-        if let Some(window) = &self.window {
-            window.set_ime_allowed(
-                self.composer.view.focus || self.reject_focus || self.settings_ime(),
-            );
-        }
+        self.sync_text_ime();
         self.request_redraw();
     }
     fn launcher_command(&mut self, command: LauncherCommand) {
@@ -4809,6 +4798,7 @@ impl App {
             }
             Err(error) => self.logger.write(format!("focus refused: {error}")),
         }
+        self.sync_text_ime();
     }
     fn attention_focus_events(&mut self, events: &[InputEvent], explicit: bool) {
         let Some(model) = &self.live_state else {
@@ -5617,7 +5607,7 @@ impl App {
         );
         self.install_desktop_menu();
         if !self.document.open
-            && (self.launcher.is_some() || self.composer.view.focus || self.settings_ime())
+            && self.text_ime_allowed()
         {
             window.set_ime_allowed(true);
             self.logger.write("debug text field open");
@@ -8186,6 +8176,14 @@ impl App {
             let caret = regions.caret.unwrap_or(regions.search);
             self.window.as_ref().unwrap().set_ime_cursor_area(
                 winit::dpi::LogicalPosition::new(caret.x, caret.y),
+                winit::dpi::LogicalSize::new(caret.w, caret.h),
+            );
+        }
+        if let Some(pane) = self.rich_target().and_then(|id| self.rich_panes.get(&id))
+            && let Some(caret) = pane.snapshot.ime_caret
+        {
+            self.window.as_ref().unwrap().set_ime_cursor_area(
+                winit::dpi::LogicalPosition::new(pane.rect.x + caret.x, pane.rect.y + caret.y),
                 winit::dpi::LogicalSize::new(caret.w, caret.h),
             );
         }

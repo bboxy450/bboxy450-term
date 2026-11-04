@@ -509,6 +509,8 @@ pub struct UiRichObservation {
     pub composer_len: usize,
     pub scroll: [f32; 2],
     pub approval_choices: Vec<[f32; 4]>,
+    pub ime_allowed: bool,
+    pub ime_caret: Option<[f32; 4]>,
 }
 
 /// The GUI's solved tree, not a reconstruction by logic or ctl.

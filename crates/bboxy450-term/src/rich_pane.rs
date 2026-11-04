@@ -50,6 +50,7 @@ pub struct Snapshot {
     pub order_len: usize,
     pub duplicate_durable: u64,
     pub send_rect: Option<Rect>,
+    pub ime_caret: Option<Rect>,
     pub focused: bool,
     pub composer_len: usize,
     pub scroll: [f32; 2],
@@ -176,7 +177,8 @@ impl Pane {
                         Ok(frame)=>(Arc::new(paints(frame,rect)),bridge.state.error.clone(),frame.layout.as_ref().and_then(|l|bboxy450_harness::frontends::gui::view::find(l,"composer/send")).map(|n|n.rect)),Err(error)=>(Arc::default(),Some(error),None)
                     };
                     let approval_choices=view.frame.actions.iter().filter_map(|(r,a)|matches!(a,Action::Approval(..)).then_some([r.x,r.y,r.w,r.h])).take(16).collect();
-                    let snapshot=Snapshot{generation,completed_inputs,notice:view.notice.clone(),retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,focused:view.focused,composer_len:view.composer.view.text.len(),scroll:[view.frame.scroll,view.frame.max_scroll],approval_choices,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
+                    let ime_caret=view.frame.layout.as_ref().and_then(|l|ui::modules::composer::Regions::new(l).ok()).and_then(|r|r.caret);
+                    let snapshot=Snapshot{generation,completed_inputs,notice:view.notice.clone(),retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,ime_caret,focused:view.focused,composer_len:view.composer.view.text.len(),scroll:[view.frame.scroll,view.frame.max_scroll],approval_choices,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
                     out.publish(snapshot);
                     published.store(completed_inputs, Ordering::Release);
                     (bridge,view,rect,out,completed_inputs)

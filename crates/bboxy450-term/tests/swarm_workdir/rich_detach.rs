@@ -103,7 +103,28 @@ fn rich_app_routes_composer_approval_scroll_and_focus() {
         .unwrap()
         .to_owned();
     let seat = f.spawn("bboxy450-harness", &swarm, None);
-    rich(&f, &seat, 1);
+    let initial = wait(|| {
+        let r = rich(&f, &seat, 1);
+        (r["focused"] == true && r["ime_caret"].is_array()).then_some(r)
+    });
+    assert_eq!(
+        initial["ime_allowed"], true,
+        "focused native composer has IME disabled"
+    );
+    assert!(
+        initial["ime_caret"].is_array(),
+        "native composer has no shared candidate area"
+    );
+    f.ctl(&[
+        "ui",
+        "input",
+        &json!({"kind":"preedit","text":"漢","cursor":[3,3]}).to_string(),
+    ]);
+    f.ctl(&[
+        "ui",
+        "input",
+        &json!({"kind":"cancel_composition"}).to_string(),
+    ]);
     let identity_before = identity(&row(&f, &seat));
     submit(&f, "Show the native retained transcript");
     let full = wait(|| {
