@@ -110,5 +110,29 @@
     "ledger": "missing",
     "terminal": false,
     "retry_allowed": false
+  },
+  "oracle_reported_activation": {
+    "message": "01M6J84XF3T80DMWS7A11JMTNJ",
+    "command": "make reopen-prepared",
+    "exit_code": 0,
+    "installed_running_source": "4b8cd49cdb64ccb440213db8617a334c8e2fdd87",
+    "gui_pid": 54941,
+    "gui_instance": "01M6J7VZEC8A3YCVS4942Q36DE",
+    "native_frame": 106,
+    "ready": true,
+    "operator_confirms_embedded_gui_works": true,
+    "session_identities_preserved": true,
+    "independently_probed_by_executor": false
+  },
+  "final_delivery_report_registration": {
+    "path": "reports/2026-11-04-codex-trusted-handoff-delivered.md",
+    "original_op_id": "01M6J8718GYVWXB8BCQSXCDGPS",
+    "status": "unknown",
+    "ledger": "retained",
+    "terminal": false,
+    "retry_allowed": false,
+    "error": "activity projection backlog; write intent retained; never automatically redispatch",
+    "latest_outcome_query": "01M6J8B5828CYQXVNMKM8Y3YKB",
+    "new_material_evidence": "Later Oracle/operator-confirmed live deployment; original unobserved draft was not replayed"
   }
 }
