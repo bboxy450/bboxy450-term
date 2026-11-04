@@ -31,6 +31,9 @@ pub(crate) fn chrome_line(value: &str) -> String {
 pub(crate) fn chrome_title(harness: &str, title: &str) -> String {
     if harness == "bboxy450-harness" {
         let (prefix, phase) = title.split_once(" · ").unwrap_or(("", title));
+        if phase == "reasoning" {
+            return chrome_line(&format!("{}Reasoning", &title[..title.len() - phase.len()]));
+        }
         let verb = phase.split_whitespace().next().unwrap_or("");
         if matches!(
             verb,
