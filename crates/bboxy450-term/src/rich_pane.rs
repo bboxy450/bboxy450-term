@@ -28,17 +28,45 @@ use tokio::sync::{Notify, mpsc};
 #[derive(Debug)]
 pub enum Input {
     Edit(ui::text_edit::Command),
+    Attach(bboxy450_harness::frontends::gui::attachments::Intake),
     Enter,
+    Tab,
     Cancel,
     Click([f32; 2]),
     Wheel([f32; 2], f32),
     Focus(bool),
     Size(Rect),
 }
+impl Input {
+    /// Native paste and private fixtures enter the same identity-fenced worker queue.
+    pub fn clipboard(content: bboxy450_term_desktop::ClipboardContent) -> Self {
+        use bboxy450_harness::frontends::gui::attachments::Intake;
+        use bboxy450_term_desktop::{ClipboardContent, ClipboardImageFormat};
+        match content {
+            ClipboardContent::Text(text) => Self::Edit(ui::text_edit::Command::Insert(text)),
+            ClipboardContent::Image { bytes, format } => Self::Attach(match format {
+                ClipboardImageFormat::Png => Intake::Png(bytes),
+                ClipboardImageFormat::Tiff => Intake::EncodedImage {
+                    bytes,
+                    png: |bytes| {
+                        bboxy450_term_desktop::clipboard_image_png(
+                            bytes,
+                            ClipboardImageFormat::Tiff,
+                        )
+                        .map_err(|e| e.to_string())
+                    },
+                },
+            }),
+        }
+    }
+}
 #[derive(Clone, Default)]
 pub struct Snapshot {
     pub paints: Arc<Vec<c::Paint>>,
     pub ready: bool,
+    pub images: Vec<Arc<bbt_render::chrome::icons::Image>>,
+    pub attachment_count: usize,
+    pub pending_attachment_count: usize,
     pub revision: u64,
     pub generation: u64,
     /// Worker completion receipt, including rejected captured input.
@@ -74,7 +102,10 @@ struct Request {
 }
 impl Request {
     fn remote_allowed(&self, current: Option<Identity>, ready: bool, retired: bool) -> bool {
-        let remote = matches!(&self.input, Input::Enter | Input::Click(_) | Input::Cancel);
+        let remote = matches!(
+            &self.input,
+            Input::Enter | Input::Click(_) | Input::Cancel | Input::Attach(_) | Input::Tab
+        );
         !remote || (ready && !retired && self.identity.is_some() && self.identity == current)
     }
 }
@@ -136,6 +167,7 @@ impl Pane {
                 let published=worker_published.clone();
                 let prepared=bboxy450_harness::runtime::blocking(move || {
                     bridge.drain(Duration::from_micros(300));
+                    view.update_inputs(&bridge);
                     for request in batch {
                         let request:Request=request;
                         completed_inputs+=1;
@@ -147,11 +179,13 @@ impl Pane {
                         if !same && request.identity.is_some() && matches!(request.input,Input::Edit(_)){continue;}
                         match request.input {
                         Input::Size(r)=>rect=r,
+                        Input::Attach(source)=>view.intake(source,&bridge),
                         Input::Focus(f)=>{view.focused=f;view.invalidate();},
                         Input::Edit(cmd)=>{
                             let key=match &cmd{ui::text_edit::Command::Move{motion:ui::text_edit::Motion::Up,..}=>Some(ui::modules::approval::Key::Up),ui::text_edit::Command::Move{motion:ui::text_edit::Motion::Down,..}=>Some(ui::modules::approval::Key::Down),_=>None};
                             if !key.is_some_and(|key|view.approval_key(key,&bridge)||view.complete(key)){view.edit(cmd);}
                         },
+                        Input::Tab=>{view.run_completion(&bridge);},
                         Input::Enter=>{if !view.approval_key(ui::modules::approval::Key::Enter,&bridge)&&!view.run_completion(&bridge){send_draft(&mut view,&bridge);}},
                         Input::Cancel=>{view.cancel_prompt(&bridge);},
                         // Adapted from bboxy450-harness gui/window.rs pointer routing.
@@ -178,7 +212,7 @@ impl Pane {
                     };
                     let approval_choices=view.frame.actions.iter().filter_map(|(r,a)|matches!(a,Action::Approval(..)).then_some([r.x,r.y,r.w,r.h])).take(16).collect();
                     let ime_caret=view.frame.layout.as_ref().and_then(|l|ui::modules::composer::Regions::new(l).ok()).and_then(|r|r.caret);
-                    let snapshot=Snapshot{generation,completed_inputs,notice:view.notice.clone(),retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,ime_caret,focused:view.focused,composer_len:view.composer.view.text.len(),scroll:[view.frame.scroll,view.frame.max_scroll],approval_choices,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
+                    let snapshot=Snapshot{images:view.attachment_images(),attachment_count:view.attachment_count(),pending_attachment_count:view.pending_attachment_count(),generation,completed_inputs,notice:view.notice.clone(),retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,ime_caret,focused:view.focused,composer_len:view.composer.view.text.len(),scroll:[view.frame.scroll,view.frame.max_scroll],approval_choices,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
                     out.publish(snapshot);
                     published.store(completed_inputs, Ordering::Release);
                     (bridge,view,rect,out,completed_inputs)

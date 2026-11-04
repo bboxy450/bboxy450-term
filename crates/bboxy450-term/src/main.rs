@@ -8124,6 +8124,12 @@ impl App {
             self.document.image_failed(reason);
             self.document_layout = None;
         }
+        for pane in self.rich_panes.values() {
+            self.gpu
+                .as_mut()
+                .unwrap()
+                .install_document_images(&pane.snapshot.images)?;
+        }
         let layouts = self.solve_ui(logical)?;
         let bounds = self.pane_bounds.clone();
         self.focus_layout_ready();
@@ -9217,6 +9223,20 @@ impl ApplicationHandler<UiEvent> for App {
                 button: MouseButton::Right,
                 ..
             } => self.overlay_right_click(self.pointer),
+            WindowEvent::DroppedFile(path) => {
+                if let Some(pane) = self
+                    .focus
+                    .stage
+                    .as_ref()
+                    .and_then(|stage| stage.focused)
+                    .filter(|seat| self.rich_face(*seat))
+                    .and_then(|seat| self.rich_panes.get(&seat))
+                {
+                    pane.send(bboxy450_term::rich_pane::Input::Attach(
+                        bboxy450_harness::frontends::gui::attachments::Intake::Files(vec![path]),
+                    ));
+                }
+            }
             WindowEvent::Ime(event) => self.ime_input(event),
             WindowEvent::KeyboardInput { event, .. } => {
                 let input = self.keyboard.event(&event, self.modifiers);
