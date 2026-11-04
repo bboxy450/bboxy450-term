@@ -1188,7 +1188,6 @@ pub struct Records {
     retry_started: Option<std::time::Instant>,
     retry_at: Option<std::time::Instant>,
     tasks_loaded: bool,
-    task_load_started: Option<std::time::Instant>,
     retries: u8,
     /// `issue` came from a refused read, so the next good read clears it.
     read_issue: bool,
@@ -1245,7 +1244,6 @@ impl Records {
         self.retry_started = None;
         self.retry_at = None;
         self.tasks_loaded = false;
-        self.task_load_started = Some(std::time::Instant::now());
         self.retries = 0;
         self.deadline_retried.clear();
         self.pending.retain(|_, request| {
@@ -1290,7 +1288,6 @@ impl Records {
             self.issue = None;
             self.read_issue = false;
         }
-        self.task_load_started = Some(std::time::Instant::now());
         self.refresh();
     }
     pub fn panel_state(
@@ -1310,11 +1307,6 @@ impl Records {
             retry_in: self
                 .retry_at
                 .map(|at| at.saturating_duration_since(now).as_millis().div_ceil(1000) as u64),
-            phase: (now
-                .saturating_duration_since(self.task_load_started.unwrap_or(now))
-                .as_millis()
-                / 300
-                % 4) as u8,
         })
     }
     pub fn take_retry(&mut self) -> Option<(u64, std::time::Duration)> {
@@ -1415,7 +1407,6 @@ impl Records {
         *self = Self {
             scope: Some(scope),
             retry_epoch,
-            task_load_started: Some(std::time::Instant::now()),
             pending,
             ..Default::default()
         };

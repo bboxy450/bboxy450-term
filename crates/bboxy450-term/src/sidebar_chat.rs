@@ -33,6 +33,20 @@ impl Drop for TaskPanelTimer {
 }
 
 impl App {
+    pub(super) fn task_panel_animating(&self) -> bool {
+        fn visible(node: &c::Layout) -> bool {
+            if matches!(&node.kind, c::LayoutKind::Named(key) if key == "conversation/tasks-progress")
+            {
+                return node.rect.w > 0. && node.rect.h > 0.;
+            }
+            node.children.iter().any(visible)
+        }
+        matches!(self.task_stream.entries.first(), Some(Entry::TaskState { data }) if data.loading)
+            && self
+                .conversation_layout
+                .as_ref()
+                .is_some_and(|layout| visible(&layout.layout))
+    }
     pub(super) fn sync_task_panel(&mut self) {
         if let Some((epoch, delay)) = self.task_records.take_retry() {
             let proxy = self.proxy.clone();
@@ -73,9 +87,12 @@ impl App {
         if epoch != self.task_records.retry_epoch() || self.task_panel_timer.is_none() {
             return;
         }
+        let previous = self.task_stream.entries.clone();
         self.sync_task_panel();
-        self.conversation_layout = None;
-        self.request_redraw();
+        if previous != self.task_stream.entries {
+            self.conversation_layout = None;
+            self.request_redraw();
+        }
     }
 }
 

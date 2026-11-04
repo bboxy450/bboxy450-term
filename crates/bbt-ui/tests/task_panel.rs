@@ -37,7 +37,6 @@ fn task_loading_and_retry_are_centered_and_refresh_is_clickable() {
                     loading,
                     message: if loading { "" } else { "Workspace is opening." }.into(),
                     retry_in: Some(5),
-                    phase: 1,
                 };
                 let layout = state
                     .element(ctx, size)
@@ -46,6 +45,15 @@ fn task_loading_and_retry_are_centered_and_refresh_is_clickable() {
                 let content = find(&layout, "conversation/tasks-state/content")
                     .unwrap()
                     .rect;
+                let active_rims = c::paint(&layout, ctx).into_iter().filter(|op| matches!(op,
+                    c::Paint::Material { kind: ui::Material::Rim, rim: Some(rim), rect, .. }
+                    if rim.activity == ui::GlowActivity::Active && rect.w == 112. && rect.h == 4.
+                )).count();
+                assert_eq!(
+                    active_rims,
+                    usize::from(loading),
+                    "loading uses the shared active rim"
+                );
                 assert!(
                     content.x >= 0. && content.right() <= size[0] + 1.,
                     "content stays inside {size:?}: {content:?}"

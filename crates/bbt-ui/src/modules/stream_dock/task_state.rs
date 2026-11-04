@@ -4,7 +4,7 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! Empty task-panel states. The host owns requests, retry deadlines and phase.
+//! Empty task-panel states. The host owns requests and retry deadlines.
 use super::*;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -12,7 +12,6 @@ pub struct TaskState {
     pub loading: bool,
     pub message: String,
     pub retry_in: Option<u64>,
-    pub phase: u8,
 }
 impl TaskState {
     pub fn element(&self, ctx: ui::Context, size: [f32; 2]) -> c::Element {
@@ -52,25 +51,25 @@ impl TaskState {
             track_style.overrides.width = Some(ui::Length::Px(112.));
             track_style.overrides.height = Some(ui::Length::Px(4.));
             track_style.overrides.fill = Some(ui::Paint::solid(ui::Color::Surface2));
-            let offset = [0., 0.375, 0.75, 0.375][usize::from(self.phase % 4)];
-            let mut track = c::Box::new(track_style, vec![]);
-            track.direction = Axis::Row;
-            for (share, color) in [
-                (offset, ui::Color::Transparent),
-                (0.25, ui::Color::Accent),
-                (0.75 - offset, ui::Color::Transparent),
-            ] {
-                if share > 0. {
-                    let mut style = plain(None, [0.; 4], 2.);
-                    style.overrides.fill = Some(ui::Paint::solid(color));
-                    style.overrides.height = Some(ui::Length::Px(4.));
-                    track.children.push(c::Item {
-                        element: c::Element::Box(c::Box::new(style, vec![])),
-                        extent: c::Extent::Flex(share),
-                    });
-                }
-            }
-            children.push(c::Element::Box(track));
+            // The same active rim material as a working harness pane. Its
+            // opposing waves run on the shared effect clock, with no layout motion.
+            track_style.overrides.rim = Some(ui::Rim::block(
+                ui::GlowActivity::Active,
+                false,
+                Some(
+                    ui::Paint::solid(ui::Color::Accent)
+                        .resolve(ctx)
+                        .expect("accent token"),
+                ),
+                ui::rim_phase("conversation/tasks-progress"),
+                false,
+                2.,
+                2.,
+            ));
+            children.push(named(
+                "conversation/tasks-progress",
+                c::Element::Box(c::Box::new(track_style, vec![])),
+            ));
         } else {
             let refresh = self.retry_in.map_or_else(
                 || "Refresh".into(),

@@ -7435,7 +7435,7 @@ impl App {
                     pacer.set_active(
                         !self.clock.is_frozen()
                             && !self.occluded
-                            && (self.animate || self.scene.animating(self.clock.now())),
+                            && (self.animate || self.scene.animating(self.clock.now()) || self.task_panel_animating()),
                     )?;
                 }
             }
@@ -8343,7 +8343,7 @@ impl App {
             if !self.animate || self.clock.is_frozen() {
                 // Idle frames pause the link, except while a swell or attention loop runs.
                 let swelling = !self.clock.is_frozen()
-                    && self.scene.animating(self.clock_frame.now)
+                    && (self.scene.animating(self.clock_frame.now) || self.task_panel_animating())
                     && !self.occluded;
                 self.pacer.as_ref().unwrap().set_active(swelling)?;
             }
