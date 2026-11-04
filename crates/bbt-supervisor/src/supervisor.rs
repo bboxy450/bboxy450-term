@@ -3170,7 +3170,7 @@ fn signal(pid: u32, signal: libc::c_int) -> io::Result<()> {
 }
 
 // A newly started supervisor has no in-memory generation history. Only an
-// existing, validated predecessor ring can authorize a higher first generation.
+// existing, validated predecessor identity can authorize a higher first generation.
 // Do not use object_dir or open a ring before finding its durable marker:
 // Ring::open initializes an empty directory, which cannot prove a predecessor.
 fn admit_recovered_generation(config: &Config, spec: &LaunchSpec) -> Result<(), Failure> {
@@ -3193,32 +3193,8 @@ fn admit_recovered_generation(config: &Config, spec: &LaunchSpec) -> Result<(), 
     }
     let previous = spec.generation - 1;
     let predecessor = directory.join(format!("ring-{previous}"));
-    #[derive(serde::Deserialize)]
-    struct MarkerSettings {
-        settings: crate::ring::Settings,
-    }
-    for name in ["committed", "previous"] {
-        let Ok(file) = std::fs::File::open(predecessor.join(name)) else {
-            continue;
-        };
-        let mut bytes = Vec::new();
-        if file.take(4097).read_to_end(&mut bytes).is_err() || bytes.len() < 4 || bytes.len() > 4096
-        {
-            continue;
-        }
-        let end = bytes.len() - 4;
-        let crc = u32::from_le_bytes(bytes[end..].try_into().unwrap());
-        if crate::ring::crc32c(&bytes[..end]) != crc {
-            continue;
-        }
-        let Ok(marker) = serde_json::from_slice::<MarkerSettings>(&bytes[..end]) else {
-            continue;
-        };
-        // The old supervisor has been reaped. The existing ring reader checks
-        // identity, settings and record CRCs, and may repair its committed tail.
-        if crate::ring::Ring::open(&predecessor, spec.seat, previous, 0, marker.settings).is_ok() {
-            return Ok(());
-        }
+    if crate::ring::valid_predecessor(&predecessor, spec.seat, previous) {
+        return Ok(());
     }
     Err(stale(
         "no valid committed predecessor for process generation",

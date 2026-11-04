@@ -6,11 +6,13 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Supervisor-wide write-ahead capture. One CRC'd commit frame and one barrier
 //! publish a tick; per-seat files are rebuildable projections, never tick markers.
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::os::unix::fs::{FileExt, MetadataExt, PermissionsExt};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
@@ -25,6 +27,86 @@ const COMMIT: u16 = 0xffff;
 const CHECKPOINT_PREFIX: usize = 28;
 const CHECKPOINT_MAGIC: &[u8; 4] = b"JCP2";
 const ROTATE: u64 = 64 * 1024 * 1024;
+
+type Scanned = (Arc<Vec<Record>>, u64, bool);
+type Fingerprint = (u64, u64, u64, i64, i64, i64, i64);
+#[derive(Default)]
+struct ScanCache {
+    entries: HashMap<PathBuf, (Fingerprint, Scanned)>,
+    bytes: usize,
+}
+thread_local! {
+    static RECOVERY_SCANS: RefCell<Option<ScanCache>> = const { RefCell::new(None) };
+}
+/// Reuse validated journal frame indexes within one sequential recovery batch.
+/// The thread-local cache is bounded to 128 MiB and discarded on drop. Payloads
+/// are never cached; changed file identity, size or timestamps force a rescan.
+pub struct RecoveryScanCache(Option<ScanCache>, std::marker::PhantomData<std::rc::Rc<()>>);
+impl Default for RecoveryScanCache {
+    fn default() -> Self {
+        Self(
+            RECOVERY_SCANS.with(|cache| cache.replace(Some(ScanCache::default()))),
+            std::marker::PhantomData,
+        )
+    }
+}
+impl Drop for RecoveryScanCache {
+    fn drop(&mut self) {
+        RECOVERY_SCANS.with(|cache| cache.replace(self.0.take()));
+    }
+}
+fn fingerprint(path: &Path) -> Result<Fingerprint> {
+    let m = std::fs::metadata(path)?;
+    Ok((
+        m.dev(),
+        m.ino(),
+        m.len(),
+        m.mtime(),
+        m.mtime_nsec(),
+        m.ctime(),
+        m.ctime_nsec(),
+    ))
+}
+fn scan_cost(path: &Path, records: &Vec<Record>) -> usize {
+    records.capacity() * std::mem::size_of::<Record>()
+        + records
+            .iter()
+            .map(|r| r.position.file.capacity())
+            .sum::<usize>()
+        + path.as_os_str().len()
+        + 256
+}
+fn scan_cached(path: &Path) -> Result<Scanned> {
+    let before = fingerprint(path)?;
+    if let Some(hit) = RECOVERY_SCANS.with(|cache| {
+        cache
+            .borrow()
+            .as_ref()?
+            .entries
+            .get(path)
+            .filter(|(identity, _)| *identity == before)
+            .map(|(_, scan)| scan.clone())
+    }) {
+        return Ok(hit);
+    }
+    let (records, end, torn) = scan(path)?;
+    let scan = (Arc::new(records), end, torn);
+    if fingerprint(path)? == before {
+        RECOVERY_SCANS.with(|cache| {
+            if let Some(cache) = cache.borrow_mut().as_mut() {
+                let cost = scan_cost(path, &scan.0);
+                if let Some((_, old)) = cache.entries.remove(path) {
+                    cache.bytes = cache.bytes.saturating_sub(scan_cost(path, &old.0));
+                }
+                if cache.bytes + cost <= 128 * 1024 * 1024 {
+                    cache.bytes += cost;
+                    cache.entries.insert(path.into(), (before, scan.clone()));
+                }
+            }
+        });
+    }
+    Ok(scan)
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub(super) struct Position {
@@ -48,6 +130,7 @@ pub(super) struct Journal {
     name: String,
     length: u64,
     committed: u64,
+    pending_commit: Option<u64>,
     tick: u64,
     dirty: bool,
     buffer: Vec<u8>,
@@ -56,6 +139,8 @@ pub(super) struct Journal {
     required: Coverage,
     retired: Vec<(String, Coverage)>,
     projected: Coverage,
+    #[cfg(test)]
+    pub(super) disk_full: Option<std::sync::Arc<std::sync::atomic::AtomicBool>>,
 }
 impl Journal {
     pub fn open(root: &Path) -> Result<Self> {
@@ -99,6 +184,7 @@ impl Journal {
             name,
             length: 0,
             committed: 0,
+            pending_commit: None,
             tick: 0,
             dirty: false,
             buffer: Vec::with_capacity(1024 * 1024),
@@ -107,6 +193,8 @@ impl Journal {
             required: HashMap::new(),
             retired: Vec::new(),
             projected: HashMap::new(),
+            #[cfg(test)]
+            disk_full: None,
         })
     }
     pub fn bind(&self, ring: &Ring) -> Result<()> {
@@ -115,11 +203,18 @@ impl Journal {
             .write(true)
             .create_new(true)
             .open(&temp)?;
-        serde_json::to_writer(&mut file, &self.root)?;
-        sync_file(&file, true)?;
-        std::fs::rename(temp, ring.root.join("journal.json"))?;
-        sync_directory(&File::open(&ring.root)?)?;
-        Ok(())
+        let result = (|| -> Result<()> {
+            serde_json::to_writer(&mut file, &self.root)?;
+            sync_file(&file, true)?;
+            std::fs::rename(&temp, ring.root.join("journal.json"))?;
+            sync_directory(&File::open(&ring.root)?)?;
+            Ok(())
+        })();
+        if result.is_err() {
+            // A storage-pressure retry must not leave another temporary file.
+            let _ = std::fs::remove_file(temp);
+        }
+        result
     }
     pub fn append(
         &mut self,
@@ -201,9 +296,30 @@ impl Journal {
         self.buffer.extend_from_slice(bytes);
         Ok(())
     }
+    #[allow(clippy::redundant_closure_call, reason = "cfg(test) injects partial writes inside this rollback boundary")]
     fn flush_buffer(&mut self) -> Result<()> {
         if !self.buffer.is_empty() {
-            self.file.write_all(&self.buffer)?;
+            // write_all may have written a prefix before ENOSPC. Retain the
+            // complete buffer and restore its exact start before any retry.
+            let start = self.length - self.buffer.len() as u64;
+            self.file.set_len(start)?;
+            let result = (|| -> std::io::Result<()> {
+                #[cfg(test)]
+                if self
+                    .disk_full
+                    .as_ref()
+                    .is_some_and(|flag| flag.load(std::sync::atomic::Ordering::Acquire))
+                {
+                    self.file
+                        .write_all(&self.buffer[..self.buffer.len().min(17)])?;
+                    return Err(std::io::Error::from_raw_os_error(libc::ENOSPC));
+                }
+                self.file.write_all(&self.buffer)
+            })();
+            if let Err(error) = result {
+                self.file.set_len(start)?;
+                return Err(error.into());
+            }
             self.buffer.clear();
         }
         Ok(())
@@ -237,7 +353,7 @@ impl Journal {
         if !self.dirty || (!strong && self.length == self.committed) {
             return Ok(false);
         }
-        if self.length != self.committed {
+        if self.length != self.committed && self.pending_commit != Some(self.length) {
             self.tick += 1;
             let frame = encode(
                 COMMIT,
@@ -249,6 +365,7 @@ impl Journal {
             )?;
             self.buffer_frame(&frame)?;
             self.length += frame.len() as u64;
+            self.pending_commit = Some(self.length);
         }
         self.flush_buffer()?;
         sync_file(&self.file, strong)?;
@@ -264,19 +381,29 @@ impl Journal {
     }
     pub fn rotate(&mut self) -> Result<()> {
         self.commit(true)?;
-        self.files.insert(self.name.clone(), self.file.try_clone()?);
-        self.retired
-            .push((self.name.clone(), std::mem::take(&mut self.required)));
-        self.name = next_name(Some(&self.name))?;
-        self.file = OpenOptions::new()
+        // Keep the current file/name/coverage intact if creating its successor
+        // fails. A disk-full retry must never append into a misnamed journal.
+        let name = next_name(Some(&self.name))?;
+        let file = OpenOptions::new()
             .read(true)
             .append(true)
             .create_new(true)
-            .open(self.root.join(&self.name))?;
-        sync_directory(&File::open(&self.root)?)?;
-        sync_file(&self.file, true)?;
+            .open(self.root.join(&name))?;
+        if let Err(error) =
+            sync_directory(&File::open(&self.root)?).and_then(|_| sync_file(&file, true))
+        {
+            drop(file);
+            let _ = std::fs::remove_file(self.root.join(&name));
+            return Err(error.into());
+        }
+        self.files.insert(self.name.clone(), self.file.try_clone()?);
+        self.retired
+            .push((self.name.clone(), std::mem::take(&mut self.required)));
+        self.name = name;
+        self.file = file;
         self.length = 0;
         self.committed = 0;
+        self.pending_commit = None;
         self.tick = 0;
         Ok(())
     }
@@ -476,12 +603,12 @@ pub(super) fn recover(ring: &mut Ring) -> Result<()> {
         {
             continue;
         }
-        let (records, _, torn) = scan(&path)?;
+        let (records, _, torn) = scan_cached(&path)?;
         if torn {
             ring.notice = Some("rejected uncommitted/torn journal suffix".into());
         }
         let mut file = File::open(&path)?;
-        for r in records.into_iter().filter(|r| r.key == key) {
+        for r in records.iter().filter(|r| r.key == key) {
             if cursor
                 .as_ref()
                 .is_some_and(|p| p.file == r.position.file && r.position.offset <= p.offset)
@@ -505,7 +632,7 @@ pub(super) fn recover(ring: &mut Ring) -> Result<()> {
                 }
                 ring.append_event(&decode_event(r.kind, key.0, key.1, r.sequence, &bytes)?)?;
             }
-            ring.boundary.journal_position = Some(r.position);
+            ring.boundary.journal_position = Some(r.position.clone());
             changed = true;
         }
     }
@@ -521,6 +648,35 @@ mod tests {
     use super::*;
     use crate::protocol::Event;
     use crate::ring::{Playback, Settings};
+
+    #[test]
+    fn recovery_batch_reuses_validated_scans_and_fences_changed_files() {
+        let temp = tempfile::tempdir().unwrap();
+        let mut journal = Journal::open(&temp.path().join("journal")).unwrap();
+        let seat = Ulid::new();
+        journal.append((seat, 1), 1, 1, 0, b"first").unwrap();
+        journal.commit(true).unwrap();
+        let path = journal.root.join(&journal.name);
+        let scope = RecoveryScanCache::default();
+        let first = scan_cached(&path).unwrap();
+        let same = scan_cached(&path).unwrap();
+        assert!(Arc::ptr_eq(&first.0, &same.0));
+        journal.append((seat, 1), 1, 2, 5, b"second").unwrap();
+        journal.commit(true).unwrap();
+        let changed = scan_cached(&path).unwrap();
+        assert!(!Arc::ptr_eq(&first.0, &changed.0));
+        assert_eq!(changed.0.len(), 2);
+        let replacement = path.with_extension("replacement");
+        let mut bytes = std::fs::read(&path).unwrap();
+        bytes[HEADER] ^= 1;
+        std::fs::write(&replacement, bytes).unwrap();
+        std::fs::rename(replacement, &path).unwrap();
+        let corrupt = scan_cached(&path).unwrap();
+        assert!(corrupt.0.is_empty());
+        assert!(corrupt.2);
+        drop(scope);
+        assert!(RECOVERY_SCANS.with(|cache| cache.borrow().is_none()));
+    }
 
     // keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
     #[test]
@@ -728,5 +884,32 @@ mod tests {
         // A second open uses the compacted cursor and does not duplicate bytes.
         let again = Ring::open(&root, seat, 1, 0, Settings::default()).unwrap();
         assert_eq!(again.status().byte_end, restored.byte_end);
+    }
+    #[test]
+    fn disk_full_commit_retries_keep_one_marker_and_roll_back_partial_bytes() {
+        use std::sync::{
+            Arc,
+            atomic::{AtomicBool, Ordering},
+        };
+        let temp = tempfile::tempdir().unwrap();
+        let mut journal = Journal::open(temp.path()).unwrap();
+        let full = Arc::new(AtomicBool::new(true));
+        journal.disk_full = Some(full.clone());
+        journal
+            .append((Ulid::new(), 1), 1, 1, 0, b"retained")
+            .unwrap();
+        assert!(journal.commit(true).is_err());
+        let length = journal.length;
+        let buffered = journal.buffer.len();
+        for _ in 0..10 {
+            assert!(journal.commit(true).is_err());
+            assert_eq!(journal.length, length);
+            assert_eq!(journal.buffer.len(), buffered);
+            assert_eq!(journal.file.metadata().unwrap().len(), 0);
+        }
+        full.store(false, Ordering::Release);
+        journal.commit(true).unwrap();
+        assert_eq!(journal.committed, length);
+        assert!(journal.buffer.is_empty());
     }
 }

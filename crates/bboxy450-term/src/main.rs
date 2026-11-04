@@ -9578,6 +9578,7 @@ const HELP: &str = "bboxy450-term: GPU terminal for agent swarms.
   --repository PATH    repository directory (default: cwd, or a writable app workspace)
   --headless           run the app and renderer without opening a window
   --ctl                enable the operator's ctl endpoint
+  --recover-seats      resume retained open sessions when starting a new backend
   --version / -V       print the version without activating the app
 
 Debug and verification only, never for normal use:

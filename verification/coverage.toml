@@ -167,7 +167,7 @@ sources = ["crates/bbt-mermaid/src/lib.rs"]
 [[crate]]
 name = "bboxy450-harness-host"
 status = "contract-model"
-models = ["InputReceipt", "InputDedupEviction", "TerminalReplyProgress", "TerminalReplayQuiet", "SeatIngestion", "SeatLaunchEnvironment", "BackendLaunchEnvironment"]
+models = ["CaptureStoragePressure", "TieredSeatRecovery", "InputReceipt", "InputDedupEviction", "TerminalReplyProgress", "TerminalReplayQuiet", "SeatIngestion", "SeatLaunchEnvironment", "BackendLaunchEnvironment"]
 scope = "Live terminal query replies versus effect-free replay use bounded progress/safety projections and native position/duplicate/generation/restart fixtures; saturation and pending-reply survival across owner restart remain implementation gaps. InputReceipt checks one stable operation across two logic leases while its ID is retained, not lifetime at-most-once effects after eviction. InputDedupEviction checks two slots/four admissions, terminal FIFO retirement, pending ownership and fresh-input progress; no-eviction fails liveness. Native witnesses check 4097 real PTY inputs, retained replay/conflict, evicted-ID reuse, PartialUnknown retirement and exact map/deque bounds. PTY syscalls, hashes, physical timing and OS durability remain implementation coverage."
 sources = ["crates/bbt-supervisor/src/supervisor.rs", "crates/bbt-supervisor/src/ring.rs", "crates/bbt-supervisor/src/client.rs", "crates/bbt-supervisor/src/client/wire.rs", "crates/bbt-supervisor/src/transport.rs"]
 

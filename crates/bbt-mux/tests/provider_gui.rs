@@ -655,8 +655,40 @@ fn operator_spawn_replays_case() {
     logic.shutdown().unwrap();
     server.shutdown().unwrap();
     let server = Supervisor::start(supervisor()).unwrap();
+    // A damaged historical launch must not prevent a later healthy seat from
+    // recovering or abort the new logic owner.
+    let mut damaged = first.record.clone();
+    damaged.id = Ulid::from(1_u128);
+    account
+        .put(&format!("seat/{}", damaged.id), &serde_json::to_vec(&damaged).unwrap())
+        .unwrap();
+    let damaged_store = SqliteStore::open(
+        &object_dir(&config.run_dir, &format!("seat-{}", damaged.id)).unwrap(),
+    ).unwrap();
+    damaged_store.put("process_running", b"1").unwrap();
+    damaged_store.put("recovery_launch", b"invalid launch context").unwrap();
+    let mut fast = first.record.clone();
+    fast.id = Ulid::from(2_u128);
+    fast.launch_placement = None;
+    account.put(&format!("seat/{}", fast.id), &serde_json::to_vec(&fast).unwrap()).unwrap();
+    let fast_store = SqliteStore::open(&object_dir(&config.run_dir, &format!("seat-{}", fast.id)).unwrap()).unwrap();
+    let source_store = SqliteStore::open(&object_dir(&config.run_dir, &format!("seat-{}", first.record.id)).unwrap()).unwrap();
+    fast_store.put("process_running", b"1").unwrap();
+    fast_store.put("recovery_launch", &source_store.get("recovery_launch").unwrap().unwrap()).unwrap();
+    let fast_ring = object_dir(&config.run_dir, &format!("seat-{}", fast.id)).unwrap().join("ring-1");
+    drop(bbt_mux::ring::Ring::open(&fast_ring, fast.id, fast.generation, 0, Default::default()).unwrap());
+    let retained_marker = std::fs::read(fast_ring.join("committed")).unwrap();
     let logic = start(&server);
-    rt.block_on(logic.client.recover_seats()).unwrap();
+    let mut progress = Vec::new();
+    rt.block_on(logic.client.recover_seats_with_progress(|completed, total| {
+        progress.push((completed, total));
+    })).unwrap();
+    assert_eq!(progress, [(0, 3), (1, 3), (2, 3), (3, 3)]);
+    let fast_view = rt.block_on(logic.client.gui_seat(fast.id)).unwrap();
+    assert_eq!(fast_view.state.generation, fast.generation + 1);
+    assert!(matches!(fast_view.state.process, ProcessStatus::Running { .. }));
+    assert!(fast_store.get("restart_checkpoint").unwrap().is_some());
+    assert_eq!(std::fs::read(fast_ring.join("committed")).unwrap(), retained_marker);
     let recovered = rt.block_on(logic.client.gui_seat(Ulid(seat.0.0))).unwrap();
     assert_eq!(recovered.record.name, first.record.name);
     assert_eq!(recovered.state.generation, first.state.generation + 1);
@@ -684,9 +716,9 @@ fn operator_spawn_replays_case() {
             .contains("placement_anchor_changed")
     );
     let seats = rt.block_on(logic.client.gui_seats()).unwrap();
-    assert_eq!(seats.len(), 1);
+    assert_eq!(seats.len(), 2);
     assert_eq!(
-        seats[0].state.process,
+        seats.iter().find(|entry| entry.record.id == first.record.id).unwrap().state.process,
         ProcessStatus::Running { pid: second_pid }
     );
     drop(gui);
