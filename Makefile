@@ -66,6 +66,7 @@ help:
 	  'make test-formal-contracts      Project contracts and real API witnesses (native)' \
 	  'make test-yarn-model            Native checker, exporter and strict Rust lint' \
 	  'make test-yarn-concurrency      Bounded Loom primitives/controls + seeded Shuttle reactors' \
+	  'make test-yarn-kani             Pinned repo-local Kani proofs of generated protocol reducers' \
 	  'make publish-tlc-crate          Publish native crate as verified bboxy450 (authorization required)' \
 	  'make publish-crates             Publish workspace crates in dependency order (authorization required)' \
 	  'make prepare-tlc                Export signed standalone bboxy450-tlc source' \
@@ -1622,6 +1623,11 @@ test-formal:
 	FORMAL_OUT='$(abspath $(TARGET_DIR))/formal/harness' python3 -I scripts/formal-stage.py harness-native -- cargo test --locked -p bboxy450-harness --test formal_models --test formal_nonvacuity --test reactor_projection --target-dir '$(TARGET_DIR)'; \
 	python3 -I scripts/formal-stage.py harness-export -- python3 -I scripts/harness-submodule.py --models '$(abspath $(TARGET_DIR))/formal/harness' --target '$(abspath $(TARGET_DIR))/formal/models'; \
 	python3 -I scripts/formal-stage.py java-parity -- python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' $(if $(filter 1,$(FORMAL_REUSE)),--reuse,)
+
+.PHONY: test-yarn-kani
+test-yarn-kani:
+	@python3 -I scripts/test-yarn-kani-controls.py
+	@python3 -I scripts/test-yarn-kani.py --target '$(abspath $(TARGET_DIR))'
 
 .PHONY: format-yarn-model
 

@@ -44,6 +44,8 @@ OWNED_FORK_FILES = {
     "crates/bbt-yarn/tests/protocol_runtime.rs",
     "crates/bbt-yarn/tests/protocol_temporal.rs",
     "crates/bbt-yarn/tests/ui-pass/protocol_hygiene.rs",
+    "crates/bbt-yarn/tests/kani/main.rs",
+    "crates/bbt-yarn/tests/kani/proofs.rs",
 }
 STRICT_PREFIXES = ("crates/bbt-yarn/tests/ui/",)
 CHECKER_FILES = {"scripts/source-notices.py", "scripts/test-source-notices.py"}

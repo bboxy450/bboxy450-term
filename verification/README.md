@@ -76,6 +76,38 @@ external effects, persistent dedup services, process restart and larger identity
 domains remain implementation-only gaps. See the PresentGeneration and
 RetryUnknown entries in `contracts.toml` for bounds and assumptions.
 
+`make test-yarn-kani` additionally checks the **generated Rust reducer**, reusing
+`tests/protocol.rs` directly from `tests/kani/main.rs`. The optional
+`kani_bounded_proof` method pins Kani 0.68.0 and release-bundle SHA256 digests in
+`kani-tools.lock.json`. Its launcher, KANI_HOME, Rustup home, compiler and build
+outputs live under `target/tools/yarn-kani-0.68.0`; nothing is installed globally.
+First use downloads unattended; unsupported hosts, tool failures, missing harnesses,
+timeouts and insufficient unwinding fail the target. This supplementary target is
+explicit, separate from the mandatory native/TLC gate.
+
+Kani autoharness synthesizes arbitrary values of the actual private generated
+State (including unreachable representations and unused high set bits), and each
+harness chooses among all five finite events with `kani::any`. This is an
+overapproximation of every state obtainable through the public API, without
+bounded history replay, copied declarations, unsafe layout construction or
+constructor-derived assumptions. RESULT-001 alone is assumed for the inductive
+step; no strengthened invariant is added. Default establishes its base case.
+Reject/ignore decisions contain no next state; their public API retains the
+unchanged input. All loops, including generated effect-vector machinery, have
+unwind bound 4 with unwinding assertions enabled. No liveness, environmental
+effects, allocation exhaustion or arbitrary Rust correctness is claimed.
+
+Per-harness structured results are written under `target/yarn-kani`. The broken
+declaration runs without `should_panic`: a nonzero exit counts as the expected
+negative control only when completed JSON identifies the precise
+`RESULT-001 broken inductive step` assertion as its sole failure. Compilation,
+unsupported semantics and solver/unwinding failures never count as that control.
+These independent harnesses are inspired by the
+[Kani autoharness interface](https://model-checking.github.io/kani/reference/experimental/autoharness.html)
+and [custom installation](https://model-checking.github.io/kani/install-guide.html).
+Kani and its bundled tools retain their upstream licenses in the local download;
+no tool binaries enter project source or release packages.
+
 The native checker accepts an explicit expression/action representation: finite
 integer domains, integer/Boolean literals, equality, comparisons, arithmetic,
 Boolean operations, `IF-THEN-ELSE`, bounded `\A`/`\E` over integer ranges
