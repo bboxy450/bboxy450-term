@@ -132,13 +132,64 @@
     "confirmation_op": "01M6HEYVA22T4Y7J6763Q86V3F"
   },
   "latest_usage": {
-    "at": 1793737073,
-    "age_seconds": 2,
-    "claude_weekly": 98,
-    "codex_weekly": 69,
-    "cpu": 100,
-    "memory": 69,
-    "disk": 91
+    "machine": {
+      "cpu": 48,
+      "memory": 70,
+      "disk": 94,
+      "reason": null
+    },
+    "providers": {
+      "grok": {
+        "used": null,
+        "projected": null,
+        "stale": false,
+        "reason": "Run `grok` to sign in",
+        "windows": []
+      },
+      "codex": {
+        "used": 82,
+        "projected": 182,
+        "stale": false,
+        "reason": null,
+        "windows": [
+          {
+            "label": "Weekly",
+            "used": 82,
+            "projected": 182,
+            "resets_at": 1794102377
+          }
+        ]
+      },
+      "claude": {
+        "used": 99,
+        "projected": 152,
+        "stale": false,
+        "reason": null,
+        "windows": [
+          {
+            "label": "Weekly",
+            "used": 99,
+            "projected": 152,
+            "resets_at": 1793980799
+          },
+          {
+            "label": "Current session",
+            "used": 3,
+            "projected": 5,
+            "resets_at": 1793776199
+          }
+        ]
+      }
+    },
+    "sampled_at": 1793769538,
+    "available": true,
+    "age_seconds": 1,
+    "scope": {
+      "seat": "01M6H97SAX3GN1BYB4YG76P3P0",
+      "role": "oracle",
+      "class": "oracle"
+    },
+    "op_id": "01M6JFY1JPEY7G18HHT6658GVM"
   },
   "standalone_landed": {
     "commit": "ea753072c7ec2a0a278e5086ef21458efa0a08f0",
@@ -705,5 +756,50 @@
     "free_gib": 43.03
   },
   "prepared_handoff": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/REFINEMENT-HANDOFF.md",
-  "task_registration": "deferred; operator-authorized local /tmp collaboration fallback, no task_delegate/acceptance fabricated"
+  "task_registration": "deferred; operator-authorized local /tmp collaboration fallback, no task_delegate/acceptance fabricated",
+  "latest_ui_only_delivery": {
+    "verified_at": 1793769619.042124,
+    "activation_exit": 0,
+    "gui_before": {
+      "pid": 54941,
+      "instance": "01M6J7VZEC8A3YCVS4942Q36DE",
+      "source_revision": "4b8cd49cdb64ccb440213db8617a334c8e2fdd87"
+    },
+    "gui_after": {
+      "pid": 45124,
+      "instance": "01M6JFEBPVV2R7J31RK8HQSWEM",
+      "source_revision": "ff150b62a73818a0902c17ce1ae785b6563d78ea"
+    },
+    "backend_exact_pid_birth_unchanged": true,
+    "existing_open_seat_metadata_changes": [],
+    "before_count": 111,
+    "after_count": 112,
+    "source": "ff150b62a73818a0902c17ce1ae785b6563d78ea",
+    "harness": "47c6616244de4a1218629841ffbd0db8f5a13da6",
+    "full_suites": "omitted under focused-check operator override",
+    "logic_workspace_fix": "not activated; retained Logic process remains previous code",
+    "executor_roundtrip": {
+      "seat": "01M6JFEN6MTPG7XB2YM4R1BSJ2",
+      "challenge": "ORACLE-ILKA-0518",
+      "reply": "01M6JFWHT92FDADH6FVYFVB9WG",
+      "tools_visible": [
+        "self_status",
+        "message_send",
+        "message_receipts"
+      ],
+      "seconds_to_signed_reply": 19
+    },
+    "evidence": {
+      "ui-only-delivery-verification.json": "f3804533ad347e3d3a544da43bafe1727a38ce2a7fe71411b612757cec1e4319",
+      "phase2-roundtrip-evidence.json": "b3a7fe63bba448be9969f2c57d92cbc9102b926535c00008ab46dee48ce6f913",
+      "ui-only-after-probe.json": "679f1eebae0be6e65929e3dd058cbe64cf6d0909d960668865ed65e2f08a0c11"
+    }
+  },
+  "current_ui_followups": {
+    "gui_polish": "EXECUTOR-PROFILES-PENDING.md",
+    "workspace_fix": "EXECUTOR-VIEW-SWITCH.md",
+    "status": "assigned via explicit operator local-file workaround",
+    "preserve_backend": true,
+    "root_evidence_directory": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0"
+  }
 }
