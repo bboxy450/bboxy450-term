@@ -148,6 +148,9 @@ def check(data, synchronize=False, package_lists=False, only=None):
                 errors.append("harness: expected its own local LICENSE")
             if read_regular(directory / "LICENSE") != sources["LICENSE"]:
                 errors.append("harness: license differs from the agreed custom policy")
+            notice = read_regular(directory / "NOTICE").decode()
+            if POLICY not in " ".join(notice.split()):
+                errors.append("harness: controlling license notice is missing")
             credit = read_regular(directory / "ATTRIBUTION.md").decode()
             if "https://github.com/bboxy450/bboxy450-harness" not in credit:
                 errors.append("harness: independent attribution is missing")
@@ -206,7 +209,7 @@ def check(data, synchronize=False, package_lists=False, only=None):
                                     cwd=root, capture_output=True, text=True, timeout=60)
             if result.returncode:
                 raise ValueError(f"{package['name']}: cargo package --list exited {result.returncode}: {result.stderr.strip()}")
-            required = ({"LICENSE", "ATTRIBUTION.md"} if package["name"] == "bboxy450-harness"
+            required = (set(COPIES) if package["name"] == "bboxy450-harness"
                         else set(COPIES + LEGACY))
             if directory.name != "bboxy-firehose":
                 required.update(UPSTREAM.get(directory.name, {}))

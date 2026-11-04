@@ -7,3 +7,5 @@ set -eu
 dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 python3 -I "$dir/license-packages.py" "$@"
 python3 -I "$dir/source-notices.py"
+python3 -I "$dir/suite-licenses.py"
+python3 -I "$dir/test-suite-licenses.py"

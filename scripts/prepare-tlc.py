@@ -38,6 +38,7 @@ def main():
         else:
             shutil.copyfile(path, mirror / name)
     package = tomllib.loads((CRATE / "Cargo.toml").read_text())["package"]
+    package["exclude"] = sorted(set(package.get("exclude", [])) | {".bboxy/**"})
     inherited = tomllib.loads((ROOT / "Cargo.toml").read_text())["workspace"]["package"]
     lines = ["[package]"]
     for key, value in package.items():
@@ -46,8 +47,16 @@ def main():
         lines.append(f"{key} = {json.dumps(value)}")
     (mirror / "Cargo.toml").write_text('\n'.join(lines) + '\n\n[workspace]\n')
     (mirror / "scripts").mkdir()
-    for name in ["formal.py", "test-formal.py", "crates-publisher.py"]:
+    for name in ["formal.py", "test-formal.py", "crates-publisher.py", "suite-licenses.py", "test-suite-licenses.py"]:
         shutil.copyfile(ROOT / "scripts" / name, mirror / "scripts" / name)
+    policy = {"version": 1, "project": "bboxy450-tlc", "source_project": "bboxy450-term",
+              "source_roots": ["."], "preserved": {}, "shared": {}}
+    for name in ["LICENSE-MIT", "LICENSE-APACHE"]:
+        policy["preserved"][name] = hashlib.sha256((mirror / name).read_bytes()).hexdigest()
+    for name in ["suite-licenses.py", "test-suite-licenses.py"]:
+        relative = "scripts/" + name
+        policy["shared"][relative] = hashlib.sha256((mirror / relative).read_bytes()).hexdigest()
+    (mirror / "licensing.json").write_text(json.dumps(policy, indent=2) + '\n')
     (mirror / "verification").mkdir()
     shutil.copyfile(ROOT / "verification/tools.lock.json", mirror / "verification/tools.lock.json")
     catalog = tomllib.loads((ROOT / "verification/corpus.toml").read_text())["model"]
@@ -66,11 +75,16 @@ sources = ["src/lib.rs", "examples/verify.rs"]
 SHELL := /bin/sh
 TARGET_DIR ?= target
 export CARGO_BUILD_JOBS := 2
-.PHONY: test test-formal
-test:
+.PHONY: test test-formal test-licenses check-license-packages
+test: test-licenses
 	cargo test --locked --target-dir '$(TARGET_DIR)'
 	cargo clippy --locked --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
 	$(MAKE) test-formal TARGET_DIR='$(TARGET_DIR)'
+test-licenses:
+	python3 -I scripts/suite-licenses.py
+	python3 -I scripts/test-suite-licenses.py
+check-license-packages: test-licenses
+	python3 -I scripts/suite-licenses.py --packages
 test-formal:
 	python3 -I scripts/test-formal.py
 	cargo run --locked --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'
@@ -90,7 +104,7 @@ Preserve accurate credit and upstream terms. Document new semantics and unsuppor
 features honestly. Signed commits/tags and detached artifact signatures preserve
 provenance. Never commit credentials, downloaded runtimes or raw private logs.
 ''')
-    (mirror / ".gitignore").write_text('target/\n__pycache__/\n')
+    (mirror / ".gitignore").write_text('.bboxy/\ntarget/\n__pycache__/\n')
     workflows = mirror / ".github/workflows"
     workflows.mkdir(parents=True)
     (workflows / "ci.yml").write_text('''name: Native and TLC conformance

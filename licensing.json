@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "project": "bboxy450-term",
+  "source_project": "bboxy450-term",
+  "source_roots": [
+    "scripts/suite-licenses.py",
+    "scripts/test-suite-licenses.py"
+  ],
+  "preserved": {
+    "LICENSE-MIT": "e3012f47cfba2c19c3ee490477faf30d45d1234759c86508a18f487ebe564c0a",
+    "LICENSE-APACHE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+  },
+  "shared": {}
+}
