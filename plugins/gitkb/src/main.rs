@@ -108,7 +108,7 @@ impl GitKb {
                 ));
             }
             // Approved test-only setup budget: native init measured 6.077 s.
-            // Production initialize and every data call retain the 2 s cap.
+            // Production initialization and reads retain the 2 s cap.
             if !root.join(".kb").exists() {
                 // `git-kb init` explicitly uses cwd (not GITKB_ROOT). This
                 // exception is confined to the disposable checker.
@@ -244,6 +244,7 @@ impl Plugin for GitKb {
             "Source-aware local GitKB documents and task storage",
         )
         .contract(Contract::DataSource)
+        .timeout(Contract::DataSource, "write", 8_000)
         .method(Contract::DataSource, "commit")
         .timeout(Contract::DataSource, "commit", 15_000)
         .identity("provider", "gitkb")
@@ -381,6 +382,10 @@ mod tests {
         assert_eq!(commands.len(), 9);
         let commit = commands.iter().find(|c| c["name"] == "commit").unwrap();
         assert_eq!(commit["timeout_ms"], 15_000);
+        let write = commands.iter().find(|c| c["name"] == "write").unwrap();
+        assert_eq!(write["timeout_ms"], 8_000);
+        let fetch = commands.iter().find(|c| c["name"] == "fetch").unwrap();
+        assert_eq!(fetch["timeout_ms"], 2_000);
         assert_eq!(
             manifest.skill_uri(&manifest.skills[0]),
             "gitkb://skills/gitkb/SKILL.md"

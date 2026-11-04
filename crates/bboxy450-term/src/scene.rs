@@ -1970,7 +1970,13 @@ impl Scene {
                     let background = if self.pane_views.get(&id)
                         == Some(&ui::modules::strip::ViewTarget::Terminal)
                     {
-                        Color::hex(ctx.theme.palette().bg)
+                        crate::gpu::terminal_background(
+                            Color::hex(ctx.theme.palette().bg)
+                                .0
+                                .map(|v| (v * 255.).round() as u8),
+                            ctx.theme,
+                            self.focused() == Some(id),
+                        )
                     } else if let Some(background) = self.terminal_backgrounds.get(&id) {
                         crate::gpu::terminal_background(
                             *background,

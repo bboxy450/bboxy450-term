@@ -65,6 +65,7 @@ pub struct Snapshot {
     pub theme: ui::Theme,
     pub appearance_revision: u64,
     pub paints: Arc<Vec<c::Paint>>,
+    pub text_runs: Arc<Vec<ui::text_selection::Run>>,
     pub ready: bool,
     pub image_intake: bool,
     pub images: Vec<Arc<bbt_render::chrome::icons::Image>>,
@@ -166,19 +167,23 @@ impl Pane {
             let notify=Arc::new(Notify::new());
             let mut bridge=Bridge::new(Arc::new(Signal(notify.clone())));
             let mut view=HarnessView::default();
+            view.anim=bboxy450_harness::frontends::gui::anim::Clock::live(bboxy450_harness::frontends::gui::anim::Clock::reduced_motion_preferred());
             // Embedded text is one zoom step smaller; standalone keeps its own size.
             view.restore_zoom(view.zoom().step(-1),&bridge);
             bridge.connect(socket,after);
             let mut rect=rect;
             let mut completed_inputs=0_u64;
+            let started=Instant::now();
             loop {
                 let mut batch=Vec::new();
-                tokio::select!{biased;cmd=input.recv()=>{let Some(cmd)=cmd else{return;};batch.push(cmd);},_=notify.notified()=>{},_=worker_appearance_wake.notified()=>{}}
+                let animation=view.anim.next_frame();
+                tokio::select!{biased;cmd=input.recv()=>{let Some(cmd)=cmd else{return;};batch.push(cmd);},_=notify.notified()=>{},_=worker_appearance_wake.notified()=>{},_=async { match animation { Some(ms)=>tokio::time::sleep(Duration::from_secs_f32((ms/1000.).max(1./60.))).await,None=>std::future::pending::<()>().await }}=>{}}
                 while batch.len()<64 {match input.try_recv(){Ok(cmd)=>batch.push(cmd),Err(_)=>break}}
                 let appearance=worker_appearance.clone();
                 let retired=worker_retired.clone();
                 let published=worker_published.clone();
                 let prepared=bboxy450_harness::runtime::blocking(move || {
+                    view.anim.tick(started.elapsed().as_secs_f32()*1000.);
                     let appearance_revision=appearance.load(Ordering::Acquire);
                     let theme=if appearance_revision & 1 == 1 { ui::Theme::Light } else { ui::Theme::Dark };
                     view.set_theme(theme); bridge.set_theme(theme);
@@ -226,9 +231,11 @@ impl Pane {
                     let (paints,error,send_rect)=match view.render(&bridge.state,[rect.w,rect.h]) {
                         Ok(frame)=>(Arc::new(paints(frame,rect)),bridge.state.error.clone(),frame.layout.as_ref().and_then(|l|bboxy450_harness::frontends::gui::view::find(l,"composer/send")).map(|n|n.rect)),Err(error)=>(Arc::default(),Some(error),None)
                     };
+                    let text_runs=Arc::new(selection_runs(&view.frame,rect));
                     let approval_choices=view.frame.actions.iter().filter_map(|(r,a)|matches!(a,Action::Approval(..)).then_some([r.x,r.y,r.w,r.h])).take(16).collect();
+                    view.anim.frame_cost(at.elapsed().as_secs_f32()*1000.);
                     let ime_caret=view.frame.layout.as_ref().and_then(|l|ui::modules::composer::Regions::new(l).ok()).and_then(|r|r.caret);
-                    let snapshot=Snapshot{theme,appearance_revision,image_intake:bridge.image_intake_available(),images:view.attachment_images(),attachment_count:view.attachment_count(),pending_attachment_count:view.pending_attachment_count(),generation,completed_inputs,notice:view.notice.clone(),retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,ime_caret,focused:view.focused,composer_len:view.composer.view.text.len(),scroll:[view.frame.scroll,view.frame.max_scroll],approval_choices,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
+                    let snapshot=Snapshot{theme,appearance_revision,text_runs,image_intake:bridge.image_intake_available(),images:view.attachment_images(),attachment_count:view.attachment_count(),pending_attachment_count:view.pending_attachment_count(),generation,completed_inputs,notice:view.notice.clone(),retained_items:bridge.state.transcript.items.len(),order_len:bridge.state.transcript.order.len(),duplicate_durable:bridge.state.transcript.duplicate_durable,send_rect,ime_caret,focused:view.focused,composer_len:view.composer.view.text.len(),scroll:[view.frame.scroll,view.frame.max_scroll],approval_choices,paints,ready:bridge.state.ready,revision:bridge.state.revision,rect:Some(rect),projection:at.elapsed(),cursor:bridge.state.transcript.session.map(|session|(session,bridge.state.transcript.epoch,bridge.state.transcript.cursor)),error};
                     out.publish(snapshot);
                     published.store(completed_inputs, Ordering::Release);
                     (bridge,view,rect,out,completed_inputs)
@@ -386,6 +393,40 @@ fn shift_list(mut list: DrawList, at: [f32; 2]) -> DrawList {
 }
 /// Compose the shared native Frame with the existing term renderer, preserving rim order.
 /// No alternate transcript renderer or PTY parsing is involved.
+fn selection_runs(frame: &Frame, rect: Rect) -> Vec<ui::text_selection::Run> {
+    fn selectable(node: &mut c::Layout) {
+        if let c::LayoutKind::Named(name) = &node.kind
+            && (name.starts_with("toolhead/")
+                || name.starts_with("more/")
+                || name.starts_with("approval/")
+                || name.starts_with("codeleft/")
+                || name.starts_with("coderight/")
+                || name.ends_with("/toggle"))
+        {
+            node.children.clear();
+            return;
+        }
+        if let c::LayoutKind::Text { selectable, .. } = &mut node.kind {
+            *selectable = true;
+        }
+        for child in &mut node.children {
+            selectable(child);
+        }
+    }
+    let mut runs = Vec::new();
+    if let Some(layout) = frame
+        .layout
+        .as_ref()
+        .and_then(|layout| bboxy450_harness::frontends::gui::view::find(layout, "transcript"))
+    {
+        let mut layout = layout.clone();
+        selectable(&mut layout);
+        bboxy450_harness::frontends::gui::view::translate(&mut layout, rect.x, rect.y);
+        ui::text_selection::collect(&layout, rect, &mut runs);
+    }
+    runs
+}
+
 pub fn paints(frame: &Frame, rect: Rect) -> Vec<c::Paint> {
     use bbt_render::chrome::materials as m;
     let mut first = DrawList::default();

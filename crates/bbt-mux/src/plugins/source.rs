@@ -18,7 +18,7 @@ use tokio::{runtime::Handle, sync::Mutex};
 
 #[derive(Debug, Clone, Copy)]
 pub struct ProviderConfig {
-    /// Ordinary calls and production initialization; optional commit has its own 15 s ceiling.
+    /// Reads and production initialization; writes allow 8 s, commits 15 s.
     pub timeout: Duration,
 }
 impl Default for ProviderConfig {
@@ -379,10 +379,10 @@ impl DataSourceProvider {
                 trace.mark("connect");
             }
             let client = slot.as_mut().expect("connection initialized");
-            let ceiling = if method == "commit" {
-                Duration::from_secs(15)
-            } else {
-                self.config.timeout
+            let ceiling = match method {
+                "write" => Duration::from_secs(8),
+                "commit" => Duration::from_secs(15),
+                _ => self.config.timeout,
             };
             let budget = Duration::from_millis(command.timeout_ms).min(ceiling);
             let budget = deadline
@@ -588,6 +588,8 @@ impl DataSource for DataSourceProvider {
         mut request: d::WriteRequest,
         context: &WriteContext<'_>,
     ) -> d::Result<d::WriteResult> {
+        // Include source preflight in the write budget, leaving reply time on the seat transport.
+        let deadline = Instant::now() + Duration::from_secs(8);
         if !self
             .record
             .shape
@@ -625,9 +627,12 @@ impl DataSource for DataSourceProvider {
             return Err(error("invalid_path", "update uses ref without path"));
         }
         if let Some(reference) = request.reference.clone() {
-            let current = self.fetch(d::FetchRequest {
-                reference: reference.clone(),
-            })?;
+            let current = self.fetch_before(
+                d::FetchRequest {
+                    reference: reference.clone(),
+                },
+                Some(deadline),
+            )?;
             if current.reference != reference
                 || request
                     .etag
@@ -665,7 +670,7 @@ impl DataSource for DataSourceProvider {
         let mut args =
             serde_json::to_value(&request).map_err(|e| error("invalid_request", e.to_string()))?;
         args["signed_record"] = json!(signed_record);
-        let value: Value = self.request("write", args).map_err(|reason| {
+        let value: Value = self.request_before("write", args, Some(deadline)).map_err(|reason| {
             // A status the provider cannot store is refused before any write.
             if reason.code == "unmappable_status" {
                 return reason;

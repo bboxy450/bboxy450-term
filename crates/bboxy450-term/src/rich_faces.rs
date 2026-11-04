@@ -215,8 +215,27 @@ impl App {
                 continue;
             }
             if let Some(pane) = self.rich_panes.get(id) {
-                ops.extend(pane.painted().iter().cloned());
                 if !pane.painted().is_empty() {
+                    let paints = pane.painted().to_vec();
+                    if self.scene.focused() == Some(*id) {
+                        ops.extend(paints);
+                    } else {
+                        let palette = self.scene.ui_context().theme.palette();
+                        let dim = bbt_ui_model::TOKENS.dim;
+                        let mut wash = DrawList::default();
+                        wash.rect(
+                            *rect,
+                            0.,
+                            Color::hex(palette.bg).mix(Color::hex(palette.fg_dim), dim.wash as f32),
+                        );
+                        ops.push(bbt_ui::components::Paint::Draw(wash));
+                        ops.push(bbt_ui::components::Paint::Group {
+                            ops: paints,
+                            opacity: dim.opacity as f32,
+                            saturation: dim.saturate as f32,
+                            mask: None,
+                        });
+                    }
                     continue;
                 }
             }

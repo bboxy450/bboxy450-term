@@ -222,6 +222,35 @@ pub struct Projected {
     pub number: Value,
 }
 
+/// Workspace tags belong to these source bytes, not the committed graph's tag union.
+fn workspace_frontmatter(doc: &Value, raw: &str) -> Result<Map<String, Value>, Refusal> {
+    let mut fields = doc["frontmatter"].as_object().cloned().unwrap_or_default();
+    let mut lines = raw.lines();
+    if lines.next() != Some("---") {
+        fields.remove("tags");
+        return Ok(fields);
+    }
+    let header = lines
+        .take_while(|line| *line != "---")
+        .collect::<Vec<_>>()
+        .join("\n");
+    let source: Map<String, Value> = if header.trim().is_empty() {
+        Map::new()
+    } else {
+        serde_yaml::from_str(&header)
+            .map_err(|_| Refusal::new("invalid_record", "workspace frontmatter invalid"))?
+    };
+    match source.get("tags") {
+        Some(tags) => {
+            fields.insert("tags".into(), tags.clone());
+        }
+        None => {
+            fields.remove("tags");
+        }
+    }
+    Ok(fields)
+}
+
 /// The one frontmatter projection for exact and batched reads: graph-derived
 /// keys dropped, identity, slug, title and type from the document, the task
 /// status read from the native status alone, the number lifted. The legacy
@@ -646,7 +675,11 @@ pub fn read_source_state(
         slug,
         doc,
         &doc["doc_type"],
-        doc["frontmatter"].as_object().cloned().unwrap_or_default(),
+        if result["documentSource"]["kind"] == "workspace" {
+            workspace_frontmatter(doc, raw)?
+        } else {
+            doc["frontmatter"].as_object().cloned().unwrap_or_default()
+        },
     )?;
     let source = result["documentSource"].clone();
     // Committed sources digest their native id and version, so batched
@@ -1272,6 +1305,18 @@ impl GitKb {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn workspace_tags_do_not_merge_committed_graph_tags() {
+        let doc = json!({"frontmatter":{"tags":["current","committed"],"status":"active"}});
+        let fields = workspace_frontmatter(&doc, "---\ntags: [current]\n---\nbody").unwrap();
+        assert_eq!(fields["tags"], json!(["current"]));
+        assert_eq!(fields["status"], "active");
+        let cleared = workspace_frontmatter(&doc, "---\r\ntags: []\r\n---\r\nbody").unwrap();
+        assert_eq!(cleared["tags"], json!([]));
+        let absent = workspace_frontmatter(&doc, "---\ntitle: Note\n---\nbody").unwrap();
+        assert!(!absent.contains_key("tags"));
+    }
 
     /// Shapes recorded from git-kb 0.2.19 (`show --source committed` and the
     /// batched `show --raw-content --json`) for one committed task.

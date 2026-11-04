@@ -314,6 +314,9 @@ resource directory and linked from there. Symlinks, hard links and oversized
 resources are refused. A serialized portable result above 256 KiB returns
 `response_too_large`; there is no silent truncation. Cancellation or timeout of
 a mutation can leave a completed native write: inspect its source before retrying.
+Writes have an 8 s budget for the native transaction and source verification;
+reads retain their 2 s budget. Workspace tags come from the exact source YAML,
+so committed graph tags cannot invalidate the signed write result.
 
 `check-gitkb-plugin` runs the ignored Rust test `tests/conformance.rs` against
 the built executable, with fresh private homes, projects and native GitKB

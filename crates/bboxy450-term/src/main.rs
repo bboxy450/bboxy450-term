@@ -7942,6 +7942,14 @@ impl App {
                 self.scene
                     .selection_runs(&chat.layout, clip, &mut text_runs);
             }
+            for (id, _) in &self.pane_bounds {
+                if self.rich_face(*id)
+                    && let Some(pane) = self.rich_panes.get(id)
+                    && !pane.painted().is_empty()
+                {
+                    text_runs.extend(pane.snapshot.text_runs.iter().cloned());
+                }
+            }
         }
         self.ui_selection.retain(text_runs);
         self.update_cursor();
