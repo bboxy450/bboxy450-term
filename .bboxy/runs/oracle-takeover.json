@@ -133,9 +133,9 @@
   },
   "latest_usage": {
     "machine": {
-      "cpu": 48,
-      "memory": 70,
-      "disk": 94,
+      "cpu": 32,
+      "memory": 69,
+      "disk": 95,
       "reason": null
     },
     "providers": {
@@ -147,41 +147,41 @@
         "windows": []
       },
       "codex": {
-        "used": 82,
-        "projected": 182,
+        "used": 83,
+        "projected": 183,
         "stale": false,
         "reason": null,
         "windows": [
           {
             "label": "Weekly",
-            "used": 82,
-            "projected": 182,
+            "used": 83,
+            "projected": 183,
             "resets_at": 1794102377
           }
         ]
       },
       "claude": {
         "used": 99,
-        "projected": 152,
+        "projected": 151,
         "stale": false,
         "reason": null,
         "windows": [
           {
             "label": "Weekly",
             "used": 99,
-            "projected": 152,
+            "projected": 151,
             "resets_at": 1793980799
           },
           {
             "label": "Current session",
             "used": 3,
-            "projected": 5,
+            "projected": 4,
             "resets_at": 1793776199
           }
         ]
       }
     },
-    "sampled_at": 1793769538,
+    "sampled_at": 1793771412,
     "available": true,
     "age_seconds": 1,
     "scope": {
@@ -189,7 +189,7 @@
       "role": "oracle",
       "class": "oracle"
     },
-    "op_id": "01M6JFY1JPEY7G18HHT6658GVM"
+    "op_id": "01M6JHQ7YDTH650PSQGCPQZQC0"
   },
   "standalone_landed": {
     "commit": "ea753072c7ec2a0a278e5086ef21458efa0a08f0",
@@ -796,10 +796,65 @@
     }
   },
   "current_ui_followups": {
-    "gui_polish": "EXECUTOR-PROFILES-PENDING.md",
-    "workspace_fix": "EXECUTOR-VIEW-SWITCH.md",
-    "status": "assigned via explicit operator local-file workaround",
-    "preserve_backend": true,
-    "root_evidence_directory": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0"
+    "status": "requested refinements verified and installed",
+    "remaining": "Old backend/indexing administrative gaps retained separately; no backend restart authorized"
+  },
+  "latest_ui_refinements_delivery": {
+    "at": 1793771453.100213,
+    "source": "2f56b3d6d3e8403db015483de3c438c467bb1a42",
+    "harness": "d48b941e24fba5aab48dbecfc4bc91db3312405a",
+    "running_gui": {
+      "pid": 46574,
+      "instance": "01M6JHPHRZEKDCFSSE7JZ3A93K",
+      "source_revision": "2f56b3d6d3e8403db015483de3c438c467bb1a42"
+    },
+    "backend": {
+      "supervisor": {
+        "pid": 42905,
+        "birth": [
+          1793728886,
+          878651
+        ]
+      },
+      "logic": {
+        "pid": 55157,
+        "birth": [
+          1793761084,
+          126306
+        ]
+      }
+    },
+    "backend_exact_pid_birth_unchanged": true,
+    "existing_open_seat_identity_changes": [],
+    "before_seat_count": 112,
+    "after_seat_count": 112,
+    "signature_exit": 0,
+    "team": "UQB3368A84",
+    "activation_exit": 0,
+    "build_exit": 0,
+    "presented_frame_seq": 5,
+    "windows": 1,
+    "raw_handoff_evidence": "/Users/feral/mydev/bboxy450-term-codex-rich/target/ui-refinements-final/gui-reopen-gbpn1hzo",
+    "raster_hash_verified": true,
+    "omitted": "Full test/parity/formal/runtime corpora per operator speed override. Focused current-source/reused matching-input evidence only. Retained Logic process still runs prior backend code.",
+    "standalone": {
+      "source": "d48b941e24fba5aab48dbecfc4bc91db3312405a",
+      "signature_exit": 0,
+      "team": "UQB3368A84",
+      "make_install_exit": 0,
+      "standalone_reopened": false,
+      "live_sessions_signalled": false
+    },
+    "prepared_report": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/REPORT-UI-DELIVERY.md",
+    "report_indexed": false,
+    "harness_review_ref": "oracle-gui-polish-20261104",
+    "term_branch": "oracle-refinement-staging-20261104",
+    "evidence_sha256": {
+      "REPORT-UI-DELIVERY.md": "c48518dd2ced7adfe17f52624bdc75c844d75da9d59df8df7a6d93ce7d86b694",
+      "profiles-pending-verified.json": "760979f96fc6816a12266090c91f3b3a0bcda7ecc81d2c2a91a0071f39a55918",
+      "view-switch-verified.json": "c2d791858b1e127e419c9a27db5e9eabcb61bab6a8a035aab296d6a8695b90cd",
+      "refinements-final-delivery-verification.json": "a4b8a47b9cc77d7cfced5c2fc4a6de116c13eb7f0e9e20b2d98960911f088328",
+      "profiles-pending-standalone-verified.json": "591aeae78bc59189df5103bda0baf05efa5d66be39c538722539c9e9721857b0"
+    }
   }
 }
