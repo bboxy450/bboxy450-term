@@ -1,0 +1,860 @@
+{
+  "actor": {
+    "seat_id": "01M6H97SAX3GN1BYB4YG76P3P0",
+    "process_generation": 1,
+    "swarm_id": "01M649102FBS60QWNPZS5VAGF9",
+    "role": {
+      "name": "oracle",
+      "class": "oracle"
+    },
+    "grant_epoch": 1,
+    "issuer_kind": "local-dev"
+  },
+  "closures": [
+    {
+      "target": {
+        "name": "previous Oracle",
+        "id": "01M6H9704RM1WGA5MZYG8YBJBR",
+        "generation": "1"
+      },
+      "status": "applied",
+      "op_id": "01M6HCJZJYEW1EEKP8069WMKX0"
+    },
+    {
+      "target": {
+        "name": "Claude Architect",
+        "id": "01M6H970AZDNH8MPVMAFNFPYMZ",
+        "generation": "1"
+      },
+      "status": "applied",
+      "op_id": "01M6HCJZQFX1XDJ59NRJ13XHDE"
+    },
+    {
+      "target": {
+        "name": "Claude Creativity",
+        "id": "01M6H9714ZDG7QEARG33YVJNQN",
+        "generation": "1"
+      },
+      "status": "applied",
+      "op_id": "01M6HCJZTRZNWZZPA215SXQHAZ"
+    },
+    {
+      "target": {
+        "name": "obsolete pre-restart Oracle",
+        "id": "01M6F3V39NH351CTSW6ED1KF49",
+        "generation": "1"
+      },
+      "status": "rejected",
+      "op_id": "01M6HCJZY77364N5W5G9NZG3TQ",
+      "error": {
+        "code": "rejected",
+        "message": "target viewport unavailable"
+      }
+    }
+  ],
+  "replacements": [
+    {
+      "seat_id": "01M6HCVV32KS845WHVD5FCX7QE",
+      "slug": "2026-11-03-codex-rich-socket",
+      "worktree": "/Users/feral/mydev/bboxy450-harness-pane-b12",
+      "name": "Rich socket (Codex)",
+      "delegation": {
+        "status": "accepted",
+        "task_id": "01M6HCYCQB66JTBKPHE1YE4QJB",
+        "path": ".bboxy/tasks/2026-11-03-codex-rich-socket.md",
+        "task_status": "claimed",
+        "message_ids": [
+          "4X6VYGBRF6R5DZWM0C4W8B8JF7"
+        ],
+        "op_id": "01M6HCYSPF5DJA2XBB1FCRVJJD"
+      }
+    },
+    {
+      "seat_id": "01M6HCYT7FYN90XD2C4TXGZQZC",
+      "slug": "2026-11-03-codex-harness-recovery",
+      "worktree": "/Users/feral/mydev/bboxy450-harness-codex-recovery",
+      "name": "Standalone (Codex)",
+      "spawn_op": "01M6HCYT7FA9YPN3G755QT9RJ9",
+      "delegation": {
+        "status": "accepted",
+        "task_id": "01M6HCYD1S81VTDS3V9M4Y8H4K",
+        "path": ".bboxy/tasks/2026-11-03-codex-harness-recovery.md",
+        "task_status": "claimed",
+        "message_ids": [
+          "0SX3EDQFHAPFAFMV6WE7178N9W"
+        ],
+        "op_id": "01M6HCYTAW2JZDFS9STGYCB2AV"
+      }
+    },
+    {
+      "seat_id": "01M6HCYVGE7CJ8KK6PB20SPF3D",
+      "slug": "2026-11-03-codex-rich-host",
+      "worktree": "/Users/feral/mydev/bboxy450-term-codex-rich",
+      "name": "Rich host (Codex)",
+      "spawn_op": "01M6HCYVGECEMAQMJHNTQ6599X",
+      "delegation": {
+        "status": "accepted",
+        "task_id": "01M6HCYDWBAX2FDYGMSPB12HRN",
+        "path": ".bboxy/tasks/2026-11-03-codex-rich-host.md",
+        "task_status": "claimed",
+        "message_ids": [
+          "2NSCSE389ZM8FTS0PGV7A7BSE2"
+        ],
+        "op_id": "01M6HCYVNDV4FTZA7147403P5Q"
+      }
+    }
+  ],
+  "cross_swarm_refusal": {
+    "op_id": "01M6HD2733WYQV0PQ9EN2CRAED",
+    "status": "rejected",
+    "error": {
+      "code": "rejected",
+      "message": "target outside caller swarm"
+    }
+  },
+  "cross_swarm_notice": {
+    "message_id": "01M6HD274CFB23J9SXV8P4QRPE"
+  },
+  "source_snapshots": [
+    "preservation-before.json",
+    "preservation-original-recovered.json",
+    "original-interrupted-source.zip"
+  ],
+  "cleanup_results": "cleanup-results.json",
+  "effective_default_profile": "codex-exec",
+  "cache_cleanup": "cargo-cache-cleanup.json",
+  "latest_vesper_request": {
+    "seat": "01M6HEDKGMGNSJYV4KEYAH4C70",
+    "swarm": "01M649102FBS60QWNPZS5VAGF9",
+    "state": "closed_retained",
+    "pid_77009": "exited",
+    "close_retry": "01M6HEYDDVV1SRHCBBZ7JQA046 rejected authority changed because exit completed",
+    "confirmation_op": "01M6HEYVA22T4Y7J6763Q86V3F"
+  },
+  "latest_usage": {
+    "machine": {
+      "cpu": 32,
+      "memory": 69,
+      "disk": 95,
+      "reason": null
+    },
+    "providers": {
+      "grok": {
+        "used": null,
+        "projected": null,
+        "stale": false,
+        "reason": "Run `grok` to sign in",
+        "windows": []
+      },
+      "codex": {
+        "used": 83,
+        "projected": 183,
+        "stale": false,
+        "reason": null,
+        "windows": [
+          {
+            "label": "Weekly",
+            "used": 83,
+            "projected": 183,
+            "resets_at": 1794102377
+          }
+        ]
+      },
+      "claude": {
+        "used": 99,
+        "projected": 151,
+        "stale": false,
+        "reason": null,
+        "windows": [
+          {
+            "label": "Weekly",
+            "used": 99,
+            "projected": 151,
+            "resets_at": 1793980799
+          },
+          {
+            "label": "Current session",
+            "used": 3,
+            "projected": 4,
+            "resets_at": 1793776199
+          }
+        ]
+      }
+    },
+    "sampled_at": 1793771412,
+    "available": true,
+    "age_seconds": 1,
+    "scope": {
+      "seat": "01M6H97SAX3GN1BYB4YG76P3P0",
+      "role": "oracle",
+      "class": "oracle"
+    },
+    "op_id": "01M6JHQ7YDTH650PSQGCPQZQC0"
+  },
+  "standalone_landed": {
+    "commit": "ea753072c7ec2a0a278e5086ef21458efa0a08f0",
+    "push_exit_code": 0,
+    "base": "0c403165e815c2f7bf77ccac293784b021f42f96",
+    "full_make_exit": 0,
+    "seconds": 1235.874678,
+    "formal_models": 99,
+    "formal_contracts": 34,
+    "formal_sha256": "2bbcb32495cdfa7ef64185eae4e83e38fa2318d6bde4904488df611be3833a73",
+    "source_hashes_checked": 270,
+    "signed_commits": 6,
+    "same_lab_fixtures": 7,
+    "native_pngs_identical_to_main": true,
+    "baseline_adopted": false
+  },
+  "standalone_report_landed": {
+    "commit": "af65c6cf82d9dde6314b1771b9314061b0e24212",
+    "push_exit_code": 0,
+    "reconcile_op": "01M6HH4T8JRMQ9NG6KESV96XDS",
+    "reconcile_disposition": "historically implemented, original report arrived during grace"
+  },
+  "install": {
+    "worktree": "/Users/feral/mydev/bboxy450-harness-land",
+    "commit": "ea753072c7ec2a0a278e5086ef21458efa0a08f0",
+    "session_id": 2878,
+    "result_file": "harness-install-result.json",
+    "log": "harness-install.log",
+    "status": "passed",
+    "exit_code": 0,
+    "seconds": 630.1839447498787
+  },
+  "resume_identity_gap": {
+    "old": "01M6HCYT7FYN90XD2C4TXGZQZC",
+    "new": "01M6HGY3V1KRZQVGFP17JVJ7JM",
+    "both_closed": true,
+    "message": "01M6HH1YVB3BRBNQ4SK48BCJNG",
+    "close_op": "01M6HH4VBB5YWXEM3V349P202Y",
+    "result": "Resumed native thread authenticated old closed MCP seat; refused execution; no credential change."
+  },
+  "intermediate_report": {
+    "id": "01M6HH95QSSAXPSV41HFYVMT4Q",
+    "number": 17033,
+    "path": ".bboxy/reports/2026-11-03-codex-oracle-takeover-interim.md"
+  },
+  "task": "01M6HCH1SJHDSB6SDAC2ZF1BXX",
+  "at": 1793750801.7857559,
+  "operational_exit_code": 0,
+  "product_complete": false,
+  "raw_evidence_directory": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0",
+  "archive_sha256": "eb7658af7fb9fae1eb186852e99b9bcedc150058fb989f28e7672b9214ea3ce9",
+  "installed_smoke": {
+    "command": "python3 -I scripts/smoke-app.py /Users/feral/Applications/bboxy450-harness.app /tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/installed-harness-smoke",
+    "exit_code": 0,
+    "seconds": 1.3692119121551514,
+    "log": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/installed-harness-smoke.log",
+    "source": "ea753072c7ec2a0a278e5086ef21458efa0a08f0"
+  },
+  "source_preservation_manifest_sha256": "50e9e26e6e8db1f77cb1358dfcf062c138bc348b1da4a2ae23dbe1e895d49689",
+  "resource_priority": {
+    "at": 1793743998.022517,
+    "disk": {
+      "total_bytes": 494384795648,
+      "used_bytes": 464055017472,
+      "free_bytes": 30329778176,
+      "used_percent": 93.87
+    },
+    "last_mcp_usage": {
+      "at_utc": "2026-11-03 22:03:35 UTC",
+      "age_at_sampling_seconds": 2,
+      "cpu_percent": 49,
+      "memory_percent": 63,
+      "disk_percent": 95,
+      "claude_weekly_used_percent": 98,
+      "claude_current_session_used_percent": 2,
+      "codex_weekly_used_percent": 73
+    },
+    "current_mcp_usage": "unavailable: read_response WouldBlock, no current inference value claimed",
+    "retirement": {
+      "socket": "accepted, close applied 01M6HQ42B098EVSHA93W737795; Codex process cwd now absent; lifecycle read unavailable",
+      "visual": "historical superseded, close applied 01M6HQ43K8XEGWFHM71SBEQ6ZC; Codex process cwd now absent; source snapshot preserved; lifecycle read unavailable"
+    },
+    "unmanaged_claude": {
+      "pid": 34411,
+      "scope": "outside permitted MCP control, not terminated"
+    },
+    "delivery_decision": "one current-swarm productive host executor; optional visual changes deferred and archived, no baseline adoption",
+    "cleanup": "no new deletion until exact scope amendment and exit/open-file observations available"
+  },
+  "combined_harness_landed": {
+    "at": 1793743206.569995,
+    "head": "2fb78a017992f73468b6fa9fe5edbc48ba27f05c",
+    "base": "af65c6cf82d9dde6314b1771b9314061b0e24212",
+    "signed_commits": 10,
+    "canonical_source": "49fced5d8ae280ce2330258a62b0710063cb261c",
+    "canonical_exit_code": 0,
+    "input_hashes_verified": 273,
+    "commands_exit_zero": 21,
+    "report_only_changes": [
+      ".bboxy/reports/2026-11-03-codex-rich-socket-integrated.md"
+    ],
+    "formal_check_exit_code": 0,
+    "formal_sha256": "5a0fd20f72fe9cfe2c4b50a69c9050dc4aa0a8c4bd3a2c743bca2eca6ccc6eaa",
+    "models": 112,
+    "contracts": 38,
+    "report_sha256": "2e8765bed7ccb0ae29eeac0ac9dc9f61602c8eae7dee96ecc33183317cf3639f",
+    "worktree_clean": true,
+    "remote_identity": "bboxy450",
+    "remote_main_before": "af65c6cf82d9dde6314b1771b9314061b0e24212",
+    "published_by_this_step": true,
+    "push_exit_code": 0,
+    "task_accept_op": "01M6HQ40KSN7G5MBF8XV3JWWR1"
+  },
+  "combined_harness_install": {
+    "at": 1793744102.648427,
+    "bundle": "/Users/feral/Applications/bboxy450-harness.app",
+    "source": "2fb78a017992f73468b6fa9fe5edbc48ba27f05c",
+    "signature_exit_code": 0,
+    "team": "UQB3368A84",
+    "binary_sha256": "a0bad4b18880e674e56865935dbb59fcb209302b005c6cda7bb122d899c9679d",
+    "smoke_command": [
+      "python3",
+      "-I",
+      "scripts/smoke-app.py",
+      "/Users/feral/Applications/bboxy450-harness.app",
+      "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/installed-combined-smoke"
+    ],
+    "smoke_exit_code": 0,
+    "smoke_seconds": 0.7276558876037598,
+    "smoke_log_sha256": "7a109538e6ee0b2654af5586f11c57c4d3aa7163f9f9de9f4406dac218967aaf",
+    "presentation": "private replay and hidden native-window/surface/frame only; no visible-presentation claim",
+    "make_install": {
+      "exit_code": 0,
+      "seconds": 88.24327611923218
+    }
+  },
+  "deferred_visual": {
+    "at": 1793743951.881848,
+    "worktree": "/Users/feral/mydev/bboxy450-harness-codex-visual",
+    "head": "af65c6cf82d9dde6314b1771b9314061b0e24212",
+    "files": {
+      "ATTRIBUTION.md": {
+        "sha256": "c3e6ad7c688286356bb9a6daa898d4273af99adf9427c66c4446acbb04614f1e",
+        "bytes": 6170
+      },
+      "Makefile": {
+        "sha256": "5c6c6032c6f31867deba9e2b1e0e7b8dfec05005619056b02e20e9aee7785b3d",
+        "bytes": 9887
+      },
+      "scripts/native-visual-pass.py": {
+        "sha256": "fe9049d53799634338772b9d0c6f1d211369d18829ba129883f762d856bed326",
+        "bytes": 8646
+      },
+      "src/frontends/gui/face.rs": {
+        "sha256": "49498f4261bc46c71377cfe5edf6209f3225628bf2d75bcf972233c1832c204f",
+        "bytes": 87718
+      },
+      "src/frontends/gui/face_rows.rs": {
+        "sha256": "999861ff9839823dec0ab24fe5bf2b55ce83288da6cb1cbf9a62396a18d3a24a",
+        "bytes": 50161
+      },
+      "tests/gui_render.rs": {
+        "sha256": "40b306435a306bd5bef504159f1c9313b25c84f3dd8fa570af3d42d793d23b89",
+        "bytes": 83166
+      }
+    },
+    "archive_sha256": "2216fd2186400855c0ee3c4bfc7a3973c1831e6b1f7ad0044c8e22f8920b4cde",
+    "diff_sha256": "49f185972884839a38979d471b200be4bb5324a4ce1bc52c0de0dd2a66d05485",
+    "disposition": "deferred, source preserved; no acceptance or baseline adoption",
+    "reconcile_op": "01M6HQ42GSWYXABDNCB78SPHD7",
+    "close_op": "01M6HQ43K8XEGWFHM71SBEQ6ZC"
+  },
+  "host_final_brief": {
+    "observed_at": 1793744078.749631,
+    "source": "canonical task Markdown (MCP reads unavailable)",
+    "state": "claimed",
+    "updated": "2026-11-03T22:08:04.816Z",
+    "brief_write_op": "01M6HQ8Z90B1F3X3Y9QNMVH0J0",
+    "delegation": "claimed state and signed task observed; delivery receipt unverified while MCP unavailable"
+  },
+  "current_delivery": {
+    "at": 1793745218090,
+    "usage": {
+      "machine": {
+        "cpu": 71,
+        "memory": 65,
+        "disk": 94,
+        "reason": null
+      },
+      "providers": {
+        "grok": {
+          "used": null,
+          "projected": null,
+          "stale": false,
+          "reason": "Run `grok` to sign in",
+          "windows": []
+        },
+        "claude": {
+          "used": 98,
+          "projected": 161,
+          "stale": false,
+          "reason": null,
+          "windows": [
+            {
+              "label": "Weekly",
+              "used": 98,
+              "projected": 161,
+              "resets_at": 1793980799
+            },
+            {
+              "label": "Current session",
+              "used": 2,
+              "projected": 7,
+              "resets_at": 1793757599
+            }
+          ]
+        },
+        "codex": {
+          "used": 74,
+          "projected": 181,
+          "stale": false,
+          "reason": null,
+          "windows": [
+            {
+              "label": "Weekly",
+              "used": 74,
+              "projected": 181,
+              "resets_at": 1794102377
+            }
+          ]
+        }
+      },
+      "sampled_at": 1793744677,
+      "available": true,
+      "age_seconds": 0,
+      "scope": {
+        "seat": "01M6H97SAX3GN1BYB4YG76P3P0",
+        "role": "oracle",
+        "class": "oracle"
+      },
+      "op_id": "01M6HR7AWFEPBQSBRTQZN95B1Y"
+    },
+    "producer": {
+      "seat": "01M6HRD7KZD5Q336S88VRS5HJX",
+      "task": "01M6HRGGBFA6Z97D4TPDSZWPK8",
+      "path": "tasks/2026-11-03-codex-agent-context.md",
+      "worktree": "/Users/feral/mydev/bboxy450-harness-pane-b12",
+      "branch": "codex-launch-parity-20261103",
+      "delegation": {
+        "status": "accepted",
+        "task_id": "01M6HRGGBFA6Z97D4TPDSZWPK8",
+        "path": ".bboxy/tasks/2026-11-03-codex-agent-context.md",
+        "task_status": "claimed",
+        "message_ids": [
+          "6VSZAD1KY281C8C6SE7A6CVP2K"
+        ],
+        "op_id": "01M6HRGGNCV2C5BGCMX88A5F24"
+      },
+      "receipt": {
+        "kind": "receipts",
+        "page": {
+          "items": [
+            {
+              "message_sequence": 627,
+              "message": "6VSZAD1KY281C8C6SE7A6CVP2K",
+              "sender": "01M6H97SAX3GN1BYB4YG76P3P0",
+              "recipient": "01M6HRD7KZD5Q336S88VRS5HJX",
+              "agent": null,
+              "evidence": "native-queued",
+              "note": "native admission only; model consumption unverified",
+              "held": null,
+              "arrivals": [
+                {
+                  "path": "seats/01M6HRD7KZD5Q336S88VRS5HJX/inbox",
+                  "links": [],
+                  "paused": false,
+                  "batch_ms": 0,
+                  "coalesce": false
+                }
+              ],
+              "received_ms": 1793744980587,
+              "eligible_ms": 1793744980587,
+              "batch_key": "seats/01M6HRD7KZD5Q336S88VRS5HJX/inbox",
+              "class": "oracle",
+              "attempt": "01M6HRGJNHZX10CX670BW4J2RQ",
+              "native_id": "01a1a388-4ab8-7c01-a6b7-61c61dff2718",
+              "relayed_via_main": false,
+              "wake": "now"
+            }
+          ],
+          "next": null
+        },
+        "scope": {
+          "seat": "01M6H97SAX3GN1BYB4YG76P3P0",
+          "role": "oracle",
+          "class": "oracle"
+        },
+        "op_id": "01M6HRH10ZT3FVNJMWGKKHSMBD"
+      }
+    },
+    "host_task": "01M6HCYDWBAX2FDYGMSPB12HRN",
+    "host_scope_amend_op": "01M6HRPH3E701ZS4EGDZZ22HS2",
+    "root_scope_amend_op": "01M6HRHQ4ACD051QM1430ZB1R1",
+    "duplicate_task_records": {
+      "ids": [
+        "01M6HRD5XR91MD7MH557R77N5Y",
+        "01M6HREVGM5DB1KQ1P4CZ20VWH"
+      ],
+      "disposition": "preserved, lifecycle preflight ambiguous/conflicting; no source/task-system bypass, only new unique task productive"
+    },
+    "product_complete": false
+  },
+  "visual_cache_cleanup": {
+    "at": 1793745051.715034,
+    "worktree": "/Users/feral/mydev/bboxy450-harness-codex-visual",
+    "authority": "visual-cache-current-authority.json",
+    "allocated_bytes_removed": 2547884032,
+    "free_bytes_before": 30391160832,
+    "free_bytes_after": 32796717056,
+    "source_archive_sha256": "2216fd2186400855c0ee3c4bfc7a3973c1831e6b1f7ad0044c8e22f8920b4cde",
+    "source_head": "af65c6cf82d9dde6314b1771b9314061b0e24212",
+    "status_unchanged": true,
+    "source_hashes_unchanged": true,
+    "other_worktrees_untouched": true
+  },
+  "agent_context_published": {
+    "at": 1793750135.856704,
+    "source": "7c774f3e0d02ebdaa2b25bc0143fcc8cd47e11aa",
+    "base": "2fb78a017992f73468b6fa9fe5edbc48ba27f05c",
+    "verified_signatures": [
+      "7c774f3e0d02ebdaa2b25bc0143fcc8cd47e11aa",
+      "cf211eff0a5d5ee2d0bda0608a4dd5b6ee6fba9e",
+      "6b400cc3273c102748fa195f2f30bf5452fa0fb4",
+      "d3aede74824fe355e589c6ed2b94d09098217cd6"
+    ],
+    "canonical_log_sha256": "d7ffd3c0f3cc65cf572e12d5daa03eafc3b0df6a18dd924d17e34309ecd717da",
+    "canonical_exit_code": 0,
+    "input_hashes_verified": 278,
+    "core_zero_rows": 23,
+    "gui_zero_rows": 5,
+    "process_profiles_verified": 4,
+    "process_evidence_sha256": "627214861d9b95e63ad88bcc631983b0fa4b69d0911b4ebd4808e28192b4369e",
+    "socket_fixture_control": {
+      "command": "make -f /tmp/codex-launch-parity.LWWeDR/focus.mk",
+      "assertion": "session socket did not bind",
+      "red_make_exit": 2,
+      "red_cargo_exit": 101,
+      "green_exit": 0,
+      "source_sha256": "54fcc5b50d6033a29d3d76dd6005c8ac0c3ae7d155d2858b6c3a275032acc644"
+    },
+    "report_registration": "pending original operation resolution/correct current task",
+    "scope": "source and retained evidence verified; not accepted/published by this step; no vendor conformance/system-role proof",
+    "formal_check_exit_code": 0,
+    "formal_models": 119,
+    "formal_contracts": 39,
+    "retained_models": 112,
+    "formal_graphs_equal": true,
+    "published_main": "7c774f3e0d02ebdaa2b25bc0143fcc8cd47e11aa",
+    "push_exit_code": 0,
+    "published_at": 1793750224.555325
+  },
+  "agent_context_installed": {
+    "at": 1793750358.371068,
+    "source": "7c774f3e0d02ebdaa2b25bc0143fcc8cd47e11aa",
+    "bundle": "/Users/feral/Applications/bboxy450-harness.app",
+    "signature_exit_code": 0,
+    "team": "UQB3368A84",
+    "binary_sha256": "a4dc8afa8bc87ffcbcc4d67a6dd7443fea47f502274c48c5a1f122c04b381574",
+    "smoke_command": [
+      "python3",
+      "-I",
+      "scripts/smoke-app.py",
+      "/Users/feral/Applications/bboxy450-harness.app",
+      "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/installed-context-smoke"
+    ],
+    "smoke_exit_code": 0,
+    "smoke_seconds": 0.9422781467437744,
+    "smoke_log_sha256": "33c5aea8be21bdef92dabcab49cd26ab04bead315e8820426780ed43b245f8a8",
+    "presentation": "private replay and hidden native window/surface/frame only"
+  },
+  "latest_disk": {
+    "at": 1793750421.497885,
+    "free_gib": 23.45,
+    "used_percent": 94.91
+  },
+  "host_production_flag_correction_op": "01M6HXM3RDARMT6X351SVCXS2E",
+  "report_registration_gap": {
+    "original_operation": "01M6HWPJFGWXANRB126ZP4XZ63",
+    "owner": "01M6HRD7KZD5Q336S88VRS5HJX",
+    "state": "resolved applied by owning seat; historical19620 and current-task19624 retained",
+    "prepared_report_task": "01M6HRD5XR91MD7MH557R77N5Y",
+    "correct_task": "01M6HRGGBFA6Z97D4TPDSZWPK8"
+  },
+  "agent_context_final": {
+    "at": 1793750580.995848,
+    "head": "a2312959f4ddd4519db13f2194c167705056e532",
+    "implementation": "7c774f3e0d02ebdaa2b25bc0143fcc8cd47e11aa",
+    "canonical_inputs_verified": 278,
+    "retained_log_hashes_verified": 27,
+    "report_only_paths": [
+      ".bboxy/reports/2026-11-03-codex-agent-context.md",
+      ".bboxy/reports/2026-11-03-codex-launch-parity.md",
+      ".bboxy/runs/codex-launch-parity.json"
+    ],
+    "formal_check_exit_code": 0,
+    "formal_sha256": "b4c11e7387371584d5512e22c3f7756e91b55337b68e004b0a9cb2537e457f6f",
+    "models": 119,
+    "contracts": 39,
+    "worktree_clean": true,
+    "report": {
+      "number": 19624,
+      "id": "01M6HXF8WPTF9GHFQ4N6NH594R",
+      "task": "01M6HRGGBFA6Z97D4TPDSZWPK8"
+    },
+    "original_report_write_outcome": "owning seat resolved applied, original report preserved; no write replay"
+  },
+  "agent_context_final_install": {
+    "at": 1793750709.937116,
+    "source": "a2312959f4ddd4519db13f2194c167705056e532",
+    "implementation": "7c774f3e0d02ebdaa2b25bc0143fcc8cd47e11aa",
+    "binary_sha256": "f9c7bd85d05e63f5996a8545b3ab2d7ae7dd05ec3b960e4d267e3c24ba92ab9f",
+    "signature_exit_code": 0,
+    "team": "UQB3368A84",
+    "private_smoke_exit_code": 0,
+    "presentation": "hidden native startup/surface/frame only",
+    "implementation_equivalence": "all278 canonical implementation input hashes unchanged; report-only git diff; no binary-equivalence claim",
+    "audit_corrections": [
+      {
+        "assertion": "whole signed executable bytes unchanged",
+        "exit_code": 1
+      },
+      {
+        "assertion": "bundle CodeDirectory hash unchanged",
+        "exit_code": 1
+      }
+    ],
+    "correction_reason": "These extra identity assertions do not express a required invariant: re-signing and source-revision plist metadata change signed artifact identity. Retain actual artifact hashes and validate current revision/signature/smoke instead."
+  },
+  "agent_context_accept_op": "01M6HXVXSSSH6NH0B0BENA6VNG",
+  "agent_context_close_op": "01M6HXVZBRBW8SPQQ3G62550M1",
+  "agent_context_lifecycle": "closed_retained; actual exit observed",
+  "context_cache_cleanup": {
+    "at": 1793750750.590037,
+    "authority": "context-cache-authority.json",
+    "head": "a2312959f4ddd4519db13f2194c167705056e532",
+    "published_main": "a2312959f4ddd4519db13f2194c167705056e532",
+    "source_inputs_unchanged": 278,
+    "worktree_clean": true,
+    "allocated_bytes_removed": 14420967424,
+    "free_bytes_before": 25322967040,
+    "free_bytes_after": 39574188032,
+    "active_host_untouched": true,
+    "raw_formal_packaging_and_source_preserved": true
+  },
+  "focused_cfg_delivery": {
+    "at": 1793759286.749665,
+    "cfg_verified": {
+      "at": 1793759024.036652,
+      "head": "5c288d0bcbdaebc7249740220158829e87c85e5a",
+      "implementation": "035e5b29e4ba02cbd2160fc48ad3ad3600d8c6e7",
+      "reported_head": "626fbcc59b1c17952f85f054c258e9bc39dd283f",
+      "base": "a2312959f4ddd4519db13f2194c167705056e532",
+      "included_upstream": "061bc30bf6030fc072b3aa05bd5190d3e638c61f",
+      "upstream_changes": "only published log/research/decision records",
+      "signed_commits": [
+        "e0c725a7701fa90e88195ccfd6b09e3ab4cbd265",
+        "626fbcc59b1c17952f85f054c258e9bc39dd283f",
+        "f4dfc0ea60d97f83fdc6295cf28d8b08557f6e83",
+        "9e3c7f9578dec162b1046e0f9c8543184a3b7669",
+        "f98974156a4b899e17047062cf9ba937ee35f30f",
+        "035e5b29e4ba02cbd2160fc48ad3ad3600d8c6e7"
+      ],
+      "input_hashes_checked": 9,
+      "command": "make check-embedded-build",
+      "exit_code": 0,
+      "build_configurations": 3,
+      "red_exit_code": 2,
+      "red_cargo_exit": 101,
+      "logs": {
+        "baseline": {
+          "path": "/tmp/codex-embedded-build-red.log",
+          "exit_code": 2,
+          "sha256": "d240d6d9af21e2831c65a6f654f4cf6d0dea68b37abb573734e9eca6169105ae"
+        },
+        "fixed": {
+          "path": "/tmp/codex-embedded-build-green.log",
+          "exit_code": 0,
+          "sha256": "28b8112c36da2099b40db710c75c8ec222da6dd3eff6ad87d56d451a9ebbdf3a"
+        }
+      },
+      "full_suites_run_by_oracle": false,
+      "prior_formal_evidence": "119 models/39 contracts, prior source; full rerun omitted by operator",
+      "worktree_clean": true,
+      "report": 19676,
+      "push_exit_code": 0,
+      "first_push_non_ff": "remote advanced to research-only061bc; preserved via signed merge, no force push",
+      "published_ref": "refs/heads/oracle/embedded-cfg-20261104",
+      "published_sha": "5c288d0bcbdaebc7249740220158829e87c85e5a",
+      "published_main": false,
+      "main_fast_forward_attempts": "two non-fast-forward rejections as published main changed; no force push, dedicated published branch used"
+    },
+    "cfg_installed": {
+      "at": 1793759247.852471,
+      "source": "5c288d0bcbdaebc7249740220158829e87c85e5a",
+      "published_ref": "oracle/embedded-cfg-20261104",
+      "binary_sha256": "d6de800237065e0dfb6847e369cbb1386c19fceab3a81f7f40822709175fc65e",
+      "signature_exit_code": 0,
+      "team": "UQB3368A84",
+      "private_native_smoke_exit_code": 0,
+      "smoke_log_sha256": "da413449a1d69c8d111a87366809b25eff97e0110d8be5969f1188c4d699fc54",
+      "presentation": "hidden native startup/surface/frame only"
+    },
+    "cfg_task_accept_op": "01M6J5TW6XKFS552GYW5SZ00J4",
+    "host_return_delegate_op": "01M6J5ZC04PTXN56SBSEC3X3SG",
+    "host_verify": "make verify-rich-delivery",
+    "host_brief_bytes": 4553,
+    "root_compact_op": "01M6J63391TFXT59AR9GWQRJMZ",
+    "needed_checks_only": true,
+    "free_gib": 28.77,
+    "product_complete": false
+  },
+  "refinements_staged": {
+    "at": 1793764414.154772,
+    "term_source": "5793139a66b5ba58e55703239d5866fea87eb61b",
+    "harness_source": "0dfa2b8147f01c95dda5da8ac14c33ec249cd86d",
+    "bundle": "/Users/feral/mydev/bboxy450-term-codex-rich/target/staged-refinements/bboxy450-term.app",
+    "signature_exit": 0,
+    "team": "UQB3368A84",
+    "build": {
+      "exit_code": 0,
+      "seconds": 140.7676637172699,
+      "source": "5793139a66b5ba58e55703239d5866fea87eb61b",
+      "bundle": "/Users/feral/mydev/bboxy450-term-codex-rich/target/staged-refinements/bboxy450-term.app",
+      "activation": "none; no install/reopen/backend refresh"
+    },
+    "binary_sha256": {
+      "bboxy450-harness": "4f59cac78dbe5b3e8dd7b0dd12c47a1b4010c4d876dc3074cfdc9e285d3dfd1c",
+      "bboxy450-term": "eb57ef3c069c83a3566c545b67df8670e8282a6c9877f2e5a69c5766d9a28e56"
+    },
+    "installed_term_source_unchanged": "4b8cd49cdb64ccb440213db8617a334c8e2fdd87",
+    "live_gui_probe": {
+      "running": true,
+      "process": {
+        "pid": 54941,
+        "birth": [
+          1793761082,
+          64673
+        ]
+      },
+      "gui": {
+        "pid": 54941,
+        "instance": "01M6J7VZEC8A3YCVS4942Q36DE",
+        "source_revision": "4b8cd49cdb64ccb440213db8617a334c8e2fdd87"
+      },
+      "repository": "/Users/feral/mydev/bboxy450-term"
+    },
+    "live_logic_process": "55157 54941 Tue Nov  3 18:58:04 2026     /Users/feral/Applications/bboxy450-term.app/Contents/MacOS/bboxy450-term",
+    "live_activation": "NONE; no backend or GUI refresh/install performed after no-restart instruction",
+    "focused_checks": "Verified logs/hashes/captures in workspace-fix-verified.json, private-restart-verified.json, gui-polish-review-96.json and gui-polish-final-verified.json",
+    "full_suites": "omitted under operator exception; no fresh whole-corpus/whole-CI receipt claimed",
+    "harness_published_ref": "oracle-gui-polish-20261104 (review branch, not main release)",
+    "term_publication": "local signed staging branch only",
+    "pending": "Task/report indexing remains pending on live old backend; original unknown intents not replayed/resolved",
+    "free_gib": 43.03
+  },
+  "prepared_handoff": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/REFINEMENT-HANDOFF.md",
+  "task_registration": "deferred; operator-authorized local /tmp collaboration fallback, no task_delegate/acceptance fabricated",
+  "latest_ui_only_delivery": {
+    "verified_at": 1793769619.042124,
+    "activation_exit": 0,
+    "gui_before": {
+      "pid": 54941,
+      "instance": "01M6J7VZEC8A3YCVS4942Q36DE",
+      "source_revision": "4b8cd49cdb64ccb440213db8617a334c8e2fdd87"
+    },
+    "gui_after": {
+      "pid": 45124,
+      "instance": "01M6JFEBPVV2R7J31RK8HQSWEM",
+      "source_revision": "ff150b62a73818a0902c17ce1ae785b6563d78ea"
+    },
+    "backend_exact_pid_birth_unchanged": true,
+    "existing_open_seat_metadata_changes": [],
+    "before_count": 111,
+    "after_count": 112,
+    "source": "ff150b62a73818a0902c17ce1ae785b6563d78ea",
+    "harness": "47c6616244de4a1218629841ffbd0db8f5a13da6",
+    "full_suites": "omitted under focused-check operator override",
+    "logic_workspace_fix": "not activated; retained Logic process remains previous code",
+    "executor_roundtrip": {
+      "seat": "01M6JFEN6MTPG7XB2YM4R1BSJ2",
+      "challenge": "ORACLE-ILKA-0518",
+      "reply": "01M6JFWHT92FDADH6FVYFVB9WG",
+      "tools_visible": [
+        "self_status",
+        "message_send",
+        "message_receipts"
+      ],
+      "seconds_to_signed_reply": 19
+    },
+    "evidence": {
+      "ui-only-delivery-verification.json": "f3804533ad347e3d3a544da43bafe1727a38ce2a7fe71411b612757cec1e4319",
+      "phase2-roundtrip-evidence.json": "b3a7fe63bba448be9969f2c57d92cbc9102b926535c00008ab46dee48ce6f913",
+      "ui-only-after-probe.json": "679f1eebae0be6e65929e3dd058cbe64cf6d0909d960668865ed65e2f08a0c11"
+    }
+  },
+  "current_ui_followups": {
+    "status": "requested refinements verified and installed",
+    "remaining": "Old backend/indexing administrative gaps retained separately; no backend restart authorized"
+  },
+  "latest_ui_refinements_delivery": {
+    "at": 1793771453.100213,
+    "source": "2f56b3d6d3e8403db015483de3c438c467bb1a42",
+    "harness": "d48b941e24fba5aab48dbecfc4bc91db3312405a",
+    "running_gui": {
+      "pid": 46574,
+      "instance": "01M6JHPHRZEKDCFSSE7JZ3A93K",
+      "source_revision": "2f56b3d6d3e8403db015483de3c438c467bb1a42"
+    },
+    "backend": {
+      "supervisor": {
+        "pid": 42905,
+        "birth": [
+          1793728886,
+          878651
+        ]
+      },
+      "logic": {
+        "pid": 55157,
+        "birth": [
+          1793761084,
+          126306
+        ]
+      }
+    },
+    "backend_exact_pid_birth_unchanged": true,
+    "existing_open_seat_identity_changes": [],
+    "before_seat_count": 112,
+    "after_seat_count": 112,
+    "signature_exit": 0,
+    "team": "UQB3368A84",
+    "activation_exit": 0,
+    "build_exit": 0,
+    "presented_frame_seq": 5,
+    "windows": 1,
+    "raw_handoff_evidence": "/Users/feral/mydev/bboxy450-term-codex-rich/target/ui-refinements-final/gui-reopen-gbpn1hzo",
+    "raster_hash_verified": true,
+    "omitted": "Full test/parity/formal/runtime corpora per operator speed override. Focused current-source/reused matching-input evidence only. Retained Logic process still runs prior backend code.",
+    "standalone": {
+      "source": "d48b941e24fba5aab48dbecfc4bc91db3312405a",
+      "signature_exit": 0,
+      "team": "UQB3368A84",
+      "make_install_exit": 0,
+      "standalone_reopened": false,
+      "live_sessions_signalled": false
+    },
+    "prepared_report": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/REPORT-UI-DELIVERY.md",
+    "report_indexed": false,
+    "harness_review_ref": "oracle-gui-polish-20261104",
+    "term_branch": "oracle-refinement-staging-20261104",
+    "evidence_sha256": {
+      "REPORT-UI-DELIVERY.md": "c48518dd2ced7adfe17f52624bdc75c844d75da9d59df8df7a6d93ce7d86b694",
+      "profiles-pending-verified.json": "760979f96fc6816a12266090c91f3b3a0bcda7ecc81d2c2a91a0071f39a55918",
+      "view-switch-verified.json": "c2d791858b1e127e419c9a27db5e9eabcb61bab6a8a035aab296d6a8695b90cd",
+      "refinements-final-delivery-verification.json": "a4b8a47b9cc77d7cfced5c2fc4a6de116c13eb7f0e9e20b2d98960911f088328",
+      "profiles-pending-standalone-verified.json": "591aeae78bc59189df5103bda0baf05efa5d66be39c538722539c9e9721857b0"
+    }
+  }
+}
