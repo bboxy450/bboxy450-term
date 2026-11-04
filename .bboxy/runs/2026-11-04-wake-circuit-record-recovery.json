@@ -1,0 +1,59 @@
+[
+  {
+    "path": "reports/2026-11-03-codex-harness-recovery.md",
+    "id": "01M6HG6TRW5DRVW79KAZF3A942",
+    "source_sha256": "e6b646066eda9c87d63ee9da62174e4d8118a168e79282fda6c7c57c9bba4c56",
+    "knowledge_etag": "e6b646066eda9c87d63ee9da62174e4d8118a168e79282fda6c7c57c9bba4c56",
+    "byte_identical": true
+  },
+  {
+    "path": "tasks/2026-11-04-ui-status-and-handoff-diagnostics.md",
+    "id": "01M6KGR1300A1GX09F02F0WX1F",
+    "source_sha256": "ea518985c9ca781ffae332fed0d57f36771e819d0df0b9f940a735cdfbd92589",
+    "knowledge_etag": "ea518985c9ca781ffae332fed0d57f36771e819d0df0b9f940a735cdfbd92589",
+    "byte_identical": true
+  },
+  {
+    "path": "reports/2026-11-03-codex-agent-context.md",
+    "id": "01M6HXF8WPTF9GHFQ4N6NH594R",
+    "source_sha256": "b6a0c07dfce1c638ac3430c1d907df466e86a67797d41208343463c5f5480f8d",
+    "knowledge_etag": "b6a0c07dfce1c638ac3430c1d907df466e86a67797d41208343463c5f5480f8d",
+    "byte_identical": true
+  },
+  {
+    "path": "reports/2026-11-04-codex-embedded-build.md",
+    "id": "01M6J5FMA8VMVWW8MGMWYHYAWC",
+    "source_sha256": "6bf82e42b9572f02aa085cb29c3c0fb4ae3455d9694b2d25dcf0ba491eda2877",
+    "knowledge_etag": "6bf82e42b9572f02aa085cb29c3c0fb4ae3455d9694b2d25dcf0ba491eda2877",
+    "byte_identical": true
+  },
+  {
+    "path": "reports/2026-11-03-codex-rich-socket-integrated.md",
+    "id": "01M6HPAEC8BJKZ1VER3H6Y1P72",
+    "source_sha256": "94902b42488b02e74089d06e9878ed481c428b76ba68235a3c4f76cd11a82b49",
+    "knowledge_etag": "94902b42488b02e74089d06e9878ed481c428b76ba68235a3c4f76cd11a82b49",
+    "byte_identical": true
+  },
+  {
+    "path": "reports/2026-11-03-codex-launch-parity.md",
+    "id": "01M6HWPJFGWXANRB126ZP4XZ63",
+    "source_sha256": "95b4770b169ce08b81a5b147c1d4343156da3b11afdee07f4aa334cc1862933a",
+    "knowledge_etag": "95b4770b169ce08b81a5b147c1d4343156da3b11afdee07f4aa334cc1862933a",
+    "byte_identical": true
+  },
+  {
+    "path": "reports/2026-11-03-codex-rich-socket.md",
+    "id": "01M6HJ0JMXX8AGNEY1DCP369CY",
+    "source_sha256": "3d4b6273fea77529c7e3dea5665fd9869e7f496e936cbb471e125fa1ea42d2c8",
+    "knowledge_etag": "3d4b6273fea77529c7e3dea5665fd9869e7f496e936cbb471e125fa1ea42d2c8",
+    "byte_identical": true
+  },
+  {
+    "path": ".bboxy/tasks/2026-11-03-codex-launch-parity.md",
+    "id": "01M6HRD5XR91MD7MH557R77N5Y",
+    "source_sha256": "1882d5f4fc2de570c43124f415e83b837a1042f89ea0dd3aa7724127603d5018",
+    "knowledge_etag": "1882d5f4fc2de570c43124f415e83b837a1042f89ea0dd3aa7724127603d5018",
+    "byte_identical": true,
+    "reason": "Original report binds this historical task by exact ID; ambiguous slug resolved with authenticated knowledge_fetch by that ID. Preserve returned root-relative path."
+  }
+]

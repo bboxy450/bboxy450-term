@@ -1261,3 +1261,13 @@ frontend = "project"
 name = "BrokenWakeCircuitRefund"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "TaskPanelRetry"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTaskPanelRetry"
+expected = "safety"
+frontend = "project"
