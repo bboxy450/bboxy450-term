@@ -22,6 +22,18 @@ extern crate std;
 #[cfg(feature = "model")]
 pub mod model;
 
+/// Required claims, finite verification results and JSON evidence (hosted only).
+#[cfg(feature = "model")]
+pub mod verify;
+
+/// Declares stable required claim ids for a protocol.
+#[cfg(all(feature = "macros", feature = "model"))]
+pub use bbt_yarn_macros::requirements;
+
+/// Generates a deterministic exhaustive finite verification test.
+#[cfg(all(feature = "macros", feature = "model"))]
+pub use bbt_yarn_macros::verify;
+
 /// Control values returned by non-terminal reactor handlers.
 pub mod reactor;
 /// Persistent, selection-loss-preserving reactor sources.

@@ -30,6 +30,9 @@ UPSTREAM_PREFIXES = (
 UPSTREAM_FILES = {"crates/bbt-core/src/keyboard.rs"}
 FORK_PREFIXES = ("crates/bbt-yarn/", "crates/bbt-yarn-macros/")
 OWNED_FORK_FILES = {
+    "crates/bbt-yarn-macros/src/verify.rs",
+    "crates/bbt-yarn/src/verify.rs",
+    "crates/bbt-yarn/examples/protocol_contracts.rs",
     "crates/bbt-yarn/src/model.rs",
     "crates/bbt-yarn/examples/verify.rs",
     "crates/bbt-yarn/tests/model_projection.rs",

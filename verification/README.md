@@ -117,6 +117,21 @@ model is a design check, not a proof that its mapped Rust implements it.
 
 ## Project contracts
 
+Yarn's `requirements!` / `verify!` contract gate is
+`make check-protocol-contracts`, included in `make test-formal`. The compiled
+LatestResult verification declaration supplies the active required ids,
+reachable cases, domain members, variable bounds, state limit and explicit
+fairness/assumptions. `protocol-contracts.toml` is the reviewed baseline;
+weakening it requires the source change in the same commit. The checker prints
+the contract diff and refuses a dropped RESULT-001 control. Independent JSON
+axes and complete counts are compared with `golden/latest-result.json` after
+normalizing expansion locations only. Actual test evidence stays under
+`target/yarn-verification/`, including invalid, refuted and inconclusive runs.
+Its `generated_core` marker does not assert replay; existing protocol witnesses
+and Java TLC parity remain separate. Canonical-token FNV hashes are input
+identities, while the existing SHA-256 receipts/signatures retain custody.
+See `crates/bbt-yarn/README.md` for syntax and limitations.
+
 Each project contract pairs a model family with its broken control. The checked
 totals come from `contracts.toml` and `corpus.toml`. The declarations live
 in `crates/bboxy450-term/tests/formal_contracts/models.rs`, as a test-only

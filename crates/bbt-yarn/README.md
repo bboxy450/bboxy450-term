@@ -314,6 +314,77 @@ These results assume atomic pure steps at exactly those finite bounds; they do
 not prove external effect execution, arbitrary Rust, wall-clock progress,
 restart persistence or general TLC completeness.
 
+## Required claims and structured verification
+
+With `model` and `macros`, make the project contract explicit:
+
+```text
+bbt_yarn::requirements! {
+    pub ResultContract {
+        "RESULT-001" => LatestResult::result_is_current;
+    }
+}
+bbt_yarn::verify! {
+    #[test]
+    pub fn latest_result_contract() {
+        contract: ResultContract;
+        protocol: LatestResult;
+        exploration: exhaustive;
+        require_reachable: [Submit::fresh, Complete::current];
+        limits { states: 100_000; on_exhaustion: inconclusive; }
+    }
+}
+```
+
+Required ids must match all protocol invariants and temporal property ids
+exactly. A missing claim, an unrequired extra claim, a wrong predicate, or an
+unknown case is invalid input. A required case must fire on an actual edge in
+the complete reachable graph, including rejected/ignored self-loops. A state
+limit produces `inconclusive` and fails the test; partial exploration never
+establishes a claim. Only exhaustive exploration and inconclusive exhaustion
+are accepted syntax. Qualified `super::` and `crate::` paths retain their scope.
+
+Every generated test writes `target/yarn-verification/<test>.json` before its
+verdict assertion, including failed runs. An explicit Cargo target directory
+is honored. `verify::VerificationResult::to_json()` separates `outcome`,
+`method`, `scope`, `implementation`, `provenance` and `counterexample`.
+Scope includes domain members/sizes, encoded bounds, state limit, explicit
+fairness assumptions and unmodeled effects/environment. A refuted result
+includes event names/parameters and the failed condition; temporal traces also
+retain their cycle. Counts are absent when exploration is incomplete.
+
+`generated_core` means the reducer and model share the protocol AST. It does
+not claim independent implementation replay. The separate LatestResult edge
+witness checks all 21 states/105 edges. Declaration locations and deterministic
+FNV-1a hashes identify canonical tokens (comments/whitespace excluded); these
+are not cryptographic signatures. Repository signed commits and SHA-256 formal
+receipts provide separate custody. Tool versions are recorded. No serialization
+or hashing dependency is added to the no_std runtime.
+
+`protocol!` exposes `verification_metadata()` and `action_case(index)` with the
+`model` feature. A verification declaration additionally exposes
+`latest_result_contract::check()` for tooling, returning the same structured
+result without asserting or writing it. The repository's
+`protocol_contracts` example consumes that generated configuration directly.
+
+`make check-protocol-contracts` compiles the current configuration and checks
+`verification/protocol-contracts.toml`. It prints the contract diff and rejects
+removed required ids/cases, shrinking domains/bounds/limits, added assumptions
+or fairness, and new waivers. Weakening requires a matching baseline amendment
+in the same commit as its source change; a later baseline-only amendment does
+not retroactively approve it. Non-`test` attributes, including `ignore` and
+`should_panic`, are recorded as potential waivers. The baseline is reviewable
+policy, not proof that its assumptions describe reality. The RESULT-001-drop
+fixture must fail. This check and a JSON golden comparison run in
+`make test-formal`. The committed golden normalizes only expansion locations;
+real results retain them. No fairness or larger-domain claim is inferred.
+
+Inspired by [Quint](https://quint.sh/docs/checking-properties) (explicit finite verification scope)
+and [TLA-Verus](https://arxiv.org/abs/2610.14923) (statement
+preservation). Independently implemented; no source copied. Keep the project
+credit and [reuse policy](https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md)
+with extracts.
+
 ## Native verification and TLA+ export
 
 Enable the optional `model` feature for the hosted, pure Rust explicit-state

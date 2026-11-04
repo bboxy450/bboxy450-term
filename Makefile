@@ -1608,6 +1608,7 @@ FORMAL_REUSE ?= 0
 test-formal:
 	@python3 -I scripts/formal-stage.py initialization -- $(MAKE) init-submodules TARGET_DIR='$(TARGET_DIR)'
 	@python3 -I scripts/formal-stage.py export -- $(MAKE) test-yarn-model TARGET_DIR='$(TARGET_DIR)'
+	@python3 -I scripts/formal-stage.py protocol-contracts -- $(MAKE) check-protocol-contracts TARGET_DIR='$(TARGET_DIR)'
 	@python3 -I scripts/formal-stage.py harness-check -- python3 -I scripts/test-harness-submodule.py
 	@python3 -I scripts/formal-stage.py self-tests -- python3 -I scripts/test-formal.py
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -1619,6 +1620,17 @@ test-formal:
 	python3 -I scripts/formal-stage.py java-parity -- python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' $(if $(filter 1,$(FORMAL_REUSE)),--reuse,)
 
 .PHONY: format-yarn-model
+
+.PHONY: check-protocol-contracts test-protocol-contracts
+check-protocol-contracts:
+	@set -eu; . ./scripts/cache-env.sh; mkdir -p '$(TARGET_DIR)'; \
+	cargo run --locked -p bboxy450-yarn --features model --example protocol_contracts --target-dir '$(TARGET_DIR)' > '$(TARGET_DIR)/protocol-contracts.json'; \
+	python3 -I scripts/check-protocol-contracts.py --current '$(TARGET_DIR)/protocol-contracts.json' --golden verification/golden/latest-result.json; \
+	python3 -I scripts/test-protocol-contracts.py
+
+test-protocol-contracts:
+	@python3 -I scripts/test-protocol-contracts.py
+
 format-yarn-model:
 	@set -eu; . ./scripts/cache-env.sh; rustfmt --edition 2024 crates/bbt-yarn/src/model.rs crates/bbt-yarn/examples/verify.rs crates/bboxy450-tlc/tests/model_checker.rs crates/bboxy450-tlc/src/lib.rs crates/bboxy450-tlc/examples/verify.rs crates/bbt-yarn/tests/model_projection.rs crates/bbt-yarn-macros/src/lib.rs crates/bbt-yarn/src/lib.rs
 

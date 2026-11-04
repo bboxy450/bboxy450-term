@@ -15,6 +15,7 @@ use std::path::Path;
 #[path = "../tests/protocol_runtime.rs"]
 mod protocol_language;
 #[path = "../tests/protocol.rs"]
+#[allow(dead_code)] // Model export includes runtime-only declarations and contract references.
 mod protocols;
 #[path = "../tests/protocol_temporal.rs"]
 mod temporal_protocols;

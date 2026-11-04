@@ -35,6 +35,7 @@ fn error(at: impl Spanned, id: &str, message: impl std::fmt::Display, repair: &s
 }
 
 pub(super) fn expand(input: TokenStream) -> TokenStream {
+    let declaration_source = input.to_string();
     match syn::parse2::<Declaration>(input)
         .map_err(|e| {
             if e.to_string().starts_with("PRO") {
@@ -49,7 +50,7 @@ pub(super) fn expand(input: TokenStream) -> TokenStream {
             }
         })
         .and_then(|d| d.check())
-        .map(|d| d.generate())
+        .map(|d| d.generate(&declaration_source))
     {
         Ok(tokens) => tokens,
         Err(e) => e.into_compile_error(),
@@ -1111,7 +1112,13 @@ impl Declaration {
                 .iter()
                 .map(|i| i.name.clone())
                 .chain(self.predicates.iter().map(|p| p.name.clone())),
-            &["model", "step", "action_event"],
+            &[
+                "model",
+                "step",
+                "action_event",
+                "action_case",
+                "verification_metadata",
+            ],
         )?;
         let mut ids = HashSet::new();
         for invariant in &self.invariants {
@@ -1597,7 +1604,7 @@ impl Checked {
             quote!(#enum_name::#name(#(#args),*))
         }
     }
-    fn generate(&self) -> TokenStream {
+    fn generate(&self, declaration_source: &str) -> TokenStream {
         let d = &self.declaration;
         let path = super::kittens_path();
         let domains = d.domains.iter().map(|domain| {
@@ -1693,7 +1700,7 @@ impl Checked {
             let predicate = self.rust_expr(e, &[]);
             quote!(pub fn #name(#state: &State) -> ::core::primitive::bool { #predicate })
         });
-        let model = self.generate_model();
+        let model = self.generate_model(declaration_source);
         let visibility = &d.visibility;
         let name = &d.name;
         quote! {
@@ -1882,7 +1889,7 @@ impl Checked {
             _ => unreachable!("typed label"),
         }
     }
-    fn generate_model(&self) -> TokenStream {
+    fn generate_model(&self, declaration_source: &str) -> TokenStream {
         let path = super::kittens_path();
         let d = &self.declaration;
         let name = d.name.to_string();
@@ -1929,6 +1936,7 @@ impl Checked {
         }
         let mut actions = Vec::new();
         let mut action_events = Vec::new();
+        let mut action_cases = Vec::new();
         // Inspired by TLA+ WF_vars/SF_vars (Leslie Lamport):
         // https://lamport.azurewebsites.net/tla/high-level-view.html
         // One case is one disjunction, not independent per-parameter fairness.
@@ -1965,6 +1973,8 @@ impl Checked {
                     case_actions[case_index].push(index);
                     let event_value = self.message(&format_ident!("Event"), event, &args);
                     action_events.push(quote!(#index => ::core::option::Option::Some(#event_value)));
+                    let case_label = format!("{event}::{}", case.name);
+                    action_cases.push(quote!(#index => ::core::option::Option::Some(#case_label)));
                     actions.push(quote!(model.actions.push(#path::model::Action::new(#label, #guard, #path::protocol::Effects::from([#(#updates),*])));));
                 }
                 Ok(())
@@ -2005,7 +2015,19 @@ impl Checked {
             let response = self.lower(predicate(&property.response), &[]).scalar();
             quote!(model.responses.push(#path::model::Response { name: #id.into(), request: #request, response: #response });)
         });
+        let verification_metadata = super::verify::metadata(
+            &d.name,
+            declaration_source,
+            d.domains.iter().map(|d| (&d.name, d.variants.as_slice())),
+            d.invariants.iter().map(|i| (&i.id, &i.name)),
+            self.arms.iter().flat_map(|a| {
+                a.cases
+                    .iter()
+                    .map(|c| format!("{}::{}", d.events[a.event].name, c.name))
+            }),
+        );
         quote! {
+            #verification_metadata
             impl State {
                 /// Exact finite encoding, in `model().variables` order.
                 pub fn model_values(&self) -> #path::protocol::Effects<::core::primitive::i64> {
@@ -2015,6 +2037,10 @@ impl Checked {
             /// Event associated with an action index of this declaration's model.
             pub fn action_event(action: ::core::primitive::usize) -> ::core::option::Option<Event> {
                 match action { #(#action_events,)* _ => ::core::option::Option::None }
+            }
+            /// Parameter-independent Event::case associated with a model action.
+            pub fn action_case(action: ::core::primitive::usize) -> ::core::option::Option<&'static str> {
+                match action { #(#action_cases,)* _ => ::core::option::Option::None }
             }
             /// Symbolic finite model with only the declaration's named fairness assumptions.
             pub fn model() -> #path::model::Model {

@@ -43,3 +43,7 @@ name = "bbt_yarn"
 [[example]]
 name = "verify"
 required-features = ["macros", "model"]
+
+[[example]]
+name = "protocol_contracts"
+required-features = ["macros", "model"]
