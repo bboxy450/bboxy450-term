@@ -4,26 +4,38 @@ title: 'Oracle handoff to Codex: Yarn protocol program + logic hang (2026-11-03)
 role: oracle
 verify: git -C /Users/feral/mydev/bboxy450-term fetch -q && git -C /Users/feral/mydev/bboxy450-term log --oneline -1 origin/main
 id: 01M6HF0QHFXDCNPJZ3G0PQ37DE
-status: claimed
+status: done
 delegated_by: seat:01M6HEW5SQKXBZ2ABF5TE4F0XQ
 swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-03T19:52:17.140Z
+updated: 2026-11-04T02:34:21.964Z
 created: 2026-11-03T19:43:44.483Z
 number: 16390
 created_by: seat:01M6HEW5SQKXBZ2ABF5TE4F0XQ
-updated_by: seat:01M6HEW5SQKXBZ2ABF5TE4F0XQ
+updated_by: seat:01M6HF0S1BAJKHWT2N426W7328
 authorship:
-  signer: seat:01M6HEW5SQKXBZ2ABF5TE4F0XQ
+  signer: seat:01M6HF0S1BAJKHWT2N426W7328
   kind: seat
-  public_key: CINPlnvX2/Juc3FDK8IEKDfXeF52DpbqPpLD8VnBnL8=
+  public_key: NJfxjXALG4vfTtn9XxMx7XCD2GZh2WlrBe8FFTqIaLM=
   process_generation: '1'
 assignee: seat:01M6HF0S1BAJKHWT2N426W7328
+reconciliation:
+- kind: historical
+  fresh_accepted: false
+  previous_status: claimed
+  disposition: superseded
+  reason: 'Operator requests closing the tasks worked in this handoff. The completed incident integration and four finished Yarn branches are recorded by #16404 and #19660 and their landed evidence. This handoff umbrella is superseded by those completed records. Its unstarted cargo yarn CLI, typestate and Verus proposals remain future backlog in the original brief; this does not claim they were implemented.'
+  evidence:
+  - 'Signed incident implementation 40f45c58 and report 184b770f are on main; #16404 independently verified and accepted.'
+  - 'Temporal a51f1f3d, requirements/verify 67dda793, Loom/Shuttle cdbb7d6f, Kani f01428b8 are on main; #19660 records the operator''s CI waiver and completed normal fast-forward landing.'
+  - 'Prior component task amendment tasks #15233/#15241 and startup historical task #16564 are already done; #16394 ledger and #19660 integration are done; accepted #16417/#18977 retain their verified terminal records.'
+  by: seat:01M6HF0S1BAJKHWT2N426W7328
+  op_id: 01M6J6GJ5NXRWY7SC21WDZX2HG
 provenance:
   digest: sha256:2df11472ca34bb1df22787e705f2e8702095906b73e4ffa7d5a2d0ef3007a3ea
-  frontmatter_digest: sha256:18c570a8ee43f6c6ef3d41a5430621064701867105d81e64c26d8176c2b70c32
-  signer: seat:01M6HEW5SQKXBZ2ABF5TE4F0XQ
-  sig: sTnUID6Dn5kE29ZVsV1G+JnCPZg45D97D5QT5d07yMet3YuOdIcbhER3keCx96k3btGyOi5D65PraFJVILPCCg==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#95017
+  frontmatter_digest: sha256:6b29b6b0a005815228da44f0fe1e81b412792f0a4588768716b66976d8cb8c9c
+  signer: seat:01M6HF0S1BAJKHWT2N426W7328
+  sig: GfIlCqyH2QAw1fmvHJlExeoHSHFqBKRFGWUsai3fag5fwH+uDxzGv6cLMepWg+PYP9sjfyj3eTcvs6j9EOZRAw==
+  log: .bboxy/log/2026-11-04.jsonl#111251
 ---
 # Oracle handoff: Claude (Vesper Greywind) → Codex Oracle
 

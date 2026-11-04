@@ -24,10 +24,10 @@ allowed_paths:
 - .bboxy/reports/2026-11-03-startup-modal-input-regressions.md
 - .bboxy/tasks/2026-11-03-oracle-handoff-codex.md
 id: 01M6HG4AQQE4N6AM4CKY7AHHS2
-status: claimed
+status: done
 delegated_by: seat:01M6HF0S1BAJKHWT2N426W7328
 swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-03T20:21:33.644Z
+updated: 2026-11-04T00:56:59.474Z
 created: 2026-11-03T20:03:11.287Z
 number: 16394
 created_by: seat:01M6HF0S1BAJKHWT2N426W7328
@@ -38,12 +38,24 @@ authorship:
   public_key: NJfxjXALG4vfTtn9XxMx7XCD2GZh2WlrBe8FFTqIaLM=
   process_generation: '1'
 assignee: seat:01M6HG4J9DHG29WDG4S0WYQFZ1
+reconciliation:
+- kind: historical
+  fresh_accepted: false
+  previous_status: claimed
+  disposition: implemented
+  reason: 'Historically implemented through the separately accepted integration task #16404 and signed report #19654, rather than a fresh acceptance of this component task. Its original task_report intent 01M6HQMK5WECSTGFP2PZ8NB9QJ and artifact intent 01M6HQSS2BK0SJBWZKYR6JBGAW remain unresolved/unknown and were not replayed; this disposition records the independently landed code and does not claim those effects applied.'
+  evidence:
+  - 40f45c5838f521bd70e9b8ff907caca3f8784eb9 on origin/main; approved Boxy signatures verified
+  - '[[reports/2026-11-03-logic-recovery-write-route-witness]]; signed report 184b770f9f43094c518570f143e5eeaeb7e999ef'
+  - 'Canonical full gate commands.log SHA256 cc53be84a6ab628e9585267c9b584a6802c6a55ed4c10b525c5ceedbc3a802e7: 2623 passed; complete current-source formal receipt cd9d93570e189d605cea6a22e5bbd53815391cd4feb46d2d203dcb5f57b49fec: 290 models/34 crates/119 contracts; Oracle focused recovery/ownership rerun exit 0 (4/4)'
+  by: seat:01M6HF0S1BAJKHWT2N426W7328
+  op_id: 01M6J0Y9RG1WGX9GZZHHZ2RB8N
 provenance:
-  digest: sha256:c8f012a658c0c5374860318430f9c205ef2dd1d35c6fc29445f926cefa93f6f2
-  frontmatter_digest: sha256:789aa2d93082c3740f66a120760ac4e5d9c8294ff361b7f9d57f4d0efb835d50
+  digest: sha256:55f19efb5380b96e768d86162d79469676d6cab95195f85b804988b63d19feac
+  frontmatter_digest: sha256:7bb87f4498e3dcd225432fa19ff57c70a47d3dc6445fa43c1791cc9f1abd1edd
   signer: seat:01M6HF0S1BAJKHWT2N426W7328
-  sig: MxFJB4tpmByDpYw+mpiCowGLZLjkq+3HMv0T0Zw+uNhq4RjXiSzOXBzks04CmBlYyP3C6QwE0OV/re4FomkrAA==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#98139
+  sig: TBsYi3mn5JUiw+1AsT9KgGIRYlj3sEzsQbFTj9gBQCLi3zEWw+NS/apZ/qFphJ2LLFktfXvXHEaCX2M7tNx/CA==
+  log: .bboxy/log/2026-11-04.jsonl#109854
 ---
 # Repair the immutable-report dead end
 
@@ -69,3 +81,12 @@ Copy `.bboxy/tasks/2026-11-03-oracle-handoff-codex.md` unchanged from the select
 ## Upstream source is now repaired (2026-11-03 20:21 UTC)
 
 Rebase your candidate onto current origin/main before integration checks. Main now includes 6f2eddce (the four startup input failures fixed) and 3eafd2be (HarnessTextZoom inventory). Do not keep duplicate coverage/fixture patches merely because the old adf9796b base failed. #16417 is amended to consume 6f2eddce and return only a demonstrated residual normalized-input/IME regression and focused Make target, if any. Once your record migration is ready, main can be verified using the upstream source repair; never wait for another branch's landing. If #16417 has an outstanding justified fix, integrate its signed cut when ready, then run the final combined gate once. The original main-green executor finished without landing; its source-only layering cut is already in your ancestry, and its blocked report need not be cherry-picked.
+
+
+## Delivery/resource amendment (2026-11-03 22:07 UTC)
+
+The operator is low on disk and inference and requests delivery sooner. Your two completed full green runs on 262ce5d7 and 633e9169 are valuable evidence; do not start a third baseline/full test or continue a separate moving-main landing loop. #16404 already consumes this component and is the single final incident-delivery integrator. Your independent landing obligation is removed; no gate waiver is granted for the final product.
+
+Finish your committed full report now with the exact tested SHAs, commands/exits, both complete formal receipts/logs, preserved positive/negative corpus controls, accepted input integration and clean source state. State clearly that this component is verified on those sources and is not independently landed. Keep verify_result.command = make test, exit_code = 0 for the actual passing source; do not claim a full gate on a newer untested source. Commit only the report/current task copy needed for its record links; run the necessary focused records checks and existing records-only proof validation, without another broad source suite or rebasing onto moving main solely for this handoff. Then task_report to this Oracle. Send #16404 the final signed source/report and canonical gate-log/receipt locations. Preserve logs/receipts and source; no build-target cleanup is authorized until your report is consumed.
+
+This supersedes earlier sole-lander and independent scripts/land.sh requirements for #16394 only. Do not modify any production or gate implementation. Stop after the factual handoff; #16404 owns current-main combination, ownership fix and final full/incremental landing gates.

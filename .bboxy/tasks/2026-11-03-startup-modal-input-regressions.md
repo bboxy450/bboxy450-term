@@ -16,10 +16,10 @@ allowed_paths:
 - .bboxy/reports/2026-11-03-startup-modal-input-regressions.md
 - Makefile
 id: 01M6HGCSS1W74GRFPQW3V7RAVY
-status: claimed
+status: accepted
 delegated_by: seat:01M6HF0S1BAJKHWT2N426W7328
 swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-03T20:21:30.097Z
+updated: 2026-11-03T20:46:38.276Z
 created: 2026-11-03T20:07:48.593Z
 number: 16417
 created_by: seat:01M6HF0S1BAJKHWT2N426W7328
@@ -31,12 +31,37 @@ authorship:
   process_generation: '1'
 assignee: seat:01M6HGCVKFA0E7CEGE8E7Q5D5P
 verify_revision: 1
+artifacts:
+- '[[01M6HJ1Y0K4CQ4FGKSKGFS9QT6]]'
+verify_result:
+  command: make test-startup-input-regressions
+  exit_code: 0
+  evidence:
+  - criterion: Single neutral keyboard route and unchanged assertions
+    reference: 'crates/bboxy450-term/src/main.rs:9172; crates/bboxy450-term/src/keyboard.rs:728; target/startup-input-final.log: 6/6 passed'
+  - criterion: Private ctl input and IME are blocked during startup
+    reference: 'crates/bboxy450-term/src/main.rs:7139,7069,10560,10606; target/startup-input-broken.log: expected failure (1 admitted vs 0), exit 100; restored final run exit 0'
+  - criterion: Cold/failure blocking, Retry/Quit and post-attachment held-key ownership
+    reference: crates/bboxy450-term/src/main.rs:10488,10565,10614,10623; final focused regression passes
+  - criterion: All existing overlay/pointer/selection assertions remain
+    reference: Inherited 6f2eddce attachment transitions at app_overlays.rs:1219, pointer_cursor.rs:318, terminal_clipboard.rs:300; these files have no residual diff; all four original tests pass
+  - criterion: Final signed source and clean worktree
+    reference: '7eb6ead826ff104acf52f1f9bc383e4575ec848b; target/startup-input-signatures.log: 1 verified, exit 0; git status --porcelain empty; final focused Make target exit 0'
+  - criterion: Attribution and remaining formal coverage
+    reference: 'target/startup-input-licenses.log: make test-licenses exit 0; verification/contracts.toml:461 records existing ownership abstraction and implementation-only modal coverage; full integration delegated to #16394'
+report:
+  summary: 'Signed residual cut 7eb6ead826ff104acf52f1f9bc383e4575ec848b on 6afd6314; report #17620. Read upstream 6f2eddce and rebased, retaining its four original fixes without duplicating fixture edits. Moved startup admission from the physical callback into shared key_input/ime_input, preserving Retry/Quit and held-key ownership. Added the canonical six-test Make target and a private headless App::apply_ui witness: the removed-guard control fails (exit 100, one leaked command vs zero), restored and final signed-source runs pass (exit 0, 6/6); make test-licenses exits 0; pinned signature check verifies 1/1; worktree clean. Final log target/startup-input-final.log SHA256 9be3b8302d4db171333741bcaa8e6ac5dec709298b021cf77d541e6a846e5b04. No independent push/full gate; #16394 remains the sole integration lander and owns combined formal/unit/e2e/smoke/docs checks.'
+  commit: 7eb6ead826ff104acf52f1f9bc383e4575ec848b
+  reported_by: seat:01M6HGCVKFA0E7CEGE8E7Q5D5P
+  op_id: 01M6HJ1Z9WTD5CCJJWTBZDE8F1
+  verify_revision: 1
+  report: '[[reports/2026-11-03-startup-modal-input-regressions.md]]'
 provenance:
-  digest: sha256:16f4fd5976be99b0e57f411b6d3a0204b969e9059e3bf084b3d4bfbe739cfbfb
-  frontmatter_digest: sha256:a076641d7e88b0663ad0fb63d381e96acc605ff574b1dfa967e63583f312e4ad
+  digest: sha256:c42838eb80437b0242dde6dc27b81d56f12ff8e745c9fd1d5eb21b53823bb244
+  frontmatter_digest: sha256:6bef7f614d28778a1eacc0cf9bd28e1e8c66b8125d369557348744ed753ef168
   signer: seat:01M6HF0S1BAJKHWT2N426W7328
-  sig: c/vX0jFWkT3hr5i8jUqpY9J910CQJrqomwDwatskyIixr3unnkoGlFB+p3iNf+Bxa3oqQIHPf9skZ9i6uQcYCQ==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#98129
+  sig: F/uUJ2BIkVH6KpJ/NwCYo4n8lL6yn5qnNRWXMQtusaptt/f6fiObltUlmsrmZJ49VwpI48rTyKV30kvla5TECA==
+  log: .bboxy/log/2026-11-03.part-86213.jsonl#100309
 ---
 # Restore the startup modal's input gates without weakening existing assertions
 
@@ -58,3 +83,46 @@ Your implementation is authorized for the integration landing through #16394; se
 ## Upstream changed during your run (2026-11-03 20:21 UTC)
 
 origin/main now includes signed 6f2eddce82536857f7a8561e65c9f8269b2e3c29, `Repair startup-modal regressions blocking the launch fix gate` (committed 12:11:52 PST after this task began). It already consolidates the native keyboard arm and attaches all three cursor fixtures. Rebase onto current origin/main immediately, keeping only justified additional normalized-input/repeat/IME correctness and the stronger focused modal regression/Make target. Do not duplicate or reimplement the four upstream fixes, and do not repeat a baseline full suite. Read the actual 6f2eddce diff: its startup gate is in the physical KeyboardInput arm; your normalized key_input/ime_input guard may cover a distinct real ctl seam, which must be demonstrated by your added test before retaining it. If no meaningful residual change remains, report the upstream commit and focused evidence instead of creating redundant code. #16394 remains the sole integration lander for any real residual cut. Notify it/the Oracle of your signed result through task_report as already instructed.
+
+
+## Report from seat:01M6HGCVKFA0E7CEGE8E7Q5D5P
+
+Signed residual cut 7eb6ead826ff104acf52f1f9bc383e4575ec848b on 6afd6314; report #17620. Read upstream 6f2eddce and rebased, retaining its four original fixes without duplicating fixture edits. Moved startup admission from the physical callback into shared key_input/ime_input, preserving Retry/Quit and held-key ownership. Added the canonical six-test Make target and a private headless App::apply_ui witness: the removed-guard control fails (exit 100, one leaked command vs zero), restored and final signed-source runs pass (exit 0, 6/6); make test-licenses exits 0; pinned signature check verifies 1/1; worktree clean. Final log target/startup-input-final.log SHA256 9be3b8302d4db171333741bcaa8e6ac5dec709298b021cf77d541e6a846e5b04. No independent push/full gate; #16394 remains the sole integration lander and owns combined formal/unit/e2e/smoke/docs checks.
+
+```json
+{
+  "op_id": "01M6HJ1Z9WTD5CCJJWTBZDE8F1",
+  "commit": "7eb6ead826ff104acf52f1f9bc383e4575ec848b",
+  "report": "[[reports/2026-11-03-startup-modal-input-regressions.md]]",
+  "verify_result": {
+    "command": "make test-startup-input-regressions",
+    "exit_code": 0,
+    "evidence": [
+      {
+        "criterion": "Single neutral keyboard route and unchanged assertions",
+        "reference": "crates/bboxy450-term/src/main.rs:9172; crates/bboxy450-term/src/keyboard.rs:728; target/startup-input-final.log: 6/6 passed"
+      },
+      {
+        "criterion": "Private ctl input and IME are blocked during startup",
+        "reference": "crates/bboxy450-term/src/main.rs:7139,7069,10560,10606; target/startup-input-broken.log: expected failure (1 admitted vs 0), exit 100; restored final run exit 0"
+      },
+      {
+        "criterion": "Cold/failure blocking, Retry/Quit and post-attachment held-key ownership",
+        "reference": "crates/bboxy450-term/src/main.rs:10488,10565,10614,10623; final focused regression passes"
+      },
+      {
+        "criterion": "All existing overlay/pointer/selection assertions remain",
+        "reference": "Inherited 6f2eddce attachment transitions at app_overlays.rs:1219, pointer_cursor.rs:318, terminal_clipboard.rs:300; these files have no residual diff; all four original tests pass"
+      },
+      {
+        "criterion": "Final signed source and clean worktree",
+        "reference": "7eb6ead826ff104acf52f1f9bc383e4575ec848b; target/startup-input-signatures.log: 1 verified, exit 0; git status --porcelain empty; final focused Make target exit 0"
+      },
+      {
+        "criterion": "Attribution and remaining formal coverage",
+        "reference": "target/startup-input-licenses.log: make test-licenses exit 0; verification/contracts.toml:461 records existing ownership abstraction and implementation-only modal coverage; full integration delegated to #16394"
+      }
+    ]
+  }
+}
+```

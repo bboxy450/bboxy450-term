@@ -23,27 +23,42 @@ allowed_paths:
 - .bboxy/tasks/2026-11-03-yarn-kani-generated-core.md
 - .bboxy/decisions/d19663-yarn-temporal-unpublished-report-number-repair.md
 id: 01M6J0SXWCR1WB1WQQ7H8PEBMD
-status: claimed
+status: done
 delegated_by: seat:01M6HF0S1BAJKHWT2N426W7328
 swarm: 01M6CQARWH5A79TE3H4NNWJ4XG
-updated: 2026-11-04T02:10:56.427Z
+updated: 2026-11-04T02:27:28.980Z
 created: 2026-11-04T00:54:35.964Z
 number: 19660
 created_by: seat:01M6HF0S1BAJKHWT2N426W7328
-updated_by: seat:01M6HF0S1BAJKHWT2N426W7328
+updated_by: seat:01M6HGAF8KJMA0860GJ6VYM9E2
 authorship:
-  signer: seat:01M6HF0S1BAJKHWT2N426W7328
+  signer: seat:01M6HGAF8KJMA0860GJ6VYM9E2
   kind: seat
-  public_key: NJfxjXALG4vfTtn9XxMx7XCD2GZh2WlrBe8FFTqIaLM=
+  public_key: LdPOs/V/k0C8r5wqVnsrJ6J98dX/dmczezJ1B3ZFzis=
   process_generation: '1'
 assignee: seat:01M6HGAF8KJMA0860GJ6VYM9E2
 verify_revision: 1
+reconciliation:
+- kind: historical
+  fresh_accepted: false
+  previous_status: claimed
+  disposition: implemented
+  reason: The operator directly waived CI and ordered immediate integration of all four completed branches. Oracle completed the Git landing while the assignee's old gate prevented timely message consumption. Historical implementation disposition, not acceptance of an assignee report or a claim of fresh combined-source CI. The obsolete assignee seat was closed through MCP with its files and signed histories retained.
+  evidence:
+  - Remote refs/heads/main independently confirmed f01428b8867ddfeee33105022710ffb92920b101 after normal fast-forward push (exit 0), from base 2e702a12.
+  - Temporal a51f1f3d is an ancestor of main; requirements/verify 67dda793, Loom/Shuttle cdbb7d6f, Kani f01428b8 are signed Boxy integrations. All three approved-key signatures independently verified (exit 0).
+  - git diff --check && git diff --cached --check exit 0; git diff --check 2e702a12..HEAD exit 0; clean final source state. Existing incident code and correction ledger have no delta.
+  - Authenticated amendment operation 01M6J55Q043TZJXJQ13H9KRKE1 changed verify to Git whitespace checks and explicitly permits one-time CI/formal/local-hook bypass. No new tests or source-bound formal receipt claimed. Original branch/report histories remain intact; source conflicts were additive metadata only.
+  by: seat:01M6HF0S1BAJKHWT2N426W7328
+  op_id: 01M6J60N6BSWKQTKW8TEGPTF79
+artifacts:
+- '[[01M6J63ZD04HAK993GDXRYSGBR]]'
 provenance:
   digest: sha256:63810bfdfe1129155c0e62f1a0a54439594d0423c2214719d4009d303b631a39
-  frontmatter_digest: sha256:5300111aac2964731517a58eb8cb718221b73cf58d671922f821a29744d41a93
-  signer: seat:01M6HF0S1BAJKHWT2N426W7328
-  sig: G2Gsft1ipIlm/YkAP8leRUZGhXUMTQy/B8G6V0I77Z/mRI46jmvbLiydq8H+XUaIS+ovSJcIW7e8YqEPlxxDDg==
-  log: .bboxy/log/2026-11-04.jsonl#109935
+  frontmatter_digest: sha256:e49a7869efef3ca385fb94d2639deada10a1a1b012a6372d0f0e73d70da5a7d3
+  signer: seat:01M6HGAF8KJMA0860GJ6VYM9E2
+  sig: 0C9ShrMz20sp966HOB4MKzLreWhiAbd/6QcGCLCmARQ3csiUWjhVHRfpptVHt7Ncai8ZU4had3sTRigQUWh6CQ==
+  log: .bboxy/log/2026-11-04.jsonl#110280
 ---
 # Merge the four finished Yarn branches now — operator CI waiver
 
