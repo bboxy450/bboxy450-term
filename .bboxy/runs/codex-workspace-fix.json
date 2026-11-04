@@ -4,7 +4,7 @@
   "brief": "/tmp/bboxy-oracle-takeover-01M6H97SAX3GN1BYB4YG76P3P0/EXECUTOR-WORKSPACE-FIX.md",
   "brief_sha256": "6da8b74010e9cbc04430ac313cda0095be8e452a7256cd7a84926693ab01679f",
   "base_commit": "9ba749108125907f6d46b260ec5b9c7ae69d93f9",
-  "source_commit": "signed commit containing this record",
+  "source_commit": "84b21d518e833a6092cfe998249684d10e05e082",
   "source_sha256": {
     "Makefile": "fd99fed096c21741ac1392166994ddfe95430b0e319444c44af6b15b835543e9",
     "crates/bbt-mux/src/index.rs": "13cdf66ef10ed5a1a6ca56b74e35b90eac2183bc427e24499fdedfeadcb97e37",
@@ -112,5 +112,24 @@
     "Native draft/tool/render refusal has no demonstrated same-cause link; see logic.rs guarded_input arbiter and harness-wake-up guard.rs:114.",
     "Retained unknown original operations are untouched; no resend or fabricated ready state."
   ],
-  "intermediate_failures": "Initial fixture missing log directory and exporter borrow error were corrected; content/metadata-only candidate still reached workspace_pending; private notification trace exposed repeated Create(File) flags. Diagnostic write succeeded but initial /written assertion used a nonexistent path field; corrected to match prepared event ID. All intermediate logs retained."
+  "intermediate_failures": "Initial fixture missing log directory and exporter borrow error were corrected; content/metadata-only candidate still reached workspace_pending; private notification trace exposed repeated Create(File) flags. Diagnostic write succeeded but initial /written assertion used a nonexistent path field; corrected to match prepared event ID. All intermediate logs retained.",
+  "private_restart_successor": {
+    "created": "2026-11-04T03:43:07.587922+00:00",
+    "core_source_commit": "84b21d518e833a6092cfe998249684d10e05e082",
+    "source_change": "Makefile only: add exact one-case private restart target; no Rust/model/test semantics changes",
+    "makefile_sha256": "094cc52df74c6cb5bb72f3624e9afca731c7f8a915012930e0d492f2aabe9d8f",
+    "command": "CARGO_PROFILE_DEV_DEBUG=0 CARGO_PROFILE_TEST_DEBUG=0 make verify-workspace-ready-restart",
+    "exit_code": 0,
+    "selected_test": "test_account::logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authority",
+    "test_result": "1 passed, 0 failed, 0 ignored, 1 filtered out; 1.28 seconds",
+    "compile_cost": "4m06s cold App/dependency build; target grew from about1.1GiB to2.4GiB (rounded du output)",
+    "log": "/tmp/bboxy-workspace-fix-evidence/private-restart.log",
+    "log_sha256": "b57ac267a2865e48bf35ae6456eddd8775fb58d89806dfaea446815edd5414cb",
+    "application_executable": "target/debug/bboxy450-term",
+    "application_sha256": "8f57658eb0467b8d2c91f5f7170d270590779d2ea9eae71adccf61e874ef0c3b",
+    "test_executable": "target/debug/deps/test_account-20214caa02985b24",
+    "test_executable_sha256": "3229d7a8b25a095c76b7f3cc547b3bd810c0af571925a9e35ad069aa6be285fe",
+    "assertions": "Private abrupt Logic kill/replacement changes Logic PID; supervisor PID, existing seat process PID and generation, root/device authority remain identical; a second operator-authorized spawn succeeds.",
+    "limits": "Throwaway fixture only; no live owner activation/restart, no general in-flight MCP/transaction guarantee, no operator input. Built against core commit84b21d51 with only the added Make target uncommitted."
+  }
 }

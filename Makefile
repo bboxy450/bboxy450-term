@@ -1435,6 +1435,11 @@ verify-workspace-ready: init-submodules
 	cargo clippy --locked -p bboxy450-term-mux --features model --target-dir '$(TARGET_DIR)' --lib --tests -- -D warnings; \
 	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[line.split("\t") for line in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"WorkspaceReady":"pass","BrokenWorkspaceReady":"liveness"}; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/workspace-ready'
 
+.PHONY: verify-workspace-ready-restart
+verify-workspace-ready-restart: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test test_account logic_restart_keeps_the_test_root_device_pty_and_operator_spawn_authority -- --exact --ignored --nocapture
+
 .PHONY: test-terminal-font check-terminal-font format-terminal-font
 format-terminal-font: fmt-spawn
 
