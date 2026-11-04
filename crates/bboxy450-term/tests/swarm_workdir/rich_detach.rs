@@ -85,14 +85,16 @@ fn rich_app_routes_composer_approval_scroll_and_focus() {
         .canonicalize()
         .unwrap();
     let shim = f.root.join("bin/bboxy450-harness");
+    // This UI interaction fixture explicitly requests attended approvals. The
+    // separate launch-context fixture forwards production approval argv intact.
     fs::write(
         &shim,
         format!(
-            "#!/bin/sh\nexec {} \"$@\" --scripted {} --scripted {} --scripted {}\n",
-            quote(&binary),
-            quote(&long),
-            quote(&tool),
-            quote(&text)
+            "#!/usr/bin/python3\nimport os,sys\nargs=[a for a in sys.argv[1:] if a!='--yolo']\nos.execv({0},[{0},*args,'--scripted',{1},'--scripted',{2},'--scripted',{3}])\n",
+            serde_json::to_string(&binary).unwrap(),
+            serde_json::to_string(&long).unwrap(),
+            serde_json::to_string(&tool).unwrap(),
+            serde_json::to_string(&text).unwrap()
         ),
     )
     .unwrap();

@@ -29,6 +29,9 @@ fn provider(
                 std::thread::sleep(Duration::from_millis(10));
                 continue;
             };
+            // Darwin accepted sockets can inherit the listener's nonblocking
+            // mode. Keep the existing bounded blocking HTTP-read contract.
+            stream.set_nonblocking(false).unwrap();
             stream
                 .set_read_timeout(Some(Duration::from_secs(3)))
                 .unwrap();
@@ -118,10 +121,11 @@ fn launch_children_receive_workflow_and_call_their_own_admitted_mcp() {
     let (port, requests, server) = provider(task_id.clone());
     let profiles = f.root.join("home/.bboxy450-harness/profiles");
     fs::create_dir_all(&profiles).unwrap();
-    fs::write(profiles.join("private-context.md"),format!("---\nname: private-context\nmodel: private-context-model\nendpoint: http://127.0.0.1:{port}/v1\napi_key_env: PRIVATE_FIXTURE_MODEL_KEY\nauto_compact: false\n---\n")).unwrap();
-    let binary = std::env::var_os("BBOXY_HARNESS_TEST_BIN").unwrap();
+    fs::write(profiles.join("private-context.md"),format!("---\nname: private-context\nmodel: private-context-model\nendpoint: http://127.0.0.1:{port}/v1\napi_key_env: PRIVATE_FIXTURE_MODEL_KEY\non_unattended: deny\nauto_compact: false\n---\n")).unwrap();
+    let binary = PathBuf::from(std::env::var_os("BBOXY_HARNESS_TEST_BIN").unwrap());
     let shim = f.root.join("bin/bboxy450-harness");
-    fs::write(&shim,format!("#!/bin/sh\nexport PRIVATE_FIXTURE_MODEL_KEY=private-local-fixture-only\nexec '{}' \"$@\" --profile private-context --yolo\n",Path::new(&binary).display())).unwrap();
+    let approval_receipt = f.root.join("managed-approval-parity.json");
+    fs::write(&shim,format!("#!/usr/bin/python3\nimport json,os,sys\nfrom pathlib import Path\nargs=sys.argv[1:]\nPath({}).write_text(json.dumps({{\"yolo\": \"--yolo\" in args}}))\nos.environ[\"PRIVATE_FIXTURE_MODEL_KEY\"]=\"private-local-fixture-only\"\nos.execv({},[{},*args,\"--profile\",\"private-context\"])\n",serde_json::to_string(&approval_receipt).unwrap(),serde_json::to_string(&binary).unwrap(),serde_json::to_string(&binary).unwrap())).unwrap();
     fs::set_permissions(shim, fs::Permissions::from_mode(0o700)).unwrap();
     f.start();
     let swarm = f.ctl(&["ui", "layout"])["swarm"]
@@ -256,6 +260,15 @@ fn launch_children_receive_workflow_and_call_their_own_admitted_mcp() {
         .as_str()
         .unwrap()
         .to_owned();
+    let approval: Value = wait(|| {
+        fs::read(&approval_receipt)
+            .ok()
+            .and_then(|b| serde_json::from_slice(&b).ok())
+    });
+    assert_eq!(
+        approval["yolo"], true,
+        "managed approval parity: harness --yolo missing from production launch"
+    );
     let task = assigned(&f, &seat);
     *task_id.lock().unwrap() = Some(task["id"].as_str().unwrap().to_owned());
     super::rich_detach::rich(&f, &seat, 1);

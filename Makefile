@@ -2117,7 +2117,12 @@ test-rich-gui-handoff: bundle-unsigned
 	@set -eu; . ./scripts/cache-env.sh; \
 	BBOXY_PREPARED_GUI_BUNDLE='$(abspath $(BUNDLE))' BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p $(APP) --test swarm_workdir --target-dir '$(TARGET_DIR)' rich_detach::rich_gui_handoff_preserves_turn_and_rolls_back_failed_activation -- --ignored --exact --nocapture
 
-test-rich-launch-context: init-submodules
+.PHONY: prepare-rich-native-fixture
+prepare-rich-native-fixture: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo build --locked -p bboxy450-harness --features test-fixtures --target-dir '$(TARGET_DIR)'
+
+test-rich-launch-context: prepare-rich-native-fixture
 	@set -eu; . ./scripts/cache-env.sh; \
 	BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p $(APP) --test swarm_workdir --target-dir '$(TARGET_DIR)' launch_context::launch_children_receive_workflow_and_call_their_own_admitted_mcp -- --ignored --exact --nocapture
 

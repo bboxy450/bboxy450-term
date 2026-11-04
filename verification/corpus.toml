@@ -1111,3 +1111,13 @@ frontend = "project"
 name = "BrokenGuiReplacementRollback"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "ManagedApprovalIntent"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenManagedApprovalIntent"
+expected = "safety"
+frontend = "project"

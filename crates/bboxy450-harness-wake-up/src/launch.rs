@@ -228,6 +228,10 @@ fn launch_permissions(kind: &str, args: &mut Vec<String>) -> Result<()> {
                 "sandbox_mode=\"danger-full-access\"".into(),
             ]);
         }
+        "bboxy450-harness" if !args.iter().any(|arg| arg == "--yolo") => {
+            // Managed native launcher intent; vendor flags stay in their own CLI.
+            args.push("--yolo".into());
+        }
         _ => {}
     }
     Ok(())
@@ -1187,11 +1191,12 @@ mod embed_tests {
             0o600
         );
         assert!(!harness.args.join(" ").contains(&"ab".repeat(32)));
+        assert!(harness.args.iter().any(|a| a == "--yolo"));
         assert!(
             !harness
                 .args
                 .iter()
-                .any(|a| a == "--yolo" || a == "--dangerously-skip-permissions")
+                .any(|a| a == "--dangerously-skip-permissions")
         );
     }
 }
