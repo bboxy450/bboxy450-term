@@ -55,6 +55,7 @@ help:
 	  'make tools                      Install the Rust workflow tools (cargo-nextest, sccache) once per machine' \
 	  'make land / make push           Diff-scoped gate (affected crates + dependents, nextest), then push' \
 	  'make land-full                  Full signed gate (make test in a warm, queued gate slot)' \
+	  'make verify-harness-attachments  Focused private composer, clipboard, ACP and ownership checks' \
 	  'make test                       Full local CI; no operator input' \
 	  'make push-branch                Push the current signed, tested branch for PR review' \
 	  'make test-toolkit               Document append, rich widgets, editor and headless stories' \
@@ -2320,3 +2321,7 @@ verify-harness-theme:
 	cargo nextest run --locked -p $(APP) --bin $(APP) --test harness_theme --target-dir '$(TARGET_DIR)' -E 'test(harness_theme_)' --no-capture; \
 	cargo clippy --no-deps --locked -p bboxy450-harness --features standalone --lib --test gui_theme --target-dir '$(TARGET_DIR)' -- -D warnings; \
 	cargo clippy --no-deps --locked -p $(APP) --lib --bin $(APP) --test harness_theme --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: verify-harness-attachments
+verify-harness-attachments:
+	TARGET_DIR='$(abspath $(TARGET_DIR))' python3 -I scripts/verify-harness-attachments.py

@@ -14,7 +14,10 @@ impl App {
         &self,
     ) -> Result<Option<bboxy450_term_desktop::ClipboardContent>, bboxy450_term_desktop::Error> {
         if self.test_account {
-            Ok(self.private_clipboard.clone().map(bboxy450_term_desktop::ClipboardContent::Text))
+            Ok(self
+                .private_clipboard
+                .clone()
+                .map(bboxy450_term_desktop::ClipboardContent::Text))
         } else {
             bboxy450_term_desktop::read_clipboard()
         }
@@ -26,14 +29,27 @@ impl App {
             return;
         };
         if self.rich_face(seat) {
-            if let Ok(Some(bboxy450_term_desktop::ClipboardContent::Text(text)))=self.clipboard_content() && let Some(pane)=self.rich_panes.get(&seat){pane.send(bboxy450_term::rich_pane::Input::Edit(EditCommand::Insert(text)));}
+            if let Some(pane) = self.rich_panes.get(&seat) {
+                match self.clipboard_content() {
+                    Ok(Some(content)) => {
+                        pane.send(bboxy450_term::rich_pane::Input::clipboard(content));
+                    }
+                    Err(error) => self
+                        .logger
+                        .write(format!("Rich paste unavailable: {error}")),
+                    _ => {}
+                }
+            }
             return;
         }
         if !self.terminal_context(seat) {
             return;
         }
         let Some((generation, modes)) = self.live_state.as_ref().and_then(|model| {
-            Some((model.ui.seats.get(&seat)?.process_generation, model.screens.get(&seat)?.modes))
+            Some((
+                model.ui.seats.get(&seat)?.process_generation,
+                model.screens.get(&seat)?.modes,
+            ))
         }) else {
             return;
         };
@@ -91,7 +107,9 @@ impl App {
         })
     }
     fn terminal_context(&self, seat: SeatId) -> bool {
-        if self.rich_face(seat) { return false; }
+        if self.rich_face(seat) {
+            return false;
+        }
         if self.app_overlays.open()
             || self.document.open
             || self.launcher.is_some()
@@ -180,11 +198,16 @@ impl App {
         self.terminal_selection.text(&display)
     }
     pub(super) fn copy_terminal_selection(&mut self) -> bool {
-        let Some(text) = self
-            .ui_selection
-            .text()
-            .or_else(|| if self.document.open {self.document.prepared.as_ref().map(|p|p.markdown.source.clone())} else {self.terminal_copy_text()})
-        else {
+        let Some(text) = self.ui_selection.text().or_else(|| {
+            if self.document.open {
+                self.document
+                    .prepared
+                    .as_ref()
+                    .map(|p| p.markdown.source.clone())
+            } else {
+                self.terminal_copy_text()
+            }
+        }) else {
             return false;
         };
         self.copy_text(text)
