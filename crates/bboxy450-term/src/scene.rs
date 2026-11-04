@@ -261,6 +261,7 @@ pub struct Scene {
     layout_revision: u64,
     swarms: Vec<bbt_ui_model::Swarm>,
     pub seats: Vec<SeatRow>,
+    pane_views: BTreeMap<SeatId, ui::modules::strip::ViewTarget>,
     tasks: Vec<(SeatId, String, ui::modules::seat_row::TaskRow, Option<i32>)>,
     tree: Option<SplitNode>,
     starting: Option<starting::StartingScene>,
@@ -305,6 +306,7 @@ struct LayoutKey {
     hosts: Vec<bbt_proto::GuiHost>,
     closed: Vec<(SeatId, Instant, String, String)>,
     seats: Vec<SeatRow>,
+    pane_views: BTreeMap<SeatId, ui::modules::strip::ViewTarget>,
     tasks: Vec<(SeatId, String, ui::modules::seat_row::TaskRow, Option<i32>)>,
     tree: Option<SplitNode>,
     focused: Option<SeatId>,
@@ -319,6 +321,7 @@ impl LayoutKey {
             && self.hosts == scene.hosts
             && self.closed == scene.closed
             && self.seats == scene.seats
+            && self.pane_views == scene.pane_views
             && self.tasks == scene.tasks
             && self.tree == scene.tree
             && self.focused == scene.focused
@@ -333,6 +336,7 @@ impl LayoutKey {
             hosts: scene.hosts.clone(),
             closed: scene.closed.clone(),
             seats: scene.seats.clone(),
+            pane_views: scene.pane_views.clone(),
             tasks: scene.tasks.clone(),
             tree: scene.tree.clone(),
             focused: scene.focused,
@@ -490,6 +494,7 @@ impl Scene {
             #[cfg(test)]
             projections: 0,
             seats,
+            pane_views: BTreeMap::new(),
             tasks: vec![],
             closed: vec![],
             layout_revision: 0,
@@ -750,6 +755,7 @@ impl Scene {
             #[cfg(test)]
             projections: 0,
             seats: vec![],
+            pane_views: BTreeMap::new(),
             tasks: vec![],
             closed: vec![],
             layout_revision: 0,
@@ -782,6 +788,9 @@ impl Scene {
     /// Uncontrolled fixture projection; the App uses `set_model_with_clock`.
     pub fn set_model(&mut self, model: &bboxy450_term::model::Model, stage: &Stage) {
         self.set_model_at(model, stage, None);
+    }
+    pub fn set_pane_views(&mut self, views: BTreeMap<SeatId, ui::modules::strip::ViewTarget>) {
+        self.pane_views = views;
     }
     pub fn set_model_with_clock(
         &mut self,
@@ -1701,8 +1710,12 @@ impl Scene {
                 focused: seat.focused,
                 ..ctx
             };
+            let mut strip = Strip::new(seat);
+            if let Slot::Seat(id) = slot {
+                strip.view_target = self.pane_views.get(&id).copied();
+            }
             let pane = Pane {
-                strip: Strip::new(seat),
+                strip,
                 lines: self.slot_lines(slot),
                 gap_from: None,
                 resumed: None,

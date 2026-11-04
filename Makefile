@@ -183,6 +183,7 @@ help:
 	  'make test-workspace-boundary     Scoped wire, root-bound replay and read-completion fences' \
 	  'make test-ctl-workspaces         Bounded same-op workspace preparation and real operator CLI' \
 	  'make verify-workspace-ready      Focused activity-churn API, watch, model/control parity and strict compile' \
+	  'make verify-view-switch          Pane titlebar view label, geometry, native hit/action and strict compile' \
 	  'make test-workspace-roots        Canonical cwd mounts, scoped records and stale-root fences' \
 	  'make test-cursors                Shared cursor intent, enabled controls and native overlay/resize routing' \
 	  'make test-role-identity          ROLE-first seat, pane and message identity; check-role-identity / parity-role-identity' \
@@ -2230,3 +2231,15 @@ fixture-ui-only-legacy:
 .PHONY: test-ui-only-reopen-guards
 test-ui-only-reopen-guards: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test test_account ui_only_reopen_guard_refuses_refresh_and_failed_attach -- --exact --ignored --nocapture
+
+.PHONY: verify-view-switch check-view-switch format-view-switch
+format-view-switch:
+	@rustfmt --edition 2024 --config skip_children=true crates/bbt-ui/src/modules/strip.rs crates/bboxy450-term/src/rich_faces.rs crates/bboxy450-term/src/scene.rs crates/bboxy450-term/src/scene/navigation.rs
+
+check-view-switch: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; cargo clippy --no-deps --locked -p bboxy450-ui --lib -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)' -- -D warnings
+
+verify-view-switch: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; mkdir -p '$(TARGET_DIR)/view-switch'; \
+	BBOXY_VIEW_SWITCH_GEOMETRY='$(abspath $(TARGET_DIR))/view-switch/geometry.json' cargo test --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)' view_switch_ -- --nocapture --test-threads=1; \
+	cargo test --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)' rich_faces::verification::rich_keys_and_face_preference_do_not_reach_the_pty -- --exact --nocapture
