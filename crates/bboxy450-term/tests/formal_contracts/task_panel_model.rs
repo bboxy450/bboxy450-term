@@ -7,7 +7,7 @@
 //! Read retry deadlines are fenced by selection/refresh generation.
 use super::*;
 pub(super) fn cases() -> Vec<(Model, &'static str)> {
-    [false, true]
+    let mut cases: Vec<_> = [false, true]
         .into_iter()
         .map(|broken| {
             let mut m = model(
@@ -68,5 +68,29 @@ pub(super) fn cases() -> Vec<(Model, &'static str)> {
             );
             (m, if broken { "safety" } else { "pass" })
         })
-        .collect()
+        .collect();
+    for broken in [false, true] {
+        // One timer owner, one generation retirement. Owner observation is fair;
+        // cancellation cannot retract an event already queued before retirement.
+        let mut m = model(
+            "TaskRetryTimerLifetime",
+            broken,
+            &[("retired", 1, 0), ("owned", 1, 1)],
+        );
+        action(&mut m, "RetireGeneration", eq(0, 0), &[(0, Int(1))]);
+        action(
+            &mut m,
+            "ObserveOwner",
+            all([eq(0, 1), eq(1, 1)]),
+            &[(1, Int(i64::from(broken)))],
+        );
+        m.weak_fair.push(vec![1]);
+        m.responses.push(Response {
+            name: "RetiredTimerEventuallyDisposed".into(),
+            request: eq(0, 1),
+            response: eq(1, 0),
+        });
+        cases.push((m, if broken { "liveness" } else { "pass" }));
+    }
+    cases
 }

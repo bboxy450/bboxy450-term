@@ -31,8 +31,37 @@ impl Drop for TaskPanelTimer {
         self.task.abort();
     }
 }
+impl TaskPanelTimer {
+    fn retry(handle: &tokio::runtime::Handle, epoch: u64, delay: Duration, proxy: UiProxy) -> Self {
+        let task = handle.spawn(async move {
+            tokio::time::sleep(delay).await;
+            let _ = proxy.send_event(UiEvent::TaskRetry(epoch));
+        });
+        Self {
+            epoch,
+            task: task.abort_handle(),
+        }
+    }
+}
 
 impl App {
+    pub(super) fn sync_task_retry(&mut self) {
+        if self
+            .task_retry_timer
+            .as_ref()
+            .is_some_and(|timer| !self.task_records.retry_pending(timer.epoch))
+        {
+            self.task_retry_timer = None;
+        }
+        if let Some((epoch, delay)) = self.task_records.take_retry() {
+            self.task_retry_timer = Some(TaskPanelTimer::retry(
+                bbt_rt::handle(),
+                epoch,
+                delay,
+                self.proxy.clone(),
+            ));
+        }
+    }
     pub(super) fn task_panel_animating(&self) -> bool {
         fn visible(node: &c::Layout) -> bool {
             if matches!(&node.kind, c::LayoutKind::Named(key) if key == "conversation/tasks-progress")
@@ -48,13 +77,7 @@ impl App {
                 .is_some_and(|layout| visible(&layout.layout))
     }
     pub(super) fn sync_task_panel(&mut self) {
-        if let Some((epoch, delay)) = self.task_records.take_retry() {
-            let proxy = self.proxy.clone();
-            bbt_rt::handle().spawn(async move {
-                tokio::time::sleep(delay).await;
-                let _ = proxy.send_event(UiEvent::TaskRetry(epoch));
-            });
-        }
+        self.sync_task_retry();
         let Some(data) = self.task_records.panel_state(Instant::now()) else {
             self.task_panel_timer = None;
             return;
@@ -279,6 +302,32 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test(start_paused = true)]
+    async fn retired_task_retry_timer_cannot_wake_the_ui() {
+        let (send, recv) = std::sync::mpsc::channel();
+        let proxy = UiProxy::Headless(Arc::new(move |event| {
+            if let UiEvent::TaskRetry(epoch) = event {
+                send.send(epoch).unwrap();
+            }
+        }));
+        let handle = tokio::runtime::Handle::current();
+        let old = TaskPanelTimer::retry(&handle, 1, Duration::from_secs(5), proxy.clone());
+        tokio::task::yield_now().await;
+        drop(old);
+        tokio::time::advance(Duration::from_secs(6)).await;
+        tokio::task::yield_now().await;
+        assert!(
+            recv.try_recv().is_err(),
+            "retired timer must not send a callback"
+        );
+        let live = TaskPanelTimer::retry(&handle, 2, Duration::from_secs(5), proxy);
+        tokio::task::yield_now().await;
+        tokio::time::advance(Duration::from_secs(6)).await;
+        tokio::task::yield_now().await;
+        assert_eq!(recv.try_recv().unwrap(), 2);
+        assert!(recv.try_recv().is_err());
+        drop(live);
+    }
     #[test]
     fn shared_wheel_handlers_keep_bursts_noops_reflow_and_task_page_boundaries() {
         if crate::lazy_projection_tests::isolated_ui_case(

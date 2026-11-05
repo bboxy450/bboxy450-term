@@ -1275,6 +1275,9 @@ impl Records {
     pub fn retry_epoch(&self) -> u64 {
         self.retry_epoch
     }
+    pub fn retry_pending(&self, epoch: u64) -> bool {
+        epoch == self.retry_epoch && self.retry_blocked
+    }
     /// Refresh reads only; uncertain mutations retain their original identity.
     pub fn refresh_tasks_now(&mut self) {
         self.retry_epoch = self.retry_epoch.wrapping_add(1);

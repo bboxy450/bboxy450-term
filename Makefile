@@ -370,7 +370,7 @@ test-cursors:
 test-task-panel-formal:
 	@set -eu; . ./scripts/cache-env.sh; \
 	BBOXY_TASK_PANEL_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/task-panel-formal/models' cargo test --locked --release -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts selected_task_panel_retry -- --exact --nocapture; \
-	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(pathlib.Path(sys.argv[2]).resolve()); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"TaskPanelRetry":"pass","BrokenTaskPanelRetry":"safety"}; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/task-panel-formal' '$(FORMAL_DIR)'
+	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(pathlib.Path(sys.argv[2]).resolve()); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"TaskPanelRetry":"pass","BrokenTaskPanelRetry":"safety","TaskRetryTimerLifetime":"pass","BrokenTaskRetryTimerLifetime":"liveness"}; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/task-panel-formal' '$(FORMAL_DIR)'
 
 .PHONY: test-task-glow
 test-task-glow:
@@ -382,6 +382,7 @@ test-task-panel:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked --release -p bboxy450-ui --target-dir '$(TARGET_DIR)' --test task_panel; \
 	cargo test --locked --release -p $(APP) --target-dir '$(TARGET_DIR)' --test messaging_ui; \
+	cargo nextest run --locked --release -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) -E 'test(retired_task_retry_timer_cannot_wake_the_ui)'; \
 	cargo check --locked --release -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP)
 
 test-chat-recent:

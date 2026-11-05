@@ -1271,3 +1271,13 @@ frontend = "project"
 name = "BrokenTaskPanelRetry"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "TaskRetryTimerLifetime"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTaskRetryTimerLifetime"
+expected = "liveness"
+frontend = "project"

@@ -1,0 +1,37 @@
+{
+  "commands": [
+    {
+      "command": "make test-task-panel",
+      "exit_code": 0,
+      "log": "/tmp/sable-wake-circuit-task-panel.log",
+      "log_sha256": "75c18b6c5f089b2738ed7640ef2a539e7bdee283c6ae3fbb2fba3f3bbfd50b66",
+      "evidence": "UI panel render + 30 messaging UI tests + real paused Tokio timer ownership test"
+    },
+    {
+      "command": "make smoke (before timer ownership fix)",
+      "exit_code": 2,
+      "log": "/tmp/sable-wake-circuit-smoke-diagnostic.log",
+      "log_sha256": "e1997b0471b215ab0a0d6f392d88c0c1ba4785b90ceea00c37638398f1763fa5",
+      "evidence": "10-second idle assertion failed: frames=0 callbacks=1; sources empty, UiEvent discriminant2 = TaskRetry"
+    },
+    {
+      "command": "make smoke",
+      "exit_code": 0,
+      "log": "/tmp/sable-wake-circuit-smoke-fixed.log",
+      "log_sha256": "153f5eb3912c55ab10f6d3522c3eafd90c606ef08eacc12ecf7f1e01ac894758",
+      "evidence": "private unsigned app, throwaway identity, windows=0; frames=0 callbacks=0 over 10.003s; children reaped"
+    },
+    {
+      "command": "make test-boundaries",
+      "exit_code": 0,
+      "log": "/tmp/sable-wake-circuit-boundaries.log",
+      "log_sha256": "acc0f5ca074250be2f201d8059d1ee9d5a5af6b68d9924aeeea7801465076b42",
+      "evidence": "39 tests passed; 1 pre-existing signing test ignored; real private lifecycle/ctl, shell and caller-environment negative controls"
+    }
+  ],
+  "mechanism": "Retain task retry AbortHandle in App; dispose when generation or pending owner retires; retain existing generation admission fence. Diagnostic smoke records only bounded event discriminants/source IDs.",
+  "limits": [
+    "Cancelling a sleeping task cannot retract a callback already queued before cancellation. Generation checks continue rejecting those callbacks.",
+    "Headless smoke uses no operator process, desktop capture, Apple signing identity, credentials, inference or physical input."
+  ]
+}

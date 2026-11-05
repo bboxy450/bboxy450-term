@@ -1191,3 +1191,13 @@ assumptions = "Two swarms, three non-reused generations, one retained timer and 
 property = "Only a timer from the current generation admits a retry. Removing the generation check must fail safety. Focused implementation witnesses also run make test-task-panel, make test-task-panel-formal."
 checks = ["make test-formal", "make test"]
 
+
+[[contract]]
+name = "TaskRetryTimerLifetime"
+title = "Retired task retry owners dispose of their sleeping timers"
+models = ["TaskRetryTimerLifetime", "BrokenTaskRetryTimerLifetime"]
+sources = ["crates/bboxy450-term/src/messaging.rs", "crates/bboxy450-term/src/sidebar_chat.rs", "crates/bboxy450-term/tests/formal_contracts/task_panel_model.rs"]
+implementation_tests = ["crates/bboxy450-term/src/sidebar_chat.rs", "crates/bboxy450-term/tests/messaging_ui.rs", "crates/bboxy450-term/src/headless.rs", "Makefile"]
+assumptions = "One owned timer and one generation retirement, each atomic. Weak fairness of owner observation guarantees eventual disposal. The native paused Tokio test drops a sleeping timer before its deadline and observes zero callbacks, while a current timer sends exactly once. Actual runtime scheduling and a callback already queued before cancellation remain implementation-only: existing generation guards still reject such callbacks. This is not a bound on task read retries or arbitrary runtime work."
+property = "An obsolete timer is eventually disposed of; removing cancellation must fail liveness. Headless smoke requires zero idle callbacks and records bounded event discriminants on failure. Focused witnesses run make test-task-panel, make test-task-panel-formal, make smoke."
+checks = ["make test-formal", "make test"]

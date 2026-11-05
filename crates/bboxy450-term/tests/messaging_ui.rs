@@ -59,8 +59,10 @@ fn task_panel_loading_error_countdown_and_swarm_fences() {
     );
     let (old, delay) = records.take_retry().unwrap();
     assert_eq!(delay, TASK_REFRESH_BACKOFF);
+    assert!(records.retry_pending(old));
     records.select(b);
     records.select(a);
+    assert!(!records.retry_pending(old));
     assert!(
         !records.retry_ready(old),
         "A to B to A does not revive A's old timer"
@@ -81,7 +83,9 @@ fn task_panel_loading_error_countdown_and_swarm_fences() {
     );
     records.bind_workspace(Err("workspace_pending"));
     let (stale, _) = records.take_retry().unwrap();
+    assert!(records.retry_pending(stale));
     records.refresh_tasks_now();
+    assert!(!records.retry_pending(stale));
     assert!(
         !records.retry_ready(stale),
         "manual refresh retires the old countdown"

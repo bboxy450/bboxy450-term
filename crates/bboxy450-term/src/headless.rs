@@ -175,6 +175,8 @@ pub fn run(args: &[String]) -> Result<(), String> {
     let mut result = Ok(());
     let mut idle = crate::IdleQuiescence::default();
     let mut idle_epoch = None;
+    let mut idle_sources = std::collections::BTreeSet::<usize>::new();
+    let mut idle_events = std::collections::BTreeMap::<String, u64>::new();
     let mut next_idle = Instant::now() + Duration::from_secs(1);
     let started = Instant::now();
     logger.write("headless GUI starting: windows=0, real Session, offscreen renderer");
@@ -188,6 +190,11 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 closing = true;
             }
             while let Ok(event) = events.try_recv() {
+                if smoke && idle_epoch.is_some() {
+                    *idle_events
+                        .entry(format!("{:?}", std::mem::discriminant(&event)))
+                        .or_default() += 1;
+                }
                 match event {
                     UiEvent::SeatTaskRetry(op) => {
                         dirty |= app.retry_seat_tasks(op);
@@ -412,6 +419,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
                 }
             }
             let sources = app.drain();
+            if smoke && idle_epoch.is_some() {
+                idle_sources.extend(sources.iter().copied());
+            }
             if sources.iter().any(|source| !matches!(*source, 0 | 1)) {
                 dirty = true;
             }
@@ -681,6 +691,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             start.elapsed().as_secs_f64()
                         ));
                         if !passed {
+                            logger.write(format!("idle wake evidence: sources={idle_sources:?} event_discriminants={idle_events:?}"));
                             result = Err("headless idle probe produced work".into());
                         }
                         if let Some(commands) = app.live_commands.take() {

@@ -2331,6 +2331,7 @@ struct App {
     composer_scope: Option<bbt_proto::SwarmId>,
     task_records: messaging::Records,
     task_panel_timer: Option<sidebar_chat::TaskPanelTimer>,
+    task_retry_timer: Option<sidebar_chat::TaskPanelTimer>,
     message_history: messaging::History,
     events_seen: Option<Arc<bboxy450_term::model::EventLane>>,
     task_regions: bbt_ui::modules::stream_dock::Regions,
@@ -2555,6 +2556,7 @@ impl App {
             composer_scope: None,
             task_records: messaging::Records::default(),
             task_panel_timer: None,
+            task_retry_timer: None,
             message_history: messaging::History::default(),
             events_seen: None,
             task_regions: Default::default(),
@@ -6052,13 +6054,7 @@ impl App {
             self.sync_notifications();
             self.verify();
         }
-        if let Some((epoch, delay)) = self.task_records.take_retry() {
-            let proxy = self.proxy.clone();
-            bbt_rt::handle().spawn(async move {
-                tokio::time::sleep(delay).await;
-                let _ = proxy.send_event(UiEvent::TaskRetry(epoch));
-            });
-        }
+        self.sync_task_retry();
         if let Some((epoch, delay)) = self.document.take_retry() {
             let proxy = self.proxy.clone();
             bbt_rt::handle().spawn(async move {
