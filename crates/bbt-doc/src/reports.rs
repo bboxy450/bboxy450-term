@@ -8,7 +8,7 @@
 use serde_json::Value;
 
 /// Reports keep their date/slug path; the existing Index allocates `number`.
-pub fn validate(path: &str, metadata: &Value) -> Result<(), String> {
+fn validate_path(path: &str) -> Result<(), String> {
     let name = path
         .strip_prefix(".bboxy/")
         .unwrap_or(path)
@@ -51,12 +51,27 @@ pub fn validate(path: &str, metadata: &Value) -> Result<(), String> {
     if year == 0 || !(1..=12).contains(&month) || day == 0 || day > days[month - 1] {
         return Err("invalid report date".into());
     }
-    if metadata["type"] != "report" {
-        return Err("record must have type: report".into());
+    Ok(())
+}
+
+/// Return every invalid field together so a caller can repair one payload.
+/// This is syntax validation; authenticated authorship and task authority are
+/// still checked by the host before publication.
+pub fn validate(path: &str, metadata: &Value) -> Result<(), String> {
+    let mut errors = Vec::new();
+    if let Err(error) = validate_path(path) {
+        errors.push(error);
     }
-    locator(&metadata["task"])?;
-    if let Some(previous) = metadata.get("supersedes") {
-        locator(previous)?;
+    if metadata["type"] != "report" {
+        errors.push("type: record must have type: report".into());
+    }
+    if let Err(error) = locator(&metadata["task"]) {
+        errors.push(format!("task: {error}"));
+    }
+    if let Some(previous) = metadata.get("supersedes")
+        && let Err(error) = locator(previous)
+    {
+        errors.push(format!("supersedes: {error}"));
     }
     if !metadata["commits"].as_array().is_some_and(|items| {
         items.iter().all(|sha| {
@@ -65,7 +80,7 @@ pub fn validate(path: &str, metadata: &Value) -> Result<(), String> {
             })
         })
     }) {
-        return Err("report commits must be a list of full SHAs (possibly empty)".into());
+        errors.push("commits: report commits must be a list of full SHAs (possibly empty)".into());
     }
     if metadata["verify"]["command"]
         .as_str()
@@ -75,7 +90,7 @@ pub fn validate(path: &str, metadata: &Value) -> Result<(), String> {
             .and_then(|n| i32::try_from(n).ok())
             .is_none()
     {
-        return Err("report verify requires command and integer exit_code".into());
+        errors.push("verify: report verify requires command and integer exit_code".into());
     }
     let author = metadata["author"]
         .as_str()
@@ -89,15 +104,25 @@ pub fn validate(path: &str, metadata: &Value) -> Result<(), String> {
         || author.as_bytes()[0] > b'7'
         || author.bytes().all(|b| b == b'0')
     {
-        return Err("report author must name a seat:ULID".into());
+        errors.push(
+            "author: report author must name your authenticated seat:ULID, not a display name"
+                .into(),
+        );
     }
     if metadata["created"]
         .as_str()
         .is_none_or(|s| s.trim().is_empty())
     {
-        return Err("report created timestamp is required".into());
+        errors.push(
+            "created: report created timestamp is required (for example 2026-11-05T15:00:00Z)"
+                .into(),
+        );
     }
-    Ok(())
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("; "))
+    }
 }
 
 /// Record task/supersedes fields use wikilinks or an unambiguous numeric handle.
@@ -131,4 +156,27 @@ pub fn trailers(message: &str) -> Result<Vec<&str>, String> {
             }
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn report_validation_returns_all_missing_fields_and_accepts_the_repaired_payload() {
+        let path = "reports/2026-11-05-work.md";
+        let error = validate(path, &json!({"type":"report", "task":"tasks/work"})).unwrap_err();
+        for field in ["task:", "commits:", "verify:", "author:", "created:"] {
+            assert!(error.contains(field), "{error}");
+        }
+        let valid = json!({"type":"report", "task":"[[tasks/work]]", "commits":[],
+            "verify":{"command":"true","exit_code":0},
+            "author":"seat:00000000000000000000000001", "created":"2026-11-05T15:00:00Z"});
+        assert!(validate(path, &valid).is_ok());
+        let mut numbered = valid.clone();
+        numbered["task"] = json!("#3096");
+        assert!(validate(path, &numbered).is_ok());
+        assert!(validate("reports/2026-02-30-work.md", &valid).is_err());
+    }
 }

@@ -1852,7 +1852,12 @@ async fn session_inner(
                 let snapshot=client.snapshot(seat,generation).await?;
                 let result:Result<serde_json::Value>=match request.action {
                     Action::Catalogue=>client.control_catalogue(seat,generation).await,
-                    Action::Call{call,attribution}=>client.control_call_attributed_within(seat,generation,call,attribution,crate::logic::SEAT_PENDING_WAIT).await,
+                    Action::Call{call,attribution}=>{
+                        // Project after journaling, off the logic owner. Old bridge
+                        // processes must receive structured guidance after refresh too.
+                        client.control_call_attributed_within(seat,generation,call.clone(),attribution,crate::logic::SEAT_PENDING_WAIT)
+                            .await.map(|value| crate::mcp::hints::attach(&call,value))
+                    },
                     Action::Messaging{request}=>client.messaging(seat,generation,request).await.and_then(|v|Ok(serde_json::to_value(v)?)),
                     Action::Hook{event}=>Ok(serde_json::json!({"kind":"HookObserved","status":client.hook(seat,generation,event).await?})),
                     Action::HookDecide{event,wait_ms}=>hook_decide(&client,seat,generation,event,wait_ms).await,

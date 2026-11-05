@@ -52,13 +52,17 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
     };
     definition["properties"]["frontmatter"]["properties"] = json!({"type":type_schema});
     definition["properties"]["frontmatter"]["required"] = json!(["type"]);
+    definition["properties"]["frontmatter"]["description"] = json!(format!(
+        "Type-specific metadata; call knowledge_types for guidance. Reports require task ([[locator]] or #N), author (seat:{} for this authenticated seat), created (timestamp), commits (full SHA list, possibly empty), and verify (command plus integer exit_code).",
+        actor.seat_id
+    ));
     let write_help = if actor.role.class == Class::Oracle {
         "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.md; the Index returns its numbered final path. Reports are append-only at reports/YYYY-MM-DD-slug.md; corrections create a new report with supersedes. Tasks are created open; their delegating seat may amend only brief/verify/allowed_paths while nonterminal. Amendments wake the assignee in the task thread; changed verify requires a fresh report. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools. Updates retain type, ref and etag."
     } else {
         "Create/update e2e, comment, research, note and artifact records as your seat. Create append-only reports at reports/YYYY-MM-DD-slug.md for your assigned task; corrections create a new report with supersedes. For your assigned task preserve every other field and the body, changing only report.summary, report.commit, report.report and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools. Updates retain type, ref and etag."
     };
     let write_help = format!(
-        "{write_help} First call knowledge_orient to load the selected provider's skill and writing workflow. Call knowledge_types for the built-in type dictionary, purposes, paths and writing guidance; concern records use concerns/<slug>.md. Research is a supported type: use research/<topic>.md with parent/children for its document tree, derived_from for origins, and links with rel used/evidence for cited sources. Specs and tasks retain derived_from links to their research or spec; these relations feed the provenance graph. The host stamps authorship and a signed mutation audit. Writes are drafts, visible to other harnesses but not artifacts. Call knowledge_commit only for cross-machine sharing preparation, a substantial checkpoint, or final accepted/done work; it never pushes. Later edits become draft again. Create takes a document-type path (tasks/slug.md, specs/slug.md, concerns/slug.md, etc.); update takes the ref a fetch or search returned. Top-level slugs are refused. {IDENTIFIERS}"
+        "{write_help} First call knowledge_orient to load the selected provider's skill and writing workflow. Call knowledge_types for the built-in type dictionary, purposes, paths and writing guidance; concern records use concerns/<slug>.md. Research is a supported type: use research/<topic>.md with parent/children for its document tree, derived_from for origins, and links with rel used/evidence for cited sources. Specs and tasks retain derived_from links to their research or spec; these relations feed the provenance graph. Reports require task ([[locator]] or #N), author (your authenticated seat:ULID), created (a timestamp), commits (full SHA list, possibly empty), and verify (command plus integer exit_code). The host stamps authorship and a signed mutation audit. Writes are drafts, visible to other harnesses but not artifacts. Call knowledge_commit only for cross-machine sharing preparation, a substantial checkpoint, or final accepted/done work; it never pushes. Later edits become draft again. Create takes a document-type path (tasks/slug.md, specs/slug.md, concerns/slug.md, etc.); update takes the ref a fetch or search returned. Top-level slugs are refused. {IDENTIFIERS}"
     );
     let kinds: Vec<_> = DOCUMENT_TYPES.iter().map(|entry| entry.kind).collect();
     let mut tools = vec![
@@ -297,6 +301,13 @@ pub(crate) fn fetch_page(
 pub(crate) fn fetch(source: &dyn DataSource, locator: String) -> d::Result<d::Record> {
     // Do not reflect outside-root candidates or parse failures into a scoped
     // tool response. The lower provider still retains its full command error.
+    let target = bbt_doc::links::locator(&locator);
+    let target = if target.starts_with('#') {
+        target
+    } else {
+        target.split_once('#').map_or(target, |(path, _)| path)
+    };
+    let locator = target.strip_prefix(".bboxy/").unwrap_or(target).to_owned();
     let reference = source
         .resolve(d::ResolveRequest { locator })
         .map_err(|error| {
@@ -656,5 +667,73 @@ mod tests {
             .find(|t| t["name"] == "knowledge_fetch")
             .unwrap();
         assert!(fetch["description"].as_str().unwrap().contains("truncated"));
+    }
+
+    #[test]
+    #[allow(clippy::disallowed_methods, reason = "private strict-provider fixture")]
+    fn wiki_report_links_reach_a_strict_provider_as_record_locators() {
+        use crate::knowledge::{BboxySource, WriteContext};
+        struct Strict<'a>(BboxySource<'a>);
+        impl DataSource for Strict<'_> {
+            fn resolve(&self, r: d::ResolveRequest) -> d::Result<d::RecordRef> {
+                if !["tasks/work", "tasks/work.md", "#3096"].contains(&r.locator.as_str()) {
+                    return Err(d::CommandError::new(
+                        "invalid_path",
+                        "strict provider requires an unwrapped locator",
+                    ));
+                }
+                self.0.resolve(r)
+            }
+            fn fetch(&self, r: d::FetchRequest) -> d::Result<d::Record> {
+                self.0.fetch(r)
+            }
+            fn search(&self, r: d::SearchRequest) -> d::Result<d::Page<d::SearchHit>> {
+                self.0.search(r)
+            }
+            fn list(&self, r: d::ListRequest) -> d::Result<d::Page<d::RecordRef>> {
+                self.0.list(r)
+            }
+            fn links(&self, r: d::FetchRequest) -> d::Result<d::Links> {
+                self.0.links(r)
+            }
+            fn graph(&self, r: d::GraphRequest) -> d::Result<d::GraphPage> {
+                self.0.graph(r)
+            }
+            fn write(&self, r: d::WriteRequest, c: &WriteContext<'_>) -> d::Result<d::WriteResult> {
+                self.0.write(r, c)
+            }
+            fn changes_since(&self, r: d::ChangesRequest) -> d::Result<d::Changes> {
+                self.0.changes_since(r)
+            }
+        }
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join(".bboxy");
+        std::fs::create_dir_all(root.join("tasks")).unwrap();
+        let id = crate::Ulid::from(11_u128).to_string();
+        let metadata = json!({"id":id,"number":3096,"type":"task","status":"open","verify":"true"});
+        std::fs::write(
+            root.join("tasks/work.md"),
+            format!("---\n{metadata}\n---\nTask body"),
+        )
+        .unwrap();
+        let mut index = crate::index::Index::open(
+            &root,
+            crate::store::sqlite::SqliteStore::open(&temp.path().join("store")).unwrap(),
+        )
+        .unwrap();
+        index.scan().unwrap();
+        let source = Strict(BboxySource::new(&index));
+        for locator in [
+            "[[tasks/work]]",
+            "[[tasks/work|Task]]",
+            "[[.bboxy/tasks/work.md#Evidence|Task]]",
+            "[[#3096]]",
+            "#3096",
+        ] {
+            let record =
+                fetch(&source, locator.into()).unwrap_or_else(|e| panic!("{locator}: {e}"));
+            assert_eq!(record.reference.id, id);
+        }
+        assert!(fetch(&source, "[[../outside]]".into()).is_err());
     }
 }

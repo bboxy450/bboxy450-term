@@ -1454,6 +1454,10 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     assert_eq!(first["result"]["isError"], false);
     let data = &first["result"]["structuredContent"];
     assert_eq!(data["actor"]["seat_id"], json!(fixture.own.id));
+    assert_eq!(data["hints"][0]["params"]["name"], "knowledge_orient");
+    let text: Value = serde_json::from_str(first["result"]["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(&text, data, "structured and text consumers must see the same guidance");
+
     assert_eq!(data["actor"]["process_generation"], 1);
     assert_eq!(data["actor"]["role"]["class"], "worker");
     assert_eq!(data["actor"]["role"]["name"], "executor");
@@ -9131,4 +9135,31 @@ fn knowledge_orientation_loads_builtin_workflow_types_and_human_document_guidanc
     assert!(value["document_types"]["types"].as_array().unwrap().iter().any(|t|t["type"] == "spec" || t["kind"] == "spec"));
     let refused = fixture.call(fixture.own.id, Ulid::new(), "knowledge_orient", json!({"root":"/foreign"}));
     assert_eq!(refused["isError"], true);
+}
+
+
+// No Bridge instance: proves already-running older bridges get the guidance
+// from the refreshed server, independently of their own text-only attachment.
+#[test]
+fn mcp_feedback_socket_reaches_structured_only_clients_without_a_new_bridge() {
+    let fixture = Fixture::new();
+    let endpoint = fixture.runtime.block_on(fixture.client().endpoint(fixture.own.id)).unwrap();
+    let mut stream = UnixStream::connect(&endpoint.path).unwrap();
+    stream.set_read_timeout(Some(Duration::from_secs(20))).unwrap();
+    let request = bbt_mux::seat_socket::Request {
+        version: 1, capability: endpoint.capability, seat: fixture.own.id, generation: endpoint.generation,
+        action: bbt_mux::seat_socket::Action::Call {
+            call: Call { op_id: Ulid::new(), tool: "orient".into(), args: json!({}) },
+            attribution: Default::default(),
+        },
+    };
+    let mut bytes = serde_json::to_vec(&request).unwrap(); bytes.push(b'\n');
+    stream.write_all(&bytes).unwrap();
+    let mut line = String::new();
+    std::io::BufRead::read_line(&mut std::io::BufReader::new(stream), &mut line).unwrap();
+    let result: Value = serde_json::from_str(&line).unwrap();
+    assert_eq!(result["isError"], false, "{result}");
+    assert_eq!(result["structuredContent"]["hints"][0]["params"]["name"], "knowledge_orient");
+    let text: Value = serde_json::from_str(result["content"][0]["text"].as_str().unwrap()).unwrap();
+    assert_eq!(text, result["structuredContent"]);
 }

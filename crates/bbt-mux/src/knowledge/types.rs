@@ -106,7 +106,7 @@ pub const DOCUMENT_TYPES: &[DocumentType] = &[
         kind: "report",
         purpose: "An append-only record of completed work and its verification evidence. Corrections preserve the earlier report and identify what they supersede.",
         path: "reports/YYYY-MM-DD-<slug>.md",
-        writing: "Set task to a [[task locator]] or #N, author to your seat:ULID, commits to a list of full commit SHAs (possibly empty), and verify to an object with command and integer exit_code. Record changes, evidence and gaps in the body; use task_report to hand it back. Create a new report with supersedes for corrections.",
+        writing: "Set task to a [[task locator]] or #N, author to your authenticated seat:ULID (never its display name), created to a timestamp such as 2026-11-05T15:00:00Z, commits to a list of full commit SHAs (possibly empty), and verify to an object with command and integer exit_code. Record changes, evidence and gaps in the body; use task_report to hand it back. Create a new report with supersedes for corrections.",
     },
     DocumentType {
         kind: "interface",

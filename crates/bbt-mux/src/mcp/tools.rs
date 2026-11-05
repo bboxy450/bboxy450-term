@@ -81,6 +81,8 @@ pub(crate) fn catalogue(actor: &Actor, plugins: Vec<Value>) -> Value {
     tools.push(super::diagnostics::catalogue());
     tools.extend(plugins);
     for tool in &mut tools {
+        // Host advice stays outside a plugin's nested `result` schema.
+        tool["outputSchema"]["properties"]["hints"] = super::hints::schema();
         tool["inputSchema"]["properties"]["op_id"] = json!({
             "type":"string",
             "pattern":"^[0-7][0-9A-HJKMNP-TV-Z]{25}$",

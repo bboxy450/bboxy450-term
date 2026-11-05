@@ -118,3 +118,12 @@ signed event with its stored columns and immediate predecessor. A valid local
 signature is separate from account-key trust, full-chain auditing, external
 artifact byte verification and proof that declared lineage caused an output.
 Do not turn an inferred producer or responsibility claim into verified authorship.
+
+
+For a report, supply every required field together: `type: report`, `task`
+(`[[task locator]]` or `#N`), `author` (`seat:` plus your authenticated seat ID,
+never its display name), `created` (timestamp), `commits` (full SHAs, possibly
+empty), and `verify` (`command` and integer `exit_code`). Call
+`knowledge_types` with `{"type":"report"}` for guidance. Correct all validation
+errors in one new call; an unknown outcome still requires `operation_status`.
+Tool-result `hints` are advisory next reads, not permission or automatic actions.

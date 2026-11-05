@@ -5,6 +5,12 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! MCP hint graph: actionable next reads, projected without executing or altering receipts.
+//! Keep advice in structuredContent AND its text mirror. Codex may prefer the
+//! structured result exclusively; _meta and an extra text block are insufficient.
+//! https://developers.openai.com/plugins/build/mcp-server#return-useful-results-without-ui
+//! https://github.com/openai/codex/blob/bbe8cde1c362b090cd1c683db2d9139047d8aede/codex-rs/protocol/src/models.rs#L2048
+//! Advice is not authorization or an automatic tool invocation. Attach it only
+//! at response boundaries, after durable journal/signature work has completed.
 use serde_json::{Value, json};
 
 use super::Call;
@@ -44,6 +50,13 @@ fn next(call: &Call, result: &Value) -> Vec<Value> {
     if result["isError"] == true {
         let code = data["error"]["code"].as_str().unwrap_or_default();
         let message = data["error"]["message"].as_str().unwrap_or_default();
+        if matches!(code, "invalid_report" | "report_author_mismatch") {
+            return vec![tool(
+                "knowledge_types",
+                json!({"type":"report"}),
+                "Call knowledge_types for report and correct all listed fields in one new request: task, author (your authenticated seat:ULID), created, commits and verify. No report was published by this rejection.",
+            )];
+        }
         if code == "document_type_prefix_required"
             || message.contains("document_type_prefix_required")
         {
@@ -63,7 +76,12 @@ fn next(call: &Call, result: &Value) -> Vec<Value> {
                 "Refresh your current workspace, role and permitted tools.",
             )];
         }
-        return vec![catalogue()];
+        // tools/list is a client protocol method, not a tool the model can call.
+        return vec![tool(
+            "orient",
+            json!({}),
+            "Refresh your current seat and workflow tools, then correct the arguments using the tool's input schema.",
+        )];
     }
     let hint = match call.tool.as_str() {
         "orient" => {
@@ -216,25 +234,50 @@ fn next(call: &Call, result: &Value) -> Vec<Value> {
     vec![hint]
 }
 
-/// Preserve the tool's structured output/schema and signed receipt bytes.
-/// Hints are visible content plus MCP metadata, outside the provider's output schema.
-pub(crate) fn attach(call: &Call, mut result: Value) -> Value {
+/// Optional host-envelope field; plugin result schemas remain nested/unchanged.
+pub(crate) fn schema() -> Value {
+    json!({"type":"array","description":"Advisory next reads; params.name identifies an exposed tool, not an automatic action or authorization grant.",
+        "items":{"type":"object","properties":{"reason":{"type":"string"},"method":{"type":"string"},"params":{"type":"object"}},"required":["reason","method","params"],"additionalProperties":true}})
+}
+
+/// Project advice onto a wire copy, never into canonical journaled receipts.
+/// Idempotent: the server socket and a newer bridge can both apply this. Socket
+/// projection also reaches old, still-running bridges after a logic refresh.
+pub(crate) fn attach(call: &Call, result: Value) -> Value {
     let hints = next(call, &result);
-    let text = json!({"hints":hints}).to_string();
-    let block = json!({"type":"text","text":text});
-    let size = serde_json::to_vec(&result).map_or(usize::MAX, |bytes| bytes.len());
-    let extra = serde_json::to_vec(&block)
-        .map_or(usize::MAX, |bytes| bytes.len())
-        .saturating_add(serde_json::to_vec(&hints).map_or(usize::MAX, |bytes| bytes.len()));
-    // Leave room for the enclosing JSON-RPC response; guidance never breaks a large result.
-    if size.saturating_add(extra).saturating_add(2048) >= super::bridge::MAX_FRAME {
-        return result;
+    let mut projected = result.clone();
+    if let Some(data) = projected["structuredContent"].as_object_mut() {
+        data.insert("hints".into(), json!(hints));
+        let text = projected["structuredContent"].to_string();
+        let mirror = result["content"].as_array().and_then(|content| {
+            content.iter().position(|block| {
+                block["text"]
+                    .as_str()
+                    .and_then(|text| serde_json::from_str::<Value>(text).ok())
+                    .as_ref()
+                    == Some(&result["structuredContent"])
+            })
+        });
+        if let Some(index) = mirror {
+            projected["content"][index]["text"] = text.into();
+        } else if let Some(content) = projected["content"].as_array_mut() {
+            content.push(json!({"type":"text","text":text}));
+        }
+    } else if let Some(content) = projected["content"].as_array_mut() {
+        let block = json!({"type":"text","text":json!({"hints":hints}).to_string()});
+        if !content.contains(&block) {
+            content.push(block);
+        }
     }
-    if let Some(content) = result["content"].as_array_mut() {
-        content.push(block);
-        result["_meta"]["bboxy450/hints"] = json!(hints);
+    projected["_meta"]["bboxy450/hints"] = json!(hints);
+    // Account for all copies and leave room for the enclosing JSON-RPC frame.
+    if serde_json::to_vec(&projected)
+        .is_ok_and(|bytes| bytes.len().saturating_add(2048) < super::bridge::MAX_FRAME)
+    {
+        projected
+    } else {
+        result
     }
-    result
 }
 
 pub(crate) fn protocol(code: i64, message: &str) -> Vec<Value> {
@@ -268,17 +311,84 @@ mod tests {
         };
         let receipt = super::super::error(op, "unknown", "original outcome unknown");
         let hinted = attach(&call, receipt.clone());
-        assert_eq!(hinted["structuredContent"], receipt["structuredContent"]);
-        assert_eq!(hinted["content"][0], receipt["content"][0]);
+        let mut core = hinted["structuredContent"].clone();
+        core.as_object_mut().unwrap().remove("hints");
+        assert_eq!(
+            core, receipt["structuredContent"],
+            "canonical receipt changed"
+        );
         let hints = hinted["_meta"]["bboxy450/hints"].as_array().unwrap();
         assert_eq!(hints.len(), 1);
         assert_eq!(hints[0]["params"]["name"], "operation_status");
         assert_eq!(hints[0]["params"]["arguments"]["original_op_id"], json!(op));
         assert_eq!(
-            serde_json::from_str::<Value>(hinted["content"][1]["text"].as_str().unwrap()).unwrap()
+            serde_json::from_str::<Value>(hinted["content"][0]["text"].as_str().unwrap()).unwrap()
                 ["hints"],
             json!(hints)
         );
+        // Codex's structured-only path and a legacy text client both see advice.
+        assert_eq!(hinted["structuredContent"]["hints"], json!(hints));
+        assert_eq!(
+            attach(&call, hinted.clone()),
+            hinted,
+            "double projection changed the reply"
+        );
+        assert_eq!(hinted["isError"], true);
+    }
+
+    #[test]
+    fn report_feedback_is_actionable_in_structured_and_text_clients() {
+        let call = Call {
+            op_id: Ulid::from(9_u128),
+            tool: "knowledge_write".into(),
+            args: json!({"frontmatter":{"type":"report"}}),
+        };
+        let error =
+            bbt_doc::reports::validate("reports/2026-11-05-work.md", &call.args["frontmatter"])
+                .unwrap_err();
+        let reply = attach(
+            &call,
+            super::super::error(call.op_id, "invalid_report", &error),
+        );
+        let structured = &reply["structuredContent"];
+        for field in ["task:", "author:", "created:", "commits:", "verify:"] {
+            assert!(
+                structured["error"]["message"]
+                    .as_str()
+                    .unwrap()
+                    .contains(field)
+            );
+        }
+        assert_eq!(structured["hints"][0]["params"]["name"], "knowledge_types");
+        assert_eq!(
+            structured["hints"][0]["params"]["arguments"],
+            json!({"type":"report"})
+        );
+        let text: Value =
+            serde_json::from_str(reply["content"][0]["text"].as_str().unwrap()).unwrap();
+        assert_eq!(&text, structured);
+    }
+
+    #[test]
+    fn projection_preserves_non_json_content_and_is_idempotent() {
+        let call = Call {
+            op_id: Ulid::from(9_u128),
+            tool: "knowledge_status".into(),
+            args: json!({}),
+        };
+        let result = json!({"structuredContent":{"result":{"signature":"opaque signed bytes"}}, "content":[{"type":"text","text":"Provider narrative"}]});
+        let projected = attach(&call, result.clone());
+        assert_eq!(projected["content"][0], result["content"][0]);
+        assert_eq!(
+            projected["structuredContent"]["result"],
+            result["structuredContent"]["result"]
+        );
+        assert_eq!(attach(&call, projected.clone()), projected);
+        let text_only = attach(
+            &call,
+            json!({"content":[{"type":"text","text":"Narrative"}]}),
+        );
+        assert_eq!(attach(&call, text_only.clone()), text_only);
     }
 
     #[test]

@@ -41,13 +41,10 @@ fn path_key(value: &str) -> &str {
     value.strip_suffix(".md").unwrap_or(value)
 }
 
-/// Slug, relative path, ULID or `#N`, optionally wrapped as a wikilink. A display
-/// alias does not affect identity. A duplicate number/ID/slug is an error even
-/// when the first matching record could otherwise be opened.
-pub fn resolve<'a>(
-    records: impl IntoIterator<Item = Record<'a>>,
-    target: &str,
-) -> Result<Resolved<'a>, ResolveError> {
+/// Remove wiki wrapping and display aliases without changing record identity.
+/// Shared by UI resolution and provider reads; a provider must never receive
+/// the literal brackets from a valid [[record]] link as part of its path.
+pub fn locator(target: &str) -> &str {
     let target = target.trim();
     let target = target
         .strip_prefix("[[")
@@ -55,10 +52,20 @@ pub fn resolve<'a>(
         .unwrap_or(target);
     // GFM tables escape the same alias delimiter as \|. The escape is
     // formatting, not part of the record's identity.
-    let target = target
+    target
         .split_once('|')
         .map_or(target, |(key, _)| key.strip_suffix('\\').unwrap_or(key))
-        .trim();
+        .trim()
+}
+
+/// Slug, relative path, ULID or `#N`, optionally wrapped as a wikilink. A display
+/// alias does not affect identity. A duplicate number/ID/slug is an error even
+/// when the first matching record could otherwise be opened.
+pub fn resolve<'a>(
+    records: impl IntoIterator<Item = Record<'a>>,
+    target: &str,
+) -> Result<Resolved<'a>, ResolveError> {
+    let target = locator(target);
     if target.is_empty() {
         return Err(ResolveError::Missing);
     }

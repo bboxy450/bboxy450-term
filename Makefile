@@ -2556,3 +2556,15 @@ test-provenance-mcp-formal: test-provenance-inventory
 	@set -eu; . ./scripts/cache-env.sh; mkdir -p '$(abspath $(TARGET_DIR))/provenance-query/models'; \
 	BBOXY_PROVENANCE_QUERY_MODELS='$(abspath $(TARGET_DIR))/provenance-query/models' cargo test --locked --release -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)' selected_provenance_queries -- --exact; \
 	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert len(rows)==4; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/provenance-query'
+
+
+.PHONY: check-mcp-feedback test-mcp-feedback
+check-mcp-feedback:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked --release -p bboxy450-doc -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' -- -D warnings
+
+test-mcp-feedback:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked --release -p bboxy450-doc --lib --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(reports::tests) | test(links::tests)'; \
+	cargo nextest run --locked --release -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(mcp::hints::tests) | test(mcp::knowledge::tests) | test(knowledge::effects::report_tests)'; \
+	cargo nextest run --locked --release -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(mcp_four_methods_forward_to_logic) | test(mcp_feedback_socket_) | test(mcp_socket_refuses_bad_capabilities)'
