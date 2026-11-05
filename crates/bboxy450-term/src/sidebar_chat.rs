@@ -302,6 +302,7 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(clippy::disallowed_methods, reason = "private paused runtime witness, never a UI turn")]
     #[tokio::test(start_paused = true)]
     async fn retired_task_retry_timer_cannot_wake_the_ui() {
         let (send, recv) = std::sync::mpsc::channel();
