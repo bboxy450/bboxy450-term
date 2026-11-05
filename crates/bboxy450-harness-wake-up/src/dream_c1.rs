@@ -489,19 +489,21 @@ pub mod wire {
     }
 }
 
+use crate::dream_bootstrap::{self as bootstrap, Gate};
 #[cfg(target_os = "linux")]
 use std::os::unix::fs::OpenOptionsExt;
 use std::{
+    fs::File,
     io::{Read, Write},
     os::{
-        fd::AsRawFd,
+        fd::{AsRawFd, OwnedFd},
         unix::{
             fs::MetadataExt,
             process::{CommandExt, ExitStatusExt},
         },
     },
     path::Path,
-    process::{Child, ChildStderr, ChildStdin, ChildStdout, Command, ExitStatus, Stdio},
+    process::{Child, Command, ExitStatus, Stdio},
     time::{Duration, Instant},
 };
 use wire::{Code, WorkerIn, WorkerOut};
@@ -569,7 +571,10 @@ pub struct ChildUsage {
     pub user_cpu_ns: u64,
     pub system_cpu_ns: u64,
 }
-pub const PRODUCER_METRIC_KEYS: [&str; 19] = [
+const COMPUTE_METRIC_COUNT: usize = 21;
+pub const NATIVE_METRICS_PROFILE: &str = "c1-native-debt/1";
+pub const NATIVE_TERMINAL_CUTOFF: &str = "joined_final_control_pre_telemetry";
+pub const PRODUCER_METRIC_KEYS: [&str; 69] = [
     "heap_live_bytes",
     "heap_peak_bytes",
     "startup_heap_peak_bytes",
@@ -589,10 +594,66 @@ pub const PRODUCER_METRIC_KEYS: [&str; 19] = [
     "normalization_unit_1_cpu_ns",
     "normalization_unit_2_cpu_ns",
     "normalization_unit_3_cpu_ns",
+    "cleanup_cpu_ns",
+    "max_cleanup_unit_cpu_ns",
+    "reactor_max_cpu_ns",
+    "control_max_cpu_ns",
+    "compute_stack_reserved_bytes",
+    "cost_known",
+    "native_compute_owner_create_count",
+    "native_compute_owner_create_cpu_ns",
+    "native_compute_owner_create_wall_ns",
+    "native_compute_owner_create_max_cpu_ns",
+    "native_compute_owner_create_max_wall_ns",
+    "native_compute_owner_create_inclusive_max_cpu_ns",
+    "native_compute_owner_create_inclusive_max_wall_ns",
+    "native_compute_owner_create_app_max_cpu_ns",
+    "native_compute_owner_create_effects",
+    "native_compute_owner_create_failures_with_effect",
+    "native_publish_noreplace_count",
+    "native_publish_noreplace_cpu_ns",
+    "native_publish_noreplace_wall_ns",
+    "native_publish_noreplace_max_cpu_ns",
+    "native_publish_noreplace_max_wall_ns",
+    "native_publish_noreplace_inclusive_max_cpu_ns",
+    "native_publish_noreplace_inclusive_max_wall_ns",
+    "native_publish_noreplace_app_max_cpu_ns",
+    "native_publish_noreplace_effects",
+    "native_publish_noreplace_failures_with_effect",
+    "terminal_captured_max_cpu_ns",
+    "terminal_inclusive_max_cpu_ns",
+    "terminal_app_max_cpu_ns",
+    "terminal_control_max_cpu_ns",
+    "terminal_inclusive_max_wall_ns",
+    "terminal_span_cpu_ns",
+    "terminal_owner_thread_cpu_ns",
+    "terminal_process_user_cpu_ns",
+    "terminal_process_system_cpu_ns",
+    "terminal_wall_ns",
+    "terminal_debt_total_ns",
+    "terminal_rest_observed_ns",
+    "terminal_remaining_debt_ns",
+    "control_parts_input_max_cpu_ns",
+    "control_parts_protocol_max_cpu_ns",
+    "control_parts_settlement_max_cpu_ns",
+    "control_parts_output_max_cpu_ns",
+    "control_parts_total_cpu_ns",
+    "publication_operation",
+    "publication_dev",
+    "publication_ino",
+    "publication_effect",
+    "publication_errno",
+    "publication_cleanup_uncertain",
 ];
 #[derive(Clone, Copy, Debug)]
+pub struct NativeMetricsProfile {
+    run: [u8; 26],
+    nonce: [u8; 26],
+}
+#[derive(Clone, Copy, Debug)]
 pub struct ProducerMetrics {
-    pub values: [Option<u64>; 19],
+    pub values: [Option<u64>; PRODUCER_METRIC_KEYS.len()],
+    native_profile: Option<NativeMetricsProfile>,
 }
 impl ProducerMetrics {
     pub fn get(&self, key: &str) -> Option<u64> {
@@ -601,7 +662,369 @@ impl ProducerMetrics {
             .position(|v| *v == key)
             .and_then(|i| self.values[i])
     }
+    pub fn has_native_profile(&self) -> bool {
+        self.native_profile.is_some()
+    }
+    pub fn work_debt_paid_for(&self, run: &str, nonce: &str) -> bool {
+        self.native_profile.is_some_and(|p| {
+            p.run.as_slice() == run.as_bytes() && p.nonce.as_slice() == nonce.as_bytes()
+        }) && self.get("cost_known") == Some(1)
+            && self.get("terminal_remaining_debt_ns") == Some(0)
+            && (45..63).all(|i| self.values[i].is_some_and(|v| v <= wire::MAX_SAFE))
+    }
+    /// Numeric/profile consistency only; approved executable/source/compiler/
+    /// feature binding remains a separate host-provisioned authority fence.
+    pub fn valid_native_completion(&self, run: &str, nonce: &str, pages: u32) -> bool {
+        if !self.work_debt_paid_for(run, nonce)
+            || !(1..=4096).contains(&pages)
+            || self.values.iter().any(Option::is_none)
+        {
+            return false;
+        }
+        let v = |i: usize| self.values[i].unwrap();
+        let native = |base: usize, count: u64| {
+            v(base) == count
+                && v(base + 8) == count
+                && v(base + 9) == 0
+                && v(base + 3) > 0
+                && v(base + 3) <= 2_000_000
+                && v(base + 4) > 0
+                && v(base + 4) <= 25_000_000
+                && v(base + 5) >= v(base + 3)
+                && v(base + 5) <= 3_000_000
+                && v(base + 6) >= v(base + 4)
+                && v(base + 6) <= wire::MAX_SAFE
+                && v(base + 7) <= 1_000_000
+                && v(base + 5) <= v(base + 3).saturating_add(v(base + 7))
+                && v(base + 1) >= v(base + 3)
+                && v(base + 1) <= count.saturating_mul(v(base + 3))
+                && v(base + 2) >= v(base + 4)
+                && v(base + 2) <= count.saturating_mul(v(base + 4))
+                && (base + 1..=base + 7).all(|i| v(i) <= wire::MAX_SAFE)
+        };
+        let terminal = v(46);
+        native(25, 1)
+            && native(35, u64::from(pages) + 1)
+            && v(4) > 0
+            && v(4) <= wire::MAX_SAFE
+            && v(19) <= wire::MAX_SAFE
+            && terminal > 0
+            && terminal <= 3_000_000
+            && terminal == [v(30), v(40), v(47), v(48)].into_iter().max().unwrap()
+            && v(45) <= terminal
+            && [v(5), v(30), v(40), v(47), v(48), v(20)]
+                .into_iter()
+                .all(|n| n <= terminal)
+            && [6usize, 9, 44, 67, 68].into_iter().all(|i| v(i) == 0)
+            && [15usize, 16, 17, 18, 20, 21, 22, 47, 48, 58, 59, 60, 61]
+                .into_iter()
+                .all(|i| v(i) <= 1_000_000)
+            && v(0) <= v(1)
+            && v(1) > 0
+            && v(1) <= 96 * 1024 * 1024
+            && v(2) > 0
+            && v(2) <= 96 * 1024 * 1024
+            && v(10) <= 78 * 1024 * 1024
+            && v(11) >= v(10)
+            && v(11) <= wire::MAX_SAFE
+            && v(12) == 2 * 1024 * 1024
+            && v(13) == 16 * 1024 * 1024
+            && v(14) == 96 * 1024 * 1024
+            && v(23) == 2 * 1024 * 1024
+            && v(7) <= 65_536
+            && v(8) <= 64 * 1024 * 1024
+            && v(50) > 0
+            && v(51) > 0
+            && v(52)
+                .checked_add(v(53))
+                .is_some_and(|n| n > 0 && n <= wire::MAX_SAFE)
+            && v(54) > 0
+            && v(55) > 0
+            && v(56) > 0
+            && v(63) == 4096
+            && v(64) > 0
+            && v(65) > 0
+            && v(66) == 1
+    }
+    pub fn validates_descriptor_capture(&self, captured: u64) -> bool {
+        captured <= 3_000_000
+            && self.get("terminal_captured_max_cpu_ns") == Some(captured)
+            && self
+                .get("terminal_inclusive_max_cpu_ns")
+                .is_some_and(|max| captured <= max)
+    }
 }
+
+// Private telemetry adapter for the producer-owned profile, not wire/corpus authority.
+// Adapted from bboxy450-harness src/dream/c1.rs::TerminalMetrics (ffa09e52).
+// https://github.com/bboxy450/bboxy450-harness/blob/main/src/dream/c1.rs
+const NATIVE_FIELDS: [&str; 10] = [
+    "count",
+    "cpu_ns",
+    "wall_ns",
+    "max_cpu_ns",
+    "max_wall_ns",
+    "inclusive_max_cpu_ns",
+    "inclusive_max_wall_ns",
+    "app_max_cpu_ns",
+    "effects",
+    "failures_with_effect",
+];
+const TERMINAL_FIELDS: [&str; 13] = [
+    "captured_max_cpu_ns",
+    "inclusive_max_cpu_ns",
+    "app_max_cpu_ns",
+    "control_max_cpu_ns",
+    "inclusive_max_wall_ns",
+    "span_cpu_ns",
+    "owner_thread_cpu_ns",
+    "process_user_cpu_ns",
+    "process_system_cpu_ns",
+    "wall_ns",
+    "debt_total_ns",
+    "rest_observed_ns",
+    "remaining_debt_ns",
+];
+const CONTROL_FIELDS: [&str; 5] = [
+    "input_max_cpu_ns",
+    "protocol_max_cpu_ns",
+    "settlement_max_cpu_ns",
+    "output_max_cpu_ns",
+    "total_cpu_ns",
+];
+fn metric_number(text: &str) -> Option<u64> {
+    if text.is_empty() || text.len() > 20 || !text.bytes().all(|b| b.is_ascii_digit()) {
+        return None;
+    }
+    text.parse().ok()
+}
+fn metric_bool(text: &str) -> Option<u64> {
+    match text {
+        "true" => Some(1),
+        "false" => Some(0),
+        _ => None,
+    }
+}
+fn metric_id(text: &str) -> Option<[u8; 26]> {
+    let bytes: [u8; 26] = text.as_bytes().try_into().ok()?;
+    if bytes[0] > b'7'
+        || !bytes
+            .iter()
+            .all(|b| b"0123456789ABCDEFGHJKMNPQRSTVWXYZ".contains(b))
+    {
+        return None;
+    }
+    Some(bytes)
+}
+fn metric_fields(
+    fields: &str,
+    names: &[&str],
+    base: usize,
+    values: &mut [Option<u64>; PRODUCER_METRIC_KEYS.len()],
+) -> Option<()> {
+    for field in fields.split_ascii_whitespace() {
+        let (key, value) = field.split_once('=')?;
+        let index = base + names.iter().position(|name| *name == key)?;
+        if values[index].is_some() {
+            return None;
+        }
+        values[index] = Some(metric_number(value)?);
+    }
+    values[base..base + names.len()]
+        .iter()
+        .all(Option::is_some)
+        .then_some(())
+}
+fn parse_producer_metrics(stderr: &[u8]) -> Option<ProducerMetrics> {
+    if stderr.len() > 16 * 1024 || !stderr.ends_with(b"\n") {
+        return None;
+    }
+    let text = std::str::from_utf8(stderr).ok()?;
+    let mut values = [None; PRODUCER_METRIC_KEYS.len()];
+    let mut compute = false;
+    let mut mask = 0u8;
+    let mut run = None;
+    let mut nonce = None;
+    for line in text.lines() {
+        if !line.starts_with("dream-c1 ") {
+            continue;
+        }
+        if line.len() > 2048 {
+            return None;
+        }
+        if let Some(fields) = line.strip_prefix("dream-c1 metrics ") {
+            if compute {
+                return None;
+            }
+            compute = true;
+            let mut native = false;
+            for field in fields.split_ascii_whitespace() {
+                let (key, value) = field.split_once('=')?;
+                if key == "native_cumulative_bytes" {
+                    if native || value != "unmeasured" {
+                        return None;
+                    }
+                    native = true;
+                    continue;
+                }
+                let index = if key == "compute_stack_reserved_bytes" {
+                    Some(23)
+                } else {
+                    PRODUCER_METRIC_KEYS[..COMPUTE_METRIC_COUNT]
+                        .iter()
+                        .position(|v| *v == key)
+                };
+                let Some(index) = index else {
+                    continue;
+                };
+                if values[index].is_some() {
+                    return None;
+                }
+                values[index] = Some(metric_number(value)?);
+            }
+        } else if let Some(fields) = line.strip_prefix("dream-c1 native tag=") {
+            let (tag, fields) = fields.split_once(' ')?;
+            let (base, bit) = match tag {
+                "compute_owner_create" => (25, 1),
+                "publish_noreplace" => (35, 2),
+                _ => return None,
+            };
+            if mask & bit != 0 {
+                return None;
+            }
+            metric_fields(fields, &NATIVE_FIELDS, base, &mut values)?;
+            mask |= bit;
+        } else if let Some(value) = line.strip_prefix("dream-c1 cost_known=") {
+            if values[24].is_some() {
+                return None;
+            }
+            values[24] = Some(metric_bool(value)?);
+            mask |= 4;
+        } else if let Some(fields) = line.strip_prefix("dream-c1 terminal_metrics ") {
+            if mask & 8 != 0 {
+                return None;
+            }
+            let (profile, fields) = fields.split_once(' ')?;
+            let (cutoff, fields) = fields.split_once(' ')?;
+            if profile != "profile=c1-native-debt/1"
+                || cutoff != "cutoff=joined_final_control_pre_telemetry"
+            {
+                return None;
+            }
+            metric_fields(fields, &TERMINAL_FIELDS, 45, &mut values)?;
+            mask |= 8;
+        } else if let Some(fields) = line.strip_prefix("dream-c1 control_parts ") {
+            if mask & 16 != 0 {
+                return None;
+            }
+            metric_fields(fields, &CONTROL_FIELDS, 58, &mut values)?;
+            mask |= 16;
+        } else if let Some(fields) = line.strip_prefix("dream-c1 publication_custody ") {
+            if mask & 32 != 0 {
+                return None;
+            }
+            let mut path = false;
+            let mut temp = false;
+            for field in fields.split_ascii_whitespace() {
+                let (key, value) = field.split_once('=')?;
+                match key {
+                    "run_id" => {
+                        if run.is_some() {
+                            return None;
+                        }
+                        run = Some(metric_id(value)?);
+                    }
+                    "nonce" => {
+                        if nonce.is_some() {
+                            return None;
+                        }
+                        nonce = Some(metric_id(value)?);
+                    }
+                    "path_mapping" => {
+                        if path || value != "page_index_or_4096_result" {
+                            return None;
+                        }
+                        path = true;
+                    }
+                    "temp_mapping" => {
+                        if temp || value != "dot_name_original_Start_nonce_tmp" {
+                            return None;
+                        }
+                        temp = true;
+                    }
+                    _ => {
+                        let index = 63
+                            + [
+                                "operation",
+                                "dev",
+                                "ino",
+                                "effect",
+                                "errno",
+                                "cleanup_uncertain",
+                            ]
+                            .iter()
+                            .position(|v| *v == key)?;
+                        if values[index].is_some() {
+                            return None;
+                        }
+                        values[index] = Some(if key == "cleanup_uncertain" {
+                            metric_bool(value)?
+                        } else {
+                            metric_number(value)?
+                        });
+                    }
+                }
+            }
+            if run.is_none()
+                || nonce.is_none()
+                || !path
+                || !temp
+                || !values[63..69].iter().all(Option::is_some)
+            {
+                return None;
+            }
+            mask |= 32;
+        } else {
+            let (index, receipt, reactor) =
+                if let Some(value) = line.strip_prefix("dream-c1 reactor_max_cpu_ns=") {
+                    (21, value, true)
+                } else if let Some(value) = line.strip_prefix("dream-c1 control_max_cpu_ns=") {
+                    (22, value, false)
+                } else {
+                    continue;
+                };
+            if values[index].is_some() {
+                return None;
+            }
+            let numeric = if reactor {
+                match receipt.split_once(' ') {
+                    Some((value, "startup_runtime=none")) => value,
+                    Some(_) => return None,
+                    None => receipt,
+                }
+            } else {
+                receipt
+            };
+            values[index] = Some(metric_number(numeric)?);
+        }
+    }
+    if !compute || values[0]? > values[1]? {
+        return None;
+    }
+    let native_profile = if mask == 63 {
+        Some(NativeMetricsProfile {
+            run: run?,
+            nonce: nonce?,
+        })
+    } else {
+        None
+    };
+    Some(ProducerMetrics {
+        values,
+        native_profile,
+    })
+}
+
 fn child_usage(usage: libc::rusage) -> ChildUsage {
     let ns = |t: libc::timeval| {
         (t.tv_sec.max(0) as u64)
@@ -618,6 +1041,110 @@ fn child_usage(usage: libc::rusage) -> ChildUsage {
         user_cpu_ns: ns(usage.ru_utime),
         system_cpu_ns: ns(usage.ru_stime),
     }
+}
+
+#[derive(Clone, Copy, Debug, Default)]
+pub struct BootstrapMarkers {
+    pub waiting: bool,
+    pub waiting_admissions: [u64; 3],
+    pub paid_hello: bool,
+    /// argv, channel, compute-owner and frame-buffer admissions, in that order.
+    pub paid_admissions: [u64; 4],
+    pub permit_reads: u64,
+    pub control_cpu_ns: u64,
+    pub control_max_cpu_ns: u64,
+}
+fn capture_stderr(stderr: &mut File, capture: &mut Vec<u8>) -> Result<(), Code> {
+    let mut bytes = [0; 256];
+    match stderr.read(&mut bytes) {
+        Ok(n) => {
+            if capture.len() + n > 16 * 1024 {
+                return Err(Code::ResourceLimit);
+            }
+            capture.extend_from_slice(&bytes[..n]);
+            Ok(())
+        }
+        Err(e)
+            if matches!(
+                e.kind(),
+                std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted
+            ) =>
+        {
+            Ok(())
+        }
+        Err(_) => Err(Code::WorkerLost),
+    }
+}
+fn parse_bootstrap_markers(bytes: &[u8]) -> Result<BootstrapMarkers, Code> {
+    if bytes.len() > 16 * 1024 {
+        return Err(Code::ResourceLimit);
+    }
+    let text = std::str::from_utf8(bytes).map_err(|_| Code::ProtocolError)?;
+    let mut markers = BootstrapMarkers::default();
+    for line in text.split_inclusive('\n') {
+        if !line.ends_with('\n') {
+            continue;
+        }
+        let Some(fields) = line
+            .trim_end_matches(['\n', '\r'])
+            .strip_prefix("dream-bootstrap ")
+        else {
+            continue;
+        };
+        if line.len() > 256 {
+            return Err(Code::ResourceLimit);
+        }
+        let (state, fields) = fields.split_once(' ').ok_or(Code::ProtocolError)?;
+        let (profile, fields) = fields.split_once(' ').ok_or(Code::ProtocolError)?;
+        if profile != "profile=dream-bootstrap/1" {
+            return Err(Code::VersionMismatch);
+        }
+        let (target, expected): (&mut [u64], usize) = match state {
+            "state=waiting" if !markers.waiting => {
+                markers.waiting = true;
+                (&mut markers.waiting_admissions, 3)
+            }
+            "state=paid_hello" if !markers.paid_hello => {
+                markers.paid_hello = true;
+                (&mut markers.paid_admissions, 7)
+            }
+            _ => return Err(Code::ProtocolError),
+        };
+        let mut seen = 0u8;
+        for field in fields.split_ascii_whitespace() {
+            let (key, value) = field.split_once('=').ok_or(Code::ProtocolError)?;
+            let i = [
+                "argv_admissions",
+                "channel_admissions",
+                "owner_admissions",
+                "frame_admissions",
+                "permit_reads",
+                "control_cpu_ns",
+                "control_max_cpu_ns",
+            ]
+            .iter()
+            .position(|name| *name == key)
+            .filter(|i| *i < expected)
+            .ok_or(Code::ProtocolError)?;
+            if seen & (1 << i) != 0 {
+                return Err(Code::ProtocolError);
+            }
+            seen |= 1 << i;
+            let value = metric_number(value)
+                .filter(|v| *v <= wire::MAX_SAFE)
+                .ok_or(Code::ProtocolError)?;
+            match i {
+                0..=3 => target[i] = value,
+                4 => markers.permit_reads = value,
+                5 => markers.control_cpu_ns = value,
+                _ => markers.control_max_cpu_ns = value,
+            }
+        }
+        if seen != (1 << expected) - 1 {
+            return Err(Code::ProtocolError);
+        }
+    }
+    Ok(markers)
 }
 
 pub const MAX_JSON_DEPTH: usize = 32;
@@ -1089,12 +1616,107 @@ fn nonblocking(fd: &impl AsRawFd) -> Result<(), Code> {
 
 /// Requested codec backing preallocated before child spawn; separate from native overhead.
 pub const PROTECTED_BYTES: usize = 2 * 1024 * 1024;
+/// Fallibly allocated codec backing, owned independently of native spawn.
+pub struct PreparedBuffers {
+    pending: Vec<u8>,
+    write: Vec<u8>,
+    stderr_capture: Vec<u8>,
+    frame_scratch: Vec<u8>,
+}
+/// One explicit pipe pair, created before native process admission.
+pub struct PipePair {
+    read: File,
+    write: File,
+}
+/// A frozen command and parent pipe endpoints. No source/manifest access.
+pub struct PreparedCommand {
+    command: Option<Command>,
+    input: File,
+    output: File,
+    stderr: File,
+    buffers: PreparedBuffers,
+    bootstrap: Gate,
+}
+impl PreparedCommand {
+    /// One bounded nonblocking control read; raw stderr never leaves its owner.
+    pub fn poll_bootstrap_markers(&mut self) -> Result<BootstrapMarkers, Code> {
+        capture_stderr(&mut self.stderr, &mut self.buffers.stderr_capture)?;
+        parse_bootstrap_markers(&self.buffers.stderr_capture)
+    }
+    pub fn configure_input(&self) -> Result<(), Code> {
+        nonblocking(&self.input)
+    }
+    pub fn configure_output(&self) -> Result<(), Code> {
+        nonblocking(&self.output)
+    }
+    pub fn configure_stderr(&self) -> Result<(), Code> {
+        nonblocking(&self.stderr)
+    }
+    /// One original attempt; taking this command again refuses before effects.
+    pub fn take_command(&mut self) -> Result<Command, Code> {
+        self.command.take().ok_or(Code::BadRequest)
+    }
+    /// Capture a returned child before any timing/cancel verdict. Only moves
+    /// ownership; taking handles/fcntl and Command retirement are separate work.
+    pub fn attach_child(self, child: Child) -> (Worker, Option<Command>) {
+        let PreparedCommand {
+            command,
+            input,
+            output,
+            stderr,
+            buffers,
+            bootstrap,
+        } = self;
+        let PreparedBuffers {
+            pending,
+            write,
+            stderr_capture,
+            frame_scratch,
+        } = buffers;
+        let stderr_bytes = stderr_capture.len();
+        (
+            Worker {
+                child,
+                input: Some(input),
+                output,
+                stderr,
+                pending,
+                write,
+                written: 0,
+                stderr_bytes,
+                stderr_capture,
+                frame_scratch,
+                eof: false,
+                stderr_eof: false,
+                reaped: None,
+                usage: None,
+                bootstrap,
+            },
+            command,
+        )
+    }
+}
+
+fn validate_runner(binary: &Path, job: &Path) -> Result<(), Code> {
+    if !binary.is_absolute() || !job.is_absolute() {
+        return Err(Code::RunnerUnavailable);
+    }
+    let m = std::fs::symlink_metadata(binary).map_err(|_| Code::RunnerUnavailable)?;
+    if !m.is_file()
+        || m.mode() & 0o022 != 0
+        || (m.uid() != unsafe { libc::geteuid() } && m.uid() != 0)
+    {
+        return Err(Code::RunnerUnavailable);
+    }
+    Ok(())
+}
+
 /// An exact child/group with bounded nonblocking pipes. Never pass this to a hot owner.
 pub struct Worker {
     child: Child,
-    input: Option<ChildStdin>,
-    output: ChildStdout,
-    stderr: ChildStderr,
+    input: Option<File>,
+    output: File,
+    stderr: File,
     pending: Vec<u8>,
     write: Vec<u8>,
     written: usize,
@@ -1103,28 +1725,50 @@ pub struct Worker {
     /// Preprovisioned protected codec scratch, reused for every frame without growth.
     frame_scratch: Vec<u8>,
     eof: bool,
+    stderr_eof: bool,
     reaped: Option<ExitStatus>,
     usage: Option<ChildUsage>,
+    bootstrap: Gate,
 }
 
 impl Worker {
-    /// Spawn the provisioned absolute sibling directly, without inherited authority.
-    pub fn spawn(binary: &Path, job: &Path) -> Result<Self, Code> {
+    pub fn prepare_buffers() -> Result<PreparedBuffers, Code> {
         crate::assert_not_ui_thread();
-        if !binary.is_absolute() || !job.is_absolute() {
-            return Err(Code::RunnerUnavailable);
+        Ok(PreparedBuffers {
+            pending: frame_buffer(wire::MAX_FRAME)?,
+            write: frame_buffer(wire::MAX_FRAME)?,
+            stderr_capture: frame_buffer(16 * 1024)?,
+            frame_scratch: frame_buffer(
+                PROTECTED_BYTES
+                    - 2 * wire::MAX_FRAME
+                    - 16 * 1024
+                    - bootstrap::BOOTSTRAP_CONTROL_BYTES,
+            )?,
+        })
+    }
+    pub fn prepare_pipe() -> Result<PipePair, Code> {
+        crate::assert_not_ui_thread();
+        let (read, write) = std::io::pipe().map_err(|_| Code::RunnerUnavailable)?;
+        let read = File::from(OwnedFd::from(read));
+        let write = File::from(OwnedFd::from(write));
+        Ok(PipePair { read, write })
+    }
+    pub fn prepare_command(
+        binary: &Path,
+        job: &Path,
+        buffers: PreparedBuffers,
+        input: PipePair,
+        output: PipePair,
+        stderr: PipePair,
+        bootstrap: Gate,
+    ) -> Result<PreparedCommand, Code> {
+        crate::assert_not_ui_thread();
+        validate_runner(binary, job)?;
+        if bootstrap.frozen().purpose != bootstrap::Purpose::InspectC1 {
+            return Err(Code::ProtocolError);
         }
-        let m = std::fs::symlink_metadata(binary).map_err(|_| Code::RunnerUnavailable)?;
-        if !m.is_file()
-            || m.mode() & 0o022 != 0
-            || (m.uid() != unsafe { libc::geteuid() } && m.uid() != 0)
-        {
-            return Err(Code::RunnerUnavailable);
-        }
-        let pending = frame_buffer(wire::MAX_FRAME)?;
-        let write = frame_buffer(wire::MAX_FRAME)?;
-        let stderr_capture = frame_buffer(16 * 1024)?;
-        let frame_scratch = frame_buffer(PROTECTED_BYTES - 2 * wire::MAX_FRAME - 16 * 1024)?;
+        let bootstrap_environment = bootstrap.env_value()?;
+        let bootstrap_fd = bootstrap.inherited_fd();
         let mut command = Command::new(binary);
         command
             .args(["dream", "inspect-c1", "--job-dir"])
@@ -1133,44 +1777,59 @@ impl Worker {
             .env_clear()
             .env("LANG", "C.UTF-8")
             .env("TMPDIR", job.join("tmp"))
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
+            .env(bootstrap::ENV, bootstrap_environment.as_str())
+            .stdin(Stdio::from(input.read))
+            .stdout(Stdio::from(output.write))
+            .stderr(Stdio::from(stderr.write));
         // SAFETY: child-only async-signal-safe calls; no allocation or inherited lock.
         unsafe {
-            command.pre_exec(|| {
+            command.pre_exec(move || {
+                let flags = libc::fcntl(bootstrap_fd, libc::F_GETFD);
+                if flags < 0
+                    || libc::fcntl(bootstrap_fd, libc::F_SETFD, flags & !libc::FD_CLOEXEC) != 0
+                {
+                    return Err(std::io::Error::last_os_error());
+                }
                 if libc::setpgid(0, 0) != 0 || libc::setpriority(libc::PRIO_PROCESS, 0, 10) != 0 {
                     return Err(std::io::Error::last_os_error());
                 }
                 if libc::getpriority(libc::PRIO_PROCESS, 0) < 10 {
-                    return Err(std::io::Error::other("background priority unavailable"));
+                    return Err(std::io::Error::from_raw_os_error(libc::EPERM));
                 }
                 Ok(())
             });
         }
-        let mut child = command.spawn().map_err(|_| Code::RunnerUnavailable)?;
-        let input = child.stdin.take().ok_or(Code::RunnerUnavailable)?;
-        let output = child.stdout.take().ok_or(Code::RunnerUnavailable)?;
-        let stderr = child.stderr.take().ok_or(Code::RunnerUnavailable)?;
-        let worker = Self {
-            child,
-            input: Some(input),
-            output,
-            stderr,
-            pending,
-            write,
-            written: 0,
-            stderr_bytes: 0,
-            stderr_capture,
-            frame_scratch,
-            eof: false,
-            reaped: None,
-            usage: None,
-        };
-        nonblocking(worker.input.as_ref().unwrap())?;
-        nonblocking(&worker.output)?;
-        nonblocking(&worker.stderr)?;
-        Ok(worker)
+        Ok(PreparedCommand {
+            command: Some(command),
+            input: input.write,
+            output: output.read,
+            stderr: stderr.read,
+            buffers,
+            bootstrap,
+        })
+    }
+    /// Spawn the provisioned absolute sibling directly, without inherited authority.
+    pub fn spawn(_binary: &Path, _job: &Path) -> Result<Self, Code> {
+        // No ungated capability detection/compatibility path may execute a
+        // candidate. Bootstrap support must be approved before its birth.
+        Err(Code::RunnerUnavailable)
+    }
+    pub fn spawn_prepared(
+        _binary: &Path,
+        _job: &Path,
+        _buffers: PreparedBuffers,
+    ) -> Result<Self, Code> {
+        Err(Code::RunnerUnavailable)
+    }
+
+    pub fn configure_input(&self) -> Result<(), Code> {
+        nonblocking(self.input.as_ref().ok_or(Code::RunnerUnavailable)?)
+    }
+    pub fn configure_output(&self) -> Result<(), Code> {
+        nonblocking(&self.output)
+    }
+    pub fn configure_stderr(&self) -> Result<(), Code> {
+        nonblocking(&self.stderr)
     }
 
     pub fn pid(&self) -> u32 {
@@ -1182,9 +1841,73 @@ impl Worker {
             + self.write.capacity()
             + self.stderr_capture.capacity()
             + self.frame_scratch.capacity()
+            + bootstrap::BOOTSTRAP_CONTROL_BYTES
+    }
+    pub fn bootstrap_identity(&self) -> (u32, u64, u64) {
+        self.bootstrap.identity()
+    }
+    pub fn bootstrap_markers(&self) -> Result<BootstrapMarkers, Code> {
+        parse_bootstrap_markers(&self.stderr_capture)
+    }
+    /// Refresh only the bounded private stderr cache. Stdout and any queued
+    /// Hello remain untouched; incomplete diagnostic lines remain unobserved.
+    pub fn poll_bootstrap_markers(&mut self) -> Result<BootstrapMarkers, Code> {
+        capture_stderr(&mut self.stderr, &mut self.stderr_capture)?;
+        self.stderr_bytes = self.stderr_capture.len();
+        self.bootstrap_markers()
+    }
+    pub fn bootstrap_frozen(&self) -> bootstrap::Frozen {
+        self.bootstrap.frozen()
+    }
+    pub fn bootstrap_observation(&self) -> bootstrap::Observation {
+        self.bootstrap.observation()
+    }
+    pub fn bootstrap_spawn_returned(
+        &mut self,
+        returned_at: Instant,
+        job_deadline: Instant,
+    ) -> Result<(), Code> {
+        self.bootstrap.spawn_returned(returned_at, job_deadline)
+    }
+    pub fn bootstrap_grant(&mut self) -> Result<(), Code> {
+        self.bootstrap.grant()
+    }
+    pub fn bootstrap_revoke(&mut self) {
+        self.bootstrap.revoke();
+    }
+    pub fn bootstrap_deadline(&self) -> Result<Instant, Code> {
+        self.bootstrap.readiness_deadline()
+    }
+    pub fn hello_step(&mut self) -> Result<Option<wire::Hello>, Code> {
+        let result = (|| {
+            self.bootstrap.check_readiness().map_err(|code| {
+                if code == Code::Deadline {
+                    Code::RunnerUnavailable
+                } else {
+                    code
+                }
+            })?;
+            match self.receive()? {
+                Some(WorkerOut::Hello(h))
+                    if h.schema_sha256.0 == SCHEMA_SHA256
+                        && h.ir_major == 1
+                        && h.ir_minor_max == 3 =>
+                {
+                    self.bootstrap.qualify_hello()?;
+                    Ok(Some(h))
+                }
+                Some(_) => Err(Code::VersionMismatch),
+                None if self.eof => Err(Code::RunnerUnavailable),
+                None => Ok(None),
+            }
+        })();
+        if result.is_err() {
+            self.bootstrap.revoke();
+        }
+        result
     }
     pub fn is_eof(&self) -> bool {
-        self.eof
+        self.eof && self.stderr_eof
     }
     /// Failed/cancelled runs grant pending frames no meaning. Clearing their
     /// bounded prefix lets EOF drain even after a framing/flood error.
@@ -1195,29 +1918,31 @@ impl Worker {
 
     /// Hello precedes every manifest/source read, including launch capability probing.
     pub fn hello(&mut self) -> Result<wire::Hello, Code> {
-        let until = Instant::now() + Duration::from_millis(250);
         loop {
-            if let Some(frame) = self.receive()? {
-                return match frame {
-                    WorkerOut::Hello(h)
-                        if h.schema_sha256.0 == SCHEMA_SHA256
-                            && h.ir_major == 1
-                            && h.ir_minor_max == 3 =>
-                    {
-                        Ok(h)
-                    }
-                    _ => Err(Code::VersionMismatch),
-                };
+            if let Some(hello) = self.hello_step()? {
+                return Ok(hello);
             }
-            if self.eof || Instant::now() >= until {
-                return Err(Code::RunnerUnavailable);
-            }
-            self.wait_io(Duration::from_millis(9));
+            self.wait_io(
+                self.bootstrap_deadline()?
+                    .saturating_duration_since(Instant::now())
+                    .min(Duration::from_millis(9)),
+            );
         }
     }
 
     /// At most one pending frame; callers coalesce Activity before numbering.
     pub fn send(&mut self, frame: &WorkerIn) -> Result<bool, Code> {
+        if let WorkerIn::Start(start) = frame {
+            let frozen = self.bootstrap.frozen();
+            if !self.bootstrap.observation().qualified_hello
+                || frozen.probe
+                || bootstrap::ulid(start.run_id.0.as_bytes()).ok() != Some(frozen.run_id)
+                || bootstrap::ulid(start.nonce.0.as_bytes()).ok() != Some(frozen.nonce)
+            {
+                self.close_input();
+                return Err(Code::ProtocolError);
+            }
+        }
         if !self.flush()? {
             return Ok(false);
         }
@@ -1302,6 +2027,7 @@ impl Worker {
             Err(_) => return Err(Code::WorkerLost),
         }
         match self.stderr.read(&mut bytes) {
+            Ok(0) => self.stderr_eof = true,
             Ok(n) => {
                 self.stderr_bytes += n;
                 if self.stderr_bytes > 16 * 1024 {
@@ -1343,38 +2069,7 @@ impl Worker {
     }
     /// Only numeric allowlisted diagnostics; raw stderr is never returned or echoed.
     pub fn producer_metrics(&self) -> Option<ProducerMetrics> {
-        let text = std::str::from_utf8(&self.stderr_capture).ok()?;
-        let mut found = None;
-        for line in text.lines() {
-            let Some(fields) = line.strip_prefix("dream-c1 metrics ") else {
-                continue;
-            };
-            if found.is_some() || line.len() > 2048 {
-                return None;
-            }
-            let mut values = [None; 19];
-            for field in fields.split_whitespace() {
-                let (key, value) = field.split_once('=')?;
-                if key == "native_cumulative_bytes" {
-                    if value != "unmeasured" {
-                        return None;
-                    }
-                    continue;
-                }
-                let Some(index) = PRODUCER_METRIC_KEYS.iter().position(|v| *v == key) else {
-                    continue;
-                };
-                if values[index].is_some() {
-                    return None;
-                }
-                values[index] = Some(value.parse::<u64>().ok()?);
-            }
-            if values[0]? > values[1]? {
-                return None;
-            }
-            found = Some(ProducerMetrics { values });
-        }
-        found
+        parse_producer_metrics(&self.stderr_capture)
     }
     fn reap(&mut self, flags: i32) -> Result<Option<ExitStatus>, Code> {
         if self.reaped.is_some() {
@@ -1404,11 +2099,13 @@ impl Worker {
 
     /// EOF asks the producer to cancel. Ownership remains until a real reap.
     pub fn close_input(&mut self) {
+        self.bootstrap.revoke();
         self.input.take();
     }
 
     /// Only an unreaped child group created by this owner can receive escalation.
     pub fn terminate(&mut self, kill: bool) -> Result<(), Code> {
+        self.bootstrap.revoke();
         if self.try_wait()?.is_some() {
             return Ok(());
         }
@@ -1430,5 +2127,311 @@ impl Drop for Worker {
             let _ = self.terminate(true);
             let _ = self.reap(0);
         }
+    }
+}
+
+#[cfg(test)]
+mod diagnostic_tests {
+    use super::*;
+
+    const COMPUTE: &str = "dream-c1 metrics heap_live_bytes=12 heap_peak_bytes=24 max_unit_cpu_ns=50 cleanup_cpu_ns=60 max_cleanup_unit_cpu_ns=70 native_cumulative_bytes=unmeasured\n";
+    // Grammar/limit witness for the producer-owned private ABI; this is not a
+    // canonical worker fixture or a real-process conformance claim.
+    const PROFILE: &str = concat!(
+        "dream-c1 metrics heap_live_bytes=1024 heap_peak_bytes=8388608 startup_heap_peak_bytes=2097152 compute_stack_reserved_bytes=2097152 rss_peak_bytes=12582912 compute_cpu_ns=8000000 max_unit_cpu_ns=2000000 overruns=0 envelopes=71 bytes=7359851 storage_declared_live_bytes=0 storage_reserved_peak_bytes=4096 storage_cumulative_credits_bytes=8192 control_reserved_bytes=2097152 helper_reserved_bytes=16777216 credit_ceiling_bytes=100663296 native_cumulative_bytes=unmeasured normalization_unit_0_cpu_ns=100 normalization_unit_1_cpu_ns=100 normalization_unit_2_cpu_ns=100 normalization_unit_3_cpu_ns=100 cleanup_cpu_ns=500 max_cleanup_unit_cpu_ns=100\n",
+        "dream-c1 native tag=compute_owner_create count=1 cpu_ns=1200000 wall_ns=2000000 max_cpu_ns=1200000 max_wall_ns=2000000 inclusive_max_cpu_ns=1300000 inclusive_max_wall_ns=2100000 app_max_cpu_ns=100000 effects=1 failures_with_effect=0\n",
+        "dream-c1 native tag=publish_noreplace count=2 cpu_ns=2800000 wall_ns=4000000 max_cpu_ns=1500000 max_wall_ns=2000000 inclusive_max_cpu_ns=2000000 inclusive_max_wall_ns=2500000 app_max_cpu_ns=500000 effects=2 failures_with_effect=0\n",
+        "dream-c1 cost_known=true\n",
+        "dream-c1 control_parts input_max_cpu_ns=100 protocol_max_cpu_ns=100 settlement_max_cpu_ns=100 output_max_cpu_ns=100 total_cpu_ns=1000000\n",
+        "dream-c1 terminal_metrics profile=c1-native-debt/1 cutoff=joined_final_control_pre_telemetry captured_max_cpu_ns=1500000 inclusive_max_cpu_ns=2000000 app_max_cpu_ns=500000 control_max_cpu_ns=100000 inclusive_max_wall_ns=2500000 span_cpu_ns=10000000 owner_thread_cpu_ns=8500000 process_user_cpu_ns=10000000 process_system_cpu_ns=2000000 wall_ns=1000000000 debt_total_ns=900000000 rest_observed_ns=900000000 remaining_debt_ns=0\n",
+        "dream-c1 publication_custody run_id=01ARZ3NDEKTSV4RRFFQ69G5FAV nonce=01ARZ3NDEKTSV4RRFFQ69G5FAW operation=4096 dev=1 ino=2 effect=1 errno=0 cleanup_uncertain=false path_mapping=page_index_or_4096_result temp_mapping=dot_name_original_Start_nonce_tmp\n",
+        "dream-c1 control_max_cpu_ns=100000\n",
+        "dream-c1 reactor_max_cpu_ns=100000 startup_runtime=none\n",
+    );
+    const RUN: &str = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+    const NONCE: &str = "01ARZ3NDEKTSV4RRFFQ69G5FAW";
+
+    #[test]
+    fn bootstrap_numeric_markers_require_all_four_paid_admissions_and_complete_unique_fields() {
+        // Numeric receipt parser cases, not an alternative permit/vector corpus.
+        // Adapted from signed harness bab543e2116d src/dream/bootstrap.rs::Gate::retire.
+        const WAITING: &str = "dream-bootstrap state=waiting profile=dream-bootstrap/1 argv_admissions=0 channel_admissions=0 owner_admissions=0\n";
+        const PAID: &str = "dream-bootstrap state=paid_hello profile=dream-bootstrap/1 argv_admissions=1 channel_admissions=1 owner_admissions=1 frame_admissions=1 permit_reads=1 control_cpu_ns=12000 control_max_cpu_ns=7000\n";
+        let receipt = format!("{WAITING}{PAID}");
+        let markers = parse_bootstrap_markers(receipt.as_bytes()).unwrap();
+        assert!(markers.waiting && markers.paid_hello);
+        assert_eq!(markers.waiting_admissions, [0; 3]);
+        assert_eq!(markers.paid_admissions, [1; 4]);
+        assert_eq!(markers.permit_reads, 1);
+        assert_eq!(markers.control_cpu_ns, 12000);
+        assert_eq!(markers.control_max_cpu_ns, 7000);
+        for bad in [
+            PAID.replace("frame_admissions=1 ", ""),
+            PAID.replace(
+                "frame_admissions=1",
+                "frame_admissions=1 frame_admissions=1",
+            ),
+            PAID.replace("frame_admissions=1", "unknown_admissions=1"),
+            PAID.replace(
+                "control_cpu_ns=12000",
+                "control_cpu_ns=18446744073709551615",
+            ),
+            WAITING.replace(
+                "owner_admissions=0",
+                "owner_admissions=0 frame_admissions=0",
+            ),
+            format!("{PAID}{PAID}"),
+        ] {
+            assert!(parse_bootstrap_markers(bad.as_bytes()).is_err(), "{bad}");
+        }
+        let partial = receipt.trim_end_matches('\n');
+        let markers = parse_bootstrap_markers(partial.as_bytes()).unwrap();
+        assert!(markers.waiting && !markers.paid_hello);
+    }
+
+    #[test]
+    fn native_profile_requires_disaggregated_bounds_debt_identity_and_capture_cutoff() {
+        let metrics = parse_producer_metrics(PROFILE.as_bytes()).unwrap();
+        assert!(metrics.has_native_profile());
+        assert!(metrics.work_debt_paid_for(RUN, NONCE));
+        assert!(metrics.valid_native_completion(RUN, NONCE, 1));
+        assert!(!metrics.valid_native_completion(NONCE, NONCE, 1));
+        assert!(!metrics.valid_native_completion(RUN, RUN, 1));
+        assert!(!metrics.valid_native_completion(RUN, NONCE, 2));
+        assert!(metrics.validates_descriptor_capture(1_500_000));
+        assert!(!metrics.validates_descriptor_capture(1_400_000));
+        assert!(!metrics.validates_descriptor_capture(3_000_001));
+        assert_eq!(metrics.values[21], Some(100_000));
+        assert_eq!(metrics.values[22], Some(100_000));
+        assert_eq!(metrics.values[23], Some(2 * 1024 * 1024));
+        assert_eq!(metrics.values[68], Some(0));
+    }
+
+    #[test]
+    fn native_profile_refuses_missing_or_false_proof_and_ordinary_overruns() {
+        for (from, to) in [
+            ("cost_known=true", "cost_known=false"),
+            ("remaining_debt_ns=0", "remaining_debt_ns=1"),
+            (
+                "process_user_cpu_ns=10000000",
+                "process_user_cpu_ns=18446744073709551615",
+            ),
+            (
+                "owner_thread_cpu_ns=8500000",
+                "owner_thread_cpu_ns=9007199254740992",
+            ),
+            ("captured_max_cpu_ns=1500000", "captured_max_cpu_ns=3000001"),
+            (
+                "inclusive_max_cpu_ns=2000000 app_max_cpu_ns=500000 control_max_cpu_ns=100000",
+                "inclusive_max_cpu_ns=3000000 app_max_cpu_ns=500000 control_max_cpu_ns=100000",
+            ),
+            (
+                "max_cleanup_unit_cpu_ns=100",
+                "max_cleanup_unit_cpu_ns=1000001",
+            ),
+            ("protocol_max_cpu_ns=100", "protocol_max_cpu_ns=1000001"),
+            ("control_max_cpu_ns=100000", "control_max_cpu_ns=1000001"),
+            ("app_max_cpu_ns=500000", "app_max_cpu_ns=1000001"),
+            (
+                "tag=compute_owner_create count=1",
+                "tag=compute_owner_create count=2",
+            ),
+            (
+                "tag=publish_noreplace count=2",
+                "tag=publish_noreplace count=4098",
+            ),
+            ("cleanup_uncertain=false", "cleanup_uncertain=true"),
+            ("effect=1 errno=0", "effect=2 errno=5"),
+        ] {
+            let text = PROFILE.replace(from, to);
+            let metrics = parse_producer_metrics(text.as_bytes()).unwrap();
+            assert!(
+                !metrics.valid_native_completion(RUN, NONCE, 1),
+                "{from} -> {to}"
+            );
+        }
+        let missing = PROFILE
+            .lines()
+            .filter(|line| !line.starts_with("dream-c1 control_parts "))
+            .collect::<Vec<_>>()
+            .join("\n")
+            + "\n";
+        let metrics = parse_producer_metrics(missing.as_bytes()).unwrap();
+        assert!(!metrics.has_native_profile());
+        assert!(!metrics.valid_native_completion(RUN, NONCE, 1));
+    }
+
+    #[test]
+    fn native_profile_rejects_incompatible_duplicate_unknown_or_truncated_records() {
+        for (from, to) in [
+            ("profile=c1-native-debt/1", "profile=c1-native-debt/2"),
+            (
+                "cutoff=joined_final_control_pre_telemetry",
+                "cutoff=before_descriptor",
+            ),
+            ("tag=compute_owner_create", "tag=parser"),
+            ("cost_known=true", "cost_known=1"),
+            ("cleanup_uncertain=false", "cleanup_uncertain=0"),
+            ("operation=4096", "operation=4096 unknown=1"),
+        ] {
+            assert!(parse_producer_metrics(PROFILE.replace(from, to).as_bytes()).is_none());
+        }
+        let duplicate = PROFILE.to_string() + "dream-c1 cost_known=true\n";
+        assert!(parse_producer_metrics(duplicate.as_bytes()).is_none());
+        assert!(parse_producer_metrics(PROFILE.trim_end().as_bytes()).is_none());
+    }
+
+    #[test]
+    fn numeric_receipts_merge_unique_compute_reactor_and_control_without_reindexing() {
+        let text = format!(
+            "dream-c1 reactor_max_cpu_ns=80 startup_runtime=none\n{COMPUTE}dream-c1 control_max_cpu_ns=90\n"
+        );
+        let metrics = parse_producer_metrics(text.as_bytes()).unwrap();
+        assert_eq!(PRODUCER_METRIC_KEYS[0], "heap_live_bytes");
+        assert_eq!(PRODUCER_METRIC_KEYS[20], "max_cleanup_unit_cpu_ns");
+        assert_eq!(metrics.values[0], Some(12));
+        assert_eq!(metrics.values[20], Some(70));
+        assert_eq!(metrics.get("reactor_max_cpu_ns"), Some(80));
+        assert_eq!(metrics.get("control_max_cpu_ns"), Some(90));
+        let alternate =
+            format!("{COMPUTE}dream-c1 reactor_max_cpu_ns=81\ndream-c1 control_max_cpu_ns=91\n");
+        assert_eq!(
+            parse_producer_metrics(alternate.as_bytes())
+                .unwrap()
+                .get("reactor_max_cpu_ns"),
+            Some(81)
+        );
+        let partial = parse_producer_metrics(COMPUTE.as_bytes()).unwrap();
+        assert_eq!(partial.get("reactor_max_cpu_ns"), None);
+        assert_eq!(partial.get("control_max_cpu_ns"), None);
+    }
+
+    #[test]
+    fn duplicate_malformed_truncated_and_overlimit_numeric_receipts_are_unknown() {
+        for suffix in [
+            "dream-c1 reactor_max_cpu_ns=1\ndream-c1 reactor_max_cpu_ns=2\n",
+            "dream-c1 control_max_cpu_ns=1\ndream-c1 control_max_cpu_ns=2\n",
+            "dream-c1 reactor_max_cpu_ns=1 startup_runtime=some\n",
+            "dream-c1 reactor_max_cpu_ns=1 startup_runtime=none extra=1\n",
+            "dream-c1 reactor_max_cpu_ns=+1\n",
+            "dream-c1 reactor_max_cpu_ns=-1\n",
+            "dream-c1 reactor_max_cpu_ns=18446744073709551616\n",
+            "dream-c1 control_max_cpu_ns=1.0\n",
+            "dream-c1 control_max_cpu_ns=1 extra=2\n",
+            "dream-c1 control_max_cpu_ns=1",
+            COMPUTE,
+        ] {
+            let text = format!("{COMPUTE}{suffix}");
+            assert!(
+                parse_producer_metrics(text.as_bytes()).is_none(),
+                "{suffix:?}"
+            );
+        }
+        assert!(parse_producer_metrics(&[b'x'; 16 * 1024 + 1]).is_none());
+        assert!(
+            parse_producer_metrics(
+                b"dream-c1 metrics heap_live_bytes=1 heap_live_bytes=1 heap_peak_bytes=2\n"
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn codec_preparation_owns_exact_protected_capacity_without_spawning() {
+        let buffers = Worker::prepare_buffers().unwrap();
+        assert_eq!(buffers.pending.capacity(), wire::MAX_FRAME);
+        assert_eq!(buffers.write.capacity(), wire::MAX_FRAME);
+        assert_eq!(buffers.stderr_capture.capacity(), 16 * 1024);
+        assert_eq!(
+            buffers.frame_scratch.capacity()
+                + buffers.pending.capacity()
+                + buffers.write.capacity()
+                + buffers.stderr_capture.capacity()
+                + bootstrap::BOOTSTRAP_CONTROL_BYTES,
+            PROTECTED_BYTES
+        );
+        assert!(buffers.frame_scratch.capacity() >= wire::MAX_FRAME);
+    }
+
+    #[test]
+    fn command_and_three_cloexec_pipes_are_frozen_before_the_single_attempt() {
+        let job = tempfile::tempdir().unwrap();
+        let input = Worker::prepare_pipe().unwrap();
+        let output = Worker::prepare_pipe().unwrap();
+        let stderr = Worker::prepare_pipe().unwrap();
+        for pair in [&input, &output, &stderr] {
+            for file in [&pair.read, &pair.write] {
+                // SAFETY: reads flags on the exact still-owned descriptor.
+                let flags = unsafe { libc::fcntl(file.as_raw_fd(), libc::F_GETFD) };
+                assert!(flags >= 0 && flags & libc::FD_CLOEXEC != 0);
+            }
+        }
+        let mut prepared = Worker::prepare_command(
+            Path::new("/bin/cat"),
+            job.path(),
+            Worker::prepare_buffers().unwrap(),
+            input,
+            output,
+            stderr,
+            Gate::prepare(bootstrap::Frozen::inspect(
+                false,
+                ulid::Ulid::new().to_bytes(),
+                ulid::Ulid::new().to_bytes(),
+                ulid::Ulid::new().to_bytes(),
+                [0; 32],
+                1,
+            ))
+            .unwrap(),
+        )
+        .unwrap();
+        let command = prepared.take_command().unwrap();
+        assert_eq!(command.get_program(), "/bin/cat");
+        assert_eq!(
+            command.get_args().collect::<Vec<_>>(),
+            [
+                "dream".as_ref(),
+                "inspect-c1".as_ref(),
+                "--job-dir".as_ref(),
+                job.path().as_os_str()
+            ]
+        );
+        assert_eq!(command.get_current_dir(), Some(job.path()));
+        let env = command
+            .get_envs()
+            .collect::<std::collections::BTreeMap<_, _>>();
+        assert_eq!(env.len(), 3);
+        let bootstrap = env
+            .get(std::ffi::OsStr::new(bootstrap::ENV))
+            .unwrap()
+            .unwrap();
+        assert!(bootstrap.len() <= 128);
+        assert!(crate::dream_bootstrap::token(bootstrap.as_encoded_bytes()).is_ok());
+        assert_eq!(
+            env.get(std::ffi::OsStr::new("LANG")),
+            Some(&Some(std::ffi::OsStr::new("C.UTF-8")))
+        );
+        assert_eq!(
+            env.get(std::ffi::OsStr::new("TMPDIR")),
+            Some(&Some(job.path().join("tmp").as_os_str()))
+        );
+        assert!(matches!(prepared.take_command(), Err(Code::BadRequest)));
+        assert!(!job.path().join("input/manifest.json").exists());
+    }
+    #[test]
+    fn unknown_ungated_candidate_is_never_executed_for_feature_detection() {
+        use std::os::unix::fs::PermissionsExt;
+        let root = tempfile::tempdir().unwrap();
+        let script = root.path().join("candidate");
+        std::fs::write(&script,b"#!/usr/bin/python3\nimport pathlib,sys\npathlib.Path(sys.argv[4]).joinpath('born').write_text('bad')\n").unwrap();
+        std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o700)).unwrap();
+        assert!(matches!(
+            Worker::spawn(&script, root.path()),
+            Err(Code::RunnerUnavailable)
+        ));
+        assert!(matches!(
+            Worker::spawn_prepared(&script, root.path(), Worker::prepare_buffers().unwrap()),
+            Err(Code::RunnerUnavailable)
+        ));
+        assert!(!root.path().join("born").exists());
     }
 }

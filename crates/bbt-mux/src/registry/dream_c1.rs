@@ -9,7 +9,7 @@ use bbt_proto::dream::{self as w, Code};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use std::{
-    os::unix::fs::{DirBuilderExt, MetadataExt, PermissionsExt},
+    os::unix::fs::{DirBuilderExt, MetadataExt},
     path::{Path, PathBuf},
 };
 
@@ -42,6 +42,17 @@ pub(crate) struct Bookmark {
     pub turns: Vec<String>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub(crate) struct LaunchBookmark {
+    pub birth: w::Ulid,
+    pub binding: w::Hex,
+    pub incarnation: u64,
+    pub worker_sha256: w::Hex,
+    pub pipe_fd: u32,
+    pub pipe_device: u64,
+    pub pipe_inode: u64,
+}
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub(crate) struct Record {
@@ -50,6 +61,8 @@ pub(crate) struct Record {
     pub owner_incarnation: w::Ulid,
     pub worker_pid: Option<u32>,
     pub worker_start: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub launch: Option<LaunchBookmark>,
     pub context: w::Context,
     pub identity_fence: Option<crate::identity::PublicFence>,
     pub op_id: w::Ulid,
@@ -136,11 +149,122 @@ fn bounded_blob(row: &rusqlite::Row<'_>, index: usize) -> rusqlite::Result<Vec<u
     Ok(result)
 }
 
+struct JournalConnection {
+    connection: Option<Connection>,
+    quantum: Option<Arc<engine::JournalQuantum>>,
+}
+impl std::ops::Deref for JournalConnection {
+    type Target = Connection;
+    fn deref(&self) -> &Connection {
+        self.connection.as_ref().unwrap()
+    }
+}
+impl std::ops::DerefMut for JournalConnection {
+    fn deref_mut(&mut self) -> &mut Connection {
+        self.connection.as_mut().unwrap()
+    }
+}
+impl Drop for JournalConnection {
+    fn drop(&mut self) {
+        if let Some(connection) = self.connection.take() {
+            if let Some(quantum) = &self.quantum {
+                quantum.retire(connection);
+            } else {
+                drop(connection);
+            }
+        }
+    }
+}
 pub(crate) struct Journal {
-    db: Connection,
+    db: JournalConnection,
+    quantum: Option<Arc<engine::JournalQuantum>>,
+}
+/// Retains the no-follow descriptor across the separately measured native open.
+pub(crate) struct ExistingJournal {
+    path: PathBuf,
+    file: std::fs::File,
 }
 impl Journal {
     pub fn open(runtime: &Path, seat: &w::Ulid) -> Result<Self, Code> {
+        Self::open_mode(runtime, seat, true)
+    }
+    /// Job checkpoints use the schema already published by admission. They never
+    /// repeat schema creation or change the persistent journal mode in a unit.
+    #[cfg(test)]
+    pub fn open_existing(runtime: &Path, seat: &w::Ulid) -> Result<Self, Code> {
+        Self::open_mode(runtime, seat, false)
+    }
+    fn open_mode(runtime: &Path, seat: &w::Ulid, initialize: bool) -> Result<Self, Code> {
+        let quantum = Arc::new(engine::JournalQuantum::default());
+        let existing = quantum.unit(|| Self::prepare_path(runtime, seat, initialize))?;
+        let mut journal = quantum.unit(|| Self::connect_existing(&existing))?;
+        journal.quantum = Some(quantum.clone());
+        journal.db.quantum = Some(quantum.clone());
+        journal.configure_existing()?;
+        let version: i64 = quantum.unit(|| {
+            journal
+                .db
+                .query_row("PRAGMA user_version", [], |r| r.get(0))
+                .map_err(|_| Code::StorageUnavailable)
+        })?;
+        match version {
+            1 => {}
+            0 if initialize => {
+                // Only first bootstrap initializes. Each statement remains an
+                // ordinary <=1ms unit; no whole-SQLite native classification.
+                for statement in [
+                    "PRAGMA journal_mode=WAL;",
+                    "CREATE TABLE IF NOT EXISTS source_errors(session TEXT NOT NULL,generation INTEGER NOT NULL,error BLOB NOT NULL,PRIMARY KEY(session,generation));",
+                    "CREATE TABLE IF NOT EXISTS sources(session TEXT NOT NULL,generation INTEGER NOT NULL,bookmark BLOB NOT NULL,PRIMARY KEY(session,generation));",
+                    "CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY,source_key TEXT UNIQUE NOT NULL,record BLOB NOT NULL);",
+                    "CREATE TABLE IF NOT EXISTS ops(actor TEXT NOT NULL,op TEXT NOT NULL,request BLOB NOT NULL,run TEXT NOT NULL,PRIMARY KEY(actor,op));",
+                    "CREATE TABLE IF NOT EXISTS close_cursor(session TEXT NOT NULL,generation INTEGER NOT NULL,cursor INTEGER NOT NULL,PRIMARY KEY(session,generation));",
+                    "PRAGMA user_version=1;",
+                ] {
+                    quantum.unit(|| {
+                        journal
+                            .db
+                            .execute_batch(statement)
+                            .map_err(|_| Code::StorageUnavailable)
+                    })?;
+                }
+            }
+            _ => return Err(Code::StorageUnavailable),
+        }
+        Ok(journal)
+    }
+    fn finish(self) -> Result<(), Code> {
+        let quantum = self.quantum.clone();
+        drop(self);
+        quantum.as_ref().map_or(Ok(()), |quantum| quantum.check())
+    }
+    #[track_caller]
+    fn step<T: engine::disposal::Drain>(
+        quantum: &Option<Arc<engine::JournalQuantum>>,
+        work: impl FnOnce() -> Result<T, Code>,
+    ) -> Result<T, Code> {
+        match quantum {
+            Some(quantum) => quantum.unit(work),
+            None => work(),
+        }
+    }
+    fn retain<T: engine::disposal::Drain>(
+        quantum: &Option<Arc<engine::JournalQuantum>>,
+        value: T,
+    ) -> engine::disposal::Paced<T> {
+        match quantum {
+            Some(quantum) => quantum.retain(value),
+            None => engine::JournalQuantum::default().retain(value),
+        }
+    }
+    pub fn existing_path(runtime: &Path, seat: &w::Ulid) -> Result<ExistingJournal, Code> {
+        Self::prepare_path(runtime, seat, false)
+    }
+    fn prepare_path(
+        runtime: &Path,
+        seat: &w::Ulid,
+        initialize: bool,
+    ) -> Result<ExistingJournal, Code> {
         bbt_rt::assert_not_ui_thread();
         private_dir(runtime)?;
         let journals = runtime.join("journals");
@@ -150,7 +274,7 @@ impl Journal {
         let file = std::fs::OpenOptions::new()
             .read(true)
             .write(true)
-            .create(true)
+            .create(initialize)
             .mode(0o600)
             .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
             .open(&path)
@@ -163,19 +287,78 @@ impl Journal {
         {
             return Err(Code::StorageUnavailable);
         }
-        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600))
+        // macOS publishes /var as a symlink to /private/var. SQLite NOFOLLOW
+        // checks the complete path, so retain the already opened exact inode
+        // while resolving that system alias before the native database open.
+        let path = std::fs::canonicalize(path).map_err(|_| Code::StorageUnavailable)?;
+        let canonical = std::fs::symlink_metadata(&path).map_err(|_| Code::StorageUnavailable)?;
+        if !canonical.is_file() || (canonical.dev(), canonical.ino()) != (m.dev(), m.ino()) {
+            return Err(Code::StorageUnavailable);
+        }
+        Ok(ExistingJournal { path, file })
+    }
+    pub fn connect_existing(existing: &ExistingJournal) -> Result<Self, Code> {
+        let db = Connection::open_with_flags(
+            &existing.path,
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE
+                | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX
+                | rusqlite::OpenFlags::SQLITE_OPEN_NOFOLLOW,
+        )
+        .map_err(|_| Code::StorageUnavailable)?;
+        let before = existing
+            .file
+            .metadata()
             .map_err(|_| Code::StorageUnavailable)?;
-        let db = Connection::open(&path).map_err(|_| Code::StorageUnavailable)?;
-        db.busy_timeout(std::time::Duration::from_millis(100))
-            .map_err(|_| Code::StorageUnavailable)?;
-        db.execute_batch("PRAGMA journal_mode=WAL; PRAGMA synchronous=FULL; PRAGMA cache_size=-1024; PRAGMA mmap_size=0;
-            CREATE TABLE IF NOT EXISTS source_errors(session TEXT NOT NULL,generation INTEGER NOT NULL,error BLOB NOT NULL,PRIMARY KEY(session,generation));
-            CREATE TABLE IF NOT EXISTS sources(session TEXT NOT NULL,generation INTEGER NOT NULL,bookmark BLOB NOT NULL,PRIMARY KEY(session,generation));
-            CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY,source_key TEXT UNIQUE NOT NULL,record BLOB NOT NULL);
-            CREATE TABLE IF NOT EXISTS ops(actor TEXT NOT NULL,op TEXT NOT NULL,request BLOB NOT NULL,run TEXT NOT NULL,PRIMARY KEY(actor,op));
-            CREATE TABLE IF NOT EXISTS close_cursor(session TEXT NOT NULL,generation INTEGER NOT NULL,cursor INTEGER NOT NULL,PRIMARY KEY(session,generation));")
-            .map_err(|_| Code::StorageUnavailable)?;
-        Ok(Self { db })
+        let after =
+            std::fs::symlink_metadata(&existing.path).map_err(|_| Code::StorageUnavailable)?;
+        if !after.is_file() || (before.dev(), before.ino()) != (after.dev(), after.ino()) {
+            return Err(Code::StorageUnavailable);
+        }
+        Ok(Self {
+            db: JournalConnection {
+                connection: Some(db),
+                quantum: None,
+            },
+            quantum: None,
+        })
+    }
+    pub fn configure_existing(&self) -> Result<(), Code> {
+        self.configure_busy()?;
+        self.configure_cache()?;
+        self.configure_mmap()?;
+        self.configure_sync()
+    }
+    pub fn configure_busy(&self) -> Result<(), Code> {
+        let quantum = self.quantum.clone();
+        Self::step(&quantum, || {
+            self.db
+                .busy_timeout(std::time::Duration::from_millis(100))
+                .map_err(|_| Code::StorageUnavailable)
+        })
+    }
+    pub fn configure_cache(&self) -> Result<(), Code> {
+        let quantum = self.quantum.clone();
+        Self::step(&quantum, || {
+            self.db
+                .execute_batch("PRAGMA cache_size=-1024;")
+                .map_err(|_| Code::StorageUnavailable)
+        })
+    }
+    pub fn configure_mmap(&self) -> Result<(), Code> {
+        let quantum = self.quantum.clone();
+        Self::step(&quantum, || {
+            self.db
+                .execute_batch("PRAGMA mmap_size=0;")
+                .map_err(|_| Code::StorageUnavailable)
+        })
+    }
+    pub fn configure_sync(&self) -> Result<(), Code> {
+        let quantum = self.quantum.clone();
+        Self::step(&quantum, || {
+            self.db
+                .execute_batch("PRAGMA synchronous=FULL;")
+                .map_err(|_| Code::StorageUnavailable)
+        })
     }
     pub fn observe_error(
         &self,
@@ -184,28 +367,35 @@ impl Journal {
         selection: &w::Selection,
         code: Code,
     ) -> Result<(), Code> {
+        let quantum = self.quantum.clone();
         let mut context = context.clone();
         context.generation = selection.source_generation;
-        let row = w::canonical(&serde_json::json!({"context":context,"fence":fence,"code":code}))
-            .map_err(|_| Code::StorageUnavailable)?;
+        let row = Self::step(&quantum, || {
+            w::canonical(&serde_json::json!({"context":context,"fence":fence,"code":code}))
+                .map_err(|_| Code::StorageUnavailable)
+        })?;
         if row.len() > 16 * 1024 {
             return Err(Code::ResourceLimit);
         }
         // One SQLite write statement arbitrates capacity and dedup atomically;
         // overlapping predecessor/current owners cannot overfill the retained index.
-        let changed=self.db.execute(
+        let changed = Self::step(&quantum, || {
+            self.db.execute(
             "INSERT OR IGNORE INTO source_errors(session,generation,error) SELECT ?1,?2,?3 WHERE (SELECT count(*) FROM source_errors)<32",
             params![selection.session.0,selection.source_generation.0 as i64,row],
-        ).map_err(|_|Code::StorageUnavailable)?;
+        ).map_err(|_|Code::StorageUnavailable)
+        })?;
         if changed == 0 {
-            let existing: bool = self
+            let existing: bool = Self::step(&quantum, || {
+                self
                 .db
                 .query_row(
                     "SELECT EXISTS(SELECT 1 FROM source_errors WHERE session=?1 AND generation=?2)",
                     params![selection.session.0, selection.source_generation.0 as i64],
                     |r| r.get(0),
                 )
-                .map_err(|_| Code::StorageUnavailable)?;
+                .map_err(|_| Code::StorageUnavailable)
+            })?;
             if !existing {
                 return Err(Code::Busy);
             }
@@ -218,6 +408,7 @@ impl Journal {
         fence: &crate::identity::PublicFence,
         selection: &w::Selection,
     ) -> Result<Option<Code>, Code> {
+        let quantum = self.quantum.clone();
         #[derive(Deserialize)]
         #[serde(deny_unknown_fields)]
         struct ErrorRecord {
@@ -225,12 +416,20 @@ impl Journal {
             fence: crate::identity::PublicFence,
             code: Code,
         }
-        let bytes=self.db.query_row("SELECT CASE WHEN length(error)<=16384 AND typeof(error)='blob' THEN error ELSE NULL END FROM source_errors WHERE session=?1 AND generation=?2",params![selection.session.0,selection.source_generation.0 as i64],|r|bounded_blob(r,0)).optional().map_err(|_|Code::StorageUnavailable)?;
+        impl engine::disposal::Drain for ErrorRecord {
+            fn drain_step(&mut self) -> bool {
+                false
+            }
+        }
+        let bytes = Self::step(&quantum, || {
+            self.db.query_row("SELECT CASE WHEN length(error)<=16384 AND typeof(error)='blob' THEN error ELSE NULL END FROM source_errors WHERE session=?1 AND generation=?2",params![selection.session.0,selection.source_generation.0 as i64],|r|bounded_blob(r,0)).optional().map_err(|_|Code::StorageUnavailable)
+        })?;
         let Some(bytes) = bytes else {
             return Ok(None);
         };
-        let record: ErrorRecord =
-            serde_json::from_slice(&bytes).map_err(|_| Code::StorageUnavailable)?;
+        let record: ErrorRecord = Self::step(&quantum, || {
+            serde_json::from_slice(&bytes).map_err(|_| Code::StorageUnavailable)
+        })?;
         let mut expected = context.clone();
         expected.generation = selection.source_generation;
         if record.context != expected || &record.fence != fence {
@@ -239,13 +438,18 @@ impl Journal {
         Ok(Some(record.code))
     }
     fn source_set(&self, key: &str) -> Result<Option<Record>, Code> {
-        let bytes=self.db.query_row("SELECT CASE WHEN typeof(record)='blob' AND length(record)<=16384 THEN record ELSE NULL END FROM runs WHERE source_key=?1",[key],|r|bounded_blob(r,0)).optional().map_err(|_|Code::StorageUnavailable)?;
+        let quantum = self.quantum.clone();
+        let bytes = Self::step(&quantum, || {
+            self.db.query_row("SELECT CASE WHEN typeof(record)='blob' AND length(record)<=16384 THEN record ELSE NULL END FROM runs WHERE source_key=?1",[key],|r|bounded_blob(r,0)).optional().map_err(|_|Code::StorageUnavailable)
+        })?;
         bytes
-            .map(|bytes| Self::decode_record(&self.db, &bytes))
+            .map(|bytes| Self::step(&quantum, || Self::decode_record(&self.db, &bytes)))
             .transpose()
     }
     pub fn source(&self, context: &w::Context, source: &w::Selection) -> Result<Bookmark, Code> {
-        let bytes: Option<Vec<u8>> = self
+        let quantum = self.quantum.clone();
+        let bytes: Option<Vec<u8>> = Self::step(&quantum, || {
+            self
             .db
             .query_row(
                 "SELECT CASE WHEN typeof(bookmark)='blob' AND length(bookmark)<=16384 THEN bookmark ELSE NULL END FROM sources WHERE session=?1 AND generation=?2",
@@ -253,9 +457,12 @@ impl Journal {
                 |r| bounded_blob(r, 0),
             )
             .optional()
-            .map_err(|_| Code::StorageUnavailable)?;
-        let source: Bookmark = serde_json::from_slice(&bytes.ok_or(Code::SourceUnavailable)?)
-            .map_err(|_| Code::StorageUnavailable)?;
+            .map_err(|_| Code::StorageUnavailable)
+        })?;
+        let bytes = bytes.ok_or(Code::SourceUnavailable)?;
+        let source: Bookmark = Self::step(&quantum, || {
+            serde_json::from_slice(&bytes).map_err(|_| Code::StorageUnavailable)
+        })?;
         if !source_current(&source, context) {
             return Err(Code::SourceMismatch);
         }
@@ -265,6 +472,7 @@ impl Journal {
         Ok(source)
     }
     pub fn observe_source(&mut self, context: &w::Context, source: &Bookmark) -> Result<(), Code> {
+        let quantum = self.quantum.clone();
         if !source_current(source, context)
             || source.pid == 0
             || source.process_start.is_empty()
@@ -275,25 +483,32 @@ impl Journal {
         {
             return Err(Code::SourceMismatch);
         }
-        let bytes = serde_json::to_vec(source).map_err(|_| Code::StorageUnavailable)?;
+        let bytes = Self::step(&quantum, || {
+            serde_json::to_vec(source).map_err(|_| Code::StorageUnavailable)
+        })?;
         if bytes.len() > 16 * 1024 {
             return Err(Code::ResourceLimit);
         }
-        let tx = self
-            .db
-            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-            .map_err(|_| Code::StorageUnavailable)?;
-        let old: Option<Vec<u8>> = tx
+        let tx = Self::step(&quantum, || {
+            self.db
+                .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+                .map_err(|_| Code::StorageUnavailable)
+        })?;
+        let mut tx = Self::retain(&quantum, tx);
+        let old: Option<Vec<u8>> = Self::step(&quantum, || {
+            tx
             .query_row(
                 "SELECT CASE WHEN typeof(bookmark)='blob' AND length(bookmark)<=16384 THEN bookmark ELSE NULL END FROM sources WHERE session=?1 AND generation=?2",
                 params![source.session.0, source.generation as i64],
                 |r| bounded_blob(r, 0),
             )
             .optional()
-            .map_err(|_| Code::StorageUnavailable)?;
+            .map_err(|_| Code::StorageUnavailable)
+        })?;
         if let Some(old) = old {
-            let prior: Bookmark =
-                serde_json::from_slice(&old).map_err(|_| Code::StorageUnavailable)?;
+            let prior: Bookmark = Self::step(&quantum, || {
+                serde_json::from_slice(&old).map_err(|_| Code::StorageUnavailable)
+            })?;
             if prior.root != source.root
                 || prior.workspace_revision != source.workspace_revision
                 || prior.root_revision != source.root_revision
@@ -303,47 +518,78 @@ impl Journal {
             if prior.observed_seq >= source.observed_seq || prior.closed_seq > 0 {
                 return Ok(());
             }
-            tx.execute(
-                "UPDATE sources SET bookmark=?3 WHERE session=?1 AND generation=?2",
-                params![source.session.0, source.generation as i64, bytes],
-            )
-            .map_err(|_| Code::StorageUnavailable)?;
+            Self::step(&quantum, || {
+                tx.execute(
+                    "UPDATE sources SET bookmark=?3 WHERE session=?1 AND generation=?2",
+                    params![source.session.0, source.generation as i64, bytes],
+                )
+                .map_err(|_| Code::StorageUnavailable)
+            })?;
         } else {
-            let count: i64 = tx
-                .query_row("SELECT count(*) FROM sources", [], |r| r.get(0))
-                .map_err(|_| Code::StorageUnavailable)?;
+            let count: i64 = Self::step(&quantum, || {
+                tx.query_row("SELECT count(*) FROM sources", [], |r| r.get(0))
+                    .map_err(|_| Code::StorageUnavailable)
+            })?;
             if count >= 32 {
                 return Err(Code::Busy);
             }
-            tx.execute(
-                "INSERT INTO sources(session,generation,bookmark) VALUES(?1,?2,?3)",
-                params![source.session.0, source.generation as i64, bytes],
-            )
-            .map_err(|_| Code::StorageUnavailable)?;
+            Self::step(&quantum, || {
+                tx.execute(
+                    "INSERT INTO sources(session,generation,bookmark) VALUES(?1,?2,?3)",
+                    params![source.session.0, source.generation as i64, bytes],
+                )
+                .map_err(|_| Code::StorageUnavailable)
+            })?;
         }
-        tx.commit().map_err(|_| Code::StorageUnavailable)
+        Self::step(&quantum, || {
+            tx.take_value()
+                .commit()
+                .map_err(|_| Code::StorageUnavailable)
+        })
     }
     pub fn retained_sources(&self, context: &w::Context) -> Result<Vec<Bookmark>, Code> {
-        let mut query = self
-            .db
-            .prepare("SELECT CASE WHEN typeof(bookmark)='blob' AND length(bookmark)<=16384 THEN bookmark ELSE NULL END FROM sources ORDER BY generation,session LIMIT 33")
-            .map_err(|_| Code::StorageUnavailable)?;
-        let bytes = query
-            .query_map([], |r| bounded_blob(r, 0))
-            .map_err(|_| Code::StorageUnavailable)?;
-        let mut sources = Vec::new();
-        for row in bytes {
-            let source: Bookmark =
-                serde_json::from_slice(&row.map_err(|_| Code::StorageUnavailable)?)
-                    .map_err(|_| Code::StorageUnavailable)?;
+        let quantum = self.quantum.clone();
+        let query = Self::step(&quantum, || {
+            self.db.prepare("SELECT CASE WHEN typeof(bookmark)='blob' AND length(bookmark)<=16384 THEN bookmark ELSE NULL END FROM sources ORDER BY generation,session LIMIT 33").map_err(|_|Code::StorageUnavailable)
+        })?;
+        let mut query = Self::retain(&quantum, query);
+        let rows = Self::step(&quantum, || {
+            query.query([]).map_err(|_| Code::StorageUnavailable)
+        })?;
+        let mut rows = Self::retain(&quantum, rows);
+        let mut sources = Self::retain(&quantum, Vec::new());
+        loop {
+            let bytes = Self::step(&quantum, || {
+                rows.next()
+                    .map_err(|_| Code::StorageUnavailable)?
+                    .map(|row| bounded_blob(row, 0).map_err(|_| Code::StorageUnavailable))
+                    .transpose()
+            })?;
+            let Some(bytes) = bytes else {
+                break;
+            };
+            let bytes = Self::retain(&quantum, bytes);
+            let source: Bookmark = Self::step(&quantum, || {
+                serde_json::from_slice(&bytes).map_err(|_| Code::StorageUnavailable)
+            })?;
             if source_current(&source, context) {
-                sources.push(source);
+                Self::step(&quantum, || {
+                    sources
+                        .try_reserve_exact(1)
+                        .map_err(|_| Code::ResourceLimit)?;
+                    sources.push(source);
+                    Ok(())
+                })?;
+            } else {
+                drop(Self::retain(&quantum, source));
             }
         }
+        drop(rows);
+        drop(query);
         if sources.len() > 32 {
             return Err(Code::StorageUnavailable);
         }
-        Ok(sources)
+        Ok(sources.take_value())
     }
     fn decode_record(_db: &Connection, bytes: &[u8]) -> Result<Record, Code> {
         let record: Record = serde_json::from_slice(bytes).map_err(|_| Code::StorageUnavailable)?;
@@ -353,14 +599,19 @@ impl Journal {
         Ok(record)
     }
     pub fn run(&self, id: &w::Ulid) -> Result<Option<Record>, Code> {
-        let bytes = self
+        let quantum = self.quantum.clone();
+        let bytes = Self::step(&quantum, || {
+            self
             .db
             .query_row("SELECT CASE WHEN typeof(record)='blob' AND length(record)<=16384 THEN record ELSE NULL END FROM runs WHERE id=?1", [&id.0], |r| {
                 bounded_blob(r, 0)
             })
             .optional()
-            .map_err(|_| Code::StorageUnavailable)?;
-        bytes.map(|b| Self::decode_record(&self.db, &b)).transpose()
+            .map_err(|_| Code::StorageUnavailable)
+        })?;
+        bytes
+            .map(|b| Self::step(&quantum, || Self::decode_record(&self.db, &b)))
+            .transpose()
     }
     /// Lookup original operation before any source lookup/hash/copy/process work.
     pub fn operation(
@@ -369,7 +620,9 @@ impl Journal {
         op: &w::Ulid,
         request: &[u8],
     ) -> Result<Option<Record>, Code> {
-        let old: Option<(Vec<u8>, String)> = self
+        let quantum = self.quantum.clone();
+        let old: Option<(Vec<u8>, String)> = Self::step(&quantum, || {
+            self
             .db
             .query_row(
                 "SELECT CASE WHEN typeof(request)='blob' AND length(request)<=16384 THEN request ELSE NULL END,CASE WHEN typeof(run)='text' AND length(run)=26 THEN run ELSE NULL END FROM ops WHERE actor=?1 AND op=?2",
@@ -377,7 +630,8 @@ impl Journal {
                 |r| Ok((bounded_blob(r, 0)?, r.get(1)?)),
             )
             .optional()
-            .map_err(|_| Code::StorageUnavailable)?;
+            .map_err(|_| Code::StorageUnavailable)
+        })?;
         match old {
             Some((bytes, _)) if bytes != request => Err(Code::OpIdReused),
             Some((_, run)) => self.run(&w::Ulid(run)),
@@ -392,157 +646,209 @@ impl Journal {
         request: &[u8],
         run: &w::Ulid,
     ) -> Result<(), Code> {
-        let tx = self
-            .db
-            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-            .map_err(|_| Code::StorageUnavailable)?;
-        let prior: Option<(Vec<u8>, String)> = tx
+        let quantum = self.quantum.clone();
+        Self::step(&quantum, || {
+            let tx = Self::step(&quantum, || {
+                self.db
+                    .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+                    .map_err(|_| Code::StorageUnavailable)
+            })?;
+            let mut tx = Self::retain(&quantum, tx);
+            let prior: Option<(Vec<u8>, String)> = Self::step(&quantum, || {
+                tx
             .query_row(
                 "SELECT CASE WHEN typeof(request)='blob' AND length(request)<=16384 THEN request ELSE NULL END,CASE WHEN typeof(run)='text' AND length(run)=26 THEN run ELSE NULL END FROM ops WHERE actor=?1 AND op=?2",
                 params![actor, op.0],
                 |r| Ok((bounded_blob(r, 0)?, r.get(1)?)),
             )
             .optional()
-            .map_err(|_| Code::StorageUnavailable)?;
-        if let Some((prior, prior_run)) = prior {
-            if prior != request || prior_run != run.0 {
-                return Err(Code::OpIdReused);
+            .map_err(|_| Code::StorageUnavailable)
+            })?;
+            if let Some((prior, prior_run)) = prior {
+                if prior != request || prior_run != run.0 {
+                    return Err(Code::OpIdReused);
+                }
+            } else {
+                let count: i64 = Self::step(&quantum, || {
+                    tx.query_row("SELECT count(*) FROM ops", [], |r| r.get(0))
+                        .map_err(|_| Code::StorageUnavailable)
+                })?;
+                if count >= 4096 {
+                    return Err(Code::StorageUnavailable);
+                }
+                Self::step(&quantum, || {
+                    tx.execute(
+                        "INSERT INTO ops(actor,op,request,run) VALUES(?1,?2,?3,?4)",
+                        params![actor, op.0, request, run.0],
+                    )
+                    .map_err(|_| Code::StorageUnavailable)
+                })?;
             }
-        } else {
-            let count: i64 = tx
-                .query_row("SELECT count(*) FROM ops", [], |r| r.get(0))
-                .map_err(|_| Code::StorageUnavailable)?;
-            if count >= 4096 {
-                return Err(Code::StorageUnavailable);
-            }
-            tx.execute(
-                "INSERT INTO ops(actor,op,request,run) VALUES(?1,?2,?3,?4)",
-                params![actor, op.0, request, run.0],
-            )
-            .map_err(|_| Code::StorageUnavailable)?;
-        }
-        tx.commit().map_err(|_| Code::StorageUnavailable)
+            Self::step(&quantum, || {
+                tx.take_value()
+                    .commit()
+                    .map_err(|_| Code::StorageUnavailable)
+            })
+        })
     }
     /// Cursor, close custody, unique source set and original op share one durable transaction.
     pub fn register(&mut self, actor: &str, key: &str, record: &Record) -> Result<Record, Code> {
-        let tx = self
-            .db
-            .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-            .map_err(|_| Code::StorageUnavailable)?;
-        let prior_op:Option<(Vec<u8>,String)>=tx.query_row(
+        let quantum = self.quantum.clone();
+        let tx = Self::step(&quantum, || {
+            self.db
+                .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
+                .map_err(|_| Code::StorageUnavailable)
+        })?;
+        let mut tx = Self::retain(&quantum, tx);
+        let prior_op: Option<(Vec<u8>, String)> = Self::step(&quantum, || {
+            tx.query_row(
             "SELECT CASE WHEN length(request)<=16384 AND typeof(request)='blob' THEN request ELSE NULL END,CASE WHEN length(run)=26 THEN run ELSE NULL END FROM ops WHERE actor=?1 AND op=?2",
-            params![actor,record.op_id.0],|r|Ok((bounded_blob(r,0)?,r.get(1)?))).optional().map_err(|_|Code::StorageUnavailable)?;
+            params![actor,record.op_id.0],|r|Ok((bounded_blob(r,0)?,r.get(1)?))).optional().map_err(|_|Code::StorageUnavailable)
+        })?;
         if let Some((request, id)) = prior_op {
             if request != record.request {
                 return Err(Code::OpIdReused);
             }
-            let bytes=tx.query_row("SELECT CASE WHEN length(record)<=16384 AND typeof(record)='blob' THEN record ELSE NULL END FROM runs WHERE id=?1",[id],|r|bounded_blob(r,0)).map_err(|_|Code::StorageUnavailable)?;
-            let retained = Self::decode_record(&tx, &bytes)?;
-            tx.commit().map_err(|_| Code::StorageUnavailable)?;
+            let bytes = Self::step(&quantum, || {
+                tx.query_row("SELECT CASE WHEN length(record)<=16384 AND typeof(record)='blob' THEN record ELSE NULL END FROM runs WHERE id=?1",[id],|r|bounded_blob(r,0)).map_err(|_|Code::StorageUnavailable)
+            })?;
+            let retained = Self::step(&quantum, || Self::decode_record(&tx, &bytes))?;
+            Self::step(&quantum, || {
+                tx.take_value()
+                    .commit()
+                    .map_err(|_| Code::StorageUnavailable)
+            })?;
             return Ok(retained);
         }
-        let prior: Option<Vec<u8>> = tx
+        let prior: Option<Vec<u8>> = Self::step(&quantum, || {
+            tx
             .query_row("SELECT CASE WHEN typeof(record)='blob' AND length(record)<=16384 THEN record ELSE NULL END FROM runs WHERE source_key=?1", [key], |r| {
                 bounded_blob(r, 0)
             })
             .optional()
-            .map_err(|_| Code::StorageUnavailable)?;
-        let aliases: i64 = tx
-            .query_row("SELECT count(*) FROM ops", [], |r| r.get(0))
-            .map_err(|_| Code::StorageUnavailable)?;
+            .map_err(|_| Code::StorageUnavailable)
+        })?;
+        let aliases: i64 = Self::step(&quantum, || {
+            tx.query_row("SELECT count(*) FROM ops", [], |r| r.get(0))
+                .map_err(|_| Code::StorageUnavailable)
+        })?;
         if aliases >= 4096 && !(record.trigger && prior.is_some()) {
             return Err(Code::StorageUnavailable);
         }
         let actual: Record = if let Some(bytes) = prior {
-            Self::decode_record(&tx, &bytes)?
+            Self::step(&quantum, || Self::decode_record(&tx, &bytes))?
         } else {
-            let count: i64 = tx
-                .query_row("SELECT count(*) FROM runs", [], |r| r.get(0))
-                .map_err(|_| Code::StorageUnavailable)?;
+            let count: i64 = Self::step(&quantum, || {
+                tx.query_row("SELECT count(*) FROM runs", [], |r| r.get(0))
+                    .map_err(|_| Code::StorageUnavailable)
+            })?;
             // Explicit retention admission; never delete old results or evidence implicitly.
             if count >= 1024 {
                 return Err(Code::StorageUnavailable);
             }
-            let bytes = record_bytes(record)?;
+            let bytes = Self::step(&quantum, || record_bytes(record))?;
             if bytes.len() > 16 * 1024 {
                 return Err(Code::ResourceLimit);
             }
-            tx.execute(
-                "INSERT INTO runs(id,source_key,record) VALUES(?1,?2,?3)",
-                params![record.view.run_id.0, key, bytes],
-            )
-            .map_err(|_| Code::StorageUnavailable)?;
-            record.clone()
+            Self::step(&quantum, || {
+                tx.execute(
+                    "INSERT INTO runs(id,source_key,record) VALUES(?1,?2,?3)",
+                    params![record.view.run_id.0, key, bytes],
+                )
+                .map_err(|_| Code::StorageUnavailable)
+            })?;
+            Self::step(&quantum, || Ok(record.clone()))?
         };
         for source in &record.sources {
-            let bytes = serde_json::to_vec(source).map_err(|_| Code::StorageUnavailable)?;
+            let bytes = Self::step(&quantum, || {
+                serde_json::to_vec(source).map_err(|_| Code::StorageUnavailable)
+            })?;
             if bytes.len() > 16 * 1024 {
                 return Err(Code::ResourceLimit);
             }
-            tx.execute("INSERT INTO sources(session,generation,bookmark) VALUES(?1,?2,?3) ON CONFLICT(session,generation) DO UPDATE SET bookmark=excluded.bookmark WHERE json_extract(CAST(sources.bookmark AS TEXT),'$.observed_seq')<=json_extract(CAST(excluded.bookmark AS TEXT),'$.observed_seq')",
-                params![source.session.0,source.generation as i64,bytes]).map_err(|_| Code::StorageUnavailable)?;
-            tx.execute("INSERT INTO close_cursor(session,generation,cursor) VALUES(?1,?2,?3) ON CONFLICT(session,generation) DO UPDATE SET cursor=max(cursor,excluded.cursor)",
-                params![source.session.0,source.generation as i64,source.cursor as i64]).map_err(|_| Code::StorageUnavailable)?;
+            Self::step(&quantum, || {
+                tx.execute("INSERT INTO sources(session,generation,bookmark) VALUES(?1,?2,?3) ON CONFLICT(session,generation) DO UPDATE SET bookmark=excluded.bookmark WHERE json_extract(CAST(sources.bookmark AS TEXT),'$.observed_seq')<=json_extract(CAST(excluded.bookmark AS TEXT),'$.observed_seq')",
+                params![source.session.0,source.generation as i64,bytes]).map_err(|_| Code::StorageUnavailable)
+            })?;
+            Self::step(&quantum, || {
+                tx.execute("INSERT INTO close_cursor(session,generation,cursor) VALUES(?1,?2,?3) ON CONFLICT(session,generation) DO UPDATE SET cursor=max(cursor,excluded.cursor)",
+                params![source.session.0,source.generation as i64,source.cursor as i64]).map_err(|_| Code::StorageUnavailable)
+            })?;
         }
         // Duplicate close notifications retain the unique row's first operation;
         // explicit manual aliases alone consume another operation entry.
         if !record.trigger || actual.view.run_id == record.view.run_id {
-            tx.execute(
-                "INSERT INTO ops(actor,op,request,run) VALUES(?1,?2,?3,?4)",
-                params![actor, record.op_id.0, record.request, actual.view.run_id.0],
-            )
-            .map_err(|_| Code::StorageUnavailable)?;
+            Self::step(&quantum, || {
+                tx.execute(
+                    "INSERT INTO ops(actor,op,request,run) VALUES(?1,?2,?3,?4)",
+                    params![actor, record.op_id.0, record.request, actual.view.run_id.0],
+                )
+                .map_err(|_| Code::StorageUnavailable)
+            })?;
         }
-        tx.commit().map_err(|_| Code::StorageUnavailable)?;
+        Self::step(&quantum, || {
+            tx.take_value()
+                .commit()
+                .map_err(|_| Code::StorageUnavailable)
+        })?;
         Ok(actual)
     }
     /// Durable lifecycle arbitration survives eviction of an in-memory Run.
     pub fn compare_and_save(&self, expected: &Record, next: &Record) -> Result<bool, Code> {
+        let quantum = self.quantum.clone();
         if expected.view.run_id != next.view.run_id
             || expected.op_id != next.op_id
             || expected.nonce != next.nonce
         {
             return Err(Code::ProtocolError);
         }
-        let before = record_bytes(expected)?;
-        let after = record_bytes(next)?;
-        self.db
-            .execute(
-                "UPDATE runs SET record=?2 WHERE id=?1 AND record=?3",
-                params![expected.view.run_id.0, after, before],
-            )
-            .map(|n| n == 1)
-            .map_err(|_| Code::StorageUnavailable)
+        let before = Self::step(&quantum, || record_bytes(expected))?;
+        let after = Self::step(&quantum, || record_bytes(next))?;
+        Self::step(&quantum, || {
+            self.db
+                .execute(
+                    "UPDATE runs SET record=?2 WHERE id=?1 AND record=?3",
+                    params![expected.view.run_id.0, after, before],
+                )
+                .map(|n| n == 1)
+                .map_err(|_| Code::StorageUnavailable)
+        })
     }
     fn cancel_unstarted(&self, previous: &Record) -> Result<Record, Code> {
-        if previous.started || previous.view.settled {
-            return Ok(previous.clone());
-        }
-        let mut next = previous.clone();
-        next.view.state = w::State::Cancelled;
-        next.view.settled = true;
-        next.view.revision.0 += 1;
-        next.view.error = Some(w::Error {
-            code: Code::Cancelled,
-            source: None,
-        });
-        if self.compare_and_save(previous, &next)? {
-            Ok(next)
-        } else {
-            self.run(&previous.view.run_id)?.ok_or(Code::NotFound)
-        }
+        let quantum = self.quantum.clone();
+        Self::step(&quantum, || {
+            if previous.started || previous.view.settled {
+                return Self::step(&quantum, || Ok(previous.clone()));
+            }
+            let mut next = Self::step(&quantum, || Ok(previous.clone()))?;
+            next.view.state = w::State::Cancelled;
+            next.view.settled = true;
+            next.view.revision.0 += 1;
+            next.view.error = Some(w::Error {
+                code: Code::Cancelled,
+                source: None,
+            });
+            if self.compare_and_save(previous, &next)? {
+                Ok(next)
+            } else {
+                self.run(&previous.view.run_id)?.ok_or(Code::NotFound)
+            }
+        })
     }
     pub fn save(&self, record: &Record) -> Result<(), Code> {
-        let bytes = record_bytes(record)?;
+        let quantum = self.quantum.clone();
+        let bytes = Self::step(&quantum, || record_bytes(record))?;
         if bytes.len() > 16 * 1024 {
             return Err(Code::ResourceLimit);
         }
-        self.db
-            .execute(
-                "UPDATE runs SET record=?2 WHERE id=?1",
-                params![record.view.run_id.0, bytes],
-            )
-            .map_err(|_| Code::StorageUnavailable)?;
+        Self::step(&quantum, || {
+            self.db
+                .execute(
+                    "UPDATE runs SET record=?2 WHERE id=?1",
+                    params![record.view.run_id.0, bytes],
+                )
+                .map_err(|_| Code::StorageUnavailable)
+        })?;
         Ok(())
     }
 }
@@ -589,14 +895,36 @@ impl Authority {
         self.capture_all().map(|(context, _)| context)
     }
     pub fn capture_all(&self) -> Result<(w::Context, crate::identity::PublicFence), Code> {
-        // No SeatKeys or identity status/admission call is reachable here. The
-        // host publication carries public facts only; each effect checks it anew.
-        if self.fence.cached_revision() & 1 != 0 {
-            return Err(Code::StaleContext);
-        }
-        let fence = self.fence.current().map_err(|_| Code::StaleContext)?;
-        let context = self.capture_context(&fence)?;
+        let quantum = engine::JournalQuantum::default();
+        // The complete public-proof verification and the fresh typed actor
+        // context each have their own ordinary <=1ms verdict/rest boundary.
+        // No proof/currentness check is removed or reclassified as native.
+        let fence = quantum.unit(|| {
+            if self.fence.cached_revision() & 1 != 0 {
+                return Err(Code::StaleContext);
+            }
+            self.fence.current().map_err(|_| Code::StaleContext)
+        })?;
+        let context = quantum.unit(|| self.capture_context(&fence))?;
+        // This short-lived prelude cannot discard its final work debt when
+        // the independently owned catalogue/job context takes over.
+        quantum.pay()?;
         Ok((context, fence))
+    }
+    #[cfg(test)]
+    pub(crate) fn test_prepared_guard(
+        &self,
+    ) -> Result<
+        (
+            w::Context,
+            crate::identity::PublicFence,
+            engine::PreparedGuard,
+        ),
+        Code,
+    > {
+        let (context, fence) = self.capture_all()?;
+        let guard = self.guard(&context, &Some(fence.clone()), None)?;
+        Ok((context, fence, guard))
     }
     fn capture_context(&self, fence: &crate::identity::PublicFence) -> Result<w::Context, Code> {
         // Identity and caller metadata share ONE consistent read-only snapshot;
@@ -652,16 +980,16 @@ impl Authority {
         context: &w::Context,
         fence: &Option<crate::identity::PublicFence>,
     ) -> bool {
-        self.matches_with_session(context, fence, None)
+        self.matches_with_session(context, fence, None).is_ok()
     }
     fn matches_with_session(
         &self,
         context: &w::Context,
         fence: &Option<crate::identity::PublicFence>,
         session: Option<&crate::identity::PublicFenceSession>,
-    ) -> bool {
+    ) -> Result<(), Code> {
         let Some(fence) = fence.as_ref() else {
-            return false;
+            return Err(Code::StaleContext);
         };
         // Admission still decodes the complete typed records. A unit only needs
         // fresh authority scalars, not newly allocated copies of those records
@@ -677,26 +1005,35 @@ impl Authority {
             || context.root.0 != self.port.binding.root_id
             || context.root_revision != context.provider_epoch
         {
-            return false;
+            return Err(Code::StaleContext);
         }
         let Ok(before) = self.port.host.dream_metadata() else {
-            return false;
+            return Err(Code::StaleContext);
         };
         if before.0 != context.provider_epoch.0 || before.1 != context.provider.0 {
-            return false;
+            return Err(Code::StaleContext);
         }
         let read = |db: &Connection| Self::rows_match(db, context);
         let matches = match session {
-            Some(session) => self.fence.with_current_session(fence, session, read),
-            None => self.fence.with_current(fence, read),
-        };
-        if !matches.is_ok_and(|current| current) {
-            return false;
+            Some(session) => self.fence.try_with_current_session(fence, session, read),
+            None => self.fence.with_current(fence, read).map(Some),
         }
-        self.port
+        .map_err(|_| Code::StaleContext)?;
+        match matches {
+            None => return Err(Code::Busy),
+            Some(false) => return Err(Code::StaleContext),
+            Some(true) => {}
+        }
+        if self
+            .port
             .host
             .dream_metadata()
             .is_ok_and(|after| after == before)
+        {
+            Ok(())
+        } else {
+            Err(Code::StaleContext)
+        }
     }
     fn rows_match(db: &Connection, context: &w::Context) -> crate::store::Result<bool> {
         let generation = crate::store::sqlint(context.generation.0)?;
@@ -742,11 +1079,7 @@ impl Authority {
             let context = context.clone();
             let fence = fence.clone();
             Ok(Arc::new(move || {
-                if authority.matches_with_session(&context, &fence, Some(&session)) {
-                    Ok(())
-                } else {
-                    Err(Code::StaleContext)
-                }
+                authority.matches_with_session(&context, &fence, Some(&session))
             }))
         })();
         let used = bbt_rt::fault::thread_cpu_time()
@@ -893,24 +1226,71 @@ impl Run {
 struct RootState {
     runs: Mutex<BTreeMap<String, Arc<Run>>>,
 }
+impl RootState {
+    /// The isolated owner keeps its permits until its exact cache entry is
+    /// retired. A contended presentation snapshot cannot leave a live prepared
+    /// SQLite session cached indefinitely after that job releases its slot.
+    fn retire(&self, run: &Arc<Run>) {
+        loop {
+            let mut runs = match self.runs.try_lock() {
+                Ok(runs) => runs,
+                Err(std::sync::TryLockError::WouldBlock) => {
+                    std::thread::park_timeout(std::time::Duration::from_millis(9));
+                    continue;
+                }
+                // Poison cannot prevent releasing our own immutable entry. No
+                // other entry or public authority is recovered by this path.
+                Err(std::sync::TryLockError::Poisoned(poison)) => poison.into_inner(),
+            };
+            if runs
+                .get(&run.initial.view.run_id.0)
+                .is_some_and(|cached| Arc::ptr_eq(cached, run))
+            {
+                runs.remove(&run.initial.view.run_id.0);
+            }
+            return;
+        }
+    }
+}
 /// No queue or shared compute pool: each admitted run owns its own process/IO lanes.
 #[derive(Clone)]
 pub(crate) struct Runtime {
     incarnation: w::Ulid,
+    launch_counter: Arc<std::sync::atomic::AtomicU64>,
     path: PathBuf,
     binary: PathBuf,
+    native_provision: Arc<OnceLock<Arc<engine::runner_provision::ProvisionProof>>>,
     supported: Arc<AtomicBool>,
     retired: Arc<AtomicBool>,
     requests: Arc<AtomicUsize>,
     controls: Arc<AtomicUsize>,
     roots: Arc<Mutex<BTreeMap<String, Arc<RootState>>>>,
 }
+impl Drop for Runtime {
+    fn drop(&mut self) {
+        // The capability owner retains one Runtime until all other users have
+        // retired. Its cache/proof descriptors then close on that utility
+        // owner, never as a side effect of dropping a mux-side Runtime handle.
+        // An unavailable capability probe must not retire metadata/control
+        // service when its temporary Runtime clone goes away.
+        if self.native_provision.get().is_some() && Arc::strong_count(&self.native_provision) == 2 {
+            self.retired.store(true, Ordering::Release);
+        }
+    }
+}
 impl Runtime {
-    pub fn new(path: PathBuf, binary: PathBuf, handle: &tokio::runtime::Handle) -> Self {
+    pub fn new(
+        path: PathBuf,
+        binary: PathBuf,
+        private_test_account: bool,
+        handle: &tokio::runtime::Handle,
+    ) -> Self {
         let runtime = Self {
             incarnation: crate::Ulid::new().into(),
+            launch_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             path,
             binary,
+            native_provision: Default::default(),
             supported: Arc::new(AtomicBool::new(false)),
             retired: Arc::new(AtomicBool::new(false)),
             requests: Default::default(),
@@ -929,22 +1309,48 @@ impl Runtime {
                     if private_dir(&probe.path).is_err() {
                         return;
                     }
-                    let job = probe.path.join(format!("probe-{}", crate::Ulid::new()));
-                    if private_dir(&job).is_err() {
-                        return;
-                    }
-                    if private_dir(&job.join("tmp")).is_err() {
-                        return;
-                    }
-                    let supported =
-                        bboxy450_harness_wake_up::dream_c1::probe(&probe.binary, &job).is_ok();
+                    // Packaged source/binary/compiler/features and private gate
+                    // profile are verified BEFORE any candidate process birth.
+                    let proof = match engine::runner_provision::verify_native_provision(
+                        &probe.binary,
+                        private_test_account,
+                    ) {
+                        Ok(proof) => Arc::new(proof),
+                        Err(_) => return,
+                    };
+                    let incarnation = match probe.next_launch_incarnation() {
+                        Ok(value) => value,
+                        Err(_) => return,
+                    };
+                    let supported = engine::probe_gated(&probe.path, proof.clone(), incarnation)
+                        .is_ok()
+                        && probe.native_provision.set(proof).is_ok();
                     probe.supported.store(supported, Ordering::Release);
-                    // Only this newly created empty probe tree, after exact child reap.
-                    let _ = std::fs::remove_dir(job.join("tmp"));
-                    let _ = std::fs::remove_dir(job);
+                    if supported {
+                        while Arc::strong_count(&probe.native_provision) > 1 {
+                            std::thread::park_timeout(std::time::Duration::from_millis(50));
+                        }
+                    }
                 });
         });
         runtime
+    }
+    fn next_launch_incarnation(&self) -> Result<u64, Code> {
+        let value = self.launch_counter.load(Ordering::Acquire);
+        if value == 0 {
+            let seed = engine::monotonic_ns()?;
+            if seed == 0 {
+                return Err(Code::ResourceLimit);
+            }
+            let _ =
+                self.launch_counter
+                    .compare_exchange(0, seed, Ordering::AcqRel, Ordering::Acquire);
+        }
+        self.launch_counter
+            .try_update(Ordering::AcqRel, Ordering::Acquire, |value| {
+                value.checked_add(1).filter(|_| value != 0)
+            })
+            .map_err(|_| Code::ResourceLimit)
     }
     pub fn retire(&self) {
         self.retired.store(true, Ordering::Release);
@@ -1052,6 +1458,7 @@ impl Runtime {
             let _=std::thread::Builder::new().name("dream-c1-control".into()).spawn(move || {
                 let mut done=Some(done);
                 let mut presentation=None;
+                let mut journal_quantum=None;
                 let result=(|| {
                     engine::utility()?;
                     if runtime.retired.load(Ordering::Acquire) {return Err(Code::WorkerLost);}
@@ -1065,7 +1472,16 @@ impl Runtime {
                         if roots.len()>=1024 && !roots.contains_key(&root_key) {return Err(Code::StorageUnavailable);}
                         roots.entry(root_key.clone()).or_default().clone()
                     };
+                    if let w::Control::Status(status)=&request {
+                        let cached=root.runs.try_lock().map_err(|_|Code::Busy)?.get(&status.run_id.0).cloned();
+                        if let Some(run)=cached {
+                            // Current full public actor/context fence still applies;
+                            // an active known run needs no catalogue/schema replay.
+                            return runtime.status(&root,&authority,&context,run.record(),status.page);
+                        }
+                    }
                     let mut journal=Journal::open(&runtime.path,&context.seat)?;
+                    journal_quantum=journal.quantum.clone();
                     match request {
                         w::Control::Inspect(mut inspect)=> {
                             inspect.sources.sort_by(|a,b|(a.source_generation.0,&a.session).cmp(&(b.source_generation.0,&b.session)));
@@ -1093,7 +1509,7 @@ impl Runtime {
                                 }
                                 return Err(Code::StaleContext);
                             }
-                            let record=Record {trigger:automatic,started:false,owner_incarnation:runtime.incarnation.clone(),worker_pid:None,worker_start:None,
+                            let record=Record {trigger:automatic,started:false,owner_incarnation:runtime.incarnation.clone(),worker_pid:None,worker_start:None,launch:None,
                                 context:context.clone(),identity_fence:Some(identity_fence.clone()),op_id:inspect.op_id,nonce:crate::Ulid::new().into(),sources,request:request.clone(),
                                 view:w::RunView {run_id:crate::Ulid::new().into(),revision:w::Number(1),state:w::State::Deferred,settled:false,
                                     request_sha256:w::Hex(crate::store::digest(&request)),manifest_sha256:None,result_sha256:None,pages:0,error:None}};
@@ -1116,6 +1532,7 @@ impl Runtime {
                                 if runs.len()>=1024 {return Err(Code::StorageUnavailable);}
                                 if runs.values().filter(|r|!r.started.load(Ordering::Acquire)).count()>=32 {return Err(Code::Busy);}
                                 let control=Arc::new(Control {activity_latch:Some(authority.activity_latch.clone()),#[cfg(debug_assertions)] private_fixture:authority.private_fixture,..Control::with_activity(authority.foreground.clone(),authority.activity_revision.clone())});
+                                if let Some(proof)=runtime.native_provision.get() {control.install_native_provision(proof.clone())?;}
                                 let run=Arc::new(Run {initial:record.clone(),started:AtomicBool::new(false),final_record:OnceLock::new(),control});
                                 runs.insert(record.view.run_id.0.clone(),run.clone());
                                 run
@@ -1129,6 +1546,10 @@ impl Runtime {
                             let root_permit=DiskPermit::claim(&runtime.path,&root_name,2,&record)?;
                             let account=DiskPermit::claim(&runtime.path,&account_name,4,&record)?;
                             if run.started.swap(true,Ordering::AcqRel) {return Ok(reply(&run.record()));}
+                            if run.control.launch_incarnation.load(Ordering::Acquire)==0 {
+                                let incarnation=runtime.next_launch_incarnation()?;
+                                let _=run.control.launch_incarnation.compare_exchange(0,incarnation,Ordering::AcqRel,Ordering::Acquire);
+                            }
                             // Deferred controls retain no SQLite connection. Prepare the
                             // one compute session only after this owner holds both caps;
                             // its measured setup is independent of per-unit guard CPU.
@@ -1186,7 +1607,7 @@ impl Runtime {
                             }
                             run.control.state.store(engine::PREPARING,Ordering::Release);
                             run.control.revision.fetch_add(1,Ordering::AcqRel);
-                            let admission=if authority.matches(&context,&record.identity_fence) {
+                            let admission=if run.control.authority_prepared_guard.get().is_some_and(|guard|guard().is_ok()) {
                                 reply(&record)
                             } else {
                                 // A claimed durable owner still settles even if its
@@ -1194,42 +1615,54 @@ impl Runtime {
                                 run.control.cancelled.store(true,Ordering::Release);
                                 failure(Code::StaleContext)
                             };
-                            (done.take().unwrap())(admission);
+                            let metadata_close_error=journal.finish().err();
+                            if metadata_close_error.is_some() {run.control.cancelled.store(true,Ordering::Release);}
+                            (done.take().unwrap())(metadata_close_error.map_or(admission, failure));
                             // Admission reply is independent of snapshot/process ownership.
                             drop(permit);
-                            drop(journal);
                             let job=runtime.path.join(&record.view.run_id.0);
                             let monitor_done=Arc::new(AtomicBool::new(false));
                             let monitor_stop=monitor_done.clone();
                             let monitor_authority=authority.clone();
-                            let monitor_context=context.clone();
-                            let monitor_fence=record.identity_fence.clone();
                             let monitor_control=run.control.clone();
                             let monitor_failure=Arc::new(OnceLock::new());
                             let monitor_error=monitor_failure.clone();
                             let retired=runtime.retired.clone();
                             let monitor=std::thread::Builder::new().name("dream-c1-authority".into()).spawn(move || {
                                 if engine::utility().is_err() {let _=monitor_error.set(Code::ResourceLimit);monitor_control.cancelled.store(true,Ordering::Release);return;}
-                                // One independent monitor session plus the sequential
-                                // compute session is the job's entire two-connection
-                                // authority allocation. Each check still reads a fresh
-                                // transaction; prepared SQL never caches permission.
-                                let monitor_guard=match monitor_authority.guard(&monitor_context,&monitor_fence,Some(&monitor_control.authority_monitor_setup_cpu_ns)) {
-                                    Ok(guard)=>guard,
-                                    Err(code)=>{
-                                        let _=monitor_error.set(code);
-                                        if code==Code::ResourceLimit {monitor_control.authority_monitor_overruns.fetch_add(1,Ordering::Relaxed);}
-                                        monitor_control.cancelled.store(true,Ordering::Release);
-                                        return;
-                                    }
+                                let setup_cpu=match bbt_rt::fault::thread_cpu_time() {
+                                    Ok(cpu)=>cpu,
+                                    Err(_)=>{let _=monitor_error.set(Code::ResourceLimit);monitor_control.cancelled.store(true,Ordering::Release);return;}
                                 };
+                                // One prepared public session is shared through
+                                // try_lock with compute. A concurrent check defers
+                                // this monitor; it never grants permission. The
+                                // transient checkpoint is the second SQL connection.
+                                let Some(monitor_guard)=monitor_control.authority_prepared_guard.get().cloned() else {
+                                    let _=monitor_error.set(Code::StaleContext);
+                                    monitor_control.cancelled.store(true,Ordering::Release);
+                                    return;
+                                };
+                                let setup_ns=bbt_rt::fault::thread_cpu_time().map(|cpu|cpu.saturating_sub(setup_cpu).as_nanos().min(u64::MAX as u128) as u64).unwrap_or(u64::MAX);
+                                monitor_control.authority_monitor_setup_cpu_ns.store(setup_ns,Ordering::Release);
+                                if setup_ns>1_000_000 {monitor_control.authority_monitor_overruns.fetch_add(1,Ordering::Relaxed);let _=monitor_error.set(Code::ResourceLimit);monitor_control.cancelled.store(true,Ordering::Release);return;}
                                 std::thread::park_timeout(std::time::Duration::from_millis(9));
                                 while !monitor_stop.load(Ordering::Acquire) {
                                     let before=match bbt_rt::fault::thread_cpu_time() {
                                         Ok(cpu)=>cpu,
                                         Err(_)=>{let _=monitor_error.set(Code::ResourceLimit);monitor_control.authority_monitor_overruns.fetch_add(1,Ordering::Relaxed);monitor_control.cancelled.store(true,Ordering::Release);return;}
                                     };
-                                    let current=(monitor_guard.callback)();
+                                    let pending=monitor_control.native_pending_since_ns.load(Ordering::Acquire);
+                                    if pending!=0 {
+                                        let age=engine::monotonic_ns().ok().and_then(|now|now.checked_sub(pending));
+                                        if age.is_none_or(|age|age>=6_000_000_000) {
+                                            monitor_control.native_quarantine_observed.store(true,Ordering::Release);
+                                            monitor_control.state.store(engine::QUARANTINED,Ordering::Release);
+                                            monitor_control.revision.fetch_add(1,Ordering::AcqRel);
+                                            monitor_control.cancelled.store(true,Ordering::Release);
+                                        }
+                                    }
+                                    let current=monitor_guard();
                                     let used=bbt_rt::fault::thread_cpu_time().map(|cpu|cpu.saturating_sub(before));
                                     let overrun=match used {
                                         Ok(cpu)=>{
@@ -1239,7 +1672,7 @@ impl Runtime {
                                         Err(_)=>true,
                                     };
                                     if overrun {monitor_control.authority_monitor_overruns.fetch_add(1,Ordering::Relaxed);}
-                                    if overrun||retired.load(Ordering::Acquire)||current.is_err() {
+                                    if overrun||retired.load(Ordering::Acquire)||matches!(current,Err(code) if code!=Code::Busy) {
                                         let _=monitor_error.set(if overrun {Code::ResourceLimit} else if retired.load(Ordering::Acquire) {Code::WorkerLost} else {Code::StaleContext});
                                         monitor_control.cancelled.store(true,Ordering::Release);
                                         let _=monitor_authority.activity_latch.try_update(Ordering::AcqRel,Ordering::Acquire,|old|old.checked_add(2).map(|n|n|1));
@@ -1270,6 +1703,7 @@ impl Runtime {
                                 }
                                 monitor_failure.get().copied().map_or(Ok(()),Err)
                             });
+                            let result=metadata_close_error.map_or(result,Err);
                             if runtime.retired.load(Ordering::Acquire) {
                                 record.view.state=w::State::Interrupted;
                                 record.view.error=Some(w::Error {code:Code::WorkerLost,source:None});
@@ -1287,12 +1721,12 @@ impl Runtime {
                                 record.view.error=Some(w::Error {code,source:None});
                             }
                             record.view.revision.0+=1;
-                            let persisted=Journal::open(&runtime.path,&context.seat).and_then(|journal|journal.save(&record));
-                            if persisted.is_err() {record.view.state=w::State::Quarantined;record.view.settled=false;record.view.error=Some(w::Error {code:Code::StorageUnavailable,source:None});}
+                            let persisted=engine::checkpoint(&job,&record,&run.control);
+                            if let Err(code)=persisted {record.view.state=w::State::Quarantined;record.view.settled=false;record.view.error=Some(w::Error {code,source:None});}
                             let settled=record.view.settled;
                             if !settled {std::mem::forget(account);std::mem::forget(root_permit);}
                             let _=run.final_record.set(record);
-                            if settled {if let Ok(mut runs)=root.runs.try_lock() {runs.remove(&run.initial.view.run_id.0);}}
+                            if settled {root.retire(&run);}
                             runtime.activity(&runtime_handle,authority.clone());
                             Ok(failure(Code::NotFound)) // admission was already returned exactly once
                         }
@@ -1303,8 +1737,10 @@ impl Runtime {
                         w::Control::Cancel(cancel)=> {
                             let actor=crate::store::digest(&w::canonical(&serde_json::json!([context,identity_fence])).map_err(|_|Code::BadRequest)?);
                             let request=w::canonical(&serde_json::json!({"v":1,"context":context,"method":"cancel","run_id":cancel.run_id})).map_err(|_|Code::BadRequest)?;
-                            let previous=journal.operation(&actor,&cancel.op_id,&request)?;
-                            let record=match previous {Some(r)=>r,None=>journal.run(&cancel.run_id)?.ok_or(Code::NotFound)?};
+                            let record=Journal::step(&journal.quantum.clone(),||{
+                                let previous=journal.operation(&actor,&cancel.op_id,&request)?;
+                                match previous {Some(r)=>Ok(r),None=>journal.run(&cancel.run_id)?.ok_or(Code::NotFound)}
+                            })?;
                             if record.context!=context || record.identity_fence.as_ref()!=Some(&identity_fence) {return Err(Code::NotFound);}
                             journal.cancel_operation(&actor,&cancel.op_id,&request,&cancel.run_id)?;
                             let run=root.runs.try_lock().map_err(|_|Code::Busy)?.get(&cancel.run_id.0).cloned();
@@ -1334,6 +1770,7 @@ impl Runtime {
                         }
                     }
                 })();
+                let result=match journal_quantum.as_ref().map(|quantum|quantum.check()) {Some(Err(code))=>Err(code),_=>result};
                 if let Some(done)=done {
                     let response=match result {
                         Ok(response @ w::ControlReply::Success(_))=> {
@@ -1507,6 +1944,7 @@ mod registry_tests {
                 owner_incarnation: id(100),
                 worker_pid: None,
                 worker_start: None,
+                launch: None,
                 context,
                 identity_fence: None,
                 op_id: id(number + 1000),
@@ -1568,6 +2006,121 @@ mod registry_tests {
                 |r| r.get::<_, i64>(0),
             )
             .unwrap() as u64
+    }
+
+    #[test]
+    fn dream_c1_existing_checkpoint_never_creates_or_initializes_a_missing_journal() {
+        let fixture = Fixture::new();
+        assert!(Journal::open_existing(&fixture.runtime, &id(10)).is_err());
+        let initialized = fixture.journal();
+        drop(initialized);
+        let existing = Journal::open_existing(&fixture.runtime, &id(10)).unwrap();
+        assert_eq!(count(&existing, "runs"), 0);
+        assert_eq!(count(&existing, "ops"), 0);
+        let sync: i64 = existing
+            .db
+            .query_row("PRAGMA synchronous", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(
+            sync, 2,
+            "reopened connection retains SQLite FULL synchronization"
+        );
+        let mode: String = existing
+            .db
+            .query_row("PRAGMA journal_mode", [], |row| row.get(0))
+            .unwrap();
+        assert_eq!(mode, "wal");
+    }
+
+    #[test]
+    fn dream_c1_staged_journal_open_rejects_inode_replacement_and_symlink() {
+        let fixture = Fixture::new();
+        drop(fixture.journal());
+        let retained = Journal::existing_path(&fixture.runtime, &id(10)).unwrap();
+        let original = retained.path.with_extension("retained");
+        fs::rename(&retained.path, &original).unwrap();
+        let replacement = OpenOptions::new()
+            .create_new(true)
+            .write(true)
+            .mode(0o600)
+            .open(&retained.path)
+            .unwrap();
+        drop(replacement);
+        assert!(matches!(
+            Journal::connect_existing(&retained),
+            Err(Code::StorageUnavailable)
+        ));
+        assert_eq!(
+            fs::read(&retained.path).unwrap(),
+            b"",
+            "replacement bytes remain untouched"
+        );
+        fs::remove_file(&retained.path).unwrap();
+        std::os::unix::fs::symlink(&original, &retained.path).unwrap();
+        assert!(matches!(
+            Journal::connect_existing(&retained),
+            Err(Code::StorageUnavailable)
+        ));
+    }
+
+    #[test]
+    fn dream_c1_settled_cache_retirement_keeps_slot_through_contention_and_preserves_replacement() {
+        for replacement in [false, true] {
+            let fixture = Fixture::new();
+            let make_run = || {
+                Arc::new(Run {
+                    initial: fixture.record(20),
+                    started: AtomicBool::new(true),
+                    final_record: OnceLock::new(),
+                    control: Arc::new(Control::default()),
+                })
+            };
+            let run = make_run();
+            let newer = make_run();
+            let root = Arc::new(RootState::default());
+            let mut held = root.runs.lock().unwrap();
+            held.insert(run.initial.view.run_id.0.clone(), run.clone());
+            let count = Arc::new(AtomicUsize::new(0));
+            let permit = Permit::claim(&count, 1).unwrap();
+            std::thread::scope(|scope| {
+                let (sent, received) = std::sync::mpsc::sync_channel(1);
+                let root = &root;
+                let run = &run;
+                let owner = scope.spawn(move || {
+                    root.retire(run);
+                    drop(permit);
+                    sent.send(()).unwrap();
+                });
+                assert!(
+                    received
+                        .recv_timeout(std::time::Duration::from_millis(20))
+                        .is_err()
+                );
+                assert_eq!(
+                    count.load(Ordering::Acquire),
+                    1,
+                    "a cached owner keeps its slot"
+                );
+                if replacement {
+                    held.insert(run.initial.view.run_id.0.clone(), newer.clone());
+                }
+                drop(held);
+                received
+                    .recv_timeout(std::time::Duration::from_secs(1))
+                    .unwrap();
+                owner.join().unwrap();
+            });
+            assert_eq!(count.load(Ordering::Acquire), 0);
+            let entries = root.runs.lock().unwrap();
+            if replacement {
+                assert!(Arc::ptr_eq(
+                    entries.get(&run.initial.view.run_id.0).unwrap(),
+                    &newer
+                ));
+            } else {
+                assert!(entries.is_empty());
+            }
+        }
     }
 
     #[test]

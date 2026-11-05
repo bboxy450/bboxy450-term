@@ -18,6 +18,8 @@ compile_error!("bboxy450-harness-wake-up currently requires Unix sockets and ter
 
 /// Private overlay admission files shared by launchers, hooks and MCP bridges.
 pub mod capability;
+/// Private fixed worker-bootstrap mirror and anonymous-pipe custody.
+pub mod dream_bootstrap;
 /// Dream C1 narrow worker protocol and owned process transport.
 pub mod dream_c1;
 /// Single-use positive readiness and guarded literal terminal input.

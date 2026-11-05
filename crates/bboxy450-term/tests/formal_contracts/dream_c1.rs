@@ -999,8 +999,2021 @@ fn provider_polling(kind: usize, broken: bool) -> Model {
     m
 }
 
+const BOOTSTRAP_NAMES: [&str; 11] = [
+    "C1BootstrapAdmission",
+    "C1BootstrapParentOverlap",
+    "C1BootstrapUnpaidGrant",
+    "C1BootstrapUnknownCost",
+    "C1BootstrapDebtReset",
+    "C1BootstrapAbaPermit",
+    "C1BootstrapUnknownOwner",
+    "C1BootstrapPrebirthProfile",
+    "C1BootstrapDuplicatePermit",
+    "C1BootstrapEarlyHello",
+    "C1BootstrapUnpaidStart",
+];
+fn bootstrap_admission(kind: usize, broken: bool) -> Model {
+    // One original child/anonymous pipe/permit, epochs A1/B2/A3. CPU/rest debt
+    // are abstract ms and9ms steps, not real elapsed/native/allocator proofs.
+    const SOURCE: usize = 0;
+    const PROFILE: usize = 1;
+    const EPOCH: usize = 2;
+    const CAPTURED: usize = 3;
+    const FG: usize = 4;
+    const CANCEL: usize = 5;
+    const PREPARED: usize = 6;
+    const BIRTH: usize = 7;
+    const CALLS: usize = 8;
+    const FLIGHT: usize = 9;
+    const RETAINED: usize = 10;
+    const SLOT: usize = 11;
+    const KNOWN: usize = 12;
+    const VERDICT: usize = 13;
+    const PD: usize = 14;
+    const PO: usize = 15;
+    const PP: usize = 16;
+    const CD: usize = 17;
+    const CO: usize = 18;
+    const CP: usize = 19;
+    const OWNER: usize = 20; // parent0,childBootstrap1,parentPrepare2,childWork3,settlement4,none5
+    const ATTEMPTS: usize = 21;
+    const PERMIT: usize = 22; // none0,partial1,valid2,revoked3
+    const LEASE: usize = 23;
+    const ARMED: usize = 24;
+    const READ: usize = 25;
+    const WAITING: usize = 26;
+    const SPANS: usize = 27;
+    const BOOT: usize = 28;
+    const HELLO: usize = 29;
+    const RETIRED: usize = 30;
+    const PPREP: usize = 31;
+    const START: usize = 32;
+    const WORK: usize = 33;
+    const EXIT: usize = 34;
+    const VALID: usize = 35;
+    const SETTLED: usize = 36;
+    const QUARANTINE: usize = 37;
+    const EXPIRED: usize = 38;
+    const BAD: usize = 39;
+    const CONTROL: usize = 40;
+    const OTHER: usize = 41;
+    let nine = |value: Expr| (0..9).fold(Int(0), |sum, _| sum.plus(value.clone()));
+    let mut m = model(
+        BOOTSTRAP_NAMES[kind],
+        broken,
+        &[
+            ("source_closed", 1, 0),
+            ("prebirth_profile", 1, 0),
+            ("epoch_a1_b2_a3", 2, 0),
+            ("bound_incarnation", 2, 0),
+            ("foreground_unknown", 2, 1),
+            ("cancel", 1, 0),
+            ("prepared", 1, 0),
+            ("birth", 2, 0),
+            ("birth_attempts", 2, 0),
+            ("native_inflight", 1, 0),
+            ("effect_retained", 1, 0),
+            ("slot", 1, 0),
+            ("cost_known", 1, 0),
+            ("parent_verdict", 2, 0),
+            ("parent_debt", 27, 0),
+            ("parent_owed", 27, 0),
+            ("parent_paid", 3, 0),
+            ("child_debt", 27, 0),
+            ("child_owed", 27, 0),
+            ("child_paid", 3, 0),
+            ("expensive_owner", 5, 0),
+            ("permit_attempts", 2, 0),
+            ("permit", 3, 0),
+            ("lease_open", 1, 0),
+            ("transfer_armed", 1, 0),
+            ("grant_read", 1, 0),
+            ("child_waiting", 1, 0),
+            ("bootstrap_spans", 2, 0),
+            ("bootstrapped", 1, 0),
+            ("hello", 1, 0),
+            ("gate_retired", 1, 0),
+            ("parent_prepared", 1, 0),
+            ("start", 1, 0),
+            ("child_work_span", 1, 0),
+            ("actual_exit", 1, 0),
+            ("validated", 1, 0),
+            ("settled", 1, 0),
+            ("quarantined", 1, 0),
+            ("readiness_expired", 1, 0),
+            ("bad", 1, 0),
+            ("control_reply", 1, 0),
+            ("independent_job", 2, 0),
+        ],
+    );
+    let current = Var(EPOCH).eq(Var(CAPTURED));
+    let healthy = all([current.clone(), eq(FG, 0), eq(CANCEL, 0), eq(EXPIRED, 0)]);
+    action(
+        &mut m,
+        "CloseSource",
+        all([eq(SOURCE, 0), eq(EPOCH, 0)]),
+        &[(SOURCE, Int(1))],
+    );
+    action(
+        &mut m,
+        "VerifyPackagedBootstrapBeforeBirth",
+        all([eq(PROFILE, 0), eq(CALLS, 0)]),
+        &[(PROFILE, Int(1))],
+    );
+    action(
+        &mut m,
+        "InvalidateProvision",
+        eq(PROFILE, 1),
+        &[
+            (PROFILE, Int(0)),
+            (LEASE, Int(0)),
+            (ARMED, Int(0)),
+            (PERMIT, eq(ATTEMPTS, 0).ite(Var(PERMIT), Int(3))),
+        ],
+    );
+    action(&mut m, "Quiescent", ne(FG, 0), &[(FG, Int(0))]);
+    action(
+        &mut m,
+        "Foreground",
+        ne(FG, 1),
+        &[
+            (FG, Int(1)),
+            (LEASE, Int(0)),
+            (ARMED, Int(0)),
+            (PERMIT, eq(ATTEMPTS, 0).ite(Var(PERMIT), Int(3))),
+            (OWNER, eq(ATTEMPTS, 0).ite(Var(OWNER), Int(4))),
+        ],
+    );
+    action(
+        &mut m,
+        "UnknownForeground",
+        ne(FG, 2),
+        &[
+            (FG, Int(2)),
+            (LEASE, Int(0)),
+            (ARMED, Int(0)),
+            (PERMIT, eq(ATTEMPTS, 0).ite(Var(PERMIT), Int(3))),
+            (OWNER, eq(ATTEMPTS, 0).ite(Var(OWNER), Int(4))),
+        ],
+    );
+    action(
+        &mut m,
+        "PrepareFrozenBindingAndPipe",
+        all([
+            eq(SOURCE, 1),
+            eq(PROFILE, 1),
+            healthy.clone(),
+            eq(PREPARED, 0),
+            eq(OWNER, 0),
+            eq(PD, 0),
+        ]),
+        &[
+            (PREPARED, Int(1)),
+            (CAPTURED, Var(EPOCH)),
+            (PD, Int(9)),
+            (PO, Int(9)),
+            (PP, Int(0)),
+        ],
+    );
+    let birth_law = all([
+        eq(SOURCE, 1),
+        eq(PROFILE, 1),
+        healthy.clone(),
+        eq(PREPARED, 1),
+        eq(OWNER, 0),
+        eq(PD, 0),
+        eq(CALLS, 0),
+        eq(BIRTH, 0),
+    ]);
+    action(
+        &mut m,
+        "Birth",
+        all([
+            eq(SOURCE, 1),
+            healthy.clone(),
+            eq(PREPARED, 1),
+            eq(OWNER, 0),
+            eq(PD, 0),
+            eq(CALLS, 0),
+            eq(BIRTH, 0),
+            if broken && kind == 7 {
+                Bool(true)
+            } else {
+                eq(PROFILE, 1)
+            },
+        ]),
+        &[
+            (BIRTH, Int(2)),
+            (CALLS, Int(1)),
+            (FLIGHT, Int(1)),
+            (SLOT, Int(1)),
+            (WAITING, Int(1)),
+            (BAD, birth_law.ite(Var(BAD), Int(1))),
+        ],
+    );
+    action(
+        &mut m,
+        "RetainActualReturnedChild",
+        all([eq(BIRTH, 2), eq(FLIGHT, 1)]),
+        &[(BIRTH, Int(1)), (FLIGHT, Int(0)), (RETAINED, Int(1))],
+    );
+    action(
+        &mut m,
+        "RetainUnknownBirth",
+        all([eq(BIRTH, 2), eq(FLIGHT, 1)]),
+        &[
+            (FLIGHT, Int(0)),
+            (RETAINED, Int(1)),
+            (OWNER, Int(4)),
+            (VERDICT, Int(2)),
+        ],
+    );
+    action(
+        &mut m,
+        "ParentCostVerdict",
+        all([
+            eq(BIRTH, 1),
+            eq(RETAINED, 1),
+            eq(VERDICT, 0),
+            eq(SETTLED, 0),
+        ]),
+        &[
+            (KNOWN, Int(1)),
+            (VERDICT, Int(1)),
+            (PD, Int(27)),
+            (PO, Int(27)),
+            (PP, Int(0)),
+        ],
+    );
+    action(
+        &mut m,
+        "ParentClockFailure",
+        all([
+            eq(BIRTH, 1),
+            eq(RETAINED, 1),
+            eq(VERDICT, 0),
+            eq(SETTLED, 0),
+        ]),
+        &[
+            (KNOWN, Int(0)),
+            (VERDICT, Int(2)),
+            (PD, Int(27)),
+            (PO, Int(27)),
+            (PP, Int(0)),
+            (OWNER, Int(4)),
+        ],
+    );
+    let pay_parent = m.actions.len();
+    action(
+        &mut m,
+        "PayParentAfterSpanEnd",
+        all([ne(PD, 0), eq(OWNER, 0).or(eq(OWNER, 2)).or(eq(OWNER, 4))]),
+        &[(PD, Var(PD).minus(Int(9))), (PP, Var(PP).plus(Int(1)))],
+    );
+    let grant_law = all([
+        eq(PROFILE, 1),
+        healthy.clone(),
+        eq(BIRTH, 1),
+        eq(RETAINED, 1),
+        eq(OWNER, 0),
+        eq(KNOWN, 1),
+        eq(VERDICT, 1),
+        eq(PD, 0),
+        eq(ATTEMPTS, 0),
+        eq(PERMIT, 0),
+    ]);
+    let grant_guard = all([
+        eq(PROFILE, 1),
+        eq(FG, 0),
+        eq(CANCEL, 0),
+        eq(EXPIRED, 0),
+        eq(BIRTH, 1),
+        eq(RETAINED, 1),
+        eq(ATTEMPTS, 0),
+        eq(PERMIT, 0),
+        if broken && (kind == 3 || kind == 5) {
+            eq(OWNER, 0).or(eq(OWNER, 4))
+        } else {
+            eq(OWNER, 0)
+        },
+        if broken && kind == 2 {
+            Bool(true)
+        } else {
+            eq(PD, 0)
+        },
+        if broken && kind == 3 {
+            Bool(true)
+        } else {
+            all([eq(KNOWN, 1), eq(VERDICT, 1)])
+        },
+        if broken && kind == 5 {
+            Bool(true)
+        } else {
+            current.clone()
+        },
+    ]);
+    action(
+        &mut m,
+        "TransferBeforePermitWrite",
+        grant_guard,
+        &[
+            (OWNER, Int(1)),
+            (ARMED, Int(1)),
+            (BAD, grant_law.ite(Var(BAD), Int(1))),
+        ],
+    );
+    for (permit, label) in [
+        (2, "WriteFullPermitOnce"),
+        (1, "WritePartialConsumesAttempt"),
+    ] {
+        let write_law = all([
+            eq(OWNER, 1),
+            eq(ARMED, 1),
+            eq(ATTEMPTS, 0),
+            eq(PERMIT, 0),
+            healthy.clone(),
+        ]);
+        action(
+            &mut m,
+            label,
+            all([
+                eq(OWNER, 1),
+                eq(ARMED, 1),
+                healthy.clone(),
+                if broken && kind == 8 {
+                    Var(ATTEMPTS).lt(Int(2))
+                } else {
+                    eq(ATTEMPTS, 0)
+                },
+            ]),
+            &[
+                (ATTEMPTS, Var(ATTEMPTS).plus(Int(1))),
+                (PERMIT, Int(permit)),
+                (LEASE, Int(if permit == 2 { 1 } else { 0 })),
+                (OWNER, Int(if permit == 2 { 1 } else { 4 })),
+                (ARMED, Int(if permit == 2 { 1 } else { 0 })),
+                (BAD, write_law.ite(Var(BAD), Int(1))),
+            ],
+        );
+    }
+    action(
+        &mut m,
+        "ReadGrant",
+        all([
+            eq(BIRTH, 1),
+            eq(PERMIT, 2),
+            eq(LEASE, 1),
+            eq(OWNER, 1),
+            healthy.clone(),
+            eq(READ, 0),
+        ]),
+        &[(READ, Int(1))],
+    );
+    let child_law = all([
+        eq(PROFILE, 1),
+        healthy.clone(),
+        eq(BIRTH, 1),
+        eq(PERMIT, 2),
+        eq(LEASE, 1),
+        eq(READ, 1),
+        eq(OWNER, 1),
+        eq(PD, 0),
+        eq(KNOWN, 1),
+        eq(CD, 0),
+        eq(HELLO, 0),
+    ]);
+    for (span, label, cost) in [(1, "ChildArgvSpan", 9), (2, "ChildComputeOwnerSpan", 27)] {
+        let order = if span == 1 {
+            eq(SPANS, 0)
+        } else {
+            eq(SPANS, 1)
+        };
+        action(
+            &mut m,
+            label,
+            all([
+                eq(BIRTH, 1),
+                eq(EXIT, 0),
+                if broken && kind == 0 {
+                    Bool(true)
+                } else {
+                    all([child_law.clone(), order.clone()])
+                },
+            ]),
+            &[
+                (SPANS, Int(span)),
+                (CD, Int(cost)),
+                (CO, Int(cost)),
+                (CP, Int(0)),
+                (BAD, all([child_law.clone(), order]).ite(Var(BAD), Int(1))),
+            ],
+        );
+    }
+    let pay_child = m.actions.len();
+    action(
+        &mut m,
+        "PayChildAfterSpanEnd",
+        ne(CD, 0),
+        &[(CD, Var(CD).minus(Int(9))), (CP, Var(CP).plus(Int(1)))],
+    );
+    let hello_law = all([child_law.clone(), eq(SPANS, 2), eq(CD, 0)]);
+    action(
+        &mut m,
+        "PaidHelloRetiresReadGate",
+        all([
+            eq(BIRTH, 1),
+            eq(PERMIT, 2),
+            eq(LEASE, 1),
+            eq(OWNER, 1),
+            healthy.clone(),
+            eq(SPANS, 2),
+            eq(HELLO, 0),
+            if broken && kind == 9 {
+                Bool(true)
+            } else {
+                eq(CD, 0)
+            },
+        ]),
+        &[
+            (BOOT, Int(1)),
+            (HELLO, Int(1)),
+            (WAITING, Int(0)),
+            (RETIRED, Int(1)),
+            (BAD, hello_law.ite(Var(BAD), Int(1))),
+        ],
+    );
+    action(
+        &mut m,
+        "AcceptHelloAndCloseLease",
+        all([
+            eq(HELLO, 1),
+            eq(BOOT, 1),
+            eq(CD, 0),
+            eq(OWNER, 1),
+            eq(PROFILE, 1),
+            healthy.clone(),
+        ]),
+        &[(LEASE, Int(0)), (OWNER, Int(2)), (ARMED, Int(0))],
+    );
+    let parent_law = all([eq(OWNER, 2), healthy.clone(), eq(PD, 0), eq(PPREP, 0)]);
+    action(
+        &mut m,
+        "ParentPrepareSpan",
+        if broken && kind == 1 {
+            all([eq(PPREP, 0), eq(OWNER, 2).or(eq(OWNER, 1)).or(eq(OWNER, 3))])
+        } else {
+            parent_law.clone()
+        },
+        &[
+            (PPREP, Int(1)),
+            (PD, Int(9)),
+            (PO, Int(9)),
+            (PP, Int(0)),
+            (BAD, parent_law.ite(Var(BAD), Int(1))),
+        ],
+    );
+    let start_law = all([
+        eq(OWNER, 2),
+        eq(HELLO, 1),
+        eq(BOOT, 1),
+        eq(RETIRED, 1),
+        eq(PPREP, 1),
+        eq(PD, 0),
+        healthy.clone(),
+        eq(START, 0),
+    ]);
+    action(
+        &mut m,
+        "PaidStart",
+        all([
+            eq(OWNER, 2),
+            eq(HELLO, 1),
+            eq(BOOT, 1),
+            eq(RETIRED, 1),
+            eq(PPREP, 1),
+            healthy.clone(),
+            eq(START, 0),
+            if broken && kind == 10 {
+                Bool(true)
+            } else {
+                eq(PD, 0)
+            },
+        ]),
+        &[
+            (START, Int(1)),
+            (OWNER, Int(3)),
+            (BAD, start_law.ite(Var(BAD), Int(1))),
+        ],
+    );
+    action(
+        &mut m,
+        "ChildWorkSpan",
+        all([
+            eq(OWNER, 3),
+            eq(START, 1),
+            eq(CD, 0),
+            eq(WORK, 0),
+            healthy.clone(),
+        ]),
+        &[(WORK, Int(1)), (CD, Int(9)), (CO, Int(9)), (CP, Int(0))],
+    );
+    for label in ["Revoke", "Cancel", "ParentEof", "RestartCannotReopenPipe"] {
+        action(
+            &mut m,
+            label,
+            all([ne(BIRTH, 0), eq(SETTLED, 0)]),
+            &[
+                (LEASE, Int(0)),
+                (ARMED, Int(0)),
+                (PERMIT, Int(3)),
+                (OWNER, Int(4)),
+                (CANCEL, Int(1)),
+            ],
+        );
+    }
+    action(
+        &mut m,
+        "ContextToB2",
+        eq(EPOCH, 0),
+        &[
+            (EPOCH, Int(1)),
+            (LEASE, Int(0)),
+            (ARMED, Int(0)),
+            (PERMIT, eq(ATTEMPTS, 0).ite(Var(PERMIT), Int(3))),
+            (OWNER, eq(BIRTH, 0).ite(Var(OWNER), Int(4))),
+        ],
+    );
+    action(&mut m, "ContextBackToA3", eq(EPOCH, 1), &[(EPOCH, Int(2))]);
+    action(
+        &mut m,
+        "ReadinessExpiresFromBirthOrigin",
+        all([eq(CALLS, 1), eq(HELLO, 0), eq(EXPIRED, 0)]),
+        &[(EXPIRED, Int(1)), (LEASE, Int(0)), (ARMED, Int(0))],
+    );
+    action(
+        &mut m,
+        "ObserveActualExit",
+        all([eq(BIRTH, 1), eq(EXIT, 0)]),
+        &[
+            (EXIT, Int(1)),
+            (WAITING, Int(0)),
+            (LEASE, Int(0)),
+            (OWNER, Int(4)),
+        ],
+    );
+    action(
+        &mut m,
+        "ValidateImmutableOutput",
+        all([
+            eq(EXIT, 1),
+            eq(START, 1),
+            eq(WORK, 1),
+            eq(PD, 0),
+            eq(CD, 0),
+            healthy.clone(),
+            eq(VALID, 0),
+            eq(SETTLED, 0),
+        ]),
+        &[(VALID, Int(1)), (PD, Int(9)), (PO, Int(9)), (PP, Int(0))],
+    );
+    action(
+        &mut m,
+        "Complete",
+        all([
+            eq(EXIT, 1),
+            eq(VALID, 1),
+            eq(PD, 0),
+            eq(CD, 0),
+            healthy.clone(),
+            eq(SETTLED, 0),
+        ]),
+        &[(SETTLED, Int(1)), (SLOT, Int(0)), (OWNER, Int(5))],
+    );
+    let settle = m.actions.len();
+    action(
+        &mut m,
+        "SettleRefusedAfterActualExit",
+        all([
+            eq(EXIT, 1),
+            eq(PD, 0),
+            eq(CD, 0),
+            eq(SETTLED, 0),
+            eq(VALID, 0),
+            ne(VERDICT, 0),
+            eq(VERDICT, 2)
+                .or(eq(CANCEL, 1))
+                .or(eq(EXPIRED, 1))
+                .or(eq(START, 0))
+                .or(eq(WORK, 0))
+                .or(current.clone().negate()),
+        ]),
+        &[(SETTLED, Int(1)), (SLOT, Int(0)), (OWNER, Int(5))],
+    );
+    let unknown = m.actions.len();
+    action(
+        &mut m,
+        "QuarantineUnknownBirth",
+        all([eq(BIRTH, 2), eq(QUARANTINE, 0)]),
+        &[(QUARANTINE, Int(1)), (OWNER, Int(4)), (RETAINED, Int(1))],
+    );
+    let known = m.actions.len();
+    action(
+        &mut m,
+        "QuarantineNoQualifyingHello",
+        all([eq(BIRTH, 1), eq(HELLO, 0), eq(EXIT, 0), eq(QUARANTINE, 0)]),
+        &[
+            (QUARANTINE, Int(1)),
+            (OWNER, Int(4)),
+            (LEASE, Int(0)),
+            (EXPIRED, Int(1)),
+        ],
+    );
+    action(
+        &mut m,
+        "BrokenResetDebt",
+        all([Bool(broken && kind == 4), ne(PD, 0)]),
+        &[(PD, Int(0))],
+    );
+    action(
+        &mut m,
+        "BrokenReleaseUnknownBirth",
+        all([Bool(broken && kind == 6), eq(BIRTH, 2)]),
+        &[(SLOT, Int(0)), (RETAINED, Int(0)), (OWNER, Int(5))],
+    );
+    let controls = m.actions.len();
+    action(
+        &mut m,
+        "IndependentStatusCancelControl",
+        Bool(true),
+        &[(CONTROL, Int(1).minus(Var(CONTROL)))],
+    );
+    action(
+        &mut m,
+        "IndependentOtherJobProgress",
+        Var(OTHER).lt(Int(2)),
+        &[(OTHER, Var(OTHER).plus(Int(1)))],
+    );
+    safe(&mut m, "AllBirthPermitOwnerAndHandoffGuards", eq(BAD, 0));
+    safe(
+        &mut m,
+        "OneOriginalBirthAndOneConsumedPermitAttempt",
+        all([Var(CALLS).le(Int(1)), Var(ATTEMPTS).le(Int(1))]),
+    );
+    safe(
+        &mut m,
+        "UnknownBirthKeepsCustodyAndSlot",
+        implies(eq(BIRTH, 2), eq(SLOT, 1)),
+    );
+    safe(
+        &mut m,
+        "KnownLiveChildKeepsSlot",
+        implies(all([eq(BIRTH, 1), eq(EXIT, 0)]), eq(SLOT, 1)),
+    );
+    safe(
+        &mut m,
+        "FullParentDebtCannotReset",
+        Var(PO).le(Var(PD).plus(nine(Var(PP)))),
+    );
+    safe(
+        &mut m,
+        "FullChildDebtCannotReset",
+        Var(CO).le(Var(CD).plus(nine(Var(CP)))),
+    );
+    safe(
+        &mut m,
+        "SettledKnownChildRequiresActualExitAndPaidDebt",
+        implies(eq(SETTLED, 1), all([eq(EXIT, 1), eq(PD, 0), eq(CD, 0)])),
+    );
+    m.responses.push(Response {
+        name: "ControlIndependentOfBirthDebtPermit".into(),
+        request: eq(CONTROL, 0),
+        response: eq(CONTROL, 1),
+    });
+    m.responses.push(Response {
+        name: "UnknownBirthGetsHonestQuarantine".into(),
+        request: eq(BIRTH, 2),
+        response: eq(QUARANTINE, 1).or(eq(BIRTH, 1)),
+    });
+    m.responses.push(Response {
+        name: "MissingQualifyingHelloGetsDisposition".into(),
+        request: all([eq(BIRTH, 1), eq(HELLO, 0), eq(EXIT, 0)]),
+        response: eq(HELLO, 1).or(eq(EXIT, 1)).or(eq(QUARANTINE, 1)),
+    });
+    // Deadline/quarantine observations abstract their due instant; actual
+    //250ms same-origin and2s+2s limits remain process evidence. No fair OS
+    // return, permit delivery, foreground recovery or actual exit is assumed.
+    m.weak_fair.extend([
+        vec![pay_parent],
+        vec![pay_child],
+        vec![controls],
+        vec![settle],
+        vec![unknown],
+        vec![known],
+    ]);
+    m
+}
+
+const PROBE_NAMES: [&str; 3] = [
+    "C1BootstrapProbeContext",
+    "C1BootstrapProbeStart",
+    "C1BootstrapProbeOmittedContext",
+];
+fn bootstrap_probe(kind: usize, broken: bool) -> Model {
+    // Canonical context input shape only; no private bytes/permit layout is
+    // independently defined here. Full cryptographic vectors are producer-owned.
+    let mut m = model(
+        PROBE_NAMES[kind],
+        broken,
+        &[
+            ("probe", 1, 0),
+            ("context", 2, 0),
+            ("profile", 1, 0),
+            ("birth", 1, 0),
+            ("hello", 1, 0),
+            ("start", 1, 0),
+            ("source_read", 1, 0),
+            ("exited", 1, 0),
+            ("owner", 1, 0),
+            ("bad", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "ProbeExplicitNull",
+        eq(3, 0),
+        &[(0, Int(1)), (1, Int(1))],
+    );
+    action(
+        &mut m,
+        "RealFullContext",
+        eq(3, 0),
+        &[(0, Int(0)), (1, Int(2))],
+    );
+    action(
+        &mut m,
+        "RealNullContext",
+        eq(3, 0),
+        &[(0, Int(0)), (1, Int(1))],
+    );
+    action(&mut m, "OmittedContext", eq(3, 0), &[(1, Int(0))]);
+    action(&mut m, "PrebirthKnownProfile", eq(3, 0), &[(2, Int(1))]);
+    let context = eq(0, 1).ite(eq(1, 1), eq(1, 2));
+    action(
+        &mut m,
+        "BirthFromFrozenBinding",
+        all([
+            eq(2, 1),
+            eq(3, 0),
+            if broken && kind == 0 {
+                Bool(true)
+            } else if broken && kind == 2 {
+                context.clone().or(eq(1, 0))
+            } else {
+                context.clone()
+            },
+        ]),
+        &[(3, Int(1)), (8, Int(1)), (9, context.ite(Var(9), Int(1)))],
+    );
+    action(
+        &mut m,
+        "PaidBootstrapHello",
+        all([eq(3, 1), eq(4, 0), eq(7, 0), eq(8, 1)]),
+        &[(4, Int(1))],
+    );
+    action(
+        &mut m,
+        "MatchingOrHostileStart",
+        all([eq(4, 1), eq(5, 0), eq(7, 0), eq(8, 1)]),
+        &[
+            (
+                5,
+                if broken && kind == 1 {
+                    Int(1)
+                } else {
+                    eq(0, 1).ite(Int(0), Int(1))
+                },
+            ),
+            (
+                6,
+                if broken && kind == 1 {
+                    Int(1)
+                } else {
+                    eq(0, 1).ite(Int(0), Int(1))
+                },
+            ),
+        ],
+    );
+    action(
+        &mut m,
+        "ActualExitJoinAndReap",
+        eq(3, 1),
+        &[(7, Int(1)), (8, Int(0))],
+    );
+    safe(&mut m, "ExplicitNullOnlyForProbeBeforeBirth", eq(9, 0));
+    safe(
+        &mut m,
+        "ProbePermanentlyRefusesEveryStartSourceFree",
+        implies(eq(0, 1), all([eq(5, 0), eq(6, 0)])),
+    );
+    // No fair Hello/delivery/OS exit. Real owned join/reap is required evidence.
+    m
+}
+
+const FINAL_NAMES: [&str; 6] = [
+    "C1FinalPublicAdmission",
+    "C1FinalPublicPayload",
+    "C1FinalPublicBounds",
+    "C1FinalPublicCache",
+    "C1FinalPublicRepeatedCheck",
+    "C1FinalPublicRecursiveDebt",
+];
+fn final_public_admission(kind: usize, broken: bool) -> Model {
+    // Two final sites only. Prepared public cache exists before initial27ms
+    // spawn debt; no connection construction or payload data belongs to control.
+    const SITE: usize = 0;
+    const DEBT: usize = 1;
+    const OWED: usize = 2;
+    const PAID: usize = 3;
+    const EPOCH: usize = 4;
+    const HELD: usize = 5;
+    const CPU: usize = 6;
+    const CLOCK: usize = 7;
+    const CLASS: usize = 8;
+    const ROWS: usize = 9;
+    const CELL: usize = 10;
+    const TOTAL: usize = 11;
+    const PC: usize = 12;
+    const SC: usize = 13;
+    const COUNT: usize = 14;
+    const EFFECT: usize = 15;
+    const REFUSED: usize = 16;
+    const OWNER: usize = 17;
+    const EXIT: usize = 18;
+    const RELEASED: usize = 19;
+    const BAD: usize = 20;
+    const CONTROL: usize = 21;
+    let nine = |value: Expr| (0..9).fold(Int(0), |sum, _| sum.plus(value.clone()));
+    let mut m = model(
+        FINAL_NAMES[kind],
+        broken,
+        &[
+            ("site", 3, 0),
+            ("work_debt", 27, 27),
+            ("owed", 27, 27),
+            ("paid", 3, 0),
+            ("public_epoch_a1_b2_a3", 2, 0),
+            ("dependency_held", 1, 0),
+            ("inclusive_control_cpu", 2, 1),
+            ("clock_known", 1, 1),
+            ("control_class", 3, 0),
+            ("public_rows", 8, 7),
+            ("cell_kib", 17, 16),
+            ("total_kib", 113, 112),
+            ("permit_checks", 2, 0),
+            ("start_checks", 2, 0),
+            ("total_final_checks", 3, 0),
+            ("real_handoff_effect", 2, 0),
+            ("refused", 1, 0),
+            ("child_owner_retained", 1, 1),
+            ("actual_exit", 1, 0),
+            ("released", 1, 0),
+            ("bad", 1, 0),
+            ("control_reply", 1, 0),
+        ],
+    );
+    let pay = m.actions.len();
+    action(
+        &mut m,
+        "PayExistingWorkDebt",
+        ne(DEBT, 0),
+        &[
+            (DEBT, Var(DEBT).minus(Int(9))),
+            (PAID, Var(PAID).plus(Int(1))),
+        ],
+    );
+    action(
+        &mut m,
+        "AfterDebtPublicTamper",
+        all([eq(DEBT, 0), eq(EPOCH, 0)]),
+        &[(EPOCH, Int(1))],
+    );
+    action(&mut m, "DisplayReturnsA3", eq(EPOCH, 1), &[(EPOCH, Int(2))]);
+    action(
+        &mut m,
+        "HoldPreparedDependency",
+        eq(HELD, 0),
+        &[(HELD, Int(1))],
+    );
+    action(&mut m, "ReleaseDependency", eq(HELD, 1), &[(HELD, Int(0))]);
+    action(
+        &mut m,
+        "InjectTwoMsFinalControl",
+        eq(CPU, 1),
+        &[(CPU, Int(2))],
+    );
+    action(
+        &mut m,
+        "UnknownFinalClock",
+        eq(CLOCK, 1),
+        &[(CLOCK, Int(0))],
+    );
+    action(
+        &mut m,
+        "MisclassifyPayload",
+        eq(CLASS, 0),
+        &[(CLASS, Int(1))],
+    );
+    action(
+        &mut m,
+        "MisclassifyGenericSqliteOrSetup",
+        eq(CLASS, 0),
+        &[(CLASS, Int(2))],
+    );
+    action(
+        &mut m,
+        "MisclassifyPreparedConnectionSetup",
+        eq(CLASS, 0),
+        &[(CLASS, Int(3))],
+    );
+    action(
+        &mut m,
+        "OversizePublicCellBeforeFetch",
+        eq(CELL, 16),
+        &[(CELL, Int(17))],
+    );
+    action(
+        &mut m,
+        "EighthPublicRowBeforeFetch",
+        eq(ROWS, 7),
+        &[(ROWS, Int(8))],
+    );
+    action(
+        &mut m,
+        "ExcessTotalBeforeFetch",
+        eq(TOTAL, 112),
+        &[(TOTAL, Int(113))],
+    );
+    let valid = all([
+        eq(EXIT, 0),
+        eq(EPOCH, 0),
+        eq(HELD, 0),
+        Var(CPU).le(Int(1)),
+        eq(CLOCK, 1),
+        eq(CLASS, 0),
+        Var(ROWS).le(Int(7)),
+        Var(CELL).le(Int(16)),
+        Var(TOTAL).le(Int(112)),
+    ]);
+    let allowed = all([
+        eq(EXIT, 0),
+        if broken && kind == 3 {
+            Bool(true)
+        } else {
+            eq(EPOCH, 0)
+        },
+        eq(HELD, 0),
+        if broken && kind == 0 {
+            Bool(true)
+        } else {
+            all([Var(CPU).le(Int(1)), eq(CLOCK, 1)])
+        },
+        if broken && kind == 1 {
+            Bool(true)
+        } else {
+            eq(CLASS, 0)
+        },
+        if broken && kind == 2 {
+            Bool(true)
+        } else {
+            all([
+                Var(ROWS).le(Int(7)),
+                Var(CELL).le(Int(16)),
+                Var(TOTAL).le(Int(112)),
+            ])
+        },
+    ]);
+    for (site, index, label, effect) in [
+        (0, PC, "FinalPermitControlAndWrite", 1),
+        (2, SC, "FinalStartControlAndWrite", 2),
+    ] {
+        action(
+            &mut m,
+            label,
+            all([eq(SITE, site), eq(DEBT, 0), eq(index, 0), allowed.clone()]),
+            &[
+                (index, Int(1)),
+                (COUNT, Var(COUNT).plus(Int(1))),
+                (EFFECT, Int(effect)),
+                (SITE, Int(if site == 0 { 1 } else { 3 })),
+                (
+                    DEBT,
+                    if broken && kind == 5 {
+                        Int(9)
+                    } else {
+                        Var(DEBT)
+                    },
+                ),
+                (BAD, valid.clone().ite(Var(BAD), Int(1))),
+            ],
+        );
+        action(
+            &mut m,
+            &format!("Refuse{label}"),
+            all([
+                eq(SITE, site),
+                eq(DEBT, 0),
+                eq(index, 0),
+                valid.clone().negate(),
+            ]),
+            &[
+                (index, Int(1)),
+                (COUNT, Var(COUNT).plus(Int(1))),
+                (SITE, Int(3)),
+                (REFUSED, Int(1)),
+            ],
+        );
+    }
+    // A real write can precede its clock/CPU failure. Revoke and retain the
+    // effect/Child; an over-budget verdict is never proof of absent effect.
+    action(
+        &mut m,
+        "LateTimingFailureRetainsEffect",
+        all([
+            eq(SITE, 0),
+            eq(DEBT, 0),
+            eq(PC, 0),
+            eq(EPOCH, 0),
+            eq(HELD, 0),
+            eq(CLASS, 0),
+            eq(CPU, 2).or(eq(CLOCK, 0)),
+        ]),
+        &[
+            (PC, Int(1)),
+            (COUNT, Int(1)),
+            (EFFECT, Int(1)),
+            (SITE, Int(3)),
+            (REFUSED, Int(1)),
+        ],
+    );
+    action(
+        &mut m,
+        "PaidHelloThenOrdinaryParentPreparation",
+        eq(SITE, 1),
+        &[
+            (SITE, Int(2)),
+            (DEBT, Int(9)),
+            (OWED, Int(9)),
+            (PAID, Int(0)),
+        ],
+    );
+    action(
+        &mut m,
+        "BrokenRepeatPermitFinalCheck",
+        all([Bool(broken && kind == 4), eq(PC, 1)]),
+        &[(PC, Int(2)), (COUNT, Var(COUNT).plus(Int(1)))],
+    );
+    action(&mut m, "ActualChildExit", eq(EXIT, 0), &[(EXIT, Int(1))]);
+    let settle = m.actions.len();
+    action(
+        &mut m,
+        "ReleaseOnlyAfterActualExit",
+        all([eq(EXIT, 1), eq(SITE, 3), eq(RELEASED, 0), eq(DEBT, 0)]),
+        &[(OWNER, Int(0)), (RELEASED, Int(1))],
+    );
+    let control = m.actions.len();
+    action(
+        &mut m,
+        "IndependentStatusCancel",
+        Bool(true),
+        &[(CONTROL, Int(1).minus(Var(CONTROL)))],
+    );
+    safe(
+        &mut m,
+        "OnlyExactCurrentBoundedPublicAdmissionControl",
+        eq(BAD, 0),
+    );
+    safe(
+        &mut m,
+        "AtMostOneCheckPerHandoffTwoTotal",
+        all([
+            Var(PC).le(Int(1)),
+            Var(SC).le(Int(1)),
+            Var(COUNT).le(Int(2)),
+        ]),
+    );
+    safe(
+        &mut m,
+        "NoRecursiveWorkDebtForFinalControl",
+        Var(OWED).eq(Var(DEBT).plus(nine(Var(PAID)))),
+    );
+    safe(
+        &mut m,
+        "NoReleaseOfUnknownRealChildEffect",
+        implies(eq(EXIT, 0), eq(OWNER, 1)),
+    );
+    m.responses.push(Response {
+        name: "FinalControlNeverBlocksStatusCancel".into(),
+        request: eq(CONTROL, 0),
+        response: eq(CONTROL, 1),
+    });
+    m.weak_fair.extend([vec![pay], vec![settle], vec![control]]);
+    m
+}
+
+const QUANTUM_NAMES: [&str; 7] = [
+    "C1QuantumDebt",
+    "C1QuantumDebtParserTag",
+    "C1QuantumDebtRepeatedEffect",
+    "C1QuantumDebtEffectOwner",
+    "C1QuantumDebtHiddenNativeCpu",
+    "C1QuantumDebtWrapper",
+    "C1QuantumDebtHotOwner",
+];
+
+fn quantum_debt(kind: usize, broken: bool) -> Model {
+    let nine = |value: Expr| (0..9).fold(Int(0), |sum, _| sum.plus(value.clone()));
+    // Decision65086: two jobs, one selected original operation each, epochs
+    // A1/B2/A3. At most two selected calls; distinct later operations remain
+    // outside this bounded instance. A explores
+    // all cost/effect verdicts; B uses one fixed allowed1ms native call. CPU is
+    // abstract ms, wall_over=1 means >25ms; selected profiles have total<=3ms.
+    // Both original jobs capture A1; B2/A3 cannot recapture their old operations.
+    // The solo-A projection covers all four selected native profiles/tags and
+    // cost/verdict controls. The explicit two-job projection uses the3ms full
+    // process profile. B never inspects A's tag/app/native-cost fields: its
+    // guards depend only on current authority, the two-call cap and its OWN
+    // debt. Keeping every native-class history crossed with B's independent
+    // return/Start/validation/exit history adds no new dependency to this
+    // projection. The pair still explores every before/after-control boundary
+    // of all three9ms A debt payments, plus B's two own debt payments.
+    // Real clocks/OS calls, other simultaneous cost/tag pairs, fractional costs
+    // and larger overshoots require process witnesses; this is not a refinement
+    // proof of unbounded composition or arbitrary Rust.
+    const EPOCH: usize = 0;
+    const FG: usize = 1; // 0 quiescent,1 foreground,2 unknown
+    const CANCEL: usize = 2;
+    const DEADLINE: usize = 3;
+    const CLOSED: usize = 4;
+    const PHASE: usize = 5; // 0 ready,1 external flight,2 returned,3 verdict,4 quarantine,5 complete,6 failed
+    const CAPTURED: usize = 6;
+    const OWNER: usize = 7;
+    const EFFECT: usize = 8; // 0 absent,1 present,2 unresolved
+    const CALLS: usize = 9;
+    const TAG: usize = 10; // 0 app,1 process,2 compute owner,3 no-replace,4 parser,5 SQLite,6 control
+    const APP_CPU: usize = 11;
+    const NATIVE_CPU: usize = 12;
+    const FULL_CPU: usize = 13;
+    const DEBT: usize = 14;
+    const PAID: usize = 15; // completed9ms wall waits after this span's end
+    const CLOCK: usize = 16;
+    const WALL_OVER: usize = 17;
+    const VALIDATED: usize = 18;
+    const EXITED: usize = 19;
+    const ACCEPTED: usize = 20;
+    const RECORDED: usize = 21;
+    const HOT: usize = 22;
+    const B_CLOSED: usize = 23;
+    const B_PHASE: usize = 24; // 0 ready,1 flight,2 returned,3 completed
+    const B_CAPTURED: usize = 25;
+    const B_EFFECT: usize = 26;
+    const B_OWNER: usize = 27;
+    const B_CALLS: usize = 28;
+    const B_DEBT: usize = 29;
+    const B_EXITED: usize = 30;
+    const B_VALIDATED: usize = 31;
+    const CONTROL: usize = 32;
+    const STARTED: usize = 33;
+    const B_STARTED: usize = 34;
+    const BAD_START: usize = 35;
+    const PAIR: usize = 36;
+    let mut m = model(
+        QUANTUM_NAMES[kind],
+        broken,
+        &[
+            ("epoch_a1_b2_a3", 2, 0),
+            ("foreground_unknown", 2, 1),
+            ("cancel_a", 1, 0),
+            ("deadline_a", 1, 0),
+            ("closed_a", 1, 0),
+            ("phase_a", 6, 0),
+            ("captured_a", 2, 0),
+            ("owner_a", 1, 0),
+            ("effect_a", 2, 0),
+            ("calls_a", 2, 0),
+            ("tag_a", 7, 0),
+            ("app_cpu_a", 2, 0),
+            ("native_cpu_a", 3, 0),
+            ("full_cpu_a", 3, 0),
+            ("debt_a", 27, 0),
+            ("paid_after_end_a", 3, 0),
+            ("clock_available_a", 1, 1),
+            ("native_wall_over_a", 1, 0),
+            ("validated_a", 1, 0),
+            ("actual_exit_a", 1, 0),
+            ("accepted_a", 1, 0),
+            ("cost_recorded_a", 1, 0),
+            ("hot_owner_a", 1, 0),
+            ("closed_b", 1, 0),
+            ("phase_b", 3, 0),
+            ("captured_b", 2, 0),
+            ("effect_b", 2, 0),
+            ("owner_b", 1, 0),
+            ("calls_b", 1, 0),
+            ("debt_b", 9, 0),
+            ("actual_exit_b", 1, 0),
+            ("validated_b", 1, 0),
+            ("control_reply", 1, 0),
+            ("start_handed_a", 1, 0),
+            ("start_handed_b", 1, 0),
+            ("start_debt_violation", 1, 0),
+            ("independent_pair_projection", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "SelectIndependentPairProjection",
+        all([
+            eq(PAIR, 0),
+            eq(CLOSED, 0),
+            eq(B_CLOSED, 0),
+            eq(PHASE, 0),
+            eq(CALLS, 0),
+            eq(RECORDED, 0),
+            eq(EPOCH, 0),
+            eq(CANCEL, 0),
+            eq(DEADLINE, 0),
+        ]),
+        &[(PAIR, Int(1))],
+    );
+    action(
+        &mut m,
+        "CloseA",
+        all([eq(CLOSED, 0), eq(EPOCH, 0)]),
+        &[(CLOSED, Int(1)), (CAPTURED, Var(EPOCH))],
+    );
+    action(
+        &mut m,
+        "CloseB",
+        all([eq(B_CLOSED, 0), eq(EPOCH, 0), eq(PAIR, 1)]),
+        &[(B_CLOSED, Int(1)), (B_CAPTURED, Var(EPOCH))],
+    );
+    action(&mut m, "Quiescent", ne(FG, 0), &[(FG, Int(0))]);
+    action(&mut m, "Foreground", ne(FG, 1), &[(FG, Int(1))]);
+    action(&mut m, "UnknownForeground", ne(FG, 2), &[(FG, Int(2))]);
+    // Select one interrupt to keep the fault-state product bounded; it may
+    // occur before/after the effect and before its independent verdict.
+    let uninterrupted = all([
+        eq(EPOCH, 0),
+        eq(CANCEL, 0),
+        eq(DEADLINE, 0),
+        eq(CLOCK, 1),
+        eq(WALL_OVER, 0),
+    ]);
+    action(
+        &mut m,
+        "ContextToB2",
+        uninterrupted.clone(),
+        &[(EPOCH, Int(1))],
+    );
+    action(&mut m, "ContextBackToA3", eq(EPOCH, 1), &[(EPOCH, Int(2))]);
+    action(
+        &mut m,
+        "CancelA",
+        uninterrupted.clone(),
+        &[(CANCEL, Int(1))],
+    );
+    action(
+        &mut m,
+        "DeadlineA",
+        uninterrupted.clone(),
+        &[(DEADLINE, Int(1))],
+    );
+    action(
+        &mut m,
+        "SelectHotOwner",
+        all([eq(PHASE, 0), eq(CALLS, 0)]),
+        &[(HOT, Int(1))],
+    );
+    let ready = all([
+        eq(CLOSED, 1),
+        eq(FG, 0),
+        eq(CANCEL, 0),
+        eq(DEADLINE, 0),
+        Var(EPOCH).eq(Var(CAPTURED)),
+        eq(PHASE, 0),
+    ]);
+    for cpu in 0..=2 {
+        action(
+            &mut m,
+            &format!("AdmitAppCpu{cpu}"),
+            all([
+                ready.clone(),
+                eq(DEBT, 0),
+                Bool(cpu <= 1),
+                eq(PAIR, 0).or(Bool(cpu == 1)),
+            ]),
+            &[
+                (OWNER, Int(1)),
+                (TAG, Int(0)),
+                (APP_CPU, Int(cpu)),
+                (NATIVE_CPU, Int(0)),
+                (FULL_CPU, Int(cpu)),
+                (DEBT, Int(9 * cpu.max(1))),
+                (PAID, Int(0)),
+                (RECORDED, Int(1)),
+            ],
+        );
+    }
+    for (tag, app, native) in [(1, 1, 2), (2, 0, 1), (3, 0, 0), (3, 0, 3)] {
+        let admission = if broken && kind == 2 {
+            all([
+                eq(CLOSED, 1),
+                eq(FG, 0),
+                eq(CANCEL, 0),
+                eq(DEADLINE, 0),
+                Var(EPOCH).eq(Var(CAPTURED)),
+                Var(CALLS).lt(Int(2)),
+            ])
+        } else {
+            all([ready.clone(), eq(CALLS, 0)])
+        };
+        action(
+            &mut m,
+            &format!("AdmitNative{tag}App{app}Cpu{native}"),
+            all([
+                admission,
+                eq(PAIR, 0).or(Bool(tag == 1 && app == 1 && native == 2)),
+                if broken && kind == 0 {
+                    Bool(true)
+                } else {
+                    eq(DEBT, 0)
+                },
+                if broken && kind == 6 {
+                    Bool(true)
+                } else {
+                    eq(HOT, 0)
+                },
+                Var(CALLS).plus(Var(B_CALLS)).lt(Int(2)),
+            ]),
+            &[
+                (PHASE, Int(1)),
+                (OWNER, Int(1)),
+                (EFFECT, Int(2)),
+                (CALLS, Var(CALLS).plus(Int(1))),
+                (TAG, Int(tag)),
+                (APP_CPU, Int(app)),
+                (NATIVE_CPU, Int(native)),
+                (FULL_CPU, Int(app + native)),
+                (RECORDED, Int(0)),
+            ],
+        );
+    }
+    for (tag, label, fault) in [
+        (4, "Parser", 1),
+        (7, "Cleanup", 1),
+        (5, "SqliteWrapper", 5),
+        (6, "ControlTickWrapper", 5),
+    ] {
+        action(
+            &mut m,
+            &format!("Mislabel{label}AsNative"),
+            all([
+                ready.clone(),
+                eq(DEBT, 0),
+                eq(CALLS, 0),
+                Bool(broken && kind == fault),
+            ]),
+            &[
+                (PHASE, Int(1)),
+                (OWNER, Int(1)),
+                (EFFECT, Int(2)),
+                (CALLS, Int(1)),
+                (TAG, Int(tag)),
+                (APP_CPU, Int(2)),
+                (NATIVE_CPU, Int(0)),
+                (FULL_CPU, Int(2)),
+                (RECORDED, Int(0)),
+            ],
+        );
+    }
+    action(
+        &mut m,
+        "MissingClock",
+        all([uninterrupted.clone(), eq(PHASE, 1).or(eq(PHASE, 2))]),
+        &[(CLOCK, Int(0))],
+    );
+    action(
+        &mut m,
+        "NativeWallExceeds25ms",
+        all([eq(PHASE, 1), uninterrupted]),
+        &[(WALL_OVER, Int(1))],
+    );
+    for (effect, label) in [(0, "Absent"), (1, "Present")] {
+        let cost = if broken && kind == 4 {
+            Var(APP_CPU)
+        } else {
+            Var(FULL_CPU)
+        };
+        action(
+            &mut m,
+            &format!("ReturnNative{label}"),
+            eq(PHASE, 1).or(eq(PHASE, 4)),
+            &[
+                (PHASE, Int(2)),
+                (EFFECT, Int(effect)),
+                (OWNER, Int(1)),
+                (DEBT, cost.clone().lt(Int(1)).ite(Int(9), nine(cost))),
+                (PAID, Int(0)),
+                (RECORDED, Int(1)),
+            ],
+        );
+    }
+    let valid_verdict = all([
+        eq(CLOCK, 1),
+        eq(WALL_OVER, 0),
+        Var(APP_CPU).le(Int(1)),
+        Var(NATIVE_CPU).le(Int(2)),
+        Var(FULL_CPU).le(Int(3)),
+        eq(CANCEL, 0),
+        eq(DEADLINE, 0),
+        Var(EPOCH).eq(Var(CAPTURED)),
+        eq(EFFECT, 1),
+    ]);
+    action(
+        &mut m,
+        "VerdictRetainsTypedEffect",
+        eq(PHASE, 2),
+        &[
+            (PHASE, Int(3)),
+            (ACCEPTED, valid_verdict.ite(Int(1), Int(0))),
+            (OWNER, if broken && kind == 3 { Int(0) } else { Int(1) }),
+        ],
+    );
+    let rest_a = m.actions.len();
+    action(
+        &mut m,
+        "PayRestAAfterSpanEnd",
+        all([eq(RECORDED, 1), ne(DEBT, 0)]),
+        &[
+            (DEBT, Var(DEBT).minus(Int(9))),
+            (PAID, Var(PAID).plus(Int(1))),
+        ],
+    );
+    action(
+        &mut m,
+        "ObserveActualExitA",
+        all([ne(EFFECT, 2), eq(EFFECT, 1), ne(EXITED, 1)]),
+        &[(EXITED, Int(1))],
+    );
+    action(
+        &mut m,
+        "HandStartToChildA",
+        all([
+            eq(PHASE, 3),
+            eq(ACCEPTED, 1),
+            eq(STARTED, 0),
+            eq(FG, 0),
+            eq(CANCEL, 0),
+            eq(DEADLINE, 0),
+            Var(EPOCH).eq(Var(CAPTURED)),
+            if broken && kind == 0 {
+                Bool(true)
+            } else {
+                eq(DEBT, 0)
+            },
+        ]),
+        &[
+            (STARTED, Int(1)),
+            (BAD_START, eq(DEBT, 0).ite(Int(0), Int(1))),
+        ],
+    );
+    action(
+        &mut m,
+        "ValidateImmutableResultA",
+        all([
+            eq(PHASE, 3),
+            eq(ACCEPTED, 1),
+            eq(STARTED, 1),
+            eq(DEBT, 0),
+            eq(VALIDATED, 0),
+            eq(FG, 0),
+            eq(CANCEL, 0),
+            eq(DEADLINE, 0),
+            Var(EPOCH).eq(Var(CAPTURED)),
+        ]),
+        &[
+            (VALIDATED, Int(1)),
+            (TAG, Int(0)),
+            (APP_CPU, Int(1)),
+            (NATIVE_CPU, Int(0)),
+            (FULL_CPU, Int(1)),
+            (DEBT, Int(9)),
+            (PAID, Int(0)),
+            (RECORDED, Int(1)),
+        ],
+    );
+    let settle_a = m.actions.len();
+    action(
+        &mut m,
+        "PresentA",
+        all([
+            eq(PHASE, 3),
+            eq(ACCEPTED, 1),
+            eq(VALIDATED, 1),
+            eq(EXITED, 1),
+            eq(DEBT, 0),
+            eq(FG, 0),
+            eq(CANCEL, 0),
+            eq(DEADLINE, 0),
+            Var(EPOCH).eq(Var(CAPTURED)),
+        ]),
+        &[(PHASE, Int(5)), (OWNER, Int(0))],
+    );
+    let fail_a = m.actions.len();
+    action(
+        &mut m,
+        "SettleFailedA",
+        all([
+            eq(PHASE, 3),
+            eq(ACCEPTED, 0),
+            eq(DEBT, 0),
+            eq(EFFECT, 0).or(eq(EXITED, 1)),
+        ]),
+        &[(PHASE, Int(6)), (OWNER, Int(0))],
+    );
+    let quarantine_a = m.actions.len();
+    action(
+        &mut m,
+        "QuarantineUnreturnedA",
+        eq(PHASE, 1),
+        &[(PHASE, Int(4)), (DEADLINE, Int(1))],
+    );
+    action(
+        &mut m,
+        "AdmitIndependentNativeB",
+        all([
+            eq(B_CLOSED, 1),
+            eq(B_PHASE, 0),
+            eq(B_DEBT, 0),
+            eq(FG, 0),
+            Var(EPOCH).eq(Var(B_CAPTURED)),
+            Var(CALLS).plus(Var(B_CALLS)).lt(Int(2)),
+        ]),
+        &[
+            (B_PHASE, Int(1)),
+            (B_EFFECT, Int(2)),
+            (B_OWNER, Int(1)),
+            (B_CALLS, Int(1)),
+        ],
+    );
+    action(
+        &mut m,
+        "ReturnNativeB",
+        eq(B_PHASE, 1),
+        &[(B_PHASE, Int(2)), (B_EFFECT, Int(1)), (B_DEBT, Int(9))],
+    );
+    let rest_b = m.actions.len();
+    action(
+        &mut m,
+        "PayRestBAfterSpanEnd",
+        eq(B_DEBT, 9),
+        &[(B_DEBT, Int(0))],
+    );
+    action(
+        &mut m,
+        "ObserveActualExitB",
+        all([eq(B_PHASE, 2), eq(B_EXITED, 0)]),
+        &[(B_EXITED, Int(1))],
+    );
+    action(
+        &mut m,
+        "HandStartToChildB",
+        all([
+            eq(B_PHASE, 2),
+            eq(B_DEBT, 0),
+            eq(B_STARTED, 0),
+            eq(FG, 0),
+            Var(EPOCH).eq(Var(B_CAPTURED)),
+        ]),
+        &[(B_STARTED, Int(1))],
+    );
+    action(
+        &mut m,
+        "ValidateImmutableResultB",
+        all([
+            eq(B_PHASE, 2),
+            eq(B_STARTED, 1),
+            eq(B_DEBT, 0),
+            eq(B_VALIDATED, 0),
+            eq(FG, 0),
+            Var(EPOCH).eq(Var(B_CAPTURED)),
+        ]),
+        &[(B_VALIDATED, Int(1)), (B_DEBT, Int(9))],
+    );
+    let settle_b = m.actions.len();
+    action(
+        &mut m,
+        "PresentB",
+        all([
+            eq(B_PHASE, 2),
+            eq(B_EXITED, 1),
+            eq(B_VALIDATED, 1),
+            eq(B_DEBT, 0),
+            eq(FG, 0),
+            Var(EPOCH).eq(Var(B_CAPTURED)),
+        ]),
+        &[(B_PHASE, Int(3)), (B_OWNER, Int(0))],
+    );
+    let control = m.actions.len();
+    action(
+        &mut m,
+        "IndependentControl",
+        Bool(true),
+        &[(CONTROL, Int(1).minus(Var(CONTROL)))],
+    );
+    action(
+        &mut m,
+        "RestartOrOriginalOperationRetryRetainsDebtAndEffect",
+        Bool(true),
+        &[],
+    );
+    safe(
+        &mut m,
+        "AtMostOneEffectPerOriginalOperationAndTwoSelectedCalls",
+        all([
+            Var(CALLS).le(Int(1)),
+            Var(CALLS).plus(Var(B_CALLS)).le(Int(2)),
+        ]),
+    );
+    safe(
+        &mut m,
+        "NoNativeCallOnHotOwnerOrFakeTag",
+        implies(
+            eq(PHASE, 1),
+            all([eq(HOT, 0), Int(1).le(Var(TAG)), Var(TAG).le(Int(3))]),
+        ),
+    );
+    safe(
+        &mut m,
+        "StrictApplicationCpuWithoutWrapperException",
+        Var(APP_CPU).le(Int(1)),
+    );
+    safe(
+        &mut m,
+        "KnownOrUnknownUnsettledEffectRetainsOwner",
+        implies(
+            eq(PHASE, 1)
+                .or(eq(PHASE, 2))
+                .or(eq(PHASE, 3))
+                .or(eq(PHASE, 4)),
+            eq(OWNER, 1),
+        ),
+    );
+    safe(
+        &mut m,
+        "FullInclusiveCostCreatesAfterEndDebt",
+        implies(
+            eq(RECORDED, 1),
+            Var(FULL_CPU)
+                .lt(Int(1))
+                .ite(Int(9), nine(Var(FULL_CPU)))
+                .le(Var(DEBT).plus(nine(Var(PAID)))),
+        ),
+    );
+    safe(
+        &mut m,
+        "NoAdmissionDuringPriorDebt",
+        implies(eq(PHASE, 1), eq(DEBT, 0)),
+    );
+    safe(&mut m, "NoStartBeforeParentDebtPaid", eq(BAD_START, 0));
+    safe(
+        &mut m,
+        "AcceptedNativeHasExactCpuWallAndClockEvidence",
+        implies(
+            eq(ACCEPTED, 1),
+            all([Var(NATIVE_CPU).le(Int(2)), eq(WALL_OVER, 0), eq(CLOCK, 1)]),
+        ),
+    );
+    safe(
+        &mut m,
+        "CompletedNeedsCurrentValidatedActualExitAndPaidDebt",
+        implies(
+            eq(PHASE, 5),
+            all([eq(VALIDATED, 1), eq(EXITED, 1), eq(DEBT, 0)]),
+        ),
+    );
+    safe(
+        &mut m,
+        "SecondUnresolvedEffectRetainsIndependentOwner",
+        implies(eq(B_PHASE, 1).or(eq(B_PHASE, 2)), eq(B_OWNER, 1)),
+    );
+    m.responses.push(Response {
+        name: "RequestedControlEventuallyReplies".into(),
+        request: eq(CONTROL, 0),
+        response: eq(CONTROL, 1),
+    });
+    m.responses.push(Response {
+        name: "StoppedExternalCallGetsHonestQuarantine".into(),
+        request: eq(PHASE, 1),
+        response: ne(PHASE, 1),
+    });
+    // Quarantine is the finite abstraction of the internal deadline/settlement
+    // observation becoming due. It never forces OS return or releases custody;
+    // the quantitative30s/2s+2s timing still needs real process witnesses.
+    // Internal debt payment/control/disposition only. No fairness of native
+    // Return/exit/validation, external quiescence or authority restoration.
+    m.weak_fair.extend([
+        vec![rest_a],
+        vec![rest_b],
+        vec![control],
+        vec![quarantine_a],
+        vec![settle_a],
+        vec![fail_a],
+        vec![settle_b],
+    ]);
+    m
+}
+
+const CLOSED_EXIT_NAMES: [&str; 2] = [
+    "TermDreamC1ClosedExitActivity",
+    "TermDreamC1ClosedExitLateCallback",
+];
+
+fn closed_exit_activity(kind: usize, broken: bool) -> Model {
+    // One process binding A may retain a live fresh session B, or exit. A fresh
+    // generation owns a different packed word. Two revisions bound races; no
+    // external process exit, callback, source closure or poll fairness is assumed.
+    const GEN: usize = 0;
+    const SESSION: usize = 1;
+    const CLOSED: usize = 2;
+    const ABSENT: usize = 3;
+    const REV: usize = 4;
+    const FG: usize = 5;
+    const TERMINAL: usize = 6;
+    const CAPTURED: usize = 7;
+    const CAPTURED_VALID: usize = 8;
+    let mut m = model(
+        CLOSED_EXIT_NAMES[kind],
+        broken,
+        &[
+            ("generation", 1, 0),
+            ("session", 1, 0),
+            ("durable_current_close", 1, 0),
+            ("exact_process_absent", 1, 0),
+            ("packed_revision", 2, 0),
+            ("foreground_or_unknown", 1, 1),
+            ("terminal_closed_exit", 1, 0),
+            ("captured_revision", 2, 0),
+            ("capture_valid", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "ObserveCurrentDurableClose",
+        all([eq(GEN, 0), eq(SESSION, 0), eq(CLOSED, 0)]),
+        &[(CLOSED, Int(1))],
+    );
+    // This action deliberately supplies absence without any closure authority.
+    action(
+        &mut m,
+        "NativeEofOrExactExit",
+        eq(ABSENT, 0),
+        &[(ABSENT, Int(1))],
+    );
+    action(
+        &mut m,
+        "RetainedLiveSessionB",
+        all([
+            eq(GEN, 0),
+            eq(SESSION, 0),
+            eq(ABSENT, 0),
+            Var(REV).lt(Int(2)),
+        ]),
+        &[
+            (SESSION, Int(1)),
+            (CLOSED, Int(0)),
+            (FG, Int(1)),
+            (REV, Var(REV).plus(Int(1))),
+        ],
+    );
+    action(
+        &mut m,
+        "CapturePackedRevision",
+        all([eq(GEN, 0), eq(CAPTURED_VALID, 0)]),
+        &[(CAPTURED, Var(REV)), (CAPTURED_VALID, Int(1))],
+    );
+    action(
+        &mut m,
+        "RichUnknownOrTurnCallback",
+        all([
+            eq(GEN, 0),
+            Var(REV).lt(Int(2)),
+            if broken && kind == 1 {
+                Bool(true)
+            } else {
+                eq(TERMINAL, 0)
+            },
+        ]),
+        &[(REV, Var(REV).plus(Int(1))), (FG, Int(1))],
+    );
+    action(
+        &mut m,
+        "SealClosedExitedBinding",
+        all([
+            eq(GEN, 0),
+            eq(SESSION, 0),
+            eq(CAPTURED_VALID, 1),
+            Var(REV).eq(Var(CAPTURED)),
+            eq(ABSENT, 1),
+            eq(TERMINAL, 0),
+            Var(REV).lt(Int(2)),
+            if broken && kind == 0 {
+                Bool(true)
+            } else {
+                eq(CLOSED, 1)
+            },
+        ]),
+        &[
+            (TERMINAL, Int(1)),
+            (FG, Int(0)),
+            (REV, Var(REV).plus(Int(1))),
+        ],
+    );
+    action(
+        &mut m,
+        "FreshGenerationOwnsDifferentWord",
+        eq(GEN, 0),
+        &[
+            (GEN, Int(1)),
+            (SESSION, Int(1)),
+            (CLOSED, Int(0)),
+            (ABSENT, Int(0)),
+            (REV, Int(0)),
+            (FG, Int(1)),
+            (TERMINAL, Int(0)),
+        ],
+    );
+    action(&mut m, "StatusOrDelayedFollowerTick", Bool(true), &[]);
+    safe(
+        &mut m,
+        "TerminalQuiescenceRequiresCurrentDurableCloseAndExactExit",
+        implies(
+            eq(TERMINAL, 1),
+            all([eq(CLOSED, 1), eq(ABSENT, 1), eq(GEN, 0), eq(SESSION, 0)]),
+        ),
+    );
+    safe(
+        &mut m,
+        "LateRichCallbackCannotRestoreUnknownAfterTerminalProof",
+        implies(eq(TERMINAL, 1), eq(FG, 0)),
+    );
+    // Source eligibility, actual ESRCH and authority proof, OS process identity,
+    // packed overflow and wire masking still require their implementation tests.
+    m
+}
+
+fn retained_cleanup(broken: bool) -> Model {
+    // One owned parse result: a partial collection has two cleanup chunks;
+    // returned/normal results have three. A verdict never performs the drain.
+    // The parse/snapshot owner and requested-capacity credits survive every
+    // rejection/cancel/clock outcome until the last real cleanup step completes.
+    const PHASE: usize = 0; // 0 absent,1 owned,2 draining,3 settled
+    const KIND: usize = 1; // 0 absent,1 partial,2 returned,3 normal-scope value
+    const LEFT: usize = 2;
+    const FREED: usize = 3;
+    const OWNER: usize = 4;
+    const CREDIT: usize = 5;
+    const VERDICT: usize = 6; // 0 pending,1 normal,2 rejected,3 cancelled,4 clock error
+    let mut m = model(
+        "TermDreamC1RetainedCleanup",
+        broken,
+        &[
+            ("phase", 3, 0),
+            ("owned_kind", 3, 0),
+            ("chunks_left", 3, 0),
+            ("chunks_freed", 3, 0),
+            ("owner_retained", 1, 0),
+            ("credits_retained", 1, 0),
+            ("verdict", 4, 0),
+        ],
+    );
+    for (kind, label, chunks) in [(1, "Partial", 2), (2, "Returned", 3), (3, "Normal", 3)] {
+        action(
+            &mut m,
+            &format!("AcquireOwned{label}"),
+            eq(PHASE, 0),
+            &[
+                (PHASE, Int(1)),
+                (KIND, Int(kind)),
+                (LEFT, Int(chunks)),
+                (OWNER, Int(1)),
+                (CREDIT, Int(1)),
+            ],
+        );
+    }
+    for (verdict, label) in [
+        (1, "NormalScopeExit"),
+        (2, "Reject"),
+        (3, "Cancel"),
+        (4, "ClockFailure"),
+    ] {
+        action(
+            &mut m,
+            &format!("{label}RetainsCleanup"),
+            eq(PHASE, 1),
+            &[
+                (PHASE, Int(2)),
+                (VERDICT, Int(verdict)),
+                (OWNER, Int(if broken { 0 } else { 1 })),
+                (CREDIT, Int(if broken { 0 } else { 1 })),
+            ],
+        );
+    }
+    // A later cancellation or unavailable clock cannot retire the cleanup
+    // owner, restore already freed chunks, or release outstanding credits.
+    for (verdict, label) in [(3, "CancelDuringDrain"), (4, "ClockFailureDuringDrain")] {
+        action(
+            &mut m,
+            label,
+            all([eq(PHASE, 2), ne(VERDICT, verdict)]),
+            &[(VERDICT, Int(verdict))],
+        );
+    }
+    let drain = m.actions.len();
+    action(
+        &mut m,
+        "DrainOneOwnedChunk",
+        all([eq(PHASE, 2), ne(LEFT, 0)]),
+        &[
+            (LEFT, Var(LEFT).minus(Int(1))),
+            (FREED, Var(FREED).plus(Int(1))),
+        ],
+    );
+    let settle = m.actions.len();
+    action(
+        &mut m,
+        "SettleAfterActualDrain",
+        all([eq(PHASE, 2), eq(LEFT, 0)]),
+        &[(PHASE, Int(3)), (OWNER, Int(0)), (CREDIT, Int(0))],
+    );
+    action(&mut m, "StatusDoesNotRetireOwner", Bool(true), &[]);
+    safe(
+        &mut m,
+        "OwnedOrDrainingKeepsOwnerAndCredits",
+        implies(
+            eq(PHASE, 1).or(eq(PHASE, 2)),
+            all([eq(OWNER, 1), eq(CREDIT, 1)]),
+        ),
+    );
+    safe(
+        &mut m,
+        "SettlementRequiresActualCompleteDrain",
+        implies(
+            eq(PHASE, 3),
+            all([eq(LEFT, 0), eq(OWNER, 0), eq(CREDIT, 0)]),
+        ),
+    );
+    safe(
+        &mut m,
+        "CleanupCannotLoseOrRepeatChunks",
+        all([
+            implies(eq(KIND, 1), Var(LEFT).plus(Var(FREED)).eq(Int(2))),
+            implies(
+                eq(KIND, 2).or(eq(KIND, 3)),
+                Var(LEFT).plus(Var(FREED)).eq(Int(3)),
+            ),
+        ]),
+    );
+    m.responses.push(Response {
+        name: "FairInternalCleanupEventuallySettles".into(),
+        request: eq(PHASE, 2),
+        response: eq(PHASE, 3),
+    });
+    // Only finite internal deallocation chunks and final retirement are weakly
+    // fair. No external parse success, verdict, IO, OS exit or clock is assumed.
+    // This proves bounded ownership order, not arbitrary Rust/CPU refinement.
+    m.weak_fair.extend([vec![drain], vec![settle]]);
+    m
+}
+
 pub(super) fn cases() -> Vec<(Model, &'static str)> {
     let mut cases = Vec::new();
+    cases.push((bootstrap_admission(0, false), "pass"));
+    for kind in 0..BOOTSTRAP_NAMES.len() {
+        cases.push((bootstrap_admission(kind, true), "safety"));
+    }
+    cases.push((bootstrap_probe(0, false), "pass"));
+    for kind in 0..PROBE_NAMES.len() {
+        cases.push((bootstrap_probe(kind, true), "safety"));
+    }
+    cases.push((final_public_admission(0, false), "pass"));
+    for kind in 0..FINAL_NAMES.len() {
+        cases.push((final_public_admission(kind, true), "safety"));
+    }
+    cases.push((quantum_debt(0, false), "pass"));
+    for kind in 0..QUANTUM_NAMES.len() {
+        cases.push((quantum_debt(kind, true), "safety"));
+    }
     for kind in 0..ADMISSION_NAMES.len() {
         cases.extend([
             (admission(kind, false), "pass"),
@@ -1040,6 +3053,16 @@ pub(super) fn cases() -> Vec<(Model, &'static str)> {
             (provider_polling(kind, true), "safety"),
         ]);
     }
+    for kind in 0..CLOSED_EXIT_NAMES.len() {
+        cases.extend([
+            (closed_exit_activity(kind, false), "pass"),
+            (closed_exit_activity(kind, true), "safety"),
+        ]);
+    }
+    cases.extend([
+        (retained_cleanup(false), "pass"),
+        (retained_cleanup(true), "safety"),
+    ]);
     cases
 }
 
@@ -1189,5 +3212,529 @@ fn dream_c1_provider_busy_publication_failure_and_aba_are_nonvacuous() -> Result
     assert_eq!((r.states[failed][2], r.states[failed][3]), (2, 0));
     let published = step(&m, &r, failed, "PublishThenAcknowledgeExactObservation").unwrap();
     assert_eq!((r.states[published][3], r.states[published][4]), (2, 2));
+    Ok(())
+}
+
+#[test]
+fn dream_c1_retained_cleanup_verdicts_keep_owner_and_credits_until_real_drain() -> Result<(), String>
+{
+    let m = retained_cleanup(false);
+    let r = m.check(100_000)?;
+    for (acquire, chunks) in [
+        ("AcquireOwnedPartial", 2),
+        ("AcquireOwnedReturned", 3),
+        ("AcquireOwnedNormal", 3),
+    ] {
+        for verdict in [
+            "NormalScopeExitRetainsCleanup",
+            "RejectRetainsCleanup",
+            "CancelRetainsCleanup",
+            "ClockFailureRetainsCleanup",
+        ] {
+            let mut state = trace(&m, &r, &[acquire, verdict]);
+            assert_eq!(
+                (r.states[state][2], r.states[state][4], r.states[state][5]),
+                (chunks, 1, 1)
+            );
+            assert!(step(&m, &r, state, "SettleAfterActualDrain").is_none());
+            state = step(&m, &r, state, "DrainOneOwnedChunk").unwrap();
+            state = step(&m, &r, state, "StatusDoesNotRetireOwner").unwrap();
+            // Late cancellation and a clock failure remain observable while
+            // both the collection's owner and its capacity charge survive.
+            if r.states[state][6] != 3 {
+                state = step(&m, &r, state, "CancelDuringDrain").unwrap();
+            }
+            state = step(&m, &r, state, "ClockFailureDuringDrain").unwrap();
+            for left in (0..chunks - 1).rev() {
+                assert_eq!((r.states[state][4], r.states[state][5]), (1, 1));
+                assert!(step(&m, &r, state, "SettleAfterActualDrain").is_none());
+                state = step(&m, &r, state, "DrainOneOwnedChunk").unwrap();
+                assert_eq!(r.states[state][2], left);
+            }
+            assert_eq!(
+                (r.states[state][2], r.states[state][4], r.states[state][5]),
+                (0, 1, 1)
+            );
+            state = step(&m, &r, state, "SettleAfterActualDrain").unwrap();
+            assert_eq!(
+                (r.states[state][0], r.states[state][4], r.states[state][5]),
+                (3, 0, 0)
+            );
+        }
+    }
+    Ok(())
+}
+
+#[test]
+fn dream_c1_closed_exit_activity_does_not_turn_eof_or_stale_close_into_quiescence()
+-> Result<(), String> {
+    let m = closed_exit_activity(0, false);
+    let r = m.check(100_000)?;
+    let bare_eof = trace(&m, &r, &["CapturePackedRevision", "NativeEofOrExactExit"]);
+    assert!(step(&m, &r, bare_eof, "SealClosedExitedBinding").is_none());
+    let live_b = trace(
+        &m,
+        &r,
+        &[
+            "ObserveCurrentDurableClose",
+            "CapturePackedRevision",
+            "RetainedLiveSessionB",
+        ],
+    );
+    assert!(step(&m, &r, live_b, "SealClosedExitedBinding").is_none());
+    let stale = trace(
+        &m,
+        &r,
+        &[
+            "ObserveCurrentDurableClose",
+            "NativeEofOrExactExit",
+            "CapturePackedRevision",
+            "RichUnknownOrTurnCallback",
+        ],
+    );
+    assert!(step(&m, &r, stale, "SealClosedExitedBinding").is_none());
+    let terminal = trace(
+        &m,
+        &r,
+        &[
+            "ObserveCurrentDurableClose",
+            "NativeEofOrExactExit",
+            "CapturePackedRevision",
+            "SealClosedExitedBinding",
+        ],
+    );
+    assert_eq!((r.states[terminal][5], r.states[terminal][6]), (0, 1));
+    assert!(step(&m, &r, terminal, "RichUnknownOrTurnCallback").is_none());
+    let fresh = step(&m, &r, terminal, "FreshGenerationOwnsDifferentWord").unwrap();
+    assert_eq!((r.states[fresh][5], r.states[fresh][6]), (1, 0));
+    assert!(step(&m, &r, fresh, "SealClosedExitedBinding").is_none());
+    Ok(())
+}
+
+#[test]
+fn c1_quantum_debt_effect_failure_and_independent_job_are_nonvacuous() -> Result<(), String> {
+    let m = quantum_debt(0, false);
+    let r = m.check(100_000)?;
+    eprintln!(
+        "c1_quantum_debt_complete states={} edges={} state_limit=100000 projections=solo_all_profiles,pair_full_cpu3",
+        r.states.len(),
+        r.edges.iter().map(Vec::len).sum::<usize>()
+    );
+    assert!(step(&m, &r, 0, "AdmitNative1App1Cpu2").is_none());
+    assert!(step(&m, &r, 0, "CloseB").is_none());
+    for native in [
+        "AdmitNative1App1Cpu2",
+        "AdmitNative2App0Cpu1",
+        "AdmitNative3App0Cpu0",
+        "AdmitNative3App0Cpu3",
+    ] {
+        let solo = trace(&m, &r, &["CloseA", "Quiescent", native]);
+        assert_eq!((r.states[solo][9], r.states[solo][36]), (1, 0));
+        assert!(step(&m, &r, solo, "CloseB").is_none());
+    }
+    let unpaid = trace(&m, &r, &["CloseA", "Quiescent", "AdmitAppCpu1"]);
+    assert_eq!(r.states[unpaid][14], 9);
+    assert!(step(&m, &r, unpaid, "AdmitNative1App1Cpu2").is_none());
+    assert!(step(&m, &r, unpaid, "IndependentControl").is_some());
+    let returned = trace(
+        &m,
+        &r,
+        &[
+            "CloseA",
+            "Quiescent",
+            "AdmitNative1App1Cpu2",
+            "ReturnNativePresent",
+        ],
+    );
+    assert_eq!(
+        (
+            r.states[returned][8],
+            r.states[returned][7],
+            r.states[returned][14]
+        ),
+        (1, 1, 27)
+    );
+    let failed = step(&m, &r, returned, "MissingClock").unwrap();
+    let failed = step(&m, &r, failed, "VerdictRetainsTypedEffect").unwrap();
+    assert_eq!((r.states[failed][7], r.states[failed][20]), (1, 0));
+    let failed = trace_from(
+        &m,
+        &r,
+        failed,
+        &[
+            "PayRestAAfterSpanEnd",
+            "PayRestAAfterSpanEnd",
+            "PayRestAAfterSpanEnd",
+        ],
+    );
+    assert!(step(&m, &r, failed, "SettleFailedA").is_none());
+    let failed = step(&m, &r, failed, "ObserveActualExitA").unwrap();
+    let failed = step(&m, &r, failed, "SettleFailedA").unwrap();
+    assert_eq!((r.states[failed][5], r.states[failed][7]), (6, 0));
+    for interrupt in [&["CancelA"][..], &["ContextToB2", "ContextBackToA3"][..]] {
+        let interrupted = trace_from(&m, &r, returned, interrupt);
+        let interrupted = step(&m, &r, interrupted, "VerdictRetainsTypedEffect").unwrap();
+        assert_eq!(
+            (
+                r.states[interrupted][7],
+                r.states[interrupted][20],
+                r.states[interrupted][9]
+            ),
+            (1, 0, 1),
+        );
+    }
+    for native in ["AdmitNative1App1Cpu2", "AdmitNative3App0Cpu3"] {
+        let mut refused = trace(&m, &r, &["CloseA", "Quiescent", native]);
+        if native == "AdmitNative1App1Cpu2" {
+            refused = step(&m, &r, refused, "NativeWallExceeds25ms").unwrap();
+        }
+        let refused = trace_from(
+            &m,
+            &r,
+            refused,
+            &["ReturnNativePresent", "VerdictRetainsTypedEffect"],
+        );
+        assert_eq!(
+            (
+                r.states[refused][7],
+                r.states[refused][20],
+                r.states[refused][14]
+            ),
+            (1, 0, 27)
+        );
+    }
+    let both = trace(
+        &m,
+        &r,
+        &[
+            "SelectIndependentPairProjection",
+            "CloseA",
+            "CloseB",
+            "Quiescent",
+            "AdmitNative1App1Cpu2",
+            "AdmitIndependentNativeB",
+        ],
+    );
+    assert_eq!((r.states[both][8], r.states[both][26]), (2, 2));
+    let b_done = trace_from(
+        &m,
+        &r,
+        both,
+        &[
+            "ReturnNativeB",
+            "PayRestBAfterSpanEnd",
+            "HandStartToChildB",
+            "ObserveActualExitB",
+            "ValidateImmutableResultB",
+            "PayRestBAfterSpanEnd",
+            "PresentB",
+        ],
+    );
+    assert_eq!(
+        (
+            r.states[b_done][5],
+            r.states[b_done][7],
+            r.states[b_done][24]
+        ),
+        (1, 1, 3)
+    );
+    let quarantined = trace_from(
+        &m,
+        &r,
+        b_done,
+        &["CancelA", "QuarantineUnreturnedA", "IndependentControl"],
+    );
+    assert_eq!(
+        (
+            r.states[quarantined][5],
+            r.states[quarantined][7],
+            r.states[quarantined][8]
+        ),
+        (4, 1, 2)
+    );
+    let stale = trace(
+        &m,
+        &r,
+        &["CloseA", "Quiescent", "ContextToB2", "ContextBackToA3"],
+    );
+    assert!(step(&m, &r, stale, "AdmitNative1App1Cpu2").is_none());
+    let control = m
+        .actions
+        .iter()
+        .position(|action| action.name == "IndependentControl")
+        .unwrap();
+    assert!(
+        r.edges
+            .iter()
+            .all(|edges| edges.iter().any(|edge| edge.action == control)),
+        "control disabled during debt/native/settlement"
+    );
+    Ok(())
+}
+
+fn trace_from(m: &Model, r: &bboxy450_tlc::Report, start: usize, names: &[&str]) -> usize {
+    names.iter().fold(start, |state, name| {
+        step(m, r, state, name).unwrap_or_else(|| panic!("disabled {name} from {state}"))
+    })
+}
+
+#[test]
+fn c1_bootstrap_birth_gate_debt_hello_start_and_unknown_custody_are_nonvacuous()
+-> Result<(), String> {
+    let m = bootstrap_admission(0, false);
+    let r = m.check(100_000)?;
+    let prepared = trace(
+        &m,
+        &r,
+        &[
+            "CloseSource",
+            "VerifyPackagedBootstrapBeforeBirth",
+            "Quiescent",
+            "PrepareFrozenBindingAndPipe",
+        ],
+    );
+    assert!(
+        step(&m, &r, prepared, "Birth").is_none(),
+        "preparation debt was bypassed"
+    );
+    let held = trace_from(
+        &m,
+        &r,
+        prepared,
+        &[
+            "PayParentAfterSpanEnd",
+            "Birth",
+            "RetainActualReturnedChild",
+        ],
+    );
+    assert!(step(&m, &r, held, "ChildArgvSpan").is_none());
+    assert!(step(&m, &r, held, "ChildComputeOwnerSpan").is_none());
+    assert!(step(&m, &r, held, "TransferBeforePermitWrite").is_none());
+    let cost = step(&m, &r, held, "ParentCostVerdict").unwrap();
+    assert_eq!(r.states[cost][14], 27);
+    assert!(step(&m, &r, cost, "TransferBeforePermitWrite").is_none());
+    let paid = trace_from(
+        &m,
+        &r,
+        cost,
+        &[
+            "PayParentAfterSpanEnd",
+            "PayParentAfterSpanEnd",
+            "PayParentAfterSpanEnd",
+        ],
+    );
+    let grant = trace_from(
+        &m,
+        &r,
+        paid,
+        &[
+            "TransferBeforePermitWrite",
+            "WriteFullPermitOnce",
+            "ReadGrant",
+            "ChildArgvSpan",
+        ],
+    );
+    assert!(
+        step(&m, &r, grant, "ParentPrepareSpan").is_none(),
+        "parent work overlapped bootstrap"
+    );
+    let boot = trace_from(
+        &m,
+        &r,
+        grant,
+        &["PayChildAfterSpanEnd", "ChildComputeOwnerSpan"],
+    );
+    assert!(step(&m, &r, boot, "PaidHelloRetiresReadGate").is_none());
+    let hello = trace_from(
+        &m,
+        &r,
+        boot,
+        &[
+            "PayChildAfterSpanEnd",
+            "PayChildAfterSpanEnd",
+            "PayChildAfterSpanEnd",
+            "PaidHelloRetiresReadGate",
+            "AcceptHelloAndCloseLease",
+            "ParentPrepareSpan",
+        ],
+    );
+    assert!(step(&m, &r, hello, "PaidStart").is_none());
+    let completed = trace_from(
+        &m,
+        &r,
+        hello,
+        &[
+            "PayParentAfterSpanEnd",
+            "PaidStart",
+            "ChildWorkSpan",
+            "PayChildAfterSpanEnd",
+            "ObserveActualExit",
+            "ValidateImmutableOutput",
+            "PayParentAfterSpanEnd",
+            "Complete",
+        ],
+    );
+    assert_eq!(
+        (
+            r.states[completed][32],
+            r.states[completed][34],
+            r.states[completed][36],
+            r.states[completed][11]
+        ),
+        (1, 1, 1, 0)
+    );
+    let unknown = trace_from(
+        &m,
+        &r,
+        prepared,
+        &[
+            "PayParentAfterSpanEnd",
+            "Birth",
+            "RetainUnknownBirth",
+            "QuarantineUnknownBirth",
+            "IndependentOtherJobProgress",
+            "IndependentStatusCancelControl",
+        ],
+    );
+    assert_eq!(
+        (
+            r.states[unknown][7],
+            r.states[unknown][11],
+            r.states[unknown][37]
+        ),
+        (2, 1, 1)
+    );
+    assert!(step(&m, &r, unknown, "Birth").is_none());
+    let partial = trace_from(
+        &m,
+        &r,
+        paid,
+        &["TransferBeforePermitWrite", "WritePartialConsumesAttempt"],
+    );
+    assert_eq!(
+        (
+            r.states[partial][21],
+            r.states[partial][22],
+            r.states[partial][23]
+        ),
+        (1, 1, 0)
+    );
+    assert!(step(&m, &r, partial, "ReadGrant").is_none());
+    assert!(step(&m, &r, partial, "WriteFullPermitOnce").is_none());
+    let stale = trace_from(&m, &r, paid, &["ContextToB2", "ContextBackToA3"]);
+    assert!(step(&m, &r, stale, "TransferBeforePermitWrite").is_none());
+    let control = m
+        .actions
+        .iter()
+        .position(|a| a.name == "IndependentStatusCancelControl")
+        .unwrap();
+    assert!(
+        r.edges
+            .iter()
+            .all(|edges| edges.iter().any(|edge| edge.action == control))
+    );
+    Ok(())
+}
+
+#[test]
+fn c1_probe_explicit_null_and_permanent_start_refusal_are_nonvacuous() -> Result<(), String> {
+    let m = bootstrap_probe(0, false);
+    let r = m.check(100_000)?;
+    let probe = trace(
+        &m,
+        &r,
+        &[
+            "ProbeExplicitNull",
+            "PrebirthKnownProfile",
+            "BirthFromFrozenBinding",
+            "PaidBootstrapHello",
+            "MatchingOrHostileStart",
+        ],
+    );
+    assert_eq!((r.states[probe][5], r.states[probe][6]), (0, 0));
+    let real = trace(&m, &r, &["RealNullContext", "PrebirthKnownProfile"]);
+    assert!(step(&m, &r, real, "BirthFromFrozenBinding").is_none());
+    let omitted = trace(
+        &m,
+        &r,
+        &[
+            "ProbeExplicitNull",
+            "OmittedContext",
+            "PrebirthKnownProfile",
+        ],
+    );
+    assert!(step(&m, &r, omitted, "BirthFromFrozenBinding").is_none());
+    Ok(())
+}
+
+#[test]
+fn c1_final_public_admission_is_after_debt_once_bounded_and_control_only() -> Result<(), String> {
+    let m = final_public_admission(0, false);
+    let r = m.check(100_000)?;
+    assert!(step(&m, &r, 0, "FinalPermitControlAndWrite").is_none());
+    let paid = trace(
+        &m,
+        &r,
+        &[
+            "PayExistingWorkDebt",
+            "PayExistingWorkDebt",
+            "PayExistingWorkDebt",
+        ],
+    );
+    for fault in [
+        "AfterDebtPublicTamper",
+        "HoldPreparedDependency",
+        "InjectTwoMsFinalControl",
+        "UnknownFinalClock",
+        "MisclassifyPayload",
+        "MisclassifyGenericSqliteOrSetup",
+        "MisclassifyPreparedConnectionSetup",
+        "OversizePublicCellBeforeFetch",
+        "EighthPublicRowBeforeFetch",
+        "ExcessTotalBeforeFetch",
+    ] {
+        let rejected = step(&m, &r, paid, fault).unwrap();
+        assert!(
+            step(&m, &r, rejected, "FinalPermitControlAndWrite").is_none(),
+            "{fault} granted a handoff"
+        );
+        let rejected = step(&m, &r, rejected, "RefuseFinalPermitControlAndWrite").unwrap();
+        assert_eq!(
+            (
+                r.states[rejected][12],
+                r.states[rejected][17],
+                r.states[rejected][19]
+            ),
+            (1, 1, 0)
+        );
+    }
+    let permit = step(&m, &r, paid, "FinalPermitControlAndWrite").unwrap();
+    assert!(step(&m, &r, permit, "FinalPermitControlAndWrite").is_none());
+    let prepared = step(&m, &r, permit, "PaidHelloThenOrdinaryParentPreparation").unwrap();
+    assert!(step(&m, &r, prepared, "FinalStartControlAndWrite").is_none());
+    let started = trace_from(
+        &m,
+        &r,
+        prepared,
+        &["PayExistingWorkDebt", "FinalStartControlAndWrite"],
+    );
+    assert_eq!(
+        (
+            r.states[started][12],
+            r.states[started][13],
+            r.states[started][14]
+        ),
+        (1, 1, 2)
+    );
+    let control = m
+        .actions
+        .iter()
+        .position(|a| a.name == "IndependentStatusCancel")
+        .unwrap();
+    assert!(
+        r.edges
+            .iter()
+            .all(|edges| edges.iter().any(|edge| edge.action == control))
+    );
     Ok(())
 }

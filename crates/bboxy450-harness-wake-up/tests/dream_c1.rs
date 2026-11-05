@@ -10,6 +10,7 @@
     clippy::disallowed_methods,
     reason = "private process fixtures, never a hot owner"
 )]
+use bboxy450_harness_wake_up::dream_bootstrap as bootstrap;
 use bboxy450_harness_wake_up::dream_c1::{self as c1, Worker, wire as w};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
@@ -131,14 +132,18 @@ impl Script {
     fn new(body: &str) -> Self {
         let root = tempfile::tempdir().unwrap();
         let binary = root.path().join("worker.py");
-        let job = root.path().join("job");
+        let start: w::WorkerIn = c1::decode(&bytes("valid/start.json")).unwrap();
+        let w::WorkerIn::Start(start) = start else {
+            unreachable!()
+        };
+        let job = root.path().join(&start.run_id.0);
         std::fs::create_dir(&job).unwrap();
         std::fs::create_dir(job.join("tmp")).unwrap();
         std::fs::set_permissions(&job, std::fs::Permissions::from_mode(0o700)).unwrap();
         let job = job.canonicalize().unwrap();
         let hello = String::from_utf8(bytes("valid/hello.json")).unwrap();
         let script = format!(
-            "#!/usr/bin/python3\nimport json, os, pathlib, sys, time\npathlib.Path(sys.argv[4]).joinpath('worker-started').write_text('ready')\nHELLO = {hello:?}\n{body}\n"
+            "#!/usr/bin/python3\nimport json, os, pathlib, sys, time\n_gate=int(os.environ['BBOXY_DREAM_BOOTSTRAP'].split(':')[1])\n_permit=os.read(_gate,128)\nassert len(_permit)==128\nos.close(_gate)\npathlib.Path(sys.argv[4]).joinpath('worker-started').write_text('ready')\nHELLO = {hello:?}\n{body}\n"
         );
         std::fs::write(&binary, script).unwrap();
         std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o700)).unwrap();
@@ -148,14 +153,70 @@ impl Script {
             job,
         }
     }
-    fn spawn(&self) -> Worker {
-        let worker = Worker::spawn(&self.binary, &self.job).unwrap();
+    fn spawn(&self) -> TestWorker {
+        let start: w::WorkerIn = c1::decode(&bytes("valid/start.json")).unwrap();
+        let w::WorkerIn::Start(start) = start else {
+            unreachable!()
+        };
+        // Private transport-fault fixture only: this zero digest grants no
+        // managed runner/profile/source authority and is not a binding vector.
+        let frozen = bootstrap::Frozen::inspect(
+            false,
+            ulid::Ulid::new().to_bytes(),
+            bootstrap::ulid(start.run_id.0.as_bytes()).unwrap(),
+            bootstrap::ulid(start.nonce.0.as_bytes()).unwrap(),
+            [0; 32],
+            1,
+        );
+        let gate = ordinary(|| bootstrap::Gate::prepare(frozen).unwrap());
+        let buffers = ordinary(|| Worker::prepare_buffers().unwrap());
+        let input = ordinary(|| Worker::prepare_pipe().unwrap());
+        let output = ordinary(|| Worker::prepare_pipe().unwrap());
+        let stderr = ordinary(|| Worker::prepare_pipe().unwrap());
+        let mut prepared = ordinary(|| {
+            Worker::prepare_command(
+                &self.binary,
+                &self.job,
+                buffers,
+                input,
+                output,
+                stderr,
+                gate,
+            )
+            .unwrap()
+        });
+        ordinary(|| prepared.configure_input().unwrap());
+        ordinary(|| prepared.configure_output().unwrap());
+        ordinary(|| prepared.configure_stderr().unwrap());
+        let mut command = ordinary(|| prepared.take_command().unwrap());
+        let cpu = thread_cpu();
+        let wall = Instant::now();
+        let child = command.spawn().unwrap();
+        let returned = Instant::now();
+        let end_cpu = thread_cpu_sample();
+        let native_wall = returned.checked_duration_since(wall);
+        let (worker, unused) = prepared.attach_child(child);
+        let mut worker = TestWorker {
+            worker,
+            command: Some(command),
+            unused,
+        };
+        let used = end_cpu.and_then(|end| end.checked_sub(cpu)).unwrap();
+        assert!(
+            used <= 2_000_000 && native_wall.is_some_and(|wall| wall <= Duration::from_millis(25)),
+            "private native process span exceeded its observed contract"
+        );
+        worker
+            .bootstrap_spawn_returned(returned, returned + Duration::from_secs(30))
+            .unwrap();
+        std::thread::sleep(Duration::from_nanos(9 * used.max(1_000_000)));
+        worker.bootstrap_grant().unwrap();
         assert_eq!(
             worker.protected_capacity_bytes(),
             bboxy450_harness_wake_up::dream_c1::PROTECTED_BYTES,
             "all codec backing is provisioned before child use"
         );
-        let until = Instant::now() + Duration::from_secs(2);
+        let until = worker.bootstrap_deadline().unwrap();
         while !self.job.join("worker-started").is_file() {
             assert!(
                 Instant::now() < until,
@@ -164,6 +225,58 @@ impl Script {
             std::thread::sleep(Duration::from_millis(2));
         }
         worker
+    }
+}
+
+fn thread_cpu() -> u64 {
+    thread_cpu_sample().expect("available finite calling-thread clock")
+}
+fn thread_cpu_sample() -> Option<u64> {
+    let mut t = std::mem::MaybeUninit::<libc::timespec>::uninit();
+    if unsafe { libc::clock_gettime(libc::CLOCK_THREAD_CPUTIME_ID, t.as_mut_ptr()) } != 0 {
+        return None;
+    }
+    let t = unsafe { t.assume_init() };
+    let ns = u64::try_from(t.tv_nsec)
+        .ok()
+        .filter(|n| *n < 1_000_000_000)?;
+    u64::try_from(t.tv_sec)
+        .ok()?
+        .checked_mul(1_000_000_000)?
+        .checked_add(ns)
+}
+fn ordinary<T>(work: impl FnOnce() -> T) -> T {
+    let cpu = thread_cpu();
+    let value = work();
+    let used = thread_cpu().checked_sub(cpu).unwrap();
+    assert!(used <= 1_000_000, "private ordinary setup exceeded1ms");
+    std::thread::sleep(Duration::from_nanos(9 * used.max(1_000_000)));
+    value
+}
+struct TestWorker {
+    worker: Worker,
+    command: Option<Command>,
+    unused: Option<Command>,
+}
+impl std::ops::Deref for TestWorker {
+    type Target = Worker;
+    fn deref(&self) -> &Worker {
+        &self.worker
+    }
+}
+impl std::ops::DerefMut for TestWorker {
+    fn deref_mut(&mut self) -> &mut Worker {
+        &mut self.worker
+    }
+}
+impl TestWorker {
+    fn hello(&mut self) -> Result<w::Hello, w::Code> {
+        let result = self.worker.hello();
+        ordinary(|| {
+            self.command.take();
+            self.unused.take();
+        });
+        result
     }
 }
 
@@ -218,7 +331,7 @@ job = pathlib.Path(sys.argv[4])
 assert job.is_absolute() and pathlib.Path.cwd() == job
 assert os.environ['LANG'] == 'C.UTF-8'
 assert os.environ['TMPDIR'] == str(job / 'tmp')
-assert not any(k == 'HOME' or k == 'PATH' or k.startswith(('BBOXY_', 'OPENAI_', 'ANTHROPIC_', 'CODEX_', 'CLAUDE_')) for k in os.environ)
+assert not any(k == 'HOME' or k == 'PATH' or (k != 'BBOXY_DREAM_BOOTSTRAP' and k.startswith(('BBOXY_', 'OPENAI_', 'ANTHROPIC_', 'CODEX_', 'CLAUDE_'))) for k in os.environ)
 assert os.getpriority(os.PRIO_PROCESS, 0) >= 10
 (job / 'isolated').write_text('verified')
 print(HELLO, flush=True)

@@ -70,6 +70,8 @@ help:
 	  'make list-toolkit-package       UI package list; refuses bundled reports' \
 	  'make stories-toolkit            Headless native rich widget PNG captures' \
 	  'make test-formal                Native Yarn checker + Java TLC graph/verdict parity' \
+	  'make prepare-dream-c1           Build/probe pinned production worker and separate optimized private seat' \
+	  'make prepare-dream-c1-development DREAM_C1_DEVELOPMENT_SOURCE=path DREAM_C1_DEVELOPMENT_WORKER=path  Private signed-worker bootstrap check' \
 	  'make test-dream-c1              Pinned C1 wire, actual sibling Hello, own-seat MCP/ctl and private native routing' \
 	  'make check-formal-evidence      Verify the source-bound formal landing receipt' \
 	  'make prune-formal-evidence      Archive cold receipts (KEEP=10 DRY_RUN=1)' \
@@ -653,10 +655,12 @@ diagnose-fifty-seat-pty: build-fifty-seat-probe
 bundle-files: check-licenses compile
 	@set -eu; test "$$(uname -s)" = Darwin || { echo 'macOS is required' >&2; exit 2; }; \
 	case '$(BUNDLE)' in *.app) ;; *) echo 'BUNDLE must end in .app' >&2; exit 2 ;; esac; \
+	. ./scripts/cache-env.sh; CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --worker-only; \
 	mkdir -p '$(BUNDLE)/Contents/MacOS' '$(BUNDLE)/Contents/Resources'; \
 	cp packaging/macos/Info.plist '$(BUNDLE)/Contents/Info.plist'; \
 	cp '$(TARGET_DIR)/$(PROFILE)/$(APP)' '$(BUNDLE)/Contents/MacOS/$(APP)'; \
-	cp '$(TARGET_DIR)/$(PROFILE)/bboxy450-harness' '$(BUNDLE)/Contents/MacOS/bboxy450-harness'; \
+	cp '$(TARGET_DIR)/release/bboxy450-harness' '$(BUNDLE)/Contents/MacOS/bboxy450-harness'; \
+	if test -f '$(TARGET_DIR)/release/bboxy450-harness.dream-c1.json'; then cp '$(TARGET_DIR)/release/bboxy450-harness.dream-c1.json' '$(BUNDLE)/Contents/MacOS/bboxy450-harness.dream-c1.json'; else rm -f '$(BUNDLE)/Contents/MacOS/bboxy450-harness.dream-c1.json'; fi; \
 	cp LICENSE NOTICE ATTRIBUTION.md LICENSE-MIT LICENSE-APACHE packaging/macos/bboxy.icns '$(BUNDLE)/Contents/Resources/'; \
 	plutil -replace CFBundleShortVersionString -string '$(APP_VERSION)' '$(BUNDLE)/Contents/Info.plist'; \
 	plutil -replace CFBundleVersion -string "$$(git rev-list --count HEAD)" '$(BUNDLE)/Contents/Info.plist'; \
@@ -2648,7 +2652,14 @@ test-python-execute-native: init-submodules
 # C1 consumer join uses only the deliberately pinned embedded corpus by default.
 # DREAM_C1_FIXTURES may name the approved producer worktree for development;
 # its receipt is explicitly not a final pinned-source join.
-.PHONY: test-dream-c1
+.PHONY: test-dream-c1 prepare-dream-c1 prepare-dream-c1-development
+prepare-dream-c1-development:
+	@python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --prepare-development --development-source '$(DREAM_C1_DEVELOPMENT_SOURCE)' --development-worker '$(DREAM_C1_DEVELOPMENT_WORKER)'
+
+prepare-dream-c1: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --prepare-only
+
 test-dream-c1: init-submodules
 	@python3 -I scripts/test-landing.py CargoProfileForwardingTests IgnoredIntegrationTests
 	@set -eu; . ./scripts/cache-env.sh; \

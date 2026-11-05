@@ -1721,3 +1721,188 @@ frontend = "project"
 name = "BrokenTermDreamC1ProviderABA"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "TermDreamC1RetainedCleanup"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1RetainedCleanup"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1ClosedExitActivity"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1ClosedExitActivity"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1ClosedExitLateCallback"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1ClosedExitLateCallback"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "C1QuantumDebt"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1QuantumDebt"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1QuantumDebtParserTag"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1QuantumDebtRepeatedEffect"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1QuantumDebtEffectOwner"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1QuantumDebtHiddenNativeCpu"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1QuantumDebtWrapper"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1QuantumDebtHotOwner"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "C1BootstrapAdmission"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1BootstrapAdmission"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1BootstrapParentOverlap"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1BootstrapUnpaidGrant"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1BootstrapUnknownCost"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1BootstrapDebtReset"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1BootstrapAbaPermit"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1BootstrapUnknownOwner"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1BootstrapPrebirthProfile"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1BootstrapDuplicatePermit"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1BootstrapEarlyHello"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1BootstrapUnpaidStart"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "C1BootstrapProbeContext"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1BootstrapProbeContext"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1BootstrapProbeStart"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1BootstrapProbeOmittedContext"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "C1FinalPublicAdmission"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1FinalPublicAdmission"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1FinalPublicPayload"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1FinalPublicBounds"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1FinalPublicCache"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1FinalPublicRepeatedCheck"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenC1FinalPublicRecursiveDebt"
+expected = "safety"
+frontend = "project"

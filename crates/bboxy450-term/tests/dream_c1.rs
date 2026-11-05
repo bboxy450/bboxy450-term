@@ -25,6 +25,7 @@ struct Fixture {
     directory: tempfile::TempDir,
     root: PathBuf,
     app: Option<Child>,
+    fault_mode: Option<String>,
 }
 impl Fixture {
     fn new() -> Self {
@@ -40,6 +41,7 @@ impl Fixture {
             "home",
             "repository",
             "bin",
+            "seat-bin",
             "repository/.bboxy",
             "home/.codex",
             "home/.claude",
@@ -58,6 +60,7 @@ impl Fixture {
             directory,
             root,
             app: None,
+            fault_mode: None,
         }
     }
     fn scripted() -> Self {
@@ -79,6 +82,9 @@ impl Fixture {
             "missing real source-seat producer"
         );
         fs::copy(BIN, f.root.join("bin/bboxy450-term")).unwrap();
+        // C1 starts the exact ordinary worker directly. The scripted managed
+        // seat launcher uses PATH separately and never prefixes a C1 birth.
+        fs::copy(&runner, f.root.join("bin/bboxy450-harness")).unwrap();
         let sse = f.root.join("scripted.sse");
         // Sixteen bounded deltas make a 128 KiB completed item, below the canonical
         // 256 KiB envelope limit. Sixteen real turns below produce a multi-MiB
@@ -98,9 +104,9 @@ impl Fixture {
         private_bytes(&sse, response.as_bytes());
         let profiles = f.root.join("home/.bboxy450-harness/profiles");
         private_bytes(&profiles.join("private-c1.md"), b"---\nname: private-c1\nmodel: scripted\nendpoint: http://127.0.0.1:1/v1\non_unattended: deny\nauto_compact: false\n---\n");
-        // A transparent provisioning shim preserves the real worker's fixed argv/env
-        // and uses only the producer's existing deterministic model fixture for seats.
-        let shim = f.root.join("bin/bboxy450-harness");
+        // Only managed seats use this deterministic fixture launcher. Runtime's
+        // absolute sibling worker remains the ordinary executable above.
+        let shim = f.root.join("seat-bin/bboxy450-harness");
         fs::write(&shim,format!("#!/usr/bin/python3\nimport json,os,sys\nworker={worker}\nseat={seat}\nargs=sys.argv[1:]\nreal=worker if args[:2]==['dream','inspect-c1'] else seat\nif args[:2]!=['dream','inspect-c1'] and 'BBOXY_SEAT_ID' in os.environ:\n  keys=['BBOXY_SOCK','BBOXY_SEAT_ID','BBOXY_GENERATION','BBOXY_CAPABILITY_FILE']\n  path={root}+'/admission-'+os.environ['BBOXY_SEAT_ID']+'.json'\n  fd=os.open(path,os.O_WRONLY|os.O_CREAT|os.O_EXCL,0o600)\n  os.write(fd,json.dumps({{k:os.environ[k] for k in keys}}).encode())\n  os.close(fd)\n  args.extend(['--profile','private-c1'])\n  for _ in range(32): args.extend(['--scripted',{script}])\nif '--dream-c1-fixture-next-session' in args:\n  allowed={{'HOME','ZDOTDIR','CODEX_HOME','CLAUDE_CONFIG_DIR','PATH','TERM','LANG','LC_ALL','TMPDIR','TZ','BBOXY_SEAT_ID','BBOXY_GENERATION','BBOXY_ROLE','BBOXY_SOCK','BBOXY_CAPABILITY_FILE','TERM_PROGRAM','TERM_PROGRAM_VERSION'}}\n  os.execve(real,[real,*args],{{k:v for k,v in os.environ.items() if k in allowed}})\nos.execv(real,[real,*args])\n",
             worker=serde_json::to_string(&runner).unwrap(),seat=serde_json::to_string(&seat_runner).unwrap(),script=serde_json::to_string(&sse).unwrap(),root=serde_json::to_string(&f.root).unwrap())).unwrap();
         fs::set_permissions(&shim, fs::Permissions::from_mode(0o700)).unwrap();
@@ -120,21 +126,8 @@ impl Fixture {
     }
     fn scripted_fault(mode: &str) -> Self {
         assert!(matches!(mode, "hold-source" | "omit-rest" | "hot-owner"));
-        let f = Self::scripted();
-        let path = f.root.join("bin/bboxy450-harness");
-        let code = fs::read_to_string(&path).unwrap();
-        let setup = format!(
-            "if args[:2]==['dream','inspect-c1']:\n  job=args[args.index('--job-dir')+1]\n  name=os.path.basename(job)\n  if len(name)==26 and set(name)<=set('0123456789ABCDEFGHJKMNPQRSTVWXYZ'):\n    if {mode}=='hold-source': os.mkfifo(os.path.join(job,'test-source-read.fifo'),0o600)\n    else:\n      marker='test-hot-owner' if {mode}=='hot-owner' else 'test-omit-rest'\n      fd=os.open(os.path.join(job,marker),os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)\n      os.close(fd)\n",
-            mode = serde_json::to_string(mode).unwrap()
-        );
-        fs::write(
-            path,
-            code.replace(
-                "args=sys.argv[1:]\n",
-                &format!("args=sys.argv[1:]\n{setup}"),
-            ),
-        )
-        .unwrap();
+        let mut f = Self::scripted();
+        f.fault_mode = Some(mode.to_owned());
         f
     }
     fn scripted_progress_flood() -> Self {
@@ -152,7 +145,7 @@ impl Fixture {
         // protocol fake, never production-worker/corpus conformance evidence.
         let fault = r#"
 def protocol_flood(job):
-  import select,time
+  import collections,select,time
   os.nice(19)
   hello=json.loads(__HELLO__)
   progress=json.loads(__PROGRESS__)
@@ -166,6 +159,8 @@ def protocol_flood(job):
   started=None
   seq=0
   generated=0
+  completed_progress=0
+  progress_ends=collections.deque()
   sent=0
   max_pending=len(pending)
   cancellation=False
@@ -206,6 +201,7 @@ def protocol_flood(job):
         encoded=frame(candidate)
         if len(pending)+len(encoded)>65536: break
         pending.extend(encoded)
+        progress_ends.append(sent+len(pending))
         seq+=1
         generated+=1
     max_pending=max(max_pending,len(pending))
@@ -215,12 +211,15 @@ def protocol_flood(job):
         count=os.write(1,pending[:4096])
         sent+=count
         del pending[:count]
+        while progress_ends and progress_ends[0]<=sent:
+          progress_ends.popleft()
+          completed_progress+=1
       except BlockingIOError: pass
       except BrokenPipeError:
         eof=True
         break
     if cancellation and not pending: break
-  receipt={'protocol_fake':True,'generated_progress_frames':generated,'sent_framed_bytes':sent,'max_pending_bytes':max_pending,'cancel_received':cancellation,'eof_received':eof,'bounded_lifetime_seconds':8}
+  receipt={'protocol_fake':True,'generated_progress_frames':generated,'fully_written_progress_frames':completed_progress,'sent_framed_bytes':sent,'max_pending_bytes':max_pending,'cancel_received':cancellation,'eof_received':eof,'bounded_lifetime_seconds':8}
   fd=os.open(os.path.join(job,'protocol-flood.json'),os.O_WRONLY|os.O_CREAT|os.O_EXCL|os.O_NOFOLLOW,0o600)
   os.write(fd,json.dumps(receipt,sort_keys=True,separators=(',',':')).encode())
   os.close(fd)
@@ -235,7 +234,11 @@ if args[:2]==['dream','inspect-c1']:
         .replace("__PROGRESS__", &template("progress"))
         .replace("__DONE__", &template("done"));
         let path = f.root.join("bin/bboxy450-harness");
-        let code = fs::read_to_string(&path).unwrap();
+        let worker = PathBuf::from(std::env::var_os("DREAM_C1_RUNNER").unwrap());
+        let code = format!(
+            "#!/usr/bin/python3\nimport json,os,sys\nworker={}\nargs=sys.argv[1:]\nos.execv(worker,[worker,*args])\n",
+            serde_json::to_string(&worker).unwrap()
+        );
         fs::write(
             path,
             code.replace(
@@ -271,7 +274,7 @@ if args[:2]==['dream','inspect-c1']:
             args.push("--scripted".to_owned());
             args.push(path.to_str().unwrap().to_owned());
         }
-        let path = self.root.join("bin/bboxy450-harness");
+        let path = self.root.join("seat-bin/bboxy450-harness");
         let code = fs::read_to_string(&path).unwrap();
         let original = format!(
             "for _ in range(32): args.extend(['--scripted',{}])",
@@ -306,7 +309,7 @@ if args[:2]==['dream','inspect-c1']:
         );
         let done_b = sse(json!({"content":"B foreground complete."}), "stop");
         f.provision_rounds(vec![blob, done_a, busy_b, done_b]);
-        let path = f.root.join("bin/bboxy450-harness");
+        let path = f.root.join("seat-bin/bboxy450-harness");
         let code = fs::read_to_string(&path).unwrap();
         let extra = serde_json::to_string(&vec![
             "--dream-c1-fixture-next-session".to_owned(),
@@ -340,7 +343,8 @@ if args[:2]==['dream','inspect-c1']:
             .env(
                 "PATH",
                 format!(
-                    "{}:/usr/bin:/bin:/usr/sbin:/sbin",
+                    "{}:{}:/usr/bin:/bin:/usr/sbin:/sbin",
+                    self.root.join("seat-bin").display(),
                     self.root.join("bin").display()
                 ),
             )
@@ -375,7 +379,61 @@ if args[:2]==['dream','inspect-c1']:
     fn log(&self) -> String {
         fs::read_to_string(self.root.join("app.log")).unwrap_or_default()
     }
+    fn prepare_wrapper_provision(&self) {
+        let wrapper = self.root.join("bin/bboxy450-harness");
+        if !wrapper.is_file() {
+            return;
+        }
+        let worker = PathBuf::from(
+            std::env::var_os("DREAM_C1_RUNNER").expect("canonical ordinary worker required"),
+        );
+        assert!(worker.is_absolute());
+        let receipt_path = worker.with_extension("dream-c1.json");
+        use std::os::unix::fs::MetadataExt;
+        let metadata = fs::symlink_metadata(&receipt_path)
+            .expect("canonical worker provision is required; no fixture fallback");
+        assert!(
+            metadata.is_file()
+                && metadata.len() <= 8192
+                && metadata.mode() & 0o077 == 0
+                && metadata.nlink() == 1
+        );
+        assert_eq!(metadata.uid(), unsafe { libc::geteuid() });
+        let receipt: Value = serde_json::from_slice(&fs::read(&receipt_path).unwrap()).unwrap();
+        assert_eq!(receipt["schema"], "bboxy.dream.c1.provision/1");
+        assert_eq!(receipt["role"], "worker");
+        assert_eq!(receipt["metrics_profile"], "c1-native-debt/1");
+        assert_eq!(receipt["bootstrap_profile"], "dream-bootstrap/1");
+        assert_eq!(receipt["build_profile"], "release");
+        assert_eq!(receipt["default_features"], true);
+        assert_eq!(receipt["explicit_features"], json!([]));
+        assert_eq!(receipt["effective_features"], json!(["acp-agent"]));
+        assert_eq!(receipt["test_fixtures"], false);
+        let launch_hash = digest(&fs::read(&wrapper).unwrap());
+        let provision = if receipt["binary_sha256"].as_str() == Some(launch_hash.as_str()) {
+            // A byte-identical direct worker copy keeps canonical provenance.
+            receipt
+        } else {
+            // Explicit protocol-fault transport only; this role can never
+            // authorize positive bootstrap/native-profile completion.
+            json!({"schema":"bboxy.dream.c1.provision/1","role":"private_wrapper","metrics_profile":"c1-native-debt/1","bootstrap_profile":"dream-bootstrap/1",
+                "binary_sha256":launch_hash,"actual_worker":worker,"actual_worker_sha256":receipt["binary_sha256"]})
+        };
+        let bytes = bbt_proto::dream::canonical(&provision).unwrap();
+        assert!(bytes.len() <= 8192);
+        let path = wrapper.with_extension("dream-c1.json");
+        if path.exists() {
+            assert_eq!(
+                fs::read(path).unwrap(),
+                bytes,
+                "running fixture provision may not be rewritten"
+            );
+        } else {
+            private_bytes(&path, &bytes);
+        }
+    }
     fn start(&mut self) {
+        self.prepare_wrapper_provision();
         let log = fs::File::create(self.root.join("app.log")).unwrap();
         self.app = Some(
             self.command()
@@ -1082,6 +1140,16 @@ fn prepare_source(f: &Fixture, name: &str, turns: usize) -> OpenSource {
         .unwrap()
         .to_owned();
     let (source_session, source_generation, source_path) = session(f, &own);
+    if let Some(mode) = &f.fault_mode {
+        // The authenticated private parent creates the exact job's test marker
+        // before worker birth. No interpreter runs ahead of the bootstrap gate.
+        let directory = runtime_path(f).join("dream-c1");
+        assert!(directory.is_dir());
+        private_bytes(
+            &directory.join(format!(".fixture-{mode}-{own}-{source_generation}")),
+            b"",
+        );
+    }
     let selected = format!("{source_session}:{source_generation}");
     wait("owned open source catalogue", || {
         let value = f.ctl(&["dream", "inspect", &own, &selected]);
@@ -1187,6 +1255,40 @@ fn inspect_closed(f: &Fixture, source: &ClosedSource, op: &str) -> Value {
         );
         None
     })
+}
+
+fn running_worker_proof(f: &Fixture, seat: &str, run: &str) -> Value {
+    let mut receipt = wait("owned Hello child receipt before Start", || {
+        serde_json::from_slice::<Value>(
+            &fs::read(runtime_path(f).join(format!("dream-c1/{run}/worker-started.json"))).ok()?,
+        )
+        .ok()
+    });
+    assert_eq!(receipt["run_id"], run);
+    assert_eq!(receipt["seq"], 0);
+    assert_eq!(receipt["phase"], "spawned_hello_validated");
+    assert_eq!(receipt["effect_stage"], "spawned_hello_validated");
+    assert_eq!(receipt["work_started"], false);
+    // The immutable receipt proves ownership/Hello only. Production sets public
+    // Running solely after a sequence/identity-valid Progress, so every replay,
+    // CPU, pause and GPU-overlap claim independently waits for that actual API.
+    let running = wait("actual public Running after validated Progress", || {
+        let value = f.ctl(&["dream", "status", seat, run]);
+        assert_ne!(
+            value["run"]["settled"], true,
+            "worker settled before actual running witness: {value}"
+        );
+        (value["ok"] == true && value["run"]["state"] == "running").then_some(value)
+    });
+    let (pid, start) = journal_worker(f, seat, run).unwrap();
+    assert_eq!(receipt["worker_pid"], pid);
+    assert_eq!(receipt["worker_start"], start);
+    assert_eq!(
+        bbt_mux::adapters::dream_c1::process_stamp(pid).unwrap(),
+        start
+    );
+    receipt["public_running_after_validated_progress"] = running["run"].clone();
+    receipt
 }
 
 /// Ordinary producer Unix gateway, confined to this actual managed source.
@@ -1318,6 +1420,7 @@ fn measured_controls_with_gap(
 fn dream_c1_real_closed_job_owns_controls_dedup_and_native_frame_overlap() {
     use bbt_proto::dream as w;
     let f = Fixture::scripted();
+    f.prepare_wrapper_provision();
     let frame_report = f.root.join("native-frames.json");
     let frame_log = fs::File::create(f.root.join("native-frames.log")).unwrap();
     let mut native = OwnedChild {
@@ -1393,14 +1496,8 @@ fn dream_c1_real_closed_job_owns_controls_dedup_and_native_frame_overlap() {
     let inspect_op = "00000000000000000000000020";
     let admitted = inspect_closed(&f, &source, inspect_op);
     let run = admitted["run"]["run_id"].as_str().unwrap().to_owned();
-    let started = wait("same-owner real worker Start acknowledgement", || {
-        serde_json::from_slice::<Value>(
-            &fs::read(runtime_path(&f).join(format!("dream-c1/{run}/worker-started.json"))).ok()?,
-        )
-        .ok()
-    });
+    let started = running_worker_proof(&f, &own, &run);
     assert_eq!(started["run_id"], run);
-    assert!(started["seq"].as_u64().unwrap() >= 1);
     let (pid, start) = wait("owned real worker identity before replay", || {
         journal_worker(&f, &own, &run)
     });
@@ -1645,6 +1742,7 @@ fn dream_c1_real_closed_job_owns_controls_dedup_and_native_frame_overlap() {
             "established":["closed_only_real_ctl_admission","source_key_manual_dedup","own_seat_real_mcp_status_cancel","held_real_worker_control_latency","native_frame_overlap","same_app_native_frame_pipeline","independent_root_progress","cancel_actual_exit"],
             "not_established":["held_source_read","cpu_heavy_progress_flood","reactor_cpu_units","attributed_parent_child_heap","hot_owner_busy_wait_controls",],
             "run":run,"source_sha256":original_hash,"source_bytes":source_bytes,"worker_pid":pid,"roundtrips":roundtrips,"cancel_roundtrips":cancels,
+            "owned_hello_receipt":started,"public_running_before_hold":started["public_running_after_validated_progress"],
             "native":{"process_exit":native_exit.code(),"frames":frames["metrics"]["frames"],"cpu_p99_ms":frames["metrics"]["cpu_p99_ms"],"input_to_gpu_ms":frames["metrics"]["input_to_gpu_complete_ms"],"fixture_report_sha256":digest(&fs::read(frame_report).unwrap()),"held_worker_entire_interval":true,"same_app_pipeline":true,"overlap":overlap},
             "settled_state":terminal["run"]["state"],"source_unchanged":true,"actual_original_process_absent":true,
             "independent_root":independent,"host_metrics":host_metrics,"host_metrics_scope":"tracked requested buffer capacity and parent compute units; child wait4 process CPU/RSS; total attributed heap and thread CPU remain unproven",
@@ -1656,7 +1754,21 @@ fn dream_c1_real_closed_job_owns_controls_dedup_and_native_frame_overlap() {
 fn dream_c1_real_completed_status_rejects_valid_json_page_tamper() {
     let mut f = Fixture::scripted();
     f.start();
-    let mut source = close_source(&f, "DreamImmutable", 1);
+    let prepared = prepare_source(&f, "DreamImmutable", 1);
+    let source_pid = row(&f, &prepared.seat)["state"]["process"]["pid"]
+        .as_u64()
+        .and_then(|pid| u32::try_from(pid).ok())
+        .unwrap();
+    let source_start = bbt_mux::adapters::dream_c1::process_stamp(source_pid).unwrap();
+    let mut source = close_prepared(&f, prepared);
+    wait(
+        "durable ordinary close followed by actual exact source-process absence",
+        || {
+            (!bbt_mux::adapters::dream_c1::process_stamp(source_pid)
+                .is_ok_and(|stamp| stamp == source_start))
+            .then_some(())
+        },
+    );
     let inspect_op = "00000000000000000000000024";
     let admitted = inspect_closed(&f, &source, inspect_op);
     let run = admitted["run"]["run_id"].as_str().unwrap().to_owned();
@@ -1742,6 +1854,7 @@ fn dream_c1_real_completed_status_rejects_valid_json_page_tamper() {
             "result_sha256":result_hash,"source_sha256":source.sha256,
             "ctl_error":ctl["error"]["code"],"mcp_error":mcp["error"]["code"],
             "restored_exact_page":true,"source_unchanged":true,"actual_original_process_absent":true,
+            "ordinary_closed_source_exited":true,"source_process_pid":source_pid,"source_process_start":source_start,
         }),
     );
 }
@@ -1755,16 +1868,11 @@ fn dream_c1_real_daemon_loss_quarantines_predecessor_without_replay_or_adoption(
     let admitted = inspect_closed(&f, &source, original_op);
     let run = admitted["run"]["run_id"].as_str().unwrap().to_owned();
     let job = runtime_path(&f).join(format!("dream-c1/{run}"));
-    // This private receipt is emitted only after a validated real framed worker
-    // Progress, not when Start is queued and not by an unadmitted fake worker.
-    let started = wait("actual framed worker received Start", || {
-        serde_json::from_slice::<Value>(&fs::read(job.join("worker-started.json")).ok()?).ok()
-    });
+    let started = running_worker_proof(&f, &source.seat, &run);
     let (pid, stamp) = journal_worker(&f, &source.seat, &run).unwrap();
     assert_eq!(started["run_id"], run);
     assert_eq!(started["worker_pid"], pid);
     assert_eq!(started["worker_start"], stamp);
-    assert!(started["seq"].as_u64().unwrap() >= 1);
     let held = HeldWorker::stop(pid, stamp);
     let (before, count) = journal_record(&f, &source.seat, &run);
     assert_eq!(count, 1, "private source already duplicated a run");
@@ -1897,7 +2005,8 @@ fn dream_c1_real_daemon_loss_quarantines_predecessor_without_replay_or_adoption(
             "schema":"bboxy.dream.c1.runtime-evidence/1","driver_nonce":std::env::var("DREAM_C1_GATE_NONCE").unwrap(),
             "runner_sha256":digest(&fs::read(std::env::var_os("DREAM_C1_RUNNER").unwrap()).unwrap()),
             "established":["durable_close_restart_dedup","restart_predecessor_quarantine"],
-            "run":run,"worker_pid":pid,"worker_start":held.start,"actual_start_frame":started,
+            "run":run,"worker_pid":pid,"worker_start":held.start,"owned_hello_receipt":started,
+            "public_running_before_restart":started["public_running_after_validated_progress"],
             "source_sha256":source.sha256,"source_unchanged":true,"manifest_unchanged":true,
             "old_logic_pid":logic,"new_logic_pid":next_logic,"supervisor_unchanged":true,
             "original_op_error":old["error"]["code"],"new_op_error":new["error"]["code"],
@@ -1964,21 +2073,16 @@ fn dream_c1_four_live_real_jobs_keep_independent_controls_and_exact_settlement()
     }
     let mut held = Vec::new();
     let mut contexts = Vec::new();
+    let mut work_proofs = Vec::new();
     for (source, run) in sources.iter().zip(&runs) {
         let (pid, stamp) = wait("four actual independent worker owners", || {
             journal_worker(&f, &source.seat, run)
         });
-        let acknowledged = wait("four actual framed worker Starts", || {
-            serde_json::from_slice::<Value>(
-                &fs::read(runtime_path(&f).join(format!("dream-c1/{run}/worker-started.json")))
-                    .ok()?,
-            )
-            .ok()
-        });
+        let acknowledged = running_worker_proof(&f, &source.seat, run);
         assert_eq!(acknowledged["worker_pid"], pid);
         assert_eq!(acknowledged["worker_start"], stamp);
         assert_eq!(acknowledged["run_id"], run.as_str());
-        assert!(acknowledged["seq"].as_u64().unwrap() >= 1);
+        work_proofs.push(acknowledged);
         held.push(HeldWorker::stop(pid, stamp));
         let (record, count) = journal_record(&f, &source.seat, run);
         assert_eq!(count, 1);
@@ -2070,6 +2174,7 @@ fn dream_c1_four_live_real_jobs_keep_independent_controls_and_exact_settlement()
         .unwrap();
         rows.push(json!({"run_id":run,"worker_pid":held[index].pid,"worker_start":held[index].start,
             "root":contexts[index]["root"],"account":contexts[index]["account"],
+            "owned_hello_receipt":work_proofs[index],"public_running_before_hold":work_proofs[index]["public_running_after_validated_progress"],
             "status_roundtrips":statuses,"cancel_roundtrips":cancels,"actual_reap":true,"source_unchanged":true,"host_metrics":metrics}));
     }
     write_evidence(
@@ -2264,13 +2369,10 @@ fn dream_c1_production_cpu_and_progress_keep_actual_controls_responsive() {
     let admitted = inspect_closed(&f, &source, "00000000000000000000000067");
     let run = admitted["run"]["run_id"].as_str().unwrap().to_owned();
     let job = runtime_path(&f).join(format!("dream-c1/{run}"));
-    let started = wait("production worker's first valid progress", || {
-        serde_json::from_slice::<Value>(&fs::read(job.join("worker-started.json")).ok()?).ok()
-    });
+    let started = running_worker_proof(&f, &source.seat, &run);
     let (pid, stamp) = journal_worker(&f, &source.seat, &run).unwrap();
     assert_eq!(started["worker_pid"], pid);
     assert_eq!(started["worker_start"], stamp);
-    assert!(started["seq"].as_u64().unwrap() >= 1);
     let before = live_process_usage(pid, &stamp);
     let controls_at = Instant::now();
     // This explicit sampling gap increases the observed load interval; each
@@ -2318,7 +2420,8 @@ fn dream_c1_production_cpu_and_progress_keep_actual_controls_responsive() {
             "schema":"bboxy.dream.c1.runtime-evidence/1","driver_nonce":std::env::var("DREAM_C1_GATE_NONCE").unwrap(),
             "runner_sha256":digest(&fs::read(std::env::var_os("DREAM_C1_RUNNER").unwrap()).unwrap()),
             "established":["production_cpu_progress_controls"],"protocol_fake":false,"run":run,
-            "worker_pid":pid,"worker_start":stamp,"actual_worker_start":started,"source_bytes":source.bytes,
+            "worker_pid":pid,"worker_start":stamp,"owned_hello_receipt":started,"source_bytes":source.bytes,
+            "public_running_before_controls":started["public_running_after_validated_progress"],
             "controls":controls,"control_sample_gap_ns":1_000_000,"controls_wall_ns":controls_wall_ns,
             "process_usage_before":before,"process_usage_after":after,"child_cpu_during_controls_ns":observed_cpu_ns,
             "actual_reap":true,"source_unchanged":true,"host_metrics":metrics,
@@ -2349,9 +2452,7 @@ fn dream_c1_protocol_fake_progress_flood_keeps_controls_and_cancel_independent()
     let admitted = inspect_closed(&f, &source, "00000000000000000000000068");
     let run = admitted["run"]["run_id"].as_str().unwrap().to_owned();
     let job = runtime_path(&f).join(format!("dream-c1/{run}"));
-    let started = wait("protocol fake's valid identity/sequence progress", || {
-        serde_json::from_slice::<Value>(&fs::read(job.join("worker-started.json")).ok()?).ok()
-    });
+    let started = running_worker_proof(&f, &source.seat, &run);
     let (pid, stamp) = journal_worker(&f, &source.seat, &run).unwrap();
     assert_eq!(started["worker_pid"], pid);
     assert_eq!(started["worker_start"], stamp);
@@ -2394,6 +2495,7 @@ fn dream_c1_protocol_fake_progress_flood_keeps_controls_and_cancel_independent()
         serde_json::from_slice(&fs::read(job.join("protocol-flood.json")).unwrap()).unwrap();
     assert_eq!(fault["protocol_fake"], true);
     assert!(fault["generated_progress_frames"].as_u64().unwrap() >= 200);
+    assert!(fault["fully_written_progress_frames"].as_u64().unwrap() >= 200);
     assert!(fault["sent_framed_bytes"].as_u64().unwrap() > 0);
     assert!(fault["max_pending_bytes"].as_u64().unwrap() <= 66_048);
     assert!(fault["cancel_received"] == true || fault["eof_received"] == true);
@@ -2405,7 +2507,8 @@ fn dream_c1_protocol_fake_progress_flood_keeps_controls_and_cancel_independent()
             "runner_sha256":digest(&fs::read(std::env::var_os("DREAM_C1_RUNNER").unwrap()).unwrap()),
             "established":["protocol_fake_progress_flood_controls"],"protocol_fake":true,"production_child_executed":false,
             "fault_sha256":fault_sha256,"fault_path":f.root.join("bin/bboxy450-harness"),"fault_receipt":fault,
-            "run":run,"worker_pid":pid,"worker_start":stamp,"actual_worker_start":started,
+            "run":run,"worker_pid":pid,"worker_start":stamp,"owned_hello_receipt":started,
+            "public_running_before_controls":started["public_running_after_validated_progress"],
             "controls":controls,"cancel_controls":cancel_controls,"process_usage_before":before,"process_usage_after":after,
             "fault_process_cpu_during_controls_ns":fault_cpu_ns,"actual_reap":true,"source_unchanged":true,
             "claim":"bounded protocol-fake valid-progress traffic control witness; no production worker conformance/CPU/heap claim",
@@ -2682,15 +2785,11 @@ fn dream_c1_retained_same_generation_turn_pauses_real_worker_with_legacy_read_he
     );
     let admitted = inspect_closed(&f, &source, "00000000000000000000000065");
     let run = admitted["run"]["run_id"].as_str().unwrap().to_owned();
-    let job = runtime_path(&f).join(format!("dream-c1/{run}"));
-    let started = wait("actual retained-source worker Start frame", || {
-        serde_json::from_slice::<Value>(&fs::read(job.join("worker-started.json")).ok()?).ok()
-    });
+    let started = running_worker_proof(&f, &seat, &run);
     let (worker_pid, worker_stamp) = journal_worker(&f, &seat, &run).unwrap();
     assert_eq!(started["run_id"], run);
     assert_eq!(started["worker_pid"], worker_pid);
     assert_eq!(started["worker_start"], worker_stamp);
-    assert!(started["seq"].as_u64().unwrap() >= 1);
     let fifo = runtime_path(&f).join(format!("dream-c1/test-legacy-{seat}.fifo"));
     use std::os::unix::ffi::OsStrExt;
     let native_path = std::ffi::CString::new(fifo.as_os_str().as_bytes()).unwrap();
@@ -2817,7 +2916,8 @@ fn dream_c1_retained_same_generation_turn_pauses_real_worker_with_legacy_read_he
             "source_session":source.session,"next_session":next,"source_generation":generation,
             "same_pid":host_pid,"same_kernel_start":host_stamp,"same_generation":true,"fresh_nonfork_b":true,
             "admitted_enter_op":entered["op"],"actual_b_turn_started":true,"legacy_read_held":held,"legacy_retained_through_pause":true,
-            "actual_worker_start":started,"worker_pid":worker_pid,"worker_start":worker_stamp,
+            "owned_hello_receipt":started,"worker_pid":worker_pid,"worker_start":worker_stamp,
+            "public_running_before_b_turn":started["public_running_after_validated_progress"],
             "source_unchanged":true,"actual_worker_reap":true,"resumed_to_completed":true,"ordinary_eof_exit_after_b":true,
         }),
     );

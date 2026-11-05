@@ -227,8 +227,8 @@ struct VerifiedPublicFence {
 
 /// One job's read-only authority connection. It is transferred between that
 /// job's sequential compute owners; try_lock never makes an owner wait. No
-/// transaction or lock is retained between units. The independent monitor may
-/// own one transient connection, so the job owns at most two connections.
+/// transaction or lock is retained between units. Compute and monitor share
+/// this connection; one transient checkpoint connection fits the second slot.
 pub(crate) struct PublicFenceSession {
     file: (u64, u64),
     db: std::sync::Mutex<rusqlite::Connection>,
@@ -382,17 +382,37 @@ impl PublicFenceReader {
             db: std::sync::Mutex::new(db),
         })
     }
+    #[cfg(test)]
     pub(crate) fn with_current_session<T>(
         &self,
         captured: &PublicFence,
         session: &PublicFenceSession,
         read: impl FnOnce(&rusqlite::Connection) -> Result<T>,
     ) -> Result<T> {
+        self.try_with_current_session(captured, session, read)?
+            .ok_or_else(|| invalid("public authority session unavailable"))
+    }
+    /// None means only a concurrent bounded check owns this session. Callers
+    /// defer without doing work; poisoned/stale sessions remain errors.
+    pub(crate) fn try_with_current_session<T>(
+        &self,
+        captured: &PublicFence,
+        session: &PublicFenceSession,
+        read: impl FnOnce(&rusqlite::Connection) -> Result<T>,
+    ) -> Result<Option<T>> {
+        let db = match session.db.try_lock() {
+            Ok(db) => db,
+            Err(std::sync::TryLockError::WouldBlock) => return Ok(None),
+            Err(std::sync::TryLockError::Poisoned(_)) => {
+                return Err(invalid("poisoned public authority session"));
+            }
+        };
         let verified = self
             .verified_snapshot()?
             .ok_or_else(|| invalid("missing verified public identity"))?;
         let now = self.public_now();
-        self.with_current_verified_at(captured, verified, now, Some(session), read)
+        self.with_current_verified_at(captured, verified, now, Some((session.file, db)), read)
+            .map(Some)
     }
     fn with_current_from<T>(
         &self,
@@ -426,7 +446,7 @@ impl PublicFenceReader {
         captured: &PublicFence,
         verified: Arc<VerifiedPublicFence>,
         now: u64,
-        session: Option<&PublicFenceSession>,
+        session: Option<((u64, u64), std::sync::MutexGuard<'_, rusqlite::Connection>)>,
         read: impl FnOnce(&rusqlite::Connection) -> Result<T>,
     ) -> Result<T> {
         use std::sync::atomic::Ordering;
@@ -466,14 +486,10 @@ impl PublicFenceReader {
         #[cfg(test)]
         guard_profile_sample(&mut profile, 1);
         let mut db = match session {
-            Some(session) => {
-                if session.file != verified.file {
+            Some((file, db)) => {
+                if file != verified.file {
                     return Err(invalid("stale public account session"));
                 }
-                let db = session
-                    .db
-                    .try_lock()
-                    .map_err(|_| invalid("public authority session unavailable"))?;
                 public_connection_current(&db)?;
                 PublicCheckConnection::Retained(db)
             }
@@ -1999,6 +2015,15 @@ mod dream_public_fence_tests {
         }
         let held = session.db.try_lock().unwrap();
         let start = std::time::Instant::now();
+        assert!(
+            reader
+                .try_with_current_session(&captured, &session, |_| -> Result<()> {
+                    panic!("busy session cannot execute an authority callback")
+                })
+                .unwrap()
+                .is_none(),
+            "contention has a typed unavailable outcome rather than stale permission"
+        );
         assert!(
             reader
                 .with_current_session(&captured, &session, |_| -> Result<()> {

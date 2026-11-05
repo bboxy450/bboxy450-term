@@ -10,8 +10,13 @@
     clippy::disallowed_methods,
     reason = "dedicated C1 source/process/result owners"
 )]
-use crate::registry::dream_c1::{Bookmark, Journal, Record, private_dir};
-use bboxy450_harness_wake_up::dream_c1::{self as transport, Worker, wire as w};
+use crate::registry::dream_c1::{
+    Bookmark, ExistingJournal, Journal, LaunchBookmark, Record, private_dir,
+};
+use bboxy450_harness_wake_up::{
+    dream_bootstrap as bootstrap,
+    dream_c1::{self as transport, Worker, wire as w},
+};
 use bbt_proto::dream::{self as public, Code, State};
 use serde::{Serialize, de::DeserializeOwned};
 use serde_json::Value;
@@ -24,16 +29,16 @@ use std::{
     path::{Path, PathBuf},
     sync::{
         Arc, OnceLock,
-        atomic::{AtomicBool, AtomicU8, AtomicU64, Ordering},
+        atomic::{AtomicBool, AtomicI64, AtomicU8, AtomicU64, Ordering},
         mpsc,
     },
     time::{Duration, Instant},
 };
 
 const CHUNK: usize = 64 * 1024;
-// Hash work is separately bounded from64KiB filesystem transfer units. The
-// measured64KiB hash+observer witness exceeded1ms;16KiB matches one wire read.
-const HASH_CHUNK: usize = 16 * 1024;
+// One source transfer/hash unit consumes at most64KiB. Product CPU remains
+// measured independently of the test-only allocator observer, with a1ms limit.
+const HASH_CHUNK: usize = CHUNK;
 const LINE: usize = 256 * 1024;
 const INPUT: u64 = 64 * 1024 * 1024;
 const DISK: u64 = 128 * 1024 * 1024;
@@ -43,6 +48,299 @@ pub(crate) const HELPER_HEADROOM: u64 = 8 * 1024 * 1024;
 const RESULT: u64 = 16 * 1024 * 1024;
 const UNIT: Duration = Duration::from_millis(1);
 const REST: Duration = Duration::from_millis(9);
+
+// The run, rather than a Budget instance or owner thread, retains work debt.
+// No controls use this lane. A held native return keeps its lease; another
+// parent owner can only wait/refuse, never overlap or erase its cost.
+pub(crate) fn monotonic_ns() -> Result<u64, Code> {
+    let mut time = libc::timespec {
+        tv_sec: 0,
+        tv_nsec: 0,
+    };
+    // SAFETY: one owned fixed timespec; no host state or external pointer.
+    if unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut time) } != 0
+        || time.tv_sec < 0
+        || !(0..1_000_000_000).contains(&time.tv_nsec)
+    {
+        return Err(Code::ResourceLimit);
+    }
+    u64::try_from(time.tv_sec)
+        .ok()
+        .and_then(|seconds| seconds.checked_mul(1_000_000_000))
+        .and_then(|base| base.checked_add(time.tv_nsec as u64))
+        .ok_or(Code::ResourceLimit)
+}
+
+struct WorkDebt {
+    epoch: Instant,
+    held: AtomicBool,
+    child_work: AtomicBool,
+    child_bootstrap: AtomicBool,
+    due_ns: AtomicU64,
+    poisoned: AtomicBool,
+    spans: AtomicU64,
+    charged_ns: AtomicU64,
+    paid_ns: AtomicU64,
+    max_debt_ns: AtomicU64,
+    admission_violations: AtomicU64,
+    native_process_calls: AtomicU64,
+    native_publish_calls: AtomicU64,
+    native_publish_mask: AtomicU8,
+    native_cpu_ns: AtomicU64,
+    native_max_cpu_ns: AtomicU64,
+    native_max_wall_ns: AtomicU64,
+    native_process_max_cpu_ns: AtomicU64,
+    native_process_max_wall_ns: AtomicU64,
+    native_publish_max_cpu_ns: AtomicU64,
+    native_publish_max_wall_ns: AtomicU64,
+    native_app_max_cpu_ns: AtomicU64,
+    inclusive_max_cpu_ns: AtomicU64,
+    native_overruns: AtomicU64,
+    native_clock_failures: AtomicU64,
+    native_effects: AtomicU64,
+    process_errno: AtomicI64,
+    publish_errno: AtomicI64,
+    process_effect: AtomicU8,
+    publish_effect: AtomicU8,
+    publish_dev: AtomicU64,
+    publish_ino: AtomicU64,
+}
+impl Default for WorkDebt {
+    fn default() -> Self {
+        Self {
+            epoch: Instant::now(),
+            held: AtomicBool::new(false),
+            child_work: AtomicBool::new(false),
+            child_bootstrap: AtomicBool::new(false),
+            due_ns: AtomicU64::new(0),
+            poisoned: AtomicBool::new(false),
+            spans: AtomicU64::new(0),
+            charged_ns: AtomicU64::new(0),
+            paid_ns: AtomicU64::new(0),
+            max_debt_ns: AtomicU64::new(0),
+            admission_violations: AtomicU64::new(0),
+            native_process_calls: AtomicU64::new(0),
+            native_publish_calls: AtomicU64::new(0),
+            native_publish_mask: AtomicU8::new(0),
+            native_cpu_ns: AtomicU64::new(0),
+            native_max_cpu_ns: AtomicU64::new(0),
+            native_max_wall_ns: AtomicU64::new(0),
+            native_process_max_cpu_ns: AtomicU64::new(0),
+            native_process_max_wall_ns: AtomicU64::new(0),
+            native_publish_max_cpu_ns: AtomicU64::new(0),
+            native_publish_max_wall_ns: AtomicU64::new(0),
+            native_app_max_cpu_ns: AtomicU64::new(0),
+            inclusive_max_cpu_ns: AtomicU64::new(0),
+            native_overruns: AtomicU64::new(0),
+            native_clock_failures: AtomicU64::new(0),
+            native_effects: AtomicU64::new(0),
+            process_errno: AtomicI64::new(0),
+            publish_errno: AtomicI64::new(0),
+            process_effect: AtomicU8::new(0),
+            publish_effect: AtomicU8::new(0),
+            publish_dev: AtomicU64::new(0),
+            publish_ino: AtomicU64::new(0),
+        }
+    }
+}
+struct DebtFrame {
+    debt: Arc<WorkDebt>,
+    cpu: Duration,
+}
+std::thread_local! {
+    static WORK_FRAME: std::cell::RefCell<Option<DebtFrame>> = const { std::cell::RefCell::new(None) };
+}
+impl WorkDebt {
+    fn now_ns(&self) -> u64 {
+        nanos(self.epoch.elapsed())
+    }
+    fn remaining_ns(&self) -> u64 {
+        self.due_ns
+            .load(Ordering::Acquire)
+            .saturating_sub(self.now_ns())
+    }
+    fn charge(&self, cpu: Result<Duration, Code>, end: Instant) {
+        let cpu = cpu.unwrap_or_else(|_| {
+            self.poisoned.store(true, Ordering::Release);
+            UNIT
+        });
+        let cost = nanos(cpu.max(UNIT)).saturating_mul(9);
+        let end_ns = nanos(end.saturating_duration_since(self.epoch));
+        self.due_ns
+            .fetch_max(end_ns.saturating_add(cost), Ordering::AcqRel);
+        self.charged_ns.fetch_add(cost, Ordering::Relaxed);
+        self.max_debt_ns.fetch_max(cost, Ordering::Relaxed);
+        self.spans.fetch_add(1, Ordering::Relaxed);
+        self.inclusive_max_cpu_ns
+            .fetch_max(nanos(cpu), Ordering::Relaxed);
+    }
+    fn wait(&self, deadline: Option<Instant>, required: bool) -> Result<(), Code> {
+        loop {
+            if !required && self.poisoned.load(Ordering::Acquire) {
+                return Err(Code::ResourceLimit);
+            }
+            if deadline.is_some_and(|d| Instant::now() >= d) {
+                return Err(Code::Deadline);
+            }
+            let left = self.remaining_ns();
+            if left == 0 {
+                return Ok(());
+            }
+            let before = Instant::now();
+            std::thread::sleep(Duration::from_nanos(left).min(REST));
+            self.paid_ns
+                .fetch_add(nanos(before.elapsed()).min(left), Ordering::Relaxed);
+        }
+    }
+    fn enter(self: &Arc<Self>, deadline: Option<Instant>, required: bool) -> Result<(), Code> {
+        if WORK_FRAME.with(|f| f.borrow().is_some()) {
+            return Err(Code::Busy);
+        }
+        loop {
+            self.wait(deadline, required)?;
+            if self.child_work.load(Ordering::Acquire)
+                || self.child_bootstrap.load(Ordering::Acquire)
+            {
+                if !required {
+                    return Err(Code::Busy);
+                }
+                std::thread::sleep(REST);
+                continue;
+            }
+            if self
+                .held
+                .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+                .is_ok()
+            {
+                if self.remaining_ns() != 0
+                    || (self.child_work.load(Ordering::Acquire)
+                        || self.child_bootstrap.load(Ordering::Acquire))
+                {
+                    self.held.store(false, Ordering::Release);
+                    continue;
+                }
+                match bbt_rt::fault::thread_cpu_time() {
+                    Ok(cpu) => {
+                        WORK_FRAME.with(|f| {
+                            *f.borrow_mut() = Some(DebtFrame {
+                                debt: self.clone(),
+                                cpu,
+                            })
+                        });
+                        return Ok(());
+                    }
+                    Err(_) => {
+                        self.poisoned.store(true, Ordering::Release);
+                        if required {
+                            // Retain the exclusive cleanup lease even when its
+                            // measurement is unavailable; no successful work is
+                            // admitted on this poisoned run afterward.
+                            WORK_FRAME.with(|f| {
+                                *f.borrow_mut() = Some(DebtFrame {
+                                    debt: self.clone(),
+                                    cpu: Duration::ZERO,
+                                })
+                            });
+                            return Ok(());
+                        }
+                        self.held.store(false, Ordering::Release);
+                        return Err(Code::ResourceLimit);
+                    }
+                }
+            }
+            if deadline.is_some_and(|d| Instant::now() >= d) {
+                return Err(Code::Deadline);
+            }
+            std::thread::sleep(REST);
+        }
+    }
+    // A partial serde owner may require cleanup while its application unit is
+    // still on this stack. Pay that prefix before cleanup, keep the exclusive
+    // lease, then resume a fresh application segment after cleanup debt is paid.
+    fn suspend(&self) -> bool {
+        WORK_FRAME.with(|f| {
+            let mut frame = f.borrow_mut();
+            let Some(frame) = frame
+                .as_mut()
+                .filter(|f| std::ptr::eq(self, Arc::as_ptr(&f.debt)))
+            else {
+                return false;
+            };
+            let used = bbt_rt::fault::thread_cpu_time()
+                .map_err(|_| Code::ResourceLimit)
+                .and_then(|now| now.checked_sub(frame.cpu).ok_or(Code::ResourceLimit));
+            self.charge(used, Instant::now());
+            true
+        })
+    }
+    fn resume(&self) {
+        WORK_FRAME.with(|f| {
+            if let Some(frame) = f
+                .borrow_mut()
+                .as_mut()
+                .filter(|f| std::ptr::eq(self, Arc::as_ptr(&f.debt)))
+            {
+                match bbt_rt::fault::thread_cpu_time() {
+                    Ok(cpu) => frame.cpu = cpu,
+                    Err(_) => self.poisoned.store(true, Ordering::Release),
+                }
+            }
+        });
+    }
+    fn finish(&self, measured: Option<Result<Duration, Code>>) {
+        let frame = WORK_FRAME.with(|f| {
+            let mut frame = f.borrow_mut();
+            if frame
+                .as_ref()
+                .is_some_and(|f| std::ptr::eq(self, Arc::as_ptr(&f.debt)))
+            {
+                frame.take()
+            } else {
+                None
+            }
+        });
+        if let Some(frame) = frame {
+            let used = measured.unwrap_or_else(|| {
+                bbt_rt::fault::thread_cpu_time()
+                    .map_err(|_| Code::ResourceLimit)
+                    .and_then(|now| now.checked_sub(frame.cpu).ok_or(Code::ResourceLimit))
+            });
+            self.charge(used, Instant::now());
+            self.held.store(false, Ordering::Release);
+        }
+    }
+}
+#[derive(Clone, Copy, Debug)]
+struct NativeSample {
+    cpu: Result<Duration, Code>,
+    wall: Duration,
+    inclusive: Result<Duration, Code>,
+}
+#[cfg(test)]
+std::thread_local! {
+    // A fixed scoped test hook can withhold a *returned real effect* before its
+    // budget verdict. It is never a production native classification escape.
+    static NATIVE_RETURN_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce()>>> = const { std::cell::RefCell::new(None) };
+    static PROCESS_RETURN_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce(&std::process::Child)>>> = const { std::cell::RefCell::new(None) };
+}
+struct NativeOutcome<T: Drain> {
+    // Inspect/take the real effect before inspecting verdict. A timing refusal
+    // does not turn a returned process/inode into an absent effect.
+    effect: Paced<Result<T, Code>>,
+    // Retain the actual OS error owner through a timing/clock verdict. Its raw
+    // errno is also in bounded per-tag diagnostics; Err is not absence proof.
+    raw_error: Option<Paced<std::io::Error>>,
+    verdict: Result<(), Code>,
+    sample: NativeSample,
+    returned_at: Instant,
+}
+impl<T: Drain> Drop for NativeOutcome<T> {
+    fn drop(&mut self) {
+        // The retained io::Error is retired through the same measured cleanup
+        // lane after its errno and typed verdict have been consumed.
+        drop(self.raw_error.take());
+    }
+}
 
 #[cfg(all(test, target_os = "macos"))]
 mod isolated_heap {
@@ -99,6 +397,7 @@ pub(crate) enum HeapLane {
 /// Requested allocation capacity, separate from RSS and allocator usable-size overhead.
 /// Every allocation this owner performs has a preceding fallible reservation.
 pub(crate) struct Heap {
+    cleanup: Arc<disposal::Cleanup>,
     reserved: [AtomicU64; 2],
     live: [AtomicU64; 2],
     cumulative: [AtomicU64; 2],
@@ -109,6 +408,7 @@ pub(crate) struct Heap {
 impl Default for Heap {
     fn default() -> Self {
         Self {
+            cleanup: Arc::new(disposal::Cleanup::default()),
             reserved: [AtomicU64::new(0), AtomicU64::new(0)],
             live: [AtomicU64::new(0), AtomicU64::new(0)],
             cumulative: [AtomicU64::new(0), AtomicU64::new(0)],
@@ -257,13 +557,6 @@ impl HeapBuffer {
     pub fn clear(&mut self) {
         self.len = 0;
     }
-    fn truncate(&mut self, len: usize) -> Result<(), Code> {
-        if len > self.len {
-            return Err(Code::ProtocolError);
-        }
-        self.len = len;
-        Ok(())
-    }
     pub fn consume(&mut self, bytes: usize) -> Result<(), Code> {
         if bytes > self.len {
             return Err(Code::ProtocolError);
@@ -308,14 +601,17 @@ impl HeapBuffer {
 impl Drop for HeapBuffer {
     fn drop(&mut self) {
         if self.capacity != 0 {
-            // SAFETY: this exact pointer/layout pair was allocated once by new and is unique.
-            unsafe {
-                std::alloc::dealloc(
-                    self.pointer.as_ptr(),
-                    std::alloc::Layout::array::<u8>(self.capacity)
-                        .expect("validated allocation layout"),
-                );
-            }
+            disposal::cleanup_unit(&self.reservation.heap.cleanup, || {
+                // SAFETY: this exact pointer/layout pair was allocated once by
+                // new and is unique. The reservation stays live through free.
+                unsafe {
+                    std::alloc::dealloc(
+                        self.pointer.as_ptr(),
+                        std::alloc::Layout::array::<u8>(self.capacity)
+                            .expect("validated allocation layout"),
+                    );
+                }
+            });
         }
         // The reservation field drops after this method, after physical deallocation.
     }
@@ -381,6 +677,11 @@ pub(crate) struct PreparedGuard {
     pub callback: Arc<AuthorityGuard>,
     pub setup_cpu_ns: u64,
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum FinalHandoff {
+    Permit,
+    Start,
+}
 pub(crate) struct Control {
     #[cfg(debug_assertions)]
     pub private_fixture: bool,
@@ -389,10 +690,29 @@ pub(crate) struct Control {
     #[cfg(debug_assertions)]
     pub source_hold_done: AtomicBool,
     pub cancelled: AtomicBool,
+    #[cfg(test)]
+    pub(crate) final_admission_hook: std::sync::Mutex<Option<Box<dyn FnOnce(FinalHandoff) + Send>>>,
+    #[cfg(test)]
+    pub(crate) final_admission_sample: std::sync::Mutex<Option<Result<Duration, Code>>>,
+    pub launch_incarnation: AtomicU64,
+    pub native_pending_since_ns: AtomicU64,
+    pub native_quarantine_observed: AtomicBool,
+    pub(crate) native_birth_unknown: AtomicBool,
+    pub(crate) bootstrap_control_cpu_ns: AtomicU64,
+    pub(crate) bootstrap_control_max_cpu_ns: AtomicU64,
+    pub(crate) bootstrap_control_overruns: AtomicU64,
+    pub(crate) bootstrap_clock_failures: AtomicU64,
+    pub(crate) bootstrap_permit_attempts: AtomicU64,
+    pub(crate) start_admission_attempts: AtomicU64,
+    pub(crate) bootstrap_hello_observed: AtomicBool,
+    pub(crate) bootstrap_revoked: AtomicBool,
+    pub(crate) bootstrap_parent_handoffs: AtomicU64,
+    pub(crate) bootstrap_child_handoffs: AtomicU64,
     /// True also represents unknown foreground; no expensive unit is admitted then.
     pub foreground: Arc<AtomicBool>,
     pub activity_revision: Arc<AtomicU64>,
-    /// Production authority: one atomic revision+foreground word; fixtures may omit it.
+    /// Production revision+foreground word with a local closed-exit fence;
+    /// fixtures may omit it. The fence is masked before worker-wire revisions.
     pub activity_latch: Option<Arc<AtomicU64>>,
     pub authority_guard: Option<Arc<AuthorityGuard>>,
     pub authority_setup_cpu_ns: AtomicU64,
@@ -406,19 +726,29 @@ pub(crate) struct Control {
     pub max_unit_cpu_ns: AtomicU64,
     pub unit_overruns: AtomicU64,
     pub heap: Arc<Heap>,
+    pub(crate) cleanup: Arc<disposal::Cleanup>,
     pub unit_overrun_line: AtomicU64,
     pub child_peak_rss_bytes: AtomicU64,
     pub child_user_cpu_ns: AtomicU64,
     pub child_system_cpu_ns: AtomicU64,
     pub child_usage_observed: AtomicBool,
     pub producer_metrics_observed: AtomicBool,
-    pub producer_metrics: [AtomicU64; 19],
+    pub producer_native_profile_observed: AtomicBool,
+    pub producer_native_profile_verified: AtomicBool,
+    pub native_metrics_authorized: AtomicBool,
+    pub(crate) native_provision: OnceLock<Arc<runner_provision::ProvisionProof>>,
+    pub(crate) native_provision_credit: OnceLock<Reservation>,
+    pub producer_metrics: [AtomicU64; transport::PRODUCER_METRIC_KEYS.len()],
     pub source_owner: OnceLock<std::thread::ThreadId>,
     pub owner_refusals: AtomicU64,
     pub snapshot_owner_thread_cpu_ns: AtomicU64,
     pub snapshot_owner_wall_ns: AtomicU64,
     pub snapshot_active_cpu_ns: AtomicU64,
     pub snapshot_active_wall_ns: AtomicU64,
+    pub source_copy_unit_max_cpu_ns: AtomicU64,
+    pub blob_copy_unit_max_cpu_ns: AtomicU64,
+    pub snapshot_tiny_records: AtomicU64,
+    pub snapshot_staged_records: AtomicU64,
     pub process_owner_thread_cpu_ns: AtomicU64,
     pub process_owner_wall_ns: AtomicU64,
     pub work_unit_count: AtomicU64,
@@ -427,9 +757,31 @@ pub(crate) struct Control {
     pub rest_skips: AtomicU64,
     pub rest_violations: AtomicU64,
     pub min_inter_unit_gap_ns: AtomicU64,
+    pub reactor_units: AtomicU64,
+    pub reactor_max_cpu_ns: AtomicU64,
+    pub reactor_cpu_ns: AtomicU64,
+    pub reactor_wall_ns: AtomicU64,
+    pub reactor_overruns: AtomicU64,
+    pub reactor_clock_failures: AtomicU64,
+    pub reactor_rest_wall_ns: AtomicU64,
+    pub reactor_rest_cpu_ns: AtomicU64,
+    pub reactor_min_gap_ns: AtomicU64,
+    pub dispatch_guard_max_cpu_ns: AtomicU64,
+    pub dispatch_guard_overruns: AtomicU64,
+    pub codec_prepare_max_cpu_ns: AtomicU64,
+    pub worker_spawn_cpu_ns: AtomicU64,
+    pub worker_start_cpu_ns: AtomicU64,
+    pub native_dispatch_overruns: AtomicU64,
+    pub checkpoint_path_max_cpu_ns: AtomicU64,
+    pub checkpoint_open_max_cpu_ns: AtomicU64,
+    pub checkpoint_config_max_cpu_ns: AtomicU64,
+    pub checkpoint_save_max_cpu_ns: AtomicU64,
+    pub checkpoint_overruns: AtomicU64,
 }
 impl Default for Control {
     fn default() -> Self {
+        let heap = Arc::new(Heap::default());
+        let cleanup = heap.cleanup.clone();
         Self {
             #[cfg(debug_assertions)]
             private_fixture: false,
@@ -438,6 +790,24 @@ impl Default for Control {
             #[cfg(debug_assertions)]
             source_hold_done: AtomicBool::new(false),
             cancelled: AtomicBool::new(false),
+            #[cfg(test)]
+            final_admission_hook: std::sync::Mutex::new(None),
+            #[cfg(test)]
+            final_admission_sample: std::sync::Mutex::new(None),
+            launch_incarnation: AtomicU64::new(0),
+            native_pending_since_ns: AtomicU64::new(0),
+            native_quarantine_observed: AtomicBool::new(false),
+            native_birth_unknown: AtomicBool::new(false),
+            bootstrap_control_cpu_ns: AtomicU64::new(0),
+            bootstrap_control_max_cpu_ns: AtomicU64::new(0),
+            bootstrap_control_overruns: AtomicU64::new(0),
+            bootstrap_clock_failures: AtomicU64::new(0),
+            bootstrap_permit_attempts: AtomicU64::new(0),
+            start_admission_attempts: AtomicU64::new(0),
+            bootstrap_hello_observed: AtomicBool::new(false),
+            bootstrap_revoked: AtomicBool::new(false),
+            bootstrap_parent_handoffs: AtomicU64::new(0),
+            bootstrap_child_handoffs: AtomicU64::new(0),
             foreground: Arc::new(AtomicBool::new(true)),
             activity_revision: Arc::new(AtomicU64::new(0)),
             activity_latch: None,
@@ -452,13 +822,19 @@ impl Default for Control {
             revision: AtomicU64::new(0),
             max_unit_cpu_ns: AtomicU64::new(0),
             unit_overruns: AtomicU64::new(0),
-            heap: Arc::new(Heap::default()),
+            heap,
+            cleanup,
             unit_overrun_line: AtomicU64::new(0),
             child_peak_rss_bytes: AtomicU64::new(0),
             child_user_cpu_ns: AtomicU64::new(0),
             child_system_cpu_ns: AtomicU64::new(0),
             child_usage_observed: AtomicBool::new(false),
             producer_metrics_observed: AtomicBool::new(false),
+            producer_native_profile_observed: AtomicBool::new(false),
+            producer_native_profile_verified: AtomicBool::new(false),
+            native_metrics_authorized: AtomicBool::new(false),
+            native_provision: OnceLock::new(),
+            native_provision_credit: OnceLock::new(),
             producer_metrics: std::array::from_fn(|_| AtomicU64::new(u64::MAX)),
             source_owner: OnceLock::new(),
             owner_refusals: AtomicU64::new(0),
@@ -466,6 +842,10 @@ impl Default for Control {
             snapshot_owner_wall_ns: AtomicU64::new(0),
             snapshot_active_cpu_ns: AtomicU64::new(0),
             snapshot_active_wall_ns: AtomicU64::new(0),
+            source_copy_unit_max_cpu_ns: AtomicU64::new(0),
+            blob_copy_unit_max_cpu_ns: AtomicU64::new(0),
+            snapshot_tiny_records: AtomicU64::new(0),
+            snapshot_staged_records: AtomicU64::new(0),
             process_owner_thread_cpu_ns: AtomicU64::new(0),
             process_owner_wall_ns: AtomicU64::new(0),
             work_unit_count: AtomicU64::new(0),
@@ -474,10 +854,132 @@ impl Default for Control {
             rest_skips: AtomicU64::new(0),
             rest_violations: AtomicU64::new(0),
             min_inter_unit_gap_ns: AtomicU64::new(u64::MAX),
+            reactor_units: AtomicU64::new(0),
+            reactor_max_cpu_ns: AtomicU64::new(0),
+            reactor_cpu_ns: AtomicU64::new(0),
+            reactor_wall_ns: AtomicU64::new(0),
+            reactor_overruns: AtomicU64::new(0),
+            reactor_clock_failures: AtomicU64::new(0),
+            reactor_rest_wall_ns: AtomicU64::new(0),
+            reactor_rest_cpu_ns: AtomicU64::new(0),
+            reactor_min_gap_ns: AtomicU64::new(u64::MAX),
+            dispatch_guard_max_cpu_ns: AtomicU64::new(0),
+            dispatch_guard_overruns: AtomicU64::new(0),
+            codec_prepare_max_cpu_ns: AtomicU64::new(0),
+            worker_spawn_cpu_ns: AtomicU64::new(0),
+            worker_start_cpu_ns: AtomicU64::new(0),
+            native_dispatch_overruns: AtomicU64::new(0),
+            checkpoint_path_max_cpu_ns: AtomicU64::new(0),
+            checkpoint_open_max_cpu_ns: AtomicU64::new(0),
+            checkpoint_config_max_cpu_ns: AtomicU64::new(0),
+            checkpoint_save_max_cpu_ns: AtomicU64::new(0),
+            checkpoint_overruns: AtomicU64::new(0),
         }
     }
 }
 impl Control {
+    pub(crate) fn install_native_provision(
+        &self,
+        proof: Arc<runner_provision::ProvisionProof>,
+    ) -> Result<(), Code> {
+        proof.still_current()?;
+        // Shared retained proof is conservatively charged to each live job;
+        // its separate cache credit remains until the last physical owner frees it.
+        let mut credit = self
+            .heap
+            .reserve(HeapLane::Work, proof.retained_declared_bytes())?;
+        credit.allocated();
+        self.native_provision_credit
+            .set(credit)
+            .map_err(|_| Code::StaleContext)?;
+        self.native_provision
+            .set(proof)
+            .map_err(|_| Code::StaleContext)?;
+        Ok(())
+    }
+    pub(crate) fn authorize_native_metrics(&self) {
+        self.native_metrics_authorized
+            .store(true, Ordering::Release);
+    }
+    fn begin_child_bootstrap(&self) -> Result<(), Code> {
+        let debt = &self.cleanup.debt;
+        if debt.poisoned.load(Ordering::Acquire) {
+            return Err(Code::ResourceLimit);
+        }
+        if debt
+            .held
+            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .is_err()
+        {
+            return Err(Code::Busy);
+        }
+        let ready = debt.remaining_ns() == 0
+            && !debt.child_work.load(Ordering::Acquire)
+            && !debt.child_bootstrap.load(Ordering::Acquire);
+        if ready {
+            debt.child_bootstrap.store(true, Ordering::Release);
+            self.bootstrap_child_handoffs
+                .fetch_add(1, Ordering::Relaxed);
+        }
+        debt.held.store(false, Ordering::Release);
+        if ready { Ok(()) } else { Err(Code::Busy) }
+    }
+    fn end_child_bootstrap(&self, qualified_hello: bool) -> Result<(), Code> {
+        self.cleanup
+            .debt
+            .child_bootstrap
+            .store(false, Ordering::Release);
+        if qualified_hello {
+            self.bootstrap_hello_observed.store(true, Ordering::Release);
+            self.bootstrap_parent_handoffs
+                .fetch_add(1, Ordering::Relaxed);
+            Ok(())
+        } else {
+            self.cleanup.debt.poisoned.store(true, Ordering::Release);
+            Err(Code::ResourceLimit)
+        }
+    }
+    /// Reactor admission is an atomic observation/claim, never a debt wait.
+    /// The metadata owner must already be retired before this Start boundary.
+    fn begin_child_work(&self) -> Result<(), Code> {
+        let debt = &self.cleanup.debt;
+        if debt.poisoned.load(Ordering::Acquire) {
+            return Err(Code::ResourceLimit);
+        }
+        if debt
+            .held
+            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
+            .is_err()
+        {
+            return Err(Code::Busy);
+        }
+        let ready = debt.remaining_ns() == 0
+            && !debt.child_work.load(Ordering::Acquire)
+            && !debt.child_bootstrap.load(Ordering::Acquire);
+        if ready {
+            debt.child_work.store(true, Ordering::Release);
+        }
+        debt.held.store(false, Ordering::Release);
+        if ready { Ok(()) } else { Err(Code::Busy) }
+    }
+    /// Only the owner that observed actual reap calls this. Missing child debt
+    /// evidence prevents subsequent result work, while required settlement can
+    /// still close retained ownership and publish honest diagnostics.
+    fn end_child_work(&self, child_debt_paid: bool) -> Result<(), Code> {
+        self.cleanup.debt.child_work.store(false, Ordering::Release);
+        if child_debt_paid {
+            Ok(())
+        } else {
+            self.cleanup.debt.poisoned.store(true, Ordering::Release);
+            Err(Code::ResourceLimit)
+        }
+    }
+    pub fn installed_authority_guard(&self) -> Option<Arc<AuthorityGuard>> {
+        self.authority_prepared_guard
+            .get()
+            .cloned()
+            .or_else(|| self.authority_guard.clone())
+    }
     /// Installed only by the admitted authority owner after its durable/permit
     /// fence. Deferred controls retain no prepared database connection.
     pub fn install_authority_guard(&self, guard: PreparedGuard) -> Result<(), Code> {
@@ -509,7 +1011,7 @@ impl Control {
     pub fn activity_version(&self) -> u64 {
         self.activity_latch.as_ref().map_or_else(
             || self.activity_revision.load(Ordering::Acquire),
-            |latch| latch.load(Ordering::Acquire) >> 1,
+            |latch| super::harness_status::activity_revision(latch.load(Ordering::Acquire)),
         )
     }
     fn phase(&self, phase: u8) {
@@ -625,6 +1127,100 @@ fn private_fixture_entry(path: &Path, fifo: bool) -> Result<Option<Metadata>, Co
         return Err(Code::StorageUnavailable);
     }
     Ok(Some(m))
+}
+
+#[cfg(debug_assertions)]
+fn prepare_private_job_faults(
+    job: &Path,
+    record: &Record,
+    budget: &mut Budget<'_>,
+) -> Result<(), Code> {
+    use std::os::unix::ffi::OsStrExt;
+    if !budget.control.private_fixture {
+        return Ok(());
+    }
+    let _credit = budget
+        .control
+        .heap
+        .reserve(HeapLane::Work, 2 * libc::PATH_MAX as usize + 256)?;
+    let parent = job.parent().ok_or(Code::StorageUnavailable)?;
+    let join = |base: &Path, name: &str| -> Result<PathBuf, Code> {
+        let bytes = base
+            .as_os_str()
+            .as_bytes()
+            .len()
+            .checked_add(name.len() + 1)
+            .ok_or(Code::ResourceLimit)?;
+        if bytes >= libc::PATH_MAX as usize {
+            return Err(Code::ResourceLimit);
+        }
+        let mut path = PathBuf::new();
+        path.try_reserve_exact(bytes)
+            .map_err(|_| Code::ResourceLimit)?;
+        path.push(base);
+        path.push(name);
+        Ok(path)
+    };
+    let mut selected = false;
+    for mode in ["hold-source", "omit-rest", "hot-owner"] {
+        let name = Paced::new(
+            budget.unit(|| {
+                use std::fmt::Write as _;
+                let mut name = String::new();
+                name.try_reserve_exact(128)
+                    .map_err(|_| Code::ResourceLimit)?;
+                write!(
+                    &mut name,
+                    ".fixture-{mode}-{}-{}",
+                    record.context.seat.0, record.context.generation.0
+                )
+                .map_err(|_| Code::ResourceLimit)?;
+                Ok(name)
+            })?,
+            budget.control,
+        );
+        let configured = Paced::new(budget.unit(|| join(parent, name.as_str()))?, budget.control);
+        if budget
+            .unit(|| private_fixture_entry(&configured, false))?
+            .is_none()
+        {
+            continue;
+        }
+        if selected {
+            return Err(Code::BadRequest);
+        }
+        selected = true;
+        if mode == "hold-source" {
+            budget.unit(|| {
+                // Fixed stack path: source-free fixture setup is ordinary
+                // parent work before birth, never an interpreter prefix.
+                let base = job.as_os_str().as_bytes();
+                let suffix = b"/test-source-read.fifo";
+                let mut path = [0u8; libc::PATH_MAX as usize];
+                if base.len() + suffix.len() + 1 > path.len() {
+                    return Err(Code::ResourceLimit);
+                }
+                path[..base.len()].copy_from_slice(base);
+                path[base.len()..base.len() + suffix.len()].copy_from_slice(suffix);
+                // SAFETY: bounded owned path has one initialized trailing NUL.
+                if unsafe { libc::mkfifo(path.as_ptr().cast(), 0o600) } != 0 {
+                    let _actual = std::io::Error::last_os_error();
+                    return Err(Code::StorageUnavailable);
+                }
+                Ok(())
+            })?;
+        } else {
+            let marker = if mode == "hot-owner" {
+                "test-hot-owner"
+            } else {
+                "test-omit-rest"
+            };
+            let path = Paced::new(budget.unit(|| join(job, marker))?, budget.control);
+            let file = budget.unit(|| create(&path))?;
+            drop(Paced::new(file, budget.control));
+        }
+    }
+    Ok(())
 }
 
 /// Debug-only, host-authenticated private-account fixture. The real source fd is
@@ -872,7 +1468,11 @@ impl Reader {
         let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
         let result = self.poll_one(&mut budget);
         std::thread::sleep(REST);
-        result
+        if control.cleanup.overruns.load(Ordering::Acquire) > 0 {
+            Err(Code::ResourceLimit)
+        } else {
+            result
+        }
     }
     fn poll_one(
         &mut self,
@@ -903,14 +1503,14 @@ impl Reader {
             self.cursor += raw.len() as u64;
             self.last_line_len = raw.len() as u32;
             self.last_line_sha256 = budget.hash(&raw[..raw.len() - 1])?;
-            let _payload = budget.json(&raw).map_err(|code| {
+            let payload = budget.json(&raw).map_err(|code| {
                 if code == Code::ProtocolError {
                     Code::MalformedIr
                 } else {
                     code
                 }
             })?;
-            let event: Value = budget.parse(&raw).map_err(|code| {
+            let event: Paced<Value> = budget.parse_credited(&raw, payload).map_err(|code| {
                 if code == Code::ProtocolError {
                     Code::MalformedIr
                 } else {
@@ -1077,107 +1677,1373 @@ pub(crate) fn utility() -> Result<(), Code> {
     Ok(())
 }
 
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+// Adapted from bboxy450-harness src/dream/c1.rs::Paced/disposal, signed
+// 47182320. https://github.com/bboxy450/bboxy450-harness/blob/main/src/dream/c1.rs
+// Producer policy: https://github.com/bboxy450/bboxy450-harness/blob/main/ATTRIBUTION.md
+// Local ownership adapters delegate lexical/scalar decoding to serde and retain
+// the producer-owned wire DTOs/schema/corpus as the sole protocol authority.
+pub(crate) mod disposal {
+    use super::*;
+    use serde::de::{DeserializeSeed, MapAccess, SeqAccess, Visitor};
+    use std::{cell::Cell, fmt, marker::PhantomData};
+
+    std::thread_local! {
+        // Thread CPU can only be adjusted by cleanup performed on this thread.
+        // A concurrent process/snapshot/monitor owner's cleanup is never subtracted.
+        static THREAD_CLEANUP_CPU: Cell<u64> = const { Cell::new(0) };
+        static LAST_CLEANUP_END: Cell<Option<Instant>> = const { Cell::new(None) };
+    }
+    pub(super) fn thread_cleanup_cpu() -> u64 {
+        THREAD_CLEANUP_CPU.with(Cell::get)
+    }
+    pub(super) fn last_cleanup_end() -> Option<Instant> {
+        LAST_CLEANUP_END.with(Cell::get)
+    }
+    pub(super) fn record_cleanup(control: &Cleanup, elapsed: Duration) {
+        record_cleanup_at(control, elapsed, Instant::now());
+    }
+    fn record_cleanup_at(control: &Cleanup, elapsed: Duration, body_end: Instant) {
+        let elapsed = nanos(elapsed);
+        THREAD_CLEANUP_CPU.with(|cpu| cpu.set(cpu.get().saturating_add(elapsed)));
+        LAST_CLEANUP_END.with(|end| end.set(Some(body_end)));
+        control.cpu_ns.fetch_add(elapsed, Ordering::Relaxed);
+        control
+            .max_unit_cpu_ns
+            .fetch_max(elapsed, Ordering::Relaxed);
+        control.units.fetch_add(1, Ordering::Relaxed);
+        if elapsed > nanos(UNIT) {
+            control.overruns.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+    pub(super) fn cleanup_unit(control: &Cleanup, work: impl FnOnce()) {
+        // Required destruction remains independent of foreground/cancel. It
+        // shares the run's lease/debt, so an error unwind cannot overlap another
+        // parent's work or borrow idle time from before this cleanup span.
+        let nested = control.debt.suspend();
+        if !nested {
+            // A different retained owner is never bypassed. This is an
+            // isolated settlement owner, not a shared reactor/control lane.
+            while control.debt.enter(None, true).is_err() {
+                control.overruns.fetch_add(1, Ordering::Relaxed);
+                std::thread::sleep(REST);
+            }
+        }
+        let before = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit);
+        let _ = control.debt.wait(None, true);
+        work();
+        let body_end = Instant::now();
+        let body_cpu = match (before, bbt_rt::fault::thread_cpu_time()) {
+            (Ok(before), Ok(after)) => after.checked_sub(before).ok_or(Code::ResourceLimit),
+            _ => Err(Code::ResourceLimit),
+        };
+        control.debt.charge(body_cpu, body_end);
+        let _ = control.debt.wait(None, true);
+        let elapsed = match (before, bbt_rt::fault::thread_cpu_time()) {
+            (Ok(before), Ok(after)) => after
+                .checked_sub(before)
+                .unwrap_or(UNIT + Duration::from_nanos(1)),
+            _ => UNIT + Duration::from_nanos(1),
+        };
+        // Whole cleanup-region CPU includes its pacing/clock overhead. The
+        // <=1ms floor normally already paid this; an overrun pays the full cost.
+        if elapsed > body_cpu.unwrap_or(UNIT) {
+            let cost = nanos(elapsed.max(UNIT)).saturating_mul(9);
+            control.debt.due_ns.fetch_max(
+                nanos(body_end.saturating_duration_since(control.debt.epoch)).saturating_add(cost),
+                Ordering::AcqRel,
+            );
+            let _ = control.debt.wait(None, true);
+        }
+        record_cleanup_at(control, elapsed, body_end);
+        if nested {
+            control.debt.resume();
+        } else {
+            // Cleanup was charged above. Discard its frame without charging the
+            // trailing rest a second time.
+            WORK_FRAME.with(|f| {
+                f.borrow_mut().take();
+            });
+            control.debt.held.store(false, Ordering::Release);
+        }
+    }
+    pub(crate) trait Drain {
+        /// Remove at most one payload/entry, following only the admitted depth.
+        fn drain_step(&mut self) -> bool;
+    }
+    #[derive(Default)]
+    pub(crate) struct Cleanup {
+        pub(super) cpu_ns: AtomicU64,
+        pub(super) max_unit_cpu_ns: AtomicU64,
+        pub(super) overruns: AtomicU64,
+        pub(super) units: AtomicU64,
+        pub(super) capacity_refusals: AtomicU64,
+        pub(super) debt: Arc<WorkDebt>,
+    }
+    pub(crate) struct Paced<T: Drain> {
+        value: Option<T>,
+        control: Arc<Cleanup>,
+        // Destruction order is explicit: the exact owner empties before credit.
+        pub(super) credit: Option<Reservation>,
+    }
+    impl<T: Drain> Paced<T> {
+        pub(super) fn new(value: T, control: &Control) -> Self {
+            Self {
+                value: Some(value),
+                control: control.cleanup.clone(),
+                credit: None,
+            }
+        }
+        /// Only an explicit ownership transfer may bypass this guard's Drop.
+        pub(crate) fn take_value(&mut self) -> T {
+            self.value.take().unwrap()
+        }
+    }
+    impl<T: Drain + Serialize> Serialize for Paced<T> {
+        fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+            self.value.as_ref().unwrap().serialize(serializer)
+        }
+    }
+    impl<T: Drain + std::fmt::Debug> std::fmt::Debug for Paced<T> {
+        fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+            f.debug_tuple("Paced").field(&self.value).finish()
+        }
+    }
+    impl<T: Drain> std::ops::Deref for Paced<T> {
+        type Target = T;
+        fn deref(&self) -> &T {
+            self.value.as_ref().unwrap()
+        }
+    }
+    impl<T: Drain> std::ops::DerefMut for Paced<T> {
+        fn deref_mut(&mut self) -> &mut T {
+            self.value.as_mut().unwrap()
+        }
+    }
+    impl<T: Drain> Drain for Paced<T> {
+        fn drain_step(&mut self) -> bool {
+            let Some(value) = self.value.as_mut() else {
+                return false;
+            };
+            if !value.drain_step() {
+                // Already inside the outer owner's measured cleanup unit.
+                // Retire this empty inner owner/credit here, not recursively
+                // through another paced Drop (which would double-count CPU).
+                drop(self.value.take());
+                drop(self.credit.take());
+            }
+            true
+        }
+    }
+    impl<T: Drain> Drop for Paced<T> {
+        fn drop(&mut self) {
+            while self.value.is_some() {
+                cleanup_unit(&self.control, || {
+                    let before = bbt_rt::fault::thread_cpu_time().ok();
+                    // The finite step count still applies when the clock fails.
+                    for _ in 0..128 {
+                        if !self.value.as_mut().unwrap().drain_step() {
+                            drop(self.value.take());
+                            break;
+                        }
+                        if before.is_none_or(|before| {
+                            bbt_rt::fault::thread_cpu_time().map_or(true, |now| {
+                                now.saturating_sub(before) >= Duration::from_micros(400)
+                            })
+                        }) {
+                            break;
+                        }
+                    }
+                });
+            }
+            // credit remains present throughout all actual cleanup, even if a
+            // cleanup clock fails or a unit exceeds its limit.
+            drop(self.credit.take());
+        }
+    }
+    macro_rules! leaves {
+        ($($ty:ty),* $(,)?) => {$ (impl Drain for $ty {
+            fn drain_step(&mut self) -> bool { false }
+        })*};
+    }
+    leaves!(
+        (),
+        bool,
+        u8,
+        u32,
+        u64,
+        i64,
+        usize,
+        String,
+        PathBuf,
+        File,
+        std::process::Child,
+        std::io::Error,
+        Metadata,
+        (File, Metadata),
+        (u64, u64),
+        [u8; 32],
+        crate::Ulid,
+        bootstrap::Frozen,
+        Duration,
+        UnitClock,
+        transport::JsonBounds,
+        Reservation,
+        Publication,
+        transport::PreparedBuffers,
+        bootstrap::Gate,
+        ProbeClaim,
+        LaunchBookmark,
+        (crate::Ulid, crate::Ulid, crate::Ulid, crate::Ulid),
+        transport::PipePair,
+        transport::PreparedCommand,
+        Worker,
+        std::process::Command,
+        ExistingJournal,
+        Journal,
+        w::Hex,
+        w::PageRef,
+        w::Blob,
+        w::Context,
+        crate::identity::PublicFence,
+        w::Hello,
+        w::Origin,
+        w::Cluster,
+        (String, u64, String),
+        (String, String),
+        (usize, String),
+        (u32, u64, u64),
+        public::Hex,
+        // Fixed public context: bounded scalar IDs/epochs only, no collections.
+        // Its identifier storage retires within the measured native-free leaf.
+        public::Context,
+        public::Cluster
+    );
+    impl<T: Drain> Drain for Option<T> {
+        fn drain_step(&mut self) -> bool {
+            let Some(value) = self.as_mut() else {
+                return false;
+            };
+            if !value.drain_step() {
+                self.take();
+            }
+            true
+        }
+    }
+    impl<T: Drain> Drain for Result<T, Code> {
+        fn drain_step(&mut self) -> bool {
+            match self {
+                Ok(value) => value.drain_step(),
+                Err(_) => false,
+            }
+        }
+    }
+    impl<T: Drain> Drain for Vec<T> {
+        fn drain_step(&mut self) -> bool {
+            // Trivial scalar buffers have no element destruction. Retire their
+            // one backing allocation in this measured native-free leaf rather
+            // than inventing thousands of per-byte cleanup steps.
+            if !std::mem::needs_drop::<T>() {
+                return false;
+            }
+            let Some(value) = self.last_mut() else {
+                return false;
+            };
+            if !value.drain_step() {
+                self.pop();
+            }
+            true
+        }
+    }
+    impl<K: Ord + Drain, V: Drain> Drain for BTreeMap<K, V> {
+        fn drain_step(&mut self) -> bool {
+            let Some(mut entry) = self.first_entry() else {
+                return false;
+            };
+            if !entry.get_mut().drain_step() {
+                entry.remove_entry();
+            }
+            true
+        }
+    }
+    impl<T: Ord + Drain> Drain for BTreeSet<T> {
+        fn drain_step(&mut self) -> bool {
+            self.pop_first().is_some()
+        }
+    }
+    impl Drain for Value {
+        fn drain_step(&mut self) -> bool {
+            match self {
+                Value::Null => false,
+                Value::Array(values) => values.drain_step(),
+                Value::Object(values) => {
+                    let Some((key, child)) = values.iter_mut().next() else {
+                        return false;
+                    };
+                    if child.drain_step() {
+                        return true;
+                    }
+                    // serde_json::Map exposes no pop-entry. This bounded stack
+                    // copy runs only for leaf removal, never recursively. The
+                    // largest reachable engine JSON frame is result.json768KiB;
+                    // IR frames are256KiB and page frames16KiB before this port.
+                    #[inline(never)]
+                    fn remove<const N: usize>(values: &mut serde_json::Map<String, Value>) {
+                        let mut key_bytes = [0; N];
+                        let key = values.keys().next().unwrap();
+                        let len = key.len();
+                        assert!(len <= N, "preflight/frame key bound");
+                        key_bytes[..len].copy_from_slice(key.as_bytes());
+                        values.remove_entry(std::str::from_utf8(&key_bytes[..len]).unwrap());
+                    }
+                    if key.len() <= 512 {
+                        remove::<512>(values);
+                    } else {
+                        remove::<{ 768 * 1024 }>(values);
+                    }
+                    true
+                }
+                _ => {
+                    *self = Value::Null;
+                    true
+                }
+            }
+        }
+    }
+    macro_rules! fields {
+        ($ty:ty; $($field:ident),+ $(,)?) => {impl Drain for $ty {
+            fn drain_step(&mut self) -> bool { false $(|| self.$field.drain_step())+ }
+        }};
+    }
+    fields!(w::ResultDescriptor; pages);
+    fields!(w::Page; rows);
+    fields!(w::Episode; fingerprints);
+    fields!(w::Source; blobs);
+    fields!(w::Manifest; sources);
+    fields!(public::Page; rows);
+    fields!(public::Episode; fingerprints);
+    impl Drain for w::Row {
+        fn drain_step(&mut self) -> bool {
+            match self {
+                Self::Episode(row) => row.drain_step(),
+                Self::Cluster(_) => false,
+            }
+        }
+    }
+    impl Drain for public::Row {
+        fn drain_step(&mut self) -> bool {
+            match self {
+                Self::Episode(row) => row.drain_step(),
+                Self::Cluster(_) => false,
+            }
+        }
+    }
+
+    #[derive(Clone, Copy)]
+    struct ValueSeed<'a>(&'a Control);
+    impl<'de> DeserializeSeed<'de> for ValueSeed<'_> {
+        type Value = Value;
+        fn deserialize<D: serde::Deserializer<'de>>(
+            self,
+            deserializer: D,
+        ) -> Result<Value, D::Error> {
+            struct JsonVisitor<'a>(&'a Control);
+            impl<'de> Visitor<'de> for JsonVisitor<'_> {
+                type Value = Value;
+                fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    f.write_str("JSON value")
+                }
+                fn visit_unit<E>(self) -> Result<Value, E> {
+                    Ok(Value::Null)
+                }
+                fn visit_none<E>(self) -> Result<Value, E> {
+                    Ok(Value::Null)
+                }
+                fn visit_bool<E>(self, v: bool) -> Result<Value, E> {
+                    Ok(v.into())
+                }
+                fn visit_i64<E>(self, v: i64) -> Result<Value, E> {
+                    Ok(v.into())
+                }
+                fn visit_u64<E>(self, v: u64) -> Result<Value, E> {
+                    Ok(v.into())
+                }
+                fn visit_f64<E: serde::de::Error>(self, v: f64) -> Result<Value, E> {
+                    serde_json::Number::from_f64(v)
+                        .map(Value::Number)
+                        .ok_or_else(|| E::custom("non-finite number"))
+                }
+                fn visit_str<E: serde::de::Error>(self, v: &str) -> Result<Value, E> {
+                    Ok(Value::String(v.to_owned()))
+                }
+                fn visit_string<E>(self, v: String) -> Result<Value, E> {
+                    Ok(Value::String(v))
+                }
+                fn visit_seq<A: SeqAccess<'de>>(self, sequence: A) -> Result<Value, A::Error> {
+                    let mut owner = VecVisitor {
+                        control: self.0,
+                        seed: ValueSeed(self.0),
+                    }
+                    .visit_seq(sequence)?;
+                    Ok(Value::Array(owner.take_value()))
+                }
+                fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Value, A::Error> {
+                    let mut owner = Paced::new(serde_json::Map::new(), self.0);
+                    while let Some(key) = map.next_key::<String>()? {
+                        let value = map.next_value_seed(ValueSeed(self.0))?;
+                        if let Some(old) = owner.insert(key, value) {
+                            // Preserve serde's last-value duplicate-key semantics,
+                            // but do not recursively drop the superseded tree.
+                            drop(Paced::new(old, self.0));
+                        }
+                    }
+                    Ok(Value::Object(owner.take_value()))
+                }
+            }
+            deserializer.deserialize_any(JsonVisitor(self.0))
+        }
+    }
+    impl Drain for serde_json::Map<String, Value> {
+        fn drain_step(&mut self) -> bool {
+            if self.is_empty() {
+                return false;
+            }
+            // Reuse Value's no-allocation path while retaining map ownership.
+            let mut value = Value::Object(std::mem::take(self));
+            let progress = value.drain_step();
+            let Value::Object(map) = value else {
+                unreachable!()
+            };
+            *self = map;
+            progress
+        }
+    }
+    struct LeafSeed<T>(PhantomData<fn() -> T>);
+    impl<T> Copy for LeafSeed<T> {}
+    impl<T> Clone for LeafSeed<T> {
+        fn clone(&self) -> Self {
+            *self
+        }
+    }
+    impl<T> LeafSeed<T> {
+        fn new() -> Self {
+            Self(PhantomData)
+        }
+    }
+    impl<'de, T: serde::Deserialize<'de>> DeserializeSeed<'de> for LeafSeed<T> {
+        type Value = T;
+        fn deserialize<D: serde::Deserializer<'de>>(self, d: D) -> Result<T, D::Error> {
+            T::deserialize(d)
+        }
+    }
+    struct VecSeed<'a, S> {
+        control: &'a Control,
+        seed: S,
+    }
+    struct VecVisitor<'a, S> {
+        control: &'a Control,
+        seed: S,
+    }
+    impl<'de, 'a, S, T> Visitor<'de> for VecVisitor<'a, S>
+    where
+        S: DeserializeSeed<'de, Value = T> + Clone,
+        T: Drain,
+    {
+        type Value = Paced<Vec<T>>;
+        fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+            f.write_str("array")
+        }
+        fn visit_seq<A: SeqAccess<'de>>(self, mut sequence: A) -> Result<Self::Value, A::Error> {
+            let mut owner = Paced::new(Vec::new(), self.control);
+            while let Some(value) = sequence.next_element_seed(self.seed.clone())? {
+                // The completed child already has an owner before any growth
+                // verdict can fail. Preflight credit covers final entries;
+                // retain an additional old-capacity credit through realloc.
+                let mut value = Paced::new(value, self.control);
+                if owner.len() == owner.capacity() {
+                    let refused = || {
+                        self.control
+                            .cleanup
+                            .capacity_refusals
+                            .fetch_add(1, Ordering::Relaxed);
+                        <A::Error as serde::de::Error>::custom("C1 collection capacity refused")
+                    };
+                    let old_bytes = owner
+                        .capacity()
+                        .checked_mul(std::mem::size_of::<T>())
+                        .ok_or_else(refused)?;
+                    let overlap = self
+                        .control
+                        .heap
+                        .reserve(HeapLane::Work, old_bytes)
+                        .map_err(|_| refused())?;
+                    owner.try_reserve_exact(1).map_err(|_| refused())?;
+                    drop(overlap);
+                }
+                owner.push(value.take_value());
+            }
+            Ok(owner)
+        }
+    }
+    impl<'de, 'a, S, T> DeserializeSeed<'de> for VecSeed<'a, S>
+    where
+        S: DeserializeSeed<'de, Value = T> + Clone,
+        T: Drain,
+    {
+        type Value = Paced<Vec<T>>;
+        fn deserialize<D: serde::Deserializer<'de>>(self, d: D) -> Result<Self::Value, D::Error> {
+            d.deserialize_seq(VecVisitor {
+                control: self.control,
+                seed: self.seed,
+            })
+        }
+    }
+
+    // Fixed protocol adapters, not a second wire authority. All scalar types
+    // are the pinned mirror's exact types; canonical corpus covers their joins.
+    macro_rules! object_seed {
+        ($seed:ident<$life:lifetime>($control:ident) => $output:ty { $($field:ident:$ty:ty => $decoder:expr),+ $(,)? } => $build:expr) => {
+            #[derive(Clone,Copy)] struct $seed<$life>(&$life Control);
+            impl<'de,$life> DeserializeSeed<'de> for $seed<$life> {
+                type Value=$output;
+                fn deserialize<D:serde::Deserializer<'de>>(self,d:D)->Result<Self::Value,D::Error> {
+                    struct Fields<$life>(&$life Control);
+                    impl<'de,$life> Visitor<'de> for Fields<$life> {
+                        type Value=$output;
+                        fn expecting(&self,f:&mut fmt::Formatter<'_>)->fmt::Result { f.write_str(stringify!($output)) }
+                        #[allow(unused_mut,reason="some ownership fields transfer their paced collection")]
+                        fn visit_map<A:MapAccess<'de>>(self,mut map:A)->Result<Self::Value,A::Error> {
+                            let $control=self.0;
+                            $(let mut $field:Option<$ty>=None;)+
+                            while let Some(key)=map.next_key::<String>()? {
+                                match key.as_str() {
+                                    $(stringify!($field)=>{
+                                        if $field.is_some() { return Err(serde::de::Error::duplicate_field(stringify!($field))); }
+                                        $field=Some(map.next_value_seed($decoder)?);
+                                    },)+
+                                    _=>return Err(serde::de::Error::custom("unknown C1 object field")),
+                                }
+                            }
+                            $(let mut $field=$field.ok_or_else(||serde::de::Error::missing_field(stringify!($field)))?;)+
+                            Ok($build)
+                        }
+                    }
+                    d.deserialize_map(Fields(self.0))
+                }
+            }
+        };
+    }
+    object_seed!(DescriptorSeed<'a>(control)=>w::ResultDescriptor {
+        schema:w::ResultSchema=>LeafSeed::new(), run_id:w::Ulid=>LeafSeed::new(),
+        nonce:w::Ulid=>LeafSeed::new(), manifest_sha256:w::Hex=>LeafSeed::new(),
+        algorithm:w::Algorithm=>LeafSeed::new(), source_count:u32=>LeafSeed::new(),
+        episode_count:u32=>LeafSeed::new(), cluster_count:u32=>LeafSeed::new(),
+        max_poll_cpu_ns:w::Number=>LeafSeed::new(), knowledge:w::Knowledge=>LeafSeed::new(),
+        trust:w::Trust=>LeafSeed::new(), pages:Paced<Vec<w::PageRef>> => VecSeed {control,seed:LeafSeed::new()}
+    }=>w::ResultDescriptor {schema,run_id,nonce,manifest_sha256,algorithm,source_count,
+        episode_count,cluster_count,max_poll_cpu_ns,knowledge,trust,pages:pages.take_value()});
+    object_seed!(PageSeed<'a>(control)=>w::Page {
+        schema:w::PageSchema=>LeafSeed::new(),run_id:w::Ulid=>LeafSeed::new(),
+        manifest_sha256:w::Hex=>LeafSeed::new(),index:u32=>LeafSeed::new(),
+        rows:Paced<Vec<w::Row>> => VecSeed {control,seed:RowSeed(control)},next:Option<u32> => LeafSeed::new()
+    }=>w::Page {schema,run_id,manifest_sha256,index,rows:rows.take_value(),next});
+    #[derive(Clone, Copy)]
+    struct RowSeed<'a>(&'a Control);
+    impl<'de, 'a> DeserializeSeed<'de> for RowSeed<'a> {
+        type Value = w::Row;
+        fn deserialize<D: serde::Deserializer<'de>>(self, d: D) -> Result<Self::Value, D::Error> {
+            struct Fields<'a>(&'a Control);
+            impl<'de, 'a> Visitor<'de> for Fields<'a> {
+                type Value = w::Row;
+                fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                    f.write_str("C1 row")
+                }
+                fn visit_map<A: MapAccess<'de>>(self, mut map: A) -> Result<Self::Value, A::Error> {
+                    let (mut kind, mut first_ms, mut last_ms) =
+                        (None::<String>, None::<w::Number>, None::<w::Number>);
+                    let (mut repo, mut fingerprint, mut count) =
+                        (None::<w::Repo>, None::<w::Hex>, None::<u32>);
+                    let (mut session, mut turn, mut origin, mut fingerprints) = (
+                        None::<w::Ulid>,
+                        None::<w::Ulid>,
+                        None::<w::Origin>,
+                        None::<Paced<Vec<w::Hex>>>,
+                    );
+                    macro_rules! read {
+                        ($field:ident) => {{
+                            if $field.is_some() {
+                                return Err(serde::de::Error::duplicate_field(stringify!($field)));
+                            }
+                            $field = Some(map.next_value()?);
+                        }};
+                    }
+                    while let Some(key) = map.next_key::<String>()? {
+                        match key.as_str() {
+                            "kind" => read!(kind),
+                            "first_ms" => read!(first_ms),
+                            "last_ms" => read!(last_ms),
+                            "repo" => read!(repo),
+                            "fingerprint" => read!(fingerprint),
+                            "count" => read!(count),
+                            "session" => read!(session),
+                            "turn" => read!(turn),
+                            "origin" => read!(origin),
+                            "fingerprints" => {
+                                if fingerprints.is_some() {
+                                    return Err(serde::de::Error::duplicate_field("fingerprints"));
+                                }
+                                fingerprints = Some(map.next_value_seed(VecSeed {
+                                    control: self.0,
+                                    seed: LeafSeed::new(),
+                                })?);
+                            }
+                            _ => return Err(serde::de::Error::custom("unknown C1 row field")),
+                        }
+                    }
+                    macro_rules! required {
+                        ($value:ident) => {
+                            $value.ok_or_else(|| {
+                                serde::de::Error::missing_field(stringify!($value))
+                            })?
+                        };
+                    }
+                    let first_ms = required!(first_ms);
+                    let last_ms = required!(last_ms);
+                    match required!(kind).as_str() {
+                        "episode" => {
+                            if repo.is_some() || fingerprint.is_some() || count.is_some() {
+                                return Err(serde::de::Error::custom("cluster field in episode"));
+                            }
+                            let session = required!(session);
+                            let turn = required!(turn);
+                            let origin = required!(origin);
+                            let mut fingerprints = required!(fingerprints);
+                            Ok(w::Row::Episode(w::Episode {
+                                session,
+                                turn,
+                                origin,
+                                fingerprints: fingerprints.take_value(),
+                                first_ms,
+                                last_ms,
+                            }))
+                        }
+                        "cluster" => {
+                            if session.is_some()
+                                || turn.is_some()
+                                || origin.is_some()
+                                || fingerprints.is_some()
+                            {
+                                return Err(serde::de::Error::custom("episode field in cluster"));
+                            }
+                            Ok(w::Row::Cluster(w::Cluster {
+                                repo: required!(repo),
+                                fingerprint: required!(fingerprint),
+                                count: required!(count),
+                                first_ms,
+                                last_ms,
+                            }))
+                        }
+                        _ => Err(serde::de::Error::custom("unknown C1 row kind")),
+                    }
+                }
+            }
+            d.deserialize_map(Fields(self.0))
+        }
+    }
+    pub(super) trait OwnedDecode: Drain + Sized {
+        fn decode<R: Read>(reader: R, control: &Control) -> serde_json::Result<Paced<Self>>;
+    }
+    macro_rules! decode {
+        ($ty:ty,$seed:ident) => {
+            impl OwnedDecode for $ty {
+                fn decode<R: Read>(
+                    reader: R,
+                    control: &Control,
+                ) -> serde_json::Result<Paced<Self>> {
+                    let mut decoder = serde_json::Deserializer::from_reader(reader);
+                    let value = $seed(control).deserialize(&mut decoder)?;
+                    let owner = Paced::new(value, control);
+                    decoder.end()?;
+                    Ok(owner)
+                }
+            }
+        };
+    }
+    decode!(Value, ValueSeed);
+    decode!(w::ResultDescriptor, DescriptorSeed);
+    decode!(w::Page, PageSeed);
+}
+use disposal::{Drain, OwnedDecode, Paced};
+
+#[derive(Clone, Copy)]
+struct UnitClock {
+    cpu: Duration,
+    cleanup: u64,
+}
+
+#[derive(Debug)]
+enum SmallJson {
+    Processed,
+    Fallback(Option<transport::JsonBounds>),
+}
+impl Drain for SmallJson {
+    fn drain_step(&mut self) -> bool {
+        false
+    }
+}
+enum TinyPrepared {
+    Fallback(transport::JsonBounds),
+    Parsed {
+        owner: Paced<Value>,
+        verdict: Result<(), Code>,
+    },
+}
+impl Drain for TinyPrepared {
+    fn drain_step(&mut self) -> bool {
+        match self {
+            Self::Fallback(_) => false,
+            Self::Parsed { owner, .. } => owner.drain_step(),
+        }
+    }
+}
+
+impl UnitClock {
+    fn now() -> Result<Self, Code> {
+        Ok(Self {
+            cpu: bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit)?,
+            cleanup: disposal::thread_cleanup_cpu(),
+        })
+    }
+    fn elapsed(self) -> Result<Duration, Code> {
+        bbt_rt::fault::thread_cpu_time()
+            .map_err(|_| Code::ResourceLimit)?
+            .checked_sub(self.cpu)
+            .ok_or(Code::ResourceLimit)?
+            .checked_sub(Duration::from_nanos(
+                disposal::thread_cleanup_cpu().saturating_sub(self.cleanup),
+            ))
+            .ok_or(Code::ResourceLimit)
+    }
+}
+
+/// One isolated request's ordinary metadata units. Controls never borrow the
+/// admitted job's work/native lane, so status/cancel remain independent of IO.
+/// No native admission operation is exposed by this context.
+pub(crate) struct JournalQuantum {
+    control: Control,
+}
+impl Default for JournalQuantum {
+    fn default() -> Self {
+        Self {
+            control: Control::default(),
+        }
+    }
+}
+impl JournalQuantum {
+    pub(crate) fn retain<T: Drain>(&self, value: T) -> disposal::Paced<T> {
+        Paced::new(value, &self.control)
+    }
+    pub(crate) fn check(&self) -> Result<(), Code> {
+        if self.control.cleanup.overruns.load(Ordering::Acquire) > 0
+            || self.control.cleanup.debt.poisoned.load(Ordering::Acquire)
+        {
+            Err(Code::ResourceLimit)
+        } else {
+            Ok(())
+        }
+    }
+    pub(crate) fn pay(&self) -> Result<(), Code> {
+        self.check()?;
+        self.control
+            .cleanup
+            .debt
+            .wait(Some(Instant::now() + Duration::from_secs(30)), false)
+    }
+    pub(crate) fn retire<T: Drain>(&self, value: T) {
+        drop(self.retain(value));
+    }
+    #[track_caller]
+    pub(crate) fn unit<T: Drain>(&self, work: impl FnOnce() -> Result<T, Code>) -> Result<T, Code> {
+        if self.control.cleanup.overruns.load(Ordering::Acquire) > 0 {
+            return Err(Code::ResourceLimit);
+        }
+        self.check()?;
+        if WORK_FRAME.with(|frame| {
+            frame
+                .borrow()
+                .as_ref()
+                .is_some_and(|frame| Arc::ptr_eq(&frame.debt, &self.control.cleanup.debt))
+        }) {
+            // A finite control transaction/lookup may contain several bounded
+            // statements in one ordinary unit. The OUTER full <=1ms verdict
+            // includes every nested statement and all wrapper application CPU.
+            return work();
+        }
+        let mut result = Paced::new(
+            Budget::for_control(&self.control, Instant::now() + Duration::from_secs(30)).unit(work),
+            &self.control,
+        );
+        self.check()?;
+        result.take_value()
+    }
+}
+impl Drain for rusqlite::Connection {
+    fn drain_step(&mut self) -> bool {
+        false
+    }
+}
+impl Drain for rusqlite::Transaction<'_> {
+    fn drain_step(&mut self) -> bool {
+        false
+    }
+}
+impl Drain for rusqlite::Rows<'_> {
+    fn drain_step(&mut self) -> bool {
+        false
+    }
+}
+impl Drain for rusqlite::Statement<'_> {
+    fn drain_step(&mut self) -> bool {
+        false
+    }
+}
+impl Drain for (public::Context, crate::identity::PublicFence) {
+    fn drain_step(&mut self) -> bool {
+        false
+    }
+}
+impl Drain for (Vec<u8>, String) {
+    fn drain_step(&mut self) -> bool {
+        self.0.drain_step()
+    }
+}
+impl Drain for Bookmark {
+    fn drain_step(&mut self) -> bool {
+        self.turns.drain_step()
+    }
+}
+impl Drain for Record {
+    fn drain_step(&mut self) -> bool {
+        self.sources.drain_step() || self.request.drain_step()
+    }
+}
+
 struct Budget<'a> {
     control: &'a Control,
+    control_only: bool,
     deadline: Instant,
     rest_until: Instant,
     previous_end: Option<Instant>,
     disk: u64,
     input: u64,
     envelopes: u64,
-    declared: Reservation,
+    declared: Option<Reservation>,
+}
+impl Drop for Budget<'_> {
+    fn drop(&mut self) {
+        // A parser/clock error can leave through `?` before its last verdict.
+        // Preserve debt and prevent a later Budget from erasing that prefix.
+        self.control.cleanup.debt.finish(None);
+    }
 }
 impl<'a> Budget<'a> {
     fn new(control: &'a Control, deadline: Instant) -> Self {
         Self {
             control,
+            control_only: false,
             deadline,
             rest_until: Instant::now(),
             previous_end: None,
             disk: 0,
             input: 0,
             envelopes: 0,
-            declared: control
-                .heap
-                .reserve(HeapLane::Work, 0)
-                .expect("zero declaration within enforced quota"),
+            declared: Some(
+                control
+                    .heap
+                    .reserve(HeapLane::Work, 0)
+                    .expect("zero declaration within enforced quota"),
+            ),
+        }
+    }
+    /// Captured lifecycle metadata only: independent of expensive-work
+    /// admission, still bounded by the same CPU/rest/wall/heap checks.
+    fn for_control(control: &'a Control, deadline: Instant) -> Self {
+        let mut budget = Self::new(control, deadline);
+        budget.control_only = true;
+        budget
+    }
+    fn pay_work_debt(&self) -> Result<(), Code> {
+        let debt = &self.control.cleanup.debt;
+        loop {
+            debt.wait(Some(self.deadline), false)?;
+            if !debt.held.load(Ordering::Acquire) && debt.remaining_ns() == 0 {
+                return Ok(());
+            }
+            if Instant::now() >= self.deadline {
+                return Err(Code::Deadline);
+            }
+            std::thread::sleep(REST);
+        }
+    }
+    fn native_process(
+        &mut self,
+        command: &mut std::process::Command,
+    ) -> Result<NativeOutcome<std::process::Child>, Code> {
+        self.native_process_impl(command, None)
+    }
+    fn native_process_impl(
+        &mut self,
+        command: &mut std::process::Command,
+        forced: Option<NativeSample>,
+    ) -> Result<NativeOutcome<std::process::Child>, Code> {
+        let span = self.begin_unit()?;
+        self.control
+            .cleanup
+            .debt
+            .process_effect
+            .store(1, Ordering::Release);
+        let pending = match monotonic_ns() {
+            Ok(time) => time,
+            Err(code) => {
+                return Err(self
+                    .finish_unit::<()>(span, Err(code))
+                    .err()
+                    .unwrap_or(Code::ProtocolError));
+            }
+        };
+        self.control
+            .native_pending_since_ns
+            .store(pending, Ordering::Release);
+        let before = match self.native_admit(span, true) {
+            Ok(cpu) => cpu,
+            Err(code) => {
+                self.control
+                    .native_pending_since_ns
+                    .store(0, Ordering::Release);
+                return Err(code);
+            }
+        };
+        let wall = Instant::now();
+        // The only process native boundary: no command preparation or fcntl.
+        let effect = command.spawn();
+        let returned_at = Instant::now();
+        // `effect` owns the returned Child OR exact io::Error before either
+        // clock is consulted. No error mapping drops native evidence.
+        let end = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit);
+        let wall = wall.elapsed();
+        if effect.is_err() {
+            self.control
+                .native_birth_unknown
+                .store(true, Ordering::Release);
+        }
+        let errno = effect.as_ref().err().and_then(std::io::Error::raw_os_error);
+        self.control
+            .cleanup
+            .debt
+            .process_errno
+            .store(errno.map_or(0, i64::from), Ordering::Release);
+        self.control
+            .cleanup
+            .debt
+            .process_effect
+            .store(if effect.is_ok() { 2 } else { 3 }, Ordering::Release);
+        let (effect, raw_error) = match effect {
+            Ok(child) => (Ok(child), None),
+            Err(error) => (
+                Err(Code::RunnerUnavailable),
+                Some(Paced::new(error, self.control)),
+            ),
+        };
+        let owner = Paced::new(effect, self.control);
+        #[cfg(test)]
+        PROCESS_RETURN_HOOK.with(|hook| {
+            if let Some(hook) = hook.borrow_mut().take()
+                && let Ok(child) = &*owner
+            {
+                hook(child);
+            }
+        });
+        #[cfg(test)]
+        NATIVE_RETURN_HOOK.with(|hook| {
+            if let Some(hook) = hook.borrow_mut().take() {
+                hook();
+            }
+        });
+        let sample = forced.unwrap_or(NativeSample {
+            cpu: end.and_then(|end| end.checked_sub(before).ok_or(Code::ResourceLimit)),
+            wall,
+            inclusive: span.elapsed(),
+        });
+        Ok(self.native_finish(owner, raw_error, sample, true, returned_at))
+    }
+    fn native_publish(&mut self, publication: &mut Publication) -> Result<NativeOutcome<()>, Code> {
+        self.native_publish_impl(publication, None)
+    }
+    fn native_publish_impl(
+        &mut self,
+        publication: &mut Publication,
+        forced: Option<NativeSample>,
+    ) -> Result<NativeOutcome<()>, Code> {
+        let bit = match publication
+            .target
+            .file_name()
+            .and_then(|name| name.to_str())
+        {
+            Some("manifest.json") => 1,
+            Some("worker-started.json") => 2,
+            _ => return Err(Code::BadRequest),
+        };
+        if publication.prechecked_identity.is_none() || publication.attempted {
+            return Err(Code::BadRequest);
+        }
+        let span = self.begin_unit()?;
+        let claimed = self.control.cleanup.debt.native_publish_mask.try_update(
+            Ordering::AcqRel,
+            Ordering::Acquire,
+            |mask| (mask & bit == 0).then_some(mask | bit),
+        );
+        if claimed.is_err() {
+            return Err(self
+                .finish_unit::<()>(span, Err(Code::ResourceLimit))
+                .err()
+                .unwrap_or(Code::ProtocolError));
+        }
+        publication.attempted = true;
+        let identity = publication.prechecked_identity.unwrap();
+        self.control
+            .cleanup
+            .debt
+            .publish_dev
+            .store(identity.0, Ordering::Release);
+        self.control
+            .cleanup
+            .debt
+            .publish_ino
+            .store(identity.1, Ordering::Release);
+        self.control
+            .cleanup
+            .debt
+            .publish_effect
+            .store(1, Ordering::Release);
+        let pending = match monotonic_ns() {
+            Ok(time) => time,
+            Err(code) => {
+                return Err(self
+                    .finish_unit::<()>(span, Err(code))
+                    .err()
+                    .unwrap_or(Code::ProtocolError));
+            }
+        };
+        self.control
+            .native_pending_since_ns
+            .store(pending, Ordering::Release);
+        let before = match self.native_admit(span, false) {
+            Ok(cpu) => cpu,
+            Err(code) => {
+                self.control
+                    .native_pending_since_ns
+                    .store(0, Ordering::Release);
+                return Err(code);
+            }
+        };
+        let wall = Instant::now();
+        // Exactly one prechecked atomic no-replace link. No metadata, flush,
+        // path construction, target removal or retry is inside the native tag.
+        let effect = std::fs::hard_link(&publication.temporary, &publication.target);
+        let returned_at = Instant::now();
+        // The owned native Result retains raw io::Error before clock sampling.
+        let end = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit);
+        let wall = wall.elapsed();
+        let errno = effect.as_ref().err().and_then(std::io::Error::raw_os_error);
+        self.control
+            .cleanup
+            .debt
+            .publish_errno
+            .store(errno.map_or(0, i64::from), Ordering::Release);
+        self.control
+            .cleanup
+            .debt
+            .publish_effect
+            .store(if effect.is_ok() { 2 } else { 3 }, Ordering::Release);
+        let (effect, raw_error) = match effect {
+            Ok(()) => (Ok(()), None),
+            Err(error) => (
+                Err(Code::StorageUnavailable),
+                Some(Paced::new(error, self.control)),
+            ),
+        };
+        let owner = Paced::new(effect, self.control);
+        #[cfg(test)]
+        NATIVE_RETURN_HOOK.with(|hook| {
+            if let Some(hook) = hook.borrow_mut().take() {
+                hook();
+            }
+        });
+        let sample = forced.unwrap_or(NativeSample {
+            cpu: end.and_then(|end| end.checked_sub(before).ok_or(Code::ResourceLimit)),
+            wall,
+            inclusive: span.elapsed(),
+        });
+        Ok(self.native_finish(owner, raw_error, sample, false, returned_at))
+    }
+    fn native_admit(&mut self, span: UnitClock, process: bool) -> Result<Duration, Code> {
+        if let Err(code) = self.gate() {
+            return self.finish_unit(span, Err(code));
+        }
+        let used = span.elapsed();
+        if used.is_err() || used.is_ok_and(|used| used > UNIT) {
+            return self.finish_unit(span, Err(Code::ResourceLimit));
+        }
+        let calls = if process {
+            &self.control.cleanup.debt.native_process_calls
+        } else {
+            &self.control.cleanup.debt.native_publish_calls
+        };
+        let cap = if process { 1 } else { 2 };
+        if calls
+            .try_update(Ordering::AcqRel, Ordering::Acquire, |n| {
+                (n < cap).then_some(n + 1)
+            })
+            .is_err()
+        {
+            return self.finish_unit(span, Err(Code::ResourceLimit));
+        }
+        match bbt_rt::fault::thread_cpu_time() {
+            Ok(cpu) => Ok(cpu),
+            Err(_) => self.finish_unit(span, Err(Code::ResourceLimit)),
+        }
+    }
+    fn native_finish<T: Drain>(
+        &mut self,
+        owner: Paced<Result<T, Code>>,
+        raw_error: Option<Paced<std::io::Error>>,
+        sample: NativeSample,
+        process: bool,
+        returned_at: Instant,
+    ) -> NativeOutcome<T> {
+        let debt = &self.control.cleanup.debt;
+        if owner.is_ok() {
+            debt.native_effects.fetch_add(1, Ordering::Relaxed);
+        }
+        let app = match (sample.inclusive, sample.cpu) {
+            (Ok(total), Ok(native)) if total >= native => Ok(total - native),
+            _ => Err(Code::ResourceLimit),
+        };
+        // Retain every available subspan even when another clock is missing.
+        // A failed verdict never subtracts native cost from whole-owner CPU.
+        debt.native_max_wall_ns
+            .fetch_max(nanos(sample.wall), Ordering::Relaxed);
+        let (kind_cpu, kind_wall) = if process {
+            (
+                &debt.native_process_max_cpu_ns,
+                &debt.native_process_max_wall_ns,
+            )
+        } else {
+            (
+                &debt.native_publish_max_cpu_ns,
+                &debt.native_publish_max_wall_ns,
+            )
+        };
+        kind_wall.fetch_max(nanos(sample.wall), Ordering::Relaxed);
+        if let Ok(native) = sample.cpu {
+            debt.native_cpu_ns
+                .fetch_add(nanos(native), Ordering::Relaxed);
+            debt.native_max_cpu_ns
+                .fetch_max(nanos(native), Ordering::Relaxed);
+            kind_cpu.fetch_max(nanos(native), Ordering::Relaxed);
+        }
+        if let Ok(total) = sample.inclusive {
+            debt.inclusive_max_cpu_ns
+                .fetch_max(nanos(total), Ordering::Relaxed);
+        }
+        if let Ok(app) = app {
+            debt.native_app_max_cpu_ns
+                .fetch_max(nanos(app), Ordering::Relaxed);
+        }
+        let mut verdict = match (sample.cpu, sample.inclusive, app) {
+            (Ok(native), Ok(total), Ok(app)) => {
+                if native > UNIT * 2
+                    || sample.wall > Duration::from_millis(25)
+                    || app > UNIT
+                    || total > UNIT * 3
+                {
+                    debt.native_overruns.fetch_add(1, Ordering::Relaxed);
+                    Err(Code::ResourceLimit)
+                } else {
+                    Ok(())
+                }
+            }
+            _ => {
+                debt.native_clock_failures.fetch_add(1, Ordering::Relaxed);
+                debt.poisoned.store(true, Ordering::Release);
+                Err(Code::ResourceLimit)
+            }
+        };
+        debt.finish(Some(sample.inclusive));
+        self.control
+            .native_pending_since_ns
+            .store(0, Ordering::Release);
+        if verdict.is_ok() && Instant::now() >= self.deadline {
+            verdict = Err(Code::Deadline);
+        }
+        if verdict.is_ok() && !self.control_only && self.control.cancelled.load(Ordering::Acquire) {
+            verdict = Err(Code::Cancelled);
+        }
+        NativeOutcome {
+            effect: owner,
+            raw_error,
+            verdict,
+            sample,
+            returned_at,
         }
     }
     fn gate(&self) -> Result<(), Code> {
         loop {
-            if self.control.cancelled.load(Ordering::Acquire) {
+            if !self.control_only && self.control.cleanup.overruns.load(Ordering::Acquire) > 0 {
+                return Err(Code::ResourceLimit);
+            }
+            if !self.control_only && self.control.cancelled.load(Ordering::Acquire) {
                 return Err(Code::Cancelled);
             }
             if Instant::now() >= self.deadline {
                 return Err(Code::Deadline);
             }
-            if !self.control.is_foreground() {
+            if self.control_only || !self.control.is_foreground() {
                 return Ok(());
             }
             self.control.phase(PAUSED);
             std::thread::sleep(REST);
         }
     }
-    fn begin_unit(&mut self) -> Result<Duration, Code> {
-        self.gate()?;
-        if let Some(rest) = self.rest_until.checked_duration_since(Instant::now()) {
-            #[cfg(debug_assertions)]
-            let omit =
-                self.control.private_fixture && self.control.omit_rest.load(Ordering::Acquire);
-            #[cfg(not(debug_assertions))]
-            let omit = false;
-            if omit {
-                self.control.rest_skips.fetch_add(1, Ordering::Relaxed);
-            } else {
-                let wall = Instant::now();
-                let cpu = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit)?;
-                std::thread::sleep(rest);
+    fn begin_unit(&mut self) -> Result<UnitClock, Code> {
+        loop {
+            self.gate()?;
+            if let Some(end) = disposal::last_cleanup_end() {
+                self.rest_until = self.rest_until.max(end + REST);
+                self.previous_end = Some(self.previous_end.map_or(end, |old| old.max(end)));
+            }
+            if let Some(rest) = self.rest_until.checked_duration_since(Instant::now()) {
+                #[cfg(debug_assertions)]
+                let omit =
+                    self.control.private_fixture && self.control.omit_rest.load(Ordering::Acquire);
+                #[cfg(not(debug_assertions))]
+                let omit = false;
+                if omit {
+                    self.control.rest_skips.fetch_add(1, Ordering::Relaxed);
+                } else {
+                    let wall = Instant::now();
+                    let cpu = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit)?;
+                    std::thread::sleep(rest);
+                    self.control
+                        .rest_wait_ns
+                        .fetch_add(nanos(wall.elapsed()), Ordering::Relaxed);
+                    self.control.rest_wait_cpu_ns.fetch_add(
+                        nanos(
+                            bbt_rt::fault::thread_cpu_time()
+                                .map_err(|_| Code::ResourceLimit)?
+                                .saturating_sub(cpu),
+                        ),
+                        Ordering::Relaxed,
+                    );
+                }
+            }
+            self.gate()?;
+            if let Some(end) = self.previous_end {
+                let gap = end.elapsed();
                 self.control
-                    .rest_wait_ns
-                    .fetch_add(nanos(wall.elapsed()), Ordering::Relaxed);
-                self.control.rest_wait_cpu_ns.fetch_add(
-                    nanos(
-                        bbt_rt::fault::thread_cpu_time()
-                            .map_err(|_| Code::ResourceLimit)?
-                            .saturating_sub(cpu),
-                    ),
-                    Ordering::Relaxed,
-                );
+                    .min_inter_unit_gap_ns
+                    .fetch_min(nanos(gap), Ordering::Relaxed);
+                if gap < REST {
+                    self.control.rest_violations.fetch_add(1, Ordering::Relaxed);
+                }
             }
-        }
-        self.gate()?;
-        if let Some(end) = self.previous_end {
-            let gap = end.elapsed();
+            self.control.work_unit_count.fetch_add(1, Ordering::Relaxed);
+            #[cfg(debug_assertions)]
+            if self.control.private_fixture && self.control.omit_rest.load(Ordering::Acquire) {
+                // Deliberately broken private control: bypass the same durable
+                // run debt, with an observable causal refusal counter.
+                if self.control.cleanup.debt.remaining_ns() != 0 {
+                    self.control
+                        .cleanup
+                        .debt
+                        .admission_violations
+                        .fetch_add(1, Ordering::Relaxed);
+                    self.control
+                        .cleanup
+                        .debt
+                        .due_ns
+                        .store(self.control.cleanup.debt.now_ns(), Ordering::Release);
+                }
+            }
             self.control
-                .min_inter_unit_gap_ns
-                .fetch_min(nanos(gap), Ordering::Relaxed);
-            if gap < REST {
-                self.control.rest_violations.fetch_add(1, Ordering::Relaxed);
+                .cleanup
+                .debt
+                .enter(Some(self.deadline), self.control_only)?;
+            if let Err(code) = self.gate() {
+                self.control.cleanup.debt.finish(None);
+                return Err(code);
             }
-        }
-        self.control.work_unit_count.fetch_add(1, Ordering::Relaxed);
-        let cpu = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit)?;
-        if let Some(guard) = self
-            .control
-            .authority_prepared_guard
-            .get()
-            .or(self.control.authority_guard.as_ref())
-        {
-            let result = guard();
-            let used = bbt_rt::fault::thread_cpu_time()
-                .map_err(|_| Code::ResourceLimit)?
-                .saturating_sub(cpu);
-            if result.is_err() || used > UNIT {
-                return self.finish_unit(cpu, result.and(Err(Code::ResourceLimit)));
+            let cpu = match UnitClock::now() {
+                Ok(cpu) => cpu,
+                Err(code) => {
+                    self.control.cleanup.debt.finish(Some(Err(code)));
+                    return Err(code);
+                }
+            };
+            if !self.control_only
+                && let Some(guard) = self
+                    .control
+                    .authority_prepared_guard
+                    .get()
+                    .or(self.control.authority_guard.as_ref())
+            {
+                let result = guard();
+                let used = match cpu.elapsed() {
+                    Ok(used) => used,
+                    Err(code) => return self.finish_unit(cpu, Err(code)),
+                };
+                if result == Err(Code::Busy) && used <= UNIT {
+                    // A shared prepared authority session may be owned by its
+                    // monitor. Busy grants no work and is not stale authority.
+                    self.finish_unit(cpu, Ok(()))?;
+                    continue;
+                }
+                if result.is_err() || used > UNIT {
+                    return self.finish_unit(cpu, result.and(Err(Code::ResourceLimit)));
+                }
             }
+            return Ok(cpu);
         }
-        Ok(cpu)
     }
     #[track_caller]
-    fn finish_unit<T>(&mut self, cpu: Duration, result: Result<T, Code>) -> Result<T, Code> {
-        let elapsed = bbt_rt::fault::thread_cpu_time()
-            .map_err(|_| Code::ResourceLimit)?
-            .saturating_sub(cpu);
+    fn finish_unit<T: Drain>(
+        &mut self,
+        cpu: UnitClock,
+        result: Result<T, Code>,
+    ) -> Result<T, Code> {
+        self.finish_unit_sampled(cpu, result, UnitClock::elapsed)
+    }
+    #[track_caller]
+    fn finish_unit_sampled<T: Drain>(
+        &mut self,
+        cpu: UnitClock,
+        result: Result<T, Code>,
+        sample: impl FnOnce(UnitClock) -> Result<Duration, Code>,
+    ) -> Result<T, Code> {
+        let mut owner = Paced::new(result, self.control);
+        let sampled = sample(cpu);
+        // Prefixes interrupted by required cleanup have already paid their
+        // debt; charge only the resumed segment here (metrics keep full CPU).
+        self.control.cleanup.debt.finish(if sampled.is_err() {
+            Some(sampled)
+        } else {
+            None
+        });
+        let elapsed = sampled?;
         let end = Instant::now();
         // Test-only allocator observation follows the actual product CPU/end
         // capture; whole-owner clocks still include and label that probe cost.
@@ -1196,8 +3062,9 @@ impl<'a> Budget<'a> {
             );
             #[cfg(test)]
             eprintln!(
-                "C1 unit overrun cpu_ns={} line={}",
+                "C1 unit overrun cpu_ns={} file={} line={}",
                 elapsed.as_nanos(),
+                std::panic::Location::caller().file(),
                 std::panic::Location::caller().line()
             );
             return Err(Code::ResourceLimit);
@@ -1205,19 +3072,19 @@ impl<'a> Budget<'a> {
         if Instant::now() >= self.deadline {
             return Err(Code::Deadline);
         }
-        if self.control.cancelled.load(Ordering::Acquire) {
+        if !self.control_only && self.control.cancelled.load(Ordering::Acquire) {
             return Err(Code::Cancelled);
         }
-        result
+        owner.take_value()
     }
     #[track_caller]
-    fn unit<T>(&mut self, work: impl FnOnce() -> Result<T, Code>) -> Result<T, Code> {
+    fn unit<T: Drain>(&mut self, work: impl FnOnce() -> Result<T, Code>) -> Result<T, Code> {
         let cpu = self.begin_unit()?;
         let result = work();
         self.finish_unit(cpu, result)
     }
     fn retain(&mut self, bytes: usize) -> Result<(), Code> {
-        self.declared.grow(bytes)
+        self.declared.as_mut().unwrap().grow(bytes)
     }
     fn hash(&mut self, bytes: &[u8]) -> Result<String, Code> {
         let mut hash = Sha256::new();
@@ -1236,11 +3103,9 @@ impl<'a> Budget<'a> {
     /// Check every4KiB, but fast parsing shares one measured unit. Fifteen
     /// checkpoints plus the scanner's at-most-six-byte escape span stay below
     ///64KiB; a0.5ms CPU checkpoint leaves the remaining1ms-unit margin intact.
-    fn cooperate(&mut self, cpu: &mut Duration, checkpoints: &mut usize) -> Result<(), Code> {
+    fn cooperate(&mut self, cpu: &mut UnitClock, checkpoints: &mut usize) -> Result<(), Code> {
         *checkpoints += 1;
-        let used = bbt_rt::fault::thread_cpu_time()
-            .map_err(|_| Code::ResourceLimit)?
-            .saturating_sub(*cpu);
+        let used = cpu.elapsed()?;
         if used >= Duration::from_micros(500)
             || *checkpoints >= 15
             || self.control.cancelled.load(Ordering::Acquire)
@@ -1256,6 +3121,63 @@ impl<'a> Budget<'a> {
     fn json(&mut self, bytes: &[u8]) -> Result<Reservation, Code> {
         self.json_shape(bytes, transport::JsonShape::Any)
             .map(|(reservation, _)| reservation)
+    }
+    fn json_credit(&self, bounds: transport::JsonBounds) -> Result<Reservation, Code> {
+        self.control.heap.reserve(
+            HeapLane::Work,
+            bounds.declared_payload_bytes().map_err(wire_error)?,
+        )
+    }
+    /// The same scanner/owned decoder in one admitted unit for a bounded tiny
+    /// record. Complex fallback carries its completed scan to the staged path.
+    fn small_json(
+        &mut self,
+        bytes: &[u8],
+        work: impl FnOnce(&Value) -> Result<(), Code>,
+    ) -> Result<SmallJson, Code> {
+        if bytes.len() > 8 * 1024 {
+            return Ok(SmallJson::Fallback(None));
+        }
+        let control = self.control;
+        let result = self.unit(|| {
+            let bounds =
+                transport::preflight_json(bytes, transport::JsonShape::Any).map_err(wire_error)?;
+            if bounds.values.saturating_add(bounds.keys) > 128 {
+                return Ok(TinyPrepared::Fallback(bounds));
+            }
+            let credit = control.heap.reserve(
+                HeapLane::Work,
+                bounds.declared_payload_bytes().map_err(wire_error)?,
+            )?;
+            let refusals = control.cleanup.capacity_refusals.load(Ordering::Acquire);
+            let mut owner = Value::decode(std::io::Cursor::new(bytes), control).map_err(|_| {
+                if control.cleanup.capacity_refusals.load(Ordering::Acquire) != refusals {
+                    Code::ResourceLimit
+                } else {
+                    Code::ProtocolError
+                }
+            })?;
+            owner.credit = Some(credit);
+            let verdict = work(&owner);
+            // Return the actual owner to finish_unit: it remains guarded through
+            // CPU/end-clock/cancel/deadline verdicts, then retires outside the
+            // completed work unit. Its required cleanup rests also satisfy the
+            // work unit's next-admission rest, without installing another wait.
+            Ok(TinyPrepared::Parsed { owner, verdict })
+        });
+        let result = match result {
+            Ok(TinyPrepared::Fallback(bounds)) => Ok(SmallJson::Fallback(Some(bounds))),
+            Ok(TinyPrepared::Parsed { owner, verdict }) => {
+                drop(owner);
+                verdict.map(|()| SmallJson::Processed)
+            }
+            Err(code) => Err(code),
+        };
+        if control.cleanup.overruns.load(Ordering::Acquire) > 0 {
+            Err(Code::ResourceLimit)
+        } else {
+            result
+        }
     }
     fn json_shape(
         &mut self,
@@ -1284,18 +3206,28 @@ impl<'a> Budget<'a> {
         )?;
         Ok((reservation, bounds))
     }
-    fn parse<T: DeserializeOwned>(&mut self, bytes: &[u8]) -> Result<T, Code> {
+    #[cfg(test)]
+    fn parse<T: OwnedDecode>(&mut self, bytes: &[u8]) -> Result<Paced<T>, Code> {
+        let credit = self.json(bytes)?;
+        self.parse_credited(bytes, credit)
+    }
+    fn parse_credited<T: OwnedDecode>(
+        &mut self,
+        bytes: &[u8],
+        credit: Reservation,
+    ) -> Result<Paced<T>, Code> {
         let cpu = self.begin_unit()?;
-        struct Paced<'a, 'b> {
+        struct Reader<'a, 'b> {
             bytes: &'a [u8],
             at: usize,
             next: usize,
             budget: &'a mut Budget<'b>,
-            cpu: Duration,
+            cpu: UnitClock,
             stopped: Option<Code>,
             checkpoints: usize,
+            cleanup_tail: Option<UnitClock>,
         }
-        impl Read for Paced<'_, '_> {
+        impl Read for Reader<'_, '_> {
             #[inline]
             fn read(&mut self, out: &mut [u8]) -> std::io::Result<usize> {
                 if self.stopped.is_some() {
@@ -1306,26 +3238,26 @@ impl<'a> Budget<'a> {
                 }
                 if self.at >= self.next {
                     match self.budget.cooperate(&mut self.cpu, &mut self.checkpoints) {
-                        Ok(()) => {
-                            self.next = self.at.saturating_add(4096);
-                        }
+                        Ok(()) => self.next = self.at.saturating_add(4096),
                         Err(code) => {
                             self.stopped = Some(code);
+                            // The serde error walk is settlement. Every partial
+                            // collection has its own paced owner; conservatively
+                            // measure the remaining native/leaf unwind as well.
+                            std::thread::sleep(REST);
+                            self.cleanup_tail = UnitClock::now().ok();
                             return Err(std::io::ErrorKind::PermissionDenied.into());
                         }
                     }
                 }
-                // serde_json::IoRead uses std::io::Bytes and requests one byte.
-                // Inspired by serde_json's adapter contract (independent credit):
-                // https://github.com/serde-rs/json/blob/master/src/read.rs
-                // A one-byte Read is valid for every nonempty output; avoid three
-                // min operations and checked slice-copy setup on that hot path.
                 out[0] = self.bytes[self.at];
                 self.at += 1;
                 Ok(1)
             }
         }
-        let mut reader = Paced {
+        let control = self.control;
+        let capacity_refusals = control.cleanup.capacity_refusals.load(Ordering::Acquire);
+        let mut reader = Reader {
             bytes,
             at: 0,
             next: 4096,
@@ -1333,11 +3265,34 @@ impl<'a> Budget<'a> {
             cpu,
             stopped: None,
             checkpoints: 0,
+            cleanup_tail: None,
         };
-        let result = serde_json::from_reader(&mut reader).map_err(|_| Code::ProtocolError);
-        if let Some(code) = reader.stopped {
-            return Err(code);
+        let mut result = T::decode(&mut reader, control);
+        if let Ok(owner) = &mut result {
+            owner.credit = Some(credit);
         }
+        // On Err the separate credit still lives until this function returns,
+        // after every partial visitor and native/leaf error owner was destroyed.
+        if let Some(code) = reader.stopped {
+            drop(result);
+            let elapsed = reader
+                .cleanup_tail
+                .and_then(|clock| clock.elapsed().ok())
+                .unwrap_or(UNIT + Duration::from_nanos(1));
+            disposal::record_cleanup(&control.cleanup, elapsed);
+            return Err(if control.cleanup.overruns.load(Ordering::Acquire) > 0 {
+                Code::ResourceLimit
+            } else {
+                code
+            });
+        }
+        let result = result.map_err(|_| {
+            if control.cleanup.capacity_refusals.load(Ordering::Acquire) != capacity_refusals {
+                Code::ResourceLimit
+            } else {
+                Code::ProtocolError
+            }
+        });
         reader.budget.finish_unit(reader.cpu, result)
     }
     fn write_json<T: Serialize>(&mut self, value: &T, buffer: &mut HeapBuffer) -> Result<(), Code> {
@@ -1345,7 +3300,7 @@ impl<'a> Budget<'a> {
         struct Paced<'a, 'b> {
             buffer: &'a mut HeapBuffer,
             budget: &'a mut Budget<'b>,
-            cpu: Duration,
+            cpu: UnitClock,
             since: usize,
             stopped: Option<Code>,
             checkpoints: usize,
@@ -1435,10 +3390,15 @@ fn encode_bounded<T: Serialize>(
 ) -> Result<HeapBuffer, Code> {
     let mut raw = HeapBuffer::new(&budget.control.heap, HeapLane::Work, bound)?;
     budget.write_json(value, &mut raw)?;
-    let _payload = budget.json(&raw)?;
-    let canonical: Value = budget.parse(&raw)?;
+    let payload = budget.json(&raw)?;
+    let canonical: Paced<Value> = budget.parse_credited(&raw, payload)?;
     let mut encoded = HeapBuffer::new(&budget.control.heap, HeapLane::Work, bound)?;
     budget.write_json(&canonical, &mut encoded)?;
+    drop(canonical);
+    drop(raw);
+    if budget.control.cleanup.overruns.load(Ordering::Acquire) > 0 {
+        return Err(Code::ResourceLimit);
+    }
     Ok(encoded)
 }
 fn encoded_fits(value: &impl Serialize, bound: usize) -> Result<(), Code> {
@@ -1466,83 +3426,171 @@ fn mirror<T: DeserializeOwned>(value: &impl Serialize) -> Result<T, Code> {
         .map_err(|_| Code::ProtocolError)
 }
 
+/// The public page is a fixed mirror, not a second serde tree. Each admitted
+/// row's clone has one measured unit and a guarded completed-verdict owner.
+fn mirror_page(value: &w::Page, budget: &mut Budget<'_>) -> Result<public::Page, Code> {
+    let mut rows = Paced::new(Vec::new(), budget.control);
+    for row in &value.rows {
+        rows.push(budget.unit(|| {
+            Ok(match row {
+                w::Row::Cluster(row) => public::Row::Cluster(public::Cluster {
+                    repo: public::Repo(row.repo.0.clone()),
+                    fingerprint: public::Hex(row.fingerprint.0.clone()),
+                    count: row.count,
+                    first_ms: public::Number(row.first_ms.0),
+                    last_ms: public::Number(row.last_ms.0),
+                }),
+                w::Row::Episode(row) => public::Row::Episode(public::Episode {
+                    session: public::Ulid(row.session.0.clone()),
+                    turn: public::Ulid(row.turn.0.clone()),
+                    origin: public::Origin {
+                        session: public::Ulid(row.origin.session.0.clone()),
+                        seq: public::Number(row.origin.seq.0),
+                        digest: row.origin.digest.clone(),
+                    },
+                    fingerprints: row
+                        .fingerprints
+                        .iter()
+                        .map(|value| public::Hex(value.0.clone()))
+                        .collect(),
+                    first_ms: public::Number(row.first_ms.0),
+                    last_ms: public::Number(row.last_ms.0),
+                }),
+            })
+        })?);
+    }
+    Ok(public::Page {
+        schema: public::PageSchema::V1,
+        run_id: public::Ulid(value.run_id.0.clone()),
+        manifest_sha256: public::Hex(value.manifest_sha256.0.clone()),
+        index: value.index,
+        rows: rows.take_value(),
+        next: value.next,
+    })
+}
+
 /// Adapted from bboxy450-harness src/dream/inspect.rs::blobs, not arbitrary JSON recursion.
 /// https://github.com/bboxy450/bboxy450-harness/blob/main/src/dream/inspect.rs
 /// Keep typed carrier coverage and the producer's independent inventory validation attached.
-fn references(
-    event: &Value,
-    out: &mut BTreeMap<String, w::Blob>,
-    budget: &mut Budget<'_>,
-) -> Result<(), Code> {
-    fn add(value: &Value, out: &mut BTreeMap<String, w::Blob>) -> Result<(), Code> {
-        if value.is_null() {
-            return Ok(());
-        }
-        // Refuse before serde can clone an oversized scalar from the existing IR.
-        if value.as_object().is_none_or(|v| v.len() != 3)
-            || value["sha256"]
-                .as_str()
-                .is_none_or(|v| v.len() != 64 || !hex(v))
-            || value["mime"]
-                .as_str()
-                .is_none_or(|v| v.is_empty() || v.len() > 256)
-            || value["len"].as_u64().is_none_or(|v| v > w::MAX_SAFE)
-        {
+fn add_reference(value: &Value, out: &mut BTreeMap<String, w::Blob>) -> Result<(), Code> {
+    if value.is_null() {
+        return Ok(());
+    }
+    // Refuse before serde can clone an oversized scalar from the existing IR.
+    if value.as_object().is_none_or(|v| v.len() != 3)
+        || value["sha256"]
+            .as_str()
+            .is_none_or(|v| v.len() != 64 || !hex(v))
+        || value["mime"]
+            .as_str()
+            .is_none_or(|v| v.is_empty() || v.len() > 256)
+        || value["len"].as_u64().is_none_or(|v| v > w::MAX_SAFE)
+    {
+        return Err(Code::BlobMismatch);
+    }
+    let blob: w::Blob = serde::Deserialize::deserialize(value).map_err(|_| Code::BlobMismatch)?;
+    if let Some(old) = out.get(&blob.sha256.0) {
+        if old != &blob {
             return Err(Code::BlobMismatch);
         }
-        let blob: w::Blob =
-            serde::Deserialize::deserialize(value).map_err(|_| Code::BlobMismatch)?;
-        if let Some(old) = out.get(&blob.sha256.0) {
-            if old != &blob {
-                return Err(Code::BlobMismatch);
-            }
-        } else {
-            if out.len() >= 1024 {
-                return Err(Code::ResourceLimit);
-            }
-            out.insert(blob.sha256.0.clone(), blob);
+    } else {
+        if out.len() >= 1024 {
+            return Err(Code::ResourceLimit);
         }
-        Ok(())
+        out.insert(blob.sha256.0.clone(), blob);
     }
-    fn blocks(
-        value: &Value,
-        out: &mut BTreeMap<String, w::Blob>,
-        budget: &mut Budget<'_>,
-    ) -> Result<(), Code> {
-        if let Some(blocks) = value.as_array() {
-            for block in blocks {
-                budget.unit(|| {
-                    if matches!(block["type"].as_str(), Some("image" | "audio" | "resource")) {
-                        add(&block["blob"], out)
-                    } else {
-                        Ok(())
-                    }
-                })?;
-            }
+    Ok(())
+}
+
+fn reference_blocks(
+    value: &Value,
+    visit: &mut impl FnMut(&Value, bool) -> Result<(), Code>,
+) -> Result<(), Code> {
+    if let Some(blocks) = value.as_array() {
+        for block in blocks {
+            // Even non-Blob blocks visit the bounded unit on the staged path;
+            // a long text-only array cannot become an unmeasured traversal.
+            visit(block, true)?;
         }
-        Ok(())
     }
+    Ok(())
+}
+
+fn visit_references(
+    event: &Value,
+    mut visit: impl FnMut(&Value, bool) -> Result<(), Code>,
+) -> Result<(), Code> {
     let body = match event["type"].as_str() {
         Some("item_completed") => &event["body"],
         Some("item_snapshot") => &event["partial"],
         _ => return Ok(()),
     };
     match body["kind"].as_str() {
-        Some("user_message") => blocks(&body["blocks"], out, budget)?,
+        Some("user_message") => reference_blocks(&body["blocks"], &mut visit)?,
         Some("tool_call") => {
-            budget.unit(|| add(&body["spill"], out))?;
-            blocks(&body["output"], out, budget)?;
+            visit(&body["spill"], false)?;
+            reference_blocks(&body["output"], &mut visit)?;
         }
-        Some("terminal") => budget.unit(|| add(&body["output"], out))?,
-        Some("image" | "native" | "receipt") => budget.unit(|| add(&body["blob"], out))?,
-        Some("compaction") => budget.unit(|| add(&body["summary"], out))?,
+        Some("terminal") => visit(&body["output"], false)?,
+        Some("image" | "native" | "receipt") => visit(&body["blob"], false)?,
+        Some("compaction") => visit(&body["summary"], false)?,
         _ => {}
     }
     Ok(())
 }
 
+fn add_carrier(
+    value: &Value,
+    block: bool,
+    out: &mut BTreeMap<String, w::Blob>,
+) -> Result<(), Code> {
+    if block {
+        if matches!(value["type"].as_str(), Some("image" | "audio" | "resource")) {
+            add_reference(&value["blob"], out)
+        } else {
+            Ok(())
+        }
+    } else {
+        add_reference(value, out)
+    }
+}
+
+fn references(
+    event: &Value,
+    out: &mut BTreeMap<String, w::Blob>,
+    budget: &mut Budget<'_>,
+) -> Result<(), Code> {
+    visit_references(event, |value, block| {
+        budget.unit(|| add_carrier(value, block, out))
+    })
+}
+
+fn observe_source_record(event: &Value, bookmark: &Bookmark, seq: &mut u64) -> Result<bool, Code> {
+    *seq += 1;
+    if event["session"].as_str() != Some(&bookmark.session.0)
+        || event["seq"].as_u64() != Some(*seq)
+        || event["at"].as_u64() != Some(*seq)
+    {
+        return Err(Code::MalformedIr);
+    }
+    if event["v"]["major"] != 1 || event["v"]["minor"].as_u64().is_none_or(|v| v > 3) {
+        return Err(Code::UnsupportedIr);
+    }
+    if *seq == 1 && !event["event"]["meta"]["fork"].is_null() {
+        return Err(Code::UnsupportedIr);
+    }
+    if *seq == 1
+        && (event["event"]["type"] != "session_started"
+            || event["event"]["meta"]["vcs"]["repo"].as_str() != Some(&bookmark.repo)
+            || !event["event"]["meta"]["source"].is_null())
+    {
+        return Err(Code::SourceMismatch);
+    }
+    Ok(event["event"]["type"] == "session_closed")
+}
+
 struct Snapshot {
-    manifest: w::Manifest,
+    manifest: Paced<w::Manifest>,
     hash: String,
     _retained: Reservation,
 }
@@ -1570,11 +3618,11 @@ fn snapshot(
             .checked_mul(std::mem::size_of::<w::Source>())
             .ok_or(Code::ResourceLimit)?,
     )?;
-    let mut sources = Vec::new();
+    let mut sources = Paced::new(Vec::new(), control);
     sources
         .try_reserve_exact(record.sources.len())
         .map_err(|_| Code::ResourceLimit)?;
-    let mut distinct = BTreeSet::new();
+    let mut distinct = Paced::new(BTreeSet::new(), control);
     let _distinct_payload = control
         .heap
         .reserve(HeapLane::Work, 1024 * (std::mem::size_of::<String>() + 64))?;
@@ -1600,14 +3648,24 @@ fn snapshot(
             // One current decoded candidate overlaps the1024 retained entries.
             1025 * (std::mem::size_of::<String>() + std::mem::size_of::<w::Blob>() + 64 + 64 + 256),
         )?;
-        let mut blobs = BTreeMap::new();
+        let mut blobs = Paced::new(BTreeMap::new(), control);
         let mut seq = 0u64;
         let mut closed = false;
         let mut last_hash = String::new();
         let mut read = 0u64;
         loop {
             let mut chunk = [0u8; CHUNK];
-            let n = budget.unit(|| file.read(&mut chunk).map_err(|_| Code::SourceUnavailable))?;
+            let n = copy_chunk(
+                &mut file,
+                &mut output,
+                &mut hash,
+                &mut chunk,
+                bookmark.len.saturating_sub(read),
+                Code::SourceUnavailable,
+                Code::SourceChanged,
+                &control.source_copy_unit_max_cpu_ns,
+                &mut budget,
+            )?;
             if n == 0 {
                 break;
             }
@@ -1615,12 +3673,6 @@ fn snapshot(
             if read > bookmark.len {
                 return Err(Code::SourceChanged);
             }
-            budget.hash_update(&mut hash, &chunk[..n])?;
-            budget.unit(|| {
-                output
-                    .write_all(&chunk[..n])
-                    .map_err(|_| Code::StorageUnavailable)
-            })?;
             if pending.len() + n > LINE + CHUNK {
                 return Err(Code::ResourceLimit);
             }
@@ -1634,54 +3686,65 @@ fn snapshot(
                 if budget.envelopes > 65_536 {
                     return Err(Code::ResourceLimit);
                 }
-                let _payload = budget.json(&pending[..=end]).map_err(|code| {
-                    if code == Code::ProtocolError {
-                        Code::MalformedIr
-                    } else {
-                        code
+                // Adapted from bboxy450-harness src/dream/c1.rs,47182320:
+                // https://github.com/bboxy450/bboxy450-harness/blob/main/src/dream/c1.rs
+                // The same<=8KiB/<=128values+keys frontier combines only tiny
+                // records. Consumer preflight credits/owned decode/retirement
+                // and the exact raw terminal-line hash remain authoritative.
+                let raw = &pending[..=end];
+                let small = budget
+                    .small_json(raw, |event| {
+                        closed = observe_source_record(event, bookmark, &mut seq)?;
+                        visit_references(&event["event"], |value, block| {
+                            add_carrier(value, block, &mut blobs)
+                        })?;
+                        if closed {
+                            last_hash = format!("{:x}", Sha256::digest(&raw[..raw.len() - 1]));
+                        }
+                        Ok(())
+                    })
+                    .map_err(|code| {
+                        if code == Code::ProtocolError {
+                            Code::MalformedIr
+                        } else {
+                            code
+                        }
+                    })?;
+                let payload = match small {
+                    SmallJson::Processed => {
+                        control
+                            .snapshot_tiny_records
+                            .fetch_add(1, Ordering::Relaxed);
+                        pending.consume(end + 1)?;
+                        continue;
                     }
-                })?;
+                    SmallJson::Fallback(Some(bounds)) => budget.json_credit(bounds)?,
+                    SmallJson::Fallback(None) => budget.json(raw).map_err(|code| {
+                        if code == Code::ProtocolError {
+                            Code::MalformedIr
+                        } else {
+                            code
+                        }
+                    })?,
+                };
                 let mut raw = HeapBuffer::new(&control.heap, HeapLane::Work, end + 1)?;
                 raw.extend(&pending[..=end])?;
                 pending.consume(end + 1)?;
-                let event: Value = budget.parse(&raw).map_err(|code| {
+                let event: Paced<Value> = budget.parse_credited(&raw, payload).map_err(|code| {
                     if code == Code::ProtocolError {
                         Code::MalformedIr
                     } else {
                         code
                     }
                 })?;
-                budget.unit(|| {
-                    seq += 1;
-                    if event["session"].as_str() != Some(&bookmark.session.0)
-                        || event["seq"].as_u64() != Some(seq)
-                        || event["at"].as_u64() != Some(seq)
-                    {
-                        return Err(Code::MalformedIr);
-                    }
-                    if event["v"]["major"] != 1
-                        || event["v"]["minor"].as_u64().is_none_or(|v| v > 3)
-                    {
-                        return Err(Code::UnsupportedIr);
-                    }
-                    if seq == 1 && !event["event"]["meta"]["fork"].is_null() {
-                        return Err(Code::UnsupportedIr);
-                    }
-                    if seq == 1
-                        && (event["event"]["type"] != "session_started"
-                            || event["event"]["meta"]["vcs"]["repo"].as_str()
-                                != Some(&bookmark.repo)
-                            || !event["event"]["meta"]["source"].is_null())
-                    {
-                        return Err(Code::SourceMismatch);
-                    }
-                    closed = event["event"]["type"] == "session_closed";
-                    Ok(())
-                })?;
+                closed = budget.unit(|| observe_source_record(&event, bookmark, &mut seq))?;
                 references(&event["event"], &mut blobs, &mut budget)?;
                 if closed {
                     last_hash = budget.hash(&raw[..raw.len() - 1])?;
                 }
+                control
+                    .snapshot_staged_records
+                    .fetch_add(1, Ordering::Relaxed);
             }
             if pending.len() >= LINE {
                 return Err(Code::ResourceLimit);
@@ -1708,17 +3771,17 @@ fn snapshot(
                 .ok_or(Code::ResourceLimit)
         })?;
         budget.retain(retained_blobs + bookmark.repo.len() + bookmark.session.0.len() + 64 + 64)?;
-        let mut inventory = Vec::new();
+        let mut inventory = Paced::new(Vec::new(), control);
         inventory
             .try_reserve_exact(blobs.len())
             .map_err(|_| Code::ResourceLimit)?;
-        inventory.extend(blobs.into_values());
+        inventory.extend(blobs.take_value().into_values());
         if !inventory.is_empty() {
             let dir = input.join(&bookmark.session.0);
             budget.unit(|| private_dir(&dir))?;
             let dir = dir.join("blobs");
             budget.unit(|| private_dir(&dir))?;
-            for blob in &inventory {
+            for blob in inventory.iter() {
                 if !distinct.contains(&blob.sha256.0) {
                     if distinct.len() >= 1024 {
                         return Err(Code::ResourceLimit);
@@ -1744,22 +3807,25 @@ fn snapshot(
             sha256: w::Hex(source_hash),
             closed_seq: w::Number(bookmark.closed_seq),
             closed_line_sha256: w::Hex(bookmark.closed_line_sha256.clone()),
-            blobs: inventory,
+            blobs: inventory.take_value(),
         });
     }
-    let manifest = w::Manifest {
-        schema: w::ManifestSchema::V1,
-        run_id: w::Ulid(record.view.run_id.0.clone()),
-        nonce: w::Ulid(record.nonce.0.clone()),
-        context: mirror(&record.context)?,
-        trigger: if record.trigger {
-            w::Trigger::SessionClosed
-        } else {
-            w::Trigger::Manual
+    let manifest = Paced::new(
+        w::Manifest {
+            schema: w::ManifestSchema::V1,
+            run_id: w::Ulid(record.view.run_id.0.clone()),
+            nonce: w::Ulid(record.nonce.0.clone()),
+            context: mirror(&record.context)?,
+            trigger: if record.trigger {
+                w::Trigger::SessionClosed
+            } else {
+                w::Trigger::Manual
+            },
+            algorithm: w::Algorithm::D0C1,
+            sources: sources.take_value(),
         },
-        algorithm: w::Algorithm::D0C1,
-        sources,
-    };
+        control,
+    );
     let bytes = encode_bounded(&manifest, &mut budget, LINE)?;
     let hash = budget.hash(&bytes)?;
     budget.disk += bytes.len() as u64;
@@ -1776,7 +3842,7 @@ fn snapshot(
     Ok(Snapshot {
         manifest,
         hash,
-        _retained: budget.declared,
+        _retained: budget.declared.take().unwrap(),
     })
 }
 
@@ -1798,7 +3864,17 @@ fn copy_blob(
     let mut count = 0u64;
     loop {
         let mut chunk = [0u8; CHUNK];
-        let n = budget.unit(|| file.read(&mut chunk).map_err(|_| Code::BlobMismatch))?;
+        let n = copy_chunk(
+            &mut file,
+            &mut out,
+            &mut hash,
+            &mut chunk,
+            blob.len.0.saturating_sub(count),
+            Code::BlobMismatch,
+            Code::BlobMismatch,
+            &control.blob_copy_unit_max_cpu_ns,
+            budget,
+        )?;
         if n == 0 {
             break;
         }
@@ -1806,11 +3882,6 @@ fn copy_blob(
         if count > blob.len.0 {
             return Err(Code::BlobMismatch);
         }
-        budget.hash_update(&mut hash, &chunk[..n])?;
-        budget.unit(|| {
-            out.write_all(&chunk[..n])
-                .map_err(|_| Code::StorageUnavailable)
-        })?;
     }
     budget.unit(|| out.sync_all().map_err(|_| Code::StorageUnavailable))?;
     let after = budget.unit(|| file.metadata().map_err(|_| Code::BlobMismatch))?;
@@ -1826,10 +3897,561 @@ fn copy_blob(
     Ok(())
 }
 
+// One immutable transfer touches at most64KiB: read, exact-length fence, hash,
+// write. A foreground/cancel observation between those operations prevents the
+// next effect. Pausing retains the already-read chunk and hash phase; resuming
+// never rereads or rehashes it. Every retry is a newly guarded/rested unit.
+#[allow(clippy::too_many_arguments)]
+fn copy_chunk(
+    input: &mut File,
+    output: &mut File,
+    hash: &mut Sha256,
+    chunk: &mut [u8; CHUNK],
+    remaining: u64,
+    read_error: Code,
+    length_error: Code,
+    maximum: &AtomicU64,
+    budget: &mut Budget<'_>,
+) -> Result<usize, Code> {
+    let control = budget.control;
+    let mut count = None;
+    let mut hashed = false;
+    let mut written = false;
+    while !written {
+        budget.unit(|| {
+            let cpu = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit)?;
+            let result = (|| {
+                if control.cancelled.load(Ordering::Acquire) {
+                    return Err(Code::Cancelled);
+                }
+                if control.is_foreground() {
+                    return Ok(());
+                }
+                let n = match count {
+                    Some(n) => n,
+                    None => {
+                        let n = input.read(chunk).map_err(|_| read_error)?;
+                        if n as u64 > remaining {
+                            return Err(length_error);
+                        }
+                        count = Some(n);
+                        n
+                    }
+                };
+                if n == 0 {
+                    written = true;
+                    return Ok(());
+                }
+                if control.cancelled.load(Ordering::Acquire) {
+                    return Err(Code::Cancelled);
+                }
+                if control.is_foreground() {
+                    return Ok(());
+                }
+                if !hashed {
+                    hash.update(&chunk[..n]);
+                    hashed = true;
+                }
+                if control.cancelled.load(Ordering::Acquire) {
+                    return Err(Code::Cancelled);
+                }
+                if control.is_foreground() {
+                    return Ok(());
+                }
+                output
+                    .write_all(&chunk[..n])
+                    .map_err(|_| Code::StorageUnavailable)?;
+                written = true;
+                Ok(())
+            })();
+            let used = bbt_rt::fault::thread_cpu_time()
+                .map_err(|_| Code::ResourceLimit)?
+                .saturating_sub(cpu);
+            maximum.fetch_max(nanos(used), Ordering::Relaxed);
+            result
+        })?;
+    }
+    count.ok_or(Code::SourceUnavailable)
+}
+
+#[derive(Serialize)]
+struct BirthBinding<'a> {
+    profile: &'static str,
+    purpose: &'static str,
+    probe: bool,
+    op_id: &'a public::Ulid,
+    run_id: &'a public::Ulid,
+    nonce: &'a public::Ulid,
+    incarnation: u64,
+    context: Option<&'a public::Context>,
+    worker_sha256: &'a str,
+}
+fn birth_binding(binding: &BirthBinding<'_>, budget: &mut Budget<'_>) -> Result<[u8; 32], Code> {
+    if binding.profile != bootstrap::PROFILE
+        || !matches!(binding.purpose, "inspect-c1" | "read-prepare")
+        || binding.probe != binding.context.is_none()
+        || binding.incarnation == 0
+        || binding.worker_sha256.len() != 64
+        || !binding
+            .worker_sha256
+            .bytes()
+            .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+    {
+        return Err(Code::BadRequest);
+    }
+    // Canonical input borrows the retained public context; no provider/source
+    // discovery or cloning a transcript is part of launch binding.
+    let bytes = encode_bounded(binding, budget, 4096)?;
+    let mut hash = Sha256::new();
+    budget.hash_update(&mut hash, &bytes)?;
+    let digest = budget.unit(|| Ok(<[u8; 32]>::from(hash.finalize())))?;
+    drop(bytes);
+    Ok(digest)
+}
+fn bootstrap_control<T: Copy>(
+    control: &Control,
+    work: impl FnOnce() -> Result<T, Code>,
+) -> Result<T, Code> {
+    bootstrap_control_sampled(control, work, None)
+}
+fn bootstrap_control_sampled<T: Copy>(
+    control: &Control,
+    work: impl FnOnce() -> Result<T, Code>,
+    sample: Option<Result<Duration, Code>>,
+) -> Result<T, Code> {
+    let clock_failure = || {
+        control
+            .bootstrap_clock_failures
+            .fetch_add(1, Ordering::Relaxed);
+        control.cleanup.debt.poisoned.store(true, Ordering::Release);
+        Code::ResourceLimit
+    };
+    let before = bbt_rt::fault::thread_cpu_time().map_err(|_| clock_failure())?;
+    // Only fixed finite control results ((),bool,scalars) cross this helper.
+    // Worker/Gate retain every pipe/effect/attempt before its clock verdict;
+    // no bulk owner cleanup is admitted during child bootstrap ownership.
+    let result = work();
+    let measured = bbt_rt::fault::thread_cpu_time()
+        .map_err(|_| Code::ResourceLimit)
+        .and_then(|now| now.checked_sub(before).ok_or(Code::ResourceLimit));
+    let used = sample.unwrap_or(measured).map_err(|_| clock_failure())?;
+    control
+        .bootstrap_control_cpu_ns
+        .fetch_add(nanos(used), Ordering::Relaxed);
+    control
+        .bootstrap_control_max_cpu_ns
+        .fetch_max(nanos(used), Ordering::Relaxed);
+    control
+        .max_unit_cpu_ns
+        .fetch_max(nanos(used), Ordering::Relaxed);
+    if used > UNIT {
+        control
+            .bootstrap_control_overruns
+            .fetch_add(1, Ordering::Relaxed);
+        control.unit_overruns.fetch_add(1, Ordering::Relaxed);
+        return Err(Code::ResourceLimit);
+    }
+    result
+}
+
+fn final_admission_control<T: Copy>(
+    control: &Control,
+    handoff: FinalHandoff,
+    work: impl FnOnce() -> Result<T, Code>,
+) -> Result<T, Code> {
+    let attempts = match handoff {
+        FinalHandoff::Permit => &control.bootstrap_permit_attempts,
+        FinalHandoff::Start => &control.start_admission_attempts,
+    };
+    if attempts
+        .try_update(Ordering::AcqRel, Ordering::Acquire, |n| {
+            (n == 0).then_some(1)
+        })
+        .is_err()
+    {
+        return Err(Code::ProtocolError);
+    }
+    #[cfg(test)]
+    let hook = {
+        control
+            .final_admission_hook
+            .try_lock()
+            .map_err(|_| Code::Busy)?
+            .take()
+    };
+    #[cfg(test)]
+    if let Some(hook) = hook {
+        hook(handoff);
+    }
+    #[cfg(test)]
+    let sample = control
+        .final_admission_sample
+        .try_lock()
+        .map_err(|_| Code::Busy)?
+        .take();
+    #[cfg(not(test))]
+    let sample = None;
+    bootstrap_control_sampled(control, work, sample)
+}
+
+struct ProbeClaim {
+    path: PathBuf,
+    file: File,
+    identity: (u64, u64),
+    token: [u8; 16],
+}
+impl ProbeClaim {
+    fn create(root: &Path, token: [u8; 16]) -> Result<Self, Code> {
+        let path = root.join("bootstrap-probe.claim");
+        let mut file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .mode(0o600)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+            .open(&path)
+            .map_err(|_| Code::RunnerUnavailable)?;
+        file.write_all(&token)
+            .map_err(|_| Code::StorageUnavailable)?;
+        let metadata = file.metadata().map_err(|_| Code::StorageUnavailable)?;
+        Ok(Self {
+            path,
+            file,
+            identity: (metadata.dev(), metadata.ino()),
+            token,
+        })
+    }
+    fn release(&mut self) -> Result<(), Code> {
+        let descriptor = self.file.metadata().map_err(|_| Code::StorageUnavailable)?;
+        let named = std::fs::symlink_metadata(&self.path).map_err(|_| Code::StorageUnavailable)?;
+        if !named.is_file()
+            || named.nlink() != 1
+            || named.len() != 16
+            || descriptor.len() != 16
+            || named.mode() & 0o777 != 0o600
+            || named.uid() != unsafe { libc::geteuid() }
+            || (descriptor.dev(), descriptor.ino()) != self.identity
+            || (named.dev(), named.ino()) != self.identity
+        {
+            return Err(Code::StorageUnavailable);
+        }
+        let mut token = [0; 16];
+        self.file
+            .seek(SeekFrom::Start(0))
+            .map_err(|_| Code::StorageUnavailable)?;
+        self.file
+            .read_exact(&mut token)
+            .map_err(|_| Code::StorageUnavailable)?;
+        if token != self.token {
+            return Err(Code::StorageUnavailable);
+        }
+        std::fs::remove_file(&self.path).map_err(|_| Code::StorageUnavailable)
+    }
+}
+/// The account capability probe uses the SAME gated birth/debt/Hello controller
+/// as real jobs. Null context is explicit65255; it can never produce a Start.
+/// A durable single owned claim prevents overlapping/unknown predecessor probes.
+pub(crate) fn probe_gated(
+    root: &Path,
+    proof: Arc<runner_provision::ProvisionProof>,
+    incarnation: u64,
+) -> Result<transport::DreamOwner, Code> {
+    probe_gated_observe(root, proof, incarnation, |_, _| Ok(()))
+}
+fn probe_gated_observe(
+    root: &Path,
+    proof: Arc<runner_provision::ProvisionProof>,
+    incarnation: u64,
+    observe: impl FnOnce(&mut Worker, &Control) -> Result<(), Code>,
+) -> Result<transport::DreamOwner, Code> {
+    if incarnation == 0 {
+        return Err(Code::RunnerUnavailable);
+    }
+    let control = Control::default();
+    control.foreground.store(false, Ordering::Release);
+    control
+        .launch_incarnation
+        .store(incarnation, Ordering::Release);
+    let deadline = Instant::now() + Duration::from_secs(30);
+    let mut budget = Budget::new(&control, deadline);
+    budget.unit(|| control.install_native_provision(proof.clone()))?;
+    let (op, run, nonce, birth) = budget.unit(|| {
+        Ok((
+            crate::Ulid::new(),
+            crate::Ulid::new(),
+            crate::Ulid::new(),
+            crate::Ulid::new(),
+        ))
+    })?;
+    budget.unit(|| private_dir(root))?;
+    let mut claim = Paced::new(
+        budget.unit(|| ProbeClaim::create(root, birth.to_bytes()))?,
+        &control,
+    );
+    // Persist claim custody before birth. Unknown native effects leave this
+    // exact inode/token in place rather than creating a replacement probe.
+    budget.unit(|| claim.file.sync_all().map_err(|_| Code::StorageUnavailable))?;
+    let job = root.join(run.to_string());
+    let mut born_and_reaped = false;
+    let result = (|| {
+        budget.unit(|| private_dir(&job))?;
+        let (job, directory) = canonical_job(&job, &mut budget)?;
+        let _directory = Paced::new(directory, &control);
+        budget.unit(|| private_dir(&job.join("tmp")))?;
+        let op = public::Ulid(op.to_string());
+        let run = public::Ulid(run.to_string());
+        let nonce = public::Ulid(nonce.to_string());
+        let binding = birth_binding(
+            &BirthBinding {
+                profile: bootstrap::PROFILE,
+                purpose: "inspect-c1",
+                probe: true,
+                op_id: &op,
+                run_id: &run,
+                nonce: &nonce,
+                incarnation,
+                context: None,
+                worker_sha256: proof.worker_sha256(),
+            },
+            &mut budget,
+        )?;
+        let frozen = bootstrap::Frozen::inspect(
+            true,
+            birth.to_bytes(),
+            bootstrap::ulid(run.0.as_bytes()).map_err(|_| Code::BadRequest)?,
+            bootstrap::ulid(nonce.0.as_bytes()).map_err(|_| Code::BadRequest)?,
+            binding,
+            incarnation,
+        );
+        let mut gate = Paced::new(
+            budget.unit(|| bootstrap::Gate::prepare(frozen).map_err(wire_error))?,
+            &control,
+        );
+        let mut protected = control
+            .heap
+            .reserve(HeapLane::Control, transport::PROTECTED_BYTES)?;
+        let mut buffers = Paced::new(
+            budget.unit(|| Worker::prepare_buffers().map_err(wire_error))?,
+            &control,
+        );
+        protected.allocated();
+        let mut input = Paced::new(
+            budget.unit(|| Worker::prepare_pipe().map_err(wire_error))?,
+            &control,
+        );
+        let mut output = Paced::new(
+            budget.unit(|| Worker::prepare_pipe().map_err(wire_error))?,
+            &control,
+        );
+        let mut stderr = Paced::new(
+            budget.unit(|| Worker::prepare_pipe().map_err(wire_error))?,
+            &control,
+        );
+        let mut prepared = Paced::new(
+            budget.unit(|| {
+                Worker::prepare_command(
+                    proof.capability_binary(),
+                    &job,
+                    buffers.take_value(),
+                    input.take_value(),
+                    output.take_value(),
+                    stderr.take_value(),
+                    gate.take_value(),
+                )
+                .map_err(wire_error)
+            })?,
+            &control,
+        );
+        budget.unit(|| prepared.configure_input().map_err(wire_error))?;
+        budget.unit(|| prepared.configure_output().map_err(wire_error))?;
+        budget.unit(|| prepared.configure_stderr().map_err(wire_error))?;
+        let mut command = Paced::new(
+            budget.unit(|| prepared.take_command().map_err(wire_error))?,
+            &control,
+        );
+        budget.unit(|| proof.still_current())?;
+        let mut native = budget.native_process(&mut command)?;
+        let (worker, unused) = match native.effect.take_value() {
+            Ok(child) => prepared.take_value().attach_child(child),
+            Err(code) => return Err(native.verdict.err().unwrap_or(code)),
+        };
+        let mut worker = Paced::new(worker, &control);
+        let mut command = Some(command);
+        let mut unused = Some(Paced::new(unused, &control));
+        let ready = match native.returned_at.checked_add(bootstrap::WINDOW) {
+            Some(ready) => ready.min(deadline),
+            None => {
+                revoke_bootstrap(&mut worker, &control);
+                drop(command.take());
+                drop(unused.take());
+                settle_probe(&mut worker, &control);
+                born_and_reaped = true;
+                return Err(Code::ResourceLimit);
+            }
+        };
+        let setup = bootstrap_control(&control, || {
+            worker
+                .bootstrap_spawn_returned(native.returned_at, deadline)
+                .map_err(wire_error)
+        });
+        let preparation = (|| {
+            native.verdict?;
+            setup?;
+            budget.deadline = ready;
+            budget.pay_work_debt()?;
+            drop(command.take());
+            drop(unused.take());
+            budget.pay_work_debt()?;
+            budget.unit(|| proof.child_image_matches(worker.pid()))?;
+            budget.pay_work_debt()?;
+            bootstrap_handshake(&mut worker, &control, ready, true)
+        })();
+        if let Err(code) = preparation {
+            revoke_bootstrap(&mut worker, &control);
+            drop(command.take());
+            drop(unused.take());
+            settle_probe(&mut worker, &control);
+            born_and_reaped = true;
+            return Err(code);
+        }
+        let observed = observe(&mut worker, &control);
+        // Child is paid and parked. Parent's command/stdio copies were retired
+        // before grant. Only EOF/control and actual reap follow; NEVER Start.
+        budget.deadline = deadline;
+        drop(command);
+        drop(unused);
+        worker.close_input();
+        settle_probe(&mut worker, &control);
+        born_and_reaped = true;
+        observed?;
+        if control.bootstrap_control_overruns.load(Ordering::Acquire) > 0
+            || control.bootstrap_clock_failures.load(Ordering::Acquire) > 0
+            || control.cleanup.overruns.load(Ordering::Acquire) > 0
+        {
+            return Err(Code::ResourceLimit);
+        }
+        let metrics = worker.producer_metrics().ok_or(Code::RunnerUnavailable)?;
+        if !metrics.work_debt_paid_for(&run.0, &nonce.0) {
+            return Err(Code::RunnerUnavailable);
+        }
+        for name in [
+            "terminal_app_max_cpu_ns",
+            "terminal_control_max_cpu_ns",
+            "control_parts_input_max_cpu_ns",
+            "control_parts_protocol_max_cpu_ns",
+            "control_parts_settlement_max_cpu_ns",
+            "control_parts_output_max_cpu_ns",
+        ] {
+            if metrics.get(name).is_none_or(|value| value > 1_000_000) {
+                return Err(Code::ResourceLimit);
+            }
+        }
+        if metrics.get("native_compute_owner_create_count") != Some(1)
+            || metrics.get("native_compute_owner_create_effects") != Some(1)
+            || metrics.get("native_compute_owner_create_failures_with_effect") != Some(0)
+            || metrics
+                .get("native_compute_owner_create_max_cpu_ns")
+                .is_none_or(|value| value > 2_000_000)
+            || metrics
+                .get("native_compute_owner_create_max_wall_ns")
+                .is_none_or(|value| value > 25_000_000)
+            || metrics.get("native_publish_noreplace_count") != Some(0)
+        {
+            return Err(Code::ResourceLimit);
+        }
+        Ok(transport::DreamOwner::TermC1)
+    })();
+    budget.deadline = deadline;
+    // Known pre-birth refusal or real reap can retire only this exact claim.
+    // Required settlement stays bounded but is permitted after work refusal.
+    if !control.native_birth_unknown.load(Ordering::Acquire)
+        && (born_and_reaped
+            || (control.cleanup.debt.process_effect.load(Ordering::Acquire) <= 1
+                && control.native_pending_since_ns.load(Ordering::Acquire) == 0))
+    {
+        let mut settlement = Budget::for_control(&control, Instant::now() + Duration::from_secs(6));
+        settlement.unit(|| claim.release())?;
+    }
+    drop(claim);
+    if control.cleanup.overruns.load(Ordering::Acquire) > 0
+        || control.bootstrap_control_overruns.load(Ordering::Acquire) > 0
+        || control.bootstrap_clock_failures.load(Ordering::Acquire) > 0
+    {
+        return Err(Code::ResourceLimit);
+    }
+    result
+}
+
+fn bootstrap_handshake(
+    worker: &mut Worker,
+    control: &Control,
+    ready: Instant,
+    probe: bool,
+) -> Result<(), Code> {
+    while control.is_foreground() && !probe {
+        if control.cancelled.load(Ordering::Acquire) {
+            return Err(Code::Cancelled);
+        }
+        let left = ready
+            .checked_duration_since(Instant::now())
+            .ok_or(Code::Deadline)?;
+        std::thread::sleep(left.min(REST));
+    }
+    // Exactly one final control authorization, transfer and permit attempt.
+    // 65259 covers only this prepared public guard (not payload/setup work).
+    final_admission_control(control, FinalHandoff::Permit, || {
+        if !probe {
+            effect_guard(control)?;
+        }
+        if control.cancelled.load(Ordering::Acquire) {
+            return Err(Code::Cancelled);
+        }
+        if (!probe && control.is_foreground()) || Instant::now() >= ready {
+            return Err(Code::Deadline);
+        }
+        control.begin_child_bootstrap()?;
+        worker.bootstrap_grant().map_err(wire_error)
+    })?;
+    loop {
+        if control.cancelled.load(Ordering::Acquire) {
+            return Err(Code::Cancelled);
+        }
+        if !probe && control.is_foreground() {
+            return Err(Code::Cancelled);
+        }
+        if Instant::now() >= ready {
+            return Err(Code::Deadline);
+        }
+        // Framing discards the finite Hello inside the measured control span;
+        // no allocation-bearing/bulk owner is dropped while child owns work.
+        if bootstrap_control(control, || {
+            worker
+                .hello_step()
+                .map(|hello| hello.is_some())
+                .map_err(wire_error)
+        })? {
+            control.end_child_bootstrap(true)?;
+            return Ok(());
+        }
+        worker.wait_io(ready.saturating_duration_since(Instant::now()).min(REST));
+    }
+}
+fn revoke_bootstrap(worker: &mut Worker, control: &Control) {
+    let _ = bootstrap_control(control, || {
+        worker.bootstrap_revoke();
+        Ok(())
+    });
+    if !control.bootstrap_hello_observed.load(Ordering::Acquire) {
+        control.bootstrap_revoked.store(true, Ordering::Release);
+    }
+}
+
 struct Publication {
     temporary: PathBuf,
     target: PathBuf,
     file: File,
+    prechecked_identity: Option<(u64, u64)>,
+    attempted: bool,
 }
 impl Publication {
     fn new(dir: &Path, name: &str, nonce: &str) -> Result<Self, Code> {
@@ -1839,6 +4461,8 @@ impl Publication {
             temporary,
             target: dir.join(name),
             file,
+            prechecked_identity: None,
+            attempted: false,
         })
     }
     fn write(&mut self, bytes: &[u8]) -> Result<(), Code> {
@@ -1854,6 +4478,15 @@ impl Publication {
             .metadata()
             .map(|m| (m.dev(), m.ino()))
             .map_err(|_| Code::StorageUnavailable)
+    }
+    fn precheck_noreplace(&mut self, identity: (u64, u64)) -> Result<(), Code> {
+        self.verify_temporary(identity)?;
+        match std::fs::symlink_metadata(&self.target) {
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            _ => return Err(Code::StorageUnavailable),
+        }
+        self.prechecked_identity = Some(identity);
+        Ok(())
     }
     fn link(&self) -> Result<(), Code> {
         std::fs::hard_link(&self.temporary, &self.target).map_err(|_| Code::StorageUnavailable)
@@ -1897,7 +4530,13 @@ fn publish_paced(
     }
     budget.unit(|| publication.sync_file())?;
     let identity = budget.unit(|| publication.identity())?;
-    budget.unit(|| publication.link())?;
+    budget.unit(|| publication.precheck_noreplace(identity))?;
+    let mut outcome = budget.native_publish(&mut publication)?;
+    // Preserve both the staged inode and a possibly-created target even when
+    // timing/context fails. No unlink/retry follows a refused native verdict.
+    let effect = outcome.effect.take_value();
+    outcome.verdict?;
+    effect?;
     budget.unit(|| publication.verify_temporary(identity))?;
     budget.unit(|| publication.unlink_temporary())?;
     let directory = budget.unit(|| File::open(dir).map_err(|_| Code::StorageUnavailable))?;
@@ -1930,12 +4569,106 @@ fn wire_error(code: w::Code) -> Code {
 }
 
 /// Persist fixed request, exact process identity and manifest before Start can have an effect.
-fn checkpoint(job: &Path, record: &Record) -> Result<(), Code> {
-    Journal::open(
-        job.parent().ok_or(Code::StorageUnavailable)?,
-        &record.context.seat,
-    )?
-    .save(record)
+pub(crate) fn checkpoint(job: &Path, record: &Record, control: &Control) -> Result<(), Code> {
+    let deadline = Instant::now() + Duration::from_secs(30);
+    let journal = open_checkpoint(job, record, control, deadline)?;
+    let saved = save_checkpoint(&journal, record, control, deadline);
+    drop(journal);
+    if control.cleanup.overruns.load(Ordering::Acquire) > 0 {
+        return Err(Code::ResourceLimit);
+    }
+    saved
+}
+
+// A single metadata owner keeps this connection from the PID checkpoint through
+// immutable manifest and first-Progress publication. The shared authority reader
+// is the only other connection; no reopen/setup can interrupt the reactor.
+fn open_checkpoint(
+    job: &Path,
+    record: &Record,
+    control: &Control,
+    deadline: Instant,
+) -> Result<disposal::Paced<Journal>, Code> {
+    let mut budget = Budget::for_control(control, deadline);
+    let existing = checkpoint_stage(
+        &mut budget,
+        control,
+        &control.checkpoint_path_max_cpu_ns,
+        || {
+            Journal::existing_path(
+                job.parent().ok_or(Code::StorageUnavailable)?,
+                &record.context.seat,
+            )
+        },
+    )?;
+    let existing = disposal::Paced::new(existing, control);
+    let journal = checkpoint_stage(
+        &mut budget,
+        control,
+        &control.checkpoint_open_max_cpu_ns,
+        || Journal::connect_existing(&existing),
+    )?;
+    let journal = disposal::Paced::new(journal, control);
+    for configure in [
+        Journal::configure_busy,
+        Journal::configure_cache,
+        Journal::configure_mmap,
+        Journal::configure_sync,
+    ] {
+        checkpoint_stage(
+            &mut budget,
+            control,
+            &control.checkpoint_config_max_cpu_ns,
+            || configure(&journal),
+        )?;
+    }
+    drop(existing);
+    if control.cleanup.overruns.load(Ordering::Acquire) > 0 {
+        return Err(Code::ResourceLimit);
+    }
+    Ok(journal)
+}
+
+fn save_checkpoint(
+    journal: &Journal,
+    record: &Record,
+    control: &Control,
+    deadline: Instant,
+) -> Result<(), Code> {
+    let mut budget = Budget::for_control(control, deadline);
+    checkpoint_stage(
+        &mut budget,
+        control,
+        &control.checkpoint_save_max_cpu_ns,
+        || journal.save(record),
+    )
+}
+
+fn checkpoint_stage<T: Drain>(
+    budget: &mut Budget<'_>,
+    control: &Control,
+    maximum: &AtomicU64,
+    work: impl FnOnce() -> Result<T, Code>,
+) -> Result<T, Code> {
+    // Start the stage timer inside the unit, after its mandatory rest.
+    let mut used = Duration::ZERO;
+    let result = budget.unit(|| {
+        let before = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit)?;
+        let mut completed = disposal::Paced::new(work(), control);
+        used = bbt_rt::fault::thread_cpu_time()
+            .map_err(|_| Code::ResourceLimit)?
+            .saturating_sub(before);
+        completed.take_value()
+    });
+    let mut completed = disposal::Paced::new(result, control);
+    maximum.fetch_max(nanos(used), Ordering::Relaxed);
+    if used > UNIT {
+        control.checkpoint_overruns.fetch_add(1, Ordering::Relaxed);
+    }
+    if control.cleanup.overruns.load(Ordering::Acquire) > 0 {
+        return Err(Code::ResourceLimit);
+    }
+    completed.take_value()
 }
 
 fn private_file(path: &Path, bound: u64) -> Result<(File, Metadata), Code> {
@@ -2019,16 +4752,16 @@ fn canonical_decode<T: DeserializeOwned + Serialize>(
 
 /// Canonical lexical structure is checked without a second tree. Typed serde
 /// consumes a paced reader and cannot turn a large descriptor into one burst.
-fn decode_canonical<T: DeserializeOwned>(
+fn decode_canonical<T: OwnedDecode>(
     bytes: &[u8],
     budget: &mut Budget<'_>,
     require_next: bool,
-) -> Result<T, Code> {
-    let (_typed, bounds) = budget.json_shape(bytes, transport::JsonShape::Canonical)?;
+) -> Result<Paced<T>, Code> {
+    let (credit, bounds) = budget.json_shape(bytes, transport::JsonShape::Canonical)?;
     if require_next && !bounds.root_next {
         return Err(Code::ProtocolError);
     }
-    budget.parse(bytes)
+    budget.parse_credited(bytes, credit)
 }
 
 fn hex(value: &str) -> bool {
@@ -2052,8 +4785,10 @@ fn validate_output(
     budget.unit(|| private_dir(&output))?;
     let bytes = read_private(&output.join("result.json"), 768 * 1024, &mut budget)?;
     let _result_payload = budget.json(&bytes)?;
-    let result: w::ResultDescriptor = decode_canonical(&bytes, &mut budget, false)?;
+    let result: Paced<w::ResultDescriptor> = decode_canonical(&bytes, &mut budget, false)?;
     let result_hash = budget.hash(&bytes)?;
+    let descriptor_len = bytes.len() as u64;
+    drop(bytes);
     if result.run_id.0 != record.view.run_id.0
         || result.nonce.0 != record.nonce.0
         || result.manifest_sha256.0
@@ -2069,17 +4804,35 @@ fn validate_output(
         || result.pages.len() > 4096
         || result.pages.len() != done.pages as usize
         || result.episode_count as u64 + result.cluster_count as u64 > 4096
-        || result.max_poll_cpu_ns.0 > 1_000_000
+        || (result.max_poll_cpu_ns.0 > 1_000_000
+            && !approved_descriptor_capture(control, result.max_poll_cpu_ns.0))
+        || (control
+            .producer_native_profile_verified
+            .load(Ordering::Acquire)
+            && !approved_descriptor_capture(control, result.max_poll_cpu_ns.0))
     {
         return Err(Code::ProtocolError);
     }
-    let mut total = bytes.len() as u64;
+    if control
+        .producer_native_profile_verified
+        .load(Ordering::Acquire)
+    {
+        let metadata = budget.unit(|| {
+            std::fs::symlink_metadata(output.join("result.json")).map_err(|_| Code::ProtocolError)
+        })?;
+        if metadata.dev() != control.producer_metrics[64].load(Ordering::Acquire)
+            || metadata.ino() != control.producer_metrics[65].load(Ordering::Acquire)
+        {
+            return Err(Code::ProtocolError);
+        }
+    }
+    let mut total = descriptor_len;
     let mut rows = 0u64;
     let mut episodes = 0u32;
     let mut clusters = 0u32;
     let mut previous_episode: Option<(String, u64, String)> = None;
     let mut previous_cluster: Option<(String, String)> = None;
-    let mut seen_origins = BTreeSet::new();
+    let mut seen_origins = Paced::new(BTreeSet::new(), control);
     // Repo indices avoid duplicating a 4096-byte repository for each fingerprint.
     budget.retain(
         manifest.sources.len() * 2 * std::mem::size_of::<String>()
@@ -2089,14 +4842,17 @@ fn validate_output(
                 .map(|s| s.repo.0.len())
                 .sum::<usize>(),
     )?;
-    let repositories: Vec<String> = manifest
-        .sources
-        .iter()
-        .map(|s| s.repo.0.clone())
-        .collect::<BTreeSet<_>>()
-        .into_iter()
-        .collect();
-    let mut expected: BTreeMap<(usize, String), (u32, u64, u64)> = BTreeMap::new();
+    let repositories = Paced::new(
+        manifest
+            .sources
+            .iter()
+            .map(|s| s.repo.0.clone())
+            .collect::<BTreeSet<_>>()
+            .into_iter()
+            .collect::<Vec<String>>(),
+        control,
+    );
+    let mut expected = Paced::new(BTreeMap::<(usize, String), (u32, u64, u64)>::new(), control);
     // Declared, validated row counts bound retained logical entries before any growth.
     budget.retain(
         result.episode_count as usize * (std::mem::size_of::<(String, u64, String)>() + 26 + 71)
@@ -2121,7 +4877,7 @@ fn validate_output(
             &mut budget,
         )?;
         let _page_payload = budget.json(&page_bytes)?;
-        let page: w::Page = decode_canonical(&page_bytes, &mut budget, true)?;
+        let page: Paced<w::Page> = decode_canonical(&page_bytes, &mut budget, true)?;
         if reference.len.0 != page_bytes.len() as u64
             || reference.sha256.0 != budget.hash(&page_bytes)?
             || page.run_id != result.run_id
@@ -2238,8 +4994,19 @@ fn validate_output(
     }
     record.view.result_sha256 = Some(public::Hex(result_hash));
     record.view.pages = result.pages.len() as u32;
-    checkpoint(job, record)?;
+    checkpoint(job, record, control)?;
     Ok(())
+}
+
+fn approved_descriptor_capture(control: &Control, captured: u64) -> bool {
+    control.native_metrics_authorized.load(Ordering::Acquire)
+        && control
+            .producer_native_profile_verified
+            .load(Ordering::Acquire)
+        && captured <= 3_000_000
+        && control.producer_metrics[45].load(Ordering::Acquire) == captured
+        && captured <= control.producer_metrics[46].load(Ordering::Acquire)
+        && control.producer_metrics[46].load(Ordering::Acquire) <= 3_000_000
 }
 
 /// Immutable requested page reads run on a separate result owner, never a Status hot path.
@@ -2288,7 +5055,8 @@ pub(crate) fn read_page_guarded(
     {
         return Err(Code::ProtocolError);
     }
-    let result: w::ResultDescriptor = decode_canonical(&bytes, &mut budget, false)?;
+    let result: Paced<w::ResultDescriptor> = decode_canonical(&bytes, &mut budget, false)?;
+    drop(bytes);
     let reference = result.pages.get(index as usize).ok_or(Code::BadRequest)?;
     let bytes = read_private(
         &output.join(format!("page-{index:06}.json")),
@@ -2299,7 +5067,8 @@ pub(crate) fn read_page_guarded(
     if bytes.len() as u64 != reference.len.0 || budget.hash(&bytes)? != reference.sha256.0 {
         return Err(Code::ProtocolError);
     }
-    let page: w::Page = decode_canonical(&bytes, &mut budget, true)?;
+    let page: Paced<w::Page> = decode_canonical(&bytes, &mut budget, true)?;
+    drop(bytes);
     if page.run_id.0 != record.view.run_id.0
         || page.manifest_sha256.0
             != record
@@ -2312,7 +5081,15 @@ pub(crate) fn read_page_guarded(
     {
         return Err(Code::ProtocolError);
     }
-    budget.unit(|| mirror(&page))
+    let mut public = Paced::new(mirror_page(&page, &mut budget)?, &control);
+    // The final result cannot escape before all decoded owners have actually
+    // retired, including cleanup after an earlier cancellation/clock failure.
+    drop(page);
+    drop(result);
+    if control.cleanup.overruns.load(Ordering::Acquire) > 0 {
+        return Err(Code::ResourceLimit);
+    }
+    Ok(public.take_value())
 }
 
 struct Frames {
@@ -2390,14 +5167,142 @@ fn checked_poll(worker: &mut Worker, control: &Control) -> Result<Option<w::Work
     }
     frame
 }
+fn effect_guard(control: &Control) -> Result<(), Code> {
+    if control.cleanup.overruns.load(Ordering::Acquire) > 0 {
+        return Err(Code::ResourceLimit);
+    }
+    let cpu = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit)?;
+    let result = control
+        .installed_authority_guard()
+        .map_or(Ok(()), |guard| guard());
+    let used = bbt_rt::fault::thread_cpu_time()
+        .map_err(|_| Code::ResourceLimit)?
+        .saturating_sub(cpu);
+    control
+        .dispatch_guard_max_cpu_ns
+        .fetch_max(nanos(used), Ordering::Relaxed);
+    control
+        .max_unit_cpu_ns
+        .fetch_max(nanos(used), Ordering::Relaxed);
+    if used > UNIT {
+        control
+            .dispatch_guard_overruns
+            .fetch_add(1, Ordering::Relaxed);
+        control.unit_overruns.fetch_add(1, Ordering::Relaxed);
+        return Err(Code::ResourceLimit);
+    }
+    result
+}
+
+struct ReactorClock<'a> {
+    control: &'a Control,
+    cpu: Duration,
+    wall: Instant,
+}
+impl<'a> ReactorClock<'a> {
+    fn new(control: &'a Control) -> Result<Self, Code> {
+        control.reactor_units.fetch_add(1, Ordering::Relaxed);
+        let cpu = bbt_rt::fault::thread_cpu_time().map_err(|_| {
+            control
+                .reactor_clock_failures
+                .fetch_add(1, Ordering::Relaxed);
+            Code::ResourceLimit
+        })?;
+        Ok(Self {
+            control,
+            cpu,
+            wall: Instant::now(),
+        })
+    }
+    fn batch_due(&self) -> Result<bool, Code> {
+        Ok(bbt_rt::fault::thread_cpu_time()
+            .map_err(|_| Code::ResourceLimit)?
+            .saturating_sub(self.cpu)
+            >= Duration::from_micros(500))
+    }
+    fn finish(self) -> Result<(), Code> {
+        let used = bbt_rt::fault::thread_cpu_time()
+            .map_err(|_| {
+                self.control
+                    .reactor_clock_failures
+                    .fetch_add(1, Ordering::Relaxed);
+                Code::ResourceLimit
+            })?
+            .saturating_sub(self.cpu);
+        self.control
+            .reactor_cpu_ns
+            .fetch_add(nanos(used), Ordering::Relaxed);
+        self.control
+            .reactor_wall_ns
+            .fetch_add(nanos(self.wall.elapsed()), Ordering::Relaxed);
+        self.control
+            .reactor_max_cpu_ns
+            .fetch_max(nanos(used), Ordering::Relaxed);
+        self.control
+            .max_unit_cpu_ns
+            .fetch_max(nanos(used), Ordering::Relaxed);
+        if used > UNIT {
+            self.control
+                .reactor_overruns
+                .fetch_add(1, Ordering::Relaxed);
+            self.control.unit_overruns.fetch_add(1, Ordering::Relaxed);
+            #[cfg(test)]
+            eprintln!(
+                "C1 reactor whole-iteration overrun cpu_ns={}",
+                used.as_nanos()
+            );
+            return Err(Code::ResourceLimit);
+        }
+        Ok(())
+    }
+}
+
+/// Resolve platform aliases only for the newly created private job, retaining
+/// its exact directory inode. No source or manifest is opened by this operation.
+fn canonical_job(job: &Path, budget: &mut Budget<'_>) -> Result<(PathBuf, File), Code> {
+    let before =
+        budget.unit(|| std::fs::symlink_metadata(job).map_err(|_| Code::StorageUnavailable))?;
+    let canonical = budget.unit(|| job.canonicalize().map_err(|_| Code::StorageUnavailable))?;
+    let directory = budget.unit(|| {
+        OpenOptions::new()
+            .read(true)
+            .custom_flags(libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC)
+            .open(&canonical)
+            .map_err(|_| Code::StorageUnavailable)
+    })?;
+    let opened = budget.unit(|| directory.metadata().map_err(|_| Code::StorageUnavailable))?;
+    let path = budget
+        .unit(|| std::fs::symlink_metadata(&canonical).map_err(|_| Code::StorageUnavailable))?;
+    // SAFETY: geteuid has no pointer arguments or side effects.
+    if !before.is_dir()
+        || !opened.is_dir()
+        || opened.uid() != unsafe { libc::geteuid() }
+        || opened.mode() & 0o777 != 0o700
+        || (before.dev(), before.ino()) != (opened.dev(), opened.ino())
+        || (path.dev(), path.ino()) != (opened.dev(), opened.ino())
+    {
+        return Err(Code::StorageUnavailable);
+    }
+    Ok((canonical, directory))
+}
 
 /// Retains process and snapshot ownership through real exit, including a blocked syscall.
+#[cfg(test)]
 pub(crate) fn execute(
     binary: &Path,
     job: &Path,
     record: &mut Record,
     control: &Control,
 ) -> Result<(), Code> {
+    if control.launch_incarnation.load(Ordering::Acquire) == 0 {
+        control
+            .launch_incarnation
+            .store(monotonic_ns()?, Ordering::Release);
+    }
+    if control.native_provision.get().is_none() {
+        let proof = runner_provision::verify_native_provision(binary, false)?;
+        control.install_native_provision(Arc::new(proof))?;
+    }
     execute_with_settlement(binary, job, record, control, || Ok(()))
 }
 pub(crate) fn execute_with_settlement(
@@ -2412,6 +5317,9 @@ pub(crate) fn execute_with_settlement(
     if let Err(code) = settle() {
         result = Err(code);
     }
+    if control.cleanup.overruns.load(Ordering::Acquire) > 0 {
+        result = Err(Code::ResourceLimit);
+    }
     if let Err(code) = write_metrics(job, record, control)
         && result.is_ok()
     {
@@ -2423,8 +5331,11 @@ pub(crate) fn execute_with_settlement(
         .0
         .saturating_add(control.revision.load(Ordering::Acquire))
         .saturating_add(1);
-    record.view.settled = true;
-    record.view.state = if result.is_ok() {
+    let unknown_birth = control.native_birth_unknown.load(Ordering::Acquire);
+    record.view.settled = !unknown_birth;
+    record.view.state = if unknown_birth {
+        State::Quarantined
+    } else if result.is_ok() {
         State::Completed
     } else if result == Err(Code::Cancelled) {
         State::Cancelled
@@ -2440,13 +5351,10 @@ pub(crate) fn execute_with_settlement(
         record.view.result_sha256 = None;
     }
     // Final status is durable before publishing the terminal settled flag.
-    let saved = checkpoint(job, record);
-    if saved.is_err() {
+    let saved = checkpoint(job, record, control);
+    if let Err(code) = saved {
         record.view.state = State::Failed;
-        record.view.error = Some(public::Error {
-            code: Code::StorageUnavailable,
-            source: None,
-        });
+        record.view.error = Some(public::Error { code, source: None });
         control.state.store(FAILED, Ordering::Release);
     } else {
         control.state.store(
@@ -2460,34 +5368,51 @@ pub(crate) fn execute_with_settlement(
             Ordering::Release,
         );
     }
-    control.settled.store(true, Ordering::Release);
+    if unknown_birth {
+        control.state.store(QUARANTINED, Ordering::Release);
+    }
+    control.settled.store(!unknown_birth, Ordering::Release);
     result.and(saved)
 }
 
 /// Failed Hello/checkpoint still owns the exact child; do not let Drop hide an unsettled wait.
 fn settle_probe(worker: &mut Worker, control: &Control) {
+    revoke_bootstrap(worker, control);
     control.phase(SETTLING);
     worker.close_input();
     let since = Instant::now();
     let mut term = false;
     let mut kill = false;
     loop {
-        if worker.try_wait().is_ok_and(|exit| exit.is_some()) {
-            retain_child_usage(worker, control);
-            return;
-        }
-        if since.elapsed() >= Duration::from_secs(2) && !term {
-            let _ = worker.terminate(false);
-            term = true;
-        }
-        if since.elapsed() >= Duration::from_secs(4) && !kill {
-            let _ = worker.terminate(true);
-            kill = true;
-        }
-        if since.elapsed() >= Duration::from_secs(6) {
-            control.phase(QUARANTINED);
+        let mut settled = false;
+        let _ = bootstrap_control(control, || {
+            if worker.receive().is_err() {
+                worker.discard_pending_output();
+            }
+            settled = worker.try_wait().is_ok_and(|exit| exit.is_some()) && worker.is_eof();
+            if settled {
+                retain_child_usage(worker, control);
+            }
+            if !settled && since.elapsed() >= Duration::from_secs(2) && !term {
+                let _ = worker.terminate(false);
+                term = true;
+            }
+            if !settled && since.elapsed() >= Duration::from_secs(4) && !kill {
+                let _ = worker.terminate(true);
+                kill = true;
+            }
+            if !settled && since.elapsed() >= Duration::from_secs(6) {
+                control.phase(QUARANTINED);
+            }
+            Ok(())
+        });
+        if settled {
+            break;
         }
         std::thread::sleep(REST);
+    }
+    if control.cleanup.debt.child_bootstrap.load(Ordering::Acquire) {
+        let _ = control.end_child_bootstrap(false);
     }
 }
 
@@ -2504,21 +5429,38 @@ fn retain_child_usage(worker: &Worker, control: &Control) {
             .store(usage.system_cpu_ns, Ordering::Release);
         control.child_usage_observed.store(true, Ordering::Release);
     }
-    if let Some(metrics) = worker.producer_metrics() {
-        for (index, value) in metrics.values.iter().enumerate() {
-            control.producer_metrics[index].store(value.unwrap_or(u64::MAX), Ordering::Release);
-        }
-        control
-            .producer_metrics_observed
-            .store(true, Ordering::Release);
+    let metrics = worker.producer_metrics();
+    control.producer_native_profile_observed.store(
+        metrics.as_ref().is_some_and(|m| m.has_native_profile()),
+        Ordering::Release,
+    );
+    for (index, value) in control.producer_metrics.iter().enumerate() {
+        value.store(
+            metrics
+                .as_ref()
+                .and_then(|m| m.values[index])
+                .unwrap_or(u64::MAX),
+            Ordering::Release,
+        );
     }
+    control
+        .producer_metrics_observed
+        .store(metrics.is_some(), Ordering::Release);
 }
 
 fn write_metrics(job: &Path, record: &Record, control: &Control) -> Result<(), Code> {
     use std::fmt::Write as _;
+    let mut budget = Budget::for_control(control, Instant::now() + Duration::from_secs(30));
+    let bytes = budget.unit(|| {
     let work = control.heap.counters(HeapLane::Work);
     let lane = control.heap.counters(HeapLane::Control);
-    let mut bytes = HeapBuffer::new(&control.heap, HeapLane::Control, 4096)?;
+    // No final heap-buffer destructor follows the immutable metric snapshot.
+    // Terminal disaggregated native/debt evidence uses an exact16KiB stack
+    // buffer (inside the existing fixed2MiB isolated-owner stack allocation).
+    let mut bytes = FixedBytes {
+        bytes: [0; 16384],
+        len: 0,
+    };
     write!(&mut bytes,"{{\"schema\":\"bboxy.dream.c1.host-metrics/1\",\"run_id\":\"{}\",\"nonce\":\"{}\",\"work_limit_bytes\":{},\"protected_control_bytes\":{},\"opaque_helper_headroom_bytes\":{},\"declared_work_reserved_bytes\":{},\"tracked_work_live_bytes\":{},\"tracked_work_peak_bytes\":{},\"tracked_work_cumulative_bytes\":{},\"declared_control_reserved_bytes\":{},\"tracked_control_live_bytes\":{},\"tracked_control_peak_bytes\":{},\"tracked_control_cumulative_bytes\":{},\"max_unit_cpu_ns\":{},\"unit_overruns\":{},\"unit_overrun_line\":{},\"child_usage_observed\":{},\"child_peak_rss_bytes\":{},\"child_process_user_cpu_ns\":{},\"child_process_system_cpu_ns\":{}}}",
         record.view.run_id.0,record.nonce.0,WORK_HEAP,CONTROL_HEAP,HELPER_HEADROOM,
         work.reserved,work.live,work.peak,work.cumulative,lane.reserved,lane.live,lane.peak,lane.cumulative,
@@ -2535,11 +5477,29 @@ fn write_metrics(job: &Path, record: &Record, control: &Control) -> Result<(), C
         ("snapshot_active_cpu_ns", &control.snapshot_active_cpu_ns),
         ("snapshot_active_wall_ns", &control.snapshot_active_wall_ns),
         (
+            "source_copy_unit_max_cpu_ns",
+            &control.source_copy_unit_max_cpu_ns,
+        ),
+        (
+            "blob_copy_unit_max_cpu_ns",
+            &control.blob_copy_unit_max_cpu_ns,
+        ),
+        ("snapshot_tiny_records", &control.snapshot_tiny_records),
+        ("snapshot_staged_records", &control.snapshot_staged_records),
+        (
             "process_owner_thread_cpu_ns",
             &control.process_owner_thread_cpu_ns,
         ),
         ("process_owner_wall_ns", &control.process_owner_wall_ns),
         ("work_unit_count", &control.work_unit_count),
+        ("cleanup_cpu_ns", &control.cleanup.cpu_ns),
+        ("max_cleanup_unit_cpu_ns", &control.cleanup.max_unit_cpu_ns),
+        ("cleanup_overruns", &control.cleanup.overruns),
+        ("cleanup_units", &control.cleanup.units),
+        (
+            "collection_capacity_refusals",
+            &control.cleanup.capacity_refusals,
+        ),
         ("rest_wait_ns", &control.rest_wait_ns),
         ("rest_wait_cpu_ns", &control.rest_wait_cpu_ns),
         ("rest_skips", &control.rest_skips),
@@ -2559,6 +5519,54 @@ fn write_metrics(job: &Path, record: &Record, control: &Control) -> Result<(), C
             "authority_monitor_overruns",
             &control.authority_monitor_overruns,
         ),
+        ("reactor_units", &control.reactor_units),
+        ("reactor_max_cpu_ns", &control.reactor_max_cpu_ns),
+        ("reactor_cpu_ns", &control.reactor_cpu_ns),
+        ("reactor_wall_ns", &control.reactor_wall_ns),
+        ("reactor_overruns", &control.reactor_overruns),
+        ("reactor_clock_failures", &control.reactor_clock_failures),
+        ("reactor_rest_wall_ns", &control.reactor_rest_wall_ns),
+        ("reactor_rest_cpu_ns", &control.reactor_rest_cpu_ns),
+        ("reactor_min_gap_ns", &control.reactor_min_gap_ns),
+        (
+            "dispatch_guard_max_cpu_ns",
+            &control.dispatch_guard_max_cpu_ns,
+        ),
+        ("dispatch_guard_overruns", &control.dispatch_guard_overruns),
+        (
+            "codec_prepare_max_cpu_ns",
+            &control.codec_prepare_max_cpu_ns,
+        ),
+        ("worker_spawn_cpu_ns", &control.worker_spawn_cpu_ns),
+        ("worker_start_cpu_ns", &control.worker_start_cpu_ns),
+        (
+            "native_dispatch_overruns",
+            &control.native_dispatch_overruns,
+        ),
+        (
+            "checkpoint_path_max_cpu_ns",
+            &control.checkpoint_path_max_cpu_ns,
+        ),
+        (
+            "checkpoint_open_max_cpu_ns",
+            &control.checkpoint_open_max_cpu_ns,
+        ),
+        (
+            "checkpoint_config_max_cpu_ns",
+            &control.checkpoint_config_max_cpu_ns,
+        ),
+        (
+            "checkpoint_save_max_cpu_ns",
+            &control.checkpoint_save_max_cpu_ns,
+        ),
+        ("checkpoint_overruns", &control.checkpoint_overruns),
+        ("bootstrap_control_cpu_ns",&control.bootstrap_control_cpu_ns),
+        ("bootstrap_control_max_cpu_ns",&control.bootstrap_control_max_cpu_ns),
+        ("bootstrap_control_overruns",&control.bootstrap_control_overruns),
+        ("bootstrap_clock_failures",&control.bootstrap_clock_failures),
+        ("bootstrap_permit_attempts",&control.bootstrap_permit_attempts),
+        ("bootstrap_parent_handoffs",&control.bootstrap_parent_handoffs),
+        ("bootstrap_child_handoffs",&control.bootstrap_child_handoffs),
     ] {
         write!(
             &mut bytes,
@@ -2568,12 +5576,57 @@ fn write_metrics(job: &Path, record: &Record, control: &Control) -> Result<(), C
         )
         .map_err(|_| Code::ResourceLimit)?;
     }
+    let debt = &control.cleanup.debt;
+    for (name, value) in [
+        ("work_debt_spans", &debt.spans),
+        ("work_debt_charged_ns", &debt.charged_ns),
+        ("work_debt_paid_wall_ns", &debt.paid_ns),
+        ("work_debt_max_ns", &debt.max_debt_ns),
+        ("work_debt_admission_violations", &debt.admission_violations),
+        ("native_process_calls", &debt.native_process_calls),
+        ("native_publish_calls", &debt.native_publish_calls),
+        ("native_cpu_ns", &debt.native_cpu_ns),
+        ("native_max_cpu_ns", &debt.native_max_cpu_ns),
+        ("native_max_wall_ns", &debt.native_max_wall_ns),
+        ("native_process_max_cpu_ns", &debt.native_process_max_cpu_ns),
+        ("native_process_max_wall_ns", &debt.native_process_max_wall_ns),
+        ("native_publish_max_cpu_ns", &debt.native_publish_max_cpu_ns),
+        ("native_publish_max_wall_ns", &debt.native_publish_max_wall_ns),
+        ("native_app_max_cpu_ns", &debt.native_app_max_cpu_ns),
+        ("inclusive_max_cpu_ns", &debt.inclusive_max_cpu_ns),
+        ("native_overruns", &debt.native_overruns),
+        ("native_clock_failures", &debt.native_clock_failures),
+        ("native_effects", &debt.native_effects),
+    ] {
+        write!(
+            &mut bytes,
+            ",\"{}\":{}",
+            name,
+            value.load(Ordering::Acquire)
+        )
+        .map_err(|_| Code::ResourceLimit)?;
+    }
+    write!(&mut bytes, ",\"work_debt_remaining_ns\":{},\"work_debt_poisoned\":{},\"native_metrics_profile\":\"c1-native-debt/1\",\"metrics_capture_cutoff\":\"after_reap_settlement_before_terminal_metrics_write\"", debt.remaining_ns(),debt.poisoned.load(Ordering::Acquire)).map_err(|_| Code::ResourceLimit)?;
+    write!(&mut bytes,",\"native_birth_unknown\":{},\"native_quarantine_observed\":{}",control.native_birth_unknown.load(Ordering::Acquire),control.native_quarantine_observed.load(Ordering::Acquire)).map_err(|_|Code::ResourceLimit)?;
+    write!(&mut bytes,",\"bootstrap_profile\":\"dream-bootstrap/1\",\"bootstrap_hello_observed\":{},\"bootstrap_revoked\":{}",control.bootstrap_hello_observed.load(Ordering::Acquire),control.bootstrap_revoked.load(Ordering::Acquire)).map_err(|_|Code::ResourceLimit)?;
+    if let Some(launch)=&record.launch {
+        write!(&mut bytes,",\"bootstrap_birth\":\"{}\",\"bootstrap_binding\":\"{}\",\"bootstrap_incarnation\":{},\"bootstrap_pipe_fd\":{},\"bootstrap_pipe_dev\":{},\"bootstrap_pipe_ino\":{}",launch.birth.0,launch.binding.0,launch.incarnation,launch.pipe_fd,launch.pipe_device,launch.pipe_inode).map_err(|_|Code::ResourceLimit)?;
+    }
+    write!(&mut bytes, ",\"original_op_id\":\"{}\",\"process_native_errno\":{},\"publish_native_errno\":{},\"process_native_effect\":{},\"publish_native_effect\":{},\"publish_native_dev\":{},\"publish_native_ino\":{}", record.op_id.0, debt.process_errno.load(Ordering::Acquire),debt.publish_errno.load(Ordering::Acquire),debt.process_effect.load(Ordering::Acquire),debt.publish_effect.load(Ordering::Acquire),debt.publish_dev.load(Ordering::Acquire),debt.publish_ino.load(Ordering::Acquire)).map_err(|_|Code::ResourceLimit)?;
+    write!(&mut bytes, ",\"cost_known\":{},\"native_effect_observation\":\"known_success_count_other_returns_not_absence_proof\"", !debt.poisoned.load(Ordering::Acquire)).map_err(|_|Code::ResourceLimit)?;
     write!(
         &mut bytes,
-        ",\"producer_metrics_observed\":{},\"producer_native_cumulative_measured\":false",
-        control.producer_metrics_observed.load(Ordering::Acquire)
+        ",\"producer_metrics_observed\":{},\"producer_native_cumulative_measured\":false,\"producer_native_profile_observed\":{},\"producer_native_profile_verified\":{},\"native_metrics_authorized\":{}",
+        control.producer_metrics_observed.load(Ordering::Acquire),control.producer_native_profile_observed.load(Ordering::Acquire),control.producer_native_profile_verified.load(Ordering::Acquire),control.native_metrics_authorized.load(Ordering::Acquire)
     )
     .map_err(|_| Code::ResourceLimit)?;
+    write!(&mut bytes, ",\"native_provision_development\":{},\"native_provision_control_only\":{}",
+        control.native_provision.get().is_some_and(|p| p.is_private_development()),
+        control.native_provision.get().is_some_and(|p| p.control_only_wrapper()))
+        .map_err(|_| Code::ResourceLimit)?;
+    if control.producer_native_profile_observed.load(Ordering::Acquire) {
+        bytes.extend(b",\"producer_native_metrics_profile\":\"c1-native-debt/1\",\"producer_terminal_cutoff\":\"joined_final_control_pre_telemetry\"")?;
+    }
     bytes.extend(b",\"codec_live_requested_capacities_accounted\":true,\"codec_partial_allocation_transients_measured\":false")?;
     if control.producer_metrics_observed.load(Ordering::Acquire) {
         for (index, key) in transport::PRODUCER_METRIC_KEYS.iter().enumerate() {
@@ -2585,17 +5638,55 @@ fn write_metrics(job: &Path, record: &Record, control: &Control) -> Result<(), C
         }
     }
     bytes.extend(b"}")?;
-    publish(job, "metrics.json", &record.nonce.0, &bytes)
+    Ok(bytes)
+    })?;
+    // Diagnostics are explicitly partial/unproven until the complete/reaped
+    // run commits. No third atomic publication consumes a native permit.
+    // Retain the private diagnostic inode on any timing/write failure.
+    let mut file = budget.unit(|| create(&job.join("metrics.json")))?;
+    for chunk in bytes.as_slice().chunks(4096) {
+        budget.unit(|| file.write_all(chunk).map_err(|_| Code::StorageUnavailable))?;
+    }
+    budget.unit(|| file.sync_all().map_err(|_| Code::StorageUnavailable))?;
+    drop(Paced::new(file, control));
+    // Required settlement is permitted on a poisoned run but can never produce
+    // a successful completion. A successful metrics write pays all its debt.
+    control.cleanup.debt.wait(Some(budget.deadline), true)
 }
 
-#[derive(Clone, Copy)]
-struct StartReceipt {
-    seq: u64,
-    phase: w::Phase,
-}
 struct FixedBytes<const N: usize> {
     bytes: [u8; N],
     len: usize,
+}
+impl<const N: usize> Drain for FixedBytes<N> {
+    fn drain_step(&mut self) -> bool {
+        false
+    }
+}
+impl<const N: usize> FixedBytes<N> {
+    fn len(&self) -> usize {
+        self.len
+    }
+    fn as_slice(&self) -> &[u8] {
+        &self.bytes[..self.len]
+    }
+    fn truncate(&mut self, length: usize) -> Result<(), Code> {
+        if length > self.len {
+            return Err(Code::ResourceLimit);
+        }
+        self.len = length;
+        Ok(())
+    }
+    fn extend(&mut self, bytes: &[u8]) -> Result<(), Code> {
+        let end = self
+            .len
+            .checked_add(bytes.len())
+            .filter(|end| *end <= N)
+            .ok_or(Code::ResourceLimit)?;
+        self.bytes[self.len..end].copy_from_slice(bytes);
+        self.len = end;
+        Ok(())
+    }
 }
 impl<const N: usize> std::fmt::Write for FixedBytes<N> {
     fn write_str(&mut self, text: &str) -> std::fmt::Result {
@@ -2609,26 +5700,26 @@ impl<const N: usize> std::fmt::Write for FixedBytes<N> {
         Ok(())
     }
 }
-fn write_start_receipt(job: &Path, record: &Record, receipt: StartReceipt) -> Result<(), Code> {
+fn write_start_receipt(
+    job: &Path,
+    record: &Record,
+    control: &Control,
+    deadline: Instant,
+) -> Result<(), Code> {
     use std::fmt::Write as _;
-    let phase = match receipt.phase {
-        w::Phase::Validate => "validate",
-        w::Phase::Replay => "replay",
-        w::Phase::Publish => "publish",
-        w::Phase::Paused => "paused",
-        w::Phase::Settling => "settling",
-    };
     let mut bytes = FixedBytes {
         bytes: [0; 1024],
         len: 0,
     };
-    write!(&mut bytes,"{{\"run_id\":\"{}\",\"nonce\":\"{}\",\"seq\":{},\"worker_pid\":{},\"worker_start\":\"{}\",\"phase\":\"{}\"}}",
-        record.view.run_id.0,record.nonce.0,receipt.seq,record.worker_pid.ok_or(Code::ProtocolError)?,record.worker_start.as_deref().ok_or(Code::ProtocolError)?,phase).map_err(|_|Code::ResourceLimit)?;
-    publish(
+    write!(&mut bytes,"{{\"run_id\":\"{}\",\"nonce\":\"{}\",\"seq\":0,\"worker_pid\":{},\"worker_start\":\"{}\",\"phase\":\"spawned_hello_validated\",\"effect_stage\":\"spawned_hello_validated\",\"work_started\":false}}",
+        record.view.run_id.0,record.nonce.0,record.worker_pid.ok_or(Code::ProtocolError)?,record.worker_start.as_deref().ok_or(Code::ProtocolError)?).map_err(|_|Code::ResourceLimit)?;
+    let mut budget = Budget::new(control, deadline);
+    publish_paced(
         job,
         "worker-started.json",
         &record.nonce.0,
         &bytes.bytes[..bytes.len],
+        &mut budget,
     )
 }
 
@@ -2646,27 +5737,224 @@ fn execute_inner(
         return Err(Code::Cancelled);
     }
     utility()?;
+    if record.launch.is_some() {
+        return Err(Code::WorkerLost);
+    }
     control.phase(PREPARING);
     let deadline = Instant::now() + Duration::from_secs(30);
     // Manager admits only observed quiescence. A foreground race after that admission
     // pauses this active owner's bounded wall budget; it is not a deferred retry loop.
     let mut preparation = Budget::new(control, deadline);
     preparation.unit(|| private_dir(job))?;
+    let (canonical, job_directory) = canonical_job(job, &mut preparation)?;
+    let _job_directory = Paced::new(job_directory, control);
+    let job = canonical.as_path();
     preparation.unit(|| private_dir(&job.join("tmp")))?;
+    preparation.unit(|| private_dir(&job.join("output")))?;
+    #[cfg(debug_assertions)]
+    prepare_private_job_faults(job, record, &mut preparation)?;
     // Actual preallocated pending/output/stderr/reusable scratch requested capacities.
     let mut _protected = control
         .heap
         .reserve(HeapLane::Control, transport::PROTECTED_BYTES)?;
-    let mut worker = Worker::spawn(binary, job).map_err(wire_error)?;
-    _protected.allocated();
+    let buffers = preparation.unit(|| {
+        let cpu = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit)?;
+        let mut prepared = Paced::new(Worker::prepare_buffers().map_err(wire_error), control);
+        if prepared.is_ok() {
+            _protected.allocated();
+        }
+        let used = bbt_rt::fault::thread_cpu_time()
+            .map_err(|_| Code::ResourceLimit)?
+            .saturating_sub(cpu);
+        control
+            .codec_prepare_max_cpu_ns
+            .fetch_max(nanos(used), Ordering::Relaxed);
+        prepared.take_value()
+    })?;
+    let mut buffers = Paced::new(buffers, control);
+    let mut input = Paced::new(
+        preparation.unit(|| Worker::prepare_pipe().map_err(wire_error))?,
+        control,
+    );
+    let mut output = Paced::new(
+        preparation.unit(|| Worker::prepare_pipe().map_err(wire_error))?,
+        control,
+    );
+    let mut stderr = Paced::new(
+        preparation.unit(|| Worker::prepare_pipe().map_err(wire_error))?,
+        control,
+    );
+    let incarnation = control.launch_incarnation.load(Ordering::Acquire);
+    if incarnation == 0 {
+        return Err(Code::RunnerUnavailable);
+    }
+    let birth = preparation.unit(|| Ok(crate::Ulid::new()))?;
+    let proof = control
+        .native_provision
+        .get()
+        .ok_or(Code::RunnerUnavailable)?;
+    let binding = birth_binding(
+        &BirthBinding {
+            profile: bootstrap::PROFILE,
+            purpose: "inspect-c1",
+            probe: false,
+            op_id: &record.op_id,
+            run_id: &record.view.run_id,
+            nonce: &record.nonce,
+            incarnation,
+            context: Some(&record.context),
+            worker_sha256: proof.worker_sha256(),
+        },
+        &mut preparation,
+    )?;
+    let frozen = preparation.unit(|| {
+        Ok(bootstrap::Frozen::inspect(
+            false,
+            birth.to_bytes(),
+            bootstrap::ulid(record.view.run_id.0.as_bytes()).map_err(|_| Code::BadRequest)?,
+            bootstrap::ulid(record.nonce.0.as_bytes()).map_err(|_| Code::BadRequest)?,
+            binding,
+            incarnation,
+        ))
+    })?;
+    let mut gate = Paced::new(
+        preparation.unit(|| bootstrap::Gate::prepare(frozen).map_err(wire_error))?,
+        control,
+    );
+    let (pipe_fd, pipe_device, pipe_inode) = gate.identity();
+    record.launch = Some(preparation.unit(|| {
+        Ok(LaunchBookmark {
+            birth: public::Ulid(birth.to_string()),
+            binding: public::Hex(binding.iter().map(|byte| format!("{byte:02x}")).collect()),
+            incarnation,
+            worker_sha256: public::Hex(proof.worker_sha256().to_owned()),
+            pipe_fd,
+            pipe_device,
+            pipe_inode,
+        })
+    })?);
+    // Keep the existing bounded connection prepared through native birth/PID
+    // custody. No connection setup consumes the250ms post-spawn readiness.
+    let birth_journal = open_checkpoint(job, record, control, deadline)?;
+    save_checkpoint(&birth_journal, record, control, deadline)?;
+    let prepared = preparation.unit(|| {
+        Worker::prepare_command(
+            binary,
+            job,
+            buffers.take_value(),
+            input.take_value(),
+            output.take_value(),
+            stderr.take_value(),
+            gate.take_value(),
+        )
+        .map_err(wire_error)
+    })?;
+    let mut prepared = Paced::new(prepared, control);
+    preparation.unit(|| prepared.configure_input().map_err(wire_error))?;
+    preparation.unit(|| prepared.configure_output().map_err(wire_error))?;
+    preparation.unit(|| prepared.configure_stderr().map_err(wire_error))?;
+    let mut command = Paced::new(
+        preparation.unit(|| prepared.take_command().map_err(wire_error))?,
+        control,
+    );
+    preparation.unit(|| {
+        control
+            .native_provision
+            .get()
+            .ok_or(Code::RunnerUnavailable)?
+            .still_current()
+    })?;
+    let mut native = preparation.native_process(&mut command)?;
+    // Retain the exact Child/pipe/codec owner BEFORE consulting any timing,
+    // missing-clock, cancellation or authority verdict from the native span.
+    let (worker, unused_command) = match native.effect.take_value() {
+        Ok(child) => prepared.take_value().attach_child(child),
+        Err(code) => {
+            if let Ok(cpu) = native.sample.cpu {
+                control
+                    .worker_spawn_cpu_ns
+                    .store(nanos(cpu), Ordering::Release);
+            }
+            let verdict = native.verdict;
+            let debt = Budget::for_control(control, deadline).pay_work_debt();
+            return Err(verdict.err().or(debt.err()).unwrap_or(code));
+        }
+    };
+    let mut worker = Paced::new(worker, control);
+    let mut command = Some(command);
+    let mut unused_command = Some(Paced::new(unused_command, control));
+    record.worker_pid = Some(worker.pid());
+    if let Ok(cpu) = native.sample.cpu {
+        control
+            .worker_spawn_cpu_ns
+            .store(nanos(cpu), Ordering::Release);
+    }
+    let ready = match native.returned_at.checked_add(bootstrap::WINDOW) {
+        Some(ready) => ready.min(deadline),
+        None => {
+            revoke_bootstrap(&mut worker, control);
+            drop(command.take());
+            drop(unused_command.take());
+            settle_probe(&mut worker, control);
+            return Err(Code::ResourceLimit);
+        }
+    };
+    let setup = bootstrap_control(control, || {
+        worker
+            .bootstrap_spawn_returned(native.returned_at, deadline)
+            .map_err(wire_error)
+    });
+    let failed = native.verdict.err().or(setup.err());
+    if let Some(code) = failed {
+        revoke_bootstrap(&mut worker, control);
+        drop(command.take());
+        drop(unused_command.take());
+        settle_probe(&mut worker, control);
+        return Err(code);
+    }
+    preparation.deadline = ready;
+    let before_grant = (|| {
+        preparation.pay_work_debt()?;
+        // Child is still behind its private gate; parent owns expensive work.
+        // Retire ALL parent's child pipe-writers before any permit/EOF wait.
+        drop(command.take());
+        drop(unused_command.take());
+        preparation.pay_work_debt()?;
+        record.worker_start =
+            Some(preparation.unit(|| transport::process_stamp(worker.pid()).map_err(wire_error))?);
+        preparation.unit(|| {
+            #[cfg(debug_assertions)]
+            if control.private_fixture && proof.control_only_wrapper() {
+                // Explicit private protocol-fault fixture only. Its source is
+                // never a positive bootstrap/native conformance authority.
+                return Ok(());
+            }
+            proof.child_image_matches(worker.pid())
+        })?;
+        save_checkpoint(&birth_journal, record, control, ready)?;
+        preparation.pay_work_debt()?;
+        bootstrap_handshake(&mut worker, control, ready, false)
+    })();
+    if let Err(code) = before_grant {
+        revoke_bootstrap(&mut worker, control);
+        drop(command.take());
+        drop(unused_command.take());
+        settle_probe(&mut worker, control);
+        return Err(code);
+    }
+    preparation.deadline = deadline;
+    drop(birth_journal);
     if worker.protected_capacity_bytes() != transport::PROTECTED_BYTES {
         settle_probe(&mut worker, control);
         return Err(Code::ResourceLimit);
     }
-    if let Err(error) = worker.hello() {
-        settle_probe(&mut worker, control);
-        return Err(wire_error(error));
+    if !proof.control_only_wrapper() {
+        control.authorize_native_metrics();
     }
+    // Matching paid Hello returns expensive ownership to the parent. Its
+    // command/stdio copies were already retired BEFORE granting bootstrap.
+    drop(command);
+    drop(unused_command);
     #[cfg(debug_assertions)]
     if control.private_fixture {
         match private_fixture_entry(&job.join("test-omit-rest"), false) {
@@ -2686,18 +5974,6 @@ fn execute_inner(
                 return Err(code);
             }
         }
-    }
-    record.worker_pid = Some(worker.pid());
-    record.worker_start = match transport::process_stamp(worker.pid()) {
-        Ok(stamp) => Some(stamp),
-        Err(_) => {
-            settle_probe(&mut worker, control);
-            return Err(Code::WorkerLost);
-        }
-    };
-    if let Err(code) = checkpoint(job, record) {
-        settle_probe(&mut worker, control);
-        return Err(code);
     }
     // Journal bounds the complete record to16KiB and own catalogue rows to16KiB.
     // This conservative clone declaration allows the latter bound for each source.
@@ -2721,10 +5997,11 @@ fn execute_inner(
             return Err(code);
         }
     };
-    let source_record = record.clone();
+    let mut source_record = record.clone();
     let mut snapshot_result = None;
     let mut stop: Option<(Code, Instant)> = None;
     let mut started = false;
+    let mut child_work_claimed = false;
     let mut cancel_sent = false;
     let mut activity_sent = 0;
     let mut term_sent = false;
@@ -2735,15 +6012,8 @@ fn execute_inner(
         previous: None,
         done: None,
     };
-    let receipt_finished = AtomicBool::new(false);
-    let receipt_failed = AtomicBool::new(false);
     std::thread::scope(|scope| -> Result<(), Code> {
         let (sender, receiver) = mpsc::sync_channel(1);
-        let (receipt_sender, receipt_receiver) = mpsc::sync_channel::<StartReceipt>(1);
-        let mut receipt_sender = Some(receipt_sender);
-        let finished = &receipt_finished;
-        let failed = &receipt_failed;
-        let mut receipt_sent = false;
         let mut receipt_settling = None;
         let snapshot_owner = scope.spawn(move || {
             let _owner_clock = match OwnerClock::new(
@@ -2753,20 +6023,44 @@ fn execute_inner(
                 Ok(clock) => clock,
                 Err(code) => {
                     let _ = sender.send(Err(code));
-                    finished.store(true, Ordering::Release);
                     return;
                 }
             };
-            let value = snapshot(job, &source_record, control, deadline);
+            let journal = open_checkpoint(job, &source_record, control, deadline);
+            let value = journal
+                .as_ref()
+                .map_err(|code| *code)
+                .and_then(|journal| save_checkpoint(journal, &source_record, control, deadline))
+                .and_then(|()| snapshot(job, &source_record, control, deadline))
+                .and_then(|snapshot| {
+                    source_record.view.manifest_sha256 = Some(public::Hex(snapshot.hash.clone()));
+                    save_checkpoint(
+                        journal.as_ref().map_err(|code| *code)?,
+                        &source_record,
+                        control,
+                        deadline,
+                    )?;
+                    // Native publication occurs before any child computation.
+                    // This seq0 receipt proves process+Hello, never Progress.
+                    write_start_receipt(job, &source_record, control, deadline)?;
+                    Ok(snapshot)
+                });
+            drop(journal);
             let _ = sender.send(value);
-            while let Ok(receipt) = receipt_receiver.recv() {
-                if write_start_receipt(job, &source_record, receipt).is_err() {
-                    failed.store(true, Ordering::Release);
-                }
-            }
-            finished.store(true, Ordering::Release);
         });
+        let mut previous_reactor_end: Option<Instant> = None;
         loop {
+            if let Some(end) = previous_reactor_end {
+                control
+                    .reactor_min_gap_ns
+                    .fetch_min(nanos(end.elapsed()), Ordering::Relaxed);
+            }
+            let meter = ReactorClock::new(control);
+            let mut finish = false;
+            if meter.is_err() {
+                let since = stop.map_or_else(Instant::now, |(_, since)| since);
+                stop = Some((Code::ResourceLimit, since));
+            }
             if stop.is_none() && control.cancelled.load(Ordering::Acquire) {
                 stop = Some((Code::Cancelled, Instant::now()));
             }
@@ -2794,21 +6088,21 @@ fn execute_inner(
             }
             if stop.is_none()
                 && !started
+                && snapshot_owner.is_finished()
+                && control.cleanup.debt.remaining_ns() == 0
+                && !control.cleanup.debt.held.load(Ordering::Acquire)
+                && !control.is_foreground()
                 && let Some(Ok(snapshot)) = &snapshot_result
             {
                 record.view.manifest_sha256 = Some(public::Hex(snapshot.hash.clone()));
-                if let Err(code) = checkpoint(job, record) {
-                    stop = Some((code, Instant::now()));
+                let revision = control.activity_version();
+                let remaining = deadline
+                    .saturating_duration_since(Instant::now())
+                    .as_millis()
+                    .min(30_000) as u32;
+                if remaining == 0 {
+                    stop = Some((Code::Deadline, Instant::now()));
                 } else {
-                    let revision = control.activity_version();
-                    let remaining = deadline
-                        .saturating_duration_since(Instant::now())
-                        .as_millis()
-                        .min(30_000) as u32;
-                    if remaining == 0 {
-                        stop = Some((Code::Deadline, Instant::now()));
-                        continue;
-                    }
                     let start = w::WorkerIn::Start(w::Start {
                         protocol: w::Protocol::V1,
                         run_id: w::Ulid(record.view.run_id.0.clone()),
@@ -2818,13 +6112,36 @@ fn execute_inner(
                         activity_revision: w::Number(revision),
                         foreground: control.is_foreground(),
                     });
-                    match worker.send(&start) {
-                        Ok(_) => {
-                            started = true;
-                            activity_sent = revision;
-                            control.phase(RUNNING);
+                    let before = control.bootstrap_control_cpu_ns.load(Ordering::Acquire);
+                    let admission = final_admission_control(control, FinalHandoff::Start, || {
+                        effect_guard(control)?;
+                        if control.cancelled.load(Ordering::Acquire) {
+                            return Err(Code::Cancelled);
                         }
-                        Err(error) => stop = Some((wire_error(error), Instant::now())),
+                        if control.is_foreground() {
+                            return Err(Code::Cancelled);
+                        }
+                        if Instant::now() >= deadline {
+                            return Err(Code::Deadline);
+                        }
+                        control.begin_child_work()?;
+                        child_work_claimed = true;
+                        worker.send(&start).map_err(wire_error)?;
+                        // A partial control write remains the ONE pending
+                        // Start. Only control flush/cancel may follow.
+                        started = true;
+                        activity_sent = revision;
+                        Ok(())
+                    });
+                    control.worker_start_cpu_ns.store(
+                        control
+                            .bootstrap_control_cpu_ns
+                            .load(Ordering::Acquire)
+                            .saturating_sub(before),
+                        Ordering::Release,
+                    );
+                    if let Err(code) = admission {
+                        stop = Some((code, Instant::now()));
                     }
                 }
             }
@@ -2874,32 +6191,28 @@ fn execute_inner(
             if started || stop.is_some() {
                 // A fixed batch cannot let saturated progress delay cancellation or another root.
                 for _ in 0..4 {
-                    match checked_poll(&mut worker, control) {
+                    if let Ok(clock) = &meter {
+                        match clock.batch_due() {
+                            Ok(true) => break,
+                            Ok(false) => {}
+                            Err(_) => {
+                                let since = stop.map_or_else(Instant::now, |(_, since)| since);
+                                stop = Some((Code::ResourceLimit, since));
+                                break;
+                            }
+                        }
+                    }
+                    let polled = if meter.is_err() {
+                        worker.receive().map_err(wire_error)
+                    } else {
+                        checked_poll(&mut worker, control)
+                    };
+                    match polled {
                         Ok(Some(frame)) => {
-                            let receipt = if let w::WorkerOut::Progress(value) = &frame {
-                                Some(StartReceipt {
-                                    seq: value.seq.0,
-                                    phase: value.phase,
-                                })
-                            } else {
-                                None
-                            };
                             if let Err(code) = frames.observe(frame, record, control)
                                 && stop.is_none()
                             {
                                 stop = Some((code, Instant::now()));
-                            } else if stop.is_none()
-                                && !receipt_sent
-                                && let Some(receipt) = receipt
-                            {
-                                if receipt_sender
-                                    .as_ref()
-                                    .is_some_and(|sender| sender.try_send(receipt).is_ok())
-                                {
-                                    receipt_sent = true;
-                                } else {
-                                    stop = Some((Code::StorageUnavailable, Instant::now()));
-                                }
                             }
                         }
                         Ok(None) => break,
@@ -2928,13 +6241,9 @@ fn execute_inner(
                     }
                 }
             }
-            if receipt_failed.load(Ordering::Acquire) && stop.is_none() {
-                stop = Some((Code::StorageUnavailable, Instant::now()));
-            }
             if exit.is_some() && worker.is_eof() && snapshot_result.is_some() {
-                receipt_sender.take();
-                if receipt_finished.load(Ordering::Acquire) || snapshot_owner.is_finished() {
-                    break;
+                if snapshot_owner.is_finished() {
+                    finish = true;
                 }
                 let since = receipt_settling.get_or_insert_with(Instant::now);
                 if since.elapsed() >= Duration::from_secs(6) {
@@ -2959,7 +6268,38 @@ fn execute_inner(
             if exit.is_some() && !started && stop.is_none() {
                 stop = Some((Code::WorkerLost, Instant::now()));
             }
+            if let Ok(clock) = meter {
+                if clock.finish().is_err() {
+                    let since = stop.map_or_else(Instant::now, |(_, since)| since);
+                    stop = Some((Code::ResourceLimit, since));
+                }
+            }
+            previous_reactor_end = Some(Instant::now());
+            if finish {
+                break;
+            }
+            let rest_wall = Instant::now();
+            let rest_cpu = bbt_rt::fault::thread_cpu_time().ok();
             std::thread::sleep(REST);
+            control
+                .reactor_rest_wall_ns
+                .fetch_add(nanos(rest_wall.elapsed()), Ordering::Relaxed);
+            if let (Some(before), Ok(after)) = (rest_cpu, bbt_rt::fault::thread_cpu_time()) {
+                control
+                    .reactor_rest_cpu_ns
+                    .fetch_add(nanos(after.saturating_sub(before)), Ordering::Relaxed);
+            }
+        }
+        if child_work_claimed {
+            let debt_paid = control.native_metrics_authorized.load(Ordering::Acquire)
+                && worker
+                    .producer_metrics()
+                    .is_some_and(|m| m.work_debt_paid_for(&record.view.run_id.0, &record.nonce.0));
+            if let Err(code) = control.end_child_work(debt_paid)
+                && stop.is_none()
+            {
+                stop = Some((code, Instant::now()));
+            }
         }
         // A held read is not detached: its actual owner joins before settlement/slot release.
         if snapshot_owner.join().is_err() {
@@ -2975,11 +6315,19 @@ fn execute_inner(
         if control.cancelled.load(Ordering::Acquire) {
             return Err(Code::Cancelled);
         }
-        if control.producer_metrics_observed.load(Ordering::Acquire)
-            && control.producer_metrics[1].load(Ordering::Acquire) > 96 * 1024 * 1024
+        // Actual reap and both output EOFs precede final receipt validation.
+        // Missing/duplicate/malformed diagnostics cannot certify completion;
+        // abrupt cancellation above retains unknown metrics honestly.
+        let metrics = worker.producer_metrics().ok_or(Code::ResourceLimit)?;
+        if !control.native_metrics_authorized.load(Ordering::Acquire)
+            || !control.child_usage_observed.load(Ordering::Acquire)
+            || !metrics.valid_native_completion(&record.view.run_id.0, &record.nonce.0, done.pages)
         {
             return Err(Code::ResourceLimit);
         }
+        control
+            .producer_native_profile_verified
+            .store(true, Ordering::Release);
         let snapshot = snapshot_result
             .as_ref()
             .ok_or(Code::WorkerLost)?
@@ -3071,6 +6419,7 @@ mod tests {
             identity_fence: None,
             worker_pid: None,
             worker_start: None,
+            launch: None,
             started: false,
             owner_incarnation: id.clone(),
             context: public::Context {
@@ -3245,6 +6594,12 @@ mod tests {
             Instant::now() + Duration::from_secs(5),
         )
         .unwrap();
+        assert_eq!(
+            control.snapshot_tiny_records.load(Ordering::Acquire),
+            values.len() as u64,
+            "the CRLF/typed-blob fixture must use the bounded tiny record path",
+        );
+        assert_eq!(control.snapshot_staged_records.load(Ordering::Acquire), 0);
         assert_eq!(snapshot.manifest.sources.len(), 1);
         assert_eq!(
             snapshot.manifest.sources[0].blobs.len(),
@@ -3276,6 +6631,102 @@ mod tests {
         let manifest = std::fs::read(job.path().join("input/manifest.json")).unwrap();
         assert_eq!(digest(&manifest), snapshot.hash);
         assert!(!manifest.ends_with(b"\n"));
+    }
+
+    #[test]
+    fn immutable_transfer_combines_read_hash_write_and_refuses_oversize_before_effects() {
+        let job = private_job();
+        let bytes = [b'x'; 8192];
+        let source = job.path().join("source");
+        create(&source).unwrap().write_all(&bytes).unwrap();
+        let mut input = File::open(&source).unwrap();
+        let mut output = create(&job.path().join("copy")).unwrap();
+        let control = Control::default();
+        control.foreground.store(false, Ordering::Release);
+        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
+        let mut hash = Sha256::new();
+        let mut chunk = [0; CHUNK];
+        assert_eq!(
+            copy_chunk(
+                &mut input,
+                &mut output,
+                &mut hash,
+                &mut chunk,
+                bytes.len() as u64,
+                Code::SourceUnavailable,
+                Code::SourceChanged,
+                &control.source_copy_unit_max_cpu_ns,
+                &mut budget,
+            ),
+            Ok(bytes.len()),
+        );
+        assert_eq!(control.work_unit_count.load(Ordering::Acquire), 1);
+        assert_eq!(std::fs::read(job.path().join("copy")).unwrap(), bytes);
+        assert_eq!(format!("{:x}", hash.finalize()), digest(&bytes));
+        assert!(control.source_copy_unit_max_cpu_ns.load(Ordering::Acquire) > 0);
+
+        input.rewind().unwrap();
+        let mut refused = create(&job.path().join("refused")).unwrap();
+        let mut hash = Sha256::new();
+        assert_eq!(
+            copy_chunk(
+                &mut input,
+                &mut refused,
+                &mut hash,
+                &mut chunk,
+                (bytes.len() - 1) as u64,
+                Code::SourceUnavailable,
+                Code::SourceChanged,
+                &control.source_copy_unit_max_cpu_ns,
+                &mut budget,
+            ),
+            Err(Code::SourceChanged),
+        );
+        assert_eq!(refused.metadata().unwrap().len(), 0);
+        assert_eq!(format!("{:x}", hash.finalize()), digest(b""));
+        assert_eq!(std::fs::read(source).unwrap(), bytes);
+    }
+
+    #[test]
+    fn staged_text_blocks_still_each_visit_the_bounded_work_gate() {
+        let event = json!({"type":"item_completed","body":{"kind":"user_message","blocks":[
+            {"type":"text","text":"one"},
+            {"type":"text","text":"two"},
+            {"type":"text","text":"three"}
+        ]}});
+        let control = Control::default();
+        control.foreground.store(false, Ordering::Release);
+        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
+        let mut blobs = BTreeMap::new();
+        references(&event, &mut blobs, &mut budget).unwrap();
+        assert!(blobs.is_empty());
+        assert_eq!(control.work_unit_count.load(Ordering::Acquire), 3);
+        assert_eq!(control.rest_violations.load(Ordering::Acquire), 0);
+    }
+
+    #[test]
+    fn inclusive_descriptor_requires_provisioned_authority_and_verified_terminal_capture() {
+        let control = Control::default();
+        control.producer_metrics[45].store(1_500_000, Ordering::Release);
+        control.producer_metrics[46].store(2_000_000, Ordering::Release);
+        assert!(!approved_descriptor_capture(&control, 1_500_000));
+        control
+            .producer_native_profile_verified
+            .store(true, Ordering::Release);
+        assert!(
+            !approved_descriptor_capture(&control, 1_500_000),
+            "a parsed/profile verdict grants no executable authority"
+        );
+        // Explicit component fixture authorization; production obtains this
+        // separate grant only from the source/compiler/features/image receipt.
+        control.authorize_native_metrics();
+        assert!(approved_descriptor_capture(&control, 1_500_000));
+        assert!(!approved_descriptor_capture(&control, 1_400_000));
+        assert!(!approved_descriptor_capture(&control, 3_000_001));
+        control
+            .producer_native_profile_verified
+            .store(false, Ordering::Release);
+        assert!(!approved_descriptor_capture(&control, 1_500_000));
     }
 
     fn progress(record: &Record, seq: u64) -> w::WorkerOut {
@@ -3537,6 +6988,16 @@ mod tests {
             3,
             "old A1 cannot publish over A3"
         );
+        latch.store(
+            super::super::harness_status::CLOSED_EXIT_ACTIVITY | 8,
+            Ordering::Release,
+        );
+        assert!(!control.is_foreground());
+        assert_eq!(
+            control.activity_version(),
+            4,
+            "local closure/exit proof is not a wire revision bit"
+        );
     }
 
     #[test]
@@ -3685,7 +7146,7 @@ mod tests {
         control.foreground.store(false, Ordering::Release);
         let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(3));
         let _declared = budget.json(bytes.as_bytes()).unwrap();
-        let parsed: Value = budget.parse(bytes.as_bytes()).unwrap();
+        let parsed: Paced<Value> = budget.parse(bytes.as_bytes()).unwrap();
         assert_eq!(parsed["payload"].as_str().unwrap().len(), 128 * 1024);
         assert!(
             control.work_unit_count.load(Ordering::Acquire)
@@ -3745,7 +7206,8 @@ mod tests {
         let control = Control::default();
         control.foreground.store(false, Ordering::Release);
         let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(10));
-        let decoded: w::ResultDescriptor = decode_canonical(&bytes, &mut budget, false).unwrap();
+        let decoded: Paced<w::ResultDescriptor> =
+            decode_canonical(&bytes, &mut budget, false).unwrap();
         assert_eq!(decoded.pages.len(), 4096);
         assert!(
             control.work_unit_count.load(Ordering::Acquire)
@@ -3891,6 +7353,46 @@ mod tests {
         assert_eq!(control.owner_refusals.load(Ordering::Acquire), 2);
         assert_eq!(std::fs::read(&source.path).unwrap(), source.bytes);
     }
+    #[test]
+    fn canonical_job_resolves_private_parent_alias_and_retains_same_inode() {
+        let root = private_job();
+        let real = root.path().join("real");
+        private_dir(&real).unwrap();
+        let alias = root.path().join("alias");
+        std::os::unix::fs::symlink(&real, &alias).unwrap();
+        let job = alias.join("job");
+        private_dir(&job).unwrap();
+        let control = Control::default();
+        control.foreground.store(false, Ordering::Release);
+        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(2));
+        let (canonical, directory) = canonical_job(&job, &mut budget).unwrap();
+        assert_eq!(canonical, real.canonicalize().unwrap().join("job"));
+        assert_eq!(
+            directory.metadata().unwrap().ino(),
+            std::fs::metadata(&job).unwrap().ino()
+        );
+        assert!(
+            !canonical.join("input").exists(),
+            "canonicalizing an owned job does not inspect source/manifest data"
+        );
+    }
+    #[test]
+    fn whole_reactor_cpu_control_detects_work_outside_receive() {
+        let control = Control::default();
+        let clock = ReactorClock::new(&control).unwrap();
+        let cpu = bbt_rt::fault::thread_cpu_time().unwrap();
+        while bbt_rt::fault::thread_cpu_time()
+            .unwrap()
+            .saturating_sub(cpu)
+            < Duration::from_millis(2)
+        {
+            std::hint::spin_loop();
+        }
+        assert!(clock.batch_due().unwrap());
+        assert_eq!(clock.finish(), Err(Code::ResourceLimit));
+        assert_eq!(control.reactor_overruns.load(Ordering::Acquire), 1);
+        assert!(control.reactor_max_cpu_ns.load(Ordering::Acquire) >= 2_000_000);
+    }
 
     #[test]
     fn real_rest_wait_records_sleep_cpu_and_private_omission_fails_same_duty_observer() {
@@ -3988,6 +7490,115 @@ mod tests {
         assert_eq!(std::fs::read(&source.path).unwrap(), source.bytes);
     }
 
+    #[test]
+    #[ignore = "requires explicit actual producer fork export; no synthetic fallback"]
+    fn actual_consumer_store_fork_frontier_rejects_before_parent_rows() {
+        let root = PathBuf::from(
+            std::env::var_os("DREAM_C1_FORK_BUNDLE")
+                .expect("DREAM_C1_FORK_BUNDLE required; no fallback"),
+        );
+        assert!(root.is_absolute());
+        let manifest_bytes = std::fs::read(root.join("manifest.json")).unwrap();
+        let manifest: w::Manifest = transport::decode(&manifest_bytes).unwrap();
+        assert_eq!(manifest.sources.len(), 1);
+        let source = &manifest.sources[0];
+        assert_eq!(source.closed_seq.0, 5);
+        let path = root
+            .join("sessions")
+            .join(format!("{}.jsonl", source.session.0));
+        let original = std::fs::read(&path).unwrap();
+        assert_eq!(original.len() as u64, source.len.0);
+        assert_eq!(digest(&original), source.sha256.0);
+        let first = line_end(&original).unwrap() + 1;
+        let header: Value = serde_json::from_slice(&original[..first]).unwrap();
+        assert!(
+            !header["event"]["meta"]["fork"].is_null(),
+            "actual Store fork header required"
+        );
+        let mut reader =
+            Reader::open(&root, &source.session.0, source.source_generation.0).unwrap();
+        let mut refused = None;
+        for _ in 0..4 {
+            match reader.poll() {
+                Err(code) => {
+                    refused = Some(code);
+                    break;
+                }
+                Ok((bookmark, _)) => assert!(bookmark.is_none()),
+            }
+        }
+        assert_eq!(refused, Some(Code::UnsupportedIr));
+        assert_eq!(reader.seq, 1);
+        assert_eq!(
+            reader.cursor, first as u64,
+            "no inherited parent row was interpreted"
+        );
+        let copy = private_job();
+        private_dir(&copy.path().join("sessions")).unwrap();
+        let copy_path = copy
+            .path()
+            .join("sessions")
+            .join(format!("{}.jsonl", source.session.0));
+        let second = first + line_end(&original[first..]).unwrap() + 1;
+        let mut malformed = original[..first].to_vec();
+        malformed.extend_from_slice(b"{malformed-parent-row\n");
+        malformed.extend_from_slice(&original[second..]);
+        create(&copy_path).unwrap().write_all(&malformed).unwrap();
+        let mut broken =
+            Reader::open(copy.path(), &source.session.0, source.source_generation.0).unwrap();
+        let mut broken_refusal = None;
+        for _ in 0..4 {
+            if let Err(code) = broken.poll() {
+                broken_refusal = Some(code);
+                break;
+            }
+        }
+        assert_eq!(broken_refusal, Some(Code::UnsupportedIr));
+        assert_eq!(broken.seq, 1);
+        assert_eq!(broken.cursor, first as u64);
+        assert_eq!(
+            std::fs::read(&path).unwrap(),
+            original,
+            "actual exported fork bytes remain immutable"
+        );
+        let evidence = private_job().keep();
+        let mut receipt = json!({"scope":"actual Store fork Reader frontier component; not full transcript-law or admitted MCP proof","store_root":root,"source_session":source.session.0,"source_generation":source.source_generation.0,"source_sha256":source.sha256.0,"source_len":source.len.0,"closed_seq":source.closed_seq.0,"header_fork_present":true,"error":"unsupported_ir","observed_seq":reader.seq,"observed_cursor":reader.cursor,"header_len":first,"inherited_parent_rows_interpreted":0,"inspection_worker_spawned":false,"malformed_parent_copy_still_header_refused":true,"original_source_unchanged":true});
+        let mut output = create(&evidence.join("fork-frontier.json")).unwrap();
+        serde_json::to_writer(&mut output, &receipt).unwrap();
+        output.sync_all().unwrap();
+        eprintln!(
+            "C1_FORK_FRONTIER_RECEIPT={}",
+            evidence.join("fork-frontier.json").display()
+        );
+        if let Some(directory) = std::env::var_os("DREAM_C1_EVIDENCE") {
+            let directory = PathBuf::from(directory);
+            assert!(directory.is_absolute());
+            let nonce = std::env::var("DREAM_C1_GATE_NONCE")
+                .expect("driver evidence requires DREAM_C1_GATE_NONCE");
+            let binary = PathBuf::from(
+                std::env::var_os("DREAM_C1_RUNNER")
+                    .expect("driver evidence requires exact DREAM_C1_RUNNER"),
+            );
+            assert!(binary.is_absolute());
+            let mut hash = Sha256::new();
+            let mut input = File::open(&binary).unwrap();
+            let mut chunk = [0; CHUNK];
+            loop {
+                let n = input.read(&mut chunk).unwrap();
+                if n == 0 {
+                    break;
+                }
+                hash.update(&chunk[..n]);
+            }
+            receipt["schema"] = json!("bboxy.dream.c1.runtime-evidence/1");
+            receipt["driver_nonce"] = json!(nonce);
+            receipt["runner_sha256"] = json!(format!("{:x}", hash.finalize()));
+            let mut output = create(&directory.join("runtime-fork-subset.json")).unwrap();
+            serde_json::to_writer(&mut output, &receipt).unwrap();
+            output.sync_all().unwrap();
+        }
+    }
+
     /// Component memory witness only. The application's admitted own-seat source
     /// and API witnesses remain separate; this test consumes an actual Store export.
     #[test]
@@ -4011,53 +7622,69 @@ mod tests {
         );
         assert!(binary.is_absolute());
         let evidence = private_job().keep();
-        private_dir(&evidence.join("tmp")).unwrap();
         isolated_heap::ENABLED.store(true, Ordering::Release);
-        let control = Control::default();
-        control.foreground.store(false, Ordering::Release);
-        let mut codec = control
-            .heap
-            .reserve(HeapLane::Control, transport::PROTECTED_BYTES)
-            .unwrap();
-        let mut worker = Worker::spawn(&binary, &evidence).unwrap();
-        codec.allocated();
-        worker.hello().unwrap();
-        let pid = worker.pid();
-        let process_start = transport::process_stamp(pid).unwrap();
-        let held = HeapBuffer::new(&control.heap, HeapLane::Work, WORK_HEAP as usize).unwrap();
-        let before = control.heap.counters(HeapLane::Work);
-        assert!(matches!(
-            HeapBuffer::new(&control.heap, HeapLane::Work, 1),
-            Err(Code::ResourceLimit)
-        ));
-        assert_eq!(
-            control.heap.counters(HeapLane::Work),
-            before,
-            "refusal precedes allocation/reallocation"
-        );
-        let at = Instant::now();
-        control.cancelled.store(true, Ordering::Release);
-        control.phase(CANCELLING);
-        let observed = state(control.state.load(Ordering::Acquire));
-        let settled = control.settled.load(Ordering::Acquire);
-        let cached_control_ns = nanos(at.elapsed());
-        assert_eq!(observed, State::Cancelling);
-        assert!(!settled);
-        assert_eq!(control.heap.counters(HeapLane::Work).live, WORK_HEAP);
-        let at = Instant::now();
-        settle_probe(&mut worker, &control);
-        let reap_ns = nanos(at.elapsed());
-        assert!(worker.usage().is_some(), "actual wait4 reap required");
-        sample_isolated_heap();
-        drop(held);
-        drop(worker);
-        drop(codec);
-        control.state.store(CANCELLED, Ordering::Release);
-        control.settled.store(true, Ordering::Release);
+        let proof = Arc::new(runner_provision::verify_native_provision(&binary, false).unwrap());
+        let mut witnessed = None;
+        let mut observed_heap = None;
+        probe_gated_observe(
+            &evidence,
+            proof,
+            monotonic_ns().unwrap(),
+            |worker, control| {
+                let pid = worker.pid();
+                let mut budget = Budget::new(control, Instant::now() + Duration::from_secs(30));
+                let process_start =
+                    budget.unit(|| transport::process_stamp(pid).map_err(wire_error))?;
+                let remaining = WORK_HEAP - control.heap.counters(HeapLane::Work).reserved;
+                let mut held = None;
+                budget.unit(|| {
+                    held = Some(HeapBuffer::new(
+                        &control.heap,
+                        HeapLane::Work,
+                        remaining as usize,
+                    )?);
+                    Ok(())
+                })?;
+                let before = control.heap.counters(HeapLane::Work);
+                budget.unit(|| {
+                    if !matches!(
+                        HeapBuffer::new(&control.heap, HeapLane::Work, 1),
+                        Err(Code::ResourceLimit)
+                    ) {
+                        return Err(Code::ProtocolError);
+                    }
+                    if control.heap.counters(HeapLane::Work) != before {
+                        return Err(Code::ProtocolError);
+                    }
+                    Ok(())
+                })?;
+                let at = Instant::now();
+                control.cancelled.store(true, Ordering::Release);
+                control.phase(CANCELLING);
+                let observed = state(control.state.load(Ordering::Acquire));
+                let settled = control.settled.load(Ordering::Acquire);
+                let cached_control_ns = nanos(at.elapsed());
+                assert_eq!(observed, State::Cancelling);
+                assert!(!settled);
+                assert_eq!(control.heap.counters(HeapLane::Work).live, WORK_HEAP);
+                let at = Instant::now();
+                settle_probe(worker, control);
+                let reap_ns = nanos(at.elapsed());
+                assert!(worker.usage().is_some(), "actual wait4 reap required");
+                sample_isolated_heap();
+                drop(held);
+                witnessed = Some((pid, process_start, before, cached_control_ns, reap_ns));
+                observed_heap = Some(control.heap.clone());
+                Ok(())
+            },
+        )
+        .unwrap();
+        let (pid, process_start, before, cached_control_ns, reap_ns) = witnessed.unwrap();
+        let heap = observed_heap.unwrap();
         let live = isolated_heap::LIVE_PEAK.load(Ordering::Acquire);
         let touched = isolated_heap::TOUCHED_PEAK.load(Ordering::Acquire);
-        let work = control.heap.counters(HeapLane::Work);
-        let protected = control.heap.counters(HeapLane::Control);
+        let work = heap.counters(HeapLane::Work);
+        let protected = heap.counters(HeapLane::Control);
         let mut sha = Sha256::new();
         let mut file = File::open(&binary).unwrap();
         let mut bytes = [0; CHUNK];
@@ -4161,6 +7788,7 @@ mod tests {
         for index in 0..instances {
             let runtime = evidence.join(format!("dream-c1-{index}"));
             private_dir(&runtime).unwrap();
+            drop(Journal::open(&runtime, &public::Ulid(manifest.context.seat.0.clone())).unwrap());
             let mut record = record(vec![bookmark.clone()]);
             record.context = mirror(&manifest.context).unwrap();
             record.view.run_id = public::Ulid(if index == 0 {
@@ -4261,7 +7889,10 @@ mod tests {
                 && protected.reserved_peak <= CONTROL_HEAP;
             job_receipts.push(json!({"run_id":record.view.run_id.0,"worker_pid":record.worker_pid,"worker_start":record.worker_start,"job":job,"result":format!("{:?}",outcomes[index]),"completed":completed,"settled":record.view.settled,"real_exit_reaped":control.child_usage_observed.load(Ordering::Acquire),"child_heap_measured":measured,"child_heap_peak_bytes":child_peak,"child_heap_ceiling_bytes":96*1024*1024,"child_declared_live_bytes":control.producer_metrics[9].load(Ordering::Acquire),"child_declared_peak_bytes":control.producer_metrics[10].load(Ordering::Acquire),"child_declared_cumulative_bytes":control.producer_metrics[11].load(Ordering::Acquire),"child_control_reserved_bytes":control.producer_metrics[12].load(Ordering::Acquire),"child_helper_reserved_bytes":control.producer_metrics[13].load(Ordering::Acquire),"child_credit_ceiling_bytes":control.producer_metrics[14].load(Ordering::Acquire),"parent_work_declared_live_bytes":work.reserved,"parent_work_declared_peak_bytes":work.reserved_peak,"parent_work_declared_cumulative_bytes":work.reserved_cumulative,"parent_control_declared_live_bytes":protected.reserved,"parent_control_declared_peak_bytes":protected.reserved_peak,"parent_control_declared_cumulative_bytes":protected.reserved_cumulative,"host_metrics":host_metrics}));
         }
-        let parent_ceiling = 32 * 1024 * 1024 * instances as u64;
+        // The observer cannot attribute opaque allocations to individual jobs.
+        // Bound the baseline and all jobs together by one parent share: this
+        // collective upper bound conservatively proves every per-job parent.
+        let parent_ceiling = 32 * 1024 * 1024;
         let parent_conservative = live.max(touched);
         let receipt = json!({"scope":"isolated actual Store/worker component, not own-seat admission, root caps or SourceKey dedup","measurement":"macOS malloc_zone_statistics all zones; full isolated host including baseline, no subtraction","instances":instances,"same_immutable_store_reused_for_component_load":instances>1,"observed_full_host_live_heap_peak_bytes":live,"allocator_all_zones_max_touched_bytes":if touched>0{json!(touched)}else{Value::Null},"allocator_max_touched_supported":touched>0,"parent_heap_conservative_bytes":parent_conservative,"parent_heap_ceiling_bytes":parent_ceiling,"observed_whole_four_host_below_one_parent_share":instances==4&&parent_conservative<=32*1024*1024,"child_heap_sum_conservative_bytes":child_heap_sum,"child_heap_sum_ceiling_bytes":96*1024*1024*instances as u64,"combined_parent_child_conservative_bytes":parent_conservative+child_heap_sum,"combined_ceiling_bytes":128*1024*1024*instances as u64,"conservative_sum_of_noncoincident_peaks":true,"samples":samples,"not_all_times_proof":true,"heap_observer_thread_cpu_ns":isolated_heap::OBSERVER_CPU_NS.load(Ordering::Acquire),"unit_cpu_excludes_test_heap_observer":true,"owner_cpu_includes_test_heap_observer":true,"hash_unit_bytes":HASH_CHUNK,"runner":binary,"runner_sha256":file_sha(&binary),"store_root":root,"source_session":expected.session.0,"source_sha256":expected.sha256.0,"source_len":expected.len.0,"blob_sha256":expected.blobs[0].sha256.0,"control_measurement":"engine cached atomics; admitted MCP/ctl evidence is separate","status_samples":status_samples,"status_max_wall_ns":status_max_wall_ns,"jobs":job_receipts,"all_jobs_completed":all_ok});
         let mut receipt_file = create(&evidence.join("isolated-host-heap.json")).unwrap();
@@ -4316,5 +7947,2389 @@ mod tests {
             expected.sha256.0,
             "original Store bytes immutable"
         );
+    }
+}
+
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+// Adapted from bboxy450-harness src/dream/c1.rs::tests, signed47182320:
+// https://github.com/bboxy450/bboxy450-harness/blob/main/src/dream/c1.rs
+#[cfg(test)]
+mod disposal_tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn dream_c1_tiny_json_combines_scan_decode_work_and_reuses_complex_fallback() {
+        let control = Control::default();
+        control.foreground.store(false, Ordering::Release);
+        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(3));
+        let mut called = 0;
+        assert!(matches!(
+            budget
+                .small_json(br#"{"v":1,"event":{"type":"session_closed"}}"#, |value| {
+                    called += 1;
+                    assert_eq!(value["event"]["type"], "session_closed");
+                    Ok(())
+                })
+                .unwrap(),
+            SmallJson::Processed
+        ));
+        assert_eq!(called, 1);
+        assert_eq!(control.work_unit_count.load(Ordering::Acquire), 1);
+        assert_eq!(control.heap.counters(HeapLane::Work).reserved, 0);
+        cleanup_green(&control);
+
+        let control = Control::default();
+        control.foreground.store(false, Ordering::Release);
+        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(3));
+        let bytes = serde_json::to_vec(&vec![0; 150]).unwrap();
+        let SmallJson::Fallback(Some(bounds)) = budget
+            .small_json(&bytes, |_| panic!("complex fallback ran tiny work"))
+            .unwrap()
+        else {
+            panic!("complex record was not staged")
+        };
+        assert_eq!(control.work_unit_count.load(Ordering::Acquire), 1);
+        let credit = budget.json_credit(bounds).unwrap();
+        let owner: Paced<Value> = budget.parse_credited(&bytes, credit).unwrap();
+        assert_eq!(owner.as_array().unwrap().len(), 150);
+        assert_eq!(
+            control.work_unit_count.load(Ordering::Acquire),
+            2,
+            "fallback scanned the already admitted raw structure twice"
+        );
+        drop(owner);
+        cleanup_green(&control);
+
+        let control = Control::default();
+        control.foreground.store(false, Ordering::Release);
+        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(3));
+        let bytes = serde_json::to_vec(&json!({"payload":"x".repeat(8193)})).unwrap();
+        assert!(matches!(
+            budget
+                .small_json(&bytes, |_| panic!("large fallback ran tiny work"))
+                .unwrap(),
+            SmallJson::Fallback(None)
+        ));
+        assert_eq!(
+            control.work_unit_count.load(Ordering::Acquire),
+            0,
+            "size-only fallback performed an unnecessary scan/unit"
+        );
+    }
+    #[test]
+    fn dream_c1_tiny_json_error_and_cpu_verdict_keep_owned_cleanup() {
+        for overrun in [false, true] {
+            let control = Control::default();
+            control.foreground.store(false, Ordering::Release);
+            let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(3));
+            let result = budget.small_json(br#"{"retained":[{"leaf":"owned"}]}"#, |_| {
+                if overrun {
+                    let start = bbt_rt::fault::thread_cpu_time().unwrap();
+                    while bbt_rt::fault::thread_cpu_time()
+                        .unwrap()
+                        .saturating_sub(start)
+                        < Duration::from_millis(2)
+                    {
+                        std::hint::spin_loop();
+                    }
+                    Ok(())
+                } else {
+                    Err(Code::SourceMismatch)
+                }
+            });
+            assert!(
+                matches!(result, Err(Code::ResourceLimit)) && overrun
+                    || matches!(result, Err(Code::SourceMismatch)) && !overrun
+            );
+            assert_eq!(control.heap.counters(HeapLane::Work).reserved, 0);
+            assert_eq!(
+                control.unit_overruns.load(Ordering::Acquire),
+                u64::from(overrun)
+            );
+            cleanup_green(&control);
+        }
+    }
+    #[test]
+    fn dream_c1_owned_seed_unknown_field_errors_never_include_untrusted_keys() {
+        let control = Control::default();
+        let key = "historical-provider-instructions".repeat(4096);
+        let descriptor = serde_json::to_vec(&json!({(key.clone()):null})).unwrap();
+        let error = <w::ResultDescriptor as OwnedDecode>::decode(
+            std::io::Cursor::new(&descriptor),
+            &control,
+        )
+        .unwrap_err();
+        assert!(error.to_string().len() < 96);
+        assert!(!error.to_string().contains("historical-provider"));
+        let page = serde_json::to_vec(&json!({"rows":[{(key):null}]})).unwrap();
+        let error =
+            <w::Page as OwnedDecode>::decode(std::io::Cursor::new(&page), &control).unwrap_err();
+        assert!(error.to_string().len() < 96);
+        assert!(!error.to_string().contains("historical-provider"));
+    }
+
+    #[test]
+    fn dream_c1_collection_growth_reserves_old_overlap_and_preserves_resource_limit() {
+        let control = Control::default();
+        control.foreground.store(false, Ordering::Release);
+        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(2));
+        let bytes = b"[1,2]";
+        let credit = budget.json(bytes).unwrap();
+        // Final-entry credit is admitted, but no additional old+new allocation
+        // overlap remains. The second entry must fail before reallocating.
+        let remaining = WORK_HEAP - control.heap.counters(HeapLane::Work).reserved;
+        let held = control
+            .heap
+            .reserve(HeapLane::Work, remaining as usize)
+            .unwrap();
+        assert!(matches!(
+            budget.parse_credited::<Value>(bytes, credit),
+            Err(Code::ResourceLimit)
+        ));
+        assert_eq!(control.cleanup.capacity_refusals.load(Ordering::Acquire), 1);
+        assert_eq!(control.heap.counters(HeapLane::Work).reserved, remaining);
+        drop(held);
+        assert_eq!(control.heap.counters(HeapLane::Work).reserved, 0);
+        cleanup_green(&control);
+    }
+
+    #[test]
+    fn dream_c1_native_buffer_free_is_measured_and_retains_reservation_through_cancel() {
+        let control = Control::default();
+        assert!(Arc::ptr_eq(&control.cleanup, &control.heap.cleanup));
+        let mut bytes = HeapBuffer::new(&control.heap, HeapLane::Work, 128 * 1024).unwrap();
+        bytes.extend(b"owned native allocation").unwrap();
+        assert_eq!(control.heap.counters(HeapLane::Work).live, 128 * 1024);
+        control.cancelled.store(true, Ordering::Release);
+        control.foreground.store(true, Ordering::Release);
+        drop(bytes);
+        assert_eq!(control.heap.counters(HeapLane::Work).live, 0);
+        assert_eq!(control.heap.counters(HeapLane::Work).reserved, 0);
+        assert_eq!(control.cleanup.units.load(Ordering::Acquire), 1);
+        cleanup_green(&control);
+    }
+
+    struct DropProbe {
+        remaining: usize,
+        heap: Arc<Heap>,
+        dropped: Arc<AtomicBool>,
+    }
+    impl Drain for DropProbe {
+        fn drain_step(&mut self) -> bool {
+            if self.remaining == 0 {
+                return false;
+            }
+            let before = bbt_rt::fault::thread_cpu_time().unwrap();
+            while bbt_rt::fault::thread_cpu_time()
+                .unwrap()
+                .saturating_sub(before)
+                < Duration::from_micros(120)
+            {
+                std::hint::spin_loop();
+            }
+            self.remaining -= 1;
+            true
+        }
+    }
+    impl Drop for DropProbe {
+        fn drop(&mut self) {
+            assert_eq!(self.remaining, 0, "unstepped completed owner destruction");
+            assert_eq!(
+                self.heap.counters(HeapLane::Work).reserved,
+                1024,
+                "credit was released before the exact owner"
+            );
+            self.dropped.store(true, Ordering::Release);
+        }
+    }
+    fn cleanup_green(control: &Control) {
+        assert_eq!(control.cleanup.overruns.load(Ordering::Acquire), 0);
+        assert!(control.cleanup.max_unit_cpu_ns.load(Ordering::Acquire) <= 1_000_000);
+        assert!(control.cleanup.cpu_ns.load(Ordering::Acquire) > 0);
+    }
+    #[test]
+    fn dream_c1_shared_authority_busy_defers_before_work_without_false_stale() {
+        let calls = Arc::new(AtomicU64::new(0));
+        let checked = calls.clone();
+        let control = Control {
+            authority_guard: Some(Arc::new(move || {
+                if checked.fetch_add(1, Ordering::AcqRel) < 2 {
+                    Err(Code::Busy)
+                } else {
+                    Ok(())
+                }
+            })),
+            ..Control::default()
+        };
+        control.foreground.store(false, Ordering::Release);
+        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(2));
+        let mut effects = 0;
+        let start = Instant::now();
+        budget
+            .unit(|| {
+                effects += 1;
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(effects, 1);
+        assert_eq!(calls.load(Ordering::Acquire), 3);
+        assert!(start.elapsed() >= REST * 2);
+        assert_eq!(control.rest_violations.load(Ordering::Acquire), 0);
+        assert_eq!(control.unit_overruns.load(Ordering::Acquire), 0);
+    }
+    #[test]
+    fn dream_c1_captured_control_budget_ignores_work_admission_but_keeps_wall_cpu_bounds() {
+        let control = Control {
+            authority_guard: Some(Arc::new(|| {
+                panic!("forensic metadata asked for current work authority")
+            })),
+            ..Control::default()
+        };
+        control.cancelled.store(true, Ordering::Release);
+        control.foreground.store(true, Ordering::Release);
+        let mut budget = Budget::for_control(&control, Instant::now() + Duration::from_secs(2));
+        budget.unit(|| Ok(())).unwrap();
+        assert!(matches!(
+            budget.finish_unit_sampled(UnitClock::now().unwrap(), Ok(()), |_| Ok(
+                UNIT + Duration::from_nanos(1)
+            )),
+            Err(Code::ResourceLimit)
+        ));
+        let mut expired = Budget::for_control(&control, Instant::now() - Duration::from_millis(1));
+        assert!(matches!(
+            expired.unit::<()>(|| panic!("expired metadata work was admitted")),
+            Err(Code::Deadline)
+        ));
+    }
+    #[test]
+    fn dream_c1_rejected_owned_results_drain_before_credit_for_cpu_clock_cancel_deadline() {
+        for failure in 0..4 {
+            let control = Control::default();
+            control.foreground.store(false, Ordering::Release);
+            let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
+            let dropped = Arc::new(AtomicBool::new(false));
+            let mut owner = Paced::new(
+                DropProbe {
+                    remaining: 16,
+                    heap: control.heap.clone(),
+                    dropped: dropped.clone(),
+                },
+                &control,
+            );
+            owner.credit = Some(control.heap.reserve(HeapLane::Work, 1024).unwrap());
+            if failure == 2 {
+                control.cancelled.store(true, Ordering::Release);
+            }
+            if failure == 3 {
+                budget.deadline = Instant::now() - Duration::from_millis(1);
+            }
+            let before = Instant::now();
+            let result =
+                budget.finish_unit_sampled(
+                    UnitClock::now().unwrap(),
+                    Ok(owner),
+                    |_| match failure {
+                        0 => Ok(UNIT + Duration::from_nanos(1)),
+                        1 => Err(Code::ResourceLimit),
+                        _ => Ok(Duration::ZERO),
+                    },
+                );
+            assert!(
+                matches!(result, Err(Code::ResourceLimit)) && failure < 2
+                    || matches!(result, Err(Code::Cancelled)) && failure == 2
+                    || matches!(result, Err(Code::Deadline)) && failure == 3
+            );
+            assert!(dropped.load(Ordering::Acquire));
+            assert_eq!(control.heap.counters(HeapLane::Work).reserved, 0);
+            assert!(
+                before.elapsed() >= REST * 2,
+                "cleanup was not divided by real rests"
+            );
+            cleanup_green(&control);
+        }
+    }
+    fn dense_value() -> Vec<u8> {
+        let mut value = json!({"dense":(0..4096).map(|_|json!({"leaf":["retained"]})).collect::<Vec<_>>(),"padding":""});
+        let len = serde_json::to_vec(&value).unwrap().len();
+        value["padding"] = json!("p".repeat(LINE - len - 32));
+        let bytes = serde_json::to_vec(&value).unwrap();
+        assert!(bytes.len() > LINE - 64 && bytes.len() < LINE);
+        bytes
+    }
+    #[test]
+    fn dream_c1_dense_value_success_and_later_error_scope_retirement_are_paced() {
+        let bytes = dense_value();
+        for later_error in [false, true] {
+            let control = Control::default();
+            control.foreground.store(false, Ordering::Release);
+            let before = Instant::now();
+            let result = (|| -> Result<(), Code> {
+                let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(10));
+                let value: Paced<Value> = budget.parse(&bytes)?;
+                assert_eq!(value["dense"].as_array().unwrap().len(), 4096);
+                assert!(control.heap.counters(HeapLane::Work).reserved > 0);
+                if later_error {
+                    return Err(Code::SourceMismatch);
+                }
+                Ok(())
+            })();
+            assert_eq!(
+                result,
+                if later_error {
+                    Err(Code::SourceMismatch)
+                } else {
+                    Ok(())
+                }
+            );
+            assert_eq!(control.heap.counters(HeapLane::Work).reserved, 0);
+            assert!(control.cleanup.units.load(Ordering::Acquire) >= 32);
+            assert!(before.elapsed() >= REST * 32);
+            cleanup_green(&control);
+        }
+    }
+    #[test]
+    fn dream_c1_partial_serde_value_after_mid_reader_stop_has_owned_paced_collections() {
+        let bytes = dense_value();
+        let armed = Arc::new(AtomicBool::new(false));
+        let checks = Arc::new(AtomicU64::new(0));
+        let (active, count) = (armed.clone(), checks.clone());
+        let control = Control {
+            authority_guard: Some(Arc::new(move || {
+                if active.load(Ordering::Acquire) && count.fetch_add(1, Ordering::AcqRel) >= 1 {
+                    Err(Code::Cancelled)
+                } else {
+                    Ok(())
+                }
+            })),
+            ..Control::default()
+        };
+        control.foreground.store(false, Ordering::Release);
+        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(10));
+        let credit = budget.json(&bytes).unwrap();
+        armed.store(true, Ordering::Release);
+        let result = budget.parse_credited::<Value>(&bytes, credit);
+        assert!(
+            matches!(&result, Err(Code::Cancelled)),
+            "partial reader result={:?} guard_checks={} max_work_ns={} cleanup_units={} cleanup_cpu_ns={} cleanup_max_ns={} cleanup_overruns={} capacity_refusals={}",
+            result.as_ref().err(),
+            checks.load(Ordering::Acquire),
+            control.max_unit_cpu_ns.load(Ordering::Acquire),
+            control.cleanup.units.load(Ordering::Acquire),
+            control.cleanup.cpu_ns.load(Ordering::Acquire),
+            control.cleanup.max_unit_cpu_ns.load(Ordering::Acquire),
+            control.cleanup.overruns.load(Ordering::Acquire),
+            control.cleanup.capacity_refusals.load(Ordering::Acquire)
+        );
+        assert!(checks.load(Ordering::Acquire) >= 2);
+        assert_eq!(control.heap.counters(HeapLane::Work).reserved, 0);
+        assert!(control.cleanup.units.load(Ordering::Acquire) > 0);
+        cleanup_green(&control);
+    }
+    #[test]
+    fn dream_c1_typed_descriptor_and_nested_episode_partial_collections_retire_before_error() {
+        for invalid_in_array in [false, true] {
+            let control = Control::default();
+            control.foreground.store(false, Ordering::Release);
+            let mut pages = (0..4096)
+                .map(|index| json!({"index":index,"len":1,"sha256":"0".repeat(64)}))
+                .collect::<Vec<_>>();
+            if invalid_in_array {
+                pages[2048]["len"] = json!("bad late page field");
+            }
+            let descriptor = json!({"schema":"bboxy.dream.c1.result/1","run_id":"01ARZ3NDEKTSV4RRFFQ69G5FAV",
+                "nonce":"01ARZ3NDEKTSV4RRFFQ69G5FAW","manifest_sha256":"0".repeat(64),"algorithm":"d0-c1/1",
+                "source_count":1,"episode_count":0,"cluster_count":0,"max_poll_cpu_ns":0,
+                "knowledge":"not_requested","trust":if invalid_in_array {"not_evaluated"}else{"bad after completed pages"},"pages":pages});
+            let bytes = public::canonical(&descriptor).unwrap();
+            assert!(bytes.len() > LINE && bytes.len() < 768 * 1024);
+            let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(10));
+            let result = budget.parse::<w::ResultDescriptor>(&bytes);
+            assert!(
+                matches!(&result, Err(Code::ProtocolError)),
+                "descriptor invalid_in_array={} result={:?} max_work_ns={} cleanup_units={} cleanup_cpu_ns={} cleanup_max_ns={} cleanup_overruns={} capacity_refusals={}",
+                invalid_in_array,
+                result.as_ref().err(),
+                control.max_unit_cpu_ns.load(Ordering::Acquire),
+                control.cleanup.units.load(Ordering::Acquire),
+                control.cleanup.cpu_ns.load(Ordering::Acquire),
+                control.cleanup.max_unit_cpu_ns.load(Ordering::Acquire),
+                control.cleanup.overruns.load(Ordering::Acquire),
+                control.cleanup.capacity_refusals.load(Ordering::Acquire)
+            );
+            assert_eq!(control.heap.counters(HeapLane::Work).reserved, 0);
+            assert!(control.cleanup.units.load(Ordering::Acquire) >= 16);
+            cleanup_green(&control);
+        }
+        let control = Control::default();
+        control.foreground.store(false, Ordering::Release);
+        let page = json!({"schema":"bboxy.dream.c1.page/1","run_id":"01ARZ3NDEKTSV4RRFFQ69G5FAV","manifest_sha256":"0".repeat(64),"index":0,"next":null,
+            "rows":[{"kind":"episode","session":"01ARZ3NDEKTSV4RRFFQ69G5FAV","turn":"01ARZ3NDEKTSV4RRFFQ69G5FAW",
+                "origin":{"session":"01ARZ3NDEKTSV4RRFFQ69G5FAV","seq":1,"digest":"sha256:original"},
+                "fingerprints":vec!["0".repeat(64);200],"first_ms":1,"last_ms":null}]});
+        let bytes = public::canonical(&page).unwrap();
+        assert!(bytes.len() < 16 * 1024);
+        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
+        assert!(matches!(
+            budget.parse::<w::Page>(&bytes),
+            Err(Code::ProtocolError)
+        ));
+        assert_eq!(control.heap.counters(HeapLane::Work).reserved, 0);
+        assert!(control.cleanup.units.load(Ordering::Acquire) >= 2);
+        cleanup_green(&control);
+    }
+}
+
+/// Local executable/profile binding. All IO, hashing and retirement belongs to
+/// the existing isolated capability/process owner, never a shared async owner.
+pub(crate) mod runner_provision {
+    use super::*;
+    use serde::Deserialize;
+    use std::os::unix::{
+        ffi::OsStrExt,
+        fs::{MetadataExt, OpenOptionsExt},
+    };
+
+    const SCHEMA: &str = "bboxy.dream.c1.provision/1";
+    const PROFILE: &str = "c1-native-debt/1";
+    const BOOTSTRAP_PROFILE: &str = "dream-bootstrap/1";
+    const RECEIPT_MAX: usize = 8192;
+    #[derive(Clone, Copy)]
+    struct Expected<'a> {
+        source: &'a str,
+        compiler: &'a str,
+        binary: &'a str,
+    }
+    // No approved native correction exists yet. The historical47182320 cut
+    // cannot authorize a wider metrics interpretation. Oracle fills this exact
+    // tuple only after the reviewed source/compiler/features/artifact handoff.
+    const APPROVED_NATIVE: Option<Expected<'static>> = None;
+    // Exact signed development milestone only; never receipt self-approval or
+    // final production conformance. Cleared when the reviewed tuple is promoted.
+    const PRIVATE_DEVELOPMENT_NATIVE: Option<Expected<'static>> = Some(Expected {
+        source: "bab543e2116d0bf08488fbd753a6114f30d615a4",
+        compiler: "352d6857968e80a6357a926ac685b9b07f77c479aaafde33e73a53945e802909",
+        binary: "bacace4bf5e2ab4d4c91bf07e5e22c81885d967448dff87efbe6eaf6f81ca13e",
+    });
+
+    #[derive(Clone, Copy, PartialEq, Eq)]
+    struct Stamp {
+        dev: u64,
+        ino: u64,
+        len: u64,
+        mtime: i64,
+        mtime_ns: i64,
+        ctime: i64,
+        ctime_ns: i64,
+        mode: u32,
+        uid: u32,
+        links: u64,
+    }
+    impl Stamp {
+        fn of(m: &std::fs::Metadata) -> Self {
+            Self {
+                dev: m.dev(),
+                ino: m.ino(),
+                len: m.len(),
+                mtime: m.mtime(),
+                mtime_ns: m.mtime_nsec(),
+                ctime: m.ctime(),
+                ctime_ns: m.ctime_nsec(),
+                mode: m.mode(),
+                uid: m.uid(),
+                links: m.nlink(),
+            }
+        }
+    }
+    struct Seal {
+        path: std::mem::ManuallyDrop<PathBuf>,
+        file: std::mem::ManuallyDrop<File>,
+        stamp: Stamp,
+        cleanup: Arc<disposal::Cleanup>,
+    }
+    impl Seal {
+        fn open(path: &Path, receipt: bool, budget: &mut Budget<'_>) -> Result<Self, Code> {
+            let control = budget.control;
+            if !path.is_absolute() || path.as_os_str().as_bytes().len() > libc::PATH_MAX as usize {
+                return Err(Code::RunnerUnavailable);
+            }
+            let canonical =
+                budget.unit(|| path.canonicalize().map_err(|_| Code::RunnerUnavailable))?;
+            let mut canonical = Paced::new(canonical, control);
+            if canonical.as_path() != path {
+                return Err(Code::RunnerUnavailable);
+            }
+            let file = budget.unit(|| {
+                std::fs::OpenOptions::new()
+                    .read(true)
+                    .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+                    .open(path)
+                    .map_err(|_| Code::RunnerUnavailable)
+            })?;
+            let mut file = Paced::new(file, control);
+            let m = budget.unit(|| file.metadata().map_err(|_| Code::RunnerUnavailable))?;
+            if !m.is_file()
+                || m.uid() != unsafe { libc::geteuid() }
+                || m.nlink() != 1
+                || if receipt {
+                    m.len() == 0 || m.len() > RECEIPT_MAX as u64 || m.mode() & 0o077 != 0
+                } else {
+                    m.mode() & 0o022 != 0 || m.mode() & 0o111 == 0
+                }
+            {
+                return Err(Code::RunnerUnavailable);
+            }
+            let seal = Self {
+                path: std::mem::ManuallyDrop::new(canonical.take_value()),
+                file: std::mem::ManuallyDrop::new(file.take_value()),
+                stamp: Stamp::of(&m),
+                cleanup: control.cleanup.clone(),
+            };
+            budget.unit(|| seal.current())?;
+            Ok(seal)
+        }
+        fn current(&self) -> Result<(), Code> {
+            let held = self.file.metadata().map_err(|_| Code::RunnerUnavailable)?;
+            let named = std::fs::symlink_metadata(self.path.as_path())
+                .map_err(|_| Code::RunnerUnavailable)?;
+            if !named.is_file() || Stamp::of(&held) != self.stamp || Stamp::of(&named) != self.stamp
+            {
+                Err(Code::RunnerUnavailable)
+            } else {
+                Ok(())
+            }
+        }
+    }
+    impl Drain for Seal {
+        fn drain_step(&mut self) -> bool {
+            false
+        }
+    }
+    impl Drop for Seal {
+        fn drop(&mut self) {
+            // Each sole owned field retires once on the isolated owner, with
+            // actual close/free CPU measured and debt paid by existing cleanup.
+            disposal::cleanup_unit(&self.cleanup, || unsafe {
+                std::mem::ManuallyDrop::drop(&mut self.file)
+            });
+            disposal::cleanup_unit(&self.cleanup, || unsafe {
+                std::mem::ManuallyDrop::drop(&mut self.path)
+            });
+        }
+    }
+    pub(crate) struct ProvisionProof {
+        launch: Seal,
+        receipt: Seal,
+        worker: Option<(Seal, Seal)>,
+        worker_sha256: String,
+        private_development: bool,
+        _credit: Reservation,
+    }
+    impl ProvisionProof {
+        pub(crate) fn capability_binary(&self) -> &Path {
+            self.worker
+                .as_ref()
+                .map_or(self.launch.path.as_path(), |(worker, _)| {
+                    worker.path.as_path()
+                })
+        }
+        pub(crate) fn control_only_wrapper(&self) -> bool {
+            self.is_private_wrapper()
+        }
+        /// Instrumented wrappers are private causal-control paths only: their
+        /// interpreter/prelude is not an approved earliest bootstrap gate.
+        pub(crate) fn is_private_wrapper(&self) -> bool {
+            self.worker.is_some()
+        }
+        // Four retained paths plus bounded canonical/open/check overlap occupy
+        // at most sixteen PATH_MAX slots. Include the token/Arc and its retained
+        // verification ledger/cleanup/debt objects, not an opaque-helper debit.
+        const RETAINED_DECLARED: usize = 16 * libc::PATH_MAX as usize
+            + std::mem::size_of::<Self>()
+            + std::mem::size_of::<Heap>()
+            + std::mem::size_of::<disposal::Cleanup>()
+            + std::mem::size_of::<WorkDebt>()
+            + 8 * std::mem::size_of::<usize>()
+            + 64;
+        pub(crate) fn retained_declared_bytes(&self) -> usize {
+            Self::RETAINED_DECLARED
+        }
+        pub(crate) fn worker_sha256(&self) -> &str {
+            &self.worker_sha256
+        }
+        pub(crate) fn is_private_development(&self) -> bool {
+            self.private_development
+        }
+        /// Metadata only; call immediately before actual spawn on its isolated
+        /// owner. Both held descriptor and named inode must remain unchanged.
+        pub(crate) fn still_current(&self) -> Result<(), Code> {
+            self.launch.current()?;
+            self.receipt.current()?;
+            if let Some((worker, receipt)) = &self.worker {
+                worker.current()?;
+                receipt.current()?;
+            }
+            Ok(())
+        }
+        /// A private wrapper's JSON is not proof it executed the approved image.
+        /// Check the actual child after Hello before enabling native metrics.
+        pub(crate) fn child_image_matches(&self, pid: u32) -> Result<(), Code> {
+            self.still_current()?;
+            if self.is_private_wrapper() {
+                // A later exec does not retroactively gate an interpreter's
+                // earlier controlled argv/allocation prelude. Fault-only path.
+                return Err(Code::RunnerUnavailable);
+            }
+            #[cfg(target_os = "macos")]
+            {
+                let mut path = [0u8; libc::PROC_PIDPATHINFO_MAXSIZE as usize];
+                let len = unsafe {
+                    libc::proc_pidpath(
+                        i32::try_from(pid).map_err(|_| Code::RunnerUnavailable)?,
+                        path.as_mut_ptr().cast(),
+                        path.len() as u32,
+                    )
+                };
+                if len <= 0 {
+                    return Err(Code::RunnerUnavailable);
+                }
+                let end = path
+                    .iter()
+                    .position(|b| *b == 0)
+                    .ok_or(Code::RunnerUnavailable)?;
+                let actual = Path::new(std::ffi::OsStr::from_bytes(&path[..end]))
+                    .canonicalize()
+                    .map_err(|_| Code::RunnerUnavailable)?;
+                let expected = self
+                    .worker
+                    .as_ref()
+                    .map_or(&self.launch, |(worker, _)| worker);
+                if actual.as_path() != expected.path.as_path() {
+                    return Err(Code::RunnerUnavailable);
+                }
+                expected.current()?;
+                Ok(())
+            }
+            #[cfg(not(target_os = "macos"))]
+            {
+                let _ = pid;
+                Err(Code::RunnerUnavailable)
+            }
+        }
+    }
+    #[derive(Deserialize)]
+    struct Role<'a> {
+        #[serde(borrow)]
+        role: &'a str,
+    }
+    impl Drain for Role<'_> {
+        fn drain_step(&mut self) -> bool {
+            false
+        }
+    }
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct WorkerReceipt<'a> {
+        #[serde(borrow)]
+        schema: &'a str,
+        role: &'a str,
+        metrics_profile: &'a str,
+        bootstrap_profile: &'a str,
+        source_commit: &'a str,
+        compiler_sha256: &'a str,
+        binary_sha256: &'a str,
+        build_profile: &'a str,
+        default_features: bool,
+        #[serde(borrow)]
+        explicit_features: [&'a str; 0],
+        #[serde(borrow)]
+        effective_features: [&'a str; 1],
+        test_fixtures: bool,
+    }
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct WrapperReceipt<'a> {
+        #[serde(borrow)]
+        schema: &'a str,
+        role: &'a str,
+        metrics_profile: &'a str,
+        bootstrap_profile: &'a str,
+        binary_sha256: &'a str,
+        actual_worker: &'a str,
+        actual_worker_sha256: &'a str,
+    }
+    impl Drain for WrapperReceipt<'_> {
+        fn drain_step(&mut self) -> bool {
+            false
+        }
+    }
+    fn read_receipt(
+        seal: &mut Seal,
+        budget: &mut Budget<'_>,
+    ) -> Result<([u8; RECEIPT_MAX], usize), Code> {
+        let len = usize::try_from(seal.stamp.len).map_err(|_| Code::RunnerUnavailable)?;
+        let mut bytes = [0u8; RECEIPT_MAX];
+        budget.unit(|| {
+            seal.file
+                .read_exact(&mut bytes[..len])
+                .map_err(|_| Code::RunnerUnavailable)
+        })?;
+        budget.unit(|| seal.current())?;
+        budget.unit(|| {
+            transport::preflight_json(&bytes[..len], transport::JsonShape::Any)
+                .map(|_| ())
+                .map_err(|_| Code::RunnerUnavailable)
+        })?;
+        Ok((bytes, len))
+    }
+    fn hash_binary(seal: &mut Seal, budget: &mut Budget<'_>) -> Result<String, Code> {
+        let mut chunk = [0u8; 64 * 1024];
+        let mut hash = Sha256::new();
+        let mut left = seal.stamp.len;
+        while left > 0 {
+            let count = usize::try_from(left.min(chunk.len() as u64))
+                .map_err(|_| Code::RunnerUnavailable)?;
+            budget.unit(|| {
+                seal.file
+                    .read_exact(&mut chunk[..count])
+                    .map_err(|_| Code::RunnerUnavailable)
+            })?;
+            budget.unit(|| {
+                hash.update(&chunk[..count]);
+                Ok(())
+            })?;
+            left -= count as u64;
+        }
+        budget.unit(|| seal.current())?;
+        budget.unit(|| Ok(format!("{:x}", hash.finalize())))
+    }
+    fn worker_fields(
+        bytes: &[u8],
+        expected: Expected<'_>,
+        budget: &mut Budget<'_>,
+    ) -> Result<(), Code> {
+        budget.unit(|| {
+            let value: WorkerReceipt<'_> =
+                serde_json::from_slice(bytes).map_err(|_| Code::RunnerUnavailable)?;
+            if value.schema != SCHEMA
+                || value.role != "worker"
+                || value.metrics_profile != PROFILE
+                || value.bootstrap_profile != BOOTSTRAP_PROFILE
+                || value.source_commit != expected.source
+                || value.compiler_sha256 != expected.compiler
+                || value.binary_sha256 != expected.binary
+                || value.build_profile != "release"
+                || !value.default_features
+                || !value.explicit_features.is_empty()
+                || value.effective_features != ["acp-agent"]
+                || value.test_fixtures
+            {
+                return Err(Code::RunnerUnavailable);
+            }
+            Ok(())
+        })
+    }
+    fn worker_pair(
+        binary: &Path,
+        expected: Expected<'_>,
+        budget: &mut Budget<'_>,
+    ) -> Result<(Seal, Seal), Code> {
+        let mut binary = Seal::open(binary, false, budget)?;
+        let mut receipt = Seal::open(&binary.path.with_extension("dream-c1.json"), true, budget)?;
+        let (bytes, len) = read_receipt(&mut receipt, budget)?;
+        worker_fields(&bytes[..len], expected, budget)?;
+        if hash_binary(&mut binary, budget)? != expected.binary {
+            return Err(Code::RunnerUnavailable);
+        }
+        Ok((binary, receipt))
+    }
+    fn verify_expected(
+        binary: &Path,
+        private_test_account: bool,
+        expected: Expected<'_>,
+    ) -> Result<ProvisionProof, Code> {
+        let hex = |value: &str, len: usize| {
+            value.len() == len
+                && value
+                    .bytes()
+                    .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        };
+        if !hex(expected.source, 40) || !hex(expected.compiler, 64) || !hex(expected.binary, 64) {
+            return Err(Code::RunnerUnavailable);
+        }
+        utility()?;
+        let control = Control::default();
+        control.foreground.store(false, Ordering::Release);
+        // Sixteen PATH_MAX slots cover retained/fresh/canonical paths across
+        // the one permitted wrapper level; parser strings borrow the8KiB input.
+        let credit = control
+            .heap
+            .reserve(HeapLane::Work, ProvisionProof::RETAINED_DECLARED)?;
+        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(30));
+        let mut launch = Seal::open(binary, false, &mut budget)?;
+        let mut receipt = Seal::open(&binary.with_extension("dream-c1.json"), true, &mut budget)?;
+        let (bytes, len) = read_receipt(&mut receipt, &mut budget)?;
+        let role = budget.unit(|| {
+            serde_json::from_slice::<Role<'_>>(&bytes[..len]).map_err(|_| Code::RunnerUnavailable)
+        })?;
+        let worker_sha256 = budget.unit(|| Ok(expected.binary.to_owned()))?;
+        if role.role == "worker" {
+            worker_fields(&bytes[..len], expected, &mut budget)?;
+            if hash_binary(&mut launch, &mut budget)? != expected.binary {
+                return Err(Code::RunnerUnavailable);
+            }
+            budget.pay_work_debt()?;
+            return Ok(ProvisionProof {
+                launch,
+                receipt,
+                worker: None,
+                worker_sha256,
+                private_development: false,
+                _credit: credit,
+            });
+        }
+        if role.role != "private_wrapper" || !cfg!(debug_assertions) || !private_test_account {
+            return Err(Code::RunnerUnavailable);
+        }
+        let value = budget.unit(|| {
+            serde_json::from_slice::<WrapperReceipt<'_>>(&bytes[..len])
+                .map_err(|_| Code::RunnerUnavailable)
+        })?;
+        if value.schema != SCHEMA
+            || value.role != "private_wrapper"
+            || value.metrics_profile != PROFILE
+            || value.bootstrap_profile != BOOTSTRAP_PROFILE
+            || value.actual_worker_sha256 != expected.binary
+            || !hex(value.binary_sha256, 64)
+        {
+            return Err(Code::RunnerUnavailable);
+        }
+        if hash_binary(&mut launch, &mut budget)? != value.binary_sha256 {
+            return Err(Code::RunnerUnavailable);
+        }
+        let worker = worker_pair(Path::new(value.actual_worker), expected, &mut budget)?;
+        let proof = ProvisionProof {
+            launch,
+            receipt,
+            worker: Some(worker),
+            worker_sha256,
+            private_development: false,
+            _credit: credit,
+        };
+        budget.unit(|| proof.still_current())?;
+        budget.pay_work_debt()?;
+        Ok(proof)
+    }
+    /// Verify BEFORE any candidate process birth, including the source-free
+    /// probe. Unknown/old workers cannot be executed to discover gate support.
+    /// Runs on the isolated capability owner; never probes/builds/searches PATH.
+    pub(crate) fn verify_native_provision(
+        binary: &Path,
+        private_test_account: bool,
+    ) -> Result<ProvisionProof, Code> {
+        // Select at most one immutable tuple before verification. There is no
+        // retry under another tuple after a timing/hash/metadata refusal.
+        let development =
+            APPROVED_NATIVE.is_none() && cfg!(debug_assertions) && private_test_account;
+        let expected = if development {
+            PRIVATE_DEVELOPMENT_NATIVE
+        } else {
+            APPROVED_NATIVE
+        };
+        let mut proof = verify_approved(binary, private_test_account, expected)?;
+        proof.private_development = development;
+        Ok(proof)
+    }
+    fn verify_approved(
+        binary: &Path,
+        private_test_account: bool,
+        expected: Option<Expected<'_>>,
+    ) -> Result<ProvisionProof, Code> {
+        verify_expected(
+            binary,
+            private_test_account,
+            expected.ok_or(Code::RunnerUnavailable)?,
+        )
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::*;
+        use serde_json::json;
+        use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
+
+        const SOURCE: &str = "1111111111111111111111111111111111111111";
+        const COMPILER: &str = "2222222222222222222222222222222222222222222222222222222222222222";
+        fn write(path: &Path, bytes: &[u8], mode: u32) {
+            let mut file = std::fs::OpenOptions::new()
+                .write(true)
+                .create_new(true)
+                .mode(mode)
+                .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+                .open(path)
+                .unwrap();
+            file.write_all(bytes).unwrap();
+            file.sync_all().unwrap();
+        }
+        fn fixture() -> (tempfile::TempDir, PathBuf, String, Value) {
+            let root = tempfile::tempdir().unwrap();
+            let dir = root.path().canonicalize().unwrap();
+            let binary = dir.join("worker");
+            let bytes = b"private validator image, never executed";
+            write(&binary, bytes, 0o700);
+            let digest = format!("{:x}", Sha256::digest(bytes));
+            let receipt = json!({"schema":SCHEMA,"role":"worker","metrics_profile":PROFILE,"bootstrap_profile":BOOTSTRAP_PROFILE,"source_commit":SOURCE,
+                "compiler_sha256":COMPILER,"binary_sha256":digest,"build_profile":"release","default_features":true,
+                "explicit_features":[],"effective_features":["acp-agent"],"test_fixtures":false});
+            (root, binary, digest, receipt)
+        }
+        fn expected(digest: &str) -> Expected<'_> {
+            Expected {
+                source: SOURCE,
+                compiler: COMPILER,
+                binary: digest,
+            }
+        }
+        fn receipt(binary: &Path, value: &Value) {
+            write(
+                &binary.with_extension("dream-c1.json"),
+                &serde_json::to_vec(value).unwrap(),
+                0o600,
+            );
+        }
+
+        #[test]
+        fn native_provision_no_approved_tuple_never_grants_from_json() {
+            assert!(matches!(
+                verify_approved(Path::new("/unread/unapproved"), true, None),
+                Err(Code::RunnerUnavailable)
+            ));
+        }
+        #[test]
+        fn native_provision_missing_bootstrap_profile_refuses_without_candidate_birth() {
+            let (_root, binary, digest, mut value) = fixture();
+            value.as_object_mut().unwrap().remove("bootstrap_profile");
+            receipt(&binary, &value);
+            assert!(matches!(
+                verify_expected(&binary, false, expected(&digest)),
+                Err(Code::RunnerUnavailable)
+            ));
+            // The validator only opens/hashes owned bytes. This deliberately
+            // non-executable image is never run to discover bootstrap support.
+            assert_eq!(
+                std::fs::read(&binary).unwrap(),
+                b"private validator image, never executed"
+            );
+        }
+        #[test]
+        fn native_provision_exact_tuple_hash_and_inode_remain_bound() {
+            let (_root, binary, digest, value) = fixture();
+            receipt(&binary, &value);
+            let proof = verify_expected(&binary, false, expected(&digest)).unwrap();
+            proof.still_current().unwrap();
+            assert!(
+                matches!(
+                    proof.child_image_matches(std::process::id()),
+                    Err(Code::RunnerUnavailable)
+                ),
+                "a copied receipt cannot authorize a different actual process image"
+            );
+            let old = binary.with_extension("old");
+            std::fs::rename(&binary, &old).unwrap();
+            std::fs::copy(&old, &binary).unwrap();
+            std::fs::set_permissions(&binary, std::fs::Permissions::from_mode(0o700)).unwrap();
+            assert!(
+                matches!(proof.still_current(), Err(Code::RunnerUnavailable)),
+                "equal bytes with another named inode must refuse"
+            );
+        }
+        #[test]
+        fn native_provision_wrong_compiler_source_features_profile_and_unknown_fields_refuse() {
+            for field in [
+                "source_commit",
+                "compiler_sha256",
+                "metrics_profile",
+                "bootstrap_profile",
+                "test_fixtures",
+                "explicit_features",
+                "effective_features",
+                "unknown",
+            ] {
+                let (_root, binary, digest, mut value) = fixture();
+                value[field] = match field {
+                    "test_fixtures" => json!(true),
+                    "explicit_features" => json!(["test-fixtures"]),
+                    "effective_features" => json!(["other"]),
+                    _ => json!("mismatch"),
+                };
+                receipt(&binary, &value);
+                assert!(
+                    matches!(
+                        verify_expected(&binary, false, expected(&digest)),
+                        Err(Code::RunnerUnavailable)
+                    ),
+                    "unapproved {field}"
+                );
+            }
+        }
+        #[test]
+        fn native_provision_symlink_links_oversize_and_binary_mutation_refuse() {
+            for fault in ["symlink", "links", "oversize", "binary"] {
+                let (_root, binary, digest, value) = fixture();
+                let path = binary.with_extension("dream-c1.json");
+                receipt(&binary, &value);
+                match fault {
+                    "symlink" => {
+                        let other = path.with_extension("held");
+                        std::fs::rename(&path, &other).unwrap();
+                        std::os::unix::fs::symlink(other, &path).unwrap();
+                    }
+                    "links" => {
+                        std::fs::hard_link(&path, path.with_extension("link")).unwrap();
+                    }
+                    "oversize" => {
+                        std::fs::write(&path, vec![b' '; RECEIPT_MAX + 1]).unwrap();
+                    }
+                    "binary" => {
+                        std::fs::write(&binary, b"changed private executable payload").unwrap();
+                    }
+                    _ => unreachable!(),
+                }
+                assert!(
+                    matches!(
+                        verify_expected(&binary, false, expected(&digest)),
+                        Err(Code::RunnerUnavailable)
+                    ),
+                    "unsafe {fault}"
+                );
+            }
+        }
+        #[test]
+        #[cfg(debug_assertions)]
+        fn native_provision_private_wrapper_needs_host_authority_and_current_actual_worker() {
+            let (root, worker, digest, value) = fixture();
+            receipt(&worker, &value);
+            let wrapper = root.path().canonicalize().unwrap().join("wrapper");
+            let bytes = b"#!/bin/sh\nexit 0\n";
+            write(&wrapper, bytes, 0o700);
+            let value = json!({"schema":SCHEMA,"role":"private_wrapper","metrics_profile":PROFILE,"bootstrap_profile":BOOTSTRAP_PROFILE,
+                "binary_sha256":format!("{:x}",Sha256::digest(bytes)),"actual_worker":worker,"actual_worker_sha256":digest});
+            receipt(&wrapper, &value);
+            assert!(matches!(
+                verify_expected(&wrapper, false, expected(&digest)),
+                Err(Code::RunnerUnavailable)
+            ));
+            let proof = verify_expected(&wrapper, true, expected(&digest)).unwrap();
+            proof.still_current().unwrap();
+            assert!(matches!(
+                proof.child_image_matches(std::process::id()),
+                Err(Code::RunnerUnavailable)
+            ));
+            std::fs::write(&worker, b"changed actual worker").unwrap();
+            assert!(
+                matches!(proof.still_current(), Err(Code::RunnerUnavailable)),
+                "wrapper must retain actual worker FD/stamp too"
+            );
+        }
+    }
+}
+
+#[cfg(test)]
+mod quantum_debt_tests {
+    use super::*;
+    use serde_json::json;
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+
+    // These are injected-timing causal tests with real private effects. They
+    // are not measurements of native syscall maxima or joined conformance.
+    fn control() -> Control {
+        let control = Control::default();
+        control.foreground.store(false, Ordering::Release);
+        control
+    }
+    fn sample(cpu_us: u64, total_us: u64, wall_ms: u64) -> NativeSample {
+        NativeSample {
+            cpu: Ok(Duration::from_micros(cpu_us)),
+            wall: Duration::from_millis(wall_ms),
+            inclusive: Ok(Duration::from_micros(total_us)),
+        }
+    }
+    fn staged(dir: &Path, nonce: &str) -> Publication {
+        let mut publication = Publication::new(dir, "manifest.json", nonce).unwrap();
+        publication.write(b"private exact staged effect\n").unwrap();
+        publication.sync_file().unwrap();
+        let identity = publication.identity().unwrap();
+        publication.precheck_noreplace(identity).unwrap();
+        publication
+    }
+    fn assert_exact_link(publication: &Publication) {
+        let staged = std::fs::symlink_metadata(&publication.temporary).unwrap();
+        let linked = std::fs::symlink_metadata(&publication.target).unwrap();
+        assert_eq!((staged.dev(), staged.ino()), (linked.dev(), linked.ino()));
+        assert_eq!(linked.nlink(), 2);
+        assert_eq!(
+            std::fs::read(&publication.target).unwrap(),
+            b"private exact staged effect\n"
+        );
+    }
+
+    #[test]
+    fn dream_c1_native_full_inclusive_cost_owes_rest_after_effect_and_forbids_original_retry() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+        let control = control();
+        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
+        let mut publication = staged(root.path(), "original");
+        let before = control.cleanup.debt.now_ns();
+        let mut outcome = budget
+            .native_publish_impl(&mut publication, Some(sample(2000, 2500, 1)))
+            .unwrap();
+        let effect = outcome.effect.take_value();
+        assert!(
+            effect.is_ok(),
+            "real no-replace effect must be retained before its verdict"
+        );
+        assert_eq!(outcome.verdict, Ok(()));
+        let charged = control.cleanup.debt.charged_ns.load(Ordering::Acquire);
+        assert_eq!(
+            charged, 22_500_000,
+            "full2.5ms owes22.5ms; native cost cannot be subtracted"
+        );
+        let due = control.cleanup.debt.due_ns.load(Ordering::Acquire);
+        assert!(
+            due.saturating_sub(charged) >= before,
+            "saved earlier idle time paid a later effect"
+        );
+        budget.pay_work_debt().unwrap();
+        assert_eq!(control.cleanup.debt.remaining_ns(), 0);
+        assert!(control.cleanup.debt.now_ns() >= due);
+        assert_exact_link(&publication);
+        assert!(matches!(
+            budget.native_publish_impl(&mut publication, Some(sample(0, 0, 0))),
+            Err(Code::BadRequest)
+        ));
+        assert_eq!(
+            control
+                .cleanup
+                .debt
+                .native_publish_calls
+                .load(Ordering::Acquire),
+            1
+        );
+        assert_eq!(
+            control.cleanup.debt.native_effects.load(Ordering::Acquire),
+            1
+        );
+    }
+
+    #[test]
+    fn dream_c1_native_link_cpu_wall_and_clock_refusals_preserve_real_inode() {
+        for forced in [
+            sample(3000, 3000, 1),
+            sample(1000, 1000, 26),
+            NativeSample {
+                cpu: Err(Code::ResourceLimit),
+                wall: Duration::from_millis(1),
+                inclusive: Err(Code::ResourceLimit),
+            },
+        ] {
+            let root = tempfile::tempdir().unwrap();
+            let control = control();
+            let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
+            let mut publication = staged(root.path(), "refused");
+            let mut outcome = budget
+                .native_publish_impl(&mut publication, Some(forced))
+                .unwrap();
+            assert!(outcome.effect.take_value().is_ok());
+            assert_eq!(outcome.verdict, Err(Code::ResourceLimit));
+            assert!(publication.attempted);
+            assert_exact_link(&publication);
+            assert_eq!(
+                control.cleanup.debt.native_effects.load(Ordering::Acquire),
+                1
+            );
+            if forced.cpu.is_err() {
+                assert!(control.cleanup.debt.poisoned.load(Ordering::Acquire));
+                assert_eq!(budget.pay_work_debt(), Err(Code::ResourceLimit));
+                assert!(matches!(budget.unit(|| Ok(())), Err(Code::ResourceLimit)));
+            } else {
+                assert_eq!(
+                    control.cleanup.debt.charged_ns.load(Ordering::Acquire),
+                    nanos(forced.inclusive.unwrap().max(UNIT)) * 9
+                );
+                budget.pay_work_debt().unwrap();
+            }
+            // Repeating an original operation must not turn a timing failure
+            // into StorageUnavailable or a second no-replace attempt.
+            assert!(matches!(
+                budget.native_publish_impl(&mut publication, Some(forced)),
+                Err(Code::BadRequest)
+            ));
+            assert_exact_link(&publication);
+        }
+    }
+
+    type ComponentPipes = (
+        std::io::PipeWriter,
+        std::io::PipeReader,
+        std::io::PipeReader,
+    );
+    fn prepared_component(job: &Path) -> (ComponentPipes, std::process::Command) {
+        use std::os::unix::process::CommandExt;
+        let (input, write) = std::io::pipe().unwrap();
+        let (read, output) = std::io::pipe().unwrap();
+        let (errors, stderr) = std::io::pipe().unwrap();
+        // Native-effect component only. This is not a Dream worker/Hello/gate
+        // launcher and cannot establish bootstrap or producer conformance.
+        let mut command = std::process::Command::new("/bin/sleep");
+        command
+            .arg("30")
+            .env_clear()
+            .current_dir(job)
+            .stdin(std::process::Stdio::from(input))
+            .stdout(std::process::Stdio::from(output))
+            .stderr(std::process::Stdio::from(stderr));
+        // SAFETY: child-only fixed async-signal-safe process/group/priority setup.
+        unsafe {
+            command.pre_exec(|| {
+                if libc::setpgid(0, 0) != 0 || libc::setpriority(libc::PRIO_PROCESS, 0, 10) != 0 {
+                    return Err(std::io::Error::last_os_error());
+                }
+                Ok(())
+            });
+        }
+        ((write, read, errors), command)
+    }
+    struct ComponentChild(std::process::Child);
+    impl Drop for ComponentChild {
+        fn drop(&mut self) {
+            if self.0.try_wait().ok().flatten().is_none() {
+                let _ = self.0.kill();
+                let _ = self.0.wait();
+            }
+        }
+    }
+    fn reap_component(child: &mut ComponentChild, pid: u32, start: &str) {
+        assert_eq!(transport::process_stamp(pid).unwrap(), start);
+        assert!(child.0.try_wait().unwrap().is_none());
+        child.0.kill().unwrap();
+        child.0.wait().unwrap();
+        let mut status = 0;
+        // SAFETY: queries only the exact child just reaped by its sole owner.
+        assert_eq!(
+            unsafe { libc::waitpid(pid as i32, &mut status, libc::WNOHANG) },
+            -1
+        );
+        assert_eq!(
+            std::io::Error::last_os_error().raw_os_error(),
+            Some(libc::ECHILD)
+        );
+        assert!(!transport::process_stamp(pid).is_ok_and(|current| current == start));
+    }
+
+    #[test]
+    fn dream_c1_native_process_bad_timing_retains_component_child_until_actual_reap() {
+        for forced in [
+            sample(3000, 3000, 1),
+            sample(1000, 1000, 26),
+            NativeSample {
+                cpu: Err(Code::ResourceLimit),
+                wall: Duration::from_millis(1),
+                inclusive: Err(Code::ResourceLimit),
+            },
+        ] {
+            let root = tempfile::tempdir().unwrap();
+            let job = root.path().canonicalize().unwrap();
+            let (_pipes, mut command) = prepared_component(&job);
+            let control = control();
+            let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
+            let mut outcome = budget
+                .native_process_impl(&mut command, Some(forced))
+                .unwrap();
+            let child = outcome
+                .effect
+                .take_value()
+                .expect("real effect must be captured before failed verdict");
+            let mut child = ComponentChild(child);
+            drop(command);
+            let pid = child.0.id();
+            let start = transport::process_stamp(pid).unwrap();
+            assert_eq!(outcome.verdict, Err(Code::ResourceLimit));
+            assert_eq!(
+                control
+                    .cleanup
+                    .debt
+                    .native_process_calls
+                    .load(Ordering::Acquire),
+                1
+            );
+            assert_eq!(
+                control.cleanup.debt.native_effects.load(Ordering::Acquire),
+                1
+            );
+            if forced.cpu.is_ok() {
+                budget.pay_work_debt().unwrap();
+            } else {
+                assert_eq!(budget.pay_work_debt(), Err(Code::ResourceLimit));
+            }
+            // Component failure settlement retains the real typed process,
+            // including clock failure. No C1 candidate is launched ungated.
+            reap_component(&mut child, pid, &start);
+        }
+    }
+
+    #[test]
+    fn dream_c1_real_native_effect_cancel_and_aba_between_effect_and_verdict_never_retries() {
+        for aba in [false, true] {
+            let root = tempfile::tempdir().unwrap();
+            let epoch = Arc::new(AtomicU64::new(1));
+            let observed = epoch.clone();
+            let control = Arc::new(Control {
+                authority_guard: Some(Arc::new(move || {
+                    if observed.load(Ordering::Acquire) == 1 {
+                        Ok(())
+                    } else {
+                        Err(Code::StaleContext)
+                    }
+                })),
+                ..Control::default()
+            });
+            control.foreground.store(false, Ordering::Release);
+            let mut publication = staged(root.path(), "interrupt");
+            let interrupted = control.clone();
+            NATIVE_RETURN_HOOK.with(|hook| {
+                *hook.borrow_mut() = Some(Box::new(move || {
+                    if aba {
+                        epoch.store(2, Ordering::Release);
+                        epoch.store(3, Ordering::Release); // A label returns; incarnation does not.
+                    } else {
+                        interrupted.cancelled.store(true, Ordering::Release);
+                    }
+                }));
+            });
+            let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
+            let mut outcome = budget
+                .native_publish_impl(&mut publication, Some(sample(1000, 1000, 1)))
+                .unwrap();
+            assert!(
+                outcome.effect.take_value().is_ok(),
+                "real inode disappeared on an interrupt verdict"
+            );
+            if aba {
+                // native_finish returns the typed effect immediately. Fresh
+                // authority is rechecked at the next ordinary/debt boundary.
+                assert_eq!(outcome.verdict, Ok(()));
+                assert!(matches!(budget.unit(|| Ok(())), Err(Code::StaleContext)));
+            } else {
+                assert_eq!(outcome.verdict, Err(Code::Cancelled));
+                assert!(matches!(budget.unit(|| Ok(())), Err(Code::Cancelled)));
+            }
+            assert_exact_link(&publication);
+            assert_eq!(
+                control.cleanup.debt.native_effects.load(Ordering::Acquire),
+                1
+            );
+            assert!(matches!(
+                budget.native_publish_impl(&mut publication, Some(sample(0, 0, 0))),
+                Err(Code::BadRequest)
+            ));
+        }
+    }
+
+    #[test]
+    fn dream_c1_withheld_returned_effect_retains_lease_and_independent_cached_controls() {
+        let root = tempfile::tempdir().unwrap();
+        let control = Arc::new(control());
+        let publication = staged(root.path(), "held");
+        let target = publication.target.clone();
+        let identity = publication.identity().unwrap();
+        let (ready_tx, ready_rx) = std::sync::mpsc::sync_channel(1);
+        let (release_tx, release_rx) = std::sync::mpsc::sync_channel(1);
+        let (done_tx, done_rx) = std::sync::mpsc::sync_channel(1);
+        std::thread::scope(|scope| {
+            let owner = control.clone();
+            let thread = scope.spawn(move || {
+                NATIVE_RETURN_HOOK.with(|hook| {
+                    *hook.borrow_mut() = Some(Box::new(move || {
+                        ready_tx.send(()).unwrap();
+                        release_rx
+                            .recv_timeout(Duration::from_secs(2))
+                            .expect("private returned-effect hold must be released autonomously");
+                    }));
+                });
+                let mut publication = publication;
+                let mut budget = Budget::new(&owner, Instant::now() + Duration::from_secs(5));
+                // Controlled >25ms verdict; the hook is a returned-effect hold,
+                // not evidence of an uninterruptible kernel call or real timing.
+                let mut outcome = budget
+                    .native_publish_impl(&mut publication, Some(sample(1000, 1000, 26)))
+                    .unwrap();
+                let effect = outcome.effect.take_value();
+                done_tx.send(outcome.verdict).unwrap();
+                assert!(effect.is_ok());
+                assert_exact_link(&publication);
+            });
+            ready_rx.recv_timeout(Duration::from_secs(2)).unwrap();
+            assert!(control.cleanup.debt.held.load(Ordering::Acquire));
+            let linked = std::fs::symlink_metadata(&target).unwrap();
+            assert_eq!((linked.dev(), linked.ino()), identity);
+            assert!(matches!(
+                done_rx.try_recv(),
+                Err(std::sync::mpsc::TryRecvError::Empty)
+            ));
+            for _ in 0..200 {
+                let at = Instant::now();
+                // This is the cached Control lane, explicitly not an admitted
+                // MCP/ctl latency claim; those real API witnesses stay separate.
+                let _ = control.state.load(Ordering::Acquire);
+                control.cancelled.store(true, Ordering::Release);
+                let _ = control.revision.load(Ordering::Acquire);
+                assert!(at.elapsed() <= Duration::from_millis(100));
+                assert!(control.cleanup.debt.held.load(Ordering::Acquire));
+            }
+            assert!(
+                matches!(
+                    done_rx.try_recv(),
+                    Err(std::sync::mpsc::TryRecvError::Empty)
+                ),
+                "effect owner retired before the held verdict returned"
+            );
+            release_tx.send(()).unwrap();
+            assert_eq!(
+                done_rx.recv_timeout(Duration::from_secs(2)).unwrap(),
+                Err(Code::ResourceLimit)
+            );
+            thread.join().unwrap();
+        });
+        assert!(!control.cleanup.debt.held.load(Ordering::Acquire));
+        assert_eq!(
+            control
+                .cleanup
+                .debt
+                .native_publish_calls
+                .load(Ordering::Acquire),
+            1
+        );
+        assert_eq!(
+            control.cleanup.debt.native_effects.load(Ordering::Acquire),
+            1
+        );
+    }
+
+    #[test]
+    fn dream_c1_two_ms_parser_control_sqlite_cleanup_do_not_acquire_native_exemption() {
+        for class in ["parser", "control tick", "SQLite wrapper"] {
+            let control = control();
+            let sql = rusqlite::Connection::open_in_memory().unwrap();
+            let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
+            let clock = budget.begin_unit().unwrap();
+            let actual_owned_value: Value = match class {
+                "parser" => serde_json::from_slice(br#"{"retained":[1,2,3]}"#).unwrap(),
+                "control tick" => {
+                    json!({"state":control.state.load(Ordering::Acquire),"revision":control.revision.load(Ordering::Acquire)})
+                }
+                "SQLite wrapper" => {
+                    json!({"row":sql.query_row("SELECT 1", [], |row|row.get::<_,i64>(0)).unwrap()})
+                }
+                _ => unreachable!(),
+            };
+            let result = budget.finish_unit_sampled(clock, Ok(actual_owned_value), |_| {
+                Ok(Duration::from_millis(2))
+            });
+            assert!(
+                matches!(result, Err(Code::ResourceLimit)),
+                "{class} was falsely excused as native"
+            );
+            assert_eq!(
+                control
+                    .cleanup
+                    .debt
+                    .native_process_calls
+                    .load(Ordering::Acquire),
+                0
+            );
+            assert_eq!(
+                control
+                    .cleanup
+                    .debt
+                    .native_publish_calls
+                    .load(Ordering::Acquire),
+                0
+            );
+            assert_eq!(control.unit_overruns.load(Ordering::Acquire), 1);
+        }
+        let control = control();
+        let actual_owned_value: Value = serde_json::from_slice(br#"{"retained":[1,2,3]}"#).unwrap();
+        drop(Paced::new(actual_owned_value, &control));
+        disposal::record_cleanup(&control.cleanup, Duration::from_millis(2));
+        assert_eq!(control.cleanup.overruns.load(Ordering::Acquire), 1);
+        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
+        assert!(matches!(budget.unit(|| Ok(())), Err(Code::ResourceLimit)));
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    fn dream_c1_private_debt_bypass_and_repeated_native_controls_fail_causally() {
+        let root = tempfile::tempdir().unwrap();
+        let control = Control {
+            private_fixture: true,
+            ..control()
+        };
+        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
+        let mut publication = staged(root.path(), "mutant");
+        let mut first = budget
+            .native_publish_impl(&mut publication, Some(sample(2000, 2500, 1)))
+            .unwrap();
+        assert!(first.effect.take_value().is_ok());
+        assert_eq!(first.verdict, Ok(()));
+        assert_eq!(
+            control.cleanup.debt.charged_ns.load(Ordering::Acquire),
+            22_500_000
+        );
+        control.omit_rest.store(true, Ordering::Release);
+        // Existing authenticated private mutant removes the actual debt guard;
+        // the independent observation must reject this admission causally.
+        budget.unit(|| Ok(())).unwrap();
+        assert!(
+            control
+                .cleanup
+                .debt
+                .admission_violations
+                .load(Ordering::Acquire)
+                > 0,
+            "broken debt admission escaped the actual observer"
+        );
+        control.omit_rest.store(false, Ordering::Release);
+        budget.pay_work_debt().unwrap();
+
+        // Deliberately remove only original-publication guards in this private
+        // test. The real no-overwrite syscall is attempted again and refuses;
+        // counting that repeated call falsifies original-op at-most-once even
+        // though the OS still protects the original inode from replacement.
+        publication.attempted = false;
+        control
+            .cleanup
+            .debt
+            .native_publish_mask
+            .store(0, Ordering::Release);
+        let mut second = budget
+            .native_publish_impl(&mut publication, Some(sample(1000, 1000, 1)))
+            .unwrap();
+        assert_eq!(second.effect.take_value(), Err(Code::StorageUnavailable));
+        assert_eq!(
+            control
+                .cleanup
+                .debt
+                .native_publish_calls
+                .load(Ordering::Acquire),
+            2
+        );
+        assert!(
+            control
+                .cleanup
+                .debt
+                .native_publish_calls
+                .load(Ordering::Acquire)
+                > 1,
+            "repeated-original-operation control did not violate its selected-call bound"
+        );
+        assert_eq!(
+            control.cleanup.debt.native_effects.load(Ordering::Acquire),
+            1
+        );
+        assert_exact_link(&publication);
+    }
+
+    #[test]
+    fn dream_c1_birth_binding_probe_null_is_explicit_and_real_context_is_required() {
+        let control = control();
+        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
+        let id = public::Ulid("01ARZ3NDEKTSV4RRFFQ69G5FAV".into());
+        let context = public::Context {
+            account: public::Id("private-account".into()),
+            account_epoch: public::Number(1),
+            seat: id.clone(),
+            generation: public::Number(1),
+            grant_epoch: public::Number(1),
+            swarm: id.clone(),
+            swarm_revision: public::Number(1),
+            workspace: public::Id("private-workspace".into()),
+            workspace_revision: public::Number(1),
+            root: public::Id("private-root".into()),
+            root_revision: public::Number(1),
+            provider: public::Id("private-provider".into()),
+            provider_epoch: public::Number(1),
+        };
+        let digest = "0".repeat(64);
+        let mut binding = BirthBinding {
+            profile: bootstrap::PROFILE,
+            purpose: "inspect-c1",
+            probe: true,
+            op_id: &id,
+            run_id: &id,
+            nonce: &id,
+            incarnation: 1,
+            context: None,
+            worker_sha256: &digest,
+        };
+        // Input-shape regression only. Producer owns the canonical binding
+        // vectors/128-byte permit; no alternate digest fixture is defined here.
+        let serialized = serde_json::to_value(&binding).unwrap();
+        assert!(serialized.as_object().unwrap().contains_key("context"));
+        assert_eq!(serialized["context"], Value::Null);
+        let probe = birth_binding(&binding, &mut budget).unwrap();
+        binding.probe = false;
+        assert_eq!(birth_binding(&binding, &mut budget), Err(Code::BadRequest));
+        binding.context = Some(&context);
+        let real = birth_binding(&binding, &mut budget).unwrap();
+        assert_ne!(probe, real);
+        binding.probe = true;
+        assert_eq!(birth_binding(&binding, &mut budget), Err(Code::BadRequest));
+        assert_eq!(
+            control
+                .cleanup
+                .debt
+                .native_process_calls
+                .load(Ordering::Acquire),
+            0
+        );
+    }
+
+    #[test]
+    fn dream_c1_final_public_control_is_once_after_debt_and_retains_component_child_on_refusal() {
+        for fault in ["none", "tamper", "aba", "held", "clock", "cpu"] {
+            let root = tempfile::tempdir().unwrap();
+            let job = root.path().canonicalize().unwrap();
+            let path = job.join("public.sqlite");
+            let database = rusqlite::Connection::open(&path).unwrap();
+            database.execute_batch("CREATE TABLE public_epoch(id INTEGER PRIMARY KEY,epoch INTEGER); INSERT INTO public_epoch VALUES(1,1);").unwrap();
+            // This fixed public-scalar fixture exercises the production final
+            // control helper, not Registry::Authority's full identity proof.
+            // Full current-row/actor/API witnesses remain separate.
+            drop(
+                database
+                    .prepare_cached("SELECT epoch FROM public_epoch WHERE id=1")
+                    .unwrap(),
+            );
+            let database = Arc::new(std::sync::Mutex::new(database));
+            let observed = database.clone();
+            let control = Control {
+                authority_guard: Some(Arc::new(move || {
+                    let database = observed.try_lock().map_err(|_| Code::Busy)?;
+                    let epoch: i64 = database
+                        .prepare_cached("SELECT epoch FROM public_epoch WHERE id=1")
+                        .and_then(|mut statement| statement.query_row([], |row| row.get(0)))
+                        .map_err(|_| Code::StaleContext)?;
+                    if epoch == 1 {
+                        Ok(())
+                    } else {
+                        Err(Code::StaleContext)
+                    }
+                })),
+                ..control()
+            };
+            let (_pipes, mut command) = prepared_component(&job);
+            let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
+            let mut outcome = budget
+                .native_process_impl(&mut command, Some(sample(1000, 1000, 1)))
+                .unwrap();
+            let mut child = ComponentChild(outcome.effect.take_value().unwrap());
+            drop(command);
+            assert_eq!(outcome.verdict, Ok(()));
+            let pid = child.0.id();
+            let start = transport::process_stamp(pid).unwrap();
+            assert!(control.cleanup.debt.remaining_ns() > 0);
+            budget.pay_work_debt().unwrap();
+            assert_eq!(control.cleanup.debt.remaining_ns(), 0);
+            let charged = control.cleanup.debt.charged_ns.load(Ordering::Acquire);
+            if matches!(fault, "tamper" | "aba") {
+                let path = path.clone();
+                *control.final_admission_hook.lock().unwrap() = Some(Box::new(move |site| {
+                    assert_eq!(site, FinalHandoff::Permit);
+                    let writer = rusqlite::Connection::open(path).unwrap();
+                    writer
+                        .execute("UPDATE public_epoch SET epoch=2 WHERE id=1", [])
+                        .unwrap();
+                    if fault == "aba" {
+                        // A display label may return, its public incarnation
+                        // remains monotonically distinct rather than reset to1.
+                        writer
+                            .execute("UPDATE public_epoch SET epoch=3 WHERE id=1", [])
+                            .unwrap();
+                    }
+                }));
+            }
+            if fault == "clock" {
+                *control.final_admission_sample.lock().unwrap() = Some(Err(Code::ResourceLimit));
+            } else if fault == "cpu" {
+                *control.final_admission_sample.lock().unwrap() =
+                    Some(Ok(Duration::from_millis(2)));
+            }
+            let held = (fault == "held").then(|| database.lock().unwrap());
+            let effects = AtomicU64::new(0);
+            let admission = final_admission_control(&control, FinalHandoff::Permit, || {
+                effect_guard(&control)?;
+                effects.fetch_add(1, Ordering::Release);
+                Ok(())
+            });
+            drop(held);
+            match fault {
+                "none" => assert_eq!(admission, Ok(())),
+                "tamper" | "aba" => assert_eq!(admission, Err(Code::StaleContext)),
+                "held" => assert_eq!(admission, Err(Code::Busy)),
+                "clock" | "cpu" => assert_eq!(admission, Err(Code::ResourceLimit)),
+                _ => unreachable!(),
+            }
+            assert_eq!(control.bootstrap_permit_attempts.load(Ordering::Acquire), 1);
+            assert_eq!(
+                control.cleanup.debt.charged_ns.load(Ordering::Acquire),
+                charged,
+                "final control recursively created work debt"
+            );
+            assert_eq!(
+                effects.load(Ordering::Acquire),
+                u64::from(matches!(fault, "none" | "clock" | "cpu")),
+                "post-effect timing refusal was mistaken for absent effect"
+            );
+            assert_eq!(
+                final_admission_control(&control, FinalHandoff::Permit, || {
+                    effects.fetch_add(1, Ordering::Release);
+                    Ok(())
+                }),
+                Err(Code::ProtocolError)
+            );
+            assert_eq!(control.bootstrap_permit_attempts.load(Ordering::Acquire), 1);
+            assert_eq!(transport::process_stamp(pid).unwrap(), start);
+            assert!(
+                child.0.try_wait().unwrap().is_none(),
+                "refusal forgot the actual child owner"
+            );
+            for _ in 0..200 {
+                let at = Instant::now();
+                let _ = control.state.load(Ordering::Acquire);
+                control.cancelled.store(true, Ordering::Release);
+                let _ = control.revision.load(Ordering::Acquire);
+                assert!(at.elapsed() <= Duration::from_millis(100));
+            }
+            // These are independent cached-control/component custody checks,
+            // not admitted MCP latency or a gated producer process witness.
+            reap_component(&mut child, pid, &start);
+        }
+    }
+
+    mod final_authority_controls {
+        use super::*;
+        use crate::store::Store;
+        use std::os::unix::fs::OpenOptionsExt;
+
+        /// Exact private inode replacement, restored before the real fixture
+        /// shuts down. It never deletes a path outside its own account root.
+        struct AccountSwap {
+            named: PathBuf,
+            retained: PathBuf,
+        }
+        impl AccountSwap {
+            fn new(named: &Path) -> Self {
+                let retained = named.with_extension("final-control-original");
+                assert!(!retained.exists());
+                std::fs::rename(named, &retained).unwrap();
+                let swap = Self {
+                    named: named.to_owned(),
+                    retained,
+                };
+                let mut replacement = std::fs::OpenOptions::new()
+                    .write(true)
+                    .create_new(true)
+                    .mode(0o600)
+                    .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+                    .open(&swap.named)
+                    .unwrap();
+                replacement
+                    .write_all(b"private replaced account inode\n")
+                    .unwrap();
+                replacement.sync_all().unwrap();
+                swap
+            }
+        }
+        impl Drop for AccountSwap {
+            fn drop(&mut self) {
+                std::fs::remove_file(&self.named).unwrap();
+                std::fs::rename(&self.retained, &self.named).unwrap();
+            }
+        }
+
+        fn check(fault: &'static str, site: FinalHandoff) {
+            crate::logic::dream_public_api_tests::with_final_public_authority(
+                |authority, account, fence| {
+                    // The helper retains the actual Logic/Supervisor/PTYS and
+                    // identity/native-custody spies. This is the production prepared
+                    // read-only guard, not a substitute public-scalar callback.
+                    let (context, captured, guard) = authority.test_prepared_guard().unwrap();
+                    let control = Arc::new(control());
+                    control.install_authority_guard(guard).unwrap();
+                    let root = tempfile::tempdir().unwrap();
+                    let job = root.path().canonicalize().unwrap();
+                    let (_pipes, mut command) = prepared_component(&job);
+                    let mut budget =
+                        Budget::new(&control, Instant::now() + Duration::from_secs(10));
+                    let mut native = budget
+                        .native_process_impl(&mut command, Some(sample(1000, 1000, 1)))
+                        .unwrap();
+                    let mut child = ComponentChild(native.effect.take_value().unwrap());
+                    drop(command);
+                    assert_eq!(native.verdict, Ok(()));
+                    let pid = child.0.id();
+                    let start = transport::process_stamp(pid).unwrap();
+                    assert!(control.cleanup.debt.remaining_ns() > 0);
+                    budget.pay_work_debt().unwrap();
+                    assert_eq!(control.cleanup.debt.remaining_ns(), 0);
+                    let charged = control.cleanup.debt.charged_ns.load(Ordering::Acquire);
+                    let effects = AtomicU64::new(0);
+                    let swap = Arc::new(std::sync::Mutex::new(None));
+                    let hook_swap = swap.clone();
+                    let writer = account.clone();
+                    let hook_fence = fence.clone();
+                    let seat = context.seat.0.clone();
+                    let weak = Arc::downgrade(&control);
+                    *control.final_admission_hook.lock().unwrap() = Some(Box::new(
+                        move |actual_site| {
+                            assert_eq!(actual_site, site);
+                            let control = weak.upgrade().unwrap();
+                            assert_eq!(
+                                control.cleanup.debt.remaining_ns(),
+                                0,
+                                "fresh authorization ran before the old work debt was paid"
+                            );
+                            match fault {
+                                "row" => {
+                                    let device = captured.device.unwrap();
+                                    let key = format!("identity/device/{device}");
+                                    let mut bytes = writer.get(&key).unwrap().unwrap();
+                                    bytes.push(b' '); // valid JSON, changed exact public-row digest.
+                                    writer.put(&key, &bytes).unwrap();
+                                }
+                                "head" => {
+                                    let bytes = writer.get("identity/head").unwrap().unwrap();
+                                    let mut head: crate::identity::Signed<
+                                        crate::identity::AccountHead,
+                                    > = serde_json::from_slice(&bytes).unwrap();
+                                    head.payload
+                                        .revoked_devices
+                                        .push(head.payload.active_devices[0].device_id);
+                                    writer
+                                        .put("identity/head", &serde_json::to_vec(&head).unwrap())
+                                        .unwrap();
+                                }
+                                "grant" => {
+                                    assert_eq!(writer.connection().unwrap().execute(
+                                "UPDATE msg_policies SET epoch=epoch+1 WHERE seat=?1", [&seat]).unwrap(), 1);
+                                }
+                                "aba" => {
+                                    let original = writer.get("identity/head").unwrap().unwrap();
+                                    writer
+                                        .put("identity/head", b"private intermediate B")
+                                        .unwrap();
+                                    writer.put("identity/head", &original).unwrap();
+                                }
+                                "cell" => {
+                                    writer.put("identity/head", &[b'x'; 16 * 1024 + 1]).unwrap()
+                                }
+                                "inode" => {
+                                    *hook_swap.lock().unwrap() =
+                                        Some(AccountSwap::new(&writer.path))
+                                }
+                                "expiry" => {
+                                    hook_fence.test_public_clock(captured.expires_at.unwrap())
+                                }
+                                "none" | "held" | "clock" | "cpu" => {}
+                                _ => panic!("unknown final authority fault"),
+                            }
+                        },
+                    ));
+                    let held = (fault == "held")
+                        .then(|| authority.port.host.test_dream_hold_selection().unwrap());
+                    if fault == "clock" {
+                        *control.final_admission_sample.lock().unwrap() =
+                            Some(Err(Code::ResourceLimit));
+                    } else if fault == "cpu" {
+                        *control.final_admission_sample.lock().unwrap() =
+                            Some(Ok(Duration::from_millis(2)));
+                    }
+                    let before = Instant::now();
+                    let verdict = final_admission_control(&control, site, || {
+                        effect_guard(&control)?;
+                        effects.fetch_add(1, Ordering::Release);
+                        Ok(())
+                    });
+                    let elapsed = before.elapsed();
+                    drop(held);
+                    drop(swap.lock().unwrap().take());
+                    assert!(
+                        elapsed <= Duration::from_millis(250),
+                        "actual final authority {fault} blocked control for {elapsed:?}"
+                    );
+                    match fault {
+                        "none" => assert_eq!(verdict, Ok(())),
+                        "clock" | "cpu" => assert_eq!(verdict, Err(Code::ResourceLimit)),
+                        _ => assert_eq!(verdict, Err(Code::StaleContext)),
+                    }
+                    assert_eq!(
+                        effects.load(Ordering::Acquire),
+                        u64::from(matches!(fault, "none" | "clock" | "cpu"))
+                    );
+                    assert_eq!(
+                        control.cleanup.debt.charged_ns.load(Ordering::Acquire),
+                        charged,
+                        "bounded final control must not recursively create work debt"
+                    );
+                    let attempts = match site {
+                        FinalHandoff::Permit => &control.bootstrap_permit_attempts,
+                        FinalHandoff::Start => &control.start_admission_attempts,
+                    };
+                    assert_eq!(attempts.load(Ordering::Acquire), 1);
+                    assert_eq!(
+                        final_admission_control(&control, site, || {
+                            effects.fetch_add(1, Ordering::Release);
+                            Ok(())
+                        }),
+                        Err(Code::ProtocolError)
+                    );
+                    assert_eq!(attempts.load(Ordering::Acquire), 1);
+                    assert_eq!(transport::process_stamp(pid).unwrap(), start);
+                    assert!(child.0.try_wait().unwrap().is_none());
+                    for _ in 0..200 {
+                        let at = Instant::now();
+                        let _ = control.state.load(Ordering::Acquire);
+                        control.cancelled.store(true, Ordering::Release);
+                        let _ = control.revision.load(Ordering::Acquire);
+                        assert!(at.elapsed() <= Duration::from_millis(100));
+                    }
+                    reap_component(&mut child, pid, &start);
+                    eprintln!(
+                        "dream_c1_final_actual_public site={site:?} fault={fault} checks=1 effects={} wall_us={} cpu_ns={} native_custody_delta=0 component_reaped=true",
+                        effects.load(Ordering::Acquire),
+                        elapsed.as_micros(),
+                        control.bootstrap_control_max_cpu_ns.load(Ordering::Acquire)
+                    );
+                    // Child/pipes are real retained effects, but /bin/sleep is only
+                    // a custody component. This is not gated producer/bootstrap,
+                    // qualifying Hello/Start or admitted MCP latency evidence.
+                },
+            );
+        }
+
+        #[test]
+        fn dream_c1_final_actual_authority_rechecks_row_head_grant_inode_aba_after_debt() {
+            for site in [FinalHandoff::Permit, FinalHandoff::Start] {
+                for fault in ["row", "head", "grant", "inode", "aba", "cell", "expiry"] {
+                    check(fault, site);
+                }
+            }
+        }
+
+        #[test]
+        fn dream_c1_final_actual_authority_held_clock_cpu_refusals_keep_owned_child() {
+            for site in [FinalHandoff::Permit, FinalHandoff::Start] {
+                for fault in ["none", "held", "clock", "cpu"] {
+                    check(fault, site);
+                }
+            }
+        }
+    }
+
+    #[test]
+    #[cfg(debug_assertions)]
+    #[ignore = "requires canonically provisioned real worker; make test-dream-c1 executes"]
+    fn dream_c1_private_signed_gated_worker_held_parent_paid_probe_and_refusals() {
+        use std::cell::RefCell;
+        use std::rc::Rc;
+
+        // REQUIRED provision input: no PATH, unknown-worker discovery, runtime
+        // build, old artifact fallback or missing-fixture green result. The
+        // canonical target explicitly runs this ignored external fixture.
+        let binary = PathBuf::from(
+            std::env::var_os("DREAM_C1_RUNNER")
+                .expect("gated component witness requires provisioned DREAM_C1_RUNNER"),
+        );
+        let proof = Arc::new(runner_provision::verify_native_provision(&binary, true)
+            .expect("signed private development source/compiler/hash/bootstrap receipt must verify BEFORE birth"));
+        assert!(proof.is_private_development());
+        assert!(!proof.control_only_wrapper());
+        assert_eq!(proof.capability_binary(), binary);
+        let mut rows = Vec::new();
+        for mode in ["paid_probe", "cancel", "expired"] {
+            let root = tempfile::tempdir().unwrap();
+            let parent = root.path().canonicalize().unwrap();
+            let control = Arc::new(control());
+            let deadline = Instant::now() + Duration::from_secs(30);
+            let mut budget = Budget::new(&control, deadline);
+            budget
+                .unit(|| control.install_native_provision(proof.clone()))
+                .unwrap();
+            let (op, run, nonce, birth) = budget
+                .unit(|| {
+                    Ok((
+                        crate::Ulid::new(),
+                        crate::Ulid::new(),
+                        crate::Ulid::new(),
+                        crate::Ulid::new(),
+                    ))
+                })
+                .unwrap();
+            let job = parent.join(run.to_string());
+            budget.unit(|| private_dir(&job)).unwrap();
+            budget.unit(|| private_dir(&job.join("tmp"))).unwrap();
+            let op = public::Ulid(op.to_string());
+            let run = public::Ulid(run.to_string());
+            let nonce = public::Ulid(nonce.to_string());
+            let binding = birth_binding(
+                &BirthBinding {
+                    profile: bootstrap::PROFILE,
+                    purpose: "inspect-c1",
+                    probe: true,
+                    op_id: &op,
+                    run_id: &run,
+                    nonce: &nonce,
+                    incarnation: 1,
+                    context: None,
+                    worker_sha256: proof.worker_sha256(),
+                },
+                &mut budget,
+            )
+            .unwrap();
+            let frozen = bootstrap::Frozen::inspect(
+                true,
+                birth.to_bytes(),
+                bootstrap::ulid(run.0.as_bytes()).unwrap(),
+                bootstrap::ulid(nonce.0.as_bytes()).unwrap(),
+                binding,
+                1,
+            );
+            let mut gate = Paced::new(
+                budget
+                    .unit(|| bootstrap::Gate::prepare(frozen).map_err(wire_error))
+                    .unwrap(),
+                &control,
+            );
+            let pipe_identity = gate.identity();
+            let mut protected = control
+                .heap
+                .reserve(HeapLane::Control, transport::PROTECTED_BYTES)
+                .unwrap();
+            let mut buffers = Paced::new(
+                budget
+                    .unit(|| Worker::prepare_buffers().map_err(wire_error))
+                    .unwrap(),
+                &control,
+            );
+            protected.allocated();
+            let mut input = Paced::new(
+                budget
+                    .unit(|| Worker::prepare_pipe().map_err(wire_error))
+                    .unwrap(),
+                &control,
+            );
+            let mut output = Paced::new(
+                budget
+                    .unit(|| Worker::prepare_pipe().map_err(wire_error))
+                    .unwrap(),
+                &control,
+            );
+            let mut stderr = Paced::new(
+                budget
+                    .unit(|| Worker::prepare_pipe().map_err(wire_error))
+                    .unwrap(),
+                &control,
+            );
+            let prepared = budget
+                .unit(|| {
+                    Worker::prepare_command(
+                        proof.capability_binary(),
+                        &job,
+                        buffers.take_value(),
+                        input.take_value(),
+                        output.take_value(),
+                        stderr.take_value(),
+                        gate.take_value(),
+                    )
+                    .map_err(wire_error)
+                })
+                .unwrap();
+            let prepared = Rc::new(RefCell::new(Some(Paced::new(prepared, &control))));
+            {
+                let mut held = prepared.borrow_mut();
+                let prepared = held.as_mut().unwrap();
+                budget
+                    .unit(|| prepared.configure_input().map_err(wire_error))
+                    .unwrap();
+                budget
+                    .unit(|| prepared.configure_output().map_err(wire_error))
+                    .unwrap();
+                budget
+                    .unit(|| prepared.configure_stderr().map_err(wire_error))
+                    .unwrap();
+            }
+            let command = {
+                let mut held = prepared.borrow_mut();
+                budget
+                    .unit(|| held.as_mut().unwrap().take_command().map_err(wire_error))
+                    .unwrap()
+            };
+            let mut command = Some(Paced::new(command, &control));
+            budget.unit(|| proof.still_current()).unwrap();
+            // Observe the actual source-bound child before its native verdict.
+            // The hook never panics while it holds the sole Child effect: it
+            // records observations, then attachment/reap precede assertions.
+            let evidence = Rc::new(RefCell::new(None));
+            let observed = evidence.clone();
+            let hook_prepared = prepared.clone();
+            let hook_control = control.clone();
+            PROCESS_RETURN_HOOK.with(|hook| {
+                *hook.borrow_mut() = Some(Box::new(move |child| {
+                    let start = transport::process_stamp(child.id()).ok();
+                    let held_work = hook_control.cleanup.debt.held.load(Ordering::Acquire);
+                    let no_transfer = !hook_control
+                        .cleanup
+                        .debt
+                        .child_bootstrap
+                        .load(Ordering::Acquire);
+                    let no_attempt = hook_control
+                        .bootstrap_permit_attempts
+                        .load(Ordering::Acquire)
+                        == 0;
+                    let until = Instant::now() + Duration::from_millis(72);
+                    let waiting = loop {
+                        let read = hook_prepared
+                            .borrow_mut()
+                            .as_mut()
+                            .unwrap()
+                            .poll_bootstrap_markers();
+                        match read {
+                            Ok(markers) if markers.waiting => break Ok(markers),
+                            Err(code) => break Err(code),
+                            _ if Instant::now() >= until => break Err(w::Code::Deadline),
+                            _ => std::thread::sleep(REST),
+                        }
+                    };
+                    // WNOWAIT observes only this exact owned child's exit
+                    // state without collecting it or transferring reaping.
+                    let mut info: libc::siginfo_t = unsafe { std::mem::zeroed() };
+                    let live_at_waiting = unsafe {
+                        libc::waitid(
+                            libc::P_PID,
+                            child.id(),
+                            &mut info,
+                            libc::WEXITED | libc::WNOHANG | libc::WNOWAIT,
+                        ) == 0
+                            && info.si_pid() == 0
+                    };
+                    let mut control_max = Duration::ZERO;
+                    for _ in 0..16 {
+                        let at = Instant::now();
+                        let _ = hook_control.state.load(Ordering::Acquire);
+                        let _ = hook_control.revision.load(Ordering::Acquire);
+                        control_max = control_max.max(at.elapsed());
+                    }
+                    // This short returned-effect hold is not an expensive span,
+                    // paid debt, a kernel-call hold, or a native timing exemption.
+                    std::thread::sleep(Duration::from_millis(2));
+                    if mode == "cancel" {
+                        hook_control.cancelled.store(true, Ordering::Release);
+                    }
+                    if mode == "expired" {
+                        std::thread::sleep(bootstrap::WINDOW + Duration::from_millis(1));
+                    }
+                    *observed.borrow_mut() = Some((
+                        child.id(),
+                        start,
+                        held_work,
+                        no_transfer,
+                        no_attempt,
+                        waiting,
+                        live_at_waiting,
+                        control_max,
+                    ));
+                }))
+            });
+            // ALWAYS actual samples. Hook control CPU remains inside the real
+            // inclusive span: native<=2ms/25ms, app<=1ms, inclusive<=3ms.
+            let mut native = budget.native_process(command.as_mut().unwrap()).unwrap();
+            let sample = native.sample;
+            let native_verdict = native.verdict;
+            let returned_at = native.returned_at;
+            let child = native.effect.take_value().unwrap();
+            let (worker, unused) = prepared
+                .borrow_mut()
+                .take()
+                .unwrap()
+                .take_value()
+                .attach_child(child);
+            let mut worker = Paced::new(worker, &control);
+            let mut unused = Some(Paced::new(unused, &control));
+            let ready = returned_at
+                .checked_add(bootstrap::WINDOW)
+                .unwrap()
+                .min(deadline);
+            let setup = bootstrap_control(&control, || {
+                worker
+                    .bootstrap_spawn_returned(returned_at, deadline)
+                    .map_err(wire_error)
+            });
+            let admission = (|| {
+                native_verdict?;
+                setup?;
+                budget.deadline = ready;
+                budget.pay_work_debt()?;
+                drop(command.take());
+                drop(unused.take());
+                budget.pay_work_debt()?;
+                budget.unit(|| proof.child_image_matches(worker.pid()))?;
+                budget.pay_work_debt()?;
+                bootstrap_handshake(&mut worker, &control, ready, true)
+            })();
+            // On ALL pre-grant failures close every duplicate stdio/Command
+            // owner before EOF settlement, keeping protected capacity retained.
+            drop(command.take());
+            drop(unused.take());
+            let original_deadline_preserved = worker
+                .bootstrap_deadline()
+                .is_ok_and(|deadline| deadline == ready);
+            let after = bootstrap_control(&control, || {
+                worker.poll_bootstrap_markers().map_err(wire_error)
+            });
+            let mut probe_start_refused = false;
+            if mode == "paid_probe" && admission.is_ok() {
+                // Parent permanent source-free guard only. Producer hostile
+                // Start decoding is independently tested at its actual wire.
+                let start = w::WorkerIn::Start(w::Start {
+                    protocol: w::Protocol::V1,
+                    run_id: w::Ulid(run.0.clone()),
+                    nonce: w::Ulid(nonce.0.clone()),
+                    manifest_sha256: w::Hex("0".repeat(64)),
+                    timeout_ms: 30_000,
+                    activity_revision: w::Number(0),
+                    foreground: false,
+                });
+                probe_start_refused = worker.send(&start) == Err(w::Code::ProtocolError);
+            }
+            let observation = worker.bootstrap_observation();
+            let same_pipe = worker.bootstrap_identity() == pipe_identity;
+            settle_probe(&mut worker, &control);
+            let reaped = worker.try_wait().unwrap().is_some() && worker.is_eof();
+            let usage = worker.usage().unwrap();
+            let evidence = evidence.borrow_mut().take().unwrap();
+            let (
+                pid,
+                process_start,
+                held_work,
+                no_transfer,
+                no_attempt,
+                waiting,
+                live_at_waiting,
+                control_max,
+            ) = evidence;
+            let process_start =
+                process_start.expect("actual gated child has exact kernel start stamp");
+            let waiting =
+                waiting.expect("actual signed worker must emit its bounded waiting marker");
+            assert!(waiting.waiting && !waiting.paid_hello);
+            assert_eq!(waiting.waiting_admissions, [0, 0, 0]);
+            assert!(
+                live_at_waiting,
+                "waiting marker must come from the still-live exact child"
+            );
+            assert!(held_work && no_transfer && no_attempt);
+            assert!(same_pipe && original_deadline_preserved);
+            assert!(control_max <= Duration::from_millis(100));
+            assert!(
+                sample.cpu.unwrap() <= Duration::from_millis(2),
+                "actual native sample: {sample:?}"
+            );
+            assert!(
+                sample.wall <= Duration::from_millis(25),
+                "actual native sample: {sample:?}"
+            );
+            assert!(
+                sample.inclusive.unwrap() <= Duration::from_millis(3),
+                "actual inclusive sample: {sample:?}"
+            );
+            assert!(
+                control
+                    .cleanup
+                    .debt
+                    .native_app_max_cpu_ns
+                    .load(Ordering::Acquire)
+                    <= 1_000_000
+            );
+            assert!(reaped && control.child_usage_observed.load(Ordering::Acquire));
+            assert!(!transport::process_stamp(pid).is_ok_and(|current| current == process_start));
+            let mut status = 0;
+            assert_eq!(
+                unsafe { libc::waitpid(pid as i32, &mut status, libc::WNOHANG) },
+                -1
+            );
+            assert_eq!(
+                std::io::Error::last_os_error().raw_os_error(),
+                Some(libc::ECHILD)
+            );
+            assert!(
+                !job.join("manifest.json").exists() && !job.join("output/result.json").exists()
+            );
+            let after = after.unwrap();
+            if mode == "paid_probe" {
+                assert_eq!(admission, Ok(()), "native={sample:?}");
+                assert!(observation.granted && observation.qualified_hello);
+                assert_eq!(observation.bytes_written, Some(128));
+                assert!(after.paid_hello);
+                assert_eq!(after.paid_admissions, [1, 1, 1, 1]);
+                assert!((1..=4).contains(&after.permit_reads));
+                assert!(after.control_max_cpu_ns <= 1_000_000);
+                assert!(probe_start_refused);
+                assert_eq!(control.bootstrap_permit_attempts.load(Ordering::Acquire), 1);
+            } else {
+                assert_eq!(
+                    admission,
+                    Err(if mode == "cancel" {
+                        Code::Cancelled
+                    } else {
+                        Code::Deadline
+                    })
+                );
+                assert!(!observation.granted && !observation.qualified_hello && !after.paid_hello);
+                assert_eq!(control.bootstrap_permit_attempts.load(Ordering::Acquire), 0);
+            }
+            assert_eq!(control.start_admission_attempts.load(Ordering::Acquire), 0);
+            rows.push(json!({"mode":mode,"run_id":run,"nonce":nonce,"birth":birth,"pid":pid,"process_start":process_start,
+                "waiting_admissions":waiting.waiting_admissions,"live_at_waiting_wnowait":live_at_waiting,"paid_admissions":after.paid_admissions,
+                "paid_hello":after.paid_hello,"permit_attempts":control.bootstrap_permit_attempts.load(Ordering::Acquire),
+                "probe_start_parent_refused":probe_start_refused,"source_absent":true,"retained_real_effect_before_verdict":held_work,
+                "actual_native_cpu_ns":nanos(sample.cpu.unwrap()),"actual_native_wall_ns":nanos(sample.wall),
+                "actual_inclusive_cpu_ns":nanos(sample.inclusive.unwrap()),"actual_native_app_cpu_ns":control.cleanup.debt.native_app_max_cpu_ns.load(Ordering::Acquire),
+                "same_origin_readiness_ms":250,"original_deadline_preserved":original_deadline_preserved,"injected_timing":false,
+                "actual_reaped_and_both_eof":reaped,"waitpid_echild":true,"child_process_user_cpu_ns":usage.user_cpu_ns,"child_process_system_cpu_ns":usage.system_cpu_ns}));
+            drop(worker);
+            drop(protected);
+        }
+        if let Some(evidence) = std::env::var_os("DREAM_C1_EVIDENCE") {
+            use std::os::unix::fs::OpenOptionsExt;
+            let path = PathBuf::from(evidence).join("runtime-bootstrap-component.json");
+            let receipt = json!({"schema":"bboxy.dream.c1.bootstrap-component/1",
+                "driver_nonce":std::env::var("DREAM_C1_GATE_NONCE").expect("driver evidence requires nonce"),
+                "private_development_only":true,"producer_native_conformance":false,"worker_sha256":proof.worker_sha256(),
+                "producer_source":"bab543e2116d0bf08488fbd753a6114f30d615a4","bootstrap_profile":"dream-bootstrap/1","cases":rows});
+            let mut file = std::fs::OpenOptions::new()
+                .create_new(true)
+                .write(true)
+                .mode(0o600)
+                .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+                .open(path)
+                .unwrap();
+            file.write_all(&serde_json::to_vec(&receipt).unwrap())
+                .unwrap();
+            file.sync_all().unwrap();
+        }
     }
 }

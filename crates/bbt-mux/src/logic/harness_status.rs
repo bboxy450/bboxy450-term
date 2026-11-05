@@ -58,6 +58,75 @@ fn initial_proof(
     observed.owner_context = Some(context.clone());
     observed
 }
+// This process binding cannot have a later foreground turn after both a durable
+// current SessionClosed and exact captured-process absence. Keep that fact in
+// the same CAS word so a delayed Rich EOF/Hello cannot restore unknown activity.
+pub(super) const CLOSED_EXIT_ACTIVITY: u64 = 1 << 63;
+
+pub(super) fn activity_revision(word: u64) -> u64 {
+    (word & !CLOSED_EXIT_ACTIVITY) >> 1
+}
+
+pub(super) fn publish_rich_activity(
+    active: Option<bool>,
+    foreground: &AtomicBool,
+    revision: &AtomicU64,
+    latch: &AtomicU64,
+) -> bool {
+    let active = active.unwrap_or(true);
+    let state = u64::from(active);
+    if let Ok(previous) = latch.try_update(Ordering::AcqRel, Ordering::Acquire, |old| {
+        if old & CLOSED_EXIT_ACTIVITY != 0 {
+            return None;
+        }
+        old.checked_add(2)
+            .filter(|next| next & CLOSED_EXIT_ACTIVITY == 0)
+            .map(|next| (next & !1) | state)
+    }) {
+        // Compatibility projections follow successful publication only. The
+        // packed word remains the sole production admission authority.
+        foreground.store(active, Ordering::Release);
+        revision.store(activity_revision(previous + 2), Ordering::Release);
+        true
+    } else {
+        false
+    }
+}
+
+fn publish_closed_exit(
+    captured: u64,
+    durable_current_closed: bool,
+    exact_process_absent: bool,
+    foreground: &AtomicBool,
+    revision: &AtomicU64,
+    latch: &AtomicU64,
+) -> bool {
+    if !durable_current_closed || !exact_process_absent || captured & CLOSED_EXIT_ACTIVITY != 0 {
+        return false;
+    }
+    let Some(next) = (captured & !1)
+        .checked_add(2)
+        .filter(|next| next & CLOSED_EXIT_ACTIVITY == 0)
+    else {
+        return false;
+    };
+    if latch
+        .compare_exchange(
+            captured,
+            next | CLOSED_EXIT_ACTIVITY,
+            Ordering::AcqRel,
+            Ordering::Acquire,
+        )
+        .is_ok()
+    {
+        foreground.store(false, Ordering::Release);
+        revision.store(activity_revision(next), Ordering::Release);
+        true
+    } else {
+        false
+    }
+}
+
 fn publish_activity(
     active: Option<bool>,
     captured: u64,
@@ -67,15 +136,19 @@ fn publish_activity(
     latch: &AtomicU64,
 ) -> bool {
     let active = active.unwrap_or(true);
+    if captured & CLOSED_EXIT_ACTIVITY != 0 {
+        return false;
+    }
     if !active && !current {
         return false;
     }
     if captured & 1 == u64::from(active) {
         return false;
     }
-    let Some(next) = (captured >> 1)
+    let Some(next) = activity_revision(captured)
         .checked_add(1)
         .and_then(|v| v.checked_mul(2))
+        .filter(|next| next & CLOSED_EXIT_ACTIVITY == 0)
     else {
         return false;
     };
@@ -343,7 +416,28 @@ fn follow_sources(
             if unsafe { libc::kill(binding.pid as i32, 0) } == -1
                 && std::io::Error::last_os_error().raw_os_error() == Some(libc::ESRCH)
             {
-                return Ok(());
+                // EOF/peer loss alone never supplies closure or quiescence.
+                // The retained current close and full authority must still be
+                // valid at this exact-process absence boundary. A packed CAS
+                // cannot clear a newer session/turn publication.
+                let captured = latch.load(Ordering::Acquire);
+                if !current_closed || current_session.is_none() {
+                    return Ok(());
+                }
+                if !authority.matches(&context, &Some(identity_fence.clone())) {
+                    return Err(Code::StaleContext);
+                }
+                if captured & CLOSED_EXIT_ACTIVITY != 0 {
+                    return Ok(());
+                }
+                if publish_closed_exit(captured, true, true, &foreground, &revision, &latch) {
+                    let _ =
+                        handle.block_on(client.dream_activity(binding.seat, binding.generation));
+                    return Ok(());
+                }
+                // A later packed publication won. Keep this bounded follower
+                // owner for its existing parked tick, then revalidate the full
+                // proof; never overwrite that newer revision or spin in a CAS.
             }
         }
         if all_at_head {
@@ -566,6 +660,140 @@ pub(super) async fn run(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn durable_current_close_and_exact_absence_seal_activity_against_late_rich_eof() {
+        let foreground = AtomicBool::new(true);
+        let revision = AtomicU64::new(2);
+        let latch = AtomicU64::new(5);
+        for (closed, absent) in [(false, false), (false, true), (true, false)] {
+            assert!(!publish_closed_exit(
+                5,
+                closed,
+                absent,
+                &foreground,
+                &revision,
+                &latch
+            ));
+            assert_eq!(latch.load(Ordering::Acquire), 5);
+            assert!(foreground.load(Ordering::Acquire));
+        }
+        assert!(publish_closed_exit(
+            5,
+            true,
+            true,
+            &foreground,
+            &revision,
+            &latch
+        ));
+        let terminal = CLOSED_EXIT_ACTIVITY | 6;
+        assert_eq!(latch.load(Ordering::Acquire), terminal);
+        assert_eq!(
+            activity_revision(terminal),
+            3,
+            "local terminal proof must not enter the worker revision"
+        );
+        assert!(!foreground.load(Ordering::Acquire));
+        assert_eq!(revision.load(Ordering::Acquire), 3);
+        for late in [None, Some(true), Some(false)] {
+            assert!(!publish_rich_activity(late, &foreground, &revision, &latch));
+            assert!(!publish_activity(
+                late,
+                terminal,
+                true,
+                &foreground,
+                &revision,
+                &latch
+            ));
+            assert_eq!(latch.load(Ordering::Acquire), terminal);
+            assert!(!foreground.load(Ordering::Acquire));
+            assert_eq!(revision.load(Ordering::Acquire), 3);
+        }
+    }
+
+    #[test]
+    fn stale_close_cannot_seal_live_newer_turn_or_fresh_generation() {
+        let foreground = AtomicBool::new(true);
+        let revision = AtomicU64::new(1);
+        let latch = AtomicU64::new(3);
+        let old = latch.load(Ordering::Acquire);
+        assert!(publish_rich_activity(
+            Some(true),
+            &foreground,
+            &revision,
+            &latch
+        ));
+        assert_eq!(latch.load(Ordering::Acquire), 5);
+        assert!(!publish_closed_exit(
+            old,
+            true,
+            true,
+            &foreground,
+            &revision,
+            &latch
+        ));
+        assert!(!publish_closed_exit(
+            5,
+            true,
+            false,
+            &foreground,
+            &revision,
+            &latch
+        ));
+        assert_eq!(latch.load(Ordering::Acquire), 5);
+        assert!(foreground.load(Ordering::Acquire));
+        // ViewState allocates a fresh activity word for a new process generation;
+        // no closure/terminal proof from its predecessor belongs to that word.
+        let fresh = AtomicU64::new(1);
+        assert!(!publish_closed_exit(
+            5,
+            true,
+            true,
+            &foreground,
+            &revision,
+            &fresh
+        ));
+        assert!(publish_rich_activity(
+            Some(true),
+            &foreground,
+            &revision,
+            &fresh
+        ));
+        assert_eq!(fresh.load(Ordering::Acquire), 3);
+    }
+
+    #[test]
+    fn activity_counter_exhaustion_never_wraps_into_terminal_or_changes_projection() {
+        let foreground = AtomicBool::new(true);
+        let revision = AtomicU64::new(11);
+        let captured = CLOSED_EXIT_ACTIVITY - 1;
+        let latch = AtomicU64::new(captured);
+        assert!(!publish_rich_activity(
+            Some(false),
+            &foreground,
+            &revision,
+            &latch
+        ));
+        assert!(!publish_activity(
+            Some(false),
+            captured,
+            true,
+            &foreground,
+            &revision,
+            &latch
+        ));
+        assert!(!publish_closed_exit(
+            captured,
+            true,
+            true,
+            &foreground,
+            &revision,
+            &latch
+        ));
+        assert_eq!(latch.load(Ordering::Acquire), captured);
+        assert!(foreground.load(Ordering::Acquire));
+        assert_eq!(revision.load(Ordering::Acquire), 11);
+    }
 
     #[test]
     fn retained_or_stale_source_cannot_clear_new_current_foreground() {
