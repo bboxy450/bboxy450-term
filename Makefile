@@ -2235,6 +2235,18 @@ test-rich-links:
 	cargo test --locked --release -p bboxy450-doc --test inline_code --target-dir '$(TARGET_DIR)' markdown_links_keep_targets_through_emphasis_code_and_wrapping
 
 .PHONY: test-rich-links
+test-rich-scroll:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked --release -p bboxy450-harness --features embedded --lib --target-dir '$(TARGET_DIR)' spring_; \
+	cargo test --locked --release -p bboxy450-harness --features embedded --test gui_scroll --target-dir '$(TARGET_DIR)'
+
+.PHONY: test-rich-scroll
+test-rich-scroll-formal:
+	@set -eu; . ./scripts/cache-env.sh; \
+	SCROLL_FORMAL_OUT='$(abspath $(TARGET_DIR))/scroll/formal' cargo test --locked --release -p bboxy450-harness --test formal_models --target-dir '$(TARGET_DIR)' scroll_native; \
+	TARGET_DIR='$(abspath $(TARGET_DIR))' python3 -I crates/bboxy450-harness/scripts/check-scroll-models.py
+
+.PHONY: test-rich-scroll-formal
 test-acp-steering:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked --release -p bboxy450-harness --features acp-agent --test acp_agent --target-dir '$(TARGET_DIR)' steering_ -- --test-threads=2
