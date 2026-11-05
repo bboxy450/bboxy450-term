@@ -6126,6 +6126,7 @@ impl App {
             }
             return false;
         }
+        if self.app_overlays.diagram.is_some() { return self.diagram_key(input); }
         match route_key(input, 0, Some("")) {
             RoutedKey::Quit | RoutedKey::HardQuit | RoutedKey::TerminalFont(_) => return false,
             RoutedKey::CloseFocusedSeat => {

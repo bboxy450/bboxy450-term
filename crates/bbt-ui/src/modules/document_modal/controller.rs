@@ -57,6 +57,7 @@ pub fn link(element: c::Element, target: &str, enabled: bool) -> c::Element {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Action {
     Open(String),
+    ExpandDiagram(String),
     ToggleProvenance,
     Feed,
     Copy,
@@ -78,6 +79,8 @@ pub struct Regions {
     pub viewport: Option<Rect>,
     pub extent: [f32; 2],
     horizontal: Vec<Horizontal>,
+    diagrams: BTreeMap<String, std::sync::Arc<c::Layout>>,
+    figure_count: usize,
 }
 
 pub fn intersection(a: Rect, b: Rect) -> Rect {
@@ -105,14 +108,27 @@ impl Regions {
             n: &'a c::Layout,
             clip: Option<Rect>,
             scope: Option<&'a str>,
+            figure: Option<&str>,
             out: &mut Regions,
         ) {
+            // Transcript fragments reuse block names (e.g. block0). Bind each
+            // expand button and canvas to its figure instance, never a global
+            // block name, so opening one message cannot show another's chart.
+            let figure_key = if matches!(&n.kind, c::LayoutKind::Named(name) if name.ends_with("/figure")) {
+                let key = format!("diagram/{}", out.figure_count);
+                out.figure_count += 1;
+                Some(key)
+            } else { None };
+            let figure = figure_key.as_deref().or(figure);
             let scope = if let c::LayoutKind::Named(name) = &n.kind {
                 Some(name.as_str())
             } else {
                 scope
             };
             if let c::LayoutKind::Named(name) = &n.kind {
+                if let Some(key) = name.strip_suffix("/canvas") {
+                    out.diagrams.insert(figure.unwrap_or(key).into(), std::sync::Arc::new(n.clone()));
+                }
                 let action = name
                     .split_once(PREFIX)
                     .map(|(_, target)| Action::Open(target.into()))
@@ -127,7 +143,7 @@ impl Regions {
                     })
                     .or_else(|| {
                         name.ends_with("/expand")
-                            .then_some(Action::Unavailable("Expand diagram"))
+                            .then(|| Action::ExpandDiagram(figure.unwrap_or_else(|| name.trim_end_matches("/expand")).into()))
                     })
                     .or_else(|| {
                         (name == "action6" || name.ends_with("/action6")).then_some(Action::Close)
@@ -185,11 +201,11 @@ impl Regions {
                 clip
             };
             for child in &n.children {
-                visit(child, clip, scope, out);
+                visit(child, clip, scope, figure, out);
             }
         }
         let mut out = Self::default();
-        visit(layout, None, None, &mut out);
+        visit(layout, None, None, None, &mut out);
         out
     }
     pub fn horizontal_at(&self, at: [f32; 2]) -> Option<&Horizontal> {
@@ -202,6 +218,9 @@ impl Regions {
     }
     pub fn horizontal(&self) -> &[Horizontal] {
         &self.horizontal
+    }
+    pub fn diagram(&self, key: &str) -> Option<std::sync::Arc<c::Layout>> {
+        self.diagrams.get(key).cloned()
     }
     pub fn hit(&self, at: [f32; 2]) -> Option<Action> {
         if !at.into_iter().all(f32::is_finite) {
@@ -222,7 +241,7 @@ impl Regions {
     pub fn cursor(&self, at: [f32; 2]) -> crate::cursor::Cursor {
         use crate::cursor::Cursor;
         match self.hit(at) {
-            Some(Action::Open(_) | Action::ToggleProvenance | Action::Feed | Action::Copy | Action::CopyPath | Action::Close) => Cursor::Pointer,
+            Some(Action::Open(_) | Action::ExpandDiagram(_) | Action::ToggleProvenance | Action::Feed | Action::Copy | Action::CopyPath | Action::Close) => Cursor::Pointer,
             Some(Action::Unavailable(_)) | None => Cursor::Default,
         }
     }

@@ -11,6 +11,7 @@ use bbt_ui::{
     self as ui, components as c,
     overlays::{self, Outcome, context_menu as menu, dialog},
     text_edit::Editor,
+    modules::document_modal::viewer,
 };
 
 const FIELD: &str = "app-dialog:input";
@@ -80,6 +81,7 @@ pub(super) enum Surface {
 pub(super) enum Regions {
     Menu(menu::Regions),
     Dialog(dialog::Regions),
+    Diagram(viewer::Regions),
 }
 pub(super) struct Layout {
     pub solved: c::Layout,
@@ -89,12 +91,13 @@ pub(super) struct Layout {
 pub(super) struct Host {
     pub(super) surface: Option<Surface>,
     pub layout: Option<Layout>,
+    pub(super) diagram: Option<viewer::Viewer>,
     parent: Option<TextFocus>,
     seat: Option<SeatTarget>,
 }
 impl Host {
     pub fn open(&self) -> bool {
-        self.surface.is_some()
+        self.surface.is_some() || self.diagram.is_some()
     }
     pub fn focused_field(&self) -> Option<&str> {
         let Some(Surface::Dialog { dialog, .. }) = &self.surface else {
@@ -114,6 +117,7 @@ impl Host {
             .map_or(ui::cursor::Cursor::Default, |l| match &l.regions {
                 Regions::Menu(r) => r.cursor(at),
                 Regions::Dialog(r) => r.cursor(at),
+                Regions::Diagram(r) => r.cursor(at),
             })
     }
     pub fn tree(&self) -> Option<&c::Layout> {
@@ -124,6 +128,10 @@ impl Host {
             return vec![];
         };
         let mut result = vec![("app-overlay".into(), layout.solved.rect)];
+        if let Regions::Diagram(regions) = &layout.regions {
+            result.push(("diagram-fullscreen".into(), layout.solved.rect));
+            result.extend(regions.controls.iter().map(|(rect, action)| (action.id().into(), *rect)));
+        }
         match &self.surface {
             Some(Surface::Menu { controller, .. }) => {
                 for (i, item) in controller.menu.items.iter().enumerate() {
@@ -729,6 +737,7 @@ impl App {
             }
         };
         self.suspend_overlay_focus();
+        self.app_overlays.diagram = None;
         self.app_overlays.surface = Some(Surface::Menu {
             target,
             anchor,
@@ -764,6 +773,7 @@ impl App {
         if !self.app_overlays.open() {
             self.suspend_overlay_focus();
         }
+        self.app_overlays.diagram = None;
         self.app_overlays.surface = Some(Surface::Dialog {
             dialog: Box::new(dialog),
             rename: None,
@@ -775,12 +785,49 @@ impl App {
         }
         self.request_redraw();
     }
+    /// The modal retains its own immutable canvas, so live transcript updates
+    /// cannot move the diagram or alter the caller's scroll position.
+    pub(super) fn open_diagram(&mut self, canvas: std::sync::Arc<c::Layout>) {
+        let Some(diagram) = viewer::Viewer::new(canvas, self.solved_size) else { return; };
+        if !self.app_overlays.open() { self.suspend_overlay_focus(); }
+        self.app_overlays.surface = None;
+        self.app_overlays.diagram = Some(diagram);
+        self.app_overlays.layout = None;
+        if let Some(window) = &self.window { window.set_ime_allowed(false); }
+        self.request_redraw();
+    }
+    pub(super) fn diagram_key(&mut self, input: &keyboard::Input<'_>) -> bool {
+        if matches!(route_key(input, 0, Some("")), RoutedKey::Quit | RoutedKey::HardQuit) { return false; }
+        if !input.state.is_pressed() { return true; }
+        use viewer::Action;
+        let diagram = self.app_overlays.diagram.as_mut().expect("diagram key route");
+        let close = match &input.logical_key {
+            Key::Named(NamedKey::Escape) => true,
+            Key::Named(NamedKey::Tab) => { diagram.select(input.modifiers.state.shift_key()); false },
+            Key::Named(NamedKey::Enter | NamedKey::Space) => diagram.submit(),
+            Key::Named(NamedKey::ArrowLeft) => { diagram.pan([-40., 0.]); false },
+            Key::Named(NamedKey::ArrowRight) => { diagram.pan([40., 0.]); false },
+            Key::Named(NamedKey::ArrowUp) => { diagram.pan([0., -40.]); false },
+            Key::Named(NamedKey::ArrowDown) => { diagram.pan([0., 40.]); false },
+            Key::Character(key) => match key.as_str() {
+                "+" | "=" => diagram.act(Action::In),
+                "-" => diagram.act(Action::Out),
+                "0" => diagram.act(Action::Actual),
+                _ => matches!(route_key(input, 0, Some("")), RoutedKey::CloseFocusedSeat),
+            },
+            _ => false,
+        };
+        if close { self.close_app_overlay(); }
+        else { self.app_overlays.layout = None; self.request_redraw(); }
+        true
+    }
     pub(super) fn close_app_overlay(&mut self) {
         // End the native marked-text session before restoring a different field.
         if let Some(window) = &self.window {
             window.set_ime_allowed(false);
         }
         self.app_overlays.surface = None;
+        self.app_overlays.diagram = None;
         self.app_overlays.layout = None;
         match self.app_overlays.parent.take() {
             Some(TextFocus::Composer(field)) => {
@@ -1021,6 +1068,15 @@ impl App {
         if !self.app_overlays.open() {
             return false;
         }
+        if let Some(diagram) = &mut self.app_overlays.diagram {
+            let close = match &self.app_overlays.layout {
+                Some(Layout { regions: Regions::Diagram(regions), .. }) => diagram.press(at, regions),
+                _ => false,
+            };
+            if close { self.close_app_overlay(); }
+            else { self.app_overlays.layout = None; self.request_redraw(); }
+            return true;
+        }
         let outcome = match (&mut self.app_overlays.surface, &self.app_overlays.layout) {
             (
                 Some(Surface::Menu { controller, .. }),
@@ -1046,6 +1102,10 @@ impl App {
         if !self.app_overlays.open() {
             return false;
         }
+        if let Some(diagram) = &mut self.app_overlays.diagram {
+            if diagram.drag(at) { self.app_overlays.layout = None; self.request_redraw(); }
+            return true;
+        }
         if let (
             Some(Surface::Menu { controller, .. }),
             Some(Layout {
@@ -1061,6 +1121,11 @@ impl App {
         true
     }
     pub(super) fn solve_app_overlay(&mut self, size: [f32; 2]) -> Result<(), String> {
+        if let Some(diagram) = &mut self.app_overlays.diagram {
+            let (solved, regions) = self.scene.diagram_layout(diagram, size)?;
+            self.app_overlays.layout = Some(Layout { solved, regions: Regions::Diagram(regions) });
+            return Ok(());
+        }
         self.sync_seat_dialog();
         let ctx = self.scene.ui_context();
         self.app_overlays.layout = match &mut self.app_overlays.surface {
@@ -1135,6 +1200,48 @@ impl App {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    #[allow(clippy::disallowed_methods, reason = "isolated UI registration and private home")]
+    fn fullscreen_mermaid_modal_routes_zoom_drag_wheel_and_escape_without_losing_focus() {
+        const CHILD: &str = "BBOXY_MERMAID_MODAL_CHILD";
+        if std::env::var_os(CHILD).is_none() {
+            let home = tempfile::tempdir().unwrap();
+            let output = std::process::Command::new(std::env::current_exe().unwrap())
+                .args(["--exact", "app_overlays::tests::fullscreen_mermaid_modal_routes_zoom_drag_wheel_and_escape_without_losing_focus", "--nocapture", "--test-threads=1"])
+                .env(CHILD, "1").env("HOME", home.path()).env("ZDOTDIR", home.path()).output().unwrap();
+            assert!(output.status.success(), "{}\n{}", String::from_utf8_lossy(&output.stdout), String::from_utf8_lossy(&output.stderr));
+            return;
+        }
+        struct QuietWake;
+        impl bbt_rt::Waker for QuietWake { fn wake(&self) {} }
+        let inbox = bbt_rt::init_ui(QuietWake);
+        let updates = Arc::new(Latest::new(inbox.dirty.paint_source(5)));
+        let mut app = App::owner(UiProxy::Headless(Arc::new(|_| {})), inbox, log::Logger::new(), updates, &["--headless".into()], Verify::default());
+        app.startup.attached();
+        app.composer.handle(ComposeCommand::Focus(ComposeField::Body));
+        let canvas = Arc::new(c::Layout { rect: Rect::new(50., 100., 3000., 1800.), baseline: 0., kind: c::LayoutKind::Named("mermaid/canvas".into()), children: vec![] });
+        app.open_diagram(canvas);
+        assert!(app.app_overlays.open());
+        assert!(!app.composer.view.focus);
+        app.solve_app_overlay([1200., 800.]).unwrap();
+        assert_eq!(app.app_overlays.tree().unwrap().rect, Rect::new(0., 0., 1200., 800.));
+        let zoom = app.app_overlays.regions().into_iter().find(|(id, _)| id == "diagram-fullscreen/in").unwrap().1;
+        let at = [zoom.x + zoom.w / 2., zoom.y + zoom.h / 2.];
+        assert_eq!(app.app_overlays.cursor(at), ui::cursor::Cursor::Pointer);
+        let before = app.app_overlays.diagram.as_ref().unwrap().scale();
+        assert!(app.overlay_pointer(at));
+        assert!(app.app_overlays.diagram.as_ref().unwrap().scale() > before);
+        assert!(app.overlay_key(&chrome_input("0").unwrap()));
+        assert_eq!(app.app_overlays.diagram.as_ref().unwrap().scale(), 1.);
+        app.mouse_wheel(MouseScrollDelta::LineDelta(0., -3.));
+        app.solve_app_overlay([1200., 800.]).unwrap();
+        assert!(app.overlay_pointer([400., 400.]));
+        assert!(app.overlay_hover([300., 300.]));
+        app.pointer_released();
+        assert!(app.overlay_key(&chrome_input("esc").unwrap()));
+        assert!(!app.app_overlays.open());
+        assert!(app.composer.view.focus);
+    }
     #[test]
     fn role_picker_pages_keep_choices_and_cancel_reachable() {
         let mut form = SeatForm {

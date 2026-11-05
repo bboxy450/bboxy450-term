@@ -2463,6 +2463,13 @@ impl Scene {
             .map(|layout| c::paint(&layout, self.ui_context()))
             .unwrap_or_default()
     }
+    pub fn diagram_layout(
+        &self,
+        viewer: &mut ui::modules::document_modal::viewer::Viewer,
+        size: [f32; 2],
+    ) -> Result<(c::Layout, ui::modules::document_modal::viewer::Regions), String> {
+        viewer.layout(size, self.ui_context(), &self.metrics)
+    }
     pub fn document_layout(
         &self,
         size: [f32; 2],

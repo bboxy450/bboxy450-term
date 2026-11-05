@@ -613,6 +613,32 @@ pub struct Layout {
     pub children: Vec<Layout>,
 }
 
+impl Layout {
+    /// Copy a fixed retained canvas at a new position and scale. Paths and text
+    /// retain their vector geometry; the caller owns the clipping viewport.
+    pub fn scaled_at(&self, at: [f32; 2], scale: f32) -> Option<Self> {
+        if !scale.is_finite() || scale <= 0. || !at.into_iter().all(f32::is_finite) {
+            return None;
+        }
+        let mut out = self.clone();
+        scale_layout(&mut out, Rect::new(self.rect.x, self.rect.y, 0., 0.), scale);
+        fn shift(node: &mut Layout, dx: f32, dy: f32) {
+            node.rect.x += dx;
+            node.rect.y += dy;
+            if let LayoutKind::Text { runs, .. } = &mut node.kind {
+                for run in runs {
+                    run.rect.x += dx;
+                    run.rect.y += dy;
+                    run.baseline += dy;
+                }
+            }
+            for child in &mut node.children { shift(child, dx, dy); }
+        }
+        shift(&mut out, at[0] - self.rect.x, at[1] - self.rect.y);
+        Some(out)
+    }
+}
+
 fn font(s: &ResolvedText) -> MeasureStyle {
     MeasureStyle {
         size: s.size,

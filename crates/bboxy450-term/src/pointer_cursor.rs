@@ -205,7 +205,7 @@ impl App {
                 }
                 if matches!(
                     pane.snapshot.links.hit(local),
-                    Some(bbt_ui::modules::document_modal::controller::Action::Open(_))
+                    Some(bbt_ui::modules::document_modal::controller::Action::Open(_) | bbt_ui::modules::document_modal::controller::Action::ExpandDiagram(_))
                 ) {
                     return Cursor::Pointer;
                 }

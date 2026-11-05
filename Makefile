@@ -110,6 +110,7 @@ help:
 	  'make test-documents-activation   Independent document wire refresh with retained native sessions' \
 	  'make parity-documents           Existing strict document gallery geometry gate' \
 	  'make test-document-provenance   Collapsed task evidence, retained clicks and source preservation' \
+	  'make test-mermaid-fullscreen     Focused chart expansion, zoom/pan and modal input checks' \
 	  'make test-harness-startup        Launch identity, shell configuration and shared wake regressions' \
 	  'make test-plugin-transports      SDK transport fields, native wrap/launch fences and Settings proof' \
 	  'make test-plugin-fixtures       Private compiled-knob fixture library, carriers and variants' \
@@ -2568,3 +2569,15 @@ test-mcp-feedback:
 	cargo nextest run --locked --release -p bboxy450-doc --lib --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(reports::tests) | test(links::tests)'; \
 	cargo nextest run --locked --release -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(mcp::hints::tests) | test(mcp::knowledge::tests) | test(knowledge::effects::report_tests)'; \
 	cargo nextest run --locked --release -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(mcp_four_methods_forward_to_logic) | test(mcp_feedback_socket_) | test(mcp_socket_refuses_bad_capabilities)'
+
+.PHONY: test-mermaid-fullscreen check-mermaid-fullscreen
+test-mermaid-fullscreen:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked --release -p bboxy450-ui --lib --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(fullscreen_viewer_)'; \
+	cargo nextest run --locked --release -p bboxy450-doc --test record_host --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(mermaid_expand_) | test(wide_mermaid_)'; \
+	cargo nextest run --locked --release -p bboxy450-term --bin bboxy450-term --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(fullscreen_mermaid_modal_)'
+
+check-mermaid-fullscreen:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked --release -p bboxy450-ui -p bboxy450-doc --lib --target-dir '$(TARGET_DIR)' -- -D warnings; \
+	cargo check --locked --release -p bboxy450-term --lib --bin bboxy450-term --target-dir '$(TARGET_DIR)'

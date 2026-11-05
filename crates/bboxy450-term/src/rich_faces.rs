@@ -330,6 +330,10 @@ impl App {
                     let local = [at[0] - rect.x, at[1] - rect.y];
                     let control = pane.snapshot.controls.iter().any(|(r, _)| hit(*r, local));
                     if !control {
+                        if let Some(bbt_ui::modules::document_modal::controller::Action::ExpandDiagram(key)) = pane.snapshot.links.hit(local) {
+                            if let Some(canvas) = pane.snapshot.links.diagram(&key) { self.open_diagram(canvas); }
+                            return true;
+                        }
                         if let Some(bbt_ui::modules::document_modal::controller::Action::Open(target)) =
                             pane.snapshot.links.hit(local)
                         {

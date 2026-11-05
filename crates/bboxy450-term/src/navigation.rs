@@ -13,6 +13,11 @@ impl App {
         match action {
             Action::Open(target)=>self.follow_document_link(target),
             Action::Close=>self.close_document(),
+            Action::ExpandDiagram(key)=> {
+                if let Some(canvas) = self.document_layout.as_ref().and_then(|l| l.regions.diagram(&key)) {
+                    self.open_diagram(canvas);
+                }
+            }
             Action::ToggleProvenance=> {
                 self.document.scroll.provenance_expanded = !self.document.scroll.provenance_expanded;
                 self.document_layout=None;self.request_redraw();
@@ -131,6 +136,7 @@ impl App {
     pub(super) fn pointer_released(&mut self) {
         self.terminal_selection.release();
         self.ui_selection.release();
+        if let Some(diagram) = &mut self.app_overlays.diagram { diagram.release(); }
         if self.app_overlays.open() {
             return;
         }

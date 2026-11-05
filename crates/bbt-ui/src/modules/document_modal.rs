@@ -15,6 +15,7 @@ use bbt_ui_model::{
 };
 use serde::{Deserialize, Serialize};
 pub mod controller;
+pub mod viewer;
 mod diagram;
 pub use diagram::{Diagram, Figure, FlowEdge, FlowGraph, FlowNode};
 
