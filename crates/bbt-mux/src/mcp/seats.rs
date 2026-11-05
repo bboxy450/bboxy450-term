@@ -79,8 +79,8 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
     if actor.role.class == Class::Oracle {
         defs.extend([
             ("seat_input_text","Paste literal text only through the live positive-readiness guard. submit explicitly chooses Enter; rejected input is not queued.",json!({"text":text,"submit":{"type":"boolean"}}),vec!["text","submit"]),
-            ("seat_spawn","Launch an approved builtin in your swarm through the per-seat wiring kit. Defaults to a new tab; optional tab_id names that new tab. resume names a native Claude session, Codex thread or bboxy450-harness session ULID to continue. harness_profile starts a bboxy450-harness seat on that profile (see harness_profiles). No arbitrary commands, environment or privilege class.",json!({"swarm_id":id,"approved_profile":{"enum":APPROVED_PROFILES},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id,"resume":{"type":"string","minLength":1,"maxLength":128},"harness_profile":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$"}}),vec!["swarm_id","approved_profile","cwd"]),
-            ("seat_split","Launch an approved builtin beside an exact live seat in your swarm, even while the UI is detached. side is right or bottom (equal halves). tab_id optionally asserts the anchor tab. resume names a native Claude session, Codex thread or bboxy450-harness session ULID to continue.",json!({"swarm_id":id,"approved_profile":{"enum":APPROVED_PROFILES},"cwd":{"type":"string","minLength":1,"maxLength":4096},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id,"side":{"enum":["right","bottom"]},"resume":{"type":"string","minLength":1,"maxLength":128},"harness_profile":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$"}}),vec!["swarm_id","approved_profile","cwd","side"]),
+            ("seat_spawn","Launch an approved builtin in your swarm through the per-seat wiring kit. Defaults to a new tab; optional tab_id names that new tab. resume names a native Claude session, Codex thread or bboxy450-harness session ULID to continue. harness_profile starts a bboxy450-harness seat on that profile (see harness_profiles). For managed workers use workspace {id, expected_revision} from workspace_prepare instead of cwd; the canonical KB stays with the swarm. No arbitrary commands, environment or privilege class.",json!({"swarm_id":id,"approved_profile":{"enum":APPROVED_PROFILES},"cwd":{"type":"string","minLength":1,"maxLength":4096},"workspace":{"type":"object","properties":{"id":id,"expected_revision":{"type":"integer","minimum":1}},"required":["id","expected_revision"],"additionalProperties":false},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id,"resume":{"type":"string","minLength":1,"maxLength":128},"harness_profile":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$"}}),vec!["swarm_id","approved_profile"]),
+            ("seat_split","Launch an approved builtin beside an exact live seat in your swarm, even while the UI is detached. side is right or bottom (equal halves). tab_id optionally asserts the anchor tab. resume names a native Claude session, Codex thread or bboxy450-harness session ULID to continue.",json!({"swarm_id":id,"approved_profile":{"enum":APPROVED_PROFILES},"cwd":{"type":"string","minLength":1,"maxLength":4096},"workspace":{"type":"object","properties":{"id":id,"expected_revision":{"type":"integer","minimum":1}},"required":["id","expected_revision"],"additionalProperties":false},"role":{"type":"string","minLength":1,"maxLength":128},"name":{"type":"string","minLength":1,"maxLength":128},"tab_id":id,"side":{"enum":["right","bottom"]},"resume":{"type":"string","minLength":1,"maxLength":128},"harness_profile":{"type":"string","pattern":"^[A-Za-z0-9_-]{1,64}$"}}),vec!["swarm_id","approved_profile","side"]),
             ("seat_focus","Focus a seat in your swarm, acknowledging a completed frame. Unavailable while the UI is detached.",json!({}),vec![]),
             ("layout_read","Read your swarm's saved tab membership and durable seat placements, with exact process generations for orchestration. Saved membership can lag the attached UI.",json!({"after":id,"limit":{"type":"integer","minimum":1,"maximum":128}}),vec![]),
             ("seat_close","Close a seat in your swarm through the window's close control (60 s undo), even when its process has exited. Not your own seat. Unavailable while the UI is detached.",json!({}),vec![]),
@@ -96,7 +96,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
         }
         if mutation(name) { properties["op_id"]=id.clone();required.insert(0,"op_id"); }
         json!({"name":name,"description":description,
-            "inputSchema":{"type":"object","properties":properties,"required":required,"additionalProperties":false},
+            "inputSchema":{"type":"object","properties":properties,"required":required,"additionalProperties":false,"oneOf":if matches!(name,"seat_spawn"|"seat_split"){json!([{"required":["cwd"],"not":{"required":["workspace"]}},{"required":["workspace"],"not":{"required":["cwd"]}}])}else{json!([{}])}},
             "outputSchema":{"type":"object","additionalProperties":true},
             "annotations":{"readOnlyHint":!mutation(name),"destructiveHint":mutation(name),"idempotentHint":true,"openWorldHint":false}})
     }).chain((actor.role.class == Class::Oracle).then(|| json!({
@@ -115,6 +115,11 @@ const CTL_COMMANDS: &[&str] = &[
     "history_read",
     "harness_profiles",
     "usage_read",
+    "workspace_orient",
+    "workspace_prepare",
+    "workspace_get",
+    "workspace_list",
+    "workspace_release",
     "seat_spawn",
     "seat_split",
     "seat_focus",
@@ -210,7 +215,9 @@ struct Input {
 pub(crate) struct Spawn {
     pub swarm_id: Ulid,
     pub approved_profile: String,
+    #[serde(default)]
     pub cwd: PathBuf,
+    pub workspace: Option<super::workspaces::Reference>,
     pub role: Option<String>,
     pub name: Option<String>,
     pub tab_id: Option<Ulid>,
@@ -281,7 +288,7 @@ pub(crate) enum Request {
         text: String,
         submit: bool,
     },
-    Spawn(Spawn),
+    Spawn(Box<Spawn>),
     Mute {
         target: Target,
         epoch: u64,
@@ -393,7 +400,16 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Request, String> {
             if !APPROVED_PROFILES.contains(&a.approved_profile.as_str()) {
                 return Err("unapproved spawn profile".into());
             }
-            if !a.cwd.is_absolute() || a.cwd.as_os_str().len() > 4096 {
+            if a.workspace.is_some() == !a.cwd.as_os_str().is_empty() {
+                return Err("supply exactly one of workspace or cwd".into());
+            }
+            if a.workspace
+                .as_ref()
+                .is_some_and(|r| r.id.is_nil() || r.expected_revision == 0)
+            {
+                return Err("invalid workspace reference".into());
+            }
+            if a.workspace.is_none() && (!a.cwd.is_absolute() || a.cwd.as_os_str().len() > 4096) {
                 return Err("cwd must be an explicit absolute directory".into());
             }
             if a.role.as_ref().is_some_and(|s| {
@@ -457,7 +473,7 @@ pub(crate) fn request(actor: &Actor, call: &Call) -> Result<Request, String> {
             {
                 return Err("use seat_split for anchor placement".into());
             }
-            Request::Spawn(a)
+            Request::Spawn(Box::new(a))
         }
         "seat_mute" | "seat_unmute" => {
             let a: Mute = tools::parse(&call.args)?;
@@ -592,7 +608,9 @@ pub(crate) fn input_result(call: &Call, id: Ulid, outcome: WakeOutcome) -> Value
     };
     if let Some(cause) = cause {
         result["structuredContent"]["cause"] = json!(cause);
-        if cause == WakeCause::HarnessBusy { result["structuredContent"]["retryable"] = json!(true); }
+        if cause == WakeCause::HarnessBusy {
+            result["structuredContent"]["retryable"] = json!(true);
+        }
         result["content"][0]["text"] =
             json!(serde_json::to_string(&result["structuredContent"]).unwrap());
     }

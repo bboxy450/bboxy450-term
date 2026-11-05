@@ -21,6 +21,7 @@ pub(crate) mod seats;
 pub(crate) mod skills;
 pub(crate) mod tools;
 pub(crate) mod work_items;
+pub(crate) mod workspaces;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};

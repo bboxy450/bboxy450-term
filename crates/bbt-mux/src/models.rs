@@ -18,10 +18,11 @@ use bboxy450_tlc::{Expr, Model, Response};
 
 /// Every shipped family of this crate.
 mod hook_budget;
+mod managed_workspace;
 mod transport_launch;
 mod workspace_ready;
 
-pub fn families() -> [fn(bool) -> Model; 9] {
+pub fn families() -> [fn(bool) -> Model; 15] {
     [
         plugin_activation,
         plugin_connection,
@@ -32,6 +33,12 @@ pub fn families() -> [fn(bool) -> Model; 9] {
         transport_launch::plugin_transport_launch,
         transport_launch::plugin_transport_progress,
         workspace_ready::workspace_ready,
+        managed_workspace::managed_workspace_create,
+        managed_workspace::managed_workspace_writer,
+        managed_workspace::managed_workspace_fence,
+        managed_workspace::managed_workspace_release,
+        managed_workspace::managed_workspace_ownership,
+        managed_workspace::managed_workspace_provider_lease,
     ]
 }
 

@@ -134,7 +134,8 @@ impl Journal {
                 && owner.issuer_kind == actor.issuer_kind)
             && self.accepts_root(old.root_id.as_deref())
             && (matches!(old.tool.as_str(), "knowledge_write" | "knowledge_commit")
-                || super::work_items::mutation(&old.tool));
+                || super::work_items::mutation(&old.tool)
+                || super::workspaces::mutation(&old.tool));
         if !allowed {
             return Ok(
                 json!({"original_op_id":op,"status":"forbidden","terminal":false,

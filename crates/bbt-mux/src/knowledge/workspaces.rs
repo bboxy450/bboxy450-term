@@ -42,7 +42,7 @@ pub struct Config {
 }
 
 /// Captured at admission. Reusing a root ID alone does not survive a cwd change.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct RootBinding {
     pub swarm: Ulid,
     pub revision: u64,

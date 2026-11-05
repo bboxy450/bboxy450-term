@@ -84,8 +84,16 @@ fn next(call: &Call, result: &Value) -> Vec<Value> {
         )];
     }
     let hint = match call.tool.as_str() {
+        "workspace_get" if data["workspace"]["state"]=="unknown" => {
+            let mut hints=vec![tool("workspace_orient",json!({}),"Reconcile the original recorded resource; do not prepare a replacement or retry an unknown release.")];
+            if let Some(op)=data["workspace"]["operation_id"].as_str().and_then(|id|id.parse().ok()) {hints.extend(recovery(op));}
+            return hints;
+        }
+        "workspace_prepare" | "workspace_release" => {
+            return data["workspace"]["workspace_id"].as_str().map(|id|vec![tool("workspace_get",json!({"workspace_id":id}),"Inspect the durable workspace state. Preparing/releasing is not readiness; never replace an unknown operation.")]).unwrap_or_default();
+        }
         "orient" => {
-            return vec![
+            let mut hints=vec![
                 tool(
                     "knowledge_orient",
                     json!({}),
@@ -102,6 +110,12 @@ fn next(call: &Call, result: &Value) -> Vec<Value> {
                     "Read the tasks visible to your seat.",
                 ),
             ];
+            // Tool availability is the authority projection. Custom Oracle
+            // display names and future grants must not change this edge.
+            if data["tools"].as_array().is_some_and(|tools|tools.iter().any(|entry|entry["name"]=="workspace_prepare")) {
+                hints.push(tool("workspace_orient",json!({}),"Load the configured providers and managed worker provisioning/launch/delegation workflow before creating a worker workspace."));
+            }
+            return hints;
         }
         "knowledge_orient" => {
             if let Some(uri) = data["skills"]

@@ -438,6 +438,37 @@ impl Worker {
                             continue;
                         }
                     };
+                    if matches!(
+                        context.call.tool.as_str(),
+                        "task_delegate" | "task_reassign"
+                    ) {
+                        let checked = (|| -> Result<()> {
+                            let target: Ulid =
+                                serde_json::from_value(context.call.args["seat_id"].clone())?;
+                            let target = self.registry.get(target)?;
+                            if let Prepared::Task { plan, .. } = &prepared {
+                                let task = plan
+                                    .writes
+                                    .first()
+                                    .ok_or_else(|| invalid("workspace_task_invalid"))?;
+                                self.implementation_workspaces.delegation(
+                                    target.id,
+                                    target.generation,
+                                    task.metadata["id"]
+                                        .as_str()
+                                        .ok_or_else(|| invalid("workspace_task_invalid"))?,
+                                    &context.port.binding,
+                                )?;
+                            }
+                            Ok(())
+                        })();
+                        if let Err(error) = checked {
+                            let value =
+                                crate::mcp::workspaces::failure(context.call.op_id, error.as_ref());
+                            self.finish_document_effect(context, value);
+                            continue;
+                        }
+                    }
                     let ready = self.prepare_document_authority(&context, &mut prepared);
                     let (key, operator, wake_swarms) = match ready {
                         Ok(ready) => ready,

@@ -252,7 +252,7 @@ help:
 	  'make test-licenses               License metadata, copies and unattended negative fixtures' \
 	  'make check-license-packages      Inspect all crate package lists; no compilation' \
 	  'make publish-release            Signed tag + GitHub app release (authorization required)' \
-	  'make dispatch BATCH=x BRIEF=f   Headless Codex Executor on brief f in worktree ../<repo>-cx-x (Oracle only)' \
+	  'make test-workspace-provisioning Native workspace MCP, Git/process lifecycle and model checks' \
 	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... LAND_GATE_LOG=... BBOXY_CACHE_MODE=auto|off CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2 RUST_TEST_THREADS=2' \
 	  'GitKB: GITKB_BIN=... PLUGIN_WORKSPACE=/explicit/local/project'
 
@@ -808,16 +808,13 @@ push: land
 # Landing (LAND.md). `make land` is the fast path: rebase, clippy and nextest for
 # the changed crates and their dependents, push (scripts/land-fast.sh), reusing the
 # worktree's own warm target. `make land-full` is the full signed gate.
-.PHONY: land land-full land-gate dispatch
+.PHONY: land land-full land-gate
 land: tools
 	@sh scripts/land-fast.sh
 
 land-full:
 	@$(MAKE) land-gate LAND_ARGS=--full
 
-dispatch:
-	@test -n "$(BATCH)" -a -n "$(BRIEF)" || { echo 'usage: make dispatch BATCH=name BRIEF=path/to/brief.md'; exit 2; }
-	sh scripts/dispatch-codex.sh '$(BATCH)' '$(abspath $(BRIEF))'
 
 land-gate: tools
 	@set -u; mkdir -p '$(abspath $(TARGET_DIR))'; \
@@ -2581,3 +2578,13 @@ check-mermaid-fullscreen:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo clippy --locked --release -p bboxy450-ui -p bboxy450-doc --lib --target-dir '$(TARGET_DIR)' -- -D warnings; \
 	cargo check --locked --release -p bboxy450-term --lib --bin bboxy450-term --target-dir '$(TARGET_DIR)'
+
+.PHONY: check-workspace-provisioning test-workspace-provisioning
+check-workspace-provisioning: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked -p bboxy450-term-mux --features model --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+test-workspace-provisioning: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked -p bboxy450-term-mux --features model --lib --target-dir '$(TARGET_DIR)' -E 'test(managed_workspace)'; \
+	cargo nextest run --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' -E 'test(managed_workspace)'

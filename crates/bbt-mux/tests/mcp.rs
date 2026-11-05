@@ -14,6 +14,8 @@ mod harness_status;
 mod knowledge_types_tests;
 #[path = "mcp/launch.rs"]
 mod launch_tests;
+#[path = "mcp/workspaces.rs"]
+mod workspace_tests;
 #[path = "common/record_supervisor.rs"]
 mod record_supervisor;
 use record_supervisor::RecordLink;

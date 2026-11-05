@@ -6,6 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Restartable IO/logic owner. The UI gets an async bounded client, not a DB or PTY.
 mod history;
+mod implementation_workspaces;
 mod ingestion;
 mod knowledge_effects;
 mod role_catalog;
@@ -48,8 +49,8 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, oneshot};
 use ulid::Ulid;
 
-use bbt_supervisor::supervisor::capture_diagnostics::{Outcome, Phase, Recorder};
 use bbt_supervisor::protocol::SeatSize;
+use bbt_supervisor::supervisor::capture_diagnostics::{Outcome, Phase, Recorder};
 
 use crate::bus::{Broker, BusHandle};
 use crate::checkpoint::{Age, Cursor as CheckpointCursor, Policy as CheckpointPolicy, Saves};
@@ -205,7 +206,10 @@ enum Command {
         crate::mcp::Origin,
         oneshot::Sender<Result<UiAdmission>>,
     ),
-    RecoverSeats(oneshot::Sender<Result<()>>, Option<mpsc::UnboundedSender<(u64, u64)>>),
+    RecoverSeats(
+        oneshot::Sender<Result<()>>,
+        Option<mpsc::UnboundedSender<(u64, u64)>>,
+    ),
     GuiHosts(oneshot::Sender<Result<Vec<bbt_proto::GuiHost>>>),
     GuiSwarm(
         Box<bbt_proto::GuiAction>,
@@ -991,7 +995,10 @@ impl LogicClient {
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
     }
     /// Resume retained sessions while reporting completed attempts and total.
-    pub async fn recover_seats_with_progress(&self, mut progress: impl FnMut(u64, u64) + Send) -> Result<()> {
+    pub async fn recover_seats_with_progress(
+        &self,
+        mut progress: impl FnMut(u64, u64) + Send,
+    ) -> Result<()> {
         let (tx, rx) = oneshot::channel();
         let (updates, mut receiver) = mpsc::unbounded_channel();
         self.tx.send(Command::RecoverSeats(tx, Some(updates))).await
@@ -2991,6 +2998,8 @@ struct Worker {
     workspace_reads: BTreeMap<String, Vec<PendingWorkspaceRead>>,
     knowledge_reads: BTreeMap<String, Arc<tokio::sync::Semaphore>>,
     knowledge_jobs: tokio::task::JoinSet<crate::knowledge::seat_reads::Completion>,
+    implementation_workspaces: crate::mcp::workspaces::Service,
+    implementation_jobs: tokio::task::JoinSet<implementation_workspaces::Completion>,
     diagnostic_jobs: tokio::task::JoinSet<DiagnosticCompletion>,
     diagnostic_pending: BTreeSet<Ulid>,
     /// Each seat's latest ATC session attribution, by process generation.
@@ -3242,6 +3251,7 @@ impl Worker {
             capability,
         )?;
         let checkpoint_policy = CheckpointPolicy::for_ring(&config.ring);
+        let implementation_workspaces = crate::mcp::workspaces::Service::open(&config.run_dir)?;
         let mut worker = Self {
             connections,
             config,
@@ -3262,6 +3272,8 @@ impl Worker {
             workspace_reads: BTreeMap::new(),
             knowledge_reads: BTreeMap::new(),
             knowledge_jobs: tokio::task::JoinSet::new(),
+            implementation_workspaces,
+            implementation_jobs: tokio::task::JoinSet::new(),
             diagnostic_jobs: tokio::task::JoinSet::new(),
             diagnostic_pending: BTreeSet::new(),
             seat_attribution: BTreeMap::new(),
@@ -4558,7 +4570,11 @@ impl Worker {
                 .claim_ready(&port.index, reference)
                 .unwrap_or(false)
             {
-                return crate::mcp::error(call.op_id, "held", "artifact_not_committed: claim an existing committed artifact; work in progress is not promoted by a claim");
+                return crate::mcp::error(
+                    call.op_id,
+                    "held",
+                    "artifact_not_committed: claim an existing committed artifact; work in progress is not promoted by a claim",
+                );
             }
             if let Err(reason) = crate::provenance::artifacts::reconcile_claim(
                 &port.index,
@@ -4946,7 +4962,7 @@ impl Worker {
         caller: &SeatRecord,
         call: &crate::mcp::Call,
     ) -> std::result::Result<crate::mcp::seats::Request, String> {
-        let request = crate::mcp::seats::request(actor, call)?;
+        let mut request = crate::mcp::seats::request(actor, call)?;
         let target = request
             .target()
             .map(|target| {
@@ -4976,7 +4992,29 @@ impl Worker {
         {
             return Err("focus target is closed".into());
         }
-        if let crate::mcp::seats::Request::Spawn(args) = &request {
+        if let crate::mcp::seats::Request::Spawn(args) = &mut request {
+            if let Some(reference) = &args.workspace {
+                let binding = self
+                    .workspaces
+                    .cache
+                    .current(actor.swarm_id)
+                    .map_err(|e| e.to_string())?;
+                let root = self
+                    .workspaces
+                    .cache
+                    .get(binding)
+                    .map_err(|e| e.to_string())?;
+                let managed = self
+                    .implementation_workspaces
+                    .resolve(
+                        reference,
+                        actor,
+                        binding,
+                        root.provider_revision().map_err(|e| e.to_string())?,
+                    )
+                    .map_err(|e| e.to_string())?;
+                args.cwd = managed.cwd;
+            }
             self.roles_idle().map_err(|error| error.to_string())?;
             if !args.cwd.is_dir() {
                 return Err("spawn cwd is not an available directory".into());
@@ -5198,6 +5236,22 @@ impl Worker {
                 ),
             },
             Request::Spawn(args) => {
+                let managed = args
+                    .workspace
+                    .as_ref()
+                    .map(|reference| self.implementation_workspaces.get(reference.id))
+                    .transpose();
+                let managed = match managed {
+                    Ok(r) => r,
+                    Err(error) => {
+                        return crate::mcp::workspaces::failure(call.op_id, error.as_ref());
+                    }
+                };
+                if let Some(r) = &managed
+                    && let Err(error) = self.implementation_workspaces.reserve(r, id, call.op_id)
+                {
+                    return crate::mcp::workspaces::failure(call.op_id, error.as_ref());
+                }
                 let result = (|| -> Result<SeatInfo> {
                     let placement = Some(self.control_placement(&args, id)?);
                     let (record, harness, mut options) = self.prepare_spawn(
@@ -5229,19 +5283,41 @@ impl Worker {
                             .env
                             .push(("BBOXY450_HARNESS_PROFILE".into(), profile));
                     }
-                    self.launch(record, harness, options)
+                    if let Some(workspace) = &managed {
+                        options.env.push((
+                            "BBOXY_WORKSPACE_ID".into(),
+                            workspace.workspace_id.to_string(),
+                        ));
+                    }
+                    let info = self.launch(record, harness, options)?;
+                    Ok(info)
                 })();
                 match result {
                     Ok(info) => crate::mcp::success(
                         call.op_id,
                         json!({"status":"applied","seat_id":info.seat,"process_generation":info.generation.to_string(),"pid":info.pid,"placement":self.registry.get(info.seat).ok().and_then(|r| r.launch_placement)}),
                     ),
-                    Err(_) => seats::failure(
-                        call.op_id,
-                        "unknown",
-                        "spawn outcome unavailable; inspect the reserved seat ID; no automatic relaunch",
-                        json!({"seat_id":id,"process_generation":"1"}),
-                    ),
+                    Err(_) => {
+                        let unstarted = managed.as_ref().is_some_and(|r| {
+                            self.implementation_workspaces
+                                .cancel_unstarted_launch(r.workspace_id, id, call.op_id)
+                                .unwrap_or(false)
+                        });
+                        seats::failure(
+                            call.op_id,
+                            if unstarted {
+                                "spawn_not_started"
+                            } else {
+                                "unknown"
+                            },
+                            if unstarted {
+                                "launch planning failed before a supervisor spawn request; reservation released, inspect workspace_get and approved profile"
+                            } else {
+                                "spawn outcome unavailable; inspect the reserved seat ID; no automatic relaunch"
+                            },
+                            json!({"seat_id":id,"process_generation":"1"}),
+                        )
+                    }
                 }
             }
             Request::Mute {
@@ -5806,6 +5882,7 @@ impl Worker {
                     .collect::<Vec<_>>();
                 let value = json!({
                     "actor":actor,"seat":self.control_seat(record),"tasks":tasks,"tools":tools,
+                    "implementation_workspace":self.implementation_workspaces.own(actor).map_err(|e|e.to_string())?.map(|r|r.view()),
                     "destinations":destinations,
                     "attention":crate::mcp::attention::view(record)?,
                     "operator":"to reach the operator, reply with reply_to, or send to operator/inbox",
@@ -6138,6 +6215,12 @@ impl Worker {
         let port = self
             .workspaces
             .select(&self.registry, actor.swarm_id, None)?;
+        self.implementation_workspaces.execution_context(
+            actor,
+            &port.binding,
+            port.host.revision()?,
+            None,
+        )?;
         self.messaging
             .bind_workspace(actor.swarm_id, &port.binding.root_id)?;
         Ok(port)
@@ -6312,6 +6395,10 @@ impl Worker {
     }
     fn attach(&mut self, info: SeatInfo, live_start: bool) -> Result<()> {
         check_size(info.size.cols as usize, info.size.rows as usize)?;
+        // A lost Spawned reply is reconciled from the supervisor's exact owned
+        // seat/generation/PID, never by launching another writer.
+        self.implementation_workspaces
+            .observe_launch(info.seat, info.generation, info.pid)?;
         self.parsers.retire(info.seat);
         self.ring_reads.remove(&info.seat);
         let host = self.host_for_seat(info.seat)?;
@@ -6999,7 +7086,10 @@ impl Worker {
         // that actually started. Reconciliation uses the original durable seat ID.
         self.spawn(record, plan.spec)
     }
-    fn prepare_seat_recovery(&mut self, progress: Option<mpsc::UnboundedSender<(u64, u64)>>) -> Result<seat_recovery::Batch> {
+    fn prepare_seat_recovery(
+        &mut self,
+        progress: Option<mpsc::UnboundedSender<(u64, u64)>>,
+    ) -> Result<seat_recovery::Batch> {
         let mut eligible = Vec::new();
         for record in self.registry.list()? {
             if record.location != crate::registry::Location::Local
@@ -7029,8 +7119,17 @@ impl Worker {
             if !ring_root.join("committed").is_file() && !ring_root.join("previous").is_file() {
                 return Err(invalid("no committed predecessor capture"));
             }
-            crate::ring::Ring::open(&ring_root, record.id, record.generation, 0, settings.clone())?.replay()
-        }).inspect_err(|error| eprintln!("SeatRecoveryDeferred: {error}")).ok();
+            crate::ring::Ring::open(
+                &ring_root,
+                record.id,
+                record.generation,
+                0,
+                settings.clone(),
+            )?
+            .replay()
+        })
+        .inspect_err(|error| eprintln!("SeatRecoveryDeferred: {error}"))
+        .ok();
         Ok(seat_recovery::Batch {
             pending, preparations, deadline: Instant::now() + Duration::from_secs(60),
             total, completed: 0, progress, reply: None,
@@ -7065,7 +7164,12 @@ impl Worker {
     fn relaunch(&mut self, record: SeatRecord) -> Result<()> {
         self.relaunch_prepared(record, None, false)
     }
-    fn relaunch_prepared(&mut self, mut record: SeatRecord, prepared: Option<Playback>, history_deferred: bool) -> Result<()> {
+    fn relaunch_prepared(
+        &mut self,
+        mut record: SeatRecord,
+        prepared: Option<Playback>,
+        history_deferred: bool,
+    ) -> Result<()> {
         {
             let root = object_dir(&self.config.run_dir, &format!("seat-{}", record.id))?;
             let store = SqliteStore::open(&root)?;
@@ -7405,6 +7509,24 @@ impl Worker {
             self.provenance_registered
                 .insert((record.id, record.generation, port.binding.root_id));
         }
+        let managed_workspace = if bare {
+            None
+        } else {
+            self.implementation_workspaces.prepare_launch(
+                record.id,
+                record.generation,
+                record.swarm,
+                &spec.cwd,
+                &self.registry,
+            )?
+        };
+        if let Some(workspace) = managed_workspace {
+            self.implementation_workspaces.request_launch(
+                workspace,
+                record.id,
+                record.generation,
+            )?;
+        }
         let Reply::Spawned { info } = self
             .request_for_seat(record.id, Action::Spawn { spec })
             .inspect_err(|e| {
@@ -7417,6 +7539,14 @@ impl Worker {
         else {
             return Err(invalid("spawn reply mismatch"));
         };
+        if let Some(workspace) = managed_workspace {
+            self.implementation_workspaces.launched(
+                workspace,
+                info.seat,
+                info.generation,
+                info.pid,
+            )?;
+        }
         if self
             .views
             .get(&info.seat)
@@ -9123,6 +9253,7 @@ impl Worker {
     }
     fn pump_messages(&mut self) -> Result<()> {
         self.poll_root_publications();
+        self.poll_implementation_workspaces();
         while let Some(joined) = self.role_updates.try_join_next() {
             match joined {
                 Ok(done) => {
@@ -10721,7 +10852,13 @@ impl Worker {
                         } else {
                             call
                         };
-                        if call.tool == "history_read" {
+                        if crate::mcp::workspaces::handles(&call.tool) {
+                            self.start_workspace_call(id, generation, call, reply);
+                        } else if matches!(call.tool.as_str(), "seat_spawn" | "seat_split")
+                            && call.args.get("workspace").is_some()
+                        {
+                            self.start_workspace_spawn(id, generation, call, reply);
+                        } else if call.tool == "history_read" {
                             self.start_control_history(id, generation, call, reply);
                         } else if call.tool == "diagnostic_errors" {
                             self.start_diagnostic_read(id, generation, call, reply);
@@ -12745,9 +12882,18 @@ mod identity_retry_clock_tests {
                 std::thread::sleep(Duration::from_millis(5));
             }
         };
-        advance(&mut worker, &|worker| worker.workspaces.cache.startup().index
-            .activity().after(0, 128).unwrap().iter()
-            .any(|row| row.event.payload["reason"] == "artifact-projection-signing-held"));
+        advance(&mut worker, &|worker| {
+            worker
+                .workspaces
+                .cache
+                .startup()
+                .index
+                .activity()
+                .after(0, 128)
+                .unwrap()
+                .iter()
+                .any(|row| row.event.payload["reason"] == "artifact-projection-signing-held")
+        });
         assert!(
             worker
                 .workspaces
@@ -12792,8 +12938,16 @@ mod identity_retry_clock_tests {
             worker.identity.status().unwrap().state,
             IdentityState::LocalDev
         );
-        advance(&mut worker, &|worker| worker.workspaces.cache.startup().index
-            .current(&path).unwrap().is_some());
+        advance(&mut worker, &|worker| {
+            worker
+                .workspaces
+                .cache
+                .startup()
+                .index
+                .current(&path)
+                .unwrap()
+                .is_some()
+        });
         let doc = worker
             .workspaces
             .cache
@@ -12842,9 +12996,18 @@ mod identity_retry_clock_tests {
                 ),
             ))
             .unwrap();
-        advance(&mut worker, &|worker| worker.workspaces.cache.startup().index
-            .activity().after(conflicting.seq, 128).unwrap().iter()
-            .any(|row| row.event.payload["reason"] == "projection-failed"));
+        advance(&mut worker, &|worker| {
+            worker
+                .workspaces
+                .cache
+                .startup()
+                .index
+                .activity()
+                .after(conflicting.seq, 128)
+                .unwrap()
+                .iter()
+                .any(|row| row.event.payload["reason"] == "projection-failed")
+        });
         let gap = worker
             .workspaces
             .cache
