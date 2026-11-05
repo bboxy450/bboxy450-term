@@ -58,7 +58,7 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
         "Create/update e2e, comment, research, note and artifact records as your seat. Create append-only reports at reports/YYYY-MM-DD-slug.md for your assigned task; corrections create a new report with supersedes. For your assigned task preserve every other field and the body, changing only report.summary, report.commit, report.report and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools. Updates retain type, ref and etag."
     };
     let write_help = format!(
-        "{write_help} First call knowledge_orient to load the selected provider's skill and writing workflow. Call knowledge_types for the built-in type dictionary, purposes, paths and writing guidance; concern records use concerns/<slug>.md. Research is a supported type: use research/<topic>.md with parent/children for its document tree, derived_from for origins, and links with rel used/evidence for cited sources. Specs and tasks retain derived_from links to their research or spec; these relations feed the provenance graph. The host stamps authorship and signed provenance. Create takes a document-type path (tasks/slug.md, specs/slug.md, concerns/slug.md, etc.); update takes the ref a fetch or search returned. Top-level slugs are refused. {IDENTIFIERS}"
+        "{write_help} First call knowledge_orient to load the selected provider's skill and writing workflow. Call knowledge_types for the built-in type dictionary, purposes, paths and writing guidance; concern records use concerns/<slug>.md. Research is a supported type: use research/<topic>.md with parent/children for its document tree, derived_from for origins, and links with rel used/evidence for cited sources. Specs and tasks retain derived_from links to their research or spec; these relations feed the provenance graph. The host stamps authorship and a signed mutation audit. Writes are drafts, visible to other harnesses but not artifacts. Call knowledge_commit only for cross-machine sharing preparation, a substantial checkpoint, or final accepted/done work; it never pushes. Later edits become draft again. Create takes a document-type path (tasks/slug.md, specs/slug.md, concerns/slug.md, etc.); update takes the ref a fetch or search returned. Top-level slugs are refused. {IDENTIFIERS}"
     );
     let kinds: Vec<_> = DOCUMENT_TYPES.iter().map(|entry| entry.kind).collect();
     let mut tools = vec![
@@ -82,11 +82,9 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
             "inputSchema":write,"outputSchema":{"type":"object","additionalProperties":true},
             "annotations":{"readOnlyHint":false,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}}),
     ];
-    if actor.role.class == Class::Oracle {
-        tools.push(json!({"name":"knowledge_commit","description":format!("Commit only the explicitly named documents through this swarm's selected source. Each of locators: {LOCATOR} Requires Oracle authority; never pushes. {IDENTIFIERS}"),
+    tools.push(json!({"name":"knowledge_commit","description":format!("Create an explicit committed artifact checkpoint for named documents. Commit to prepare cross-machine sharing, preserve a substantial chunk of changes, or record finally accepted/done work; do not commit each edit. Draft edits stay visible without artifact processing. Later edits become draft again. Built-in knowledge uses a private local Git repository; GitKB uses its native commit operation. Workers commit their own records/assigned tasks; Oracle may commit shared records. Never pushes or shares remotely by itself. Each of locators: {LOCATOR} {IDENTIFIERS}"),
             "inputSchema":{"type":"object","additionalProperties":false,"properties":{"op_id":{"type":"string"},"locators":{"type":"array","minItems":1,"maxItems":32,"items":{"type":"string","minLength":1,"maxLength":4096}},"message":{"type":"string","minLength":1,"maxLength":4096}},"required":["op_id","locators","message"]},
             "outputSchema":{"type":"object","additionalProperties":true},"annotations":{"readOnlyHint":false,"idempotentHint":true,"destructiveHint":false,"openWorldHint":false}}));
-    }
     tools
 }
 
@@ -111,6 +109,7 @@ pub(crate) fn type_info(args: &Value) -> Result<Value, String> {
         "writing":{
             "create":"Call knowledge_write with a root-relative Markdown path under a document-type directory (such as concerns/session-continuity.md), frontmatter containing type and title, and a Markdown body. The host assigns identity, number, timestamps, authorship and signatures; do not invent them.",
             "update":"Fetch the current record with knowledge_fetch, then pass its ref and etag to knowledge_write, preserving type and other frontmatter. Omit path on update.",
+            "publication":"Draft -> committed checkpoint -> draft on later edits. Use knowledge_write freely for work in progress. Use knowledge_commit deliberately to prepare cross-machine sharing, preserve substantial document changes, or record finally accepted/done work. Commit creates artifact provenance; it does not push. knowledge_fetch exposes publication_state and a matching checkpoint.",
             "authority":"Follow your role-filtered knowledge_write schema and task_* or artifact_* controls. This dictionary describes types and conventions; it grants no permissions and a selected provider may refuse unsupported writes.",
             "custom_types":"Oracle-class writes may also use custom types; these entries describe the built-in vocabulary rather than a closed storage schema."
         }

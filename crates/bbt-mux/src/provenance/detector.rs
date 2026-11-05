@@ -132,6 +132,7 @@ enum Finished {
 }
 
 pub(crate) struct Detector {
+    commits_only: bool,
     primary: PathBuf,
     roots: Vec<Root>,
     bindings: BTreeMap<Ulid, Binding>,
@@ -439,9 +440,21 @@ fn bounded_gap(queue: &mut VecDeque<String>, reason: String) {
 }
 
 impl Detector {
+    #[cfg(test)]
     pub fn new(repository: &Path, handle: tokio::runtime::Handle) -> Result<Self> {
+        Self::with_mode(repository, handle, false)
+    }
+    pub fn committed(repository: &Path, handle: tokio::runtime::Handle) -> Result<Self> {
+        Self::with_mode(repository, handle, true)
+    }
+    fn with_mode(
+        repository: &Path,
+        handle: tokio::runtime::Handle,
+        commits_only: bool,
+    ) -> Result<Self> {
         let primary = repository.canonicalize()?;
         let mut detector = Self {
+            commits_only,
             primary: primary.clone(),
             roots: vec![],
             bindings: BTreeMap::new(),
@@ -494,13 +507,15 @@ impl Detector {
             prefix,
             dir: Arc::new(directory),
         };
-        let inbox = self.inbox.clone();
-        let observed = root.path.clone();
-        let mut watcher = notify::recommended_watcher(move |result| {
-            record_fs_event(&inbox, &observed, id, result);
-        })?;
-        watcher.watch(path, RecursiveMode::Recursive)?;
-        self.watchers.push(watcher);
+        if !self.commits_only {
+            let inbox = self.inbox.clone();
+            let observed = root.path.clone();
+            let mut watcher = notify::recommended_watcher(move |result| {
+                record_fs_event(&inbox, &observed, id, result);
+            })?;
+            watcher.watch(path, RecursiveMode::Recursive)?;
+            self.watchers.push(watcher);
+        }
         self.roots.push(root);
         Ok(id)
     }
@@ -604,7 +619,11 @@ impl Detector {
         }
         relative(&root.path, &root.path.join(path)).is_some()
     }
+    #[cfg(test)]
     pub fn hook(&mut self, seat: Ulid, generation: u64, event: &crate::adapters::hook::ShimEvent) {
+        if self.commits_only {
+            return;
+        }
         if !matches!(event.event.as_str(), "PostToolUse" | "post_tool_use")
             || !matches!(
                 event.raw["tool_name"].as_str(),
@@ -663,35 +682,10 @@ impl Detector {
                 at: now_ms(),
             });
     }
-    pub fn osc(&mut self, seat: Ulid, generation: u64, params: &[Vec<u8>]) {
-        use base64::Engine;
-        if params.first().map(Vec::as_slice) != Some(b"7502") {
-            return;
-        }
-        let Some(text) = params.get(1).and_then(|p| std::str::from_utf8(p).ok()) else {
-            return;
-        };
-        let pairs: BTreeMap<_, _> = text.split(':').filter_map(|p| p.split_once('=')).collect();
-        if pairs.get("v") != Some(&"1") {
-            return;
-        }
-        let Some(data) = pairs
-            .get("d")
-            .filter(|d| d.len() <= crate::adapters::hook::MAX_RAW * 2)
-            .and_then(|d| base64::engine::general_purpose::STANDARD.decode(d).ok())
-        else {
-            return;
-        };
-        let Ok(value) = serde_json::from_slice::<serde_json::Value>(&data) else {
-            return;
-        };
-        let event = crate::adapters::hook::ShimEvent {
-            event: pairs.get("ev").unwrap_or(&"").to_string(),
-            raw: value["raw"].clone(),
-        };
-        self.hook(seat, generation, &event);
-    }
     pub fn reconcile_known(&mut self, references: impl IntoIterator<Item = String>) {
+        if self.commits_only {
+            return;
+        }
         let mut inbox = self.inbox.lock().unwrap_or_else(|e| e.into_inner());
         let mut clipped = false;
         for reference in references {
@@ -792,7 +786,10 @@ impl Detector {
                                 "git-ref-scan-bound: retained first128 refs".into(),
                             );
                         }
-                        if let Some(old) = self.git_state.insert(root, snapshot.clone()) {
+                        let previous = self.git_state.insert(root, snapshot.clone());
+                        if let Some(old) = previous
+                            .or_else(|| self.commits_only.then(super::git::Snapshot::default))
+                        {
                             let prefix = self.roots[root].prefix.clone();
                             let mut attribution = Attribution::inferred(vec![]);
                             if let Some(seat) = snapshot.trailer {
@@ -868,7 +865,7 @@ impl Detector {
         if self.jobs.len() < HASH_JOBS
             && self.git_job.is_none()
             && !self.roots.is_empty()
-            && self.git_at.elapsed() >= std::time::Duration::from_secs(1)
+            && self.git_at.elapsed() >= std::time::Duration::from_secs(15)
         {
             let root = self.git_cursor % self.roots.len();
             self.git_cursor = self.git_cursor.wrapping_add(1);
@@ -880,8 +877,19 @@ impl Detector {
                 .is_ok()
             {
                 let path = self.roots[root].path.clone();
+                let commits_only = self.commits_only;
                 let task = self.jobs.spawn_blocking_on(
-                    move || Finished::Git(root, super::git::Snapshot::load(&path), now_ms()),
+                    move || {
+                        Finished::Git(
+                            root,
+                            if commits_only {
+                                super::git::Snapshot::head_only(&path)
+                            } else {
+                                super::git::Snapshot::load(&path)
+                            },
+                            now_ms(),
+                        )
+                    },
                     &self.handle,
                 );
                 self.git_job = Some(task.id());
@@ -1301,3 +1309,7 @@ mod rescan_tests {
         assert_eq!(detector.inbox.lock().unwrap().lost, 0);
     }
 }
+
+#[cfg(test)]
+#[path = "detector/commit_boundary_tests.rs"]
+mod commit_boundary_tests;

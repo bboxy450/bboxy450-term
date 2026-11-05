@@ -32,7 +32,7 @@ fn next(call: &Call, result: &Value) -> Vec<Value> {
     if data["status"] == "unknown"
         || matches!(
             data["error"]["code"].as_str(),
-            Some("unknown" | "op_id_reused")
+            Some("unknown" | "op_id_reused" | "commit_not_confirmed" | "write_not_confirmed")
         )
     {
         let original = call.args["original_op_id"]
@@ -86,12 +86,28 @@ fn next(call: &Call, result: &Value) -> Vec<Value> {
             ];
         }
         "knowledge_orient" => {
-            if let Some(uri) = data["skills"].as_array().and_then(|skills|skills.iter().find(|s|s["requires_skill_read"] == true)).and_then(|s|s["uri"].as_str()) {
-                tool("skill_read", json!({"uri":uri}), "Load the remaining provider guidance before writing.")
+            if let Some(uri) = data["skills"]
+                .as_array()
+                .and_then(|skills| skills.iter().find(|s| s["requires_skill_read"] == true))
+                .and_then(|s| s["uri"].as_str())
+            {
+                tool(
+                    "skill_read",
+                    json!({"uri":uri}),
+                    "Load the remaining provider guidance before writing.",
+                )
             } else if !data["provider_error"].is_null() {
-                tool("knowledge_status", json!({}), "Inspect why the selected provider's guidance is unavailable.")
+                tool(
+                    "knowledge_status",
+                    json!({}),
+                    "Inspect why the selected provider's guidance is unavailable.",
+                )
             } else {
-                tool("knowledge_search", json!({"query":"type:spec"}), "Read existing intent and linked tasks before writing or creating duplicates.")
+                tool(
+                    "knowledge_search",
+                    json!({"query":"type:spec"}),
+                    "Read existing intent and linked tasks before writing or creating duplicates.",
+                )
             }
         }
         "knowledge_types" | "graph_read" => {
@@ -121,7 +137,7 @@ fn next(call: &Call, result: &Value) -> Vec<Value> {
             Some(path) => tool(
                 "knowledge_fetch",
                 json!({"locator":path}),
-                "Read back the document that was written.",
+                "Read back this draft. Use knowledge_commit deliberately for a substantial checkpoint, before cross-machine sharing, or after final acceptance; do not commit each edit.",
             ),
             None => tool(
                 "knowledge_types",

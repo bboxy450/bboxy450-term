@@ -15,7 +15,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub(crate) struct Snapshot {
     pub head: Option<String>,
     pub digest: Option<String>,
@@ -138,6 +138,12 @@ fn run(root: &Path, directory: &Path, args: &[&str], limit: u64) -> Result<Vec<u
 }
 impl Snapshot {
     pub fn load(root: &Path) -> Result<Option<Self>, String> {
+        Self::load_mode(root, true)
+    }
+    pub fn head_only(root: &Path) -> Result<Option<Self>, String> {
+        Self::load_mode(root, false)
+    }
+    fn load_mode(root: &Path, include_refs: bool) -> Result<Option<Self>, String> {
         let Some(directory) = git_directory(root) else {
             return Ok(None);
         };
@@ -146,16 +152,20 @@ impl Snapshot {
             .and_then(|bytes| String::from_utf8(bytes).ok())
             .map(|s| s.trim().to_owned())
             .filter(|s| oid(s));
-        let refs = run(
-            root,
-            &directory,
-            &[
-                "for-each-ref",
-                "--count=129",
-                "--format=%(refname)%09%(objectname)",
-            ],
-            65536,
-        )?;
+        let refs = if include_refs {
+            run(
+                root,
+                &directory,
+                &[
+                    "for-each-ref",
+                    "--count=129",
+                    "--format=%(refname)%09%(objectname)",
+                ],
+                65536,
+            )?
+        } else {
+            Vec::new()
+        };
         let refs = String::from_utf8(refs).map_err(|_| "git ref encoding unavailable")?;
         let mut entries = BTreeMap::new();
         let mut clipped = false;

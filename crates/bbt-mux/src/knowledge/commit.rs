@@ -58,10 +58,16 @@ fn git(root: &Path, args: &[&str], deadline: Instant) -> d::Result<Output> {
     let failure = |e: std::io::Error| d::CommandError::new("git_unavailable", e.to_string());
     let mut stdout = tempfile::tempfile().map_err(failure)?;
     let mut stderr = tempfile::tempfile().map_err(failure)?;
-    let mut command = Command::new("git");
+    // Bypass shell/harness Git shims for this private local store on macOS.
+    let mut command = Command::new(if cfg!(target_os = "macos") {
+        "/usr/bin/git"
+    } else {
+        "git"
+    });
     // Literal pathspecs include filenames containing []/*/: without expansion.
     command
         .current_dir(root)
+        .args(["-c", "core.hooksPath=/dev/null"])
         .arg("--literal-pathspecs")
         .args(args)
         .process_group(0)
@@ -156,6 +162,53 @@ fn checked(root: &Path, args: &[&str], deadline: Instant) -> d::Result<String> {
 pub(crate) fn local(root: &Path, request: d::CommitRequest) -> d::Result<d::CommitResult> {
     let deadline = Instant::now() + Duration::from_secs(15);
     validate(&request)?;
+    // Native knowledge is private local state. Give it its own repository;
+    // never force-add .bboxy into the surrounding source repository.
+    match root.join(".git").symlink_metadata() {
+        Ok(metadata) if !metadata.is_dir() || metadata.file_type().is_symlink() => {
+            return Err(d::CommandError::new(
+                "invalid_path",
+                "native knowledge Git directory must be a private regular directory",
+            ));
+        }
+        Ok(_) => (),
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+            // Copy public signing configuration, never keys or the parent's
+            // index. Native knowledge remains a private independent repository.
+            let mut identity = Vec::new();
+            for name in [
+                "user.name",
+                "user.email",
+                "user.signingkey",
+                "gpg.format",
+                "gpg.program",
+                "gpg.ssh.program",
+                "gpg.ssh.allowedSignersFile",
+            ] {
+                let value = git(root, &["config", "--get", name], deadline)?;
+                if value.status.success() {
+                    let value = String::from_utf8(value.stdout)
+                        .map_err(|e| d::CommandError::new("invalid_git_result", e.to_string()))?;
+                    if value.len() > 4096 {
+                        return Err(d::CommandError::new(
+                            "invalid_git_config",
+                            "signing identity setting exceeds bound",
+                        ));
+                    }
+                    identity.push((name, value.trim_end().to_owned()));
+                }
+            }
+            checked(
+                root,
+                &["init", "--quiet", "--initial-branch=main", "--template="],
+                deadline,
+            )?;
+            for (name, value) in identity {
+                checked(root, &["config", "--local", name, &value], deadline)?;
+            }
+        }
+        Err(error) => return Err(d::CommandError::new("git_unavailable", error.to_string())),
+    }
     let repository = checked(root, &["rev-parse", "--show-toplevel"], deadline)?;
     let repository = Path::new(repository.trim())
         .canonicalize()
@@ -163,6 +216,12 @@ pub(crate) fn local(root: &Path, request: d::CommitRequest) -> d::Result<d::Comm
     let root = root
         .canonicalize()
         .map_err(|e| d::CommandError::new("invalid_path", e.to_string()))?;
+    if repository != root {
+        return Err(d::CommandError::new(
+            "invalid_path",
+            "native knowledge must use its own private Git repository",
+        ));
+    }
     let mut paths = Vec::new();
     for reference in &request.refs {
         let mut path = root.clone();
@@ -229,3 +288,96 @@ pub(crate) fn local(root: &Path, request: d::CommitRequest) -> d::Result<d::Comm
         committed: request.refs,
     })
 }
+
+/// The explicit provider commit is the artifact boundary. Keep one signed
+/// receipt and per-record content/version anchors; ordinary edits create none.
+pub(crate) fn record(
+    index: &crate::index::Index,
+    result: &d::CommitResult,
+    context: &super::WriteContext<'_>,
+) -> crate::store::Result<serde_json::Value> {
+    use crate::{
+        provenance::artifacts::{Attribution, Change},
+        store::{Store, events::Draft},
+    };
+    use sha2::{Digest, Sha256};
+    let artifact = crate::Ulid::new();
+    let receipt = serde_json::to_vec(result)?;
+    let digest = format!("sha256:{:x}", Sha256::digest(&receipt));
+    let attribution = match (context.author.seat, context.author.generation) {
+        (Some(seat), Some(generation)) => Attribution::reported(seat, generation),
+        _ => Attribution::inferred(vec![]),
+    };
+    let change = Change {
+        artifact_id: artifact,
+        kind: "committed".into(),
+        reference: format!("knowledge:commit/{}", result.commit),
+        previous_ref: None,
+        digest: Some(digest.clone()),
+        before_digest: None,
+        bytes: Some(receipt.len() as u64),
+        attribution,
+        source: "knowledge/commit".into(),
+        reason: Some("digest of immutable provider commit receipt".into()),
+        commit: Some(result.commit.clone()),
+    };
+    let mut event = Draft::new(
+        format!("artifact/{artifact}/committed"),
+        "knowledge/commit",
+        serde_json::json!({"observation":change,"snapshot":result,"basis":"provider_commit_receipt"}),
+    );
+    event.seat = context.author.seat;
+    event.generation = context.author.generation;
+    let signed = index.append_activity(event, context.author.key)?;
+    let anchor = serde_json::json!({"id":artifact,"commit":result.commit,"digest":digest,"event":signed.event.id,"sequence":signed.seq});
+    for reference in &result.committed {
+        let mut state = anchor.clone();
+        state["record_digest"] = serde_json::json!(reference.digest);
+        index.mirror().put(
+            &format!("publication/{}", reference.id),
+            &serde_json::to_vec(&state)?,
+        )?;
+    }
+    Ok(anchor)
+}
+
+pub(crate) fn state(
+    index: &crate::index::Index,
+    id: &str,
+    digest: &str,
+) -> crate::store::Result<serde_json::Value> {
+    use crate::store::Store;
+    let saved = index
+        .mirror()
+        .get(&format!("publication/{id}"))?
+        .map(|v| serde_json::from_slice::<serde_json::Value>(&v))
+        .transpose()?;
+    Ok(match saved.filter(|v| v["record_digest"] == digest) {
+        Some(value) => serde_json::json!({"state":"committed","checkpoint":value}),
+        None => serde_json::json!({"state":"draft"}),
+    })
+}
+
+pub(crate) fn annotate(
+    index: &crate::index::Index,
+    value: &mut serde_json::Value,
+) -> d::Result<()> {
+    let id = value["id"]
+        .as_str()
+        .ok_or_else(|| d::CommandError::new("invalid_record", "record identity missing"))?;
+    let digest = value["digest"]
+        .as_str()
+        .ok_or_else(|| d::CommandError::new("invalid_record", "record digest missing"))?;
+    let publication = state(index, id, digest)
+        .map_err(|e| d::CommandError::new("publication_unavailable", e.to_string()))?;
+    value["publication_state"] = publication["state"].clone();
+    value["checkpoint"] = publication
+        .get("checkpoint")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
+    Ok(())
+}
+
+#[cfg(test)]
+#[path = "commit/tests.rs"]
+mod tests;

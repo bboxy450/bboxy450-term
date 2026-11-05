@@ -595,8 +595,10 @@ fn workspace_routing_actor_roots_isolate_colliding_records_tasks_writes_and_repl
     assert!(
         written["structuredContent"]["record"]["frontmatter"]["provenance"]["log"]
             .as_str()
-            .is_some_and(|path| path.starts_with(".bboxy/log/"))
+            .is_some_and(|path| path.starts_with("bboxy://activity/"))
     );
+
+    assert_eq!(written["structuredContent"]["record"]["frontmatter"]["provenance"]["event"]["id"], intent.event.id.to_string());
 
     fixture
         .worker

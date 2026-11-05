@@ -14,7 +14,7 @@ use crate::{
     identity::IdentityRuntime,
     index::{FileWatch, Index},
     plugins::{ProviderConfig, Registry as PluginRegistry},
-    provenance::engine::Engine,
+    provenance::worker::Worker as Engine,
     registry::Registry,
     store::{events::Draft, object_dir, sqlite::SqliteStore},
 };
@@ -202,7 +202,7 @@ impl Workspace {
     pub fn status(&self) -> crate::store::Result<bbt_proto::gui::KnowledgeStatus> {
         self.host.status(&self.index)
     }
-    /// Preserve the existing bounded provenance step for this root only.
+    /// Poll/dispatch the root's paced IO worker without waiting on its locks.
     pub fn step_provenance(
         &mut self,
         bus: &BusHandle,
@@ -210,17 +210,14 @@ impl Workspace {
         identity: &IdentityRuntime,
         active: &[(Ulid, u64, u64)],
     ) -> crate::store::Result<bool> {
-        let Some(writer) = self.index.try_projection_writer()? else {
-            return Ok(false);
-        };
-        let mut index = Arc::make_mut(&mut self.index).projection_scope(writer)?;
         let result = self
             .provenance
-            .step(&mut index, bus, runtime, identity, active);
+            .step(self.index.clone(), bus, runtime, identity, active);
         self.watch.mark_paths(self.provenance.take_refreshed());
         result
     }
     pub fn close(&self) {
+        self.provenance.stop();
         self.host.close();
     }
 }

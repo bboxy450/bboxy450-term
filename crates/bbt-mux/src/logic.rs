@@ -4349,11 +4349,14 @@ impl Worker {
             Ok(tool::Request::Fetch(locator)) => {
                 let source = port.host.source(&port.index, &self.registry);
                 let value = match tool::fetch_page(&source, locator, call) {
-                    Ok(record) => tool::bounded(
-                        call.op_id,
-                        mcp::success(call.op_id, serde_json::to_value(record)?),
-                        false,
-                    ),
+                    Ok(mut record) => {
+                        crate::knowledge::commit::annotate(&port.index, &mut record)?;
+                        tool::bounded(
+                            call.op_id,
+                            mcp::success(call.op_id, serde_json::to_value(record)?),
+                            false,
+                        )
+                    }
                     Err(reason) => mcp::error(call.op_id, &reason.code, &reason.message),
                 };
                 journal.checked(actor, call, value)
@@ -4548,7 +4551,7 @@ impl Worker {
                 .claim_ready(&port.index, reference)
                 .unwrap_or(false)
             {
-                return crate::mcp::error(call.op_id, "held", "artifact record projection pending");
+                return crate::mcp::error(call.op_id, "held", "artifact_not_committed: claim an existing committed artifact; work in progress is not promoted by a claim");
             }
             if let Err(reason) = crate::provenance::artifacts::reconcile_claim(
                 &port.index,
@@ -12699,7 +12702,7 @@ mod identity_retry_clock_tests {
         let path = format!("artifacts/{artifact}.md");
         let observation = Change {
             artifact_id: artifact,
-            kind: "created".into(),
+            kind: "committed".into(),
             reference: "held.txt".into(),
             previous_ref: None,
             digest: Some(format!(
@@ -12711,13 +12714,13 @@ mod identity_retry_clock_tests {
             attribution: Attribution::inferred(vec![]),
             source: "filesystem".into(),
             reason: None,
-            commit: None,
+            commit: Some("controlled-clock-checkpoint".into()),
         };
         let observed = runtime
             .block_on(bus.publish(
                 "index",
                 Draft::new(
-                    format!("artifact/{artifact}/created"),
+                    format!("artifact/{artifact}/committed"),
                     "provenance/filesystem",
                     serde_json::json!({"observation": observation}),
                 ),
@@ -12726,12 +12729,21 @@ mod identity_retry_clock_tests {
         observed.verify().unwrap();
         assert!(observed.event.source.starts_with("ephemeral-hold/"));
         let original = serde_json::to_vec(&observed).unwrap();
-        worker
-            .workspaces
-            .cache
-            .startup_mut()
-            .step_provenance(&bus, runtime.handle(), &worker.identity, &[])
-            .unwrap();
+        // Projection has an independent IO owner; advance control without
+        // assuming that dispatch also completed its durable effects.
+        let advance = |worker: &mut Worker, done: &dyn Fn(&Worker) -> bool| {
+            let deadline = Instant::now() + Duration::from_secs(20);
+            while !done(worker) {
+                worker.workspaces.cache.startup_mut()
+                    .step_provenance(&bus, runtime.handle(), &worker.identity, &[])
+                    .unwrap();
+                assert!(Instant::now() < deadline, "background projection did not progress");
+                std::thread::sleep(Duration::from_millis(5));
+            }
+        };
+        advance(&mut worker, &|worker| worker.workspaces.cache.startup().index
+            .activity().after(0, 128).unwrap().iter()
+            .any(|row| row.event.payload["reason"] == "artifact-projection-signing-held"));
         assert!(
             worker
                 .workspaces
@@ -12776,14 +12788,8 @@ mod identity_retry_clock_tests {
             worker.identity.status().unwrap().state,
             IdentityState::LocalDev
         );
-        assert!(
-            worker
-                .workspaces
-                .cache
-                .startup_mut()
-                .step_provenance(&bus, runtime.handle(), &worker.identity, &[])
-                .unwrap()
-        );
+        advance(&mut worker, &|worker| worker.workspaces.cache.startup().index
+            .current(&path).unwrap().is_some());
         let doc = worker
             .workspaces
             .cache
@@ -12832,13 +12838,9 @@ mod identity_retry_clock_tests {
                 ),
             ))
             .unwrap();
-        std::thread::sleep(Duration::from_secs(5));
-        worker
-            .workspaces
-            .cache
-            .startup_mut()
-            .step_provenance(&bus, runtime.handle(), &worker.identity, &[])
-            .expect("a conflicting row is a gap, not a stalled step");
+        advance(&mut worker, &|worker| worker.workspaces.cache.startup().index
+            .activity().after(conflicting.seq, 128).unwrap().iter()
+            .any(|row| row.event.payload["reason"] == "projection-failed"));
         let gap = worker
             .workspaces
             .cache

@@ -31,12 +31,24 @@ const OUTBOX: &str = "provenance/observation-outbox";
 const CURSOR: &str = "provenance/artifact-projection";
 // Artifact Markdown is an eventually consistent projection of the signed log.
 // A turn writes until this budget is spent, then rests REST_FACTOR times as
-// long (capped), so a burst catches up without holding the logic owner.
-// 8 ms keeps a terminal keystroke behind at most one slice of this work on
-// the logic owner's thread; artifacts may trail the log by minutes.
+// long (capped). The dedicated IO worker yields between pages; artifacts may
+// trail the signed log without holding the cockpit's control thread.
 const PROJECTION_BUDGET: Duration = Duration::from_millis(8);
 const REST_FACTOR: u32 = 8;
 const MAX_REST: Duration = Duration::from_secs(5);
+
+/// Capture custody once at dispatch; background IO never borrows the owner.
+pub(super) struct SigningSnapshot {
+    key: Option<ed25519_dalek::SigningKey>,
+    status: Option<crate::identity::IdentityStatus>,
+}
+impl SigningSnapshot {
+    pub(super) fn capture(identity: &IdentityRuntime) -> Result<Self> {
+        let key = identity.bus_signer()?;
+        let status = key.as_ref().map(|_| identity.status()).transpose()?;
+        Ok(Self { key, status })
+    }
+}
 #[derive(Clone)]
 struct Entry {
     id: Ulid,
@@ -83,7 +95,7 @@ impl Engine {
             .unwrap_or(0);
         let head = index.activity().last_sequence()?;
         let mut engine = Self {
-            detector: Detector::new(repository, handle)?,
+            detector: Detector::committed(repository, handle)?,
             store,
             entries: BTreeMap::new(),
             ready: VecDeque::new(),
@@ -117,12 +129,6 @@ impl Engine {
             self.diagnostic("artifact-worktree-unavailable".into());
         }
     }
-    pub fn hook(&mut self, seat: Ulid, generation: u64, event: &crate::adapters::hook::ShimEvent) {
-        self.detector.hook(seat, generation, event);
-    }
-    pub fn osc(&mut self, seat: Ulid, generation: u64, params: &[Vec<u8>]) {
-        self.detector.osc(seat, generation, params);
-    }
     pub fn normalize(&self, seat: Ulid, generation: u64, reference: &str) -> Option<String> {
         if self.entries.contains_key(reference) && self.detector.owns(seat, generation, reference) {
             return Some(reference.into());
@@ -136,6 +142,15 @@ impl Engine {
         if self.diagnostics.len() < 16 && !self.diagnostics.contains(&reason) {
             self.diagnostics.push_back(reason);
         }
+    }
+    pub(super) fn reconcile_inputs(&mut self) {
+        self.diagnostic("artifact-input-overflow: reconciliation required".into());
+        self.detector.reconcile_known(
+            self.entries
+                .iter()
+                .filter(|(_, entry)| entry.observed)
+                .map(|(reference, _)| reference.clone()),
+        );
     }
     fn apply_catalog(&mut self, change: &Change) {
         let entry = Entry {
@@ -212,6 +227,11 @@ impl Engine {
             .as_ref()
             .and_then(|p| self.entries.get(p))
             .or_else(|| self.entries.get(&row.reference));
+        if row.kind == "committed"
+            && old.is_some_and(|old| old.observed && old.digest == row.digest)
+        {
+            return None;
+        }
         if row.kind == "deleted" && old.is_none() {
             return None;
         }
@@ -265,12 +285,12 @@ impl Engine {
     /// One bounded catalog page, one observation and a budgeted, paced run of
     /// artifact projections. All hashes have already completed on the four
     /// bounded IO jobs.
-    pub fn step(
+    pub(super) fn step_snapshot(
         &mut self,
         index: &mut Index,
         bus: &BusHandle,
         handle: &tokio::runtime::Handle,
-        identity: &IdentityRuntime,
+        identity: &SigningSnapshot,
         active: &[(Ulid, u64, u64)],
     ) -> Result<bool> {
         let Some(writer) = index.try_projection_writer()? else {
@@ -284,14 +304,16 @@ impl Engine {
         index: &mut Index,
         bus: &BusHandle,
         handle: &tokio::runtime::Handle,
-        identity: &IdentityRuntime,
+        identity: &SigningSnapshot,
         active: &[(Ulid, u64, u64)],
     ) -> Result<bool> {
         if self.recovering {
-            let rows = index.activity().after(self.recovery_cursor, 128)?;
+            let rows = index.activity().after(self.recovery_cursor, 1024)?;
             let head = self.recovery_head;
             for row in rows.into_iter().take_while(|row| row.seq <= head) {
-                if let Some(change) = Self::change(&row) {
+                if let Some(change) = Self::change(&row)
+                    && change.commit.is_some()
+                {
                     self.apply_catalog(&change);
                 }
                 self.recovery_cursor = row.seq;
@@ -356,7 +378,7 @@ impl Engine {
             self.pending = None;
         }
         let mut changed = false;
-        let signer = identity.bus_signer()?;
+        let signer = identity.key.as_ref();
         let held = signer.is_none();
         if self.holding != Some(held) {
             let event = Draft::new(
@@ -371,12 +393,22 @@ impl Engine {
         if let Some(key) = signer
             && self.projection_due.is_none_or(|due| started >= due)
         {
-            let status = identity.status()?;
+            let status = identity
+                .status
+                .as_ref()
+                .expect("signer has captured status");
             let before_projection = self.projection_cursor;
             let rows = index.activity().after(self.projection_cursor, 128)?;
             for row in rows {
                 if let Some(change) = Self::change(&row) {
-                    let author = Author::observer(&status, &key);
+                    // Older ledgers retain work-in-progress observations. Keep
+                    // their audit bytes, but only committed snapshots become
+                    // artifacts under the explicit publication boundary.
+                    if change.commit.is_none() {
+                        self.projection_cursor = row.seq;
+                        continue;
+                    }
+                    let author = Author::observer(status, key);
                     let projected = (|| -> Result<bool> {
                         let update = artifacts::materialize(index, &row, &change)?;
                         // A prior completed write of this observation is already a projection.
@@ -465,7 +497,7 @@ impl Engine {
     }
     pub fn claim_ready(&self, index: &Index, reference: &str) -> Result<bool> {
         let Some(entry) = self.entries.get(reference) else {
-            return Ok(true);
+            return Ok(false);
         };
         Ok(index
             .current(&format!("artifacts/{}.md", entry.id))?

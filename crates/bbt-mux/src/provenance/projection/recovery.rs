@@ -12,8 +12,9 @@ pub(super) const REBUILD: &str = "provenance/jsonl/rebuild/v1";
 pub(super) const STARTING: &str = "provenance/jsonl/recovery-starting/v1";
 const TRIGGER: &str = "provenance/jsonl/recovery-trigger/v1";
 const TEMPORARY: &str = ".projection-rebuild-v1";
-const RECOVERY_PAGE: usize = 16;
-const BUDGET: Duration = Duration::from_millis(8);
+// Amortize a durable sync across a bounded page on the background worker.
+pub(super) const RECOVERY_PAGE: usize = 256;
+const BUDGET: Duration = Duration::from_millis(32);
 
 #[derive(Serialize, Deserialize)]
 struct Recovery {
@@ -130,8 +131,8 @@ pub(super) fn enter(
     step(root, store, events)
 }
 
-/// Each call verifies at most 16 canonical rows, then appends until 8 ms has
-/// elapsed (at least one row), or publishes at most 16 completed part files.
+/// Each call verifies at most 256 canonical rows, then appends until 32 ms has
+/// elapsed (at least one row), or publishes at most 256 completed part files.
 /// There is no joined background job: shutdown abandons a durable page cursor.
 pub(super) fn step(root: &Path, store: &SqliteStore, events: &EventLog) -> Result<Projection> {
     let directory = directory(root)?;
@@ -246,6 +247,7 @@ pub(super) fn step(root: &Path, store: &SqliteStore, events: &EventLog) -> Resul
 #[cfg(test)]
 mod tests {
     use super::*;
+    const ROWS: usize = RECOVERY_PAGE * 3 + 1;
     use crate::store::events::Draft;
     use ed25519_dalek::SigningKey;
 
@@ -263,7 +265,7 @@ mod tests {
             let store = SqliteStore::open(&temp.path().join("index")).unwrap();
             let events = EventLog::open(&temp.path().join("index")).unwrap();
             let key = SigningKey::from_bytes(&[78; 32]);
-            for n in 0..40 {
+            for n in 0..ROWS {
                 events
                     .append(
                         Draft::new("fixture/row", "fixture", serde_json::json!(n)),
@@ -281,7 +283,7 @@ mod tests {
         fn finish(&self) -> Projection {
             for _ in 0..200 {
                 let projection = step(&self.root, &self.store, &self.events).unwrap();
-                if projection.cursor == 40 {
+                if projection.cursor == ROWS as u64 {
                     return projection;
                 }
             }
@@ -299,7 +301,7 @@ mod tests {
                         .collect::<Vec<_>>()
                 })
                 .collect();
-            assert_eq!(rows, self.events.after(0, 40).unwrap());
+            assert_eq!(rows, self.events.after(0, ROWS).unwrap());
             assert!(
                 projection
                     .valid(&self.root.join("log"), &self.events)
@@ -342,7 +344,7 @@ mod tests {
     // keeps: spec provenance
     #[test]
     fn legacy_state_repair_restarts_staging_and_interrupted_publication() {
-        for (staged, published) in [(16, 0), (40, 7)] {
+        for (staged, published) in [(16, 0), (ROWS, 7)] {
             let mut f = Fixture::new();
             let directory = directory(&f.root).unwrap();
             let legacy = directory.join(format!(".projection-{}", crate::Ulid::new()));
@@ -366,13 +368,13 @@ mod tests {
                 })
                 .collect();
             let mut state = serde_json::to_value(&projection).unwrap();
-            state["repair"] = json!({"directory":legacy.file_name().unwrap().to_str().unwrap().trim_start_matches(".projection-"), "head":40});
+            state["repair"] = json!({"directory":legacy.file_name().unwrap().to_str().unwrap().trim_start_matches(".projection-"), "head":ROWS});
             let bytes = serde_json::to_vec(&state).unwrap();
             f.store.put(STATE, &bytes).unwrap();
             // A deserialized legacy staged cursor never becomes a public one.
             let hidden: Projection = serde_json::from_slice(&bytes).unwrap();
             assert_eq!(hidden.cursor(), 0);
-            let last = f.events.at(40).unwrap().unwrap();
+            let last = f.events.at(ROWS as u64).unwrap().unwrap();
             assert!(hidden.reference(&last, &f.store).unwrap().is_none());
             assert_eq!(
                 super::super::step(&f.root, &f.store, &f.events)
@@ -471,7 +473,7 @@ mod tests {
         let f = Fixture::new();
         let directory = directory(&f.root).unwrap();
         let mut recovery = Recovery::start(&directory, &f.events).unwrap().unwrap();
-        for row in f.events.after(0, 40).unwrap() {
+        for row in f.events.after(0, ROWS).unwrap() {
             recovery
                 .projection
                 .append(&directory.join(TEMPORARY), &f.store, &row, 1)
@@ -566,7 +568,7 @@ mod tests {
                 }
                 reason => {
                     match reason {
-                        "cursor_head_mismatch" => projection.cursor = 41,
+                        "cursor_head_mismatch" => projection.cursor = ROWS as u64 + 1,
                         "empty_cursor_hash_mismatch" => projection.cursor = 0,
                         "cursor_hash_mismatch" => projection.hash = "private-wrong-hash".into(),
                         "append_already_exists" => projection = Projection::default(),
@@ -625,7 +627,7 @@ mod tests {
             .unwrap();
         // Force more than one cleanup page; the trigger must retain the torn
         // stamp even after that file has been removed by the first page.
-        for n in 0..40 {
+        for n in 0..ROWS {
             std::fs::write(temporary.join(format!("orphan-{n}")), b"").unwrap();
         }
         super::super::step(&f.root, &f.store, &f.events).unwrap();
@@ -655,7 +657,7 @@ mod tests {
             } else {
                 let mut saved: Recovery =
                     serde_json::from_slice(&f.store.get(REBUILD).unwrap().unwrap()).unwrap();
-                saved.head = 41;
+                saved.head = ROWS as u64 + 1;
                 f.store
                     .put(REBUILD, &serde_json::to_vec(&saved).unwrap())
                     .unwrap();

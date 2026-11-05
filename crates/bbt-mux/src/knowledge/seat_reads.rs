@@ -182,7 +182,9 @@ impl Job {
                         else {
                             unreachable!()
                         };
-                        Ok(mcp::knowledge::fetch_page(source, locator, &call)?)
+                        let mut value = mcp::knowledge::fetch_page(source, locator, &call)?;
+                        super::commit::annotate(&index, &mut value)?;
+                        Ok(value)
                     }
                     "knowledge_search" => {
                         let mcp::knowledge::Request::Search(request) =
@@ -221,9 +223,14 @@ impl Job {
                     Err(reason) => mcp::error(call.op_id, &reason.code, &reason.message),
                 };
                 let value = mcp::knowledge::bounded(call.op_id, value, false);
+                let publication = value["structuredContent"]["publication_state"].clone();
+                let checkpoint = value["structuredContent"]["checkpoint"].clone();
                 journal
                     .checked_authorized(&actor, &call, value, |old| {
                         retained_context(old, &binding, revision)
+                            && (call.tool != "knowledge_fetch"
+                                || old["structuredContent"]["publication_state"] == publication
+                                    && old["structuredContent"]["checkpoint"] == checkpoint)
                             && if matches!(call.tool.as_str(), "task_status" | "task_list") {
                                 mcp::work_items::retained_allowed(
                                     &mcp::work_items::ProviderTasks(source, Some(actor.swarm_id)),

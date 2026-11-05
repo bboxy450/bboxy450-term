@@ -394,11 +394,12 @@ impl Worker {
                                     &registry,
                                     context.revision,
                                 );
-                                Ok(effects::apply(
+                                Ok(effects::apply_at(
                                     &source,
                                     &mut prepared,
                                     &context.call,
                                     &crate::knowledge::WriteContext { author },
+                                    &context.port.index,
                                 ))
                             })
                             .unwrap_or_else(|error| {

@@ -126,6 +126,7 @@ fn day(store: &SqliteStore, timestamp: u64) -> Result<String> {
 }
 
 impl Projection {
+    #[cfg(test)]
     pub(crate) fn cursor(&self) -> u64 {
         if self.legacy_repair.is_some() {
             0
@@ -134,6 +135,7 @@ impl Projection {
         }
     }
     /// The physical daily part containing a canonical stream sequence.
+    #[cfg(test)]
     pub(crate) fn reference(
         &self,
         envelope: &Envelope,
@@ -401,7 +403,7 @@ mod tests {
         let events = EventLog::open(&index).unwrap();
         let key = SigningKey::from_bytes(&[72; 32]);
         let mut last = None;
-        for _ in 0..(PAGE * 3) {
+        for _ in 0..(recovery::RECOVERY_PAGE * 3 + 1) {
             last = Some(
                 events
                     .append(Draft::new("fixture", "test", json!({})), &key)
@@ -415,7 +417,7 @@ mod tests {
                 .as_u64()
                 .unwrap()
         };
-        assert!((1..=PAGE as u64).contains(&pending(&store)));
+        assert!((1..=recovery::RECOVERY_PAGE as u64).contains(&pending(&store)));
         assert_eq!(first.cursor(), 0);
         assert!(
             first
@@ -434,7 +436,9 @@ mod tests {
         let resumed = step(&root, &store, &events).unwrap();
         assert_eq!(std::fs::metadata(&temporary).unwrap().ino(), directory);
         assert_eq!(resumed.cursor(), 0);
-        assert!(pending(&store) > cursor && pending(&store) <= cursor + PAGE as u64);
+        assert!(
+            pending(&store) > cursor && pending(&store) <= cursor + recovery::RECOVERY_PAGE as u64
+        );
         let complete = catch_up(&root, &store, &events);
         assert!(
             complete
@@ -452,7 +456,7 @@ mod tests {
                 assert_eq!(row.seq, count);
             }
         }
-        assert_eq!(count, (PAGE * 3) as u64);
+        assert_eq!(count, (recovery::RECOVERY_PAGE * 3 + 1) as u64);
         assert!(!temporary.exists());
     }
 

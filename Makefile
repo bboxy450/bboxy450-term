@@ -2494,3 +2494,25 @@ test-knowledge-orientation-formal:
 	mkdir -p '$(abspath $(TARGET_DIR))/knowledge-orient/models'; \
 	BBOXY_KNOWLEDGE_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/knowledge-orient/models' cargo test --locked --release -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)' selected_knowledge_orientation_ownership -- --exact; \
 	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert len(rows)==6; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/knowledge-orient'
+
+.PHONY: check-provenance-background test-provenance-background
+check-provenance-background:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked --release -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' -- -D warnings; \
+	cargo check --locked --release -p bboxy450-term --bin bboxy450-term --target-dir '$(TARGET_DIR)'
+
+test-provenance-background:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked --release -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(provenance::worker::tests) | test(knowledge::commit::tests) | test(provenance::projection) | test(provenance::detector::commit_boundary_tests) | test(thirty_second_identity_retry) | test(logic_worker_recovery_yields_) | test(workspace_routing_actor_roots_isolate)'; \
+	cargo nextest run --locked --release -p bboxy450-term-mux --test provenance --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(twenty_commit_rebase_keeps_control_requests_responsive)'
+
+.PHONY: test-provenance-background-formal
+test-provenance-background-formal:
+	@set -eu; . ./scripts/cache-env.sh; mkdir -p '$(abspath $(TARGET_DIR))/provenance-background/models'; \
+	BBOXY_PROVENANCE_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/provenance-background/models' cargo test --locked --release -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)' selected_provenance_background -- --exact; \
+	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert len(rows)==4; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/provenance-background'
+
+.PHONY: test-provenance-workflow
+test-provenance-workflow:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked --release -p bboxy450-term-mux --test provenance --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(native_knowledge_mcp) | test(draft_) | test(import_staging_and_ordinary_drafts) | test(claiming_work_in_progress)'

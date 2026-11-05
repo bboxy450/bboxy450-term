@@ -69,18 +69,37 @@ pub(crate) fn prepare(
     }
     match tool::prepare(call).map_err(rejected)? {
         tool::Request::Commit { locators, message } => {
-            if actor.class() != crate::registry::Class::Oracle {
-                return Err(d::CommandError::new(
-                    "knowledge_commit_denied",
-                    "document commit requires Oracle authority",
-                ));
-            }
             let refs = locators
                 .into_iter()
                 .map(|locator| source.resolve(d::ResolveRequest { locator }))
                 .collect::<d::Result<Vec<_>>>()?;
             let request = d::CommitRequest { refs, message };
             super::commit::validate(&request)?;
+            if actor.class() != crate::registry::Class::Oracle {
+                let seat = actor.seat().ok_or_else(|| {
+                    d::CommandError::new(
+                        "knowledge_commit_denied",
+                        "commit requires an admitted author",
+                    )
+                })?;
+                let principal = format!("seat:{}", seat.seat_id);
+                for reference in &request.refs {
+                    let record = source.fetch(d::FetchRequest {
+                        reference: reference.clone(),
+                    })?;
+                    let owned = ["created_by", "updated_by", "assignee"].iter().any(|key| {
+                        record.frontmatter[*key].as_str().is_some_and(|value| {
+                            value == principal || value == seat.seat_id.to_string()
+                        })
+                    }) || record.frontmatter["authorship"]["principal"] == principal;
+                    if !owned {
+                        return Err(d::CommandError::new(
+                            "knowledge_commit_denied",
+                            "Workers commit only their own documents or assigned tasks; ask the Oracle to checkpoint shared intent.",
+                        ));
+                    }
+                }
+            }
             Ok(Prepared::Commit(request))
         }
         tool::Request::Write(mut request) => {
@@ -279,11 +298,30 @@ pub(crate) fn prepare(
     }
 }
 
+#[cfg(test)]
 pub(crate) fn apply(
     source: &dyn DataSource,
     prepared: &mut Prepared,
     call: &Call,
     context: &WriteContext<'_>,
+) -> Applied {
+    apply_inner(source, prepared, call, context, None)
+}
+pub(crate) fn apply_at(
+    source: &dyn DataSource,
+    prepared: &mut Prepared,
+    call: &Call,
+    context: &WriteContext<'_>,
+    index: &crate::index::Index,
+) -> Applied {
+    apply_inner(source, prepared, call, context, Some(index))
+}
+fn apply_inner(
+    source: &dyn DataSource,
+    prepared: &mut Prepared,
+    call: &Call,
+    context: &WriteContext<'_>,
+    index: Option<&crate::index::Index>,
 ) -> Applied {
     let mut applied = false;
     let mut statuses = Vec::new();
@@ -307,14 +345,22 @@ pub(crate) fn apply(
                 }
                 let result = source.write(*request.clone(), context)?;
                 applied = true;
-                serde_json::to_value(result)
-                    .map_err(|e| d::CommandError::new("unknown", e.to_string()))
+                let mut value = serde_json::to_value(result)
+                    .map_err(|e| d::CommandError::new("unknown", e.to_string()))?;
+                value["publication_state"] = serde_json::json!("draft");
+                Ok(value)
             }
             Prepared::Commit(request) => {
                 let result = source.commit(request.clone(), context)?;
                 applied = true;
-                serde_json::to_value(result)
-                    .map_err(|e| d::CommandError::new("unknown", e.to_string()))
+                let artifact = index.map(|index| super::commit::record(index, &result, context))
+                    .transpose().map_err(|e| d::CommandError::new("commit_not_confirmed",
+                        format!("Commit exists; artifact receipt pending: {e}. Inspect the original operation; do not repeat the commit.")))?;
+                let mut value = serde_json::to_value(result)
+                    .map_err(|e| d::CommandError::new("unknown", e.to_string()))?;
+                value["publication_state"] = serde_json::json!("committed");
+                value["artifact"] = serde_json::json!(artifact);
+                Ok(value)
             }
             Prepared::Task { plan, record } => {
                 let references = plan

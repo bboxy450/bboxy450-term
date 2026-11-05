@@ -13,6 +13,7 @@ pub(crate) mod author;
 pub(crate) mod artifacts;
 pub(crate) mod detector;
 pub(crate) mod engine;
+pub(crate) mod worker;
 pub(crate) mod git;
 
 #[cfg(test)]

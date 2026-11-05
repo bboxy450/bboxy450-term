@@ -300,6 +300,111 @@ impl Drop for Fixture {
 fn key() -> SigningKey {
     SigningKey::from_bytes(&[81; 32])
 }
+
+#[test]
+fn native_knowledge_mcp_exposes_draft_commit_and_edited_draft_states() {
+    let f = Fixture::new();
+    let call =
+        |tool: &str, args: Value| {
+            let call = bbt_mux::mcp::Call {
+                op_id: Ulid::new(),
+                tool: tool.into(),
+                args,
+            };
+            let until = Instant::now() + Duration::from_secs(10);
+            loop {
+                let result =
+                    f.runtime
+                        .block_on(f.logic.as_ref().unwrap().client.control_call(
+                            f.one,
+                            1,
+                            call.clone(),
+                        ))
+                        .unwrap();
+                let code = result["structuredContent"]["error"]["code"]
+                    .as_str()
+                    .unwrap_or_default();
+                if !matches!(
+                    code,
+                    "workspace_pending" | "provider_busy" | "workspace_refresh_pending"
+                ) {
+                    return result;
+                }
+                assert!(Instant::now() < until, "workspace did not settle: {result}");
+                std::thread::sleep(Duration::from_millis(20));
+            }
+        };
+    let created = call(
+        "knowledge_write",
+        json!({"path":"notes/checkpoint.md","frontmatter":{"type":"note","title":"Checkpoint"},"body":"draft body"}),
+    );
+    assert_eq!(created["isError"], false, "{created}");
+    assert_eq!(created["structuredContent"]["publication_state"], "draft");
+    let root = f.config.repository.join(".bboxy");
+    let signing = f.config.run_dir.join("fixture-signing");
+    assert!(
+        std::process::Command::new("/usr/bin/ssh-keygen")
+            .args(["-q", "-t", "ed25519", "-N", "", "-f"])
+            .arg(&signing)
+            .status()
+            .unwrap()
+            .success()
+    );
+    let git = |args: &[&str]| {
+        let output = std::process::Command::new("/usr/bin/git")
+            .current_dir(&root)
+            .args(["-c", "core.hooksPath=/dev/null"])
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    };
+    git(&["init", "--quiet", "--initial-branch=main", "--template="]);
+    git(&["config", "user.name", "Fixture"]);
+    git(&["config", "user.email", "fixture@example.invalid"]);
+    git(&["config", "gpg.format", "ssh"]);
+    git(&["config", "user.signingkey", signing.to_str().unwrap()]);
+    let committed = call(
+        "knowledge_commit",
+        json!({"locators":["notes/checkpoint.md"],"message":"Substantial checkpoint"}),
+    );
+    assert_eq!(committed["isError"], false, "{committed}");
+    assert_eq!(
+        committed["structuredContent"]["publication_state"],
+        "committed"
+    );
+    let fetched = call("knowledge_fetch", json!({"locator":"notes/checkpoint.md"}));
+    assert_eq!(fetched["isError"], false, "{fetched}");
+    assert_eq!(
+        fetched["structuredContent"]["publication_state"],
+        "committed"
+    );
+    let old = &fetched["structuredContent"];
+    let reference: bbt_mux::knowledge::data_source::RecordRef =
+        serde_json::from_value(old.clone()).unwrap();
+    let edited = call(
+        "knowledge_write",
+        json!({"ref":reference,"etag":old["etag"],"frontmatter":old["frontmatter"],"body":"next draft"}),
+    );
+    assert_eq!(edited["isError"], false, "{edited}");
+    let fetched = call("knowledge_fetch", json!({"locator":"notes/checkpoint.md"}));
+    assert_eq!(
+        fetched["structuredContent"]["publication_state"], "draft",
+        "{fetched}"
+    );
+    assert_eq!(
+        f.rows()
+            .iter()
+            .filter(|row| row.event.source == "knowledge/commit"
+                && row.event.subject.starts_with("artifact/"))
+            .count(),
+        1
+    );
+}
 fn digest(bytes: &[u8]) -> String {
     format!("sha256:{:x}", Sha256::digest(bytes))
 }
@@ -333,117 +438,69 @@ fn exercise_claim(f: &Fixture) -> Document {
 
 // keeps: spec provenance
 #[test]
-fn live_detection_claim_hook_rename_delete_and_restart_preserve_evidence() {
+fn draft_edits_hooks_renames_and_restart_do_not_publish_artifacts() {
     let mut f = Fixture::new();
-    let claimed = exercise_claim(&f);
     let path = f.config.repository.join("out.txt");
+    std::fs::write(&path, b"alpha").unwrap();
+    f.hook(&path, "private draft body");
     std::fs::write(&path, b"beta").unwrap();
-    f.hook(&path, "fixture-private-body-never-an-event");
-    let modified = f.wait("out.txt", |d| {
-        d.metadata["digest"] == digest(b"beta")
-            && d.metadata["history"]
-                .as_array()
-                .unwrap()
-                .iter()
-                .any(|entry| entry["grade"] == "reported" && entry["kind"] != "claimed")
-    });
-    assert_eq!(modified.id, claimed.id);
-    assert_eq!(modified.metadata["produced_by"], format!("seat:{}", f.one));
+    f.hook(&path, "private draft body");
     std::fs::rename(&path, f.config.repository.join("renamed.txt")).unwrap();
-    let renamed = f.wait("renamed.txt", |d| d.metadata["digest"] == digest(b"beta"));
-    if renamed.id == claimed.id {
-        assert!(
-            renamed.metadata["aliases"]
-                .as_array()
-                .unwrap()
-                .contains(&json!("out.txt"))
-        );
-    } else {
-        f.wait("out.txt", |d| d.metadata["deleted"] == true);
-    }
     std::fs::remove_file(f.config.repository.join("renamed.txt")).unwrap();
-    f.wait("renamed.txt", |d| d.metadata["deleted"] == true);
+    std::thread::sleep(Duration::from_millis(300));
+    assert!(f.documents().is_empty());
+    assert!(
+        f.rows()
+            .iter()
+            .all(|row| !row.event.subject.starts_with("artifact/"))
+    );
     let rows = f.rows();
-    assert!(rows.iter().any(|row| {
-        row.event
-            .subject
-            .starts_with(&format!("artifact/{}/", claimed.id))
-    }));
-    assert!(
-        !serde_json::to_string(&rows)
-            .unwrap()
-            .contains("fixture-private-body-never-an-event")
-    );
-    assert!(
-        !serde_json::to_string(&rows)
-            .unwrap()
-            .contains("not-to-publish")
-    );
     for row in &rows {
         row.verify().unwrap();
     }
-    let hashes: Vec<_> = rows.iter().map(|r| (r.seq, r.hash().unwrap())).collect();
     f.restart();
-    std::thread::sleep(Duration::from_millis(400));
-    for (sequence, hash) in hashes {
+    std::thread::sleep(Duration::from_millis(300));
+    assert!(f.documents().is_empty());
+    for row in rows {
         assert_eq!(
             EventLog::open(&f.config.run_dir.join("index"))
                 .unwrap()
-                .at(sequence)
+                .at(row.seq)
                 .unwrap()
                 .unwrap()
                 .hash()
                 .unwrap(),
-            hash
+            row.hash().unwrap()
         );
     }
-    f.wait("renamed.txt", |d| d.metadata["deleted"] == true);
 }
 
 // keeps: spec provenance
 #[test]
-fn reserved_import_staging_stays_internal_while_ordinary_outputs_are_observed() {
+fn import_staging_and_ordinary_drafts_stay_outside_artifact_publication() {
     let f = Fixture::new();
-    let stage = format!(".bboxy-import-c025b21f11d2-{}", Ulid::new());
-    let internal = f
-        .config
-        .repository
-        .join(&stage)
-        .join("imports/bundle/raw/one.source");
-    std::fs::create_dir_all(internal.parent().unwrap()).unwrap();
-    std::fs::write(&internal, b"private staged source").unwrap();
-    f.hook(&internal, "private staged source");
     for reference in [
         "out.txt",
         ".bboxy-import-notes/out.txt",
-        ".bboxy-import-c025b21f11d2-01M64FDAXVG0N8AN7DX3MNZT3H.md",
+        ".bboxy-import-c025b21f11d2-01M64FDAXVG0N8AN7DX3MNZT3H/imports/raw.txt",
     ] {
         let path = f.config.repository.join(reference);
         std::fs::create_dir_all(path.parent().unwrap()).unwrap();
-        std::fs::write(&path, b"ordinary output").unwrap();
-        f.hook(&path, "ordinary output");
-        f.wait(reference, |doc| {
-            doc.metadata["digest"] == digest(b"ordinary output")
-        });
+        std::fs::write(&path, b"draft").unwrap();
+        f.hook(&path, "draft");
     }
-    assert!(
-        f.documents().iter().all(|doc| !doc.metadata["ref"]
-            .as_str()
-            .is_some_and(|reference| reference.starts_with(&stage))),
-        "internal import staging produced artifact observations"
-    );
+    std::thread::sleep(Duration::from_millis(300));
+    assert!(f.documents().is_empty());
     assert!(
         f.rows()
             .iter()
-            .all(|row| !row.event.subject.starts_with("artifact/")
-                || !row.event.payload.to_string().contains(&stage)),
-        "internal import staging consumed provenance activity"
+            .all(|row| !row.event.subject.starts_with("artifact/"))
     );
 }
 
 // keeps: spec provenance
 #[test]
-fn symlinks_outside_paths_and_oversized_files_never_leak_content_or_partial_hashes() {
+fn draft_symlinks_and_large_build_files_are_never_hashed_or_published() {
     let f = Fixture::new();
     let root = &f.config.repository;
     let outside = root.parent().unwrap().join("outside.txt");
@@ -452,20 +509,18 @@ fn symlinks_outside_paths_and_oversized_files_never_leak_content_or_partial_hash
     f.hook(&outside, "outside-private-fixture");
     let large = std::fs::File::create(root.join("large.bin")).unwrap();
     large.set_len(64 * 1024 * 1024 + 1).unwrap();
-    let doc = f.wait("large.bin", |d| {
-        d.metadata["observation_reason"] == "artifact-digest-size-bound"
-    });
-    assert!(doc.metadata["digest"].is_null());
-    assert_eq!(doc.metadata["bytes"], 64 * 1024 * 1024 + 1u64);
-    std::thread::sleep(Duration::from_millis(400));
+    std::thread::sleep(Duration::from_millis(300));
+    assert!(f.documents().is_empty());
     assert!(
-        !f.documents()
+        f.rows()
             .iter()
-            .any(|d| d.metadata["ref"] == "evil.txt")
+            .all(|row| !row.event.subject.starts_with("artifact/"))
     );
-    let rows = serde_json::to_string(&f.rows()).unwrap();
-    assert!(!rows.contains("outside-private-fixture"));
-    assert!(rows.contains("artifact-hook-path-outside-root-or-excluded"));
+    assert!(
+        !serde_json::to_string(&f.rows())
+            .unwrap()
+            .contains("outside-private-fixture")
+    );
 }
 
 // keeps: spec provenance
@@ -621,33 +676,22 @@ fn base64_public(doc: &Document) -> [u8; 32] {
 
 // keeps: spec provenance
 #[test]
-fn claim_before_detection_survives_missing_rebuildable_mirror() {
-    let mut f = Fixture::new();
-    let claimed = f.claim("claimed-first.txt", &digest(b"first"));
-    let id = claimed["artifact_id"].as_str().unwrap().to_owned();
-    f.logic.take().unwrap().shutdown().unwrap();
-    let mirror =
-        bbt_mux::store::sqlite::SqliteStore::open(&f.config.run_dir.join("index")).unwrap();
-    mirror
-        .connection()
-        .unwrap()
-        .execute(
-            "DELETE FROM kv WHERE key=?1",
-            [format!("doc/artifacts/{id}.md")],
-        )
+fn claiming_work_in_progress_does_not_promote_it_to_an_artifact() {
+    let f = Fixture::new();
+    let response = f
+        .runtime
+        .block_on(f.logic.as_ref().unwrap().client.control_call(
+            f.one,
+            1,
+            bbt_mux::mcp::Call {
+                op_id: Ulid::new(),
+                tool: "artifact_claim".into(),
+                args: json!({"kind":"file","ref":"uncommitted.txt","digest":digest(b"draft")}),
+            },
+        ))
         .unwrap();
-    f.restart();
-    std::fs::write(f.config.repository.join("claimed-first.txt"), b"first").unwrap();
-    let detected = f.wait("claimed-first.txt", |doc| doc.metadata["observed"] == true);
-    assert_eq!(detected.id, id);
-    assert!(detected.metadata["claimed"] == true);
-    assert_eq!(
-        f.documents()
-            .into_iter()
-            .filter(|doc| doc.metadata["ref"] == "claimed-first.txt")
-            .count(),
-        1
-    );
+    assert_eq!(response["isError"], true, "{response}");
+    assert!(f.documents().is_empty());
 }
 
 // keeps: regression unchanged clipped Git refs; completed-snapshot proof is in detector tests.

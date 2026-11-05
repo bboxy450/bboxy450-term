@@ -73,3 +73,27 @@ OSC 7501 and ordinary hooks do not by themselves prove composer readiness.
 Hand off: files changed and their mechanism; commands and actual exit status;
 evidence per acceptance line; failures, gaps and things not checked; signed
 commit SHA and worktree state. An Executor reports; the Oracle verifies.
+
+## Drafts and committed checkpoints
+
+`knowledge_write` saves a **draft** that other harnesses can read immediately.
+Draft edits, builds and filesystem hints do not publish artifacts. Git pulls
+are observed only through changes to committed HEAD, without scanning file churn.
+`knowledge_fetch` returns `publication_state` and the last matching `checkpoint`;
+editing committed content makes that version a draft again.
+
+Use `knowledge_commit` with explicit document locators and a useful message when
+preparing to share across machines, checkpointing a substantial chunk of changes,
+or recording finally accepted/done work. Do not commit every edit or progress
+update. Read back and review the selected documents first. Workers checkpoint
+their own documents and assigned tasks; Oracle checkpoints shared intent.
+Commit completed reports for review and checkpoint accepted tasks/specs after
+acceptance. A commit never substitutes for verification or acceptance evidence.
+
+A successful commit returns `publication_state: committed`, the provider commit
+ID, exact selected records and a signed artifact receipt. Native knowledge uses
+its own private local Git repository; GitKB uses its native commit operation.
+Commit does not push or synchronize another machine by itself: delivery needs
+an explicitly authorized sync/export step. Never force-add `.bboxy` into the
+surrounding code repository. Retain the returned operation ID and inspect an
+unknown commit outcome before retrying.

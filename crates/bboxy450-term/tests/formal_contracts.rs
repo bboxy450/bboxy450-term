@@ -181,14 +181,50 @@ fn selected_knowledge_orientation_ownership() -> Result<(), Box<dyn std::error::
     let output = std::env::var_os("BBOXY_KNOWLEDGE_FORMAL_OUTPUT");
     let root = output.as_ref().map_or(temporary.path(), Path::new);
     std::fs::create_dir_all(root)?;
-    let names = ["PluginActivation", "BrokenPluginActivation", "LifecycleOwnership", "BrokenLifecycleOwnership", "GuiBackendPreservation", "BrokenGuiBackendPreservation"];
+    let names = [
+        "PluginActivation",
+        "BrokenPluginActivation",
+        "LifecycleOwnership",
+        "BrokenLifecycleOwnership",
+        "GuiBackendPreservation",
+        "BrokenGuiBackendPreservation",
+    ];
     let mut manifest = String::new();
     let mut count = 0;
-    for (m, expected) in models::cases().into_iter().filter(|(m, _)| names.contains(&m.name.as_str())) {
+    for (m, expected) in models::cases()
+        .into_iter()
+        .filter(|(m, _)| names.contains(&m.name.as_str()))
+    {
         export(m, expected, root, &mut manifest)?;
         count += 1;
     }
     assert_eq!(count, names.len());
+    std::fs::write(root.join("manifest.tsv"), manifest)?;
+    Ok(())
+}
+
+#[test]
+fn selected_provenance_background() -> Result<(), Box<dyn std::error::Error>> {
+    let temporary = tempfile::tempdir()?;
+    let output = std::env::var_os("BBOXY_PROVENANCE_FORMAL_OUTPUT");
+    let root = output.as_ref().map_or(temporary.path(), Path::new);
+    std::fs::create_dir_all(root)?;
+    let names = [
+        "ProvenanceBackground",
+        "BrokenProvenanceBackground",
+        "KnowledgePublication",
+        "BrokenKnowledgePublication",
+    ];
+    let mut manifest = String::new();
+    let mut count = 0;
+    for (model, expected) in models::cases()
+        .into_iter()
+        .filter(|(m, _)| names.contains(&m.name.as_str()))
+    {
+        export(model, expected, root, &mut manifest)?;
+        count += 1;
+    }
+    assert_eq!(count, 4);
     std::fs::write(root.join("manifest.tsv"), manifest)?;
     Ok(())
 }

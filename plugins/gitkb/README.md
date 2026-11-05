@@ -348,3 +348,8 @@ previously reviewed bytes. A changed binary requires a new explicit approval.
 Choose the intended knowledge root with `knowledge select` when changing its
 provider. Agents call `orient`, then `knowledge_orient` to load this plugin's
 pinned skill and the host's document/task writing guide in one response.
+
+Knowledge writes are drafts. Use `knowledge_commit` for substantial checkpoints,
+cross-machine sharing preparation, and finally accepted/done documents. The host
+returns publication state and a signed artifact receipt. Commit never pushes
+and ordinary edits never trigger artifact provenance.

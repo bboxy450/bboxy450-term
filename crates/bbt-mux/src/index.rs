@@ -1173,18 +1173,13 @@ impl Index {
             None
         } else {
             let prepared = self.append_activity(intent, key)?;
-            let mut projection = self.project_activity()?;
-            for _ in 0..64 {
-                if projection.cursor() >= prepared.seq {
-                    break;
-                }
-                projection = self.project_activity()?;
-            }
-            metadata["provenance"]["log"] = json!(
-                projection
-                    .reference(&prepared, &self.store)?
-                    .ok_or_else(|| invalid("activity projection backlog; write intent retained"))?
-            );
+            // The signed SQLite stream is the authority. Draft mutation audit
+            // must not synchronously rebuild a historical JSONL view merely to
+            // obtain a link; that derived view catches up on the IO worker.
+            metadata["provenance"]["log"] = json!(format!(
+                "bboxy://activity/{}/{}", self.activity_stream(), prepared.seq));
+            metadata["provenance"]["event"] = json!({"id":prepared.event.id,
+                "sequence":prepared.seq,"hash":prepared.hash()?});
             Some(prepared)
         };
         let document_id = metadata["id"].as_str().unwrap_or("legacy").to_owned();
@@ -1233,7 +1228,6 @@ impl Index {
             completed.seat = author.seat;
             completed.generation = author.generation;
             self.append_activity(completed, key)?;
-            self.project_activity()?;
         }
         Ok(update.path)
     }

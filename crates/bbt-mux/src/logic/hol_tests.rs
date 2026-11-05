@@ -328,7 +328,9 @@ fn recovery_child() {
             .unwrap()
     };
     let before = cursor();
-    assert!(before > 0 && before < ROWS);
+    // The control owner may stop before the first background page finishes.
+    // A zero cursor is resumable too; restart must still make progress below.
+    assert!(before < ROWS);
     let restarted = Logic::start(
         supervisor.connect().unwrap(),
         config,

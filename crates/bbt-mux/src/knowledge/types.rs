@@ -64,7 +64,7 @@ pub const DOCUMENT_TYPES: &[DocumentType] = &[
         kind: "artifact",
         purpose: "A record of a produced file, commit, release or other output. It preserves responsibility, provenance and links to the work that produced it.",
         path: "artifacts/<slug>.md",
-        writing: "Describe the output and its ref, with digest when available. Use artifact_claim and artifact_release for responsibility; claims, observations and protected lineage fields cannot be set through generic knowledge_write.",
+        writing: "Artifacts describe committed checkpoints, not work in progress. Use knowledge_commit for document checkpoints or commit source changes with Git. Generated artifact records and provenance are derived views; do not recursively checkpoint them. Use artifact_claim and artifact_release for responsibility; claims, observations and protected lineage fields cannot be set through generic knowledge_write.",
     },
     DocumentType {
         kind: "decision",
