@@ -9,6 +9,7 @@
 pub(crate) mod attention;
 pub mod bridge;
 pub(crate) mod diagnostics;
+pub(crate) mod dream_c1;
 pub(crate) mod hints;
 pub(crate) mod journal;
 pub(crate) mod knowledge;

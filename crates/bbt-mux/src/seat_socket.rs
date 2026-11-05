@@ -957,6 +957,7 @@ async fn gui_session(
     }
     let _reader = Reader(task);
     let mut admitted = false;
+    let mut identity_sent = false;
     // The first request selects a legacy/window connection or a permanently
     // restricted observer. An observer never subscribes to capture relays.
     let mut observer_mode: Option<bool> = None;
@@ -999,6 +1000,7 @@ async fn gui_session(
     let mut plugin_jobs = tokio::task::JoinSet::new();
     let mut root_jobs = tokio::task::JoinSet::new();
     let mut document_jobs = tokio::task::JoinSet::new();
+    let mut dream_jobs = tokio::task::JoinSet::new();
     let mut swarm_jobs = tokio::task::JoinSet::new();
     let mut event_reads = tokio::task::JoinSet::new();
     let result:Result<()>=async {
@@ -1076,6 +1078,9 @@ async fn gui_session(
                     phase="request-action";
                     if !admitted {
                         admitted=true;
+                    }
+                    if !identity_sent && !matches!(&request.action,GuiAction::Dream {..}) {
+                        identity_sent=true;
                         send(&mut write,&GuiReply::Identity(client.gui_identity().await?)).await?;
                     }
                     if matches!(&request.action, GuiAction::SwarmList {..}|GuiAction::SwarmGet {..}|GuiAction::SwarmRename {..}|GuiAction::SwarmWorkdir {..}) {
@@ -1103,6 +1108,15 @@ async fn gui_session(
                         } else {
                             let client = client.clone();
                             knowledge_reads.spawn(async move { (id,key,client.gui_knowledge_scoped(method,args,scope).await) });
+                        }
+                        continue;
+                    }
+                    if let GuiAction::Dream {id,seat,request:control} = request.action {
+                        if dream_jobs.len()>=4 {
+                            send(&mut write,&GuiReply::Dream {op:id,response:crate::registry::dream_c1::failure(bbt_proto::dream::Code::Busy)}).await?;
+                        } else {
+                            let client=client.clone();
+                            dream_jobs.spawn(async move {(id,client.gui_dream(seat,control).await)});
                         }
                         continue;
                     }
@@ -1194,6 +1208,7 @@ async fn gui_session(
                         match request.action {
                             GuiAction::SwarmList {..}|GuiAction::SwarmGet {..}|GuiAction::SwarmRename {..}|GuiAction::SwarmWorkdir {..}=>unreachable!("swarm metadata dispatched independently"),
                             GuiAction::WindowSave {..}=>unreachable!("window saves handled before state dispatch"),
+                            GuiAction::Dream {..}=>unreachable!("Dream controls dispatched independently"),
                             GuiAction::GuiHello {id,claim,observer}=> {
                                 if observer {observer_reference=Some(client.gui_device().await?);}
                                 if claim {
@@ -1479,6 +1494,11 @@ async fn gui_session(
                     send(&mut write,&gui_knowledge_reply(op,response)?).await?;
                 }
                 _=tokio::time::sleep_until(tokio::time::Instant::from_std(input_at.unwrap_or_else(Instant::now))),if input_at.is_some()=> {}
+                Some(completed)=dream_jobs.join_next(),if !dream_jobs.is_empty()=> {
+                    let (op,result)=completed.map_err(|_|invalid("Dream control interrupted; original outcome remains unknown"))?;
+                    let response=result.unwrap_or_else(|_|crate::registry::dream_c1::failure(bbt_proto::dream::Code::WorkerLost));
+                    send(&mut write,&GuiReply::Dream {op,response}).await?;
+                }
                 Some(completed)=document_jobs.join_next(),if !document_jobs.is_empty()=> {
                     let (op,result)=completed.map_err(|e|invalid(format!("document task stopped: {e}; admitted effects remain unknown")))?;
                     let reply=result.unwrap_or_else(|error|GuiReply::Error {op,reason:error.to_string()});

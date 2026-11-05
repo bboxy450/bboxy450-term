@@ -1876,7 +1876,7 @@ async fn run_with_control(
                         GuiReply::OperatorUndoClose {op,seat}=>capture(OperatorAsk::Close {id:op,seat,undo:true}),
                         GuiReply::Captured {op,path,..}=>logger.write(format!("capture {op} written: {path}")),
                         // The window never asks for a screen as text; ctl does.
-                        GuiReply::WindowSaved {op,..}|GuiReply::GuiHello {op,..}|GuiReply::Plugin {op,..}|GuiReply::KnowledgeControl {op,..}|GuiReply::Debug {op,..}|GuiReply::Focused {op,..}|GuiReply::Screen {op,..}|GuiReply::EventsRead {op,..}|GuiReply::EventsStreams {op,..}=>logger.write(format!("ctl reply {op} unused by the window")),
+                        GuiReply::Dream {op,..}|GuiReply::WindowSaved {op,..}|GuiReply::GuiHello {op,..}|GuiReply::Plugin {op,..}|GuiReply::KnowledgeControl {op,..}|GuiReply::Debug {op,..}|GuiReply::Focused {op,..}|GuiReply::Screen {op,..}|GuiReply::EventsRead {op,..}|GuiReply::EventsStreams {op,..}=>logger.write(format!("ctl reply {op} unused by the window")),
                         GuiReply::OperatorSpawned {op,seat,spec}=> {
                             // Placed and focused as the launcher's own pick is.
                             let placed=Arc::make_mut(&mut model);

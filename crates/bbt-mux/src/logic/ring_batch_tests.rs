@@ -286,6 +286,9 @@ fn add_view(worker: &mut Worker, id: Ulid) {
     worker.views.insert(
         id,
         ViewState {
+            dream_activity_latch: Arc::new(AtomicU64::new(1)),
+            dream_foreground: Arc::new(AtomicBool::new(true)),
+            dream_activity_revision: Arc::new(AtomicU64::new(0)),
             info: SeatInfo {
                 seat: id,
                 generation: 1,

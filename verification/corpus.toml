@@ -167,6 +167,7 @@ expected = "liveness"
 frontend = "checker"
 
 # IF-THEN-ELSE and several initial states.
+
 [[model]]
 name = "IteMax"
 expected = "pass"
@@ -178,6 +179,7 @@ expected = "safety"
 frontend = "checker"
 
 # Bounded \A / \E over an array read by a dynamic index (Pick).
+
 [[model]]
 name = "QuantifiedScan"
 expected = "pass"
@@ -189,6 +191,7 @@ expected = "safety"
 frontend = "checker"
 
 # Strong fairness (SF_vars) where weak fairness cannot force progress.
+
 [[model]]
 name = "StrongFairFlicker"
 expected = "pass"
@@ -554,18 +557,15 @@ name = "ImportStaging"
 expected = "pass"
 frontend = "project"
 
-
 [[model]]
 name = "BrokenImportStaging"
 expected = "safety"
 frontend = "project"
 
-
 [[model]]
 name = "HistoricalReconcile"
 expected = "pass"
 frontend = "project"
-
 
 [[model]]
 name = "BrokenHistoricalReconcile"
@@ -1449,5 +1449,275 @@ frontend = "project"
 
 [[model]]
 name = "BrokenOracleInTurn"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1Admission"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1Admission"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1AdmissionDedup"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1AdmissionDedup"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1AdmissionCursor"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1AdmissionCursor"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1AdmissionLegacy"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1AdmissionLegacy"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1AdmissionOriginalOp"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1AdmissionOriginalOp"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1Scheduling"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1Scheduling"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1SchedulingDutyCycle"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1SchedulingDutyCycle"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1SchedulingCapacity"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1SchedulingCapacity"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1SchedulingHotOwner"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1SchedulingHotOwner"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1SchedulingIndependentRoot"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1SchedulingIndependentRoot"
+expected = "liveness"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1Ownership"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1Ownership"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1OwnershipValidation"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1OwnershipValidation"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1OwnershipReap"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1OwnershipReap"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1OwnershipCancel"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1OwnershipCancel"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1OwnershipUnknown"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1OwnershipUnknown"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1OwnershipRestart"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1OwnershipRestart"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1DeclaredCredit"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1DeclaredCredit"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1DeclaredCreditControl"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1DeclaredCreditControl"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1DeclaredCreditTransfer"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1DeclaredCreditTransfer"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1DeclaredCreditGrowth"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1DeclaredCreditGrowth"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1DeclaredCreditIsolation"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1DeclaredCreditIsolation"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1PublicFenceAdmission"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1PublicFenceAdmission"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1PublicFenceABA"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1PublicFenceABA"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1PublicFenceCustody"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1PublicFenceCustody"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1ProviderPolling"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1ProviderPolling"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1ProviderAcknowledgement"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1ProviderAcknowledgement"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1ProviderABA"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1ProviderABA"
 expected = "safety"
 frontend = "project"

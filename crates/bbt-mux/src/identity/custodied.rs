@@ -101,6 +101,7 @@ impl Retry {
             }
         };
         Ok(IdentityRuntime {
+            dream_fence: super::status::PublicFenceReader::new(account.clone(), None),
             account,
             keys: Arc::new(Unavailable { hint, reason }),
             chain: None,
@@ -148,11 +149,16 @@ impl IdentityRuntime {
         {
             if self.reopening_failed() {
                 match retry.reopen() {
-                    Ok(runtime) => *self = runtime,
+                    Ok(mut runtime) => {
+                        runtime.inherit_dream_fence(self);
+                        *self = runtime;
+                    }
                     Err(error) => self.note_reopen_failed(super::unlock::reopen_failure(&error)),
                 }
             } else {
-                *self = retry.open()?;
+                let mut runtime = retry.open()?;
+                runtime.inherit_dream_fence(self);
+                *self = runtime;
             }
         }
         Ok(())

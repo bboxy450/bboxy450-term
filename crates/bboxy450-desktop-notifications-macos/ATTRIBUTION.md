@@ -172,3 +172,9 @@ SOFTWARE.
 Harness onboarding verification in `scripts/verify-harness-onboarding.py` is a
 project-owned focused gate; the harness producer retains its own canonical
 origin, factual adapter sources and attribution in its submodule.
+
+Dream C1 public and worker-wire mirrors are adapted from
+[bboxy450-harness src/dream/c1_wire.rs](https://github.com/bboxy450/bboxy450-harness/blob/main/src/dream/c1_wire.rs).
+The harness owns their sole schema/corpus; term owns its private source custody,
+control routing and bounded subprocess integration. Keep both origin notices and
+absolute policy URLs with extracts.

@@ -63,6 +63,23 @@ pub(crate) struct Inner {
 #[derive(Clone)]
 pub(crate) struct Host(Arc<Inner>);
 
+#[cfg(test)]
+pub(crate) struct DreamSelectionHold {
+    release: Option<std::sync::mpsc::SyncSender<()>>,
+    thread: Option<std::thread::JoinHandle<()>>,
+}
+#[cfg(test)]
+impl Drop for DreamSelectionHold {
+    fn drop(&mut self) {
+        if let Some(release) = self.release.take() {
+            let _ = release.try_send(());
+        }
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
+        }
+    }
+}
+
 /// A multi-call operation retains one provider epoch; a swap cannot redirect its effect.
 pub(crate) struct BoundSource<'a> {
     host: &'a Host,
@@ -389,13 +406,97 @@ impl Host {
             .binding
             .revision)
     }
+    /// A shared-owner poll must not wait for provider selection. An unavailable
+    /// snapshot leaves the caller's invalidation cursor unacknowledged.
+    pub(crate) fn try_revision(&self) -> Result<u64> {
+        Ok(self
+            .0
+            .selected
+            .try_lock()
+            .map_err(|_| invalid("knowledge selection snapshot unavailable"))?
+            .binding
+            .revision)
+    }
+    /// C1-only bounded snapshot. It never waits for a selection owner, starts a
+    /// provider, or reads its files; existing general-purpose methods are unchanged.
+    pub(crate) fn dream_metadata(&self) -> Result<(u64, String, Option<String>)> {
+        let selected = self
+            .0
+            .selected
+            .try_lock()
+            .map_err(|_| invalid("C1 provider selection unavailable"))?;
+        let binding = &selected.binding;
+        if binding.revision > bbt_proto::dream::MAX_SAFE
+            || binding.provider.is_empty()
+            || binding.provider.len() > 256
+            || binding.provider.contains('\0')
+            || binding.sha256.as_ref().is_some_and(|pin| {
+                pin.len() != 64
+                    || !pin
+                        .bytes()
+                        .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+            })
+        {
+            return Err(invalid("invalid C1 provider metadata"));
+        }
+        Ok((
+            binding.revision,
+            binding.provider.clone(),
+            binding.sha256.clone(),
+        ))
+    }
+    /// Own a real selection lock on a disposable test thread, never the operator.
+    #[cfg(test)]
+    pub(crate) fn test_dream_hold_selection(&self) -> Result<DreamSelectionHold> {
+        let host = self.clone();
+        let (entered, held) = std::sync::mpsc::sync_channel(1);
+        let (release, released) = std::sync::mpsc::sync_channel(1);
+        let thread = std::thread::Builder::new()
+            .name("c1-private-held-selection".into())
+            .spawn(move || {
+                let Ok(_selection) = host.0.selected.lock() else {
+                    return;
+                };
+                if entered.send(()).is_ok() {
+                    let _ = released.recv_timeout(std::time::Duration::from_secs(5));
+                }
+            })?;
+        if held
+            .recv_timeout(std::time::Duration::from_secs(5))
+            .is_err()
+        {
+            drop(release);
+            let _ = thread.join();
+            return Err(invalid("private selection lock did not become ready"));
+        }
+        Ok(DreamSelectionHold {
+            release: Some(release),
+            thread: Some(thread),
+        })
+    }
     /// Selected guidance identity without starting or querying a provider process.
     pub(crate) fn guidance_provider(&self) -> d::Result<(String, Option<String>)> {
-        let selected = self.0.selected.lock().map_err(|_| d::CommandError::new("knowledge_unavailable", "knowledge state unavailable"))?;
-        Ok((selected.binding.provider.clone(), selected.binding.sha256.clone()))
+        let selected = self.0.selected.lock().map_err(|_| {
+            d::CommandError::new("knowledge_unavailable", "knowledge state unavailable")
+        })?;
+        Ok((
+            selected.binding.provider.clone(),
+            selected.binding.sha256.clone(),
+        ))
     }
     pub(crate) fn current(&self, revision: u64) -> d::Result<()> {
         if self.revision().map_err(portable)? != revision {
+            return Err(d::CommandError::new(
+                "root_changed",
+                "Knowledge provider changed while this read ran; retry the read.",
+            ));
+        }
+        Ok(())
+    }
+    /// Revalidate a completed read on the shared owner without waiting for a
+    /// selection writer. Contention is unavailable, never proof of currentness.
+    pub(crate) fn try_current(&self, revision: u64) -> d::Result<()> {
+        if self.try_revision().map_err(portable)? != revision {
             return Err(d::CommandError::new(
                 "root_changed",
                 "Knowledge provider changed while this read ran; retry the read.",

@@ -466,6 +466,10 @@ pub async fn run(
         let core=Core::open(&config).await?;
         let identity=core.logic.client.identity_status().await.map_err(|e|e.to_string())?;
         if identity.custody!=Some(bbt_mux::identity::Custody::Memory) {core.close().await?;return Err("r5-custody-witness-not-memory".into());}
+        let _c1_fixture = match super::headless::join_c1(&config, core.logic.client.clone()).await {
+            Ok(fixture) => fixture,
+            Err(error) => { core.close().await?; return Err(error); }
+        };
         eprintln!("R5 identity witness: custody={:?} label={:?}",identity.custody,identity.custody_label);
         let outcome=tokio::select! {
             result=exercise(&config,&core,updates,rendering,messages,progress.clone(),commands)=>result,

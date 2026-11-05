@@ -66,3 +66,10 @@ bboxy450-render = { path = "crates/bbt-render" }
 bboxy450-term-desktop-core = { path = "crates/bboxy450-term-desktop-core" }
 bboxy450-term-desktop = { path = "crates/bboxy450-term-desktop" }
 bboxy450-term-desktop-macos = { path = "crates/bboxy450-term-desktop-macos" }
+
+# Private Dream C1 performance fixtures retain every assertion and overflow check.
+# Decision: d93377961364684-dream-c1-optimized-private-fixture.
+[profile.dream-c1-fixture]
+inherits = "release"
+debug-assertions = true
+overflow-checks = true

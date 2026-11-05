@@ -17,6 +17,7 @@
 use bbt_mux::Ulid;
 mod app;
 mod debug;
+mod dream;
 mod e2e;
 mod events;
 mod identity;
@@ -98,6 +99,9 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   knowledge status [--swarm ID]
   knowledge select <root-id> <candidate-id> [--swarm ID]
   knowledge reset <root-id> [--swarm ID]    select the native local KB
+  dream inspect <seat> <session>:<generation>...   1..32 exact retained closed sessions
+  dream status <seat> <run> [page]         immutable own-seat status/result page
+  dream cancel <seat> <run>                cancel and retain ownership through actual settlement
   task list [--unassigned | --seat SEAT | --status STATUS]
   task get <#N|path|id>
   task status <#N|path|id>
@@ -218,6 +222,7 @@ macro_rules! commands {
 
 use app::app_commands;
 use debug::debug_commands;
+use dream::dream_commands;
 use e2e::e2e_commands;
 use events::events_commands;
 use identity::identity_commands;
@@ -243,6 +248,7 @@ commands! {
         knowledge_commands,
         events_commands,
         debug_commands,
+        dream_commands,
         app_commands,
     ]
 }
@@ -262,6 +268,7 @@ const NOUN_VERBS: &[&[Verb]] = &[
     knowledge::VERBS,
     events::VERBS,
     debug::VERBS,
+    dream::VERBS,
     app::VERBS,
 ];
 const fn verb_count(parts: &[&[Verb]]) -> usize {
@@ -330,6 +337,7 @@ type NounParse = fn(&[&str], &ParseCx) -> Result<Option<Command>, String>;
 const NOUN_PARSERS: &[NounParse] = &[
     ui::parse,
     debug::parse,
+    dream::parse,
     seat::parse,
     message::parse,
     plugin::parse,
@@ -473,6 +481,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
         ));
     }
     let read_flags: Option<&[&str]> = match &command {
+        Command::DreamInspect { .. } | Command::DreamStatus { .. } | Command::DreamCancel { .. } => Some(&[]),
         Command::UiCompose { .. } => Some(&["to", "text"]),
         Command::RecordFetch { .. } | Command::EventsStreams => Some(&[]),
         Command::RecordSearch { .. } => Some(&["type", "cursor"]),
@@ -1802,6 +1811,7 @@ type NounVerbRun = fn(VerbCx<'_>, Command) -> Result<(), String>;
 /// Each noun's noun-verb runner; a verb is run in its noun's file.
 const NOUN_VERB_RUNNERS: &[(&str, NounVerbRun)] = &[
     ("debug", debug::run_verb),
+    ("dream", dream::run_verb),
     ("plugin", plugin::run_verb),
     ("events", events::run_verb),
     ("record", records::run_verb),
@@ -2337,6 +2347,15 @@ mod tests {
                 seat: id,
                 generation: 1,
             },
+            GuiAction::Dream {
+                id,
+                seat: id,
+                request: bbt_proto::dream::Control::Status(bbt_proto::dream::Status {
+                    v: bbt_proto::dream::Version,
+                    run_id: id.into(),
+                    page: None,
+                }),
+            },
         ];
         let kinds: Vec<String> = samples
             .iter()
@@ -2387,6 +2406,7 @@ mod tests {
             ui::PARSE_SAMPLES,
             identity::PARSE_SAMPLES,
             debug::PARSE_SAMPLES,
+            dream::PARSE_SAMPLES,
             seat::PARSE_SAMPLES,
             message::PARSE_SAMPLES,
             plugin::PARSE_SAMPLES,

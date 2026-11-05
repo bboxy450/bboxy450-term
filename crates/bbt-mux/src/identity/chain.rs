@@ -32,6 +32,33 @@ use crate::{
     store::{Result, Store, digest, invalid, object_dir, sqlite::SqliteStore},
 };
 
+// Public-only verification shared by device signing and C1's bounded reader.
+// No DeviceKeyStore, private-key loader or signing method is reachable here.
+pub(super) fn verify_public_device(
+    identity: &DeviceIdentity,
+    pinned: &str,
+    head: &Signed<AccountHead>,
+    now: u64,
+) -> Result<()> {
+    if now >= identity.grant.payload.expires_at {
+        return Err(invalid("expired DeviceGrant"));
+    }
+    let root = Root::parse(&B64.decode(&identity.root_certificate)?, pinned, now)?;
+    head.verify("AccountHead", &root.public)?;
+    if head
+        .payload
+        .revoked_devices
+        .contains(&identity.grant.payload.device_id)
+    {
+        return Err(invalid("revoked device epoch"));
+    }
+    if head.payload.account_epoch != identity.grant.payload.account_epoch {
+        return Err(invalid("stale device account epoch"));
+    }
+    identity.verify(pinned, head, now)?;
+    Ok(())
+}
+
 type Clock = Arc<dyn Fn() -> u64 + Send + Sync>;
 struct Leaf {
     key: SigningKey,
@@ -136,24 +163,21 @@ impl ChainSeatKeys {
             return Err(invalid("expired DeviceGrant"));
         }
         let head: Signed<AccountHead> = read(&self.account, "identity/head")?;
-        let root = Root::parse(
-            &B64.decode(&self.identity.root_certificate)?,
-            &self.pinned,
-            now,
-        )?;
-        head.verify("AccountHead", &root.public)?;
-        if head
-            .payload
-            .revoked_devices
-            .contains(&self.identity.grant.payload.device_id)
+        verify_public_device(&self.identity, &self.pinned, &head, now)
+    }
+    pub(super) fn dream_public_pin(&self) -> Result<super::status::PublicPin> {
+        if self.pinned.len() != 40
+            || self.issuer.key.len() != 64
+            || self.identity.grant.digest.len() != 64
         {
-            return Err(invalid("revoked device epoch"));
+            return Err(invalid("invalid public identity pin"));
         }
-        if head.payload.account_epoch != self.identity.grant.payload.account_epoch {
-            return Err(invalid("stale device account epoch"));
-        }
-        self.identity.verify(&self.pinned, &head, now)?;
-        Ok(())
+        Ok(super::status::PublicPin::Certified {
+            issuer: self.issuer.clone(),
+            pinned: self.pinned.clone(),
+            device: self.identity.grant.payload.device_id,
+            grant: self.identity.grant.digest.clone(),
+        })
     }
     pub fn proof(&self, id: &str) -> Result<SeatProof> {
         read(&self.account, &format!("identity/seat-grant/{id}"))
@@ -965,7 +989,15 @@ impl super::IdentityRuntime {
             if state.is_none() && account.get("identity/head")?.is_some() {
                 return Err(invalid("bootstrapped identity lacks its issuer journal"));
             }
+            let dream_fence = super::status::PublicFenceReader::new(
+                account.clone(),
+                Some(super::status::PublicPin::Local(Issuer {
+                    kind: IssuerKind::LocalDev,
+                    key: public(&local.verifying_key().to_bytes()),
+                })),
+            );
             return Ok(Self {
+                dream_fence,
                 account,
                 keys: Arc::new(LocalSeatKeys::new(local.clone())),
                 chain: None,
@@ -1017,7 +1049,10 @@ impl super::IdentityRuntime {
                 }
             }
         });
+        let dream_fence =
+            super::status::PublicFenceReader::new(account.clone(), chain.dream_public_pin().ok());
         Ok(Self {
+            dream_fence,
             account,
             keys: Arc::new(MaintainedKeys {
                 chain: chain.clone(),

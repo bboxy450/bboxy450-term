@@ -237,3 +237,5 @@ action	{"kind":"KnowledgeCommit","body":{"id":"00000000000000000000000001","loca
 action	{"kind":"ObserveAttention","body":{"id":"00000000000000000000000001"}}
 action	{"kind":"GuiHello","body":{"id":"00000000000000000000000001","claim":false,"observer":true}}
 reply	{"kind":"CurrentAttention","body":{"op":null,"update":{"epoch":"00000000000000000000000002","revision":0,"snapshot":true,"seats":[],"removed":[]}}}
+action	{"kind":"Dream","body":{"id":"00000000000000000000000001","seat":"00000000000000000000000002","request":{"method":"status","v":1,"run_id":"00000000000000000000000003","page":null}}}
+reply	{"kind":"Dream","body":{"op":"00000000000000000000000001","response":{"v":1,"ok":false,"error":{"code":"not_found","source":null}}}}

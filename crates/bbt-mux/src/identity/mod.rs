@@ -35,6 +35,7 @@ pub use keychain::{Custody, DeviceKeyStore, KeychainDeviceKeys};
 pub use local::{LocalIssuerOutcome, local_dev_issuer, local_dev_issuer_with_store};
 pub use seats::{KeyStatus, RosterEntry, SeatGrant, SeatProof, SeatRoster};
 pub use status::{IdentityRuntime, IdentityState, IdentityStatus};
+pub(crate) use status::{PublicFence, PublicFenceReader, PublicFenceSession};
 pub use test_account::TestAccount;
 pub use transition::{IssuerState, reset_identity};
 pub use unlock::{

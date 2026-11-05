@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod mapping;
 pub use bboxy450_harness_wake_up::capability;
+pub use bboxy450_harness_wake_up::dream_c1;
 pub use bboxy450_harness_wake_up::{
     ArbiterView, Binding, Endpoint, NativeAttachment, Priority, Readiness, ReadyToken, StateSource,
     WakeCause, WakeMethod, native_available,

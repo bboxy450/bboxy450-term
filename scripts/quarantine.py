@@ -174,6 +174,13 @@ def nextest(api):
     return runner != "cargo" and found
 
 
+def nextest_build_args(arguments):
+    """The wrapper accepts Cargo build profiles, not nextest execution profiles."""
+    return ["--cargo-profile" if arg == "--profile" else
+            "--cargo-profile=" + arg.split("=", 1)[1] if arg.startswith("--profile=") else arg
+            for arg in arguments]
+
+
 def junit_tests(path, packages):
     """Coverage rows from nextest JUnit: binary ids are pkg, pkg::test, pkg::bin/name."""
     rows = []
@@ -204,6 +211,7 @@ def ignored_integration_suite(root, build, filters, api):
     parser.add_argument("-p", "--package", action="append")
     parser.add_argument("--test", action="append")
     parser.add_argument("--target-dir")
+    parser.add_argument("--profile")
     parser.add_argument("--locked", action="store_true")
     parser.add_argument("--no-fail-fast", action="store_true")
     try:
@@ -213,7 +221,7 @@ def ignored_integration_suite(root, build, filters, api):
     if unknown or not selection.test:
         return False
     listing = api.command(["cargo", "nextest", "list",
-                           *[arg for arg in build if arg != "--no-fail-fast"],
+                           *nextest_build_args([arg for arg in build if arg != "--no-fail-fast"]),
                            "--message-format", "json"], cwd=root, check=False)
     if listing.returncode:
         return False
@@ -235,7 +243,7 @@ def nextest_run(root, cargo_args, target, api, *, allow_ignored_only=False):
     build, filters = cargo_args[:split], cargo_args[split + 1:]
     junit = Path(target) / "nextest" / "default" / "junit.xml"
     junit.unlink(missing_ok=True)
-    argv = ["cargo", "nextest", "run", *build, *(["--", *filters] if filters else [])]
+    argv = ["cargo", "nextest", "run", *nextest_build_args(build), *(["--", *filters] if filters else [])]
     print("quarantine: " + " ".join(argv), flush=True)
     code = subprocess.run(argv, cwd=root).returncode
     if code == 4 and allow_ignored_only and ignored_integration_suite(root, build, filters, api):

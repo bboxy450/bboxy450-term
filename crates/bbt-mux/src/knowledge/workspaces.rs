@@ -182,9 +182,14 @@ impl Workspace {
     pub fn provider_revision(&self) -> crate::store::Result<u64> {
         self.host.revision()
     }
+    /// Provider metadata for an admission/completion running on the shared owner.
+    /// Preserve the blocking variant for isolated IO readers.
+    pub fn try_provider_revision(&self) -> crate::store::Result<u64> {
+        self.host.try_revision()
+    }
     /// Keep an invalidation pending until its owner publishes it successfully.
     pub fn provider_changed(&self) -> crate::store::Result<Option<u64>> {
-        let revision = self.host.revision()?;
+        let revision = self.try_provider_revision()?;
         Ok((revision != self.seen_revision).then_some(revision))
     }
     pub fn acknowledge_provider_change(&mut self, revision: u64) {

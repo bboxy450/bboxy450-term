@@ -70,6 +70,7 @@ help:
 	  'make list-toolkit-package       UI package list; refuses bundled reports' \
 	  'make stories-toolkit            Headless native rich widget PNG captures' \
 	  'make test-formal                Native Yarn checker + Java TLC graph/verdict parity' \
+	  'make test-dream-c1              Pinned C1 wire, actual sibling Hello, own-seat MCP/ctl and private native routing' \
 	  'make check-formal-evidence      Verify the source-bound formal landing receipt' \
 	  'make prune-formal-evidence      Archive cold receipts (KEEP=10 DRY_RUN=1)' \
 	  'make test-formal-contracts      Project contracts and real API witnesses (native)' \
@@ -2643,3 +2644,12 @@ test-python-execute-native: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo build --locked -p bboxy450-term --example python_execute_fixture --target-dir '$(TARGET_DIR)'; \
 	BBOXY_PYTHON_EXECUTE_FIXTURE='$(abspath $(TARGET_DIR))/debug/examples/python_execute_fixture' cargo nextest run --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' -E 'test(python_)' --run-ignored all
+
+# C1 consumer join uses only the deliberately pinned embedded corpus by default.
+# DREAM_C1_FIXTURES may name the approved producer worktree for development;
+# its receipt is explicitly not a final pinned-source join.
+.PHONY: test-dream-c1
+test-dream-c1: init-submodules
+	@python3 -I scripts/test-landing.py CargoProfileForwardingTests IgnoredIntegrationTests
+	@set -eu; . ./scripts/cache-env.sh; \
+	CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))'

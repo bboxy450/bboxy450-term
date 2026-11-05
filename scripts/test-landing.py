@@ -2006,6 +2006,84 @@ class IgnoredIntegrationTests(unittest.TestCase):
                 self.assertEqual(code, run_code)
                 listing.assert_not_called()
 
+    def test_cargo_profile_is_preserved_for_ignored_listing_not_execution_selection(self):
+        for profile in [("--profile", "dream-c1-fixture"), ("--profile=dream-c1-fixture",)]:
+            with self.subTest(profile=profile):
+                code, listing, argv, _ = self.invoke(self.ignored(), prefix=profile)
+                self.assertEqual(code, 0)
+                wanted = (["--cargo-profile", "dream-c1-fixture"] if len(profile) == 2 else
+                          ["--cargo-profile=dream-c1-fixture"])
+                self.assertEqual(argv[3:3 + len(wanted)], wanted)
+                self.assertEqual(listing.call_args[0][0][3:3 + len(wanted)], wanted)
+                self.assertNotIn("--profile", argv)
+                self.assertNotIn("--profile", listing.call_args[0][0])
+                self.assertEqual(self.invoke({}, prefix=profile)[0], 4)
+
+
+class CargoProfileForwardingTests(unittest.TestCase):
+    def module(self):
+        spec = importlib.util.spec_from_file_location("profile_quarantine", SOURCE.with_name("quarantine.py"))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def invoke(self, arguments):
+        module = self.module()
+        api = Mock()
+        api.metadata.return_value = {"fixture": {"targets": [
+            {"name": "fixture", "kind": ["lib"], "doctest": True}]}}
+        calls = []
+        def run(argv, **kwargs):
+            calls.append(argv)
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        with tempfile.TemporaryDirectory(prefix="cargo-profile-") as directory, \
+                patch.object(module.subprocess, "run", side_effect=run), \
+                contextlib.redirect_stdout(io.StringIO()):
+            result = module.nextest_run(Path(directory), arguments, Path(directory) / "target", api)
+        return result, calls
+
+    def test_nextest_build_profile_preserves_features_targets_packages_and_filters(self):
+        for profile in [["--profile", "dream-c1-fixture"], ["--profile=dream-c1-fixture"]]:
+            with self.subTest(profile=profile):
+                arguments = [*profile, "--locked", "--features", "fixture-a,fixture-b",
+                    "--target", "aarch64-apple-darwin", "--target-dir", "private-target",
+                    "-p", "fixture", "--lib", "-E", "test(c1)", "--", "--nocapture"]
+                original = arguments.copy()
+                result, calls = self.invoke(arguments)
+                wanted = (["--cargo-profile", "dream-c1-fixture"] if len(profile) == 2 else
+                          ["--cargo-profile=dream-c1-fixture"])
+                self.assertEqual(result[0], 0)
+                self.assertEqual(calls, [["cargo", "nextest", "run", *wanted, *arguments[len(profile):]]])
+                self.assertEqual(arguments, original, "translation cannot mutate Cargo retry/doc arguments")
+
+    def test_cargo_doctests_keep_the_original_cargo_profile(self):
+        for profile in [["--profile", "dream-c1-fixture"], ["--profile=dream-c1-fixture"]]:
+            with self.subTest(profile=profile):
+                options = ["--features", "fixture-a,fixture-b", "--target", "aarch64-apple-darwin",
+                           "--target-dir", "private-target", "--locked"]
+                _, calls = self.invoke([*profile, "-p", "fixture", *options, "--", "filter"])
+                self.assertEqual(len(calls), 2)
+                self.assertEqual(calls[1], ["cargo", "test", "--doc", *profile, *options,
+                                           "-p", "fixture", "--", "filter"])
+                self.assertFalse(any(arg.startswith("--cargo-profile") for arg in calls[1]))
+                self.assertFalse(any(arg == "--profile" or arg.startswith("--profile=") for arg in calls[0]))
+
+    def test_exact_cargo_retry_keeps_the_original_profile(self):
+        module = self.module()
+        for profile in [["--profile", "dream-c1-fixture"], ["--profile=dream-c1-fixture"]]:
+            with self.subTest(profile=profile):
+                options = ["--features", "a,b", "--target", "aarch64-apple-darwin",
+                           "--target-dir", "private-target", "--locked", "--test", "native"]
+                retry = module.retry_args([*profile, "-p", "old", *options, "old_filter", "--", "--ignored"],
+                                          "fixture", "native::case", Mock())
+                self.assertEqual(retry, ["cargo", "test", *profile, *options,
+                                         "-p", "fixture", "--", "--exact", "native::case"])
+
+    def test_filter_tail_profile_text_is_never_translated(self):
+        _, calls = self.invoke(["--lib", "-p", "fixture", "--", "--profile=literal_filter"])
+        self.assertEqual(calls, [["cargo", "nextest", "run", "--lib", "-p", "fixture",
+                                  "--", "--profile=literal_filter"]])
+
 
 class QuarantineTests(unittest.TestCase):
     def setUp(self):

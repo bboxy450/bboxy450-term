@@ -78,6 +78,7 @@ pub(crate) fn catalogue(actor: &Actor, plugins: Vec<Value>) -> Value {
     })).collect();
     tools.extend(super::messaging::catalogue(&super::Actor::from(actor)));
     tools.extend(super::attention::catalogue());
+    tools.extend(super::dream_c1::catalogue());
     tools.extend(super::work_items::catalogue(&super::Actor::from(actor)));
     tools.extend(super::seats::catalogue(actor));
     tools.extend(super::sudo::catalogue(actor));

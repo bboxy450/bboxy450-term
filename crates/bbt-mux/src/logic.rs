@@ -202,6 +202,9 @@ fn plugin_messages(
 pub type HookObserved = (crate::adapters::Status, Option<crate::plugins::PluginHost>);
 
 enum Command {
+    DreamControl(Ulid, bbt_proto::dream::Control, oneshot::Sender<bbt_proto::dream::ControlReply>),
+    DreamClosed(Ulid, u64, Box<crate::registry::dream_c1::Bookmark>),
+    DreamActivity(Ulid,u64),
     CtlUi(
         Ulid,
         bbt_proto::gui::UiRequest,
@@ -913,6 +916,19 @@ pub struct LogicClient {
     pub(crate) window_journal: Option<Arc<crate::window_journal::Journal>>,
 }
 impl LogicClient {
+    /// Account-operator Dream route; the admitted socket supplies the target only.
+    pub async fn gui_dream(&self, seat: Ulid, request: bbt_proto::dream::Control) -> Result<bbt_proto::dream::ControlReply> {
+        let (tx,rx)=oneshot::channel();
+        self.tx.send(Command::DreamControl(seat,request,tx)).await.map_err(|_|self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_|self.unavailable("logic stopped"))
+    }
+    async fn dream_activity(&self,seat:Ulid,generation:u64)->Result<()> {
+        self.tx.send(Command::DreamActivity(seat,generation)).await.map_err(|_|self.unavailable("logic stopped"))
+    }
+    async fn dream_closed(&self,seat:Ulid,generation:u64,source:crate::registry::dream_c1::Bookmark)->Result<()> {
+        self.tx.send(Command::DreamClosed(seat,generation,Box::new(source))).await.map_err(|_|self.unavailable("logic stopped"))
+    }
+
     /// The app supplies its birth-checked desktop/supervisor owner admission.
     /// No observer is admitted until this guard is installed.
     pub fn set_attention_observer_guard(&self, guard: Arc<dyn Fn(u32) -> bool + Send + Sync>) {
@@ -2457,8 +2473,13 @@ impl ViewState {
 
 #[path = "logic/harness_status.rs"]
 mod harness_status;
+#[path = "logic/dream_c1.rs"]
+pub(crate) mod dream_c1;
 
 struct ViewState {
+    dream_activity_latch: Arc<AtomicU64>,
+    dream_foreground: Arc<AtomicBool>,
+    dream_activity_revision: Arc<AtomicU64>,
     info: SeatInfo,
     adapter: Session,
     delivery_endpoint: crate::adapters::Endpoint,
@@ -3021,6 +3042,9 @@ const PROVENANCE_RETRY_MIN: Duration = Duration::from_millis(500);
 const PROVENANCE_RETRY_MAX: Duration = Duration::from_secs(30);
 
 struct Worker {
+    dream_runtime: crate::registry::dream_c1::Runtime,
+    dream_owned: BTreeSet<(Ulid,u64)>,
+    dream_source_bindings: BTreeMap<(Ulid,u64),RootBinding>,
     connections: Connections,
     config: LogicConfig,
     registry: Registry,
@@ -3179,6 +3203,30 @@ mod private_document_identity_tests {
 }
 
 impl Worker {
+    #[cfg(debug_assertions)]
+    fn dream_private_fixture(&self)->bool {
+        self.identity.issued_by().and_then(|label|label.strip_prefix("test-account:"))
+            .and_then(|label|label.parse::<Ulid>().ok()).is_some_and(|id|id!=Ulid::nil())
+    }
+    fn dream_authority(&self,id:Ulid,generation:u64)->std::result::Result<crate::registry::dream_c1::Authority,bbt_proto::dream::Code> {
+        use bbt_proto::dream::Code;
+        let view=self.views.get(&id).filter(|v|v.generation==generation).ok_or(Code::StaleContext)?;
+        let (cached_generation,epoch,binding)=self.provenance_bindings.get(&id).ok_or(Code::StaleContext)?;
+        if *cached_generation!=generation || *epoch!=self.registry.routing_epoch() {return Err(Code::StaleContext);}
+        let port=self.workspaces.port(binding.clone()).map_err(|_|Code::StaleContext)?;
+        Ok(crate::registry::dream_c1::Authority {fence:self.identity.dream_fence(),#[cfg(debug_assertions)] private_fixture:self.dream_private_fixture(),port,seat:id,generation,
+            activity_latch:view.dream_activity_latch.clone(),foreground:view.dream_foreground.clone(),activity_revision:view.dream_activity_revision.clone()})
+    }
+    fn start_dream_call(&self,id:Ulid,generation:u64,call:crate::mcp::Call,reply:oneshot::Sender<Result<serde_json::Value>>) {
+        let authority=match self.dream_authority(id,generation) {
+            Ok(a)=>a,Err(code)=>{let _=reply.send(Ok(crate::mcp::dream_c1::success(call.op_id,crate::registry::dream_c1::failure(code))));return;}
+        };
+        let op=call.op_id;
+        let control_lane=call.args["method"]=="cancel" || (call.args["method"]=="status"&&call.args["page"].is_null());
+        self.dream_runtime.request(&self.handle,authority,move ||{call.validate().map_err(|_|bbt_proto::dream::Code::BadRequest)?;crate::mcp::dream_c1::parse(&call).map_err(|_|bbt_proto::dream::Code::BadRequest)},None,control_lane,
+            move |result| {let _=reply.send(Ok(crate::mcp::dream_c1::success(op,result)));});
+    }
+
     #[cfg(test)]
     fn open(
         providers: Vec<Box<dyn Provider>>,
@@ -3274,10 +3322,24 @@ impl Worker {
         // also avoids stealing any prior logic instance's listener on restart.
         use std::os::unix::fs::DirBuilderExt;
         // SAFETY: geteuid has no pointer arguments or side effects.
-        let endpoint_root = PathBuf::from("/tmp").join(format!(
-            "bbt-{}-{}",
-            unsafe { libc::geteuid() },
-            Ulid::new()
+        #[allow(unused_mut)]
+        let mut endpoint_parent=PathBuf::from("/tmp");
+        #[cfg(debug_assertions)]
+        if identity.issued_by().and_then(|label|label.strip_prefix("test-account:"))
+            .and_then(|label|label.parse::<Ulid>().ok()).is_some_and(|id|id!=Ulid::nil()) {
+            // Only an authenticated disposable account with an owned common root
+            // uses its fixture namespace. No environment label grants authority.
+            use std::os::unix::fs::MetadataExt;
+            if let Some(home)=std::env::var_os("HOME").map(PathBuf::from)
+                && home.is_absolute() && home.canonicalize().ok().as_ref()==Some(&home)
+                && let Some(parent)=home.parent()
+                && config.run_dir.canonicalize().is_ok_and(|run|run.starts_with(parent))
+                && [home.as_path(),parent].iter().all(|path|std::fs::symlink_metadata(path).is_ok_and(|m|m.is_dir()&&m.uid()==unsafe{libc::geteuid()}&&m.mode()&0o077==0)) {
+                endpoint_parent=parent.to_path_buf();
+            }
+        }
+        let endpoint_root = endpoint_parent.join(format!(
+            "bbt-{}-{}",unsafe { libc::geteuid() },Ulid::new()
         ));
         std::fs::DirBuilder::new()
             .mode(0o700)
@@ -3301,7 +3363,11 @@ impl Worker {
         )?;
         let checkpoint_policy = CheckpointPolicy::for_ring(&config.ring);
         let implementation_workspaces = crate::mcp::workspaces::Service::open(&config.run_dir)?;
+        let dream_runtime=crate::registry::dream_c1::Runtime::new(config.run_dir.join("dream-c1"),std::env::current_exe()?.parent().ok_or_else(||invalid("missing sibling directory"))?.join("bboxy450-harness"),&handle);
         let mut worker = Self {
+            dream_runtime,
+            dream_owned: BTreeSet::new(),
+            dream_source_bindings: BTreeMap::new(),
             connections,
             config,
             registry,
@@ -3780,7 +3846,8 @@ impl Worker {
             let (outcome, signer) = match result {
                 Ok(finished) => {
                     self.identity_acl = finished.acl;
-                    if let Some(runtime) = finished.runtime {
+                    if let Some(mut runtime) = finished.runtime {
+                        runtime.inherit_dream_fence(&self.identity);
                         self.identity = runtime;
                     } else if let Some(failure) = finished.reopen_failed {
                         self.identity.note_reopen_failed(failure);
@@ -4276,7 +4343,7 @@ impl Worker {
             }
         };
         let journal = self.root_journal(&journal, &port);
-        let revision = match port.host.revision() {
+        let revision = match port.host.try_revision() {
             Ok(revision) => revision,
             Err(error) => {
                 let _ = reply.send(Err(error));
@@ -4403,7 +4470,7 @@ impl Worker {
             }
         };
         let journal = self.root_journal(&journal, &port);
-        let revision = match port.host.revision() {
+        let revision = match port.host.try_revision() {
             Ok(revision) => revision,
             Err(error) => {
                 let _ = reply.send(Err(error));
@@ -6601,6 +6668,7 @@ impl Worker {
                     &cwd,
                     record.location == crate::registry::Location::Local,
                 );
+            if record.harness_kind=="bboxy450-harness" {self.dream_source_bindings.insert((info.seat,info.generation),port.binding.clone());}
             self.provenance_registered
                 .insert((info.seat, info.generation, port.binding.root_id));
         }
@@ -6767,6 +6835,9 @@ impl Worker {
                 hooks: false,
             })
         };
+        if harness.kind=="bboxy450-harness" && harness.command.windows(2).any(|v|v[0]=="--dream-owner"&&v[1]=="term-c1") {
+            self.dream_owned.insert((info.seat,info.generation));
+        }
         let shared_codex_runtime = SqliteStore::open(&directory)?
             .get("adapter_shared_runtime_endpoint")?
             .filter(|bytes| !bytes.is_empty())
@@ -6872,6 +6943,9 @@ impl Worker {
         } else {
             None
         };
+        let dream_activity_latch=Arc::new(AtomicU64::new(1));
+        let dream_foreground=Arc::new(AtomicBool::new(true));
+        let dream_activity_revision=Arc::new(AtomicU64::new(0));
         let rich_connection = rich_socket
             .as_ref()
             .filter(|_| info.exited.is_none())
@@ -6880,7 +6954,16 @@ impl Worker {
                 let handle = self.handle.clone();
                 let seat = info.seat;
                 let generation = info.generation;
-                bboxy450_harness_wake_up::rich::Connection::start_notifying(
+                let latch=dream_activity_latch.clone();
+                let foreground=dream_foreground.clone();
+                let activity_revision=dream_activity_revision.clone();
+                let activity=Arc::new(move |active:Option<bool>| {
+                    let state=u64::from(active.unwrap_or(true));
+                    let _=latch.try_update(Ordering::AcqRel,Ordering::Acquire,|old|old.checked_add(2).map(|n|(n&!1)|state));
+                    foreground.store(active.unwrap_or(true),Ordering::Release);
+                    activity_revision.fetch_add(1,Ordering::AcqRel);
+                });
+                bboxy450_harness_wake_up::rich::Connection::start_observing(
                     path.clone(),
                     &self.handle,
                     Arc::new(move || {
@@ -6889,6 +6972,8 @@ impl Worker {
                             let _ = sender.send(Command::RichState(seat, generation)).await;
                         });
                     }),
+                    Some(adapter.binding.pid),
+                    Some(activity),
                 )
             });
         let rich_delivery = rich_connection
@@ -6897,6 +6982,9 @@ impl Worker {
         self.views.insert(
             info.seat,
             ViewState {
+                dream_activity_latch,
+                dream_foreground,
+                dream_activity_revision,
                 info: info.clone(),
                 adapter,
                 delivery_endpoint,
@@ -6997,8 +7085,29 @@ impl Worker {
         use std::os::unix::ffi::OsStrExt;
         let run = std::fs::canonicalize(&self.config.run_dir)?;
         let digest = crate::store::digest(run.as_os_str().as_bytes());
+        #[allow(unused_mut)]
+        let mut endpoint_parent = PathBuf::from("/tmp");
+        #[cfg(debug_assertions)]
+        if self.dream_private_fixture() {
+            use std::os::unix::fs::MetadataExt;
+            if let Some(home) = std::env::var_os("HOME").map(PathBuf::from)
+                && home.is_absolute()
+                && home.canonicalize().ok().as_ref() == Some(&home)
+                && let Some(parent) = home.parent()
+                && run.starts_with(parent)
+                && [home.as_path(), parent].iter().all(|path| {
+                    std::fs::symlink_metadata(path).is_ok_and(|metadata| {
+                        metadata.is_dir()
+                            && metadata.uid() == unsafe { libc::geteuid() }
+                            && metadata.mode() & 0o077 == 0
+                    })
+                })
+            {
+                endpoint_parent = parent.to_path_buf();
+            }
+        }
         // SAFETY: geteuid has no pointer arguments or side effects.
-        let root = PathBuf::from("/tmp").join(format!(
+        let root = endpoint_parent.join(format!(
             "bbt-seat-{}-{}",
             unsafe { libc::geteuid() },
             &digest[..20],
@@ -7138,11 +7247,23 @@ impl Worker {
     fn launch(
         &mut self,
         mut record: SeatRecord,
-        harness: HarnessRecord,
+        mut harness: HarnessRecord,
         options: crate::adapters::launch::LaunchOptions,
     ) -> Result<SeatInfo> {
         if record.harness_kind != harness.kind {
             return Err(invalid("seat/harness kind mismatch"));
+        }
+        if harness.kind=="bboxy450-harness" {
+            let mut input=std::mem::take(&mut harness.command).into_iter();
+            while let Some(arg)=input.next() {
+                if arg=="--dream-owner" {let _=input.next();continue;}
+                if arg.starts_with("--dream-owner=") {continue;}
+                harness.command.push(arg);
+            }
+        }
+        let dream_owned=harness.kind=="bboxy450-harness" && options.via.is_none() && self.dream_runtime.owner().is_some();
+        if dream_owned {
+            harness.command.extend(["--dream-owner".into(),"term-c1".into()]);
         }
         harness.validate()?;
         role_catalog::validate_assignment(self.configured_roles()?, &harness.kind, &record.role)?;
@@ -7263,7 +7384,15 @@ impl Worker {
         )?;
         // On an ambiguous spawn keep the overlay; deleting it could break a child
         // that actually started. Reconciliation uses the original durable seat ID.
-        self.spawn(record, plan.spec)
+        let source_binding=self.workspaces.cache.current(record.swarm).ok().cloned();
+        let seat=record.id;
+        let generation=record.generation;
+        let spawned=self.spawn(record, plan.spec)?;
+        if dream_owned {
+            self.dream_owned.insert((seat,generation));
+            if let Some(binding)=source_binding {self.dream_source_bindings.insert((seat,generation),binding);}
+        }
+        Ok(spawned)
     }
     fn prepare_seat_recovery(
         &mut self,
@@ -9197,6 +9326,7 @@ impl Worker {
     }
     fn refresh_adapters(&mut self) -> Result<()> {
         let now = now_ms();
+        #[cfg(debug_assertions)] let dream_private_fixture=self.dream_private_fixture();
         for id in self.views.keys().copied().collect::<Vec<_>>() {
             let view = self.views.get_mut(&id).unwrap();
             if let Some(delivery) = &view.rich_delivery
@@ -9215,8 +9345,8 @@ impl Worker {
             }
             let before = view.adapter.status.clone();
             let mut live_wait = false;
-            if view.adapter.status.source != "exit" {
                 if view.adapter.record.kind == "bboxy450-harness"
+                    && (view.adapter.status.source!="exit" || self.dream_owned.contains(&(id,view.generation)))
                     && view
                         .native_reader
                         .as_ref()
@@ -9232,12 +9362,21 @@ impl Worker {
                         binding,
                         root,
                         view.rich_socket.clone(),
+                        self.dream_owned.contains(&(id,view.generation)),
+                        self.dream_source_bindings.get(&(id,view.generation)).and_then(|binding|self.workspaces.port(binding.clone()).ok())
+                            .map(|port|crate::registry::dream_c1::Authority {fence:self.identity.dream_fence(),#[cfg(debug_assertions)] private_fixture:dream_private_fixture,port,seat:id,generation:view.generation,
+                                activity_latch:view.dream_activity_latch.clone(),foreground:view.dream_foreground.clone(),activity_revision:view.dream_activity_revision.clone()}),
+                        view.dream_foreground.clone(),
+                        view.dream_activity_revision.clone(),
+                        view.dream_activity_latch.clone(),
+                        self.config.run_dir.join("dream-c1"),
                     ));
                     view.native_reader = Some(NativeReader {
                         binding: reader_binding,
                         task,
                     });
                 }
+            if view.adapter.status.source != "exit" {
                 if view.adapter.record.kind == "claude" {
                     let root = std::env::var_os("CLAUDE_CONFIG_DIR")
                         .map(PathBuf::from)
@@ -9542,7 +9681,7 @@ impl Worker {
                     .and_then(|_| self.workspaces.cache.get(&done.binding).map_err(Into::into))
                     .and_then(|root| {
                         root.host
-                            .current(done.revision)
+                            .try_current(done.revision)
                             .map_err(|error| invalid(error.to_string()))
                     })
                     .map_err(|error| workspace_command_error(error.as_ref()));
@@ -9567,7 +9706,7 @@ impl Worker {
                                 self.workspaces.cache.current(done.binding.swarm)?,
                             )?;
                             let root = self.workspaces.cache.get(&done.binding)?;
-                            root.host.current(done.revision).map_err(|e| invalid(e.to_string()))?;
+                            root.host.try_current(done.revision).map_err(|e| invalid(e.to_string()))?;
                             done.current_native_authority(&root.index, &record)
                         });
                     let _ = done.reply.send(current.and(done.result));
@@ -10382,7 +10521,7 @@ impl Worker {
                 return;
             }
         };
-        let revision = match port.host.revision() {
+        let revision = match port.host.try_revision() {
             Ok(revision) => revision,
             Err(error) => {
                 let _ = reply.send(Err(workspace_command_error(error.as_ref())));
@@ -11016,6 +11155,24 @@ impl Worker {
                         let result = self.operator_identity(op, request, origin);
                         let _ = reply.send(result);
                     }
+                    Command::DreamControl(id,request,reply) => {
+                        let authority=self.views.get(&id).ok_or(bbt_proto::dream::Code::NotFound).and_then(|v|self.dream_authority(id,v.generation));
+                        let control_lane=matches!(&request,bbt_proto::dream::Control::Cancel(_)|bbt_proto::dream::Control::Status(bbt_proto::dream::Status {page:None,..}));
+                        match authority {Ok(a)=>self.dream_runtime.request(&self.handle,a,move ||Ok(request),None,control_lane,move |r|{let _=reply.send(r);}),
+                            Err(c)=>{let _=reply.send(crate::registry::dream_c1::failure(c));}}
+                    }
+                    Command::DreamActivity(id,generation) => {
+                        if let Ok(authority)=self.dream_authority(id,generation) {self.dream_runtime.activity(&self.handle,authority);}
+                    }
+                    Command::DreamClosed(id,generation,source) => {
+                        if self.dream_owned.contains(&(id,generation)) {
+                            if let Ok(authority)=self.dream_authority(id,generation) {
+                                let request=bbt_proto::dream::Control::Inspect(bbt_proto::dream::Inspect {v:bbt_proto::dream::Version,op_id:Ulid::new().into(),
+                                    sources:vec![bbt_proto::dream::Selection {session:source.session.clone(),source_generation:bbt_proto::dream::Number(source.generation)}]});
+                                self.dream_runtime.request(&self.handle,authority,move ||Ok(request),Some(*source),false,|_|{});
+                            }
+                        }
+                    }
                     Command::ControlCatalogue(id, generation, reply) => {
                         let result = self.control_actor(id, generation).map(|(actor, _)| {
                             let mut catalogue =
@@ -11096,6 +11253,8 @@ impl Worker {
                             && call.args.get("workspace").is_some()
                         {
                             self.start_workspace_spawn(id, generation, call, reply);
+                        } else if crate::mcp::dream_c1::handles(&call.tool) {
+                            self.start_dream_call(id,generation,call,reply);
                         } else if call.tool == "history_read" {
                             self.start_control_history(id, generation, call, reply);
                         } else if call.tool == "diagnostic_errors" {
@@ -12403,6 +12562,7 @@ fn retry_capture(mut request: impl FnMut() -> Result<Reply>) -> Result<Reply> {
 }
 impl Drop for Worker {
     fn drop(&mut self) {
+        self.dream_runtime.retire();
         self.workspaces.cache.close();
         let roots: BTreeSet<_> = self
             .endpoints
@@ -13528,4 +13688,1027 @@ fn harness_profiles() -> std::result::Result<serde_json::Value, String> {
                 .filter(|s| !s.is_empty())
         });
     Ok(json!({ "profiles": out, "default": default, "directory": dir }))
+}
+
+
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+// Adapted from this project's identity_retry_clock_tests and tests/dream_c1.rs:
+// https://github.com/bboxy450/bboxy450-term/blob/main/crates/bbt-mux/src/logic.rs
+// Append as a source-local test module. Real private PTYs, admitted MCP Bridge
+// and admitted GUI socket execute the production Dream controls. Persisted empty
+// pages are explicit API-custody fixtures, not worker/IR/conformance evidence.
+#[cfg(test)]
+mod dream_public_api_tests {
+    use super::*;
+    use crate::identity::{Custody, DeviceIdentity, DeviceKeyStore, IdentityRuntime, TestAccount};
+    use crate::mcp::bridge::{Bridge, Config as BridgeConfig};
+    use crate::registry::dream_c1::{Bookmark, Journal, Record};
+    use bbt_proto::dream as w;
+    use serde_json::{Value, json};
+    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+    use std::sync::atomic::AtomicU64;
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+
+    struct NativeCustodySpy {
+        inner: Arc<dyn DeviceKeyStore + Send + Sync>,
+        calls: Arc<AtomicU64>,
+        trace: Arc<std::sync::atomic::AtomicUsize>,
+    }
+    impl NativeCustodySpy {
+        #[inline(never)]
+        fn observed(&self, method: &'static str) {
+            self.calls.fetch_add(1, Ordering::AcqRel);
+            IdentityRuntime::test_dream_spy_trace(&self.trace, method);
+        }
+    }
+    impl DeviceKeyStore for NativeCustodySpy {
+        fn custody(&self) -> Custody {
+            Custody::LoginKeychain
+        }
+        fn custody_label(&self) -> &'static str {
+            "private native-policy spy"
+        }
+        fn load(&self, device: Ulid) -> crate::identity::Result<Option<SigningKey>> {
+            self.observed("custody.load");
+            self.inner.load(device)
+        }
+        fn create(&self, device: Ulid, key: &SigningKey) -> crate::identity::Result<()> {
+            self.observed("custody.create");
+            self.inner.create(device, key)
+        }
+        fn native_busy(&self) -> bool {
+            self.observed("custody.native_busy");
+            false
+        }
+        fn native_acl(&self, _: Ulid) -> crate::identity::Result<bbt_proto::identity::CustodyAcl> {
+            self.observed("custody.native_acl");
+            Ok(bbt_proto::identity::CustodyAcl::TeamSigned)
+        }
+        fn unlock(
+            &self,
+            _: Ulid,
+            _: [u8; 32],
+            _: crate::identity::UnlockProgress,
+        ) -> crate::identity::Result<bbt_proto::identity::UnlockOutcome> {
+            self.observed("custody.unlock");
+            panic!("Dream control attempted native unlock")
+        }
+        fn finish_unlock(
+            &self,
+            _: Ulid,
+            _: [u8; 32],
+            _: crate::identity::UnlockProgress,
+        ) -> crate::identity::Result<bool> {
+            self.observed("custody.finish_unlock");
+            panic!("Dream control attempted native replacement")
+        }
+    }
+    struct Fixture {
+        runtime: tokio::runtime::Runtime,
+        logic: Option<Logic>,
+        supervisor: Option<crate::Supervisor>,
+        registry: Registry,
+        account: SqliteStore,
+        fence: crate::identity::PublicFenceReader,
+        authority: crate::registry::dream_c1::Authority,
+        own: SeatRecord,
+        peer: SeatRecord,
+        run: w::Ulid,
+        source: w::Ulid,
+        root: String,
+        repo: PathBuf,
+        native_calls: Arc<AtomicU64>,
+        signing_calls: Arc<AtomicU64>,
+        trace: Arc<std::sync::atomic::AtomicUsize>,
+        _directory: tempfile::TempDir,
+    }
+    impl Fixture {
+        fn open() -> Self {
+            let directory = tempfile::tempdir().unwrap();
+            // NOFOLLOW rejects aliases in any pathname component: on macOS
+            // tempfile's /var/folders prefix is an alias of /private/var.
+            let directory_path = directory.path().canonicalize().unwrap();
+            let repo = directory_path.join("repository");
+            std::fs::create_dir_all(repo.join(".bboxy")).unwrap();
+            let run_dir = directory_path.join("run");
+            let generated = TestAccount::open(&directory_path.join("keys"), &run_dir).unwrap();
+            let account = SqliteStore::open(&run_dir.join("account")).unwrap();
+            let head: crate::identity::Signed<crate::identity::AccountHead> =
+                serde_json::from_slice(&account.get("identity/head").unwrap().unwrap()).unwrap();
+            let device = head.payload.active_devices[0].device_id;
+            let device_key = format!("identity/device/{device}");
+            let mut public_identity: DeviceIdentity =
+                serde_json::from_slice(&account.get(&device_key).unwrap().unwrap()).unwrap();
+            // DeviceIdentity's custody policy is public host configuration, not
+            // a different root/grant. Actual secrets stay in the private file
+            // fixture and every attempted native-policy method is counted.
+            public_identity.custody = Custody::LoginKeychain;
+            account
+                .put(&device_key, &serde_json::to_vec(&public_identity).unwrap())
+                .unwrap();
+            let native_calls = Arc::new(AtomicU64::new(0));
+            let signing_calls = Arc::new(AtomicU64::new(0));
+            // usize::MAX means unarmed; bootstrap is deliberately excluded.
+            let trace = Arc::new(std::sync::atomic::AtomicUsize::new(usize::MAX));
+            let runtime = tokio::runtime::Builder::new_multi_thread()
+                .worker_threads(2)
+                .enable_all()
+                .build()
+                .unwrap();
+            let custody = Arc::new(NativeCustodySpy {
+                inner: generated.key_store(),
+                calls: native_calls.clone(),
+                trace: trace.clone(),
+            });
+            let mut identity = IdentityRuntime::test_dream_open_with_store(
+                &run_dir,
+                SigningKey::from_bytes(&[95; 32]),
+                runtime.handle().clone(),
+                custody,
+            )
+            .unwrap();
+            identity.test_dream_signing_spy(signing_calls.clone(), trace.clone());
+            let fence = identity.dream_fence();
+            assert!(identity.keys().ready_issuer().is_some());
+            assert!(identity.bus_signer().unwrap().is_some());
+            assert!(
+                native_calls.load(Ordering::Acquire) > 0,
+                "native spy never observed bootstrap"
+            );
+            assert!(
+                signing_calls.load(Ordering::Acquire) > 0,
+                "signing spy never observed bootstrap"
+            );
+            let supervisor = crate::Supervisor::start(crate::Config {
+                journal_directory: Some(directory_path.join("supervisor-journal")),
+                ..Default::default()
+            })
+            .unwrap();
+            let mut broker = Broker::open(&run_dir, SigningKey::from_bytes(&[96; 32])).unwrap();
+            broker.set_issued_by(identity.issued_by().map(str::to_owned));
+            let bus = BusHandle::start(runtime.handle(), broker, 128).unwrap();
+            let (tx, mut rx) = mpsc::channel(128);
+            let client = LogicClient {
+                tx,
+                bus: bus.clone(),
+                exit_cause: Arc::new(OnceLock::new()),
+                capture_diagnostics: Arc::new(Recorder::default()),
+                gui_peers: Arc::default(),
+                attention_observer_guard: Arc::default(),
+                current_attention: Arc::default(),
+                captures: Arc::default(),
+                gui_watch_epoch: Arc::default(),
+                window_journal: Some(Arc::new(
+                    crate::window_journal::Journal::open(&run_dir).unwrap(),
+                )),
+            };
+            let mut worker = Worker::open(
+                vec![Box::new(LocalProvider::new(supervisor.connect().unwrap()))],
+                LogicConfig {
+                    run_dir: run_dir.clone(),
+                    repository: repo.clone(),
+                    ring: Default::default(),
+                },
+                bus,
+                runtime.handle().clone(),
+                client.clone(),
+                identity,
+                None,
+            )
+            .unwrap();
+            let public = fence.current();
+            assert!(
+                public.is_ok(),
+                "public fence after host bootstrap failed: {public:?}"
+            );
+            let swarm = Ulid::new();
+            let own = SeatRecord::new(Ulid::new(), swarm, "PublicDreamOwn", "zsh");
+            let peer = SeatRecord::new(Ulid::new(), swarm, "PublicDreamPeer", "zsh");
+            for seat in [&own, &peer] {
+                let mut spec = LaunchSpec::new("/bin/cat", &repo);
+                spec.seat = seat.id;
+                spec.generation = seat.generation;
+                worker.spawn(seat.clone(), spec).unwrap();
+            }
+            let until = Instant::now() + Duration::from_secs(10);
+            loop {
+                worker.workspaces.poll(&worker.registry);
+                let own_ready = worker.provenance_binding(own.id, own.generation).is_some();
+                let peer_ready = worker
+                    .provenance_binding(peer.id, peer.generation)
+                    .is_some();
+                if own_ready && peer_ready {
+                    break;
+                }
+                assert!(
+                    Instant::now() < until,
+                    "private workspace never became ready"
+                );
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            let authority = worker.dream_authority(own.id, own.generation).unwrap();
+            let (context, current_fence) = authority.capture_all().unwrap();
+            let root = context.root.0.clone();
+            let registry = worker.registry.clone();
+            // Causal trace 5d2dec0b: the unrelated 100ms provenance owner calls
+            // Engine::step_owned -> identity.bus_signer/status (+3 loads/+1
+            // signing check). Park only that owner with its existing per-root
+            // backoff. Counters and all production C1 routes remain unchanged.
+            let isolation_until = Instant::now() + Duration::from_secs(120);
+            let mut isolated_roots = worker
+                .workspaces
+                .cache
+                .roots()
+                .map(|workspace| workspace.root_id().to_owned())
+                .collect::<Vec<_>>();
+            // The root-ABA test mounts this private root later; give that same
+            // unrelated provenance owner its own preexisting backoff as well.
+            let alternative = directory_path.join("other-repository");
+            std::fs::create_dir_all(alternative.join(".bboxy")).unwrap();
+            isolated_roots.push(
+                crate::knowledge::roots::root_identity(
+                    &alternative.join(".bboxy").canonicalize().unwrap(),
+                )
+                .unwrap(),
+            );
+            for root in isolated_roots {
+                worker.provenance_backoff.insert(
+                    root,
+                    ProvenanceBackoff {
+                        next: Some(isolation_until),
+                        delay: Duration::from_secs(120),
+                        reason: "private API fixture isolates unrelated provenance credentials"
+                            .into(),
+                    },
+                );
+            }
+            let run: w::Ulid = Ulid::new().into();
+            let source: w::Ulid = Ulid::new().into();
+            let nonce: w::Ulid = Ulid::new().into();
+            let source_path = directory_path.join("retained-source.jsonl");
+            std::fs::write(&source_path, b"private API metadata fixture\n").unwrap();
+            let metadata = std::fs::metadata(&source_path).unwrap();
+            let bookmark = Bookmark {
+                owner_context: Some(context.clone()),
+                owner_fence: Some(current_fence.clone()),
+                session: source.clone(),
+                generation: own.generation,
+                path: source_path,
+                repo: "private.invalid/public-api".into(),
+                pid: std::process::id(),
+                process_start: "metadata-only-custody-fixture".into(),
+                socket: directory_path.join("metadata-only.sock"),
+                root: context.root.0.clone(),
+                root_revision: context.root_revision.0,
+                workspace_revision: context.workspace_revision.0,
+                device: metadata.dev(),
+                inode: metadata.ino(),
+                len: metadata.len(),
+                mtime: (metadata.mtime(), metadata.mtime_nsec()),
+                ctime: (metadata.ctime(), metadata.ctime_nsec()),
+                closed_seq: 1,
+                closed_line_sha256: crate::store::digest(b"metadata-close"),
+                cursor: metadata.len(),
+                observed_seq: 1,
+                last_line_len: 27,
+                last_line_sha256: crate::store::digest(b"metadata-close"),
+                turns: vec![],
+            };
+            let request = w::canonical(&json!({"v":1,"context":context,"sources":[
+                {"session":source,"source_generation":own.generation}],"algorithm":"d0-c1/1"}))
+            .unwrap();
+            let manifest = w::Hex(crate::store::digest(b"public API fixture manifest"));
+            let page = w::Page {
+                schema: w::PageSchema::V1,
+                run_id: run.clone(),
+                manifest_sha256: manifest.clone(),
+                index: 0,
+                rows: vec![],
+                next: None,
+            };
+            let page_bytes = w::canonical(&page).unwrap();
+            let result = json!({"schema":"bboxy.dream.c1.result/1","run_id":run,"nonce":nonce,
+                "manifest_sha256":manifest,"algorithm":"d0-c1/1","source_count":1,
+                "episode_count":0,"cluster_count":0,"max_poll_cpu_ns":0,
+                "knowledge":"not_requested","trust":"not_evaluated",
+                "pages":[{"index":0,"len":page_bytes.len(),"sha256":crate::store::digest(&page_bytes)}]});
+            let result_bytes = w::canonical(&result).unwrap();
+            let output = run_dir.join("dream-c1").join(&run.0).join("output");
+            std::fs::create_dir_all(&output).unwrap();
+            for (name, bytes) in [
+                ("page-000000.json", page_bytes),
+                ("result.json", result_bytes.clone()),
+            ] {
+                let path = output.join(name);
+                std::fs::write(&path, bytes).unwrap();
+                std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600)).unwrap();
+            }
+            let record = Record {
+                trigger: false,
+                started: false,
+                owner_incarnation: Ulid::new().into(),
+                worker_pid: None,
+                worker_start: None,
+                context: context.clone(),
+                identity_fence: Some(current_fence.clone()),
+                op_id: Ulid::new().into(),
+                nonce,
+                sources: vec![bookmark],
+                request: request.clone(),
+                view: w::RunView {
+                    run_id: run.clone(),
+                    revision: w::Number(1),
+                    state: w::State::Completed,
+                    settled: true,
+                    request_sha256: w::Hex(crate::store::digest(&request)),
+                    manifest_sha256: Some(manifest),
+                    result_sha256: Some(w::Hex(crate::store::digest(&result_bytes))),
+                    pages: 1,
+                    error: None,
+                },
+            };
+            let actor =
+                crate::store::digest(&w::canonical(&json!([context, current_fence])).unwrap());
+            Journal::open(&run_dir.join("dream-c1"), &record.context.seat)
+                .unwrap()
+                .register(&actor, &format!("api-fixture-{}", run.0), &record)
+                .unwrap();
+            let stop = Arc::new(StopSignal::default());
+            let stopping = stop.clone();
+            let thread = std::thread::Builder::new()
+                .name("dream-public-api-logic".into())
+                .spawn(move || {
+                    let result = worker.run(&mut rx, stopping);
+                    let seal = worker.seal_active_hold();
+                    let _ = worker.handle.block_on(worker.bus.shutdown());
+                    result.and(seal)
+                })
+                .unwrap();
+            let logic = Logic {
+                client,
+                stop,
+                thread: Some(thread),
+            };
+            let fixture = Self {
+                runtime,
+                logic: Some(logic),
+                supervisor: Some(supervisor),
+                registry,
+                account,
+                fence,
+                authority,
+                own,
+                peer,
+                run,
+                source,
+                root,
+                repo,
+                native_calls,
+                signing_calls,
+                trace,
+                _directory: directory,
+            };
+            // Snapshot only after disposable native-policy/signing bootstrap.
+            let until = Instant::now() + Duration::from_secs(10);
+            loop {
+                let page = fixture.mcp(fixture.own.id, fixture.status(Some(0)));
+                if page["ok"] == true {
+                    assert_eq!(page["page"]["index"], 0);
+                    break;
+                }
+                assert_eq!(
+                    page["error"]["code"], "stale_context",
+                    "fixture page is not reachable: {page}"
+                );
+                assert!(
+                    Instant::now() < until,
+                    "initial private routing never settled: {page}"
+                );
+                std::thread::sleep(Duration::from_millis(10));
+            }
+            fixture.trace.store(0, Ordering::Release);
+            // Span multiple ordinary maintenance ticks before any measured C1
+            // call. A newly active unrelated credential path fails this fixture
+            // instead of being filtered out of later request assertions.
+            let idle = fixture.counts();
+            std::thread::sleep(Duration::from_millis(250));
+            fixture.unchanged(idle, "isolated idle baseline across maintenance ticks");
+            fixture
+        }
+        fn trace_marker(&self, door: &str, phase: &str, args: &Value) {
+            if self.trace.load(Ordering::Acquire) != usize::MAX
+                && std::env::var_os("BBOXY_DREAM_SPY_TRACE").is_some()
+            {
+                eprintln!(
+                    "DREAM_SPY_REQUEST door={door} phase={phase} method={} counts={:?}",
+                    args["method"],
+                    self.counts()
+                );
+            }
+        }
+        fn client(&self) -> &LogicClient {
+            &self.logic.as_ref().unwrap().client
+        }
+        fn counts(&self) -> (u64, u64) {
+            (
+                self.native_calls.load(Ordering::Acquire),
+                self.signing_calls.load(Ordering::Acquire),
+            )
+        }
+        fn retained_api_record(&self) -> (PathBuf, Record) {
+            let runtime = self
+                .account
+                .path
+                .parent()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .join("dream-c1");
+            let journal = Journal::open(&runtime, &self.own.id.into()).unwrap();
+            let record = journal.run(&self.run).unwrap().unwrap();
+            (runtime, record)
+        }
+        fn unchanged(&self, before: (u64, u64), operation: &str) {
+            assert_eq!(self.counts(), before, "{operation} touched custody/signing");
+        }
+        fn status(&self, page: Option<u32>) -> Value {
+            json!({"v":1,"method":"status","run_id":self.run,"page":page})
+        }
+        fn mcp(&self, seat: Ulid, args: Value) -> Value {
+            self.trace_marker("mcp", "begin", &args);
+            let traced_args = args.clone();
+            let reply = self.mcp_tool_reply(seat, "dream_c1", args);
+            assert!(
+                reply.get("error").is_none(),
+                "MCP admission/transport failed: {reply}"
+            );
+            let data = reply["result"]["structuredContent"].clone();
+            assert_eq!(data["v"], 1, "not a real C1 reply: {reply}");
+            self.trace_marker("mcp", "end", &traced_args);
+            data
+        }
+        fn mcp_tool_reply(&self, seat: Ulid, tool: &str, args: Value) -> Value {
+            let endpoint = self.runtime.block_on(self.client().endpoint(seat)).unwrap();
+            let mut bridge = Bridge::new(BridgeConfig {
+                socket: endpoint.path,
+                seat,
+                generation: endpoint.generation,
+                capability: endpoint.capability,
+            });
+            let rpc = |bridge: &mut Bridge, id, method, params| {
+                bridge
+                    .handle(
+                        &serde_json::to_vec(&json!({"jsonrpc":"2.0","id":id,
+                    "method":method,"params":params}))
+                        .unwrap(),
+                    )
+                    .unwrap()
+            };
+            let init = rpc(
+                &mut bridge,
+                1,
+                "initialize",
+                json!({"protocolVersion":"2025-11-25",
+                "clientInfo":{"name":"private-public-fence-spy","version":"1"},"capabilities":{}}),
+            );
+            assert!(init.get("error").is_none());
+            let _ = bridge.handle(br#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#);
+            rpc(
+                &mut bridge,
+                2,
+                "tools/call",
+                json!({"name":tool,"arguments":args}),
+            )
+        }
+        fn gui(&self, seat: Ulid, mut args: Value) -> Value {
+            self.trace_marker("gui", "begin", &args);
+            let traced_args = args.clone();
+            if matches!(args["method"].as_str(), Some("inspect" | "cancel")) {
+                args.as_object_mut()
+                    .unwrap()
+                    .insert("op_id".into(), json!(Ulid::new()));
+            }
+            let request: w::Control = serde_json::from_value(args).unwrap();
+            let response = self.runtime.block_on(async {
+                let endpoint = self.client().gui_endpoint().await.unwrap();
+                let stream = tokio::net::UnixStream::connect(endpoint.path)
+                    .await
+                    .unwrap();
+                let (read, mut write) = stream.into_split();
+                let op = Ulid::new();
+                let request = bbt_proto::GuiRequest {
+                    version: bbt_proto::gui::VERSION,
+                    capability: endpoint.capability,
+                    action: bbt_proto::GuiAction::Dream {
+                        id: op,
+                        seat,
+                        request,
+                    },
+                };
+                let mut bytes = serde_json::to_vec(&request).unwrap();
+                bytes.push(b'\n');
+                write.write_all(&bytes).await.unwrap();
+                let mut reader = tokio::io::BufReader::new(read);
+                let mut line = String::new();
+                tokio::time::timeout(Duration::from_secs(5), reader.read_line(&mut line))
+                    .await
+                    .unwrap()
+                    .unwrap();
+                let reply: bbt_proto::GuiReply = serde_json::from_str(&line).unwrap();
+                let bbt_proto::GuiReply::Dream {
+                    op: actual,
+                    response,
+                } = reply
+                else {
+                    panic!("not a Dream GUI reply: {line}")
+                };
+                assert_eq!(actual, op);
+                serde_json::to_value(response).unwrap()
+            });
+            self.trace_marker("gui", "end", &traced_args);
+            response
+        }
+        fn refuse_both(&self, codes: &[&str]) {
+            for args in [
+                self.status(None),
+                self.status(Some(0)),
+                json!({"v":1,"method":"cancel","run_id":self.run}),
+                json!({"v":1,"method":"inspect","sources":[{"session":self.source,"source_generation":1}]}),
+            ] {
+                let before = self.counts();
+                for reply in [
+                    self.mcp(self.own.id, args.clone()),
+                    self.gui(self.own.id, args),
+                ] {
+                    assert_eq!(reply["ok"], false, "old authority exposed data: {reply}");
+                    assert!(
+                        codes.iter().any(|code| reply["error"]["code"] == *code),
+                        "wrong refusal: {reply}"
+                    );
+                    assert!(reply.get("run").is_none() && reply.get("page").is_none());
+                }
+                self.unchanged(before, "rejected C1 MCP/GUI controls");
+            }
+        }
+    }
+    impl Drop for Fixture {
+        fn drop(&mut self) {
+            if let Some(logic) = self.logic.take() {
+                logic.shutdown().unwrap();
+            }
+            if let Some(supervisor) = self.supervisor.take() {
+                supervisor.shutdown().unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn dream_c1_real_admitted_mcp_and_gui_controls_make_zero_native_or_signing_calls() {
+        let f = Fixture::open();
+        for args in [
+            f.status(None),
+            f.status(Some(0)),
+            json!({"v":1,"method":"cancel","run_id":f.run}),
+            json!({"v":1,"method":"inspect","sources":[{"session":f.source,"source_generation":1}]}),
+        ] {
+            let before = f.counts();
+            for reply in [f.mcp(f.own.id, args.clone()), f.gui(f.own.id, args.clone())] {
+                if args["method"] == "inspect" {
+                    // No missing-runner fallback: worker admission is reported
+                    // honestly. This fixture certifies custody/API routing only.
+                    assert!(
+                        reply["ok"] == true || reply["error"]["code"] == "runner_unavailable",
+                        "{reply}"
+                    );
+                } else {
+                    assert_eq!(reply["ok"], true, "{reply}");
+                }
+            }
+            f.unchanged(before, "admitted C1 MCP/GUI controls");
+        }
+        let before = f.counts();
+        let foreign = f.mcp(f.peer.id, f.status(Some(0)));
+        assert_eq!(foreign["error"]["code"], "not_found");
+        f.unchanged(before, "foreign-seat C1 status");
+    }
+    #[test]
+    fn dream_c1_public_head_revoke_restore_aba_cannot_reexpose_retained_page() {
+        let f = Fixture::open();
+        let original = f.account.get("identity/head").unwrap().unwrap();
+        let mut head: crate::identity::Signed<crate::identity::AccountHead> =
+            serde_json::from_slice(&original).unwrap();
+        head.payload
+            .revoked_devices
+            .push(head.payload.active_devices[0].device_id);
+        // ID1 currently admits the original signed head only. An externally
+        // altered revocation head must fail public verification, not credentials.
+        f.account
+            .put("identity/head", &serde_json::to_vec(&head).unwrap())
+            .unwrap();
+        f.refuse_both(&["stale_context"]);
+        f.account.put("identity/head", &original).unwrap();
+        // Same A bytes now carry a newer durable public revision. No old page.
+        f.refuse_both(&[
+            "not_found",
+            "runner_unavailable",
+            "source_mismatch",
+            "stale_context",
+        ]);
+    }
+    #[test]
+    fn dream_c1_actual_issuer_cutover_rejects_retained_authority_without_credentials() {
+        let f = Fixture::open();
+        let replacement =
+            crate::messaging::keys::LocalSeatKeys::new(SigningKey::from_bytes(&[97; 32]));
+        crate::identity::reset_identity(&f.account, &replacement, crate::store::now_ms() / 1000)
+            .unwrap();
+        f.refuse_both(&["stale_context"]);
+    }
+    #[test]
+    fn dream_c1_actual_control_routes_reject_expired_public_grant_without_credentials() {
+        let f = Fixture::open();
+        let expires = f.fence.current().unwrap().expires_at.unwrap();
+        f.fence.test_public_clock(expires);
+        f.refuse_both(&["stale_context"]);
+    }
+    #[test]
+    fn dream_c1_actual_mute_writer_and_unmute_aba_do_not_revive_old_grant_page() {
+        let f = Fixture::open();
+        for muted in [true, false] {
+            f.runtime
+                .block_on(f.client().messaging_operator(
+                    f.own.id,
+                    f.own.generation,
+                    crate::messaging::api::Request::Mute {
+                        seat: f.own.id,
+                        muted,
+                    },
+                ))
+                .unwrap();
+            f.refuse_both(if muted {
+                &["stale_context"]
+            } else {
+                &[
+                    "not_found",
+                    "stale_context",
+                    "runner_unavailable",
+                    "source_mismatch",
+                ]
+            });
+        }
+    }
+    #[test]
+    fn dream_c1_actual_root_workdir_aba_and_provider_revision_reject_old_pages() {
+        let f = Fixture::open();
+        let alternative = f._directory.path().join("other-repository");
+        std::fs::create_dir_all(alternative.join(".bboxy")).unwrap();
+        f.registry
+            .update_swarm_workdir(f.own.swarm, Some(alternative.to_str().unwrap()))
+            .unwrap();
+        f.refuse_both(&["stale_context", "not_found", "runner_unavailable"]);
+        f.registry
+            .update_swarm_workdir(f.own.swarm, Some(f.repo.to_str().unwrap()))
+            .unwrap();
+        f.refuse_both(&[
+            "stale_context",
+            "not_found",
+            "runner_unavailable",
+            "source_mismatch",
+        ]);
+
+        drop(f);
+        let f = Fixture::open();
+        for _ in 0..2 {
+            f.runtime
+                .block_on(f.client().gui_knowledge_control(
+                    Ulid::new(),
+                    bbt_proto::gui::KnowledgeRequest::Reset {
+                        root: f.root.clone(),
+                    },
+                    crate::mcp::Origin::default(),
+                ))
+                .unwrap();
+            f.refuse_both(&[
+                "not_found",
+                "stale_context",
+                "runner_unavailable",
+                "source_mismatch",
+            ]);
+        }
+    }
+
+    #[test]
+    fn dream_c1_held_provider_selection_refuses_real_mcp_gui_controls_within_250ms() {
+        let f = Fixture::open();
+        let host = &f.authority.port.host;
+        let metadata = host.dream_metadata().unwrap();
+        let before = f.counts();
+        let held = host.test_dream_hold_selection().unwrap();
+        // Cross an ordinary owner tick too: a hidden legacy lock wait must not
+        // serialize admitted controls behind this independently held selection.
+        std::thread::sleep(Duration::from_millis(150));
+        let mut maximum = Duration::ZERO;
+        for args in [
+            f.status(None),
+            json!({"v":1,"method":"cancel","run_id":f.run}),
+        ] {
+            let start = Instant::now();
+            let mcp = f.mcp(f.own.id, args.clone());
+            let elapsed = start.elapsed();
+            maximum = maximum.max(elapsed);
+            assert!(
+                elapsed <= Duration::from_millis(250),
+                "held provider blocked MCP: {elapsed:?}"
+            );
+            assert_eq!(mcp["error"]["code"], "stale_context", "{mcp}");
+            assert!(mcp.get("run").is_none() && mcp.get("page").is_none());
+            let start = Instant::now();
+            let gui = f.gui(f.own.id, args);
+            let elapsed = start.elapsed();
+            maximum = maximum.max(elapsed);
+            assert!(
+                elapsed <= Duration::from_millis(250),
+                "held provider blocked GUI/ctl boundary: {elapsed:?}"
+            );
+            assert_eq!(gui["error"]["code"], "stale_context", "{gui}");
+            assert!(gui.get("run").is_none() && gui.get("page").is_none());
+        }
+        f.unchanged(before, "held-provider actual MCP/GUI status/cancel");
+        drop(held);
+        assert_eq!(host.dream_metadata().unwrap(), metadata);
+        eprintln!(
+            "dream_c1_held_provider_api calls=4 max_wall_us={} private_calls_delta=0",
+            maximum.as_micros()
+        );
+    }
+
+    #[test]
+    fn dream_c1_held_provider_selection_refuses_actual_page_owner_before_next_unit() {
+        let f = Fixture::open();
+        let (runtime, record) = f.retained_api_record();
+        assert!(f.authority.matches(&record.context, &record.identity_fence));
+        let host = &f.authority.port.host;
+        let before = f.counts();
+        let held = host.test_dream_hold_selection().unwrap();
+        let checks = Arc::new(AtomicU64::new(0));
+        let observed = checks.clone();
+        let authority = f.authority.clone();
+        let context = record.context.clone();
+        let fence = record.identity_fence.clone();
+        let guard: Arc<dream_c1::AuthorityGuard> = Arc::new(move || {
+            observed.fetch_add(1, Ordering::AcqRel);
+            if authority.matches(&context, &fence) {
+                Ok(())
+            } else {
+                Err(w::Code::StaleContext)
+            }
+        });
+        let start = Instant::now();
+        let result = dream_c1::read_page_guarded(
+            &runtime.join(&record.view.run_id.0),
+            &record,
+            0,
+            Some(dream_c1::PreparedGuard {
+                callback: guard,
+                setup_cpu_ns: 0,
+            }),
+        );
+        let elapsed = start.elapsed();
+        assert!(
+            matches!(result, Err(w::Code::StaleContext)),
+            "page owner bypassed the held-provider authority guard: {result:?}"
+        );
+        assert!(
+            elapsed <= Duration::from_millis(250),
+            "unit guard waited for selection: {elapsed:?}"
+        );
+        assert_eq!(checks.load(Ordering::Acquire), 1);
+        f.unchanged(before, "held-provider actual page unit owner");
+        drop(held);
+        assert!(f.authority.matches(&record.context, &record.identity_fence));
+        eprintln!(
+            "dream_c1_held_provider_unit checks=1 refused_before_effect=true wall_us={}",
+            elapsed.as_micros()
+        );
+    }
+
+    #[test]
+    fn dream_c1_held_provider_refuses_ordinary_mcp_and_gui_read_admission() {
+        let f = Fixture::open();
+        let scope = Some(bbt_proto::gui::SwarmScope {
+            swarm: f.own.swarm,
+            revision: f.authority.port.binding.revision,
+        });
+        let warm = f.mcp_tool_reply(f.own.id, "knowledge_status", json!({}));
+        assert!(warm.get("error").is_none(), "{warm}");
+        assert_ne!(warm["result"]["isError"], true, "{warm}");
+        f.runtime
+            .block_on(
+                f.client()
+                    .gui_knowledge_scoped("list".into(), json!({}), scope),
+            )
+            .unwrap()
+            .unwrap();
+
+        let held = f.authority.port.host.test_dream_hold_selection().unwrap();
+        // Exercise the ordinary owner tick while the same root selection is
+        // unavailable. No provider read or result may wait for this test owner.
+        std::thread::sleep(Duration::from_millis(150));
+        let start = Instant::now();
+        let mcp = f.mcp_tool_reply(f.own.id, "knowledge_status", json!({}));
+        let mcp_elapsed = start.elapsed();
+        assert!(
+            mcp_elapsed <= Duration::from_millis(250),
+            "ordinary admitted MCP read waited for selection: {mcp_elapsed:?}"
+        );
+        assert!(
+            mcp["error"]["code"] == -32001 || mcp["result"]["isError"] == true,
+            "ordinary MCP read exposed success while selection was held: {mcp}"
+        );
+        let start = Instant::now();
+        let gui = f.runtime.block_on(async {
+            tokio::time::timeout(
+                Duration::from_millis(250),
+                f.client()
+                    .gui_knowledge_scoped("list".into(), json!({}), scope),
+            )
+            .await
+            .expect("ordinary GUI read admission waited for provider selection")
+            .unwrap()
+        });
+        let gui_elapsed = start.elapsed();
+        let error = gui.expect_err("ordinary GUI read exposed success while selection was held");
+        assert_eq!(error.code, "workspace_unavailable", "{error}");
+        assert!(
+            error.message.contains("selection snapshot unavailable"),
+            "{error}"
+        );
+        drop(held);
+        eprintln!(
+            "dream_c1_ordinary_held_admission mcp_wall_us={} gui_wall_us={} stale_successes=0",
+            mcp_elapsed.as_micros(),
+            gui_elapsed.as_micros()
+        );
+    }
+
+    // Adapted from knowledge/responsiveness_tests.rs::Held. This source fixture
+    // controls one real provider completion; it does not claim plugin or worker
+    // protocol conformance. The host admission and final publication are real.
+    struct HeldOrdinaryList {
+        entered: std::sync::mpsc::SyncSender<()>,
+        release: std::sync::Mutex<std::sync::mpsc::Receiver<()>>,
+        returned_success: Arc<AtomicBool>,
+    }
+    struct ReleaseOrdinaryList(std::sync::mpsc::SyncSender<()>);
+    impl Drop for ReleaseOrdinaryList {
+        fn drop(&mut self) {
+            let _ = self.0.try_send(());
+        }
+    }
+    impl DataSource for HeldOrdinaryList {
+        fn list(
+            &self,
+            _: crate::knowledge::data_source::ListRequest,
+        ) -> crate::knowledge::data_source::Result<
+            crate::knowledge::data_source::Page<crate::knowledge::data_source::RecordRef>,
+        > {
+            self.entered.send(()).unwrap();
+            self.release
+                .lock()
+                .unwrap()
+                .recv_timeout(Duration::from_secs(5))
+                .expect("private held source was not released autonomously");
+            self.returned_success.store(true, Ordering::Release);
+            Ok(crate::knowledge::data_source::Page {
+                items: vec![crate::knowledge::data_source::RecordRef {
+                    id: "private-old-result".into(),
+                    number: None,
+                    slug: "private-old-result".into(),
+                    path: "notes/private-old-result.md".into(),
+                    digest: crate::store::digest(b"private successful provider result"),
+                    external_id: None,
+                    updated_at: None,
+                }],
+                next: None,
+            })
+        }
+        fn resolve(
+            &self,
+            _: crate::knowledge::data_source::ResolveRequest,
+        ) -> crate::knowledge::data_source::Result<crate::knowledge::data_source::RecordRef>
+        {
+            unreachable!("private list-only source")
+        }
+        fn fetch(
+            &self,
+            _: crate::knowledge::data_source::FetchRequest,
+        ) -> crate::knowledge::data_source::Result<crate::knowledge::data_source::Record> {
+            unreachable!("private list-only source")
+        }
+        fn search(
+            &self,
+            _: crate::knowledge::data_source::SearchRequest,
+        ) -> crate::knowledge::data_source::Result<
+            crate::knowledge::data_source::Page<crate::knowledge::data_source::SearchHit>,
+        > {
+            unreachable!("private list-only source")
+        }
+        fn links(
+            &self,
+            _: crate::knowledge::data_source::FetchRequest,
+        ) -> crate::knowledge::data_source::Result<crate::knowledge::data_source::Links> {
+            unreachable!("private list-only source")
+        }
+        fn graph(
+            &self,
+            _: crate::knowledge::data_source::GraphRequest,
+        ) -> crate::knowledge::data_source::Result<crate::knowledge::data_source::GraphPage>
+        {
+            unreachable!("private list-only source")
+        }
+        fn write(
+            &self,
+            _: crate::knowledge::data_source::WriteRequest,
+            _: &crate::knowledge::WriteContext<'_>,
+        ) -> crate::knowledge::data_source::Result<crate::knowledge::data_source::WriteResult>
+        {
+            unreachable!("private list-only source")
+        }
+        fn changes_since(
+            &self,
+            _: crate::knowledge::data_source::ChangesRequest,
+        ) -> crate::knowledge::data_source::Result<crate::knowledge::data_source::Changes> {
+            unreachable!("private list-only source")
+        }
+    }
+
+    #[test]
+    fn dream_c1_held_provider_suppresses_actual_successful_ordinary_gui_completion() {
+        let f = Fixture::open();
+        let scope = Some(bbt_proto::gui::SwarmScope {
+            swarm: f.own.swarm,
+            revision: f.authority.port.binding.revision,
+        });
+        // Settle the real root scan before the held source is installed. This
+        // makes the later barrier prove an admitted in-flight read, not a queue.
+        f.runtime
+            .block_on(
+                f.client()
+                    .gui_knowledge_scoped("list".into(), json!({}), scope),
+            )
+            .unwrap()
+            .unwrap();
+        let (entered, observed) = std::sync::mpsc::sync_channel(1);
+        let (release, released) = std::sync::mpsc::sync_channel(1);
+        let release = ReleaseOrdinaryList(release);
+        let returned_success = Arc::new(AtomicBool::new(false));
+        let source = Arc::new(HeldOrdinaryList {
+            entered,
+            release: std::sync::Mutex::new(released),
+            returned_success: returned_success.clone(),
+        });
+        f.runtime.block_on(async {
+            let (sent, received) = oneshot::channel();
+            f.client()
+                .tx
+                .send(Command::KnowledgeFixture(source, sent))
+                .await
+                .unwrap();
+            received.await.unwrap();
+        });
+        let client = f.client().clone();
+        let pending = f.runtime.handle().spawn(async move {
+            client
+                .gui_knowledge_scoped("list".into(), json!({}), scope)
+                .await
+        });
+        observed
+            .recv_timeout(Duration::from_secs(5))
+            .expect("ordinary GUI read never reached the actual provider owner");
+        let held = f.authority.port.host.test_dream_hold_selection().unwrap();
+        let start = Instant::now();
+        drop(release);
+        let result = f.runtime.block_on(async {
+            tokio::time::timeout(Duration::from_millis(250), pending)
+                .await
+                .expect("ordinary completion waited for held provider selection")
+                .unwrap()
+                .unwrap()
+        });
+        let elapsed = start.elapsed();
+        assert!(returned_success.load(Ordering::Acquire));
+        let error = result.expect_err("old successful provider result escaped final revalidation");
+        assert_eq!(error.code, "workspace_unavailable", "{error}");
+        assert!(error.message.contains("provider_unavailable"), "{error}");
+        drop(held);
+        eprintln!(
+            "dream_c1_ordinary_held_completion provider_success=true exposed_success=false wall_us={}",
+            elapsed.as_micros()
+        );
+    }
 }

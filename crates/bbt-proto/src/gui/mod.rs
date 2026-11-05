@@ -24,6 +24,7 @@ use crate::{SeatId, Update, View};
 
 mod app;
 mod debug;
+mod dream;
 mod events;
 mod host;
 mod identity;
@@ -37,6 +38,7 @@ mod task;
 mod ui;
 use self::app::{app_actions, app_replies};
 use self::debug::{debug_actions, debug_replies};
+use self::dream::{dream_actions, dream_replies};
 use self::events::{events_actions, events_replies};
 use self::host::{host_actions, host_replies};
 use self::identity::{identity_actions, identity_replies};
@@ -101,7 +103,7 @@ macro_rules! common_replies {
 flat_enum! {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body")]
-    pub enum GuiAction from [ui_actions, app_actions, debug_actions, plugin_actions, identity_actions, host_actions, seat_actions, swarm_actions, events_actions, message_actions, task_actions, record_actions, role_actions]
+    pub enum GuiAction from [dream_actions, ui_actions, app_actions, debug_actions, plugin_actions, identity_actions, host_actions, seat_actions, swarm_actions, events_actions, message_actions, task_actions, record_actions, role_actions]
 }
 
 flat_enum! {
@@ -111,7 +113,7 @@ flat_enum! {
     clippy::large_enum_variant,
     reason = "keep the decided C1 shared API; transport bounds each message"
 )]
-    pub enum GuiReply from [ui_replies, app_replies, debug_replies, plugin_replies, identity_replies, host_replies, seat_replies, swarm_replies, events_replies, message_replies, task_replies, record_replies, role_replies, common_replies]
+    pub enum GuiReply from [dream_replies, ui_replies, app_replies, debug_replies, plugin_replies, identity_replies, host_replies, seat_replies, swarm_replies, events_replies, message_replies, task_replies, record_replies, role_replies, common_replies]
 }
 
 #[cfg(test)]

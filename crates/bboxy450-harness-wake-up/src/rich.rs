@@ -100,6 +100,17 @@ impl Connection {
         handle: &tokio::runtime::Handle,
         wake: Arc<dyn Fn() + Send + Sync>,
     ) -> Self {
+        Self::start_observing(path, handle, wake, None, None)
+    }
+    /// Optional tiny current-incarnation activity latch. This never establishes source closure.
+    /// The callback must perform bounded atomics only: no IO, parsing, locks or waiting.
+    pub fn start_observing(
+        path: PathBuf,
+        handle: &tokio::runtime::Handle,
+        wake: Arc<dyn Fn() + Send + Sync>,
+        expected_pid: Option<u32>,
+        activity: Option<Arc<dyn Fn(Option<bool>) + Send + Sync>>,
+    ) -> Self {
         let (tx, rx) = mpsc::channel(32);
         let (state, latest) = watch::channel(State::Unbound);
         let stop = Arc::new(Stop {
@@ -111,7 +122,7 @@ impl Connection {
             state: latest,
             stop: stop.clone(),
         };
-        let task = handle.spawn(run(path, rx, state, stop, wake));
+        let task = handle.spawn(run(path, rx, state, stop, wake, expected_pid, activity));
         Self { client, task }
     }
 }
@@ -227,7 +238,12 @@ async fn frame(r: &mut (impl AsyncBufRead + Unpin)) -> std::io::Result<Option<Va
                 } else if value.get("ack").is_some()||value.get("refused").is_some() {
                     json!({"op_id":value["op_id"],"ack":value.get("ack"),"refused":value.get("refused")})
                 } else {
-                    json!({"v":value["v"],"session":value["session"],"epoch":value["epoch"],"seq":value["seq"],"event":{"type":value["event"]["type"]}})
+                    {
+                        let turn=value["event"]["turn"].as_str().filter(|s|valid_session(s));
+                        let fork=if value["event"]["meta"]["fork"].is_null(){Value::Null}else{json!(true)};
+                        let source=if value["event"]["meta"]["source"].is_null(){Value::Null}else{json!(true)};
+                        json!({"v":value["v"],"session":value["session"],"epoch":value["epoch"],"seq":value["seq"],"event":{"type":value["event"]["type"],"turn":turn,"meta":{"fork":fork,"source":source}}})
+                    }
                 };
                 Ok(Some(minimal))
             }).await.map_err(std::io::Error::other)?;
@@ -261,12 +277,88 @@ fn announcement(v: Value) -> std::io::Result<Hello> {
         last_frame: Instant::now(),
     })
 }
+// Current-session typed activity only. A gap/fork/unknown state can pause but
+// never clear foreground. Source closure remains the retained IR follower's job.
+struct Foreground {
+    next: u64,
+    head: u64,
+    known: bool,
+    closed: bool,
+    turns: std::collections::BTreeSet<Ulid>,
+}
+impl Foreground {
+    fn new(head: u64) -> Self {
+        Self {
+            next: 1,
+            head,
+            known: true,
+            closed: false,
+            turns: Default::default(),
+        }
+    }
+    fn observe(&mut self, value: &Value) -> Option<Option<bool>> {
+        let Some(seq) = value["seq"].as_u64() else {
+            return None;
+        };
+        if seq != self.next {
+            self.known = false;
+        } else {
+            self.next = self.next.saturating_add(1);
+        }
+        let event = &value["event"];
+        let kind = event["type"].as_str();
+        if kind == Some("session_started")
+            && (!event["meta"]["fork"].is_null() || !event["meta"]["source"].is_null())
+        {
+            self.known = false;
+        }
+        match kind {
+            Some("turn_queued" | "turn_started" | "turn_ended") => {
+                let Some(turn) = event["turn"]
+                    .as_str()
+                    .filter(|s| valid_session(s))
+                    .and_then(|s| s.parse::<Ulid>().ok())
+                else {
+                    self.known = false;
+                    return Some(None);
+                };
+                if kind == Some("turn_ended") {
+                    self.turns.remove(&turn);
+                } else {
+                    if self.turns.len() >= 128 && !self.turns.contains(&turn) {
+                        self.known = false;
+                        return Some(None);
+                    }
+                    self.turns.insert(turn);
+                    return Some(Some(true));
+                }
+            }
+            Some("session_closed") if self.known && seq >= self.head && self.turns.is_empty() => {
+                self.closed = true;
+                return Some(Some(false));
+            }
+            Some("session_closed" | "session_recovered" | "lagged" | "reset") => {
+                self.known = false;
+                return Some(None);
+            }
+            _ => {}
+        }
+        if self.known && seq >= self.head {
+            Some(Some(!self.turns.is_empty()))
+        } else {
+            None
+        }
+    }
+}
+
 async fn run(
     path: PathBuf,
     mut requests: mpsc::Receiver<Request>,
     state: watch::Sender<State>,
     stop: Arc<Stop>,
     wake: Arc<dyn Fn() + Send + Sync>,
+    expected_pid: Option<u32>,
+    activity: Option<Arc<dyn Fn(Option<bool>) + Send + Sync>>,
 ) {
     loop {
         let attempted = tokio::time::Instant::now();
@@ -275,7 +367,8 @@ async fn run(
             if !meta.file_type().is_socket() || meta.uid()!=unsafe{libc::geteuid()} {return Err(std::io::Error::other("invalid harness socket owner/type"));}
             let identity=(meta.dev(),meta.ino());
             let stream=UnixStream::connect(&path).await?;
-            if stream.peer_cred()?.uid()!=unsafe{libc::geteuid()} {return Err(std::io::Error::other("harness peer uid mismatch"));}
+            let peer=stream.peer_cred()?;
+            if peer.uid()!=unsafe{libc::geteuid()} || expected_pid.is_some_and(|pid|peer.pid().map(|p|p as u32)!=Some(pid)) {return Err(std::io::Error::other("harness peer identity mismatch"));}
             let (r,mut w)=stream.into_split();let mut r=BufReader::new(r);
             write(&mut w,&json!({"v":{"major":1,"minor":1},"subscribe":{"after":null,"ephemeral":false}})).await?;
             let hello=announcement(frame(&mut r).await?.ok_or_else(||std::io::Error::other("no Hello"))?)?;
@@ -284,6 +377,10 @@ async fn run(
         if let Ok(Ok((mut reader, mut writer, mut hello, identity))) = result {
             state.send_replace(State::Connected(hello.clone()));
             wake();
+            if let Some(callback) = &activity {
+                callback(None);
+            }
+            let mut foreground = Foreground::new(hello.head);
             let mut pending: BTreeMap<Ulid, Vec<(Instant, oneshot::Sender<WakeOutcome>)>> =
                 BTreeMap::new();
             let mut clock = tokio::time::interval(Duration::from_millis(100));
@@ -319,6 +416,7 @@ async fn run(
                                 if v["session"]!=json!(hello.session) || v["epoch"]!=json!(hello.epoch) {break;}
                                 hello.last_frame=Instant::now();
                                 if let Some(seq)=v["seq"].as_u64(){hello.head=hello.head.max(seq);}
+                                if let Some(callback)=&activity && let Some(value)=foreground.observe(&v) {callback(value);}
                                 if matches!(v["event"]["type"].as_str(),Some("session_closed"|"lagged"|"reset")){break 'connected;}
                             }
                             state.send_replace(State::Connected(hello.clone()));break;
@@ -329,6 +427,7 @@ async fn run(
                             if hello.last_frame.elapsed()>=Duration::from_secs(20){let _=req.reply.send(unavailable());continue;}
                             if tokio::fs::symlink_metadata(&path).await.map(|m|(m.dev(),m.ino())).ok()!=Some(identity){let _=req.reply.send(unavailable());break 'connected;}
                         if req.session!=hello.session {let _=req.reply.send(refused(WakeCause::HarnessSessionClosed,"retained message belongs to a closed session"));continue;}
+                            if req.op["type"]=="user_turn" && let Some(callback)=&activity {callback(Some(true));}
                             let value=json!({"v":hello.version,"op_id":req.id,"session":req.session,"op":req.op});
                             let result=tokio::time::timeout(ACK,write(&mut writer,&value)).await;
                             if !matches!(result,Ok(Ok(()))){let _=req.reply.send(WakeOutcome::unknown_cause(WakeCause::HarnessAckUnknown,"harness write/ack unknown; retain op_id"));break 'connected;}
@@ -341,6 +440,11 @@ async fn run(
                         }
                     }
                 }
+            }
+            if !foreground.closed
+                && let Some(callback) = &activity
+            {
+                callback(None);
             }
             for (_, waiters) in pending {
                 for (_, tx) in waiters {

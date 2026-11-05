@@ -9,6 +9,9 @@
 use Expr::{Bool, Int, Var};
 use bboxy450_tlc::{Action, Expr, Invariant, Model, Response, Variable};
 
+#[path = "dream_c1.rs"]
+mod dream_c1;
+
 #[path = "harness_status_model.rs"]
 mod harness_status_model;
 #[path = "python_execution_model.rs"]
@@ -1914,6 +1917,9 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(watcher_model::cases());
     cases.extend(capture_storage_model::cases());
     cases.extend(harness_status_model::cases());
+    // Includes d93377961364581 declared credits and public-authority controls;
+    // opaque helper/native heap remains measured implementation coverage.
+    cases.extend(dream_c1::cases());
     cases
 }
 

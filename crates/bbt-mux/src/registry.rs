@@ -7,6 +7,7 @@
 //! Stable seat/session metadata. Activity and close lifecycle are separate axes.
 
 mod routing;
+pub(crate) mod dream_c1;
 
 use rusqlite::OptionalExtension;
 use ulid::Ulid;

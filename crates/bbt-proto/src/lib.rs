@@ -5,6 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Shared terminal viewport and GUI wire schema. No transport or renderer.
+pub mod dream;
 pub mod events;
 pub mod gui;
 pub mod hosts;
