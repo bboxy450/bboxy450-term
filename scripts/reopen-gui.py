@@ -126,7 +126,10 @@ def main():
         raise RuntimeError('legacy GUI replacement requires explicit GUI_REPOSITORY')
     if repository:
         arguments.extend(['--repository', repository])
-    preflight = probe(executable(prepared), arguments if options.refresh_logic else [*arguments, '--preserve-backend-check'])
+    # The installed binary validates its current backend before an intentional
+    # schema upgrade. A raw GUI probe does not include backend owner identities.
+    check_program = executable(destination) if options.refresh_logic else executable(prepared)
+    preflight = probe(check_program, [*arguments, '--preserve-backend-check'])
     if preflight.get('preserve_backend_supported') != 1 or not preflight.get('backend'):
         raise RuntimeError('candidate cannot attest preserved backend compatibility')
     before['backend'] = preflight['backend']
@@ -157,7 +160,7 @@ def main():
         gui = actual.get('gui') or {}
         if gui.get('pid') != child.pid or gui.get('source_revision') != expected:
             raise RuntimeError('rendered GUI did not attest the installed source and launched PID')
-        after = probe(executable(prepared), arguments if options.refresh_logic else [*arguments, '--preserve-backend-check'])
+        after = probe(executable(prepared), [*arguments, '--preserve-backend-check'])
         if options.refresh_logic:
             if (after.get('backend') or {}).get('supervisor') != preflight['backend']['supervisor']:
                 raise RuntimeError('supervisor owner changed during logic/GUI replacement')
