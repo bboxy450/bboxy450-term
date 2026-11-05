@@ -34,6 +34,7 @@ pub enum Input {
     Cancel,
     Click([f32; 2]),
     Wheel([f32; 2], f32),
+    Wheel2D([f32; 2], [f32; 2]),
     Focus(bool),
     Size(Rect),
 }
@@ -121,6 +122,9 @@ impl bbt_rt::Waker for Signal {
         self.0.notify_one();
     }
 }
+/// Per-seat draft custody is handed off after accepted local edits drain.
+/// Hidden views retain no transcript or layout worker.
+pub type Draft = Arc<std::sync::Mutex<Option<tokio::sync::oneshot::Receiver<bboxy450_harness::frontends::gui::view::Draft>>>>;
 pub struct Pane {
     appearance: Arc<AtomicU64>,
     appearance_wake: Arc<Notify>,
@@ -131,14 +135,14 @@ pub struct Pane {
     pub dirty: bbt_rt::DirtySet,
     latest: Arc<bbt_rt::Latest<Snapshot>>,
     commands: mpsc::Sender<Request>,
-    task: tokio::task::JoinHandle<()>,
+    _task: tokio::task::JoinHandle<()>,
     retired: Arc<AtomicBool>,
     published_inputs: Arc<AtomicU64>,
 }
 impl Drop for Pane {
     fn drop(&mut self) {
         self.retired.store(true, Ordering::Release);
-        self.task.abort();
+        // Dropping the sender closes the queue after accepted local edits drain.
     }
 }
 impl Pane {
@@ -152,6 +156,19 @@ impl Pane {
         )>,
         waker: Arc<dyn bbt_rt::Waker>,
     ) -> Self {
+        Self::connect_retained(path, generation, rect, after, waker, Draft::default())
+    }
+    pub fn connect_retained(
+        path: PathBuf,
+        generation: u64,
+        rect: Rect,
+        after: Option<(bboxy450_harness::protocol::Epoch, bboxy450_harness::protocol::Seq)>,
+        waker: Arc<dyn bbt_rt::Waker>,
+        draft: Draft,
+    ) -> Self {
+        let (save_draft, next_draft) = tokio::sync::oneshot::channel();
+        // Reserve the next position synchronously, before either worker is scheduled.
+        let previous_draft = draft.lock().unwrap().replace(next_draft);
         let dirty = bbt_rt::DirtySet::new(1, waker);
         let latest = Arc::new(bbt_rt::Latest::new(dirty.paint_source(0)));
         let (commands, mut input) = mpsc::channel(64);
@@ -166,9 +183,11 @@ impl Pane {
         let published_inputs = Arc::new(AtomicU64::new(0));
         let worker_published = published_inputs.clone();
         let task=bbt_rt::handle().spawn(async move {
+            let saved = match previous_draft { Some(previous) => previous.await.ok(), None => None };
             let notify=Arc::new(Notify::new());
             let mut bridge=Bridge::new(Arc::new(Signal(notify.clone())));
             let mut view=HarnessView::default();
+            if let Some(draft) = saved { view.restore_draft(draft); }
             view.anim=bboxy450_harness::frontends::gui::anim::Clock::live(bboxy450_harness::frontends::gui::anim::Clock::reduced_motion_preferred());
             // Embedded text is one zoom step smaller; standalone keeps its own size.
             view.restore_zoom(view.zoom().step(-1),&bridge);
@@ -179,7 +198,7 @@ impl Pane {
             loop {
                 let mut batch=Vec::new();
                 let animation=view.anim.next_frame();
-                tokio::select!{biased;cmd=input.recv()=>{let Some(cmd)=cmd else{return;};batch.push(cmd);},_=notify.notified()=>{},_=worker_appearance_wake.notified()=>{},_=async { match animation { Some(ms)=>tokio::time::sleep(Duration::from_secs_f32((ms/1000.).max(1./60.))).await,None=>std::future::pending::<()>().await }}=>{}}
+                tokio::select!{biased;cmd=input.recv()=>{let Some(cmd)=cmd else{break;};batch.push(cmd);},_=notify.notified()=>{},_=worker_appearance_wake.notified()=>{},_=async { match animation { Some(ms)=>tokio::time::sleep(Duration::from_secs_f32((ms/1000.).max(1./60.))).await,None=>std::future::pending::<()>().await }}=>{}}
                 while batch.len()<64 {match input.try_recv(){Ok(cmd)=>batch.push(cmd),Err(_)=>break}}
                 let appearance=worker_appearance.clone();
                 let retired=worker_retired.clone();
@@ -227,6 +246,7 @@ impl Pane {
                             }
                         },
                         Input::Wheel(at,dy)=>{view.wheel(at,dy);},
+                        Input::Wheel2D(at,delta)=>{view.wheel_delta(at,delta);},
                     }}
                     bridge.set_width(rect.w);
                     let at=Instant::now();
@@ -245,6 +265,7 @@ impl Pane {
                 }).await;
                 let (b,v,r,o,c)=prepared;bridge=b;view=v;rect=r;out=o;completed_inputs=c;
             }
+            let _ = save_draft.send(view.take_draft());
         });
         Self {
             appearance,
@@ -256,7 +277,7 @@ impl Pane {
             dirty,
             latest,
             commands,
-            task,
+            _task: task,
             retired,
             published_inputs,
         }
@@ -503,6 +524,29 @@ fn hit(r: Rect, at: [f32; 2]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[tokio::test]
+    async fn draft_handoff_drains_last_edit_before_reopening_and_isolates_panels() {
+        let temp = tempfile::tempdir().unwrap();
+        let rect = Rect { x: 0., y: 0., w: 800., h: 650. };
+        let a = Draft::default();
+        let b = Draft::default();
+        let wake: Arc<dyn bbt_rt::Waker> = Arc::new(Signal(Arc::new(Notify::new())));
+        for (draft, text) in [(a.clone(), "first panel"), (b.clone(), "second panel")] {
+            let pane = Pane::connect_retained(temp.path().join("missing.sock"), 1, rect, None, wake.clone(), draft);
+            assert!(pane.send(Input::Edit(ui::text_edit::Command::Insert(text.into()))));
+            drop(pane); // No wait for a snapshot: exercise queued input at detach.
+        }
+        let pane = Pane::connect_retained(temp.path().join("missing.sock"), 1, rect, None, wake, a.clone());
+        assert!(pane.send(Input::Edit(ui::text_edit::Command::Insert(" retained".into()))));
+        drop(pane);
+        for (draft, expected) in [(a, "first panel retained"), (b, "second panel")] {
+            let saved = draft.lock().unwrap().take().unwrap();
+            let saved = tokio::time::timeout(Duration::from_secs(10), saved).await.unwrap().unwrap();
+            let mut view = HarnessView::default();
+            view.restore_draft(saved);
+            assert_eq!(view.composer.view.text, expected);
+        }
+    }
     #[test]
     fn cancel_requires_complete_ready_nonretired_identity() {
         let identity = Identity {

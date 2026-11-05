@@ -2254,6 +2254,7 @@ impl UiProxy {
 }
 struct App {
     rich_panes: BTreeMap<SeatId, bboxy450_term::rich_pane::Pane>,
+    rich_drafts: BTreeMap<SeatId, bboxy450_term::rich_pane::Draft>,
     rich_focused: BTreeMap<SeatId, bool>,
     pane_faces: BTreeMap<bbt_mux::Ulid, bbt_proto::gui::PaneFace>,
     rich_round: usize,
@@ -2479,6 +2480,7 @@ impl App {
         }));
         Self {
             rich_panes: BTreeMap::new(),
+            rich_drafts: BTreeMap::new(),
             rich_focused: BTreeMap::new(),
             pane_faces: BTreeMap::new(),
             rich_round: 0,

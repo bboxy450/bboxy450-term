@@ -2443,3 +2443,27 @@ verify-harness-onboarding:
 verify-clean-start:
 	TARGET_DIR='$(abspath $(TARGET_DIR))' $(MAKE) -C crates/bboxy450-harness verify-clean-start
 	@$(MAKE) check-licenses
+
+# Scoped operator delivery: real ACP spill, independent wheel axes and draft handoff.
+.PHONY: test-pane-recovery
+test-pane-recovery:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked --release -p bboxy450-harness --features embedded,acp-agent --test acp_agent --target-dir '$(TARGET_DIR)' oversized_json_result; \
+	cargo test --locked --release -p bboxy450-harness --features embedded --test gui_scroll --target-dir '$(TARGET_DIR)'; \
+	cargo test --locked --release -p bboxy450-term --lib --target-dir '$(TARGET_DIR)' rich_pane::tests -- --test-threads=1
+
+.PHONY: test-pane-recovery-formal
+test-pane-recovery-formal:
+	@set -eu; . ./scripts/cache-env.sh; \
+	PANE_FORMAL_OUT='$(abspath $(TARGET_DIR))/pane/formal' cargo test --locked --release -p bboxy450-harness --features embedded,acp-agent --test formal_models --target-dir '$(TARGET_DIR)' pane_recovery_native; \
+	TARGET_DIR='$(abspath $(TARGET_DIR))' python3 -I crates/bboxy450-harness/scripts/check-pane-models.py
+
+.PHONY: test-acp-unrestricted
+test-acp-unrestricted:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked --release -p bboxy450-harness --features embedded,acp-agent --test acp_agent --target-dir '$(TARGET_DIR)' -- --test-threads=2
+
+.PHONY: check-pane-recovery
+check-pane-recovery:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo check --locked --release -p bboxy450-term --bin bboxy450-term --target-dir '$(TARGET_DIR)'

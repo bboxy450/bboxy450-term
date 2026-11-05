@@ -133,7 +133,7 @@ impl App {
                 self.rich_panes.remove(&id);
             }
             if !self.rich_panes.contains_key(&id) {
-                let pane = Pane::connect(
+                let pane = Pane::connect_retained(
                     path,
                     generation,
                     rect,
@@ -156,6 +156,7 @@ impl App {
                             )
                         }),
                     Arc::new(Wake::new(self.proxy.clone(), bbt_rt::handle().clone())),
+                    self.rich_drafts.entry(id).or_default().clone(),
                 );
                 self.rich_panes.insert(id, pane);
             }
@@ -365,16 +366,16 @@ impl App {
         for (id, rect) in &self.pane_bounds {
             if self.rich_face(*id) && hit(*rect, self.pointer) {
                 if let Some(pane) = self.rich_panes.get(id) {
-                    let dy = match delta {
-                        MouseScrollDelta::LineDelta(_, y) => -*y * 28.,
+                    let delta = match delta {
+                        MouseScrollDelta::LineDelta(x, y) => [-*x * 28., -*y * 28.],
                         MouseScrollDelta::PixelDelta(p) => {
-                            -p.y as f32
-                                / self.window.as_ref().map_or(1., |w| w.scale_factor() as f32)
+                            let scale = self.window.as_ref().map_or(1., |w| w.scale_factor() as f32);
+                            [-p.x as f32 / scale, -p.y as f32 / scale]
                         }
                     };
-                    pane.send(Input::Wheel(
+                    pane.send(Input::Wheel2D(
                         [self.pointer[0] - rect.x, self.pointer[1] - rect.y],
-                        dy,
+                        delta,
                     ));
                 }
                 return true;
