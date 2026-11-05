@@ -66,6 +66,8 @@ mod event_log_model;
 mod logic_worker_model;
 #[path = "provenance_background_model.rs"]
 mod provenance_background_model;
+#[path = "provenance_query_model.rs"]
+mod provenance_query_model;
 
 #[path = "projection_writer_model.rs"]
 mod projection_writer_model;
@@ -1901,6 +1903,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(event_log_model::cases());
     cases.extend(logic_worker_model::cases());
     cases.extend(provenance_background_model::cases());
+    cases.extend(provenance_query_model::cases());
     cases.extend(projection_writer_model::cases());
     cases.extend(watcher_model::cases());
     cases.extend(capture_storage_model::cases());

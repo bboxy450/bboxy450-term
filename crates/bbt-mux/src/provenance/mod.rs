@@ -9,6 +9,7 @@
 
 pub(crate) mod projection;
 
+pub(crate) mod queries;
 pub(crate) mod author;
 pub(crate) mod artifacts;
 pub(crate) mod detector;

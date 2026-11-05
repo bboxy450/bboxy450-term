@@ -1281,3 +1281,43 @@ frontend = "project"
 name = "BrokenTaskRetryTimerLifetime"
 expected = "liveness"
 frontend = "project"
+
+[[model]]
+name = "ProvenanceQueryCursor"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenProvenanceQueryCursor"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "ProvenanceEvidenceGrade"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenProvenanceEvidenceGrade"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "ProvenanceBackground"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenProvenanceBackground"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "KnowledgePublication"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenKnowledgePublication"
+expected = "safety"
+frontend = "project"

@@ -22,8 +22,23 @@ pub(crate) struct Completion {
     pub revision: u64,
     pub reply: oneshot::Sender<Result<Value>>,
     pub result: Result<Value>,
+    pub native_authority: Option<Vec<(String, String)>>,
 }
 impl Completion {
+    pub(crate) fn current_native_authority(
+        &self,
+        index: &Index,
+        record: &SeatRecord,
+    ) -> Result<()> {
+        if self.native_authority.as_ref().is_some_and(|paths| {
+            !crate::provenance::queries::current_authority(index, &self.actor, record, paths)
+        }) {
+            return Err(invalid(
+                "provenance_authority_changed: record ownership changed during provenance read",
+            ));
+        }
+        Ok(())
+    }
     pub(crate) fn current_binding(&self, current: &RootBinding) -> Result<()> {
         if &self.binding != current || self.binding.swarm != self.actor.swarm_id {
             return Err(invalid(
@@ -55,6 +70,7 @@ fn scoped_success(op: crate::Ulid, mut data: Value, binding: &RootBinding, revis
 }
 pub(crate) fn handles(call: &Call) -> bool {
     mcp::skills::handles(&call.tool)
+        || mcp::provenance::handles(&call.tool)
         || matches!(
             call.tool.as_str(),
             "knowledge_fetch"
@@ -124,13 +140,30 @@ impl Job {
             permit,
         } = self;
         let _permit = permit;
-        let result = if host.root_id() != binding.root_id.as_str()
+        let mut result = if host.root_id() != binding.root_id.as_str()
             || journal.root_id() != Some(binding.root_id.as_str())
             || actor.swarm_id != binding.swarm
         {
             Err(invalid(
                 "swarm_root_changed: knowledge read root does not match admission",
             ))
+        } else if mcp::provenance::handles(&call.tool) {
+            let result = crate::provenance::queries::read(
+                &index, &actor, &record, &binding, revision, &call,
+            );
+            let value = match result {
+                Ok(value) => scoped_success(call.op_id, value, &binding, revision),
+                Err(reason) => mcp::error(call.op_id, &reason.code, &reason.message),
+            };
+            journal.checked_authorized(
+                &actor,
+                &call,
+                mcp::knowledge::bounded(call.op_id, value, false),
+                |old| {
+                    retained_context(old, &binding, revision)
+                        && crate::provenance::queries::retained(&index, &actor, &record, &call, old)
+                },
+            )
         } else if call.tool == "knowledge_status" || mcp::skills::handles(&call.tool) {
             // Status must remain readable when the selected provider is broken.
             let result = if call.tool == "knowledge_status" {
@@ -247,12 +280,31 @@ impl Job {
             })
             .map_err(|e| invalid(e.to_string()))
         };
+        let witness = if mcp::provenance::handles(&call.tool)
+            && actor.role.class != crate::registry::Class::Oracle
+        {
+            result
+                .as_ref()
+                .ok()
+                .map(|value| crate::provenance::queries::authority_paths(&index, &call, value))
+        } else {
+            None
+        };
+        let native_authority = match witness {
+            Some(Ok(paths)) => Some(paths),
+            Some(Err(error)) => {
+                result = Err(invalid(error.to_string()));
+                None
+            }
+            None => None,
+        };
         Completion {
             actor,
             binding,
             revision,
             reply,
             result,
+            native_authority,
         }
     }
 }
@@ -291,6 +343,7 @@ mod tests {
             revision: 0,
             reply,
             result: Ok(json!({})),
+            native_authority: None,
         }
     }
     #[test]

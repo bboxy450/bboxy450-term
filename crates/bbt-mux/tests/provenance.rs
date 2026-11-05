@@ -875,3 +875,57 @@ fn native_concurrent_knowledge_writes_wait_instead_of_refusing_provider_busy() {
         );
     }
 }
+
+// Host MCP route, own-record visibility, immutable evidence reads and replay.
+#[test]
+fn provenance_mcp_queries_are_catalogued_scoped_bounded_and_read_only() {
+    let f=Fixture::new();
+    let call=|tool:&str,args:Value| {
+        let end=Instant::now()+Duration::from_secs(12);
+        loop {
+            let value=f.runtime.block_on(f.logic.as_ref().unwrap().client.control_call(f.one,1,
+                bbt_mux::mcp::Call{op_id:Ulid::new(),tool:tool.into(),args:args.clone()})).unwrap();
+            if ["workspace_pending","provider_busy","refresh_pending"].iter().any(|code|value["structuredContent"]["error"]["code"]==*code) {
+                assert!(Instant::now()<end,"{value}"); std::thread::sleep(Duration::from_millis(10)); continue;
+            }
+            assert_eq!(value["isError"],false,"{value}");
+            return value["structuredContent"].clone();
+        }
+    };
+    let written=call("knowledge_write",json!({"path":"notes/provenance-query.md","frontmatter":{"type":"note","title":"provenance query fixture"},"body":"Private signed fixture."}));
+    let id=written["record"]["id"].as_str().unwrap().to_owned();
+    let end=Instant::now()+Duration::from_secs(8);
+    loop {
+        let found=call("provenance_search",json!({"query":"provenance query fixture","limit":1}));
+        if found["items"].as_array().is_some_and(|items|items.iter().any(|v|v["id"]==id)) {break;}
+        assert!(Instant::now()<end,"cached native index never reflected the write: {found}");
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    let entity=call("provenance_get",json!({"locator":id}));
+    assert_eq!(entity["entity"]["publication"]["state"],"draft");
+    assert_eq!(entity["entity"]["document_signer"]["principal"],format!("seat:{}",f.one));
+    assert_eq!(entity["knowledge_root_id"].as_str().unwrap().len(),64);
+    assert_eq!(entity["freshness"]["repair_triggered"],false);
+    let history=call("provenance_history",json!({"locator":id,"limit":1}));
+    assert_eq!(history["items"].as_array().unwrap().len(),1);
+    assert!(history["next"].is_string());
+    let next=call("provenance_history",json!({"locator":id,"limit":1,"cursor":history["next"]}));
+    assert_eq!(next["items"].as_array().unwrap().len(),1);
+    assert_ne!(next["items"][0]["sequence"],history["items"][0]["sequence"]);
+    let verified=call("provenance_verify",json!({"locator":id}));
+    assert_eq!(verified["document_signature"]["status"],"valid");
+    assert_eq!(verified["event"]["status"],"valid");
+    assert_eq!(verified["limits"]["account_key_trust"],"not_checked");
+    let exact=call("provenance_verify",json!({"locator":id,"sequence":history["items"][0]["sequence"]}));
+    assert_eq!(exact["event"]["status"],"valid");
+    assert_eq!(exact["event"]["recorded_state_matches"],true);
+
+    let lineage=call("provenance_lineage",json!({"locator":id,"depth":1}));
+    assert_eq!(lineage["nodes"].as_array().unwrap().len(),1);
+    assert!(lineage["edges"].as_array().unwrap().is_empty());
+    let op=Ulid::new();
+    let request=bbt_mux::mcp::Call{op_id:op,tool:"provenance_get".into(),args:json!({"locator":id})};
+    let first=f.runtime.block_on(f.logic.as_ref().unwrap().client.control_call(f.one,1,request.clone())).unwrap();
+    let retry=f.runtime.block_on(f.logic.as_ref().unwrap().client.control_call(f.one,1,request)).unwrap();
+    assert_eq!(first,retry,"same operation must retain its scoped snapshot");
+}

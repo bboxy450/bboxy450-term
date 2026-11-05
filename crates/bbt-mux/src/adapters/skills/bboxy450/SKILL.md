@@ -97,3 +97,24 @@ Commit does not push or synchronize another machine by itself: delivery needs
 an explicitly authorized sync/export step. Never force-add `.bboxy` into the
 surrounding code repository. Retain the returned operation ID and inspect an
 unknown commit outcome before retrying.
+
+## Querying recorded provenance
+
+Use `provenance_search` to find native recorded entities by text, digest, producer
+seat or commit, and `provenance_get` for the recorded claim, signer metadata,
+checkpoint and direct links. For external-provider documents, `knowledge_fetch`
+returns a checkpoint artifact ID when one exists; use that ID for host provenance.
+Workers see their own native records; Oracle sees the current root.
+
+Use `provenance_lineage` for bounded upstream/downstream declared links, and
+`provenance_history` for paged canonical events beyond the inline history.
+Follow returned cursors unchanged; restart without a cursor after a stale-view
+refusal. Read `freshness`: projections can lag without making a query rebuild
+files or invoke the storage plugin. An empty native result is not proof that an
+external provider has no document or that a pending artifact does not exist.
+
+Use `provenance_verify` to check a cached native document signature and selected
+signed event with its stored columns and immediate predecessor. A valid local
+signature is separate from account-key trust, full-chain auditing, external
+artifact byte verification and proof that declared lineage caused an output.
+Do not turn an inferred producer or responsibility claim into verified authorship.

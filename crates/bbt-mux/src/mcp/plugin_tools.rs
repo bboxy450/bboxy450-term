@@ -183,6 +183,7 @@ impl Job {
             revision,
             reply,
             result,
+            native_authority: None,
         }
     }
 }

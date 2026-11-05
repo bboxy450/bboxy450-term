@@ -117,6 +117,13 @@ pub struct EventLog {
     pub(crate) path: PathBuf,
 }
 
+/// A bounded filtered view of canonical rows. Local adjacency is verified;
+/// this is not a genesis-to-head audit or an account-key trust decision.
+pub(crate) struct EntityPage {
+    pub events: Vec<Envelope>,
+    pub more: bool,
+}
+
 impl EventLog {
     pub fn open(directory: &Path) -> Result<Self> {
         Ok(Self::open_counted(directory)?.0)
@@ -309,6 +316,120 @@ impl EventLog {
             )
             .optional()?;
         bytes.map(|b| Ok(serde_json::from_slice(&b)?)).transpose()
+    }
+
+    /// Page one entity's doc/artifact/task subjects through the existing subject
+    /// index. Querying never repairs or scans the entire historical chain.
+    pub(crate) fn entity_page(
+        &self,
+        entity: &str,
+        after: u64,
+        head: u64,
+        limit: usize,
+    ) -> Result<EntityPage> {
+        let id: Ulid = entity.parse()?;
+        if id.to_string() != entity || !(1..=64).contains(&limit) || after > head {
+            return Err(invalid("invalid entity history query"));
+        }
+        let doc = format!("doc/{id}/");
+        let artifact = format!("artifact/{id}/");
+        let task = format!("task/{id}/");
+        let db = sqlite::open(&self.path)?;
+        // All subject ranges use events_subject. The outer join checks the SQL
+        // copy and the immediately preceding canonical row in one read view.
+        let mut statement = db.prepare(
+            "WITH selected AS (
+                SELECT seq FROM events INDEXED BY events_subject
+                 WHERE subject>=?1 AND subject<?2 AND seq>?7 AND seq<=?8
+                UNION ALL
+                SELECT seq FROM events INDEXED BY events_subject
+                 WHERE subject>=?3 AND subject<?4 AND seq>?7 AND seq<=?8
+                UNION ALL
+                SELECT seq FROM events INDEXED BY events_subject
+                 WHERE subject>=?5 AND subject<?6 AND seq>?7 AND seq<=?8
+                ORDER BY seq LIMIT ?9)
+             SELECT e.seq,e.id,e.ts,e.subject,e.source,e.payload,e.signer,e.sig,e.prev,e.hash,
+                    p.seq,p.id,p.ts,p.subject,p.source,p.payload,p.signer,p.sig,p.prev,p.hash
+               FROM selected s JOIN events e ON e.seq=s.seq
+               LEFT JOIN events p ON p.seq=e.seq-1 ORDER BY e.seq",
+        )?;
+        let mut rows = statement.query(params![
+            doc,
+            format!("doc/{id}0"),
+            artifact,
+            format!("artifact/{id}0"),
+            task,
+            format!("task/{id}0"),
+            super::sqlint(after)?,
+            super::sqlint(head)?,
+            (limit + 1) as i64
+        ])?;
+        let mut result = EntityPage {
+            events: Vec::new(),
+            more: false,
+        };
+        let mut bytes_read = 0;
+        while let Some(row) = rows.next()? {
+            if result.events.len() == limit {
+                result.more = true;
+                break;
+            }
+            let bytes: Vec<u8> = row.get(5)?;
+            let previous: Option<Vec<u8>> = row.get(15)?;
+            let cost = bytes.len() + previous.as_ref().map_or(0, Vec::len);
+            if bytes_read + cost > 4 * MAX_EVENT_BYTES && !result.events.is_empty() {
+                result.more = true;
+                break;
+            }
+            let decode = |base: usize, bytes: &[u8]| -> Result<Envelope> {
+                if bytes.len() > MAX_EVENT_BYTES {
+                    return Err(invalid("oversized stored event"));
+                }
+                let envelope: Envelope = serde_json::from_slice(bytes)?;
+                if envelope.seq != u64::try_from(row.get::<_, i64>(base)?)?
+                    || envelope.event.id.to_string() != row.get::<_, String>(base + 1)?
+                    || envelope.event.ts != u64::try_from(row.get::<_, i64>(base + 2)?)?
+                    || envelope.event.subject != row.get::<_, String>(base + 3)?
+                    || envelope.event.source != row.get::<_, String>(base + 4)?
+                    || envelope.provenance.signer.as_slice()
+                        != row.get::<_, Vec<u8>>(base + 6)?.as_slice()
+                    || envelope.provenance.sig != row.get::<_, Vec<u8>>(base + 7)?
+                    || envelope.prev != row.get::<_, String>(base + 8)?
+                    || envelope.hash()? != row.get::<_, String>(base + 9)?
+                {
+                    return Err(invalid(
+                        "canonical event columns disagree with signed bytes",
+                    ));
+                }
+                envelope.verify()?;
+                Ok(envelope)
+            };
+            let envelope = decode(0, &bytes)?;
+            if envelope.seq <= after
+                || envelope.seq > head
+                || !(envelope.event.subject.starts_with(&doc)
+                    || envelope.event.subject.starts_with(&artifact)
+                    || envelope.event.subject.starts_with(&task))
+            {
+                return Err(invalid(
+                    "canonical entity event is outside the requested view",
+                ));
+            }
+            if envelope.seq == 1 {
+                if !envelope.prev.is_empty() {
+                    return Err(invalid("broken genesis link"));
+                }
+            } else {
+                let previous = previous.ok_or_else(|| invalid("missing immediate predecessor"))?;
+                let predecessor = decode(10, &previous)?;
+                if predecessor.seq + 1 != envelope.seq || predecessor.hash()? != envelope.prev {
+                    return Err(invalid("broken immediate predecessor link"));
+                }
+            }
+            bytes_read += cost;
+            result.events.push(envelope);
+        }
+        Ok(result)
     }
 
     /// A bounded genesis-to-head audit page for resumable projection repair.

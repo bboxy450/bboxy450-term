@@ -4107,7 +4107,10 @@ impl Worker {
                 )));
                 return;
             }
-        } else if call.tool != "orient" && !crate::mcp::skills::handles(&call.tool) {
+        } else if call.tool != "orient"
+            && !crate::mcp::skills::handles(&call.tool)
+            && !crate::mcp::provenance::handles(&call.tool)
+        {
             let root = port.binding.root_id.clone();
             self.queue_workspace_read(PendingWorkspaceRead {
                 binding: port.binding,
@@ -4121,7 +4124,9 @@ impl Worker {
         // Instruction descriptors do not read documents or depend on a scan.
         // They still use the captured root and the normal completion fences.
         let waiting_binding = port.binding.clone();
-        let prepared_port = if crate::mcp::skills::handles(&call.tool) {
+        let prepared_port = if crate::mcp::skills::handles(&call.tool)
+            || crate::mcp::provenance::handles(&call.tool)
+        {
             Ok(port)
         } else {
             self.scan_port(&port.binding)
@@ -9239,24 +9244,21 @@ impl Worker {
                 Ok(done) => {
                     let current = self
                         .control_actor(done.actor.seat_id, done.actor.process_generation)
-                        .and_then(|(actor, _)| {
+                        .and_then(|(actor, record)| {
                             if actor == done.actor {
-                                Ok(())
+                                Ok(record)
                             } else {
                                 Err(invalid("seat authority changed during knowledge read"))
                             }
                         })
-                        .and_then(|_| {
+                        .and_then(|record| {
                             self.workspaces.current(&self.registry, &done.binding)?;
                             done.current_binding(
                                 self.workspaces.cache.current(done.binding.swarm)?,
                             )?;
-                            self.workspaces
-                                .cache
-                                .get(&done.binding)?
-                                .host
-                                .current(done.revision)
-                                .map_err(|e| invalid(e.to_string()))
+                            let root = self.workspaces.cache.get(&done.binding)?;
+                            root.host.current(done.revision).map_err(|e| invalid(e.to_string()))?;
+                            done.current_native_authority(&root.index, &record)
                         });
                     let _ = done.reply.send(current.and(done.result));
                 }

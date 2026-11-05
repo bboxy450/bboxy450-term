@@ -2537,3 +2537,22 @@ test-gitkb-capacity-refusal:
 test-queued-external-provider:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo nextest run --locked --release -p bboxy450-term-mux --test harmony_host --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(selected_source_owns_signed_documents_and_slug_task_lifecycle_without_bundled_fallback)'
+
+.PHONY: test-provenance-mcp check-provenance-mcp test-provenance-mcp-formal test-provenance-inventory
+check-provenance-mcp:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked --release -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' -- -D warnings
+
+test-provenance-mcp:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked --release -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(provenance::queries::tests)'; \
+	cargo nextest run --locked --release -p bboxy450-term-mux --test provenance --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(provenance_mcp_queries_)'; \
+	cargo nextest run --locked --release -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(mcp_four_methods_forward_to_logic)'
+
+test-provenance-inventory:
+	@python3 -B -c 'import sys,tomllib; sys.path.insert(0,"scripts"); import formal; corpus={row["name"]:row["expected"] for row in formal.corpus(formal.ROOT)}; coverage=formal.coverage(formal.ROOT,set(corpus)); positive={"ProvenanceBackground","KnowledgePublication","ProvenanceQueryCursor","ProvenanceEvidenceGrade"}; rows=[row for row in tomllib.loads((formal.ROOT/"verification/contracts.toml").read_text())["contract"] if row["name"] in positive]; assert len(rows)==4; assert positive <= {name for row in coverage for name in row["models"]}; assert all(set(row["models"])=={row["name"],"Broken"+row["name"]} and corpus[row["name"]]=="pass" and corpus["Broken"+row["name"]]=="safety" and row["checks"]==["make test-formal","make test"] and all(row[field] for field in ["title","assumptions","property"]) and all((formal.ROOT/path).is_file() for field in ["sources","implementation_tests"] for path in row[field]) for row in rows); print("provenance: canonical corpus, paired contracts and crate coverage validated")'
+
+test-provenance-mcp-formal: test-provenance-inventory
+	@set -eu; . ./scripts/cache-env.sh; mkdir -p '$(abspath $(TARGET_DIR))/provenance-query/models'; \
+	BBOXY_PROVENANCE_QUERY_MODELS='$(abspath $(TARGET_DIR))/provenance-query/models' cargo test --locked --release -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)' selected_provenance_queries -- --exact; \
+	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert len(rows)==4; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/provenance-query'

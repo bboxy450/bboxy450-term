@@ -1421,7 +1421,13 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     initialize(&mut bridge);
     let list = rpc(&mut bridge, 2, "tools/list", json!({}));
     let tools = list["result"]["tools"].as_array().unwrap();
-    assert_eq!(tools.len(), 31);
+    let names: std::collections::BTreeSet<_> = tools.iter().map(|tool| tool["name"].as_str().unwrap()).collect();
+    assert_eq!(names.len(), tools.len(), "MCP tool names must be unique");
+    for name in ["provenance_search", "provenance_get", "provenance_lineage", "provenance_history", "provenance_verify"] {
+        let tool = tools.iter().find(|tool| tool["name"] == name).expect("provenance lookup advertised");
+        assert_eq!(tool["annotations"]["readOnlyHint"], true);
+        assert_eq!(tool["annotations"]["openWorldHint"], false);
+    }
     assert!(tools.iter().any(|tool| tool["name"] == "harness_profiles"));
     assert!(tools.iter().any(|tool| tool["name"] == "usage_read"
         && tool["annotations"]["readOnlyHint"] == true));
@@ -1462,6 +1468,14 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     assert_eq!(audit[0].event.payload["tool"], "orient");
     assert_eq!(audit[0].event.generation, Some(1));
     assert_eq!(audit[1].event.payload["outcome"], "replay");
+    let own = rpc(&mut bridge, 20, "tools/call", json!({"name":"provenance_get","arguments":{"locator":fixture.task}}));
+    assert_eq!(own["result"]["isError"], false, "{own}");
+    assert_eq!(own["result"]["structuredContent"]["entity"]["id"], fixture.task.to_string());
+    let foreign = rpc(&mut bridge, 21, "tools/call", json!({"name":"provenance_get","arguments":{"locator":fixture.foreign_task}}));
+    assert_eq!(foreign["result"]["isError"], true, "{foreign}");
+    assert_eq!(foreign["result"]["structuredContent"]["error"]["code"], "not_found");
+
+
     let minted = rpc(&mut bridge, 6, "tools/call", json!({"name":"self_status"}));
     assert!(
         minted["result"]["structuredContent"]["op_id"]

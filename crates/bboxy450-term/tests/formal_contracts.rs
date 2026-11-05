@@ -228,3 +228,19 @@ fn selected_provenance_background() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::write(root.join("manifest.tsv"), manifest)?;
     Ok(())
 }
+
+#[test]
+fn selected_provenance_queries() -> Result<(), Box<dyn std::error::Error>> {
+    let temporary = tempfile::tempdir()?;
+    let output = std::env::var_os("BBOXY_PROVENANCE_QUERY_MODELS");
+    let root = output.as_ref().map_or(temporary.path(), Path::new);
+    std::fs::create_dir_all(root)?;
+    let names = ["ProvenanceQueryCursor", "BrokenProvenanceQueryCursor", "ProvenanceEvidenceGrade", "BrokenProvenanceEvidenceGrade"];
+    let mut manifest = String::new(); let mut count = 0;
+    for (model, expected) in models::cases().into_iter().filter(|(m, _)| names.contains(&m.name.as_str())) {
+        export(model, expected, root, &mut manifest)?; count += 1;
+    }
+    assert_eq!(count, names.len());
+    std::fs::write(root.join("manifest.tsv"), manifest)?;
+    Ok(())
+}
