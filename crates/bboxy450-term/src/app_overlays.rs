@@ -796,6 +796,37 @@ impl App {
         if let Some(window) = &self.window { window.set_ime_allowed(false); }
         self.request_redraw();
     }
+    /// Native gestures belong exclusively to the open figure. Raw touch and
+    /// platform pinch streams share the same transform and never reach a seat.
+    pub(super) fn diagram_gesture(&mut self, event: &WindowEvent) -> bool {
+        use winit::event::TouchPhase as Native;
+        let Some(diagram) = &mut self.app_overlays.diagram else { return false; };
+        let scale = self.window.as_ref().map_or(1., |w| w.scale_factor() as f32);
+        let close = match event {
+            WindowEvent::PinchGesture { delta, phase, .. } => {
+                if *phase == Native::Cancelled { diagram.cancel_gestures(); }
+                else { diagram.zoom_at((1. + *delta) as f32, self.pointer); } false
+            }
+            WindowEvent::PanGesture { delta, phase, .. } => {
+                if *phase == Native::Cancelled { diagram.cancel_gestures(); }
+                else if !diagram.touching() { diagram.pan([-delta.x / scale, -delta.y / scale]); } false
+            }
+            WindowEvent::DoubleTapGesture { .. } => { diagram.smart_zoom(self.pointer); false }
+            WindowEvent::Touch(touch) => {
+                let phase = match touch.phase { Native::Started => viewer::TouchPhase::Started, Native::Moved => viewer::TouchPhase::Moved, Native::Ended => viewer::TouchPhase::Ended, Native::Cancelled => viewer::TouchPhase::Cancelled };
+                diagram.touch(touch.id, phase, [touch.location.x as f32 / scale, touch.location.y as f32 / scale])
+            }
+            WindowEvent::MouseInput { button: MouseButton::Middle, state, .. } => {
+                if state.is_pressed() { diagram.begin_pan(self.pointer); } else { diagram.release(); } false
+            }
+            WindowEvent::Focused(false) | WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => { diagram.cancel_gestures(); return false; }
+            WindowEvent::CursorLeft { .. } => { diagram.release(); return false; }
+            _ => return false,
+        };
+        if close { self.close_app_overlay(); }
+        else { self.app_overlays.layout = None; self.request_redraw(); }
+        true
+    }
     pub(super) fn diagram_key(&mut self, input: &keyboard::Input<'_>) -> bool {
         if matches!(route_key(input, 0, Some("")), RoutedKey::Quit | RoutedKey::HardQuit) { return false; }
         if !input.state.is_pressed() { return true; }
@@ -1220,7 +1251,7 @@ mod tests {
         app.startup.attached();
         app.composer.handle(ComposeCommand::Focus(ComposeField::Body));
         let canvas = Arc::new(c::Layout { rect: Rect::new(50., 100., 3000., 1800.), baseline: 0., kind: c::LayoutKind::Named("mermaid/canvas".into()), children: vec![] });
-        app.open_diagram(canvas);
+        app.open_diagram(canvas.clone());
         assert!(app.app_overlays.open());
         assert!(!app.composer.view.focus);
         app.solve_app_overlay([1200., 800.]).unwrap();
@@ -1233,11 +1264,44 @@ mod tests {
         assert!(app.app_overlays.diagram.as_ref().unwrap().scale() > before);
         assert!(app.overlay_key(&chrome_input("0").unwrap()));
         assert_eq!(app.app_overlays.diagram.as_ref().unwrap().scale(), 1.);
-        app.mouse_wheel(MouseScrollDelta::LineDelta(0., -3.));
+        app.pointer = [400., 350.];
+        let device_id = winit::event::DeviceId::dummy();
+        use winit::event::TouchPhase as Phase;
+        assert!(app.diagram_gesture(&WindowEvent::PinchGesture { device_id, delta: 0.2, phase: Phase::Moved }));
+        assert!((app.app_overlays.diagram.as_ref().unwrap().scale() - 1.2).abs() < 0.001);
+        app.mouse_wheel(MouseScrollDelta::PixelDelta(winit::dpi::PhysicalPosition::new(0., -20.)));
+        assert!((app.app_overlays.diagram.as_ref().unwrap().scale() - 1.2).abs() < 0.001);
+        app.mouse_wheel(MouseScrollDelta::LineDelta(0., 1.));
+        assert!(app.app_overlays.diagram.as_ref().unwrap().scale() > 1.2);
+        assert!(app.diagram_gesture(&WindowEvent::DoubleTapGesture { device_id }));
+        let fitted = app.app_overlays.diagram.as_ref().unwrap().scale();
+        let touch = |id, phase, x, y| WindowEvent::Touch(winit::event::Touch { device_id, id, phase, location: winit::dpi::PhysicalPosition::new(x, y), force: None });
+        // Deliver a complete burst without a redraw between events. Gesture
+        // capture and tap targets must survive render-cache invalidation.
+        assert!(app.diagram_gesture(&touch(1, Phase::Started, 300., 300.)));
+        assert!(app.diagram_gesture(&touch(2, Phase::Started, 500., 300.)));
+        assert!(app.diagram_gesture(&touch(2, Phase::Moved, 700., 300.)));
+        assert!(app.app_overlays.diagram.as_ref().unwrap().scale() > fitted);
+        assert!(!app.diagram_gesture(&WindowEvent::Focused(false)));
+        assert!(!app.app_overlays.diagram.as_ref().unwrap().touching());
+        let scale = app.app_overlays.diagram.as_ref().unwrap().scale();
+        app.diagram_gesture(&touch(2, Phase::Moved, 900., 300.));
+        assert_eq!(app.app_overlays.diagram.as_ref().unwrap().scale(), scale);
+        app.diagram_gesture(&WindowEvent::MouseInput { device_id, state: ElementState::Pressed, button: MouseButton::Middle });
+        app.overlay_hover([390., 340.]);
+        app.diagram_gesture(&WindowEvent::MouseInput { device_id, state: ElementState::Released, button: MouseButton::Middle });
         app.solve_app_overlay([1200., 800.]).unwrap();
         assert!(app.overlay_pointer([400., 400.]));
         assert!(app.overlay_hover([300., 300.]));
         app.pointer_released();
+        app.solve_app_overlay([1200., 800.]).unwrap();
+        let close = app.app_overlays.regions().into_iter().find(|(id, _)| id == "diagram-fullscreen/close").unwrap().1;
+        let at = [close.x + close.w / 2., close.y + close.h / 2.];
+        app.diagram_gesture(&touch(7, Phase::Started, at[0] as f64, at[1] as f64));
+        assert!(app.app_overlays.open());
+        app.diagram_gesture(&touch(7, Phase::Ended, at[0] as f64, at[1] as f64));
+        assert!(!app.app_overlays.open()); assert!(app.composer.view.focus);
+        app.open_diagram(canvas);
         assert!(app.overlay_key(&chrome_input("esc").unwrap()));
         assert!(!app.app_overlays.open());
         assert!(app.composer.view.focus);

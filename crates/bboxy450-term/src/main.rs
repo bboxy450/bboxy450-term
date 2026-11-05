@@ -9042,6 +9042,7 @@ impl ApplicationHandler<UiEvent> for App {
                 return;
             }
         }
+        if self.diagram_gesture(&event) { return; }
         match event {
             WindowEvent::Focused(focused) => {
                 if !focused {

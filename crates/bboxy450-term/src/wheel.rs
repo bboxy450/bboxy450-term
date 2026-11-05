@@ -123,6 +123,7 @@ impl App {
             () if self.app_overlays.open() => {
                 self.wheel_consumed("overlay");
                 if let Some(diagram) = &mut self.app_overlays.diagram {
+                    let delta_source = delta;
                     let delta = match delta {
                         MouseScrollDelta::LineDelta(x, y) => [-x * 28., -y * 28.],
                         MouseScrollDelta::PixelDelta(p) => {
@@ -130,9 +131,9 @@ impl App {
                             [-p.x as f32 / scale, -p.y as f32 / scale]
                         }
                     };
-                    if (self.modifiers.super_key() || self.modifiers.control_key()) && delta[1] != 0. {
-                        diagram.act(if delta[1] < 0. { bbt_ui::modules::document_modal::viewer::Action::In } else { bbt_ui::modules::document_modal::viewer::Action::Out });
-                    } else { diagram.pan(delta); }
+                    let zoom = self.modifiers.super_key() || self.modifiers.control_key()
+                        || matches!(delta_source, MouseScrollDelta::LineDelta(_, y) if y != 0.) && !self.modifiers.shift_key();
+                    diagram.scroll(self.pointer, delta, zoom);
                     self.app_overlays.layout = None;
                     self.request_redraw();
                 }
