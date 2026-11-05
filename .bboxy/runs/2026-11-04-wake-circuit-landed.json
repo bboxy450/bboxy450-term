@@ -1,0 +1,72 @@
+{
+  "source": "5b6110d36a6c4a0c0315a70528b86c9d8bffe076",
+  "formal_receipt": {
+    "checkout": "/Users/feral/mydev/bboxy450-term-wake-circuit-breaker",
+    "contracts": 161,
+    "crates": 34,
+    "dirty": false,
+    "evidence": "/Users/feral/mydev/bboxy450-term/.git/bboxy-formal-evidence/0da4d1d20ec441d27590f95be4520547b89ae4477749d4f72a6551d9df791421/evidence.json",
+    "evidence_sha256": "0da4d1d20ec441d27590f95be4520547b89ae4477749d4f72a6551d9df791421",
+    "models": 387,
+    "source": "5b6110d36a6c4a0c0315a70528b86c9d8bffe076"
+  },
+  "commands": [
+    {
+      "command": "make land",
+      "exit_code": 0,
+      "log": "/tmp/sable-wake-circuit-land-final.log",
+      "log_sha256": "f09cd91764690db3adb42e1563d76d885654579602f56d13f6412be2cf88f122"
+    },
+    {
+      "command": "make smoke",
+      "exit_code": 0,
+      "log": "/tmp/sable-wake-circuit-smoke-landed.log",
+      "log_sha256": "c137418742cbc092f6148925d7037acff76e1918305d50b228783effc7f93e1a"
+    },
+    {
+      "command": "make check-formal-evidence",
+      "exit_code": 0,
+      "log": "/tmp/sable-wake-circuit-receipt-landed.log",
+      "log_sha256": "078c52d453126c114cbdd95d75ab3a8fa58cb3ee54b060bd60e1390f1b08874b"
+    },
+    {
+      "command": "make test-licenses",
+      "exit_code": 0,
+      "log": "/tmp/sable-wake-circuit-licenses-landed.log",
+      "log_sha256": "fbef85abb55237d2b590b838401f99caa7bc7d0161e9d1ff63fa32474ce0efdd"
+    },
+    {
+      "command": "make install",
+      "exit_code": 0,
+      "log": "/tmp/sable-wake-circuit-install.log",
+      "log_sha256": "176f800a238b32cd41087874abdcb21e776bdcc02094f51f6f1e349c95cba4f1"
+    }
+  ],
+  "rust_gate": {
+    "app_tests_passed": 493,
+    "app_existing_skipped": 12,
+    "mux_tests_passed": 353,
+    "mux_existing_skipped": 10,
+    "doc_corpus_passed": 15,
+    "clippy": "strict all-targets app+mux"
+  },
+  "smoke": {
+    "mode": "headless",
+    "windows": 0,
+    "idle_frames": 0,
+    "idle_callbacks": 0,
+    "idle_seconds": 10.005,
+    "operator_input": false,
+    "children_reaped": true
+  },
+  "source_bound_note": "Formal evidence archived in repository common Git directory; subsequent report-only commits require current-source rebinding/recheck. No raw logs or transcript contents are committed.",
+  "installed": {
+    "app": "/Users/feral/Applications/bboxy450-term.app",
+    "source": "5b6110d36a6c4a0c0315a70528b86c9d8bffe076",
+    "harness": "baf77427df00ce99d4a9a392ebc8bef7e1b5478c",
+    "executable_sha256": "1b522fa5a0d7ae994f40e8487092067c72ad611ae0795ce51b0dffed5fcb238c",
+    "signature": "approved Apple Development identity; strict bundle verification passed inside make install",
+    "backend_restarted": false,
+    "rollback_contents": "/Users/feral/Applications/.bboxy450-term-install.8EJJIi/previous-Contents"
+  }
+}
