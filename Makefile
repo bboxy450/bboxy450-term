@@ -2516,3 +2516,12 @@ test-provenance-background-formal:
 test-provenance-workflow:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo nextest run --locked --release -p bboxy450-term-mux --test provenance --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(native_knowledge_mcp) | test(draft_) | test(import_staging_and_ordinary_drafts) | test(claiming_work_in_progress)'
+
+.PHONY: test-knowledge-write-queue check-knowledge-write-queue
+test-knowledge-write-queue:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked --release -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(knowledge_effects::queue::tests)'; \
+	cargo nextest run --locked --release -p bboxy450-term-mux --test provenance --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(native_concurrent_knowledge_writes_wait)'
+check-knowledge-write-queue:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked --release -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' -- -D warnings

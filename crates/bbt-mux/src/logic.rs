@@ -2997,6 +2997,7 @@ struct Worker {
     /// In memory only: plugin calls for that seat carry it, nothing journals it.
     seat_attribution: BTreeMap<Ulid, (u64, crate::plugins::attribution::Attribution)>,
     effect_jobs: tokio::task::JoinSet<knowledge_effects::Completion>,
+    pending_effects: knowledge_effects::queue::EffectQueue<knowledge_effects::PendingEffect>,
     effect_roots: BTreeMap<String, std::sync::Weak<crate::provenance::projection::WriterLease>>,
     gui_knowledge_jobs: tokio::task::JoinSet<GuiKnowledgeCompletion>,
     gui_task_reads: tokio::task::JoinSet<GuiTaskReadCompletion>,
@@ -3265,6 +3266,7 @@ impl Worker {
             diagnostic_pending: BTreeSet::new(),
             seat_attribution: BTreeMap::new(),
             effect_jobs: tokio::task::JoinSet::new(),
+            pending_effects: Default::default(),
             effect_roots: BTreeMap::new(),
             gui_knowledge_jobs: tokio::task::JoinSet::new(),
             gui_task_reads: tokio::task::JoinSet::new(),

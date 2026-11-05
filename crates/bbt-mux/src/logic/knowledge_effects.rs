@@ -40,6 +40,14 @@ pub(super) fn release_claim(
     }
 }
 
+pub(super) mod queue;
+
+pub(super) struct PendingEffect {
+    prepared: (Actor, RootBinding, u64, Journal),
+    call: Call,
+    reply: EffectReply,
+}
+
 pub(super) enum EffectReply {
     SeatControl {
         seat: Ulid,
@@ -51,6 +59,14 @@ pub(super) enum EffectReply {
     Task(oneshot::Sender<Result<bbt_proto::messaging::TaskResponse>>),
 }
 impl EffectReply {
+    fn closed(&self) -> bool {
+        match self {
+            Self::SeatControl { reply, .. } => reply.is_closed(),
+            Self::Seat(reply) => reply.is_closed(),
+            Self::Knowledge(reply) => reply.is_closed(),
+            Self::Task(reply) => reply.is_closed(),
+        }
+    }
     fn failure(self, call: &Call, error: crate::store::Error) {
         if error
             .downcast_ref::<crate::knowledge::workspaces::Error>()
@@ -184,6 +200,18 @@ impl Worker {
         call: Call,
         reply: EffectReply,
     ) {
+        self.dispatch_document_effect(prepared, call, reply, false);
+    }
+    fn dispatch_document_effect(
+        &mut self,
+        prepared: Result<(Actor, WorkspacePort, Journal)>,
+        call: Call,
+        reply: EffectReply,
+        queued: bool,
+    ) {
+        if reply.closed() {
+            return;
+        }
         let (actor, port, journal) = match prepared {
             Ok(prepared) => prepared,
             Err(error) => {
@@ -195,39 +223,48 @@ impl Worker {
             call.validate()?;
             // A replay must not be redispatched or hidden behind a capacity refusal.
             if let Some(value) = journal.retained(&actor, &call)? {
-                return Ok(Err(value));
+                return Ok(Err(Some(value)));
+            }
+            self.effect_roots
+                .retain(|_, claim| claim.strong_count() != 0);
+            if self.effect_root_busy(&port.binding.root_id)
+                || self.effect_roots.len() >= 8
+                || !queued && self.pending_effects.contains(&port.binding.root_id)
+            {
+                return Ok(Err(None));
             }
             self.workspaces.write_ready(&self.registry, &port.binding)?;
             let mut port = self.scan_port(&port.binding)?;
-            self.effect_roots
-                .retain(|_, claim| claim.strong_count() != 0);
-            if self.effect_root_busy(&port.binding.root_id) || self.effect_roots.len() >= 8 {
-                return Ok(Err(mcp::error(
-                    call.op_id,
-                    "provider_busy",
-                    "A document effect is already admitted for this root, or effect capacity is occupied; no effect admitted.",
-                )));
-            }
             let Some(writer) = port.index.try_projection_writer()? else {
-                return Ok(Err(mcp::error(
-                    call.op_id,
-                    "provider_busy",
-                    "Projection writer occupied; no effect admitted.",
-                )));
+                return Ok(Err(None));
             };
             let claim = Arc::downgrade(&writer);
             port.index = Arc::new((*port.index).clone().owned_projection(writer)?);
             let revision = port.host.revision()?;
             let (value, fresh) = journal.admit(&actor, &call)?;
             if !fresh {
-                return Ok(Err(value));
+                return Ok(Err(Some(value)));
             }
             Ok(Ok((port, revision, claim)))
         })();
         let (port, revision, claim) = match admitted {
             Ok(Ok(admitted)) => admitted,
-            Ok(Err(value)) => {
+            Ok(Err(Some(value))) => {
                 reply.send(&call, Ok(value));
+                return;
+            }
+            Ok(Err(None)) => {
+                self.queue_document_effect((actor, port, journal), call, reply, queued);
+                return;
+            }
+            Err(error)
+                if error
+                    .downcast_ref::<crate::knowledge::workspaces::Error>()
+                    .is_some_and(|e| {
+                        matches!(e, crate::knowledge::workspaces::Error::Pending(_))
+                    }) =>
+            {
+                self.queue_document_effect((actor, port, journal), call, reply, queued);
                 return;
             }
             Err(error) => {
@@ -272,6 +309,60 @@ impl Worker {
             },
             &self.handle,
         );
+    }
+    fn queue_document_effect(
+        &mut self,
+        prepared: (Actor, WorkspacePort, Journal),
+        call: Call,
+        reply: EffectReply,
+        front: bool,
+    ) {
+        let root = prepared.1.binding.root_id.clone();
+        let revision = match prepared.1.host.revision() {
+            Ok(revision) => revision,
+            Err(error) => {
+                reply.failure(&call, invalid(error.to_string()));
+                return;
+            }
+        };
+        let bytes =
+            serde_json::to_vec(&call.args).map_or(usize::MAX, |v| v.len().saturating_add(512));
+        // Waiting does not pin full historical Index snapshots or a writer.
+        let pending = PendingEffect {
+            prepared: (prepared.0, prepared.1.binding, revision, prepared.2),
+            call,
+            reply,
+        };
+        if let Err(pending) = self.pending_effects.push(root, bytes, pending, front) {
+            pending.reply.send(&pending.call, Ok(mcp::error(pending.call.op_id,
+                "write_queue_full", "The bounded write queue is full; no write was admitted. Retry this operation after capacity becomes available.")));
+        }
+    }
+    fn poll_pending_effects(&mut self) {
+        self.effect_roots
+            .retain(|_, claim| claim.strong_count() != 0);
+        let roots: Vec<_> = self
+            .pending_effects
+            .roots()
+            .filter(|root| !self.effect_root_busy(root))
+            .take(8usize.saturating_sub(self.effect_roots.len()))
+            .cloned()
+            .collect();
+        for root in roots {
+            if let Some(pending) = self.pending_effects.pop(&root) {
+                if pending.reply.closed() {
+                    continue;
+                }
+                let (actor, binding, revision, journal) = pending.prepared;
+                let prepared = self.workspaces.port(binding).and_then(|port| {
+                    port.host
+                        .current(revision)
+                        .map_err(|e| invalid(e.to_string()))?;
+                    Ok((actor, port, journal))
+                });
+                self.dispatch_document_effect(prepared, pending.call, pending.reply, true);
+            }
+        }
     }
     fn effect_current(&mut self, context: &Context) -> Result<()> {
         if let EffectReply::SeatControl {
@@ -320,6 +411,7 @@ impl Worker {
         context.reply.send(&context.call, value);
     }
     pub(super) fn poll_document_effects(&mut self) {
+        self.poll_pending_effects();
         while let Some(joined) = self.effect_jobs.try_join_next() {
             let completion = match joined {
                 Ok(done) => done,

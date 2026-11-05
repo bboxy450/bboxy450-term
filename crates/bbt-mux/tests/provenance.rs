@@ -830,3 +830,48 @@ fn unchanged_clipped_git_refs_produce_no_activity_for_ten_seconds() {
         std::thread::sleep(Duration::from_millis(20));
     }
 }
+
+#[test]
+fn native_concurrent_knowledge_writes_wait_instead_of_refusing_provider_busy() {
+    let f = Fixture::new();
+    let client = f.logic.as_ref().unwrap().client.clone();
+    let seat = f.one;
+    f.runtime.block_on(async {
+        let mut jobs = tokio::task::JoinSet::new();
+        for n in 0..16 {
+            let client = client.clone();
+            jobs.spawn(async move {
+                let call = bbt_mux::mcp::Call {
+                    op_id: Ulid::new(),
+                    tool: "knowledge_write".into(),
+                    args: json!({"path":format!("notes/concurrent-{n}.md"),
+                        "frontmatter":{"type":"note","title":format!("Concurrent {n}")},
+                        "body":format!("private writer {n}")}),
+                };
+                client.control_call(seat, 1, call).await.unwrap()
+            });
+        }
+        tokio::time::timeout(Duration::from_secs(60), async {
+            while let Some(result) = jobs.join_next().await {
+                let value = result.unwrap();
+                assert_ne!(
+                    value["isError"], true,
+                    "a concurrent write was refused: {value}"
+                );
+            }
+        })
+        .await
+        .expect("queued writes did not make progress");
+    });
+    for n in 0..16 {
+        let path = f
+            .config
+            .repository
+            .join(format!(".bboxy/notes/concurrent-{n}.md"));
+        assert!(
+            std::fs::read_to_string(path)
+                .unwrap()
+                .contains(&format!("private writer {n}"))
+        );
+    }
+}
