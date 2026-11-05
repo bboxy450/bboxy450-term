@@ -15,10 +15,10 @@ acceptance:
 - Surviving sessions, original worktrees and evidence preserved; no backend restart
 - Profile catalogue plus ACP model/effort follow-up scoped and delegated to a real bboxy Codex ACP executor
 id: 01M6KEVVYNZW5H21RPTFW1RVDR
-status: claimed
+status: accepted
 delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
 swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-04T14:20:10.176Z
+updated: 2026-11-04T17:59:26.339Z
 created: 2026-11-04T14:19:35.796Z
 number: 21222
 created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
@@ -29,12 +29,31 @@ authorship:
   public_key: JlpXQZ4/Qy0yh5dcFR+iK7RgP5q83vzdNaLijybKm+Y=
   process_generation: '1'
 assignee: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+verify_result:
+  command: python3 -I /tmp/bboxy-oracle-recovery-01M6KDR7TE4H4B4AF0PZYK0Q1T/verify-recovery.py
+  exit_code: 0
+  evidence:
+  - criterion: Authenticated resumed Oracle identity, installed/running source and resource freshness recorded
+    reference: recovery-verification-result.json — real authenticated actor, live installed/source and fresh MCP usage; verifier exit0
+  - criterion: Swarm task inventory fully paged; delivered tasks historically reconciled with real source/log evidence; unresolved transitions explicitly retained
+    reference: recovery-observations.json — complete59-task inventory,54 terminal, exact remaining aliases/follow-up; historical-logs.json and committed report retain source/log dispositions
+  - criterion: Surviving sessions, original worktrees and evidence preserved; no backend restart
+    reference: attachments-live-preservation.json — same supervisor49475 and Logic49477 births; native captures and cleanup manifests retained; verifier exit0
+  - criterion: Profile catalogue plus ACP model/effort follow-up scoped and delegated to a real bboxy Codex ACP executor
+    reference: acp-core-verified.json and accepted task01M6KF628K0H7DHN4R8BCN9WVZ; signed native Codex ACP Delegate16RTXK2G3P7TXAA2C55S35X8E7 to seat01M6KT5EV066KVVBAPR7RGJWAX
+report:
+  summary: Recovered authenticated Oracle and fully paged59-task triage;54 terminal with exact administrative gaps retained. Accepted/landed focused GUI/profile/model/theme/attachment work and closed finished executors. Live signed GUIaa62 and harnessa1 preserve supervisor49475/Logic49477 birth identities. Source, sessions, reports and native/formal evidence retained; safe compiler cleanup recorded. Private verifier exited0. New onboarding/Markdown task remains delegated to one native Codex ACP worker; no full-suite or account-wide Claude shutdown claim.
+  commit: c14938ebf14de070d90572a41639a4c45c0400c7
+  reported_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+  op_id: 01M6KV5QDZ3GCSFMG5PFYN8QSP
+  verify_revision: 0
+  report: '[[reports/2026-11-04-oracle-night-recovery-delivered]]'
 provenance:
-  digest: sha256:963a84c4379ce01e4bd439b04eb4b8e62063f43efb9ada5d016dd93958798a01
-  frontmatter_digest: sha256:8d6fdcc7bf552acf4cc8053661b79e5b8e8453c279a1c0471f915406aa1709b5
+  digest: sha256:9f35003e1cda1342bef16af77681ed922adc7b4a65554f6862a1be77f6a8857a
+  frontmatter_digest: sha256:380eac84efe8a1dac418f51ce6bd02646fe36bb4dbd6f33c5dc0fd6442db740c
   signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  sig: aA1dCXtJqAF+IW2Kki0a7ndkU/yg1ZmYBjehJUo7bjctZJDGGfYicP0FH7hw4ZwQQXbrsZW+ssGSHfNRdAlFBQ==
-  log: .bboxy/log/2026-11-04.jsonl#114052
+  sig: Rpvb0u46A8vJ+Vhuqm0XOl9n6KtPURFtdkf0RVDxZA0jWRTCQBplW18ROS7H6I8VJSwa6Mptv5r8hRCN+s/RBg==
+  log: .bboxy/log/2026-11-04.jsonl#125454
 ---
 ROLE: ORACLE.
 
@@ -53,3 +72,38 @@ Read-only GUI probe observed runningca7cde96 PID49372 and actual repository /Use
 Do only necessary focused checks under the standing operator speed instruction. Do not run whole make test/parity/formal corpora for bookkeeping or fabricate a fresh merge receipt. Historical full-green40f45c58/184b770f evidence is real and retained; ca7cde96's later whole-merge gate debt is explicitly recorded in its signed message. Use canonical Make for builds/installs and signed approved Boxy commits.
 
 Own evidence/instruments workspace is /tmp/bboxy-oracle-recovery-01M6KDR7TE4H4B4AF0PZYK0Q1T. Preserve snapshots, operation outcomes, source/log hashes and a concise report there and in the scoped records JSON. No raw transcripts or secrets in Git. Reconcile the earlier takeover task as superseded by this current recovery task, retaining delivered proof and all remaining gaps; do not claim current Claude labels are all closed if they are restored/stale after restart.
+
+
+## Report from seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+
+Recovered authenticated Oracle and fully paged59-task triage;54 terminal with exact administrative gaps retained. Accepted/landed focused GUI/profile/model/theme/attachment work and closed finished executors. Live signed GUIaa62 and harnessa1 preserve supervisor49475/Logic49477 birth identities. Source, sessions, reports and native/formal evidence retained; safe compiler cleanup recorded. Private verifier exited0. New onboarding/Markdown task remains delegated to one native Codex ACP worker; no full-suite or account-wide Claude shutdown claim.
+
+```json
+{
+  "op_id": "01M6KV5QDZ3GCSFMG5PFYN8QSP",
+  "commit": "c14938ebf14de070d90572a41639a4c45c0400c7",
+  "report": "[[reports/2026-11-04-oracle-night-recovery-delivered]]",
+  "verify_result": {
+    "command": "python3 -I /tmp/bboxy-oracle-recovery-01M6KDR7TE4H4B4AF0PZYK0Q1T/verify-recovery.py",
+    "exit_code": 0,
+    "evidence": [
+      {
+        "criterion": "Authenticated resumed Oracle identity, installed/running source and resource freshness recorded",
+        "reference": "recovery-verification-result.json — real authenticated actor, live installed/source and fresh MCP usage; verifier exit0"
+      },
+      {
+        "criterion": "Swarm task inventory fully paged; delivered tasks historically reconciled with real source/log evidence; unresolved transitions explicitly retained",
+        "reference": "recovery-observations.json — complete59-task inventory,54 terminal, exact remaining aliases/follow-up; historical-logs.json and committed report retain source/log dispositions"
+      },
+      {
+        "criterion": "Surviving sessions, original worktrees and evidence preserved; no backend restart",
+        "reference": "attachments-live-preservation.json — same supervisor49475 and Logic49477 births; native captures and cleanup manifests retained; verifier exit0"
+      },
+      {
+        "criterion": "Profile catalogue plus ACP model/effort follow-up scoped and delegated to a real bboxy Codex ACP executor",
+        "reference": "acp-core-verified.json and accepted task01M6KF628K0H7DHN4R8BCN9WVZ; signed native Codex ACP Delegate16RTXK2G3P7TXAA2C55S35X8E7 to seat01M6KT5EV066KVVBAPR7RGJWAX"
+      }
+    ]
+  }
+}
+```

@@ -46,10 +46,10 @@ acceptance:
 - Stale intake, unsupported content and delivery failures are honest and cannot cross session or draft ownership
 - Focused native clipboard/composer/Bridge/ACP witnesses and affected compilation pass without operator input or backend restart
 id: 01M6KKWJVF71S4JT0NNF193EWJ
-status: claimed
+status: accepted
 delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
 swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-04T17:22:28.881Z
+updated: 2026-11-04T17:36:17.092Z
 created: 2026-11-04T15:47:20.405Z
 number: 93377961360922
 created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
@@ -60,12 +60,35 @@ authorship:
   public_key: JlpXQZ4/Qy0yh5dcFR+iK7RgP5q83vzdNaLijybKm+Y=
   process_generation: '1'
 assignee: seat:01M6KKR5T6NMPBJH9RK6YRMKH9
+artifacts:
+- '[[01M6KSPGYCXHKQGAD1C2NW34D0]]'
+verify_result:
+  command: make verify-harness-attachments
+  exit_code: 0
+  evidence:
+  - criterion: Images can be selected or pasted into the shared composer and actual image content reaches the private underlying agent exactly once
+    reference: crates/bboxy450-harness/tests/harness_attachments.rs:181 — real InProc/Unix Bridge to private ACP child; exact decoded PNG, one prompt per send, removable preview and durable blob. :501 — old actor gets zero unsupported image UserTurns; custody retained. composer-acp.log — 9 passed.
+  - criterion: Workspace @file autocomplete supports usable selection and sends the intended real file content or supported reference
+    reference: crates/bboxy450-harness/tests/harness_attachments.rs:181, :652 — keyboard/mouse directory and Unicode/space file selection plus explicit .gitignore/.bboxy/tasks content in one real ACP prompt; Git internals and project-ignored/generated bulk excluded. attachments.rs:34, :62, :124 — canonical workspace and bounded worker lookup.
+  - criterion: Standalone and embedded input use the same attachment path without losing queued drafts, previous history or launcher/MCP context
+    reference: crates/bboxy450-harness/tests/harness_attachments.rs:416, :467, :720; crates/bboxy450-term/tests/harness_attachments.rs:57 — shared input, concurrent/busy-turn drafts, once-only bootstrap and content-as-data. Actual private ACP queued image/file witness compares both prior user/assistant native RGBA regions exactly during prepared=None; captures and hashes in receipt.
+  - criterion: Stale intake, unsupported content and delivery failures are honest and cannot cross session or draft ownership
+    reference: crates/bboxy450-harness/tests/harness_attachments.rs:318, :353, :395, :501; bridge.rs:694, :709, :808, :970 — A/B/A/draft and live session/epoch/challenge guards, old-actor refusal, unknown custody retention. Native/TLC ownership 36/66 and capability 16/47 graphs pass; broken controls 65/116 and 32/114 fail safety as expected.
+  - criterion: Focused native clipboard/composer/Bridge/ACP witnesses and affected compilation pass without operator input or backend restart
+    reference: '.bboxy/runs/codex-harness-attachments.json — make verify-harness-attachments exit 0, 16 named tests, producer/consumer strict compilation, embedded-only check, four full native/Java graph-verdict comparisons, all 53 source hashes matching signed snapshots. Consolidated report: reports/2026-11-04-harness-attachments-dotfiles-history.md. No operator input or shared-backend action.'
+report:
+  summary: 'Implemented shared image attachments and workspace @file delivery with real ACP bytes/content, explicit current-actor capability admission, retained custody/queued drafts and stale ownership guards. Explicit .gitignore and Unicode/space .bboxy task selections now work while Git internals and ignored bulk stay out of autocomplete. A private held ACP turn proves exact native prior-user/assistant pixel equality during a queued image/file preparation gap. make verify-harness-attachments exited 0: all 16 named tests, strict compilation and four native/Java model/control graph-verdict comparisons. All 53 source hashes match signed producer ff6d0685aad6ed4f0796123e997dfdd66c61d6d9 and unchanged consumer snapshot 1d060fab2ccdf8d6ca67c31c219096440fee5295. Consolidated indexed report, receipt and exact amended task mirror are signed in 266b7f28a785ef4c268c8ab2cdd8867160bd804f. Producer clean; parent gitlink deliberately unstaged; no backend, pin, push or install action.'
+  commit: 266b7f28a785ef4c268c8ab2cdd8867160bd804f
+  reported_by: seat:01M6KKR5T6NMPBJH9RK6YRMKH9
+  op_id: 01M6KSPPJV594ZFYYQQGHT1SD9
+  verify_revision: 0
+  report: '[[reports/2026-11-04-harness-attachments-dotfiles-history.md]]'
 provenance:
-  digest: sha256:d1598ade24ec452a6cd9cbb55ab228d327df3e93832c9fe6d3fbca44315af607
-  frontmatter_digest: sha256:11a61f0f293e79d3b07009ba32918106c573bcd23a4408ee32ebf7ab8f82c7b9
+  digest: sha256:b6c001b87f05b151e99d2d6bfdc06e54e3bf1bcd3e5879075cd16c6ccfdd39d8
+  frontmatter_digest: sha256:212f23ee422f9e71e9a510dc78c6e5312495f06d9f46e5d8c567ba880fd04fd9
   signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  sig: uyX/OGpANTaEBQE+2A7h+ioJDx6HbEHsl4iPg0z3RlnXIyVbxFzhb4rGn8KN6MBXeguqDz5cqarfj4v9Jc2MDg==
-  log: .bboxy/log/2026-11-04.jsonl#121780
+  sig: RhHEZXlc35IyQ6PfaG+dr2J4WMQS3uhaSSwYUgemyYzCkpSvR8jqQp4NzwaSe1HP0dMaWqcMRv2tWvn802mbCw==
+  log: .bboxy/log/2026-11-04.jsonl#121857
 ---
 ROLE: EXECUTOR.
 
@@ -167,3 +190,42 @@ Added explicit current-actor image-intake negotiation: fresh session/epoch/conne
 
 
 Final usability requirements within the existing file-completion and history criteria: explicitly typed project dotfile paths such as .gitignore and .bboxy/tasks must work. Remove the blanket starts-with-dot rejection; keep .git internals and normal ignored/bulk directories excluded from automatic lookup. Add only a named explicit-dotfile case. The mid-turn queued image/file witness must include an actual prior-history pixel assertion, not merely item_text/layout labels. Reuse unchanged tests and selected model evidence; run only these missing cases and affected checks. Finish with one consolidated fresh signed report covering the current actor-capability guard and these two cases, linked to this same task; do not reuse the earlier reported snapshot as the final changed-source result.
+
+
+## Report from seat:01M6KKR5T6NMPBJH9RK6YRMKH9
+
+Implemented shared image attachments and workspace @file delivery with real ACP bytes/content, explicit current-actor capability admission, retained custody/queued drafts and stale ownership guards. Explicit .gitignore and Unicode/space .bboxy task selections now work while Git internals and ignored bulk stay out of autocomplete. A private held ACP turn proves exact native prior-user/assistant pixel equality during a queued image/file preparation gap. make verify-harness-attachments exited 0: all 16 named tests, strict compilation and four native/Java model/control graph-verdict comparisons. All 53 source hashes match signed producer ff6d0685aad6ed4f0796123e997dfdd66c61d6d9 and unchanged consumer snapshot 1d060fab2ccdf8d6ca67c31c219096440fee5295. Consolidated indexed report, receipt and exact amended task mirror are signed in 266b7f28a785ef4c268c8ab2cdd8867160bd804f. Producer clean; parent gitlink deliberately unstaged; no backend, pin, push or install action.
+
+```json
+{
+  "op_id": "01M6KSPPJV594ZFYYQQGHT1SD9",
+  "commit": "266b7f28a785ef4c268c8ab2cdd8867160bd804f",
+  "report": "[[reports/2026-11-04-harness-attachments-dotfiles-history.md]]",
+  "verify_result": {
+    "command": "make verify-harness-attachments",
+    "exit_code": 0,
+    "evidence": [
+      {
+        "criterion": "Images can be selected or pasted into the shared composer and actual image content reaches the private underlying agent exactly once",
+        "reference": "crates/bboxy450-harness/tests/harness_attachments.rs:181 — real InProc/Unix Bridge to private ACP child; exact decoded PNG, one prompt per send, removable preview and durable blob. :501 — old actor gets zero unsupported image UserTurns; custody retained. composer-acp.log — 9 passed."
+      },
+      {
+        "criterion": "Workspace @file autocomplete supports usable selection and sends the intended real file content or supported reference",
+        "reference": "crates/bboxy450-harness/tests/harness_attachments.rs:181, :652 — keyboard/mouse directory and Unicode/space file selection plus explicit .gitignore/.bboxy/tasks content in one real ACP prompt; Git internals and project-ignored/generated bulk excluded. attachments.rs:34, :62, :124 — canonical workspace and bounded worker lookup."
+      },
+      {
+        "criterion": "Standalone and embedded input use the same attachment path without losing queued drafts, previous history or launcher/MCP context",
+        "reference": "crates/bboxy450-harness/tests/harness_attachments.rs:416, :467, :720; crates/bboxy450-term/tests/harness_attachments.rs:57 — shared input, concurrent/busy-turn drafts, once-only bootstrap and content-as-data. Actual private ACP queued image/file witness compares both prior user/assistant native RGBA regions exactly during prepared=None; captures and hashes in receipt."
+      },
+      {
+        "criterion": "Stale intake, unsupported content and delivery failures are honest and cannot cross session or draft ownership",
+        "reference": "crates/bboxy450-harness/tests/harness_attachments.rs:318, :353, :395, :501; bridge.rs:694, :709, :808, :970 — A/B/A/draft and live session/epoch/challenge guards, old-actor refusal, unknown custody retention. Native/TLC ownership 36/66 and capability 16/47 graphs pass; broken controls 65/116 and 32/114 fail safety as expected."
+      },
+      {
+        "criterion": "Focused native clipboard/composer/Bridge/ACP witnesses and affected compilation pass without operator input or backend restart",
+        "reference": ".bboxy/runs/codex-harness-attachments.json — make verify-harness-attachments exit 0, 16 named tests, producer/consumer strict compilation, embedded-only check, four full native/Java graph-verdict comparisons, all 53 source hashes matching signed snapshots. Consolidated report: reports/2026-11-04-harness-attachments-dotfiles-history.md. No operator input or shared-backend action."
+      }
+    ]
+  }
+}
+```

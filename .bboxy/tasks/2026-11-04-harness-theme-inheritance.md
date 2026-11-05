@@ -25,10 +25,10 @@ acceptance:
 - Menus, loader, composer, Markdown and syntax colors use the matching palette without changing session, pending input or transcript ownership
 - Independent views and repeated theme switches pass focused native paint/cache checks and affected compilation
 id: 01M6KMFKYXNVYZPVN34RDNT3FB
-status: claimed
+status: accepted
 delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
 swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-04T16:41:16.874Z
+updated: 2026-11-04T17:21:44.850Z
 created: 2026-11-04T15:57:45.223Z
 number: 93377961360994
 created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
@@ -39,12 +39,33 @@ authorship:
   public_key: JlpXQZ4/Qy0yh5dcFR+iK7RgP5q83vzdNaLijybKm+Y=
   process_generation: '1'
 assignee: seat:01M6KKME8YC7J9M3SZRA1J44AP
+artifacts:
+- '[[01M6KS27RG62XCEVTY4P0G514N]]'
+verify_result:
+  command: make verify-harness-theme
+  exit_code: 0
+  evidence:
+  - criterion: Embedded harness panes follow the parent Term light or dark theme and update when it changes
+    reference: crates/bboxy450-term/src/main.rs:3333 and rich_faces.rs:94 — immediate real parent appearance fanout; harness_theme_parent_preferences_fan_out_without_model_update and tests/harness_theme.rs:63 pass using private loading/current actors.
+  - criterion: Standalone harness follows current system appearance and subsequent system theme changes while honoring an explicit existing override
+    reference: producer src/frontends/gui/window.rs:183, :122, :629 and zoom.rs:150 — current window theme, actual event adapter and existing override loader; tests/gui_theme.rs:295 and :315 pass with constructed native events and private settings.
+  - criterion: Menus, loader, composer, Markdown and syntax colors use the matching palette without changing session, pending input or transcript ownership
+    reference: producer tests/gui_theme.rs:128, :233, :267 — native background/menu pixels, queued tail, draft/source/prompt ownership, matching Python/plain ink; parent Unix actor preserves session/cursor/generation/draft and observes zero agent operations.
+  - criterion: Independent views and repeated theme switches pass focused native paint/cache checks and affected compilation
+    reference: .bboxy/runs/codex-harness-theme.json and target/harness-theme/final.log — seven selected tests pass, independent view RGBA stays identical, stale dark/light and ABA preparations are rejected, strict producer/parent Clippy exits 0.
+report:
+  summary: 'Delivered separate signed Boxy checkpoints: producer cb131433b2b9f01080b7cc676ec9df01989dbd49, parent source ba7e0a5b965142881da1dce1461965dfc095c419, and indexed report 239132a7f14edbda216749ac235dcec5e1633aca. Embedded panes now receive immediate authoritative parent appearance via the existing worker boundary, with stale/ABA paint fencing and no agent ops; standalone resolves initial native appearance, handles ThemeChanged, honors the existing settings override and activates the local theme cycle. Menus, loader, composer, Markdown, Python and literal output use the local palette. make verify-harness-theme exits 0 (seven selected native/parent/system/highlight tests and strict affected Clippy); make test-licenses and pinned signature checks exit 0. Exact committed source hashes and nine capture hashes are retained. Producer tree is clean; parent has only the intentionally unstaged gitlink modification. No pin, merge, push, install, backend signal or live input. Full limitations and integration order are in the committed report.'
+  commit: 239132a7f14edbda216749ac235dcec5e1633aca
+  reported_by: seat:01M6KKME8YC7J9M3SZRA1J44AP
+  op_id: 01M6KS2Z9R2543XYBQN5J1KR96
+  verify_revision: 0
+  report: '[[reports/2026-11-04-harness-theme-delivery.md]]'
 provenance:
-  digest: sha256:abbfc8156e74002e3644fa8bc3c6cfb48fd581d47381b5290fde703d71e43431
-  frontmatter_digest: sha256:acd2aa800fe7328fc01305b1361220f1fe57417ea6631913b17017838130780b
+  digest: sha256:9382e4d113801c67bd0de17b6d1d45638b015d25defc81ca6945a7d74cbc63c3
+  frontmatter_digest: sha256:4922b58ebcf8b73d044bf3fa5df22df8d5111f6476a22ba0f9da0613dbb80a6c
   signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  sig: UOA3J3ZBXZtJI7GPK4gqtr4coV/R7YKuSPfcpLI1Pvr0XDsXHyxjh16P5xDae5rDA2u6Epjs582bjh011OPbDA==
-  log: .bboxy/log/2026-11-04.jsonl#121325
+  sig: KtJET1O+bOe3zrlLk5RnuNQiEGhNIjfZ8INGiWnimBkI00uWKEdnTLbKzw0g8Nxf/DmWHDg/DjQcKLAdF+H7DA==
+  log: .bboxy/log/2026-11-04.jsonl#121775
 ---
 ROLE: EXECUTOR.
 
@@ -63,3 +84,38 @@ Handoff clarification: copying this exact indexed task record into .bboxy/tasks/
 
 
 Parent main.rs is also authorized ONLY for actual parent appearance-change fanout to rich panes. It already handles WindowEvent::ThemeChanged at the current source; rich_sync is normally driven from model updates, so appearance changes must notify immediately. Leave the parallel attachment/clipboard code untouched. Existing face::term_output_full plain color is hardcoded gray; use the matching palette for readable light mode. No API or semantic IR changes are needed for color alone. Build/test inside the parent workspace so bbt-doc/bbt-render resolve to the fixed local crates, not an older registry-only standalone dependency. The producer remains a separate signed source commit; parent owns its published pin and both app installations.
+
+
+## Report from seat:01M6KKME8YC7J9M3SZRA1J44AP
+
+Delivered separate signed Boxy checkpoints: producer cb131433b2b9f01080b7cc676ec9df01989dbd49, parent source ba7e0a5b965142881da1dce1461965dfc095c419, and indexed report 239132a7f14edbda216749ac235dcec5e1633aca. Embedded panes now receive immediate authoritative parent appearance via the existing worker boundary, with stale/ABA paint fencing and no agent ops; standalone resolves initial native appearance, handles ThemeChanged, honors the existing settings override and activates the local theme cycle. Menus, loader, composer, Markdown, Python and literal output use the local palette. make verify-harness-theme exits 0 (seven selected native/parent/system/highlight tests and strict affected Clippy); make test-licenses and pinned signature checks exit 0. Exact committed source hashes and nine capture hashes are retained. Producer tree is clean; parent has only the intentionally unstaged gitlink modification. No pin, merge, push, install, backend signal or live input. Full limitations and integration order are in the committed report.
+
+```json
+{
+  "op_id": "01M6KS2Z9R2543XYBQN5J1KR96",
+  "commit": "239132a7f14edbda216749ac235dcec5e1633aca",
+  "report": "[[reports/2026-11-04-harness-theme-delivery.md]]",
+  "verify_result": {
+    "command": "make verify-harness-theme",
+    "exit_code": 0,
+    "evidence": [
+      {
+        "criterion": "Embedded harness panes follow the parent Term light or dark theme and update when it changes",
+        "reference": "crates/bboxy450-term/src/main.rs:3333 and rich_faces.rs:94 — immediate real parent appearance fanout; harness_theme_parent_preferences_fan_out_without_model_update and tests/harness_theme.rs:63 pass using private loading/current actors."
+      },
+      {
+        "criterion": "Standalone harness follows current system appearance and subsequent system theme changes while honoring an explicit existing override",
+        "reference": "producer src/frontends/gui/window.rs:183, :122, :629 and zoom.rs:150 — current window theme, actual event adapter and existing override loader; tests/gui_theme.rs:295 and :315 pass with constructed native events and private settings."
+      },
+      {
+        "criterion": "Menus, loader, composer, Markdown and syntax colors use the matching palette without changing session, pending input or transcript ownership",
+        "reference": "producer tests/gui_theme.rs:128, :233, :267 — native background/menu pixels, queued tail, draft/source/prompt ownership, matching Python/plain ink; parent Unix actor preserves session/cursor/generation/draft and observes zero agent operations."
+      },
+      {
+        "criterion": "Independent views and repeated theme switches pass focused native paint/cache checks and affected compilation",
+        "reference": ".bboxy/runs/codex-harness-theme.json and target/harness-theme/final.log — seven selected tests pass, independent view RGBA stays identical, stale dark/light and ABA preparations are rejected, strict producer/parent Clippy exits 0."
+      }
+    ]
+  }
+}
+```

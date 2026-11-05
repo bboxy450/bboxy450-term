@@ -34,10 +34,10 @@ acceptance:
 - A private machine with no agent installed reaches usable GUI setup and headless startup gives an actionable configuration error without vendor calls or implicit package installation
 - Named clean-start process and GUI checks plus affected compilation pass without touching real profiles or restarting the shared backend
 id: 01M6M65A1VYVMQNPSTJ46YD5S2
-status: claimed
+status: accepted
 delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
 swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-04T21:23:49.309Z
+updated: 2026-11-04T21:32:39.807Z
 created: 2026-11-04T21:06:40.639Z
 number: 93377961363555
 created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
@@ -48,12 +48,35 @@ authorship:
   public_key: JlpXQZ4/Qy0yh5dcFR+iK7RgP5q83vzdNaLijybKm+Y=
   process_generation: '1'
 assignee: seat:01M6M69Y5FVMKEHTCVGWKY8EZH
+artifacts:
+- '[[01M6M7JX25B2499PGBV6T38275]]'
+verify_result:
+  command: make verify-clean-start
+  exit_code: 0
+  evidence:
+  - criterion: Canonical Codex profile identity is codex, its generated file is codex.md and its ACP executable is codex-acp without duplicate profile generation
+    reference: crates/bboxy450-harness/tests/clean_start.rs:45 and :155 — canonical codex.md/[codex-acp], actual argv, regeneration, preserved bytes and six concurrent create-new publishers.
+  - criterion: A private empty home with fake installed Codex/ACP tools starts through normal GUI and CLI or seat entrypoints without relying on legacy nemotron or pre-existing profiles
+    reference: crates/bboxy450-harness/tests/clean_start.rs:45, :126 and :181 — private normal CLI, hidden native GUI and seat/socket startup.
+  - criterion: Explicit profile, environment and saved-default precedence is consistent across frontends and existing edited profiles/default files remain preserved
+    reference: crates/bboxy450-harness/src/onboarding.rs:333; tests/clean_start.rs:233 and :277; src/frontends/gui/window.rs:1161 — precedence, custom login-PATH launch and actual crashed-seat recovery.
+  - criterion: A private machine with no agent installed reaches usable GUI setup and headless startup gives an actionable configuration error without vendor calls or implicit package installation
+    reference: crates/bboxy450-harness/src/frontends/headless.rs:306 and :312; tests/clean_start.rs:101 and :233 — same bounded ACP resolution and original parse/config errors plus actionable guidance.
+  - criterion: Named clean-start process and GUI checks plus affected compilation pass without touching real profiles or restarting the shared backend
+    reference: .bboxy/runs/codex-clean-start.json — make verify-clean-start exit 0; seven fresh process checks, strict standalone/embedded compile/license checks; unchanged options/Bridge checks reused with source/log hashes.
+report:
+  summary: 'Implemented shared Codex clean-start bootstrap and consistent explicit/environment/saved/default precedence, retaining codex.md with [codex-acp], edited profiles and saved preferences. Corrected the Oracle''s login-shell PATH regression using the existing bounded ACP resolver, retained original profile diagnostics and verified crashed-seat identity recovery. Signed producer checkpoints fdaaf876 and final 87f0a3e7; signed parent handoff aa740e8f. make verify-clean-start exited 0: seven fresh private process/native-GUI checks, strict standalone lint, embedded compilation and license checks; unchanged GUI options/Bridge evidence reused with source/log hashes and no installer rerun. Exact indexed task/report copies and tested source hashes verified; producer clean, parent gitlink deliberately unstaged. No push/merge/install/backend restart or real profile/vendor calls.'
+  commit: aa740e8fa4e0ed73b72088571020a7c8ad86ccaa
+  reported_by: seat:01M6M69Y5FVMKEHTCVGWKY8EZH
+  op_id: 01M6M7KGZ6HV9X30YJ8RWVA04X
+  verify_revision: 0
+  report: '[[reports/2026-11-04-harness-clean-start-correction.md]]'
 provenance:
-  digest: sha256:e3854e604c7798d04eb98c1b59a22948071242cc8ecfd3c75a9230d96ecb82f3
-  frontmatter_digest: sha256:151573e820dd7d40e4c15ae806f449f9244bc29d586148ea3c5435ff2f076674
+  digest: sha256:c906abac03b822076b5fe384a449f3f683405f30819d557c27f77739724b6a62
+  frontmatter_digest: sha256:8737876b958abf0ebbf7724fd9aba763f76941e24d11aa436e1955928ed91d9f
   signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-  sig: hBHDPLKRIePYCiAwzHumlgJXbM36CAsWq1p/MOfWn+avU+fa6p5dLdxkdhRdYeAfQPWL9UULlu1vUbiFOIZoAg==
-  log: .bboxy/log/2026-11-04.jsonl#130783
+  sig: +mJzMJkJMPYbmLGRzD2zpx16GuDm2XhqgkTQwWVEnTL/oeSFyZMVUDwl9laUQA2Tx5ejRrUPGQndmSQkMJRoDw==
+  log: .bboxy/log/2026-11-04.jsonl#130870
 ---
 ROLE: EXECUTOR.
 
@@ -75,3 +98,42 @@ Commit a signed producer source checkpoint immediately when the focused gate pas
 The current fdaaf876 candidate fails a private existing-behavior witness: an explicit valid custom ACP profile whose executable exists only in the login-shell PATH succeeds with installed f1d3a3f (exit 0 and PRIVATE-CLEAN-START), but candidate exits 1 before launch. Exact private instrument/results: /tmp/bboxy-oracle-recovery-01M6KDR7TE4H4B4AF0PZYK0Q1T/clean-start-login-path-review.json and clean-start-login-path-{installed-baseline,candidate}.log. The process owns a private HOME, fake login shell and fake adapter; no vendor or credentials.
 
 Remove the new narrower inherited-PATH rejection or reuse production ACP resolution for any early availability check. backend/acp_agent.rs is now allowed solely to expose/reuse that existing bounded resolver if needed; preserve its launch semantics. Preserve the actual profile parse/config error when adding setup guidance. Add this regression to the existing focused fixture, run only the changed named checks/affected compile, and refresh the compact exact-source receipt. No full suite, new formal model, backend action or installer run. New-session default discovery must not change saved/environment selection during resume; retain existing Host identity handling. This source correction must be complete before final handoff; the old focused green alone is insufficient.
+
+
+## Report from seat:01M6M69Y5FVMKEHTCVGWKY8EZH
+
+Implemented shared Codex clean-start bootstrap and consistent explicit/environment/saved/default precedence, retaining codex.md with [codex-acp], edited profiles and saved preferences. Corrected the Oracle's login-shell PATH regression using the existing bounded ACP resolver, retained original profile diagnostics and verified crashed-seat identity recovery. Signed producer checkpoints fdaaf876 and final 87f0a3e7; signed parent handoff aa740e8f. make verify-clean-start exited 0: seven fresh private process/native-GUI checks, strict standalone lint, embedded compilation and license checks; unchanged GUI options/Bridge evidence reused with source/log hashes and no installer rerun. Exact indexed task/report copies and tested source hashes verified; producer clean, parent gitlink deliberately unstaged. No push/merge/install/backend restart or real profile/vendor calls.
+
+```json
+{
+  "op_id": "01M6M7KGZ6HV9X30YJ8RWVA04X",
+  "commit": "aa740e8fa4e0ed73b72088571020a7c8ad86ccaa",
+  "report": "[[reports/2026-11-04-harness-clean-start-correction.md]]",
+  "verify_result": {
+    "command": "make verify-clean-start",
+    "exit_code": 0,
+    "evidence": [
+      {
+        "criterion": "Canonical Codex profile identity is codex, its generated file is codex.md and its ACP executable is codex-acp without duplicate profile generation",
+        "reference": "crates/bboxy450-harness/tests/clean_start.rs:45 and :155 — canonical codex.md/[codex-acp], actual argv, regeneration, preserved bytes and six concurrent create-new publishers."
+      },
+      {
+        "criterion": "A private empty home with fake installed Codex/ACP tools starts through normal GUI and CLI or seat entrypoints without relying on legacy nemotron or pre-existing profiles",
+        "reference": "crates/bboxy450-harness/tests/clean_start.rs:45, :126 and :181 — private normal CLI, hidden native GUI and seat/socket startup."
+      },
+      {
+        "criterion": "Explicit profile, environment and saved-default precedence is consistent across frontends and existing edited profiles/default files remain preserved",
+        "reference": "crates/bboxy450-harness/src/onboarding.rs:333; tests/clean_start.rs:233 and :277; src/frontends/gui/window.rs:1161 — precedence, custom login-PATH launch and actual crashed-seat recovery."
+      },
+      {
+        "criterion": "A private machine with no agent installed reaches usable GUI setup and headless startup gives an actionable configuration error without vendor calls or implicit package installation",
+        "reference": "crates/bboxy450-harness/src/frontends/headless.rs:306 and :312; tests/clean_start.rs:101 and :233 — same bounded ACP resolution and original parse/config errors plus actionable guidance."
+      },
+      {
+        "criterion": "Named clean-start process and GUI checks plus affected compilation pass without touching real profiles or restarting the shared backend",
+        "reference": ".bboxy/runs/codex-clean-start.json — make verify-clean-start exit 0; seven fresh process checks, strict standalone/embedded compile/license checks; unchanged options/Bridge checks reused with source/log hashes."
+      }
+    ]
+  }
+}
+```

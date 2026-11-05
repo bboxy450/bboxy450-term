@@ -1,3 +1,4 @@
-.bboxy/runs/clones/
+.bboxy/runs/clones
 target/
 .DS_Store
+/scripts/

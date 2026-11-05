@@ -1,19 +1,35 @@
 ---
-id: "5K6NHGAMB85GCTF0DFXF7MT1XZ"
-type: "note"
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: fewHFqX1/aT03A8Ik46eNy0fXOwtv5Rt1gZmJu1Aids=
+  signer: seat:01M649MS05FAD5CY9CS0Q07H76
+created: 2026-10-21T18:53:32Z
+created_by: seat:01M649MS05FAD5CY9CS0Q07H76
+id: 5K6NHGAMB85GCTF0DFXF7MT1XZ
 number: 57
-title: ".bboxy — bboxy450-term knowledge base"
-created: "2026-10-21T18:53:32Z"
-updated: "2026-10-24T00:10:38Z"
+provenance:
+  digest: sha256:032ee1e4f1cd371cf844439772b0fc0a525595d4ee872783003bf99d2b2d78b9
+  frontmatter_digest: sha256:beecdb0b4720902788a4244a863505c0ad8d0cd0fa955c88eaa906a6b080bff7
+  log: .bboxy/log/2026-10-29.jsonl#1396
+  sig: 9FGnh3qOpZNTn0ovQOmh8A/6iDgVcVBr74T2kJ/c0mxJ1Cd/W2UudtCf4wFaNs9KPRRQoMvkWdjLkOx0jfNVCA==
+  signer: seat:01M649MS05FAD5CY9CS0Q07H76
+title: .bboxy — bboxy450-term knowledge base
+type: note
+updated: 2026-10-29T18:57:56.821Z
+updated_by: seat:01M649MS05FAD5CY9CS0Q07H76
 ---
 # .bboxy — bboxy450-term knowledge base
 
 Renamed from `.kb/` on 2026-10-21 per [[work-items]]: every repo keeps its tasks and knowledge in `.bboxy/`. Frontmatter migration happens on the next touch of each file.
 
-Repository-local records. Markdown only. No secrets, no raw transcripts.
+Repository-local records. No secrets or raw transcripts.
+
+Start with [[implementation-journey|the implementation journey]] for the dated path from terminal primitives to a usable swarm, recent landed changes, issue-by-issue gaps and the next verification. [[2026-10-29-zero-issues-cohort]] records the current repair cohort. Historical task boards and graph snapshots describe their dates; native assigned tasks and verified evidence determine current state.
 
 | Dir | Holds |
 |---|---|
+| `journey/` | The implementation journey and issue disposition by layer; links preserve original record identities. |
 | `vision.md` | What we are building and why. Oracle-owned. |
 | `graph.md` | **Execution graph: who is working on what, dependencies, state.** Oracle-maintained, updated on every claim/handoff/accept/block. |
 | `plan.md` | Workstreams and crate split. |

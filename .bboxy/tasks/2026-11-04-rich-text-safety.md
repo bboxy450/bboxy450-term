@@ -23,28 +23,47 @@ acceptance:
 - Inline Markdown code has aligned text and bounded background without the reported stray artifact
 - Selected native reproduction, geometry/paint checks and affected strict compilation pass without live input or backend restart
 id: 01M6KKN7FZ8JN8EX1S43J5DVSR
-status: claimed
+status: accepted
 delegated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
 swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-04T16:11:36.776Z
+updated: 2026-11-04T16:25:44.803Z
 created: 2026-11-04T15:43:19.492Z
 number: 93377961360918
 created_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
-updated_by: seat:01M6KKME8YC7J9M3SZRA1J44AP
+updated_by: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
 authorship:
-  signer: seat:01M6KKME8YC7J9M3SZRA1J44AP
+  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
   kind: seat
-  public_key: Z1mnWUzcr/UKeTmWT7DZT4dYe6UKknER5pCBprq8E80=
+  public_key: JlpXQZ4/Qy0yh5dcFR+iK7RgP5q83vzdNaLijybKm+Y=
   process_generation: '1'
 assignee: seat:01M6KKME8YC7J9M3SZRA1J44AP
 artifacts:
 - '[[01M6KN9076RNEEQ4AMYVFY8G7M]]'
+verify_result:
+  command: make verify-rich-text-safety
+  exit_code: 0
+  evidence:
+  - criterion: Expanding a large MCP result no longer exits the UI or exceeds bounded native text rasterization
+    reference: crates/bboxy450-term/tests/rich_text_safety.rs:95 — private production MCP tool disclosure renders full 6039-byte result; line-guard-control.log fails with chrome text line too large; final.log passes.
+  - criterion: Long text and Unicode content remain accessible with correct scrolling, clipping and copy semantics
+    reference: crates/bbt-render/tests/chrome_long_lines.rs:16 — native Unicode tail pixel equality at 4 scales × 4 phases, clipped horizontal origins and cache budgets; crates/bbt-doc/tests/inline_code.rs:44 exact positioned-run source bytes.
+  - criterion: Inline Markdown code has aligned text and bounded background without the reported stray artifact
+    reference: crates/bboxy450-term/tests/rich_text_safety.rs:120 — widths 240/640, zoom 90/100/160%, scales 1/2; isolated paint asserts no pixels outside capsule; PNGs and hashes retained.
+  - criterion: Selected native reproduction, geometry/paint checks and affected strict compilation pass without live input or backend restart
+    reference: .bboxy/runs/codex-rich-text-safety.json — exact source hashes, make verify-rich-text-safety exit 0, 9 selected tests, strict affected Clippy, make test-licenses exit 0; indexed report [[reports/2026-11-04-rich-text-safety-delivery]].
+report:
+  summary: 'Delivered signed Boxy commit b0c78f2b2692397738c19a02e4f1961d6918ce72 on codex-text-rendering-20261104; worktree clean. Full native line extents now use the existing bounded glyph/component rasterizer, with exact overlap grouping via an x sweep; inline Markdown code uses measured shared-toolkit capsules with real padding/baselines and zoom reflow. make verify-rich-text-safety exited 0: nine selected tests plus affected strict Clippy, using exact a832bd6 producer pin and a private 6,039-byte MCP disclosure/Metal witness. Old-guard and no-capsule controls failed as required, exact source restored; make test-licenses and pinned one-commit signature verification exited 0. Indexed task/report bytes and committed source hashes match; captures/log hashes are in .bboxy/runs/codex-rich-text-safety.json. No merge, push, install, live input or backend restart.'
+  commit: b0c78f2b2692397738c19a02e4f1961d6918ce72
+  reported_by: seat:01M6KKME8YC7J9M3SZRA1J44AP
+  op_id: 01M6KND3PPZW2JSCKJ324JJB0T
+  verify_revision: 0
+  report: '[[reports/2026-11-04-rich-text-safety-delivery.md]]'
 provenance:
-  digest: sha256:23cbfe4652ab940d7ba87da664c7668bce0a154def5c0a7304b49321ab0a465b
-  frontmatter_digest: sha256:e1d220119dc845a7d647dd0530781ce79321e65bd3f9eb54d85e2aaca138b6df
-  signer: seat:01M6KKME8YC7J9M3SZRA1J44AP
-  sig: aXtTYAGw/dor5EfmVhov4BUgnZ7X+DqRaoNwJWBKGA2uKRIEteH+Y3EmT5e2c4yXYzF5g2MrtQxb79LAz62/BA==
-  log: .bboxy/log/2026-11-04.jsonl#120925
+  digest: sha256:ee484218f4765d4b897925b40536c65a3bfe8cfe46d31b5d2c042433df1cfd93
+  frontmatter_digest: sha256:b7d20299c3ffc054f50f90a4b01cf311db3a0ea4503d93cffe7dc2366c503d73
+  signer: seat:01M6KDR7TE4H4B4AF0PZYK0Q1T
+  sig: CW+FH7t+usYjmW0FFc8vZa/i1zUBB0OqfWlOO5W1ICNQ9huhEqKuDQF3EjMswbQwFZ22qfRdR2taDJlqn9urAA==
+  log: .bboxy/log/2026-11-04.jsonl#121118
 ---
 ROLE: EXECUTOR.
 
@@ -60,3 +79,38 @@ Signed Boxy source and one append-only indexed report reports/2026-11-04-rich-te
 
 
 Handoff clarification: copying this exact indexed task record into .bboxy/tasks/2026-11-04-rich-text-safety.md in your own worktree is explicitly authorized for the local report/task linkage gate. Preserve its indexed fields and signed bytes; do not edit task lifecycle or import unrelated records. A signed source checkpoint may precede the indexed report; commit the report afterward as a report-only checkpoint so metadata cannot hold up Oracle's build. Reuse existing exact-source green checks; do not rerun suites for this record-only change.
+
+
+## Report from seat:01M6KKME8YC7J9M3SZRA1J44AP
+
+Delivered signed Boxy commit b0c78f2b2692397738c19a02e4f1961d6918ce72 on codex-text-rendering-20261104; worktree clean. Full native line extents now use the existing bounded glyph/component rasterizer, with exact overlap grouping via an x sweep; inline Markdown code uses measured shared-toolkit capsules with real padding/baselines and zoom reflow. make verify-rich-text-safety exited 0: nine selected tests plus affected strict Clippy, using exact a832bd6 producer pin and a private 6,039-byte MCP disclosure/Metal witness. Old-guard and no-capsule controls failed as required, exact source restored; make test-licenses and pinned one-commit signature verification exited 0. Indexed task/report bytes and committed source hashes match; captures/log hashes are in .bboxy/runs/codex-rich-text-safety.json. No merge, push, install, live input or backend restart.
+
+```json
+{
+  "op_id": "01M6KND3PPZW2JSCKJ324JJB0T",
+  "commit": "b0c78f2b2692397738c19a02e4f1961d6918ce72",
+  "report": "[[reports/2026-11-04-rich-text-safety-delivery.md]]",
+  "verify_result": {
+    "command": "make verify-rich-text-safety",
+    "exit_code": 0,
+    "evidence": [
+      {
+        "criterion": "Expanding a large MCP result no longer exits the UI or exceeds bounded native text rasterization",
+        "reference": "crates/bboxy450-term/tests/rich_text_safety.rs:95 — private production MCP tool disclosure renders full 6039-byte result; line-guard-control.log fails with chrome text line too large; final.log passes."
+      },
+      {
+        "criterion": "Long text and Unicode content remain accessible with correct scrolling, clipping and copy semantics",
+        "reference": "crates/bbt-render/tests/chrome_long_lines.rs:16 — native Unicode tail pixel equality at 4 scales × 4 phases, clipped horizontal origins and cache budgets; crates/bbt-doc/tests/inline_code.rs:44 exact positioned-run source bytes."
+      },
+      {
+        "criterion": "Inline Markdown code has aligned text and bounded background without the reported stray artifact",
+        "reference": "crates/bboxy450-term/tests/rich_text_safety.rs:120 — widths 240/640, zoom 90/100/160%, scales 1/2; isolated paint asserts no pixels outside capsule; PNGs and hashes retained."
+      },
+      {
+        "criterion": "Selected native reproduction, geometry/paint checks and affected strict compilation pass without live input or backend restart",
+        "reference": ".bboxy/runs/codex-rich-text-safety.json — exact source hashes, make verify-rich-text-safety exit 0, 9 selected tests, strict affected Clippy, make test-licenses exit 0; indexed report [[reports/2026-11-04-rich-text-safety-delivery]]."
+      }
+    ]
+  }
+}
+```
