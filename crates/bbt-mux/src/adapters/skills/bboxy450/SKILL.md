@@ -47,8 +47,8 @@ the current role, workspace and tool schemas. Rediscover after a plugin change.
    Create the full report through `knowledge_write` at `reports/YYYY-MM-DD-slug.md`,
    then call `task_report` with a one-paragraph summary and the returned report
    locator. Preserve `task`, code `commits` and `verify: {command, exit_code}`;
-   the host supplies identity, authorship, timestamps and provenance. `.bboxy/`
-   is private local state: never add or force-add its records to a Git commit.
+   the host supplies identity, authorship, timestamps and provenance. Follow the
+   selected knowledge provider's storage and versioning workflow; records may be committed to Git.
    Reports are append-only; corrections create a new report with `supersedes:`.
 3. **Messages.** Use available `message_*` tools within the grants from `orient`.
    Messages cost the whole machine. A Worker-class seat sends no acknowledgement,
