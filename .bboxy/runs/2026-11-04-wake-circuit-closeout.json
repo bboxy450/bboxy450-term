@@ -1,0 +1,21 @@
+{
+  "source": "36aaf886d9c2a9a0c9e304ae2ffb8384e00e80a8",
+  "harness": "0ab55023228a7f7f49305c9c08f5bdbcfb39c10f",
+  "command": "make test-formal FORMAL_REUSE=1",
+  "exit_code": 2,
+  "failed_phase": "self-tests",
+  "error": "ValueError: missing mandatory checks: HarnessAcpSteering",
+  "log": "/tmp/sable-wake-circuit-formal-closeout.log",
+  "log_sha256": "aaedbe0d0261c7a4ccac7b3a1ce21e276d6515f7a84455adea040ed4a5f8559b",
+  "verified_installed_circuit_source": "5b6110d36a6c4a0c0315a70528b86c9d8bffe076",
+  "verified_circuit_formal_evidence_sha256": "0da4d1d20ec441d27590f95be4520547b89ae4477749d4f72a6551d9df791421",
+  "later_source_formal_green": false,
+  "self_handoff": {
+    "message": "0X8MKT9V2038V6H4GZ18C2W70N",
+    "evidence": "recipient-stored",
+    "wake": "none",
+    "attempt": null,
+    "native_id": null
+  },
+  "backend_restarted": false
+}
