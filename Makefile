@@ -2350,7 +2350,8 @@ install-prepared-unsigned: check-prepared-unsigned
 GUI_RUN_DIR ?=
 GUI_REPOSITORY ?=
 GUI_TEST_ACCOUNT ?=
-GUI_OPTIONS = $(if $(GUI_RUN_DIR),--run-dir '$(GUI_RUN_DIR)') $(if $(GUI_REPOSITORY),--repository '$(GUI_REPOSITORY)')
+GUI_CTL ?=
+GUI_OPTIONS = $(if $(GUI_RUN_DIR),--run-dir '$(GUI_RUN_DIR)') $(if $(GUI_REPOSITORY),--repository '$(GUI_REPOSITORY)') $(if $(GUI_CTL),--ctl)
 install-reopen: bundle
 	$(MAKE) reopen-prepared BUNDLE='$(BUNDLE)'
 
@@ -2525,3 +2526,14 @@ test-knowledge-write-queue:
 check-knowledge-write-queue:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo clippy --locked --release -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-gitkb-capacity-refusal
+test-gitkb-capacity-refusal:
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_GITKB_BIN='$(GITKB_BIN)' cargo nextest run --locked --release -p $(GITKB_CRATE) --bin $(GITKB_CRATE) --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(capacity_refusal_is_definite)'; \
+	cargo check --locked --release -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)'
+
+.PHONY: test-queued-external-provider
+test-queued-external-provider:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked --release -p bboxy450-term-mux --test harmony_host --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(selected_source_owns_signed_documents_and_slug_task_lifecycle_without_bundled_fallback)'

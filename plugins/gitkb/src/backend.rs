@@ -130,7 +130,9 @@ impl Backend {
             return Err(changed());
         }
         // Best effort: without the record the next process hashes again.
-        let partial = self.cwd.join(format!("{VERIFIED_RECORD}.{}", random_hex(8)));
+        let partial = self
+            .cwd
+            .join(format!("{VERIFIED_RECORD}.{}", random_hex(8)));
         let saved = OpenOptions::new()
             .write(true)
             .create_new(true)
@@ -177,6 +179,12 @@ impl Backend {
                     .ok()
                     .filter(Value::is_object),
             };
+            // Native GitKB checks this capacity before moving/replacing the
+            // source file. Preserve that definite refusal without echoing paths
+            // or document-bearing stderr. Other failures remain uncertain.
+            if let Some(refusal) = workspace_capacity_refusal(args, value.as_ref()) {
+                return Err(refusal.with("backend_exit", exit));
+            }
             let mut code = value
                 .as_ref()
                 .and_then(|v| v["type"].as_str())
@@ -380,11 +388,40 @@ fn anonymous() -> std::io::Result<File> {
     }
 }
 
+// Uses the native GitKB guard in crates/gitkb-core/src/kb/workspace_utils.rs:
+// https://github.com/gitkb/gitkb-core (protocol error recognition, no storage code copied).
+fn workspace_capacity_refusal(args: &[&str], value: Option<&Value>) -> Option<Refusal> {
+    if !args.starts_with(&["workspace", "write"]) {
+        return None;
+    }
+    let value = value?;
+    let message = value["message"].as_str()?;
+    (value["type"] == "general_error"
+        && message.starts_with("workspace error: refusing to ")
+        && message.contains("durable displaced-inode inventory reached its workspace-wide limit"))
+        .then(|| Refusal::new("workspace_capacity_exhausted",
+            "GitKB refused this write before replacing the document because its retained-version capacity is full. Update GitKB or ask the operator to inspect retained versions, then fetch the current record before a new attempt."))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::collections::BTreeMap;
     use std::os::unix::fs::PermissionsExt;
+
+    #[test]
+    fn capacity_refusal_is_definite_only_for_the_native_pre_write_error() {
+        let value = serde_json::json!({"type":"general_error","message":
+            "workspace error: refusing to save workspace file '/private/document' because the durable displaced-inode inventory reached its workspace-wide limit (at least 1024 files)"});
+        let refusal =
+            workspace_capacity_refusal(&["workspace", "write", "tasks/example"], Some(&value))
+                .unwrap();
+        assert_eq!(refusal.code, "workspace_capacity_exhausted");
+        assert!(!refusal.message.contains("/private/document"));
+        assert!(workspace_capacity_refusal(&["workspace", "resolve"], Some(&value)).is_none());
+        let other = serde_json::json!({"type":"general_error","message":"commit result unavailable after replacement"});
+        assert!(workspace_capacity_refusal(&["workspace", "write"], Some(&other)).is_none());
+    }
 
     fn env_of(file: &Path) -> BTreeMap<String, String> {
         std::fs::read_to_string(file)

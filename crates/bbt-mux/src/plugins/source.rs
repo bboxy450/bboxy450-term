@@ -671,8 +671,9 @@ impl DataSource for DataSourceProvider {
             serde_json::to_value(&request).map_err(|e| error("invalid_request", e.to_string()))?;
         args["signed_record"] = json!(signed_record);
         let value: Value = self.request_before("write", args, Some(deadline)).map_err(|reason| {
-            // A status the provider cannot store is refused before any write.
-            if reason.code == "unmappable_status" {
+            // These provider refusals precede any native source replacement.
+            // Every unclassified dispatch/readback failure stays unknown.
+            if matches!(reason.code.as_str(), "unmappable_status" | "workspace_capacity_exhausted") {
                 return reason;
             }
             error(

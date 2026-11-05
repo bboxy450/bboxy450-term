@@ -93,6 +93,7 @@ def main():
     parser.add_argument('--run-dir', type=Path)
     parser.add_argument('--private', action='store_true')
     parser.add_argument('--headless', action='store_true')
+    parser.add_argument('--ctl', action='store_true', help='Keep the operator control endpoint enabled')
     parser.add_argument('--refresh-logic', action='store_true', help='Allow the normal logic upgrade while retaining the live supervisor')
     parser.add_argument('--test-account', type=Path)
     parser.add_argument('--repository', type=Path)
@@ -116,6 +117,8 @@ def main():
         raise RuntimeError('startup failure fixture requires private mode')
     run_args = ['--run-dir', str(options.run_dir.resolve())] if options.run_dir else []
     arguments = [*run_args]
+    if options.ctl:
+        arguments.append('--ctl')
     if options.headless:
         arguments.extend(['--headless', '--ctl', '--unattended'])
     if options.test_account:

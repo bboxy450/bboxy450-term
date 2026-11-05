@@ -664,15 +664,26 @@ async fn selected_source_owns_signed_documents_and_slug_task_lifecycle_without_b
         replay["structuredContent"]["error"]["code"], "unknown",
         "in-flight operation never redispatched"
     );
-    let refused = call(&logic.client, oracle, "knowledge_write", json!({"path":"notes/not-admitted.md","frontmatter":{"type":"note","title":"occupied"},"body":""})).await;
-    assert_eq!(
-        refused["structuredContent"]["error"]["code"],
-        "provider_busy"
-    );
+    let client = logic.client.clone();
+    let queued = tokio::spawn(async move {
+        call(
+            &client,
+            oracle,
+            "knowledge_write",
+            json!({"path":"notes/queued.md",
+            "frontmatter":{"type":"note","title":"queued"},"body":"waited"}),
+        )
+        .await
+    });
     assert_other_swarm_controls(&logic.client, other, None).await;
+    assert!(
+        !queued.is_finished(),
+        "a contended write must wait for the writer"
+    );
     drop(release);
     success(pending.await.unwrap());
-    assert!(!a.join("external/notes/not-admitted.md").exists());
+    success(queued.await.unwrap());
+    assert!(a.join("external/notes/queued.md").exists());
     fs::remove_file(a.join("external/hold-write")).unwrap();
 
     // The optional commit gets 15 s; ordinary calls keep the 2 s production cap.
