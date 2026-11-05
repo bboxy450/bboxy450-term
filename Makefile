@@ -2351,7 +2351,7 @@ verify-ui-only-reopen: bundle-unsigned prepare-rich-native-fixture
 	BBOXY_PREPARED_GUI_BUNDLE='$(abspath $(BUNDLE))' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test test_account ui_only_reopen -- --ignored --nocapture --test-threads=1; \
 	BBOXY_PREPARED_GUI_BUNDLE='$(abspath $(BUNDLE))' BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir rich_detach::rich_gui_handoff_preserves_turn_and_rolls_back_failed_activation -- --ignored --exact --nocapture; \
 	mkdir -p '$(abspath $(TARGET_DIR))/ui-only-reopen/models'; \
-	BBOXY_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/ui-only-reopen/models' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts selected_gui_backend_preservation -- --exact --nocapture; \
+	BBOXY_GUI_BACKEND_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/ui-only-reopen/models' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts selected_gui_backend_preservation -- --exact --nocapture; \
 	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"GuiBackendPreservation":"pass","BrokenGuiBackendPreservation":"safety"}; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/ui-only-reopen'
 
 # Only a throwaway signed fixture may remove this static rollback capability.

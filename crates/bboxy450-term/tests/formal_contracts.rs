@@ -157,9 +157,10 @@ fn selected_task_panel_retry() -> Result<(), Box<dyn std::error::Error>> {
 // The UI-only gate executes/exports only this changed pair, not the corpus.
 #[test]
 fn selected_gui_backend_preservation() -> Result<(), Box<dyn std::error::Error>> {
-    let output =
-        std::env::var_os("BBOXY_FORMAL_OUTPUT").ok_or("focused export directory required")?;
-    let root = Path::new(&output);
+    // Never share the complete corpus export's manifest, even under parallel tests.
+    let temporary = tempfile::tempdir()?;
+    let output = std::env::var_os("BBOXY_GUI_BACKEND_FORMAL_OUTPUT");
+    let root = output.as_ref().map_or(temporary.path(), Path::new);
     std::fs::create_dir_all(root)?;
     let mut manifest = String::new();
     let mut count = 0;
