@@ -243,3 +243,9 @@ The trusted shape supplies defaults and field names; unknown or missing fields
 are refused before `wrap`. Return literal argv, never a shell-expanded field.
 Settings > Machines lists discovered transports, and enabled transports appear
 as `plugin:<provider>` Via choices. Built-in ssh/mosh/et remain available.
+
+Knowledge-provider guidance is published through the existing `Manifest` skills.
+The host's `knowledge_orient` inlines the selected provider's pinned skill text
+with the host workflow and document dictionary. Give your provider a concise
+skill covering its document conventions and workflow; instructions do not grant
+authority. `skill_list`/`skill_read` remain available for additional guidance.

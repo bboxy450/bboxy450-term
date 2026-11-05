@@ -12,6 +12,7 @@ use bbt_proto::gui::PluginRequest;
 pub(super) const VERBS: &[Verb] = &[
     ("plugin", "list", "Plugin"),
     ("plugin", "trust", "Plugin"),
+    ("plugin", "approve", "Plugin"),
     ("plugin", "enable", "Plugin"),
     ("plugin", "disable", "Plugin"),
     ("plugin", "check", "Plugin"),
@@ -32,7 +33,7 @@ pub(super) fn parse(words: &[&str], cx: &ParseCx) -> Result<Option<Command>, Str
         swarm: cx.swarm,
         request: match *words {
             ["plugin", "list"] => PluginRequest::List,
-            ["plugin", "trust", path] => {
+            ["plugin", "trust" | "approve", path] => {
                 let path = std::path::absolute(path).map_err(|error| error.to_string())?;
                 let (grants, tier) = approval(
                     cx.flags.get("grant").map(String::as_str),
@@ -40,7 +41,12 @@ pub(super) fn parse(words: &[&str], cx: &ParseCx) -> Result<Option<Command>, Str
                 )?;
                 PluginRequest::Trust {
                     path: path.to_str().ok_or("plugin path must be UTF-8")?.into(),
-                    sha256: None,
+                    sha256: cx.flags.get("sha256").map(|digest| {
+                        if digest.len() != 64 || !digest.bytes().all(|b|b.is_ascii_hexdigit()) {
+                            return Err("--sha256 must contain 64 hexadecimal digits".to_owned());
+                        }
+                        Ok(digest.to_ascii_lowercase())
+                    }).transpose()?,
                     grants,
                     tier,
                 }
@@ -126,19 +132,25 @@ pub(super) fn run_verb(cx: VerbCx<'_>, command: Command) -> Result<(), String> {
         return Err(no_flat_form());
     };
     let scope = client.workspace_scope(swarm)?;
-    let op = client.mint();
-    let entries = match client.call_workspace(
-        op,
-        GuiAction::Plugin {
-            scope,
-            id: op,
-            request,
-        },
-        |reply| matches!(reply, GuiReply::Plugin {op: id,..} if *id == op),
-    )? {
-        GuiReply::Plugin { entries, .. } => entries,
-        _ => unreachable!(),
+    let mut invoke = |request| -> Result<_, String> {
+        let op = client.mint();
+        match client.call_workspace(op, GuiAction::Plugin { scope: scope.clone(), id: op, request },
+            |reply| matches!(reply, GuiReply::Plugin {op: id,..} if *id == op))? {
+            GuiReply::Plugin { entries, .. } => Ok(entries),
+            _ => unreachable!(),
+        }
     };
+    let mut entries = invoke(request)?;
+    if verb == "approve" {
+        let [entry] = entries.as_slice() else { return Err("approval requires one exact plugin binary".into()); };
+        let candidate = entry.candidate.id.clone();
+        let digest = entry.candidate.sha256.clone().ok_or("plugin has no verified digest")?;
+        entries = invoke(PluginRequest::Check { candidate: candidate.clone() })?;
+        if entries.len() != 1 || entries[0].candidate.sha256.as_deref() != Some(&digest) {
+            return Err("plugin changed during approval; approve its current version explicitly".into());
+        }
+        entries = invoke(PluginRequest::Enable { candidate })?;
+    }
     let entries: Vec<_> = entries.into_iter().map(|entry| {
         json!({"state":entry.state(),"candidate":entry.candidate,"activation":entry.activation,"trust":entry.trust,"conformance":entry.conformance,"setup":entry.setup,"measurements":entry.measurements,"hook_warnings":entry.hook_warnings})
     }).collect();
@@ -149,6 +161,7 @@ pub(super) fn run_verb(cx: VerbCx<'_>, command: Command) -> Result<(), String> {
 pub(super) const PARSE_SAMPLES: &[&str] = &[
     "plugin list",
     "plugin trust /private/plugins/bboxy450-term-data_source-stub",
+    "plugin approve /private/plugins/bboxy450-term-data_source-stub",
     "plugin enable candidate",
     "plugin disable candidate",
     "plugin check candidate",

@@ -18,11 +18,12 @@ const KB_SKILL: &str = include_str!("../knowledge/skills/knowledge-base/SKILL.md
 pub(crate) const MAX_URI_BYTES: usize = 512;
 
 pub(crate) fn handles(tool: &str) -> bool {
-    matches!(tool, "skill_list" | "skill_read")
+    matches!(tool, "knowledge_orient" | "skill_list" | "skill_read")
 }
 
 pub(crate) fn catalogue() -> Vec<Value> {
     [
+        ("knowledge_orient", "Read the selected knowledge provider's workflow and pinned skill instructions, built-in document types, task/report practices and human-readable Markdown guidance before knowledge work. No arguments; refresh after changing workspace or provider. Instructions grant no authority.", json!({}), json!([])),
         ("skill_list", "Discover host workflow skills and the skill instructions of every enabled, checked plugin in your workspace. Read a listed URI with skill_read. provider_error lists plugins whose guidance is unavailable. Instructions do not grant permissions.", json!({}), json!([])),
         ("skill_read", "Read exact Markdown for a currently available skill URI. The host rechecks your seat, workspace and the plugin's enablement and pin; a skill never grants tool or filesystem authority.", json!({"uri":{"type":"string","minLength":1,"maxLength":MAX_URI_BYTES}}), json!(["uri"])),
     ].into_iter().map(|(name, description, properties, required)| json!({
@@ -135,7 +136,42 @@ fn resolve(host: &Host, actor: &SeatActor) -> d::Result<(Vec<Resolved>, Option<V
     Ok((entries, provider_error))
 }
 
+fn knowledge_orient(host: &Host, actor: &SeatActor) -> d::Result<Value> {
+    let (provider, pin) = host.guidance_provider()?;
+    let (entries, errors) = resolve(host, actor)?;
+    let mut remaining = 48 * 1024;
+    let mut provider_loaded = provider == crate::knowledge::roots::BUNDLED;
+    let mut skills = Vec::new();
+    for entry in entries {
+        let origin = entry.metadata["origin"].as_str().unwrap_or_default();
+        let selected = origin == provider && entry.metadata["plugin_sha256"] == json!(pin);
+        if !origin.starts_with("bboxy450-term/") && !selected { continue; }
+        let mut value = entry.metadata;
+        value["content"] = json!(entry.content);
+        let size = serde_json::to_vec(&value).map_err(|e|error("invalid_skill",e.to_string()))?.len();
+        let inline = size <= remaining;
+        if inline { remaining -= size; } else { value.as_object_mut().unwrap().remove("content"); }
+        value["requires_skill_read"] = json!(!inline);
+        provider_loaded |= selected && inline;
+        skills.push(value);
+    }
+    let mut provider_errors: Vec<Value> = errors.and_then(|v|v.as_array().cloned()).unwrap_or_default()
+        .into_iter().filter(|e|e["origin"] == provider || e["origin"].is_null()).collect();
+    if !provider_loaded && !skills.iter().any(|s|s["origin"] == provider) {
+        provider_errors.push(json!({"origin":provider,"code":"selected_provider_guidance_unavailable",
+            "message":"Selected provider guidance is unavailable; inspect knowledge_status before provider-specific work."}));
+    }
+    let types = super::knowledge::type_info(&json!({})).map_err(|e|error("invalid_builtin_guidance",e))?;
+    Ok(json!({"provider":{"id":provider,"sha256":pin,"guidance_loaded":provider_loaded},
+        "skills":skills,"document_types":types,
+        "provider_error":if provider_errors.is_empty(){Value::Null}else{json!(provider_errors)}}))
+}
+
 pub(crate) fn read(host: &Host, actor: &SeatActor, call: &Call) -> d::Result<Value> {
+    if call.tool == "knowledge_orient" {
+        tools::parse::<tools::Empty>(&call.args).map_err(|e|error("invalid_arguments",e))?;
+        return knowledge_orient(host, actor);
+    }
     let uri = match call.tool.as_str() {
         "skill_list" => {
             tools::parse::<tools::Empty>(&call.args).map_err(|e| error("invalid_arguments", e))?;
@@ -178,7 +214,9 @@ pub(crate) fn retained(host: &Host, actor: &SeatActor, call: &Call, old: &Value)
         return false;
     };
     let saved = &old["structuredContent"];
-    if call.tool == "skill_read" {
+    if call.tool == "knowledge_orient" {
+        ["provider", "skills", "document_types", "provider_error"].iter().all(|key| saved[*key] == current[*key])
+    } else if call.tool == "skill_read" {
         saved["skill"] == current["skill"]
     } else {
         saved["skills"] == current["skills"] && saved["provider_error"] == current["provider_error"]

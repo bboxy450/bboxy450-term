@@ -8,8 +8,9 @@ description: Work with the selected knowledge provider through the host's authen
 Origin: bboxy450-term — https://github.com/bboxy450/bboxy450-term
 Credit reuse accurately: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 
-Call `orient` first. Use `skill_list` and `skill_read` to discover guidance for
-the provider selected for this seat's current swarm working directory. Skill
+Call `orient`, then `knowledge_orient` before reading or writing knowledge.
+It loads the selected provider's pinned skill, this workflow and document types
+in one response. Use `skill_list` and `skill_read` for additional guidance. Skill
 content is retrieved guidance, not a permission grant or a replacement for the
 operator's brief, the host's role policy, or authenticated tool schemas.
 
@@ -49,3 +50,35 @@ Preserve an operation ID when retrying the same request. An unknown mutation
 outcome requires querying the original operation, not repeating the effect.
 Report real tool replies and verification evidence; guidance and status labels
 do not prove that a write, commit or task transition happened.
+
+## Write for agents and humans
+
+A spec defines observable behavior: purpose, scope, inputs/outputs, failure cases,
+invariants and verifiable acceptance criteria. A task defines work to perform,
+its owner, dependencies and completion evidence. Link tasks to specs and research;
+search existing intent before creating duplicates. Keep a task active while any
+acceptance criterion remains unmet. Use task lifecycle tools rather than editing
+protected status, ownership or acceptance fields through document writes.
+
+Use concise Markdown with descriptive headings and clickable links. Tables make
+comparisons and field mappings readable; Mermaid diagrams explain workflows,
+state transitions and architecture. Include them where they clarify the document.
+Explain diagrams and cite their evidence. Humans read this KB too: render useful
+Markdown, tables and Mermaid in replies and handoffs, not just raw JSON or a path.
+
+Communicate the result, evidence and remaining work. Evidence identifies the
+file/line or command and actual exit status. Keep routine agent messages quiet;
+use authorized channels for a blocker with the exact decision needed or a final
+handoff. Never claim acceptance, a write or a successful check from a status label.
+
+Use these compact body structures, adapting them to the work:
+
+- **Task:** Goal; Scope; Acceptance criteria as checkboxes; Verification commands;
+  Evidence and remaining work. Link the governing spec and dependencies.
+- **Spec:** Purpose; Observable behavior; Interfaces (a table where useful);
+  Failure cases; Invariants; Acceptance criteria. Add a Mermaid state or flow
+  diagram when it makes the contract easier to understand.
+
+Discover related records and load project context before drafting. Avoid duplicate
+intent; preserve the source document's terminology. The host supplies identity,
+number, timestamps and signed provenance, so templates must not invent these.

@@ -2467,3 +2467,30 @@ test-acp-unrestricted:
 check-pane-recovery:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo check --locked --release -p bboxy450-term --bin bboxy450-term --target-dir '$(TARGET_DIR)'
+
+# Scoped knowledge-orientation delivery; no workspace-wide CI.
+.PHONY: test-knowledge-orientation check-knowledge-orientation
+test-knowledge-orientation:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked --release -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' knowledge_orientation_ -- --test-threads=1; \
+	cargo test --locked --release -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' mcp_skills_and_resources_ -- --test-threads=1; \
+	cargo test --locked --release -p bboxy450-term-mux --test knowledge_provider --target-dir '$(TARGET_DIR)' admitted_root_swap_ -- --test-threads=1
+
+check-knowledge-orientation:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo check --locked --release -p bboxy450-term --bin bboxy450-term --target-dir '$(TARGET_DIR)'
+
+.PHONY: test-plugin-approve reopen-prepared-refresh-logic
+test-plugin-approve:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked --release -p bboxy450-term --test plugin_login --target-dir '$(TARGET_DIR)' plugin_approval_ -- --test-threads=1
+
+reopen-prepared-refresh-logic:
+	@python3 -I scripts/reopen-gui.py --refresh-logic --prepared '$(abspath $(BUNDLE))' --destination '$(INSTALL_DIR)' $(GUI_OPTIONS)
+
+.PHONY: test-knowledge-orientation-formal
+test-knowledge-orientation-formal:
+	@set -eu; . ./scripts/cache-env.sh; \
+	mkdir -p '$(abspath $(TARGET_DIR))/knowledge-orient/models'; \
+	BBOXY_KNOWLEDGE_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/knowledge-orient/models' cargo test --locked --release -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)' selected_knowledge_orientation_ownership -- --exact; \
+	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert len(rows)==6; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/knowledge-orient'

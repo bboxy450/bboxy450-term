@@ -69,9 +69,9 @@ fn next(call: &Call, result: &Value) -> Vec<Value> {
         "orient" => {
             return vec![
                 tool(
-                    "skill_list",
+                    "knowledge_orient",
                     json!({}),
-                    "Discover the workflow and selected provider's guidance.",
+                    "Load the selected provider's skill, document-writing workflow and task guidance before knowledge work.",
                 ),
                 tool(
                     "knowledge_types",
@@ -84,6 +84,15 @@ fn next(call: &Call, result: &Value) -> Vec<Value> {
                     "Read the tasks visible to your seat.",
                 ),
             ];
+        }
+        "knowledge_orient" => {
+            if let Some(uri) = data["skills"].as_array().and_then(|skills|skills.iter().find(|s|s["requires_skill_read"] == true)).and_then(|s|s["uri"].as_str()) {
+                tool("skill_read", json!({"uri":uri}), "Load the remaining provider guidance before writing.")
+            } else if !data["provider_error"].is_null() {
+                tool("knowledge_status", json!({}), "Inspect why the selected provider's guidance is unavailable.")
+            } else {
+                tool("knowledge_search", json!({"query":"type:spec"}), "Read existing intent and linked tasks before writing or creating duplicates.")
+            }
         }
         "knowledge_types" | "graph_read" => {
             let query = call.args["type"]

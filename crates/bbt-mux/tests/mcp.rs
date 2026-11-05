@@ -9098,3 +9098,23 @@ fn mcp_read_byte_pages_all_graphs_retain_the_full_corpus() {
         assert!(expected.is_subset(&seen), "{graph} omitted fixture tasks");
     }
 }
+
+#[test]
+fn knowledge_orientation_loads_builtin_workflow_types_and_human_document_guidance() {
+    let fixture = Fixture::new();
+    let reply = fixture.call(fixture.own.id, Ulid::new(), "knowledge_orient", json!({}));
+    assert_ne!(reply["isError"], true, "{reply}");
+    let value = data(reply);
+    assert_eq!(value["provider"]["guidance_loaded"], true);
+    assert!(value["provider_error"].is_null());
+    let skills = value["skills"].as_array().unwrap();
+    assert_eq!(skills.len(), 2);
+    assert!(skills.iter().all(|s|s["content"].is_string() && s["requires_skill_read"] == false));
+    let body = skills.iter().map(|s|s["content"].as_str().unwrap()).collect::<Vec<_>>().join("\n");
+    for required in ["Acceptance", "Mermaid", "tables", "task_report", "knowledge_write"] {
+        assert!(body.contains(required), "orientation missing {required}");
+    }
+    assert!(value["document_types"]["types"].as_array().unwrap().iter().any(|t|t["type"] == "spec" || t["kind"] == "spec"));
+    let refused = fixture.call(fixture.own.id, Ulid::new(), "knowledge_orient", json!({"root":"/foreign"}));
+    assert_eq!(refused["isError"], true);
+}

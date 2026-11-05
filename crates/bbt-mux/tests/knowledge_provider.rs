@@ -202,6 +202,9 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
         unselected_skill["plugin_sha256"],
         json!(checked[0].conformance.as_ref().unwrap().sha256)
     );
+    let orientation = tool(&logic.client, seat_id, "knowledge_orient", json!({})).await;
+    assert_eq!(orientation["isError"], false, "{orientation}");
+    assert_eq!(fixture_names(&orientation), 0, "unselected provider guidance leaked into orientation");
     let choice = before.offered.iter().find(|p| p.id == candidate).unwrap();
     // Exercise the new operation-correlated GUI socket port, not only a library call.
     let endpoint = logic.client.gui_endpoint().await.unwrap();
@@ -273,7 +276,15 @@ async fn admitted_root_swap_serves_gui_mcp_and_graph_reads_and_fences_a_changed_
         fixture_skill, &unselected_skill,
         "selection does not change a plugin skill's identity"
     );
+    let oriented = tool(&logic.client, seat_id, "knowledge_orient", json!({})).await;
+    assert_eq!(oriented["isError"], false, "{oriented}");
+    assert_eq!(oriented["structuredContent"]["provider"]["id"], candidate);
+    assert_eq!(oriented["structuredContent"]["provider"]["guidance_loaded"], true);
+    assert_eq!(fixture_names(&oriented), 1);
+    let inline = oriented["structuredContent"]["skills"].as_array().unwrap().iter().find(|s|s["name"] == "root-fixture").unwrap();
     let expected_skill = "---\nname: root-fixture\ndescription: Root fixture knowledge instructions.\n---\n\n# Root fixture\n\nResolve before fetch; preserve é and exact source bytes.\n";
+    assert_eq!(inline["content"], expected_skill);
+    assert_eq!(inline["plugin_sha256"], fixture_skill["plugin_sha256"]);
     assert_eq!(fixture_skill["root_id"], swapped.roots[0].id);
     assert_eq!(fixture_skill["size"], expected_skill.len());
     assert_eq!(

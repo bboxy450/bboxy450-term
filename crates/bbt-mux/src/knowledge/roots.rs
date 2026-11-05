@@ -389,6 +389,11 @@ impl Host {
             .binding
             .revision)
     }
+    /// Selected guidance identity without starting or querying a provider process.
+    pub(crate) fn guidance_provider(&self) -> d::Result<(String, Option<String>)> {
+        let selected = self.0.selected.lock().map_err(|_| d::CommandError::new("knowledge_unavailable", "knowledge state unavailable"))?;
+        Ok((selected.binding.provider.clone(), selected.binding.sha256.clone()))
+    }
     pub(crate) fn current(&self, revision: u64) -> d::Result<()> {
         if self.revision().map_err(portable)? != revision {
             return Err(d::CommandError::new(

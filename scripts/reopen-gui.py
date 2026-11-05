@@ -93,6 +93,7 @@ def main():
     parser.add_argument('--run-dir', type=Path)
     parser.add_argument('--private', action='store_true')
     parser.add_argument('--headless', action='store_true')
+    parser.add_argument('--refresh-logic', action='store_true', help='Allow the normal logic upgrade while retaining the live supervisor')
     parser.add_argument('--test-account', type=Path)
     parser.add_argument('--repository', type=Path)
     parser.add_argument('--verify-failure-after-detach', action='store_true')
@@ -125,11 +126,12 @@ def main():
         raise RuntimeError('legacy GUI replacement requires explicit GUI_REPOSITORY')
     if repository:
         arguments.extend(['--repository', repository])
-    preflight = probe(executable(prepared), [*arguments, '--preserve-backend-check'])
+    preflight = probe(executable(prepared), arguments if options.refresh_logic else [*arguments, '--preserve-backend-check'])
     if preflight.get('preserve_backend_supported') != 1 or not preflight.get('backend'):
         raise RuntimeError('candidate cannot attest preserved backend compatibility')
     before['backend'] = preflight['backend']
-    arguments.extend(['--preserve-backend', '--preserve-backend-owners', json.dumps(preflight['backend'])])
+    if not options.refresh_logic:
+        arguments.extend(['--preserve-backend', '--preserve-backend-owners', json.dumps(preflight['backend'])])
     previous_revision = info(destination).get('BBOXYSourceRevision') if destination.exists() else None
     evidence = Path(tempfile.mkdtemp(prefix='gui-reopen-', dir=prepared.parent))
     install_target = 'install-prepared-unsigned' if options.private else 'install-prepared'
@@ -151,12 +153,15 @@ def main():
         if options.verify_failure_after_detach:
             launch_arguments.append('--verify-ui-only-after-detach')
         child = launch(executable(destination), launch_arguments, evidence / 'gui.log')
-        actual = ready(child)
+        actual = ready(child, timeout=210 if options.refresh_logic else 50)
         gui = actual.get('gui') or {}
         if gui.get('pid') != child.pid or gui.get('source_revision') != expected:
             raise RuntimeError('rendered GUI did not attest the installed source and launched PID')
-        after = probe(executable(prepared), [*arguments, '--preserve-backend-check'])
-        if after.get('backend') != preflight['backend']:
+        after = probe(executable(prepared), arguments if options.refresh_logic else [*arguments, '--preserve-backend-check'])
+        if options.refresh_logic:
+            if (after.get('backend') or {}).get('supervisor') != preflight['backend']['supervisor']:
+                raise RuntimeError('supervisor owner changed during logic/GUI replacement')
+        elif after.get('backend') != preflight['backend']:
             raise RuntimeError('backend owners changed during GUI replacement')
         if not after['running'] or after['process']['pid'] != child.pid or after['gui'] != gui:
             raise RuntimeError('ready GUI does not hold the one current GUI lease')

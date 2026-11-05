@@ -337,3 +337,28 @@ fn a_typed_login_in_the_plugin_login_row_logs_in_or_is_refused() {
     assert_eq!(entry["setup"]["login_exit"], 2, "{entry}");
     app.closed(row["record"]["id"].as_str().unwrap());
 }
+
+#[test]
+fn plugin_approval_is_one_call_and_refuses_a_stale_explicit_hash() {
+    let app = App::start();
+    let source = app.root.join("repository/.bboxy/plugins/bboxy450-term-data_source-root-fixture");
+    let trace = app.root.join("approval-trace.jsonl");
+    bbt_plugin_fixture::Knobs { trace: Some(trace.to_string_lossy().into_owned()),
+        ..bbt_plugin_fixture::Knobs::root() }.nonce("approval-v1").install(&source);
+    let path = source.to_str().unwrap();
+    let wrong = app.ctl_command(&["plugin", "approve", path, "--sha256", &"0".repeat(64)]).output().unwrap();
+    assert!(!wrong.status.success());
+    assert!(!trace.exists(), "a mismatched hash executed an untrusted plugin");
+    let hash = bbt_mux::store::digest(&fs::read(&source).unwrap());
+    let approved = app.ctl(&["plugin", "approve", path, "--sha256", &hash]);
+    let entry = &approved["entries"][0];
+    assert_eq!(entry["state"], "enabled", "{approved}");
+    assert_eq!(entry["trust"]["sha256"], hash);
+    assert_eq!(entry["conformance"]["ok"], true);
+    // An explicitly approved version cannot silently approve replacement bytes.
+    bbt_plugin_fixture::Knobs::root().nonce("approval-v2").install(&source);
+    let stale = app.ctl_command(&["plugin", "approve", path, "--sha256", &hash]).output().unwrap();
+    assert!(!stale.status.success());
+    let listed = app.ctl(&["plugin", "list"]);
+    assert_ne!(listed["entries"][0]["state"], "enabled");
+}

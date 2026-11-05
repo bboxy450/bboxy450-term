@@ -89,6 +89,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   message receipts <message-id>
   message ack <message-id>
   plugin list [--swarm ID]                 workspace registry; never executes untrusted files
+  plugin approve <path> [--sha256 HASH]    approve this binary version, check and enable in one call
   plugin trust <path>                      pin and inspect a discovered binary; stays disabled
   plugin enable <candidate-id>
   plugin disable <candidate-id>
@@ -550,7 +551,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "{USAGE_PREFIX}import flags apply only to task import"
         ));
     }
-    if (flags.contains_key("grant") || flags.contains_key("tier"))
+    if (flags.contains_key("grant") || flags.contains_key("tier") || flags.contains_key("sha256"))
         && !matches!(
             &command,
             Command::Plugin {
@@ -626,6 +627,7 @@ pub fn parse_full(args: &[String]) -> Result<Parsed, String> {
             "owner-seat",
             "grant",
             "tier",
+            "sha256",
             "resume",
         ]
         .contains(&k.as_str())

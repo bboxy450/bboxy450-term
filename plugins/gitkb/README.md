@@ -335,3 +335,16 @@ directory, and symlinked `.bboxy`, plugin, notice or destination paths.
 
 See [NOTICE](NOTICE) for GitKB attribution. The plugin invokes the backend;
 it does not copy or distribute GitKB source.
+
+For the operator's normal activation path, use one command:
+
+```sh
+bboxy450-term ctl plugin approve /absolute/project/.bboxy/plugins/bboxy450-term-data_source-gitkb --swarm SWARM_ID
+```
+
+It computes and pins the current binary's SHA-256, inspects it, runs the private
+conformance check and enables that exact version. Add `--sha256 HASH` to require
+previously reviewed bytes. A changed binary requires a new explicit approval.
+Choose the intended knowledge root with `knowledge select` when changing its
+provider. Agents call `orient`, then `knowledge_orient` to load this plugin's
+pinned skill and the host's document/task writing guide in one response.
