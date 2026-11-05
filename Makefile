@@ -2220,7 +2220,8 @@ test-rich-polish:
 	cargo test --locked --release -p bboxy450-harness --features embedded --lib --target-dir '$(TARGET_DIR)' json_tool_results_keep_literal_source_and_error_fields -- --exact frontends::gui::rich::tests::json_tool_results_keep_literal_source_and_error_fields; \
 	cargo test --locked --release -p bboxy450-harness --features embedded --lib --target-dir '$(TARGET_DIR)' acp_terminal_metadata_survives_completion_and_duplicate_replay; \
 	cargo test --locked --release -p bboxy450-harness --features embedded --lib --target-dir '$(TARGET_DIR)' header_dropdowns_fit_narrow_panes_and_keep_revision_fences; \
-	cargo test --locked --release -p bboxy450-harness --features embedded --lib --target-dir '$(TARGET_DIR)' tool_header_and_reasoning_text_share_alignment
+	cargo test --locked --release -p bboxy450-harness --features embedded --lib --target-dir '$(TARGET_DIR)' tool_header_and_reasoning_text_share_alignment; \
+	cargo test --locked --release -p bboxy450-harness --features embedded --lib --target-dir '$(TARGET_DIR)' transcript_fills_wide_and_three_column_panes
 
 .PHONY: test-rich-polish
 test-kb-write-fixes:
@@ -2234,6 +2235,17 @@ test-rich-links:
 	cargo test --locked --release -p bboxy450-doc --test inline_code --target-dir '$(TARGET_DIR)' markdown_links_keep_targets_through_emphasis_code_and_wrapping
 
 .PHONY: test-rich-links
+test-acp-steering:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo test --locked --release -p bboxy450-harness --features acp-agent --test acp_agent --target-dir '$(TARGET_DIR)' steering_ -- --test-threads=2
+
+.PHONY: test-acp-steering
+test-acp-steering-formal:
+	@set -eu; . ./scripts/cache-env.sh; \
+	ACP_STEERING_FORMAL_OUT='$(abspath $(TARGET_DIR))/acp-steering/formal' cargo test --locked --release -p bboxy450-harness --test formal_models --target-dir '$(TARGET_DIR)' acp_steering_native; \
+	TARGET_DIR='$(abspath $(TARGET_DIR))' python3 -I crates/bboxy450-harness/scripts/check-acp-steering-models.py
+
+.PHONY: test-acp-steering-formal
 test-rich-pane: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-term --lib --target-dir '$(TARGET_DIR)' rich_pane::tests; \
