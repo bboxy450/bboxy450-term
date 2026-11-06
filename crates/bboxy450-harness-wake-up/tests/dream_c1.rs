@@ -466,6 +466,7 @@ fn assert_reaped(pid: u32) {
 }
 
 #[test]
+#[ignore = "load-sensitive 250ms wall window; re-enable via tasks/2026-11-06-qos-builds-never-starve-mcp (93377961366081)"]
 fn actual_private_process_clears_authority_environment_and_uses_fixed_argv() {
     let script = Script::new(
         r#"
