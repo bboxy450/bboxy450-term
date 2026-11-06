@@ -3063,6 +3063,9 @@ struct Worker {
     identity_probe_at: Instant,
     identity_acl: bbt_proto::identity::CustodyAcl,
     control_journals: BTreeMap<Ulid, crate::mcp::journal::Journal>,
+    /// Supervisor-owned (seat, generation) per host, as last listed. Only a hit
+    /// is served from it, so a new generation always asks the supervisor.
+    owned_seats: BTreeMap<HostId, (std::time::Instant, std::collections::BTreeSet<(Ulid, u64)>)>,
     operator_journal: crate::mcp::journal::Journal,
     history_faults: crate::history_fault::Masks,
     stale_gui_requests: u64,
@@ -3330,6 +3333,7 @@ impl Worker {
             identity_probe_at: Instant::now(),
             identity_acl: bbt_proto::identity::CustodyAcl::Unknown,
             control_journals: BTreeMap::new(),
+            owned_seats: BTreeMap::new(),
             history_faults: crate::history_fault::Masks::new(account.clone()),
             operator_journal: crate::mcp::journal::Journal::new(account),
             stale_gui_requests: 0,
@@ -3461,19 +3465,42 @@ impl Worker {
         // The registry read/lease has ended before a potentially long request.
         self.connections.request(&host, action)
     }
+    /// Every MCP call checks ownership, often more than once. A blocking
+    /// supervisor round trip per check serialized all seats behind the
+    /// supervisor under load; a one-second positive cache keeps one per host.
+    fn supervisor_owns(&mut self, id: Ulid, generation: u64) -> Result<bool> {
+        const FRESH: std::time::Duration = std::time::Duration::from_secs(1);
+        let host = self.host_for_seat(id)?;
+        if self.owned_seats.get(&host).is_some_and(|(at, seats)| {
+            at.elapsed() < FRESH && seats.contains(&(id, generation))
+        }) {
+            return Ok(true);
+        }
+        let Reply::Seats { seats } = self.connections.request(&host, Action::ListOwnedSeats)?
+        else {
+            return Err(invalid("supervisor ownership unavailable"));
+        };
+        let seats: std::collections::BTreeSet<_> =
+            seats.iter().map(|seat| (seat.seat, seat.generation)).collect();
+        let owned = seats.contains(&(id, generation));
+        self.owned_seats.insert(host, (std::time::Instant::now(), seats));
+        Ok(owned)
+    }
     fn control_actor(
         &mut self,
         id: Ulid,
         generation: u64,
     ) -> Result<(crate::mcp::SeatActor, SeatRecord)> {
-        self.snapshot(id, generation)?;
-        let Reply::Seats { seats } = self.request_for_seat(id, Action::ListOwnedSeats)? else {
-            return Err(invalid("supervisor ownership unavailable"));
-        };
-        if !seats
-            .iter()
-            .any(|seat| seat.seat == id && seat.generation == generation)
-        {
+        // The viewport's generation only; a full screen snapshot per check
+        // rendered every grid row and was discarded.
+        let view = self
+            .views
+            .get(&id)
+            .ok_or_else(|| invalid("unknown viewport"))?;
+        if view.generation != generation {
+            return Err(invalid("stale process generation"));
+        }
+        if !self.supervisor_owns(id, generation)? {
             return Err(invalid("stale control process generation"));
         }
         let (record, grant_epoch, issuer_kind) = self.messaging.authority(id, generation)?;
