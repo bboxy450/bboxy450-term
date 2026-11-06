@@ -3134,6 +3134,14 @@ fn catalogue_mode(kind: usize, broken: bool) -> Model {
             (10, Var(2)),
         ],
     );
+    // A cache-miss Status/Cancel can refuse a held own header before public
+    // preparation. It publishes no run/authority and leaves durable rows alone.
+    action(
+        &mut m,
+        "ProbeHeldHeaderRefusal",
+        all([eq(0, 1), eq(2, 1)]),
+        &[(0, Int(7))],
+    );
     action(
         &mut m,
         "BusyRefusal",

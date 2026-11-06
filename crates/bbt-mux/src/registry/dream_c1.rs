@@ -1890,6 +1890,16 @@ impl Runtime {
                     let request=parse()?;
                     request.validate()?;
                     let retained=runtime.retained_control_authority(&authority,&request)?;
+                    // A cache-miss control first checks only its host-bound own
+                    // catalogue header. Busy/missing storage can refuse without
+                    // cold public-proof preparation; it never grants authority,
+                    // reads a run, creates a file or changes journal mode. All
+                    // successful controls still capture/revalidate the full
+                    // public actor/context below. Active cached runs keep their
+                    // independent prepared-session path, with no catalogue IO.
+                    let mut preopened=if retained.is_none() && matches!(&request,w::Control::Status(_)|w::Control::Cancel(_)) {
+                        Some(Journal::open_readonly_existing(&runtime.path,&authority.seat.into())?)
+                    } else {None};
                     let (context,identity_fence,request_session)=match retained {
                         Some((context,fence,session))=>(context,fence,Some(session)),
                         None=>{let (context,fence)=authority.capture_all()?;(context,fence,None)},
@@ -1912,8 +1922,14 @@ impl Runtime {
                     let mut journal=if matches!(&request,w::Control::Status(_)) {
                         // Read misses never bootstrap a catalogue, change WAL
                         // mode or open a writable foreign-seat database.
-                        Journal::open_readonly_existing(&runtime.path,&context.seat)?
-                    } else {Journal::open(&runtime.path,&context.seat)?};
+                        match preopened.take() {
+                            Some(journal)=>journal,
+                            None=>Journal::open_readonly_existing(&runtime.path,&context.seat)?,
+                        }
+                    } else {
+                        if let Some(journal)=preopened.take() {journal.finish()?;}
+                        Journal::open(&runtime.path,&context.seat)?
+                    };
                     journal_quantum=journal.quantum.clone();
                     match request {
                         w::Control::Inspect(mut inspect)=> {
