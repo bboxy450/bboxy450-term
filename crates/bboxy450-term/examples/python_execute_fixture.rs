@@ -30,7 +30,7 @@ use std::{
 #[derive(Deserialize)]
 struct Input {
     socket: PathBuf,
-    seat: ulid::Ulid,
+    seat: bbt_mux::Ulid,
     generation: u64,
     capability: [u8; 32],
     cwd: PathBuf,
