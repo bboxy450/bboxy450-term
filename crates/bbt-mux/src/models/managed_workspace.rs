@@ -73,7 +73,7 @@ pub(super) fn managed_workspace_writer(b: bool) -> Model {
     action(
         &mut m,
         "CancelPlanning",
-        all([eq(0, 1), if b { Expr::Bool(true) } else { eq(2, 0) }]),
+        all([eq(0, 1), eq(2, 0)]),
         &[(0, Int(0)), (3, Var(2))],
     );
     safe(&mut m, "SingleWriter", Var(0).le(Int(1)));

@@ -2572,7 +2572,7 @@ test-mermaid-fullscreen:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo nextest run --locked --release -p bboxy450-ui --lib --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(fullscreen_viewer_)'; \
 	cargo nextest run --locked --release -p bboxy450-doc --test record_host --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(mermaid_expand_) | test(wide_mermaid_)'; \
-	cargo nextest run --locked --release -p bboxy450-term --bin bboxy450-term --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(fullscreen_mermaid_modal_) | test(keyboard_adapter_uses_neutral_core_and_live_modes)'
+	cargo nextest run --locked --release -p bboxy450-term --lib --bin bboxy450-term --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(fullscreen_mermaid_modal_) | test(keyboard_adapter_uses_neutral_core_and_live_modes)'
 
 check-mermaid-fullscreen:
 	@set -eu; . ./scripts/cache-env.sh; \
