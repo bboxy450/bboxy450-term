@@ -71,3 +71,13 @@ impl Store for bboxy450_keychain_file::Store {
         self.acl(label)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::MAX_SECRET_BYTES;
+
+    #[test]
+    fn public_secret_limit_is_64_kib() {
+        assert_eq!(MAX_SECRET_BYTES, 64 * 1024);
+    }
+}
