@@ -724,6 +724,11 @@ def first_launch_admission(runner, evidence):
     image = first_launch_image(runner)
     directory = runner.parent / ".dream-c1-admissions"
     directory.mkdir(mode=0o700, exist_ok=True)
+    parent_fd = os.open(runner.parent, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        os.fsync(parent_fd)  # Retain a newly created claim directory before exec.
+    finally:
+        os.close(parent_fd)
     state = directory.lstat()
     if (not stat.S_ISDIR(state.st_mode) or stat.S_ISLNK(state.st_mode)
             or state.st_uid != os.geteuid() or state.st_mode & 0o077):

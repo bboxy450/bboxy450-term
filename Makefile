@@ -73,6 +73,7 @@ help:
 	  'make test-formal-infrastructure Formal gate inventory, receipt and refusal self-tests' \
 	  'make prepare-dream-c1           Build/probe pinned production worker and separate optimized private seat' \
 	  'make prepare-dream-c1-worker    Prepare the ordinary sibling with canonical Make/cache build settings' \
+	  'make admit-dream-c1-file DREAM_C1_ADMIT_FILE=path  Admit one exact reviewed private copy; no Dream run' \
 	  'make prepare-dream-c1-seat      Build private optimized seat only; execute no worker' \
 	  'make diagnose-dream-c1-launch   One decision65882 instrumented source-free launch; diagnostic only' \
 	  'make prepare-dream-c1-development DREAM_C1_DEVELOPMENT_SOURCE=path DREAM_C1_DEVELOPMENT_WORKER=path  Private signed-worker bootstrap check' \
