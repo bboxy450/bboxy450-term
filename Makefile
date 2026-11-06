@@ -26,9 +26,12 @@ DIST_DIR ?= $(TARGET_DIR)/dist
 RELEASE_REPO := bboxy450/bboxy450-term-releases
 PUSH_IDENTITY ?= bboxy450
 CODEX_BIN ?= codex
-SIGNING_IDENTITY := 3943AF130A015B36824B7FBC86AA672E7B25F3C4
+# Found in this machine's keychain at signing time (scripts/signing-identity.sh);
+# set SIGNING_IDENTITY to choose one. Never a hardcoded default.
+SIGNING_IDENTITY ?=
+TEAM := UQB3368A84
 GPG_KEY := 9B07E849480C68328CA20684844ECC0587DE7AB0
-REQUIREMENT := identifier "com.bboxy450.term" and anchor apple generic and certificate leaf[subject.OU] = "UQB3368A84"
+REQUIREMENT := identifier "com.bboxy450.term" and anchor apple generic and certificate leaf[subject.OU] = "$(TEAM)"
 APP_VERSION = $(shell python3 -c 'import tomllib; a=tomllib.load(open("crates/bboxy450-term/Cargo.toml","rb"))["package"]["version"]; print(a if isinstance(a,str) else tomllib.load(open("Cargo.toml","rb"))["workspace"]["package"]["version"])')
 ARCHIVE = $(DIST_DIR)/$(APP)-$(APP_VERSION)-macos-$(shell uname -m).zip
 CI_LOG ?= $(abspath $(TARGET_DIR))/ci-local.log
@@ -661,8 +664,10 @@ bundle-files: check-licenses compile
 	plutil -lint '$(BUNDLE)/Contents/Info.plist'
 
 bundle: bundle-files
-	@set -eu; security find-identity -v -p codesigning | grep -F '$(SIGNING_IDENTITY)' >/dev/null || { echo 'Approved Apple Development signing identity unavailable' >&2; exit 2; }; \
-	codesign --force --sign '$(SIGNING_IDENTITY)' --requirements '=designated => $(REQUIREMENT)' --options runtime --timestamp=none '$(BUNDLE)'; \
+	@set -eu; identity='$(SIGNING_IDENTITY)'; [ -n "$$identity" ] || identity=$$(sh scripts/signing-identity.sh '$(TEAM)') || exit 2; \
+	security find-identity -v -p codesigning | grep -qF "$$identity" || { echo "signing identity $$identity is not in the keychain" >&2; exit 2; }; \
+	echo "signing with $$identity"; \
+	codesign --force --sign "$$identity" --requirements '=designated => $(REQUIREMENT)' --options runtime --timestamp=none '$(BUNDLE)'; \
 	codesign --verify --strict --verbose=2 '$(BUNDLE)'; printf '%s\n' '$(BUNDLE)'
 
 bundle-unsigned: PROFILE=debug

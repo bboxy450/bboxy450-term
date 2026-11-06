@@ -2,7 +2,7 @@
 
 Use the repository Makefile (`make help`) for all build/install/test/release work.
 `make install` builds the release app, stamps its Cargo version/source revision,
-signs with the approved Apple Development identity and installs in `~/Applications`.
+signs with a team identity from the keychain and installs in `~/Applications`.
 `make install-unsigned` installs an ad-hoc-only debug bundle in `target/install-unsigned`;
 it is for isolated tests, and `make smoke` runs it headless with its own file-custody
 account. `UNSIGNED_INSTALL_DIR` and `INSTALL_DIR` override the destinations.
@@ -27,9 +27,10 @@ See Apple's [app-data protection explanation](https://developer.apple.com/videos
 
 ## Signing and notification evidence
 
-The signed bundle and installation targets require the approved Apple Development identity
-`3943AF130A015B36824B7FBC86AA672E7B25F3C4` (team `UQB3368A84`). They fail if it
-is unavailable. An ad-hoc signature fails notification authorization on this
+The signed bundle and installation targets find a code-signing identity for team
+`UQB3368A84` in this machine's keychain, Apple Development first
+(`scripts/signing-identity.sh`); `SIGNING_IDENTITY=<sha1>` chooses one. There is no
+hardcoded default, and they fail when none is available. An ad-hoc signature fails notification authorization on this
 machine; the identity-signed bundle works. Developer ID distribution signing
 remains deferred.
 
