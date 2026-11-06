@@ -212,9 +212,15 @@ impl Script {
         Self::constant_shell_peer(false)
     }
     fn constant_shell_peer(capture_stdin: bool) -> Self {
+        let mut hello = bytes("valid/hello.json");
+        hello.push(b'\n');
+        Self::fixed_output_peer(&hello, capture_stdin, false)
+    }
+    fn fixed_output_peer(output: &[u8], capture_stdin: bool, exit_after_output: bool) -> Self {
         let fixture = Self::new("");
-        let hello = String::from_utf8(bytes("valid/hello.json")).unwrap();
-        assert!(hello.is_ascii() && !hello.contains('\''));
+        let output_path = fixture.job.join("fixed-output");
+        std::fs::write(&output_path, output).unwrap();
+        std::fs::set_permissions(&output_path, std::fs::Permissions::from_mode(0o600)).unwrap();
         let quote_path = |path: PathBuf| {
             format!(
                 "'{}'",
@@ -236,8 +242,14 @@ impl Script {
         } else {
             "exec /bin/sleep 30\n".to_owned()
         };
+        let output = quote_path(output_path);
+        let emit = if exit_after_output {
+            format!("exec /bin/cat <{output}\n")
+        } else {
+            format!("/bin/cat <{output}\n{after_hello}")
+        };
         let script = format!(
-            "#!/bin/sh\n# bboxy450-term fixture: https://github.com/bboxy450/bboxy450-term\n# SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft\n# Preserve origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md\nset -eu\numask 077\nset -C\nexec 2>{stderr}\ngate=${{BBOXY_DREAM_BOOTSTRAP#*:}}\ngate=${{gate%%:*}}\ncase \"$gate\" in ''|*[!0-9]*) exit 64;; esac\n/bin/dd bs=128 count=1 <&\"$gate\" >/dev/null 2>/dev/null\neval \"exec ${{gate}}<&-\"\nprintf '%s' ready >{marker}\nprintf '%s\\n' '{hello}'\n{after_hello}",
+            "#!/bin/sh\n# bboxy450-term fixture: https://github.com/bboxy450/bboxy450-term\n# SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft\n# Preserve origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md\nset -eu\numask 077\nset -C\nexec 2>{stderr}\ngate=${{BBOXY_DREAM_BOOTSTRAP#*:}}\ngate=${{gate%%:*}}\ncase \"$gate\" in ''|*[!0-9]*) exit 64;; esac\n/bin/dd bs=128 count=1 <&\"$gate\" >/dev/null 2>/dev/null\neval \"exec ${{gate}}<&-\"\nprintf '%s' ready >{marker}\n{emit}",
             stderr = quote_path(fixture.job.join("fixture-stderr")),
             marker = quote_path(fixture.job.join("worker-started")),
         );
@@ -679,39 +691,45 @@ fn actual_private_control_invalid_ulids_and_unsafe_revision_emit_no_new_frame() 
 
 #[test]
 fn actual_private_process_rejects_blank_invalid_utf8_unknown_duplicate_and_oversized_frames() {
-    for (body, expected) in [
+    let hello = String::from_utf8(bytes("valid/hello.json")).unwrap();
+    let prefix = hello.strip_suffix('}').unwrap();
+    let mut wrong_schema: serde_json::Value = serde_json::from_str(&hello).unwrap();
+    wrong_schema["schema_sha256"] = serde_json::Value::String("f".repeat(64));
+    for (label, output, expected) in [
         (
-            "sys.stdout.buffer.write(b'\\n'); sys.stdout.flush(); time.sleep(5)",
+            "blank", b"\n".to_vec(),
             w::Code::ProtocolError,
         ),
         (
-            "sys.stdout.buffer.write(b'\\xff\\n'); sys.stdout.flush(); time.sleep(5)",
+            "invalid_utf8", b"\xff\n".to_vec(),
             w::Code::ProtocolError,
         ),
         (
-            "print(HELLO[:-1] + ',\"extra\":true}', flush=True); time.sleep(5)",
+            "unknown_field", format!("{prefix},\"extra\":true}}\n").into_bytes(),
             w::Code::ProtocolError,
         ),
         (
-            "print(HELLO[:-1] + ',\"ir_major\":1}', flush=True); time.sleep(5)",
+            "duplicate_field", format!("{prefix},\"ir_major\":1}}\n").into_bytes(),
             w::Code::ProtocolError,
         ),
         (
-            "sys.stdout.buffer.write(b'x'*(256*1024+1)); sys.stdout.flush(); time.sleep(5)",
+            "oversized_frame", vec![b'x'; 256 * 1024 + 1],
             w::Code::ResourceLimit,
         ),
         (
-            "v=json.loads(HELLO); v['schema_sha256']='f'*64; print(json.dumps(v), flush=True); time.sleep(5)",
+            "wrong_schema", format!("{wrong_schema}\n").into_bytes(),
             w::Code::VersionMismatch,
         ),
     ] {
-        let script = Script::new(body);
+        // These are exact malformed bytes, not a Python-startup benchmark or
+        // producer readiness proof. Preserve the original 250ms deadline.
+        let script = Script::fixed_output_peer(&output, false, true);
         let mut worker = script.spawn();
         let pid = worker.pid();
         assert_eq!(
             worker.hello().unwrap_err(),
             expected,
-            "framing control: {body}"
+            "framing control: {label}"
         );
         drop(worker);
         assert_reaped(pid);

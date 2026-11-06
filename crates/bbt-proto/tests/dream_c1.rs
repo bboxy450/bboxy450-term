@@ -23,6 +23,7 @@ fn fixtures() -> PathBuf {
     root
 }
 
+#[allow(clippy::disallowed_methods, reason = "canonical corpus IO runs on the isolated test owner")]
 fn fixture(name: &str) -> Vec<u8> {
     std::fs::read(fixtures().join("valid").join(format!("{name}.json")))
         .unwrap_or_else(|error| panic!("missing canonical producer {name}: {error}"))
@@ -47,6 +48,7 @@ fn public(name: &str, bytes: &[u8]) -> Vec<u8> {
 }
 
 #[test]
+#[allow(clippy::disallowed_methods, reason = "canonical schema IO runs on the isolated test owner")]
 fn public_controls_and_pages_conform_to_pinned_producer_schema_and_bytes() {
     let root = fixtures();
     let producer = root.ancestors().nth(3).expect("producer fixture path");
@@ -154,6 +156,7 @@ fn public_mutations_reject_unknown_duplicate_unsafe_and_open_ended_values() {
 }
 
 #[test]
+#[allow(clippy::disallowed_methods, reason = "the independent Python checker is an owned test process, never UI work")]
 fn canonical_vectors_agree_with_independent_python_stdlib() {
     let output = std::process::Command::new("python3").args(["-I", "-c", r#"
 import hashlib,json,pathlib,sys

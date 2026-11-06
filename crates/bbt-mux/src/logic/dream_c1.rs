@@ -814,7 +814,7 @@ impl Default for Control {
             bootstrap_permit_attempts: AtomicU64::new(0),
             start_admission_attempts: AtomicU64::new(0),
             bootstrap_hello_observed: AtomicBool::new(false),
-            bootstrap_entry:OnceLock::new(),
+            bootstrap_entry: OnceLock::new(),
             bootstrap_revoked: AtomicBool::new(false),
             bootstrap_parent_handoffs: AtomicU64::new(0),
             bootstrap_child_handoffs: AtomicU64::new(0),
@@ -2839,10 +2839,15 @@ impl<'a> Budget<'a> {
         // original returned_at. The return lies within these conservative
         // CLOCK_MONOTONIC bounds. This clock call is surrounding application
         // work, outside the measured native CPU subspan.
-        let entry_clock=monotonic_ns().and_then(|upper|
+        let entry_clock = monotonic_ns().and_then(|upper| {
             transport::BootstrapEntryClockBounds::new(
                 transport::BootstrapEntryClock::ClockGettimeMonotonic,
-                pending,pending,upper).map_err(wire_error));
+                pending,
+                pending,
+                upper,
+            )
+            .map_err(wire_error)
+        });
         if effect.is_err() {
             self.control
                 .native_birth_unknown
@@ -2886,12 +2891,14 @@ impl<'a> Budget<'a> {
             wall,
             inclusive: span.elapsed(),
         });
-        let mut outcome=self.native_finish(owner,raw_error,sample,true,returned_at);
+        let mut outcome = self.native_finish(owner, raw_error, sample, true, returned_at);
         match entry_clock {
-            Ok(bounds)=>outcome.entry_clock=Some(bounds),
-            Err(code)=>{
-                self.control.bootstrap_clock_failures.fetch_add(1,Ordering::Relaxed);
-                outcome.verdict=Err(code);
+            Ok(bounds) => outcome.entry_clock = Some(bounds),
+            Err(code) => {
+                self.control
+                    .bootstrap_clock_failures
+                    .fetch_add(1, Ordering::Relaxed);
+                outcome.verdict = Err(code);
             }
         }
         Ok(outcome)
@@ -3115,7 +3122,7 @@ impl<'a> Budget<'a> {
             verdict,
             sample,
             returned_at,
-            entry_clock:None,
+            entry_clock: None,
         }
     }
     fn gate(&self) -> Result<(), Code> {
@@ -4344,7 +4351,7 @@ pub(crate) struct ProbeAudit {
     pub known_birth: bool,
     pub unknown_birth: bool,
     pub qualified_hello: bool,
-    pub entry_evidence:Option<transport::BootstrapEntryEvidence>,
+    pub entry_evidence: Option<transport::BootstrapEntryEvidence>,
     pub actual_reaped: bool,
     pub stdout_stderr_eof: bool,
     pub exit_status: Option<i32>,
@@ -4391,7 +4398,7 @@ impl ProbeAudit {
             known_birth: false,
             unknown_birth: false,
             qualified_hello: false,
-            entry_evidence:None,
+            entry_evidence: None,
             actual_reaped: false,
             stdout_stderr_eof: false,
             exit_status: None,
@@ -4424,7 +4431,7 @@ impl ProbeAudit {
         self.stdout_stderr_eof = worker.is_eof();
         self.exit_status = exit.map(ExitStatusExt::into_raw);
         self.qualified_hello = worker.bootstrap_observation().qualified_hello;
-        self.entry_evidence=Some(worker.bootstrap_entry_evidence());
+        self.entry_evidence = Some(worker.bootstrap_entry_evidence());
         Ok(())
     }
     fn capture_cost(&mut self, control: &Control) {
@@ -4635,11 +4642,16 @@ impl ProbeClaim {
 /// The account capability probe uses the SAME gated birth/debt/Hello controller
 /// as real jobs. Null context is explicit65255; it can never produce a Start.
 /// A durable single owned claim prevents overlapping/unknown predecessor probes.
-const STOPPED_ENTRY_WORKER_SHA256:&str="12ba4006b694bdce3c44d199de460d09f0f2414fafb7fd17880921a7d397a3b4";
-fn entry_worker_eligible(proof:&runner_provision::ProvisionProof)->Result<(),Code> {
+const STOPPED_ENTRY_WORKER_SHA256: &str =
+    "12ba4006b694bdce3c44d199de460d09f0f2414fafb7fd17880921a7d397a3b4";
+fn entry_worker_eligible(proof: &runner_provision::ProvisionProof) -> Result<(), Code> {
     // Historical approval is not permission to relaunch the stopped tuple.
     // No hashing, substitute worker, new tuple approval or readiness retry.
-    if proof.worker_sha256()==STOPPED_ENTRY_WORKER_SHA256 {Err(Code::RunnerUnavailable)} else {Ok(())}
+    if proof.worker_sha256() == STOPPED_ENTRY_WORKER_SHA256 {
+        Err(Code::RunnerUnavailable)
+    } else {
+        Ok(())
+    }
 }
 
 pub(crate) fn probe_gated(
@@ -4685,8 +4697,8 @@ fn probe_gated_core(
             .store(incarnation, Ordering::Release);
         let deadline = Instant::now() + Duration::from_secs(30);
         let mut budget = Budget::new(&control, deadline);
-        audit.stage="entry_tuple_eligibility";
-        budget.unit(||entry_worker_eligible(&proof))?;
+        audit.stage = "entry_tuple_eligibility";
+        budget.unit(|| entry_worker_eligible(&proof))?;
         audit.stage = "provision_bind";
         budget.unit(|| control.install_native_provision(proof.clone()))?;
         let (op, run, nonce, birth) = budget.unit(|| {
@@ -4840,7 +4852,10 @@ fn probe_gated_core(
                 }
             };
             let setup = bootstrap_control(&control, || {
-                worker.install_bootstrap_entry_clock_bounds(native.entry_clock.ok_or(Code::ResourceLimit)?)
+                worker
+                    .install_bootstrap_entry_clock_bounds(
+                        native.entry_clock.ok_or(Code::ResourceLimit)?,
+                    )
                     .map_err(wire_error)?;
                 worker
                     .bootstrap_spawn_returned(native.returned_at, deadline)
@@ -6090,7 +6105,9 @@ fn settle_probe(worker: &mut Worker, control: &Control) {
             settled = worker.try_wait().is_ok_and(|exit| exit.is_some()) && worker.is_eof();
             if settled {
                 retain_child_usage(worker, control);
-                let _=control.bootstrap_entry.set(worker.bootstrap_entry_evidence());
+                let _ = control
+                    .bootstrap_entry
+                    .set(worker.bootstrap_entry_evidence());
             }
             if !settled && since.elapsed() >= Duration::from_secs(2) && !term {
                 let _ = worker.terminate(false);
@@ -6147,13 +6164,17 @@ fn retain_child_usage(worker: &Worker, control: &Control) {
         .store(metrics.is_some(), Ordering::Release);
 }
 
-struct FixedJsonWriter<'a,const N:usize>(&'a mut FixedBytes<N>);
-impl<const N:usize> std::io::Write for FixedJsonWriter<'_,N> {
-    fn write(&mut self,bytes:&[u8])->std::io::Result<usize> {
-        self.0.extend(bytes).map_err(|_|std::io::Error::from(std::io::ErrorKind::FileTooLarge))?;
+struct FixedJsonWriter<'a, const N: usize>(&'a mut FixedBytes<N>);
+impl<const N: usize> std::io::Write for FixedJsonWriter<'_, N> {
+    fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+        self.0
+            .extend(bytes)
+            .map_err(|_| std::io::Error::from(std::io::ErrorKind::FileTooLarge))?;
         Ok(bytes.len())
     }
-    fn flush(&mut self)->std::io::Result<()> {Ok(())}
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
 }
 
 fn write_metrics(job: &Path, record: &Record, control: &Control) -> Result<(), Code> {
@@ -6346,7 +6367,7 @@ fn write_metrics(job: &Path, record: &Record, control: &Control) -> Result<(), C
         }
     }
     bytes.extend(b",\"bootstrap_entry_evidence\":")?;
-    serde_json::to_writer(FixedJsonWriter(&mut bytes),control.bootstrap_entry.get())
+    serde_json::to_writer(FixedJsonWriter(&mut bytes),&control.bootstrap_entry.get())
         .map_err(|_|Code::ResourceLimit)?;
     bytes.extend(b"}")?;
     Ok(bytes)
@@ -6483,8 +6504,11 @@ fn execute_inner(
     // Manager admits only observed quiescence. A foreground race after that admission
     // pauses this active owner's bounded wall budget; it is not a deferred retry loop.
     let mut preparation = Budget::new(control, deadline);
-    let proof=control.native_provision.get().ok_or(Code::RunnerUnavailable)?;
-    preparation.unit(||entry_worker_eligible(proof))?;
+    let proof = control
+        .native_provision
+        .get()
+        .ok_or(Code::RunnerUnavailable)?;
+    preparation.unit(|| entry_worker_eligible(proof))?;
     preparation.unit(|| private_dir(job))?;
     let (canonical, job_directory) = canonical_job(job, &mut preparation)?;
     let _job_directory = Paced::new(job_directory, control);
@@ -6636,7 +6660,8 @@ fn execute_inner(
         }
     };
     let setup = bootstrap_control(control, || {
-        worker.install_bootstrap_entry_clock_bounds(native.entry_clock.ok_or(Code::ResourceLimit)?)
+        worker
+            .install_bootstrap_entry_clock_bounds(native.entry_clock.ok_or(Code::ResourceLimit)?)
             .map_err(wire_error)?;
         worker
             .bootstrap_spawn_returned(native.returned_at, deadline)
@@ -6752,7 +6777,7 @@ fn execute_inner(
         previous: None,
         done: None,
     };
-    let result=std::thread::scope(|scope| -> Result<(), Code> {
+    let result = std::thread::scope(|scope| -> Result<(), Code> {
         let (sender, receiver) = mpsc::sync_channel(1);
         let mut receipt_settling = None;
         let snapshot_owner = scope.spawn(move || {
@@ -7078,8 +7103,10 @@ fn execute_inner(
         // Actual reap and both output EOFs precede final receipt validation.
         // Missing/duplicate/malformed diagnostics cannot certify completion;
         // abrupt cancellation above retains unknown metrics honestly.
-        let entry=worker.bootstrap_entry_evidence();
-        if entry.status!=transport::BootstrapEntryStatus::Known {return Err(Code::ProtocolError);}
+        let entry = worker.bootstrap_entry_evidence();
+        if entry.status != transport::BootstrapEntryEvidenceState::Known {
+            return Err(Code::ProtocolError);
+        }
         let metrics = worker.producer_metrics().ok_or(Code::ResourceLimit)?;
         if !control.native_metrics_authorized.load(Ordering::Acquire)
             || !control.child_usage_observed.load(Ordering::Acquire)
@@ -7097,8 +7124,10 @@ fn execute_inner(
             .map_err(|code| *code)?;
         validate_output(job, record, &snapshot.manifest, done, control, deadline)
     });
-    let captured=bootstrap_control(control,|| {
-        let _=control.bootstrap_entry.set(worker.bootstrap_entry_evidence());
+    let captured = bootstrap_control(control, || {
+        let _ = control
+            .bootstrap_entry
+            .set(worker.bootstrap_entry_evidence());
         Ok(())
     });
     result.and(captured)

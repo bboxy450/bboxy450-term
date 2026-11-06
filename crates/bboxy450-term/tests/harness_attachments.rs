@@ -64,8 +64,6 @@ async fn private_native_clipboard_and_drop_reach_shared_worker_and_durable_image
         cwd: temp.path().into(),
         profile: None,
         fork: None,
-        dream: None,
-        vcs: None,
         protocol: PROTOCOL,
         harness: "fixture".into(),
         created_ms: 0,

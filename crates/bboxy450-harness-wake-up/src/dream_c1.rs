@@ -1079,12 +1079,24 @@ pub struct BootstrapEntryClockBounds {
     pub return_upper_ns: u64,
 }
 impl BootstrapEntryClockBounds {
-    pub fn new(clock: BootstrapEntryClock, before_spawn_ns: u64, return_lower_ns: u64, return_upper_ns: u64) -> Result<Self, Code> {
+    pub fn new(
+        clock: BootstrapEntryClock,
+        before_spawn_ns: u64,
+        return_lower_ns: u64,
+        return_upper_ns: u64,
+    ) -> Result<Self, Code> {
         if clock != BootstrapEntryClock::ClockGettimeMonotonic
-            || before_spawn_ns > return_lower_ns || return_lower_ns > return_upper_ns {
+            || before_spawn_ns > return_lower_ns
+            || return_lower_ns > return_upper_ns
+        {
             return Err(Code::ResourceLimit);
         }
-        Ok(Self { clock, before_spawn_ns, return_lower_ns, return_upper_ns })
+        Ok(Self {
+            clock,
+            before_spawn_ns,
+            return_lower_ns,
+            return_upper_ns,
+        })
     }
 }
 
@@ -1112,26 +1124,64 @@ pub struct BootstrapEntryEvidence {
 }
 
 pub fn parse_bootstrap_entry(line: &[u8]) -> Result<BootstrapEntryRecord, Code> {
-    if line.len() > 256 { return Err(Code::ResourceLimit); }
-    let body = line.strip_prefix(b"dream-bootstrap entry ")
-        .and_then(|line| line.strip_suffix(b"\n")).ok_or(Code::ProtocolError)?;
+    if line.len() > 256 {
+        return Err(Code::ResourceLimit);
+    }
+    let body = line
+        .strip_prefix(b"dream-bootstrap entry ")
+        .and_then(|line| line.strip_suffix(b"\n"))
+        .ok_or(Code::ProtocolError)?;
     let mut fields = body.split(|byte| *byte == b' ');
     let mut values = [0u64; 9];
-    for (index, key) in [b"s=".as_slice(), b"g=", b"e=", b"m=", b"u=", b"k=", b"r=", b"p=", b"ok="].into_iter().enumerate() {
-        let value = fields.next().and_then(|field| field.strip_prefix(key)).ok_or(Code::ProtocolError)?;
+    for (index, key) in [
+        b"s=".as_slice(),
+        b"g=",
+        b"e=",
+        b"m=",
+        b"u=",
+        b"k=",
+        b"r=",
+        b"p=",
+        b"ok=",
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let value = fields
+            .next()
+            .and_then(|field| field.strip_prefix(key))
+            .ok_or(Code::ProtocolError)?;
         if value.is_empty() || value.len() > 20 || value.len() > 1 && value[0] == b'0' {
             return Err(Code::ProtocolError);
         }
         for &byte in value {
-            if !byte.is_ascii_digit() { return Err(Code::ProtocolError); }
-            values[index] = values[index].checked_mul(10).and_then(|n| n.checked_add(u64::from(byte-b'0'))).ok_or(Code::ProtocolError)?;
+            if !byte.is_ascii_digit() {
+                return Err(Code::ProtocolError);
+            }
+            values[index] = values[index]
+                .checked_mul(10)
+                .and_then(|n| n.checked_add(u64::from(byte - b'0')))
+                .ok_or(Code::ProtocolError)?;
         }
     }
-    if fields.next().is_some() || values[8] > 1 || values[2] > values[3]
-        || values[8] == 0 && [0,4,5,6,7].into_iter().any(|i| values[i] != 0) {
+    if fields.next().is_some()
+        || values[8] > 1
+        || values[2] > values[3]
+        || values[8] == 0 && [0, 4, 5, 6, 7].into_iter().any(|i| values[i] != 0)
+    {
         return Err(Code::ProtocolError);
     }
-    Ok(BootstrapEntryRecord { s:values[0],g:values[1],e:values[2],m:values[3],u:values[4],k:values[5],r:values[6],p:values[7],ok:values[8] == 1 })
+    Ok(BootstrapEntryRecord {
+        s: values[0],
+        g: values[1],
+        e: values[2],
+        m: values[3],
+        u: values[4],
+        k: values[5],
+        r: values[6],
+        p: values[7],
+        ok: values[8] == 1,
+    })
 }
 
 #[derive(Clone, Copy, Debug, Default)]
@@ -1163,46 +1213,97 @@ impl BootstrapEntryTracking {
     fn observe(&mut self, bytes: &[u8], clock: Result<u64, bootstrap::Error>) {
         let observed = match clock {
             Ok(now) => {
-                if self.last_observation_ns.is_some_and(|prior| now < prior) { self.invalid = true; }
+                if self.last_observation_ns.is_some_and(|prior| now < prior) {
+                    self.invalid = true;
+                }
                 self.last_observation_ns = Some(now);
                 Some(now)
             }
-            Err(_) => { self.invalid = true; None }
+            Err(_) => {
+                self.invalid = true;
+                None
+            }
         };
         if self.observed_ns.is_none()
-            && let Some(line) = bytes.split_inclusive(|b| *b == b'\n').find(|line| line.starts_with(b"dream-bootstrap entry") && line.ends_with(b"\n")) {
+            && let Some(line) = bytes
+                .split_inclusive(|b| *b == b'\n')
+                .find(|line| line.starts_with(b"dream-bootstrap entry") && line.ends_with(b"\n"))
+        {
             self.record = parse_bootstrap_entry(line).ok();
             self.observed_ns = observed;
         }
-        if parse_bootstrap_markers(bytes).is_err() { self.invalid = true; }
+        if parse_bootstrap_markers(bytes).is_err() {
+            self.invalid = true;
+        }
     }
     fn evidence(&self, bytes: &[u8], reaped: bool) -> BootstrapEntryEvidence {
         let mut evidence = BootstrapEntryEvidence {
-            status: BootstrapEntryEvidenceState::Pending,record:self.record,observed_ns:self.observed_ns,bounds:self.bounds,
-            return_clock_uncertainty_ns:None,signed_spawn_return_to_entry_ns:None,recognition_ns:None,write_observation_upper_ns:None,
+            status: BootstrapEntryEvidenceState::Pending,
+            record: self.record,
+            observed_ns: self.observed_ns,
+            bounds: self.bounds,
+            return_clock_uncertainty_ns: None,
+            signed_spawn_return_to_entry_ns: None,
+            recognition_ns: None,
+            write_observation_upper_ns: None,
         };
         let markers = parse_bootstrap_markers(bytes);
-        if self.invalid || markers.is_err() { evidence.status=BootstrapEntryEvidenceState::Unknown; return evidence; }
+        if self.invalid || markers.is_err() {
+            evidence.status = BootstrapEntryEvidenceState::Unknown;
+            return evidence;
+        }
         let markers = markers.unwrap();
-        let (Some(record),Some(observed),Some(bounds)) = (markers.entry,self.observed_ns,self.bounds) else {
-            if self.stderr_eof || reaped { evidence.status=BootstrapEntryEvidenceState::Unknown; }
+        if (self.stderr_eof || reaped)
+            && bytes
+                .rsplit(|b| *b == b'\n')
+                .next()
+                .is_some_and(|tail| tail.starts_with(b"dream-bootstrap"))
+        {
+            evidence.status = BootstrapEntryEvidenceState::Unknown;
+            return evidence;
+        }
+        let (Some(record), Some(observed), Some(bounds)) =
+            (markers.entry, self.observed_ns, self.bounds)
+        else {
+            if self.stderr_eof || reaped {
+                evidence.status = BootstrapEntryEvidenceState::Unknown;
+            }
             return evidence;
         };
         if bounds.clock != BootstrapEntryClock::ClockGettimeMonotonic
-            || bounds.before_spawn_ns > bounds.return_lower_ns || bounds.return_lower_ns > bounds.return_upper_ns
-            || record.e < bounds.before_spawn_ns || record.e > record.m || record.m > observed || bounds.return_upper_ns > observed {
-            evidence.status=BootstrapEntryEvidenceState::Unknown;return evidence;
+            || bounds.before_spawn_ns > bounds.return_lower_ns
+            || bounds.return_lower_ns > bounds.return_upper_ns
+            || record.e < bounds.before_spawn_ns
+            || record.e > record.m
+            || record.m > observed
+            || bounds.return_upper_ns > observed
+        {
+            evidence.status = BootstrapEntryEvidenceState::Unknown;
+            return evidence;
         }
-        if !markers.waiting { return evidence; }
-        evidence.status=BootstrapEntryEvidenceState::Known;
-        evidence.return_clock_uncertainty_ns=Some(bounds.return_upper_ns-bounds.return_lower_ns);
-        evidence.signed_spawn_return_to_entry_ns=Some([i128::from(record.e)-i128::from(bounds.return_upper_ns),i128::from(record.e)-i128::from(bounds.return_lower_ns)]);
-        evidence.recognition_ns=Some(record.m-record.e);
-        evidence.write_observation_upper_ns=Some(observed-record.m);
+        if !markers.waiting {
+            if self.stderr_eof || reaped {
+                evidence.status = BootstrapEntryEvidenceState::Unknown;
+            }
+            return evidence;
+        }
+        evidence.status = BootstrapEntryEvidenceState::Known;
+        evidence.return_clock_uncertainty_ns =
+            Some(bounds.return_upper_ns - bounds.return_lower_ns);
+        evidence.signed_spawn_return_to_entry_ns = Some([
+            i128::from(record.e) - i128::from(bounds.return_upper_ns),
+            i128::from(record.e) - i128::from(bounds.return_lower_ns),
+        ]);
+        evidence.recognition_ns = Some(record.m - record.e);
+        evidence.write_observation_upper_ns = Some(observed - record.m);
         evidence
     }
 }
-fn capture_stderr(stderr: &mut File, capture: &mut Vec<u8>, entry: &mut BootstrapEntryTracking) -> Result<(), Code> {
+fn capture_stderr(
+    stderr: &mut File,
+    capture: &mut Vec<u8>,
+    entry: &mut BootstrapEntryTracking,
+) -> Result<(), Code> {
     let mut bytes = [0; 256];
     match stderr.read(&mut bytes) {
         Ok(n) => {
@@ -1211,8 +1312,12 @@ fn capture_stderr(stderr: &mut File, capture: &mut Vec<u8>, entry: &mut Bootstra
                 return Err(Code::ResourceLimit);
             }
             capture.extend_from_slice(&bytes[..n]);
-            if let Some(observed) = observed { entry.observe(capture, observed); }
-            if n == 0 { entry.stderr_eof = true; }
+            if let Some(observed) = observed {
+                entry.observe(capture, observed);
+            }
+            if n == 0 {
+                entry.stderr_eof = true;
+            }
             Ok(())
         }
         Err(e)
@@ -1237,6 +1342,9 @@ fn parse_bootstrap_markers(bytes: &[u8]) -> Result<BootstrapMarkers, Code> {
             return Err(Code::ResourceLimit);
         }
         if !line.ends_with('\n') {
+            if line.starts_with("dream-bootstrap entry") && markers.entry.is_some() {
+                return Err(Code::ProtocolError);
+            }
             continue;
         }
         let Some(fields) = line
@@ -1261,7 +1369,9 @@ fn parse_bootstrap_markers(bytes: &[u8]) -> Result<BootstrapMarkers, Code> {
             return Err(Code::VersionMismatch);
         }
         let (target, expected): (&mut [u64], usize) = match state {
-            "state=waiting" if markers.entry.is_some() && !markers.waiting && !markers.paid_hello => {
+            "state=waiting"
+                if markers.entry.is_some() && !markers.waiting && !markers.paid_hello =>
+            {
                 markers.waiting = true;
                 (&mut markers.waiting_admissions, 3)
             }
@@ -1900,7 +2010,11 @@ pub struct PreparedCommand {
 impl PreparedCommand {
     /// One bounded nonblocking control read; raw stderr never leaves its owner.
     pub fn poll_bootstrap_markers(&mut self) -> Result<BootstrapMarkers, Code> {
-        capture_stderr(&mut self.stderr, &mut self.buffers.stderr_capture, &mut self.entry)?;
+        capture_stderr(
+            &mut self.stderr,
+            &mut self.buffers.stderr_capture,
+            &mut self.entry,
+        )?;
         parse_bootstrap_markers(&self.buffers.stderr_capture)
     }
     pub fn configure_input(&self) -> Result<(), Code> {
@@ -2135,15 +2249,27 @@ impl Worker {
         self.stderr_eof |= self.entry.stderr_eof;
         self.bootstrap_markers()
     }
-    pub fn install_bootstrap_entry_clock_bounds(&mut self, bounds: BootstrapEntryClockBounds) -> Result<(), Code> {
-        if self.entry.bounds.is_some() { self.entry.invalid=true;return Err(Code::ProtocolError); }
-        let bounds=BootstrapEntryClockBounds::new(bounds.clock,bounds.before_spawn_ns,bounds.return_lower_ns,bounds.return_upper_ns)
-            .inspect_err(|_|self.entry.invalid=true)?;
-        self.entry.bounds=Some(bounds);
+    pub fn install_bootstrap_entry_clock_bounds(
+        &mut self,
+        bounds: BootstrapEntryClockBounds,
+    ) -> Result<(), Code> {
+        if self.entry.bounds.is_some() {
+            self.entry.invalid = true;
+            return Err(Code::ProtocolError);
+        }
+        let bounds = BootstrapEntryClockBounds::new(
+            bounds.clock,
+            bounds.before_spawn_ns,
+            bounds.return_lower_ns,
+            bounds.return_upper_ns,
+        )
+        .inspect_err(|_| self.entry.invalid = true)?;
+        self.entry.bounds = Some(bounds);
         Ok(())
     }
     pub fn bootstrap_entry_evidence(&self) -> BootstrapEntryEvidence {
-        self.entry.evidence(&self.stderr_capture,self.reaped.is_some())
+        self.entry
+            .evidence(&self.stderr_capture, self.reaped.is_some())
     }
     pub fn bootstrap_frozen(&self) -> bootstrap::Frozen {
         self.bootstrap.frozen()
@@ -2200,16 +2326,24 @@ impl Worker {
     /// Stdout can arrive before the stderr read: retain it in the existing
     /// bounded byte buffer without accepting/discarding its queued Hello.
     pub fn hello_entry_step(&mut self) -> Result<Option<wire::Hello>, Code> {
-        let result=(|| {
-            self.bootstrap.check_readiness().map_err(|_|Code::RunnerUnavailable)?;
-            self.poll_bootstrap_markers().map_err(|_|Code::RunnerUnavailable)?;
+        let result = (|| {
+            self.bootstrap
+                .check_readiness()
+                .map_err(|_| Code::RunnerUnavailable)?;
+            self.poll_bootstrap_markers()
+                .map_err(|_| Code::RunnerUnavailable)?;
             match self.bootstrap_entry_evidence().status {
-                BootstrapEntryEvidenceState::Unknown=>Err(Code::RunnerUnavailable),
-                BootstrapEntryEvidenceState::Pending=>{self.buffer_stdout()?;Ok(None)},
-                BootstrapEntryEvidenceState::Known=>self.hello_step(),
+                BootstrapEntryEvidenceState::Unknown => Err(Code::RunnerUnavailable),
+                BootstrapEntryEvidenceState::Pending => {
+                    self.buffer_stdout()?;
+                    Ok(None)
+                }
+                BootstrapEntryEvidenceState::Known => self.hello_step(),
             }
         })();
-        if result.is_err(){self.bootstrap.revoke();}
+        if result.is_err() {
+            self.bootstrap.revoke();
+        }
         result
     }
     pub fn is_eof(&self) -> bool {
@@ -2348,10 +2482,11 @@ impl Worker {
         Ok(true)
     }
 
-    /// Read no more than 16 KiB per call. Reject an overlong frame before growth.
-    pub fn receive(&mut self) -> Result<Option<WorkerOut>, Code> {
-        if let Some(end) = self.pending.iter().position(|b| *b == b'\n') {
-            return take_frame(&mut self.pending, &mut self.frame_scratch, end).map(Some);
+    /// Preserve an early Hello until its independent stderr evidence arrives.
+    /// Read at most 16 KiB, within the already reserved frame capacity.
+    fn buffer_stdout(&mut self) -> Result<(), Code> {
+        if self.pending.contains(&b'\n') {
+            return Ok(());
         }
         let mut bytes = [0u8; 16 * 1024];
         let room = wire::MAX_FRAME.saturating_sub(self.pending.len());
@@ -2376,22 +2511,16 @@ impl Worker {
             Err(e) if e.kind() == std::io::ErrorKind::Interrupted => {}
             Err(_) => return Err(Code::WorkerLost),
         }
-        match self.stderr.read(&mut bytes) {
-            Ok(0) => self.stderr_eof = true,
-            Ok(n) => {
-                self.stderr_bytes += n;
-                if self.stderr_bytes > 16 * 1024 {
-                    return Err(Code::ResourceLimit);
-                }
-                self.stderr_capture.extend_from_slice(&bytes[..n]);
-            }
-            Err(e)
-                if matches!(
-                    e.kind(),
-                    std::io::ErrorKind::WouldBlock | std::io::ErrorKind::Interrupted
-                ) => {}
-            Err(_) => return Err(Code::WorkerLost),
-        }
+        Ok(())
+    }
+
+    /// Read no more than 16 KiB stdout and 256 B stderr per call. Every stderr
+    /// read uses the same entry tracker, including reads after Hello.
+    pub fn receive(&mut self) -> Result<Option<WorkerOut>, Code> {
+        self.buffer_stdout()?;
+        capture_stderr(&mut self.stderr, &mut self.stderr_capture, &mut self.entry)?;
+        self.stderr_bytes = self.stderr_capture.len();
+        self.stderr_eof |= self.entry.stderr_eof;
         if let Some(end) = self.pending.iter().position(|b| *b == b'\n') {
             take_frame(&mut self.pending, &mut self.frame_scratch, end).map(Some)
         } else {
@@ -2481,6 +2610,161 @@ impl Drop for Worker {
 }
 
 #[cfg(test)]
+mod entry_tests {
+    use super::*;
+
+    const ENTRY: &str = "dream-bootstrap entry s=7 g=8 e=110 m=125 u=9 k=10 r=11 p=12 ok=1\n";
+    const WAITING: &str = "dream-bootstrap state=waiting profile=dream-bootstrap/1 argv_admissions=0 channel_admissions=0 owner_admissions=0\n";
+
+    fn tracking() -> BootstrapEntryTracking {
+        BootstrapEntryTracking {
+            bounds: Some(
+                BootstrapEntryClockBounds::new(
+                    BootstrapEntryClock::ClockGettimeMonotonic,
+                    100,
+                    115,
+                    120,
+                )
+                .unwrap(),
+            ),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn entry_preserves_signed_return_uncertainty_and_raw_counters() {
+        let bytes = format!("{ENTRY}{WAITING}");
+        let mut tracker = tracking();
+        tracker.observe(bytes.as_bytes(), Ok(130));
+        let evidence = tracker.evidence(bytes.as_bytes(), false);
+        assert_eq!(evidence.status, BootstrapEntryEvidenceState::Known);
+        assert_eq!(evidence.signed_spawn_return_to_entry_ns, Some([-10, -5]));
+        assert_eq!(evidence.return_clock_uncertainty_ns, Some(5));
+        assert_eq!(evidence.recognition_ns, Some(15));
+        assert_eq!(evidence.write_observation_upper_ns, Some(5));
+        assert_eq!(
+            evidence.record.unwrap(),
+            parse_bootstrap_entry(ENTRY.as_bytes()).unwrap()
+        );
+        let maximum = u64::MAX;
+        let max_line = format!(
+            "dream-bootstrap entry s={maximum} g={maximum} e={maximum} m={maximum} u={maximum} k={maximum} r={maximum} p={maximum} ok=1\n"
+        );
+        assert!(max_line.len() <= 256);
+        assert_eq!(
+            parse_bootstrap_entry(max_line.as_bytes()).unwrap().p,
+            maximum
+        );
+        let failed = parse_bootstrap_entry(
+            b"dream-bootstrap entry s=0 g=8 e=110 m=125 u=0 k=0 r=0 p=0 ok=0\n",
+        )
+        .unwrap();
+        assert!(!failed.ok);
+        assert_eq!(failed.g, 8); // Raw counter, never a derived zero cost.
+    }
+
+    #[test]
+    fn entry_parser_refuses_malformed_decimal_order_bounds_and_usage_failure() {
+        for bad in [
+            ENTRY.trim_end().to_owned(),
+            ENTRY.replace('\n', "\r\n"),
+            ENTRY.replace("s=7 g=8", "g=8 s=7"),
+            ENTRY.replace("s=7", "s=07"),
+            ENTRY.replace("g=8", "g=8 g=9"),
+            ENTRY.replace("s=7", "s=+7"),
+            ENTRY.replace("s=7", "s=18446744073709551616"),
+            ENTRY.replace("s=7", "s=x"),
+            ENTRY.replace("ok=1", "ok=2"),
+            ENTRY.replace("e=110", "e=126"),
+            ENTRY.replace("ok=1", "ok=0"),
+            format!("{ENTRY}{}", " ".repeat(256)),
+        ] {
+            assert!(parse_bootstrap_entry(bad.as_bytes()).is_err(), "{bad:?}");
+        }
+    }
+
+    #[test]
+    fn entry_missing_duplicate_out_of_order_partial_and_reversed_clocks_are_unknown() {
+        for bad in [
+            String::new(),
+            WAITING.to_owned(),
+            ENTRY.to_owned(),
+            format!("{ENTRY}{ENTRY}{WAITING}"),
+            format!("{WAITING}{ENTRY}"),
+            format!("{ENTRY}{WAITING}{ENTRY}"),
+            format!("{ENTRY}{WAITING}dream-bootstrap entry s="),
+        ] {
+            let mut tracker = tracking();
+            tracker.observe(bad.as_bytes(), Ok(130));
+            assert_ne!(
+                tracker.evidence(bad.as_bytes(), false).status,
+                BootstrapEntryEvidenceState::Known,
+                "{bad:?}"
+            );
+            assert_eq!(
+                tracker.evidence(bad.as_bytes(), true).status,
+                BootstrapEntryEvidenceState::Unknown,
+                "{bad:?}"
+            );
+        }
+        let bytes = format!("{ENTRY}{WAITING}");
+        for clock in [Ok(124), Err(bootstrap::Error::Clock)] {
+            let mut tracker = tracking();
+            tracker.observe(bytes.as_bytes(), clock);
+            assert_eq!(
+                tracker.evidence(bytes.as_bytes(), false).status,
+                BootstrapEntryEvidenceState::Unknown
+            );
+        }
+        let mut tracker = tracking();
+        tracker.observe(bytes.as_bytes(), Ok(130));
+        tracker.observe(bytes.as_bytes(), Ok(129));
+        assert_eq!(
+            tracker.evidence(bytes.as_bytes(), false).status,
+            BootstrapEntryEvidenceState::Unknown
+        );
+        assert!(
+            BootstrapEntryClockBounds::new(BootstrapEntryClock::Unknown, 100, 115, 120).is_err()
+        );
+        assert!(
+            BootstrapEntryClockBounds::new(
+                BootstrapEntryClock::ClockGettimeMonotonic,
+                100,
+                120,
+                115
+            )
+            .is_err()
+        );
+    }
+
+    #[test]
+    fn entry_fragmented_pipe_observation_keeps_first_complete_line_timestamp() {
+        let (read, mut write) = std::io::pipe().unwrap();
+        let mut read = File::from(OwnedFd::from(read));
+        nonblocking(&read).unwrap();
+        let mut captured = Vec::with_capacity(16 * 1024);
+        let mut tracker = BootstrapEntryTracking::default();
+        write.write_all(&ENTRY.as_bytes()[..20]).unwrap();
+        capture_stderr(&mut read, &mut captured, &mut tracker).unwrap();
+        assert!(tracker.observed_ns.is_none());
+        write.write_all(&ENTRY.as_bytes()[20..]).unwrap();
+        capture_stderr(&mut read, &mut captured, &mut tracker).unwrap();
+        let first = tracker.observed_ns.unwrap();
+        write.write_all(WAITING.as_bytes()).unwrap();
+        capture_stderr(&mut read, &mut captured, &mut tracker).unwrap();
+        assert_eq!(tracker.observed_ns, Some(first));
+        assert_eq!(
+            tracker.record,
+            Some(parse_bootstrap_entry(ENTRY.as_bytes()).unwrap())
+        );
+        assert!(parse_bootstrap_markers(&captured).unwrap().waiting);
+        drop(write);
+        capture_stderr(&mut read, &mut captured, &mut tracker).unwrap();
+        assert!(tracker.stderr_eof);
+    }
+}
+
+#[cfg(test)]
 mod diagnostic_tests {
     use super::*;
 
@@ -2507,7 +2791,8 @@ mod diagnostic_tests {
         // Adapted from signed harness bab543e2116d src/dream/bootstrap.rs::Gate::retire.
         const WAITING: &str = "dream-bootstrap state=waiting profile=dream-bootstrap/1 argv_admissions=0 channel_admissions=0 owner_admissions=0\n";
         const PAID: &str = "dream-bootstrap state=paid_hello profile=dream-bootstrap/1 argv_admissions=1 channel_admissions=1 owner_admissions=1 frame_admissions=1 permit_reads=1 control_cpu_ns=12000 control_max_cpu_ns=7000\n";
-        let receipt = format!("{WAITING}{PAID}");
+        const ENTRY: &str = "dream-bootstrap entry s=7 g=8 e=110 m=125 u=9 k=10 r=11 p=12 ok=1\n";
+        let receipt = format!("{ENTRY}{WAITING}{PAID}");
         let markers = parse_bootstrap_markers(receipt.as_bytes()).unwrap();
         assert!(markers.waiting && markers.paid_hello);
         assert_eq!(markers.waiting_admissions, [0; 3]);
@@ -2532,7 +2817,11 @@ mod diagnostic_tests {
             ),
             format!("{PAID}{PAID}"),
         ] {
-            assert!(parse_bootstrap_markers(bad.as_bytes()).is_err(), "{bad}");
+            let receipt = format!("{ENTRY}{WAITING}{bad}");
+            assert!(
+                parse_bootstrap_markers(receipt.as_bytes()).is_err(),
+                "{receipt}"
+            );
         }
         let partial = receipt.trim_end_matches('\n');
         let markers = parse_bootstrap_markers(partial.as_bytes()).unwrap();
@@ -2698,7 +2987,8 @@ mod diagnostic_tests {
                 + buffers.write.capacity()
                 + buffers.stderr_capture.capacity()
                 + bootstrap::BOOTSTRAP_CONTROL_BYTES
-                + START_CONTROL_BYTES,
+                + START_CONTROL_BYTES
+                + ENTRY_CONTROL_BYTES,
             PROTECTED_BYTES
         );
         assert!(buffers.frame_scratch.capacity() >= wire::MAX_FRAME);
