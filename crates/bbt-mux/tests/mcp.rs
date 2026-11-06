@@ -7409,8 +7409,9 @@ fn mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_t
         claim["description"]
             .as_str()
             .unwrap()
-            .contains("responsibility only")
+            .contains("existing committed artifact")
     );
+    assert!(claim["description"].as_str().unwrap().contains("not a document reader or editor"));
     assert!(
         claim["description"]
             .as_str()
