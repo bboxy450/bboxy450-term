@@ -1048,8 +1048,95 @@ fn child_usage(usage: libc::rusage) -> ChildUsage {
     }
 }
 
+/// Frozen ICD78219b913 entry line. Auxiliary s/g/u/k/r/p are raw, unverified
+/// counters: no clock conversion, subtraction or CPU/loader classification.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+pub struct BootstrapEntryRecord {
+    pub s: u64,
+    pub g: u64,
+    pub e: u64,
+    pub m: u64,
+    pub u: u64,
+    pub k: u64,
+    pub r: u64,
+    pub p: u64,
+    pub ok: bool,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+pub enum BootstrapEntryClock {
+    ClockGettimeMonotonic,
+    Unknown,
+}
+
+/// The original return Instant lies within the explicit same-clock bracket.
+/// A conservative lower bound may be the sample before the native attempt.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize)]
+pub struct BootstrapEntryClockBounds {
+    pub clock: BootstrapEntryClock,
+    pub before_spawn_ns: u64,
+    pub return_lower_ns: u64,
+    pub return_upper_ns: u64,
+}
+impl BootstrapEntryClockBounds {
+    pub fn new(clock: BootstrapEntryClock, before_spawn_ns: u64, return_lower_ns: u64, return_upper_ns: u64) -> Result<Self, Code> {
+        if clock != BootstrapEntryClock::ClockGettimeMonotonic
+            || before_spawn_ns > return_lower_ns || return_lower_ns > return_upper_ns {
+            return Err(Code::ResourceLimit);
+        }
+        Ok(Self { clock, before_spawn_ns, return_lower_ns, return_upper_ns })
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum BootstrapEntryEvidenceState {
+    #[default]
+    Pending,
+    Known,
+    Unknown,
+}
+
+#[derive(Clone, Copy, Debug, serde::Serialize)]
+pub struct BootstrapEntryEvidence {
+    pub status: BootstrapEntryEvidenceState,
+    pub record: Option<BootstrapEntryRecord>,
+    pub observed_ns: Option<u64>,
+    pub bounds: Option<BootstrapEntryClockBounds>,
+    pub return_clock_uncertainty_ns: Option<u64>,
+    pub signed_spawn_return_to_entry_ns: Option<[i128; 2]>,
+    pub recognition_ns: Option<u64>,
+    /// m is PRE-write. The actual write lies in [m,observed_ns]; this is
+    /// only its observation-lag upper bound, never an emission timestamp.
+    pub write_observation_upper_ns: Option<u64>,
+}
+
+pub fn parse_bootstrap_entry(line: &[u8]) -> Result<BootstrapEntryRecord, Code> {
+    if line.len() > 256 { return Err(Code::ResourceLimit); }
+    let body = line.strip_prefix(b"dream-bootstrap entry ")
+        .and_then(|line| line.strip_suffix(b"\n")).ok_or(Code::ProtocolError)?;
+    let mut fields = body.split(|byte| *byte == b' ');
+    let mut values = [0u64; 9];
+    for (index, key) in [b"s=".as_slice(), b"g=", b"e=", b"m=", b"u=", b"k=", b"r=", b"p=", b"ok="].into_iter().enumerate() {
+        let value = fields.next().and_then(|field| field.strip_prefix(key)).ok_or(Code::ProtocolError)?;
+        if value.is_empty() || value.len() > 20 || value.len() > 1 && value[0] == b'0' {
+            return Err(Code::ProtocolError);
+        }
+        for &byte in value {
+            if !byte.is_ascii_digit() { return Err(Code::ProtocolError); }
+            values[index] = values[index].checked_mul(10).and_then(|n| n.checked_add(u64::from(byte-b'0'))).ok_or(Code::ProtocolError)?;
+        }
+    }
+    if fields.next().is_some() || values[8] > 1 || values[2] > values[3]
+        || values[8] == 0 && [0,4,5,6,7].into_iter().any(|i| values[i] != 0) {
+        return Err(Code::ProtocolError);
+    }
+    Ok(BootstrapEntryRecord { s:values[0],g:values[1],e:values[2],m:values[3],u:values[4],k:values[5],r:values[6],p:values[7],ok:values[8] == 1 })
+}
+
 #[derive(Clone, Copy, Debug, Default)]
 pub struct BootstrapMarkers {
+    pub entry: Option<BootstrapEntryRecord>,
     pub waiting: bool,
     pub waiting_admissions: [u64; 3],
     pub paid_hello: bool,
@@ -1059,14 +1146,73 @@ pub struct BootstrapMarkers {
     pub control_cpu_ns: u64,
     pub control_max_cpu_ns: u64,
 }
-fn capture_stderr(stderr: &mut File, capture: &mut Vec<u8>) -> Result<(), Code> {
+
+/// Fixed retained control state, charged out of existing codec scratch.
+const ENTRY_CONTROL_BYTES: usize = 256;
+#[derive(Default)]
+struct BootstrapEntryTracking {
+    record: Option<BootstrapEntryRecord>,
+    observed_ns: Option<u64>,
+    bounds: Option<BootstrapEntryClockBounds>,
+    last_observation_ns: Option<u64>,
+    invalid: bool,
+    stderr_eof: bool,
+}
+const _: () = assert!(std::mem::size_of::<BootstrapEntryTracking>() <= ENTRY_CONTROL_BYTES);
+impl BootstrapEntryTracking {
+    fn observe(&mut self, bytes: &[u8], clock: Result<u64, bootstrap::Error>) {
+        let observed = match clock {
+            Ok(now) => {
+                if self.last_observation_ns.is_some_and(|prior| now < prior) { self.invalid = true; }
+                self.last_observation_ns = Some(now);
+                Some(now)
+            }
+            Err(_) => { self.invalid = true; None }
+        };
+        if self.observed_ns.is_none()
+            && let Some(line) = bytes.split_inclusive(|b| *b == b'\n').find(|line| line.starts_with(b"dream-bootstrap entry") && line.ends_with(b"\n")) {
+            self.record = parse_bootstrap_entry(line).ok();
+            self.observed_ns = observed;
+        }
+        if parse_bootstrap_markers(bytes).is_err() { self.invalid = true; }
+    }
+    fn evidence(&self, bytes: &[u8], reaped: bool) -> BootstrapEntryEvidence {
+        let mut evidence = BootstrapEntryEvidence {
+            status: BootstrapEntryEvidenceState::Pending,record:self.record,observed_ns:self.observed_ns,bounds:self.bounds,
+            return_clock_uncertainty_ns:None,signed_spawn_return_to_entry_ns:None,recognition_ns:None,write_observation_upper_ns:None,
+        };
+        let markers = parse_bootstrap_markers(bytes);
+        if self.invalid || markers.is_err() { evidence.status=BootstrapEntryEvidenceState::Unknown; return evidence; }
+        let markers = markers.unwrap();
+        let (Some(record),Some(observed),Some(bounds)) = (markers.entry,self.observed_ns,self.bounds) else {
+            if self.stderr_eof || reaped { evidence.status=BootstrapEntryEvidenceState::Unknown; }
+            return evidence;
+        };
+        if bounds.clock != BootstrapEntryClock::ClockGettimeMonotonic
+            || bounds.before_spawn_ns > bounds.return_lower_ns || bounds.return_lower_ns > bounds.return_upper_ns
+            || record.e < bounds.before_spawn_ns || record.e > record.m || record.m > observed || bounds.return_upper_ns > observed {
+            evidence.status=BootstrapEntryEvidenceState::Unknown;return evidence;
+        }
+        if !markers.waiting { return evidence; }
+        evidence.status=BootstrapEntryEvidenceState::Known;
+        evidence.return_clock_uncertainty_ns=Some(bounds.return_upper_ns-bounds.return_lower_ns);
+        evidence.signed_spawn_return_to_entry_ns=Some([i128::from(record.e)-i128::from(bounds.return_upper_ns),i128::from(record.e)-i128::from(bounds.return_lower_ns)]);
+        evidence.recognition_ns=Some(record.m-record.e);
+        evidence.write_observation_upper_ns=Some(observed-record.m);
+        evidence
+    }
+}
+fn capture_stderr(stderr: &mut File, capture: &mut Vec<u8>, entry: &mut BootstrapEntryTracking) -> Result<(), Code> {
     let mut bytes = [0; 256];
     match stderr.read(&mut bytes) {
         Ok(n) => {
+            let observed = (n > 0).then(bootstrap::monotonic_ns);
             if capture.len() + n > 16 * 1024 {
                 return Err(Code::ResourceLimit);
             }
             capture.extend_from_slice(&bytes[..n]);
+            if let Some(observed) = observed { entry.observe(capture, observed); }
+            if n == 0 { entry.stderr_eof = true; }
             Ok(())
         }
         Err(e)
@@ -1087,6 +1233,9 @@ fn parse_bootstrap_markers(bytes: &[u8]) -> Result<BootstrapMarkers, Code> {
     let text = std::str::from_utf8(bytes).map_err(|_| Code::ProtocolError)?;
     let mut markers = BootstrapMarkers::default();
     for line in text.split_inclusive('\n') {
+        if line.starts_with("dream-bootstrap entry") && line.len() > 256 {
+            return Err(Code::ResourceLimit);
+        }
         if !line.ends_with('\n') {
             continue;
         }
@@ -1096,6 +1245,13 @@ fn parse_bootstrap_markers(bytes: &[u8]) -> Result<BootstrapMarkers, Code> {
         else {
             continue;
         };
+        if fields.starts_with("entry") {
+            if markers.entry.is_some() || markers.waiting || markers.paid_hello {
+                return Err(Code::ProtocolError);
+            }
+            markers.entry = Some(parse_bootstrap_entry(line.as_bytes())?);
+            continue;
+        }
         if line.len() > 256 {
             return Err(Code::ResourceLimit);
         }
@@ -1105,11 +1261,11 @@ fn parse_bootstrap_markers(bytes: &[u8]) -> Result<BootstrapMarkers, Code> {
             return Err(Code::VersionMismatch);
         }
         let (target, expected): (&mut [u64], usize) = match state {
-            "state=waiting" if !markers.waiting => {
+            "state=waiting" if markers.entry.is_some() && !markers.waiting && !markers.paid_hello => {
                 markers.waiting = true;
                 (&mut markers.waiting_admissions, 3)
             }
-            "state=paid_hello" if !markers.paid_hello => {
+            "state=paid_hello" if markers.waiting && !markers.paid_hello => {
                 markers.paid_hello = true;
                 (&mut markers.paid_admissions, 7)
             }
@@ -1739,11 +1895,12 @@ pub struct PreparedCommand {
     stderr: File,
     buffers: PreparedBuffers,
     bootstrap: Gate,
+    entry: BootstrapEntryTracking,
 }
 impl PreparedCommand {
     /// One bounded nonblocking control read; raw stderr never leaves its owner.
     pub fn poll_bootstrap_markers(&mut self) -> Result<BootstrapMarkers, Code> {
-        capture_stderr(&mut self.stderr, &mut self.buffers.stderr_capture)?;
+        capture_stderr(&mut self.stderr, &mut self.buffers.stderr_capture, &mut self.entry)?;
         parse_bootstrap_markers(&self.buffers.stderr_capture)
     }
     pub fn configure_input(&self) -> Result<(), Code> {
@@ -1772,6 +1929,7 @@ impl PreparedCommand {
             stderr,
             buffers,
             bootstrap,
+            entry,
         } = self;
         let PreparedBuffers {
             pending,
@@ -1799,6 +1957,7 @@ impl PreparedCommand {
                 reaped: None,
                 usage: None,
                 bootstrap,
+                entry,
             },
             command,
         )
@@ -1839,6 +1998,7 @@ pub struct Worker {
     reaped: Option<ExitStatus>,
     usage: Option<ChildUsage>,
     bootstrap: Gate,
+    entry: BootstrapEntryTracking,
 }
 
 impl Worker {
@@ -1853,7 +2013,8 @@ impl Worker {
                     - 2 * wire::MAX_FRAME
                     - 16 * 1024
                     - bootstrap::BOOTSTRAP_CONTROL_BYTES
-                    - START_CONTROL_BYTES,
+                    - START_CONTROL_BYTES
+                    - ENTRY_CONTROL_BYTES,
             )?,
         })
     }
@@ -1918,6 +2079,7 @@ impl Worker {
             stderr: stderr.read,
             buffers,
             bootstrap,
+            entry: BootstrapEntryTracking::default(),
         })
     }
     /// Spawn the provisioned absolute sibling directly, without inherited authority.
@@ -1957,6 +2119,7 @@ impl Worker {
             + self.frame_scratch.capacity()
             + bootstrap::BOOTSTRAP_CONTROL_BYTES
             + START_CONTROL_BYTES
+            + ENTRY_CONTROL_BYTES
     }
     pub fn bootstrap_identity(&self) -> (u32, u64, u64) {
         self.bootstrap.identity()
@@ -1967,9 +2130,20 @@ impl Worker {
     /// Refresh only the bounded private stderr cache. Stdout and any queued
     /// Hello remain untouched; incomplete diagnostic lines remain unobserved.
     pub fn poll_bootstrap_markers(&mut self) -> Result<BootstrapMarkers, Code> {
-        capture_stderr(&mut self.stderr, &mut self.stderr_capture)?;
+        capture_stderr(&mut self.stderr, &mut self.stderr_capture, &mut self.entry)?;
         self.stderr_bytes = self.stderr_capture.len();
+        self.stderr_eof |= self.entry.stderr_eof;
         self.bootstrap_markers()
+    }
+    pub fn install_bootstrap_entry_clock_bounds(&mut self, bounds: BootstrapEntryClockBounds) -> Result<(), Code> {
+        if self.entry.bounds.is_some() { self.entry.invalid=true;return Err(Code::ProtocolError); }
+        let bounds=BootstrapEntryClockBounds::new(bounds.clock,bounds.before_spawn_ns,bounds.return_lower_ns,bounds.return_upper_ns)
+            .inspect_err(|_|self.entry.invalid=true)?;
+        self.entry.bounds=Some(bounds);
+        Ok(())
+    }
+    pub fn bootstrap_entry_evidence(&self) -> BootstrapEntryEvidence {
+        self.entry.evidence(&self.stderr_capture,self.reaped.is_some())
     }
     pub fn bootstrap_frozen(&self) -> bootstrap::Frozen {
         self.bootstrap.frozen()
@@ -2019,6 +2193,23 @@ impl Worker {
         if result.is_err() {
             self.bootstrap.revoke();
         }
+        result
+    }
+    /// Actual C1 readiness/probing requires entry+waiting and same-clock bounds.
+    /// Protocol-only fake peers use hello_step; that method is NOT entry proof.
+    /// Stdout can arrive before the stderr read: retain it in the existing
+    /// bounded byte buffer without accepting/discarding its queued Hello.
+    pub fn hello_entry_step(&mut self) -> Result<Option<wire::Hello>, Code> {
+        let result=(|| {
+            self.bootstrap.check_readiness().map_err(|_|Code::RunnerUnavailable)?;
+            self.poll_bootstrap_markers().map_err(|_|Code::RunnerUnavailable)?;
+            match self.bootstrap_entry_evidence().status {
+                BootstrapEntryEvidenceState::Unknown=>Err(Code::RunnerUnavailable),
+                BootstrapEntryEvidenceState::Pending=>{self.buffer_stdout()?;Ok(None)},
+                BootstrapEntryEvidenceState::Known=>self.hello_step(),
+            }
+        })();
+        if result.is_err(){self.bootstrap.revoke();}
         result
     }
     pub fn is_eof(&self) -> bool {

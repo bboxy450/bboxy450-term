@@ -1012,7 +1012,43 @@ const BOOTSTRAP_NAMES: [&str; 11] = [
     "C1BootstrapEarlyHello",
     "C1BootstrapUnpaidStart",
 ];
+const BOOTSTRAP_RETAINED_ACTIONS: &[&str] = &[
+    "RetainActualReturnedChild",
+    "RetainUnknownBirth",
+    "ParentCostVerdict",
+    "ParentClockFailure",
+    "PayParentAfterSpanEnd",
+    "PayChildAfterSpanEnd",
+    "Revoke",
+    "Cancel",
+    "ParentEof",
+    "RestartCannotReopenPipe",
+    "ReadinessExpiresFromBirthOrigin",
+    "ObserveActualExit",
+    "SettleRefusedAfterActualExit",
+    "QuarantineUnknownBirth",
+    "QuarantineNoQualifyingHello",
+    "IndependentStatusCancelControl",
+    "IndependentOtherJobProgress",
+];
 fn bootstrap_admission(kind: usize, broken: bool) -> Model {
+    let mut model = bootstrap_admission_reference(kind, broken);
+    if broken && matches!(kind, 0 | 3 | 4) {
+        // First-safety-fault projection only. The raw repaired reference is
+        // independently constructed below, never recovered by stripping guards.
+        let safe = all(model
+            .invariants
+            .iter()
+            .map(|invariant| invariant.condition.clone()));
+        for action in &mut model.actions {
+            if !BOOTSTRAP_RETAINED_ACTIONS.contains(&action.name.as_str()) {
+                action.guard = all([safe.clone(), action.guard.clone()]);
+            }
+        }
+    }
+    model
+}
+fn bootstrap_admission_reference(kind: usize, broken: bool) -> Model {
     // One original child/anonymous pipe/permit, epochs A1/B2/A3. CPU/rest debt
     // are abstract ms and9ms steps, not real elapsed/native/allocator proofs.
     const SOURCE: usize = 0;
@@ -1714,43 +1750,7 @@ fn bootstrap_admission(kind: usize, broken: bool) -> Model {
         vec![unknown],
         vec![known],
     ]);
-    if broken && matches!(kind, 0 | 3 | 4) {
-        // Safety-counterexample frontier, not a complete faulty lifecycle:
-        // every guard is unchanged while all safety properties hold. Thus
-        // every possible first-violation prefix/input/effect is retained.
-        // Once a policy violation is recorded, admit no additional policy
-        // work/input changes; retain actual effect/cost/debt/exit/cleanup and
-        // independent controls. All weak-fair dispositions remain unchanged,
-        // so this cutoff does not manufacture a temporal counterexample.
-        let before_first_violation = all(m
-            .invariants
-            .iter()
-            .map(|invariant| invariant.condition.clone()));
-        for action in &mut m.actions {
-            if !matches!(
-                action.name.as_str(),
-                "RetainActualReturnedChild"
-                    | "RetainUnknownBirth"
-                    | "ParentCostVerdict"
-                    | "ParentClockFailure"
-                    | "PayParentAfterSpanEnd"
-                    | "PayChildAfterSpanEnd"
-                    | "Revoke"
-                    | "Cancel"
-                    | "ParentEof"
-                    | "RestartCannotReopenPipe"
-                    | "ReadinessExpiresFromBirthOrigin"
-                    | "ObserveActualExit"
-                    | "SettleRefusedAfterActualExit"
-                    | "QuarantineUnknownBirth"
-                    | "QuarantineNoQualifyingHello"
-                    | "IndependentStatusCancelControl"
-                    | "IndependentOtherJobProgress"
-            ) {
-                action.guard = all([before_first_violation.clone(), action.guard.clone()]);
-            }
-        }
-    }
+
     m
 }
 
@@ -3645,6 +3645,374 @@ fn trace_from(m: &Model, r: &bboxy450_tlc::Report, start: usize, names: &[&str])
     names.iter().fold(start, |state, name| {
         step(m, r, state, name).unwrap_or_else(|| panic!("disabled {name} from {state}"))
     })
+}
+
+// Bounded one-step queries reuse the native engine's own Expr/action semantics.
+// Only a synthetic phase prevents following a second reference transition.
+type LabelledSteps = std::collections::BTreeSet<(usize, String, Vec<i64>)>;
+struct NativeOneStep {
+    model: Model,
+    width: usize,
+    safety_marker: usize,
+}
+impl NativeOneStep {
+    fn new(reference: &Model) -> Result<Self, String> {
+        // Validate every original AST against its original variable mapping
+        // before the appended phase could mask an out-of-range reference.
+        // tla() uses the existing engine validator; no expression is evaluated
+        // or reimplemented here and no generated artifact is retained.
+        let _ = reference.tla()?;
+        let mut model = reference.clone();
+        let width = model.variables.len();
+        let safety = all(model
+            .invariants
+            .iter()
+            .map(|invariant| invariant.condition.clone()));
+        model
+            .variables
+            .push(Variable::new("one_step_phase", 0, 1, 0));
+        for action in &mut model.actions {
+            action.guard = all([eq(width, 0), action.guard.clone()]);
+            action.updates.push((width, Int(1)));
+        }
+        let safety_marker = model.actions.len();
+        action(
+            &mut model,
+            "OneStepAllSafetyHold",
+            all([eq(width, 0), safety]),
+            &[(width, Int(1))],
+        );
+        action(&mut model, "OneStepTerminal", eq(width, 1), &[]);
+        // These queries prove a transition relation, not temporal behavior.
+        // Original properties/fairness are compared independently and checked
+        // on the entire declared frontier graph by native/Java parity.
+        model.invariants.clear();
+        model.responses.clear();
+        model.weak_fair.clear();
+        model.strong_fair.clear();
+        model.check_deadlock = false;
+        Ok(Self {
+            model,
+            width,
+            safety_marker,
+        })
+    }
+    fn at(&mut self, state: &[i64]) -> Result<(bool, LabelledSteps), String> {
+        if state.len() != self.width {
+            return Err("one-step variable mapping changed".into());
+        }
+        for (variable, value) in self.model.variables[..self.width].iter_mut().zip(state) {
+            variable.initial = *value;
+            variable.also_initial.clear();
+        }
+        let report = self.model.check(100_000)?;
+        if report.states.len() > self.safety_marker + 2 {
+            return Err("one-step probe escaped its finite successor bound".into());
+        }
+        let mut steps = LabelledSteps::new();
+        let mut safe = false;
+        for edge in &report.edges[0] {
+            if edge.action == self.safety_marker {
+                safe = true;
+            }
+            if edge.action < self.safety_marker {
+                steps.insert((
+                    edge.action,
+                    self.model.actions[edge.action].name.clone(),
+                    report.states[edge.to][..self.width].to_vec(),
+                ));
+            }
+        }
+        Ok((safe, steps))
+    }
+}
+fn frontier_header_and_dispositions(frontier: &Model, reference: &Model) -> Result<(), String> {
+    // Debug is a structural comparison of the existing typed declarations,
+    // never expression evaluation or a second transition semantics.
+    let mut a = frontier.clone();
+    let mut b = reference.clone();
+    for action in a.actions.iter_mut().chain(&mut b.actions) {
+        action.guard = Bool(true);
+    }
+    if format!("{a:?}") != format!("{b:?}") {
+        return Err(format!(
+            "{}: initial/bounds/labels/updates/properties/fairness mapping differs",
+            frontier.name
+        ));
+    }
+    for (actual, expected) in frontier.actions.iter().zip(&reference.actions) {
+        if BOOTSTRAP_RETAINED_ACTIONS.contains(&actual.name.as_str())
+            && format!("{actual:?}") != format!("{expected:?}")
+        {
+            return Err(format!(
+                "{}: retained disposition changed {}",
+                frontier.name, actual.name
+            ));
+        }
+    }
+    for group in frontier.weak_fair.iter().chain(&frontier.strong_fair) {
+        for &index in group {
+            if !BOOTSTRAP_RETAINED_ACTIONS.contains(&frontier.actions[index].name.as_str()) {
+                return Err(format!(
+                    "{}: frontier guarded a fair disposition",
+                    frontier.name
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+fn same_one_step(
+    candidate: &mut NativeOneStep,
+    reference: &mut NativeOneStep,
+    state: &[i64],
+) -> Result<(), String> {
+    let actual = candidate.at(state)?;
+    let expected = reference.at(state)?;
+    if actual != expected {
+        return Err("pre-frontier labelled one-step successor mismatch".into());
+    }
+    Ok(())
+}
+#[test]
+fn c1_bootstrap_frontier_preserves_every_first_fault_prefix_and_retained_disposition()
+-> Result<(), String> {
+    for kind in [0usize, 3, 4] {
+        let frontier = bootstrap_admission(kind, true);
+        let reference = bootstrap_admission_reference(kind, true);
+        frontier_header_and_dispositions(&frontier, &reference)?;
+        let report = frontier
+            .check(100_000)
+            .map_err(|error| format!("{}: {error}", frontier.name))?;
+        let mut native = NativeOneStep::new(&reference)?;
+        let mut safe = Vec::with_capacity(report.states.len());
+        let mut compared = 0usize;
+        let mut first_fault_edges = 0usize;
+        for (index, state) in report.states.iter().enumerate() {
+            let (before_fault, expected) = native
+                .at(state)
+                .map_err(|error| format!("{}: one-step state {index}: {error}", frontier.name))?;
+            safe.push(before_fault);
+            let actual: LabelledSteps = report.edges[index]
+                .iter()
+                .map(|edge| {
+                    (
+                        edge.action,
+                        frontier.actions[edge.action].name.clone(),
+                        report.states[edge.to].clone(),
+                    )
+                })
+                .collect();
+            if before_fault {
+                if actual != expected {
+                    return Err(format!(
+                        "{}: first-fault successor mismatch at state {index}",
+                        frontier.name
+                    ));
+                }
+                compared += 1;
+            } else if actual
+                .iter()
+                .any(|(_, name, _)| !BOOTSTRAP_RETAINED_ACTIONS.contains(&name.as_str()))
+            {
+                return Err(format!(
+                    "{}: policy reopened after a safety fault at state {index}",
+                    frontier.name
+                ));
+            }
+            let retained = |steps: &LabelledSteps| -> LabelledSteps {
+                steps
+                    .iter()
+                    .filter(|(_, name, _)| BOOTSTRAP_RETAINED_ACTIONS.contains(&name.as_str()))
+                    .cloned()
+                    .collect()
+            };
+            if retained(&actual) != retained(&expected) {
+                return Err(format!(
+                    "{}: retained disposition successor changed at state {index}",
+                    frontier.name
+                ));
+            }
+        }
+        for (from, edges) in report.edges.iter().enumerate() {
+            for edge in edges {
+                let next = &report.states[edge.to];
+                if report.states[from][39] == 1 && next[39] != 1 {
+                    return Err(format!("{}: failure latch cleared", frontier.name));
+                }
+                if !safe[from] && safe[edge.to] {
+                    return Err(format!(
+                        "{}: safety/permission revived after fault",
+                        frontier.name
+                    ));
+                }
+                if frontier.actions[edge.action].name == "BrokenResetDebt" {
+                    if !safe[from] {
+                        return Err("debt reset admitted after the first fault".into());
+                    }
+                    // Existing recorded cost/payments survive the reset; its
+                    // BAD bit records an already real debt deficit, not an
+                    // earlier invented failure or erased native cost.
+                    if next[15] != report.states[from][15]
+                        || next[16] != report.states[from][16]
+                        || next[14] != 0
+                        || next[15] <= 9 * next[16]
+                    {
+                        return Err("BAD latch did not record the original debt deficit".into());
+                    }
+                    for (coordinate, value) in next.iter().enumerate() {
+                        if coordinate != 14
+                            && coordinate != 39
+                            && *value != report.states[from][coordinate]
+                        {
+                            return Err("debt latch changed unrelated custody/history".into());
+                        }
+                    }
+                }
+                if safe[from] && !safe[edge.to] {
+                    first_fault_edges += 1;
+                    if next[39] != 1 {
+                        return Err(format!("{}: first fault was not latched", frontier.name));
+                    }
+                }
+            }
+        }
+        assert!(
+            compared > 0 && first_fault_edges > 0,
+            "frontier comparison was vacuous"
+        );
+        assert!(
+            report
+                .violations
+                .iter()
+                .all(|violation| violation.cycle.is_empty() && violation.property != "Deadlock")
+        );
+        let returned = trace(
+            &frontier,
+            &report,
+            &[
+                "CloseSource",
+                "VerifyPackagedBootstrapBeforeBirth",
+                "Quiescent",
+                "PrepareFrozenBindingAndPipe",
+                "PayParentAfterSpanEnd",
+                "Birth",
+                "RetainActualReturnedChild",
+            ],
+        );
+        let (before, after, property) = match kind {
+            0 => (
+                returned,
+                step(&frontier, &report, returned, "ChildArgvSpan").unwrap(),
+                "AllBirthPermitOwnerAndHandoffGuards",
+            ),
+            3 => (
+                returned,
+                step(&frontier, &report, returned, "TransferBeforePermitWrite").unwrap(),
+                "AllBirthPermitOwnerAndHandoffGuards",
+            ),
+            4 => {
+                let cost = step(&frontier, &report, returned, "ParentCostVerdict").unwrap();
+                let reset = step(&frontier, &report, cost, "BrokenResetDebt").unwrap();
+                assert_eq!(
+                    (
+                        report.states[reset][14],
+                        report.states[reset][15],
+                        report.states[reset][16]
+                    ),
+                    (0, 27, 0),
+                    "reset erased recorded cost"
+                );
+                (cost, reset, "FullParentDebtCannotReset")
+            }
+            _ => unreachable!(),
+        };
+        assert!(safe[before] && !safe[after]);
+        assert_eq!(
+            (
+                report.states[after][10],
+                report.states[after][11],
+                report.states[after][39]
+            ),
+            (1, 1, 1)
+        );
+        assert!(
+            report
+                .violations
+                .iter()
+                .any(|violation| violation.property == property),
+            "{}: missing intended {property}",
+            frontier.name
+        );
+        eprintln!(
+            "C1 frontier exact model={} states={} compared_pre_fault={} first_fault_edges={} cap=100000",
+            frontier.name,
+            report.states.len(),
+            compared,
+            first_fault_edges
+        );
+    }
+    // Projection is forbidden on correct/other cases, including their guards.
+    for kind in 0..BOOTSTRAP_NAMES.len() {
+        for broken in [false, true] {
+            if !broken || !matches!(kind, 0 | 3 | 4) {
+                assert_eq!(
+                    format!("{:?}", bootstrap_admission(kind, broken)),
+                    format!("{:?}", bootstrap_admission_reference(kind, broken))
+                );
+            }
+        }
+    }
+    Ok(())
+}
+#[test]
+fn c1_bootstrap_frontier_comparison_rejects_independent_dropped_and_changed_pre_fault_edges()
+-> Result<(), String> {
+    let frontier = bootstrap_admission(0, true);
+    let reference = bootstrap_admission_reference(0, true);
+    let report = frontier.check(100_000)?;
+    let before = trace(
+        &frontier,
+        &report,
+        &[
+            "CloseSource",
+            "VerifyPackagedBootstrapBeforeBirth",
+            "Quiescent",
+            "PrepareFrozenBindingAndPipe",
+            "PayParentAfterSpanEnd",
+            "Birth",
+            "RetainActualReturnedChild",
+        ],
+    );
+    let state = &report.states[before];
+    let mut native = NativeOneStep::new(&reference)?;
+    same_one_step(&mut NativeOneStep::new(&frontier)?, &mut native, state)?;
+    let index = frontier
+        .actions
+        .iter()
+        .position(|action| action.name == "ChildArgvSpan")
+        .unwrap();
+    let mut dropped = frontier.clone();
+    dropped.actions[index].guard = Bool(false);
+    frontier_header_and_dispositions(&dropped, &reference)?;
+    let refused = same_one_step(&mut NativeOneStep::new(&dropped)?, &mut native, state)
+        .expect_err("comparison accepted a removed dangerous pre-fault edge");
+    assert_eq!(refused, "pre-frontier labelled one-step successor mismatch");
+    let mut changed = frontier.clone();
+    let (_, span) = changed.actions[index]
+        .updates
+        .iter_mut()
+        .find(|(slot, _)| *slot == 27)
+        .unwrap();
+    *span = Int(2);
+    let refused = same_one_step(&mut NativeOneStep::new(&changed)?, &mut native, state)
+        .expect_err("comparison accepted a changed first-fault target");
+    assert_eq!(refused, "pre-frontier labelled one-step successor mismatch");
+    assert!(
+        frontier_header_and_dispositions(&changed, &reference).is_err(),
+        "mapping accepted changed action updates"
+    );
+    Ok(())
 }
 
 #[test]

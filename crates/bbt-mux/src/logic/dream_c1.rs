@@ -317,11 +317,13 @@ struct NativeSample {
     inclusive: Result<Duration, Code>,
 }
 #[cfg(test)]
+type ProcessReturnHook = Box<dyn FnOnce(&std::process::Child)>;
+#[cfg(test)]
 std::thread_local! {
     // A fixed scoped test hook can withhold a *returned real effect* before its
     // budget verdict. It is never a production native classification escape.
     static NATIVE_RETURN_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce()>>> = const { std::cell::RefCell::new(None) };
-    static PROCESS_RETURN_HOOK: std::cell::RefCell<Option<Box<dyn FnOnce(&std::process::Child)>>> = const { std::cell::RefCell::new(None) };
+    static PROCESS_RETURN_HOOK: std::cell::RefCell<Option<ProcessReturnHook>> = const { std::cell::RefCell::new(None) };
 }
 struct NativeOutcome<T: Drain> {
     // Inspect/take the real effect before inspecting verdict. A timing refusal
@@ -333,6 +335,9 @@ struct NativeOutcome<T: Drain> {
     verdict: Result<(), Code>,
     sample: NativeSample,
     returned_at: Instant,
+    // Same-host CLOCK_MONOTONIC uncertainty around that original Instant.
+    // Never replace the readiness origin or derive auxiliary CPU classes.
+    entry_clock: Option<transport::BootstrapEntryClockBounds>,
 }
 impl<T: Drain> Drop for NativeOutcome<T> {
     fn drop(&mut self) {
@@ -683,6 +688,8 @@ pub(crate) enum FinalHandoff {
     Permit,
     Start,
 }
+#[cfg(test)]
+type FinalAdmissionHook = Box<dyn FnOnce(FinalHandoff) + Send>;
 pub(crate) struct Control {
     #[cfg(debug_assertions)]
     pub private_fixture: bool,
@@ -692,7 +699,7 @@ pub(crate) struct Control {
     pub source_hold_done: AtomicBool,
     pub cancelled: AtomicBool,
     #[cfg(test)]
-    pub(crate) final_admission_hook: std::sync::Mutex<Option<Box<dyn FnOnce(FinalHandoff) + Send>>>,
+    pub(crate) final_admission_hook: std::sync::Mutex<Option<FinalAdmissionHook>>,
     #[cfg(test)]
     pub(crate) final_admission_sample: std::sync::Mutex<Option<Result<Duration, Code>>>,
     pub launch_incarnation: AtomicU64,
@@ -706,6 +713,7 @@ pub(crate) struct Control {
     pub(crate) bootstrap_permit_attempts: AtomicU64,
     pub(crate) start_admission_attempts: AtomicU64,
     pub(crate) bootstrap_hello_observed: AtomicBool,
+    pub(crate) bootstrap_entry: OnceLock<transport::BootstrapEntryEvidence>,
     pub(crate) bootstrap_revoked: AtomicBool,
     pub(crate) bootstrap_parent_handoffs: AtomicU64,
     pub(crate) bootstrap_child_handoffs: AtomicU64,
@@ -806,6 +814,7 @@ impl Default for Control {
             bootstrap_permit_attempts: AtomicU64::new(0),
             start_admission_attempts: AtomicU64::new(0),
             bootstrap_hello_observed: AtomicBool::new(false),
+            bootstrap_entry:OnceLock::new(),
             bootstrap_revoked: AtomicBool::new(false),
             bootstrap_parent_handoffs: AtomicU64::new(0),
             bootstrap_child_handoffs: AtomicU64::new(0),
@@ -2826,6 +2835,14 @@ impl<'a> Budget<'a> {
         // clock is consulted. No error mapping drops native evidence.
         let end = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit);
         let wall = wall.elapsed();
+        // `pending` precedes native admission/spawn; this sample follows the
+        // original returned_at. The return lies within these conservative
+        // CLOCK_MONOTONIC bounds. This clock call is surrounding application
+        // work, outside the measured native CPU subspan.
+        let entry_clock=monotonic_ns().and_then(|upper|
+            transport::BootstrapEntryClockBounds::new(
+                transport::BootstrapEntryClock::ClockGettimeMonotonic,
+                pending,pending,upper).map_err(wire_error));
         if effect.is_err() {
             self.control
                 .native_birth_unknown
@@ -2869,7 +2886,15 @@ impl<'a> Budget<'a> {
             wall,
             inclusive: span.elapsed(),
         });
-        Ok(self.native_finish(owner, raw_error, sample, true, returned_at))
+        let mut outcome=self.native_finish(owner,raw_error,sample,true,returned_at);
+        match entry_clock {
+            Ok(bounds)=>outcome.entry_clock=Some(bounds),
+            Err(code)=>{
+                self.control.bootstrap_clock_failures.fetch_add(1,Ordering::Relaxed);
+                outcome.verdict=Err(code);
+            }
+        }
+        Ok(outcome)
     }
     fn native_publish(&mut self, publication: &mut Publication) -> Result<NativeOutcome<()>, Code> {
         self.native_publish_impl(publication, None)
@@ -3090,6 +3115,7 @@ impl<'a> Budget<'a> {
             verdict,
             sample,
             returned_at,
+            entry_clock:None,
         }
     }
     fn gate(&self) -> Result<(), Code> {
@@ -4318,6 +4344,7 @@ pub(crate) struct ProbeAudit {
     pub known_birth: bool,
     pub unknown_birth: bool,
     pub qualified_hello: bool,
+    pub entry_evidence:Option<transport::BootstrapEntryEvidence>,
     pub actual_reaped: bool,
     pub stdout_stderr_eof: bool,
     pub exit_status: Option<i32>,
@@ -4364,6 +4391,7 @@ impl ProbeAudit {
             known_birth: false,
             unknown_birth: false,
             qualified_hello: false,
+            entry_evidence:None,
             actual_reaped: false,
             stdout_stderr_eof: false,
             exit_status: None,
@@ -4396,6 +4424,7 @@ impl ProbeAudit {
         self.stdout_stderr_eof = worker.is_eof();
         self.exit_status = exit.map(ExitStatusExt::into_raw);
         self.qualified_hello = worker.bootstrap_observation().qualified_hello;
+        self.entry_evidence=Some(worker.bootstrap_entry_evidence());
         Ok(())
     }
     fn capture_cost(&mut self, control: &Control) {
@@ -4606,6 +4635,13 @@ impl ProbeClaim {
 /// The account capability probe uses the SAME gated birth/debt/Hello controller
 /// as real jobs. Null context is explicit65255; it can never produce a Start.
 /// A durable single owned claim prevents overlapping/unknown predecessor probes.
+const STOPPED_ENTRY_WORKER_SHA256:&str="12ba4006b694bdce3c44d199de460d09f0f2414fafb7fd17880921a7d397a3b4";
+fn entry_worker_eligible(proof:&runner_provision::ProvisionProof)->Result<(),Code> {
+    // Historical approval is not permission to relaunch the stopped tuple.
+    // No hashing, substitute worker, new tuple approval or readiness retry.
+    if proof.worker_sha256()==STOPPED_ENTRY_WORKER_SHA256 {Err(Code::RunnerUnavailable)} else {Ok(())}
+}
+
 pub(crate) fn probe_gated(
     root: &Path,
     proof: Arc<runner_provision::ProvisionProof>,
@@ -4649,6 +4685,8 @@ fn probe_gated_core(
             .store(incarnation, Ordering::Release);
         let deadline = Instant::now() + Duration::from_secs(30);
         let mut budget = Budget::new(&control, deadline);
+        audit.stage="entry_tuple_eligibility";
+        budget.unit(||entry_worker_eligible(&proof))?;
         audit.stage = "provision_bind";
         budget.unit(|| control.install_native_provision(proof.clone()))?;
         let (op, run, nonce, birth) = budget.unit(|| {
@@ -4802,6 +4840,8 @@ fn probe_gated_core(
                 }
             };
             let setup = bootstrap_control(&control, || {
+                worker.install_bootstrap_entry_clock_bounds(native.entry_clock.ok_or(Code::ResourceLimit)?)
+                    .map_err(wire_error)?;
                 worker
                     .bootstrap_spawn_returned(native.returned_at, deadline)
                     .map_err(wire_error)?;
@@ -4986,7 +5026,7 @@ fn bootstrap_handshake(
         // no allocation-bearing/bulk owner is dropped while child owns work.
         if bootstrap_control(control, || {
             worker
-                .hello_step()
+                .hello_entry_step()
                 .map(|hello| hello.is_some())
                 .map_err(wire_error)
         })? {
@@ -6050,6 +6090,7 @@ fn settle_probe(worker: &mut Worker, control: &Control) {
             settled = worker.try_wait().is_ok_and(|exit| exit.is_some()) && worker.is_eof();
             if settled {
                 retain_child_usage(worker, control);
+                let _=control.bootstrap_entry.set(worker.bootstrap_entry_evidence());
             }
             if !settled && since.elapsed() >= Duration::from_secs(2) && !term {
                 let _ = worker.terminate(false);
@@ -6104,6 +6145,15 @@ fn retain_child_usage(worker: &Worker, control: &Control) {
     control
         .producer_metrics_observed
         .store(metrics.is_some(), Ordering::Release);
+}
+
+struct FixedJsonWriter<'a,const N:usize>(&'a mut FixedBytes<N>);
+impl<const N:usize> std::io::Write for FixedJsonWriter<'_,N> {
+    fn write(&mut self,bytes:&[u8])->std::io::Result<usize> {
+        self.0.extend(bytes).map_err(|_|std::io::Error::from(std::io::ErrorKind::FileTooLarge))?;
+        Ok(bytes.len())
+    }
+    fn flush(&mut self)->std::io::Result<()> {Ok(())}
 }
 
 fn write_metrics(job: &Path, record: &Record, control: &Control) -> Result<(), Code> {
@@ -6295,6 +6345,9 @@ fn write_metrics(job: &Path, record: &Record, control: &Control) -> Result<(), C
             }
         }
     }
+    bytes.extend(b",\"bootstrap_entry_evidence\":")?;
+    serde_json::to_writer(FixedJsonWriter(&mut bytes),control.bootstrap_entry.get())
+        .map_err(|_|Code::ResourceLimit)?;
     bytes.extend(b"}")?;
     Ok(bytes)
     })?;
@@ -6430,6 +6483,8 @@ fn execute_inner(
     // Manager admits only observed quiescence. A foreground race after that admission
     // pauses this active owner's bounded wall budget; it is not a deferred retry loop.
     let mut preparation = Budget::new(control, deadline);
+    let proof=control.native_provision.get().ok_or(Code::RunnerUnavailable)?;
+    preparation.unit(||entry_worker_eligible(proof))?;
     preparation.unit(|| private_dir(job))?;
     let (canonical, job_directory) = canonical_job(job, &mut preparation)?;
     let _job_directory = Paced::new(job_directory, control);
@@ -6474,10 +6529,6 @@ fn execute_inner(
         return Err(Code::RunnerUnavailable);
     }
     let birth = preparation.unit(|| Ok(crate::Ulid::new()))?;
-    let proof = control
-        .native_provision
-        .get()
-        .ok_or(Code::RunnerUnavailable)?;
     let binding = birth_binding(
         &BirthBinding {
             profile: bootstrap::PROFILE,
@@ -6585,6 +6636,8 @@ fn execute_inner(
         }
     };
     let setup = bootstrap_control(control, || {
+        worker.install_bootstrap_entry_clock_bounds(native.entry_clock.ok_or(Code::ResourceLimit)?)
+            .map_err(wire_error)?;
         worker
             .bootstrap_spawn_returned(native.returned_at, deadline)
             .map_err(wire_error)
@@ -6699,7 +6752,7 @@ fn execute_inner(
         previous: None,
         done: None,
     };
-    std::thread::scope(|scope| -> Result<(), Code> {
+    let result=std::thread::scope(|scope| -> Result<(), Code> {
         let (sender, receiver) = mpsc::sync_channel(1);
         let mut receipt_settling = None;
         let snapshot_owner = scope.spawn(move || {
@@ -7025,6 +7078,8 @@ fn execute_inner(
         // Actual reap and both output EOFs precede final receipt validation.
         // Missing/duplicate/malformed diagnostics cannot certify completion;
         // abrupt cancellation above retains unknown metrics honestly.
+        let entry=worker.bootstrap_entry_evidence();
+        if entry.status!=transport::BootstrapEntryStatus::Known {return Err(Code::ProtocolError);}
         let metrics = worker.producer_metrics().ok_or(Code::ResourceLimit)?;
         if !control.native_metrics_authorized.load(Ordering::Acquire)
             || !control.child_usage_observed.load(Ordering::Acquire)
@@ -7041,7 +7096,12 @@ fn execute_inner(
             .as_ref()
             .map_err(|code| *code)?;
         validate_output(job, record, &snapshot.manifest, done, control, deadline)
-    })
+    });
+    let captured=bootstrap_control(control,|| {
+        let _=control.bootstrap_entry.set(worker.bootstrap_entry_evidence());
+        Ok(())
+    });
+    result.and(captured)
 }
 
 #[cfg(test)]

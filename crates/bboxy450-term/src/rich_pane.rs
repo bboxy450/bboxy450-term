@@ -624,6 +624,10 @@ mod tests {
         saved.view
     }
     #[tokio::test]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "the private test macro owns a runtime; production UI draft reservation never blocks"
+    )]
     async fn draft_handoff_drains_last_edit_before_reopening_and_isolates_panels() {
         let temp = tempfile::tempdir().unwrap();
         let mut a = Draft::default();
@@ -657,6 +661,10 @@ mod tests {
         assert_eq!(saved_draft(&mut b).await.composer.view.text, expected_b);
     }
     #[tokio::test]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "the private test macro owns a runtime; production UI draft reservation never blocks"
+    )]
     async fn draft_handoff_waits_for_predecessor_preserves_full_editor_and_other_panel_progress() {
         let temp = tempfile::tempdir().unwrap();
         let path = temp.path().join("missing.sock");
@@ -776,6 +784,10 @@ mod tests {
         }
     }
     #[tokio::test]
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "the private test macro owns a runtime; production UI draft reservation never blocks"
+    )]
     async fn draft_handoff_private_controls_expose_off_owner_reservation_early_restore_and_lost_tail()
      {
         let temp = tempfile::tempdir().unwrap();

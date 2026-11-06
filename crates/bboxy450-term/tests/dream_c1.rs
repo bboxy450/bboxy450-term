@@ -844,12 +844,12 @@ impl Drop for OwnedChild {
             std::thread::sleep(Duration::from_millis(10));
         }
         let mut identities = Vec::new();
-        if let Ok(raw) = fs::read(self.root.join("native-frame-run/owned-pids.json")) {
-            if let Ok(pids) = serde_json::from_slice::<Vec<u32>>(&raw) {
-                for pid in pids {
-                    if let Ok(start) = bbt_mux::adapters::native::process_start(pid) {
-                        identities.push((pid, start, false));
-                    }
+        if let Ok(raw) = fs::read(self.root.join("native-frame-run/owned-pids.json"))
+            && let Ok(pids) = serde_json::from_slice::<Vec<u32>>(&raw)
+        {
+            for pid in pids {
+                if let Ok(start) = bbt_mux::adapters::native::process_start(pid) {
+                    identities.push((pid, start, false));
                 }
             }
         }
@@ -1246,8 +1246,7 @@ fn close_prepared_mode(f: &Fixture, prepared: OpenSource, retained: bool) -> Clo
         let value: Value = serde_json::from_slice(
             bytes
                 .split(|b| *b == b'\n')
-                .filter(|line| !line.is_empty())
-                .next_back()?,
+                .rfind(|line| !line.is_empty())?,
         )
         .ok()?;
         (value["event"]["type"] == "session_closed").then_some(bytes)
@@ -1433,7 +1432,7 @@ fn measured_controls_with_gap(
                     .map(|_| {
                         std::thread::sleep(gap);
                         let at = Instant::now();
-                        let reply = peer.ask(own_id, status_request(&run, None));
+                        let reply = peer.ask(own_id, status_request(run, None));
                         assert_eq!(reply["ok"], true, "{reply}");
                         assert_eq!(
                             reply["run"]["settled"], false,
@@ -2235,10 +2234,9 @@ impl SourceReadHold {
             .write(true)
             .custom_flags(libc::O_NONBLOCK | libc::O_NOFOLLOW)
             .open(&self.path)
+            && writer.write_all(b"r").is_ok()
         {
-            if writer.write_all(b"r").is_ok() {
-                self.released = true;
-            }
+            self.released = true;
         }
     }
 }

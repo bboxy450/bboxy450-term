@@ -14537,7 +14537,7 @@ pub(super) mod dream_public_api_tests {
         };
         let (mut low, mut high) = (0, 4096 - attack.len());
         while low < high {
-            let middle = (low + high + 1) / 2;
+            let middle = (low + high).div_ceil(2);
             if w::canonical(&make_page(middle)).unwrap().len() <= 16 * 1024 {
                 low = middle;
             } else {
@@ -14621,8 +14621,7 @@ pub(super) mod dream_public_api_tests {
             serde_json::to_vec(&json!({"jsonrpc":"2.0","id":3,"result":projected}))
                 .unwrap()
                 .len()
-                + 1
-                <= crate::mcp::bridge::MAX_FRAME
+                < crate::mcp::bridge::MAX_FRAME
         );
     }
     #[test]

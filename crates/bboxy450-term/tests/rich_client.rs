@@ -14,10 +14,12 @@ use bboxy450_harness::frontends::gui::{
     smoke::capture_frame,
     view::{Action, HarnessView},
 };
+use bboxy450_harness::protocol::{Epoch, Op, OpEnvelope, OpId, PROTOCOL, Seq, SessionId};
 use bboxy450_term::rich_pane::{Input, Pane};
 use bbt_ui_model::layout::Rect;
 use serde_json::{Value, json};
 use std::{
+    io::Read,
     path::Path,
     sync::Arc,
     time::{Duration, Instant},
@@ -77,6 +79,225 @@ fn rows(path: &Path) -> Vec<Value> {
         .filter_map(|l| serde_json::from_str(l).ok())
         .collect()
 }
+
+// The scripted actor has two visible bindings, one abandoned fresh-cursor
+// prefix probe, and one retained pending-turn binding after detach. These are
+// fixture lifecycle bounds, not a protocol allowance for arbitrary query noise.
+const ACTOR_BINDINGS: usize = 4;
+const ACTOR_MUTATIONS: usize = 4;
+const ACTOR_QUERY_BINDINGS: usize = 3;
+
+fn bounded_actor_journal(path: &Path) -> String {
+    let mut raw = String::new();
+    std::fs::File::open(path)
+        .unwrap()
+        .take(64 * 1024 + 1)
+        .read_to_string(&mut raw)
+        .unwrap();
+    assert!(raw.len() <= 64 * 1024, "bounded private actor journal");
+    raw
+}
+
+fn actor_rows(path: &Path) -> Vec<Value> {
+    bounded_actor_journal(path)
+        .lines()
+        .filter_map(|line| serde_json::from_str(line).ok())
+        .collect()
+}
+
+fn validate_actor_traffic(
+    observed: &[Value],
+    cursor: (SessionId, Epoch, Seq),
+    initial_head: u64,
+) -> Result<(), String> {
+    use std::collections::{BTreeMap, BTreeSet};
+    let mut subscriptions = BTreeMap::new();
+    let mut headers = BTreeMap::new();
+    let mut closed = BTreeMap::new();
+    for (index, row) in observed.iter().enumerate() {
+        if row.get("subscribe").is_some() || row.get("hello").is_some() {
+            let connection = row["connection"].as_u64().ok_or("missing connection")?;
+            let target = if row.get("subscribe").is_some() {
+                &mut subscriptions
+            } else {
+                &mut headers
+            };
+            if target.insert(connection, (index, row)).is_some() {
+                return Err("duplicate connection receipt".into());
+            }
+        }
+        if let Some(connection) = row.get("disconnected") {
+            let connection = connection.as_u64().ok_or("invalid disconnection")?;
+            if closed.insert(connection, index).is_some() {
+                return Err("duplicate disconnection receipt".into());
+            }
+        }
+    }
+    if subscriptions.len() != ACTOR_BINDINGS || headers.len() != ACTOR_BINDINGS {
+        return Err("expected four actual subscription/Hello bindings".into());
+    }
+    let after = serde_json::to_value((cursor.1, cursor.2)).unwrap();
+    let mut roles = BTreeMap::new();
+    let mut role_counts = BTreeMap::new();
+    let mut initial = None;
+    let mut probe = None;
+    let mut rebuilt = None;
+    for (&connection, &(index, row)) in &subscriptions {
+        let sub = &row["subscribe"];
+        if connection == 0
+            || sub["v"] != serde_json::to_value(PROTOCOL).unwrap()
+            || sub["subscribe"]["ephemeral"] != true
+        {
+            return Err("invalid subscription binding".into());
+        }
+        let role = match (
+            sub["subscribe"]["after"].is_null(),
+            sub["approver"].as_bool(),
+        ) {
+            (true, Some(true)) if connection == 1 => {
+                initial = Some(connection);
+                "initial"
+            }
+            (true, Some(true)) => {
+                rebuilt = Some(connection);
+                "rebuilt"
+            }
+            (false, Some(true)) if sub["subscribe"]["after"] == after => {
+                probe = Some(connection);
+                "probe"
+            }
+            (false, Some(false)) if sub["subscribe"]["after"] == after => "detached",
+            _ => return Err("unexpected subscription/readiness choreography".into()),
+        };
+        *role_counts.entry(role).or_insert(0usize) += 1;
+        roles.insert(connection, role);
+        let &(hello_index, hello) = headers.get(&connection).ok_or("missing Hello receipt")?;
+        if hello_index <= index
+            || hello["hello"]["session"] != serde_json::to_value(cursor.0).unwrap()
+            || hello["hello"]["epoch"] != serde_json::to_value(cursor.1).unwrap()
+            || hello["hello"]["head"].as_u64()
+                != Some(if role == "initial" {
+                    initial_head
+                } else {
+                    cursor.2.0
+                })
+        {
+            return Err("wrong live Hello binding".into());
+        }
+        match closed.get(&connection) {
+            Some(closed_index) if *closed_index > hello_index && role != "detached" => {}
+            None if role == "detached" => {}
+            _ => return Err("unexpected connection retirement".into()),
+        }
+    }
+    if role_counts
+        != BTreeMap::from([
+            ("initial", 1),
+            ("probe", 1),
+            ("rebuilt", 1),
+            ("detached", 1),
+        ])
+        || probe.is_none_or(|probe| rebuilt.is_none_or(|rebuilt| probe >= rebuilt))
+        || closed.len() != ACTOR_BINDINGS - 1
+    {
+        return Err("expected initial/probe/rebuilt/detached bindings".into());
+    }
+    let mut ids = BTreeSet::new();
+    let mut mutation_ids = BTreeSet::new();
+    let mut mutations = BTreeMap::new();
+    let mut query_bindings = BTreeSet::new();
+    for (index, row) in observed
+        .iter()
+        .enumerate()
+        .filter(|(_, r)| r.get("op").is_some())
+    {
+        let mut wire = row.as_object().ok_or("operation is not an object")?.clone();
+        let connection = wire
+            .remove("connection")
+            .and_then(|value| value.as_u64())
+            .ok_or("operation lacks connection")?;
+        if connection == 0
+            || !headers.contains_key(&connection)
+            || wire.len() != 4
+            || !wire
+                .keys()
+                .all(|key| matches!(key.as_str(), "v" | "op_id" | "session" | "op"))
+        {
+            return Err("operation has unverified fixture metadata".into());
+        }
+        // Connection is our verified process receipt, not a public DTO field.
+        // Deserialize only the original four-field wire envelope.
+        let envelope: OpEnvelope = serde_json::from_value(Value::Object(wire))
+            .map_err(|_| "unknown operation or malformed typed envelope")?;
+        if envelope.op_id.0.to_bytes() == [0; 16]
+            || row["op_id"].as_str() != Some(envelope.op_id.to_string().as_str())
+            || !ids.insert(envelope.op_id)
+        {
+            return Err("invalid or duplicate operation ID".into());
+        }
+        if envelope.session != cursor.0 || envelope.v != PROTOCOL {
+            return Err("wrong session or operation protocol".into());
+        }
+        let &(hello_index, _) = headers
+            .get(&connection)
+            .ok_or("operation lacks live Hello")?;
+        if index <= hello_index
+            || closed
+                .get(&connection)
+                .is_some_and(|closed| index >= *closed)
+        {
+            return Err("operation outside live binding".into());
+        }
+        let kind = match envelope.op {
+            Op::QueryInputCapabilities { request } => {
+                if request != envelope.op_id
+                    || request.0.to_bytes() == [0; 16]
+                    || row["op"]["request"].as_str() != Some(request.to_string().as_str())
+                    || row["op"].as_object().is_none_or(|op| op.len() != 2)
+                {
+                    return Err("query request does not match operation ID".into());
+                }
+                if roles.get(&connection) == Some(&"probe") {
+                    return Err("query belongs to abandoned probe binding".into());
+                }
+                if !query_bindings.insert(connection) {
+                    return Err("duplicate query on live binding".into());
+                }
+                continue;
+            }
+            Op::UserTurn { .. } => "user_turn",
+            Op::Interrupt { .. } => "interrupt",
+            Op::ResolveApproval { .. } => "resolve_approval",
+            Op::SetProfile { .. } => "set_profile",
+            _ => return Err("unknown operation for this fixture, including Close".into()),
+        };
+        if Some(connection) != initial {
+            return Err("mutation escaped original visible binding".into());
+        }
+        mutation_ids.insert(envelope.op_id);
+        *mutations.entry(kind).or_insert(0usize) += 1;
+    }
+    let expected_queries = roles
+        .iter()
+        .filter_map(|(&connection, &role)| (role != "probe").then_some(connection))
+        .collect::<BTreeSet<_>>();
+    if mutations
+        != BTreeMap::from([
+            ("user_turn", 1),
+            ("interrupt", 1),
+            ("resolve_approval", 1),
+            ("set_profile", 1),
+        ])
+        || mutation_ids.len() != ACTOR_MUTATIONS
+        || query_bindings != expected_queries
+        || query_bindings.len() != ACTOR_QUERY_BINDINGS
+        || ids.len() != mutation_ids.len() + query_bindings.len()
+    {
+        return Err("mutation/query count or binding mismatch".into());
+    }
+    Ok(())
+}
+
 #[test]
 fn rich_actor_forwards_composer_stop_approval_and_detaches_without_close() {
     if std::env::var_os("BBOXY_RICH_ACTOR_PRIVATE").is_none() {
@@ -123,7 +344,14 @@ fn rich_actor_forwards_composer_stop_approval_and_detaches_without_close() {
     )
     .unwrap();
     let script = root.path().join("peer.py");
-    std::fs::write(&script,r#"import json,socket,sys,os,threading
+    std::fs::write(&script,r#"# Copyright 2026 Boxy (bboxy450) and contributors.
+# SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+# Credit copied/adapted/translated reuse accurately; keep the credit attached.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+# Private protocol peer; the pinned harness protocol remains the DTO authority.
+import json,socket,sys,os,threading
 from pathlib import Path
 address,replay,journal=map(Path,sys.argv[1:])
 events=[json.loads(x) for x in replay.read_text().splitlines()]
@@ -140,10 +368,12 @@ def deliver(peer,event,connection):
 def serve(peer,connection):
     global head
     stream=peer.makefile('rb'); sub=json.loads(stream.readline()); record({'subscribe':sub,'connection':connection})
-    send(peer,{'v':{'major':1,'minor':1},'meta':meta,'epoch':epoch,'head':head})
+    hello={'v':{'major':1,'minor':1},'meta':meta,'epoch':epoch,'head':head}
+    send(peer,hello)
+    record({'connection':connection,'hello':{'session':hello['meta']['session'],'epoch':hello['epoch'],'head':hello['head']}})
     for event in events[:]: deliver(peer,event,connection)
     for line in stream:
-        op=json.loads(line); record(op)
+        op=json.loads(line); record(dict(op,connection=connection))
         send(peer,{'op_id':op['op_id'],'ack':{'op_id':op['op_id'],'duplicate':False}})
         if op['op']['type']=='resolve_approval':
             body=dict(approval_body);body['decision']=op['op']['decision'];body['by']={'by':'face','name':'fixture'}
@@ -155,6 +385,7 @@ def connected(peer,connection):
     try:
         with peer: serve(peer,connection)
     except (BrokenPipeError,ConnectionResetError): pass
+    finally: record({'disconnected':connection})
 while True:
     peer,_=listener.accept(); connection+=1
     threading.Thread(target=connected,args=(peer,connection),daemon=True).start()
@@ -193,7 +424,8 @@ while True:
             let mut view = HarnessView::default();
             capture_frame(&mut view, &mut state, &{
                 let mut options =
-                    bboxy450_harness::frontends::gui::options::Options::parse(Vec::<String>::new()).unwrap();
+                    bboxy450_harness::frontends::gui::options::Options::parse(Vec::<String>::new())
+                        .unwrap();
                 options.capture = Some([1120, 820]);
                 options.no_chrome = true;
                 options
@@ -205,7 +437,7 @@ while True:
         .await
     });
     let center = |rect: Rect| [rect.x + rect.w / 2., rect.y + rect.h / 2.];
-    let approval = actions
+    let reference_approval = actions
         .iter()
         .find(|(_, a)| matches!(a, Action::Approval(..)))
         .map(|(r, _)| center(*r))
@@ -220,6 +452,26 @@ while True:
     until(&mut pane, |p| {
         p.snapshot.ready && p.snapshot.cursor.is_some_and(|(_, _, seq)| seq.0 == 18)
     });
+    until(&mut pane, |_| {
+        actor_rows(&journal)
+            .iter()
+            .any(|r| r["connection"] == 1 && r["op"]["type"] == "query_input_capabilities")
+    });
+    until(&mut pane, |p| !p.snapshot.approval_choices.is_empty());
+    assert!(pane.snapshot.approval_choices.len() <= 16);
+    let live_approval = pane.snapshot.approval_choices[0];
+    assert!(reference_approval.iter().all(|value| value.is_finite()));
+    assert!(live_approval.iter().all(|value| value.is_finite()));
+    let [x, y, w, h] = live_approval;
+    assert!(
+        w > 0. && h > 0. && x >= 0. && y >= 0. && x + w <= 1120. && y + h <= 820.,
+        "live approval target must be a positive bounded viewport rectangle"
+    );
+    let approval = [x + w / 2., y + h / 2.];
+    eprintln!(
+        "rich-client approval geometry reference_center={reference_approval:?} live_rect={live_approval:?} live_center={approval:?} changed={}",
+        reference_approval != approval
+    );
     assert!(pane.send(Input::Click(approval)));
     until(&mut pane, |p| {
         p.snapshot.cursor.is_some_and(|(_, _, seq)| seq.0 > 18)
@@ -271,8 +523,74 @@ while True:
     assert_eq!(pane.snapshot.retained_items, item_count);
     assert_eq!(pane.snapshot.order_len, item_count);
     assert_eq!(pane.snapshot.duplicate_durable, 0);
+    until(&mut pane, |_| {
+        let observed = actor_rows(&journal);
+        observed.iter().any(|binding| {
+            binding["connection"] != 1
+                && binding["subscribe"]["approver"] == true
+                && binding["subscribe"]["subscribe"]["after"].is_null()
+                && observed.iter().any(|r| {
+                    r["connection"] == binding["connection"]
+                        && r["op"]["type"] == "query_input_capabilities"
+                })
+        })
+    });
     drop(pane);
-    let observed = rows(&journal);
+    // Await actual connection/query/retirement receipts, not a sleep or a
+    // hard-coded total-ID relaxation. The retained old turn owns the sole live
+    // detached binding; the initial, cursor probe and rebuilt view have closed.
+    let deadline = Instant::now() + Duration::from_secs(12);
+    loop {
+        let observed = actor_rows(&journal);
+        let bindings = observed
+            .iter()
+            .filter(|r| r.get("subscribe").is_some())
+            .count();
+        let headers = observed.iter().filter(|r| r.get("hello").is_some()).count();
+        let closed = observed
+            .iter()
+            .filter(|r| r.get("disconnected").is_some())
+            .count();
+        let operations = observed.iter().filter(|r| r.get("op").is_some()).count();
+        assert!(
+            bindings <= ACTOR_BINDINGS
+                && headers <= ACTOR_BINDINGS
+                && closed < ACTOR_BINDINGS
+                && operations <= ACTOR_MUTATIONS + ACTOR_QUERY_BINDINGS,
+            "unexpected actor traffic counts: bindings={bindings} headers={headers} closed={closed} ops={operations}"
+        );
+        if bindings == ACTOR_BINDINGS
+            && headers == ACTOR_BINDINGS
+            && closed == ACTOR_BINDINGS - 1
+            && operations == ACTOR_MUTATIONS + ACTOR_QUERY_BINDINGS
+        {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "actor binding receipts timed out: bindings={bindings} headers={headers} closed={closed} ops={operations}"
+        );
+        std::thread::sleep(Duration::from_millis(5));
+    }
+    let raw = bounded_actor_journal(&journal);
+    assert!(
+        raw.len() <= 64 * 1024 && raw.ends_with('\n'),
+        "bounded complete private journal"
+    );
+    let observed = raw
+        .lines()
+        .map(|line| {
+            serde_json::from_str::<Value>(line)
+                .expect("every private actor journal row must decode")
+        })
+        .collect::<Vec<_>>();
+    let full_cursor = cursor.expect("ready actor has full session/epoch/sequence cursor");
+    let initial_head = prefix
+        .iter()
+        .filter_map(|e| e["seq"].as_u64())
+        .max()
+        .unwrap();
+    validate_actor_traffic(&observed, full_cursor, initial_head).unwrap();
     let mut seqs = std::collections::BTreeMap::<u64, Vec<u64>>::new();
     for row in &observed {
         if let (Some(connection), Some(seq)) = (row["connection"].as_u64(), row["seq"].as_u64()) {
@@ -297,12 +615,98 @@ while True:
     assert_eq!(turn["op"]["mode"], "queue");
     assert_eq!(
         ops.iter()
+            .filter(|r| r["op"]["type"] != "query_input_capabilities")
             .map(|r| r["op_id"].to_string())
             .collect::<std::collections::BTreeSet<_>>()
             .len(),
-        4
+        ACTOR_MUTATIONS
+    );
+    assert_eq!(
+        ops.iter()
+            .map(|r| r["op_id"].to_string())
+            .collect::<std::collections::BTreeSet<_>>()
+            .len(),
+        ops.len()
     );
     assert!(ops.iter().all(|r| r["op"]["type"] != "close"));
+    // Mutate the actual observed records only: these are validator controls,
+    // never another canonical protocol fixture or an extra product operation.
+    let query_index = observed
+        .iter()
+        .position(|r| r["op"]["type"] == "query_input_capabilities")
+        .unwrap();
+    let mutation_id = turn["op_id"].clone();
+    let mut unknown = observed.clone();
+    unknown[query_index]["op"]["type"] = json!("unexpected_fixture_mutation");
+    assert!(
+        validate_actor_traffic(&unknown, full_cursor, initial_head)
+            .unwrap_err()
+            .contains("unknown operation")
+    );
+    let mut duplicate = observed.clone();
+    duplicate[query_index]["op_id"] = mutation_id.clone();
+    duplicate[query_index]["op"]["request"] = mutation_id;
+    assert!(
+        validate_actor_traffic(&duplicate, full_cursor, initial_head)
+            .unwrap_err()
+            .contains("duplicate operation ID")
+    );
+    let mut misbound = observed.clone();
+    misbound[query_index]["op"]["request"] = json!(OpId::new());
+    assert!(
+        validate_actor_traffic(&misbound, full_cursor, initial_head)
+            .unwrap_err()
+            .contains("query request does not match")
+    );
+    let mut foreign = observed.clone();
+    foreign[query_index]["session"] = json!(SessionId::new());
+    assert!(
+        validate_actor_traffic(&foreign, full_cursor, initial_head)
+            .unwrap_err()
+            .contains("wrong session")
+    );
+    let mut zero = observed.clone();
+    zero[query_index]["op_id"] = json!("00000000000000000000000000");
+    zero[query_index]["op"]["request"] = zero[query_index]["op_id"].clone();
+    assert!(
+        validate_actor_traffic(&zero, full_cursor, initial_head)
+            .unwrap_err()
+            .contains("invalid or duplicate operation ID")
+    );
+    let mut repeat = observed.clone();
+    let mut repeated_query = repeat[query_index].clone();
+    let fresh = json!(OpId::new());
+    repeated_query["op_id"] = fresh.clone();
+    repeated_query["op"]["request"] = fresh;
+    repeat.insert(query_index + 1, repeated_query);
+    assert!(
+        validate_actor_traffic(&repeat, full_cursor, initial_head)
+            .unwrap_err()
+            .contains("duplicate query on live binding")
+    );
+    let probe_connection = observed
+        .iter()
+        .find(|r| {
+            r["subscribe"]["approver"] == true && r["subscribe"]["subscribe"]["after"].is_array()
+        })
+        .unwrap()["connection"]
+        .clone();
+    let probe_hello = observed
+        .iter()
+        .position(|r| r.get("hello").is_some() && r["connection"] == probe_connection)
+        .unwrap();
+    let mut probe_query = observed[query_index].clone();
+    let fresh = json!(OpId::new());
+    probe_query["op_id"] = fresh.clone();
+    probe_query["op"]["request"] = fresh;
+    probe_query["connection"] = probe_connection;
+    let mut abandoned = observed.clone();
+    abandoned.insert(probe_hello + 1, probe_query);
+    assert!(
+        validate_actor_traffic(&abandoned, full_cursor, initial_head)
+            .unwrap_err()
+            .contains("query belongs to abandoned probe binding")
+    );
     assert!(
         observed
             .iter()

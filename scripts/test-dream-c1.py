@@ -50,6 +50,8 @@ LAUNCH_DIAGNOSIS_BUILD = (
     "12ba4006b694bdce3c44d199de460d09f0f2414fafb7fd17880921a7d397a3b4",
 )
 _SOURCE_FREE_OWNER = None  # At most one active or quarantined private probe owner.
+# Preparation of the entry parser does not renew any historical launch grant.
+STOPPED_BOOTSTRAP_WORKERS = frozenset({LAUNCH_DIAGNOSIS_BUILD[2]})
 # Decision d93377961365255: probe=true is permanently source-free/non-startable.
 PROBE_NULL_CONTEXT_APPROVED = True
 FRAME = 256 * 1024
@@ -675,6 +677,8 @@ def provision_native_runner(runner, revision, compiler, *, development=False):
     """Canonical build-side provenance; the product never runs Git or rustc."""
     compiler_sha = hashlib.sha256(compiler.encode()).hexdigest()
     binary_sha = sha(runner)
+    if binary_sha in STOPPED_BOOTSTRAP_WORKERS:
+        raise ValueError("historical worker remains stopped; entry preparation grants no launch/provision approval")
     expected = PRIVATE_DEVELOPMENT_BUILD if development else APPROVED_NATIVE_BUILD
     if expected != (revision, compiler_sha, binary_sha):
         raise ValueError("native/debt source/compiler/executable has no reviewed consumer approval")
@@ -1249,6 +1253,121 @@ def _prepare_launch_preexec(read_gate, expected):
                      "python_preexec_general_async_signal_safety_claimed": False}
 
 
+BOOTSTRAP_WAITING = (b"dream-bootstrap state=waiting profile=dream-bootstrap/1 "
+                     b"argv_admissions=0 channel_admissions=0 owner_admissions=0\n")
+_ENTRY_KEYS = ("s", "g", "e", "m", "u", "k", "r", "p", "ok")
+_ENTRY_AUXILIARY = ("s", "g", "u", "k", "r", "p")
+_ENTRY_PATTERN = re.compile(
+    rb"dream-bootstrap entry " + b" ".join(
+        key.encode() + (rb"=([01])" if key == "ok" else rb"=(0|[1-9][0-9]{0,19})")
+        for key in _ENTRY_KEYS) + rb"\n")
+
+
+def parse_bootstrap_entry(line):
+    """The ICD's one bounded ordinary record; no auxiliary unit is assumed."""
+    if not isinstance(line, bytes) or len(line) > 256:
+        raise ValueError("bootstrap entry must be at most256bytes including LF")
+    matched = _ENTRY_PATTERN.fullmatch(line)
+    if matched is None:
+        raise ValueError("bootstrap entry fields/order/decimal/LF differ from the ICD")
+    values = dict(zip(_ENTRY_KEYS, (int(value) for value in matched.groups())))
+    if any(value > (1 << 64) - 1 for value in values.values()):
+        raise ValueError("bootstrap entry scalar exceeds u64")
+    if values["e"] > values["m"]:
+        raise ValueError("bootstrap entry CLOCK_MONOTONIC samples are reversed")
+    if values["ok"] == 0 and any(values[key] for key in ("s", "u", "k", "r", "p")):
+        raise ValueError("failed rusage must retain zero raw s/u/k/r/p")
+    return values
+
+
+class _BootstrapEntry:
+    """Fixed retained scalars and saturated counts, independent of raw stderr."""
+    def __init__(self):
+        self.entry_count = self.waiting_count = 0
+        self.values = self.line = self.observed = self.waiting_observed = None
+        self.fault, self.producer_defect = None, False
+
+    def refuse(self, reason, *, producer_defect=False):
+        self.fault = self.fault or reason
+        self.producer_defect |= producer_defect
+
+    def observe(self, line, observed):
+        if line.startswith(b"dream-bootstrap entry"):
+            self.entry_count = min(2, self.entry_count + 1)
+            if self.entry_count != 1:
+                self.refuse("duplicate_entry")
+            if self.waiting_count:
+                self.refuse("entry_after_waiting", producer_defect=True)
+            try:
+                values = parse_bootstrap_entry(line)
+            except ValueError:
+                self.refuse("malformed_entry")
+            else:
+                if self.values is None:
+                    self.values, self.line, self.observed = values, line, observed
+        elif line.startswith(b"dream-bootstrap state=waiting"):
+            self.waiting_count = min(2, self.waiting_count + 1)
+            if self.waiting_count != 1:
+                self.refuse("duplicate_waiting")
+            if line != BOOTSTRAP_WAITING:
+                self.refuse("malformed_waiting")
+            if self.entry_count == 0:
+                self.refuse("waiting_without_entry", producer_defect=True)
+            if self.waiting_observed is None:
+                self.waiting_observed = observed
+
+    def evidence(self, spawn_bounds):
+        result = {"entry_evidence": "unknown", "producer_defect": self.producer_defect,
+                  "entry_line_count_saturated_at2": self.entry_count,
+                  "waiting_line_count_saturated_at2": self.waiting_count,
+                  "auxiliary_units_verified": False, "cost_known_established_from_auxiliary": False,
+                  "phase_or_os_cause_established": False}
+        reason = self.fault
+        if reason is None and (self.entry_count != 1 or self.values is None):
+            reason = "missing_entry"
+        if reason is None and self.waiting_count != 1:
+            reason = "missing_waiting"
+        if self.values is not None:
+            # Decimal strings preserve all u64 bytes across private JSON readers.
+            result.update(record_ascii=self.line.decode("ascii"),
+                          raw_auxiliary_unverified={key: str(self.values[key]) for key in _ENTRY_AUXILIARY},
+                          rusage_ok=bool(self.values["ok"]),
+                          auxiliary_zero_is_not_known_zero_cost=True)
+        if not isinstance(spawn_bounds, dict) or spawn_bounds.get("clock_id") != "CLOCK_MONOTONIC" or spawn_bounds.get("clock_api") != "clock_gettime_ns":
+            reason = reason or "unmatched_parent_clock_domain"
+        else:
+            before, returned = spawn_bounds.get("before_ns"), spawn_bounds.get("returned_ns")
+            samples = (before, returned, self.observed, self.waiting_observed)
+            if any(type(value) is not int or not 0 <= value < 1 << 64 for value in samples):
+                reason = reason or "missing_or_invalid_parent_clock_sample"
+            elif before > returned or self.observed < returned or self.waiting_observed < self.observed:
+                reason = reason or "reversed_parent_clock_chain"
+            elif self.values is not None:
+                entry, prewrite = self.values["e"], self.values["m"]
+                if entry < before:
+                    reason = reason or "entry_precedes_spawn_call_clock_bound"
+                elif prewrite > self.observed:
+                    reason = reason or "prewrite_sample_after_parent_observation"
+                if reason is None:
+                    result.update(
+                        entry_evidence="known", primary_clock_id="CLOCK_MONOTONIC",
+                        primary_parent_clock_api="clock_gettime_ns",
+                        entry_clock_monotonic_ns=entry, prewrite_clock_monotonic_ns=prewrite,
+                        entry_first_observed_clock_monotonic_ns=self.observed,
+                        waiting_first_observed_clock_monotonic_ns=self.waiting_observed,
+                        spawn_return_clock_bounds_ns={"lower": before, "upper": returned},
+                        spawn_return_origin_clock_monotonic_ns=returned,
+                        spawn_return_observation_uncertainty_ns=returned - before,
+                        # Signed: child entry may precede the parent's return sample.
+                        spawn_return_to_entry_signed_bounds_ns=[entry - returned, entry - before],
+                        entry_to_prewrite_ns=prewrite - entry,
+                        actual_write_clock_monotonic_bounds_ns=[prewrite, self.observed],
+                        exact_write_time_known=False)
+        if reason is not None:
+            result["reason"] = reason
+        return result
+
+
 class _LaunchDrain:
     """Bounded nonblocking output observation, also used after lease retirement."""
     def __init__(self, process, readiness):
@@ -1257,6 +1376,8 @@ class _LaunchDrain:
         self.selector = selectors.DefaultSelector()
         self.events, self.seen, self.cursor, self.error = [], set(), 0, None
         self.preexec = None
+        self.entry = _BootstrapEntry()
+        self.observer_cpu_ns = self.observer_max_cpu_ns = self.observer_overruns = 0
         for name, stream in (("stdout", process.stdout), ("stderr", process.stderr)):
             os.set_blocking(stream.fileno(), False)
             self.selector.register(stream, selectors.EVENT_READ, name)
@@ -1276,6 +1397,9 @@ class _LaunchDrain:
         while (end := self.stderr.find(b"\n", self.cursor)) >= 0:
             line = bytes(self.stderr[self.cursor:end])
             self.cursor = end + 1
+            self.entry.observe(line + b"\n", observed)
+            if line.startswith(b"dream-bootstrap entry"):
+                self.note("entry_line_first_observed", observed)
             for state in (b"waiting", b"paid_hello"):
                 if line.startswith(b"dream-bootstrap state=" + state + b" "):
                     self.note("gate_" + state.decode() + "_first_observed", observed)
@@ -1303,6 +1427,21 @@ class _LaunchDrain:
                               marker_pid_matches_owned_child=self.preexec["pid"] == self.process.pid)
                 except ValueError:
                     self.error = self.error or "malformed_preexec_marker"
+        # An unterminated entry cannot grow beyond the fixed record bound and
+        # later become admissible. The total raw stderr owner remains16KiB.
+        partial = self.stderr[self.cursor:]
+        if partial.startswith(b"dream-bootstrap entry") and len(partial) >= 256:
+            self.entry.refuse("oversize_or_unterminated_entry")
+        elif partial.startswith(b"dream-bootstrap entry") and self.entry.entry_count:
+            self.entry.refuse("additional_unterminated_entry")
+
+    def entry_evidence(self, spawn_bounds):
+        evidence = self.entry.evidence(spawn_bounds)
+        evidence["entry_and_waiting_observed_before_original_readiness"] = (
+            evidence["entry_evidence"] == "known"
+            and self.entry.observed < self.readiness
+            and self.entry.waiting_observed < self.readiness)
+        return evidence
 
     def pump(self, timeout):
         self.note("selector_first_entered")
@@ -1317,37 +1456,263 @@ class _LaunchDrain:
             self.error = self.error or "selector_error"
             return
         for key, _ in events:
-            observed = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+            self.read_ready(key)
+
+    def read_ready(self, key):
+        """One at-most4KiB read/copy/parse control, including refusal paths."""
+        unit_cpu = time.thread_time_ns()
+        try:
+            ready_at = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
             name = key.data
-            self.note(name + "_first_selector_ready", observed)
+            self.note(name + "_first_selector_ready", ready_at)
             buffer, limit = (self.stdout, FRAME) if name == "stdout" else (self.stderr, 16 * 1024)
             try:
                 chunk = os.read(key.fd, min(4096, limit + 1 - len(buffer)))
             except BlockingIOError:
-                continue
+                return
             except OSError as error:
                 self.note(name + "_read_error", errno=error.errno)
                 self.error = self.error or name + "_read_error"
                 self.selector.unregister(key.fileobj)
-                continue
+                return
+            # Observation is AFTER receiving bytes, not the preceding selector
+            # readiness sample. Only this same-clock bound brackets the write.
+            observed = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
             if not chunk:
                 self.note(name + "_eof", observed)
                 self.selector.unregister(key.fileobj)
-                continue
+                return
             self.note(name + "_first_bytes", observed)
             if len(buffer) + len(chunk) > limit:
                 buffer.extend(chunk[:limit - len(buffer)])
                 self.error = self.error or name + "_byte_limit"
                 self.selector.unregister(key.fileobj)
-                continue
+                return
             buffer.extend(chunk)
             if name == "stderr":
                 self.stderr_lines(observed)
             elif b"\n" in buffer:
                 self.note("hello_line_first_observed", observed)
+        finally:
+            elapsed = time.thread_time_ns() - unit_cpu
+            if elapsed < 0:
+                self.error = self.error or "observer_clock_reversal"
+            else:
+                self.observer_cpu_ns += elapsed
+                self.observer_max_cpu_ns = max(self.observer_max_cpu_ns, elapsed)
+                if elapsed > 1_000_000:
+                    self.observer_overruns += 1
+                    self.error = self.error or "observer_cpu_limit"
 
     def close(self):
         self.selector.close()
+
+
+def check_bootstrap_entry_controls():
+    """ICD-derived private bytes/clock stubs, never a candidate or corpus claim."""
+    from types import SimpleNamespace
+    from unittest import mock
+    accepted, refused = [], []
+    maximum = (1 << 64) - 1
+    bounds = {"clock_id": "CLOCK_MONOTONIC", "clock_api": "clock_gettime_ns",
+              "before_ns": 100, "returned_ns": 120}
+
+    def record(**changes):
+        fields = dict(s=7, g=8, e=110, m=125, u=9, k=10, r=11, p=12, ok=1)
+        fields.update(changes)
+        return b"dream-bootstrap entry " + b" ".join(
+            key.encode() + b"=" + str(fields[key]).encode() for key in _ENTRY_KEYS) + b"\n"
+
+    def evidence(lines, *, primary=bounds):
+        entry = _BootstrapEntry()
+        for raw, observed in lines:
+            entry.observe(raw, observed)
+        return entry, entry.evidence(primary)
+
+    raw = record()
+    entry, value = evidence([(raw, 130), (BOOTSTRAP_WAITING, 131)])
+    assert value["entry_evidence"] == "known" and not value["producer_defect"]
+    assert value["spawn_return_to_entry_signed_bounds_ns"] == [-10, 10]
+    assert value["spawn_return_clock_bounds_ns"] == {"lower": 100, "upper": 120}
+    assert value["spawn_return_observation_uncertainty_ns"] == 20
+    assert value["entry_to_prewrite_ns"] == 15
+    assert value["actual_write_clock_monotonic_bounds_ns"] == [125, 130]
+    assert not value["exact_write_time_known"] and not value["phase_or_os_cause_established"]
+    assert not value["auxiliary_units_verified"] and value["record_ascii"].encode() == raw
+    assert value["raw_auxiliary_unverified"] == {
+        "s": "7", "g": "8", "u": "9", "k": "10", "r": "11", "p": "12"}
+    accepted.append("entry_may_precede_return_with_checked_signed_interval_not_clock_reversal")
+    max_record = record(**{key: maximum for key in _ENTRY_KEYS if key != "ok"})
+    assert len(max_record) <= 256
+    assert parse_bootstrap_entry(max_record)["p"] == maximum
+    _, value = evidence([(max_record, maximum), (BOOTSTRAP_WAITING, maximum)], primary={
+        **bounds, "before_ns": maximum - 2, "returned_ns": maximum - 1})
+    assert value["entry_evidence"] == "known"
+    assert all(item == str(maximum) for item in value["raw_auxiliary_unverified"].values())
+    accepted.append("maximum_u64_exact_decimal_bytes_and_private_JSON_strings")
+    failed_usage = record(s=0, u=0, k=0, r=0, p=0, g=maximum, ok=0)
+    _, value = evidence([(failed_usage, 130), (BOOTSTRAP_WAITING, 131)])
+    assert value["entry_evidence"] == "known" and not value["rusage_ok"]
+    assert value["auxiliary_zero_is_not_known_zero_cost"] and value["raw_auxiliary_unverified"]["g"] == str(maximum)
+    accepted.append("rusage_failure_preserves_valid_primary_evidence_without_known_zero_cost")
+    for label, malformed in (
+        ("missing_LF", raw[:-1]), ("CRLF", raw[:-1] + b"\r\n"),
+        ("extra_LF", raw + b"\n"), ("prefix", raw.replace(b"entry ", b"Entry ", 1)),
+        ("key_order", raw.replace(b"s=7 g=8", b"g=8 s=7")),
+        ("missing_key", raw.replace(b"g=8 ", b"")),
+        ("duplicate_key", raw.replace(b"g=8", b"g=8 g=9")),
+        ("extra_key", raw.replace(b"ok=1", b"ok=1 x=0")),
+        ("padded_decimal", raw.replace(b"s=7", b"s=07")),
+        ("signed_decimal", raw.replace(b"s=7", b"s=+7")),
+        ("negative_decimal", raw.replace(b"s=7", b"s=-7")),
+        ("fraction", raw.replace(b"s=7", b"s=7.0")),
+        ("nonnumeric", raw.replace(b"s=7", b"s=x")),
+        ("nonascii", raw.replace(b"s=7", b"s=\xff")),
+        ("u64_overflow", raw.replace(b"s=7", b"s=18446744073709551616")),
+        ("over20digits", raw.replace(b"s=7", b"s=100000000000000000000")),
+        ("oversize", raw[:-1] + b" " * 256 + b"\n"),
+        ("ok_not_boolean", raw.replace(b"ok=1", b"ok=2")),
+        ("ok_padded", raw.replace(b"ok=1", b"ok=01")),
+        ("reversed_entry_prewrite", record(e=126, m=125)),
+    ):
+        try:
+            parse_bootstrap_entry(malformed)
+        except ValueError:
+            refused.append(label)
+        else:
+            raise AssertionError("entry parser accepted " + label)
+    for key in ("s", "u", "k", "r", "p"):
+        fields = dict(s=0, u=0, k=0, r=0, p=0, ok=0)
+        fields[key] = 1
+        try:
+            parse_bootstrap_entry(record(**fields))
+        except ValueError:
+            refused.append("ok0_nonzero_" + key)
+        else:
+            raise AssertionError("rusage failure retained nonzero " + key)
+    for label, lines, defect in (
+        ("neither_line_by_reap", [], False),
+        ("entry_without_waiting", [(raw, 130)], False),
+        ("waiting_without_entry", [(BOOTSTRAP_WAITING, 131)], True),
+        ("entry_after_waiting", [(BOOTSTRAP_WAITING, 130), (raw, 131)], True),
+        ("duplicate_entry", [(raw, 130), (raw, 131), (BOOTSTRAP_WAITING, 132)], False),
+        ("duplicate_after_known", [(raw, 130), (BOOTSTRAP_WAITING, 131), (raw, 132)], True),
+        ("duplicate_waiting", [(raw, 130), (BOOTSTRAP_WAITING, 131), (BOOTSTRAP_WAITING, 132)], False),
+        ("malformed_waiting", [(raw, 130), (BOOTSTRAP_WAITING.replace(b"owner_admissions=0", b"owner_admissions=1"), 131)], False),
+        ("malformed_then_valid_entry", [(raw.replace(b"s=7", b"s=x"), 129), (raw, 130), (BOOTSTRAP_WAITING, 131)], False),
+    ):
+        owner, value = evidence(lines)
+        assert value["entry_evidence"] == "unknown", label
+        assert value["producer_defect"] is defect, label
+        assert owner.entry_count <= 2 and owner.waiting_count <= 2
+        refused.append(label)
+    for label, primary, observed, waiting in (
+        ("wrong_clock_id", {**bounds, "clock_id": "CLOCK_MONOTONIC_RAW"}, 130, 131),
+        ("implicit_monotonic_api", {**bounds, "clock_api": "monotonic_ns"}, 130, 131),
+        ("missing_clock_proof", None, 130, 131),
+        ("missing_spawn_bound", {"clock_id": "CLOCK_MONOTONIC", "clock_api": "clock_gettime_ns"}, 130, 131),
+        ("boolean_sample", {**bounds, "before_ns": False}, 130, 131),
+        ("negative_sample", {**bounds, "before_ns": -1}, 130, 131),
+        ("reversed_return_bracket", {**bounds, "before_ns": 121}, 130, 131),
+        ("entry_before_spawn_call", {**bounds, "before_ns": 111}, 130, 131),
+        ("observation_before_return", bounds, 119, 131),
+        ("prewrite_after_observation", bounds, 124, 131),
+        ("waiting_observation_reversed", bounds, 130, 129),
+        ("observation_overflow", bounds, maximum + 1, maximum + 1),
+    ):
+        _, value = evidence([(raw, observed), (BOOTSTRAP_WAITING, waiting)], primary=primary)
+        assert value["entry_evidence"] == "unknown", label
+        assert "spawn_return_to_entry_signed_bounds_ns" not in value, label
+        refused.append(label)
+
+    def observer(readiness=200):
+        owner = object.__new__(_LaunchDrain)
+        owner.process, owner.readiness = SimpleNamespace(pid=1234), readiness
+        owner.stderr, owner.stdout = bytearray(), bytearray()
+        owner.events, owner.seen, owner.cursor, owner.error = [], set(), 0, None
+        owner.preexec, owner.entry = None, _BootstrapEntry()
+        owner.observer_cpu_ns = owner.observer_max_cpu_ns = owner.observer_overruns = 0
+        return owner
+
+    owner = observer()
+    owner.stderr.extend(raw[:-1])
+    owner.stderr_lines(129)
+    assert owner.entry_evidence(bounds)["entry_evidence"] == "unknown"
+    owner.stderr.extend(b"\n" + BOOTSTRAP_WAITING)
+    owner.stderr_lines(130)
+    value = owner.entry_evidence(bounds)
+    assert value["entry_evidence"] == "known" and value["entry_and_waiting_observed_before_original_readiness"]
+    assert "entry_line_first_observed" in owner.seen
+    accepted.append("split_reads_require_LF_and_preserve_same_stderr_order")
+    owner.readiness = 130
+    value = owner.entry_evidence(bounds)
+    assert value["entry_evidence"] == "known" and not value["entry_and_waiting_observed_before_original_readiness"]
+    refused.append("late_primary_evidence_cannot_revive_original_readiness")
+    owner.stderr.extend(raw[:-1])
+    owner.stderr_lines(132)
+    assert owner.entry_evidence(bounds)["entry_evidence"] == "unknown"
+    refused.append("additional_unterminated_entry_cannot_preserve_readiness")
+    owner = observer()
+    owner.stderr.extend(b"dream-bootstrap entry " + b"x" * 256)
+    owner.stderr_lines(130)
+    owner.stderr.extend(b"\n" + raw + BOOTSTRAP_WAITING)
+    owner.stderr_lines(131)
+    assert owner.entry_evidence(bounds)["entry_evidence"] == "unknown"
+    refused.append("oversize_unterminated_prefix_cannot_be_repaired_by_later_valid_record")
+    # No selector, native preexec, priority or process is invoked. The byte-read
+    # stub verifies observation follows the read and every error path is timed.
+    for mode in ("valid", "overrun", "clock_reversal", "would_block", "read_error"):
+        owner = observer()
+        owner.selector = SimpleNamespace(unregister=mock.Mock())
+        key = SimpleNamespace(data="stderr", fd=123, fileobj=object())
+        def read_stub(_fd, limit):
+            assert 0 < limit <= 4096
+            if mode == "would_block":
+                raise BlockingIOError()
+            if mode == "read_error":
+                raise OSError(5, "private stub")
+            return raw + BOOTSTRAP_WAITING
+        cpu = [100, 1_000_101 if mode == "overrun" else 99 if mode == "clock_reversal" else 200]
+        with mock.patch.object(os, "read", side_effect=read_stub), \
+                mock.patch.object(time, "clock_gettime_ns", side_effect=[129, 130]), \
+                mock.patch.object(time, "thread_time_ns", side_effect=cpu):
+            owner.read_ready(key)
+        if mode == "valid":
+            assert owner.entry.observed == 130 and owner.entry_evidence(bounds)["entry_evidence"] == "known"
+            assert owner.observer_cpu_ns == owner.observer_max_cpu_ns == 100
+            accepted.append("primary_observation_is_after_read_and_bounded_control_CPU_is_recorded")
+        elif mode == "overrun":
+            assert owner.error == "observer_cpu_limit" and owner.observer_overruns == 1
+            refused.append("bounded_observer_CPU_overrun")
+        elif mode == "clock_reversal":
+            assert owner.error == "observer_clock_reversal"
+            refused.append("observer_CPU_clock_reversal")
+        else:
+            assert owner.observer_cpu_ns == 100
+            assert owner.error == ("stderr_read_error" if mode == "read_error" else None)
+            accepted.append(mode + "_still_records_control_CPU")
+    with mock.patch.object(subprocess, "Popen", side_effect=AssertionError("pure helper must not birth")), \
+            mock.patch.dict(globals(), {"_SOURCE_FREE_OWNER": None}):
+        for label, worker in (("historical", LAUNCH_DIAGNOSIS_BUILD[2]), ("unknown", "0" * 64)):
+            try:
+                hello(Path("/private/unread-stopped-worker"), Path("/private/uncreated-entry-evidence"),
+                      {"source_commit": LAUNCH_DIAGNOSIS_BUILD[0], "compiler_sha256": LAUNCH_DIAGNOSIS_BUILD[1],
+                       "binary_sha256": worker})
+            except ValueError as error:
+                assert "stopped/unapproved" in str(error) and _SOURCE_FREE_OWNER is None
+            else:
+                raise AssertionError("unapproved tuple reached source-free custody")
+            refused.append(label + "_tuple_refused_before_files_pipes_claim_or_birth")
+        with mock.patch.dict(globals(), {"sha": lambda _path: LAUNCH_DIAGNOSIS_BUILD[2]}):
+            try:
+                provision_native_runner(Path("/private/unread-stopped-worker"), LAUNCH_DIAGNOSIS_BUILD[0], "private compiler stub")
+            except ValueError as error:
+                assert "historical worker remains stopped" in str(error)
+            else:
+                raise AssertionError("stopped worker received a new provision")
+        refused.append("historical_worker_cannot_receive_new_provision_sidecar")
+    return {"scope": "private ICD-derived entry bytes/clock/control stubs only; no candidate, corpus authority or runtime conformance",
+            "accepted": accepted, "refused": refused}
 
 
 def _settle_source_free(process, drain, timing):
@@ -1499,7 +1864,8 @@ def check_launch_diagnosis_controls():
                 else:
                     marker = (b"dream-launch-preexec mono_ns=00000000000000000123 clock_ok=1 pid=0000001234 "
                               b"fd=00007 type=004096 access=0 identity=1 stderr_pipe=1 priority=+10 priority_ok=1\n")
-                    os.write(stderr_write, marker + b"dream-bootstrap state=waiting profile=dream-bootstrap/1 argv_admissions=0 channel_admissions=0 owner_admissions=0\n")
+                    private_entry = b"dream-bootstrap entry s=1 g=2 e=124 m=125 u=3 k=4 r=5 p=6 ok=1\n"
+                    os.write(stderr_write, marker + private_entry + BOOTSTRAP_WAITING)
                     os.write(stdout_write, b"private-observer-bytes\n")
                     observer.pump(0)
                     assert observer.preexec["mono_ns"] == 123
@@ -1611,6 +1977,7 @@ def check_launch_diagnosis_controls():
         ):
             observer = object.__new__(_LaunchDrain)
             observer.stderr, observer.cursor, observer.error, observer.preexec = bytearray(raw), 0, None, None
+            observer.entry = _BootstrapEntry()
             observer.stderr_lines(456)
             assert observer.error == "malformed_preexec_marker" and observer.preexec is None
             refused.append(label)
@@ -1634,6 +2001,10 @@ def check_launch_diagnosis_controls():
 def hello(runner, evidence, native_provision, *, diagnostic_target=None, closure_before=None, closure_after=None):
     """Ordinary source-free probe, with one separately claimed diagnostic mode."""
     diagnostic_only = diagnostic_target is not None
+    candidate = (native_provision.get("source_commit"), native_provision.get("compiler_sha256"),
+                 native_provision.get("binary_sha256"))
+    if candidate[2] in STOPPED_BOOTSTRAP_WORKERS or candidate != APPROVED_NATIVE_BUILD:
+        raise ValueError("stopped/unapproved worker; entry preparation does not authorize a launch")
     if (not runner.is_file() or not runner.is_absolute()
             or native_provision.get("bootstrap_profile") != "dream-bootstrap/1"
             or native_provision.get("binary_sha256") != sha(runner)):
@@ -1660,6 +2031,7 @@ def hello(runner, evidence, native_provision, *, diagnostic_target=None, closure
         read_gate, lease = os.pipe()
         process = drain = claim = preexec_details = None
         timing = {}
+        spawn_bounds = {"clock_id": "CLOCK_MONOTONIC", "clock_api": "clock_gettime_ns"}
         permit_attempted = readiness_failed = False
         parent_cpu = debt = control_cpu = written = value = None
         ready_ok = False
@@ -1693,6 +2065,8 @@ def hello(runner, evidence, native_provision, *, diagnostic_target=None, closure
             cpu_start = time.thread_time_ns()
             job_deadline = time.clock_gettime_ns(time.CLOCK_MONOTONIC) + 30_000_000_000
             custody.attempted = True
+            spawn_bounds["before_ns"] = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+            timing["spawn_call_before_ns"] = spawn_bounds["before_ns"]
             process = subprocess.Popen(
                 [str(runner), "dream", "inspect-c1", "--job-dir", str(job)],
                 stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
@@ -1701,9 +2075,12 @@ def hello(runner, evidence, native_provision, *, diagnostic_target=None, closure
             )
             custody.process = process  # Preserve the effect before timing/verdict code.
             returned_at = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+            spawn_bounds["returned_ns"] = returned_at
             timing["spawn_return_ns"] = returned_at
             readiness = min(returned_at + 250_000_000, job_deadline)
             timing["original_readiness_deadline_ns"] = readiness
+            if returned_at < spawn_bounds["before_ns"]:
+                raise ValueError("private probe CLOCK_MONOTONIC spawn bracket reversed")
             os.close(read_gate)
             read_gate = None
             drain = _LaunchDrain(process, readiness)
@@ -1711,6 +2088,8 @@ def hello(runner, evidence, native_provision, *, diagnostic_target=None, closure
             drain.pump(0)
             if b"\n" in drain.stdout:
                 raise ValueError("worker emitted Hello before the sole parent permit attempt")
+            if drain.error or drain.entry.fault:
+                raise ValueError("entry observer refused before permit: " + (drain.error or drain.entry.fault))
             record, record_binding = bootstrap_record(inputs, birth, readiness)
             if record_binding != binding:
                 raise ValueError("frozen bootstrap binding changed before grant")
@@ -1719,6 +2098,9 @@ def hello(runner, evidence, native_provision, *, diagnostic_target=None, closure
                 "environment": {"LANG": "C.UTF-8", "TMPDIR": str(job / "tmp"), "BBOXY_DREAM_BOOTSTRAP": token},
                 "binding_inputs": inputs, "record_hex": record.hex(),
                 "spawn_return_clock_monotonic_ns": returned_at,
+                "parent_primary_clock": {"id": "CLOCK_MONOTONIC", "api": "clock_gettime_ns"},
+                "spawn_return_clock_bounds_ns": spawn_bounds,
+                "spawn_return_origin": "first same-clock sample after Popen returned; actual return is bracketed",
                 "original_readiness_clock_monotonic_ns": readiness,
                 "diagnostic_only": diagnostic_only, "runtime_conformance": False,
                 "preexec": preexec_details, "one_shot_claim": claim}), 16 * 1024)
@@ -1749,7 +2131,8 @@ def hello(runner, evidence, native_provision, *, diagnostic_target=None, closure
             if timing["permit_after_ns"] >= readiness:
                 readiness_failed = True
                 raise ValueError("private probe permit crossed original readiness; retaining actual write effect")
-            while b"\n" not in drain.stdout:
+            while (b"\n" not in drain.stdout
+                   or not drain.entry_evidence(spawn_bounds)["entry_and_waiting_observed_before_original_readiness"]):
                 now = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
                 if now >= readiness:
                     readiness_failed = True
@@ -1758,6 +2141,8 @@ def hello(runner, evidence, native_provision, *, diagnostic_target=None, closure
                 drain.pump((readiness - now) / 1_000_000_000)
                 if drain.error:
                     raise ValueError("bounded launch observer refused: " + drain.error)
+                if drain.entry.fault:
+                    raise ValueError("ordinary entry evidence unknown: " + drain.entry.fault)
                 if "stdout_eof" in drain.seen and b"\n" not in drain.stdout:
                     readiness_failed = True
                     raise ValueError("real gated worker exited without Hello")
@@ -1772,7 +2157,7 @@ def hello(runner, evidence, native_provision, *, diagnostic_target=None, closure
                         "schema_sha256": SCHEMA_SHA256, "ir_major": 1, "ir_minor_max": 3}
             if value != expected:
                 raise ValueError("real built worker Hello is incompatible with approved schema")
-            ready_ok = True
+            ready_ok = drain.entry_evidence(spawn_bounds)["entry_and_waiting_observed_before_original_readiness"]
         finally:
             # Retire the scheduling lease BEFORE output diagnostics or settlement.
             if lease is not None:
@@ -1795,6 +2180,8 @@ def hello(runner, evidence, native_provision, *, diagnostic_target=None, closure
                     custody.settled = True
                 stdout_record = _retain_launch_bytes(evidence, "hello.stdout", bytes(drain.stdout), FRAME)
                 stderr_record = _retain_launch_bytes(evidence, "hello.stderr", bytes(drain.stderr), 16 * 1024)
+                entry_evidence = drain.entry_evidence(spawn_bounds)
+                ready_ok = ready_ok and entry_evidence["entry_and_waiting_observed_before_original_readiness"]
                 lifecycle = {"scope": "private source-free controller; not native-parent conformance",
                              "diagnostic_only": diagnostic_only, "runtime_conformance": False,
                              "op_id": operation, "run_id": run_id, "nonce": nonce, "birth": birth,
@@ -1810,6 +2197,12 @@ def hello(runner, evidence, native_provision, *, diagnostic_target=None, closure
                              "original_readiness_failed": readiness_failed,
                              "readiness_verdict": "passed" if ready_ok else "failed",
                              "controller_clock_monotonic_ns": timing, "first_observations": drain.events,
+                             "bootstrap_entry": entry_evidence,
+                             "parent_primary_clock": {"id": "CLOCK_MONOTONIC", "api": "clock_gettime_ns"},
+                             "spawn_return_clock_bounds_ns": spawn_bounds,
+                             "output_read_parse_cpu_ns": drain.observer_cpu_ns,
+                             "output_read_parse_max_cpu_ns": drain.observer_max_cpu_ns,
+                             "output_read_parse_overruns": drain.observer_overruns,
                              "preexec": drain.preexec, "preexec_format": preexec_details,
                              "one_shot_claim": claim, "observation_error": drain.error,
                              "output_eof_observed": {"stdout_eof", "stderr_eof"} <= drain.seen,
@@ -1821,6 +2214,9 @@ def hello(runner, evidence, native_provision, *, diagnostic_target=None, closure
             raise ValueError(f"real gated probe did not settle successfully: {process.returncode}")
         if drain.error or not drain.stdout.endswith(b"\n") or b"\n" in drain.stdout[:-1]:
             raise ValueError("source-free probe emitted malformed/extra bounded output")
+        entry_evidence = drain.entry_evidence(spawn_bounds)
+        if not entry_evidence["entry_and_waiting_observed_before_original_readiness"]:
+            raise ValueError("ordinary entry evidence unknown/late; readiness cannot succeed")
         return {"runner": str(runner), "runner_sha256": sha(runner), "hello": value,
                 "eof_exit_code": process.returncode, "actual_reap": True, "inspection_started": False,
                 "diagnostic_only": diagnostic_only, "runtime_conformance": False,
@@ -1832,6 +2228,7 @@ def hello(runner, evidence, native_provision, *, diagnostic_target=None, closure
                 "permit_attempts": int(permit_attempted), "permit_bytes": written,
                 "private_controller_startup_cpu_ns": parent_cpu, "private_controller_debt_ns": debt,
                 "permit_control_cpu_ns": control_cpu, "one_shot_claim": claim,
+                "bootstrap_entry": entry_evidence,
                 "scope": "instrumented source-free diagnosis only" if diagnostic_only else "ordinary uninstrumented source-free probe"}
 
 
@@ -2526,8 +2923,9 @@ def main():
         receipt["build_closure_controls"] = check_build_closure_controls()
         receipt["native_profile_controls"] = check_native_profile_controls()
         receipt["launch_diagnosis_controls"] = check_launch_diagnosis_controls()
+        receipt["bootstrap_entry_controls"] = check_bootstrap_entry_controls()
         if args.check_profile_only:
-            receipt["scope"] = "Private build-closure, numeric profile and launch-diagnosis controls only; no artifact execution or runtime conformance"
+            receipt["scope"] = "Private build-closure, numeric profile, launch-diagnosis and entry-record controls only; no artifact execution or runtime conformance"
             code = 0
             return code
         if sys.platform != "darwin":

@@ -225,6 +225,10 @@ pub(super) async fn join_c1(
     let run_dir = config.run_dir.clone();
     // This isolated bootstrap owns all filesystem, process-identity and receipt IO.
     // Its bounded handshake completes before R5's measurement interval begins.
+    #[allow(
+        clippy::disallowed_methods,
+        reason = "private fixture IO stays in this blocking bootstrap and its dedicated evidence thread; UI receives only atomics"
+    )]
     let state = tokio::task::spawn_blocking(move || {
         use std::{fs, io::Write, os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt}};
         let home = PathBuf::from(std::env::var_os("HOME").ok_or("c1-native-private-home-required")?);

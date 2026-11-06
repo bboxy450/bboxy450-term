@@ -57,6 +57,8 @@ async fn wait(pane: &mut Pane, predicate: impl Fn(&Pane) -> bool) {
 async fn private_native_clipboard_and_drop_reach_shared_worker_and_durable_image() {
     let temp = tempfile::tempdir().unwrap();
     let meta = SessionMeta {
+        dream: None,
+        vcs: None,
         source: None,
         session: SessionId::new(),
         cwd: temp.path().into(),
