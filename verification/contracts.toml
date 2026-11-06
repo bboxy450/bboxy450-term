@@ -1243,11 +1243,61 @@ property = "IntegrityRequiresAllLocalChecks; SignatureDoesNotCertifyAuthority. T
 checks = ["make test-formal", "make test"]
 
 [[contract]]
-name = "ManagedWorkspaceProvisioning"
-title = "Managed implementation workspace ownership and recovery"
-models = ["ManagedWorkspaceCreate", "BrokenManagedWorkspaceCreate", "ManagedWorkspaceWriter", "BrokenManagedWorkspaceWriter", "ManagedWorkspaceFence", "BrokenManagedWorkspaceFence", "ManagedWorkspaceRelease", "BrokenManagedWorkspaceRelease", "ManagedWorkspaceOwnership", "BrokenManagedWorkspaceOwnership", "ManagedWorkspaceProviderLease", "BrokenManagedWorkspaceProviderLease"]
+name = "ManagedWorkspaceCreate"
+title = "One source resource per admitted attempt"
+models = ["ManagedWorkspaceCreate", "BrokenManagedWorkspaceCreate"]
 sources = ["crates/bbt-mux/src/mcp/workspaces.rs", "crates/bbt-mux/src/mcp/workspaces/git.rs", "crates/bbt-mux/src/logic/implementation_workspaces.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/models/managed_workspace.rs"]
 implementation_tests = ["crates/bbt-mux/src/mcp/workspaces/tests.rs", "crates/bbt-mux/tests/mcp/workspaces.rs"]
-property = "An exclusive checkout directory claim and persisted inode precede Git mutation; branch/path coincidence never proves creation ownership. Planning failure can cancel only an unrequested writer; uncertain native spawn retains the lease until exact supervisor PID observation. An inherited per-resource provider file lease plus a post-claim generation check prevents absence/release proof while an old Git child can still mutate after logic restart. One durable source resource per admitted task attempt and one writing holder; old revisions/generations/root A-B-A completions cannot publish current readiness; dirty or unowned resources are never deleted. Finite models bound two admissions and three monotonic revisions; negative controls remove the resource, writer, completion, preservation and identity guards separately. Eventual provider observation assumes a fair owner and a returning IO job. Real private Git and MCP fixtures cover source/KB separation, restart inspection without re-creation, withheld commits/private files, current process/seat binding and replay. No arbitrary Git, OS process, SQLite, remote-provider or filesystem-adversary refinement proof is claimed."
-assumptions = "One source repository; bounded two admissions/writers, three monotonic workspace/root revisions; external Git effects are atomic abstract steps after durable admission. Preparation/release jobs eventually return only under fair IO and a responsive provider. SQLite publication is a separate action. Provider commands retain an inherited lease descriptor during their mutating lifetime; the real fork/exec fixture proves the child keeps the kernel lock after the parent descriptor closes. Process/checkout identity and ignored/private-file checks use real API fixtures."
-checks = ["make test-workspace-provisioning", "make test-formal", "make test-boundaries"]
+property = "Durable admission, an exclusive directory claim and persisted inode precede Git mutation. Retried operations never allocate a second resource for the same active attempt. Focused native evidence runs make test-workspace-provisioning; complete parity is mandatory under make test-formal."
+assumptions = "Finite projections bound two admissions/writers and three monotonic revisions; external provider effects and short SQLite publications are separate atomic actions. Progress assumes fair bounded IO scheduling and an eventually responsive provider. Real private Git/process/native MCP tests cover source/KB separation, retained private files/commits, exact identity, restart and replay. No arbitrary Rust, Git, filesystem, cryptographic or remote-provider refinement proof is claimed."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ManagedWorkspaceWriter"
+title = "One generation-bound workspace writer"
+models = ["ManagedWorkspaceWriter", "BrokenManagedWorkspaceWriter"]
+sources = ["crates/bbt-mux/src/mcp/workspaces.rs", "crates/bbt-mux/src/mcp/workspaces/git.rs", "crates/bbt-mux/src/logic/implementation_workspaces.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/models/managed_workspace.rs"]
+implementation_tests = ["crates/bbt-mux/src/mcp/workspaces/tests.rs", "crates/bbt-mux/tests/mcp/workspaces.rs"]
+property = "At most one writing holder. Planning cancellation is permitted only before the durable native spawn-request boundary; an uncertain spawn retains its reservation until exact supervisor PID observation. Focused native evidence runs make test-workspace-provisioning; complete parity is mandatory under make test-formal."
+assumptions = "Finite projections bound two admissions/writers and three monotonic revisions; external provider effects and short SQLite publications are separate atomic actions. Progress assumes fair bounded IO scheduling and an eventually responsive provider. Real private Git/process/native MCP tests cover source/KB separation, retained private files/commits, exact identity, restart and replay. No arbitrary Rust, Git, filesystem, cryptographic or remote-provider refinement proof is claimed."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ManagedWorkspaceFence"
+title = "Current workspace completion authority"
+models = ["ManagedWorkspaceFence", "BrokenManagedWorkspaceFence"]
+sources = ["crates/bbt-mux/src/mcp/workspaces.rs", "crates/bbt-mux/src/mcp/workspaces/git.rs", "crates/bbt-mux/src/logic/implementation_workspaces.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/models/managed_workspace.rs"]
+implementation_tests = ["crates/bbt-mux/src/mcp/workspaces/tests.rs", "crates/bbt-mux/tests/mcp/workspaces.rs"]
+property = "Delayed and duplicate provider completions cannot publish across monotonic workspace/root/provider or holder-generation changes, including A-B-A. Provider observation eventually completes under fair owner scheduling and a returning IO job. Focused native evidence runs make test-workspace-provisioning; complete parity is mandatory under make test-formal."
+assumptions = "Finite projections bound two admissions/writers and three monotonic revisions; external provider effects and short SQLite publications are separate atomic actions. Progress assumes fair bounded IO scheduling and an eventually responsive provider. Real private Git/process/native MCP tests cover source/KB separation, retained private files/commits, exact identity, restart and replay. No arbitrary Rust, Git, filesystem, cryptographic or remote-provider refinement proof is claimed."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ManagedWorkspaceRelease"
+title = "Preserved source before resource release"
+models = ["ManagedWorkspaceRelease", "BrokenManagedWorkspaceRelease"]
+sources = ["crates/bbt-mux/src/mcp/workspaces.rs", "crates/bbt-mux/src/mcp/workspaces/git.rs", "crates/bbt-mux/src/logic/implementation_workspaces.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/models/managed_workspace.rs"]
+implementation_tests = ["crates/bbt-mux/src/mcp/workspaces/tests.rs", "crates/bbt-mux/tests/mcp/workspaces.rs"]
+property = "Dirty, untracked, ignored private and unpublished source stays retained. Git patch-id alone is insufficient: non-ancestor equivalents require the same complete tree and no unmatched merges. Inspection never repeats deletion; a confirmed idle incomplete release requires a fresh guarded operation. Focused native evidence runs make test-workspace-provisioning; complete parity is mandatory under make test-formal."
+assumptions = "Finite projections bound two admissions/writers and three monotonic revisions; external provider effects and short SQLite publications are separate atomic actions. Progress assumes fair bounded IO scheduling and an eventually responsive provider. Real private Git/process/native MCP tests cover source/KB separation, retained private files/commits, exact identity, restart and replay. No arbitrary Rust, Git, filesystem, cryptographic or remote-provider refinement proof is claimed."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ManagedWorkspaceOwnership"
+title = "Exact owned checkout identity"
+models = ["ManagedWorkspaceOwnership", "BrokenManagedWorkspaceOwnership"]
+sources = ["crates/bbt-mux/src/mcp/workspaces.rs", "crates/bbt-mux/src/mcp/workspaces/git.rs", "crates/bbt-mux/src/logic/implementation_workspaces.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/models/managed_workspace.rs"]
+implementation_tests = ["crates/bbt-mux/src/mcp/workspaces/tests.rs", "crates/bbt-mux/tests/mcp/workspaces.rs"]
+property = "No unowned/replaced resource is deleted or adopted from branch/path coincidence. Persisted directory identity, source common-directory identity, resource token and current lifecycle are checked against actual Git/process evidence. Focused native evidence runs make test-workspace-provisioning; complete parity is mandatory under make test-formal."
+assumptions = "Finite projections bound two admissions/writers and three monotonic revisions; external provider effects and short SQLite publications are separate atomic actions. Progress assumes fair bounded IO scheduling and an eventually responsive provider. Real private Git/process/native MCP tests cover source/KB separation, retained private files/commits, exact identity, restart and replay. No arbitrary Rust, Git, filesystem, cryptographic or remote-provider refinement proof is claimed."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "ManagedWorkspaceProviderLease"
+title = "Inherited provider custody through restart"
+models = ["ManagedWorkspaceProviderLease", "BrokenManagedWorkspaceProviderLease"]
+sources = ["crates/bbt-mux/src/mcp/workspaces.rs", "crates/bbt-mux/src/mcp/workspaces/git.rs", "crates/bbt-mux/src/logic/implementation_workspaces.rs", "crates/bbt-mux/src/logic/knowledge_effects.rs", "crates/bbt-mux/src/models/managed_workspace.rs"]
+implementation_tests = ["crates/bbt-mux/src/mcp/workspaces/tests.rs", "crates/bbt-mux/tests/mcp/workspaces.rs"]
+property = "An inherited per-resource file lease and a generation check after claiming it prevent absence/release proof while an older Git child can still mutate after logic restart. The real fork/exec fixture proves the child keeps the kernel lock after the parent descriptor closes. Focused native evidence runs make test-workspace-provisioning; complete parity is mandatory under make test-formal."
+assumptions = "Finite projections bound two admissions/writers and three monotonic revisions; external provider effects and short SQLite publications are separate atomic actions. Progress assumes fair bounded IO scheduling and an eventually responsive provider. Real private Git/process/native MCP tests cover source/KB separation, retained private files/commits, exact identity, restart and replay. No arbitrary Rust, Git, filesystem, cryptographic or remote-provider refinement proof is claimed."
+checks = ["make test-formal", "make test"]

@@ -1321,3 +1321,63 @@ frontend = "project"
 name = "BrokenKnowledgePublication"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "ManagedWorkspaceCreate"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenManagedWorkspaceCreate"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "ManagedWorkspaceWriter"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenManagedWorkspaceWriter"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "ManagedWorkspaceFence"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenManagedWorkspaceFence"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "ManagedWorkspaceRelease"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenManagedWorkspaceRelease"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "ManagedWorkspaceOwnership"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenManagedWorkspaceOwnership"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "ManagedWorkspaceProviderLease"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenManagedWorkspaceProviderLease"
+expected = "safety"
+frontend = "project"
