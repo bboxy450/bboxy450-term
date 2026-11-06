@@ -92,40 +92,6 @@ def corpus(root):
     return rows
 
 
-class _HarnessContractLayout:
-    """Read-only binding of the pinned harness's one sibling consumer witness."""
-    sibling = "../bboxy450-term/crates/bboxy450-term/src/rich_pane.rs"
-    consumer = "crates/bboxy450-term/src/rich_pane.rs"
-
-    def __init__(self, root, child):
-        self.root, self.child = root, child
-        self.prefix = str(child.relative_to(root)) + "/"
-
-    @property
-    def parent(self):
-        # The pinned validator observes its real checkout layout before resolving
-        # witnesses. Path access still passes the exact allowlist below.
-        return self.child.parent
-
-    def __truediv__(self, locator):
-        if not isinstance(locator, str):
-            raise ValueError("non-string harness contract locator")
-        if locator == self.sibling:
-            path = self.root / self.consumer
-            if not path.is_file():
-                raise ValueError("missing embedded consumer witness: " + self.consumer)
-            return path
-        path = Path(locator)
-        if path.is_absolute() or ".." in path.parts:
-            raise ValueError("unlisted foreign harness contract locator")
-        return self.child / path
-
-    def relative_locator(self, locator):
-        if not (self / locator).is_file():
-            raise ValueError("missing harness contract source/witness")
-        return self.consumer if locator == self.sibling else self.prefix + locator
-
-
 def harness_contracts(root, models):
     child = harness_root(root)
     if not child:
@@ -137,14 +103,11 @@ def harness_contracts(root, models):
     sys.dont_write_bytecode = True
     spec.loader.exec_module(module)
     module.coverage(child, models)
-    # HarnessDraftHandoff's pinned sibling-layout locator denotes this SAME
-    # consumer source in the embedded workspace. All other paths stay child
-    # local; the unchanged pinned validator still checks real file existence.
-    layout = _HarnessContractLayout(root, child)
-    rows = module.contracts(layout, models)
+    rows = module.contracts(child, models)
+    prefix = str(child.relative_to(root)) + "/"
     for row in rows:
         for field in ("sources", "implementation_tests"):
-            row[field] = [layout.relative_locator(path) for path in row[field]]
+            row[field] = [prefix + path for path in row[field]]
     for row in rows:
         if row["name"] in {"HarnessEmbedLifecycle", "HarnessCancelTreeGroup", "HarnessProcessLifecycle"}:
             row["implementation_tests"].append("crates/bbt-mux/tests/mcp.rs")
