@@ -4,8 +4,36 @@
 # https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 # Retain accurate source credit on reuse:
 # https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-SHELL := /bin/sh
+# Route even interpreted test drivers through the same inherited policy.
+SHELL = /bin/sh scripts/qos.sh make-$@
 .DEFAULT_GOAL := help
+
+.PHONY: test-qos
+build-qos-probe:
+	@set -eu; . scripts/cache-env.sh; mkdir -p '$(TARGET_DIR)'; \
+	cargo test --locked -p bboxy450-term-mux --lib --no-run --target-dir '$(TARGET_DIR)' --message-format=json >'$(TARGET_DIR)/qos-probe-build.jsonl'
+
+.PHONY: build-qos-probe
+test-qos: test-qos-app
+	@python3 -I scripts/test-landing.py QosTests CostTests
+	@python3 -I scripts/qos-probe.py --check --target '$(abspath $(TARGET_DIR))'
+	@set -eu; code=0; python3 -I scripts/qos-probe.py --check --samples 20 --control default-qos --target '$(abspath $(TARGET_DIR))' >'$(TARGET_DIR)/qos-control-default.json' || code=$$?; test "$$code" -eq 1; \
+	python3 -I -c 'import json,sys; r=json.load(open(sys.argv[1])); assert r["control"]=="default-qos" and not r["qos_ok"],r' '$(TARGET_DIR)/qos-control-default.json'
+	@set -eu; code=0; python3 -I scripts/qos-probe.py --check --samples 20 --control delayed-reply --target '$(abspath $(TARGET_DIR))' >'$(TARGET_DIR)/qos-control-delay.json' || code=$$?; test "$$code" -eq 1; \
+	python3 -I -c 'import json,sys; r=json.load(open(sys.argv[1])); assert r["control"]=="delayed-reply" and r["qos_ok"] and not r["latency_ok"],r' '$(TARGET_DIR)/qos-control-delay.json'
+
+.PHONY: test-qos-app
+test-qos-app:
+	@set -eu; . scripts/cache-env.sh; \
+	cargo build --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)'; \
+	cargo nextest run --locked -p bboxy450-rt --lib -E 'test(qos::)' --target-dir '$(TARGET_DIR)'; \
+	cargo nextest run --locked -p $(APP) --bin $(APP) -E 'test(qos::tests::startup_role_ceilings)' --target-dir '$(TARGET_DIR)'; \
+	python3 -I -c 'import json,subprocess,sys; expected={"supervisor":25,"logic":25,"mcp":25,"desktop":33,"ui":33}; rows=[json.loads(subprocess.check_output([sys.argv[1],"--qos-witness",role],text=True)) for role in expected]; assert all(r["requested_class"]==expected[r["role"]] for r in rows),rows; print(json.dumps(rows))' '$(abspath $(TARGET_DIR))/debug/$(APP)'
+
+.PHONY: test-dream-c1 test-dream-c1-integration
+test-dream-c1 test-dream-c1-integration:
+	@set -eu; . scripts/cache-env.sh; \
+	BBOXY_QOS_TIMED_GATE=dream-c1 $(MAKE) -C crates/bboxy450-harness $@ TARGET_DIR='$(abspath $(TARGET_DIR))'
 
 APP := bboxy450-term
 PROFILE ?= release
@@ -275,8 +303,8 @@ help:
 # compiled dependencies between worktrees, rust-toolchain.toml pins the compiler.
 # Build, test and land targets bootstrap these once on a new machine.
 tools:
-	@command -v cargo-nextest >/dev/null || cargo install --locked cargo-nextest
-	@command -v sccache >/dev/null || { command -v brew >/dev/null && brew install sccache || cargo install --locked sccache; }
+	@command -v cargo-nextest >/dev/null || sh scripts/qos.sh background cargo install --locked cargo-nextest
+	@command -v sccache >/dev/null || { command -v brew >/dev/null && sh scripts/qos.sh background brew install sccache || sh scripts/qos.sh background cargo install --locked sccache; }
 
 build:
 	@$(MAKE) compile PROFILE=debug
@@ -829,7 +857,7 @@ push: land
 # worktree's own warm target. `make land-full` is the full signed gate.
 .PHONY: land land-full land-gate
 land: tools
-	@sh scripts/land-fast.sh
+	@BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))' sh scripts/land-fast.sh
 	@python3 -I scripts/formal.py --prune-background || true
 
 land-full:
@@ -1733,6 +1761,7 @@ test-formal-contracts:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)'; \
 	cargo clippy --locked -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)' -- -D warnings
+	@$(MAKE) test-qos TARGET_DIR='$(TARGET_DIR)'
 
 format-formal-contracts:
 	@set -eu; . ./scripts/cache-env.sh; rustfmt --edition 2024 crates/bboxy450-term/tests/formal_contracts.rs crates/bboxy450-term/tests/formal_contracts/models.rs crates/bboxy450-term/tests/formal_contracts/witnesses.rs
@@ -1746,7 +1775,7 @@ test-formal:
 	@python3 -I scripts/formal-stage.py initialization -- $(MAKE) init-submodules TARGET_DIR='$(TARGET_DIR)'
 	@python3 -I scripts/formal-stage.py export -- $(MAKE) test-yarn-model TARGET_DIR='$(TARGET_DIR)'
 	@python3 -I scripts/formal-stage.py protocol-contracts -- $(MAKE) check-protocol-contracts TARGET_DIR='$(TARGET_DIR)'
-	@python3 -I scripts/formal-stage.py harness-check -- python3 -I scripts/test-harness-submodule.py
+	@python3 -I scripts/formal-stage.py harness-check -- sh scripts/qos.sh utility python3 -I scripts/test-harness-submodule.py
 	@python3 -I scripts/formal-stage.py self-tests -- $(MAKE) test-formal-infrastructure TARGET_DIR='$(TARGET_DIR)'
 	@set -eu; . ./scripts/cache-env.sh; \
 	python3 -I scripts/formal-stage.py tlc-verify -- cargo run --locked -p bboxy450-tlc --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
@@ -1754,7 +1783,7 @@ test-formal:
 	BBOXY_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/formal/models' python3 -I scripts/formal-stage.py contracts -- cargo test --locked -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)'; \
 	FORMAL_OUT='$(abspath $(TARGET_DIR))/formal/harness' python3 -I scripts/formal-stage.py harness-native -- cargo test --locked -p bboxy450-harness --test formal_models --test formal_nonvacuity --test reactor_projection --target-dir '$(TARGET_DIR)'; \
 	python3 -I scripts/formal-stage.py harness-export -- python3 -I scripts/harness-submodule.py --models '$(abspath $(TARGET_DIR))/formal/harness' --target '$(abspath $(TARGET_DIR))/formal/models'; \
-	python3 -I scripts/formal-stage.py java-parity -- python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' $(if $(filter 1,$(FORMAL_REUSE)),--reuse,)
+	python3 -I scripts/formal-stage.py java-parity -- sh scripts/qos.sh utility python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' $(if $(filter 1,$(FORMAL_REUSE)),--reuse,)
 
 .PHONY: test-yarn-kani
 test-yarn-kani:

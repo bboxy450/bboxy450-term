@@ -8,13 +8,20 @@
 # dependent (scripts/affected.sh); Cargo.toml/Cargo.lock/toolchain changes select
 # all. Niced, shared sccache. The full gate stays available as `make land-full`.
 set -eu
+if [ "${BBOXY_LAND_COST_TREE:-}" != 1 ]; then
+    export BBOXY_LAND_COST_TREE=1
+    exec python3 -I "$(dirname "$0")/landing.py" cost "${BBOXY_CARGO_TARGET_DIR:-${TARGET_DIR:-target}}" total sh "$0" "$@"
+fi
 export GIT_TERMINAL_PROMPT=0
 cd "$(git rev-parse --show-toplevel)"
-BBOXY_CARGO_JOBS=${BBOXY_CARGO_JOBS:-4}
+BBOXY_CARGO_JOBS=${BBOXY_CARGO_JOBS:-2}
 export BBOXY_CARGO_JOBS
 # shellcheck source=scripts/cache-env.sh
 . ./scripts/cache-env.sh
-run() { echo "land: $*"; nice -n 10 "$@"; }
+run() {
+    echo "land: $*"
+    python3 -I scripts/landing.py cost "${BBOXY_CARGO_TARGET_DIR:-${TARGET_DIR:-target}}" "$1" "$@"
+}
 
 test -z "$(git status --porcelain --untracked-files=no)" || { echo "land: commit or stash your changes first" >&2; exit 2; }
 git fetch -q origin main
@@ -23,6 +30,7 @@ test -n "$(git rev-list origin/main..HEAD)" || { echo "land: nothing to land"; e
 for revision in $(git rev-list origin/main..HEAD); do
     git verify-commit "$revision" 2>/dev/null || { echo "land: unsigned commit $revision" >&2; exit 2; }
 done
+run make init-submodules || { echo "land: pinned submodule initialization failed" >&2; exit 77; }
 
 changed=$(git diff --name-only origin/main...HEAD)
 crates=$(sh scripts/affected.sh origin/main..HEAD --crates)
@@ -81,13 +89,12 @@ for attempt in 1 2 3 4 5; do
     echo "land: main moved (attempt $attempt); rebasing and rechecking the affected crates"
     git fetch -q origin main
     git rebase -q origin/main || { git rebase --abort; echo "land: rebase conflict after main moved" >&2; exit 78; }
+    run make init-submodules || { echo "land: pinned submodule initialization failed" >&2; exit 77; }
+    changed=$(git diff --name-only origin/main...HEAD)
     crates=$(sh scripts/affected.sh origin/main..HEAD --crates)
     packages=''
     for crate in $crates; do packages="$packages -p $crate"; done
-    if [ -n "$packages" ]; then
-        # shellcheck disable=SC2086
-        run cargo check --locked -q $packages --all-targets || { echo "land: main moved and the merge no longer compiles" >&2; exit 77; }
-    fi
+    gate || { echo "land: main moved and the current-source gate failed" >&2; exit 77; }
 done
 echo "land: main kept moving; run make land again" >&2
 exit 75

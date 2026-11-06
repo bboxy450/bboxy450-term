@@ -24,6 +24,7 @@ mod log;
 mod navigation;
 mod perf_fixture;
 mod pointer_cursor;
+mod qos;
 mod rich_faces;
 mod scene;
 mod settings_destinations;
@@ -10003,6 +10004,13 @@ fn diagnostic_root(args: &[String]) -> Result<std::path::PathBuf, String> {
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hook_args: Vec<_> = std::env::args().skip(1).collect();
+    let role = hook_args.first().map_or("ui", String::as_str);
+    qos::startup(if role.starts_with("--") { "ui" } else { role });
+    if cfg!(debug_assertions) && hook_args.len() == 2 && hook_args[0] == "--qos-witness" {
+        qos::startup(&hook_args[1]);
+        println!("{}", serde_json::json!({"role": hook_args[1], "requested_class": bbt_rt::qos::requested_class()}));
+        return Ok(());
+    }
     if hook_args == ["--p1-headless"] {
         let report = perf_fixture::run()?;
         println!("{}", report);

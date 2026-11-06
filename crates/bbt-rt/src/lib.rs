@@ -56,7 +56,7 @@ pub fn handle() -> &'static Handle {
                 .worker_threads(2)
                 .thread_name("bbt-io")
                 // These workers carry terminal frames between processes.
-                .on_thread_start(crate::qos::interactive_thread)
+                .on_thread_start(crate::qos::initiated_thread)
                 .enable_all()
                 .build()
                 .expect("start bbt IO runtime")

@@ -22,6 +22,7 @@ import math
 import os
 from pathlib import Path
 import re
+import resource
 import shlex
 import shutil
 import signal
@@ -103,6 +104,111 @@ def cargo_invocation(argv, environment=None):
 DELEGATES = {"quarantine": ("quarantine", "administer"),
              "quarantine-test": ("quarantine", "test"),
              "main-watch": ("main_watch", "run")}
+
+
+def cargo_parts(arguments):
+    """Read Cargo's command/options, excluding test or application argv."""
+    arguments = iter(enumerate(arguments))
+    command_name = None
+    command_index = None
+    for index, argument in arguments:
+        if argument in {"--config", "--color", "-Z", "-C"}:
+            next(arguments, None)
+        elif argument.startswith(("+", "-")):
+            continue
+        else:
+            command_name = argument
+            command_index = index
+            break
+    options = []
+    for _, argument in arguments:
+        if argument == "--":
+            break
+        options.append(argument)
+    return command_name, options, command_index
+
+
+def cargo_qos(arguments):
+    command_name, options, _ = cargo_parts(arguments)
+    if command_name == "run":
+        # App processes must be able to claim their own responsiveness class.
+        return "utility" if any(options[i:i+2] == ["--example", "verify"] for i in range(len(options))) else "default"
+    if command_name not in {"test", "nextest", "bench"}:
+        return "background"
+    if "--no-run" in options or (command_name == "nextest" and options[:1] == ["list"]):
+        return "background"
+    if command_name == "bench" or "--benches" in options:
+        return "default"
+    timed = {"gates_seats", "input_latency", "dream_c1", "dream_replay", "gui_budget", "formal_contracts"}
+    targets = {options[i+1] for i, value in enumerate(options[:-1]) if value == "--test"}
+    targets.update(value.split("=", 1)[1] for value in options if value.startswith("--test="))
+    if targets & timed or "dream::c1::" in options or os.environ.get("BBOXY_QOS_TIMED_GATE") == "dream-c1":
+        return "default"
+    return "utility"
+
+
+def cargo_prebuild(arguments):
+    """Build a test selection as one background tree, before clamping tests."""
+    before = arguments[:arguments.index("--")] if "--" in arguments else arguments
+    if "--no-run" in before:
+        return None
+    command_name, options, index = cargo_parts(arguments)
+    if command_name == "run":
+        return [*before[:index], "build", *before[index+1:]]
+    if command_name not in {"test", "nextest", "bench"}:
+        return None
+    if command_name == "nextest" and options[:1] != ["run"]:
+        return None
+    if command_name == "test" and "--doc" in before:
+        # Cargo cannot combine --doc with --no-run. Prebuild its library
+        # dependencies (including native build scripts) as a lib test instead.
+        return [*[value for value in before if value != "--doc"], *([] if "--lib" in before else ["--lib"]), "--no-run", *arguments[len(before):]]
+    # nextest forbids its execution-only --no-fail-fast with --no-run.
+    # Preserve the original arguments for actual execution, including anything
+    # after --; only the compile-only invocation omits this runner flag.
+    build = [value for value in before if value != "--no-fail-fast"] if command_name == "nextest" else before
+    return [*build, "--no-run", *arguments[len(before):]]
+
+
+def qos_cargo_exec(arguments):
+    root = Path(os.environ["BBOXY_QOS_ROOT"])
+    wrapper = str(root / "scripts/qos.sh")
+    cargo = os.environ["BBOXY_REAL_CARGO"]
+    prebuild = cargo_prebuild(arguments)
+    if prebuild:
+        # Do not duplicate Cargo's machine-readable stdout. On failure retain
+        # diagnostics even when Cargo itself emitted them as JSON on stdout.
+        result = subprocess.run(["/bin/sh", wrapper, "background", cargo, *prebuild],
+                                stdout=subprocess.PIPE)
+        if result.returncode:
+            sys.stderr.buffer.write(result.stdout)
+            return result.returncode if result.returncode >= 0 else 128 - result.returncode
+    os.execv("/bin/sh", ["/bin/sh", wrapper, cargo_qos(arguments), cargo, *arguments])
+
+
+def cost_command(arguments):
+    """Account for a complete child tree; preserve its exit status on failure."""
+    target, label, *argv = arguments
+    if not argv:
+        raise Refusal("cost: missing command")
+    def disk():
+        if not Path(target).exists():
+            return 0
+        result = subprocess.run(["du", "-sk", target], capture_output=True, text=True)
+        if result.returncode:
+            raise Refusal("cost: cannot measure target directory")
+        return int(result.stdout.split()[0]) * 1024
+    before_disk = disk()
+    before_cpu = resource.getrusage(resource.RUSAGE_CHILDREN)
+    started = time.monotonic()
+    result = subprocess.run(argv, check=False)
+    elapsed = time.monotonic() - started
+    after_cpu = resource.getrusage(resource.RUSAGE_CHILDREN)
+    cpu = after_cpu.ru_utime + after_cpu.ru_stime - before_cpu.ru_utime - before_cpu.ru_stime
+    growth = disk() - before_disk
+    print(f"land-cost: {label} wall={elapsed:.3f}s cpu={cpu:.3f}s disk={growth:+d}B exit={result.returncode}",
+          flush=True)
+    return result.returncode if result.returncode >= 0 else 128 - result.returncode
 
 
 def command(argv, *, cwd=None, capture=True, check=True, **kwargs):
@@ -1823,6 +1929,13 @@ def land(gate_log=None, full=False):
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "qos-cargo-exec":
+        return qos_cargo_exec(sys.argv[2:])
+    if len(sys.argv) > 1 and sys.argv[1] == "qos-cargo":
+        print(cargo_qos(sys.argv[2:]))
+        return 0
+    if len(sys.argv) > 1 and sys.argv[1] == "cost":
+        return cost_command(sys.argv[2:])
     if len(sys.argv) > 1 and sys.argv[1] == "ci-local":
         return ci_local(sys.argv[2:])
     if len(sys.argv) > 1 and sys.argv[1] in DELEGATES:

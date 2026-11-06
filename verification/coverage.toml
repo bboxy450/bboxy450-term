@@ -189,8 +189,8 @@ sources = ["crates/bbt-proto/src/lib.rs", "crates/bbt-proto/src/seat_state.rs", 
 name = "bboxy450-rt"
 status = "contract-model"
 models = ["DirtyWake", "DirtyWakeFrame"]
-scope = "Immediate dirty-set lost-wakeup interleavings. Weak memory, retained/deferred modes, arbitrary Tokio cancellation and IO scheduling remain implementation/tool coverage gaps."
-sources = ["crates/bbt-rt/src/wake.rs"]
+scope = "Immediate dirty-set lost-wakeup interleavings. Weak memory, retained/deferred modes and arbitrary Tokio cancellation remain implementation/tool coverage gaps. OS QoS requests, process inheritance and MCP latency are implementation/performance evidence under BuildQosResponsiveness in contracts.toml (make test-qos), not a symbolic scheduling guarantee."
+sources = ["crates/bbt-rt/src/wake.rs", "crates/bbt-rt/src/qos.rs"]
 
 [[crate]]
 name = "bboxy450-render"

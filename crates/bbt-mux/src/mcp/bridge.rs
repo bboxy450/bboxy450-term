@@ -591,6 +591,7 @@ impl Bridge {
 }
 
 pub fn run_cli() -> io::Result<()> {
+    bbt_rt::qos::initiated_thread();
     let config = Config::from_env()?;
     let (sender, receiver) = std::sync::mpsc::sync_channel(1);
     std::thread::spawn(move || {

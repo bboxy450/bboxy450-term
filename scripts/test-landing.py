@@ -2985,6 +2985,159 @@ def fixture_suite(extended=False):
     return bool(failures)
 
 
+class CostTests(unittest.TestCase):
+    def test_qos_probe_accepts_catalog_notifications_before_rpc_reply(self):
+        spec = importlib.util.spec_from_file_location("qos_probe", SOURCE.with_name("qos-probe.py"))
+        probe = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(probe)
+        reader, writer = os.pipe()
+        os.write(writer, b'{"jsonrpc":"2.0","method":"notifications/tools/list_changed"}\n{"jsonrpc":"2.0","id":7,"result":{}}\n')
+        os.close(writer)
+        with os.fdopen(reader, "rb", buffering=0) as stream:
+            server = Mock(stdout=stream)
+            self.assertEqual(probe.rpc_response(server, 7)["id"], 7)
+
+    def test_fast_land_initializes_rebased_source_before_cargo(self):
+        repo = Repository()
+        self.addCleanup(repo.close)
+        repo.tooling()
+        for name in ("land-fast.sh", "affected.sh"):
+            shutil.copy2(SOURCE.with_name(name), repo.root / "scripts" / name)
+        makefile = repo.root / "Makefile"
+        makefile.write_text(makefile.read_text() + '\ninit-submodules:\n\t@git rev-parse HEAD > "$(BBOXY_LANDING_STATE_DIR)/initialized-source"\n')
+        cargo = repo.bin / "cargo"
+        cargo.write_text(cargo.read_text().replace('if args[0]=="metadata":',
+            'assert (state/"initialized-source").read_text().strip()==subprocess.check_output(["git","rev-parse","HEAD"],text=True).strip(), "source was not initialized before Cargo"\nif args[0]=="metadata":'))
+        repo.commit("Private lean gate tooling")
+        repo.remote()
+        repo.write("README.md", "Private documentation cut\n")
+        candidate = repo.commit("Private lean candidate")
+        (repo.state / "initialized-source").write_text(repo.base + "\n")
+        result = subprocess.run(["sh", "scripts/land-fast.sh"], cwd=repo.root,
+                                env=repo.environment, capture_output=True, text=True, timeout=30)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(repo.remote_head(), candidate)
+        self.assertIn("land-cost: make", result.stdout)
+        self.assertIn("land-cost: total", result.stdout)
+
+    def test_prebuild_keeps_harness_arguments_outside_cargo(self):
+        self.assertEqual(landing.cargo_prebuild(["+stable", "test", "--lib", "--", "--ignored"]),
+                         ["+stable", "test", "--lib", "--no-run", "--", "--ignored"])
+        self.assertEqual(landing.cargo_prebuild(["nextest", "run", "--test", "one"]),
+                         ["nextest", "run", "--test", "one", "--no-run"])
+        arguments = ["nextest", "run", "--no-fail-fast", "--lib", "--", "filter"]
+        self.assertEqual(landing.cargo_prebuild(arguments), ["nextest", "run", "--lib", "--no-run", "--", "filter"])
+        self.assertIn("--no-fail-fast", arguments)
+        self.assertEqual(landing.cargo_prebuild(["+stable", "run", "--bin", "app", "--", "--no-run"]),
+                         ["+stable", "build", "--bin", "app"])
+        self.assertEqual(landing.cargo_prebuild(["bench"]), ["bench", "--no-run"])
+        self.assertIsNone(landing.cargo_prebuild(["test", "--no-run"]))
+        self.assertEqual(landing.cargo_prebuild(["test", "--doc"]), ["test", "--lib", "--no-run"])
+    def test_cargo_policy_parses_only_cargo_arguments(self):
+        cases = [(["+stable", "--color", "never", "test"], "utility"),
+                 (["test", "--test=gates_seats"], "default"),
+                 (["test", "--test", "formal_contracts"], "default"),
+                 (["test", "--test", "gates_seats", "--no-run"], "background"),
+                 (["clippy", "--test", "gates_seats"], "background"),
+                 (["nextest", "list"], "background"),
+                 (["nextest", "run", "--test", "input_latency"], "default"),
+                 (["run", "--", "--no-run"], "default"),
+                 (["run", "--example", "verify"], "utility"),
+                 (["test", "--", "gates_seats", "--no-run"], "utility"),
+                 (["bench"], "default")]
+        for arguments, expected in cases:
+            self.assertEqual(landing.cargo_qos(arguments), expected, arguments)
+
+    def test_cost_counts_descendants_disk_and_preserves_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            code = "from pathlib import Path; import sys; Path(sys.argv[1]).write_bytes(b'x'*8192); raise SystemExit(7)"
+            result = subprocess.run([sys.executable, "-I", str(SOURCE), "cost", directory,
+                                     "fixture", sys.executable, "-c", code,
+                                     str(Path(directory) / "growth")], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 7, result.stderr)
+            self.assertRegex(result.stdout, r"land-cost: fixture wall=\d+\.\d+s cpu=\d+\.\d+s disk=\+[1-9]\d*B exit=7")
+
+
+@unittest.skipUnless(sys.platform == "darwin", "Darwin effective-priority witness")
+class QosTests(unittest.TestCase):
+    SNAPSHOT = ('import ctypes,json,os,subprocess; '
+                'print(json.dumps(dict(background=ctypes.CDLL(None).getpriority(4,os.getpid()),'
+                'priority=int(subprocess.check_output(["ps","-o","pri=","-p",str(os.getpid())],text=True)))))')
+
+    def assert_role(self, snapshot, role):
+        # ps reports a dynamic scheduling priority: background may read 3,
+        # default 30, etc. Query the native Darwin background flag separately.
+        self.assertEqual(snapshot["background"], int(role == "background"), snapshot)
+        if role == "utility":
+            self.assertGreater(snapshot["priority"], 4)
+            self.assertLessEqual(snapshot["priority"], 20)
+        elif role == "default":
+            self.assertGreater(snapshot["priority"], 20)
+
+    def test_rustdoc_compiles_background_and_executes_utility(self):
+        root = SOURCE.parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "doc.rs"
+            source.write_text('/// ```\n/// unsafe extern "C" { fn getpriority(which: i32, who: u32) -> i32; }\n/// assert_eq!(unsafe { getpriority(4, std::process::id()) }, 0);\n/// let output = std::process::Command::new("ps").args(["-o", "pri=", "-p", &std::process::id().to_string()]).output().unwrap();\n/// let priority: i32 = String::from_utf8(output.stdout).unwrap().trim().parse().unwrap();\n/// assert!(priority > 4 && priority <= 20);\n/// ```\npub fn fixture() {}\n')
+            environment = dict(os.environ, BBOXY_CACHE_MODE="off", BBOXY_CARGO_TARGET_DIR=str(Path(directory) / "target"))
+            result = subprocess.run(["sh", "-c", '. scripts/cache-env.sh; "$RUSTDOC" --test "$1"', "fixture", str(source)],
+                                    cwd=root, env=environment, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("1 passed", result.stdout)
+
+    def test_policy_is_inherited_by_a_grandchild(self):
+        root = SOURCE.parents[1]
+        parent = 'import subprocess,sys;subprocess.run([sys.executable,"-I","-c",sys.argv[1]],check=True)'
+        for role in ("background", "utility", "default"):
+            result = subprocess.run(["sh", str(root / "scripts/qos.sh"), role,
+                                     sys.executable, "-I", "-c", parent, self.SNAPSHOT],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assert_role(json.loads(result.stdout), role)
+        for role in ("utility", "default"):
+            result = subprocess.run(["sh", str(root / "scripts/qos.sh"), "background", "sh",
+                                     str(root / "scripts/qos.sh"), role, sys.executable, "-I", "-c", self.SNAPSHOT],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assert_role(json.loads(result.stdout), role)
+
+    def test_make_interpreted_tests_use_utility(self):
+        root = SOURCE.parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            script = Path(directory) / "priority.py"
+            script.write_text(self.SNAPSHOT + "\n")
+            makefile = Path(directory) / "Makefile"
+            makefile.write_text("test-qos-fixture:\n\t@" + shlex.join([sys.executable, str(script)]) + "\n")
+            result = subprocess.run(["make", "-s", "-f", "Makefile", "-f", str(makefile), "test-qos-fixture"],
+                                    cwd=root, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assert_role(json.loads(result.stdout), "utility")
+
+    def test_cache_env_routes_cargo_and_compiler_independently(self):
+        root = SOURCE.parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            fake = Path(directory) / "fake-cargo"
+            fake.write_text("#!" + sys.executable + "\nimport json,os,subprocess,sys\nSNAPSHOT=" + repr(self.SNAPSHOT) + "\n"
+                'own=json.loads(subprocess.check_output([sys.executable,"-I","-c",SNAPSHOT],text=True))\n'
+                'with open(os.environ["QOS_TRACE"],"a") as f:f.write(json.dumps(own)+"\\n")\n'
+                'print(json.dumps(own),flush=True)\n'
+                'subprocess.run([os.environ["RUSTC_WRAPPER"],sys.executable,"-I","-c",SNAPSHOT],check=True)\n')
+            fake.chmod(0o700)
+            environment = dict(os.environ, BBOXY_REAL_CARGO=str(fake), BBOXY_CACHE_MODE="off",
+                               BBOXY_CARGO_TARGET_DIR=str(Path(directory) / "target"), QOS_TRACE=str(Path(directory) / "trace"))
+            for arguments, role in [("build", "background"), ("test", "utility"), ("test --test gates_seats", "default")]:
+                Path(environment["QOS_TRACE"]).write_text("")
+                result = subprocess.run(["sh", "-c", '. scripts/cache-env.sh; cargo ' + arguments],
+                                        cwd=root, env=environment, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                snapshots = [json.loads(line) for line in result.stdout.splitlines()]
+                self.assertEqual(len(snapshots), 2)
+                self.assert_role(snapshots[0], role)
+                self.assert_role(snapshots[1], "background")
+                trace = [json.loads(line)["background"] for line in Path(environment["QOS_TRACE"]).read_text().splitlines()]
+                self.assertEqual(trace, [1] if arguments == "build" else [1, 0])
+
+
 if __name__ == "__main__":
     if len(sys.argv) == 1 or sys.argv[1:] == ["--all"]:
         raise SystemExit(fixture_suite(extended=sys.argv[1:] == ["--all"]))

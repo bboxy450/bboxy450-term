@@ -2306,7 +2306,7 @@ impl Logic {
             .name("bbt-logic".into())
             .spawn(move || {
                 // This thread parses terminal output into frames.
-                bbt_rt::qos::interactive_thread();
+                bbt_rt::qos::initiated_thread();
                 // Keep the receiver until the exit cause is published. A
                 // blocked caller must not observe channel closure first.
                 let mut rx = rx;
@@ -2974,8 +2974,10 @@ enum RootPublication {
     },
 }
 fn publication_io<T>(job: impl FnOnce() -> Result<T>) -> Result<T> {
-    std::panic::catch_unwind(std::panic::AssertUnwindSafe(job))
-        .unwrap_or_else(|_| Err(invalid("knowledge publication IO worker panicked")))
+    bbt_rt::qos::with_utility_qos(|| {
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(job))
+            .unwrap_or_else(|_| Err(invalid("knowledge publication IO worker panicked")))
+    })
 }
 enum WorkspaceRead {
     Seat(

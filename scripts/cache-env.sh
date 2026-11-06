@@ -47,7 +47,8 @@ bboxy_cache_env() {
         return 0
     fi
     bboxy_cache_root=$(CDPATH='' cd -- "$bboxy_cache_root" && pwd -P)
-    SCCACHE_SERVER_PORT=$(printf '%s' "$bboxy_cache_root" | cksum | awk '{print 4300 + $1 % 1000}')
+    # Separate policy generation: never reuse a legacy default-QoS server.
+    SCCACHE_SERVER_PORT=$(printf '%s' "$bboxy_cache_root" | cksum | awk '{print 5300 + $1 % 1000}')
     case "$(uname -s)" in
         Darwin) SCCACHE_DIR=${SCCACHE_DIR:-$HOME/Library/Caches/bboxy450-sccache} ;;
         *) SCCACHE_DIR=${SCCACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/bboxy450-sccache} ;;
@@ -71,7 +72,8 @@ try:
         if remaining <= 0:
             raise subprocess.TimeoutExpired("sccache", 9.5)
         result = subprocess.run(
-            ["sccache", action], capture_output=True, timeout=remaining,
+            (["/usr/sbin/taskpolicy", "-b"] if sys.platform == "darwin" else ["nice", "-n", "10"])
+            + ["sccache", action], capture_output=True, timeout=remaining,
         )
         if result.returncode == 0:
             # --show-stats can succeed with zero counters and no running server.
@@ -101,5 +103,27 @@ PY
     return 0
 }
 bboxy_cache_env || return $?
+# Keep the shell itself unclamped: an explicitly timed process needs default
+# QoS. Cargo/test trees and compiler/linker trees are classified independently.
+bboxy_qos_root=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
+if [ -f "$bboxy_qos_root/scripts/qos.sh" ]; then
+    BBOXY_QOS_ROOT=$bboxy_qos_root
+    export BBOXY_QOS_ROOT
+    if [ -z "${BBOXY_REAL_CARGO:-}" ]; then
+        BBOXY_REAL_CARGO=$(command -v cargo)
+    fi
+    bboxy_qos_bin=${BBOXY_CARGO_TARGET_DIR:-$bboxy_qos_root/target}/qos-bin
+    mkdir -p "$bboxy_qos_bin"
+    ln -sf "$bboxy_qos_root/scripts/qos.sh" "$bboxy_qos_bin/cargo"
+    ln -sf "$bboxy_qos_root/scripts/qos.sh" "$bboxy_qos_bin/rustc-qos"
+    ln -sf "$bboxy_qos_root/scripts/qos.sh" "$bboxy_qos_bin/rustdoc-qos"
+    BBOXY_REAL_RUSTDOC=${BBOXY_REAL_RUSTDOC:-${RUSTDOC:-$(command -v rustdoc)}}
+    RUSTDOC=$bboxy_qos_bin/rustdoc-qos
+    BBOXY_INNER_RUSTC_WRAPPER=$RUSTC_WRAPPER
+    RUSTC_WRAPPER=$bboxy_qos_bin/rustc-qos
+    export BBOXY_REAL_CARGO BBOXY_INNER_RUSTC_WRAPPER RUSTC_WRAPPER BBOXY_REAL_RUSTDOC RUSTDOC
+    case ":$PATH:" in *":$bboxy_qos_bin:"*) ;; *) PATH=$bboxy_qos_bin:$PATH ;; esac
+    export PATH
+fi
 unset -f bboxy_cache_env
-unset bboxy_cache_root bboxy_cache_reason
+unset bboxy_cache_root bboxy_cache_reason bboxy_qos_root bboxy_qos_bin

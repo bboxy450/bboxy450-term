@@ -4,8 +4,9 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! Scheduling classes. The threads that carry PTY bytes to the screen run
-//! user-interactive, so a parallel build cannot starve them. A process inherits
+//! Scheduling classes. UI and PTY reader threads request user-interactive;
+//! logic, MCP and the shared IO runtime request user-initiated. QoS is a
+//! scheduler request, not a guarantee of latency or core placement. A process inherits
 //! the class of the thread that spawns it: seats and the daemons that run their
 //! tools are spawned user-initiated (above background work, below the terminal
 //! path), and plugins and helper commands at default.
@@ -24,6 +25,48 @@ pub fn interactive_thread() {
     }
     #[cfg(target_os = "linux")]
     linux::set_nice(linux::INTERACTIVE);
+}
+
+/// Mark a logic, supervisor control or MCP thread user-initiated, below UI work.
+pub fn initiated_thread() {
+    #[cfg(target_os = "macos")]
+    // SAFETY: changes only this thread, with a valid QoS class and priority.
+    unsafe {
+        libc::pthread_set_qos_class_self_np(libc::qos_class_t::QOS_CLASS_USER_INITIATED, 0);
+    }
+}
+
+/// Mark a background worker utility; it must not inherit its owner's UI class.
+pub fn utility_thread() {
+    #[cfg(target_os = "macos")]
+    // SAFETY: changes only this thread, with a valid QoS class and priority.
+    unsafe {
+        libc::pthread_set_qos_class_self_np(libc::qos_class_t::QOS_CLASS_UTILITY, 0);
+    }
+}
+
+/// Run background IO at utility and restore the calling worker on return.
+/// Callers that catch panics must catch inside the supplied closure.
+pub fn with_utility_qos<T>(job: impl FnOnce() -> T) -> T {
+    #[cfg(target_os = "macos")]
+    return with_class(libc::qos_class_t::QOS_CLASS_UTILITY, job);
+    #[cfg(not(target_os = "macos"))]
+    job()
+}
+
+/// Read the calling thread's requested class for private process witnesses.
+/// This is distinct from a process-wide taskpolicy clamp/effective priority.
+pub fn requested_class() -> u32 {
+    #[cfg(target_os = "macos")]
+    // SAFETY: pthread_self refers to this live thread; both out-pointers are valid.
+    unsafe {
+        let mut class = libc::qos_class_t::QOS_CLASS_UNSPECIFIED;
+        let mut relative = 0;
+        libc::pthread_get_qos_class_np(libc::pthread_self(), &mut class, &mut relative);
+        class as u32
+    }
+    #[cfg(not(target_os = "macos"))]
+    0
 }
 
 /// Run `spawn` at the seat class (user-initiated): a seat and every process it
@@ -123,6 +166,37 @@ fn current() -> u32 {
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn role_classes_are_distinct_and_background_can_lower_itself() {
+        std::thread::spawn(|| {
+            initiated_thread();
+            assert_eq!(
+                requested_class(),
+                libc::qos_class_t::QOS_CLASS_USER_INITIATED as u32
+            );
+            assert_eq!(
+                with_utility_qos(requested_class),
+                libc::qos_class_t::QOS_CLASS_UTILITY as u32
+            );
+            assert_eq!(
+                requested_class(),
+                libc::qos_class_t::QOS_CLASS_USER_INITIATED as u32
+            );
+            utility_thread();
+            assert_eq!(
+                requested_class(),
+                libc::qos_class_t::QOS_CLASS_UTILITY as u32
+            );
+            interactive_thread();
+            assert_eq!(
+                requested_class(),
+                libc::qos_class_t::QOS_CLASS_USER_INTERACTIVE as u32
+            );
+        })
+        .join()
+        .unwrap();
+    }
 
     #[test]
     #[allow(

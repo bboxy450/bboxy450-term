@@ -8,7 +8,8 @@ make land
 
 It runs `scripts/land-fast.sh` (`make push` is the same command):
 
-1. Rebase on `origin/main` (exit 78 on conflict); refuse unsigned commits.
+1. Rebase on `origin/main` (exit 78 on conflict); refuse unsigned commits and
+   initialize the newly pinned harness before computing or compiling the plan.
 2. Compute the plan with `scripts/landing.py lean`: the crates whose files changed
    ("touched") and every crate that depends on them. `Cargo.toml`, `Cargo.lock`, `.cargo/`
    and `rust-toolchain.toml` touch every crate; docs/lab-only diffs touch none.
@@ -21,10 +22,54 @@ It runs `scripts/land-fast.sh` (`make push` is the same command):
    remains explicit. Empty filters and build/test failures still fail the gate.
    `LAND_MODE=wide make land` instead lints and tests the
    whole affected set, doctests included.
-4. Push. If `main` moved, rebase, recheck the affected crates and push again (up to 5 times).
+4. Push. If `main` moved, rebase, initialize the current harness pin, rerun the
+   current-source gate and push again (up to 5 times).
 
-Cargo runs under `nice -n 10` with 4 jobs (`BBOXY_CARGO_JOBS`) and 2 test threads, reusing
-your worktree's warm `target/` and the shared sccache, so live seats keep working.
+On macOS, Cargo builds/checks/clippy and compiler/linker children run under
+`taskpolicy -b`; test trees use `taskpolicy -c utility`. `cache-env.sh` installs
+private Cargo/compiler shims in the selected target, inherited through scripts.
+Test selections prebuild with `--no-run` as a background tree (including native
+build scripts), then execute with utility policy against that warm selection.
+Rustdoc compiles doctests at background policy and uses its stable test runtool
+to execute each doctest at utility; `--doc` first prebuilds library dependencies.
+The sccache daemon is started at background policy as well. Linux retains
+`nice -n 10`. Land defaults to two Cargo jobs (`BBOXY_CARGO_JOBS`) and two test
+threads, reusing the worktree target and shared cache.
+
+Each gate command prints `land-cost` with wall seconds, child CPU seconds,
+allocated target-directory growth in bytes and exit status, including failures.
+The final `total` line accounts for the entire landing process tree (including
+rebases and pushes). CPU uses `getrusage(RUSAGE_CHILDREN)`, so a separate already
+running sccache server's CPU is outside this measurement. Disk growth is the
+target's `du -sk` delta; shared cache growth is outside it.
+
+### Explicit default-QoS measurements
+
+Only these measurement entries opt out. Their compiler/linker children still
+run at background policy. Test execution outside this list stays utility.
+
+| Entry | Measured work |
+| --- | --- |
+| `test-dream-c1`, `test-dream-c1-integration`; Cargo selections `dream_c1`, `dream_replay`, `dream::c1::` | Dream C1 CPU/latency bounds (the harness owns these targets) |
+| `test-perf-p1`, `test-perf-p2`; Cargo selection `gates_seats` | P1 frame/hitch and P2 bus/PTY budgets |
+| `bench-budgets`; Cargo selection `gui_budget` | UI drain/composition and GUI frame budgets |
+| Cargo `bench` and `test --benches` | Benchmark execution (compiler children remain background) |
+| `test-input-backend`; Cargo selection `input_latency` | Input/echo latency |
+| `test-terminal-streaming`, `test-codex-streaming`, `test-native-strip` | Frame latency and streamed rendering |
+| `test-seat-ingestion`, `profile-ingestion` | Watched-seat read/parse/publication latency |
+| `profile-input-ui`, `profile-render-input` | UI layout/glyph CPU timings |
+| `test-formal`, `test-formal-contracts`; Cargo selection `formal_contracts` | Real-time API witnesses paired with the contract corpus |
+| `test-qos`, `test-qos-app`, `scripts/qos-probe.py` | Private MCP latency/policy controls and app startup class witnesses |
+| `test-landing`, `test-landing-extended` | Actual default/background/utility process-priority witnesses |
+| `test-parity` | Aggregate parent of the full CI timing gates |
+
+The probe compares default versus background logical-CPU saturation. Its actual
+native bridge forwards `self_status` through a private mux/socket and identity.
+Default load is comparative evidence: it need not exceed 250 ms. The deterministic
+controls leave load at the wrong QoS (policy failure) and delay the reply past
+`max(4 * unloaded p95, 250 ms)` (latency failure). `make test-qos` requires both
+specific failures as well as the restored pass. Requested thread class and
+effective process priority are reported separately; neither promises core affinity.
 
 `make land-full` is the full signed gate (`scripts/land.sh --full`): `make test` plus a
 formal receipt. Gate slots keep their checkout and target warm between landings, so only
