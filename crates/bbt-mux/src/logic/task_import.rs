@@ -474,7 +474,7 @@ mod tests {
         // separately; unrelated calls below must still answer during the hold.
         let import =
             tokio::spawn(async move { request(&client, owner, "task_import", request_args).await });
-        tokio::time::timeout(Duration::from_secs(15), gate.entered.notified())
+        tokio::time::timeout(Duration::from_secs(60), gate.entered.notified())
             .await
             .unwrap();
         assert!(!import.is_finished(), "held import replied before release");

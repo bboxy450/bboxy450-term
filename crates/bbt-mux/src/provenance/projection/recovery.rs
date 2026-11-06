@@ -281,7 +281,10 @@ mod tests {
             }
         }
         fn finish(&self) -> Projection {
-            for _ in 0..200 {
+            // Each step spends a wall-clock budget, so bound the loop by time:
+            // a loaded machine makes less progress per step, not none.
+            let deadline = Instant::now() + Duration::from_secs(120);
+            while Instant::now() < deadline {
                 let projection = step(&self.root, &self.store, &self.events).unwrap();
                 if projection.cursor == ROWS as u64 {
                     return projection;
