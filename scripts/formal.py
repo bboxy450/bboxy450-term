@@ -7,6 +7,9 @@
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """Mandatory native/reference differential gate; never accepts partial checking."""
 import argparse
+from contextlib import contextmanager
+from datetime import datetime, timezone
+import fcntl
 import hashlib
 import json
 import os
@@ -318,6 +321,9 @@ def evidence_receipt(target, root=ROOT, *, require_clean=True, expected_source=N
             raise ValueError("formal evidence contains incomplete or mismatched verification")
         if hashlib.sha256((target / "models" / (m["name"] + ".tla")).read_bytes()).hexdigest() != m["tla_sha256"]:
             raise ValueError("formal evidence TLA model hash differs")
+        for suffix, digest in m.get("graph_sha256", {}).items():
+            if suffix not in GRAPH_SUFFIXES or model_digest(target / "models" / (m["name"] + suffix)) != digest:
+                raise ValueError("formal evidence decoded graph hash differs")
         if m["name"] in contract_names and m["contract_metadata"] != contract_metadata(target / "models", m["name"]):
             raise ValueError("formal evidence contract metadata differs")
         if "reuse_key" in m and m["reuse_key"] != model_reuse_key(
@@ -348,8 +354,95 @@ def records_rebase_receipt(receipt, root, delta):
     return evidence_receipt(destination, root)
 
 
+GRAPH_SUFFIXES = (".dot", ".states", ".edges")
+
+
+@contextmanager
+def model_stream(path):
+    """Read legacy files or zstd objects; all identities bind decoded bytes."""
+    path = Path(path)
+    if path.exists():
+        with path.open("rb") as stream:
+            yield stream
+    else:
+        with tempfile.TemporaryFile() as errors:
+            child = subprocess.Popen(["zstd", "-q", "-dc", str(path) + ".zst"],
+                                     stdout=subprocess.PIPE, stderr=errors)
+            try:
+                yield child.stdout
+                if child.wait() != 0:
+                    raise ValueError(f"corrupt compressed evidence: {path}")
+            finally:
+                child.stdout.close()
+                if child.poll() is None:
+                    child.terminate()
+                child.wait()
+
+
+def stream_digest(stream):
+    digest = hashlib.sha256()
+    for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+        digest.update(chunk)
+    return digest.hexdigest()
+
+
+def model_digest(path):
+    with model_stream(path) as stream:
+        return stream_digest(stream)
+
+
+def copy_model(source, destination):
+    with model_stream(source) as stream, Path(destination).open("wb") as output:
+        shutil.copyfileobj(stream, output)
+
+
+def store_graph(source, destination, store):
+    """Immutable hardlinks dedupe graphs without coupling receipt lifetimes.
+
+    Original bboxy450-term storage protocol; keep credit with extracted code:
+    https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    """
+    digest = model_digest(source)
+    objects = store / "by-model" / "graphs"
+    objects.mkdir(parents=True, exist_ok=True)
+    blob = objects / (digest + ".zst")
+    try:
+        os.link(blob, str(destination) + ".zst")
+    except FileNotFoundError:
+        pass
+    else:
+        # Validate through the receipt's retained inode, never a racing index.
+        if model_digest(destination) != digest:
+            raise ValueError(f"corrupt graph object: {blob}")
+        return
+    with tempfile.NamedTemporaryFile(dir=objects, prefix="staging-", suffix=".zst") as temporary:
+        staged = Path(temporary.name)
+        if source.exists():
+            subprocess.run(["zstd", "-q", "-T1", "-3", "-c", str(source)],
+                           stdout=temporary, check=True)
+        else:
+            with Path(str(source) + ".zst").open("rb") as stream:
+                shutil.copyfileobj(stream, temporary)
+        temporary.flush()
+        # Round-trip before publishing or replacing any original.
+        if model_digest(Path(str(staged).removesuffix(".zst"))) != digest:
+            raise ValueError("compressed graph round-trip differs")
+        while True:
+            try:
+                os.link(staged, blob)
+            except FileExistsError:
+                pass
+            try:
+                os.link(blob, str(destination) + ".zst")
+                if model_digest(destination) != digest:
+                    raise ValueError(f"corrupt graph object: {blob}")
+                break
+            except FileNotFoundError:
+                continue  # An orphan sweep unlinked the index, never our data.
+
+
 def archive_evidence(target, root=ROOT):
-    """Keep reviewable evidence after an owned checking slot is removed."""
+    """Keep reviewable, compressed evidence after checking-slot cleanup."""
     target, root = Path(target).resolve(), Path(root).resolve()
     store = evidence_store(root)
     store.mkdir(parents=True, exist_ok=True)
@@ -362,7 +455,11 @@ def archive_evidence(target, root=ROOT):
             shutil.copyfile(target / "evidence.json", staged / "evidence.json")
             for path in (target / "models").iterdir():
                 if path.is_file():
-                    shutil.copyfile(path, staged / "models" / path.name)
+                    plain = path.with_suffix("") if path.suffix == ".zst" else path
+                    if plain.suffix in GRAPH_SUFFIXES:
+                        store_graph(plain, staged / "models" / plain.name, store)
+                    else:
+                        shutil.copyfile(path, staged / "models" / path.name)
             try:
                 staged.rename(destination)
             except OSError:
@@ -370,9 +467,6 @@ def archive_evidence(target, root=ROOT):
                     raise
     data = json.loads((destination / "evidence.json").read_text())
     if data.get("dirty") is False and any("reuse_key" in row for row in data["models"]):
-        # Publish optimization pointers only after the complete source-bound
-        # receipt has validated. Each key is independent; concurrent writers
-        # can atomically replace it with another equivalent green receipt.
         evidence_receipt(destination, root)
         try:
             publish_model_index(store, destination, data)
@@ -384,6 +478,247 @@ def archive_evidence(target, root=ROOT):
 def evidence_store(root=ROOT):
     common = Path(subprocess.check_output(["git", "rev-parse", "--git-common-dir"], cwd=root, text=True).strip())
     return (root / common).resolve() / "bboxy-formal-evidence"
+
+
+def receipts(store):
+    return sorted((path for path in store.iterdir() if path.is_dir()
+                   and re.fullmatch(r"[a-f0-9]{64}", path.name)),
+                  key=lambda path: (path.stat().st_mtime_ns, path.name), reverse=True) if store.exists() else []
+
+
+def record_scalar(text, field):
+    front = text.split("---", 2)[1] if text.startswith("---") else ""
+    match = re.search(r"^" + re.escape(field) + r":\s*(.+)$", front, re.M)
+    return match.group(1).strip(" \"'") if match else ""
+
+
+def live_evidence(root, store):
+    """Pin remote-main, every extant worktree HEAD and pending report citations.
+
+    Reports whose task/status cannot be resolved are conservatively pending.
+    A report can cite an evidence digest, source SHA or receipt directory.
+    """
+    output = subprocess.check_output(["git", "worktree", "list", "--porcelain", "-z"], cwd=root)
+    roots, heads = {Path(root)}, set()
+    for field in output.decode().split("\0"):
+        if field.startswith("worktree ") and Path(field[9:]).is_dir():
+            roots.add(Path(field[9:]))
+        if field.startswith("HEAD "):
+            heads.add(field[5:])
+    remote = subprocess.run(["git", "rev-parse", "--verify", "origin/main"], cwd=root,
+                            text=True, capture_output=True)
+    if remote.returncode == 0:
+        heads.add(remote.stdout.strip())
+    pending = set()
+    for checkout in roots:
+        kb = checkout / ".bboxy"
+        tasks = {}
+        for task in (kb / "tasks").glob("*.md"):
+            text = task.read_text()
+            for key in (task.stem, "tasks/" + task.stem, record_scalar(text, "id"),
+                        "#" + record_scalar(text, "number")):
+                tasks[key] = record_scalar(text, "status")
+        for report in (kb / "reports").glob("*.md"):
+            text = report.read_text()
+            task = record_scalar(text, "task").removeprefix("[[").removesuffix("]]").removesuffix(".md")
+            if tasks.get(task) not in {"accepted", "done"}:
+                pending.update(re.findall(r"(?<![a-f0-9])[a-f0-9]{40,64}(?![a-f0-9])", text))
+    live = set()
+    for path in receipts(store):
+        data = json.loads((path / "evidence.json").read_text())
+        if data["source"] in heads | pending or path.name in pending:
+            live.add(path.name)
+    return live
+
+
+def receipt_files(path):
+    result = {}
+    for file in sorted(path.rglob("*")):
+        if file.is_symlink():
+            raise ValueError(f"refusing symlink in receipt: {file}")
+        if file.is_file():
+            with file.open("rb") as stream:
+                result[str(file.relative_to(path.parent))] = stream_digest(stream)
+    return result
+
+
+def archive_reader(path):
+    return subprocess.Popen(["zstd", "-q", "-dc", str(path)], stdout=subprocess.PIPE)
+
+
+def verify_archive(path, manifest):
+    """Require frame integrity, exact member count, every byte hash and archive hash."""
+    subprocess.run(["zstd", "-q", "-t", str(path)], check=True)
+    with path.open("rb") as stream:
+        if stream_digest(stream) != manifest["archive_sha256"]:
+            raise ValueError("archive SHA-256 differs")
+    seen = {}
+    child = archive_reader(path)
+    try:
+        with tarfile.open(fileobj=child.stdout, mode="r|") as tar:
+            for member in tar:
+                if (not (member.isfile() or member.islnk()) or member.name in seen
+                        or any(part in {".", ".."} for part in member.name.split("/"))
+                        or not re.fullmatch(r"[a-f0-9]{64}/(?:[A-Za-z0-9_.-]+/)*[A-Za-z0-9_.-]+", member.name)):
+                    raise ValueError("unsafe or duplicate archive member")
+                if member.islnk():
+                    if member.linkname not in seen:
+                        raise ValueError("archive hardlink lacks an earlier verified member")
+                    seen[member.name] = seen[member.linkname]
+                else:
+                    seen[member.name] = stream_digest(tar.extractfile(member))
+        if child.wait() != 0:
+            raise ValueError("archive decompression failed")
+    finally:
+        child.stdout.close()
+        if child.poll() is None:
+            child.terminate()
+        child.wait()
+    if len(seen) != manifest["file_count"] or seen != manifest["files"]:
+        raise ValueError("archive file count or SHA-256 manifest differs")
+
+
+def archive_month(store, month, paths):
+    directory = store.with_name(store.name + "-archive")
+    directory.mkdir(exist_ok=True)
+    archive = directory / ("receipts-" + month + ".tar.zst")
+    manifest_path = archive.with_suffix(".sha256.json")
+    previous = {"files": {}, "file_count": 0}
+    if archive.exists() or manifest_path.exists():
+        previous = json.loads(manifest_path.read_text())
+        verify_archive(archive, previous)  # Never repair over corrupt custody.
+    added = {name: digest for path in paths for name, digest in receipt_files(path).items()}
+    if any(name in previous["files"] and previous["files"][name] != digest for name, digest in added.items()):
+        raise ValueError("archived receipt changed")
+    files = previous["files"] | added
+    graph_members = {digest: name for name, digest in previous["files"].items()
+                     if any(name.endswith(suffix + ".zst") for suffix in GRAPH_SUFFIXES)}
+    with tempfile.TemporaryDirectory(prefix="staging-", dir=directory) as own:
+        staged = Path(own) / archive.name
+        with staged.open("wb") as output:
+            compressor = subprocess.Popen(["zstd", "-q", "-T1", "-3", "-c"], stdin=subprocess.PIPE, stdout=output)
+            try:
+                with tarfile.open(fileobj=compressor.stdin, mode="w|", dereference=True) as tar:
+                    if previous["files"]:
+                        reader = archive_reader(archive)
+                        try:
+                            with tarfile.open(fileobj=reader.stdout, mode="r|") as old:
+                                for member in old:
+                                    tar.addfile(member, None if member.islnk() else old.extractfile(member))
+                            if reader.wait() != 0:
+                                raise ValueError("old archive read failed")
+                        finally:
+                            reader.stdout.close()
+                            if reader.poll() is None:
+                                reader.terminate()
+                            reader.wait()
+                    for name in sorted(added.keys() - previous["files"].keys()):
+                        info = tar.gettarinfo(store / name, arcname=name)
+                        graph = any(name.endswith(suffix + ".zst") for suffix in GRAPH_SUFFIXES)
+                        digest = added[name]
+                        if graph and digest in graph_members:
+                            info.type, info.linkname, info.size = tarfile.LNKTYPE, graph_members[digest], 0
+                            tar.addfile(info)
+                        else:
+                            with (store / name).open("rb") as stream:
+                                tar.addfile(info, stream)
+                            if graph:
+                                graph_members[digest] = name
+                compressor.stdin.close()
+                if compressor.wait() != 0:
+                    raise ValueError("archive compression failed")
+            finally:
+                if not compressor.stdin.closed:
+                    compressor.stdin.close()
+                if compressor.poll() is None:
+                    compressor.terminate()
+                compressor.wait()
+            output.flush()
+            os.fsync(output.fileno())
+        with staged.open("rb") as stream:
+            manifest = {"archive_sha256": stream_digest(stream), "file_count": len(files), "files": files}
+        verify_archive(staged, manifest)
+        staged_manifest = Path(own) / manifest_path.name
+        with staged_manifest.open("w") as stream:
+            stream.write(json.dumps(manifest, sort_keys=True, indent=2) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        staged.replace(archive)
+        staged_manifest.replace(manifest_path)
+        # Persist both names and their parent before removing source custody.
+        for path in (directory, directory.parent):
+            descriptor = os.open(path, os.O_RDONLY)
+            try:
+                os.fsync(descriptor)
+            finally:
+                os.close(descriptor)
+    # Re-read published custody before permitting a single removal.
+    verify_archive(archive, json.loads(manifest_path.read_text()))
+    return added
+
+
+def prune_evidence(root=ROOT, *, keep=10, dry_run=False):
+    if keep < 0:
+        raise ValueError("KEEP must be nonnegative")
+    store = evidence_store(root)
+    if not store.exists():
+        return
+    # Only maintenance competes for this nonblocking lock. Writers/readers never wait.
+    if dry_run:
+        lock = None
+    else:
+        lock = (store / ".prune.lock").open("a")
+        try:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            lock.close()
+            return
+    try:
+        candidates = receipts(store)
+        live = live_evidence(root, store) | {p.name for p in candidates[:keep]}
+        months = {}
+        for path in candidates:
+            if path.name not in live:
+                month = datetime.fromtimestamp((path / "evidence.json").stat().st_mtime, timezone.utc).strftime("%Y-%m")
+                months.setdefault(month, []).append(path)
+        print(f"formal: prune keep={len(live)} cold={sum(map(len, months.values()))} dry_run={dry_run}")
+        if dry_run:
+            return
+        for month, paths in sorted(months.items()):
+            verified = archive_month(store, month, paths)
+            # Refresh source/report pins after lengthy IO. Newly live receipts stay.
+            live = live_evidence(root, store) | {p.name for p in receipts(store)[:keep]}
+            for path in paths:
+                if path.name not in live and receipt_files(path) == {
+                        name: digest for name, digest in verified.items() if name.startswith(path.name + "/")}:
+                    shutil.rmtree(path)
+        # Hardlinks make an orphan-index removal safe even against a new writer.
+        for blob in (store / "by-model" / "graphs").glob("*.zst"):
+            if re.fullmatch(r"[a-f0-9]{64}\.zst", blob.name) and blob.stat().st_nlink == 1:
+                blob.unlink(missing_ok=True)
+    finally:
+        if lock is not None:
+            lock.close()
+
+
+def schedule_prune(root=ROOT):
+    """Detach at background QoS only above the physical-byte budget; never gate land."""
+    store = evidence_store(root)
+    budget = int(os.environ.get("FORMAL_EVIDENCE_BUDGET_BYTES", str(5 * 1024**3)))
+    if budget < 0:
+        raise ValueError("formal evidence budget must be nonnegative")
+    if not store.exists():
+        return False
+    # du counts a shared graph inode once, unlike logical receipt sizes.
+    used = int(subprocess.check_output(["du", "-sk", str(store)], text=True).split()[0]) * 1024
+    if used <= budget:
+        return False
+    command = [sys.executable, "-I", str(Path(root) / "scripts/formal.py"), "--prune-evidence"]
+    qos = ["taskpolicy", "-b"] if platform.system() == "Darwin" else []
+    with (store / "prune.log").open("ab") as log:
+        subprocess.Popen(qos + ["nice", "-n", "19"] + command, cwd=root, stdin=subprocess.DEVNULL,
+                         stdout=log, stderr=log, start_new_session=True)
+    return True
 
 
 def checker_sha256(root=None):
@@ -404,8 +739,8 @@ def model_reuse_key(root, name, expected, metadata, pins, *, checker=None):
     # required TLA, expectation, bounds metadata and every pinned host/tool.
     suffixes = (".tla", ".cfg", "Graph.cfg", ".states", ".edges")
     value = {"name": name, "expected": expected, "contract_metadata": metadata,
-             "tool_pins": pins, "checker_sha256": checker or checker_sha256(), "files": {suffix: hashlib.sha256(
-                 (root / (name + suffix)).read_bytes()).hexdigest() for suffix in suffixes}}
+             "tool_pins": pins, "checker_sha256": checker or checker_sha256(),
+             "files": {suffix: model_digest(root / (name + suffix)) for suffix in suffixes}}
     return hashlib.sha256(json.dumps(value, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
@@ -450,13 +785,16 @@ def reused_model(store, root, name, expected, metadata, pins, key, checker):
                 or row["tla_sha256"] != hashlib.sha256((archive / "models" / (name + ".tla")).read_bytes()).hexdigest()
                 or model_reuse_key(archive / "models", name, expected, metadata, pins, checker=checker) != key):
             return None
+        for suffix, graph_digest in row.get("graph_sha256", {}).items():
+            if suffix not in GRAPH_SUFFIXES or model_digest(archive / "models" / (name + suffix)) != graph_digest:
+                return None
         for suffix, exit_code, wanted in ((".log", row["tlc_exit"], expected), ("Graph.log", 0, "pass")):
             output = (archive / "models" / (name + suffix)).read_text()
             if verdict(subprocess.CompletedProcess([], exit_code, output)) != wanted:
                 return None
         for suffix in (".log", "Graph.log", ".dot"):
             source = archive / "models" / (name + suffix)
-            shutil.copyfile(source, root / source.name)
+            copy_model(source, root / source.name)
         return {**row, "reused_from": digest}
     except (OSError, ValueError, KeyError, TypeError):
         return None  # Missing, corrupt or stale cache always re-checks.
@@ -491,15 +829,26 @@ def check_model(root, row, contract_names, java, jar, pins, store, *, reuse=Fals
     return {"name": name, "expected": expected, "states": len(actual_states),
             "edges": len(actual_edges), "tlc_exit": checked.returncode, "graph_equal": True,
             "contract_metadata": metadata, "reuse_key": key, "checker_sha256": checker,
+            "graph_sha256": {suffix: model_digest(root / (name + suffix)) for suffix in GRAPH_SUFFIXES},
             "tla_sha256": hashlib.sha256((root / f"{name}.tla").read_bytes()).hexdigest()}
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--target", type=Path, required=True)
+    parser.add_argument("--target", type=Path)
+    parser.add_argument("--prune-evidence", action="store_true")
+    parser.add_argument("--prune-background", action="store_true")
     parser.add_argument("--verify-evidence", action="store_true")
     parser.add_argument("--reuse", action="store_true", help="presubmit-only reuse of identical archived models")
     args = parser.parse_args()
+    if args.prune_evidence:
+        prune_evidence(keep=int(os.environ.get("KEEP", "10")), dry_run=os.environ.get("DRY_RUN") == "1")
+        return
+    if args.prune_background:
+        schedule_prune()
+        return
+    if args.target is None:
+        parser.error("--target is required for verification")
     target = args.target.resolve()
     if args.verify_evidence:
         print("formal: receipt " + json.dumps(evidence_receipt(target), sort_keys=True))

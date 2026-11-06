@@ -1811,6 +1811,13 @@ def land(gate_log=None, full=False):
         if landing is None:
             raise Refusal("main_moving: five incremental rechecks exhausted; finding for Oracle", 79)
     # Communication happens after slot release; it never holds build capacity.
+    try:
+        spec = importlib.util.spec_from_file_location("prune_formal", Path(__file__).with_name("formal.py"))
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        module.schedule_prune(root)
+    except (OSError, ValueError, subprocess.SubprocessError) as error:
+        print(f"land: evidence maintenance unavailable: {error}", file=sys.stderr)
     announcement(landing["sha"], git("show", "-s", "--format=%s", landing["sha"], cwd=root))
     return 0
 

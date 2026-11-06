@@ -73,3 +73,29 @@ tests the affected crates in parallel. A red `main` is fixed forward by whoever 
   `.bboxy/quarantine.md` (owner, task, at most 7 days).
 - **Exit 75:** `main` kept moving; run `make land` again.
 - `make land-full` keeps its logs in `target/land-attempt-<n>.log`.
+
+## Formal evidence retention
+
+After a successful `make land` or `land.sh`, evidence larger than 5 GiB schedules
+maintenance detached at background QoS (`taskpolicy -b`, nice 19 on macOS).
+`FORMAL_EVIDENCE_BUDGET_BYTES` changes the trigger. Maintenance failure is logged
+in the private evidence store's `prune.log` and does not change a landing verdict.
+
+`make prune-formal-evidence` keeps the newest `KEEP=10` receipts, all receipts
+for `origin/main` and extant worktree HEADs, and evidence/source hashes cited by
+reports whose tasks remain unaccepted (unknown tasks are conservatively pending).
+`DRY_RUN=1` lists the counts without writing. Other receipts go to one monthly
+`bboxy-formal-evidence-archive/receipts-YYYY-MM.tar.zst` beside the Git evidence
+store. Tar hardlinks also deduplicate identical compressed graphs across monthly
+appends. Its `.tar.sha256.json` manifest binds the archive and every member; frame
+integrity, exact file count and all hashes must pass before any original is
+removed. Appends verify the previous archive first. Broken custody retains the
+originals. Pins are refreshed after archive IO, before removal.
+
+New receipts store `.dot`, `.states` and `.edges` as zstd files hardlinked to
+`by-model/graphs/<uncompressed-sha256>.zst`. Hashing and reuse decode the original
+bytes. Each receipt owns a hardlink, so index cleanup cannot invalidate readers.
+Legacy raw receipts remain readable and follow the same retention policy. The
+zstd executable is required for writing or reading compressed evidence; no
+product-runtime dependency is added. Concurrent maintenance skips its busy lock;
+formal producers and receipt readers never acquire that lock.

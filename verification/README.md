@@ -424,3 +424,20 @@ Content hashes detect mismatched inputs or accidental corruption; they do not
 authenticate the writer or prove that an archive was executed. Presubmit reuse
 therefore trusts this local evidence store. Full postsubmit never reuses its
 verdicts and independently checks every model, which bounds this residual risk.
+
+### Compressed retained evidence
+
+Durable graph files use zstd with their original byte identities. Identical
+`.states`, `.edges` and `.dot` files share one content-addressed inode under
+`by-model/graphs/`; receipt hardlinks retain independent custody. The checker
+hashes decompressed bytes, accepts legacy plain files, and refuses corrupt zstd
+frames. This changes storage only: source, tool, model and verdict checks remain
+required. Target/build graph exports remain plain for native/TLC execution.
+
+`make prune-formal-evidence [KEEP=10] [DRY_RUN=1]` preserves live source receipts
+and pending-report citations, then verifies monthly tar.zst archives against
+SHA-256 member manifests before removing cold originals. See [LAND.md](../LAND.md)
+for the live-set definition, budget and background trigger. Landing fixtures
+exercise pins, monthly append, corruption refusal, dry-run identity, decoded
+hash reuse and shared graph custody; these are filesystem/API witnesses, not a
+formal refinement proof of the compression tool or OS filesystem.

@@ -357,6 +357,27 @@ class ModelReuseTests(unittest.TestCase):
         self.assertEqual(run.call_count,0,"identical models were rechecked")
         self.assertTrue(all(row["reused_from"]==digest for row in rows))
 
+    def test_compressed_graphs_reuse_decoded_hashes_and_reject_corruption(self):
+        digest = self.warm()
+        models = self.store / digest / "models"
+        for path in list(models.iterdir()):
+            if path.suffix in formal.GRAPH_SUFFIXES:
+                formal.store_graph(path, path, self.store)
+                path.unlink()
+        with mock.patch.object(formal, "tlc", side_effect=self.reference) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            rows = self.check(True)
+        self.assertEqual(run.call_count, 0)
+        self.assertTrue(all(row["reused_from"] == digest for row in rows))
+        (models / "One.states.zst").unlink()
+        (models / "One.states.zst").write_bytes(b"corrupt")
+        with mock.patch.object(formal, "tlc", side_effect=self.reference) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            rows = self.check(True)
+        self.assertEqual(run.call_count, 2)
+        self.assertNotIn("reused_from", rows[0])
+        self.assertEqual(rows[1]["reused_from"], digest)
+
     def test_changed_tla_rechecks_only_the_changed_model(self):
         digest=self.warm()
         with (self.root/"One.tla").open("a") as stream:stream.write(" ")

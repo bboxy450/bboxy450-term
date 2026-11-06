@@ -71,6 +71,7 @@ help:
 	  'make stories-toolkit            Headless native rich widget PNG captures' \
 	  'make test-formal                Native Yarn checker + Java TLC graph/verdict parity' \
 	  'make check-formal-evidence      Verify the source-bound formal landing receipt' \
+	  'make prune-formal-evidence      Archive cold receipts (KEEP=10 DRY_RUN=1)' \
 	  'make test-formal-contracts      Project contracts and real API witnesses (native)' \
 	  'make test-yarn-model            Native checker, exporter and strict Rust lint' \
 	  'make test-yarn-concurrency      Bounded Loom primitives/controls + seeded Shuttle reactors' \
@@ -818,6 +819,7 @@ push: land
 .PHONY: land land-full land-gate
 land: tools
 	@sh scripts/land-fast.sh
+	@python3 -I scripts/formal.py --prune-background || true
 
 land-full:
 	@$(MAKE) land-gate LAND_ARGS=--full
@@ -1690,10 +1692,13 @@ test-recovery-built:
 	shasum -a 256 -c '$(TARGET_DIR)/recovery-test.sha256'; \
 	'$(abspath $(TARGET_DIR))/recovery-test' --exact checkpoint_bounded_recovery --nocapture
 
-.PHONY: test-formal test-yarn-model test-formal-contracts format-formal-contracts check-formal-evidence
+.PHONY: test-formal test-yarn-model test-formal-contracts format-formal-contracts check-formal-evidence prune-formal-evidence
 .PHONY: test-yarn-concurrency
 test-yarn-concurrency: tools init-submodules
 	@set -eu; . ./scripts/cache-env.sh; python3 -I crates/bbt-yarn/tests/concurrency/run.py '$(TARGET_DIR)'
+
+prune-formal-evidence:
+	@KEEP='$(or $(KEEP),10)' DRY_RUN='$(DRY_RUN)' python3 -I scripts/formal.py --prune-evidence
 
 check-formal-evidence:
 	@python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' --verify-evidence

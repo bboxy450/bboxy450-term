@@ -848,6 +848,170 @@ except Exception as error:
         self.assertFalse(landing.cargo_backed("sh scripts/brand.sh"))
 
 
+class FormalRetentionTests(unittest.TestCase):
+    def setUp(self):
+        self.repo = Repository()
+        self.addCleanup(self.repo.close)
+        self.repo.tooling()
+        spec = importlib.util.spec_from_file_location("retention_formal", SOURCE.with_name("formal.py"))
+        self.formal = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.formal)
+        self.store = self.formal.evidence_store(self.repo.root)
+        target = Path(self.repo.environment["CARGO_TARGET_DIR"]) / "formal"
+        models = target / "models"
+        models.mkdir(parents=True, exist_ok=True)
+        self.graph = b"1 -> 2; graph state edge label and repeated metadata\n" * 20000
+        (models / "Fixture.states").write_bytes(self.graph)
+        transcript = run(sys.executable, "-I", "scripts/fixture-formal.py", cwd=self.repo.root,
+                         env=self.repo.environment)
+        self.receipt = landing.formal_receipt(transcript, run("git", "rev-parse", "HEAD", cwd=self.repo.root), self.repo.root)
+        self.live = Path(self.receipt["evidence"]).parent
+
+    def cold(self, token, *, source=None):
+        data = json.loads((self.live / "evidence.json").read_text())
+        data.update(source=source or "f" * 40, retention_fixture=token)
+        raw = json.dumps(data).encode()
+        path = self.store / hashlib.sha256(raw).hexdigest()
+        shutil.copytree(self.live, path, copy_function=os.link)
+        # Never overwrite a hardlinked live evidence inode.
+        (path / "evidence.json").unlink()
+        (path / "evidence.json").write_bytes(raw)
+        return path
+
+    def test_live_heads_pending_reports_and_newest_are_kept_cold_is_archived(self):
+        older = run("git", "rev-parse", "HEAD~1", cwd=self.repo.root)
+        worktree = self.repo.root / ".retention-live-tree"
+        run("git", "worktree", "add", "--detach", "--no-checkout", str(worktree), older, cwd=self.repo.root)
+        pinned_tree = self.cold("worktree", source=older)
+        run("git", "update-ref", "refs/remotes/origin/main", "HEAD", cwd=self.repo.root)
+        pinned_main = self.cold("remote", source=run("git", "rev-parse", "HEAD", cwd=self.repo.root))
+        pending = self.cold("pending")
+        (self.repo.root / ".bboxy/tasks").mkdir(parents=True, exist_ok=True)
+        (self.repo.root / ".bboxy/reports").mkdir(parents=True, exist_ok=True)
+        (self.repo.root / ".bboxy/tasks/pending.md").write_text('---\nstatus: reported\n---\n')
+        (self.repo.root / ".bboxy/reports/pending.md").write_text(
+            '---\ntask: "[[tasks/pending]]"\n---\nEvidence ' + pending.name)
+        closed = self.cold("closed-without-acceptance")
+        (self.repo.root / ".bboxy/tasks/closed.md").write_text('---\nstatus: closed\n---\n')
+        (self.repo.root / ".bboxy/reports/closed.md").write_text(
+            '---\ntask: "[[tasks/closed]]"\n---\nEvidence ' + closed.name)
+        cold = self.cold("cold")
+        (self.repo.root / ".bboxy/tasks/accepted.md").write_text('---\nstatus: accepted\n---\n')
+        (self.repo.root / ".bboxy/reports/accepted.md").write_text(
+            '---\ntask: "[[tasks/accepted]]"\n---\nEvidence ' + cold.name)
+        newest = self.cold("newest")
+        os.utime(newest, (time.time() + 10, time.time() + 10))
+        self.formal.prune_evidence(self.repo.root, keep=1)
+        self.assertFalse(cold.exists())
+        for path in (self.live, pinned_tree, pinned_main, pending, closed, newest):
+            self.assertTrue(path.exists(), path.name + " lost its live/newest pin")
+        archive = next(self.store.with_name(self.store.name + "-archive").glob("*.tar.zst"))
+        manifest = json.loads(archive.with_suffix(".sha256.json").read_text())
+        self.formal.verify_archive(archive, manifest)
+        self.assertTrue(any(name.startswith(cold.name + "/") for name in manifest["files"]))
+        # Canonical checker still accepts the same source-bound receipt after prune.
+        landing.verify_formal_receipt(self.receipt, self.receipt["source"], self.repo.root)
+        result = subprocess.run([sys.executable, "-I", "scripts/formal.py", "--target", str(self.live),
+                                 "--verify-evidence"], cwd=self.repo.root, env=self.repo.environment,
+                                text=True, capture_output=True)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_monthly_append_retains_previous_members(self):
+        first = self.cold("first")
+        self.formal.prune_evidence(self.repo.root, keep=0)
+        second = self.cold("second")
+        self.formal.prune_evidence(self.repo.root, keep=0)
+        archive = next(self.store.with_name(self.store.name + "-archive").glob("*.tar.zst"))
+        manifest = json.loads(archive.with_suffix(".sha256.json").read_text())
+        self.formal.verify_archive(archive, manifest)
+        for path in (first, second):
+            self.assertFalse(path.exists())
+            self.assertTrue(any(name.startswith(path.name + "/") for name in manifest["files"]))
+        raw = subprocess.check_output(["zstd", "-q", "-dc", str(archive)])
+        with self.formal.tarfile.open(fileobj=io.BytesIO(raw)) as tar:
+            self.assertTrue(any(member.islnk() for member in tar.getmembers()),
+                            "monthly appends duplicated an identical compressed graph")
+            for path in (first, second):
+                self.assertEqual(tar.extractfile(path.name + "/models/Fixture.states.zst").read(),
+                                 (self.live / "models/Fixture.states.zst").read_bytes())
+
+    def test_corrupt_archive_and_failed_verification_keep_originals(self):
+        self.cold("first")
+        self.formal.prune_evidence(self.repo.root, keep=0)
+        cold = self.cold("second")
+        archive = next(self.store.with_name(self.store.name + "-archive").glob("*.tar.zst"))
+        archive.write_bytes(b"corrupt archive")
+        with self.assertRaises((ValueError, subprocess.SubprocessError)):
+            self.formal.prune_evidence(self.repo.root, keep=0)
+        self.assertTrue(cold.exists())
+        self.assertTrue(self.live.exists())
+
+    def test_failed_new_archive_verification_never_removes_a_receipt(self):
+        cold = self.cold("verify-failure")
+        with patch.object(self.formal, "verify_archive", side_effect=ValueError("injected integrity failure")):
+            with self.assertRaisesRegex(ValueError, "integrity failure"):
+                self.formal.prune_evidence(self.repo.root, keep=0)
+        self.assertTrue(cold.exists())
+        self.assertTrue(self.live.exists())
+
+    def test_dry_run_changes_nothing(self):
+        self.cold("dry")
+        def snapshot():
+            return {str(p.relative_to(self.store)): (p.read_bytes(), p.stat().st_mtime_ns)
+                    for p in self.store.rglob("*") if p.is_file()}
+        before = snapshot()
+        self.formal.prune_evidence(self.repo.root, keep=0, dry_run=True)
+        self.assertEqual(snapshot(), before)
+        self.assertFalse(self.store.with_name(self.store.name + "-archive").exists())
+
+    def test_graphs_round_trip_shrink_and_dedupe_across_receipts(self):
+        compressed = self.live / "models/Fixture.states.zst"
+        self.assertFalse((self.live / "models/Fixture.states").exists())
+        with self.formal.model_stream(compressed.with_suffix("")) as stream:
+            self.assertEqual(stream.read(), self.graph)
+        self.assertLess(compressed.stat().st_size * 10, len(self.graph))
+        second = Path(self.repo.environment["CARGO_TARGET_DIR"]) / "second"
+        shutil.copytree(self.live, second)
+        (second / "evidence.json").write_bytes((second / "evidence.json").read_bytes() + b"\n")
+        published = self.formal.archive_evidence(second, self.repo.root)
+        other = published / "models/Fixture.states.zst"
+        self.assertEqual(compressed.stat().st_ino, other.stat().st_ino)
+        self.assertEqual(len(list((self.store / "by-model/graphs").glob("*.zst"))), 1)
+        # CRC and decoded hashes must be checked, even when a compressed object exists.
+        other.write_bytes(b"broken zstd")
+        with self.assertRaises(ValueError):
+            self.formal.model_digest(other.with_suffix(""))
+
+    def test_orphan_sweep_keeps_staging_files_and_live_graph_links(self):
+        objects = self.store / "by-model/graphs"
+        staging = objects / "staging-in-progress.zst"
+        staging.write_bytes(b"producer still owns this file")
+        orphan = objects / ("0" * 64 + ".zst")
+        orphan.write_bytes(b"unreferenced object")
+        self.formal.prune_evidence(self.repo.root, keep=0)
+        self.assertTrue(staging.exists())
+        self.assertFalse(orphan.exists())
+        with self.formal.model_stream(self.live / "models/Fixture.states") as stream:
+            self.assertEqual(stream.read(), self.graph)
+
+    def test_background_budget_and_qos_are_nonblocking(self):
+        with patch.dict(os.environ, {"FORMAL_EVIDENCE_BUDGET_BYTES": "9999999999"}):
+            self.assertFalse(self.formal.schedule_prune(self.repo.root))
+        original = self.formal.subprocess.Popen
+        def dispatch(argv, **kwargs):
+            return Mock() if "--prune-evidence" in argv else original(argv, **kwargs)
+        with patch.dict(os.environ, {"FORMAL_EVIDENCE_BUDGET_BYTES": "0"}), \
+                patch.object(self.formal.subprocess, "Popen", side_effect=dispatch) as spawn:
+            self.assertTrue(self.formal.schedule_prune(self.repo.root))
+        argv = spawn.call_args.args[0]
+        self.assertIn("19", argv)
+        if platform.system() == "Darwin":
+            self.assertEqual(argv[:2], ["taskpolicy", "-b"])
+        self.assertTrue(spawn.call_args.kwargs["start_new_session"])
+        makefile = SOURCE.parents[1] / "Makefile"
+        self.assertIn('scripts/land-fast.sh\n\t@python3 -I scripts/formal.py --prune-background', makefile.read_text())
+
+
 class GateReceiptTests(unittest.TestCase):
     def test_formal_receipt_refuses_missing_stale_incomplete_and_tampered_evidence(self):
         repo = Repository()
