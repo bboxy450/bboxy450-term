@@ -1129,6 +1129,9 @@ impl LogicClient {
     /// refusal every [`PENDING_RETRY_MS`] while `wait` lasts. Every such
     /// refusal precedes admission, so a resend never repeats an effect. A
     /// reply still pending when `wait` runs out carries `retry_after_ms`.
+    /// This budget applies to explicit pending refusals. A caller retained in
+    /// the bounded per-root FIFO, or an already-admitted effect, keeps its
+    /// original reply; a transport timeout is not permission to replay it.
     pub async fn control_call_attributed_within(
         &self,
         seat: Ulid,

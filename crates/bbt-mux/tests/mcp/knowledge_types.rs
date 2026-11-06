@@ -60,7 +60,7 @@ fn mcp_hint_graph_prefix_refusal_lists_types_and_leads_to_the_dictionary() {
 }
 
 #[test]
-fn mcp_hint_graph_argument_errors_show_a_valid_schema_discovery_call() {
+fn mcp_hint_graph_argument_errors_show_model_callable_schema_discovery() {
     let f = Fixture::new();
     let mut bridge = f.bridge(f.own.id);
     initialize(&mut bridge);
@@ -72,7 +72,9 @@ fn mcp_hint_graph_argument_errors_show_a_valid_schema_discovery_call() {
     );
     assert_eq!(response["result"]["isError"], true);
     let hint = &response["result"]["_meta"]["bboxy450/hints"][0];
-    assert_eq!(hint["method"], "tools/list");
+    assert_eq!(hint["method"], "tools/call");
+    assert_eq!(hint["params"]["name"], "orient");
+    assert_eq!(response["result"]["structuredContent"]["hints"][0], *hint);
     let catalogue = rpc(
         &mut bridge,
         3,
@@ -80,7 +82,7 @@ fn mcp_hint_graph_argument_errors_show_a_valid_schema_discovery_call() {
         hint["params"].clone(),
     );
     assert!(
-        catalogue["result"]["tools"]
+        catalogue["result"]["structuredContent"]["tools"]
             .as_array()
             .unwrap()
             .iter()
@@ -103,7 +105,7 @@ fn mcp_knowledge_types_are_discoverable_and_readable_by_workers_and_oracles() {
             initialized["result"]["instructions"]
                 .as_str()
                 .unwrap()
-                .contains("knowledge_types")
+                .contains("knowledge_orient")
         );
         let list = rpc(&mut bridge, 1, "tools/list", json!({}));
         let tools = list["result"]["tools"].as_array().unwrap();

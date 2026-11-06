@@ -2579,7 +2579,20 @@ check-mermaid-fullscreen:
 	cargo clippy --locked --release -p bboxy450-ui -p bboxy450-doc --lib --target-dir '$(TARGET_DIR)' -- -D warnings; \
 	cargo check --locked --release -p bboxy450-term --lib --bin bboxy450-term --target-dir '$(TARGET_DIR)'
 
-.PHONY: check-workspace-provisioning test-workspace-provisioning
+.PHONY: check-workspace-provisioning test-workspace-provisioning test-workspace-owner-progress test-workspace-mcp-regressions
+test-workspace-mcp-regressions: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo nextest run --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(knowledge_types_tests::) | test(mcp_artifact_) | test(mcp_channel_tools_)'
+
+test-workspace-owner-progress: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	for witness in \
+	  logic::ownership_tests::projection_ownership_real_io_survives_cancel_restart_and_root_aba \
+	  logic::knowledge_responsiveness_tests::workspace_held_scan_keeps_input_chat_and_other_root_live_and_excludes_writes \
+	  logic::knowledge_responsiveness_tests::workspace_ready_activity_churn_reaches_writable; do \
+	  cargo nextest run --locked -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' --test-threads 1 -E "test(=$$witness)"; \
+	done
+
 check-workspace-provisioning: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo clippy --locked -p bboxy450-term-mux --features model --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings

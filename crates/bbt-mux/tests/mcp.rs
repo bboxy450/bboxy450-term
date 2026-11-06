@@ -14,10 +14,10 @@ mod harness_status;
 mod knowledge_types_tests;
 #[path = "mcp/launch.rs"]
 mod launch_tests;
-#[path = "mcp/workspaces.rs"]
-mod workspace_tests;
 #[path = "common/record_supervisor.rs"]
 mod record_supervisor;
+#[path = "mcp/workspaces.rs"]
+mod workspace_tests;
 use record_supervisor::RecordLink;
 use std::io::{Cursor, Read, Write};
 use std::os::unix::net::UnixStream;
@@ -1425,8 +1425,17 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     let tools = list["result"]["tools"].as_array().unwrap();
     let names: std::collections::BTreeSet<_> = tools.iter().map(|tool| tool["name"].as_str().unwrap()).collect();
     assert_eq!(names.len(), tools.len(), "MCP tool names must be unique");
-    for name in ["provenance_search", "provenance_get", "provenance_lineage", "provenance_history", "provenance_verify"] {
-        let tool = tools.iter().find(|tool| tool["name"] == name).expect("provenance lookup advertised");
+    for name in [
+        "provenance_search",
+        "provenance_get",
+        "provenance_lineage",
+        "provenance_history",
+        "provenance_verify",
+    ] {
+        let tool = tools
+            .iter()
+            .find(|tool| tool["name"] == name)
+            .expect("provenance lookup advertised");
         assert_eq!(tool["annotations"]["readOnlyHint"], true);
         assert_eq!(tool["annotations"]["openWorldHint"], false);
     }
@@ -1474,10 +1483,23 @@ fn mcp_four_methods_forward_to_logic_and_explicit_metadata_replays_the_original_
     assert_eq!(audit[0].event.payload["tool"], "orient");
     assert_eq!(audit[0].event.generation, Some(1));
     assert_eq!(audit[1].event.payload["outcome"], "replay");
-    let own = rpc(&mut bridge, 20, "tools/call", json!({"name":"provenance_get","arguments":{"locator":fixture.task}}));
+    let own = rpc(
+        &mut bridge,
+        20,
+        "tools/call",
+        json!({"name":"provenance_get","arguments":{"locator":fixture.task}}),
+    );
     assert_eq!(own["result"]["isError"], false, "{own}");
-    assert_eq!(own["result"]["structuredContent"]["entity"]["id"], fixture.task.to_string());
-    let foreign = rpc(&mut bridge, 21, "tools/call", json!({"name":"provenance_get","arguments":{"locator":fixture.foreign_task}}));
+    assert_eq!(
+        own["result"]["structuredContent"]["entity"]["id"],
+        fixture.task.to_string()
+    );
+    let foreign = rpc(
+        &mut bridge,
+        21,
+        "tools/call",
+        json!({"name":"provenance_get","arguments":{"locator":fixture.foreign_task}}),
+    );
     assert_eq!(foreign["result"]["isError"], true, "{foreign}");
     assert_eq!(foreign["result"]["structuredContent"]["error"]["code"], "not_found");
 
@@ -2509,8 +2531,46 @@ fn mcp_channel_tools_keep_worker_links_and_recheck_revoked_reads_before_cached_r
         .runtime
         .block_on(f.client().control_catalogue(oracle, 1))
         .unwrap();
-    assert_eq!(worker["tools"].as_array().unwrap().len(), 30);
-    assert_eq!(admin["tools"].as_array().unwrap().len(), 51);
+    // Assert the authority boundary directly; adding a permitted read must
+    // not require a stale magic tool count or hide duplicate registrations.
+    let names = |value: &Value| {
+        value["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|tool| tool["name"].as_str().unwrap().to_owned())
+            .collect::<std::collections::BTreeSet<_>>()
+    };
+    let worker_names = names(&worker);
+    let admin_names = names(&admin);
+    assert_eq!(
+        worker_names.len(),
+        worker["tools"].as_array().unwrap().len()
+    );
+    assert_eq!(admin_names.len(), admin["tools"].as_array().unwrap().len());
+    assert!(worker_names.is_subset(&admin_names));
+    for name in [
+        "workspace_prepare",
+        "workspace_list",
+        "workspace_release",
+        "seat_spawn",
+        "ch_grant",
+    ] {
+        assert!(
+            !worker_names.contains(name),
+            "worker unexpectedly gained {name}"
+        );
+        assert!(admin_names.contains(name), "Oracle lost {name}");
+    }
+    for name in [
+        "workspace_get",
+        "workspace_orient",
+        "knowledge_types",
+        "knowledge_orient",
+    ] {
+        assert!(worker_names.contains(name));
+        assert!(admin_names.contains(name));
+    }
     for catalogue in [&worker, &admin] {
         let status = catalogue["tools"]
             .as_array()
@@ -4552,22 +4612,127 @@ fn assert_claim_number_matches_actual_root(
     }
 }
 
+// Claims attach responsibility to an existing committed artifact. Ordinary
+// drafts and arbitrary external URLs do not create that observation boundary.
+fn committed_claim_fixture(f: &mut Fixture) -> (Ulid, String, String) {
+    // Use an ephemeral SSH signer, never the operator's GPG/Keychain identity.
+    let key = f._temp.path().join("claim-signing");
+    let ssh = if cfg!(target_os = "macos") {
+        "/usr/bin/ssh-keygen"
+    } else {
+        "ssh-keygen"
+    };
+    let output = std::process::Command::new(ssh)
+        .args(["-q", "-t", "ed25519", "-N", "", "-f"])
+        .arg(&key)
+        .stdin(std::process::Stdio::null())
+        .output()
+        .unwrap();
+    assert!(
+        output.status.success(),
+        "private fixture key: {}",
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let allowed = f._temp.path().join("claim-signers");
+    std::fs::write(
+        &allowed,
+        format!(
+            "claim@example.invalid {}\n",
+            std::fs::read_to_string(key.with_extension("pub"))
+                .unwrap()
+                .trim()
+        ),
+    )
+    .unwrap();
+    let kb = f.config.repository.join(".bboxy");
+    let git = if cfg!(target_os = "macos") {
+        "/usr/bin/git"
+    } else {
+        "git"
+    };
+    let run = |args: &[&str]| {
+        let output = std::process::Command::new(git)
+            .arg("-C")
+            .arg(&kb)
+            .args(args)
+            .stdin(std::process::Stdio::null())
+            .output()
+            .unwrap();
+        assert!(
+            output.status.success(),
+            "private knowledge Git: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+    };
+    run(&["init", "--quiet", "--initial-branch=main", "--template="]);
+    for (name, value) in [
+        ("user.name", "Claim Fixture"),
+        ("user.email", "claim@example.invalid"),
+        ("gpg.format", "ssh"),
+        ("gpg.ssh.program", ssh),
+        ("user.signingkey", key.to_str().unwrap()),
+        ("gpg.ssh.allowedSignersFile", allowed.to_str().unwrap()),
+    ] {
+        run(&["config", "--local", name, value]);
+    }
+    let committed = data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "knowledge_commit",
+        json!({"locators":[f.task_path()],"message":"Private claim fixture checkpoint"}),
+    ));
+    let anchor = &committed["artifact"];
+    let id: Ulid = serde_json::from_value(anchor["id"].clone()).unwrap();
+    let reference = format!("knowledge:commit/{}", anchor["commit"].as_str().unwrap());
+    let digest = anchor["digest"].as_str().unwrap().to_owned();
+    let path = format!("artifacts/{id}.md");
+    let deadline = Instant::now() + Duration::from_secs(10);
+    loop {
+        let result = f.call(
+            f.own.id,
+            Ulid::new(),
+            "knowledge_fetch",
+            json!({"locator":path}),
+        );
+        if result["isError"] == false
+            && result["structuredContent"]["frontmatter"]["observed"] == true
+        {
+            break;
+        }
+        assert!(
+            Instant::now() < deadline,
+            "committed artifact was not projected: {result}"
+        );
+        std::thread::sleep(Duration::from_millis(20));
+    }
+    f.restart();
+    (id, reference, digest)
+}
+
 // keeps: spec mcp-control-plane
 #[test]
 fn mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_content() {
     let mut f = Fixture::new();
     let original = f.task_file(f.task_metadata());
+    let (id, reference, digest) = committed_claim_fixture(&mut f);
+    let rejected=f.mutate(f.own.id,Ulid::new(),"artifact_claim",json!({"kind":"pr","ref":"https://invalid.example/review/123?literal=':","task":f.task_path()}));
+    assert_eq!(rejected["isError"], true);
+    assert!(
+        rejected.to_string().contains("artifact_not_committed"),
+        "{rejected}"
+    );
+    assert_eq!(f.task_document().digest, original.digest);
     let op = Ulid::new();
-    let args = json!({"kind":"pr","ref":"https://invalid.example/review/123?literal=':","digest":format!("sha256:{}","a".repeat(64)),"task":f.task_path()});
+    let args = json!({"kind":"file","ref":reference,"digest":digest,"task":f.task_path()});
     let first = f.mutate(f.own.id, op, "artifact_claim", args.clone());
     let claimed = data(first.clone());
-    assert_eq!(claimed["artifact_id"], op.to_string());
+    assert_eq!(claimed["artifact_id"], id.to_string());
     let path = f
         .config
         .repository
-        .join(format!(".bboxy/artifacts/{op}.md"));
+        .join(format!(".bboxy/artifacts/{id}.md"));
     let source = std::fs::read_to_string(&path).unwrap();
-    let artifact = bbt_mux::index::Document::parse(&format!("artifacts/{op}.md"), &source);
+    let artifact = bbt_mux::index::Document::parse(&format!("artifacts/{id}.md"), &source);
     assert_claim_number_matches_actual_root(&f.config.repository, &artifact);
     assert_eq!(
         artifact.metadata["produced_by"],
@@ -4578,7 +4743,7 @@ fn mcp_artifact_claim_is_signed_linked_idempotent_and_never_reads_external_conte
     let task = f.task_document();
     assert_eq!(task.body, original.body);
     assert_eq!(task.metadata["custom"], original.metadata["custom"]);
-    assert_eq!(task.metadata["artifacts"], json!([format!("[[{op}]]")]));
+    assert_eq!(task.metadata["artifacts"], json!([format!("[[{id}]]")]));
     assert_item_signature(&task, f.own.id);
     assert_eq!(
         f.mutate(f.own.id, op, "artifact_claim", args.clone()),
@@ -4652,14 +4817,15 @@ fn mcp_task_partial_wake_stays_unknown_after_restart_and_never_rewrites_the_file
 #[test]
 #[ignore = "acceptance driver supplies the prebuilt bbt-doc corpus test binary"]
 fn mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check() {
-    let f = Fixture::new();
+    let mut f = Fixture::new();
     f.task_file(f.task_metadata());
+    let (_, reference, _) = committed_claim_fixture(&mut f);
     data(f.report(verification("true", 0, json!([]))));
     data(f.mutate(
         f.own.id,
         Ulid::new(),
         "artifact_claim",
-        json!({"kind":"file","ref":"fixture: artifact","task":f.task_path()}),
+        json!({"kind":"file","ref":reference,"task":f.task_path()}),
     ));
     let decision = knowledge_create(
         &f,
@@ -4700,16 +4866,17 @@ fn mcp_work_item_writer_outputs_pass_the_actual_bbt_doc_corpus_check() {
 fn mcp_artifact_partial_write_remains_unknown_and_is_not_reexecuted() {
     let mut f = Fixture::new();
     let original = f.task_file(f.task_metadata());
+    let (id, reference, _) = committed_claim_fixture(&mut f);
     let db = rusqlite::Connection::open(f.config.run_dir.join("index/events.sqlite")).unwrap();
     db.execute_batch(&format!("CREATE TRIGGER fixture_task_write_failure BEFORE INSERT ON events WHEN NEW.subject='doc/{}/write_prepared' BEGIN SELECT RAISE(ABORT,'fixture task write failure'); END;",f.task)).unwrap();
     let op = Ulid::new();
-    let args = json!({"kind":"file","ref":"fixture artifact","task":f.task_path()});
+    let args = json!({"kind":"file","ref":reference,"task":f.task_path()});
     let unknown = f.mutate(f.own.id, op, "artifact_claim", args.clone());
     assert_eq!(unknown["structuredContent"]["status"], "unknown");
     let artifact_path = f
         .config
         .repository
-        .join(format!(".bboxy/artifacts/{op}.md"));
+        .join(format!(".bboxy/artifacts/{id}.md"));
     let written = std::fs::read_to_string(&artifact_path).unwrap();
     assert_claim_number_matches_actual_root(
         &f.config.repository,
@@ -6228,10 +6395,9 @@ fn mcp_record_numbers_resolve_before_the_existing_task_authority_fences() {
 #[test]
 fn mcp_artifact_number_uses_unindexed_records_of_every_type_and_keeps_retry_bytes() {
     let mut f = Fixture::new();
-    // The provenance observer legitimately numbers newly observed files. Keep
-    // this allocator input in its excluded artifact subtree, so that observer
-    // cannot allocate 9002 before this claim. Index allocation still scans every
-    // nested Markdown record and type, including this BOM/CRLF spec.
+    // The explicit checkpoint allocates the artifact, and a later claim reuses
+    // that lineage. The allocator still scans every nested Markdown record and
+    // type, including this unindexed BOM/CRLF spec in the artifact subtree.
     let nested = f.config.repository.join(".bboxy/artifacts/number-inputs");
     std::fs::create_dir_all(&nested).unwrap();
     std::fs::write(
@@ -6242,14 +6408,15 @@ fn mcp_artifact_number_uses_unindexed_records_of_every_type_and_keeps_retry_byte
         ),
     )
     .unwrap();
+    let (id, reference, _) = committed_claim_fixture(&mut f);
     let op = Ulid::new();
-    let args = json!({"kind":"file","ref":"fixture: numbered artifact","task":"#1"});
+    let args = json!({"kind":"file","ref":reference,"task":"#1"});
     let first = f.mutate(f.own.id, op, "artifact_claim", args.clone());
     data(first.clone());
     let path = f
         .config
         .repository
-        .join(format!(".bboxy/artifacts/{op}.md"));
+        .join(format!(".bboxy/artifacts/{id}.md"));
     let source = std::fs::read_to_string(&path).unwrap();
     let doc = bbt_mux::index::Document::parse("artifact.md", &source);
     assert_eq!(doc.metadata["number"], 9002);
@@ -9129,13 +9296,38 @@ fn knowledge_orientation_loads_builtin_workflow_types_and_human_document_guidanc
     assert!(value["provider_error"].is_null());
     let skills = value["skills"].as_array().unwrap();
     assert_eq!(skills.len(), 2);
-    assert!(skills.iter().all(|s|s["content"].is_string() && s["requires_skill_read"] == false));
-    let body = skills.iter().map(|s|s["content"].as_str().unwrap()).collect::<Vec<_>>().join("\n");
-    for required in ["Acceptance", "Mermaid", "tables", "task_report", "knowledge_write"] {
+    assert!(
+        skills
+            .iter()
+            .all(|s| s["content"].is_string() && s["requires_skill_read"] == false)
+    );
+    let body = skills
+        .iter()
+        .map(|s| s["content"].as_str().unwrap())
+        .collect::<Vec<_>>()
+        .join("\n");
+    for required in [
+        "Acceptance",
+        "Mermaid",
+        "tables",
+        "task_report",
+        "knowledge_write",
+    ] {
         assert!(body.contains(required), "orientation missing {required}");
     }
-    assert!(value["document_types"]["types"].as_array().unwrap().iter().any(|t|t["type"] == "spec" || t["kind"] == "spec"));
-    let refused = fixture.call(fixture.own.id, Ulid::new(), "knowledge_orient", json!({"root":"/foreign"}));
+    assert!(
+        value["document_types"]["types"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|t| t["type"] == "spec" || t["kind"] == "spec")
+    );
+    let refused = fixture.call(
+        fixture.own.id,
+        Ulid::new(),
+        "knowledge_orient",
+        json!({"root":"/foreign"}),
+    );
     assert_eq!(refused["isError"], true);
 }
 
@@ -9151,7 +9343,11 @@ fn mcp_feedback_socket_reaches_structured_only_clients_without_a_new_bridge() {
     let request = bbt_mux::seat_socket::Request {
         version: 1, capability: endpoint.capability, seat: fixture.own.id, generation: endpoint.generation,
         action: bbt_mux::seat_socket::Action::Call {
-            call: Call { op_id: Ulid::new(), tool: "orient".into(), args: json!({}) },
+            call: Call {
+                op_id: Ulid::new(),
+                tool: "orient".into(),
+                args: json!({}),
+            },
             attribution: Default::default(),
         },
     };

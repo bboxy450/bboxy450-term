@@ -19,6 +19,7 @@ fn write(path: &str, body: &str) -> Call {
     }
 }
 async fn call(client: &LogicClient, seat: Ulid, request: Call) -> serde_json::Value {
+    let detail = format!("{} {} seat={seat}", request.tool, request.args);
     tokio::time::timeout(DEADLINE, async {
         loop {
             let value = client.control_call(seat, 1, request.clone()).await.unwrap();
@@ -29,7 +30,7 @@ async fn call(client: &LogicClient, seat: Ulid, request: Call) -> serde_json::Va
         }
     })
     .await
-    .expect("private API deadline")
+    .unwrap_or_else(|_| panic!("private API deadline: {detail}"))
 }
 async fn turn(client: &LogicClient, root: &Path) {
     let (tx, rx) = oneshot::channel();
@@ -280,15 +281,31 @@ fn ownership_child() {
     assert!(b.join("notes/independent.md").is_file());
     task.abort();
     drop(task);
-    let refused = rt.block_on(call(
-        &client,
-        seats[0].0,
-        write("notes/not-admitted.md", "must be busy"),
-    ));
-    assert_eq!(
-        refused["structuredContent"]["error"]["code"], "provider_busy",
-        "{refused}"
-    );
+    // A contended writer now waits in the bounded root FIFO. Keep it live
+    // while proving unrelated requests progress, then cancel it before the
+    // restart so it cannot become an unintended second admitted write.
+    let queued_client = client.clone();
+    let request = write("notes/not-admitted.md", "queued then cancelled");
+    let mut queued = rt.spawn(async move { queued_client.control_call(seat, 1, request).await });
+    rt.block_on(async {
+        assert!(
+            tokio::time::timeout(Duration::from_millis(100), &mut queued)
+                .await
+                .is_err()
+        );
+        assert!(
+            tokio::time::timeout(DEADLINE, client.gui_hello())
+                .await
+                .unwrap()
+                .is_ok()
+        );
+        assert_eq!(call(&client, seats[1].0, status()).await["isError"], false);
+    });
+    assert!(!a.join("notes/not-admitted.md").exists());
+    queued.abort();
+    rt.block_on(async {
+        assert!(queued.await.unwrap_err().is_cancelled());
+    });
     rt.block_on(turn(&client, &a));
     assert_eq!(cursor(&store), before);
     let at = Instant::now();
@@ -334,6 +351,9 @@ fn ownership_child() {
     rt.block_on(turn(&client, &a));
     assert!(WriterLease::acquire(&a).unwrap().is_none());
     drop(current);
+    // Retirement may reject the old provider's write after its IO returns;
+    // its lease must still survive until then, and it must never be replayed.
+    assert!(!a.join("notes/not-admitted.md").exists());
     assert_eq!(
         count.load(std::sync::atomic::Ordering::SeqCst),
         1,

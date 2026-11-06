@@ -171,20 +171,26 @@ async fn workspace_ready_activity_churn_reaches_writable() {
         tool: "knowledge_write".into(),
         args: json!({"path":"notes/ready.md","frontmatter":{"type":"note","title":"Ready"},"body":"one admitted effect"}),
     };
-    let pending = logic
-        .client
-        .control_call(seat, 1, call.clone())
-        .await
-        .unwrap();
-    assert_eq!(
-        pending["structuredContent"]["error"]["code"],
-        "workspace_pending"
+    let write_client = logic.client.clone();
+    let request = call.clone();
+    let mut waiting =
+        tokio::spawn(async move { write_client.control_call(seat, 1, request).await });
+    assert!(
+        tokio::time::timeout(Duration::from_millis(100), &mut waiting)
+            .await
+            .is_err(),
+        "queued write completed before the held scan opened"
     );
-    held.release();
-    let applied = logic
-        .client
-        .control_call_within(seat, 1, call.clone(), Duration::from_secs(6))
+    assert!(!knowledge.join("notes/ready.md").exists());
+    tokio::time::timeout(Duration::from_millis(500), logic.client.gui_hello())
         .await
+        .unwrap()
+        .unwrap();
+    held.release();
+    let applied = tokio::time::timeout(Duration::from_secs(6), waiting)
+        .await
+        .unwrap()
+        .unwrap()
         .unwrap();
     // Keep unrelated chat/status on the same actual owner in the witness.
     let status = logic
@@ -702,37 +708,37 @@ async fn workspace_held_scan_keeps_input_chat_and_other_root_live_and_excludes_w
         tool: "knowledge_write".into(),
         args: json!({"path":"notes/after-scan.md","frontmatter":{"type":"note","title":"After scan"},"body":"only first root"}),
     };
-    let refused = tokio::time::timeout(
+    // The bounded per-root FIFO retains this caller without admitting a write
+    // or making the owner wait. Readiness opens only after we release the scan.
+    let write_client = logic.client.clone();
+    let request = call.clone();
+    let mut waiting =
+        tokio::spawn(async move { write_client.control_call(seat, 1, request).await });
+    assert!(
+        tokio::time::timeout(Duration::from_millis(100), &mut waiting)
+            .await
+            .is_err()
+    );
+    tokio::time::timeout(Duration::from_millis(500), logic.client.gui_hello())
+        .await
+        .unwrap()
+        .unwrap();
+    let other_read = tokio::time::timeout(
         Duration::from_millis(500),
-        logic.client.control_call(seat, 1, call.clone()),
+        logic.client.gui_knowledge_scoped(
+            "fetch".into(),
+            json!({"ref":reference}),
+            Some(bbt_proto::gui::SwarmScope {
+                swarm: other,
+                revision: second_scope.revision,
+            }),
+        ),
     )
     .await
     .unwrap()
+    .unwrap()
     .unwrap();
-    assert_eq!(
-        refused["structuredContent"]["error"]["code"],
-        "workspace_pending"
-    );
-    // keeps: review 5004 finding 6 — a pending refusal says when to retry.
-    assert_eq!(refused["structuredContent"]["error"]["retry_after_ms"], 100);
-    // A seat call waits for the workspace within its wait, then still answers
-    // pending with the hint; it never admits the effect meanwhile.
-    let started = std::time::Instant::now();
-    let waited = logic
-        .client
-        .control_call_within(seat, 1, call.clone(), Duration::from_millis(300))
-        .await
-        .unwrap();
-    assert!(
-        started.elapsed() >= Duration::from_millis(200),
-        "{:?}",
-        started.elapsed()
-    );
-    assert_eq!(
-        waited["structuredContent"]["error"]["code"],
-        "workspace_pending"
-    );
-    assert_eq!(waited["structuredContent"]["error"]["retry_after_ms"], 100);
+    assert_eq!(other_read["body"], "second content\n");
     assert!(!first.join(".bboxy/notes/after-scan.md").exists());
     let store = SqliteStore::open(&object_dir(&run, &format!("seat-{seat}")).unwrap()).unwrap();
     assert!(
@@ -742,11 +748,7 @@ async fn workspace_held_scan_keeps_input_chat_and_other_root_live_and_excludes_w
             .is_none(),
         "transient scan refusal admitted effect"
     );
-    // A call already waiting when the workspace opens applies once.
-    let waiting =
-        logic
-            .client
-            .control_call_within(seat, 1, call.clone(), crate::logic::SEAT_PENDING_WAIT);
+    // The same queued operation applies once when the workspace opens.
     let opening = async {
         tokio::time::sleep(Duration::from_millis(200)).await;
         held.release();
@@ -756,7 +758,7 @@ async fn workspace_held_scan_keeps_input_chat_and_other_root_live_and_excludes_w
     })
     .await
     .unwrap();
-    let applied = applied.unwrap();
+    let applied = applied.unwrap().unwrap();
     assert_ne!(applied["isError"], true, "{applied}");
     assert!(first.join(".bboxy/notes/after-scan.md").is_file());
     assert!(!second.join(".bboxy/notes/after-scan.md").exists());
