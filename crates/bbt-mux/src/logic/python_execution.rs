@@ -26,7 +26,8 @@ pub(super) fn scope(expected: Option<Value>) -> ContextScope {
 
 impl Worker {
     pub(super) fn python_execution_context(&mut self, id: Ulid, generation: u64) -> Result<Value> {
-        let (actor, record) = self.control_actor(id, generation)?;
+        let (actor, _) = self.control_actor(id, generation)?;
+        let record = self.registry.get(id)?;
         let port = self.seat_workspace(&actor)?;
         self.python_context_for_port(&actor, &record, &port)
     }
@@ -36,6 +37,14 @@ impl Worker {
         record: &SeatRecord,
         port: &WorkspacePort,
     ) -> Result<Value> {
+        // Ordinary status/cleanup authority can outlive window close grace.
+        // Python admits new work only while open, and retains the monotonic
+        // revision so close -> undo cannot revive an old execution context.
+        if record.lifecycle != Lifecycle::Open {
+            return Err(invalid(
+                "execution_context_changed: closed seat admits no new Python work",
+            ));
+        }
         let revision = port.host.revision()?;
         let workspace = self.implementation_workspaces.execution_context(
             actor,
@@ -52,7 +61,7 @@ impl Worker {
         };
         Ok(
             json!({"guard_version":1,"seat_id":actor.seat_id,"process_generation":actor.process_generation,
-            "swarm_id":actor.swarm_id,"role":actor.role,"grant_epoch":actor.grant_epoch,"issuer_kind":actor.issuer_kind,"task_ids":record.tasks,
+            "swarm_id":actor.swarm_id,"role":actor.role,"grant_epoch":actor.grant_epoch,"issuer_kind":actor.issuer_kind,"task_ids":record.tasks,"lifecycle_revision":record.lifecycle_revision,
             "knowledge_binding":port.binding,"provider_revision":revision,
             "workspace":workspace.as_ref().map(|w|w.view()),"cwd":workspace.as_ref().map(|w|&w.cwd),"target":target}),
         )
