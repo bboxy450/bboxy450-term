@@ -3785,6 +3785,7 @@ fn migration_observer_barrier(f: &Fixture, reference: &str) {
         json!({"locators":[path],"message":format!("Import observer {reference}")}),
     ));
     let id: Ulid = serde_json::from_value(checkpoint["artifact"]["id"].clone()).unwrap();
+    let id = id.to_string();
     let committed_ref = format!(
         "knowledge:commit/{}",
         checkpoint["artifact"]["commit"].as_str().unwrap()

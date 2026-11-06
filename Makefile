@@ -2604,7 +2604,7 @@ test-workspace-provisioning: init-submodules
 	cargo nextest run --locked -p bboxy450-term-mux --features model --lib --target-dir '$(TARGET_DIR)' -E 'test(managed_workspace)'; \
 	cargo nextest run --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' -E 'test(managed_workspace)'
 
-.PHONY: check-python-execute test-python-execute test-python-execute-boundaries
+.PHONY: check-python-execute test-python-execute test-python-execute-boundaries test-python-execute-native
 check-python-execute: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo clippy --locked -p bboxy450-harness --features acp-agent --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings; \
@@ -2618,6 +2618,10 @@ test-python-execute: init-submodules
 
 test-python-execute-boundaries: test-python-execute
 	@set -eu; . ./scripts/cache-env.sh; \
-	sh scripts/quarantine-test.sh --locked -p bboxy450-harness --features acp-agent,test-fixtures --test mcp_client --test acp_launch_context --target-dir '$(TARGET_DIR)'; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-harness --features acp-agent,test-fixtures --test mcp_client --test acp_launch_context --target-dir '$(TARGET_DIR)'
+	$(MAKE) test-python-execute-native
+
+test-python-execute-native: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
 	cargo build --locked -p bboxy450-term --example python_execute_fixture --target-dir '$(TARGET_DIR)'; \
 	BBOXY_PYTHON_EXECUTE_FIXTURE='$(abspath $(TARGET_DIR))/debug/examples/python_execute_fixture' cargo nextest run --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' -E 'test(python_)' --run-ignored all
