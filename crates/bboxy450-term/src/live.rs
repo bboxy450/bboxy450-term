@@ -1498,6 +1498,11 @@ async fn run_with_control(
                             publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                         }
                     },
+                    UiMsg::SidebarMove(change) => {
+                        if Arc::make_mut(&mut model).ui.window.sidebar.apply_move(*change) {
+                            publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                        }
+                    },
                     UiMsg::SwarmRename{id,swarm,name}=> {
                         if !swarm_mutations.push(GuiAction::SwarmRename{id:*id,swarm:Ulid(swarm.0.0),name:name.clone()},&mut outgoing) {capture(OperatorAsk::SwarmMetadata{op:*id,result:Err("swarm metadata queue full".into())});}
                         else {Arc::make_mut(&mut model).swarm_metadata_pending.insert(*swarm);updates.publish(model.clone());}

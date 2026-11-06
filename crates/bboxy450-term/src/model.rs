@@ -1087,6 +1087,16 @@ impl Model {
 
 /// Pure assembly on IO. Keep the current layout when its membership is unchanged
 /// and keep every unchanged screen Arc; no screen content is copied here.
+/// Stable: swarms listed in `order` come first, in that order; the rest keep theirs.
+pub fn order_swarms(swarms: &mut [ui::Swarm], order: &[ui::SwarmId]) {
+    swarms.sort_by_key(|s| {
+        order
+            .iter()
+            .position(|id| *id == s.id)
+            .unwrap_or(usize::MAX)
+    });
+}
+
 pub fn build(seats: &[SeatRecord], grids: &Grids, previous: &Model) -> Model {
     build_with_clock(seats, grids, previous, || {
         (Instant::now(), bbt_mux::store::now_ms())
@@ -1297,6 +1307,15 @@ fn build_with_clock(
         }
     }
     model.window.sidebar.swarms = next_swarms;
+    // Keep the operator's dragged order; new swarms follow in id order.
+    let order: Vec<_> = layout_source
+        .window
+        .sidebar
+        .swarms
+        .iter()
+        .map(|s| s.id)
+        .collect();
+    order_swarms(&mut model.window.sidebar.swarms, &order);
     model.window.stage = fallback_stage;
     let stage = &layout_source.window.stage;
     if model.window.sidebar.swarms.iter().any(|s| {

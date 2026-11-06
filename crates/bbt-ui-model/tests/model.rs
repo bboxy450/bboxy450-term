@@ -440,3 +440,35 @@ fn open_harness_role_class_and_color_override_survive_placement() {
     assert_eq!(dark.hue, light.hue);
     assert_ne!(dark.lightness, light.lightness);
 }
+
+// Sidebar drag and drop: rows take the target's place; tabs move across tabs; swarms never mix.
+#[test]
+fn sidebar_drag_reorders_swarms_rows_and_tabs_but_never_crosses_swarms() {
+    let mut model = fixture();
+    let mut other = Swarm::new(swarm(2), "other", vec![Tab::new(tab(3), "x", leaf(5))]);
+    other.tabs[0].seats = vec![seat(5)];
+    model.window.sidebar.swarms.push(other);
+    let sidebar = &mut model.window.sidebar;
+    let order = |s: &Sidebar| s.swarms.iter().map(|s| s.id).collect::<Vec<_>>();
+    let rows = |s: &Sidebar| s.swarms[0].tabs.iter().map(|t| t.seats.clone()).collect::<Vec<_>>();
+    let initial = rows(sidebar);
+    assert_eq!(initial[0].len(), 3);
+    assert!(sidebar.move_swarm(swarm(2), swarm(1)));
+    assert_eq!(order(sidebar), [swarm(2), swarm(1)]);
+    assert!(sidebar.move_swarm(swarm(2), swarm(1)));
+    assert_eq!(order(sidebar), [swarm(1), swarm(2)]);
+    assert!(!sidebar.move_swarm(swarm(1), swarm(1)));
+    assert!(!sidebar.move_swarm(swarm(1), swarm(9)));
+    // Within a tab: the first row moves to the last row's place.
+    let (first, last) = (initial[0][0], initial[0][2]);
+    assert!(sidebar.move_seat(first, last));
+    assert_eq!(rows(sidebar)[0], [initial[0][1], initial[0][2], first]);
+    // Across tabs: the dragged seat's whole tab moves; the tree is untouched.
+    let trees: Vec<_> = sidebar.swarms[0].tabs.iter().map(|t| t.tree.clone()).collect();
+    assert!(sidebar.move_seat(seat(4), first));
+    assert_eq!(sidebar.swarms[0].tabs[0].id, tab(2));
+    assert_eq!(sidebar.swarms[0].tabs[1].tree, trees[0]);
+    // Across swarms: refused.
+    assert!(!sidebar.move_seat(seat(5), seat(4)));
+    assert!(!sidebar.move_seat(seat(4), seat(4)));
+}

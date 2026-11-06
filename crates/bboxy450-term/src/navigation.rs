@@ -136,6 +136,10 @@ impl App {
     pub(super) fn pointer_released(&mut self) {
         self.terminal_selection.release();
         self.ui_selection.release();
+        if self.end_row_press() {
+            self.update_cursor();
+            return;
+        }
         if let Some(diagram) = &mut self.app_overlays.diagram { diagram.release(); }
         if self.app_overlays.open() {
             return;
@@ -214,6 +218,9 @@ impl App {
             })
         {
             let id = id.clone();
+            if self.begin_row_press(&id, at) {
+                return;
+            }
             self.logger.write(format!("ui navigation: {id}"));
             self.navigate_to(&id);
             return;

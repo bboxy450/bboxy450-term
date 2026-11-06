@@ -27,6 +27,79 @@ pub struct Sidebar {
     pub scroll: f32,
     pub sheet: SheetState,
 }
+/// Moves `item` into `target`'s place: after it when moving down, before it when
+/// moving up. False when either is missing or they are the same.
+fn move_to<T>(items: &mut Vec<T>, item: usize, target: usize) -> bool {
+    if item == target || item >= items.len() || target >= items.len() {
+        return false;
+    }
+    let moved = items.remove(item);
+    items.insert(target, moved);
+    true
+}
+/// One sidebar drag and drop: the dragged row takes the target row's place.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SidebarMove {
+    Swarm { swarm: SwarmId, target: SwarmId },
+    Seat { seat: SeatId, target: SeatId },
+}
+impl Sidebar {
+    pub fn apply_move(&mut self, change: SidebarMove) -> bool {
+        match change {
+            SidebarMove::Swarm { swarm, target } => self.move_swarm(swarm, target),
+            SidebarMove::Seat { seat, target } => self.move_seat(seat, target),
+        }
+    }
+    /// Swarms with their seat rows, as the sidebar lists them.
+    pub fn order(&self) -> Vec<(SwarmId, Vec<SeatId>)> {
+        self.swarms
+            .iter()
+            .map(|s| {
+                (
+                    s.id,
+                    s.tabs
+                        .iter()
+                        .flat_map(|t| t.seats.iter().copied())
+                        .collect(),
+                )
+            })
+            .collect()
+    }
+    /// Sidebar drag and drop: swarm `swarm` takes `target`'s place.
+    pub fn move_swarm(&mut self, swarm: SwarmId, target: SwarmId) -> bool {
+        let index = |id| self.swarms.iter().position(|s| s.id == id);
+        match (index(swarm), index(target)) {
+            (Some(from), Some(to)) => move_to(&mut self.swarms, from, to),
+            _ => false,
+        }
+    }
+    /// Sidebar drag and drop: seat row `seat` takes `target`'s place in the same
+    /// swarm. In one tab the rows reorder; across tabs the dragged seat's tab moves.
+    pub fn move_seat(&mut self, seat: SeatId, target: SeatId) -> bool {
+        let locate =
+            |swarms: &[Swarm], id: SeatId| {
+                swarms.iter().enumerate().find_map(|(s, swarm)| {
+                    swarm.tabs.iter().enumerate().find_map(|(t, tab)| {
+                        tab.seats.iter().position(|x| *x == id).map(|r| (s, t, r))
+                    })
+                })
+            };
+        let (Some((swarm, tab, row)), Some((target_swarm, target_tab, target_row))) =
+            (locate(&self.swarms, seat), locate(&self.swarms, target))
+        else {
+            return false;
+        };
+        if swarm != target_swarm {
+            return false;
+        }
+        let tabs = &mut self.swarms[swarm].tabs;
+        if tab == target_tab {
+            move_to(&mut tabs[tab].seats, row, target_row)
+        } else {
+            move_to(tabs, tab, target_tab)
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Stage {
     pub swarm: Option<SwarmId>,

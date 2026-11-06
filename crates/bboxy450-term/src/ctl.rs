@@ -50,7 +50,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   ui paste-image <path>                  copy PNG/TIFF into the focused composer; returns owned path
   ui key <named-key>...                  cmd-t cmd-d cmd-shift-d cmd-g cmd-m cmd-comma esc enter tab arrows
   ui click <x> <y>                       Logical window pixels; use regions in ui layout
-  ui drag <x0> <y0> <x1> <y1>            Drag a retained sidebar resize handle
+  ui drag <x0> <y0> <x1> <y1>            Drag a sidebar resize handle, or a swarm header or seat row onto another to reorder
   ui input <JSON>                       Test-account normalized key/IME/click events (1-32)
   ui sidebar-scroll <lines>              Wheel input; positive scrolls toward the top
   ui launcher-scroll <lines>             Scroll the launcher; same wheel convention
@@ -63,7 +63,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   seat ls
   seat attention <seat>                  read policy, defaults and pending digest summary
   seat attention <seat> <direct|destination> <conversation|event> <wake|inbox|digest|default>
-  seat spawn <claude|codex|zsh> [--place right|down|tab|space] [--role oracle|architect|creativity|researcher|executor|shell|solo]
+  seat spawn <claude|codex|zsh> [--place right|down|tab|space] [--role oracle|architect|creativity|researcher|executor|shell|solo|sudo]
              [--name NAME] [--cwd DIR] [--swarm ID] [--resume SESSION-ID]   claude/codex only
   seat screen <seat> [--human]            the visible screen, cursor and title
   seat type <seat> <text>                 types the text as written

@@ -102,13 +102,24 @@ impl App {
         self.end_sidebar_vertical();
         self.update_cursor();
     }
-    pub(super) fn drag_sidebar(&mut self, from: [f32; 2], to: [f32; 2]) -> Result<bool, String> {
+    /// Some(vertical) for a resize; None for a row drag, whose move carries its own effect.
+    pub(super) fn drag_sidebar(
+        &mut self,
+        from: [f32; 2],
+        to: [f32; 2],
+    ) -> Result<Option<bool>, String> {
         if !self.begin_sidebar_resize(from) {
-            return Err("ui_drag_refused: start on a retained sidebar resize handle".into());
+            if self.drag_row(from, to) {
+                return Ok(None);
+            }
+            return Err(
+                "ui_drag_refused: start on a sidebar resize handle, swarm header or seat row"
+                    .into(),
+            );
         }
         let vertical = self.sidebar_vertical_drag.is_some();
         self.move_sidebar_resize(to);
         self.end_sidebar_resize();
-        Ok(vertical)
+        Ok(Some(vertical))
     }
 }

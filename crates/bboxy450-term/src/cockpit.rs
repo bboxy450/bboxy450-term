@@ -60,6 +60,8 @@ pub enum UiMsg {
         catalog: bbt_proto::gui::RoleCatalog,
     },
     NewSwarm(bbt_proto::SwarmId),
+    /// Sidebar drag and drop, applied to the live layout model.
+    SidebarMove(bbt_ui_model::SidebarMove),
     SwarmRename {
         id: bbt_mux::Ulid,
         swarm: bbt_proto::SwarmId,

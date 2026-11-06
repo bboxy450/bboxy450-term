@@ -187,6 +187,8 @@ pub fn restore(model: &mut crate::model::Model, saved: &WindowState) -> Result<(
         }
         swarm.tabs = tabs;
     }
+    let order: Vec<_> = saved.swarms.iter().map(|s| ui::SwarmId::from_u128(s.id.0)).collect();
+    crate::model::order_swarms(&mut model.ui.window.sidebar.swarms, &order);
     model.ui.window.sidebar.width = saved.sidebar_width;
     model.ui.window.sidebar.scroll = saved.sidebar_scroll;
     model.ui.window.sidebar.open = saved

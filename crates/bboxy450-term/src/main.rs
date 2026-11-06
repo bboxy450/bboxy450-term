@@ -30,6 +30,7 @@ mod settings_destinations;
 mod settings_roles;
 mod sidebar;
 mod sidebar_chat;
+mod sidebar_reorder;
 mod sidebar_vertical;
 mod spawn_gate;
 mod stall;
@@ -927,6 +928,8 @@ enum UiEffect {
     NotificationForeground(bool),
     LaunchDirectory(bbt_mux::Ulid),
     NewSwarm(bbt_proto::SwarmId),
+    /// The live model lists swarms and seat rows in this order.
+    SidebarOrder(Vec<(bbt_ui_model::SwarmId, Vec<bbt_ui_model::SeatId>)>),
     SwarmWorkdir(bbt_proto::SwarmId, Option<String>),
     Compose(bbt_proto::gui::UiComposed),
     Spawn(bbt_mux::Ulid),
@@ -967,6 +970,11 @@ impl UiEffect {
     ) -> Option<Self> {
         match message {
             live::UiMsg::NewSwarm(id) => Some(Self::NewSwarm(*id)),
+            live::UiMsg::SidebarMove(change) => model.map(|m| {
+                let mut sidebar = m.ui.window.sidebar.clone();
+                sidebar.apply_move(*change);
+                Self::SidebarOrder(sidebar.order())
+            }),
             live::UiMsg::SwarmWorkdir { swarm, path } => {
                 Some(Self::SwarmWorkdir(*swarm, path.clone()))
             }
@@ -2340,6 +2348,7 @@ struct App {
     starting_close_regions: Vec<(bbt_mux::Ulid, Rect)>,
     swarm_folder_regions: Vec<(bbt_proto::SwarmId, Rect, bool)>,
     navigation_regions: Vec<(String, Rect)>,
+    row_press: Option<sidebar_reorder::RowPress>,
     sidebar_scroll: Option<f32>,
     sidebar_wheel: bboxy450_term::chat_scroll::WheelIntent,
     sidebar_width: Option<f32>,
@@ -2566,6 +2575,7 @@ impl App {
             starting_close_regions: Vec::new(),
             swarm_folder_regions: Vec::new(),
             navigation_regions: Vec::new(),
+            row_press: None,
             sidebar_scroll: None,
             sidebar_wheel: Default::default(),
             sidebar_width: None,
@@ -6450,6 +6460,7 @@ impl App {
             UiEffect::NewSwarm(id) => {
                 Ok(model.ui.window.sidebar.swarms.iter().any(|s| s.id == *id))
             }
+            UiEffect::SidebarOrder(order) => Ok(model.ui.window.sidebar.order() == *order),
             UiEffect::SwarmWorkdir(swarm, path) => model
                 .ui
                 .window
@@ -7337,8 +7348,10 @@ impl App {
                 self.scroll_sidebar_section(true, dy)?;
             }
             UiRequest::Drag { from, to } => {
-                let vertical = self.drag_sidebar(from.map(|v| v as f32), to.map(|v| v as f32))?;
-                if let Some(effects) = &mut self.ui_collect {
+                let resized = self.drag_sidebar(from.map(|v| v as f32), to.map(|v| v as f32))?;
+                if let Some(vertical) = resized
+                    && let Some(effects) = &mut self.ui_collect
+                {
                     if vertical {
                         effects.push(UiEffect::SidebarLayout(
                             self.preferences.preferences.sidebar,
@@ -9143,7 +9156,7 @@ impl ApplicationHandler<UiEvent> for App {
                 if self.extend_terminal_selection(self.pointer) {
                     return;
                 }
-                if self.move_sidebar_resize(self.pointer) {
+                if self.move_sidebar_resize(self.pointer) || self.move_row_press(self.pointer) {
                     return;
                 }
                 if self.document.open {
@@ -11516,6 +11529,7 @@ mod input_tests {
                 | live::UiMsg::DocumentRead { .. }
                 | live::UiMsg::ConsumeDocument { .. } => {}
                 live::UiMsg::NewSwarm(_)
+                | live::UiMsg::SidebarMove(_)
                 | live::UiMsg::ConfigureRoles { .. }
                 | live::UiMsg::SwarmWorkdir { .. }
                 | live::UiMsg::SwarmRename { .. }
