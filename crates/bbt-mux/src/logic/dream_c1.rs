@@ -9399,12 +9399,14 @@ pub(crate) mod runner_provision {
         compiler: &'a str,
         binary: &'a str,
     }
-    // Decision65736 approves this exact canonical Make1.99.1 build closure.
+    // Decision66058 approves this exact canonical Make1.99.1 build closure.
     // This is pre-birth eligibility, not a successful runtime/profile verdict.
+    // Match the canonical build-side APPROVED_NATIVE_BUILD; stopped historical
+    // workers remain refused separately, without a fallback tuple or retry.
     const APPROVED_NATIVE: Option<Expected<'static>> = Some(Expected {
-        source: "d06e696f99472ed754e84353baf11a2974589d6d",
+        source: "2ce4359df034405043d419fe550b0f6cafe7887e",
         compiler: "e003fd3d385fcd0de16bc6b049124efb20207831dd810fd4ab39ff079bbb12a5",
-        binary: "12ba4006b694bdce3c44d199de460d09f0f2414fafb7fd17880921a7d397a3b4",
+        binary: "2b85c7114545f35a62842115ae91e08e1a22fbfcd24dfd27e3aa45fa1d3837cb",
     });
     // Exact signed development milestone only; never receipt self-approval or
     // final production conformance. Cleared when the reviewed tuple is promoted.
