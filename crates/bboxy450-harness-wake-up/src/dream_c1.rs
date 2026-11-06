@@ -3133,11 +3133,15 @@ mod start_write_tests {
             }))
             .unwrap();
             let hello = String::from_utf8(hello).unwrap();
-            let script = job.join("held-input.py");
+            let script = job.join("held-input.sh");
+            // This transport-fault child needs no interpreter runtime startup.
+            // Use the system shell, as the other private pipe fixtures do; the
+            // canonical worker's original 250ms readiness gate stays unchanged.
+            let hello = hello.replace('\'', "'\\''");
             std::fs::write(
                 &script,
                 format!(
-                    "#!/usr/bin/python3\nimport os,pathlib,sys\nfd=int(os.environ['BBOXY_DREAM_BOOTSTRAP'].split(':')[1])\nassert len(os.read(fd,128))==128\nos.close(fd)\nprint({hello:?},flush=True)\njob=pathlib.Path(sys.argv[4])\nfd=os.open(str(job/'drain-input.fifo'),os.O_RDONLY)\nassert os.read(fd,1)==b'x'\nos.close(fd)\nraw=sys.stdin.buffer.read()\n(job/'captured-input').write_bytes(raw)\n"
+                    "#!/bin/sh\nset -eu\ngate=${{BBOXY_DREAM_BOOTSTRAP#*:}}\ngate=${{gate%%:*}}\npermit_bytes=$(/bin/dd bs=128 count=1 <&\"$gate\" 2>/dev/null | /usr/bin/wc -c)\ntest \"$permit_bytes\" -eq 128\neval \"exec ${{gate}}<&-\"\nprintf '%s\\n' '{hello}'\nIFS= read -r release <\"$4/drain-input.fifo\"\ntest \"$release\" = x\nexec /bin/cat >\"$4/captured-input\"\n"
                 ),
             )
             .unwrap();
@@ -3212,7 +3216,7 @@ mod start_write_tests {
         }
 
         fn release_and_reap(&mut self) {
-            self.release.write_all(b"x").unwrap();
+            self.release.write_all(b"x\n").unwrap();
             let until = Instant::now() + Duration::from_secs(2);
             loop {
                 assert!(self.worker.receive().unwrap().is_none());

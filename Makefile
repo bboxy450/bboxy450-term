@@ -2662,6 +2662,8 @@ test-python-execute-native: init-submodules
 # C1 consumer join uses only the deliberately pinned embedded corpus by default.
 # DREAM_C1_FIXTURES may name the approved producer worktree for development;
 # its receipt is explicitly not a final pinned-source join.
+export DREAM_C1_FIXTURES ?= $(abspath crates/bboxy450-harness/tests/fixtures/dream-c1)
+export DREAM_BOOTSTRAP_FIXTURES ?= $(abspath crates/bboxy450-harness/tests/fixtures/dream-bootstrap)
 .PHONY: test-dream-c1 test-dream-c1-profile prepare-dream-c1 prepare-dream-c1-worker prepare-dream-c1-seat prepare-dream-c1-development diagnose-dream-c1-launch
 test-dream-c1-profile:
 	@python3 -I scripts/test-dream-c1.py --check-profile-only

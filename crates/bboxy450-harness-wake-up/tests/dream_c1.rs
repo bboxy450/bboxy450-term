@@ -337,7 +337,7 @@ impl Script {
         let used = end_cpu.and_then(|end| end.checked_sub(cpu)).unwrap();
         assert!(
             used <= 2_000_000 && native_wall.is_some_and(|wall| wall <= Duration::from_millis(25)),
-            "private native process span exceeded its observed contract"
+            "private native process span exceeded its observed contract: CPU={used}ns wall={native_wall:?}"
         );
         worker
             .bootstrap_spawn_returned(returned, returned + Duration::from_secs(30))
