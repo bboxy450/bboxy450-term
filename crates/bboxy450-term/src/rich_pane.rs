@@ -122,8 +122,6 @@ impl bbt_rt::Waker for Signal {
         self.0.notify_one();
     }
 }
-/// Per-seat draft custody is handed off after accepted local edits drain.
-/// Hidden views retain no transcript or layout worker.
 /// What a pane leaves when it goes off screen: its whole view (draft, scroll,
 /// folds), the transcript and solved rows it showed, and its clock origin.
 /// Parked costs memory only; coming back shows it at once and streams the rest.
@@ -132,7 +130,31 @@ pub struct Parked {
     retained: bboxy450_harness::frontends::gui::bridge::Retained,
     started: Instant,
 }
-pub type Draft = Arc<std::sync::Mutex<Option<tokio::sync::oneshot::Receiver<Parked>>>>;
+/// The UI exclusively reserves each seat's next draft position before workers
+/// are scheduled. Hidden views park without a transcript or layout worker.
+pub type Draft = Option<tokio::sync::oneshot::Receiver<Parked>>;
+struct DraftReservation {
+    previous: Draft,
+    save: tokio::sync::oneshot::Sender<Parked>,
+    #[cfg(test)]
+    control: DraftControl,
+}
+#[cfg(test)]
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum DraftControl {
+    Keep,
+    EarlyRestore,
+    DropAcceptedTail,
+}
+fn reserve_draft(draft: &mut Draft) -> DraftReservation {
+    let (save, next) = tokio::sync::oneshot::channel();
+    DraftReservation {
+        previous: draft.replace(next),
+        save,
+        #[cfg(test)]
+        control: DraftControl::Keep,
+    }
+}
 pub struct Pane {
     appearance: Arc<AtomicU64>,
     appearance_wake: Arc<Notify>,
@@ -164,24 +186,43 @@ impl Pane {
         )>,
         waker: Arc<dyn bbt_rt::Waker>,
     ) -> Self {
-        Self::connect_retained(path, generation, rect, after, waker, Draft::default())
+        let mut draft = Draft::default();
+        Self::connect_retained(path, generation, rect, after, waker, &mut draft)
     }
     pub fn connect_retained(
         path: PathBuf,
         generation: u64,
         rect: Rect,
-        after: Option<(bboxy450_harness::protocol::Epoch, bboxy450_harness::protocol::Seq)>,
+        after: Option<(
+            bboxy450_harness::protocol::Epoch,
+            bboxy450_harness::protocol::Seq,
+        )>,
         waker: Arc<dyn bbt_rt::Waker>,
-        draft: Draft,
+        draft: &mut Draft,
     ) -> Self {
-        let (save_draft, next_draft) = tokio::sync::oneshot::channel();
-        // The single UI owner reserves the next position before scheduling
-        // either worker. Workers receive only the predecessor receiver; they
-        // never hold this mutex. Contention violates ownership and must not
-        // block the UI or silently discard the ordered draft handoff.
-        let previous_draft = draft.try_lock()
-            .expect("draft reservation belongs exclusively to its UI owner")
-            .replace(next_draft);
+        // This exclusive borrow ends before scheduling. The worker owns the
+        // predecessor receiver and new sender, never the mutable UI slot.
+        let reservation = reserve_draft(draft);
+        Self::connect_handoff(
+            path,
+            generation,
+            rect,
+            after,
+            waker,
+            std::future::ready(Some(reservation)),
+        )
+    }
+    fn connect_handoff(
+        path: PathBuf,
+        generation: u64,
+        rect: Rect,
+        after: Option<(
+            bboxy450_harness::protocol::Epoch,
+            bboxy450_harness::protocol::Seq,
+        )>,
+        waker: Arc<dyn bbt_rt::Waker>,
+        handoff: impl std::future::Future<Output = Option<DraftReservation>> + Send + 'static,
+    ) -> Self {
         let dirty = bbt_rt::DirtySet::new(1, waker);
         let latest = Arc::new(bbt_rt::Latest::new(dirty.paint_source(0)));
         let (commands, mut input) = mpsc::channel(64);
@@ -196,6 +237,10 @@ impl Pane {
         let published_inputs = Arc::new(AtomicU64::new(0));
         let worker_published = published_inputs.clone();
         let task=bbt_rt::handle().spawn(async move {
+            let Some(reservation)=handoff.await else{return;};
+            let DraftReservation {previous:previous_draft,save:save_draft,#[cfg(test)]control}=reservation;
+            #[cfg(test)]
+            let previous_draft=if control==DraftControl::EarlyRestore {drop(previous_draft);None} else {previous_draft};
             let saved = match previous_draft { Some(previous) => previous.await.ok(), None => None };
             let notify=Arc::new(Notify::new());
             let mut bridge=Bridge::new(Arc::new(Signal(notify.clone())));
@@ -220,6 +265,8 @@ impl Pane {
             let mut rect=rect;
             let mut completed_inputs=0_u64;
             loop {
+                #[cfg(test)]
+                if control==DraftControl::DropAcceptedTail && worker_retired.load(Ordering::Acquire) {break;}
                 let mut batch=Vec::new();
                 let animation=view.anim.next_frame();
                 tokio::select!{biased;cmd=input.recv()=>{let Some(cmd)=cmd else{break;};batch.push(cmd);},_=notify.notified()=>{},_=worker_appearance_wake.notified()=>{},_=async { match animation { Some(ms)=>tokio::time::sleep(Duration::from_secs_f32((ms/1000.).max(1./60.))).await,None=>std::future::pending::<()>().await }}=>{}}
@@ -549,27 +596,236 @@ fn hit(r: Rect, at: [f32; 2]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[allow(clippy::disallowed_methods, reason = "tokio::test owns a private test runtime outside the UI; its generated block_on drives the draft witness")]
+    fn draft_rect() -> Rect {
+        Rect {
+            x: 0.,
+            y: 0.,
+            w: 800.,
+            h: 650.,
+        }
+    }
+    fn draft_wake() -> Arc<dyn bbt_rt::Waker> {
+        Arc::new(Signal(Arc::new(Notify::new())))
+    }
+    fn parked_draft(view: HarnessView) -> Parked {
+        let bridge = Bridge::new(draft_wake());
+        Parked {
+            view,
+            retained: bridge.retained(),
+            started: Instant::now(),
+        }
+    }
+    async fn saved_draft(draft: &mut Draft) -> HarnessView {
+        let received = draft.take().expect("reserved terminal draft receiver");
+        let saved = tokio::time::timeout(Duration::from_secs(10), received)
+            .await
+            .unwrap()
+            .unwrap();
+        saved.view
+    }
     #[tokio::test]
     async fn draft_handoff_drains_last_edit_before_reopening_and_isolates_panels() {
         let temp = tempfile::tempdir().unwrap();
-        let rect = Rect { x: 0., y: 0., w: 800., h: 650. };
-        let a = Draft::default();
-        let b = Draft::default();
-        let wake: Arc<dyn bbt_rt::Waker> = Arc::new(Signal(Arc::new(Notify::new())));
-        for (draft, text) in [(a.clone(), "first panel"), (b.clone(), "second panel")] {
-            let pane = Pane::connect_retained(temp.path().join("missing.sock"), 1, rect, None, wake.clone(), draft);
-            assert!(pane.send(Input::Edit(ui::text_edit::Command::Insert(text.into()))));
-            drop(pane); // No wait for a snapshot: exercise queued input at detach.
+        let mut a = Draft::default();
+        let mut b = Draft::default();
+        let path = temp.path().join("missing.sock");
+        let mut expected_a = String::new();
+        let mut expected_b = String::new();
+        for incarnation in 0..12 {
+            for (draft, expected, text) in [
+                (&mut a, &mut expected_a, format!("a{incarnation};")),
+                (&mut b, &mut expected_b, format!("b{incarnation};")),
+            ] {
+                let pane = Pane::connect_retained(
+                    path.clone(),
+                    incarnation + 1,
+                    draft_rect(),
+                    None,
+                    draft_wake(),
+                    draft,
+                );
+                assert!(
+                    draft.is_some(),
+                    "next receiver must be reserved before connect returns"
+                );
+                assert!(pane.send(Input::Edit(ui::text_edit::Command::Insert(text.clone()))));
+                expected.push_str(&text);
+                drop(pane); // Every last edit remains queued at immediate detach/reopen.
+            }
         }
-        let pane = Pane::connect_retained(temp.path().join("missing.sock"), 1, rect, None, wake, a.clone());
-        assert!(pane.send(Input::Edit(ui::text_edit::Command::Insert(" retained".into()))));
+        assert_eq!(saved_draft(&mut a).await.composer.view.text, expected_a);
+        assert_eq!(saved_draft(&mut b).await.composer.view.text, expected_b);
+    }
+    #[tokio::test]
+    async fn draft_handoff_waits_for_predecessor_preserves_full_editor_and_other_panel_progress() {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("missing.sock");
+        let (release, previous) = tokio::sync::oneshot::channel();
+        let mut a = Some(previous);
+        let mut b = Draft::default();
+        let mut seed = HarnessView::default();
+        seed.edit(ui::text_edit::Command::Insert("original".into()));
+        seed.edit(ui::text_edit::Command::SelectAll);
+        seed.edit(ui::text_edit::Command::Preedit {
+            text: "日本".into(),
+            caret: Some(1),
+        });
+        seed.composer.view.priority = 2;
+        seed.composer.view.kind = "decision".into();
+        for command in [
+            ui::text_edit::Command::Commit("日本語".into()),
+            ui::text_edit::Command::Insert(" retained".into()),
+        ] {
+            let pane =
+                Pane::connect_retained(path.clone(), 1, draft_rect(), None, draft_wake(), &mut a);
+            assert!(pane.send(Input::Edit(command)));
+            drop(pane);
+        }
+        assert!(
+            matches!(
+                a.as_mut().unwrap().try_recv(),
+                Err(tokio::sync::oneshot::error::TryRecvError::Empty)
+            ),
+            "later restoration ran before its held predecessor completed"
+        );
+        let independent = Pane::connect_retained(path, 1, draft_rect(), None, draft_wake(), &mut b);
+        assert!(independent.send(Input::Edit(ui::text_edit::Command::Insert(
+            "other panel".into()
+        ))));
+        drop(independent);
+        assert_eq!(
+            saved_draft(&mut b).await.composer.view.text,
+            "other panel",
+            "a held draft chain blocked a different panel"
+        );
+        assert!(release.send(parked_draft(seed)).is_ok());
+        let mut restored = saved_draft(&mut a).await;
+        assert_eq!(restored.composer.view.text, "日本語 retained");
+        assert_eq!(restored.composer.view.priority, 2);
+        assert_eq!(restored.composer.view.kind, "decision");
+        assert!(!restored.composer.composing());
+        restored.edit(ui::text_edit::Command::Undo);
+        assert_eq!(restored.composer.view.text, "日本語");
+        restored.edit(ui::text_edit::Command::Undo);
+        assert_eq!(
+            restored.composer.view.text, "original",
+            "restoring only text lost the predecessor editor/IME/undo state"
+        );
+    }
+    // These controls use reserve_draft and the actual pane worker/edit/drain
+    // path. Only their private handoff scheduling/guards differ from production.
+    fn off_owner_draft_pane(
+        path: PathBuf,
+    ) -> (
+        Pane,
+        tokio::sync::oneshot::Sender<Draft>,
+        tokio::sync::oneshot::Receiver<Draft>,
+    ) {
+        let (schedule, scheduled) = tokio::sync::oneshot::channel::<Draft>();
+        let (returned_slot, slot) = tokio::sync::oneshot::channel();
+        let pane = Pane::connect_handoff(path, 1, draft_rect(), None, draft_wake(), async move {
+            let mut draft = scheduled.await.ok()?;
+            // Deliberately faulty: reserve only when this worker is scheduled,
+            // after callers have already ordered their accepted local inputs.
+            let reservation = reserve_draft(&mut draft);
+            if returned_slot.send(draft).is_err() {
+                return None;
+            }
+            Some(reservation)
+        });
+        (pane, schedule, slot)
+    }
+    async fn faulty_draft_guard(path: PathBuf, control: DraftControl) -> (String, u64, bool) {
+        let (release, previous) = tokio::sync::oneshot::channel();
+        let mut draft = Some(previous);
+        let mut reservation = reserve_draft(&mut draft);
+        reservation.control = control;
+        let pane = Pane::connect_handoff(
+            path,
+            1,
+            draft_rect(),
+            None,
+            draft_wake(),
+            std::future::ready(Some(reservation)),
+        );
+        let published = pane.published_inputs.clone();
+        assert!(pane.send(Input::Edit(ui::text_edit::Command::Insert(
+            " suffix".into()
+        ))));
         drop(pane);
-        for (draft, expected) in [(a, "first panel retained"), (b, "second panel")] {
-            let saved = draft.try_lock().unwrap().take().unwrap();
-            let saved = tokio::time::timeout(Duration::from_secs(10), saved).await.unwrap().unwrap();
-            assert_eq!(saved.view.composer.view.text, expected);
+        let mut seed = HarnessView::default();
+        seed.edit(ui::text_edit::Command::Insert("base".into()));
+        // The early-restore mutant must complete while the predecessor remains
+        // held; the tail-loss mutant is released only after retirement.
+        if control == DraftControl::EarlyRestore {
+            let restored = saved_draft(&mut draft).await;
+            let discarded = release.send(parked_draft(seed)).is_err();
+            (
+                restored.composer.view.text.clone(),
+                published.load(Ordering::Acquire),
+                discarded,
+            )
+        } else {
+            assert!(release.send(parked_draft(seed)).is_ok());
+            let restored = saved_draft(&mut draft).await;
+            (
+                restored.composer.view.text.clone(),
+                published.load(Ordering::Acquire),
+                false,
+            )
         }
+    }
+    #[tokio::test]
+    async fn draft_handoff_private_controls_expose_off_owner_reservation_early_restore_and_lost_tail()
+     {
+        let temp = tempfile::tempdir().unwrap();
+        let path = temp.path().join("missing.sock");
+        let (correct, count, discarded) =
+            faulty_draft_guard(path.clone(), DraftControl::Keep).await;
+        assert_eq!(
+            (correct.as_str(), count, discarded),
+            ("base suffix", 1, false)
+        );
+        let (early, count, discarded) =
+            faulty_draft_guard(path.clone(), DraftControl::EarlyRestore).await;
+        assert_eq!((early.as_str(), count, discarded), (" suffix", 1, true));
+        assert_ne!(
+            early, correct,
+            "removing predecessor await was not detected"
+        );
+        let (lost, count, _) =
+            faulty_draft_guard(path.clone(), DraftControl::DropAcceptedTail).await;
+        assert_eq!((lost.as_str(), count), ("base", 0));
+        assert_ne!(
+            lost, correct,
+            "dropping accepted local tail was not detected"
+        );
+        let (first, first_schedule, first_slot) = off_owner_draft_pane(path.clone());
+        let (second, second_schedule, second_slot) = off_owner_draft_pane(path);
+        assert!(first.send(Input::Edit(ui::text_edit::Command::Insert("first;".into()))));
+        assert!(second.send(Input::Edit(ui::text_edit::Command::Insert(
+            "second;".into()
+        ))));
+        drop(first);
+        drop(second);
+        // Force worker execution order opposite to the synchronous UI order.
+        // The faulty worker really moves/reserves the same exclusive slot.
+        assert!(second_schedule.send(Draft::default()).is_ok());
+        let slot = tokio::time::timeout(Duration::from_secs(10), second_slot)
+            .await
+            .unwrap()
+            .unwrap();
+        assert!(first_schedule.send(slot).is_ok());
+        let mut slot = tokio::time::timeout(Duration::from_secs(10), first_slot)
+            .await
+            .unwrap()
+            .unwrap();
+        let reversed = saved_draft(&mut slot).await;
+        assert_eq!(reversed.composer.view.text, "second;first;");
+        assert_ne!(
+            reversed.composer.view.text, "first;second;",
+            "moving reservation off the UI owner failed to expose reordered drafts"
+        );
     }
     #[test]
     fn cancel_requires_complete_ready_nonretired_identity() {

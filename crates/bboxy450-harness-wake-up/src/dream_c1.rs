@@ -432,6 +432,10 @@ pub mod wire {
     }
     #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(untagged)]
+    #[allow(
+        clippy::large_enum_variant,
+        reason = "keep the canonical bounded DTO inline instead of allocating an extra box"
+    )]
     pub enum ControlReply {
         Success(Success),
         Failure(Failure),
@@ -457,7 +461,7 @@ pub mod wire {
     impl TryFrom<bool> for True {
         type Error = &'static str;
         fn try_from(b: bool) -> Result<Self, Self::Error> {
-            if b == true {
+            if b {
                 Ok(Self)
             } else {
                 Err("reply discriminator")
@@ -475,7 +479,7 @@ pub mod wire {
     impl TryFrom<bool> for False {
         type Error = &'static str;
         fn try_from(b: bool) -> Result<Self, Self::Error> {
-            if b == false {
+            if !b {
                 Ok(Self)
             } else {
                 Err("reply discriminator")

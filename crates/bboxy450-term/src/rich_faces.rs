@@ -156,7 +156,7 @@ impl App {
                             )
                         }),
                     Arc::new(Wake::new(self.proxy.clone(), bbt_rt::handle().clone())),
-                    self.rich_drafts.entry(id).or_default().clone(),
+                    self.rich_drafts.entry(id).or_default(),
                 );
                 self.rich_panes.insert(id, pane);
             }

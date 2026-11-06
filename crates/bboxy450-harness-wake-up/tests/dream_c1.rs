@@ -206,6 +206,12 @@ impl Script {
         }
     }
     fn stdin_capture_peer() -> Self {
+        Self::constant_shell_peer(true)
+    }
+    fn stdin_ignoring_peer() -> Self {
+        Self::constant_shell_peer(false)
+    }
+    fn constant_shell_peer(capture_stdin: bool) -> Self {
         let fixture = Self::new("");
         let hello = String::from_utf8(bytes("valid/hello.json")).unwrap();
         assert!(hello.is_ascii() && !hello.contains('\''));
@@ -217,15 +223,23 @@ impl Script {
                     .replace('\'', "'\\''")
             )
         };
-        // Constant protocol-fake echo only: no Python/site startup, ambient
+        // Constant protocol-fake peers only: no Python/site startup, ambient
         // PATH, source reads or producer/native conformance claim. The shell
         // synchronously waits/reaps its sole fixed dd helper, closes the gate,
-        // then execs cat under the same exact PID owned by Worker.
+        // then execs cat or a fixed stdin-ignoring sleep under the same exact
+        // PID owned by Worker. The latter preserves the noncooperative Drop case.
+        let after_hello = if capture_stdin {
+            format!(
+                "exec /bin/cat >{}\n",
+                quote_path(fixture.job.join("captured-input"))
+            )
+        } else {
+            "exec /bin/sleep 30\n".to_owned()
+        };
         let script = format!(
-            "#!/bin/sh\nset -eu\numask 077\nset -C\nexec 2>{stderr}\ngate=${{BBOXY_DREAM_BOOTSTRAP#*:}}\ngate=${{gate%%:*}}\ncase \"$gate\" in ''|*[!0-9]*) exit 64;; esac\n/bin/dd bs=128 count=1 <&\"$gate\" >/dev/null 2>/dev/null\neval \"exec ${{gate}}<&-\"\nprintf '%s' ready >{marker}\nprintf '%s\\n' '{hello}'\nexec /bin/cat >{captured}\n",
+            "#!/bin/sh\n# bboxy450-term fixture: https://github.com/bboxy450/bboxy450-term\n# SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft\n# Preserve origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md\nset -eu\numask 077\nset -C\nexec 2>{stderr}\ngate=${{BBOXY_DREAM_BOOTSTRAP#*:}}\ngate=${{gate%%:*}}\ncase \"$gate\" in ''|*[!0-9]*) exit 64;; esac\n/bin/dd bs=128 count=1 <&\"$gate\" >/dev/null 2>/dev/null\neval \"exec ${{gate}}<&-\"\nprintf '%s' ready >{marker}\nprintf '%s\\n' '{hello}'\n{after_hello}",
             stderr = quote_path(fixture.job.join("fixture-stderr")),
             marker = quote_path(fixture.job.join("worker-started")),
-            captured = quote_path(fixture.job.join("captured-input")),
         );
         std::fs::write(&fixture.binary, script).unwrap();
         fixture
@@ -706,7 +720,7 @@ fn actual_private_process_rejects_blank_invalid_utf8_unknown_duplicate_and_overs
 
 #[test]
 fn eof_and_drop_retain_exact_child_custody_through_actual_reap() {
-    let script = Script::new("print(HELLO, flush=True)\nfor line in sys.stdin: pass\n");
+    let script = Script::stdin_capture_peer();
     let mut worker = script.spawn();
     let pid = worker.pid();
     worker.hello().unwrap();
@@ -718,7 +732,7 @@ fn eof_and_drop_retain_exact_child_custody_through_actual_reap() {
     assert!(reaped(&mut worker).success());
     assert_reaped(pid);
 
-    let script = Script::new("print(HELLO, flush=True)\ntime.sleep(30)");
+    let script = Script::stdin_ignoring_peer();
     let mut worker = script.spawn();
     let pid = worker.pid();
     worker.hello().unwrap();

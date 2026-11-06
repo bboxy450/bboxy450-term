@@ -265,6 +265,10 @@ pub enum Control {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(untagged)]
+#[allow(
+    clippy::large_enum_variant,
+    reason = "keep the canonical bounded DTO inline instead of allocating an extra box"
+)]
 pub enum ControlReply {
     Success(Success),
     Failure(Failure),

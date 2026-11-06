@@ -8,6 +8,7 @@
 """Negative controls for false-green formal verification infrastructure."""
 import importlib.util
 import contextlib
+import copy
 from concurrent.futures import ThreadPoolExecutor
 import io
 import json
@@ -106,6 +107,9 @@ print("Model checking completed. No error has been found.")
             (root / "verification").mkdir()
             (root / "source.rs").touch()
             (root / "witness.rs").touch()
+            (root / "verification/corpus.toml").write_text(
+                '[[model]]\nname="Boundary"\nexpected="pass"\nfrontend="project"\n'
+                '[[model]]\nname="BrokenBoundary"\nexpected="safety"\nfrontend="project"\n')
             path = root / "verification/contracts.toml"
             record = ('[[contract]]\nname="Boundary"\ntitle="Boundary"\n'
                       'models=["Boundary","BrokenBoundary"]\nsources=["source.rs"]\n'
@@ -299,6 +303,268 @@ print("Model checking completed. No error has been found.")
             with self.assertRaisesRegex(ValueError, "did not emit"):
                 formal.dot_graph(dot, 1)
 
+
+
+class ContractFamilyTests(unittest.TestCase):
+    """Actual mapping mutations must refuse; these are infrastructure fixtures."""
+    def setUp(self):
+        own = tempfile.TemporaryDirectory()
+        self.addCleanup(own.cleanup)
+        self.root = Path(own.name)
+        (self.root / "verification").mkdir()
+        for name in ("source.rs", "witness.rs"):
+            (self.root / name).touch()
+        self.names = ["Boundary", "BrokenBoundary", "BrokenTermBoundaryLate", "BrokenC1BoundaryDeadlock"]
+        self.controls = [{"name": name, "expected": expected} for name, expected in
+                         zip(self.names[1:], ("safety", "liveness", "deadlock"))]
+        self.record = {"name": "Boundary", "title": "Bounded completion", "models": self.names,
+                       "controls": self.controls, "sources": ["source.rs"],
+                       "implementation_tests": ["witness.rs"], "assumptions": "one retained owner",
+                       "property": "current completion after actual exit",
+                       "checks": ["make test-formal", "make test"]}
+        self.rows = [{"name": name, "expected": expected, "frontend": "project"}
+                     for name, expected in zip(self.names, ("pass", "safety", "liveness", "deadlock"))]
+
+    def write(self, *, record=None, rows=None, records=None):
+        def literal(value):
+            if isinstance(value, dict):
+                return "{" + ",".join(key + "=" + literal(item) for key, item in value.items()) + "}"
+            if isinstance(value, list):
+                return "[" + ",".join(literal(item) for item in value) + "]"
+            return json.dumps(value)
+
+        records = records if records is not None else [self.record if record is None else record]
+        (self.root / "verification/contracts.toml").write_text("\n".join(
+            "[[contract]]\n" + "\n".join(key + "=" + literal(value) for key, value in row.items())
+            for row in records))
+        (self.root / "verification/corpus.toml").write_text("\n".join(
+            "[[model]]\n" + "\n".join(key + "=" + literal(value) for key, value in row.items())
+            for row in (self.rows if rows is None else rows)))
+
+    def check(self, executed=None):
+        return formal.contracts(self.root, set(self.names) if executed is None else executed)
+
+    def test_legacy_default_pair_stays_valid_without_rewriting_its_mapping(self):
+        record = copy.deepcopy(self.record)
+        del record["controls"]
+        record["models"] = self.names[:2]
+        self.write(record=record, rows=self.rows[:2])
+        self.assertEqual(self.check(set(self.names[:2])), [record])
+
+    def test_explicit_family_accepts_local_safety_liveness_and_deadlock_controls(self):
+        self.write()
+        self.assertEqual(self.check(), [self.record])
+
+    def test_absent_controls_keeps_strict_legacy_pair_instead_of_absorbing_extra_models(self):
+        record = copy.deepcopy(self.record)
+        del record["controls"]
+        self.write(record=record)
+        with self.assertRaises(ValueError):
+            self.check()
+
+    def test_malformed_or_empty_explicit_controls_never_fall_back_to_legacy_pair(self):
+        for controls in ([], {}, "", "BrokenBoundary", False, 0, ["BrokenBoundary"],
+                         [{}], [{"name": "BrokenBoundary"}], [{"expected": "safety"}],
+                         [{"name": False, "expected": "safety"}],
+                         [{"name": "BrokenBoundary", "expected": False}],
+                         [{"name": "BrokenBoundary", "expected": "safety", "ignored": True}]):
+            with self.subTest(controls=controls):
+                record = {**self.record, "models": self.names[:2], "controls": controls}
+                self.write(record=record, rows=self.rows[:2])
+                with self.assertRaises(ValueError):
+                    self.check(set(self.names[:2]))
+
+    def test_missing_duplicate_omitted_and_extra_family_members_are_refused(self):
+        changes = [
+            {"models": self.names[1:]},
+            {"models": self.names[:-1]},
+            {"models": self.names + [self.names[1]]},
+            {"models": self.names + ["BrokenExtra"]},
+            {"controls": self.controls[:-1]},
+            {"controls": self.controls + [self.controls[0]]},
+        ]
+        for change in changes:
+            with self.subTest(change=change):
+                self.write(record={**self.record, **change}, rows=self.rows + [
+                    {"name": "BrokenExtra", "expected": "safety", "frontend": "project"}])
+                with self.assertRaises(ValueError):
+                    self.check(set(self.names) | {"BrokenExtra"})
+        self.write()
+        with self.assertRaises(ValueError):
+            self.check(set(self.names) - {self.names[2]})
+        self.write(rows=self.rows[:-1])
+        with self.assertRaises(ValueError):
+            self.check()
+
+    def test_base_pass_and_declared_negative_verdicts_match_the_actual_local_corpus(self):
+        for index, expected in ((0, "safety"), (1, "liveness")):
+            with self.subTest(index=index, corpus_expected=expected):
+                rows = copy.deepcopy(self.rows)
+                rows[index]["expected"] = expected
+                self.write(rows=rows)
+                with self.assertRaises(ValueError):
+                    self.check()
+        for expected in ("pass", "unknown", "tool-error", "Safety", "deadlock"):
+            with self.subTest(declared_expected=expected):
+                record = copy.deepcopy(self.record)
+                record["controls"][0]["expected"] = expected
+                self.write(record=record)
+                with self.assertRaises(ValueError):
+                    self.check()
+        record, rows = copy.deepcopy(self.record), copy.deepcopy(self.rows)
+        record["controls"][0]["expected"] = rows[1]["expected"] = "pass"
+        self.write(record=record, rows=rows)
+        with self.assertRaises(ValueError):
+            self.check()
+
+    def test_checker_yarn_unowned_and_imported_harness_models_cannot_supply_project_controls(self):
+        for frontend in ("checker", "yarn", "harness", None):
+            with self.subTest(frontend=frontend):
+                rows = copy.deepcopy(self.rows)
+                if frontend is None:
+                    del rows[1]["frontend"]
+                else:
+                    rows[1]["frontend"] = frontend
+                self.write(rows=rows)
+                with self.assertRaises(ValueError):
+                    self.check()
+        record = copy.deepcopy(self.record)
+        record["models"][1] = record["controls"][0]["name"] = "BrokenHarnessImported"
+        self.write(record=record)
+        # A model in the merged/executed set still lacks LOCAL project ownership.
+        with self.assertRaises(ValueError):
+            self.check(set(record["models"]))
+
+    def test_duplicate_corpus_or_contract_records_do_not_hide_a_weakened_mapping(self):
+        self.write(rows=self.rows + [self.rows[1]])
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            self.check()
+        self.write(records=[self.record, self.record])
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            self.check()
+
+    def test_explicit_families_keep_all_evidence_and_mandatory_checks_required(self):
+        for field in ("title", "assumptions", "property", "sources", "implementation_tests", "checks"):
+            with self.subTest(missing=field):
+                record = copy.deepcopy(self.record)
+                del record[field]
+                self.write(record=record)
+                with self.assertRaises(ValueError):
+                    self.check()
+        for checks in ([], ["make test-formal"], ["make test"], ["make test-formal", "make test", "extra"]):
+            self.write(record={**self.record, "checks": checks})
+            with self.assertRaises(ValueError):
+                self.check()
+        self.write()
+        (self.root / "source.rs").unlink()
+        with self.assertRaises(ValueError):
+            self.check()
+
+    def test_current_c1_families_retain_every_declared_executed_control(self):
+        root = Path(__file__).resolve().parents[1]
+        if not (root / "crates/bboxy450-term").exists():
+            return  # Independently exported checker intentionally excludes project contracts.
+        rows = formal.corpus(root)
+        actual = {row["name"]: row for row in formal.contracts(root, {row["name"] for row in rows})}
+        for name, count in {"C1QuantumDebt": 8, "C1BootstrapAdmission": 12,
+                            "C1BootstrapProbeContext": 4, "C1FinalPublicAdmission": 7}.items():
+            with self.subTest(family=name):
+                family = actual[name]
+                self.assertEqual(len(family["models"]), count)
+                self.assertEqual(len(family["controls"]), count - 1)
+                self.assertEqual(set(family["models"]), {name, *(c["name"] for c in family["controls"])})
+
+
+class HarnessContractLayoutTests(unittest.TestCase):
+    """Use the unchanged pinned validator and real private files in both layouts."""
+    def setUp(self):
+        own = tempfile.TemporaryDirectory()
+        self.addCleanup(own.cleanup)
+        self.base = Path(own.name)
+        project = Path(__file__).resolve().parents[1]
+        if not (project / "crates/bboxy450-term").exists():
+            self.skipTest("consumer/harness layout is not part of the independent checker export")
+        witness = project / "crates/bboxy450-term/src/rich_pane.rs"
+        pinned = project / "crates/bboxy450-harness/scripts/formal.py"
+        self.witness_bytes = witness.read_bytes()
+        original_script = pinned.read_bytes()
+        self.addCleanup(lambda: self.assertEqual(witness.read_bytes(), self.witness_bytes))
+        self.addCleanup(lambda: self.assertEqual(pinned.read_bytes(), original_script))
+        source = importlib.util.spec_from_file_location("pinned_harness_layout_contracts", pinned)
+        self.pinned = importlib.util.module_from_spec(source)
+        source.loader.exec_module(self.pinned)
+        self.models = {"HarnessBoundary", "BrokenHarnessBoundary"}
+
+    def fixture(self, mode):
+        if mode == "embedded":
+            root = self.base / mode / "bboxy450-term"
+            child = root / "crates/bboxy450-harness"
+            witness = root / formal._HarnessContractLayout.consumer
+        else:
+            root = self.base / mode / "bboxy450-term"
+            child = self.base / mode / "bboxy450-harness"
+            witness = root / formal._HarnessContractLayout.consumer
+        (child / "verification").mkdir(parents=True)
+        (child / "src").mkdir()
+        (child / "src/lib.rs").write_text(
+            "// Private mapping fixture. Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md\n")
+        witness.parent.mkdir(parents=True, exist_ok=True)
+        # Copy the CURRENT actual logical consumer witness, including notices;
+        # never synthesize a product file or override Path.is_file/existence.
+        witness.write_bytes(self.witness_bytes)
+        (child / "verification/corpus.toml").write_text(
+            '[[model]]\nname="HarnessBoundary"\nexpected="pass"\n'
+            '[[model]]\nname="BrokenHarnessBoundary"\nexpected="safety"\n')
+        self.write_contract(child, formal._HarnessContractLayout.sibling)
+        return root, child, witness
+
+    def write_contract(self, child, locator):
+        (child / "verification/contracts.toml").write_text(
+            '[[contract]]\nname="HarnessBoundary"\ntitle="Layout binding"\n'
+            'models=["HarnessBoundary","BrokenHarnessBoundary"]\nsources=["src/lib.rs"]\n'
+            'implementation_tests=[' + json.dumps(locator) + ']\nassumptions="one layout"\n'
+            'property="same actual consumer witness"\nchecks=["make test-formal","make test"]\n')
+
+    def test_pinned_standalone_sibling_witness_remains_valid_without_an_adapter(self):
+        _root, child, witness = self.fixture("standalone")
+        rows = self.pinned.contracts(child, self.models)
+        self.assertEqual(rows[0]["implementation_tests"], [formal._HarnessContractLayout.sibling])
+        self.assertEqual((child / rows[0]["implementation_tests"][0]).read_bytes(), witness.read_bytes())
+
+    def test_embedded_layout_binds_same_real_witness_and_normalizes_source_hash_paths(self):
+        root, child, witness = self.fixture("embedded")
+        with self.assertRaises(ValueError):
+            self.pinned.contracts(child, self.models)  # Broken control: sibling arithmetic in embedded layout.
+        layout = formal._HarnessContractLayout(root, child)
+        rows = self.pinned.contracts(layout, self.models)
+        self.assertEqual((layout / formal._HarnessContractLayout.sibling), witness)
+        self.assertEqual([layout.relative_locator(p) for p in rows[0]["implementation_tests"]],
+                         ["crates/bboxy450-term/src/rich_pane.rs"])
+        self.assertEqual([layout.relative_locator(p) for p in rows[0]["sources"]],
+                         ["crates/bboxy450-harness/src/lib.rs"])
+
+    def test_missing_actual_consumer_witness_cannot_be_hidden_by_the_layout_binding(self):
+        root, child, witness = self.fixture("embedded")
+        layout = formal._HarnessContractLayout(root, child)
+        self.pinned.contracts(layout, self.models)
+        witness.unlink()  # Private copied witness only; the source file remains untouched.
+        with self.assertRaisesRegex(ValueError, "missing embedded consumer witness"):
+            self.pinned.contracts(layout, self.models)
+
+    def test_existing_unlisted_parent_and_absolute_witnesses_still_fail(self):
+        root, child, _witness = self.fixture("embedded")
+        foreign = root / "foreign.rs"
+        foreign.write_bytes(self.witness_bytes)
+        layout = formal._HarnessContractLayout(root, child)
+        for locator in ("../../foreign.rs", str(foreign)):
+            with self.subTest(locator=locator):
+                self.write_contract(child, locator)
+                # A real existing file alone is insufficient for embedded cross-repo authority.
+                self.pinned.contracts(child, self.models)
+                with self.assertRaisesRegex(ValueError, "unlisted foreign"):
+                    self.pinned.contracts(layout, self.models)
+                with self.assertRaises(ValueError):
+                    layout.relative_locator(locator)
 
 
 class ModelReuseTests(unittest.TestCase):

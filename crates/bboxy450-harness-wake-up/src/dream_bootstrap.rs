@@ -156,7 +156,7 @@ pub fn binding(bytes: &[u8]) -> Result<[u8; 32], Error> {
         _ => Err(Error::Format),
     };
     let mut out = [0; 32];
-    for (o, pair) in out.iter_mut().zip(bytes.chunks_exact(2)) {
+    for (o, pair) in out.iter_mut().zip(bytes.as_chunks::<2>().0) {
         *o = digit(pair[0])? * 16 + digit(pair[1])?;
     }
     Ok(out)

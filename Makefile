@@ -70,6 +70,7 @@ help:
 	  'make list-toolkit-package       UI package list; refuses bundled reports' \
 	  'make stories-toolkit            Headless native rich widget PNG captures' \
 	  'make test-formal                Native Yarn checker + Java TLC graph/verdict parity' \
+	  'make test-formal-infrastructure Formal gate inventory, receipt and refusal self-tests' \
 	  'make prepare-dream-c1           Build/probe pinned production worker and separate optimized private seat' \
 	  'make prepare-dream-c1-worker    Prepare the ordinary sibling with canonical Make/cache build settings' \
 	  'make prepare-dream-c1-seat      Build private optimized seat only; execute no worker' \
@@ -1736,12 +1737,16 @@ format-formal-contracts:
 	@set -eu; . ./scripts/cache-env.sh; rustfmt --edition 2024 crates/bboxy450-term/tests/formal_contracts.rs crates/bboxy450-term/tests/formal_contracts/models.rs crates/bboxy450-term/tests/formal_contracts/witnesses.rs
 
 FORMAL_REUSE ?= 0
+.PHONY: test-formal-infrastructure
+test-formal-infrastructure:
+	@python3 -I scripts/test-formal.py
+
 test-formal:
 	@python3 -I scripts/formal-stage.py initialization -- $(MAKE) init-submodules TARGET_DIR='$(TARGET_DIR)'
 	@python3 -I scripts/formal-stage.py export -- $(MAKE) test-yarn-model TARGET_DIR='$(TARGET_DIR)'
 	@python3 -I scripts/formal-stage.py protocol-contracts -- $(MAKE) check-protocol-contracts TARGET_DIR='$(TARGET_DIR)'
 	@python3 -I scripts/formal-stage.py harness-check -- python3 -I scripts/test-harness-submodule.py
-	@python3 -I scripts/formal-stage.py self-tests -- python3 -I scripts/test-formal.py
+	@python3 -I scripts/formal-stage.py self-tests -- $(MAKE) test-formal-infrastructure TARGET_DIR='$(TARGET_DIR)'
 	@set -eu; . ./scripts/cache-env.sh; \
 	python3 -I scripts/formal-stage.py tlc-verify -- cargo run --locked -p bboxy450-tlc --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \
 	python3 -I scripts/formal-stage.py yarn-verify -- cargo run --locked -p bboxy450-yarn --features model --example verify --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/formal/models'; \

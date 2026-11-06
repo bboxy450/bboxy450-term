@@ -1394,10 +1394,14 @@ fn bootstrap_admission(kind: usize, broken: bool) -> Model {
             all([
                 eq(BIRTH, 1),
                 eq(EXIT, 0),
+                // The native call graph is one argv span followed by one
+                // compute-owner span. Removing its authorization gate cannot
+                // replay/reverse those program locations after a violation.
+                order.clone(),
                 if broken && kind == 0 {
                     Bool(true)
                 } else {
-                    all([child_law.clone(), order.clone()])
+                    child_law.clone()
                 },
             ]),
             &[
@@ -1632,7 +1636,7 @@ fn bootstrap_admission(kind: usize, broken: bool) -> Model {
         &mut m,
         "BrokenResetDebt",
         all([Bool(broken && kind == 4), ne(PD, 0)]),
-        &[(PD, Int(0))],
+        &[(PD, Int(0)), (BAD, Int(1))],
     );
     action(
         &mut m,
@@ -1710,6 +1714,43 @@ fn bootstrap_admission(kind: usize, broken: bool) -> Model {
         vec![unknown],
         vec![known],
     ]);
+    if broken && matches!(kind, 0 | 3 | 4) {
+        // Safety-counterexample frontier, not a complete faulty lifecycle:
+        // every guard is unchanged while all safety properties hold. Thus
+        // every possible first-violation prefix/input/effect is retained.
+        // Once a policy violation is recorded, admit no additional policy
+        // work/input changes; retain actual effect/cost/debt/exit/cleanup and
+        // independent controls. All weak-fair dispositions remain unchanged,
+        // so this cutoff does not manufacture a temporal counterexample.
+        let before_first_violation = all(m
+            .invariants
+            .iter()
+            .map(|invariant| invariant.condition.clone()));
+        for action in &mut m.actions {
+            if !matches!(
+                action.name.as_str(),
+                "RetainActualReturnedChild"
+                    | "RetainUnknownBirth"
+                    | "ParentCostVerdict"
+                    | "ParentClockFailure"
+                    | "PayParentAfterSpanEnd"
+                    | "PayChildAfterSpanEnd"
+                    | "Revoke"
+                    | "Cancel"
+                    | "ParentEof"
+                    | "RestartCannotReopenPipe"
+                    | "ReadinessExpiresFromBirthOrigin"
+                    | "ObserveActualExit"
+                    | "SettleRefusedAfterActualExit"
+                    | "QuarantineUnknownBirth"
+                    | "QuarantineNoQualifyingHello"
+                    | "IndependentStatusCancelControl"
+                    | "IndependentOtherJobProgress"
+            ) {
+                action.guard = all([before_first_violation.clone(), action.guard.clone()]);
+            }
+        }
+    }
     m
 }
 
@@ -2013,7 +2054,29 @@ fn final_public_admission(kind: usize, broken: bool) -> Model {
                         Var(DEBT)
                     },
                 ),
-                (BAD, valid.clone().ite(Var(BAD), Int(1))),
+                // A mislabeled control span legally owes zero work debt.
+                // Start its own finite ledger instead of carrying the three
+                // payments of the prior spawn span into a fourth payment.
+                (
+                    OWED,
+                    if broken && kind == 5 {
+                        Int(0)
+                    } else {
+                        Var(OWED)
+                    },
+                ),
+                (
+                    PAID,
+                    if broken && kind == 5 {
+                        Int(0)
+                    } else {
+                        Var(PAID)
+                    },
+                ),
+                (
+                    BAD,
+                    all([valid.clone(), Bool(!(broken && kind == 5))]).ite(Var(BAD), Int(1)),
+                ),
             ],
         );
         action(
@@ -2058,7 +2121,7 @@ fn final_public_admission(kind: usize, broken: bool) -> Model {
     action(
         &mut m,
         "PaidHelloThenOrdinaryParentPreparation",
-        eq(SITE, 1),
+        all([eq(SITE, 1), eq(DEBT, 0)]),
         &[
             (SITE, Int(2)),
             (DEBT, Int(9)),
@@ -2381,6 +2444,11 @@ fn quantum_debt(kind: usize, broken: bool) -> Model {
                 ready.clone(),
                 eq(DEBT, 0),
                 eq(CALLS, 0),
+                // The explicit pair projection fixes A to the existing
+                // app1/native2/full3 process profile, including in mutants.
+                // Fake parser/cleanup/wrapper costs belong to solo A; B's
+                // independent history cannot alter their tag/CPU verdict.
+                eq(PAIR, 0),
                 Bool(broken && kind == fault),
             ]),
             &[
@@ -3066,6 +3134,64 @@ pub(super) fn cases() -> Vec<(Model, &'static str)> {
     cases
 }
 
+/// Keep the finite cap and expected semantic verdict identical to the complete
+/// exporter, while retaining the exact C1 case if exploration itself refuses.
+#[test]
+fn dream_c1_complete_corpus_has_named_native_verdicts() -> Result<(), String> {
+    // Only bounded textual refusals survive each iteration. Complete reachable
+    // graphs retire here before checking the next unchanged corpus case.
+    let mut errors = Vec::new();
+    for (model, expected) in cases() {
+        eprintln!(
+            "C1 native begin model={} state_limit=100000 expected={expected}",
+            model.name
+        );
+        let report = match model.check(100_000) {
+            Ok(report) => report,
+            Err(error) => {
+                let error = format!("{}: {error}", model.name);
+                eprintln!("C1 native refused {error}");
+                errors.push(error);
+                continue;
+            }
+        };
+        let actual = if report.violations.is_empty() {
+            "pass"
+        } else if report
+            .violations
+            .iter()
+            .any(|violation| !violation.cycle.is_empty())
+        {
+            "liveness"
+        } else if report
+            .violations
+            .iter()
+            .any(|violation| violation.property == "Deadlock")
+        {
+            "deadlock"
+        } else {
+            "safety"
+        };
+        if actual != expected {
+            errors.push(format!(
+                "{}: native expected {expected}, got {actual}",
+                model.name
+            ));
+        }
+        eprintln!(
+            "C1 native complete model={} states={} edges={} verdict={actual}",
+            model.name,
+            report.states.len(),
+            report.edges.iter().map(Vec::len).sum::<usize>()
+        );
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors.join("\n"))
+    }
+}
+
 fn step(m: &Model, r: &bboxy450_tlc::Report, state: usize, name: &str) -> Option<usize> {
     let action = m.actions.iter().position(|a| a.name == name).unwrap();
     r.edges[state]
@@ -3472,10 +3598,155 @@ fn c1_quantum_debt_effect_failure_and_independent_job_are_nonvacuous() -> Result
     Ok(())
 }
 
+#[test]
+fn c1_fake_native_mutants_preserve_solo_cost_and_fixed_pair_projection() -> Result<(), String> {
+    for (kind, labels) in [
+        (1, ["MislabelParserAsNative", "MislabelCleanupAsNative"]),
+        (
+            5,
+            [
+                "MislabelSqliteWrapperAsNative",
+                "MislabelControlTickWrapperAsNative",
+            ],
+        ),
+    ] {
+        let model = quantum_debt(kind, true);
+        let report = model.check(100_000)?;
+        assert!(report.violations.iter().any(|v| {
+            v.property == "NoNativeCallOnHotOwnerOrFakeTag"
+                || v.property == "StrictApplicationCpuWithoutWrapperException"
+        }));
+        let solo = trace(&model, &report, &["CloseA", "Quiescent"]);
+        let pair = trace(
+            &model,
+            &report,
+            &[
+                "SelectIndependentPairProjection",
+                "CloseA",
+                "CloseB",
+                "Quiescent",
+            ],
+        );
+        for label in labels {
+            let invalid = step(&model, &report, solo, label).unwrap();
+            assert_eq!(
+                (report.states[invalid][11], report.states[invalid][13]),
+                (2, 2)
+            );
+            assert!(step(&model, &report, pair, label).is_none());
+        }
+        assert!(step(&model, &report, pair, "AdmitNative1App1Cpu2").is_some());
+        assert!(step(&model, &report, pair, "AdmitIndependentNativeB").is_some());
+    }
+    Ok(())
+}
+
 fn trace_from(m: &Model, r: &bboxy450_tlc::Report, start: usize, names: &[&str]) -> usize {
     names.iter().fold(start, |state, name| {
         step(m, r, state, name).unwrap_or_else(|| panic!("disabled {name} from {state}"))
     })
+}
+
+#[test]
+fn c1_bootstrap_gate_mutant_preserves_fixed_argv_then_builder_program_order() -> Result<(), String>
+{
+    let model = bootstrap_admission(0, true);
+    let report = model
+        .check(100_000)
+        .map_err(|error| format!("{}: {error}", model.name))?;
+    let returned = trace(
+        &model,
+        &report,
+        &[
+            "CloseSource",
+            "VerifyPackagedBootstrapBeforeBirth",
+            "Quiescent",
+            "PrepareFrozenBindingAndPipe",
+            "PayParentAfterSpanEnd",
+            "Birth",
+            "RetainActualReturnedChild",
+        ],
+    );
+    assert_eq!(
+        (report.states[returned][12], report.states[returned][22]),
+        (0, 0),
+        "causal mutant witness must precede both cost verdict and permit"
+    );
+    assert!(
+        step(&model, &report, returned, "ChildComputeOwnerSpan").is_none(),
+        "removing authorization must not jump over argv's program location"
+    );
+    let argv = step(&model, &report, returned, "ChildArgvSpan").unwrap();
+    assert_eq!(
+        (report.states[argv][27], report.states[argv][39]),
+        (1, 1),
+        "the ungated argv admission must still produce the semantic violation"
+    );
+    assert!(step(&model, &report, argv, "ChildArgvSpan").is_none());
+    assert!(
+        step(&model, &report, argv, "ChildComputeOwnerSpan").is_none(),
+        "no second expensive span belongs beyond the first safety violation"
+    );
+    assert!(step(&model, &report, argv, "IndependentStatusCancelControl").is_some());
+    assert!(step(&model, &report, argv, "QuarantineNoQualifyingHello").is_some());
+    let authorized_argv = trace_from(
+        &model,
+        &report,
+        returned,
+        &[
+            "ParentCostVerdict",
+            "PayParentAfterSpanEnd",
+            "PayParentAfterSpanEnd",
+            "PayParentAfterSpanEnd",
+            "TransferBeforePermitWrite",
+            "WriteFullPermitOnce",
+            "ReadGrant",
+            "ChildArgvSpan",
+        ],
+    );
+    assert_eq!(
+        (
+            report.states[authorized_argv][27],
+            report.states[authorized_argv][39]
+        ),
+        (1, 0)
+    );
+    assert!(step(&model, &report, authorized_argv, "ChildArgvSpan").is_none());
+    // Builder's own unpaid admission remains a distinct first violation.
+    let bad_builder = step(&model, &report, authorized_argv, "ChildComputeOwnerSpan").unwrap();
+    assert_eq!(
+        (
+            report.states[bad_builder][27],
+            report.states[bad_builder][39]
+        ),
+        (2, 1)
+    );
+    let authorized_builder = trace_from(
+        &model,
+        &report,
+        authorized_argv,
+        &["PayChildAfterSpanEnd", "ChildComputeOwnerSpan"],
+    );
+    assert_eq!(
+        (
+            report.states[authorized_builder][27],
+            report.states[authorized_builder][39]
+        ),
+        (2, 0)
+    );
+    for action in ["ChildArgvSpan", "ChildComputeOwnerSpan"] {
+        assert!(
+            step(&model, &report, authorized_builder, action).is_none(),
+            "fixed bootstrap program replayed {action}"
+        );
+    }
+    assert!(
+        report
+            .violations
+            .iter()
+            .any(|violation| violation.property == "AllBirthPermitOwnerAndHandoffGuards")
+    );
+    Ok(())
 }
 
 #[test]
@@ -3664,6 +3935,80 @@ fn c1_probe_explicit_null_and_permanent_start_refusal_are_nonvacuous() -> Result
         ],
     );
     assert!(step(&m, &r, omitted, "BirthFromFrozenBinding").is_none());
+    Ok(())
+}
+
+#[test]
+fn c1_recursive_final_control_debt_is_semantic_refusal_with_bounded_span_ledger()
+-> Result<(), String> {
+    let model = final_public_admission(5, true);
+    let report = model
+        .check(100_000)
+        .map_err(|error| format!("{}: {error}", model.name))?;
+    let paid = trace(
+        &model,
+        &report,
+        &[
+            "PayExistingWorkDebt",
+            "PayExistingWorkDebt",
+            "PayExistingWorkDebt",
+        ],
+    );
+    let permit = step(&model, &report, paid, "FinalPermitControlAndWrite").unwrap();
+    assert_eq!(
+        (
+            report.states[permit][1],
+            report.states[permit][2],
+            report.states[permit][3],
+            report.states[permit][20]
+        ),
+        (9, 0, 0, 1)
+    );
+    assert!(
+        step(
+            &model,
+            &report,
+            permit,
+            "PaidHelloThenOrdinaryParentPreparation"
+        )
+        .is_none(),
+        "ordinary preparation overwrote the erroneous control span's unpaid debt"
+    );
+    let permit_paid = step(&model, &report, permit, "PayExistingWorkDebt").unwrap();
+    assert_eq!(
+        (
+            report.states[permit_paid][1],
+            report.states[permit_paid][2],
+            report.states[permit_paid][3]
+        ),
+        (0, 0, 1)
+    );
+    let start = trace_from(
+        &model,
+        &report,
+        permit_paid,
+        &[
+            "PaidHelloThenOrdinaryParentPreparation",
+            "PayExistingWorkDebt",
+            "FinalStartControlAndWrite",
+        ],
+    );
+    assert_eq!(
+        (
+            report.states[start][1],
+            report.states[start][2],
+            report.states[start][3],
+            report.states[start][14]
+        ),
+        (9, 0, 0, 2)
+    );
+    assert!(report.states.iter().all(|state| state[3] <= 3));
+    assert!(
+        report
+            .violations
+            .iter()
+            .any(|violation| violation.property == "NoRecursiveWorkDebtForFinalControl")
+    );
     Ok(())
 }
 

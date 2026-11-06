@@ -36,6 +36,8 @@ fn fixture_command(program: &str) -> Command {
         "DIST_DIR",
         "CARGO_TARGET_DIR",
         "BBOXY_CARGO_TARGET_DIR",
+        "FIXTURE_FAKE_WORKER_FAIL",
+        "FIXTURE_FAKE_WORKER_NO_PROOF",
     ] {
         command.env_remove(var);
     }
@@ -235,10 +237,74 @@ fn native_bundle_fixture_child() {
     }
     fs::write(p.join("target/debug/bboxy450-term"), "fixture binary").unwrap();
     fs::write(p.join("target/debug/bboxy450-harness"), "fixture harness").unwrap();
+    // Private recipe seam only: these bytes are deliberately neither an
+    // executable worker nor a production Dream provisioning receipt.
+    let fake_worker = p.join("tools/private-fake-canonical-worker.txt");
+    let fake_proof = p.join("tools/private-fake-canonical-worker-proof.json");
+    fs::write(
+        &fake_worker,
+        "PRIVATE FAKE canonical worker for native_signing recipe tests; NEVER EXECUTE\n",
+    )
+    .unwrap();
+    fs::write(
+        &fake_proof,
+        serde_json::to_vec(&serde_json::json!({
+            "schema":"private.native-signing.fake-worker-proof/1",
+            "private_fake":true,"runtime_conformance":false,"authorizes_worker":false,
+            "project":"https://github.com/bboxy450/bboxy450-term",
+            "policy":"https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md"
+        }))
+        .unwrap(),
+    )
+    .unwrap();
+    executable(
+        &p.join("scripts/test-dream-c1.py"),
+        r#"#!/usr/bin/env python3
+# PRIVATE FAKE build/proof seam: no Cargo, worker, source inspection or signing.
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+# Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+import json,os,pathlib,shutil,sys
+root=pathlib.Path(os.environ['FIXTURE_ROOT']).resolve()
+args=sys.argv[1:]
+assert len(args)==3 and args[0]=='--target' and args[2]=='--worker-only', args
+assert sys.orig_argv[1:3]==['-I','scripts/test-dream-c1.py'], sys.orig_argv
+target=pathlib.Path(args[1])
+assert target.is_absolute() and target.resolve()==root/'target', args
+assert pathlib.Path.cwd().resolve()==root
+assert os.environ['BBOXY_DREAM_BUILD_ENTRY']=='bundle-files'
+assert os.environ['CARGO_BUILD_JOBS']=='2'
+assert os.environ.get('PROFILE')!='outside-profile'
+for name in ('TARGET_DIR','CARGO_TARGET_DIR','BBOXY_CARGO_TARGET_DIR'):
+ if os.environ.get(name): assert pathlib.Path(os.environ[name]).resolve()==target.resolve(), name
+failed=os.environ.get('FIXTURE_FAKE_WORKER_FAIL')=='1'
+without_proof=os.environ.get('FIXTURE_FAKE_WORKER_NO_PROOF')=='1'
+worker=target/'release/bboxy450-harness'
+proof=worker.with_suffix('.dream-c1.json')
+row={'private_fake':True,'runtime_conformance':False,'actual_worker_executed':False,
+     'entry':os.environ['BBOXY_DREAM_BUILD_ENTRY'],'argv':args,'target':str(target),
+     'cwd':str(pathlib.Path.cwd()),'build_jobs':os.environ['CARGO_BUILD_JOBS'],
+     'worker':str(worker),'proof':str(proof),'proof_present':not failed and not without_proof,
+     'exit_code':73 if failed else 0}
+if not failed:
+ worker.parent.mkdir(parents=True,exist_ok=True)
+ shutil.copyfile(root/'tools/private-fake-canonical-worker.txt',worker)
+ if without_proof: proof.unlink(missing_ok=True)
+ else: shutil.copyfile(root/'tools/private-fake-canonical-worker-proof.json',proof)
+with (root/'fake-worker-build-calls').open('a') as output:
+ output.write(json.dumps(row)+'\n')
+if failed:
+ print('PRIVATE FAKE canonical worker build refused: 73',file=sys.stderr)
+ sys.exit(73)
+"#,
+    );
     for (name, body) in [
         ("uname", "printf 'Darwin\\n'".to_string()),
         ("security", "printf 'lookup\\n' >> \"$FIXTURE_ROOT/lookups\"; test -z \"${FIXTURE_NO_IDENTITY:-}\" || exit 0; printf '%s\\n' fixture-only-identity".into()),
         ("cargo", "exit 0".into()),
+        ("cargo-nextest", "# PRIVATE FAKE availability only; no installation\nexit 0".into()),
+        ("sccache", "# PRIVATE FAKE availability only; no daemon or cache\nexit 0".into()),
         ("plutil", "if [ \"$1\" = -insert ] && [ \"$2\" = BBOXYHarnessRevision ]; then test \"$4\" = fixture-harness-revision || exit 31; printf '%s' \"$4\" > \"$FIXTURE_ROOT/harness-revision\"; fi".into()),
         ("git", "case \"$1\" in rev-list) printf '17\\n' ;; rev-parse) printf 'fixture-revision\\n' ;; -C) test \"$2\" = crates/bboxy450-harness && test \"$3\" = rev-parse && test \"$4\" = HEAD || exit 2; printf 'fixture-harness-revision\\n' ;; diff) exit 0 ;; *) exit 2 ;; esac".into()),
     ] {
@@ -251,6 +317,13 @@ import os,sys,json,pathlib
 with (pathlib.Path(os.environ['FIXTURE_ROOT'])/'calls').open('a') as f:f.write(json.dumps(sys.argv[1:])+'\n')
 "#,
     );
+    let release_worker = p.join("target/release/bboxy450-harness");
+    let release_proof = p.join("target/release/bboxy450-harness.dream-c1.json");
+    let packaged_worker = p.join("target/debug/bboxy450-term.app/Contents/MacOS/bboxy450-harness");
+    let packaged_proof =
+        p.join("target/debug/bboxy450-term.app/Contents/MacOS/bboxy450-harness.dream-c1.json");
+    assert!(!release_worker.exists());
+    assert!(!release_proof.exists());
     let output = fixture_command("sh")
         .arg(p.join("scripts/bundle-macos.sh"))
         .env(
@@ -294,6 +367,63 @@ with (pathlib.Path(os.environ['FIXTURE_ROOT'])/'calls').open('a') as f:f.write(j
             .is_file(),
         "bundle ships the harness beside the app binary"
     );
+    assert_eq!(
+        fs::read(&release_worker).unwrap(),
+        fs::read(&fake_worker).unwrap()
+    );
+    assert_eq!(
+        fs::read(&packaged_worker).unwrap(),
+        fs::read(&release_worker).unwrap()
+    );
+    assert_ne!(
+        fs::read(&packaged_worker).unwrap(),
+        fs::read(p.join("target/debug/bboxy450-harness")).unwrap(),
+        "debug app packaging uses the canonical release sibling, not the old debug decoy"
+    );
+    assert_eq!(
+        fs::read(&release_proof).unwrap(),
+        fs::read(&fake_proof).unwrap()
+    );
+    assert_eq!(
+        fs::read(&packaged_proof).unwrap(),
+        fs::read(&release_proof).unwrap()
+    );
+    let worker_calls = || {
+        fs::read_to_string(p.join("fake-worker-build-calls"))
+            .unwrap()
+            .lines()
+            .map(|line| serde_json::from_str::<serde_json::Value>(line).unwrap())
+            .collect::<Vec<_>>()
+    };
+    let preparation = worker_calls();
+    assert_eq!(preparation.len(), 1);
+    let first = &preparation[0];
+    assert_eq!(first["private_fake"], true);
+    assert_eq!(first["runtime_conformance"], false);
+    assert_eq!(first["actual_worker_executed"], false);
+    assert_eq!(first["entry"], "bundle-files");
+    assert_eq!(first["build_jobs"], "2");
+    assert_eq!(first["argv"].as_array().unwrap().len(), 3);
+    assert_eq!(first["argv"][0], "--target");
+    assert_eq!(first["argv"][1], first["target"]);
+    assert_eq!(first["argv"][2], "--worker-only");
+    assert!(Path::new(first["target"].as_str().unwrap()).is_absolute());
+    for (field, expected) in [
+        ("target", p.join("target")),
+        ("cwd", p.to_path_buf()),
+        ("worker", release_worker.clone()),
+        ("proof", release_proof.clone()),
+    ] {
+        assert_eq!(
+            Path::new(first[field].as_str().unwrap())
+                .canonicalize()
+                .unwrap(),
+            expected.canonicalize().unwrap(),
+            "fake canonical preparation {field} stays inside its owned fixture"
+        );
+    }
+    assert_eq!(first["exit_code"], 0);
+    assert_eq!(first["proof_present"], true);
     assert_eq!(
         fs::read_to_string(p.join("harness-revision")).unwrap(),
         "fixture-harness-revision"
@@ -349,6 +479,7 @@ with (pathlib.Path(os.environ['FIXTURE_ROOT'])/'calls').open('a') as f:f.write(j
         .env("PATH", &path)
         .env("FIXTURE_ROOT", p)
         .env("FIXTURE_NO_IDENTITY", "1")
+        .env("FIXTURE_FAKE_WORKER_NO_PROOF", "1")
         .output()
         .unwrap();
     assert!(
@@ -368,6 +499,18 @@ with (pathlib.Path(os.environ['FIXTURE_ROOT'])/'calls').open('a') as f:f.write(j
         .collect();
     let at = calls[2].iter().position(|arg| arg == "--sign").unwrap();
     assert_eq!(calls[2][at + 1], "-");
+    assert_eq!(
+        fs::read(&packaged_worker).unwrap(),
+        fs::read(&fake_worker).unwrap()
+    );
+    assert!(
+        !release_proof.exists() && !packaged_proof.exists(),
+        "optional proof omission removes a previously packaged sidecar"
+    );
+    let preparation = worker_calls();
+    assert_eq!(preparation.len(), 3);
+    assert_eq!(preparation[2]["exit_code"], 0);
+    assert_eq!(preparation[2]["proof_present"], false);
     for args in &calls {
         assert_eq!(
             p.join(args.last().unwrap()),
@@ -375,8 +518,35 @@ with (pathlib.Path(os.environ['FIXTURE_ROOT'])/'calls').open('a') as f:f.write(j
             "every signer/verification call stays in the private fixture bundle"
         );
     }
+    let before_failure = fs::read(p.join("calls")).unwrap();
+    let artifact_before_failure = fs::read(&release_worker).unwrap();
+    let bundled_before_failure = fs::read(&packaged_worker).unwrap();
+    let failed_preparation = fixture_command("make")
+        .arg("bundle-unsigned")
+        .current_dir(p)
+        .env("PATH", &path)
+        .env("FIXTURE_ROOT", p)
+        .env("FIXTURE_FAKE_WORKER_FAIL", "1")
+        .output()
+        .unwrap();
+    assert_eq!(failed_preparation.status.code(), Some(2));
+    assert!(
+        String::from_utf8_lossy(&failed_preparation.stderr)
+            .contains("PRIVATE FAKE canonical worker build refused: 73"),
+        "failure must come from the actual fake canonical preparation command"
+    );
+    assert_eq!(fs::read(p.join("calls")).unwrap(), before_failure);
+    assert_eq!(fs::read(&release_worker).unwrap(), artifact_before_failure);
+    assert_eq!(fs::read(&packaged_worker).unwrap(), bundled_before_failure);
+    assert!(!release_proof.exists() && !packaged_proof.exists());
+    assert_eq!(fs::read_to_string(p.join("lookups")).unwrap(), lookups);
+    let preparation = worker_calls();
+    assert_eq!(preparation.len(), 4);
+    assert_eq!(preparation[3]["exit_code"], 73);
+    assert_eq!(preparation[3]["actual_worker_executed"], false);
     fs::remove_file(p.join("ATTRIBUTION.md")).unwrap();
     let calls_before = fs::read(p.join("calls")).unwrap();
+    let worker_calls_before = fs::read(p.join("fake-worker-build-calls")).unwrap();
     let missing = fixture_command("make")
         .arg("bundle-unsigned")
         .current_dir(p)
@@ -389,4 +559,9 @@ with (pathlib.Path(os.environ['FIXTURE_ROOT'])/'calls').open('a') as f:f.write(j
         "missing attribution stops bundling before signing"
     );
     assert_eq!(fs::read(p.join("calls")).unwrap(), calls_before);
+    assert_eq!(
+        fs::read(p.join("fake-worker-build-calls")).unwrap(),
+        worker_calls_before,
+        "missing attribution also prevents canonical worker preparation"
+    );
 }

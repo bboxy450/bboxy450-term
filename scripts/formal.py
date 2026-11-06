@@ -92,6 +92,34 @@ def corpus(root):
     return rows
 
 
+class _HarnessContractLayout:
+    """Read-only binding of the pinned harness's one sibling consumer witness."""
+    sibling = "../bboxy450-term/crates/bboxy450-term/src/rich_pane.rs"
+    consumer = "crates/bboxy450-term/src/rich_pane.rs"
+
+    def __init__(self, root, child):
+        self.root, self.child = root, child
+        self.prefix = str(child.relative_to(root)) + "/"
+
+    def __truediv__(self, locator):
+        if not isinstance(locator, str):
+            raise ValueError("non-string harness contract locator")
+        if locator == self.sibling:
+            path = self.root / self.consumer
+            if not path.is_file():
+                raise ValueError("missing embedded consumer witness: " + self.consumer)
+            return path
+        path = Path(locator)
+        if path.is_absolute() or ".." in path.parts:
+            raise ValueError("unlisted foreign harness contract locator")
+        return self.child / path
+
+    def relative_locator(self, locator):
+        if not (self / locator).is_file():
+            raise ValueError("missing harness contract source/witness")
+        return self.consumer if locator == self.sibling else self.prefix + locator
+
+
 def harness_contracts(root, models):
     child = harness_root(root)
     if not child:
@@ -103,11 +131,14 @@ def harness_contracts(root, models):
     sys.dont_write_bytecode = True
     spec.loader.exec_module(module)
     module.coverage(child, models)
-    rows = module.contracts(child, models)
-    prefix = str(child.relative_to(root)) + "/"
+    # HarnessDraftHandoff's pinned sibling-layout locator denotes this SAME
+    # consumer source in the embedded workspace. All other paths stay child
+    # local; the unchanged pinned validator still checks real file existence.
+    layout = _HarnessContractLayout(root, child)
+    rows = module.contracts(layout, models)
     for row in rows:
         for field in ("sources", "implementation_tests"):
-            row[field] = [prefix + path for path in row[field]]
+            row[field] = [layout.relative_locator(path) for path in row[field]]
     for row in rows:
         if row["name"] in {"HarnessEmbedLifecycle", "HarnessCancelTreeGroup", "HarnessProcessLifecycle"}:
             row["implementation_tests"].append("crates/bbt-mux/tests/mcp.rs")
@@ -143,23 +174,57 @@ def coverage(root, models):
 
 
 def contracts(root, models):
-    """Require paired, bounded project contracts with concrete source/test mappings."""
+    """Require executed local project families with concrete source/test mappings."""
     path = root / "verification/contracts.toml"
     if not path.is_file() and not (root / "crates/bboxy450-term").exists():
         return []  # Independently exported checker has its own conformance corpus.
     rows = tomllib.loads(path.read_text())["contract"]
+    local = tomllib.loads((root / "verification/corpus.toml").read_text())["model"]
+    local_names = [row["name"] for row in local]
+    if len(local_names) != len(set(local_names)):
+        raise ValueError("duplicate local corpus model")
+    inventory = {row["name"]: row for row in local}
     seen = set()
     for row in rows:
         name = row["name"]
-        pair = {name, "Broken" + name}
-        if name in seen or set(row["models"]) != pair or not pair.issubset(models):
-            raise ValueError(f"missing, duplicate or unexecuted contract pair: {name}")
+        # Adapted from bboxy450-harness scripts/formal.py:102-134 at pinned
+        # d06e696f99472ed754e84353baf11a2974589d6d: explicit control/verdict
+        # families, specialized here to LOCAL project frontend ownership and
+        # Broken* names rather than producer-only BrokenHarness* names.
+        # https://github.com/bboxy450/bboxy450-harness/blob/d06e696f99472ed754e84353baf11a2974589d6d/scripts/formal.py
+        # Policy: https://github.com/bboxy450/bboxy450-harness/blob/main/ATTRIBUTION.md
+        if "controls" in row:
+            controls = row["controls"]
+            if (not isinstance(controls, list) or not controls or any(
+                    not isinstance(c, dict) or set(c) != {"name", "expected"}
+                    or not isinstance(c["name"], str) or not isinstance(c["expected"], str)
+                    for c in controls)):
+                raise ValueError(f"malformed declared contract controls: {name}")
+        else:
+            negative = "Broken" + name
+            controls = [{"name": negative, "expected": inventory.get(negative, {}).get("expected")}]
+        control_names = [control["name"] for control in controls]
+        family = {name, *control_names}
+        members = row.get("models")
+        if (name in seen or not isinstance(members, list) or not members
+                or any(not isinstance(member, str) for member in members)
+                or len(control_names) != len(set(control_names))
+                or len(members) != len(set(members)) or set(members) != family
+                or not family.issubset(models)
+                or any(inventory.get(member, {}).get("frontend") != "project" for member in family)
+                or inventory.get(name, {}).get("expected") != "pass"
+                or any(not control["name"].startswith("Broken") or control["name"] == "Broken"
+                       or control["expected"] not in {"safety", "liveness", "deadlock"}
+                       or inventory.get(control["name"], {}).get("expected") != control["expected"]
+                       for control in controls)):
+            raise ValueError(f"missing, duplicate, foreign or unexecuted contract pair/family: {name}")
         seen.add(name)
         for field in ["assumptions", "property", "title"]:
-            if not row.get(field, "").strip():
+            if not isinstance(row.get(field), str) or not row[field].strip():
                 raise ValueError(f"missing contract {field}: {name}")
         for field in ["sources", "implementation_tests"]:
-            if not row.get(field) or any(not (root / p).is_file() for p in row[field]):
+            if (not isinstance(row.get(field), list) or not row[field]
+                    or any(not isinstance(p, str) or not (root / p).is_file() for p in row[field])):
                 raise ValueError(f"missing contract {field}: {name}")
         if row.get("checks") != ["make test-formal", "make test"]:
             raise ValueError(f"missing mandatory checks: {name}")

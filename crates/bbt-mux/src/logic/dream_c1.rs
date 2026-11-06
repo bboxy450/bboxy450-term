@@ -2520,17 +2520,10 @@ impl UnitClock {
 /// One isolated request's ordinary metadata units. Controls never borrow the
 /// admitted job's work/native lane, so status/cancel remain independent of IO.
 /// No native admission operation is exposed by this context.
+#[derive(Default)]
 pub(crate) struct JournalQuantum {
     control: Control,
     origin: Option<&'static std::panic::Location<'static>>,
-}
-impl Default for JournalQuantum {
-    fn default() -> Self {
-        Self {
-            control: Control::default(),
-            origin: None,
-        }
-    }
 }
 impl JournalQuantum {
     pub(crate) fn at(origin: &'static std::panic::Location<'static>) -> Self {
@@ -4675,7 +4668,7 @@ fn probe_gated_core(
             if hash.len() != 64 {
                 return Err(Code::RunnerUnavailable);
             }
-            for (i, pair) in hash.chunks_exact(2).enumerate() {
+            for (i, pair) in hash.as_chunks::<2>().0.iter().enumerate() {
                 let digit = |b: u8| match b {
                     b'0'..=b'9' => Some(b - b'0'),
                     b'a'..=b'f' => Some(b - b'a' + 10),
@@ -6982,11 +6975,11 @@ fn execute_inner(
             if exit.is_some() && !started && stop.is_none() {
                 stop = Some((Code::WorkerLost, Instant::now()));
             }
-            if let Ok(clock) = meter {
-                if clock.finish().is_err() {
-                    let since = stop.map_or_else(Instant::now, |(_, since)| since);
-                    stop = Some((Code::ResourceLimit, since));
-                }
+            if let Ok(clock) = meter
+                && clock.finish().is_err()
+            {
+                let since = stop.map_or_else(Instant::now, |(_, since)| since);
+                stop = Some((Code::ResourceLimit, since));
             }
             previous_reactor_end = Some(Instant::now());
             if finish {

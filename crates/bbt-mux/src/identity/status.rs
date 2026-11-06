@@ -254,6 +254,10 @@ impl PublicFenceSession {
         Ok(db.take())
     }
 }
+type LockedPublicSession<'a> = (
+    (u64, u64),
+    std::sync::MutexGuard<'a, Option<rusqlite::Connection>>,
+);
 enum PublicCheckConnection<'a> {
     Transient(rusqlite::Connection),
     Retained(std::sync::MutexGuard<'a, Option<rusqlite::Connection>>),
@@ -529,10 +533,7 @@ impl PublicFenceReader {
         captured: &PublicFence,
         verified: Arc<VerifiedPublicFence>,
         now: u64,
-        session: Option<(
-            (u64, u64),
-            std::sync::MutexGuard<'_, Option<rusqlite::Connection>>,
-        )>,
+        session: Option<LockedPublicSession<'_>>,
         read: impl FnOnce(&rusqlite::Connection) -> Result<T>,
     ) -> Result<T> {
         use std::sync::atomic::Ordering;

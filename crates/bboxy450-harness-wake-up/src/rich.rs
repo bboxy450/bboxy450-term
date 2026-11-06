@@ -297,9 +297,7 @@ impl Foreground {
         }
     }
     fn observe(&mut self, value: &Value) -> Option<Option<bool>> {
-        let Some(seq) = value["seq"].as_u64() else {
-            return None;
-        };
+        let seq = value["seq"].as_u64()?;
         if seq != self.next {
             self.known = false;
         } else {

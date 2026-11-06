@@ -1912,13 +1912,12 @@ impl Runtime {
                             let keys=sources.iter().map(|s|serde_json::json!([context.account,context.root_revision,context.seat,s.generation,s.session,s.closed_seq,s.closed_line_sha256,"d0-c1/1"])).collect::<Vec<_>>();
                             let key=crate::store::digest(&w::canonical(&keys).map_err(|_|Code::BadRequest)?);
                             if sources.iter().any(|source|source.owner_fence.as_ref()!=Some(&identity_fence)) {
-                                if let Some(mut predecessor)=journal.source_set(&key)? {
-                                    if predecessor.started && !predecessor.view.settled && predecessor.owner_incarnation!=runtime.incarnation {
+                                if let Some(mut predecessor)=journal.source_set(&key)?
+                                    && predecessor.started && !predecessor.view.settled && predecessor.owner_incarnation!=runtime.incarnation {
                                         predecessor.view.state=w::State::Quarantined;
                                         predecessor.view.error=Some(w::Error {code:Code::WorkerLost,source:None});
                                         predecessor.view.revision.0+=1;
                                         journal.save(&predecessor)?;
-                                    }
                                 }
                                 return Err(Code::StaleContext);
                             }
@@ -1987,15 +1986,13 @@ impl Runtime {
                                 match journal.compare_and_save(&record,&failed) {
                                     Ok(true)=>{
                                         let _=run.final_record.set(failed);
-                                        if let Ok(mut runs)=root.runs.try_lock() {
-                                            if runs.get(&record.view.run_id.0).is_some_and(|cached|Arc::ptr_eq(cached,&run)) {runs.remove(&record.view.run_id.0);}
-                                        }
+                                        if let Ok(mut runs)=root.runs.try_lock()
+                                            && runs.get(&record.view.run_id.0).is_some_and(|cached|Arc::ptr_eq(cached,&run)) {runs.remove(&record.view.run_id.0);}
                                         return Err(code);
                                     },
                                     Ok(false)=>{
-                                        if let Ok(mut runs)=root.runs.try_lock() {
-                                            if runs.get(&record.view.run_id.0).is_some_and(|cached|Arc::ptr_eq(cached,&run)) {runs.remove(&record.view.run_id.0);}
-                                        }
+                                        if let Ok(mut runs)=root.runs.try_lock()
+                                            && runs.get(&record.view.run_id.0).is_some_and(|cached|Arc::ptr_eq(cached,&run)) {runs.remove(&record.view.run_id.0);}
                                         let current=journal.run(&record.view.run_id)?.ok_or(Code::NotFound)?;
                                         return runtime.status(&root,&authority,&context,current,None);
                                     },
@@ -2013,10 +2010,9 @@ impl Runtime {
                                 outcome=> {
                                     // A stale Deferred read cannot resurrect a cancelled or
                                     // completed run after its old Arc was evicted.
-                                    if let Ok(mut runs)=root.runs.try_lock() {
-                                        if runs.get(&record.view.run_id.0).is_some_and(|cached|Arc::ptr_eq(cached,&run)) {runs.remove(&record.view.run_id.0);}
-                                    }
-                                    if let Err(code)=outcome {return Err(code);}
+                                    if let Ok(mut runs)=root.runs.try_lock()
+                                        && runs.get(&record.view.run_id.0).is_some_and(|cached|Arc::ptr_eq(cached,&run)) {runs.remove(&record.view.run_id.0);}
+                                    outcome?;
                                     let current=journal.run(&record.view.run_id)?.ok_or(Code::NotFound)?;
                                     return runtime.status(&root,&authority,&context,current,None);
                                 }
@@ -2175,9 +2171,8 @@ impl Runtime {
                                         run.control.settled.store(true,Ordering::Release);
                                         let _=run.final_record.set(terminal.clone());
                                     }
-                                    if let Ok(mut runs)=root.runs.try_lock() {
-                                        if runs.get(&cancel.run_id.0).is_some_and(|cached|Arc::ptr_eq(cached,&run)) {runs.remove(&cancel.run_id.0);}
-                                    }
+                                    if let Ok(mut runs)=root.runs.try_lock()
+                                        && runs.get(&cancel.run_id.0).is_some_and(|cached|Arc::ptr_eq(cached,&run)) {runs.remove(&cancel.run_id.0);}
                                     return runtime.status(&root,&authority,&context,terminal,None);
                                 }
                                 run.control.state.store(engine::CANCELLING,Ordering::Release);

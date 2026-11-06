@@ -11165,12 +11165,11 @@ impl Worker {
                         if let Ok(authority)=self.dream_authority(id,generation) {self.dream_runtime.activity(&self.handle,authority);}
                     }
                     Command::DreamClosed(id,generation,source) => {
-                        if self.dream_owned.contains(&(id,generation)) {
-                            if let Ok(authority)=self.dream_authority(id,generation) {
+                        if self.dream_owned.contains(&(id,generation))
+                            && let Ok(authority)=self.dream_authority(id,generation) {
                                 let request=bbt_proto::dream::Control::Inspect(bbt_proto::dream::Inspect {v:bbt_proto::dream::Version,op_id:Ulid::new().into(),
                                     sources:vec![bbt_proto::dream::Selection {session:source.session.clone(),source_generation:bbt_proto::dream::Number(source.generation)}]});
                                 self.dream_runtime.request(&self.handle,authority,move ||Ok(request),Some(*source),false,|_|{});
-                            }
                         }
                     }
                     Command::ControlCatalogue(id, generation, reply) => {

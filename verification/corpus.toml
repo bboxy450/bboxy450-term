@@ -1093,6 +1093,26 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "RichDraftChain"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenRichDraftChainReservation"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenRichDraftChainEarlyRestore"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenRichDraftChainDrop"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "HarnessReportedStatus"
 expected = "pass"
 frontend = "project"
