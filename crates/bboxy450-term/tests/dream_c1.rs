@@ -412,8 +412,21 @@ if args[:2]==['dream','inspect-c1']:
         assert_eq!(receipt["test_fixtures"], false);
         let launch_hash = digest(&fs::read(&wrapper).unwrap());
         let provision = if receipt["binary_sha256"].as_str() == Some(launch_hash.as_str()) {
-            // A byte-identical direct worker copy keeps canonical provenance.
-            receipt
+            // Decision66076: a copy is another inode/path, so admit that exact
+            // file through the canonical provisioning-only Make seam. It does
+            // --version once and never Hello/Start; old admission cannot move.
+            let workspace=Path::new(env!("CARGO_MANIFEST_DIR")).parent().unwrap().parent().unwrap();
+            let output=Command::new("make").arg("-C").arg(workspace)
+                .arg("admit-dream-c1-file")
+                .arg(format!("DREAM_C1_ADMIT_FILE={}",wrapper.display()))
+                .output().unwrap();
+            assert!(output.status.success(),"copy provisioning failed: {} {}",String::from_utf8_lossy(&output.stdout),String::from_utf8_lossy(&output.stderr));
+            let admitted:Value=serde_json::from_slice(&fs::read(wrapper.with_extension("dream-c1.json")).unwrap()).unwrap();
+            assert_eq!(admitted["binary_sha256"],receipt["binary_sha256"]);
+            assert_eq!(admitted["first_launch_admission"]["image"]["path"],json!(wrapper));
+            assert_eq!(admitted["first_launch_admission"]["image"]["inode"],fs::metadata(&wrapper).unwrap().ino());
+            assert_eq!(admitted["first_launch_admission"]["state"],"admitted");
+            admitted
         } else {
             // Explicit protocol-fault transport only; this role can never
             // authorize positive bootstrap/native-profile completion.

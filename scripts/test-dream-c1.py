@@ -128,7 +128,7 @@ def canonical(value):
                       separators=(",", ":"), allow_nan=False).encode()
 
 
-def strict_json(raw, max_integer=(1 << 53) - 1):
+def strict_json(raw, max_integer=(1 << 53) - 1, min_integer=0):
     def pairs(items):
         result = {}
         for key, value in items:
@@ -139,7 +139,7 @@ def strict_json(raw, max_integer=(1 << 53) - 1):
 
     def integer(text):
         value = int(text)
-        if value < 0 or value > max_integer:
+        if value < min_integer or value > max_integer:
             raise ValueError("unsafe protocol integer")
         return value
 
@@ -675,7 +675,211 @@ def check_build_closure_controls(canonical_receipt=None):
             "accepted": accepted, "refused": refused, "canonical_record_audit": audit}
 
 
-def provision_native_runner(runner, revision, compiler, *, development=False):
+FIRST_LAUNCH_SCHEMA = "bboxy.dream.c1.first-launch/1"
+_FIRST_LAUNCH_OWNER = None
+
+
+def first_launch_image(runner):
+    runner = Path(runner).absolute()
+    state = runner.lstat()
+    if (runner.is_symlink() or not stat.S_ISREG(state.st_mode) or state.st_uid != os.geteuid()
+            or state.st_nlink != 1 or state.st_mode & 0o022 or not state.st_mode & 0o111
+            or runner.resolve(strict=True) != runner or len(str(runner).encode()) > 4096):
+        raise ValueError("first-launch admission requires one exact regular executable")
+    value = _build_closure_file(runner)
+    return {"path": str(runner), "device": int(value["dev"]),
+            "inode": int(value["ino"]), "sha256": value["sha256"],
+            "mtime_ns": value["mtime_ns"], "ctime_ns": value["ctime_ns"]}
+
+
+def admitted_first_launch(value, image):
+    keys = {"schema", "image", "state", "wall_ns", "exit_code", "actual_reap",
+            "stdout_bytes", "stderr_bytes", "stdout_sha256", "stderr_sha256", "pid", "error"}
+    return (isinstance(value, dict) and set(value) == keys
+            and value["schema"] == FIRST_LAUNCH_SCHEMA and value["image"] == image
+            and value["state"] == "admitted" and value["actual_reap"] is True
+            and type(value["exit_code"]) is int and value["exit_code"] == 0
+            and type(value["wall_ns"]) is int and 0 <= value["wall_ns"] <= 2_000_000_000
+            and value["error"] is None
+            and type(value["pid"]) is int and value["pid"] > 0
+            and all(isinstance(value[n], str) and re.fullmatch("[a-f0-9]{64}", value[n])
+                    for n in ("stdout_sha256", "stderr_sha256"))
+            and all(type(value[n]) is int and 0 <= value[n] <= 8192
+                    for n in ("stdout_bytes", "stderr_bytes")))
+
+
+# Adapted from bboxy450-term scripts/test-dream-c1.py::_build_closure_query:
+# https://github.com/bboxy450/bboxy450-term/blob/main/scripts/test-dream-c1.py
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+def first_launch_admission(runner, evidence):
+    """Decision66076: one provisioning exec/file; never a Dream/run retry.
+
+    The exact image claim is durable BEFORE exec. Unknown/failed attempts cannot
+    be replayed. Changed path/inode/hash selects a different claim, never upgrades
+    an old admission. Runtime only verifies the resulting sealed receipt.
+    """
+    global _FIRST_LAUNCH_OWNER
+    if _FIRST_LAUNCH_OWNER is not None:
+        raise ValueError("unknown first-launch owner remains retained; no further admission")
+    image = first_launch_image(runner)
+    directory = runner.parent / ".dream-c1-admissions"
+    directory.mkdir(mode=0o700, exist_ok=True)
+    state = directory.lstat()
+    if (not stat.S_ISDIR(state.st_mode) or stat.S_ISLNK(state.st_mode)
+            or state.st_uid != os.geteuid() or state.st_mode & 0o077):
+        raise ValueError("first-launch admission directory is not private")
+    claim = directory / (hashlib.sha256(canonical(image)).hexdigest() + ".json")
+    try:
+        fd = os.open(claim, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
+    except FileExistsError:
+        with os.fdopen(os.open(claim, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC), "rb") as stream:
+            state = os.fstat(stream.fileno())
+            if (not stat.S_ISREG(state.st_mode) or state.st_uid != os.geteuid()
+                    or state.st_mode & 0o077 or state.st_nlink != 1 or state.st_size > 8192):
+                raise ValueError("invalid first-launch admission claim")
+            raw = stream.read(8193)
+        value = strict_json(raw, min_integer=-(1 << 31))  # Private actual signal exit status.
+        if not admitted_first_launch(value, image):
+            raise ValueError("first-launch attempt is failed/unknown; no retry: " + str(claim))
+        if first_launch_image(runner) != image:
+            raise ValueError("first-launch cached image changed")
+        return value, {"path": str(claim), "sha256": hashlib.sha256(raw).hexdigest(), "reused": True}
+    value = {"schema": FIRST_LAUNCH_SCHEMA, "image": image, "state": "started",
+             "wall_ns": None, "exit_code": None, "actual_reap": False,
+             "stdout_bytes": 0, "stderr_bytes": 0, "stdout_sha256": None,
+             "stderr_sha256": None, "pid": None, "error": None}
+    with os.fdopen(fd, "wb") as stream:
+        stream.write(canonical(value)); stream.flush(); os.fsync(stream.fileno())
+    directory_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
+    process = None
+    output = {"stdout": bytearray(), "stderr": bytearray()}
+    started = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
+    try:
+        # No HOME, profile, identity, capability, provider or Dream arguments.
+        process = subprocess.Popen([str(runner), "--version"], cwd=evidence,
+                                   env={"LANG": "C.UTF-8", "TMPDIR": str(evidence)},
+                                   stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        value["pid"] = process.pid
+        with selectors.DefaultSelector() as selector:
+            for name in output:
+                pipe = getattr(process, name)
+                os.set_blocking(pipe.fileno(), False)
+                selector.register(pipe, selectors.EVENT_READ, name)
+            while selector.get_map():
+                left = 2_000_000_000 - (time.clock_gettime_ns(time.CLOCK_MONOTONIC) - started)
+                if left <= 0:
+                    raise ValueError("first-launch admission exceeded2s")
+                for key, _ in selector.select(left / 1_000_000_000):
+                    chunk = os.read(key.fd, min(4096, 8193 - len(output[key.data])))
+                    if not chunk:
+                        selector.unregister(key.fileobj)
+                    else:
+                        output[key.data].extend(chunk)
+                        if len(output[key.data]) > 8192:
+                            raise ValueError("first-launch admission output exceeded8KiB")
+        left = 2_000_000_000 - (time.clock_gettime_ns(time.CLOCK_MONOTONIC) - started)
+        process.wait(timeout=max(0.001, left / 1_000_000_000))
+        value["wall_ns"] = time.clock_gettime_ns(time.CLOCK_MONOTONIC) - started
+        if (not 0 <= value["wall_ns"] <= 2_000_000_000 or process.returncode != 0
+                or first_launch_image(runner) != image):
+            raise ValueError("first-launch admission exit/time/image refused")
+        value["state"] = "admitted"
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        value["state"] = "failed"
+        value["error"] = "exec_time_output_or_image_refused"
+    finally:
+        if process is not None:
+            if process.poll() is None:
+                process.kill()  # Only this exact owned, recorded --version PID.
+                try:
+                    process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    _FIRST_LAUNCH_OWNER = process
+                    value["state"] = "unknown"
+            value["exit_code"] = process.returncode
+            value["actual_reap"] = process.returncode is not None
+            for name in output:
+                getattr(process, name).close()
+        if value["wall_ns"] is None:
+            value["wall_ns"] = time.clock_gettime_ns(time.CLOCK_MONOTONIC) - started
+        for name, raw in output.items():
+            value[name + "_bytes"] = len(raw)
+            value[name + "_sha256"] = hashlib.sha256(raw).hexdigest()
+        raw = canonical(value)
+        with tempfile.NamedTemporaryFile(prefix=".admission-", dir=directory, delete=False) as stream:
+            temporary = Path(stream.name)
+            try:
+                os.chmod(temporary, 0o600); stream.write(raw); stream.flush(); os.fsync(stream.fileno())
+                os.replace(temporary, claim)
+                directory_fd = os.open(directory, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+                try:
+                    os.fsync(directory_fd)
+                finally:
+                    os.close(directory_fd)
+            finally:
+                temporary.unlink(missing_ok=True)
+        (evidence / "first-launch-admission.json").write_bytes(raw)
+    if not admitted_first_launch(value, image):
+        raise ValueError("first-launch admission failed; no retry: " + str(claim))
+    return value, {"path": str(claim), "sha256": hashlib.sha256(raw).hexdigest(), "reused": False}
+
+
+def check_first_launch_admission_controls():
+    """Private executable/counter fixtures, never an approved Dream candidate."""
+    from unittest import mock
+    with tempfile.TemporaryDirectory(prefix="dream-c1-admission-controls-") as temporary:
+        root = Path(temporary).resolve()
+        def fixture(name, script):
+            path = root / name
+            path.write_text("#!/bin/sh\n" + script)
+            path.chmod(0o700)
+            evidence = root / (name + "-evidence")
+            evidence.mkdir(mode=0o700)
+            return path, evidence
+        worker, evidence = fixture("version", 'printf x >> "$0.count"\nprintf "private fixture version\\n"\n')
+        admitted, first = first_launch_admission(worker, evidence)
+        again, cached = first_launch_admission(worker, evidence)
+        assert admitted == again and first["reused"] is False and cached["reused"] is True
+        assert worker.with_suffix(".count").read_bytes() == b"x"
+        original_image = admitted["image"]
+        worker.rename(root / "retained-old-version")
+        worker.write_text('#!/bin/sh\nprintf x >> "$0.count"\nprintf "private fixture version\\n"\n')
+        worker.chmod(0o700)
+        replacement, record = first_launch_admission(worker, evidence)
+        assert replacement["image"] != original_image and record["reused"] is False
+        assert worker.with_suffix(".count").read_bytes() == b"xx"
+        for name, script in [("nonzero", "exit 7\n"), ("timeout", "exec /bin/sleep 3\n"),
+                             ("oversize", "exec /usr/bin/yes\n")]:
+            path, folder = fixture(name, script)
+            try:
+                first_launch_admission(path, folder)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("failed first launch was admitted: " + name)
+            failed = strict_json((folder / "first-launch-admission.json").read_bytes(), min_integer=-(1 << 31))
+            assert failed["actual_reap"] is True and failed["state"] == "failed"
+            with mock.patch.object(subprocess, "Popen", side_effect=AssertionError("failed admission retried")):
+                try:
+                    first_launch_admission(path, folder)
+                except ValueError:
+                    pass
+                else:
+                    raise AssertionError("failed admission reused: " + name)
+        for field, wrong in [("wall_ns", 2_000_000_001), ("exit_code", 1), ("actual_reap", False),
+                             ("state", "started"), ("image", original_image)]:
+            invalid = dict(replacement, **{field: wrong})
+            assert not admitted_first_launch(invalid, replacement["image"])
+    return {"scope": "private non-Dream provisioning controls; no run or runtime acceptance",
+            "once_per_inode": True, "changed_inode_invalidates": True,
+            "nonzero_timeout_oversize_reaped_and_no_retry": True}
+
+
+def provision_native_runner(runner, revision, compiler, *, development=False, evidence=None):
     """Canonical build-side provenance; the product never runs Git or rustc."""
     compiler_sha = hashlib.sha256(compiler.encode()).hexdigest()
     binary_sha = sha(runner)
@@ -684,17 +888,32 @@ def provision_native_runner(runner, revision, compiler, *, development=False):
     expected = PRIVATE_DEVELOPMENT_BUILD if development else APPROVED_NATIVE_BUILD
     if expected != (revision, compiler_sha, binary_sha):
         raise ValueError("native/debt source/compiler/executable has no reviewed consumer approval")
+    if evidence is None:
+        raise ValueError("first-launch admission requires its owned provisioning evidence")
+    admission, admission_record = first_launch_admission(runner, evidence)
     value = {"schema": "bboxy.dream.c1.provision/1", "role": "worker",
                 "metrics_profile": "c1-native-debt/1", "source_commit": revision,
              "bootstrap_profile": "dream-bootstrap/1",
              "compiler_sha256": compiler_sha, "build_profile": "release",
              "default_features": True, "explicit_features": [],
              "effective_features": ["acp-agent"], "test_fixtures": False,
-             "binary_sha256": binary_sha}
+             "binary_sha256": binary_sha, "first_launch_admission": admission}
     path = runner.with_suffix(".dream-c1.json")
     raw = canonical(value)
     if len(raw) > 8192:
         raise ValueError("native provision receipt exceeded its fixed bound")
+    if path.exists():
+        with os.fdopen(os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC), "rb") as stream:
+            state = os.fstat(stream.fileno())
+            if (not stat.S_ISREG(state.st_mode) or state.st_uid != os.geteuid()
+                    or state.st_nlink != 1 or state.st_mode & 0o077 or state.st_size > 8192):
+                raise ValueError("existing native provision is not bounded/private")
+            previous = stream.read(8193)
+        if previous == raw:
+            # Preserve the receipt inode across a fixture/UI restart. Existing
+            # owned workers retain this exact immutable proof until settlement.
+            return {"path": str(path), "sha256": hashlib.sha256(raw).hexdigest(), **value,
+                    "first_launch_admission_record": admission_record}
     # This is build output beside the exact newly built binary, never a runtime
     # source/result publication. Replace only this canonical build artifact.
     with tempfile.NamedTemporaryFile(prefix=".dream-c1-provision-", dir=runner.parent,
@@ -708,7 +927,8 @@ def provision_native_runner(runner, revision, compiler, *, development=False):
             os.replace(temporary, path)
         finally:
             temporary.unlink(missing_ok=True)
-    return {"path": str(path), "sha256": sha(path), **value}
+    return {"path": str(path), "sha256": sha(path), **value,
+            "first_launch_admission_record": admission_record}
 
 
 def prepare_development(args, evidence):
@@ -745,7 +965,7 @@ def prepare_development(args, evidence):
     os.chmod(worker, 0o700)
     if sha(artifact) != binary_sha or sha(worker) != binary_sha:
         raise ValueError("private worker changed while being prepared")
-    provision = provision_native_runner(worker, revision, compiler, development=True)
+    provision = provision_native_runner(worker, revision, compiler, development=True, evidence=evidence)
     probe = hello(worker, evidence, provision)
     return {"development_only": True, "consumer_verification_complete": False,
             "production_pin_changed": False, "source_commit": revision,
@@ -2011,6 +2231,8 @@ def hello(runner, evidence, native_provision, *, diagnostic_target=None, closure
             or native_provision.get("bootstrap_profile") != "dream-bootstrap/1"
             or native_provision.get("binary_sha256") != sha(runner)):
         raise ValueError("missing pre-birth bootstrap-capable runner proof")
+    if not admitted_first_launch(native_provision.get("first_launch_admission"), first_launch_image(runner)):
+        raise ValueError("provisioned file has no matching first-launch admission")
     if not PROBE_NULL_CONTEXT_APPROVED:
         raise ValueError("startup probe context disposition is not recorded")
     birth, run_id, nonce, operation = (fresh_ulid() for _ in range(4))
@@ -2938,6 +3160,8 @@ def main():
                         help="build the private optimized seat fixture without executing any worker")
     mode.add_argument("--prepare-development", action="store_true")
     mode.add_argument("--check-profile-only", action="store_true")
+    mode.add_argument("--admit-file", type=Path,
+                      help="provision one exact reviewed private copy using --version only; no Hello or Start")
     mode.add_argument("--diagnose-launch", action="store_true",
                       help="decision65882 one-shot instrumented source-free launch; never runtime conformance")
     parser.add_argument("--development-source", type=Path)
@@ -2954,8 +3178,10 @@ def main():
         receipt["native_profile_controls"] = check_native_profile_controls()
         receipt["launch_diagnosis_controls"] = check_launch_diagnosis_controls()
         receipt["bootstrap_entry_controls"] = check_bootstrap_entry_controls()
+        if not args.admit_file:
+            receipt["first_launch_admission_controls"] = check_first_launch_admission_controls()
         if args.check_profile_only:
-            receipt["scope"] = "Private build-closure, numeric profile, launch-diagnosis and entry-record controls only; no artifact execution or runtime conformance"
+            receipt["scope"] = "Private build-closure/profile/entry/admission controls only; no approved worker execution or runtime conformance"
             code = 0
             return code
         if sys.platform != "darwin":
@@ -3021,6 +3247,16 @@ def main():
         if receipt.get("bootstrap_corpus"):
             environment["DREAM_BOOTSTRAP_FIXTURES"] = str(fixtures.parent / "dream-bootstrap")
             environment["DREAM_BOOTSTRAP_VECTORS_SHA256"] = BOOTSTRAP_VECTORS_SHA256
+        if args.admit_file:
+            if not args.admit_file.is_absolute() or conflicting:
+                raise ValueError("private copy admission requires an absolute path and canonical build settings")
+            receipt["native_provision"] = provision_native_runner(
+                args.admit_file, revision, receipt["compiler"], evidence=evidence)
+            receipt["first_launch_admission"] = receipt["native_provision"]["first_launch_admission"]
+            receipt["prepared"] = True
+            receipt["scope"] = "Exact private executable provisioning only; no Dream probe, Start or consumer conformance"
+            code = 0
+            return code
         if args.seat_only:
             run(["cargo", "build", "--locked", "--jobs", "2", "--profile", "dream-c1-fixture",
                  "-p", "bboxy450-harness", "--bin", "bboxy450-harness", "--features", "test-fixtures",
@@ -3061,7 +3297,8 @@ def main():
             receipt["native_profile_supported"] = False
             runner.with_suffix(".dream-c1.json").unlink(missing_ok=True)
         else:
-            receipt["native_provision"] = provision_native_runner(runner, revision, receipt["compiler"])
+            receipt["native_provision"] = provision_native_runner(runner, revision, receipt["compiler"], evidence=evidence)
+            receipt["first_launch_admission"] = receipt["native_provision"]["first_launch_admission"]
             if args.diagnose_launch:
                 receipt["launch_diagnosis"] = hello(
                     runner, evidence, receipt["native_provision"], diagnostic_target=target,

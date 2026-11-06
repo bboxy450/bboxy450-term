@@ -9629,6 +9629,54 @@ pub(crate) mod runner_provision {
     }
     #[derive(Deserialize)]
     #[serde(deny_unknown_fields)]
+    struct AdmissionImage<'a> {
+        #[serde(borrow)]
+        path: &'a str,
+        device: u64,
+        inode: u64,
+        sha256: &'a str,
+        mtime_ns: &'a str,
+        ctime_ns: &'a str,
+    }
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct FirstLaunchAdmission<'a> {
+        #[serde(borrow)]
+        schema: &'a str,
+        #[serde(borrow)]
+        image: AdmissionImage<'a>,
+        state: &'a str,
+        wall_ns: u64,
+        exit_code: i32,
+        actual_reap: bool,
+        stdout_bytes: u64,
+        stderr_bytes: u64,
+        stdout_sha256: &'a str,
+        stderr_sha256: &'a str,
+        pid: u32,
+        error: Option<&'a str>,
+    }
+    impl FirstLaunchAdmission<'_> {
+        fn matches(&self, binary: &Seal, expected: Expected<'_>) -> bool {
+            let hex = |value: &str| value.len()==64 && value.bytes().all(|b|b.is_ascii_digit() || (b'a'..=b'f').contains(&b));
+            let stamp = |seconds:i64,nanos:i64| {
+                if !(0..1_000_000_000).contains(&nanos) {return None;}
+                u64::try_from(seconds).ok().and_then(|v|v.checked_mul(1_000_000_000)).and_then(|v|v.checked_add(nanos as u64))
+            };
+            self.schema=="bboxy.dream.c1.first-launch/1"
+                && self.state=="admitted" && self.actual_reap && self.exit_code==0
+                && self.wall_ns<=2_000_000_000 && self.error.is_none() && self.pid>0
+                && self.stdout_bytes<=8192 && self.stderr_bytes<=8192
+                && hex(self.stdout_sha256) && hex(self.stderr_sha256)
+                && Path::new(self.image.path)==binary.path.as_path()
+                && self.image.device==binary.stamp.dev && self.image.inode==binary.stamp.ino
+                && self.image.sha256==expected.binary
+                && matches!((self.image.mtime_ns.parse::<u64>().ok(),stamp(binary.stamp.mtime,binary.stamp.mtime_ns)),(Some(a),Some(b)) if a==b)
+                && matches!((self.image.ctime_ns.parse::<u64>().ok(),stamp(binary.stamp.ctime,binary.stamp.ctime_ns)),(Some(a),Some(b)) if a==b)
+        }
+    }
+    #[derive(Deserialize)]
+    #[serde(deny_unknown_fields)]
     struct WorkerReceipt<'a> {
         #[serde(borrow)]
         schema: &'a str,
@@ -9645,6 +9693,8 @@ pub(crate) mod runner_provision {
         #[serde(borrow)]
         effective_features: [&'a str; 1],
         test_fixtures: bool,
+        #[serde(borrow)]
+        first_launch_admission: FirstLaunchAdmission<'a>,
     }
     #[derive(Deserialize)]
     #[serde(deny_unknown_fields)]
@@ -9706,6 +9756,7 @@ pub(crate) mod runner_provision {
     fn worker_fields(
         bytes: &[u8],
         expected: Expected<'_>,
+        binary: &Seal,
         budget: &mut Budget<'_>,
     ) -> Result<(), Code> {
         budget.unit(|| {
@@ -9723,6 +9774,7 @@ pub(crate) mod runner_provision {
                 || !value.explicit_features.is_empty()
                 || value.effective_features != ["acp-agent"]
                 || value.test_fixtures
+                || !value.first_launch_admission.matches(binary, expected)
             {
                 return Err(Code::RunnerUnavailable);
             }
@@ -9737,7 +9789,7 @@ pub(crate) mod runner_provision {
         let mut binary = Seal::open(binary, false, budget)?;
         let mut receipt = Seal::open(&binary.path.with_extension("dream-c1.json"), true, budget)?;
         let (bytes, len) = read_receipt(&mut receipt, budget)?;
-        worker_fields(&bytes[..len], expected, budget)?;
+        worker_fields(&bytes[..len], expected, &binary, budget)?;
         if hash_binary(&mut binary, budget)? != expected.binary {
             return Err(Code::RunnerUnavailable);
         }
@@ -9774,7 +9826,7 @@ pub(crate) mod runner_provision {
         })?;
         let worker_sha256 = budget.unit(|| Ok(expected.binary.to_owned()))?;
         if role.role == "worker" {
-            worker_fields(&bytes[..len], expected, &mut budget)?;
+            worker_fields(&bytes[..len], expected, &launch, &mut budget)?;
             if hash_binary(&mut launch, &mut budget)? != expected.binary {
                 return Err(Code::RunnerUnavailable);
             }
@@ -9878,9 +9930,15 @@ pub(crate) mod runner_provision {
             let bytes = b"private validator image, never executed";
             write(&binary, bytes, 0o700);
             let digest = format!("{:x}", Sha256::digest(bytes));
+            let metadata=std::fs::metadata(&binary).unwrap();
+            let admission=json!({"schema":"bboxy.dream.c1.first-launch/1","image":{"path":binary,"device":metadata.dev(),"inode":metadata.ino(),"sha256":digest,
+                "mtime_ns":(metadata.mtime() as u64*1_000_000_000+metadata.mtime_nsec() as u64).to_string(),"ctime_ns":(metadata.ctime() as u64*1_000_000_000+metadata.ctime_nsec() as u64).to_string()},
+                "state":"admitted","wall_ns":1_000_000,"exit_code":0,"actual_reap":true,
+                "stdout_bytes":0,"stderr_bytes":0,"stdout_sha256":format!("{:x}",Sha256::digest([])),
+                "stderr_sha256":format!("{:x}",Sha256::digest([])),"pid":std::process::id(),"error":null});
             let receipt = json!({"schema":SCHEMA,"role":"worker","metrics_profile":PROFILE,"bootstrap_profile":BOOTSTRAP_PROFILE,"source_commit":SOURCE,
                 "compiler_sha256":COMPILER,"binary_sha256":digest,"build_profile":"release","default_features":true,
-                "explicit_features":[],"effective_features":["acp-agent"],"test_fixtures":false});
+                "explicit_features":[],"effective_features":["acp-agent"],"test_fixtures":false,"first_launch_admission":admission});
             (root, binary, digest, receipt)
         }
         fn expected(digest: &str) -> Expected<'_> {
@@ -9904,6 +9962,27 @@ pub(crate) mod runner_provision {
                 verify_approved(Path::new("/unread/unapproved"), true, None),
                 Err(Code::RunnerUnavailable)
             ));
+        }
+        #[test]
+        fn native_provision_first_launch_missing_failed_unknown_and_foreign_inode_refuse() {
+            for field in ["missing","wall_ns","exit_code","actual_reap","state","path","inode","sha256","ctime_ns"] {
+                let (_root,binary,digest,mut value)=fixture();
+                match field {
+                    "missing"=>{value.as_object_mut().unwrap().remove("first_launch_admission");},
+                    "wall_ns"=>value["first_launch_admission"][field]=json!(2_000_000_001u64),
+                    "exit_code"=>value["first_launch_admission"][field]=json!(1),
+                    "actual_reap"=>value["first_launch_admission"][field]=json!(false),
+                    "state"=>value["first_launch_admission"][field]=json!("started"),
+                    "path"=>value["first_launch_admission"]["image"][field]=json!("/foreign/worker"),
+                    "inode"=>value["first_launch_admission"]["image"][field]=json!(0),
+                    "sha256"=>value["first_launch_admission"]["image"][field]=json!("0".repeat(64)),
+                    "ctime_ns"=>value["first_launch_admission"]["image"][field]=json!("0"),
+                    _=>unreachable!(),
+                }
+                receipt(&binary,&value);
+                assert!(matches!(verify_expected(&binary,false,expected(&digest)),Err(Code::RunnerUnavailable)),"{field}");
+                assert_eq!(std::fs::read(binary).unwrap(),b"private validator image, never executed");
+            }
         }
         #[test]
         fn native_provision_missing_bootstrap_profile_refuses_without_candidate_birth() {

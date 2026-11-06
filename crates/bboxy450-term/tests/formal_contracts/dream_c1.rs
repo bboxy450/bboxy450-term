@@ -3346,8 +3346,73 @@ fn preparation_phases(kind: usize, broken: bool) -> Model {
     m
 }
 
+fn first_launch_provisioning(broken: bool) -> Model {
+    // Two replacements cover file/incarnation A1/B2/A3, including restored
+    // bytes with changed inode/change-time. Native OS assessment itself is
+    // opaque; only one durable attempt, measured outcome and exact binding are
+    // modeled. Existing C1 models own source/current actor/pipe/exit semantics.
+    let mut m=model("TermDreamC1FirstLaunchAdmission",broken,&[
+        ("current_image_revision",2,0),("captured_image_revision",2,0),
+        ("admitted_image_revision",3,3),("phase",3,0), // new/inflight/admitted/failed
+        ("attempted",1,0),("started",1,0),("bad_start",1,0),
+        ("wall_class",2,0),("exit_nonzero",1,0),
+    ]);
+    action(&mut m,"BeginVersionAdmission",all([eq(3,0),eq(4,0)]),&[(1,Var(0)),(3,Int(1)),(4,Int(1))]);
+    for (label,wall,exit) in [("Within2s",0,0),("At2s",1,0),("Over2s",2,0),("Nonzero",0,1)] {
+        let successful=all([Var(1).eq(Var(0)),Bool(wall<=1 && exit==0)]);
+        action(&mut m,&format!("FinishAdmission{label}"),eq(3,1),&[
+            (2,Expr::ite(successful.clone(),Var(0),Int(3))),
+            (3,Expr::ite(successful,Int(2),Int(3))),
+            (7,Int(wall)),(8,Int(exit)),
+        ]);
+    }
+    action(&mut m,"UnknownAdmissionOwner",eq(3,1),&[(2,Int(3)),(3,Int(3))]);
+    action(&mut m,"RefuseFailedAdmissionRetry",eq(3,3),&[]);
+    action(&mut m,"ExplicitChangedImageReprovision",all([eq(3,3),Var(0).eq(Var(1)).negate()]),&[(3,Int(0)),(4,Int(0))]);
+    for label in ["ReplacePath","ReplaceInode","ReplaceHash","RestoreBytesWithNewChangeTime"] {
+        action(&mut m,label,Var(0).lt(Int(2)),&[
+            (0,Var(0).plus(Int(1))),
+            (3,Expr::ite(eq(3,1),Int(1),Int(0))),
+            (4,Expr::ite(eq(3,1),Var(4),Int(0))),
+        ]);
+    }
+    let admitted=all([eq(3,2),Var(2).eq(Var(0)),Var(7).le(Int(1)),eq(8,0)]);
+    action(&mut m,"StartOnExactAdmittedImage",all([eq(5,0),if broken {Bool(true)} else {admitted.clone()}]),&[
+        (5,Int(1)),(6,Expr::ite(admitted,Int(0),Int(1))),
+    ]);
+    safe(&mut m,"StartRequiresCurrentCompletedAdmission",eq(6,0));
+    m
+}
+
+#[test]
+fn dream_c1_first_launch_admission_is_bound_and_failure_cannot_start_or_retry() -> Result<(),String> {
+    let m=first_launch_provisioning(false);
+    let r=m.check(100_000)?;
+    assert!(r.violations.is_empty());
+    assert!(step(&m,&r,0,"StartOnExactAdmittedImage").is_none());
+    for outcome in ["Within2s","At2s"] {
+        let admitted=trace(&m,&r,&["BeginVersionAdmission",&format!("FinishAdmission{outcome}")]);
+        assert!(step(&m,&r,admitted,"StartOnExactAdmittedImage").is_some());
+        for replacement in ["ReplacePath","ReplaceInode","ReplaceHash","RestoreBytesWithNewChangeTime"] {
+            let replaced=step(&m,&r,admitted,replacement).unwrap();
+            assert!(step(&m,&r,replaced,"StartOnExactAdmittedImage").is_none());
+        }
+    }
+    for outcome in ["FinishAdmissionOver2s","FinishAdmissionNonzero","UnknownAdmissionOwner"] {
+        let failed=trace(&m,&r,&["BeginVersionAdmission",outcome]);
+        assert!(step(&m,&r,failed,"StartOnExactAdmittedImage").is_none());
+        assert!(step(&m,&r,failed,"BeginVersionAdmission").is_none());
+    }
+    let changed_inflight=trace(&m,&r,&["BeginVersionAdmission","ReplaceInode","FinishAdmissionWithin2s"]);
+    assert!(step(&m,&r,changed_inflight,"StartOnExactAdmittedImage").is_none());
+    let broken=first_launch_provisioning(true).check(100_000)?;
+    assert!(broken.violations.iter().any(|v|v.property=="StartRequiresCurrentCompletedAdmission"));
+    Ok(())
+}
+
 pub(super) fn cases() -> Vec<(Model, &'static str)> {
     let mut cases = Vec::new();
+    cases.extend([(first_launch_provisioning(false),"pass"),(first_launch_provisioning(true),"safety")]);
     for kind in 0..3 {
         cases.extend([
             (catalogue_mode(kind, false), "pass"),

@@ -2675,6 +2675,12 @@ prepare-dream-c1-worker: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	BBOXY_DREAM_BUILD_ENTRY=prepare-dream-c1-worker CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --worker-only
 
+# Decision66076: exact reviewed private copy admission, never a Dream run.
+.PHONY: admit-dream-c1-file
+admit-dream-c1-file: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_DREAM_BUILD_ENTRY=admit-dream-c1-file CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --admit-file '$(DREAM_C1_ADMIT_FILE)'
+
 prepare-dream-c1-seat: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	BBOXY_DREAM_BUILD_ENTRY=prepare-dream-c1-seat CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --seat-only
