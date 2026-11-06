@@ -11,7 +11,7 @@
     reason = "private process fixtures, never a hot owner"
 )]
 use bboxy450_harness_wake_up::dream_bootstrap as bootstrap;
-use bboxy450_harness_wake_up::dream_c1::{self as c1, Worker, wire as w};
+use bboxy450_harness_wake_up::dream_c1::{self as c1, PreparedStart, Worker, wire as w};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
     os::unix::fs::PermissionsExt,
@@ -64,6 +64,57 @@ fn canonical_worker_manifest_result_and_pages_roundtrip_without_second_schema() 
     roundtrip::<w::Manifest>("manifest");
     roundtrip::<w::ResultDescriptor>("result");
     roundtrip::<w::Page>("page");
+}
+
+#[test]
+fn prepared_start_matches_signed_producer_fixture_without_second_golden() {
+    let raw = bytes("valid/start.json");
+    let w::WorkerIn::Start(start) = c1::decode(&raw).unwrap() else {
+        panic!("producer start fixture has the wrong variant")
+    };
+    let prepared = PreparedStart::new(&start).unwrap();
+    assert!(prepared.as_bytes().len() <= 512);
+    assert_eq!(prepared.as_bytes().last(), Some(&b'\n'));
+    assert_eq!(
+        prepared
+            .as_bytes()
+            .iter()
+            .filter(|byte| **byte == b'\n')
+            .count(),
+        1,
+        "the atomic write is exactly one complete JSON line"
+    );
+    let decoded: w::WorkerIn = c1::decode(prepared.as_bytes()).unwrap();
+    assert_eq!(decoded, w::WorkerIn::Start(start));
+    // JSON member order is not a wire constraint. Canonicalizing the prepared
+    // bytes must reproduce the producer's exact signed fixture, not a local golden.
+    assert_eq!(c1::canonical(&decoded).unwrap(), raw);
+}
+
+#[test]
+fn prepared_start_rejects_invalid_bounded_scalars_before_any_process_effect() {
+    let w::WorkerIn::Start(start) = c1::decode(&bytes("valid/start.json")).unwrap() else {
+        unreachable!()
+    };
+    for timeout in [0, 30_001] {
+        let mut bad = start.clone();
+        bad.timeout_ms = timeout;
+        assert!(PreparedStart::new(&bad).is_err());
+    }
+    for hash in ["a".repeat(63), "A".repeat(64), "g".repeat(64)] {
+        let mut bad = start.clone();
+        bad.manifest_sha256 = w::Hex(hash);
+        assert!(PreparedStart::new(&bad).is_err());
+    }
+    let mut bad = start.clone();
+    bad.activity_revision = w::Number(w::MAX_SAFE + 1);
+    assert!(PreparedStart::new(&bad).is_err());
+    let mut bad = start.clone();
+    bad.run_id = w::Ulid("not-a-canonical-ulid".to_owned());
+    assert!(PreparedStart::new(&bad).is_err());
+    let mut bad = start;
+    bad.nonce = w::Ulid("Z".repeat(26));
+    assert!(PreparedStart::new(&bad).is_err());
 }
 
 #[test]
@@ -349,11 +400,15 @@ print(json.dumps(dict(base, type='done', seq=2, outcome='completed', result_sha2
         std::fs::read_to_string(script.job.join("isolated")).unwrap(),
         "verified"
     );
-    let start: w::WorkerIn = c1::decode(&bytes("valid/start.json")).unwrap();
-    assert!(worker.send(&start).unwrap());
-    let w::WorkerIn::Start(start) = start else {
+    let w::WorkerIn::Start(start) = c1::decode(&bytes("valid/start.json")).unwrap() else {
         unreachable!()
     };
+    let prepared = ordinary(|| PreparedStart::new(&start).unwrap());
+    worker.send_prepared_start(&prepared).unwrap();
+    let observed = worker.start_write_observation();
+    assert!(observed.attempted);
+    assert_eq!(observed.bytes, prepared.as_bytes().len());
+    assert_eq!(observed.errno, 0);
     let w::WorkerOut::Progress(progress) = next(&mut worker).unwrap() else {
         panic!("missing progress")
     };
@@ -368,6 +423,62 @@ print(json.dumps(dict(base, type='done', seq=2, outcome='completed', result_sha2
     assert_eq!(done.nonce, start.nonce);
     assert!(reaped(&mut worker).success());
     assert_reaped(pid);
+}
+
+#[test]
+fn actual_private_prepared_start_is_one_write_and_duplicate_closes_without_replay() {
+    // Protocol-fault process fixture only. The producer corpus supplies the
+    // actual Start/Hello shapes; this echo process is not runtime conformance.
+    let script = Script::new(
+        "print(HELLO, flush=True)\nraw=sys.stdin.buffer.read()\npathlib.Path(sys.argv[4]).joinpath('captured-input').write_bytes(raw)\n",
+    );
+    let mut worker = script.spawn();
+    let pid = worker.pid();
+    worker.hello().unwrap();
+    let w::WorkerIn::Start(start) = c1::decode(&bytes("valid/start.json")).unwrap() else {
+        unreachable!()
+    };
+    let prepared = ordinary(|| PreparedStart::new(&start).unwrap());
+    worker.send_prepared_start(&prepared).unwrap();
+    let first = worker.start_write_observation();
+    assert!(first.attempted);
+    assert_eq!(first.bytes, prepared.as_bytes().len());
+    assert_eq!(first.errno, 0);
+    assert_eq!(
+        worker.send_prepared_start(&prepared),
+        Err(w::Code::ProtocolError)
+    );
+    assert_eq!(worker.start_write_observation(), first);
+    assert_eq!(worker.flush(), Err(w::Code::WorkerLost));
+    assert!(
+        worker
+            .send(&w::WorkerIn::Activity(w::Activity {
+                protocol: w::Protocol::V1,
+                run_id: start.run_id.clone(),
+                nonce: start.nonce.clone(),
+                revision: w::Number(start.activity_revision.0 + 1),
+                foreground: true,
+            }))
+            .is_err()
+    );
+    assert!(
+        worker
+            .send(&w::WorkerIn::Cancel(w::WorkerCancel {
+                protocol: w::Protocol::V1,
+                run_id: start.run_id,
+                nonce: start.nonce,
+            }))
+            .is_err()
+    );
+    worker.bootstrap_revoke();
+    worker.close_input();
+    assert!(reaped(&mut worker).success());
+    assert_reaped(pid);
+    assert_eq!(
+        std::fs::read(script.job.join("captured-input")).unwrap(),
+        prepared.as_bytes(),
+        "the private process received the original Start exactly once"
+    );
 }
 
 #[test]

@@ -71,8 +71,12 @@ help:
 	  'make stories-toolkit            Headless native rich widget PNG captures' \
 	  'make test-formal                Native Yarn checker + Java TLC graph/verdict parity' \
 	  'make prepare-dream-c1           Build/probe pinned production worker and separate optimized private seat' \
+	  'make prepare-dream-c1-worker    Prepare the ordinary sibling with canonical Make/cache build settings' \
+	  'make prepare-dream-c1-seat      Build private optimized seat only; execute no worker' \
+	  'make diagnose-dream-c1-launch   One decision65882 instrumented source-free launch; diagnostic only' \
 	  'make prepare-dream-c1-development DREAM_C1_DEVELOPMENT_SOURCE=path DREAM_C1_DEVELOPMENT_WORKER=path  Private signed-worker bootstrap check' \
 	  'make test-dream-c1              Pinned C1 wire, actual sibling Hello, own-seat MCP/ctl and private native routing' \
+	  'make test-dream-c1-profile      Private numeric native/debt receipt controls (no worker execution)' \
 	  'make check-formal-evidence      Verify the source-bound formal landing receipt' \
 	  'make prune-formal-evidence      Archive cold receipts (KEEP=10 DRY_RUN=1)' \
 	  'make test-formal-contracts      Project contracts and real API witnesses (native)' \
@@ -655,7 +659,7 @@ diagnose-fifty-seat-pty: build-fifty-seat-probe
 bundle-files: check-licenses compile
 	@set -eu; test "$$(uname -s)" = Darwin || { echo 'macOS is required' >&2; exit 2; }; \
 	case '$(BUNDLE)' in *.app) ;; *) echo 'BUNDLE must end in .app' >&2; exit 2 ;; esac; \
-	. ./scripts/cache-env.sh; CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --worker-only; \
+	. ./scripts/cache-env.sh; BBOXY_DREAM_BUILD_ENTRY=bundle-files CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --worker-only; \
 	mkdir -p '$(BUNDLE)/Contents/MacOS' '$(BUNDLE)/Contents/Resources'; \
 	cp packaging/macos/Info.plist '$(BUNDLE)/Contents/Info.plist'; \
 	cp '$(TARGET_DIR)/$(PROFILE)/$(APP)' '$(BUNDLE)/Contents/MacOS/$(APP)'; \
@@ -2652,15 +2656,32 @@ test-python-execute-native: init-submodules
 # C1 consumer join uses only the deliberately pinned embedded corpus by default.
 # DREAM_C1_FIXTURES may name the approved producer worktree for development;
 # its receipt is explicitly not a final pinned-source join.
-.PHONY: test-dream-c1 prepare-dream-c1 prepare-dream-c1-development
+.PHONY: test-dream-c1 test-dream-c1-profile prepare-dream-c1 prepare-dream-c1-worker prepare-dream-c1-seat prepare-dream-c1-development diagnose-dream-c1-launch
+test-dream-c1-profile:
+	@python3 -I scripts/test-dream-c1.py --check-profile-only
+
+# Decision65882 permits ONE launch. Its fixed O_EXCL claim is never retired;
+# diagnostics cannot establish ordinary readiness or final runtime conformance.
+diagnose-dream-c1-launch: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_DREAM_BUILD_ENTRY=diagnose-dream-c1-launch CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --diagnose-launch
+
+prepare-dream-c1-worker: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_DREAM_BUILD_ENTRY=prepare-dream-c1-worker CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --worker-only
+
+prepare-dream-c1-seat: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_DREAM_BUILD_ENTRY=prepare-dream-c1-seat CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --seat-only
+
 prepare-dream-c1-development:
 	@python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --prepare-development --development-source '$(DREAM_C1_DEVELOPMENT_SOURCE)' --development-worker '$(DREAM_C1_DEVELOPMENT_WORKER)'
 
 prepare-dream-c1: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
-	CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --prepare-only
+	BBOXY_DREAM_BUILD_ENTRY=prepare-dream-c1 CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --prepare-only
 
 test-dream-c1: init-submodules
 	@python3 -I scripts/test-landing.py CargoProfileForwardingTests IgnoredIntegrationTests
 	@set -eu; . ./scripts/cache-env.sh; \
-	CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))'
+	BBOXY_DREAM_BUILD_ENTRY=test-dream-c1 CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))'

@@ -37,6 +37,7 @@ impl Fixture {
             .tempdir_in("/tmp")
             .unwrap();
         let root = directory.path().canonicalize().unwrap();
+        fs::set_permissions(&root, fs::Permissions::from_mode(0o700)).unwrap();
         for name in [
             "home",
             "repository",
@@ -1036,6 +1037,37 @@ fn summary(mut times: Vec<f64>) -> Value {
         "C1 round-trip maximum={maximum} ms exceeds250ms"
     );
     json!({"samples":times.len(),"p99_ms":p99,"max_ms":maximum})
+}
+
+// The producer's raw compute maximum includes the two specifically admitted
+// native classes. Its signed, disaggregated profile must qualify that value;
+// ordinary application, control and cleanup retain the unchanged1ms bound.
+fn assert_validated_producer_compute(metrics: &Value) {
+    assert_eq!(metrics["native_metrics_authorized"], true);
+    assert_eq!(metrics["producer_native_profile_verified"], true);
+    assert_eq!(metrics["producer_cost_known"], 1);
+    assert_eq!(metrics["producer_terminal_remaining_debt_ns"], 0);
+    for key in [
+        "producer_terminal_app_max_cpu_ns",
+        "producer_terminal_control_max_cpu_ns",
+        "producer_max_cleanup_unit_cpu_ns",
+    ] {
+        assert!(
+            metrics[key].as_u64().unwrap() <= 1_000_000,
+            "{key}: {metrics}"
+        );
+    }
+    let captured = metrics["producer_terminal_captured_max_cpu_ns"]
+        .as_u64()
+        .unwrap();
+    let raw = metrics["producer_max_unit_cpu_ns"].as_u64().unwrap();
+    let inclusive = metrics["producer_terminal_inclusive_max_cpu_ns"]
+        .as_u64()
+        .unwrap();
+    assert!(
+        captured <= raw && raw <= inclusive && inclusive <= 3_000_000,
+        "{metrics}"
+    );
 }
 fn write_evidence(name: &str, value: &Value) {
     use std::io::Write;
@@ -2409,7 +2441,7 @@ fn dream_c1_production_cpu_and_progress_keep_actual_controls_responsive() {
     assert!(metrics["producer_compute_cpu_ns"].as_u64().unwrap() > 0);
     assert!(metrics["producer_envelopes"].as_u64().unwrap() > 0);
     assert!(metrics["max_unit_cpu_ns"].as_u64().unwrap() <= 1_000_000);
-    assert!(metrics["producer_max_unit_cpu_ns"].as_u64().unwrap() <= 1_000_000);
+    assert_validated_producer_compute(&metrics);
     assert_eq!(metrics["unit_overruns"], 0);
     assert_eq!(metrics["producer_overruns"], 0);
     assert_eq!(metrics["rest_skips"], 0);
@@ -2700,7 +2732,7 @@ fn dream_c1_real_multimib_store_blob_completes_and_retains_exact_private_input()
     assert_eq!(metrics["rest_skips"], 0);
     assert_eq!(metrics["rest_violations"], 0);
     assert!(metrics["max_unit_cpu_ns"].as_u64().unwrap() <= 1_000_000);
-    assert!(metrics["producer_max_unit_cpu_ns"].as_u64().unwrap() <= 1_000_000);
+    assert_validated_producer_compute(&metrics);
     assert_eq!(metrics["producer_overruns"], 0);
     // Keep this exact producer-owned workload outside Git for source-local
     // isolated allocation/RSS/thread-CPU verification. The normal Drop still

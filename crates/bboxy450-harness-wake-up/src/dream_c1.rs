@@ -493,6 +493,7 @@ use crate::dream_bootstrap::{self as bootstrap, Gate};
 #[cfg(target_os = "linux")]
 use std::os::unix::fs::OpenOptionsExt;
 use std::{
+    cell::Cell,
     fs::File,
     io::{Read, Write},
     os::{
@@ -1616,6 +1617,103 @@ fn nonblocking(fd: &impl AsRawFd) -> Result<(), Code> {
 
 /// Requested codec backing preallocated before child spawn; separate from native overhead.
 pub const PROTECTED_BYTES: usize = 2 * 1024 * 1024;
+/// Fixed Start frame and its write observation share the existing control reserve.
+pub const START_CONTROL_BYTES: usize = 640;
+/// A Start is below POSIX's minimum atomic pipe-write size. Encoding and scalar
+/// validation happen during ordinary work, before the final paid handoff.
+pub struct PreparedStart {
+    bytes: [u8; 512],
+    len: usize,
+    run_id: [u8; 16],
+    nonce: [u8; 16],
+}
+impl PreparedStart {
+    pub fn new(start: &wire::Start) -> Result<Self, Code> {
+        Self::from_parts(
+            &start.run_id.0,
+            &start.nonce.0,
+            &start.manifest_sha256.0,
+            start.timeout_ms,
+            start.activity_revision.0,
+            start.foreground,
+        )
+    }
+    /// Borrow the retained original scalar fields; preparing a fixed frame
+    /// needs no intermediate owned Start or String clones.
+    pub fn from_parts(
+        run: &str,
+        nonce: &str,
+        manifest: &str,
+        timeout_ms: u32,
+        activity_revision: u64,
+        foreground: bool,
+    ) -> Result<Self, Code> {
+        let run_id = bootstrap::ulid(run.as_bytes()).map_err(|_| Code::ProtocolError)?;
+        let nonce_id = bootstrap::ulid(nonce.as_bytes()).map_err(|_| Code::ProtocolError)?;
+        if manifest.len() != 64
+            || !manifest
+                .bytes()
+                .all(|v| v.is_ascii_digit() || (b'a'..=b'f').contains(&v))
+            || timeout_ms == 0
+            || timeout_ms > 30_000
+            || activity_revision > wire::MAX_SAFE
+        {
+            return Err(Code::ResourceLimit);
+        }
+        #[derive(serde::Serialize)]
+        struct Envelope<'a> {
+            #[serde(rename = "type")]
+            kind: &'static str,
+            protocol: wire::Protocol,
+            run_id: &'a str,
+            nonce: &'a str,
+            manifest_sha256: &'a str,
+            timeout_ms: u32,
+            activity_revision: u64,
+            foreground: bool,
+        }
+        let mut bytes = [0; 512];
+        let len = {
+            let mut cursor = std::io::Cursor::new(&mut bytes[..511]);
+            serde_json::to_writer(
+                &mut cursor,
+                &Envelope {
+                    kind: "start",
+                    protocol: wire::Protocol::V1,
+                    run_id: run,
+                    nonce,
+                    manifest_sha256: manifest,
+                    timeout_ms,
+                    activity_revision,
+                    foreground,
+                },
+            )
+            .map_err(|_| Code::ResourceLimit)?;
+            cursor.position() as usize
+        };
+        preflight_json(&bytes[..len], JsonShape::WorkerIn)?;
+        bytes[len] = b'\n';
+        Ok(Self {
+            bytes,
+            len: len + 1,
+            run_id,
+            nonce: nonce_id,
+        })
+    }
+    pub fn as_bytes(&self) -> &[u8] {
+        &self.bytes[..self.len]
+    }
+}
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct StartWriteObservation {
+    pub attempted: bool,
+    pub bytes: usize,
+    pub errno: i32,
+}
+const _: () = assert!(
+    std::mem::size_of::<PreparedStart>() + std::mem::size_of::<StartWriteObservation>()
+        <= START_CONTROL_BYTES
+);
 /// Fallibly allocated codec backing, owned independently of native spawn.
 pub struct PreparedBuffers {
     pending: Vec<u8>,
@@ -1632,6 +1730,7 @@ pub struct PipePair {
 pub struct PreparedCommand {
     command: Option<Command>,
     input: File,
+    input_nonblocking: Cell<bool>,
     output: File,
     stderr: File,
     buffers: PreparedBuffers,
@@ -1644,7 +1743,9 @@ impl PreparedCommand {
         parse_bootstrap_markers(&self.buffers.stderr_capture)
     }
     pub fn configure_input(&self) -> Result<(), Code> {
-        nonblocking(&self.input)
+        nonblocking(&self.input)?;
+        self.input_nonblocking.set(true);
+        Ok(())
     }
     pub fn configure_output(&self) -> Result<(), Code> {
         nonblocking(&self.output)
@@ -1662,6 +1763,7 @@ impl PreparedCommand {
         let PreparedCommand {
             command,
             input,
+            input_nonblocking,
             output,
             stderr,
             buffers,
@@ -1678,11 +1780,13 @@ impl PreparedCommand {
             Worker {
                 child,
                 input: Some(input),
+                input_nonblocking,
                 output,
                 stderr,
                 pending,
                 write,
                 written: 0,
+                start_write: StartWriteObservation::default(),
                 stderr_bytes,
                 stderr_capture,
                 frame_scratch,
@@ -1715,11 +1819,13 @@ fn validate_runner(binary: &Path, job: &Path) -> Result<(), Code> {
 pub struct Worker {
     child: Child,
     input: Option<File>,
+    input_nonblocking: Cell<bool>,
     output: File,
     stderr: File,
     pending: Vec<u8>,
     write: Vec<u8>,
     written: usize,
+    start_write: StartWriteObservation,
     stderr_bytes: usize,
     stderr_capture: Vec<u8>,
     /// Preprovisioned protected codec scratch, reused for every frame without growth.
@@ -1742,7 +1848,8 @@ impl Worker {
                 PROTECTED_BYTES
                     - 2 * wire::MAX_FRAME
                     - 16 * 1024
-                    - bootstrap::BOOTSTRAP_CONTROL_BYTES,
+                    - bootstrap::BOOTSTRAP_CONTROL_BYTES
+                    - START_CONTROL_BYTES,
             )?,
         })
     }
@@ -1802,6 +1909,7 @@ impl Worker {
         Ok(PreparedCommand {
             command: Some(command),
             input: input.write,
+            input_nonblocking: Cell::new(false),
             output: output.read,
             stderr: stderr.read,
             buffers,
@@ -1823,7 +1931,9 @@ impl Worker {
     }
 
     pub fn configure_input(&self) -> Result<(), Code> {
-        nonblocking(self.input.as_ref().ok_or(Code::RunnerUnavailable)?)
+        nonblocking(self.input.as_ref().ok_or(Code::RunnerUnavailable)?)?;
+        self.input_nonblocking.set(true);
+        Ok(())
     }
     pub fn configure_output(&self) -> Result<(), Code> {
         nonblocking(&self.output)
@@ -1842,6 +1952,7 @@ impl Worker {
             + self.stderr_capture.capacity()
             + self.frame_scratch.capacity()
             + bootstrap::BOOTSTRAP_CONTROL_BYTES
+            + START_CONTROL_BYTES
     }
     pub fn bootstrap_identity(&self) -> (u32, u64, u64) {
         self.bootstrap.identity()
@@ -1933,15 +2044,8 @@ impl Worker {
     /// At most one pending frame; callers coalesce Activity before numbering.
     pub fn send(&mut self, frame: &WorkerIn) -> Result<bool, Code> {
         if let WorkerIn::Start(start) = frame {
-            let frozen = self.bootstrap.frozen();
-            if !self.bootstrap.observation().qualified_hello
-                || frozen.probe
-                || bootstrap::ulid(start.run_id.0.as_bytes()).ok() != Some(frozen.run_id)
-                || bootstrap::ulid(start.nonce.0.as_bytes()).ok() != Some(frozen.nonce)
-            {
-                self.close_input();
-                return Err(Code::ProtocolError);
-            }
+            let prepared = PreparedStart::new(start)?;
+            return self.send_prepared_start(&prepared).map(|()| true);
         }
         if !self.flush()? {
             return Ok(false);
@@ -1952,14 +2056,6 @@ impl Worker {
             WorkerIn::Cancel(v) => (&v.run_id, &v.nonce),
         };
         if run.0.len() != 26 || nonce.0.len() != 26 {
-            return Err(Code::ResourceLimit);
-        }
-        if let WorkerIn::Start(v) = frame
-            && (v.manifest_sha256.0.len() != 64
-                || v.timeout_ms == 0
-                || v.timeout_ms > 30_000
-                || v.activity_revision.0 > wire::MAX_SAFE)
-        {
             return Err(Code::ResourceLimit);
         }
         if let WorkerIn::Activity(v) = frame
@@ -1978,6 +2074,49 @@ impl Worker {
         }
         self.written = 0;
         self.flush()
+    }
+
+    /// Final Start admission performs no encoding, parsing, allocation or queued
+    /// retry. A <=512B nonblocking pipe write is atomic; every refusal retires
+    /// stdin so a later Cancel/Activity flush cannot complete a rejected Start.
+    pub fn send_prepared_start(&mut self, frame: &PreparedStart) -> Result<(), Code> {
+        let frozen = self.bootstrap.frozen();
+        if !self.input_nonblocking.get()
+            || self.start_write.attempted
+            || !self.bootstrap.observation().qualified_hello
+            || frozen.probe
+            || frame.run_id != frozen.run_id
+            || frame.nonce != frozen.nonce
+            || !self.write.is_empty()
+            || self.written != 0
+        {
+            self.close_input();
+            return Err(Code::ProtocolError);
+        }
+        let Some(input) = self.input.as_ref() else {
+            return Err(Code::WorkerLost);
+        };
+        self.start_write.attempted = true;
+        // SAFETY: the fixed prepared bytes and this owned nonblocking pipe
+        // remain live through one syscall. Capture errno before other effects.
+        let written =
+            unsafe { libc::write(input.as_raw_fd(), frame.bytes.as_ptr().cast(), frame.len) };
+        let errno = if written < 0 {
+            std::io::Error::last_os_error().raw_os_error().unwrap_or(0)
+        } else {
+            0
+        };
+        self.start_write.bytes = if written > 0 { written as usize } else { 0 };
+        self.start_write.errno = errno;
+        if written != frame.len as isize {
+            self.close_input();
+            return Err(Code::WorkerLost);
+        }
+        Ok(())
+    }
+
+    pub fn start_write_observation(&self) -> StartWriteObservation {
+        self.start_write
     }
 
     pub fn flush(&mut self) -> Result<bool, Code> {
@@ -2347,7 +2486,8 @@ mod diagnostic_tests {
                 + buffers.pending.capacity()
                 + buffers.write.capacity()
                 + buffers.stderr_capture.capacity()
-                + bootstrap::BOOTSTRAP_CONTROL_BYTES,
+                + bootstrap::BOOTSTRAP_CONTROL_BYTES
+                + START_CONTROL_BYTES,
             PROTECTED_BYTES
         );
         assert!(buffers.frame_scratch.capacity() >= wire::MAX_FRAME);
@@ -2433,5 +2573,231 @@ mod diagnostic_tests {
             Err(Code::RunnerUnavailable)
         ));
         assert!(!root.path().join("born").exists());
+    }
+}
+
+/// Deliberately filled stdin is a private transport fault, not evidence that a
+/// fresh canonical worker's first Start can encounter backpressure. This module
+/// has private pipe access so production needs no descriptor bypass/test hook.
+// Origin: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+#[cfg(test)]
+mod start_write_tests {
+    use super::*;
+    use std::{
+        ffi::CString,
+        fs::OpenOptions,
+        os::unix::fs::{OpenOptionsExt, PermissionsExt},
+    };
+
+    struct HeldInput {
+        root: tempfile::TempDir,
+        release: File,
+        worker: Worker,
+        start: wire::Start,
+    }
+
+    impl HeldInput {
+        fn new() -> Self {
+            let root = tempfile::tempdir().unwrap();
+            let job = root.path().canonicalize().unwrap();
+            std::fs::create_dir(job.join("tmp")).unwrap();
+            let gate_path = job.join("drain-input.fifo");
+            let gate_c = CString::new(gate_path.as_os_str().as_encoded_bytes()).unwrap();
+            // SAFETY: creates one new FIFO only in this fixture's owned directory.
+            assert_eq!(unsafe { libc::mkfifo(gate_c.as_ptr(), 0o600) }, 0);
+            let release = OpenOptions::new()
+                .read(true)
+                .write(true)
+                .custom_flags(libc::O_CLOEXEC | libc::O_NOFOLLOW | libc::O_NONBLOCK)
+                .open(&gate_path)
+                .unwrap();
+            let start = wire::Start {
+                protocol: wire::Protocol::V1,
+                run_id: wire::Ulid(ulid::Ulid::new().to_string()),
+                nonce: wire::Ulid(ulid::Ulid::new().to_string()),
+                manifest_sha256: wire::Hex("0".repeat(64)),
+                timeout_ms: 30_000,
+                activity_revision: wire::Number(1),
+                foreground: false,
+            };
+            // The shape is generated from the local mirror ONLY to admit this
+            // protocol-fault echo process. No second fixture/conformance authority.
+            let hello = canonical(&wire::WorkerOut::Hello(wire::Hello {
+                protocol: wire::Protocol::V1,
+                algorithm: wire::Algorithm::D0C1,
+                schema_sha256: wire::Hex(SCHEMA_SHA256.to_owned()),
+                ir_major: 1,
+                ir_minor_max: 3,
+            }))
+            .unwrap();
+            let hello = String::from_utf8(hello).unwrap();
+            let script = job.join("held-input.py");
+            std::fs::write(
+                &script,
+                format!(
+                    "#!/usr/bin/python3\nimport os,pathlib,sys\nfd=int(os.environ['BBOXY_DREAM_BOOTSTRAP'].split(':')[1])\nassert len(os.read(fd,128))==128\nos.close(fd)\nprint({hello:?},flush=True)\njob=pathlib.Path(sys.argv[4])\nfd=os.open(str(job/'drain-input.fifo'),os.O_RDONLY)\nassert os.read(fd,1)==b'x'\nos.close(fd)\nraw=sys.stdin.buffer.read()\n(job/'captured-input').write_bytes(raw)\n"
+                ),
+            )
+            .unwrap();
+            std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o700)).unwrap();
+            let gate = Gate::prepare(bootstrap::Frozen::inspect(
+                false,
+                ulid::Ulid::new().to_bytes(),
+                bootstrap::ulid(start.run_id.0.as_bytes()).unwrap(),
+                bootstrap::ulid(start.nonce.0.as_bytes()).unwrap(),
+                [0; 32],
+                1,
+            ))
+            .unwrap();
+            let mut prepared = Worker::prepare_command(
+                &script,
+                &job,
+                Worker::prepare_buffers().unwrap(),
+                Worker::prepare_pipe().unwrap(),
+                Worker::prepare_pipe().unwrap(),
+                Worker::prepare_pipe().unwrap(),
+                gate,
+            )
+            .unwrap();
+            prepared.configure_input().unwrap();
+            prepared.configure_output().unwrap();
+            prepared.configure_stderr().unwrap();
+            let mut command = prepared.take_command().unwrap();
+            let child = command.spawn().unwrap();
+            let returned = Instant::now();
+            let (mut worker, unused) = prepared.attach_child(child);
+            // Retire every parent's duplicate child endpoint before EOF can be
+            // observed; Worker alone retains the exact Child and stdin writer.
+            drop(command);
+            drop(unused);
+            worker
+                .bootstrap_spawn_returned(returned, returned + Duration::from_secs(30))
+                .unwrap();
+            worker.bootstrap_grant().unwrap();
+            worker.hello().unwrap();
+            Self {
+                root,
+                release,
+                worker,
+                start,
+            }
+        }
+
+        fn fill_owned_pipe(&mut self) -> usize {
+            // A bounded raw fault setup, not Worker::send: leave its queued
+            // output empty so the next refusal records the actual Start syscall.
+            const CHUNK: [u8; 512] = [b'x'; 512];
+            const MAX_FILL: usize = 1024 * 1024;
+            let input = self.worker.input.as_ref().unwrap();
+            let mut filled = 0;
+            for _ in 0..=MAX_FILL / CHUNK.len() {
+                // SAFETY: writes only to this live fixture-owned nonblocking pipe.
+                let n =
+                    unsafe { libc::write(input.as_raw_fd(), CHUNK.as_ptr().cast(), CHUNK.len()) };
+                if n < 0 {
+                    assert_eq!(
+                        std::io::Error::last_os_error().raw_os_error(),
+                        Some(libc::EAGAIN),
+                        "fault setup must reach real pipe backpressure"
+                    );
+                    assert!(filled > 0 && filled <= MAX_FILL);
+                    return filled;
+                }
+                assert_eq!(n as usize, CHUNK.len(), "fixed atomic fill write");
+                filled += n as usize;
+            }
+            panic!("owned pipe did not fill inside the fixed fault-setup bound");
+        }
+
+        fn release_and_reap(&mut self) {
+            self.release.write_all(b"x").unwrap();
+            let until = Instant::now() + Duration::from_secs(2);
+            loop {
+                assert!(self.worker.receive().unwrap().is_none());
+                if let Some(status) = self.worker.try_wait().unwrap()
+                    && self.worker.is_eof()
+                {
+                    assert!(status.success(), "private echo child failed: {status}");
+                    break;
+                }
+                assert!(
+                    Instant::now() < until,
+                    "exact child did not reap and drain EOF"
+                );
+                self.worker.wait_io(Duration::from_millis(2));
+            }
+            let mut status = 0;
+            // SAFETY: queries only the exact child already reaped by this Worker.
+            assert_eq!(
+                unsafe { libc::waitpid(self.worker.pid() as i32, &mut status, libc::WNOHANG) },
+                -1
+            );
+            assert_eq!(
+                std::io::Error::last_os_error().raw_os_error(),
+                Some(libc::ECHILD)
+            );
+        }
+    }
+
+    #[test]
+    fn prepared_start_raw_eagain_closes_input_and_cannot_flush_after_cancel_or_foreground() {
+        let mut fixture = HeldInput::new();
+        let prepared = PreparedStart::new(&fixture.start).unwrap();
+        let filled = fixture.fill_owned_pipe();
+        assert!(fixture.worker.write.is_empty());
+        assert_eq!(fixture.worker.written, 0);
+        assert_eq!(
+            fixture.worker.send_prepared_start(&prepared),
+            Err(Code::WorkerLost)
+        );
+        let refusal = fixture.worker.start_write_observation();
+        assert!(refusal.attempted);
+        assert_eq!(refusal.bytes, 0);
+        assert_eq!(refusal.errno, libc::EAGAIN);
+        assert!(fixture.worker.input.is_none());
+        assert!(fixture.worker.write.is_empty());
+        assert_eq!(fixture.worker.written, 0);
+        // Exercise precisely the later leaf operations formerly able to flush
+        // a queued Start. They cannot reopen its closed writer or repeat it.
+        assert_eq!(fixture.worker.flush(), Err(Code::WorkerLost));
+        assert!(
+            fixture
+                .worker
+                .send(&WorkerIn::Activity(wire::Activity {
+                    protocol: wire::Protocol::V1,
+                    run_id: fixture.start.run_id.clone(),
+                    nonce: fixture.start.nonce.clone(),
+                    revision: wire::Number(2),
+                    foreground: true,
+                }))
+                .is_err()
+        );
+        assert!(
+            fixture
+                .worker
+                .send(&WorkerIn::Cancel(wire::WorkerCancel {
+                    protocol: wire::Protocol::V1,
+                    run_id: fixture.start.run_id.clone(),
+                    nonce: fixture.start.nonce.clone(),
+                }))
+                .is_err()
+        );
+        fixture.worker.bootstrap_revoke();
+        fixture.worker.close_input();
+        assert_eq!(
+            fixture.worker.send_prepared_start(&prepared),
+            Err(Code::ProtocolError)
+        );
+        assert_eq!(fixture.worker.start_write_observation(), refusal);
+        assert!(fixture.worker.try_wait().unwrap().is_none());
+        fixture.release_and_reap();
+        let received = std::fs::read(fixture.root.path().join("captured-input")).unwrap();
+        assert_eq!(received.len(), filled);
+        assert!(received.iter().all(|byte| *byte == b'x'));
+        assert!(
+            !received.contains(&b'\n'),
+            "no Start/Cancel/Activity line crossed"
+        );
     }
 }
