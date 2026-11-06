@@ -252,15 +252,26 @@ impl Plugin for GitKb {
         .signed_writer()
         .fixture_bootstrap()
         .tool(
+            "task_conventions",
+            "Read the selected repository's numbered task naming policy from .kb/config.toml through GitKB. Call after knowledge_orient and before creating tasks. Returns only public slug_authority configuration, plus #N lookup and allocator guidance; takes no arguments and does not create, commit or sync anything.",
+            json!({"type": "object", "additionalProperties": false, "properties": {}}),
+            json!({"type": "object", "required": ["source", "slug_authority_toml", "references", "creation"],
+                "properties": {"source": {"type": "object"},
+                    "slug_authority_toml": {"type": ["string", "null"]},
+                    "references": {"type": "object"}, "creation": {"type": "object"}}}),
+            RoleClass::Worker,
+        )
+        .tool(
             "create_next",
             "Create the next numbered GitKB task in a family (git-kb create task --next). \
-             Takes a family slug prefix such as tasks/harmony and a title. Returns the CLI's \
+             First read task_conventions for the repository's configured family. \
+             Takes that family slug prefix and a title. Returns the CLI's \
              slug, authority and sync_required unchanged, and ref: id is the bboxy ULID, \
              external_id the GitKB UUID, slug the path without .md.",
             json!({"type": "object", "additionalProperties": false, "required": ["family", "title"],
                 "properties": {
                     "family": {"type": "string", "minLength": 1, "maxLength": 4096,
-                        "description": "Numbered family slug prefix, for example tasks/harmony"},
+                        "description": "Exact configured family prefix from task_conventions, not a full task slug or number"},
                     "title": {"type": "string", "minLength": 1, "maxLength": 4096}}}),
             json!({"type": "object", "required": ["slug", "authority", "sync_required", "ref"],
                 "properties": {"slug": {"type": "string"}, "authority": {"type": "string"},
@@ -330,6 +341,7 @@ impl Plugin for GitKb {
         self.ctx = ctx.clone();
         self.call_records.clear();
         match name {
+            "task_conventions" => self.task_conventions(&args),
             "create_next" => self.create_next(&args),
             "sync_status" => self.sync_status(&args),
             _ => Err(Refusal::new("unknown_tool", name.to_owned())),

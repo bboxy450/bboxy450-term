@@ -333,6 +333,43 @@ impl Backend {
 }
 
 impl Backend {
+    /// Read only the public naming policy, through GitKB's own config parser.
+    /// Never return the complete config: other sections can contain credentials.
+    /// Keep the native TOML value intact instead of implementing another parser.
+    pub fn task_slug_authority(&mut self, ctx: &Ctx) -> Result<Option<String>, Refusal> {
+        let cwd = self.cwd.clone();
+        let (status, mut out, mut err) = self.spawn(
+            ctx,
+            &cwd,
+            &["config", "get", "slug_authority"],
+            None,
+            64 * 1024,
+        )?;
+        let read = |file: &mut File| {
+            read_all(file).map_err(|e| Refusal::new("backend_failed", format!("local IO: {e}")))
+        };
+        if !status.success() {
+            // This exact pinned-CLI refusal means there is no configured family.
+            // Malformed config, a changed backend or other failures stay errors.
+            let error = read(&mut err)?;
+            if status.code() == Some(1)
+                && String::from_utf8_lossy(&error)
+                    .trim()
+                    .starts_with("error: key 'slug_authority' not found in config.toml")
+            {
+                return Ok(None);
+            }
+            return Err(Refusal::new(
+                "backend_failed",
+                "GitKB could not read the repository task naming policy",
+            )
+            .with("backend_exit", status.code().unwrap_or(-1)));
+        }
+        let text = String::from_utf8(read(&mut out)?)
+            .map_err(|_| Refusal::new("backend_protocol_error", "GitKB config was not UTF-8"))?;
+        Ok(Some(text.trim().to_owned()))
+    }
+
     /// Run a read-only status command and return its exit code with the JSON
     /// object it printed: stdout, else the object after any log lines on
     /// stderr (GitKB reports failures there). Nothing else from stderr is kept.

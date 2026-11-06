@@ -23,6 +23,27 @@ Resolve ambiguities explicitly. Keep returned references and etags for updates.
 Follow opaque page cursors, including empty pages with a next cursor. Restart a
 query when its cursor becomes stale; never reuse cursors across roots.
 
+## Repository task names and numbered references
+
+After `knowledge_orient`, call `plugin_tool_gitkb_task_conventions` with `{}`.
+It reads only `slug_authority` from this selected repository's `.kb/config.toml`
+through GitKB and returns its native TOML. Use the configured family `prefix`;
+do not guess it from the repository basename or apply another project's prefix.
+For example, Harmony configures `tasks/harmony`, so an allocated task is
+`tasks/harmony-3096`, not `tasks/3096` or `tasks/harmony-#3096`.
+
+When creating a numbered GitKB task, an authorized Oracle uses
+`plugin_tool_gitkb_create_next` with that exact `family` and a `title`. GitKB
+allocates the number; retain its returned full slug, `authority`, `sync_required`
+and ref. With several task families, choose explicitly. Without configuration,
+choose a family explicitly; never scan tasks and calculate the next number.
+
+For existing tasks, use `#3096` with `knowledge_fetch` or the permitted `task_*`
+tools, or use the returned full slug/ref. `#N` works in both GitKB and the built-in
+bboxy knowledge base. Native bboxy numbers belong to record metadata and do not
+imply a filename: use `#N` instead of inventing `tasks/N.md`. Preserve the returned
+reference and resolve duplicate-number ambiguity with an exact slug or ID.
+
 Use `knowledge_write` when the current catalogue permits the requested mutation.
 The host admits and signs writes; never invent an author or signed proof, edit
 GitKB internals, or create a parallel Markdown task store. After a stale-reference

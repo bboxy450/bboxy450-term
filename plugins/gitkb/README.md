@@ -149,7 +149,12 @@ Frontmatter mirrors the source YAML, so it can still show a `parent` whose
 target GitKB does not resolve; `relationships.parent` then is null, as in
 `git-kb show`.
 
-Seat tools beyond the contract: `plugin_tool_gitkb_create_next` (Oracle) runs
+Seat tools beyond the contract: `plugin_tool_gitkb_task_conventions` (Worker)
+reads only the bound repository's `slug_authority` configuration through GitKB.
+It returns the native TOML policy and `#N` lookup guidance for both providers;
+read it after `knowledge_orient` before choosing a task family. For example,
+Harmony's configured `tasks/harmony` family produces `tasks/harmony-N` slugs.
+`plugin_tool_gitkb_create_next` (Oracle) runs
 `git-kb create task --next <family> --title <title> --json` and returns its
 `slug`, `authority` and `sync_required` unchanged. `plugin_tool_gitkb_sync_status`
 runs read-only `git-kb sync status <remote> <pathspec> --json` against the KB's

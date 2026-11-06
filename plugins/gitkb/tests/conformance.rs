@@ -445,8 +445,8 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
             .as_array()
             .unwrap()
             .len(),
-        11,
-        "nine data_source methods plus create_next and sync_status"
+        12,
+        "nine data_source methods plus task_conventions, create_next and sync_status"
     );
 
     // Unsigned write refusal; create with native fields.
@@ -1491,6 +1491,32 @@ fn review_checks(fx: &mut Fixture) -> Vec<String> {
         }
     };
 
+    // No family is a normal repository policy, not a guessed repository name.
+    // Exercise the real CLI from the plugin's private cwd and restore the config
+    // before the fixture performs its ordinary writes.
+    let config_path = root.join(".kb/config.toml");
+    let original_config = std::fs::read_to_string(&config_path).unwrap();
+    std::fs::write(&config_path, "").unwrap();
+    let unconfigured = conn.client.call("tool_task_conventions", json!({}), WAIT);
+    std::fs::write(&config_path, &original_config).unwrap();
+    expect(
+        "task conventions without a configured family do not guess",
+        matches!(&unconfigured, Ok(v) if v["slug_authority_toml"].is_null()
+            && v["source"]["repository"] == root.display().to_string()
+            && v["references"]["numbered"] == "#N"),
+        format!("{unconfigured:?}"),
+    );
+    let redirected = conn.client.call(
+        "tool_task_conventions",
+        json!({"root": "/other/repository"}),
+        WAIT,
+    );
+    expect(
+        "task conventions cannot select another repository",
+        matches!(&redirected, Err(Failure::Tool(v)) if v["code"] == "host_field_in_arguments"),
+        format!("{redirected:?}"),
+    );
+
     // 1. The signed record stays out of the document.
     let created = conn.call(
         "write",
@@ -1914,6 +1940,23 @@ fn review_checks(fx: &mut Fixture) -> Vec<String> {
         matches!(&two, Err(Failure::Tool(v)) if v["code"] == "remote_required")
             && matches!(&unknown, Err(Failure::Tool(v)) if v["code"] == "unknown_remote"),
         format!("{two:?} / {unknown:?}"),
+    );
+    let conventions = conn.client.call("tool_task_conventions", json!({}), WAIT);
+    expect(
+        "task conventions use the bound repository policy without other config",
+        matches!(&conventions, Ok(v) if v["slug_authority_toml"].as_str().is_some_and(|t|
+            t.contains("tasks/prov") && t.contains("provisional")
+                && !t.contains("127.0.0.1") && !t.contains("fixture@example.invalid"))),
+        format!("{conventions:?}"),
+    );
+    let config = std::fs::read_to_string(&config_path).unwrap();
+    std::fs::write(&config_path, config.replace("tasks/prov", "tasks/renamed")).unwrap();
+    let refreshed = conn.client.call("tool_task_conventions", json!({}), WAIT);
+    expect(
+        "task conventions observe a changed configured prefix without a restart",
+        matches!(&refreshed, Ok(v) if v["slug_authority_toml"].as_str().is_some_and(|t|
+            t.contains("tasks/renamed") && !t.contains("tasks/prov"))),
+        format!("{refreshed:?}"),
     );
     assert_eq!(conn.close(), Some(0));
     red

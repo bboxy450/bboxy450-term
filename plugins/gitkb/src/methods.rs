@@ -903,6 +903,27 @@ impl GitKb {
         )
     }
 
+    /// Discover naming policy for this exact bound repository, not shell cwd.
+    pub fn task_conventions(&mut self, args: &Value) -> Result<Value, Refusal> {
+        if args.as_object().is_none_or(|args| !args.is_empty()) {
+            return Err(invalid("task_conventions takes no arguments"));
+        }
+        let authority = self.backend.task_slug_authority(&self.ctx)?;
+        Ok(json!({
+            "source": {"repository": self.root_text, "path": ".kb/config.toml", "key": "slug_authority"},
+            "slug_authority_toml": authority,
+            "references": {
+                "numbered": "#N",
+                "full_slug": "<configured prefix>-<N>",
+                "guidance": "Use #N with knowledge_fetch/task tools, or the exact returned full slug/ref. Bare numbers are not slugs. A native frontmatter number takes precedence over a slug suffix; ambiguities require an explicit full slug or ID. The built-in bboxy KB also supports #N, independently of its descriptive task filenames."
+            },
+            "creation": {
+                "tool": "plugin_tool_gitkb_create_next",
+                "guidance": "Read prefix from slug_authority.families in the native TOML above, then pass that exact prefix as family with a title. GitKB allocates the number. If several task families exist, select explicitly; if none is configured, supply an explicitly chosen family. Never guess from the repository name, calculate max+1, or hardcode Harmony for other roots. Preserve returned slug, authority and sync_required."
+            }
+        }))
+    }
+
     /// Create the next numbered task of `family` with `title` through
     /// `git-kb create task --next`, returning the CLI's `slug`, `authority`
     /// and `sync_required` unchanged plus the new record's reference.
