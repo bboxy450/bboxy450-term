@@ -14,13 +14,11 @@ use super::{
 use crate::{
     Result,
     atlas::{AtlasRect, GlyphAtlas},
+    fx::{FxHashMap, FxHashSet},
     text::Format,
 };
 use bbt_ui_model::draw::TextStyle;
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::sync::Arc;
 
 #[derive(Clone, Copy, Debug, Default)]
 pub struct Stats {
@@ -85,7 +83,9 @@ struct ShapeKey {
 /// Distinct shaped lines kept. A visible working set above this re-shapes every
 /// line on every frame, so it is sized well past a busy window's text.
 const SHAPE_BUDGET: usize = 32 * 1024;
-const LINE_PLAN_BUDGET: usize = 2 * 1024 * 1024;
+/// Memoized line geometry. Over budget, the least recently used plans go;
+/// clearing them all made every visible line rebuild on the next frame.
+const LINE_PLAN_BUDGET: usize = 32 * 1024 * 1024;
 struct ShapeEntry {
     shape: Arc<Shape>,
     last_use: u64,
@@ -148,8 +148,8 @@ pub(super) struct Cache {
     color_atlas: GlyphAtlas,
     dirty: Vec<AtlasRect>,
     color_dirty: Vec<AtlasRect>,
-    entries: HashMap<MaskKey, Entry>,
-    ids: HashMap<u64, MaskKey>,
+    entries: FxHashMap<MaskKey, Entry>,
+    ids: FxHashMap<u64, MaskKey>,
     bytes: usize,
     byte_budget: usize,
     entry_budget: usize,
@@ -158,7 +158,7 @@ pub(super) struct Cache {
     clock: u64,
     next_id: u64,
     totals: Stats,
-    shapes: HashMap<ShapeKey, ShapeEntry>,
+    shapes: FxHashMap<ShapeKey, ShapeEntry>,
     shape_budget: usize,
     line_plan_bytes: usize,
     lookup_text: String,
@@ -167,7 +167,7 @@ pub(super) struct Cache {
 }
 impl Cache {
     pub fn new() -> Result<Self> {
-        Self::with_limits(512, 8192, 32 * 1024 * 1024, 32_768)
+        Self::with_limits(512, 8192, 128 * 1024 * 1024, 128 * 1024)
     }
     pub fn with_limits(
         initial_size: u32,
@@ -183,8 +183,8 @@ impl Cache {
             color_atlas: GlyphAtlas::new_color(initial_size, atlas_limit)?,
             dirty: vec![],
             color_dirty: vec![],
-            entries: HashMap::new(),
-            ids: HashMap::new(),
+            entries: FxHashMap::default(),
+            ids: FxHashMap::default(),
             bytes: 0,
             byte_budget,
             entry_budget,
@@ -193,7 +193,7 @@ impl Cache {
             clock: 0,
             next_id: 0,
             totals: Stats::default(),
-            shapes: HashMap::new(),
+            shapes: FxHashMap::default(),
             shape_budget: SHAPE_BUDGET,
             line_plan_bytes: 0,
             lookup_text: String::new(),
@@ -358,11 +358,23 @@ impl Cache {
         }
     }
 
-    fn clear_line_plans(&mut self) {
-        for entry in self.shapes.values_mut() {
-            entry.line = None;
+    /// Drops least recently used plans until at most `target` bytes remain.
+    fn shed_line_plans(&mut self, target: usize) {
+        let mut planned: Vec<_> = self
+            .shapes
+            .iter()
+            .filter(|(_, entry)| entry.line.is_some())
+            .map(|(key, entry)| (entry.last_use, key.clone()))
+            .collect();
+        planned.sort_unstable_by_key(|(last_use, _)| *last_use);
+        for (_, key) in planned {
+            if self.line_plan_bytes <= target {
+                break;
+            }
+            if let Some(plan) = self.shapes.get_mut(&key).and_then(|e| e.line.take()) {
+                self.line_plan_bytes -= plan.bytes();
+            }
         }
-        self.line_plan_bytes = 0;
     }
     fn remember_line(&mut self, key: &ShapeKey, line: Arc<Line>) {
         if let Some(previous) = self.shapes.get_mut(key).unwrap().line.take() {
@@ -381,7 +393,7 @@ impl Cache {
             return;
         }
         if self.line_plan_bytes + bytes > limit {
-            self.clear_line_plans();
+            self.shed_line_plans(limit / 2);
         }
         self.line_plan_bytes += bytes;
         self.shapes.get_mut(key).unwrap().line = Some(plan);
@@ -491,7 +503,7 @@ impl Cache {
         Ok((key, shape))
     }
 
-    fn oldest(&self, pinned: &HashSet<u64>, placed_only: bool) -> Option<u64> {
+    fn oldest(&self, pinned: &FxHashSet<u64>, placed_only: bool) -> Option<u64> {
         self.entries
             .values()
             .filter(|e| !pinned.contains(&e.id) && (!placed_only || e.rect.is_some()))
@@ -511,9 +523,9 @@ impl Cache {
         // Memoized geometry shares the existing CPU cache byte budget. Discard it
         // before evicting ink or refusing an otherwise valid glyph working set.
         if self.bytes + self.line_plan_bytes > self.byte_budget {
-            self.clear_line_plans();
+            self.shed_line_plans(self.byte_budget.saturating_sub(self.bytes) / 2);
         }
-        let pinned: HashSet<_> = ids.iter().copied().collect();
+        let pinned: FxHashSet<_> = ids.iter().copied().collect();
         let mut repack = false;
         while self.bytes > self.byte_budget || self.entries.len() > self.entry_budget {
             let Some(id) = self.oldest(&pinned, false) else {

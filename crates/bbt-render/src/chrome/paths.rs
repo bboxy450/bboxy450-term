@@ -20,7 +20,7 @@ use wgpu::util::DeviceExt;
 const TOLERANCE: f32 = 0.002;
 #[derive(Default)]
 pub(super) struct Renderer {
-    geometry: HashMap<Vec<u32>, Geometry>,
+    geometry: crate::fx::FxHashMap<Vec<u32>, Geometry>,
     pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
 }
 struct Geometry {
