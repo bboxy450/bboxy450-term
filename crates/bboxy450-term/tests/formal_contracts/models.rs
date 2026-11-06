@@ -31,6 +31,8 @@ mod task_panel_model;
 #[path = "report_models.rs"]
 mod report_models;
 
+#[path = "mcp_recovery_model.rs"]
+mod mcp_recovery_model;
 #[path = "task_amend_model.rs"]
 mod task_amend_model;
 #[path = "wake_circuit_model.rs"]
@@ -1893,6 +1895,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(task_panel_model::cases());
     cases.extend(report_models::cases());
     cases.extend(task_amend_model::cases());
+    cases.extend(mcp_recovery_model::cases());
     cases.extend(wake_circuit_model::cases());
     cases.extend(capability_models::cases());
     cases.extend(gitkb_models::cases());

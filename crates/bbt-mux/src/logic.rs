@@ -5016,16 +5016,16 @@ impl Worker {
             .transpose()?;
         crate::mcp::seats::authorize(actor, caller, &request, target.as_ref())?;
         if let Some(expected) = request.target() {
-            let view = self
-                .views
-                .get(&expected.seat)
-                .ok_or("target viewport unavailable")?;
-            if view.generation != expected.generation
-                || target
-                    .as_ref()
-                    .is_none_or(|r| r.harness_kind != view.adapter.record.kind)
-            {
-                return Err("target process binding changed".into());
+            if let Some(view) = self.views.get(&expected.seat) {
+                if view.generation != expected.generation
+                    || target
+                        .as_ref()
+                        .is_none_or(|r| r.harness_kind != view.adapter.record.kind)
+                {
+                    return Err("target process binding changed".into());
+                }
+            } else if !matches!(request, crate::mcp::seats::Request::Close { .. }) {
+                return Err("target viewport unavailable".into());
             }
         }
         if matches!(request, crate::mcp::seats::Request::Focus { .. })
@@ -5416,6 +5416,75 @@ impl Worker {
             ),
         }
     }
+    /// A missing view is not proof that a process ended. Only retain an orphan
+    /// after its owning supervisor confirms absence, with no intervening yield
+    /// before the generation/authority-checked registry change. Never signal a PID.
+    fn close_control_orphan(
+        &mut self,
+        actor: &crate::mcp::SeatActor,
+        target: crate::mcp::seats::Target,
+        op: Ulid,
+    ) -> serde_json::Value {
+        let mut applied = false;
+        let result = (|| -> Result<()> {
+            if self.attachments.contains_key(&target.seat)
+                || self
+                    .pending_endpoints
+                    .iter()
+                    .any(|(seat, _)| *seat == target.seat)
+            {
+                return Err(invalid("target attachment is recovering; no close applied"));
+            }
+            let Reply::Seats { seats } =
+                self.request_for_seat(target.seat, Action::ListOwnedSeats)?
+            else {
+                return Err(invalid("target supervisor ownership unavailable"));
+            };
+            if seats.iter().any(|seat| seat.seat == target.seat) {
+                return Err(invalid(
+                    "target process is supervisor-owned; no orphan close applied",
+                ));
+            }
+            if self
+                .control_actor(actor.seat_id, actor.process_generation)?
+                .0
+                != *actor
+            {
+                return Err(invalid("caller authority changed before orphan close"));
+            }
+            self.registry.update(target.seat, |record| {
+                if record.generation != target.generation
+                    || record.swarm != actor.swarm_id
+                    || record.lifecycle != Lifecycle::Open
+                {
+                    return Err(invalid("target binding changed before orphan close"));
+                }
+                record.lifecycle_revision = record
+                    .lifecycle_revision
+                    .checked_add(1)
+                    .ok_or_else(|| invalid("lifecycle exhausted"))?;
+                record.lifecycle = Lifecycle::ClosedRetained;
+                Ok(())
+            })?;
+            applied = true;
+            self.client.current_attention.remove(target.seat)?;
+            Ok(())
+        })();
+        match result {
+            Ok(()) => crate::mcp::success(
+                op,
+                serde_json::json!({
+                    "status":"applied", "seat_id":target.seat,
+                    "process_generation":target.generation.to_string(), "closure":"orphan_retained"
+                }),
+            ),
+            Err(error) => crate::mcp::error(
+                op,
+                if applied { "unknown" } else { "rejected" },
+                &error.to_string(),
+            ),
+        }
+    }
     fn start_control_focus(
         &mut self,
         id: Ulid,
@@ -5447,6 +5516,10 @@ impl Worker {
             let (retained, fresh) = journal.admit(&actor, &call)?;
             if !fresh {
                 return Ok(Some(retained));
+            }
+            if call.tool == "seat_close" && !self.views.contains_key(&target.seat) {
+                let result = self.close_control_orphan(&actor, target, call.op_id);
+                return journal.complete(&actor, &call, result).map(Some);
             }
             if !self.client.captures.attached() || self.control_deliveries.len() >= 8 {
                 return journal

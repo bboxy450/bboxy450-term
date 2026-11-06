@@ -126,7 +126,7 @@ impl TaskDocuments for ProviderTasks<'_> {
         let reference = self
             .0
             .resolve(d::ResolveRequest {
-                locator: locator.into(),
+                locator: super::knowledge::record_locator(locator).into(),
             })
             .map_err(|e| e.to_string())?;
         self.fetch_record(reference, None)
@@ -135,7 +135,7 @@ impl TaskDocuments for ProviderTasks<'_> {
         self.0.import_root().map_err(|error| error.to_string())
     }
     fn locate(&self, locator: &str) -> Checked<Document> {
-        let locator = locator.strip_prefix(".bboxy/").unwrap_or(locator);
+        let locator = super::knowledge::record_locator(locator);
         let reference = self
             .0
             .resolve(d::ResolveRequest {
@@ -145,7 +145,7 @@ impl TaskDocuments for ProviderTasks<'_> {
         self.fetch(reference, None)
     }
     fn locate_before(&self, locator: &str, deadline: Instant) -> Checked<Document> {
-        let locator = locator.strip_prefix(".bboxy/").unwrap_or(locator);
+        let locator = super::knowledge::record_locator(locator);
         let reference = within(deadline, || {
             self.0.resolve(d::ResolveRequest {
                 locator: locator.into(),

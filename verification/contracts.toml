@@ -669,6 +669,26 @@ property = "Only the exact delegating Oracle in the task swarm changes a nonterm
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "TaskReservation"
+title = "One fenced initialization of a blank provider task reservation"
+models = ["TaskReservation", "BrokenTaskReservation"]
+sources = ["crates/bbt-mux/src/mcp/knowledge.rs", "crates/bbt-mux/src/knowledge/effects.rs", "crates/bboxy450-term/tests/formal_contracts/mcp_recovery_model.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp.rs"]
+assumptions = "One initially blank open task, two already-authorized same-root Oracle writers, two pending preparations, revisions and root generations 0..2. Final authorization/CAS/publication is atomic; a root change or intervening record write invalidates a delayed completion. No fairness or eventual publication is assumed. Worker/foreign authority, actual etags, signed admission, protected metadata and delegation use native API witnesses. Arbitrary direct external edits, SQL/remote persistence and cryptography are not modeled."
+property = "Only a still-blank unowned reservation at the captured record/root revision acquires a first delegator; competing delayed initializers cannot replace custody or publish twice. The broken control omits the fresh-reservation predicate."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "OrphanClose"
+title = "Viewport-free closure requires authoritative supervisor absence"
+models = ["OrphanClose", "BrokenOrphanClose"]
+sources = ["crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/registry.rs", "crates/bboxy450-term/tests/formal_contracts/mcp_recovery_model.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp.rs"]
+assumptions = "One target with Boolean supervisor ownership, view availability, current caller and target generation. The active logic owner serializes launches and registry writes, with no yield between the owning supervisor's absence reply and registry CAS. After close, modeled environment fields are fixed. No fairness or progress deadline is assumed. Actual role/swarm/generation checks, pending attachments, journal replay, process ownership and persistence use API witnesses; direct unauthorized supervisor or SQLite writes are outside the model."
+property = "A missing viewport never proves process absence. An orphan close retains a record only with current caller/target authority and explicit supervisor absence. The broken control removes the supervisor ownership guard."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "ReportProvenance"
 title = "Immutable assigned-task reports and checked acceptance links"
 models = ["ReportProvenance", "BrokenReportProvenance"]

@@ -40,7 +40,7 @@ pub const DOCUMENT_TYPES: &[DocumentType] = &[
         kind: "task",
         purpose: "One scoped assignment with an owner, boundaries and a verification command. It tracks implementation through reporting and acceptance.",
         path: "tasks/<date>-<slug>.md",
-        writing: "Provide the brief, allowed_paths, acceptance criteria and verify command. Oracle creates open and unassigned; use task_delegate, task_report and task_accept for lifecycle. An assignee may update only its permitted report fields through knowledge_write.",
+        writing: "Provide the brief, allowed_paths, acceptance criteria and verify command. For a provider-allocated blank, open, unowned task, fetch its ref and etag, then initialize only its brief, verify and allowed_paths with knowledge_write; the host sets the delegator and swarm before task_delegate. Existing ownership or a populated brief cannot be adopted. Oracle creates open and unassigned; use task_delegate, task_report and task_accept for lifecycle. An assignee may update only its permitted report fields through knowledge_write.",
     },
     DocumentType {
         kind: "bug",

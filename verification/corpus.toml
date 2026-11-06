@@ -793,6 +793,26 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "TaskReservation"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTaskReservation"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "OrphanClose"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenOrphanClose"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "TaskAmendment"
 expected = "pass"
 frontend = "project"

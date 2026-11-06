@@ -57,7 +57,7 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
         actor.seat_id
     ));
     let write_help = if actor.role.class == Class::Oracle {
-        "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.md; the Index returns its numbered final path. Reports are append-only at reports/YYYY-MM-DD-slug.md; corrections create a new report with supersedes. Tasks are created open; their delegating seat may amend only brief/verify/allowed_paths while nonterminal. Amendments wake the assignee in the task thread; changed verify requires a fresh report. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools. Updates retain type, ref and etag."
+        "Write root-relative Markdown as your seat. Protected document types require your Oracle class. Create a decision at decisions/<slug>.md; the Index returns its numbered final path. Reports are append-only at reports/YYYY-MM-DD-slug.md; corrections create a new report with supersedes. Tasks are created open; their delegating seat may amend only brief/verify/allowed_paths while nonterminal. To initialize a provider's blank, open, unowned task reservation, fetch it, preserve ref/etag and all other frontmatter, and write its brief, verify and allowed_paths. The host records you as its delegator in your swarm before delegation. Existing briefs or ownership cannot be adopted. Amendments wake the assignee in the task thread; changed verify requires a fresh report. Lifecycle and assignment use task_*. Artifact claim/observation/lineage fields use their existing tools. Updates retain type, ref and etag."
     } else {
         "Create/update e2e, comment, research, note and artifact records as your seat. Create append-only reports at reports/YYYY-MM-DD-slug.md for your assigned task; corrections create a new report with supersedes. For your assigned task preserve every other field and the body, changing only report.summary, report.commit, report.report and verify_result; this runs task_report. Artifact claims/observations/lineage use their existing tools. Updates retain type, ref and etag."
     };
@@ -298,16 +298,22 @@ pub(crate) fn fetch_page(
     super::read_pages::body_page(value, offset, etag.as_deref())
 }
 
-pub(crate) fn fetch(source: &dyn DataSource, locator: String) -> d::Result<d::Record> {
-    // Do not reflect outside-root candidates or parse failures into a scoped
-    // tool response. The lower provider still retains its full command error.
-    let target = bbt_doc::links::locator(&locator);
+/// Strip presentation syntax at the host boundary, including task/report reads.
+/// Strict providers receive record identity, never wiki brackets or anchors.
+pub(crate) fn record_locator(locator: &str) -> &str {
+    let target = bbt_doc::links::locator(locator);
     let target = if target.starts_with('#') {
         target
     } else {
         target.split_once('#').map_or(target, |(path, _)| path)
     };
-    let locator = target.strip_prefix(".bboxy/").unwrap_or(target).to_owned();
+    target.strip_prefix(".bboxy/").unwrap_or(target)
+}
+
+pub(crate) fn fetch(source: &dyn DataSource, locator: String) -> d::Result<d::Record> {
+    // Do not reflect outside-root candidates or parse failures into a scoped
+    // tool response. The lower provider still retains its full command error.
+    let locator = record_locator(&locator).to_owned();
     let reference = source
         .resolve(d::ResolveRequest { locator })
         .map_err(|error| {
@@ -340,6 +346,38 @@ const WORKER_TYPES: &[&str] = &[
 pub(crate) enum WritePlan {
     Record(Box<d::WriteRequest>),
     Report(Call),
+}
+
+/// Number allocation may leave a provider-owned placeholder. Only an empty,
+/// unowned open reservation can acquire its first delegator through a fenced
+/// knowledge_write; an existing brief or any custody/evidence prevents adoption.
+fn task_reservation(record: &d::Record) -> bool {
+    record.body.trim().is_empty()
+        && record.frontmatter["status"] == "open"
+        && [
+            "delegated_by",
+            "assignee",
+            "swarm",
+            "created_by",
+            "updated_by",
+            "authorship",
+            "report",
+            "verify_result",
+        ]
+        .iter()
+        .all(|field| {
+            record
+                .frontmatter
+                .get(*field)
+                .is_none_or(|value| value.is_null() || value.as_str() == Some("none"))
+        })
+        && record.frontmatter.get("verify").is_none_or(|value| {
+            value.is_null() || value.as_str().is_some_and(|s| s.trim().is_empty())
+        })
+        && record
+            .frontmatter
+            .get("allowed_paths")
+            .is_none_or(|value| value.is_null() || value.as_array().is_some_and(Vec::is_empty))
 }
 
 fn denied(code: &str, reason: &str) -> d::CommandError {
@@ -411,6 +449,7 @@ pub(crate) fn write_plan(
             }));
         }
         if let Some(old) = current {
+            let reservation = task_reservation(old);
             let mut before = old.frontmatter.clone();
             let mut after = request.frontmatter.clone();
             for field in ["verify", "allowed_paths"] {
@@ -423,16 +462,33 @@ pub(crate) fn write_plan(
                     .expect("validated frontmatter")
                     .remove(field);
             }
-            if !matches!(
-                old.frontmatter["status"].as_str(),
-                Some("open" | "claimed" | "running" | "reported" | "rejected" | "blocked")
-            ) || old.frontmatter["delegated_by"] != format!("seat:{}", actor.seat_id)
-                || before != after
+            if before != after
+                || (!reservation
+                    && (!matches!(
+                        old.frontmatter["status"].as_str(),
+                        Some("open" | "claimed" | "running" | "reported" | "rejected" | "blocked")
+                    ) || old.frontmatter["delegated_by"] != format!("seat:{}", actor.seat_id)))
             {
                 return Err(denied(
                     "task_field_protected",
                     "only the delegating Oracle seat may amend a nonterminal task's brief, verify and allowed_paths; use task_* for lifecycle and assignment",
                 ));
+            }
+            if reservation {
+                if request.body.trim().is_empty()
+                    || request.frontmatter["verify"]
+                        .as_str()
+                        .is_none_or(|s| s.trim().is_empty())
+                {
+                    return Err(denied(
+                        "task_field_protected",
+                        "initialize a reserved task with a nonempty brief and verify command; preserve its ref, etag and other frontmatter",
+                    ));
+                }
+                // The host supplies custody. Caller-supplied ownership cannot
+                // slip through the unchanged-frontmatter comparison above.
+                request.frontmatter["delegated_by"] = json!(format!("seat:{}", actor.seat_id));
+                request.frontmatter["swarm"] = json!(actor.swarm_id);
             }
         } else {
             let metadata = request
@@ -676,7 +732,14 @@ mod tests {
         struct Strict<'a>(BboxySource<'a>);
         impl DataSource for Strict<'_> {
             fn resolve(&self, r: d::ResolveRequest) -> d::Result<d::RecordRef> {
-                if !["tasks/work", "tasks/work.md", "#3096"].contains(&r.locator.as_str()) {
+                if ![
+                    "tasks/work",
+                    "tasks/work.md",
+                    "#3096",
+                    "reports/2026-11-06-work",
+                ]
+                .contains(&r.locator.as_str())
+                {
                     return Err(d::CommandError::new(
                         "invalid_path",
                         "strict provider requires an unwrapped locator",
@@ -709,11 +772,23 @@ mod tests {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join(".bboxy");
         std::fs::create_dir_all(root.join("tasks")).unwrap();
+        std::fs::create_dir_all(root.join("reports")).unwrap();
         let id = crate::Ulid::from(11_u128).to_string();
         let metadata = json!({"id":id,"number":3096,"type":"task","status":"open","verify":"true"});
         std::fs::write(
             root.join("tasks/work.md"),
             format!("---\n{metadata}\n---\nTask body"),
+        )
+        .unwrap();
+        let report = json!({
+            "id":crate::Ulid::from(12_u128).to_string(), "number":3097,
+            "type":"report", "task":"[[tasks/work|Task]]", "commits":[],
+            "author":format!("seat:{}", crate::Ulid::from(1_u128)),
+            "created":"2026-11-06T00:00:00Z", "verify":{"command":"true","exit_code":0}
+        });
+        std::fs::write(
+            root.join("reports/2026-11-06-work.md"),
+            format!("---\n{report}\n---\nReport body"),
         )
         .unwrap();
         let mut index = crate::index::Index::open(
@@ -735,5 +810,26 @@ mod tests {
             assert_eq!(record.reference.id, id);
         }
         assert!(fetch(&source, "[[../outside]]".into()).is_err());
+        use crate::mcp::work_items::{ProviderTasks, TaskDocuments, linked_report};
+        let tasks = ProviderTasks(&source, None);
+        let mut task = tasks.locate("[[tasks/work|Task]]").unwrap();
+        task.metadata["report"] = json!({"report":"[[reports/2026-11-06-work|Evidence]]"});
+        linked_report(&tasks, &task).unwrap();
+        assert_eq!(
+            tasks
+                .locate_before(
+                    "[[.bboxy/tasks/work.md#Evidence]]",
+                    std::time::Instant::now() + std::time::Duration::from_secs(1)
+                )
+                .unwrap()
+                .id,
+            id
+        );
+        task.id = crate::Ulid::from(13_u128).to_string();
+        assert!(
+            linked_report(&tasks, &task)
+                .unwrap_err()
+                .contains("different task")
+        );
     }
 }

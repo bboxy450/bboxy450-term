@@ -120,6 +120,7 @@ help:
 	  'make test-plugin-skills          Canonical MCP instructions, descriptors and selected-provider fences' \
 	  'make test-knowledge-types        Focused MCP document dictionary, concern writes and discovery tests' \
 	  'make test-mcp-hints              Focused MCP hint graph, corrective calls and prefix refusal tests' \
+	  'make test-mcp-recovery           Strict report locators, reserved task custody and orphan-close regressions' \
 	  'make check-plugin-skills         Strict plugin, mux and app all-target Clippy' \
 	  'make test-adapter-startup        Retained real-zsh startup and prompt/command boundary diagnostics' \
 	  'make build-harness               Build the in-suite seat binary; add target/debug to PATH' \
@@ -868,7 +869,14 @@ test-plugin-transports:
 	cargo run --locked -p bboxy450-term-plugin-fixture --example transport --target-dir '$(TARGET_DIR)' -- '$(abspath $(TARGET_DIR))/transport-plugins/bboxy450-term-transport-example'
 	@BBOXY_TRANSPORT_PLUGIN='$(abspath $(TARGET_DIR))/transport-plugins/bboxy450-term-transport-example' $(MAKE) test-settings-plugins
 
-.PHONY: test-mcp-hints
+.PHONY: test-mcp-hints test-mcp-recovery
+test-mcp-recovery:
+	@set -eu; . ./scripts/cache-env.sh; \
+	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux --lib wiki_report_links; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux --test mcp mcp_task_reservation_; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux --test mcp mcp_orphan_close_
+
 test-mcp-hints:
 	@set -eu; . ./scripts/cache-env.sh; \
 	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
