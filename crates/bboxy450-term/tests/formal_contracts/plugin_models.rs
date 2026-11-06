@@ -42,6 +42,18 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         .flat_map(|(_, families)| families)
         .filter(|family| family(false).name != "PluginActivation")
         .flat_map(bboxy450_tlc::build::family)
+        .map(|(model, expected)| {
+            // The positive fence has a fair progress property, but its broken
+            // control removes completion authority and violates safety. Keep
+            // both properties; the generic temporal-family default is not its
+            // expected counterexample kind (verification/corpus.toml).
+            let expected = if model.name == "BrokenManagedWorkspaceFence" {
+                "safety"
+            } else {
+                expected
+            };
+            (model, expected)
+        })
         .collect()
 }
 
