@@ -1461,6 +1461,7 @@ fn measured_controls_with_gap(
 }
 
 #[test]
+#[ignore = "joined real-runner test: runs only via make test-dream-c1 (needs pinned DREAM_C1_RUNNER)"]
 fn dream_c1_real_closed_job_owns_controls_dedup_and_native_frame_overlap() {
     use bbt_proto::dream as w;
     let f = Fixture::scripted();
@@ -1795,6 +1796,7 @@ fn dream_c1_real_closed_job_owns_controls_dedup_and_native_frame_overlap() {
 }
 
 #[test]
+#[ignore = "joined real-runner test: runs only via make test-dream-c1 (needs pinned DREAM_C1_RUNNER)"]
 fn dream_c1_real_completed_status_rejects_valid_json_page_tamper() {
     let mut f = Fixture::scripted();
     f.start();
@@ -1904,6 +1906,7 @@ fn dream_c1_real_completed_status_rejects_valid_json_page_tamper() {
 }
 
 #[test]
+#[ignore = "joined real-runner test: runs only via make test-dream-c1 (needs pinned DREAM_C1_RUNNER)"]
 fn dream_c1_real_daemon_loss_quarantines_predecessor_without_replay_or_adoption() {
     let mut f = Fixture::scripted();
     f.start();
@@ -2063,6 +2066,7 @@ fn dream_c1_real_daemon_loss_quarantines_predecessor_without_replay_or_adoption(
 }
 
 #[test]
+#[ignore = "joined real-runner test: runs only via make test-dream-c1 (needs pinned DREAM_C1_RUNNER)"]
 fn dream_c1_four_live_real_jobs_keep_independent_controls_and_exact_settlement() {
     let mut f = Fixture::scripted();
     f.start();
@@ -2260,6 +2264,7 @@ impl Drop for SourceReadHold {
 }
 
 #[test]
+#[ignore = "joined real-runner test: runs only via make test-dream-c1 (needs pinned DREAM_C1_RUNNER)"]
 fn dream_c1_actual_source_read_hold_keeps_controls_and_cancel_owner_until_release() {
     let mut f = Fixture::scripted_fault("hold-source");
     f.start();
@@ -2351,6 +2356,7 @@ fn dream_c1_actual_source_read_hold_keeps_controls_and_cancel_owner_until_releas
 }
 
 #[test]
+#[ignore = "joined real-runner test: runs only via make test-dream-c1 (needs pinned DREAM_C1_RUNNER)"]
 fn dream_c1_real_omit_rest_control_is_rejected_by_measured_schedule_invariant() {
     let mut f = Fixture::scripted_fault("omit-rest");
     f.start();
@@ -2392,6 +2398,7 @@ fn dream_c1_real_omit_rest_control_is_rejected_by_measured_schedule_invariant() 
 }
 
 #[test]
+#[ignore = "joined real-runner test: runs only via make test-dream-c1 (needs pinned DREAM_C1_RUNNER)"]
 fn dream_c1_production_cpu_and_progress_keep_actual_controls_responsive() {
     let mut f = Fixture::scripted();
     f.start();
@@ -2474,6 +2481,7 @@ fn dream_c1_production_cpu_and_progress_keep_actual_controls_responsive() {
 }
 
 #[test]
+#[ignore = "joined real-runner test: runs only via make test-dream-c1 (needs pinned DREAM_C1_RUNNER)"]
 fn dream_c1_protocol_fake_progress_flood_keeps_controls_and_cancel_independent() {
     use bbt_proto::dream as w;
     let mut f = Fixture::scripted_progress_flood();
@@ -2560,6 +2568,7 @@ fn dream_c1_protocol_fake_progress_flood_keeps_controls_and_cancel_independent()
 }
 
 #[test]
+#[ignore = "joined real-runner test: runs only via make test-dream-c1 (needs pinned DREAM_C1_RUNNER)"]
 fn dream_c1_hot_owner_mutant_refuses_snapshot_custody_before_source_effect() {
     let mut f = Fixture::scripted_fault("hot-owner");
     f.start();
@@ -2617,6 +2626,7 @@ fn dream_c1_hot_owner_mutant_refuses_snapshot_custody_before_source_effect() {
 }
 
 #[test]
+#[ignore = "joined real-runner test: runs only via make test-dream-c1 (needs pinned DREAM_C1_RUNNER)"]
 fn dream_c1_real_owned_blob_over_limit_refuses_before_manifest_or_worker_start() {
     const LARGE: u64 = 65 * 1024 * 1024;
     let mut f = Fixture::scripted_blob(LARGE);
@@ -2702,6 +2712,7 @@ fn dream_c1_real_owned_blob_over_limit_refuses_before_manifest_or_worker_start()
 }
 
 #[test]
+#[ignore = "joined real-runner test: runs only via make test-dream-c1 (needs pinned DREAM_C1_RUNNER)"]
 fn dream_c1_real_multimib_store_blob_completes_and_retains_exact_private_input() {
     const BYTES: u64 = 2 * 1024 * 1024;
     let mut f = Fixture::scripted_blob(BYTES);
@@ -2768,6 +2779,7 @@ fn dream_c1_real_multimib_store_blob_completes_and_retains_exact_private_input()
 }
 
 #[test]
+#[ignore = "joined real-runner test: runs only via make test-dream-c1 (needs pinned DREAM_C1_RUNNER)"]
 fn dream_c1_retained_same_generation_turn_pauses_real_worker_with_legacy_read_held() {
     let next = bbt_mux::Ulid::new().to_string();
     let mut f = Fixture::scripted_retained(&next);
