@@ -8198,7 +8198,9 @@ mod tests {
                     {
                         std::hint::spin_loop();
                     }
+                    let finished = Instant::now();
                     checkpoint().map_err(|_| Code::ResourceLimit)?;
+                    assert!(finished.elapsed() >= Duration::from_millis(9));
                 }
                 Ok(())
             })
@@ -8209,6 +8211,7 @@ mod tests {
                 .checked_sub(before)
                 .unwrap(),
         );
+        let due = quantum.control.cleanup.debt.due_ns.load(Ordering::Acquire);
         quantum.pay().unwrap();
         let maximum = quantum.max_unit_cpu_ns();
         assert!(cumulative > 1_000_000 && maximum <= 1_000_000);
@@ -8216,7 +8219,16 @@ mod tests {
         let debt = &quantum.control.cleanup.debt;
         assert!(debt.spans.load(Ordering::Acquire) >= 10);
         assert_eq!(debt.remaining_ns(), 0);
-        assert!(debt.paid_ns.load(Ordering::Acquire) >= debt.charged_ns.load(Ordering::Acquire));
+        // paid_ns counts explicit sleeps, not all after-end elapsed rest.
+        // Each checkpoint above starts the next phase only after its full debt;
+        // the last phase's exact deadline must also have elapsed before return.
+        assert!(debt.now_ns() >= due);
+        eprintln!(
+            "dream_c1_preparation_units cumulative_cpu_ns={cumulative} max_unit_cpu_ns={maximum} spans={} charged_ns={} explicit_sleep_ns={} remaining_ns=0",
+            debt.spans.load(Ordering::Acquire),
+            debt.charged_ns.load(Ordering::Acquire),
+            debt.paid_ns.load(Ordering::Acquire)
+        );
         let control = Control::default();
         control
             .install_authority_guard(PreparedGuard {

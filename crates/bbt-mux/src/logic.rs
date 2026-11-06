@@ -6466,7 +6466,7 @@ impl Worker {
         self.implementation_workspaces.execution_context(
             actor,
             &port.binding,
-            port.host.revision()?,
+            port.host.try_revision()?,
             None,
         )?;
         self.messaging
@@ -14156,7 +14156,9 @@ pub(super) mod dream_public_api_tests {
             self.mcp_protocol_reply(seat, "tools/call", json!({"name":tool,"arguments":args}))
         }
         fn mcp_protocol_reply(&self, seat: Ulid, method: &str, params: Value) -> Value {
+            let started = Instant::now();
             let endpoint = self.runtime.block_on(self.client().endpoint(seat)).unwrap();
+            let endpoint_wall = started.elapsed();
             let mut bridge = Bridge::new(BridgeConfig {
                 socket: endpoint.path,
                 seat,
@@ -14181,7 +14183,12 @@ pub(super) mod dream_public_api_tests {
             );
             assert!(init.get("error").is_none());
             let _ = bridge.handle(br#"{"jsonrpc":"2.0","method":"notifications/initialized"}"#);
-            rpc(&mut bridge, 2, method, params)
+            let before_call = Instant::now();
+            let result = rpc(&mut bridge, 2, method, params);
+            if std::env::var_os("BBOXY_DREAM_SPY_TRACE").is_some() {
+                eprintln!("dream_c1_mcp_phases method={method} endpoint_wall_us={} initialize_wall_us={} call_wall_us={}", endpoint_wall.as_micros(), before_call.duration_since(started).saturating_sub(endpoint_wall).as_micros(), before_call.elapsed().as_micros());
+            }
+            result
         }
         fn gui(&self, seat: Ulid, mut args: Value) -> Value {
             self.trace_marker("gui", "begin", &args);
@@ -14789,6 +14796,21 @@ pub(super) mod dream_public_api_tests {
         .unwrap();
         held.busy_timeout(Duration::ZERO).unwrap();
         held.execute_batch("BEGIN EXCLUSIVE").unwrap();
+        let activity_cpu = bbt_rt::fault::thread_cpu_time().unwrap();
+        let activity_wall = Instant::now();
+        assert!(harness_status::publish_rich_activity(
+            Some(true), &f.authority.foreground, &f.authority.activity_revision,
+            &f.authority.activity_latch,
+        ));
+        let paused = dream_c1::Control {
+            activity_latch: Some(f.authority.activity_latch.clone()),
+            ..dream_c1::Control::with_activity(f.authority.foreground.clone(), f.authority.activity_revision.clone())
+        };
+        assert!(paused.activity_latch.as_ref().unwrap().load(Ordering::Acquire) & 1 != 0);
+        let activity_cpu = bbt_rt::fault::thread_cpu_time().unwrap().checked_sub(activity_cpu).unwrap();
+        assert!(activity_cpu <= Duration::from_millis(1));
+        assert!(activity_wall.elapsed() <= Duration::from_millis(250));
+        eprintln!("dream_c1_held_delete_foreground callback_cpu_ns={} wall_us={} immediate_current_session_latch=true",activity_cpu.as_nanos(),activity_wall.elapsed().as_micros());
         let before = f.counts();
         let mut maximum = Duration::ZERO;
         for args in [
@@ -14805,7 +14827,7 @@ pub(super) mod dream_public_api_tests {
                 maximum = maximum.max(start.elapsed());
                 assert!(
                     start.elapsed() <= Duration::from_millis(250),
-                    "private catalogue stalled control: {result}"
+                    "private catalogue stalled control wall_us={}: {result}", start.elapsed().as_micros()
                 );
                 assert!(
                     matches!(

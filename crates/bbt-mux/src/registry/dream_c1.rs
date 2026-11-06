@@ -571,8 +571,8 @@ impl Journal {
         let quantum = self.quantum.clone();
         Self::step(&quantum, || {
             self.db
-                .busy_timeout(std::time::Duration::from_millis(100))
-                .map_err(|_| Code::StorageUnavailable)
+                .busy_timeout(std::time::Duration::ZERO)
+                .map_err(Self::initialization_error)
         })
     }
     pub fn configure_cache(&self) -> Result<(), Code> {
@@ -740,7 +740,7 @@ impl Journal {
         let tx = Self::step(&quantum, || {
             self.db
                 .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-                .map_err(|_| Code::StorageUnavailable)
+                .map_err(Self::initialization_error)
         })?;
         let mut tx = Self::retain(&quantum, tx);
         let old: Option<Vec<u8>> = Self::step(&quantum, || {
@@ -899,7 +899,7 @@ impl Journal {
             let tx = Self::step(&quantum, || {
                 self.db
                     .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-                    .map_err(|_| Code::StorageUnavailable)
+                    .map_err(Self::initialization_error)
             })?;
             let mut tx = Self::retain(&quantum, tx);
             let prior: Option<(Vec<u8>, String)> = Self::step(&quantum, || {
@@ -945,7 +945,7 @@ impl Journal {
         let tx = Self::step(&quantum, || {
             self.db
                 .transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)
-                .map_err(|_| Code::StorageUnavailable)
+                .map_err(Self::initialization_error)
         })?;
         let mut tx = Self::retain(&quantum, tx);
         let prior_op: Option<(Vec<u8>, String)> = Self::step(&quantum, || {
@@ -2871,6 +2871,9 @@ mod registry_tests {
                 .runtime
                 .join("journals")
                 .join(format!("{}.sqlite", seat.0));
+            // Resolve macOS's /var alias while retaining the exact inode. The
+            // child keeps SQLite NOFOLLOW; a system alias is not a DB rewrite.
+            let path = fs::canonicalize(path).unwrap();
             let inode = fs::metadata(&path).unwrap().ino();
             let mut command = Command::new(std::env::current_exe().unwrap());
             command
@@ -3129,8 +3132,36 @@ mod registry_tests {
                 journal.register("same-original-actor", &second_key, &second)
             });
             start.wait();
-            [a.join().unwrap().unwrap(), b.join().unwrap().unwrap()]
+            [a.join().unwrap(), b.join().unwrap()]
         });
+        assert!(retained.iter().any(Result::is_ok));
+        for result in &retained {
+            assert!(
+                result.is_ok() || matches!(result, Err(Code::Busy)),
+                "unlabelled concurrent admission: {:?}",
+                result.as_ref().err()
+            );
+        }
+        // DELETE's paid transaction can outlast an overlapping admission. Busy
+        // refuses without waiting or implicit replay. After both exact owners
+        // return, an explicitly new request recovers the ORIGINAL operation,
+        // regardless of its other candidate SourceKey; no source is rerun.
+        let replay = |record: &Record, source_key: &str| {
+            let mut journal = fixture.journal();
+            let result = journal
+                .register("same-original-actor", source_key, record)
+                .unwrap();
+            journal.finish().unwrap();
+            result
+        };
+        let retained = [
+            retained[0]
+                .clone()
+                .unwrap_or_else(|_| replay(&first, &first_key)),
+            retained[1]
+                .clone()
+                .unwrap_or_else(|_| replay(&second, &second_key)),
+        ];
         assert_eq!(retained[0].view.run_id, retained[1].view.run_id);
         assert_eq!(retained[0].nonce, retained[1].nonce);
         assert_eq!(retained[0].request, retained[1].request);
