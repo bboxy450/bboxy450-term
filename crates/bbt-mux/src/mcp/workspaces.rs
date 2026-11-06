@@ -858,11 +858,16 @@ impl Service {
             return Ok(());
         };
         let r = self.get(String::from_utf8(bytes)?.parse()?)?;
-        if r.holder
-            .as_ref()
-            .is_some_and(|h| h.seat_id == target && h.generation == generation)
-            && (r.knowledge_binding != *root || r.task_ref.id != task)
+        if r.state != State::InUse
+            || !r.holder.as_ref().is_some_and(|h| {
+                h.seat_id == target && h.generation == generation && h.pid.is_some()
+            })
         {
+            return Err(invalid(
+                "workspace_in_use: task delegation requires the exact confirmed managed writer; reconcile the original launch first",
+            ));
+        }
+        if r.knowledge_binding != *root || r.task_ref.id != task {
             return Err(invalid(
                 "workspace_task_mismatch: target is bound to a different task or knowledge root",
             ));

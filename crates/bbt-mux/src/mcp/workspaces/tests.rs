@@ -245,6 +245,12 @@ fn managed_workspace_reservation_and_a_b_a_fences() {
     f.service.reserve(&r, seat, Ulid::new()).unwrap();
     assert!(f.service.reserve(&r, Ulid::new(), Ulid::new()).is_err());
     assert!(f.service.finish(&r, Ok(r.clone()), true).is_err());
+    assert!(
+        f.service
+            .delegation(seat, 1, &f.task.to_string(), &f.binding)
+            .is_err(),
+        "an uncertain launch cannot claim task assignment"
+    );
     f.service.launched(r.workspace_id, seat, 1, 999999).unwrap();
     let mut worker = f.actor.clone();
     worker.seat_id = seat;
