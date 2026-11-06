@@ -40,6 +40,12 @@ pub(crate) fn catalogue(actor: &Actor, plugins: Vec<Value>) -> Value {
             json!([]),
         ),
         (
+            "python_execution_context",
+            "Read current authenticated seat/grant, canonical KB/provider and managed source binding for the session-owned Python runtime. Guard version 1 is enforced again atomically when native tools dispatch; a preflight alone grants no authority.",
+            json!({}),
+            json!([]),
+        ),
+        (
             "self_status",
             "Read your seat record, current grant epoch, adapter state/grade and lifecycle.",
             json!({}),

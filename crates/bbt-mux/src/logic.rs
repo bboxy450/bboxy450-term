@@ -9,6 +9,7 @@ mod history;
 mod implementation_workspaces;
 mod ingestion;
 mod knowledge_effects;
+mod python_execution;
 mod role_catalog;
 mod task_import;
 #[cfg(test)]
@@ -222,6 +223,7 @@ enum Command {
         u64,
         crate::mcp::Call,
         crate::plugins::attribution::Attribution,
+        Option<serde_json::Value>,
         oneshot::Sender<Result<serde_json::Value>>,
     ),
     TaskImportAuthority(
@@ -1140,6 +1142,17 @@ impl LogicClient {
         attribution: std::collections::BTreeMap<String, String>,
         wait: Duration,
     ) -> Result<serde_json::Value> {
+        self.control_call_guarded_within(seat, generation, call, attribution, None, wait).await
+    }
+    pub async fn control_call_guarded_within(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        attribution: std::collections::BTreeMap<String, String>,
+        expected: Option<serde_json::Value>,
+        wait: Duration,
+    ) -> Result<serde_json::Value> {
         let attribution = crate::plugins::attribution::admit(&attribution);
         let deadline = Instant::now() + wait;
         let retry = Duration::from_millis(PENDING_RETRY_MS);
@@ -1151,6 +1164,7 @@ impl LogicClient {
                     generation,
                     call.clone(),
                     attribution.clone(),
+                    expected.clone(),
                     tx,
                 ))
                 .await
@@ -3817,6 +3831,32 @@ impl Worker {
         let (actor, record) = self.control_actor(id, generation)?;
         let authority = crate::mcp::Actor::from(&actor);
         call.validate()?;
+        if call.tool == "python_execution_context" {
+            if crate::mcp::tools::parse::<crate::mcp::tools::Empty>(&call.args).is_err() {
+                return Ok(crate::mcp::error(
+                    call.op_id,
+                    "invalid_arguments",
+                    "python_execution_context takes no arguments",
+                ));
+            }
+            // This is a fresh, small admission snapshot, never a retained
+            // journal read. Runtime polling cannot replay an obsolete grant.
+            return Ok(match self.python_execution_context(id, generation) {
+                Ok(context) => {
+                    crate::mcp::success(call.op_id, serde_json::json!({"context":context}))
+                }
+                Err(error) => {
+                    let text = error.to_string();
+                    let typed = workspace_command_error(error.as_ref());
+                    let code = text
+                        .split_once(':')
+                        .map(|(code, _)| code)
+                        .filter(|code| code.starts_with("workspace_"))
+                        .unwrap_or(&typed.code);
+                    crate::mcp::error(call.op_id, code, &text)
+                }
+            });
+        }
         let journal = self.control_journal(id)?;
         if call.tool == "operation_status" {
             // Recovery must work even when provider reads/number scans fail.
@@ -6226,6 +6266,7 @@ impl Worker {
         )?;
         self.messaging
             .bind_workspace(actor.swarm_id, &port.binding.root_id)?;
+        self.guard_python_port(actor, &port)?;
         Ok(port)
     }
     fn gui_workspace(
@@ -10833,7 +10874,16 @@ impl Worker {
                         });
                         let _ = reply.send(result);
                     }
-                    Command::ControlCall(id, generation, call, attribution, reply) => {
+                    Command::ControlCall(id, generation, call, attribution, expected, reply) => {
+                        // A preflight is insufficient: the scoped guard also
+                        // checks the actual provider port captured below.
+                        if let Some(expected) = &expected
+                            && let Err(reason) = self.validate_python_context(id, generation, expected)
+                        {
+                            let _ = reply.send(Ok(crate::mcp::error(call.op_id, "execution_context_changed", &reason.to_string())));
+                            continue;
+                        }
+                        let _python_scope = python_execution::scope(expected);
                         // The seat's latest attribution, for the plugin IO this
                         // and its later deferred work run on the seat's behalf.
                         self.seat_attribution.insert(id, (generation, attribution));

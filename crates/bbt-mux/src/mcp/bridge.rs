@@ -5,6 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Bounded newline JSON-RPC on stdio, forwarding to the private seat endpoint.
+mod python;
 
 use std::collections::BTreeMap;
 use std::io::{self, BufRead, BufReader, Write};
@@ -110,6 +111,7 @@ pub struct Bridge {
     initialized: bool,
     /// The harness's ATC session attribution, sent beside every call.
     attribution: BTreeMap<String, String>,
+    python_socket: Option<PathBuf>,
 }
 /// Only fixed phase names and OS categories cross the diagnostic boundary;
 /// paths, request bytes and the admission capability never do.
@@ -168,6 +170,7 @@ impl Bridge {
             config,
             initialized: false,
             attribution: BTreeMap::new(),
+            python_socket: std::env::var_os("BBOXY_PYTHON_SOCKET").map(PathBuf::from),
         }
     }
     /// Lend `attribution` (from [`attribution`]) to the plugin calls made
@@ -294,7 +297,18 @@ impl Bridge {
                 if params.get("cursor").is_some() {
                     return Some(rpc_error(id, -32602, "No catalogue cursor is available"));
                 }
-                self.forward(Action::Catalogue)
+                self.forward(Action::Catalogue).map(|mut value| {
+                    if let Ok(extra) = self.python_catalogue()
+                        && let Some(tools) = value["tools"].as_array_mut()
+                    {
+                        for tool in extra {
+                            if !tools.iter().any(|current| current["name"] == tool["name"]) {
+                                tools.push(tool);
+                            }
+                        }
+                    }
+                    value
+                })
             }
             "resources/list" | "resources/read" => {
                 if params.get("cursor").is_some() {
@@ -407,11 +421,62 @@ impl Bridge {
                     return Some(rpc_error(id, -32602, "Invalid control call"));
                 }
                 let attribution = self.attribution.clone();
-                match self.forward(Action::Call {
-                    call: call.clone(),
-                    attribution,
+                let expected = value["params"]["_meta"]
+                    .get("bboxy450/python_context")
+                    .cloned();
+                if expected.as_ref().is_some_and(|v| {
+                    !v.is_object() || serde_json::to_vec(v).map_or(true, |b| b.len() > 64 * 1024)
                 }) {
-                    Ok(result) => Ok(super::hints::attach(&call, result)),
+                    return Some(rpc_error(
+                        id,
+                        -32602,
+                        "Invalid Python execution context guard",
+                    ));
+                }
+                if python::handles(tool) && self.python_socket.is_some() {
+                    return Some(match self.python_call(&call, expected.as_ref()) {
+                        Ok(result) => {
+                            json!({"jsonrpc":"2.0","id":id,"result":super::hints::attach(&call,result)})
+                        }
+                        Err(error) => {
+                            let mut failure = super::error(
+                                call.op_id,
+                                "python_runtime_unavailable",
+                                "Python runtime transport failed; inspect the original execution before retrying source",
+                            );
+                            failure["structuredContent"]["transport"] = error.diagnostic();
+                            failure["content"][0]["text"] =
+                                json!(failure["structuredContent"].to_string());
+                            json!({"jsonrpc":"2.0","id":id,"result":failure})
+                        }
+                    });
+                }
+                let action = match expected {
+                    Some(expected) => Action::GuardedCall {
+                        call: call.clone(),
+                        attribution,
+                        expected,
+                    },
+                    None => Action::Call {
+                        call: call.clone(),
+                        attribution,
+                    },
+                };
+                match self.forward(action) {
+                    Ok(mut result) => {
+                        if call.tool == "python_execution_context" && result["isError"] != true {
+                            // Logic may be newer than this long-lived bridge.
+                            // A runtime must know this transport preserves its
+                            // guarded metadata, not just that logic has a tool.
+                            result["_meta"]["bboxy450/guard_transport_version"] = json!(1);
+                        }
+                        let result = if call.tool == "orient" && self.python_socket.is_some() {
+                            self.python_orient(result)
+                        } else {
+                            result
+                        };
+                        Ok(super::hints::attach(&call, result))
+                    }
                     Err(error) => {
                         let mut response = rpc_error(
                             id,

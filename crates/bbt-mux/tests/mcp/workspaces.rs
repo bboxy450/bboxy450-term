@@ -29,8 +29,14 @@ fn git(repo: &std::path::Path, args: &[&str]) -> String {
     String::from_utf8(out.stdout).unwrap().trim().into()
 }
 fn fixture() -> (Fixture, Ulid) {
+    fixture_kind(false)
+}
+pub(super) fn fixture_real() -> (Fixture, Ulid) {
+    fixture_kind(true)
+}
+fn fixture_kind(real: bool) -> (Fixture, Ulid) {
     let task = Ulid::new();
-    let f = Fixture::open_seeded(false, false, |repo, _| {
+    let f = Fixture::open_seeded(real, false, |repo, _| {
         git(repo, &["init", "-b", "main"]);
         std::fs::write(repo.join("source.txt"), "source\n").unwrap();
         std::fs::write(repo.join(".gitignore"), ".bboxy/\n").unwrap();
@@ -59,7 +65,7 @@ fn wait(f: &Fixture, id: Ulid, state: &str) -> Value {
         std::thread::sleep(Duration::from_millis(20));
     }
 }
-fn prepare(f: &Fixture, task: Ulid) -> (Ulid, Value) {
+pub(super) fn prepare(f: &Fixture, task: Ulid) -> (Ulid, Value) {
     let op = Ulid::new();
     let args =
         json!({"task_path":task.to_string(),"repository":"current","provider":"git","base":"HEAD"});

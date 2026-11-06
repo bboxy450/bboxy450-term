@@ -47,6 +47,14 @@ pub enum Action {
         #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
         attribution: std::collections::BTreeMap<String, String>,
     },
+    /// A session-owned runtime's captured context narrows ordinary seat
+    /// authority. Logic compares it in the owner turn before selecting IO.
+    GuardedCall {
+        #[serde(flatten)]
+        call: crate::mcp::Call,
+        attribution: std::collections::BTreeMap<String, String>,
+        expected: serde_json::Value,
+    },
     Messaging {
         request: crate::messaging::api::Request,
     },
@@ -1858,6 +1866,8 @@ async fn session_inner(
                         client.control_call_attributed_within(seat,generation,call.clone(),attribution,crate::logic::SEAT_PENDING_WAIT)
                             .await.map(|value| crate::mcp::hints::attach(&call,value))
                     },
+                    Action::GuardedCall{call,attribution,expected}=>client.control_call_guarded_within(seat,generation,call.clone(),attribution,Some(expected),crate::logic::SEAT_PENDING_WAIT)
+                        .await.map(|value|crate::mcp::hints::attach(&call,value)),
                     Action::Messaging{request}=>client.messaging(seat,generation,request).await.and_then(|v|Ok(serde_json::to_value(v)?)),
                     Action::Hook{event}=>Ok(serde_json::json!({"kind":"HookObserved","status":client.hook(seat,generation,event).await?})),
                     Action::HookDecide{event,wait_ms}=>hook_decide(&client,seat,generation,event,wait_ms).await,

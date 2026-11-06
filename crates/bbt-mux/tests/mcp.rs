@@ -18,6 +18,8 @@ mod launch_tests;
 mod record_supervisor;
 #[path = "mcp/workspaces.rs"]
 mod workspace_tests;
+#[path = "mcp/python_execution.rs"]
+mod python_execution_tests;
 use record_supervisor::RecordLink;
 use std::io::{Cursor, Read, Write};
 use std::os::unix::net::UnixStream;

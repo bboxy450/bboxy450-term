@@ -510,7 +510,8 @@ fn fixture_hosts_default() -> bool {
 // Original-operation recovery must reach a healthy retained logic owner (#74).
 // Own-seat diagnostic paging must reach a healthy retained logic owner (#75).
 // Bounded JSONL repair must replace a blocking retained owner without replacing PTYs.
-const MCP_CONTROL_VERSION: u16 = 20;
+// Guarded Python dispatch and managed workspace admission require refreshed logic.
+const MCP_CONTROL_VERSION: u16 = 21;
 /// The one-line private startup reply. Never log its capability.
 #[derive(Clone, Serialize, Deserialize)]
 pub struct LogicReady {
@@ -1911,6 +1912,20 @@ async fn stop_child(
 )]
 mod gui_io_tests {
     use super::*;
+
+    #[test]
+    fn guarded_python_dispatch_refreshes_legacy_logic_without_changing_supervisor_policy() {
+        let path=std::ffi::OsStr::new("/private/python-fixture/bin:/usr/bin");
+        let mut ready:LogicReady=serde_json::from_value(serde_json::json!({
+            "root":"/private/fixture","capability":vec![0;32],"identity":{"state":"held","reason":"private fixture"},
+            "mcp_control_version":20,"gui_state_version":bbt_proto::gui::WINDOW_STATE_VERSION,
+            "swarm_metadata_version":bbt_proto::gui::SWARM_METADATA_VERSION,"ui_control_version":bbt_proto::gui::UI_CONTROL_VERSION,
+            "swarm_workspace_version":bbt_proto::gui::SWARM_WORKSPACE_VERSION,"launch_path_fingerprint":shell_path::fingerprint(path)
+        })).unwrap();
+        assert!(!logic_compatible(&ready,path));
+        ready.mcp_control_version=MCP_CONTROL_VERSION;
+        assert!(logic_compatible(&ready,path));
+    }
 
     #[test]
     fn legacy_logic_ready_defaults_swarm_api_marker_and_accepts_additive_fields() {

@@ -45,6 +45,7 @@ export CARGO_PROFILE_TEST_OPT_LEVEL ?= 1
 
 help:
 	@printf '%s\n' \
+	  'make test-python-execute         Real CPython/MCP/command, cancellation and recovery checks' \
 	  'make build / build-release       Build the app (debug / optimized)' \
 	  'make privacy-1password          Open persistent macOS access settings for the signed installed app' \
 	  'make parity-startup             Boxybook startup checklist web/native preview and geometry comparison' \
@@ -2602,3 +2603,21 @@ test-workspace-provisioning: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo nextest run --locked -p bboxy450-term-mux --features model --lib --target-dir '$(TARGET_DIR)' -E 'test(managed_workspace)'; \
 	cargo nextest run --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' -E 'test(managed_workspace)'
+
+.PHONY: check-python-execute test-python-execute test-python-execute-boundaries
+check-python-execute: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo clippy --locked -p bboxy450-harness --features acp-agent --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings; \
+	cargo clippy --locked -p bboxy450-harness --features acp-agent,test-fixtures --lib --test mcp_client --test acp_launch_context --test formal_models --target-dir '$(TARGET_DIR)' -- -D warnings; \
+	cargo clippy --locked -p bboxy450-term-mux --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings; \
+	cargo clippy --locked -p bboxy450-term --example python_execute_fixture --target-dir '$(TARGET_DIR)' -- -D warnings
+
+test-python-execute: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-harness --features acp-agent --lib python_execute::tests --target-dir '$(TARGET_DIR)'
+
+test-python-execute-boundaries: test-python-execute
+	@set -eu; . ./scripts/cache-env.sh; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-harness --features acp-agent,test-fixtures --test mcp_client --test acp_launch_context --target-dir '$(TARGET_DIR)'; \
+	cargo build --locked -p bboxy450-term --example python_execute_fixture --target-dir '$(TARGET_DIR)'; \
+	BBOXY_PYTHON_EXECUTE_FIXTURE='$(abspath $(TARGET_DIR))/debug/examples/python_execute_fixture' cargo nextest run --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' -E 'test(python_)' --run-ignored all

@@ -1301,3 +1301,13 @@ implementation_tests = ["crates/bbt-mux/src/mcp/workspaces/tests.rs", "crates/bb
 property = "An inherited per-resource file lease and a generation check after claiming it prevent absence/release proof while an older Git child can still mutate after logic restart. The real fork/exec fixture proves the child keeps the kernel lock after the parent descriptor closes. Focused native evidence runs make test-workspace-provisioning; complete parity is mandatory under make test-formal."
 assumptions = "Finite projections bound two admissions/writers and three monotonic revisions; external provider effects and short SQLite publications are separate atomic actions. Progress assumes fair bounded IO scheduling and an eventually responsive provider. Real private Git/process/native MCP tests cover source/KB separation, retained private files/commits, exact identity, restart and replay. No arbitrary Rust, Git, filesystem, cryptographic or remote-provider refinement proof is claimed."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "PythonNativeContext"
+title = "A Python runtime cannot retarget native IO between preflight and dispatch"
+models = ["PythonNativeContext", "BrokenPythonNativeContext"]
+sources = ["crates/bbt-mux/src/logic/python_execution.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/mcp/mod.rs", "crates/bbt-mux/src/seat_socket.rs", "crates/bbt-mux/src/mcp/bridge/python.rs", "crates/bboxy450-term/tests/formal_contracts/python_execution_model.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp/python_execution.rs", "crates/bbt-mux/src/mcp/bridge.rs"]
+assumptions = "One runtime preflight, one native effect, two root/authority transitions including A-B-A, one actual immutable provider-port capture and current-context result publication. Owner admission/port selection is synchronous; async jobs retain existing actor/root/provider guards. The finite quotient does not prove arbitrary Rust, Python, filesystem or external-server atomicity. Real MCP/owned-process fixtures witness byte framing, native admission and refused retargeting. External effects are never claimed exactly-once or rolled back. Unmanaged cwd comes from the captured harness session while native root/provider/actor fields compare exactly; managed cwd and record revision remain guarded."
+property = "NativeEffectCannotRetarget; OldResultIsNotCurrent. Broken preflight-only dispatch must fail safety after a root/grant change, including A-B-A. Python errors/unknown results never authorize whole-script replay."
+checks = ["make test-formal", "make test"]

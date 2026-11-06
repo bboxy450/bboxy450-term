@@ -35,6 +35,26 @@ pub use bridge::run_cli;
 pub const MAX_ARGS: usize = 64 * 1024;
 pub const MAX_RESULT: usize = 512 * 1024;
 
+/// The captured cwd for an unmanaged harness is known only to that harness.
+/// Every native authority/root/provider field still compares exactly. Managed
+/// source cwd is part of its durable workspace record and cannot be ignored.
+pub(crate) fn python_context_matches(expected: &Value, current: &Value) -> bool {
+    if !expected.is_object()
+        || !current.is_object()
+        || expected["guard_version"] != 1
+        || current["guard_version"] != 1
+    {
+        return false;
+    }
+    let mut expected = expected.clone();
+    let mut current = current.clone();
+    if expected["workspace"].is_null() && current["workspace"].is_null() {
+        expected.as_object_mut().unwrap().remove("cwd");
+        current.as_object_mut().unwrap().remove("cwd");
+    }
+    expected == current
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Call {

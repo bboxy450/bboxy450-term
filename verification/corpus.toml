@@ -1381,3 +1381,13 @@ frontend = "project"
 name = "BrokenManagedWorkspaceProviderLease"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "PythonNativeContext"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenPythonNativeContext"
+expected = "safety"
+frontend = "project"
