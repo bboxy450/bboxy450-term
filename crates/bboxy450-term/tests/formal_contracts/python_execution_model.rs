@@ -20,12 +20,13 @@ fn native(broken: bool) -> Model {
             ("cross_scope_effect", 1, 0),
             ("visible", 1, 0),
             ("published_epoch", 2, 0),
+            ("seat_open", 1, 1),
         ],
     );
     action(
         &mut m,
         "Preflight",
-        eq(0, 0),
+        all([eq(0, 0), eq(8, 1)]),
         &[(0, Int(1)), (3, Var(1)), (4, Var(2))],
     );
     action(
@@ -40,14 +41,32 @@ fn native(broken: bool) -> Model {
         eq(2, 1),
         &[(1, Int(0)), (2, Int(2)), (6, Int(0))],
     );
+    action(
+        &mut m,
+        "CloseSeat",
+        all([eq(8, 1), Var(2).lt(Int(2))]),
+        &[(8, Int(0)), (2, Var(2).plus(Int(1))), (6, Int(0))],
+    );
+    action(
+        &mut m,
+        "UndoClose",
+        all([eq(8, 0), Var(2).lt(Int(2))]),
+        &[(8, Int(1)), (2, Var(2).plus(Int(1))), (6, Int(0))],
+    );
     let current = all([Var(1).eq(Var(3)), Var(2).eq(Var(4))]);
     action(
         &mut m,
         "CaptureActualProviderAndDispatch",
-        all([eq(0, 1), current.clone()]),
+        all([eq(0, 1), current.clone(), eq(8, 1)]),
         &[(0, Int(2))],
     );
     if broken {
+        action(
+            &mut m,
+            "BrokenAdmitClosedSeat",
+            all([eq(0, 0), eq(8, 0)]),
+            &[(0, Int(2)), (5, Int(1))],
+        );
         action(
             &mut m,
             "BrokenUsePreflightAfterRetarget",
@@ -58,7 +77,7 @@ fn native(broken: bool) -> Model {
     action(
         &mut m,
         "PublishCurrentResult",
-        all([eq(0, 2), current]),
+        all([eq(0, 2), current, eq(8, 1)]),
         &[(0, Int(3)), (6, Int(1)), (7, Var(2))],
     );
     action(
