@@ -47,7 +47,8 @@ impl<W: std::io::Write> std::io::Write for HeldReply<W> {
     fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
         if self.run.join("hold-native-write").is_file()
             && serde_json::from_slice::<serde_json::Value>(bytes).is_ok_and(|value| {
-                value["result"]["structuredContent"]["record"]["path"] == "reports/python-held.md"
+                value["result"]["structuredContent"]["record"]["path"]
+                    == "reports/2026-11-05-python-held.md"
             })
         {
             std::fs::write(self.run.join("held-native-write"), b"acknowledgement held")?;

@@ -257,7 +257,7 @@ fn python_managed_worktree_executes_python_and_mcp_against_canonical_kb() {
         orientation["structuredContent"]["context"]["workspace"]["workspace_id"],
         json!(id)
     );
-    let result=harness.execute("import pathlib\npathlib.Path('python-source.txt').write_text('private source')\nresponse=await mcp.call('native','knowledge_write',inputs.report)\nemit({'cwd':str(pathlib.Path.cwd()),'record':response.structured.record})",json!({"report":{"path":"reports/python-runtime.md","frontmatter":{"type":"report","title":"Python runtime fixture","task":"#3","author":format!("seat:{worker}"),"created":"2026-11-05T00:00:00Z"},"body":"Source work and canonical knowledge stay separate."}}));
+    let result=harness.execute("import pathlib\npathlib.Path('python-source.txt').write_text('private source')\nawait commands.run(['/bin/test','-f','python-source.txt'],check=True)\nresponse=await mcp.call('native','knowledge_write',inputs.report)\nemit({'cwd':str(pathlib.Path.cwd()),'record':response.structured.record})",json!({"report":{"path":"reports/2026-11-05-python-runtime.md","frontmatter":{"type":"report","title":"Python runtime fixture","task":"#3","author":format!("seat:{worker}"),"created":"2026-11-05T00:00:00Z","commits":[],"verify":{"command":"test -f python-source.txt","exit_code":0}},"body":"Source work and canonical knowledge stay separate."}}));
     assert_eq!(
         result["structuredContent"]["status"], "completed",
         "{result}"
@@ -266,10 +266,14 @@ fn python_managed_worktree_executes_python_and_mcp_against_canonical_kb() {
     assert!(
         f.config
             .repository
-            .join(".bboxy/reports/python-runtime.md")
+            .join(".bboxy/reports/2026-11-05-python-runtime.md")
             .is_file()
     );
-    assert!(!source.join(".bboxy/reports/python-runtime.md").exists());
+    assert!(
+        !source
+            .join(".bboxy/reports/2026-11-05-python-runtime.md")
+            .exists()
+    );
     let oracle_harness = HarnessFixture::start(&f, f.oracle.id, &f.config.repository);
     let oriented=oracle_harness.execute("import json\noriented=await mcp.call('native','orient',{})\nassert json.loads(oriented.content[0].text)==oriented.structured\nemit({'hints':oriented.hints,'tools':[tool.name for tool in oriented.structured.tools]})",json!({}));
     assert_eq!(
@@ -296,7 +300,7 @@ fn python_managed_worktree_executes_python_and_mcp_against_canonical_kb() {
     // status/context must use the independent trusted native read lane rather
     // than queueing behind that acknowledgement on the effect peer.
     std::fs::write(harness.run.join("hold-native-write"), b"hold").unwrap();
-    let held=harness.call("python_execute",json!({"source":"await mcp.call('native','knowledge_write',inputs.report)","inputs":{"report":{"path":"reports/python-held.md","frontmatter":{"type":"report","title":"Held native runtime fixture","task":"#3","author":format!("seat:{worker}"),"created":"2026-11-05T00:00:00Z"},"body":"The native write completed before its serial reply was released."}}}));
+    let held=harness.call("python_execute",json!({"source":"await commands.run(['/bin/test','-f','python-source.txt'],check=True)\nawait mcp.call('native','knowledge_write',inputs.report)","inputs":{"report":{"path":"reports/2026-11-05-python-held.md","frontmatter":{"type":"report","title":"Held native runtime fixture","task":"#3","author":format!("seat:{worker}"),"created":"2026-11-05T00:00:00Z","commits":[],"verify":{"command":"test -f python-source.txt","exit_code":0}},"body":"The native write completed before its serial reply was released."}}}));
     assert_ne!(held["isError"], true, "{held}");
     let held_id = held["structuredContent"]["execution_id"].clone();
     let until = Instant::now() + Duration::from_secs(10);
@@ -310,7 +314,7 @@ fn python_managed_worktree_executes_python_and_mcp_against_canonical_kb() {
     assert!(
         f.config
             .repository
-            .join(".bboxy/reports/python-held.md")
+            .join(".bboxy/reports/2026-11-05-python-held.md")
             .is_file()
     );
     let before = Instant::now();
@@ -344,7 +348,13 @@ fn python_managed_worktree_executes_python_and_mcp_against_canonical_kb() {
         let value = harness.call("python_execution_get", json!({"execution_id":held_id}));
         if value["structuredContent"]["status"] == "cancelled" {
             assert_eq!(
-                value["structuredContent"]["children"][0]["status"], "unknown",
+                value["structuredContent"]["children"]
+                    .as_array()
+                    .unwrap()
+                    .iter()
+                    .find(|child| child["tool"] == "knowledge_write")
+                    .unwrap()["status"],
+                "unknown",
                 "{value}"
             );
             break;
@@ -352,13 +362,23 @@ fn python_managed_worktree_executes_python_and_mcp_against_canonical_kb() {
         assert!(Instant::now() < until, "{value}");
         std::thread::sleep(Duration::from_millis(5));
     }
-    let closed = f.mutate(
-        f.oracle.id,
-        Ulid::new(),
-        "seat_close",
-        json!({"seat_id":worker}),
-    );
-    assert_ne!(closed["isError"], true, "{closed}");
+    // This private fixture has no window. Close through the normal logic owner
+    // rather than the window/undo MCP action, then exercise its real revocation.
+    f.runtime
+        .block_on(f.client().close(
+            worker,
+            1,
+            Ulid::new(),
+            bbt_mux::registry::Position {
+                swarm: f.oracle.swarm,
+                tab: Ulid::new(),
+                split_path: vec![],
+                ratios: vec![],
+                layout_revision: 0,
+            },
+            0,
+        ))
+        .unwrap();
     let denied = harness.call(
         "python_execute",
         json!({"source":"open('must-not-start.txt','w').write('bad')"}),
