@@ -82,7 +82,9 @@ struct ShapeKey {
     phase: u32,
     epoch: u64,
 }
-const SHAPE_BUDGET: usize = 512;
+/// Distinct shaped lines kept. A visible working set above this re-shapes every
+/// line on every frame, so it is sized well past a busy window's text.
+const SHAPE_BUDGET: usize = 32 * 1024;
 const LINE_PLAN_BUDGET: usize = 2 * 1024 * 1024;
 struct ShapeEntry {
     shape: Arc<Shape>,
@@ -157,6 +159,7 @@ pub(super) struct Cache {
     next_id: u64,
     totals: Stats,
     shapes: HashMap<ShapeKey, ShapeEntry>,
+    shape_budget: usize,
     line_plan_bytes: usize,
     lookup_text: String,
     shape_scale: u32,
@@ -191,6 +194,7 @@ impl Cache {
             next_id: 0,
             totals: Stats::default(),
             shapes: HashMap::new(),
+            shape_budget: SHAPE_BUDGET,
             line_plan_bytes: 0,
             lookup_text: String::new(),
             shape_scale: 0,
@@ -331,6 +335,23 @@ impl Cache {
         Ok(line)
     }
 
+    /// Drops the least recently used eighth in one pass: a full cache costs one
+    /// scan per budget/8 misses, never a scan per miss.
+    fn evict_shapes(&mut self) {
+        let mut uses: Vec<u64> = self.shapes.values().map(|entry| entry.last_use).collect();
+        let count = (uses.len() / 8).max(1);
+        let cutoff = *uses.select_nth_unstable(count - 1).1;
+        let mut freed = 0;
+        self.shapes.retain(|_, entry| {
+            let keep = entry.last_use > cutoff;
+            if !keep && let Some(line) = &entry.line {
+                freed += line.bytes();
+            }
+            keep
+        });
+        self.line_plan_bytes -= freed;
+    }
+
     fn recycle_key(&mut self, key: ShapeKey) {
         if key.value.capacity() <= 4096 {
             self.lookup_text = key.value;
@@ -456,15 +477,8 @@ impl Cache {
         }
         self.totals.shape_misses += 1;
         let shape = Arc::new(glyphs::shape(value, style, max_width, scale, phase)?);
-        if self.shapes.len() >= SHAPE_BUDGET
-            && let Some(oldest) = self
-                .shapes
-                .iter()
-                .min_by_key(|(_, entry)| entry.last_use)
-                .map(|(key, _)| key.clone())
-            && let Some(line) = self.shapes.remove(&oldest).and_then(|entry| entry.line)
-        {
-            self.line_plan_bytes -= line.bytes();
+        if self.shapes.len() >= self.shape_budget {
+            self.evict_shapes();
         }
         self.shapes.insert(
             key.clone(),
@@ -941,12 +955,18 @@ mod tests {
     // keeps: spec renderer §1 — retained glyph working sets and changed-only atlas uploads
     #[test]
     fn shapes_evict_least_recent_and_clear_on_scale_or_font_change() {
+        const SHAPE_BUDGET: usize = 64;
         let mut cache = Cache::new().unwrap();
+        cache.shape_budget = SHAPE_BUDGET;
         let style = TextStyle::default();
         for i in 0..=SHAPE_BUDGET {
             cache.line(&i.to_string(), style, None, 1., 0.).unwrap();
         }
-        assert_eq!(cache.stats().shape_entries, SHAPE_BUDGET);
+        // One batch dropped the oldest eighth.
+        assert_eq!(
+            cache.stats().shape_entries,
+            SHAPE_BUDGET - SHAPE_BUDGET / 8 + 1
+        );
         let misses = cache.stats().shape_misses;
         cache.line("0", style, None, 1., 0.).unwrap();
         assert_eq!(
