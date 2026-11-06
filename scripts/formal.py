@@ -288,7 +288,7 @@ def native_graph(root, name):
 def tlc(java, jar, root, name, graph):
     suffix = "Graph" if graph else ""
     command = [str(java), "-XX:ActiveProcessorCount=2", "-Xmx256m", "-XX:+UseSerialGC", "-cp", str(jar),
-               "tlc2.TLC", "-workers", "1", "-cleanup", "-config", f"{name}{suffix}.cfg",
+               "tlc2.TLC", "-workers", "1", "-lncheck", "final", "-cleanup", "-config", f"{name}{suffix}.cfg",
                "-metadir", str(root / f"{name}{suffix}-metadata")]
     if graph:
         command += ["-dump", "dot,actionlabels", f"{name}.dot"]
