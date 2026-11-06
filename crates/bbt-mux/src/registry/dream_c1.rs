@@ -248,10 +248,10 @@ impl Journal {
             match version {
                 1 => {
                     if !read_only {
-                        // Decision66026: transition only this exact private
+                        // Decisions66026/66058: transition only this exact private
                         // catalogue, outside a transaction and while busy0.
                         // SQLite retains/settles existing WAL rows itself.
-                        journal.initialization_statement("PRAGMA journal_mode=DELETE", 0)?;
+                        journal.initialization_statement("PRAGMA journal_mode=PERSIST", 0)?;
                         journal.configure_busy()?;
                     }
                 }
@@ -324,7 +324,7 @@ impl Journal {
                         .map_err(Self::initialization_error)?
                         .as_str()
                         .map_err(|_| Code::StorageUnavailable)?
-                        != "delete"
+                        != "persist"
                     {
                         return Err(Code::StorageUnavailable);
                     }
@@ -385,7 +385,7 @@ impl Journal {
                 .map_err(Self::initialization_error)
         })?;
         let initialized = (|| {
-            self.initialization_statement("PRAGMA journal_mode=DELETE", 0)?;
+            self.initialization_statement("PRAGMA journal_mode=PERSIST", 0)?;
             self.initialization_statement("BEGIN IMMEDIATE", 7)?;
             // This second cookie read is an atomic race check after acquiring
             // the writer transaction, not repeated preparation/warmup work.
@@ -2623,7 +2623,7 @@ mod registry_tests {
                     .map_err(Journal::initialization_error)
             })
             .unwrap();
-        assert_eq!(mode, "delete");
+        assert_eq!(mode, "persist");
         assert_eq!(
             sync, 2,
             "recovery must preserve FULL rollback-journal durability"
@@ -2640,7 +2640,7 @@ mod registry_tests {
         let seat = id(996);
         let writer = uninitialized_journal(&fixture, &seat);
         writer
-            .initialization_statement("PRAGMA journal_mode=DELETE", 0)
+            .initialization_statement("PRAGMA journal_mode=PERSIST", 0)
             .unwrap();
         let contender = uninitialized_journal(&fixture, &seat);
         writer
@@ -2692,7 +2692,7 @@ mod registry_tests {
         assert!(quantum.max_unit_cpu_ns() <= 1_000_000);
         assert!(quantum.max_cleanup_unit_cpu_ns() <= 1_000_000);
         eprintln!(
-            "dream_c1_delete_cold cumulative_cpu_ns={} max_unit_cpu_ns={} max_cleanup_unit_cpu_ns={} effects=durable_original_op_run_source_cursor",
+            "dream_c1_persist_cold cumulative_cpu_ns={} max_unit_cpu_ns={} max_cleanup_unit_cpu_ns={} effects=durable_original_op_run_source_cursor",
             cumulative.as_nanos(),
             quantum.max_unit_cpu_ns(),
             quantum.max_cleanup_unit_cpu_ns()
@@ -2742,7 +2742,7 @@ mod registry_tests {
             .join(format!("{}.sqlite", id(10).0));
         let inode = fs::metadata(&path).unwrap().ino();
         // Unmeasured legacy-fixture construction only. This deliberately seeds
-        // the old supported WAL state; it is not a cold DELETE timing result.
+        // the old supported WAL state; it is not a cold PERSIST timing result.
         let legacy = Connection::open(&path).unwrap();
         assert_eq!(
             legacy
@@ -2816,7 +2816,7 @@ mod registry_tests {
                 .db
                 .query_row("PRAGMA journal_mode", [], |r| r.get::<_, String>(0))
                 .unwrap(),
-            "delete"
+            "persist"
         );
         assert_eq!(
             migrated
@@ -2854,7 +2854,7 @@ mod registry_tests {
             rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE | rusqlite::OpenFlags::SQLITE_OPEN_NOFOLLOW,
         )
         .unwrap();
-        db.execute_batch("PRAGMA journal_mode=DELETE; PRAGMA synchronous=FULL; BEGIN IMMEDIATE; CREATE TABLE source_errors(session TEXT NOT NULL,generation INTEGER NOT NULL,error BLOB NOT NULL,PRIMARY KEY(session,generation));").unwrap();
+        db.execute_batch("PRAGMA journal_mode=PERSIST; PRAGMA synchronous=FULL; BEGIN IMMEDIATE; CREATE TABLE source_errors(session TEXT NOT NULL,generation INTEGER NOT NULL,error BLOB NOT NULL,PRIMARY KEY(session,generation));").unwrap();
         if std::env::var_os("BBOXY_C1_CRASH_AFTER_MARKER").is_some() {
             db.pragma_update(None, "user_version", 1).unwrap();
         }
@@ -2928,7 +2928,7 @@ mod registry_tests {
             .db
             .query_row("PRAGMA journal_mode", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(mode, "delete");
+        assert_eq!(mode, "persist");
     }
 
     #[test]
@@ -3142,7 +3142,7 @@ mod registry_tests {
                 result.as_ref().err()
             );
         }
-        // DELETE's paid transaction can outlast an overlapping admission. Busy
+        // PERSIST's paid transaction can outlast an overlapping admission. Busy
         // refuses without waiting or implicit replay. After both exact owners
         // return, an explicitly new request recovers the ORIGINAL operation,
         // regardless of its other candidate SourceKey; no source is rerun.

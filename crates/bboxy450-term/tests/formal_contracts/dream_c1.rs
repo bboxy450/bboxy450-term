@@ -3077,7 +3077,7 @@ const PERSISTENCE_NAMES: [&str; 6] = [
 ];
 fn catalogue_mode(kind: usize, broken: bool) -> Model {
     // phase choose0,mode1,selected2,tx3,DDL4,marker5,ready6,refusal/crash7.
-    // mode WAL0/DELETE1; old rows abbreviate original-op/run/source/cursor bytes.
+    // mode WAL0/PERSIST1; old rows abbreviate original-op/run/source/cursor bytes.
     let mut m = model(
         PERSISTENCE_NAMES[kind],
         broken,
@@ -3118,7 +3118,7 @@ fn catalogue_mode(kind: usize, broken: bool) -> Model {
     action(&mut m, "ReleaseReaderOrWriter", eq(2, 1), &[(2, Int(0))]);
     action(
         &mut m,
-        "SelectDelete",
+        "SelectPersist",
         all([
             eq(0, 1),
             if broken && kind == 2 {
@@ -3430,7 +3430,7 @@ fn dream_c1_catalogue_migration_crash_busy_and_preparation_cost_controls_are_non
             &r,
             &[
                 "SeedLegacy",
-                "SelectDelete",
+                "SelectPersist",
                 "ExistingReady",
                 "DuplicateOriginal",
             ],
@@ -3452,7 +3452,7 @@ fn dream_c1_catalogue_migration_crash_busy_and_preparation_cost_controls_are_non
             &r,
             &[
                 "ChooseFresh",
-                "SelectDelete",
+                "SelectPersist",
                 "BeginSchema",
                 "WriteDdl",
                 "StageReady",
@@ -3466,7 +3466,7 @@ fn dream_c1_catalogue_migration_crash_busy_and_preparation_cost_controls_are_non
             crash,
             &[
                 "ExplicitReopen",
-                "SelectDelete",
+                "SelectPersist",
                 "BeginSchema",
                 "WriteDdl",
                 "StageReady",
