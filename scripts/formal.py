@@ -101,6 +101,12 @@ class _HarnessContractLayout:
         self.root, self.child = root, child
         self.prefix = str(child.relative_to(root)) + "/"
 
+    @property
+    def parent(self):
+        # The pinned validator observes its real checkout layout before resolving
+        # witnesses. Path access still passes the exact allowlist below.
+        return self.child.parent
+
     def __truediv__(self, locator):
         if not isinstance(locator, str):
             raise ValueError("non-string harness contract locator")
