@@ -79,6 +79,7 @@ pub fn resolve_with_catalog(
                     "executor" => ("Executor".into(), "implements a scoped brief".into()),
                     "qa" => ("QA".into(), "tests the app, drives the desktop".into()),
                     "solo" => ("Solo".into(), "plans, builds, verifies, lands alone".into()),
+                    "sudo" => ("Sudo".into(), "operator authority over every swarm".into()),
                     _ => (
                         value.clone(),
                         catalog.roles[&value]

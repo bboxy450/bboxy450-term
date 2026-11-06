@@ -9,6 +9,10 @@ use super::*;
 use crate::registry::Class;
 use std::collections::{BTreeMap, BTreeSet};
 
+/// The builtin role that carries operator authority into MCP across every swarm.
+/// Only the operator, or a seat already holding it, can assign it.
+pub const SUDO_ROLE: &str = "sudo";
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct RoleDefinition {
@@ -54,6 +58,7 @@ impl RoleCatalog {
             ("executor", Worker, "Implement the scoped assignment and verify it. Work silently: send no acknowledgements, progress or status messages. Message once, only when blocked (the evidence and the exact decision needed) or when done (task_report with evidence).", "#43D9A3", "♟"),
             ("qa", Worker, "Test the assigned change like a user would. Run the real app and drive the desktop through ctl, flags, sockets and captures; exercise the edge cases, try to break it, and reproduce every failure with exact steps. Report what you ran, what you saw and what is broken, with evidence. Do not fix product code unless the brief says so.", "#38BDF8", "♞"),
             ("shell", Worker, "", "#7397D4", ""),
+            (SUDO_ROLE, Oracle, "Hold the operator's authority across every swarm. Use the sudo_* tools to see all swarms, create swarms, spawn oracles and other seats anywhere, message any swarm as the operator, read the operator inbox, and act as any live seat with sudo_as. Brief swarm oracles and let them run their swarms; verify outcomes from evidence. Never close, restart or interrupt work you were not asked to.", "#FF5F56", "♛"),
             ("solo", Oracle, "Own the whole task alone: research, plan, design, implement, verify with real evidence, and land. Do not delegate or spawn other seats unless the operator asks. Report files, commands, and results.", "#F7C442", "♚"),
         ].into_iter().map(|(name, class, prompt, color, mark)| (name.into(), RoleDefinition {
             class, prompt: prompt.into(), send: String::new(), color: color.into(), mark: mark.into(),
@@ -81,6 +86,7 @@ impl RoleCatalog {
                         "qa",
                         "shell",
                         "solo",
+                        SUDO_ROLE,
                     ]
                     .into_iter()
                     .map(String::from)

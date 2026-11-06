@@ -19,6 +19,7 @@ pub(crate) mod read_pages;
 pub(crate) mod recovery;
 pub(crate) mod seats;
 pub(crate) mod skills;
+pub(crate) mod sudo;
 pub(crate) mod tools;
 pub(crate) mod work_items;
 pub(crate) mod workspaces;

@@ -39,9 +39,23 @@ impl CatalogStore {
                 saved.catalog
             }
         };
-        // A cache saved before a builtin existed gains it; saved roles keep their edits.
-        for (name, role) in RoleCatalog::builtin().roles {
-            catalog.roles.entry(name).or_insert(role);
+        // A cache saved before a builtin existed gains it, available wherever the
+        // builtin policy offers it; saved roles keep their edits.
+        let builtin = RoleCatalog::builtin();
+        for (name, role) in builtin.roles {
+            if catalog.roles.contains_key(&name) {
+                continue;
+            }
+            catalog.roles.insert(name.clone(), role);
+            for (kind, policy) in &mut catalog.harnesses {
+                if builtin
+                    .harnesses
+                    .get(kind)
+                    .is_some_and(|p| p.available_roles.contains(&name))
+                {
+                    policy.available_roles.push(name.clone());
+                }
+            }
         }
         catalog.validate().map_err(invalid)?;
         // Missing cache bytes are compatible with pre-catalog builtin seats,
@@ -251,6 +265,37 @@ mod tests {
                 .unwrap_err()
                 .to_string()
                 .starts_with("role_in_use:")
+        );
+    }
+    #[test]
+    fn a_cache_saved_before_sudo_existed_gains_it_where_builtins_offer_it() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = SqliteStore::open(directory.path()).unwrap();
+        let mut old = RoleCatalog::builtin();
+        old.roles.remove(bbt_proto::gui::SUDO_ROLE);
+        for policy in old.harnesses.values_mut() {
+            policy
+                .available_roles
+                .retain(|name| name != bbt_proto::gui::SUDO_ROLE);
+        }
+        old.harnesses.get_mut("codex").unwrap().available_roles = vec!["executor".into()];
+        store
+            .put(
+                KEY,
+                &serde_json::to_vec(&Saved {
+                    version: 1,
+                    catalog: old,
+                })
+                .unwrap(),
+            )
+            .unwrap();
+        let loaded = CatalogStore::new(store).load().unwrap();
+        let (role, _) = resolve(&loaded, "claude", Some(bbt_proto::gui::SUDO_ROLE)).unwrap();
+        assert_eq!(role.class, Class::Oracle);
+        // An operator's narrowed list stays narrowed except for the new builtin.
+        assert_eq!(
+            loaded.harnesses["codex"].available_roles,
+            ["executor", bbt_proto::gui::SUDO_ROLE]
         );
     }
     #[test]

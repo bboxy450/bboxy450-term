@@ -31,6 +31,7 @@ fn mark(role: &str) -> &'static str {
     match role {
         "oracle" => "♔",
         "solo" => "♚",
+        "sudo" => "♛",
         "researcher" => "♗",
         "architect" => "♖",
         "executor" => "♟",

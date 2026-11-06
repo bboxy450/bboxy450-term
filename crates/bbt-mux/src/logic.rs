@@ -11,6 +11,7 @@ mod ingestion;
 mod knowledge_effects;
 mod python_execution;
 mod role_catalog;
+mod sudo;
 mod task_import;
 #[cfg(test)]
 #[path = "knowledge/routing_tests.rs"]
@@ -5075,8 +5076,13 @@ impl Worker {
             )
             .map_err(|e| e.to_string())?;
             HarnessRecord::builtin(&args.approved_profile).map_err(|error| error.to_string())?;
-            self.configured_role(&args.approved_profile, args.role.as_deref())
+            let (role, _) = self
+                .configured_role(&args.approved_profile, args.role.as_deref())
                 .map_err(|error| error.to_string())?;
+            // Resolved, so a harness whose default is sudo cannot escalate an Oracle.
+            if !crate::mcp::sudo::may_assign(actor, Some(&role.name)) {
+                return Err("only the operator or a sudo seat may assign the sudo role".into());
+            }
         }
         Ok(request)
     }
@@ -10960,6 +10966,22 @@ impl Worker {
                         // The seat's latest attribution, for the plugin IO this
                         // and its later deferred work run on the seat's behalf.
                         self.seat_attribution.insert(id, (generation, attribution));
+                        // Sudo answers here or re-addresses the call to its target seat.
+                        let (id, generation, call) = if crate::mcp::sudo::handles(&call.tool) {
+                            match self.sudo_call(id, generation, call) {
+                                sudo::Sudo::As(seat, generation, call) => (seat, generation, call),
+                                sudo::Sudo::Done(value) => {
+                                    let _ = reply.send(Ok(value));
+                                    continue;
+                                }
+                                sudo::Sudo::Swarm(value, actions) => {
+                                    self.sudo_swarm_actions(value, actions, reply);
+                                    continue;
+                                }
+                            }
+                        } else {
+                            (id, generation, call)
+                        };
                         let call = if call.tool == "ctl" {
                             match self.control_actor(id, generation).and_then(|(actor, _)| {
                                 crate::mcp::seats::canonical(&actor, &call).map_err(invalid)

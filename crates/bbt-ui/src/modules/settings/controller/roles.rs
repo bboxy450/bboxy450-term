@@ -87,6 +87,7 @@ pub(super) fn builtin(name: &str) -> bool {
         "executor",
         "shell",
         "solo",
+        "sudo",
     ]
     .iter()
     .any(|id| id.eq_ignore_ascii_case(name))

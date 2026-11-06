@@ -14,7 +14,7 @@ use bbt_ui::modules::settings::Role;
 use std::collections::BTreeMap;
 use toml_edit::{DocumentMut, Item, Value};
 
-pub const BUILTINS: [&str; 8] = [
+pub const BUILTINS: [&str; 9] = [
     "oracle",
     "architect",
     "creativity",
@@ -23,6 +23,7 @@ pub const BUILTINS: [&str; 8] = [
     "qa",
     "shell",
     "solo",
+    "sudo",
 ];
 pub use bbt_ui::modules::harness::HARNESSES;
 

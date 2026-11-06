@@ -238,7 +238,7 @@ pub(crate) fn keyboard_badge(
 }
 pub fn role_color(role: &str) -> ui::Color {
     rgba(match role {
-        "oracle" | "solo" => TOKENS.color.role.oracle,
+        "oracle" | "solo" | "sudo" => TOKENS.color.role.oracle,
         "creativity" => TOKENS.color.role.creativity,
         "architect" => TOKENS.color.role.architect,
         "executor" | "researcher" => TOKENS.color.role.executor,
