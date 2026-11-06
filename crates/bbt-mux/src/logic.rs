@@ -14783,6 +14783,23 @@ pub(super) mod dream_public_api_tests {
     }
 
     #[test]
+    #[ignore = "explicit cold/warm phase diagnostic; does not certify latency"]
+    fn dream_c1_cold_warm_control_phase_measurements() {
+        let f=Fixture::open();
+        let before=f.counts();
+        for temperature in ["cold", "warm1", "warm2"] {
+            for page in [None,Some(0)] {
+                let start=Instant::now();
+                let result=f.mcp(f.own.id,f.status(page));
+                let wall=start.elapsed();
+                assert_eq!(result["ok"],true,"{result}");
+                eprintln!("dream_c1_cold_warm temperature={temperature} page={page:?} wall_ns={} diagnostic_only=true latency_accepted=false",wall.as_nanos());
+            }
+        }
+        f.unchanged(before,"cold/warm public Status/page measurement");
+    }
+
+    #[test]
     fn dream_c1_held_private_delete_catalogue_keeps_mcp_gui_control_owner_independent() {
         let f = Fixture::open();
         let (run_dir, _) = f.retained_api_record();

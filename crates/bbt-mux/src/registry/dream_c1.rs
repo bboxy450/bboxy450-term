@@ -1169,11 +1169,50 @@ pub(crate) struct Authority {
     pub foreground: Arc<AtomicBool>,
     pub activity_revision: Arc<std::sync::atomic::AtomicU64>,
 }
+// Fixed, test-only phase clocks. Diagnostic output is emitted after snapshots;
+// it is never a product control, an authority receipt or latency acceptance.
+#[cfg(test)]
+struct PhaseTrace {
+    kind: &'static str,
+    enabled: bool,
+    wall: std::time::Instant,
+    cpu: Option<std::time::Duration>,
+    samples: [(&'static str, u64, Option<u64>); 12],
+    count: usize,
+}
+#[cfg(test)]
+impl PhaseTrace {
+    fn new(kind: &'static str) -> Self {
+        Self {kind,enabled:std::env::var_os("BBOXY_DREAM_PHASE_TRACE").is_some(),wall:std::time::Instant::now(),cpu:bbt_rt::fault::thread_cpu_time().ok(),samples:[("",0,None);12],count:0}
+    }
+    fn mark(&mut self, phase: &'static str) {
+        if !self.enabled {return;}
+        let wall=std::time::Instant::now();
+        let cpu=bbt_rt::fault::thread_cpu_time().ok();
+        let used=cpu.zip(self.cpu).and_then(|(now,before)|now.checked_sub(before)).and_then(|v|u64::try_from(v.as_nanos()).ok());
+        if let Some(sample)=self.samples.get_mut(self.count) {
+            *sample=(phase,u64::try_from(wall.duration_since(self.wall).as_nanos()).unwrap_or(u64::MAX),used);
+            self.count+=1;
+        }
+        self.wall=wall;self.cpu=cpu;
+    }
+}
+#[cfg(test)]
+impl Drop for PhaseTrace {
+    fn drop(&mut self) {
+        if self.enabled {
+            for (phase,wall,cpu) in &self.samples[..self.count] {
+                eprintln!("dream_c1_phase kind={} phase={phase} wall_ns={wall} cpu_ns={cpu:?} diagnostic_only=true",self.kind);
+            }
+        }
+    }
+}
 impl Authority {
     pub fn capture(&self) -> Result<w::Context, Code> {
         self.capture_all().map(|(context, _)| context)
     }
     pub fn capture_all(&self) -> Result<(w::Context, crate::identity::PublicFence), Code> {
+        #[cfg(test)] let mut trace=PhaseTrace::new("capture");
         // An unavailable routing dependency refuses before public SQL/setup;
         // controls never wait behind a held provider selection.
         let before = self
@@ -1190,6 +1229,7 @@ impl Authority {
                 .prepare_session_cooperative(|_| Ok(()), checkpoint)
                 .map_err(|_| Code::StaleContext)
         })?);
+        #[cfg(test)] trace.mark("prepare_session");
         let fence = quantum.public_prelude(|checkpoint| {
             if self.fence.cached_revision() & 1 != 0 {
                 return Err(Code::StaleContext);
@@ -1198,12 +1238,15 @@ impl Authority {
                 .current_prepared_cooperative(&session, checkpoint)
                 .map_err(|_| Code::StaleContext)
         })?;
+        #[cfg(test)] trace.mark("current_public_fence");
         let context = quantum.unit(|| self.capture_context(&fence, &session))?;
+        #[cfg(test)] trace.mark("actor_context");
         quantum.retire_session(&session)?;
         drop(session);
         // This short-lived prelude cannot discard its final work debt when
         // the independently owned catalogue/job context takes over.
         quantum.pay()?;
+        #[cfg(test)] trace.mark("retire_and_pay");
         if !self
             .port
             .host
@@ -1912,6 +1955,7 @@ impl Runtime {
         let runtime_handle = handle.clone();
         handle.spawn_blocking(move || {
             let _=std::thread::Builder::new().name("dream-c1-control".into()).spawn(move || {
+                #[cfg(test)] let mut trace=PhaseTrace::new("request");
                 let mut done=Some(done);
                 let mut presentation=None;
                 let mut journal_quantum=None;
@@ -1921,6 +1965,7 @@ impl Runtime {
                     let request=parse()?;
                     request.validate()?;
                     let retained=runtime.retained_control_authority(&authority,&request)?;
+                    #[cfg(test)] trace.mark("retained_authority");
                     // A cache-miss control first checks only its host-bound own
                     // catalogue header. Busy/missing storage can refuse without
                     // cold public-proof preparation; it never grants authority,
@@ -1931,10 +1976,12 @@ impl Runtime {
                     if retained.is_none() && matches!(&request,w::Control::Status(_)|w::Control::Cancel(_)) {
                         Journal::probe_control_header(&runtime.path,&authority.seat.into())?;
                     }
+                    #[cfg(test)] trace.mark("header_preflight");
                     let (context,identity_fence,request_session)=match retained {
                         Some((context,fence,session))=>(context,fence,Some(session)),
                         None=>{let (context,fence)=authority.capture_all()?;(context,fence,None)},
                     };
+                    #[cfg(test)] trace.mark("capture_authority");
                     presentation=Some((context.clone(),Some(identity_fence.clone()),request_session.clone()));
                     let root_key=crate::store::digest(&w::canonical(&serde_json::json!([context.account,context.root])).map_err(|_|Code::BadRequest)?);
                     let root={
@@ -1950,12 +1997,14 @@ impl Runtime {
                             return runtime.status_with_session(&root,&authority,&context,run.record(),status.page,request_session.as_deref());
                         }
                     }
+                    #[cfg(test)] trace.mark("root_and_cache");
                     let mut journal=if matches!(&request,w::Control::Status(_)) {
                         // Read misses never bootstrap a catalogue, change WAL
                         // mode or open a writable foreign-seat database.
                         Journal::open_readonly_existing(&runtime.path,&context.seat)?
                     } else {Journal::open(&runtime.path,&context.seat)?};
                     journal_quantum=journal.quantum.clone();
+                    #[cfg(test)] trace.mark("journal_open");
                     match request {
                         w::Control::Inspect(mut inspect)=> {
                             inspect.sources.sort_by(|a,b|(a.source_generation.0,&a.session).cmp(&(b.source_generation.0,&b.session)));
@@ -2245,6 +2294,7 @@ impl Runtime {
                         }
                     }
                 })();
+                #[cfg(test)] trace.mark("domain_and_retire");
                 let result=match journal_quantum.as_ref().map(|quantum|quantum.check()) {Some(Err(code))=>Err(code),_=>result};
                 if let Some(done)=done {
                     let response=match result {
@@ -2255,6 +2305,7 @@ impl Runtime {
                         Ok(response)=>response,
                         Err(code)=>failure(code),
                     };
+                    #[cfg(test)] trace.mark("presentation_recheck");
                     done(response);
                 }
             });
