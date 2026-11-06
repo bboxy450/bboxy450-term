@@ -3598,8 +3598,61 @@ fn migration_files(root: &std::path::Path) -> std::collections::BTreeMap<String,
 fn migration_import(f: &Fixture, phase: &str, args: &Value) -> (Ulid, Value, usize) {
     for attempt in 0..8 {
         let op = Ulid::new();
-        let result = f.mutate_at(phase, f.oracle.id, op, "task_import", args.clone());
-        let code = result["structuredContent"]["error"]["code"].as_str();
+        // Admit once through the actual bridge. Its 10s transport deadline
+        // does not cancel the separately owned bulk import. After lost output,
+        // recover only the original receipt; never send the mutation again.
+        let mut bridge = f.bridge(f.oracle.id);
+        initialize(&mut bridge);
+        let mut request = args.clone();
+        request["op_id"] = json!(op);
+        let admitted = Instant::now();
+        let reply = loop {
+            let reply = rpc(
+                &mut bridge,
+                2,
+                "tools/call",
+                json!({"name":"task_import","arguments":request}),
+            );
+            if reply["result"]["structuredContent"]["error"]["code"] != "workspace_pending" {
+                break reply;
+            }
+            // Explicit pre-admission no-effect response only; preserve the
+            // existing preparation budget and original operation identity.
+            assert!(admitted.elapsed() < Duration::from_secs(10), "{reply}");
+            std::thread::sleep(Duration::from_millis(10));
+        };
+        let result = if reply.get("error").is_some() {
+            assert_eq!(reply["error"]["data"]["status"], "unknown", "{reply}");
+            assert_eq!(reply["error"]["data"]["op_id"], json!(op), "{reply}");
+            let resolution = Instant::now() + Duration::from_secs(15);
+            loop {
+                let retained = data(f.call(
+                    f.oracle.id,
+                    Ulid::new(),
+                    "operation_status",
+                    json!({"original_op_id":op}),
+                ));
+                assert_eq!(retained["original_op_id"], json!(op));
+                assert_eq!(retained["retry_allowed"], false);
+                if retained["terminal"] == true {
+                    eprintln!(
+                        "import original receipt recovered: phase={phase}, op={op}, elapsed_ms={}, status={}",
+                        admitted.elapsed().as_millis(), retained["status"]
+                    );
+                    break retained["result"].clone();
+                }
+                assert!(
+                    Instant::now() < resolution,
+                    "original import did not resolve; no retry: phase={phase}, op={op}, reply={reply}, retained={retained}"
+                );
+                std::thread::sleep(Duration::from_millis(100));
+            }
+        } else {
+            let value = reply["result"]["structuredContent"].clone();
+            assert!(value.is_object(), "{reply}");
+            value
+        };
+        let code = result["error"]["code"].as_str();
         if matches!(
             code,
             Some("import_allocation_stale" | "index_busy" | "task_import_busy")
@@ -3620,7 +3673,8 @@ fn migration_import(f: &Fixture, phase: &str, args: &Value) -> (Ulid, Value, usi
             );
             continue;
         }
-        return (op, data(result), attempt);
+        assert!(result.get("error").is_none(), "{result}");
+        return (op, result, attempt);
     }
     panic!(
         "private importer did not obtain a stable provisional range in eight explicit no-effect operations"
