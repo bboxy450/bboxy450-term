@@ -6485,6 +6485,7 @@ fn mcp_numeric_selectors_refuse_invalid_missing_and_ambiguous_handles() {
             );
         }
     }
+    let (id, reference, digest) = committed_claim_fixture(&mut f);
     let path = f.config.repository.join(".bboxy/duplicate.md");
     std::fs::write(
         path,
@@ -6503,9 +6504,8 @@ fn mcp_numeric_selectors_refuse_invalid_missing_and_ambiguous_handles() {
     assert_eq!(result["isError"], true);
     assert!(result.to_string().contains("number_conflict"));
     assert!(!result.to_string().contains("Private duplicate content"));
-    // A scoped conflict must not disable an unrelated committed checkpoint
-    // or its responsibility claim. Draft file names are not artifacts.
-    let (id, reference, digest) = committed_claim_fixture(&mut f);
+    // Create the checkpoint before the deliberate global number conflict.
+    // The conflict must not disable responsibility for that existing artifact.
     let op = Ulid::new();
     let claimed = data(f.mutate(
         f.own.id,
@@ -7246,7 +7246,14 @@ fn mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_t
         }
     }
     for kind in ["spec", "decision", "invariant", "proposal"] {
-        let path = format!("{kind}s/oracle-{kind}.md");
+        // proposals/ is valid only for type=proposal. Keep this fixture in
+        // a built-in namespace so a relabel reaches the immutable-type guard.
+        // A directory does not authorize the frontmatter type.
+        let path = if kind == "proposal" {
+            "notes/oracle-proposal.md".to_owned()
+        } else {
+            format!("{kind}s/oracle-{kind}.md")
+        };
         knowledge_denied(
             f.mutate(
                 f.own.id,
