@@ -30,3 +30,13 @@ pub fn open() -> Result<(), Unsupported> {
         note: "DO RESEARCH BEFORE IMPLEMENTING: see this crate's README.md",
     })
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn unavailable_backend_returns_the_explicit_platform_marker() {
+        let marker = super::open().unwrap_err();
+        assert_eq!(marker.os, "windows");
+        assert!(marker.note.contains("DO RESEARCH BEFORE IMPLEMENTING"));
+    }
+}

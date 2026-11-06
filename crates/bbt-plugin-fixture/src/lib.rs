@@ -459,3 +459,12 @@ pub fn run_fixture(knobs: Knobs) {
         Kind::Doctor => doctor::main(&knobs),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn compiled_knobs_preserve_the_encoded_fixture_variant() {
+        let knobs = super::Knobs::root().system("data_source").nonce("unit-test");
+        assert_eq!(super::Knobs::compiled(Some(&knobs.encoded())), knobs);
+    }
+}

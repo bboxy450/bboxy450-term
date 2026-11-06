@@ -79,3 +79,12 @@ mod unsupported {
 }
 #[cfg(not(target_os = "macos"))]
 pub use unsupported::*;
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn public_action_parser_preserves_hard_quit_and_rejects_unknown_actions() {
+        assert_eq!(super::Action::parse("hard_quit").unwrap(), super::Action::HardQuit);
+        assert!(super::Action::parse("unknown-action").is_err());
+    }
+}

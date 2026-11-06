@@ -149,3 +149,13 @@ fn label_ok(label: &str) -> Result<(), Error> {
     }
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn secret_bytes_are_borrowed_but_debug_is_redacted() {
+        let secret = super::Secret(b"private-test-value".to_vec());
+        assert_eq!(secret.as_bytes(), b"private-test-value");
+        assert_eq!(format!("{secret:?}"), "Secret(<redacted>)");
+    }
+}

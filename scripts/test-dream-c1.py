@@ -675,7 +675,8 @@ def check_build_closure_controls(canonical_receipt=None):
             "accepted": accepted, "refused": refused, "canonical_record_audit": audit}
 
 
-FIRST_LAUNCH_SCHEMA = "bboxy.dream.c1.first-launch/1"
+FIRST_LAUNCH_SCHEMA = "bboxy.dream.c1.first-launch/2"
+FIRST_LAUNCH_ARGUMENT = "--help"
 _FIRST_LAUNCH_OWNER = None
 
 
@@ -693,10 +694,11 @@ def first_launch_image(runner):
 
 
 def admitted_first_launch(value, image):
-    keys = {"schema", "image", "state", "wall_ns", "exit_code", "actual_reap",
+    keys = {"schema", "argument", "image", "state", "wall_ns", "exit_code", "actual_reap",
             "stdout_bytes", "stderr_bytes", "stdout_sha256", "stderr_sha256", "pid", "error"}
     return (isinstance(value, dict) and set(value) == keys
             and value["schema"] == FIRST_LAUNCH_SCHEMA and value["image"] == image
+            and value["argument"] == FIRST_LAUNCH_ARGUMENT
             and value["state"] == "admitted" and value["actual_reap"] is True
             and type(value["exit_code"]) is int and value["exit_code"] == 0
             and type(value["wall_ns"]) is int and 0 <= value["wall_ns"] <= 2_000_000_000
@@ -708,15 +710,26 @@ def admitted_first_launch(value, image):
                     for n in ("stdout_bytes", "stderr_bytes")))
 
 
+def read_first_launch_claim(claim):
+    with os.fdopen(os.open(claim, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC), "rb") as stream:
+        state = os.fstat(stream.fileno())
+        if (not stat.S_ISREG(state.st_mode) or state.st_uid != os.geteuid()
+                or state.st_mode & 0o077 or state.st_nlink != 1 or state.st_size > 8192):
+            raise ValueError("invalid first-launch admission claim")
+        raw = stream.read(8193)
+    return raw, strict_json(raw, min_integer=-(1 << 31))
+
+
 # Adapted from bboxy450-term scripts/test-dream-c1.py::_build_closure_query:
 # https://github.com/bboxy450/bboxy450-term/blob/main/scripts/test-dream-c1.py
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 def first_launch_admission(runner, evidence):
     """Decision66076: one provisioning exec/file; never a Dream/run retry.
 
-    The exact image claim is durable BEFORE exec. Unknown/failed attempts cannot
-    be replayed. Changed path/inode/hash selects a different claim, never upgrades
-    an old admission. Runtime only verifies the resulting sealed receipt.
+    The exact image/help claim is durable BEFORE exec. Unknown/failed help
+    attempts cannot be replayed. The corrected decision authorizes a fresh help
+    claim without editing the historical failed --version claim. Runtime only
+    verifies the resulting sealed receipt; old /1 records grant no admission.
     """
     global _FIRST_LAUNCH_OWNER
     if _FIRST_LAUNCH_OWNER is not None:
@@ -733,23 +746,33 @@ def first_launch_admission(runner, evidence):
     if (not stat.S_ISDIR(state.st_mode) or stat.S_ISLNK(state.st_mode)
             or state.st_uid != os.geteuid() or state.st_mode & 0o077):
         raise ValueError("first-launch admission directory is not private")
-    claim = directory / (hashlib.sha256(canonical(image)).hexdigest() + ".json")
+    legacy = directory / (hashlib.sha256(canonical(image)).hexdigest() + ".json")
+    legacy_record = None
+    try:
+        legacy_raw, historical = read_first_launch_claim(legacy)
+    except FileNotFoundError:
+        pass
+    else:
+        if (not isinstance(historical, dict) or historical.get("schema") != "bboxy.dream.c1.first-launch/1"
+                or historical.get("image") != image or historical.get("state") != "failed"
+                or historical.get("actual_reap") is not True
+                or type(historical.get("exit_code")) is not int or historical["exit_code"] != 1):
+            raise ValueError("legacy version admission is not a known reaped failure; no help attempt")
+        legacy_record = {"path": str(legacy), "sha256": hashlib.sha256(legacy_raw).hexdigest()}
+    identity = {"schema": FIRST_LAUNCH_SCHEMA, "argument": FIRST_LAUNCH_ARGUMENT, "image": image}
+    claim = directory / (hashlib.sha256(canonical(identity)).hexdigest() + ".json")
     try:
         fd = os.open(claim, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW | os.O_CLOEXEC, 0o600)
     except FileExistsError:
-        with os.fdopen(os.open(claim, os.O_RDONLY | os.O_NOFOLLOW | os.O_CLOEXEC), "rb") as stream:
-            state = os.fstat(stream.fileno())
-            if (not stat.S_ISREG(state.st_mode) or state.st_uid != os.geteuid()
-                    or state.st_mode & 0o077 or state.st_nlink != 1 or state.st_size > 8192):
-                raise ValueError("invalid first-launch admission claim")
-            raw = stream.read(8193)
-        value = strict_json(raw, min_integer=-(1 << 31))  # Private actual signal exit status.
+        raw, value = read_first_launch_claim(claim)
         if not admitted_first_launch(value, image):
             raise ValueError("first-launch attempt is failed/unknown; no retry: " + str(claim))
         if first_launch_image(runner) != image:
             raise ValueError("first-launch cached image changed")
-        return value, {"path": str(claim), "sha256": hashlib.sha256(raw).hexdigest(), "reused": True}
-    value = {"schema": FIRST_LAUNCH_SCHEMA, "image": image, "state": "started",
+        return value, {"path": str(claim), "sha256": hashlib.sha256(raw).hexdigest(),
+                       "reused": True, "preserved_failed_version": legacy_record}
+    value = {"schema": FIRST_LAUNCH_SCHEMA, "argument": FIRST_LAUNCH_ARGUMENT,
+             "image": image, "state": "started",
              "wall_ns": None, "exit_code": None, "actual_reap": False,
              "stdout_bytes": 0, "stderr_bytes": 0, "stdout_sha256": None,
              "stderr_sha256": None, "pid": None, "error": None}
@@ -765,7 +788,7 @@ def first_launch_admission(runner, evidence):
     started = time.clock_gettime_ns(time.CLOCK_MONOTONIC)
     try:
         # No HOME, profile, identity, capability, provider or Dream arguments.
-        process = subprocess.Popen([str(runner), "--version"], cwd=evidence,
+        process = subprocess.Popen([str(runner), FIRST_LAUNCH_ARGUMENT], cwd=evidence,
                                    env={"LANG": "C.UTF-8", "TMPDIR": str(evidence)},
                                    stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         value["pid"] = process.pid
@@ -799,7 +822,7 @@ def first_launch_admission(runner, evidence):
     finally:
         if process is not None:
             if process.poll() is None:
-                process.kill()  # Only this exact owned, recorded --version PID.
+                process.kill()  # Only this exact owned, recorded admission PID.
                 try:
                     process.wait(timeout=2)
                 except subprocess.TimeoutExpired:
@@ -830,7 +853,8 @@ def first_launch_admission(runner, evidence):
         (evidence / "first-launch-admission.json").write_bytes(raw)
     if not admitted_first_launch(value, image):
         raise ValueError("first-launch admission failed; no retry: " + str(claim))
-    return value, {"path": str(claim), "sha256": hashlib.sha256(raw).hexdigest(), "reused": False}
+    return value, {"path": str(claim), "sha256": hashlib.sha256(raw).hexdigest(),
+                   "reused": False, "preserved_failed_version": legacy_record}
 
 
 def check_first_launch_admission_controls():
@@ -845,14 +869,34 @@ def check_first_launch_admission_controls():
             evidence = root / (name + "-evidence")
             evidence.mkdir(mode=0o700)
             return path, evidence
-        worker, evidence = fixture("version", 'printf x >> "$0.count"\nprintf "private fixture version\\n"\n')
+        worker, evidence = fixture("help", 'test "$#" -eq 1\ntest "$1" = --help\nprintf x >> "$0.count"\nprintf "private fixture help\\n"\n')
+        image = first_launch_image(worker)
+        legacy_directory = worker.parent / ".dream-c1-admissions"
+        legacy_directory.mkdir(mode=0o700)
+        legacy_claim = legacy_directory / (hashlib.sha256(canonical(image)).hexdigest() + ".json")
+        legacy_bytes = canonical({"schema": "bboxy.dream.c1.first-launch/1", "image": image,
+                                  "state": "failed", "exit_code": 1, "actual_reap": True})
+        legacy_claim.write_bytes(legacy_bytes)  # Private historical-record fixture only.
+        legacy_claim.chmod(0o600)
         admitted, first = first_launch_admission(worker, evidence)
         again, cached = first_launch_admission(worker, evidence)
         assert admitted == again and first["reused"] is False and cached["reused"] is True
         assert worker.with_suffix(".count").read_bytes() == b"x"
+        assert legacy_claim.read_bytes() == legacy_bytes and Path(first["path"]) != legacy_claim
+        unknown = strict_json(legacy_bytes)
+        unknown["state"] = "unknown"
+        legacy_claim.write_bytes(canonical(unknown))
+        with mock.patch.object(subprocess, "Popen", side_effect=AssertionError("unknown legacy owner retried")):
+            try:
+                first_launch_admission(worker, evidence)
+            except ValueError:
+                pass
+            else:
+                raise AssertionError("unknown legacy owner allowed a help attempt")
+        legacy_claim.write_bytes(legacy_bytes)
         original_image = admitted["image"]
-        worker.rename(root / "retained-old-version")
-        worker.write_text('#!/bin/sh\nprintf x >> "$0.count"\nprintf "private fixture version\\n"\n')
+        worker.rename(root / "retained-old-help")
+        worker.write_text('#!/bin/sh\ntest "$1" = --help\nprintf x >> "$0.count"\nprintf "private fixture help\\n"\n')
         worker.chmod(0o700)
         replacement, record = first_launch_admission(worker, evidence)
         assert replacement["image"] != original_image and record["reused"] is False
@@ -876,11 +920,13 @@ def check_first_launch_admission_controls():
                 else:
                     raise AssertionError("failed admission reused: " + name)
         for field, wrong in [("wall_ns", 2_000_000_001), ("exit_code", 1), ("actual_reap", False),
-                             ("state", "started"), ("image", original_image)]:
+                             ("state", "started"), ("image", original_image),
+                             ("argument", "--version"), ("schema", "bboxy.dream.c1.first-launch/1")]:
             invalid = dict(replacement, **{field: wrong})
             assert not admitted_first_launch(invalid, replacement["image"])
     return {"scope": "private non-Dream provisioning controls; no run or runtime acceptance",
             "once_per_inode": True, "changed_inode_invalidates": True,
+            "help_only": True, "legacy_version_failure_preserved": True,
             "nonzero_timeout_oversize_reaped_and_no_retry": True}
 
 
@@ -3166,7 +3212,7 @@ def main():
     mode.add_argument("--prepare-development", action="store_true")
     mode.add_argument("--check-profile-only", action="store_true")
     mode.add_argument("--admit-file", type=Path,
-                      help="provision one exact reviewed private copy using --version only; no Hello or Start")
+                      help="provision one exact reviewed private copy using --help only; no Hello or Start")
     mode.add_argument("--diagnose-launch", action="store_true",
                       help="decision65882 one-shot instrumented source-free launch; never runtime conformance")
     parser.add_argument("--development-source", type=Path)

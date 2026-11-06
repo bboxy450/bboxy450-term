@@ -9643,6 +9643,7 @@ pub(crate) mod runner_provision {
     struct FirstLaunchAdmission<'a> {
         #[serde(borrow)]
         schema: &'a str,
+        argument: &'a str,
         #[serde(borrow)]
         image: AdmissionImage<'a>,
         state: &'a str,
@@ -9663,7 +9664,7 @@ pub(crate) mod runner_provision {
                 if !(0..1_000_000_000).contains(&nanos) {return None;}
                 u64::try_from(seconds).ok().and_then(|v|v.checked_mul(1_000_000_000)).and_then(|v|v.checked_add(nanos as u64))
             };
-            self.schema=="bboxy.dream.c1.first-launch/1"
+            self.schema=="bboxy.dream.c1.first-launch/2" && self.argument=="--help"
                 && self.state=="admitted" && self.actual_reap && self.exit_code==0
                 && self.wall_ns<=2_000_000_000 && self.error.is_none() && self.pid>0
                 && self.stdout_bytes<=8192 && self.stderr_bytes<=8192
@@ -9931,7 +9932,7 @@ pub(crate) mod runner_provision {
             write(&binary, bytes, 0o700);
             let digest = format!("{:x}", Sha256::digest(bytes));
             let metadata=std::fs::metadata(&binary).unwrap();
-            let admission=json!({"schema":"bboxy.dream.c1.first-launch/1","image":{"path":binary,"device":metadata.dev(),"inode":metadata.ino(),"sha256":digest,
+            let admission=json!({"schema":"bboxy.dream.c1.first-launch/2","argument":"--help","image":{"path":binary,"device":metadata.dev(),"inode":metadata.ino(),"sha256":digest,
                 "mtime_ns":(metadata.mtime() as u64*1_000_000_000+metadata.mtime_nsec() as u64).to_string(),"ctime_ns":(metadata.ctime() as u64*1_000_000_000+metadata.ctime_nsec() as u64).to_string()},
                 "state":"admitted","wall_ns":1_000_000,"exit_code":0,"actual_reap":true,
                 "stdout_bytes":0,"stderr_bytes":0,"stdout_sha256":format!("{:x}",Sha256::digest([])),
@@ -9965,7 +9966,7 @@ pub(crate) mod runner_provision {
         }
         #[test]
         fn native_provision_first_launch_missing_failed_unknown_and_foreign_inode_refuse() {
-            for field in ["missing","wall_ns","exit_code","actual_reap","state","path","inode","sha256","ctime_ns"] {
+            for field in ["missing","wall_ns","exit_code","actual_reap","state","path","inode","sha256","ctime_ns","argument","schema"] {
                 let (_root,binary,digest,mut value)=fixture();
                 match field {
                     "missing"=>{value.as_object_mut().unwrap().remove("first_launch_admission");},
@@ -9973,6 +9974,8 @@ pub(crate) mod runner_provision {
                     "exit_code"=>value["first_launch_admission"][field]=json!(1),
                     "actual_reap"=>value["first_launch_admission"][field]=json!(false),
                     "state"=>value["first_launch_admission"][field]=json!("started"),
+                    "argument"=>value["first_launch_admission"][field]=json!("--version"),
+                    "schema"=>value["first_launch_admission"][field]=json!("bboxy.dream.c1.first-launch/1"),
                     "path"=>value["first_launch_admission"]["image"][field]=json!("/foreign/worker"),
                     "inode"=>value["first_launch_admission"]["image"][field]=json!(0),
                     "sha256"=>value["first_launch_admission"]["image"][field]=json!("0".repeat(64)),

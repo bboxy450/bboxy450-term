@@ -14,3 +14,11 @@ use bbt_plugin_fixture::Knobs;
 fn main() {
     bbt_plugin_fixture::run_fixture(Knobs::compiled(option_env!("BBOXY_PLUGIN_FIXTURE")));
 }
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn absent_compiled_knobs_select_the_default_reference_variant() {
+        assert_eq!(super::Knobs::compiled(None), super::Knobs::default());
+    }
+}
