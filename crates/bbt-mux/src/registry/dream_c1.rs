@@ -183,55 +183,241 @@ pub(crate) struct Journal {
 pub(crate) struct ExistingJournal {
     path: PathBuf,
     file: std::fs::File,
+    read_only: bool,
+}
+#[derive(Clone, Copy)]
+pub(crate) enum JournalConfig {
+    Cache,
+    Mmap,
+    Sync,
 }
 impl Journal {
+    #[track_caller]
     pub fn open(runtime: &Path, seat: &w::Ulid) -> Result<Self, Code> {
-        Self::open_mode(runtime, seat, true)
+        Self::open_mode(runtime, seat, true, false)
     }
     /// Job checkpoints use the schema already published by admission. They never
     /// repeat schema creation or change the persistent journal mode in a unit.
     #[cfg(test)]
+    #[track_caller]
     pub fn open_existing(runtime: &Path, seat: &w::Ulid) -> Result<Self, Code> {
-        Self::open_mode(runtime, seat, false)
+        Self::open_mode(runtime, seat, false, false)
     }
-    fn open_mode(runtime: &Path, seat: &w::Ulid, initialize: bool) -> Result<Self, Code> {
-        let quantum = Arc::new(engine::JournalQuantum::default());
-        let existing = quantum.unit(|| Self::prepare_path(runtime, seat, initialize))?;
-        let mut journal = quantum.unit(|| Self::connect_existing(&existing))?;
-        journal.quantum = Some(quantum.clone());
-        journal.db.quantum = Some(quantum.clone());
-        journal.configure_existing()?;
-        let version: i64 = quantum.unit(|| {
-            journal
-                .db
-                .query_row("PRAGMA user_version", [], |r| r.get(0))
-                .map_err(|_| Code::StorageUnavailable)
-        })?;
-        match version {
-            1 => {}
-            0 if initialize => {
-                // Only first bootstrap initializes. Each statement remains an
-                // ordinary <=1ms unit; no whole-SQLite native classification.
-                for statement in [
-                    "PRAGMA journal_mode=WAL;",
-                    "CREATE TABLE IF NOT EXISTS source_errors(session TEXT NOT NULL,generation INTEGER NOT NULL,error BLOB NOT NULL,PRIMARY KEY(session,generation));",
-                    "CREATE TABLE IF NOT EXISTS sources(session TEXT NOT NULL,generation INTEGER NOT NULL,bookmark BLOB NOT NULL,PRIMARY KEY(session,generation));",
-                    "CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY,source_key TEXT UNIQUE NOT NULL,record BLOB NOT NULL);",
-                    "CREATE TABLE IF NOT EXISTS ops(actor TEXT NOT NULL,op TEXT NOT NULL,request BLOB NOT NULL,run TEXT NOT NULL,PRIMARY KEY(actor,op));",
-                    "CREATE TABLE IF NOT EXISTS close_cursor(session TEXT NOT NULL,generation INTEGER NOT NULL,cursor INTEGER NOT NULL,PRIMARY KEY(session,generation));",
-                    "PRAGMA user_version=1;",
-                ] {
-                    quantum.unit(|| {
-                        journal
-                            .db
-                            .execute_batch(statement)
-                            .map_err(|_| Code::StorageUnavailable)
-                    })?;
-                }
+    #[track_caller]
+    pub fn open_readonly_existing(runtime: &Path, seat: &w::Ulid) -> Result<Self, Code> {
+        Self::open_mode(runtime, seat, false, true)
+    }
+    #[track_caller]
+    fn open_mode(
+        runtime: &Path,
+        seat: &w::Ulid,
+        initialize: bool,
+        read_only: bool,
+    ) -> Result<Self, Code> {
+        let quantum = Arc::new(engine::JournalQuantum::at(std::panic::Location::caller()));
+        let outcome = (|| {
+            let existing = quantum.retain(
+                quantum.unit(|| Self::prepare_path_mode(runtime, seat, initialize, read_only))?,
+            );
+            let mut journal = quantum.unit(|| Self::connect_existing(&existing))?;
+            journal.quantum = Some(quantum.clone());
+            journal.db.quantum = Some(quantum.clone());
+            // Bootstrap never waits behind a writer, including the first
+            // schema-cookie read. A ready writable catalogue restores the
+            // ordinary bounded timeout only after this prelude completes.
+            quantum.unit(|| {
+                journal
+                    .db
+                    .busy_timeout(std::time::Duration::ZERO)
+                    .map_err(Self::initialization_error)
+            })?;
+            // The already-required header check precedes NeedSchema PRAGMAs.
+            // user_version emits Transaction(read)/ReadCookie/ResultRow without
+            // sqlite3InitOne's all-schema SQL parse. Retain this value.
+            let version = journal.schema_version()?;
+            if version == 0 && !initialize {
+                return Err(Code::Busy);
             }
-            _ => return Err(Code::StorageUnavailable),
+            if version != 0 && version != 1 {
+                return Err(Code::StorageUnavailable);
+            }
+            journal.configure_cache()?;
+            journal.configure_mmap()?;
+            if !read_only {
+                journal.configure_sync()?;
+            }
+            match version {
+                1 => {
+                    if !read_only {
+                        journal.configure_busy()?;
+                    }
+                }
+                0 if initialize => journal.initialize_schema(None)?,
+                0 => return Err(Code::Busy), // Known initialization is not ready.
+                _ => return Err(Code::StorageUnavailable),
+            }
+            drop(existing);
+            Ok(journal)
+        })();
+        // A failed open owns and closes its exact connection before checking
+        // cleanup. A semantic refusal cannot hide a native close overrun.
+        let mut outcome = quantum.retain(outcome);
+        quantum.check()?;
+        outcome.take_value()
+    }
+
+    fn schema_version(&self) -> Result<i64, Code> {
+        let quantum = self.quantum.as_ref().ok_or(Code::StorageUnavailable)?;
+        let mut header = quantum.retain(quantum.unit(|| self.prepare_version())?);
+        let statement = &mut *header;
+        let mut rows = quantum.retain(quantum.unit(move || Ok(Self::rows(statement)))?);
+        let version = quantum.unit(|| Self::read_version_first(&mut rows))?;
+        drop(rows);
+        drop(header);
+        quantum.check()?;
+        Ok(version)
+    }
+    fn initialization_error(error: rusqlite::Error) -> Code {
+        match error {
+            rusqlite::Error::SqliteFailure(error, _)
+                if matches!(
+                    error.code,
+                    rusqlite::ErrorCode::DatabaseBusy | rusqlite::ErrorCode::DatabaseLocked
+                ) =>
+            {
+                Code::Busy
+            }
+            _ => Code::StorageUnavailable,
         }
-        Ok(journal)
+    }
+    fn initialization_step(rows: &mut rusqlite::Rows<'_>) -> Result<bool, Code> {
+        rows.next()
+            .map(|row| row.is_some())
+            .map_err(Self::initialization_error)
+    }
+    fn initialization_statement(&self, sql: &'static str, index: usize) -> Result<(), Code> {
+        let quantum = self.quantum.as_ref().ok_or(Code::StorageUnavailable)?;
+        let mut prepared = quantum.retain(
+            quantum
+                .unit(|| self.db.prepare(sql).map_err(Self::initialization_error))
+                .inspect_err(|code| {
+                    #[cfg(debug_assertions)]
+                    eprintln!("C1 journal init refused index={index} phase=prepare code={code:?}");
+                    #[cfg(not(debug_assertions))]
+                    let _ = (index, code);
+                })?,
+        );
+        let statement = &mut *prepared;
+        let mut rows = quantum.retain(quantum.unit(move || Ok(Self::rows(statement)))?);
+        let first = quantum
+            .unit(|| {
+                if index == 0 {
+                    let row = rows
+                        .next()
+                        .map_err(Self::initialization_error)?
+                        .ok_or(Code::StorageUnavailable)?;
+                    if row
+                        .get_ref(0)
+                        .map_err(Self::initialization_error)?
+                        .as_str()
+                        .map_err(|_| Code::StorageUnavailable)?
+                        != "wal"
+                    {
+                        return Err(Code::StorageUnavailable);
+                    }
+                    Ok(true)
+                } else {
+                    Self::initialization_step(&mut rows)
+                }
+            })
+            .inspect_err(|code| {
+                #[cfg(debug_assertions)]
+                eprintln!("C1 journal init refused index={index} phase=first_step code={code:?}");
+                #[cfg(not(debug_assertions))]
+                let _ = (index, code);
+            })?;
+        if first
+            && quantum
+                .unit(|| Self::initialization_step(&mut rows))
+                .inspect_err(|code| {
+                    #[cfg(debug_assertions)]
+                    eprintln!(
+                        "C1 journal init refused index={index} phase=done_step code={code:?}"
+                    );
+                    #[cfg(not(debug_assertions))]
+                    let _ = (index, code);
+                })?
+        {
+            return Err(Code::StorageUnavailable);
+        }
+        drop(rows);
+        drop(prepared);
+        quantum.check()
+    }
+    fn rollback_initialization(&self) -> Result<(), Code> {
+        let quantum = self.quantum.as_ref().ok_or(Code::StorageUnavailable)?;
+        let mut prepared = quantum.retain(quantum.required(|| {
+            self.db
+                .prepare("ROLLBACK")
+                .map_err(Self::initialization_error)
+        })?);
+        let statement = &mut *prepared;
+        let mut rows = quantum.retain(quantum.required(move || Ok(Self::rows(statement)))?);
+        let row = quantum.required(|| Self::initialization_step(&mut rows))?;
+        drop(rows);
+        drop(prepared);
+        if row || !self.db.is_autocommit() {
+            return Err(Code::StorageUnavailable);
+        }
+        Ok(())
+    }
+    /// WAL conversion is outside the transaction. Schema and its ready marker
+    /// become durable atomically; CREATE no longer hides an implicit commit.
+    /// The bounded IO owner uses busy0, never a writer wait on a UI/shared owner.
+    fn initialize_schema(&self, inject_failure_after: Option<usize>) -> Result<(), Code> {
+        let quantum = self.quantum.as_ref().ok_or(Code::StorageUnavailable)?;
+        quantum.unit(|| {
+            self.db
+                .busy_timeout(std::time::Duration::ZERO)
+                .map_err(Self::initialization_error)
+        })?;
+        let initialized = (|| {
+            self.initialization_statement("PRAGMA journal_mode=WAL", 0)?;
+            self.initialization_statement("BEGIN IMMEDIATE", 7)?;
+            // This second cookie read is an atomic race check after acquiring
+            // the writer transaction, not repeated preparation/warmup work.
+            match self.schema_version()? {
+                1 => {}
+                0 => {
+                    for (offset, statement) in [
+                        "CREATE TABLE IF NOT EXISTS source_errors(session TEXT NOT NULL,generation INTEGER NOT NULL,error BLOB NOT NULL,PRIMARY KEY(session,generation))",
+                        "CREATE TABLE IF NOT EXISTS sources(session TEXT NOT NULL,generation INTEGER NOT NULL,bookmark BLOB NOT NULL,PRIMARY KEY(session,generation))",
+                        "CREATE TABLE IF NOT EXISTS runs(id TEXT PRIMARY KEY,source_key TEXT UNIQUE NOT NULL,record BLOB NOT NULL)",
+                        "CREATE TABLE IF NOT EXISTS ops(actor TEXT NOT NULL,op TEXT NOT NULL,request BLOB NOT NULL,run TEXT NOT NULL,PRIMARY KEY(actor,op))",
+                        "CREATE TABLE IF NOT EXISTS close_cursor(session TEXT NOT NULL,generation INTEGER NOT NULL,cursor INTEGER NOT NULL,PRIMARY KEY(session,generation))",
+                        "PRAGMA user_version=1",
+                    ].into_iter().enumerate() {
+                        let index = offset + 1;
+                        self.initialization_statement(statement, index)?;
+                        if cfg!(test) && inject_failure_after == Some(index) {
+                            return Err(Code::StorageUnavailable);
+                        }
+                    }
+                }
+                _ => return Err(Code::StorageUnavailable),
+            }
+            self.initialization_statement("COMMIT", 8)
+        })();
+        if initialized.is_err() && !self.db.is_autocommit() {
+            // Even CPU/clock/cancel refusal retains the actual transaction
+            // until required rollback has run; closing cannot imply rollback.
+            let rolled_back = self.rollback_initialization();
+            quantum.check()?;
+            rolled_back?;
+        }
+        initialized?;
+        self.configure_busy()?;
+        quantum.check()
     }
     fn finish(self) -> Result<(), Code> {
         let quantum = self.quantum.clone();
@@ -265,20 +451,52 @@ impl Journal {
         seat: &w::Ulid,
         initialize: bool,
     ) -> Result<ExistingJournal, Code> {
+        Self::prepare_path_mode(runtime, seat, initialize, false)
+    }
+    fn prepare_path_mode(
+        runtime: &Path,
+        seat: &w::Ulid,
+        initialize: bool,
+        read_only: bool,
+    ) -> Result<ExistingJournal, Code> {
         bbt_rt::assert_not_ui_thread();
-        private_dir(runtime)?;
         let journals = runtime.join("journals");
-        private_dir(&journals)?;
+        if read_only {
+            for directory in [runtime, journals.as_path()] {
+                let metadata = std::fs::symlink_metadata(directory).map_err(|error| {
+                    if error.kind() == std::io::ErrorKind::NotFound {
+                        Code::NotFound
+                    } else {
+                        Code::StorageUnavailable
+                    }
+                })?;
+                if !metadata.is_dir()
+                    || metadata.uid() != unsafe { libc::geteuid() }
+                    || metadata.mode() & 0o777 != 0o700
+                {
+                    return Err(Code::StorageUnavailable);
+                }
+            }
+        } else {
+            private_dir(runtime)?;
+            private_dir(&journals)?;
+        }
         let path = journals.join(format!("{}.sqlite", seat.0));
         use std::os::unix::fs::OpenOptionsExt;
         let file = std::fs::OpenOptions::new()
             .read(true)
-            .write(true)
+            .write(!read_only)
             .create(initialize)
             .mode(0o600)
             .custom_flags(libc::O_NOFOLLOW | libc::O_NONBLOCK)
             .open(&path)
-            .map_err(|_| Code::StorageUnavailable)?;
+            .map_err(|error| {
+                if read_only && error.kind() == std::io::ErrorKind::NotFound {
+                    Code::NotFound
+                } else {
+                    Code::StorageUnavailable
+                }
+            })?;
         let m = file.metadata().map_err(|_| Code::StorageUnavailable)?;
         if !m.is_file()
             || m.nlink() != 1
@@ -295,13 +513,20 @@ impl Journal {
         if !canonical.is_file() || (canonical.dev(), canonical.ino()) != (m.dev(), m.ino()) {
             return Err(Code::StorageUnavailable);
         }
-        Ok(ExistingJournal { path, file })
+        Ok(ExistingJournal {
+            path,
+            file,
+            read_only,
+        })
     }
     pub fn connect_existing(existing: &ExistingJournal) -> Result<Self, Code> {
         let db = Connection::open_with_flags(
             &existing.path,
-            rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE
-                | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX
+            (if existing.read_only {
+                rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY
+            } else {
+                rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE
+            }) | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX
                 | rusqlite::OpenFlags::SQLITE_OPEN_NOFOLLOW,
         )
         .map_err(|_| Code::StorageUnavailable)?;
@@ -322,11 +547,22 @@ impl Journal {
             quantum: None,
         })
     }
-    pub fn configure_existing(&self) -> Result<(), Code> {
-        self.configure_busy()?;
-        self.configure_cache()?;
-        self.configure_mmap()?;
-        self.configure_sync()
+    pub fn prepare_version(&self) -> Result<rusqlite::Statement<'_>, Code> {
+        self.db
+            .prepare("PRAGMA main.user_version")
+            .map_err(|_| Code::StorageUnavailable)
+    }
+    pub fn rows<'statement, 'connection: 'statement>(
+        statement: &'statement mut rusqlite::Statement<'connection>,
+    ) -> rusqlite::Rows<'statement> {
+        statement.raw_query()
+    }
+    pub fn read_version_first(rows: &mut rusqlite::Rows<'_>) -> Result<i64, Code> {
+        rows.next()
+            .map_err(|_| Code::StorageUnavailable)?
+            .ok_or(Code::StorageUnavailable)?
+            .get(0)
+            .map_err(|_| Code::StorageUnavailable)
     }
     pub fn configure_busy(&self) -> Result<(), Code> {
         let quantum = self.quantum.clone();
@@ -337,28 +573,37 @@ impl Journal {
         })
     }
     pub fn configure_cache(&self) -> Result<(), Code> {
-        let quantum = self.quantum.clone();
-        Self::step(&quantum, || {
-            self.db
-                .execute_batch("PRAGMA cache_size=-1024;")
-                .map_err(|_| Code::StorageUnavailable)
-        })
+        self.configure_fixed(JournalConfig::Cache)
     }
     pub fn configure_mmap(&self) -> Result<(), Code> {
-        let quantum = self.quantum.clone();
-        Self::step(&quantum, || {
-            self.db
-                .execute_batch("PRAGMA mmap_size=0;")
-                .map_err(|_| Code::StorageUnavailable)
-        })
+        self.configure_fixed(JournalConfig::Mmap)
     }
     pub fn configure_sync(&self) -> Result<(), Code> {
+        self.configure_fixed(JournalConfig::Sync)
+    }
+    /// Fixed statement preparation and execution have independent ordinary
+    /// verdicts. SQLite schema loading/SQL parsing is never a native exemption.
+    pub fn prepare_config(&self, config: JournalConfig) -> Result<rusqlite::Statement<'_>, Code> {
+        self.db
+            .prepare(match config {
+                JournalConfig::Cache => "PRAGMA cache_size=-1024",
+                JournalConfig::Mmap => "PRAGMA mmap_size=0",
+                JournalConfig::Sync => "PRAGMA synchronous=FULL",
+            })
+            .map_err(|_| Code::StorageUnavailable)
+    }
+    fn configure_fixed(&self, config: JournalConfig) -> Result<(), Code> {
         let quantum = self.quantum.clone();
-        Self::step(&quantum, || {
-            self.db
-                .execute_batch("PRAGMA synchronous=FULL;")
-                .map_err(|_| Code::StorageUnavailable)
-        })
+        let statement = Self::retain(
+            &quantum,
+            Self::step(&quantum, || self.prepare_config(config))?,
+        );
+        // Pinned bundled SQLite3.53.2 applies these setters while preparing
+        // PRAGMA bytecode (sqlite3.c145545,145613,145794; upstream source:
+        // https://sqlite.org/src/file/src/pragma.c). Stepping their optional
+        // result VM is redundant; finalization retains the prepared effects.
+        drop(statement);
+        quantum.as_ref().map_or(Ok(()), |quantum| quantum.check())
     }
     pub fn observe_error(
         &self,
@@ -895,20 +1140,44 @@ impl Authority {
         self.capture_all().map(|(context, _)| context)
     }
     pub fn capture_all(&self) -> Result<(w::Context, crate::identity::PublicFence), Code> {
+        // An unavailable routing dependency refuses before public SQL/setup;
+        // controls never wait behind a held provider selection.
+        let before = self
+            .port
+            .host
+            .dream_metadata()
+            .map_err(|_| Code::StaleContext)?;
         let quantum = engine::JournalQuantum::default();
         // The complete public-proof verification and the fresh typed actor
         // context each have their own ordinary <=1ms verdict/rest boundary.
         // No proof/currentness check is removed or reclassified as native.
-        let fence = quantum.unit(|| {
+        let session = quantum.retain(quantum.public_prelude(|checkpoint| {
+            self.fence
+                .prepare_session_cooperative(|_| Ok(()), checkpoint)
+                .map_err(|_| Code::StaleContext)
+        })?);
+        let fence = quantum.public_prelude(|checkpoint| {
             if self.fence.cached_revision() & 1 != 0 {
                 return Err(Code::StaleContext);
             }
-            self.fence.current().map_err(|_| Code::StaleContext)
+            self.fence
+                .current_prepared_cooperative(&session, checkpoint)
+                .map_err(|_| Code::StaleContext)
         })?;
-        let context = quantum.unit(|| self.capture_context(&fence))?;
+        let context = quantum.unit(|| self.capture_context(&fence, &session))?;
+        quantum.retire_session(&session)?;
+        drop(session);
         // This short-lived prelude cannot discard its final work debt when
         // the independently owned catalogue/job context takes over.
         quantum.pay()?;
+        if !self
+            .port
+            .host
+            .dream_metadata()
+            .is_ok_and(|after| after == before)
+        {
+            return Err(Code::StaleContext);
+        }
         Ok((context, fence))
     }
     #[cfg(test)]
@@ -926,10 +1195,14 @@ impl Authority {
         let guard = self.guard(&context, &Some(fence.clone()), None)?;
         Ok((context, fence, guard))
     }
-    fn capture_context(&self, fence: &crate::identity::PublicFence) -> Result<w::Context, Code> {
+    fn capture_context(
+        &self,
+        fence: &crate::identity::PublicFence,
+        session: &crate::identity::PublicFenceSession,
+    ) -> Result<w::Context, Code> {
         // Identity and caller metadata share ONE consistent read-only snapshot;
         // no repeated key parsing or separate connection sits inside a work unit.
-        let (record,grant,revision)=self.fence.with_current(fence,|db| {
+        let (record,grant,revision)=self.fence.with_current_session(fence,session,|db| {
             let public=|key:&str| -> crate::store::Result<Vec<u8>> {
                 Ok(db.query_row("SELECT CASE WHEN typeof(value)='blob' AND length(value)<=16384 THEN value ELSE NULL END FROM kv WHERE key=?1",[key],|row|bounded_blob(row,0))?)
             };
@@ -988,6 +1261,9 @@ impl Authority {
         fence: &Option<crate::identity::PublicFence>,
         session: Option<&crate::identity::PublicFenceSession>,
     ) -> Result<(), Code> {
+        if session.is_some_and(|session| session.is_retiring()) {
+            return Err(Code::Busy);
+        }
         let Some(fence) = fence.as_ref() else {
             return Err(Code::StaleContext);
         };
@@ -1066,37 +1342,67 @@ impl Authority {
         fence: &Option<crate::identity::PublicFence>,
         setup_observed: Option<&std::sync::atomic::AtomicU64>,
     ) -> Result<engine::PreparedGuard, Code> {
+        self.guard_with_session(context, fence, setup_observed)
+            .map(|(guard, _)| guard)
+    }
+    fn guard_with_session(
+        &self,
+        context: &w::Context,
+        fence: &Option<crate::identity::PublicFence>,
+        setup_observed: Option<&std::sync::atomic::AtomicU64>,
+    ) -> Result<
+        (
+            engine::PreparedGuard,
+            Arc<crate::identity::PublicFenceSession>,
+        ),
+        Code,
+    > {
         let cpu = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit)?;
-        let prepared = (|| -> Result<Arc<engine::AuthorityGuard>, Code> {
-            let session = self
+        let prepared = (|| -> Result<(Arc<engine::AuthorityGuard>, Arc<crate::identity::PublicFenceSession>), Code> {
+            let session = Arc::new(self
                 .fence
                 .prepare_session(|db| {
                     drop(db.prepare_cached(AUTHORITY_MATCH_SQL)?);
                     Ok(())
                 })
-                .map_err(|_| Code::StaleContext)?;
+                .map_err(|_| Code::StaleContext)?);
+            let shared = session.clone();
             let authority = self.clone();
             let context = context.clone();
             let fence = fence.clone();
-            Ok(Arc::new(move || {
-                authority.matches_with_session(&context, &fence, Some(&session))
-            }))
+            Ok((Arc::new(move || {
+                authority.matches_with_session(&context, &fence, Some(&shared))
+            }), session))
         })();
+        let retirement = engine::JournalQuantum::default();
+        let mut prepared = retirement.retain(prepared);
         let used = bbt_rt::fault::thread_cpu_time()
-            .map_err(|_| Code::ResourceLimit)?
-            .saturating_sub(cpu);
-        let setup_cpu_ns = used.as_nanos().min(u64::MAX as u128) as u64;
+            .map_err(|_| Code::ResourceLimit)
+            .and_then(|after| after.checked_sub(cpu).ok_or(Code::ResourceLimit));
+        let setup_cpu_ns = used
+            .map(|used| used.as_nanos().min(u64::MAX as u128) as u64)
+            .unwrap_or(u64::MAX);
         if let Some(observed) = setup_observed {
             observed.fetch_max(setup_cpu_ns, Ordering::Release);
         }
-        if used > std::time::Duration::from_millis(1) {
+        if used.is_err() || used.is_ok_and(|used| used > std::time::Duration::from_millis(1)) {
             eprintln!("dream_c1_authority_setup_refused cpu_ns={setup_cpu_ns} limit_ns=1000000");
+            if let Ok((_, session)) = prepared.as_ref() {
+                // Clock refusal retains and paces the actual connection before
+                // the callback/session shells can leave this setup owner.
+                let _ = retirement.retire_session(session);
+            }
             return Err(Code::ResourceLimit);
         }
-        Ok(engine::PreparedGuard {
-            callback: prepared?,
-            setup_cpu_ns,
-        })
+        let (callback, session) = prepared.take_value()?;
+        Ok((
+            engine::PreparedGuard {
+                callback,
+                setup_cpu_ns,
+                retire_session: Some(session.clone()),
+            },
+            session,
+        ))
     }
 }
 
@@ -1200,6 +1506,7 @@ struct Run {
     started: AtomicBool,
     final_record: OnceLock<Record>,
     control: Arc<Control>,
+    session: OnceLock<Arc<crate::identity::PublicFenceSession>>,
 }
 impl Run {
     fn record(&self) -> Record {
@@ -1260,6 +1567,7 @@ pub(crate) struct Runtime {
     path: PathBuf,
     binary: PathBuf,
     native_provision: Arc<OnceLock<Arc<engine::runner_provision::ProvisionProof>>>,
+    probe_audit: Arc<OnceLock<engine::ProbeAudit>>,
     supported: Arc<AtomicBool>,
     retired: Arc<AtomicBool>,
     requests: Arc<AtomicUsize>,
@@ -1291,6 +1599,7 @@ impl Runtime {
             path,
             binary,
             native_provision: Default::default(),
+            probe_audit: Default::default(),
             supported: Arc::new(AtomicBool::new(false)),
             retired: Arc::new(AtomicBool::new(false)),
             requests: Default::default(),
@@ -1300,38 +1609,66 @@ impl Runtime {
         let probe = runtime.clone();
         // Only the short owner creation uses the blocking executor; no C1 IO runs there.
         handle.spawn_blocking(move || {
-            let _ = std::thread::Builder::new()
+            let owner = probe.clone();
+            let spawned = std::thread::Builder::new()
                 .name("dream-c1-capability".into())
                 .spawn(move || {
-                    if engine::utility().is_err() {
-                        return;
-                    }
-                    if private_dir(&probe.path).is_err() {
-                        return;
-                    }
-                    // Packaged source/binary/compiler/features and private gate
-                    // profile are verified BEFORE any candidate process birth.
-                    let proof = match engine::runner_provision::verify_native_provision(
-                        &probe.binary,
-                        private_test_account,
-                    ) {
-                        Ok(proof) => Arc::new(proof),
-                        Err(_) => return,
-                    };
-                    let incarnation = match probe.next_launch_incarnation() {
-                        Ok(value) => value,
-                        Err(_) => return,
-                    };
-                    let supported = engine::probe_gated(&probe.path, proof.clone(), incarnation)
-                        .is_ok()
-                        && probe.native_provision.set(proof).is_ok();
-                    probe.supported.store(supported, Ordering::Release);
-                    if supported {
-                        while Arc::strong_count(&probe.native_provision) > 1 {
-                            std::thread::park_timeout(std::time::Duration::from_millis(50));
+                    let (outcome, proof) = (|| {
+                        if let Err(code) = engine::utility() {
+                            return (engine::ProbeOutcome::refused("utility", code), None);
                         }
+                        if let Err(code) = private_dir(&owner.path) {
+                            return (engine::ProbeOutcome::refused("private_root", code), None);
+                        }
+                        // The authenticated provisioning receipt is checked
+                        // BEFORE any candidate birth, including capability IO.
+                        let proof = match engine::runner_provision::verify_native_provision(
+                            &owner.binary,
+                            private_test_account,
+                        ) {
+                            Ok(proof) => Arc::new(proof),
+                            Err(code) => {
+                                return (engine::ProbeOutcome::refused("provision", code), None);
+                            }
+                        };
+                        let incarnation = match owner.next_launch_incarnation() {
+                            Ok(value) => value,
+                            Err(code) => {
+                                return (engine::ProbeOutcome::refused("incarnation", code), None);
+                            }
+                        };
+                        let outcome = engine::probe_gated(&owner.path, proof.clone(), incarnation);
+                        let proof = outcome.verdict.is_ok().then_some(proof);
+                        (outcome, proof)
+                    })();
+                    let retained = owner.probe_audit.set(outcome.audit).is_ok();
+                    let supported = outcome.verdict.is_ok()
+                        && retained
+                        && proof.is_some_and(|proof| owner.native_provision.set(proof).is_ok());
+                    owner.supported.store(supported, Ordering::Release);
+                    #[cfg(debug_assertions)]
+                    if !supported {
+                        eprintln!(
+                            "dream_c1_probe_refused stage={} code={:?} private_account={}",
+                            outcome.audit.stage,
+                            outcome.verdict.err().unwrap_or(Code::Busy),
+                            private_test_account
+                        );
+                    }
+                    // All outcomes retain one fixed audit until the last
+                    // Runtime user retires. Descriptors and the audit cache
+                    // then close on this utility owner, including refusals.
+                    while Arc::strong_count(&owner.probe_audit) > 1 {
+                        std::thread::park_timeout(std::time::Duration::from_millis(50));
                     }
                 });
+            if spawned.is_err() {
+                let outcome =
+                    engine::ProbeOutcome::refused("owner_create", Code::RunnerUnavailable);
+                let _ = probe.probe_audit.set(outcome.audit);
+                #[cfg(debug_assertions)]
+                eprintln!("dream_c1_probe_refused stage=owner_create code=RunnerUnavailable");
+            }
         });
         runtime
     }
@@ -1431,6 +1768,74 @@ impl Runtime {
                 });
         });
     }
+    fn retained_control_authority(
+        &self,
+        authority: &Authority,
+        request: &w::Control,
+    ) -> Result<
+        Option<(
+            w::Context,
+            crate::identity::PublicFence,
+            Arc<crate::identity::PublicFenceSession>,
+        )>,
+        Code,
+    > {
+        let run_id = match request {
+            w::Control::Status(status) => &status.run_id,
+            w::Control::Cancel(cancel) => &cancel.run_id,
+            _ => return Ok(None),
+        };
+        // Fail held provider/root metadata before any connection setup.
+        authority
+            .port
+            .host
+            .dream_metadata()
+            .map_err(|_| Code::StaleContext)?;
+        let Some(candidate) = authority
+            .fence
+            .verified_candidate()
+            .map_err(|_| Code::StaleContext)?
+        else {
+            return Ok(None);
+        };
+        let key = crate::store::digest(
+            &w::canonical(&serde_json::json!([
+                candidate.account,
+                authority.port.binding.root_id
+            ]))
+            .map_err(|_| Code::BadRequest)?,
+        );
+        let root = self
+            .roots
+            .try_lock()
+            .map_err(|_| Code::Busy)?
+            .get(&key)
+            .cloned();
+        let Some(root) = root else { return Ok(None) };
+        let run = root
+            .runs
+            .try_lock()
+            .map_err(|_| Code::Busy)?
+            .get(&run_id.0)
+            .cloned();
+        let Some(run) = run else { return Ok(None) };
+        if run.initial.context.seat.0 != authority.seat.to_string() {
+            return Err(Code::NotFound);
+        }
+        let Some(session) = run.session.get().cloned() else {
+            return Ok(None);
+        };
+        let Some(fence) = run.initial.identity_fence.clone() else {
+            return Err(Code::StaleContext);
+        };
+        let context = run.initial.context.clone();
+        let quantum = engine::JournalQuantum::default();
+        quantum.unit(|| {
+            authority.matches_with_session(&context, &Some(fence.clone()), Some(&session))
+        })?;
+        quantum.pay()?;
+        Ok(Some((context, fence, session)))
+    }
     pub fn request(
         &self,
         handle: &tokio::runtime::Handle,
@@ -1464,8 +1869,12 @@ impl Runtime {
                     if runtime.retired.load(Ordering::Acquire) {return Err(Code::WorkerLost);}
                     let request=parse()?;
                     request.validate()?;
-                    let (context,identity_fence)=authority.capture_all()?;
-                    presentation=Some((context.clone(),Some(identity_fence.clone())));
+                    let retained=runtime.retained_control_authority(&authority,&request)?;
+                    let (context,identity_fence,request_session)=match retained {
+                        Some((context,fence,session))=>(context,fence,Some(session)),
+                        None=>{let (context,fence)=authority.capture_all()?;(context,fence,None)},
+                    };
+                    presentation=Some((context.clone(),Some(identity_fence.clone()),request_session.clone()));
                     let root_key=crate::store::digest(&w::canonical(&serde_json::json!([context.account,context.root])).map_err(|_|Code::BadRequest)?);
                     let root={
                         let mut roots=runtime.roots.try_lock().map_err(|_|Code::Busy)?;
@@ -1477,10 +1886,14 @@ impl Runtime {
                         if let Some(run)=cached {
                             // Current full public actor/context fence still applies;
                             // an active known run needs no catalogue/schema replay.
-                            return runtime.status(&root,&authority,&context,run.record(),status.page);
+                            return runtime.status_with_session(&root,&authority,&context,run.record(),status.page,request_session.as_deref());
                         }
                     }
-                    let mut journal=Journal::open(&runtime.path,&context.seat)?;
+                    let mut journal=if matches!(&request,w::Control::Status(_)) {
+                        // Read misses never bootstrap a catalogue, change WAL
+                        // mode or open a writable foreign-seat database.
+                        Journal::open_readonly_existing(&runtime.path,&context.seat)?
+                    } else {Journal::open(&runtime.path,&context.seat)?};
                     journal_quantum=journal.quantum.clone();
                     match request {
                         w::Control::Inspect(mut inspect)=> {
@@ -1533,7 +1946,7 @@ impl Runtime {
                                 if runs.values().filter(|r|!r.started.load(Ordering::Acquire)).count()>=32 {return Err(Code::Busy);}
                                 let control=Arc::new(Control {activity_latch:Some(authority.activity_latch.clone()),#[cfg(debug_assertions)] private_fixture:authority.private_fixture,..Control::with_activity(authority.foreground.clone(),authority.activity_revision.clone())});
                                 if let Some(proof)=runtime.native_provision.get() {control.install_native_provision(proof.clone())?;}
-                                let run=Arc::new(Run {initial:record.clone(),started:AtomicBool::new(false),final_record:OnceLock::new(),control});
+                                let run=Arc::new(Run {initial:record.clone(),started:AtomicBool::new(false),final_record:OnceLock::new(),control,session:OnceLock::new()});
                                 runs.insert(record.view.run_id.0.clone(),run.clone());
                                 run
                             };
@@ -1553,8 +1966,11 @@ impl Runtime {
                             // Deferred controls retain no SQLite connection. Prepare the
                             // one compute session only after this owner holds both caps;
                             // its measured setup is independent of per-unit guard CPU.
-                            let preparation=authority.guard(&context,&record.identity_fence,Some(&run.control.authority_setup_cpu_ns))
-                                .and_then(|guard|run.control.install_authority_guard(guard));
+                            let preparation=authority.guard_with_session(&context,&record.identity_fence,Some(&run.control.authority_setup_cpu_ns))
+                                .and_then(|(guard,session)| {
+                                    run.control.install_authority_guard(guard)?;
+                                    run.session.set(session).map_err(|_|Code::Busy)
+                                });
                             if let Err(code)=preparation {
                                 if code==Code::Busy {
                                     run.started.store(false,Ordering::Release);
@@ -1684,7 +2100,7 @@ impl Runtime {
                             if monitor.is_err() {run.control.cancelled.store(true,Ordering::Release);}
                             let result=engine::execute_with_settlement(&runtime.binary,&job,&mut record,&run.control,||{
                                 monitor_done.store(true,Ordering::Release);
-                                match monitor {
+                                let joined=match monitor {
                                     Ok(monitor)=>{
                                         monitor.thread().unpark();
                                         let waiting=std::time::Instant::now();
@@ -1697,10 +2113,13 @@ impl Runtime {
                                             }
                                             std::thread::park_timeout(std::time::Duration::from_millis(9));
                                         }
-                                        monitor.join().map_err(|_|Code::WorkerLost)?;
+                                        monitor.join().map_err(|_|Code::WorkerLost)
                                     },
-                                    Err(_)=>return Err(Code::WorkerLost),
-                                }
+                                    Err(_)=>Err(Code::WorkerLost),
+                                };
+                                let retired=run.session.get().map_or(Ok(()),|session|engine::retire_public_session(session,&run.control));
+                                joined?;
+                                retired?;
                                 monitor_failure.get().copied().map_or(Ok(()),Err)
                             });
                             let result=metadata_close_error.map_or(result,Err);
@@ -1774,7 +2193,7 @@ impl Runtime {
                 if let Some(done)=done {
                     let response=match result {
                         Ok(response @ w::ControlReply::Success(_))=> {
-                            if presentation.as_ref().is_some_and(|(context,fence)|authority.matches(context,fence)) {response}
+                            if presentation.as_ref().is_some_and(|(context,fence,session)|authority.matches_with_session(context,fence,session.as_deref()).is_ok()) {response}
                             else {failure(Code::StaleContext)}
                         }
                         Ok(response)=>response,
@@ -1790,10 +2209,25 @@ impl Runtime {
         root: &RootState,
         authority: &Authority,
         context: &w::Context,
-        mut record: Record,
+        record: Record,
         page: Option<u32>,
     ) -> Result<w::ControlReply, Code> {
-        if &record.context != context || !authority.matches(context, &record.identity_fence) {
+        self.status_with_session(root, authority, context, record, page, None)
+    }
+    fn status_with_session(
+        &self,
+        root: &RootState,
+        authority: &Authority,
+        context: &w::Context,
+        mut record: Record,
+        page: Option<u32>,
+        session: Option<&crate::identity::PublicFenceSession>,
+    ) -> Result<w::ControlReply, Code> {
+        if &record.context != context
+            || authority
+                .matches_with_session(context, &record.identity_fence, session)
+                .is_err()
+        {
             return Err(Code::NotFound);
         }
         let cached = root
@@ -1830,7 +2264,10 @@ impl Runtime {
                 Some(authority.guard(context, &record.identity_fence, None)?),
             )?);
         }
-        if !authority.matches(context, &record.identity_fence) {
+        if authority
+            .matches_with_session(context, &record.identity_fence, session)
+            .is_err()
+        {
             return Err(Code::StaleContext);
         }
         Ok(w::ControlReply::Success(response))
@@ -2009,6 +2446,215 @@ mod registry_tests {
     }
 
     #[test]
+    fn dream_c1_status_missing_catalogue_never_creates_directory_or_database() {
+        let f = Fixture::new();
+        let seat = id(998);
+        let journals = f.runtime.join("journals");
+        assert!(!journals.exists());
+        assert!(matches!(
+            Journal::open_readonly_existing(&f.runtime, &seat),
+            Err(Code::NotFound)
+        ));
+        assert!(
+            !journals.exists(),
+            "Status created an empty catalogue directory"
+        );
+        private_dir(&journals).unwrap();
+        let expected = journals.join(format!("{}.sqlite", seat.0));
+        assert!(matches!(
+            Journal::open_readonly_existing(&f.runtime, &seat),
+            Err(Code::NotFound)
+        ));
+        assert!(
+            !expected.exists(),
+            "Status created a foreign/unknown seat database"
+        );
+        assert_eq!(std::fs::read_dir(&journals).unwrap().count(), 0);
+    }
+
+    #[test]
+    fn dream_c1_fixed_sqlite_setters_apply_at_prepare_without_redundant_step() {
+        let f = Fixture::new();
+        let seat = id(998);
+        let existing = Journal::prepare_path(&f.runtime, &seat, true).unwrap();
+        let quantum = Arc::new(engine::JournalQuantum::default());
+        let mut journal = quantum
+            .unit(|| Journal::connect_existing(&existing))
+            .unwrap();
+        journal.quantum = Some(quantum.clone());
+        journal.db.quantum = Some(quantum.clone());
+        for (config, read, expected) in [
+            (JournalConfig::Cache, "PRAGMA cache_size", -1024i64),
+            (JournalConfig::Mmap, "PRAGMA mmap_size", 0),
+            (JournalConfig::Sync, "PRAGMA synchronous", 2),
+        ] {
+            let statement =
+                quantum.retain(quantum.unit(|| journal.prepare_config(config)).unwrap());
+            // No Rows/step exists: preparing and retiring the fixed setter is
+            // the production path. The separate public read proves its effect.
+            drop(statement);
+            let value: i64 = quantum
+                .unit(|| {
+                    journal
+                        .db
+                        .query_row(read, [], |row| row.get(0))
+                        .map_err(|_| Code::StorageUnavailable)
+                })
+                .unwrap();
+            assert_eq!(value, expected);
+        }
+        quantum.check().unwrap();
+        journal.finish().unwrap();
+    }
+
+    // Metadata-only real SQLite witnesses. No worker/canonical-producer claim.
+    #[track_caller]
+    fn uninitialized_journal(fixture: &Fixture, seat: &w::Ulid) -> Journal {
+        let quantum = Arc::new(engine::JournalQuantum::at(std::panic::Location::caller()));
+        let existing = quantum.retain(
+            quantum
+                .unit(|| Journal::prepare_path(&fixture.runtime, seat, true))
+                .unwrap(),
+        );
+        let mut journal = quantum
+            .unit(|| Journal::connect_existing(&existing))
+            .unwrap();
+        journal.quantum = Some(quantum.clone());
+        journal.db.quantum = Some(quantum.clone());
+        quantum
+            .unit(|| {
+                journal
+                    .db
+                    .busy_timeout(std::time::Duration::ZERO)
+                    .map_err(Journal::initialization_error)
+            })
+            .unwrap();
+        assert_eq!(journal.schema_version().unwrap(), 0);
+        journal.configure_cache().unwrap();
+        journal.configure_mmap().unwrap();
+        journal.configure_sync().unwrap();
+        drop(existing);
+        quantum.check().unwrap();
+        journal
+    }
+    fn schema_table_count(journal: &Journal) -> i64 {
+        let quantum = journal.quantum.as_ref().unwrap();
+        let mut statement=quantum.retain(quantum.unit(||journal.db.prepare(
+            "SELECT count(*) FROM sqlite_schema WHERE type='table' AND name IN ('source_errors','sources','runs','ops','close_cursor')")
+            .map_err(Journal::initialization_error)).unwrap());
+        let borrowed = &mut *statement;
+        let mut rows = quantum.retain(quantum.unit(move || Ok(Journal::rows(borrowed))).unwrap());
+        let count = quantum
+            .unit(|| Journal::read_version_first(&mut rows))
+            .unwrap();
+        drop(rows);
+        drop(statement);
+        quantum.check().unwrap();
+        count
+    }
+    #[test]
+    fn dream_c1_schema_bootstrap_rolls_back_partial_ddl_and_ready_marker_before_recovery() {
+        let fixture = Fixture::new();
+        let seat = id(997);
+        // Refuse once after the first real CREATE and once after the ready
+        // cookie is written. Neither effect may escape the same transaction.
+        for after in [1usize, 6] {
+            let journal = uninitialized_journal(&fixture, &seat);
+            assert_eq!(schema_table_count(&journal), 0);
+            let result = journal.initialize_schema(Some(after));
+            assert_eq!(
+                result,
+                Err(Code::StorageUnavailable),
+                "failure after index {after}"
+            );
+            assert!(
+                journal.db.is_autocommit(),
+                "refusal retained an open write transaction"
+            );
+            assert_eq!(
+                journal.schema_version().unwrap(),
+                0,
+                "ready marker survived rollback"
+            );
+            assert_eq!(
+                schema_table_count(&journal),
+                0,
+                "partial tables survived rollback"
+            );
+            journal.finish().unwrap();
+            // A new actual connection sees the rolled-back durable state,
+            // rather than relying on the former connection's schema cache.
+            let reopened = uninitialized_journal(&fixture, &seat);
+            assert_eq!(schema_table_count(&reopened), 0);
+            reopened.finish().unwrap();
+        }
+        let recovered = Journal::open(&fixture.runtime, &seat).unwrap();
+        assert_eq!(recovered.schema_version().unwrap(), 1);
+        assert_eq!(schema_table_count(&recovered), 5);
+        let quantum = recovered.quantum.as_ref().unwrap();
+        let mode: String = quantum
+            .unit(|| {
+                recovered
+                    .db
+                    .query_row("PRAGMA journal_mode", [], |row| row.get(0))
+                    .map_err(Journal::initialization_error)
+            })
+            .unwrap();
+        let sync: i64 = quantum
+            .unit(|| {
+                recovered
+                    .db
+                    .query_row("PRAGMA synchronous", [], |row| row.get(0))
+                    .map_err(Journal::initialization_error)
+            })
+            .unwrap();
+        assert_eq!(mode, "wal");
+        assert_eq!(sync, 2, "recovery must preserve FULL WAL durability");
+        recovered.finish().unwrap();
+        let durable = Journal::open_readonly_existing(&fixture.runtime, &seat).unwrap();
+        assert_eq!(durable.schema_version().unwrap(), 1);
+        assert_eq!(schema_table_count(&durable), 5);
+        durable.finish().unwrap();
+    }
+    #[test]
+    fn dream_c1_schema_bootstrap_busy_writer_refuses_without_waiting_or_partial_publication() {
+        let fixture = Fixture::new();
+        let seat = id(996);
+        let writer = uninitialized_journal(&fixture, &seat);
+        writer
+            .initialization_statement("PRAGMA journal_mode=WAL", 0)
+            .unwrap();
+        let contender = uninitialized_journal(&fixture, &seat);
+        writer
+            .initialization_statement("BEGIN IMMEDIATE", 7)
+            .unwrap();
+        writer.initialization_statement(
+            "CREATE TABLE source_errors(session TEXT NOT NULL,generation INTEGER NOT NULL,error BLOB NOT NULL,PRIMARY KEY(session,generation))",1).unwrap();
+        let before = std::time::Instant::now();
+        let refused = contender.initialize_schema(None);
+        let elapsed = before.elapsed();
+        assert_eq!(refused, Err(Code::Busy));
+        assert!(
+            elapsed < std::time::Duration::from_millis(250),
+            "busy bootstrap waited {elapsed:?}"
+        );
+        assert!(contender.db.is_autocommit());
+        assert_eq!(contender.schema_version().unwrap(), 0);
+        assert_eq!(
+            schema_table_count(&contender),
+            0,
+            "uncommitted schema was presented as ready"
+        );
+        writer.rollback_initialization().unwrap();
+        writer.quantum.as_ref().unwrap().check().unwrap();
+        writer.finish().unwrap();
+        contender.initialize_schema(None).unwrap();
+        assert_eq!(contender.schema_version().unwrap(), 1);
+        assert_eq!(schema_table_count(&contender), 5);
+        contender.finish().unwrap();
+    }
+
+    #[test]
     fn dream_c1_existing_checkpoint_never_creates_or_initializes_a_missing_journal() {
         let fixture = Fixture::new();
         assert!(Journal::open_existing(&fixture.runtime, &id(10)).is_err());
@@ -2073,6 +2719,7 @@ mod registry_tests {
                     started: AtomicBool::new(true),
                     final_record: OnceLock::new(),
                     control: Arc::new(Control::default()),
+                    session: OnceLock::new(),
                 })
             };
             let run = make_run();
@@ -2882,6 +3529,7 @@ mod registry_tests {
                 started: AtomicBool::new(false),
                 final_record: OnceLock::new(),
                 control: Arc::new(Control::default()),
+                session: OnceLock::new(),
             }),
         );
         let released = Arc::new(std::sync::Barrier::new(2));

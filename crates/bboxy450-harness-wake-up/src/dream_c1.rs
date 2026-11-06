@@ -2047,29 +2047,45 @@ impl Worker {
             let prepared = PreparedStart::new(start)?;
             return self.send_prepared_start(&prepared).map(|()| true);
         }
-        if !self.flush()? {
-            return Ok(false);
-        }
         let (run, nonce) = match frame {
             WorkerIn::Start(v) => (&v.run_id, &v.nonce),
             WorkerIn::Activity(v) => (&v.run_id, &v.nonce),
             WorkerIn::Cancel(v) => (&v.run_id, &v.nonce),
         };
-        if run.0.len() != 26 || nonce.0.len() != 26 {
-            return Err(Code::ResourceLimit);
+        let frozen = self.bootstrap.frozen();
+        if !self.input_nonblocking.get()
+            || bootstrap::ulid(run.0.as_bytes()).ok() != Some(frozen.run_id)
+            || bootstrap::ulid(nonce.0.as_bytes()).ok() != Some(frozen.nonce)
+        {
+            return Err(Code::ProtocolError);
         }
         if let WorkerIn::Activity(v) = frame
             && v.revision.0 > wire::MAX_SAFE
         {
             return Err(Code::ResourceLimit);
         }
+        if !self.flush()? {
+            return Ok(false);
+        }
         self.write.clear();
-        let value = serde_json::to_value(frame).map_err(|_| Code::ProtocolError)?;
-        serde_json::to_writer(FrameWriter(&mut self.write), &value)
-            .map_err(|_| Code::ResourceLimit)?;
-        preflight_json(&self.write, JsonShape::WorkerIn)?;
+        // Fixed control framing only while the child owns work. The validated
+        // IDs are canonical ASCII, numbers have the wire's53-bit bound, and the
+        // sole boolean has a fixed spelling. No owned JSON graph, generic
+        // payload serialization or parser runs on this independent control lane.
+        {
+            let mut output = FrameWriter(&mut self.write);
+            match frame {
+                WorkerIn::Activity(v) => write!(output,
+                    r#"{{"type":"activity","protocol":"bboxy.dream.c1/1","run_id":"{}","nonce":"{}","revision":{},"foreground":{}}}"#,
+                    v.run_id.0, v.nonce.0, v.revision.0, v.foreground),
+                WorkerIn::Cancel(v) => write!(output,
+                    r#"{{"type":"cancel","protocol":"bboxy.dream.c1/1","run_id":"{}","nonce":"{}"}}"#,
+                    v.run_id.0, v.nonce.0),
+                WorkerIn::Start(_) => return Err(Code::ProtocolError),
+            }.map_err(|_| Code::ResourceLimit)?;
+        }
         self.write.push(b'\n');
-        if self.write.len() > wire::MAX_FRAME {
+        if self.write.len() > 512 {
             return Err(Code::ResourceLimit);
         }
         self.written = 0;

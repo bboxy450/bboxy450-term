@@ -14806,6 +14806,7 @@ pub(super) mod dream_public_api_tests {
             Some(dream_c1::PreparedGuard {
                 callback: guard,
                 setup_cpu_ns: 0,
+                retire_session: None,
             }),
         );
         let elapsed = start.elapsed();

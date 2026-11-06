@@ -14,7 +14,8 @@ use bboxy450_harness_wake_up::dream_bootstrap as bootstrap;
 use bboxy450_harness_wake_up::dream_c1::{self as c1, PreparedStart, Worker, wire as w};
 use serde::{Serialize, de::DeserializeOwned};
 use std::{
-    os::unix::fs::PermissionsExt,
+    io::Read,
+    os::unix::fs::{MetadataExt, OpenOptionsExt, PermissionsExt},
     path::PathBuf,
     process::Command,
     time::{Duration, Instant},
@@ -204,6 +205,61 @@ impl Script {
             job,
         }
     }
+    fn stdin_capture_peer() -> Self {
+        let fixture = Self::new("");
+        let hello = String::from_utf8(bytes("valid/hello.json")).unwrap();
+        assert!(hello.is_ascii() && !hello.contains('\''));
+        let quote_path = |path: PathBuf| {
+            format!(
+                "'{}'",
+                path.to_str()
+                    .expect("private fixture path must be UTF-8")
+                    .replace('\'', "'\\''")
+            )
+        };
+        // Constant protocol-fake echo only: no Python/site startup, ambient
+        // PATH, source reads or producer/native conformance claim. The shell
+        // synchronously waits/reaps its sole fixed dd helper, closes the gate,
+        // then execs cat under the same exact PID owned by Worker.
+        let script = format!(
+            "#!/bin/sh\nset -eu\numask 077\nset -C\nexec 2>{stderr}\ngate=${{BBOXY_DREAM_BOOTSTRAP#*:}}\ngate=${{gate%%:*}}\ncase \"$gate\" in ''|*[!0-9]*) exit 64;; esac\n/bin/dd bs=128 count=1 <&\"$gate\" >/dev/null 2>/dev/null\neval \"exec ${{gate}}<&-\"\nprintf '%s' ready >{marker}\nprintf '%s\\n' '{hello}'\nexec /bin/cat >{captured}\n",
+            stderr = quote_path(fixture.job.join("fixture-stderr")),
+            marker = quote_path(fixture.job.join("worker-started")),
+            captured = quote_path(fixture.job.join("captured-input")),
+        );
+        std::fs::write(&fixture.binary, script).unwrap();
+        fixture
+    }
+
+    fn bounded_stderr_after_reap(&self) -> String {
+        let Ok(file) = std::fs::OpenOptions::new()
+            .read(true)
+            .custom_flags(libc::O_NOFOLLOW | libc::O_CLOEXEC)
+            .open(self.job.join("fixture-stderr"))
+        else {
+            return "unavailable (no private stderr file)".to_owned();
+        };
+        let Ok(metadata) = file.metadata() else {
+            return "unavailable (private stderr metadata)".to_owned();
+        };
+        if !metadata.is_file()
+            || metadata.nlink() != 1
+            || metadata.uid() != unsafe { libc::geteuid() }
+            || metadata.mode() & 0o777 != 0o600
+        {
+            return "unavailable (private stderr custody)".to_owned();
+        }
+        let mut prefix = Vec::with_capacity(2048);
+        if file.take(2048).read_to_end(&mut prefix).is_err() {
+            return "unavailable (private stderr read)".to_owned();
+        }
+        format!(
+            "{:?} (prefix<=2048B,total={}B)",
+            String::from_utf8_lossy(&prefix),
+            metadata.len()
+        )
+    }
+
     fn spawn(&self) -> TestWorker {
         let start: w::WorkerIn = c1::decode(&bytes("valid/start.json")).unwrap();
         let w::WorkerIn::Start(start) = start else {
@@ -268,11 +324,21 @@ impl Script {
             "all codec backing is provisioned before child use"
         );
         let until = worker.bootstrap_deadline().unwrap();
-        while !self.job.join("worker-started").is_file() {
-            assert!(
-                Instant::now() < until,
-                "owned Python fixture did not reach framing readiness"
-            );
+        loop {
+            if Instant::now() >= until {
+                let pid = worker.pid();
+                // Diagnose only after the sole owned Worker has actually
+                // killed/reaped its exact private process. No deadline reset.
+                drop(worker);
+                assert_reaped(pid);
+                panic!(
+                    "owned protocol fixture missed original framing readiness window; stderr after actual reap: {}",
+                    self.bounded_stderr_after_reap()
+                );
+            }
+            if self.job.join("worker-started").is_file() {
+                break;
+            }
             std::thread::sleep(Duration::from_millis(2));
         }
         worker
@@ -429,9 +495,7 @@ print(json.dumps(dict(base, type='done', seq=2, outcome='completed', result_sha2
 fn actual_private_prepared_start_is_one_write_and_duplicate_closes_without_replay() {
     // Protocol-fault process fixture only. The producer corpus supplies the
     // actual Start/Hello shapes; this echo process is not runtime conformance.
-    let script = Script::new(
-        "print(HELLO, flush=True)\nraw=sys.stdin.buffer.read()\npathlib.Path(sys.argv[4]).joinpath('captured-input').write_bytes(raw)\n",
-    );
+    let script = Script::stdin_capture_peer();
     let mut worker = script.spawn();
     let pid = worker.pid();
     worker.hello().unwrap();
@@ -479,6 +543,124 @@ fn actual_private_prepared_start_is_one_write_and_duplicate_closes_without_repla
         prepared.as_bytes(),
         "the private process received the original Start exactly once"
     );
+}
+
+#[test]
+fn actual_private_activity_and_cancel_match_signed_producer_bytes_and_scalar_boundaries() {
+    // Actual pipes/process/reap, but a protocol component witness only. The
+    // private echo process grants no producer algorithm/native conformance.
+    let script = Script::stdin_capture_peer();
+    let mut worker = script.spawn();
+    let pid = worker.pid();
+    worker.hello().unwrap();
+    let w::WorkerIn::Start(start) = c1::decode(&bytes("valid/start.json")).unwrap() else {
+        unreachable!()
+    };
+    let prepared = ordinary(|| PreparedStart::new(&start).unwrap());
+    worker.send_prepared_start(&prepared).unwrap();
+
+    let activity_bytes = bytes("valid/activity.json");
+    let activity: w::WorkerIn = c1::decode(&activity_bytes).unwrap();
+    let cancel_bytes = bytes("valid/worker-cancel.json");
+    let cancel: w::WorkerIn = c1::decode(&cancel_bytes).unwrap();
+    let w::WorkerIn::Activity(mut boundary) = activity.clone() else {
+        panic!("producer activity fixture has the wrong variant")
+    };
+    // Exercise both ASCII bool forms and the longest admitted decimal number.
+    // This is a scalar-edge mutation of the signed fixture, not a local golden.
+    boundary.foreground = true;
+    boundary.revision = w::Number(w::MAX_SAFE);
+    let boundary = w::WorkerIn::Activity(boundary);
+    for frame in [&activity, &boundary, &cancel] {
+        assert!(worker.send(frame).unwrap());
+    }
+    worker.close_input();
+    assert!(reaped(&mut worker).success());
+    assert_reaped(pid);
+    let captured = std::fs::read(script.job.join("captured-input")).unwrap();
+    let lines = captured
+        .split_inclusive(|byte| *byte == b'\n')
+        .collect::<Vec<_>>();
+    assert_eq!(lines.len(), 4, "one Start and three exact control frames");
+    assert_eq!(lines[0], prepared.as_bytes());
+    for (line, expected) in lines[1..].iter().zip([&activity, &boundary, &cancel]) {
+        assert!(line.len() <= 512);
+        assert!(line.is_ascii());
+        assert_eq!(line.last(), Some(&b'\n'));
+        let decoded: w::WorkerIn = c1::decode(line).unwrap();
+        assert_eq!(&decoded, expected);
+    }
+    // Canonicalization permits wire JSON member ordering while requiring the
+    // exact signed producer meaning/bytes, with no missing-fixture fallback.
+    assert_eq!(
+        c1::canonical(&c1::decode::<w::WorkerIn>(lines[1]).unwrap()).unwrap(),
+        activity_bytes
+    );
+    assert_eq!(
+        c1::canonical(&c1::decode::<w::WorkerIn>(lines[3]).unwrap()).unwrap(),
+        cancel_bytes
+    );
+}
+
+#[test]
+fn actual_private_control_invalid_ulids_and_unsafe_revision_emit_no_new_frame() {
+    let w::WorkerIn::Activity(activity) = c1::decode(&bytes("valid/activity.json")).unwrap() else {
+        panic!("producer activity fixture has the wrong variant")
+    };
+    let w::WorkerIn::Cancel(cancel) = c1::decode(&bytes("valid/worker-cancel.json")).unwrap()
+    else {
+        panic!("producer Cancel fixture has the wrong variant")
+    };
+    let mut bad_activity_run = activity.clone();
+    bad_activity_run.run_id = w::Ulid("Z".repeat(26));
+    let mut bad_activity_nonce = activity.clone();
+    bad_activity_nonce.nonce = w::Ulid("\"".repeat(26));
+    let mut bad_cancel_run = cancel.clone();
+    bad_cancel_run.run_id = w::Ulid("a".repeat(26));
+    let mut bad_cancel_nonce = cancel;
+    bad_cancel_nonce.nonce = w::Ulid("Z".repeat(26));
+    let mut bad_revision = activity;
+    bad_revision.revision = w::Number(w::MAX_SAFE + 1);
+    for (name, malformed) in [
+        (
+            "activity noncanonical run",
+            w::WorkerIn::Activity(bad_activity_run),
+        ),
+        (
+            "activity quoted nonce",
+            w::WorkerIn::Activity(bad_activity_nonce),
+        ),
+        ("Cancel lowercase run", w::WorkerIn::Cancel(bad_cancel_run)),
+        (
+            "Cancel out-of-range nonce",
+            w::WorkerIn::Cancel(bad_cancel_nonce),
+        ),
+        (
+            "activity unsafe revision",
+            w::WorkerIn::Activity(bad_revision),
+        ),
+    ] {
+        // Independent children ensure each invalid scalar reaches its actual
+        // validator even if a previous refusal's policy closes the input.
+        let script = Script::stdin_capture_peer();
+        let mut worker = script.spawn();
+        let pid = worker.pid();
+        worker.hello().unwrap();
+        let w::WorkerIn::Start(start) = c1::decode(&bytes("valid/start.json")).unwrap() else {
+            unreachable!()
+        };
+        let prepared = ordinary(|| PreparedStart::new(&start).unwrap());
+        worker.send_prepared_start(&prepared).unwrap();
+        assert!(worker.send(&malformed).is_err(), "must refuse {name}");
+        worker.close_input();
+        assert!(reaped(&mut worker).success(), "private child: {name}");
+        assert_reaped(pid);
+        assert_eq!(
+            std::fs::read(script.job.join("captured-input")).unwrap(),
+            prepared.as_bytes(),
+            "{name}: no new control frame or malformed prefix may cross"
+        );
+    }
 }
 
 #[test]

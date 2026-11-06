@@ -231,18 +231,39 @@ struct VerifiedPublicFence {
 /// this connection; one transient checkpoint connection fits the second slot.
 pub(crate) struct PublicFenceSession {
     file: (u64, u64),
-    db: std::sync::Mutex<rusqlite::Connection>,
+    db: std::sync::Mutex<Option<rusqlite::Connection>>,
+    retiring: std::sync::atomic::AtomicBool,
+}
+impl PublicFenceSession {
+    pub(crate) fn is_retiring(&self) -> bool {
+        self.retiring.load(std::sync::atomic::Ordering::Acquire)
+    }
+    /// Retirement grants no authority. Only the exact owned connection can be
+    /// taken, after current readers release their bounded borrow. Poisoned
+    /// custody may be recovered for destruction, never for a public check.
+    pub(crate) fn try_take_connection(
+        &self,
+    ) -> std::result::Result<Option<rusqlite::Connection>, bbt_proto::dream::Code> {
+        self.retiring
+            .store(true, std::sync::atomic::Ordering::Release);
+        let mut db = match self.db.try_lock() {
+            Ok(db) => db,
+            Err(std::sync::TryLockError::WouldBlock) => return Err(bbt_proto::dream::Code::Busy),
+            Err(std::sync::TryLockError::Poisoned(poison)) => poison.into_inner(),
+        };
+        Ok(db.take())
+    }
 }
 enum PublicCheckConnection<'a> {
     Transient(rusqlite::Connection),
-    Retained(std::sync::MutexGuard<'a, rusqlite::Connection>),
+    Retained(std::sync::MutexGuard<'a, Option<rusqlite::Connection>>),
 }
 impl std::ops::Deref for PublicCheckConnection<'_> {
     type Target = rusqlite::Connection;
     fn deref(&self) -> &Self::Target {
         match self {
             Self::Transient(db) => db,
-            Self::Retained(db) => db,
+            Self::Retained(db) => db.as_ref().expect("checked open authority session"),
         }
     }
 }
@@ -250,7 +271,7 @@ impl std::ops::DerefMut for PublicCheckConnection<'_> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
             Self::Transient(db) => db,
-            Self::Retained(db) => db,
+            Self::Retained(db) => db.as_mut().expect("checked open authority session"),
         }
     }
 }
@@ -298,11 +319,54 @@ impl PublicFenceReader {
             .publication
             .load(std::sync::atomic::Ordering::Acquire)
     }
+    #[cfg(test)]
     pub(crate) fn current(&self) -> Result<PublicFence> {
         let prior = self.verified_snapshot()?;
-        // Read time after the exact cache snapshot being checked. A concurrent
-        // forward-clock verifier must not look like a clock rollback.
         self.current_verified_at(self.public_now(), prior)
+    }
+    /// Public-only cold verification has explicit work boundaries. An existing
+    /// verified proof is only a candidate: every current raw row/revision/inode
+    /// and time check still runs before that candidate can leave the reader.
+    #[cfg(test)]
+    pub(crate) fn current_cooperative(
+        &self,
+        checkpoint: &mut dyn FnMut() -> Result<()>,
+    ) -> Result<PublicFence> {
+        let prior = self.verified_snapshot()?;
+        // Sample AFTER capturing this exact candidate (forward verification
+        // must not be mistaken for a wall-clock rollback).
+        let now = self.public_now();
+        if let Some(verified) = prior {
+            self.with_current_verified_at(
+                &verified.fence,
+                verified.clone(),
+                now,
+                None,
+                |_| Ok(()),
+            )?;
+            return Ok(verified.fence.clone());
+        }
+        self.current_verified_cooperative(now, None, checkpoint)
+    }
+    pub(crate) fn current_prepared_cooperative(
+        &self,
+        session: &PublicFenceSession,
+        checkpoint: &mut dyn FnMut() -> Result<()>,
+    ) -> Result<PublicFence> {
+        let prior = self.verified_snapshot()?;
+        let now = self.public_now();
+        if let Some(verified) = prior {
+            self.with_current_session(&verified.fence, session, |_| Ok(()))?;
+            return Ok(verified.fence.clone());
+        }
+        self.current_verified_cooperative(now, None, checkpoint)
+    }
+    /// A bounded cache locator only. It cannot authorize a response; callers
+    /// must run fresh public/actor/root/provider checks on the exact candidate.
+    pub(crate) fn verified_candidate(&self) -> Result<Option<PublicFence>> {
+        Ok(self
+            .verified_snapshot()?
+            .map(|verified| verified.fence.clone()))
     }
     fn verified_snapshot(&self) -> Result<Option<Arc<VerifiedPublicFence>>> {
         Ok(self
@@ -365,24 +429,37 @@ impl PublicFenceReader {
         &self,
         prepare_actor: impl FnOnce(&rusqlite::Connection) -> Result<()>,
     ) -> Result<PublicFenceSession> {
+        self.prepare_session_cooperative(prepare_actor, &mut || Ok(()))
+    }
+    pub(crate) fn prepare_session_cooperative(
+        &self,
+        prepare_actor: impl FnOnce(&rusqlite::Connection) -> Result<()>,
+        checkpoint: &mut dyn FnMut() -> Result<()>,
+    ) -> Result<PublicFenceSession> {
         bbt_rt::assert_not_ui_thread();
+        if !self.0.installed || self.cached_revision() & 1 != 0 {
+            return Err(invalid("stale public authority preparation"));
+        }
         let file = public_file(&self.0.account)?;
-        let db = public_connection(&self.0.account)?;
-        // Exact statements: revision, one bounded public cell, actor scalars.
+        checkpoint()?;
+        let db = public_connection_cooperative(&self.0.account, checkpoint)?;
         db.set_prepared_statement_cache_capacity(3);
         drop(db.prepare_cached(PUBLIC_REVISION_SQL)?);
+        checkpoint()?;
         drop(db.prepare_cached(PUBLIC_DIGEST_SQL)?);
+        checkpoint()?;
         prepare_actor(&db)?;
+        checkpoint()?;
         public_connection_current(&db)?;
         if public_file(&self.0.account)? != file {
             return Err(invalid("stale public account session"));
         }
         Ok(PublicFenceSession {
             file,
-            db: std::sync::Mutex::new(db),
+            db: std::sync::Mutex::new(Some(db)),
+            retiring: std::sync::atomic::AtomicBool::new(false),
         })
     }
-    #[cfg(test)]
     pub(crate) fn with_current_session<T>(
         &self,
         captured: &PublicFence,
@@ -400,6 +477,9 @@ impl PublicFenceReader {
         session: &PublicFenceSession,
         read: impl FnOnce(&rusqlite::Connection) -> Result<T>,
     ) -> Result<Option<T>> {
+        if session.is_retiring() {
+            return Err(invalid("retiring public authority session"));
+        }
         let db = match session.db.try_lock() {
             Ok(db) => db,
             Err(std::sync::TryLockError::WouldBlock) => return Ok(None),
@@ -407,6 +487,9 @@ impl PublicFenceReader {
                 return Err(invalid("poisoned public authority session"));
             }
         };
+        if db.is_none() {
+            return Err(invalid("closed public authority session"));
+        }
         let verified = self
             .verified_snapshot()?
             .ok_or_else(|| invalid("missing verified public identity"))?;
@@ -446,7 +529,10 @@ impl PublicFenceReader {
         captured: &PublicFence,
         verified: Arc<VerifiedPublicFence>,
         now: u64,
-        session: Option<((u64, u64), std::sync::MutexGuard<'_, rusqlite::Connection>)>,
+        session: Option<(
+            (u64, u64),
+            std::sync::MutexGuard<'_, Option<rusqlite::Connection>>,
+        )>,
         read: impl FnOnce(&rusqlite::Connection) -> Result<T>,
     ) -> Result<T> {
         use std::sync::atomic::Ordering;
@@ -490,7 +576,10 @@ impl PublicFenceReader {
                 if file != verified.file {
                     return Err(invalid("stale public account session"));
                 }
-                public_connection_current(&db)?;
+                public_connection_current(
+                    db.as_ref()
+                        .ok_or_else(|| invalid("closed public authority session"))?,
+                )?;
                 PublicCheckConnection::Retained(db)
             }
             None => PublicCheckConnection::Transient(public_connection(&self.0.account)?),
@@ -571,10 +660,19 @@ impl PublicFenceReader {
     fn current_at(&self, now: u64) -> Result<PublicFence> {
         self.current_verified_at(now, self.verified_snapshot()?)
     }
+    #[cfg(test)]
     fn current_verified_at(
         &self,
         now: u64,
         prior: Option<Arc<VerifiedPublicFence>>,
+    ) -> Result<PublicFence> {
+        self.current_verified_cooperative(now, prior, &mut || Ok(()))
+    }
+    fn current_verified_cooperative(
+        &self,
+        now: u64,
+        prior: Option<Arc<VerifiedPublicFence>>,
+        checkpoint: &mut dyn FnMut() -> Result<()>,
     ) -> Result<PublicFence> {
         use std::sync::atomic::Ordering;
         bbt_rt::assert_not_ui_thread();
@@ -605,14 +703,41 @@ impl PublicFenceReader {
         // cache is advisory-bounded; it neither borrows the shared pool nor
         // changes another owner's PRAGMAs. Native allocations remain measured
         // against the parent headroom, not a claimed SQLite hard heap limit.
-        let mut db = public_connection(&self.0.account)?;
-        let tx = db.transaction()?;
-        let fence_rev = public_revision(&tx)?;
-        let issuer_bytes = public_row(&tx, "messaging/issuer")?
-            .ok_or_else(|| invalid("missing public issuer pin"))?;
+        checkpoint()?;
+        let db = public_connection_cooperative(&self.0.account, checkpoint)?;
+        let fence_rev = public_revision(&db)?;
+        // Each indexed statement completes before a checkpoint. No read
+        // transaction/lock survives the ordinary rest or public crypto work.
+        // The initial revision plus final row digests bind this frozen proof
+        // even when a same-inode write bypasses an ordinary trigger.
+        let mut read_rows = Vec::new();
+        read_rows
+            .try_reserve_exact(8)
+            .map_err(|_| invalid("public proof snapshot capacity"))?;
+        let mut row = |key: &str| -> Result<Option<Vec<u8>>> {
+            use sha2::{Digest, Sha256};
+            let bytes = public_row(&db, key)?;
+            let digest = bytes.as_ref().map(|bytes| Sha256::digest(bytes).into());
+            if read_rows
+                .iter()
+                .any(|prior: &PublicRowDigest| prior.key == key && prior.digest != digest)
+            {
+                return Err(invalid("public proof changed during read"));
+            }
+            read_rows.push(PublicRowDigest {
+                key: key.to_owned(),
+                digest,
+            });
+            Ok(bytes)
+        };
+        checkpoint()?;
+        let issuer_bytes =
+            row("messaging/issuer")?.ok_or_else(|| invalid("missing public issuer pin"))?;
         let issuer: crate::messaging::wire::Issuer = serde_json::from_slice(&issuer_bytes)?;
+        checkpoint()?;
         crate::messaging::wire::parse_public(&issuer.key)?;
-        let state_bytes = public_row(&tx, "identity/issuer")?;
+        checkpoint()?;
+        let state_bytes = row("identity/issuer")?;
         let state: Option<super::IssuerState> = state_bytes
             .as_ref()
             .map(|bytes| serde_json::from_slice(bytes))
@@ -623,7 +748,7 @@ impl PublicFenceReader {
                     return Err(invalid("stale public issuer journal"));
                 }
                 let epoch = transition::counter(&state.cutover_epoch)?;
-                let history = public_row(&tx, &format!("identity/issuer-history/{epoch}"))?
+                let history = row(&format!("identity/issuer-history/{epoch}"))?
                     .ok_or_else(|| invalid("missing public issuer history"))?;
                 if Some(&history) != state_bytes.as_ref() {
                     return Err(invalid("stale public issuer history"));
@@ -649,12 +774,13 @@ impl PublicFenceReader {
             expires_at: None,
             revoked: false,
         };
+        checkpoint()?;
         match pin {
             PublicPin::Local(expected) => {
                 if issuer.kind != IssuerKind::LocalDev || issuer != expected {
                     return Err(invalid("stale host-authenticated local issuer"));
                 }
-                if let Some(bytes) = public_row(&tx, "identity/local-issuer")? {
+                if let Some(bytes) = row("identity/local-issuer")? {
                     #[derive(Deserialize)]
                     #[serde(deny_unknown_fields)]
                     struct LocalProof {
@@ -678,9 +804,8 @@ impl PublicFenceReader {
                     {
                         return Err(invalid("stale local public device proof"));
                     }
-                    let history =
-                        public_row(&tx, &format!("identity/local-issuer-history/{epoch}"))?
-                            .ok_or_else(|| invalid("missing local public device history"))?;
+                    let history = row(&format!("identity/local-issuer-history/{epoch}"))?
+                        .ok_or_else(|| invalid("missing local public device history"))?;
                     if history != bytes {
                         return Err(invalid("stale local public device history"));
                     }
@@ -704,10 +829,10 @@ impl PublicFenceReader {
                 if state.root_fingerprint.as_deref() != Some(pinned.as_str()) {
                     return Err(invalid("stale public root fingerprint"));
                 }
-                let head_bytes = public_row(&tx, "identity/head")?
-                    .ok_or_else(|| invalid("missing public account head"))?;
+                let head_bytes =
+                    row("identity/head")?.ok_or_else(|| invalid("missing public account head"))?;
                 let head: Signed<AccountHead> = serde_json::from_slice(&head_bytes)?;
-                let identity_bytes = public_row(&tx, &format!("identity/device/{device}"))?
+                let identity_bytes = row(&format!("identity/device/{device}"))?
                     .ok_or_else(|| invalid("missing public device proof"))?;
                 let identity: DeviceIdentity = serde_json::from_slice(&identity_bytes)?;
                 if identity.grant.payload.device_id != device
@@ -722,7 +847,11 @@ impl PublicFenceReader {
                     self.invalidate_publication(revision);
                     return Err(invalid("expired public DeviceGrant"));
                 }
-                super::chain::verify_public_device(&identity, &pinned, &head, now)?;
+                checkpoint()?;
+                super::chain::verify_public_device_cooperative(
+                    &identity, &pinned, &head, now, checkpoint,
+                )?;
+                checkpoint()?;
                 let payload = &identity.grant.payload;
                 fence.account_epoch = transition::counter(&payload.account_epoch)?;
                 fence.device = Some(device);
@@ -733,8 +862,15 @@ impl PublicFenceReader {
                 fence.expires_at = Some(payload.expires_at);
             }
         }
-        let rows = verified_public_rows(&tx, &fence)?;
-        tx.commit()?;
+        checkpoint()?;
+        let rows = verified_public_rows(&db, &fence)?;
+        if read_rows.iter().any(|read| {
+            !rows
+                .iter()
+                .any(|row| row.key == read.key && row.digest == read.digest)
+        }) {
+            return Err(invalid("public proof changed during verification"));
+        }
         if self.0.publication.load(Ordering::Acquire) != revision
             || public_file(&self.0.account)? != file
             || public_revision(&db)? != fence_rev
@@ -764,6 +900,15 @@ impl PublicFenceReader {
         {
             *cache = Some(verified);
         }
+        // No SQL borrow survives these retirement boundaries. The complete
+        // verified candidate is published, but cannot escape a failed verdict.
+        drop(cache);
+        db.set_prepared_statement_cache_capacity(1);
+        checkpoint()?;
+        db.set_prepared_statement_cache_capacity(0);
+        checkpoint()?;
+        drop(db);
+        checkpoint()?;
         Ok(fence)
     }
     fn republish_from(&self, replacement: &Self) {
@@ -819,15 +964,25 @@ fn guard_profile_sample(profile: &mut Option<(u64, [std::time::Duration; 9])>, i
 }
 
 fn public_connection(account: &SqliteStore) -> Result<rusqlite::Connection> {
+    public_connection_cooperative(account, &mut || Ok(()))
+}
+fn public_connection_cooperative(
+    account: &SqliteStore,
+    checkpoint: &mut dyn FnMut() -> Result<()>,
+) -> Result<rusqlite::Connection> {
     let db = rusqlite::Connection::open_with_flags(
         &account.path,
         rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY
             | rusqlite::OpenFlags::SQLITE_OPEN_NO_MUTEX
             | rusqlite::OpenFlags::SQLITE_OPEN_NOFOLLOW,
     )?;
+    checkpoint()?;
     db.busy_timeout(std::time::Duration::ZERO)?;
+    checkpoint()?;
     db.pragma_update(None, "cache_size", -1024i64)?;
+    checkpoint()?;
     db.pragma_update(None, "mmap_size", 0i64)?;
+    checkpoint()?;
     Ok(db)
 }
 fn public_connection_current(db: &rusqlite::Connection) -> Result<()> {
@@ -1689,6 +1844,48 @@ mod dream_public_fence_tests {
         (root, account, reader, issuer)
     }
 
+    #[test]
+    fn dream_public_cooperative_prelude_rechecks_rows_and_aba_after_yield() {
+        for raw_change in [false, true] {
+            let (_root, account, reader, _) = legacy();
+            let original = account.get("messaging/issuer").unwrap().unwrap();
+            let mut checkpoints = 0;
+            let result = reader.current_cooperative(&mut || {
+                checkpoints += 1;
+                if checkpoints == 9 {
+                    // The issuer has already been captured, while every read
+                    // statement has ended. This separate owner never waits for
+                    // a cold-proof read transaction through a cooperative rest.
+                    let db = account.connection()?;
+                    db.busy_timeout(std::time::Duration::ZERO)?;
+                    if raw_change {
+                        db.execute_batch("DROP TRIGGER dream_public_update")?;
+                        db.execute(
+                            "UPDATE kv SET value=?1 WHERE key='messaging/issuer'",
+                            [b"raw changed issuer".as_slice()],
+                        )?;
+                    } else {
+                        db.execute(
+                            "UPDATE kv SET value=?1 WHERE key='messaging/issuer'",
+                            [b"temporary B issuer".as_slice()],
+                        )?;
+                        db.execute(
+                            "UPDATE kv SET value=?1 WHERE key='messaging/issuer'",
+                            [&original],
+                        )?;
+                    }
+                }
+                Ok(())
+            });
+            assert!(
+                checkpoints >= 9,
+                "cold proof did not reach the causal yield"
+            );
+            assert!(result.is_err(), "changed cold-proof input was published");
+            assert!(reader.verified_snapshot().unwrap().is_none());
+        }
+    }
+
     // A real certified account, including its OpenPGP public certificates, is
     // checked while every custody/signing entry point is a panic spy.
     #[test]
@@ -2011,7 +2208,10 @@ mod dream_public_fence_tests {
                 captured.fence_rev
             );
             let db = session.db.try_lock().unwrap();
-            assert!(db.is_autocommit(), "a unit retained its SQLite snapshot");
+            assert!(
+                db.as_ref().unwrap().is_autocommit(),
+                "a unit retained its SQLite snapshot"
+            );
         }
         let held = session.db.try_lock().unwrap();
         let start = std::time::Instant::now();
@@ -2047,7 +2247,71 @@ mod dream_public_fence_tests {
                 })
                 .is_err()
         );
-        assert!(session.db.try_lock().unwrap().is_autocommit());
+        assert!(
+            session
+                .db
+                .try_lock()
+                .unwrap()
+                .as_ref()
+                .unwrap()
+                .is_autocommit()
+        );
+    }
+
+    #[test]
+    fn dream_public_prepared_session_retirement_waits_for_real_borrow_and_closes_once() {
+        let (_root, _account, reader, _) = legacy();
+        let captured = reader.current().unwrap();
+        let session = Arc::new(reader.prepare_session(|_| Ok(())).unwrap());
+        let control = Arc::new(crate::logic::dream_c1::Control::default());
+        let (was_busy, finished_early, refused_during_retire, result) =
+            std::thread::scope(|scope| {
+                let held = session.db.try_lock().unwrap();
+                let was_busy = matches!(
+                    session.try_take_connection(),
+                    Err(bbt_proto::dream::Code::Busy)
+                );
+                let owned = session.clone();
+                let owner_control = control.clone();
+                let (sent, received) = std::sync::mpsc::sync_channel(1);
+                let owner = scope.spawn(move || {
+                    let result =
+                        crate::logic::dream_c1::retire_public_session(&owned, &owner_control);
+                    sent.send(()).unwrap();
+                    result
+                });
+                std::thread::sleep(std::time::Duration::from_millis(20));
+                let finished_early = received.try_recv().is_ok();
+                let refused = reader
+                    .try_with_current_session(&captured, &session, |_| Ok(()))
+                    .is_err();
+                // Release before asserting, so a failed causal premise never strands
+                // the required settlement owner in this private test process.
+                drop(held);
+                (was_busy, finished_early, refused, owner.join().unwrap())
+            });
+        assert!(was_busy && !finished_early && refused_during_retire);
+        assert!(
+            result.is_ok(),
+            "actual native retirement failed: {result:?}"
+        );
+        assert!(session.db.try_lock().unwrap().is_none());
+        assert!(
+            reader
+                .with_current_session(&captured, &session, |_| Ok(()))
+                .is_err()
+        );
+        let units = crate::logic::dream_c1::test_cleanup_units(&control);
+        assert!(
+            units >= 4,
+            "cache finalization and native close were not distinct units"
+        );
+        assert!(crate::logic::dream_c1::retire_public_session(&session, &control).is_ok());
+        assert_eq!(
+            crate::logic::dream_c1::test_cleanup_units(&control),
+            units,
+            "a duplicate close performed another native retirement"
+        );
     }
 
     #[test]
@@ -2092,8 +2356,10 @@ mod dream_public_fence_tests {
         drop(db);
         let retired = account.path.with_extension("private-retired");
         std::fs::rename(&account.path, &retired).unwrap();
-        assert!(public_connection_current(&session.db.try_lock().unwrap()).is_err());
+        assert!(
+            public_connection_current(session.db.try_lock().unwrap().as_ref().unwrap()).is_err()
+        );
         std::fs::rename(retired, &account.path).unwrap();
-        public_connection_current(&session.db.try_lock().unwrap()).unwrap();
+        public_connection_current(session.db.try_lock().unwrap().as_ref().unwrap()).unwrap();
     }
 }

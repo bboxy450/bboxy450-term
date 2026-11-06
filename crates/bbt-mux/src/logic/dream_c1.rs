@@ -11,7 +11,7 @@
     reason = "dedicated C1 source/process/result owners"
 )]
 use crate::registry::dream_c1::{
-    Bookmark, ExistingJournal, Journal, LaunchBookmark, Record, private_dir,
+    Bookmark, ExistingJournal, Journal, JournalConfig, LaunchBookmark, Record, private_dir,
 };
 use bboxy450_harness_wake_up::{
     dream_bootstrap as bootstrap,
@@ -676,6 +676,7 @@ pub(crate) type AuthorityGuard = dyn Fn() -> Result<(), Code> + Send + Sync;
 pub(crate) struct PreparedGuard {
     pub callback: Arc<AuthorityGuard>,
     pub setup_cpu_ns: u64,
+    pub retire_session: Option<Arc<crate::identity::PublicFenceSession>>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum FinalHandoff {
@@ -1704,10 +1705,25 @@ pub(crate) mod disposal {
     pub(super) fn last_cleanup_end() -> Option<Instant> {
         LAST_CLEANUP_END.with(Cell::get)
     }
+    #[track_caller]
     pub(super) fn record_cleanup(control: &Cleanup, elapsed: Duration) {
-        record_cleanup_at(control, elapsed, Instant::now());
+        record_cleanup_at(
+            control,
+            elapsed,
+            Instant::now(),
+            "native_buffer",
+            std::panic::Location::caller(),
+        );
     }
-    fn record_cleanup_at(control: &Cleanup, elapsed: Duration, body_end: Instant) {
+    fn record_cleanup_at(
+        control: &Cleanup,
+        elapsed: Duration,
+        body_end: Instant,
+        kind: &'static str,
+        origin: &'static std::panic::Location<'static>,
+    ) {
+        #[cfg(not(debug_assertions))]
+        let _ = (kind, origin);
         let elapsed = nanos(elapsed);
         THREAD_CLEANUP_CPU.with(|cpu| cpu.set(cpu.get().saturating_add(elapsed)));
         LAST_CLEANUP_END.with(|end| end.set(Some(body_end)));
@@ -1718,58 +1734,113 @@ pub(crate) mod disposal {
         control.units.fetch_add(1, Ordering::Relaxed);
         if elapsed > nanos(UNIT) {
             control.overruns.fetch_add(1, Ordering::Relaxed);
+            #[cfg(debug_assertions)]
+            eprintln!(
+                "C1 cleanup overrun cpu_ns={elapsed} type={} file={} line={}",
+                if kind.len() <= 256 {
+                    kind
+                } else {
+                    "bounded_owned_type"
+                },
+                origin.file(),
+                origin.line()
+            );
         }
     }
-    pub(super) fn cleanup_unit(control: &Cleanup, work: impl FnOnce()) {
-        // Required destruction remains independent of foreground/cancel. It
-        // shares the run's lease/debt, so an error unwind cannot overlap another
-        // parent's work or borrow idle time from before this cleanup span.
-        let nested = control.debt.suspend();
-        if !nested {
-            // A different retained owner is never bypassed. This is an
-            // isolated settlement owner, not a shared reactor/control lane.
-            while control.debt.enter(None, true).is_err() {
-                control.overruns.fetch_add(1, Ordering::Relaxed);
-                std::thread::sleep(REST);
+    pub(super) struct CleanupRegion<'a> {
+        control: &'a Cleanup,
+        nested: bool,
+        before: Result<Duration, Code>,
+        kind: &'static str,
+        origin: &'static std::panic::Location<'static>,
+    }
+    impl<'a> CleanupRegion<'a> {
+        #[track_caller]
+        pub(super) fn begin(control: &'a Cleanup) -> Self {
+            Self::begin_owned(
+                control,
+                "public_proof_unwind",
+                std::panic::Location::caller(),
+            )
+        }
+        fn begin_owned(
+            control: &'a Cleanup,
+            kind: &'static str,
+            origin: &'static std::panic::Location<'static>,
+        ) -> Self {
+            let nested = control.debt.suspend();
+            if !nested {
+                while control.debt.enter(None, true).is_err() {
+                    control.overruns.fetch_add(1, Ordering::Relaxed);
+                    std::thread::sleep(REST);
+                }
+            }
+            let before = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit);
+            let _ = control.debt.wait(None, true);
+            Self {
+                control,
+                nested,
+                before,
+                kind,
+                origin,
             }
         }
-        let before = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit);
-        let _ = control.debt.wait(None, true);
-        work();
-        let body_end = Instant::now();
-        let body_cpu = match (before, bbt_rt::fault::thread_cpu_time()) {
-            (Ok(before), Ok(after)) => after.checked_sub(before).ok_or(Code::ResourceLimit),
-            _ => Err(Code::ResourceLimit),
-        };
-        control.debt.charge(body_cpu, body_end);
-        let _ = control.debt.wait(None, true);
-        let elapsed = match (before, bbt_rt::fault::thread_cpu_time()) {
-            (Ok(before), Ok(after)) => after
-                .checked_sub(before)
-                .unwrap_or(UNIT + Duration::from_nanos(1)),
-            _ => UNIT + Duration::from_nanos(1),
-        };
-        // Whole cleanup-region CPU includes its pacing/clock overhead. The
-        // <=1ms floor normally already paid this; an overrun pays the full cost.
-        if elapsed > body_cpu.unwrap_or(UNIT) {
-            let cost = nanos(elapsed.max(UNIT)).saturating_mul(9);
-            control.debt.due_ns.fetch_max(
-                nanos(body_end.saturating_duration_since(control.debt.epoch)).saturating_add(cost),
-                Ordering::AcqRel,
-            );
+    }
+    impl Drop for CleanupRegion<'_> {
+        fn drop(&mut self) {
+            let control = self.control;
+            let before = self.before;
+            let body_end = Instant::now();
+            let body_cpu = match (before, bbt_rt::fault::thread_cpu_time()) {
+                (Ok(before), Ok(after)) => after.checked_sub(before).ok_or(Code::ResourceLimit),
+                _ => Err(Code::ResourceLimit),
+            };
+            #[cfg(debug_assertions)]
+            if body_cpu.is_err() {
+                eprintln!("C1 cleanup clock unknown region=required_cleanup");
+            }
+            control.debt.charge(body_cpu, body_end);
             let _ = control.debt.wait(None, true);
+            let elapsed = match (before, bbt_rt::fault::thread_cpu_time()) {
+                (Ok(before), Ok(after)) => after
+                    .checked_sub(before)
+                    .unwrap_or(UNIT + Duration::from_nanos(1)),
+                _ => UNIT + Duration::from_nanos(1),
+            };
+            if elapsed > body_cpu.unwrap_or(UNIT) {
+                let cost = nanos(elapsed.max(UNIT)).saturating_mul(9);
+                control.debt.due_ns.fetch_max(
+                    nanos(body_end.saturating_duration_since(control.debt.epoch))
+                        .saturating_add(cost),
+                    Ordering::AcqRel,
+                );
+                let _ = control.debt.wait(None, true);
+            }
+            record_cleanup_at(control, elapsed, body_end, self.kind, self.origin);
+            if self.nested {
+                control.debt.resume();
+            } else {
+                WORK_FRAME.with(|f| {
+                    f.borrow_mut().take();
+                });
+                control.debt.held.store(false, Ordering::Release);
+            }
         }
-        record_cleanup_at(control, elapsed, body_end);
-        if nested {
-            control.debt.resume();
-        } else {
-            // Cleanup was charged above. Discard its frame without charging the
-            // trailing rest a second time.
-            WORK_FRAME.with(|f| {
-                f.borrow_mut().take();
-            });
-            control.debt.held.store(false, Ordering::Release);
-        }
+    }
+    #[track_caller]
+    pub(super) fn cleanup_unit(control: &Cleanup, work: impl FnOnce()) {
+        // Required destruction remains independent of foreground/cancel and
+        // retains the same exclusive work debt through clocks and cleanup.
+        cleanup_owned(control, "native_leaf", std::panic::Location::caller(), work);
+    }
+    fn cleanup_owned(
+        control: &Cleanup,
+        kind: &'static str,
+        origin: &'static std::panic::Location<'static>,
+        work: impl FnOnce(),
+    ) {
+        let _region = CleanupRegion::begin_owned(control, kind, origin);
+        work();
     }
     pub(crate) trait Drain {
         /// Remove at most one payload/entry, following only the admitted depth.
@@ -1787,14 +1858,24 @@ pub(crate) mod disposal {
     pub(crate) struct Paced<T: Drain> {
         value: Option<T>,
         control: Arc<Cleanup>,
+        origin: &'static std::panic::Location<'static>,
         // Destruction order is explicit: the exact owner empties before credit.
         pub(super) credit: Option<Reservation>,
     }
     impl<T: Drain> Paced<T> {
+        #[track_caller]
         pub(super) fn new(value: T, control: &Control) -> Self {
+            Self::at(value, control, std::panic::Location::caller())
+        }
+        pub(super) fn at(
+            value: T,
+            control: &Control,
+            origin: &'static std::panic::Location<'static>,
+        ) -> Self {
             Self {
                 value: Some(value),
                 control: control.cleanup.clone(),
+                origin,
                 credit: None,
             }
         }
@@ -1842,23 +1923,28 @@ pub(crate) mod disposal {
     impl<T: Drain> Drop for Paced<T> {
         fn drop(&mut self) {
             while self.value.is_some() {
-                cleanup_unit(&self.control, || {
-                    let before = bbt_rt::fault::thread_cpu_time().ok();
-                    // The finite step count still applies when the clock fails.
-                    for _ in 0..128 {
-                        if !self.value.as_mut().unwrap().drain_step() {
-                            drop(self.value.take());
-                            break;
+                cleanup_owned(
+                    &self.control,
+                    std::any::type_name::<T>(),
+                    self.origin,
+                    || {
+                        let before = bbt_rt::fault::thread_cpu_time().ok();
+                        // The finite step count still applies when the clock fails.
+                        for _ in 0..128 {
+                            if !self.value.as_mut().unwrap().drain_step() {
+                                drop(self.value.take());
+                                break;
+                            }
+                            if before.is_none_or(|before| {
+                                bbt_rt::fault::thread_cpu_time().map_or(true, |now| {
+                                    now.saturating_sub(before) >= Duration::from_micros(400)
+                                })
+                            }) {
+                                break;
+                            }
                         }
-                        if before.is_none_or(|before| {
-                            bbt_rt::fault::thread_cpu_time().map_or(true, |now| {
-                                now.saturating_sub(before) >= Duration::from_micros(400)
-                            })
-                        }) {
-                            break;
-                        }
-                    }
-                });
+                    },
+                );
             }
             // credit remains present throughout all actual cleanup, even if a
             // cleanup clock fails or a unit exceeds its limit.
@@ -1895,6 +1981,7 @@ pub(crate) mod disposal {
         Reservation,
         Publication,
         transport::PreparedBuffers,
+        transport::PreparedStart,
         bootstrap::Gate,
         ProbeClaim,
         LaunchBookmark,
@@ -2435,17 +2522,30 @@ impl UnitClock {
 /// No native admission operation is exposed by this context.
 pub(crate) struct JournalQuantum {
     control: Control,
+    origin: Option<&'static std::panic::Location<'static>>,
 }
 impl Default for JournalQuantum {
     fn default() -> Self {
         Self {
             control: Control::default(),
+            origin: None,
         }
     }
 }
 impl JournalQuantum {
+    pub(crate) fn at(origin: &'static std::panic::Location<'static>) -> Self {
+        Self {
+            origin: Some(origin),
+            ..Self::default()
+        }
+    }
+    #[track_caller]
     pub(crate) fn retain<T: Drain>(&self, value: T) -> disposal::Paced<T> {
-        Paced::new(value, &self.control)
+        Paced::at(
+            value,
+            &self.control,
+            self.origin.unwrap_or(std::panic::Location::caller()),
+        )
     }
     pub(crate) fn check(&self) -> Result<(), Code> {
         if self.control.cleanup.overruns.load(Ordering::Acquire) > 0
@@ -2456,12 +2556,95 @@ impl JournalQuantum {
             Ok(())
         }
     }
+    #[track_caller]
+    pub(crate) fn public_prelude<T: Drain>(
+        &self,
+        work: impl FnOnce(&mut dyn FnMut() -> crate::store::Result<()>) -> Result<T, Code>,
+    ) -> Result<T, Code> {
+        self.public_prelude_sampled(work, UnitClock::elapsed)
+    }
+    #[track_caller]
+    fn public_prelude_sampled<T: Drain>(
+        &self,
+        work: impl FnOnce(&mut dyn FnMut() -> crate::store::Result<()>) -> Result<T, Code>,
+        mut sample: impl FnMut(UnitClock) -> Result<Duration, Code>,
+    ) -> Result<T, Code> {
+        self.check()?;
+        let mut budget =
+            Budget::for_control(&self.control, Instant::now() + Duration::from_secs(30));
+        let mut cpu = Some(budget.begin_unit()?);
+        let mut stopped = None;
+        let mut unwind = None;
+        let result = {
+            let mut checkpoint = || -> crate::store::Result<()> {
+                if stopped.is_some() {
+                    return Err(crate::store::invalid("public prelude stopped"));
+                }
+                let Some(previous) = cpu.take() else {
+                    return Err(crate::store::invalid("public prelude missing work owner"));
+                };
+                let next = budget
+                    .finish_unit_sampled(previous, Ok(()), &mut sample)
+                    .and_then(|()| budget.begin_unit());
+                match next {
+                    Ok(next) => cpu = Some(next),
+                    Err(code) => {
+                        stopped = Some(code);
+                        // No new public proof runs after this callback fails.
+                        // Required cleanup still acquires/retains the debt owner
+                        // when an unknown clock prevents ordinary admission.
+                        unwind = Some(disposal::CleanupRegion::begin(&self.control.cleanup));
+                    }
+                }
+                if stopped.is_some() {
+                    Err(crate::store::invalid("public prelude refused"))
+                } else {
+                    Ok(())
+                }
+            };
+            work(&mut checkpoint)
+        };
+        // Capture any returned value BEFORE ending even a failed-clock cleanup
+        // region. A malformed accessor cannot return an unowned T on refusal.
+        let mut owner = Paced::new(result, &self.control);
+        drop(unwind);
+        if let Some(code) = stopped {
+            drop(owner);
+            return Err(code);
+        }
+        let Some(cpu) = cpu else {
+            drop(owner);
+            return Err(Code::ResourceLimit);
+        };
+        budget.finish_unit(cpu, owner.take_value())
+    }
     pub(crate) fn pay(&self) -> Result<(), Code> {
         self.check()?;
         self.control
             .cleanup
             .debt
             .wait(Some(Instant::now() + Duration::from_secs(30)), false)
+    }
+    /// Only already-owned lifecycle teardown may run after ordinary admission
+    /// failed. Capture its typed result before the required-cleanup clock; its
+    /// refusal counters remain visible to the enclosing owner's final check.
+    pub(crate) fn required<T: Drain>(
+        &self,
+        work: impl FnOnce() -> Result<T, Code>,
+    ) -> Result<T, Code> {
+        let mut result = None;
+        disposal::cleanup_unit(&self.control.cleanup, || {
+            result = Some(self.retain(work()));
+        });
+        result
+            .expect("required cleanup ran its owned action")
+            .take_value()
+    }
+    pub(crate) fn retire_session(
+        &self,
+        session: &crate::identity::PublicFenceSession,
+    ) -> Result<(), Code> {
+        retire_public_session(session, &self.control)
     }
     pub(crate) fn retire<T: Drain>(&self, value: T) {
         drop(self.retain(value));
@@ -2489,6 +2672,21 @@ impl JournalQuantum {
         );
         self.check()?;
         result.take_value()
+    }
+}
+impl Drain for crate::identity::PublicFenceSession {
+    fn drain_step(&mut self) -> bool {
+        false
+    }
+}
+impl Drain
+    for (
+        Arc<AuthorityGuard>,
+        Arc<crate::identity::PublicFenceSession>,
+    )
+{
+    fn drain_step(&mut self) -> bool {
+        false
     }
 }
 impl Drain for rusqlite::Connection {
@@ -3036,6 +3234,14 @@ impl<'a> Budget<'a> {
     ) -> Result<T, Code> {
         let mut owner = Paced::new(result, self.control);
         let sampled = sample(cpu);
+        #[cfg(debug_assertions)]
+        if sampled.is_err() {
+            eprintln!(
+                "C1 clock unknown stage=finish_unit file={} line={}",
+                std::panic::Location::caller().file(),
+                std::panic::Location::caller().line()
+            );
+        }
         // Prefixes interrupted by required cleanup have already paid their
         // debt; charge only the resumed segment here (metrics keep full CPU).
         self.control.cleanup.debt.finish(if sampled.is_err() {
@@ -3060,7 +3266,7 @@ impl<'a> Budget<'a> {
                 std::panic::Location::caller().line() as u64,
                 Ordering::Release,
             );
-            #[cfg(test)]
+            #[cfg(debug_assertions)]
             eprintln!(
                 "C1 unit overrun cpu_ns={} file={} line={}",
                 elapsed.as_nanos(),
@@ -4094,6 +4300,262 @@ fn final_admission_control<T: Copy>(
     bootstrap_control_sampled(control, work, sample)
 }
 
+/// Fixed private capability history for this Runtime incarnation. It never
+/// carries authority or source/results and never becomes a public wire DTO.
+#[derive(Clone, Copy, Debug, Serialize)]
+pub(crate) struct ProbeAudit {
+    pub stage: &'static str,
+    pub error: Option<Code>,
+    pub cleanup_error: Option<Code>,
+    pub op: [u8; 16],
+    pub run: [u8; 16],
+    pub nonce: [u8; 16],
+    pub birth: [u8; 16],
+    pub incarnation: u64,
+    pub binding: [u8; 32],
+    pub worker_sha256: [u8; 32],
+    pub pipe: (u32, u64, u64),
+    pub pid: u32,
+    pub native_effect: u8,
+    pub native_errno: Option<i32>,
+    pub claim_identity: Option<(u64, u64)>,
+    #[serde(serialize_with = "serialize_probe_stamp")]
+    pub process_start: [u8; 64],
+    pub process_start_len: u8,
+    pub known_birth: bool,
+    pub unknown_birth: bool,
+    pub qualified_hello: bool,
+    pub actual_reaped: bool,
+    pub stdout_stderr_eof: bool,
+    pub exit_status: Option<i32>,
+    pub claim_released: bool,
+    pub empty_directories_removed: bool,
+    pub parent_cost_known: bool,
+    pub parent_unit_max_cpu_ns: u64,
+    pub parent_cleanup_max_cpu_ns: u64,
+    pub native_process_max_cpu_ns: u64,
+    pub native_process_max_wall_ns: u64,
+    pub final_control_max_cpu_ns: u64,
+    pub parent_remaining_debt_ns: u64,
+    pub child_cost_known: bool,
+    pub child_terminal_max_cpu_ns: Option<u64>,
+    pub child_remaining_debt_ns: Option<u64>,
+}
+fn serialize_probe_stamp<S: serde::Serializer>(
+    value: &[u8; 64],
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    value.as_slice().serialize(serializer)
+}
+const _: () = assert!(std::mem::size_of::<ProbeAudit>() <= 1024);
+impl ProbeAudit {
+    pub(crate) fn empty(incarnation: u64) -> Self {
+        Self {
+            stage: "prepare",
+            error: None,
+            cleanup_error: None,
+            op: [0; 16],
+            run: [0; 16],
+            nonce: [0; 16],
+            birth: [0; 16],
+            incarnation,
+            binding: [0; 32],
+            worker_sha256: [0; 32],
+            pipe: (0, 0, 0),
+            pid: 0,
+            native_effect: 0,
+            native_errno: None,
+            claim_identity: None,
+            process_start: [0; 64],
+            process_start_len: 0,
+            known_birth: false,
+            unknown_birth: false,
+            qualified_hello: false,
+            actual_reaped: false,
+            stdout_stderr_eof: false,
+            exit_status: None,
+            claim_released: false,
+            empty_directories_removed: false,
+            parent_cost_known: false,
+            parent_unit_max_cpu_ns: 0,
+            parent_cleanup_max_cpu_ns: 0,
+            native_process_max_cpu_ns: 0,
+            native_process_max_wall_ns: 0,
+            final_control_max_cpu_ns: 0,
+            parent_remaining_debt_ns: 0,
+            child_cost_known: false,
+            child_terminal_max_cpu_ns: None,
+            child_remaining_debt_ns: None,
+        }
+    }
+    fn process_stamp(&mut self, stamp: &str) -> Result<(), Code> {
+        if stamp.is_empty() || stamp.len() > self.process_start.len() || !stamp.is_ascii() {
+            return Err(Code::ResourceLimit);
+        }
+        self.process_start[..stamp.len()].copy_from_slice(stamp.as_bytes());
+        self.process_start_len = stamp.len() as u8;
+        Ok(())
+    }
+    fn observe_reap(&mut self, worker: &mut Worker) -> Result<(), Code> {
+        use std::os::unix::process::ExitStatusExt;
+        let exit = worker.try_wait().map_err(wire_error)?;
+        self.actual_reaped = exit.is_some();
+        self.stdout_stderr_eof = worker.is_eof();
+        self.exit_status = exit.map(ExitStatusExt::into_raw);
+        self.qualified_hello = worker.bootstrap_observation().qualified_hello;
+        Ok(())
+    }
+    fn capture_cost(&mut self, control: &Control) {
+        let debt = &control.cleanup.debt;
+        self.unknown_birth = control.native_birth_unknown.load(Ordering::Acquire);
+        self.native_effect = debt.process_effect.load(Ordering::Acquire);
+        let errno = debt.process_errno.load(Ordering::Acquire);
+        self.native_errno = (errno != 0).then(|| i32::try_from(errno).ok()).flatten();
+        self.parent_cost_known = !debt.poisoned.load(Ordering::Acquire)
+            && debt.native_clock_failures.load(Ordering::Acquire) == 0
+            && control.bootstrap_clock_failures.load(Ordering::Acquire) == 0;
+        self.parent_unit_max_cpu_ns = control.max_unit_cpu_ns.load(Ordering::Acquire);
+        self.parent_cleanup_max_cpu_ns = control.cleanup.max_unit_cpu_ns.load(Ordering::Acquire);
+        self.native_process_max_cpu_ns = debt.native_process_max_cpu_ns.load(Ordering::Acquire);
+        self.native_process_max_wall_ns = debt.native_process_max_wall_ns.load(Ordering::Acquire);
+        self.final_control_max_cpu_ns =
+            control.bootstrap_control_max_cpu_ns.load(Ordering::Acquire);
+        self.parent_remaining_debt_ns = debt.remaining_ns();
+    }
+}
+pub(crate) struct ProbeOutcome {
+    pub audit: ProbeAudit,
+    pub verdict: Result<transport::DreamOwner, Code>,
+}
+impl ProbeOutcome {
+    pub(crate) fn refused(stage: &'static str, code: Code) -> Self {
+        let mut audit = ProbeAudit::empty(0);
+        audit.stage = stage;
+        audit.error = Some(code);
+        Self {
+            audit,
+            verdict: Err(code),
+        }
+    }
+}
+/// Only exact directories created by this probe are eligible for empty rmdir.
+/// A missing inode, replacement or nonempty entry retains the claim and paths.
+struct ProbeDirectories {
+    job: PathBuf,
+    temporary: PathBuf,
+    job_created: bool,
+    temporary_created: bool,
+    job_identity: Option<(u64, u64)>,
+    temporary_identity: Option<(u64, u64)>,
+}
+impl ProbeDirectories {
+    fn new(root: &Path, run: crate::Ulid) -> Result<Self, Code> {
+        use std::os::unix::ffi::OsStrExt;
+        if root.as_os_str().as_bytes().len() + 32 >= libc::PATH_MAX as usize {
+            return Err(Code::ResourceLimit);
+        }
+        let job = root.join(run.to_string());
+        let temporary = job.join("tmp");
+        Ok(Self {
+            job,
+            temporary,
+            job_created: false,
+            temporary_created: false,
+            job_identity: None,
+            temporary_identity: None,
+        })
+    }
+    fn create_one(
+        path: &Path,
+        created: &mut bool,
+        identity: &mut Option<(u64, u64)>,
+    ) -> Result<(), Code> {
+        use std::os::unix::fs::DirBuilderExt;
+        std::fs::DirBuilder::new()
+            .mode(0o700)
+            .create(path)
+            .map_err(|_| Code::StorageUnavailable)?;
+        *created = true; // Retain the actual effect before metadata/timing errors.
+        let metadata = std::fs::symlink_metadata(path).map_err(|_| Code::StorageUnavailable)?;
+        if !metadata.is_dir()
+            || metadata.uid() != unsafe { libc::geteuid() }
+            || metadata.mode() & 0o777 != 0o700
+        {
+            return Err(Code::StorageUnavailable);
+        }
+        *identity = Some((metadata.dev(), metadata.ino()));
+        Ok(())
+    }
+    fn create_job(&mut self) -> Result<(), Code> {
+        Self::create_one(&self.job, &mut self.job_created, &mut self.job_identity)
+    }
+    fn create_temporary(&mut self) -> Result<(), Code> {
+        Self::create_one(
+            &self.temporary,
+            &mut self.temporary_created,
+            &mut self.temporary_identity,
+        )
+    }
+    fn remove_one(
+        path: &Path,
+        created: &mut bool,
+        identity: Option<(u64, u64)>,
+    ) -> Result<(), Code> {
+        if !*created {
+            return Ok(());
+        }
+        let expected = identity.ok_or(Code::StorageUnavailable)?;
+        let metadata = std::fs::symlink_metadata(path).map_err(|_| Code::StorageUnavailable)?;
+        if !metadata.is_dir()
+            || metadata.uid() != unsafe { libc::geteuid() }
+            || metadata.mode() & 0o777 != 0o700
+            || (metadata.dev(), metadata.ino()) != expected
+        {
+            return Err(Code::StorageUnavailable);
+        }
+        // rmdir itself proves empty; no directory scan or recursive deletion.
+        std::fs::remove_dir(path).map_err(|_| Code::StorageUnavailable)?;
+        *created = false;
+        Ok(())
+    }
+    fn remove_temporary(&mut self) -> Result<(), Code> {
+        Self::remove_one(
+            &self.temporary,
+            &mut self.temporary_created,
+            self.temporary_identity,
+        )
+    }
+    fn remove_job(&mut self) -> Result<(), Code> {
+        Self::remove_one(&self.job, &mut self.job_created, self.job_identity)
+    }
+}
+impl Drain for ProbeDirectories {
+    fn drain_step(&mut self) -> bool {
+        if !self.temporary.as_os_str().is_empty() {
+            drop(std::mem::take(&mut self.temporary));
+            return true;
+        }
+        if !self.job.as_os_str().is_empty() {
+            drop(std::mem::take(&mut self.job));
+            return true;
+        }
+        false
+    }
+}
+fn sync_probe_root(root: &Path, budget: &mut Budget<'_>) -> Result<(), Code> {
+    let directory = Paced::new(
+        budget.unit(|| {
+            OpenOptions::new()
+                .read(true)
+                .custom_flags(libc::O_DIRECTORY | libc::O_NOFOLLOW | libc::O_CLOEXEC)
+                .open(root)
+                .map_err(|_| Code::StorageUnavailable)
+        })?,
+        budget.control,
+    );
+    budget.unit(|| directory.sync_all().map_err(|_| Code::StorageUnavailable))
+}
+
 struct ProbeClaim {
     path: PathBuf,
     file: File,
@@ -4155,231 +4617,336 @@ pub(crate) fn probe_gated(
     root: &Path,
     proof: Arc<runner_provision::ProvisionProof>,
     incarnation: u64,
-) -> Result<transport::DreamOwner, Code> {
-    probe_gated_observe(root, proof, incarnation, |_, _| Ok(()))
+) -> ProbeOutcome {
+    let mut audit = ProbeAudit::empty(incarnation);
+    let verdict = probe_gated_core(root, proof, incarnation, &mut audit, |_, _| Ok(()));
+    audit.error = verdict.as_ref().err().copied();
+    ProbeOutcome { audit, verdict }
 }
+#[cfg(test)]
 fn probe_gated_observe(
     root: &Path,
     proof: Arc<runner_provision::ProvisionProof>,
     incarnation: u64,
     observe: impl FnOnce(&mut Worker, &Control) -> Result<(), Code>,
 ) -> Result<transport::DreamOwner, Code> {
-    if incarnation == 0 {
-        return Err(Code::RunnerUnavailable);
-    }
+    probe_gated_core(
+        root,
+        proof,
+        incarnation,
+        &mut ProbeAudit::empty(incarnation),
+        observe,
+    )
+}
+fn probe_gated_core(
+    root: &Path,
+    proof: Arc<runner_provision::ProvisionProof>,
+    incarnation: u64,
+    audit: &mut ProbeAudit,
+    observe: impl FnOnce(&mut Worker, &Control) -> Result<(), Code>,
+) -> Result<transport::DreamOwner, Code> {
     let control = Control::default();
-    control.foreground.store(false, Ordering::Release);
-    control
-        .launch_incarnation
-        .store(incarnation, Ordering::Release);
-    let deadline = Instant::now() + Duration::from_secs(30);
-    let mut budget = Budget::new(&control, deadline);
-    budget.unit(|| control.install_native_provision(proof.clone()))?;
-    let (op, run, nonce, birth) = budget.unit(|| {
-        Ok((
-            crate::Ulid::new(),
-            crate::Ulid::new(),
-            crate::Ulid::new(),
-            crate::Ulid::new(),
-        ))
-    })?;
-    budget.unit(|| private_dir(root))?;
-    let mut claim = Paced::new(
-        budget.unit(|| ProbeClaim::create(root, birth.to_bytes()))?,
-        &control,
-    );
-    // Persist claim custody before birth. Unknown native effects leave this
-    // exact inode/token in place rather than creating a replacement probe.
-    budget.unit(|| claim.file.sync_all().map_err(|_| Code::StorageUnavailable))?;
-    let job = root.join(run.to_string());
-    let mut born_and_reaped = false;
     let result = (|| {
-        budget.unit(|| private_dir(&job))?;
-        let (job, directory) = canonical_job(&job, &mut budget)?;
-        let _directory = Paced::new(directory, &control);
-        budget.unit(|| private_dir(&job.join("tmp")))?;
-        let op = public::Ulid(op.to_string());
-        let run = public::Ulid(run.to_string());
-        let nonce = public::Ulid(nonce.to_string());
-        let binding = birth_binding(
-            &BirthBinding {
-                profile: bootstrap::PROFILE,
-                purpose: "inspect-c1",
-                probe: true,
-                op_id: &op,
-                run_id: &run,
-                nonce: &nonce,
+        if incarnation == 0 {
+            return Err(Code::RunnerUnavailable);
+        }
+        control.foreground.store(false, Ordering::Release);
+        control
+            .launch_incarnation
+            .store(incarnation, Ordering::Release);
+        let deadline = Instant::now() + Duration::from_secs(30);
+        let mut budget = Budget::new(&control, deadline);
+        audit.stage = "provision_bind";
+        budget.unit(|| control.install_native_provision(proof.clone()))?;
+        let (op, run, nonce, birth) = budget.unit(|| {
+            Ok((
+                crate::Ulid::new(),
+                crate::Ulid::new(),
+                crate::Ulid::new(),
+                crate::Ulid::new(),
+            ))
+        })?;
+        budget.unit(|| {
+            audit.op = op.to_bytes();
+            audit.run = run.to_bytes();
+            audit.nonce = nonce.to_bytes();
+            audit.birth = birth.to_bytes();
+            let hash = proof.worker_sha256().as_bytes();
+            if hash.len() != 64 {
+                return Err(Code::RunnerUnavailable);
+            }
+            for (i, pair) in hash.chunks_exact(2).enumerate() {
+                let digit = |b: u8| match b {
+                    b'0'..=b'9' => Some(b - b'0'),
+                    b'a'..=b'f' => Some(b - b'a' + 10),
+                    _ => None,
+                };
+                audit.worker_sha256[i] = (digit(pair[0]).ok_or(Code::RunnerUnavailable)? << 4)
+                    | digit(pair[1]).ok_or(Code::RunnerUnavailable)?;
+            }
+            Ok(())
+        })?;
+        audit.stage = "claim";
+        budget.unit(|| private_dir(root))?;
+        let mut claim = Paced::new(
+            budget.unit(|| ProbeClaim::create(root, birth.to_bytes()))?,
+            &control,
+        );
+        audit.claim_identity = Some(claim.identity);
+        // Persist claim custody before birth. Unknown native effects leave this
+        // exact inode/token in place rather than creating a replacement probe.
+        budget.unit(|| claim.file.sync_all().map_err(|_| Code::StorageUnavailable))?;
+        sync_probe_root(root, &mut budget)?;
+        let mut directories =
+            Paced::new(budget.unit(|| ProbeDirectories::new(root, run))?, &control);
+        let mut born_and_reaped = false;
+        let result = (|| {
+            audit.stage = "directories";
+            budget.unit(|| directories.create_job())?;
+            let (job, directory) = canonical_job(&directories.job, &mut budget)?;
+            let _directory = Paced::new(directory, &control);
+            budget.unit(|| directories.create_temporary())?;
+            audit.stage = "binding";
+            let op = public::Ulid(op.to_string());
+            let run = public::Ulid(run.to_string());
+            let nonce = public::Ulid(nonce.to_string());
+            let binding = birth_binding(
+                &BirthBinding {
+                    profile: bootstrap::PROFILE,
+                    purpose: "inspect-c1",
+                    probe: true,
+                    op_id: &op,
+                    run_id: &run,
+                    nonce: &nonce,
+                    incarnation,
+                    context: None,
+                    worker_sha256: proof.worker_sha256(),
+                },
+                &mut budget,
+            )?;
+            audit.binding = binding;
+            audit.stage = "gate";
+            let frozen = bootstrap::Frozen::inspect(
+                true,
+                birth.to_bytes(),
+                bootstrap::ulid(run.0.as_bytes()).map_err(|_| Code::BadRequest)?,
+                bootstrap::ulid(nonce.0.as_bytes()).map_err(|_| Code::BadRequest)?,
+                binding,
                 incarnation,
-                context: None,
-                worker_sha256: proof.worker_sha256(),
-            },
-            &mut budget,
-        )?;
-        let frozen = bootstrap::Frozen::inspect(
-            true,
-            birth.to_bytes(),
-            bootstrap::ulid(run.0.as_bytes()).map_err(|_| Code::BadRequest)?,
-            bootstrap::ulid(nonce.0.as_bytes()).map_err(|_| Code::BadRequest)?,
-            binding,
-            incarnation,
-        );
-        let mut gate = Paced::new(
-            budget.unit(|| bootstrap::Gate::prepare(frozen).map_err(wire_error))?,
-            &control,
-        );
-        let mut protected = control
-            .heap
-            .reserve(HeapLane::Control, transport::PROTECTED_BYTES)?;
-        let mut buffers = Paced::new(
-            budget.unit(|| Worker::prepare_buffers().map_err(wire_error))?,
-            &control,
-        );
-        protected.allocated();
-        let mut input = Paced::new(
-            budget.unit(|| Worker::prepare_pipe().map_err(wire_error))?,
-            &control,
-        );
-        let mut output = Paced::new(
-            budget.unit(|| Worker::prepare_pipe().map_err(wire_error))?,
-            &control,
-        );
-        let mut stderr = Paced::new(
-            budget.unit(|| Worker::prepare_pipe().map_err(wire_error))?,
-            &control,
-        );
-        let mut prepared = Paced::new(
-            budget.unit(|| {
-                Worker::prepare_command(
-                    proof.capability_binary(),
-                    &job,
-                    buffers.take_value(),
-                    input.take_value(),
-                    output.take_value(),
-                    stderr.take_value(),
-                    gate.take_value(),
-                )
-                .map_err(wire_error)
-            })?,
-            &control,
-        );
-        budget.unit(|| prepared.configure_input().map_err(wire_error))?;
-        budget.unit(|| prepared.configure_output().map_err(wire_error))?;
-        budget.unit(|| prepared.configure_stderr().map_err(wire_error))?;
-        let mut command = Paced::new(
-            budget.unit(|| prepared.take_command().map_err(wire_error))?,
-            &control,
-        );
-        budget.unit(|| proof.still_current())?;
-        let mut native = budget.native_process(&mut command)?;
-        let (worker, unused) = match native.effect.take_value() {
-            Ok(child) => prepared.take_value().attach_child(child),
-            Err(code) => return Err(native.verdict.err().unwrap_or(code)),
-        };
-        let mut worker = Paced::new(worker, &control);
-        let mut command = Some(command);
-        let mut unused = Some(Paced::new(unused, &control));
-        let ready = match native.returned_at.checked_add(bootstrap::WINDOW) {
-            Some(ready) => ready.min(deadline),
-            None => {
+            );
+            let mut gate = Paced::new(
+                budget.unit(|| bootstrap::Gate::prepare(frozen).map_err(wire_error))?,
+                &control,
+            );
+            audit.pipe = gate.identity();
+            audit.stage = "buffers";
+            let mut protected = control
+                .heap
+                .reserve(HeapLane::Control, transport::PROTECTED_BYTES)?;
+            let mut buffers = Paced::new(
+                budget.unit(|| Worker::prepare_buffers().map_err(wire_error))?,
+                &control,
+            );
+            protected.allocated();
+            let mut input = Paced::new(
+                budget.unit(|| Worker::prepare_pipe().map_err(wire_error))?,
+                &control,
+            );
+            let mut output = Paced::new(
+                budget.unit(|| Worker::prepare_pipe().map_err(wire_error))?,
+                &control,
+            );
+            let mut stderr = Paced::new(
+                budget.unit(|| Worker::prepare_pipe().map_err(wire_error))?,
+                &control,
+            );
+            audit.stage = "command";
+            let mut prepared = Paced::new(
+                budget.unit(|| {
+                    Worker::prepare_command(
+                        proof.capability_binary(),
+                        &job,
+                        buffers.take_value(),
+                        input.take_value(),
+                        output.take_value(),
+                        stderr.take_value(),
+                        gate.take_value(),
+                    )
+                    .map_err(wire_error)
+                })?,
+                &control,
+            );
+            budget.unit(|| prepared.configure_input().map_err(wire_error))?;
+            budget.unit(|| prepared.configure_output().map_err(wire_error))?;
+            budget.unit(|| prepared.configure_stderr().map_err(wire_error))?;
+            let mut command = Paced::new(
+                budget.unit(|| prepared.take_command().map_err(wire_error))?,
+                &control,
+            );
+            budget.unit(|| proof.still_current())?;
+            audit.stage = "native_birth";
+            let mut native = budget.native_process(&mut command)?;
+            let (worker, unused) = match native.effect.take_value() {
+                Ok(child) => prepared.take_value().attach_child(child),
+                Err(code) => return Err(native.verdict.err().unwrap_or(code)),
+            };
+            audit.known_birth = true;
+            audit.pid = worker.pid();
+            audit.stage = "spawn_setup";
+            let mut worker = Paced::new(worker, &control);
+            let mut command = Some(command);
+            let mut unused = Some(Paced::new(unused, &control));
+            let ready = match native.returned_at.checked_add(bootstrap::WINDOW) {
+                Some(ready) => ready.min(deadline),
+                None => {
+                    revoke_bootstrap(&mut worker, &control);
+                    drop(command.take());
+                    drop(unused.take());
+                    settle_probe(&mut worker, &control);
+                    born_and_reaped = true;
+                    let _ = bootstrap_control(&control, || audit.observe_reap(&mut worker));
+                    return Err(Code::ResourceLimit);
+                }
+            };
+            let setup = bootstrap_control(&control, || {
+                worker
+                    .bootstrap_spawn_returned(native.returned_at, deadline)
+                    .map_err(wire_error)?;
+                let stamp = transport::process_stamp(worker.pid()).map_err(wire_error)?;
+                audit.process_stamp(&stamp)
+            });
+            let preparation = (|| {
+                native.verdict?;
+                setup?;
+                audit.stage = "pre_permit_debt";
+                budget.deadline = ready;
+                budget.pay_work_debt()?;
+                drop(command.take());
+                drop(unused.take());
+                budget.pay_work_debt()?;
+                budget.unit(|| proof.child_image_matches(worker.pid()))?;
+                budget.pay_work_debt()?;
+                audit.stage = "permit_hello";
+                bootstrap_handshake(&mut worker, &control, ready, true)
+            })();
+            if let Err(code) = preparation {
                 revoke_bootstrap(&mut worker, &control);
                 drop(command.take());
                 drop(unused.take());
                 settle_probe(&mut worker, &control);
                 born_and_reaped = true;
-                return Err(Code::ResourceLimit);
+                let _ = bootstrap_control(&control, || audit.observe_reap(&mut worker));
+                return Err(code);
             }
-        };
-        let setup = bootstrap_control(&control, || {
-            worker
-                .bootstrap_spawn_returned(native.returned_at, deadline)
-                .map_err(wire_error)
-        });
-        let preparation = (|| {
-            native.verdict?;
-            setup?;
-            budget.deadline = ready;
-            budget.pay_work_debt()?;
-            drop(command.take());
-            drop(unused.take());
-            budget.pay_work_debt()?;
-            budget.unit(|| proof.child_image_matches(worker.pid()))?;
-            budget.pay_work_debt()?;
-            bootstrap_handshake(&mut worker, &control, ready, true)
-        })();
-        if let Err(code) = preparation {
-            revoke_bootstrap(&mut worker, &control);
-            drop(command.take());
-            drop(unused.take());
+            audit.qualified_hello = worker.bootstrap_observation().qualified_hello;
+            audit.stage = "observe";
+            let observed = observe(&mut worker, &control);
+            // Child is paid and parked. Parent's command/stdio copies were retired
+            // before grant. Only EOF/control and actual reap follow; NEVER Start.
+            budget.deadline = deadline;
+            drop(command);
+            drop(unused);
+            worker.close_input();
             settle_probe(&mut worker, &control);
             born_and_reaped = true;
-            return Err(code);
-        }
-        let observed = observe(&mut worker, &control);
-        // Child is paid and parked. Parent's command/stdio copies were retired
-        // before grant. Only EOF/control and actual reap follow; NEVER Start.
-        budget.deadline = deadline;
-        drop(command);
-        drop(unused);
-        worker.close_input();
-        settle_probe(&mut worker, &control);
-        born_and_reaped = true;
-        observed?;
-        if control.bootstrap_control_overruns.load(Ordering::Acquire) > 0
-            || control.bootstrap_clock_failures.load(Ordering::Acquire) > 0
-            || control.cleanup.overruns.load(Ordering::Acquire) > 0
-        {
-            return Err(Code::ResourceLimit);
-        }
-        let metrics = worker.producer_metrics().ok_or(Code::RunnerUnavailable)?;
-        if !metrics.work_debt_paid_for(&run.0, &nonce.0) {
-            return Err(Code::RunnerUnavailable);
-        }
-        for name in [
-            "terminal_app_max_cpu_ns",
-            "terminal_control_max_cpu_ns",
-            "control_parts_input_max_cpu_ns",
-            "control_parts_protocol_max_cpu_ns",
-            "control_parts_settlement_max_cpu_ns",
-            "control_parts_output_max_cpu_ns",
-        ] {
-            if metrics.get(name).is_none_or(|value| value > 1_000_000) {
+            bootstrap_control(&control, || audit.observe_reap(&mut worker))?;
+            observed?;
+            if control.bootstrap_control_overruns.load(Ordering::Acquire) > 0
+                || control.bootstrap_clock_failures.load(Ordering::Acquire) > 0
+                || control.cleanup.overruns.load(Ordering::Acquire) > 0
+            {
                 return Err(Code::ResourceLimit);
             }
-        }
-        if metrics.get("native_compute_owner_create_count") != Some(1)
-            || metrics.get("native_compute_owner_create_effects") != Some(1)
-            || metrics.get("native_compute_owner_create_failures_with_effect") != Some(0)
-            || metrics
-                .get("native_compute_owner_create_max_cpu_ns")
-                .is_none_or(|value| value > 2_000_000)
-            || metrics
-                .get("native_compute_owner_create_max_wall_ns")
-                .is_none_or(|value| value > 25_000_000)
-            || metrics.get("native_publish_noreplace_count") != Some(0)
+            audit.stage = "terminal_metrics";
+            let metrics = worker.producer_metrics().ok_or(Code::RunnerUnavailable)?;
+            audit.child_cost_known = metrics.work_debt_paid_for(&run.0, &nonce.0);
+            audit.child_terminal_max_cpu_ns = metrics.get("terminal_inclusive_max_cpu_ns");
+            audit.child_remaining_debt_ns = metrics.get("terminal_remaining_debt_ns");
+            if !audit.child_cost_known {
+                return Err(Code::RunnerUnavailable);
+            }
+            for name in [
+                "terminal_app_max_cpu_ns",
+                "terminal_control_max_cpu_ns",
+                "control_parts_input_max_cpu_ns",
+                "control_parts_protocol_max_cpu_ns",
+                "control_parts_settlement_max_cpu_ns",
+                "control_parts_output_max_cpu_ns",
+            ] {
+                if metrics.get(name).is_none_or(|value| value > 1_000_000) {
+                    return Err(Code::ResourceLimit);
+                }
+            }
+            if metrics.get("native_compute_owner_create_count") != Some(1)
+                || metrics.get("native_compute_owner_create_effects") != Some(1)
+                || metrics.get("native_compute_owner_create_failures_with_effect") != Some(0)
+                || metrics
+                    .get("native_compute_owner_create_max_cpu_ns")
+                    .is_none_or(|value| value > 2_000_000)
+                || metrics
+                    .get("native_compute_owner_create_max_wall_ns")
+                    .is_none_or(|value| value > 25_000_000)
+                || metrics.get("native_publish_noreplace_count") != Some(0)
+            {
+                return Err(Code::ResourceLimit);
+            }
+            Ok(transport::DreamOwner::TermC1)
+        })();
+        budget.deadline = deadline;
+        // Only actual reap or a proven pre-birth refusal permits empty cleanup.
+        // Unknown native effects retain the exact durable account claim and paths.
+        let known = !control.native_birth_unknown.load(Ordering::Acquire)
+            && (born_and_reaped
+                || (control.cleanup.debt.process_effect.load(Ordering::Acquire) <= 1
+                    && control.native_pending_since_ns.load(Ordering::Acquire) == 0));
+        let cleanup = if known {
+            let mut settlement =
+                Budget::for_control(&control, Instant::now() + Duration::from_secs(6));
+            (|| {
+                audit.stage = if result.is_ok() {
+                    "empty_directory_cleanup"
+                } else {
+                    audit.stage
+                };
+                settlement.unit(|| directories.remove_temporary())?;
+                settlement.unit(|| directories.remove_job())?;
+                audit.empty_directories_removed =
+                    !directories.job_created && !directories.temporary_created;
+                sync_probe_root(root, &mut settlement)?;
+                settlement.unit(|| claim.release())?;
+                audit.claim_released = true;
+                sync_probe_root(root, &mut settlement)
+            })()
+        } else {
+            Ok(())
+        };
+        audit.cleanup_error = cleanup.err();
+        drop(directories);
+        drop(claim);
+        if control.cleanup.overruns.load(Ordering::Acquire) > 0
+            || control.bootstrap_control_overruns.load(Ordering::Acquire) > 0
+            || control.bootstrap_clock_failures.load(Ordering::Acquire) > 0
         {
             return Err(Code::ResourceLimit);
         }
-        Ok(transport::DreamOwner::TermC1)
+        // Successful capability publication follows actual owner retirement
+        // and the entire debt of final descriptor/path cleanup.
+        budget.pay_work_debt()?;
+        let result = result.and_then(|owner| cleanup.map(|()| owner));
+        if result.is_ok() {
+            audit.stage = "complete";
+        }
+        result
     })();
-    budget.deadline = deadline;
-    // Known pre-birth refusal or real reap can retire only this exact claim.
-    // Required settlement stays bounded but is permitted after work refusal.
-    if !control.native_birth_unknown.load(Ordering::Acquire)
-        && (born_and_reaped
-            || (control.cleanup.debt.process_effect.load(Ordering::Acquire) <= 1
-                && control.native_pending_since_ns.load(Ordering::Acquire) == 0))
-    {
-        let mut settlement = Budget::for_control(&control, Instant::now() + Duration::from_secs(6));
-        settlement.unit(|| claim.release())?;
+    // One bounded fixed-size observation; never a new disk truth store.
+    let observed = bootstrap_control(&control, || {
+        audit.capture_cost(&control);
+        Ok(())
+    });
+    if control.bootstrap_clock_failures.load(Ordering::Acquire) > 0 {
+        audit.parent_cost_known = false;
     }
-    drop(claim);
-    if control.cleanup.overruns.load(Ordering::Acquire) > 0
-        || control.bootstrap_control_overruns.load(Ordering::Acquire) > 0
-        || control.bootstrap_clock_failures.load(Ordering::Acquire) > 0
-    {
-        return Err(Code::ResourceLimit);
-    }
-    result
+    result.and_then(|owner| observed.map(|()| owner))
 }
 
 fn bootstrap_handshake(
@@ -4609,18 +5176,57 @@ fn open_checkpoint(
         || Journal::connect_existing(&existing),
     )?;
     let journal = disposal::Paced::new(journal, control);
-    for configure in [
-        Journal::configure_busy,
-        Journal::configure_cache,
-        Journal::configure_mmap,
-        Journal::configure_sync,
-    ] {
+    checkpoint_stage(
+        &mut budget,
+        control,
+        &control.checkpoint_config_max_cpu_ns,
+        || journal.configure_busy(),
+    )?;
+    let mut header = Paced::new(
         checkpoint_stage(
             &mut budget,
             control,
             &control.checkpoint_config_max_cpu_ns,
-            || configure(&journal),
-        )?;
+            || journal.prepare_version(),
+        )?,
+        control,
+    );
+    let statement = &mut *header;
+    let mut rows = Paced::new(
+        checkpoint_stage(
+            &mut budget,
+            control,
+            &control.checkpoint_config_max_cpu_ns,
+            move || Ok(Journal::rows(statement)),
+        )?,
+        control,
+    );
+    let version = checkpoint_stage(
+        &mut budget,
+        control,
+        &control.checkpoint_config_max_cpu_ns,
+        || Journal::read_version_first(&mut rows),
+    )?;
+    drop(rows);
+    drop(header);
+    if version != 1 {
+        return Err(Code::StorageUnavailable);
+    }
+    for configure in [
+        JournalConfig::Cache,
+        JournalConfig::Mmap,
+        JournalConfig::Sync,
+    ] {
+        let statement = Paced::new(
+            checkpoint_stage(
+                &mut budget,
+                control,
+                &control.checkpoint_config_max_cpu_ns,
+                || journal.prepare_config(configure),
+            )?,
+            control,
+        );
+        drop(statement);
     }
     drop(existing);
     if control.cleanup.overruns.load(Ordering::Acquire) > 0 {
@@ -5009,6 +5615,54 @@ fn approved_descriptor_capture(control: &Control, captured: u64) -> bool {
         && control.producer_metrics[46].load(Ordering::Acquire) <= 3_000_000
 }
 
+#[cfg(test)]
+pub(crate) fn test_cleanup_units(control: &Control) -> u64 {
+    control.cleanup.units.load(Ordering::Acquire)
+}
+
+pub(crate) fn retire_public_session(
+    session: &crate::identity::PublicFenceSession,
+    control: &Control,
+) -> Result<(), Code> {
+    let waiting = Instant::now();
+    let mut quarantined = false;
+    let connection = loop {
+        match session.try_take_connection() {
+            Ok(connection) => break connection,
+            Err(Code::Busy) => {
+                if waiting.elapsed() >= Duration::from_secs(6) && !quarantined {
+                    control.state.store(QUARANTINED, Ordering::Release);
+                    control.revision.fetch_add(1, Ordering::AcqRel);
+                    quarantined = true;
+                }
+                std::thread::park_timeout(REST);
+            }
+            Err(code) => return Err(code),
+        }
+    };
+    if let Some(connection) = connection {
+        let connection = Paced::new(connection, control);
+        // rusqlite0.40.2 Connection::drop flushes the statement LRU before its
+        // InnerConnection field closes SQLite. Retire those real phases in
+        // distinct required units; no close/native allowance is introduced.
+        // Capacity is fixed to three before publication. Shrink one slot per
+        // required unit to separate native finalization from connection close.
+        for capacity in (0..3).rev() {
+            disposal::cleanup_unit(&control.cleanup, || {
+                connection.set_prepared_statement_cache_capacity(capacity)
+            });
+        }
+        drop(connection);
+    }
+    if control.cleanup.overruns.load(Ordering::Acquire) > 0 {
+        Err(Code::ResourceLimit)
+    } else if quarantined {
+        Err(Code::WorkerLost)
+    } else {
+        Ok(())
+    }
+}
+
 /// Immutable requested page reads run on a separate result owner, never a Status hot path.
 #[cfg(test)]
 pub(crate) fn read_page(job: &Path, record: &Record, index: u32) -> Result<public::Page, Code> {
@@ -5020,19 +5674,9 @@ pub(crate) fn read_page_guarded(
     index: u32,
     authority_guard: Option<PreparedGuard>,
 ) -> Result<public::Page, Code> {
-    if authority_guard
+    let retirement = authority_guard
         .as_ref()
-        .is_some_and(|g| g.setup_cpu_ns > 1_000_000)
-    {
-        return Err(Code::ResourceLimit);
-    }
-    if record.view.state != State::Completed || !record.view.settled {
-        return Err(Code::NotFound);
-    }
-    if index >= record.view.pages {
-        return Err(Code::BadRequest);
-    }
-    utility()?;
+        .and_then(|guard| guard.retire_session.clone());
     let control = Control {
         authority_setup_cpu_ns: AtomicU64::new(
             authority_guard.as_ref().map_or(0, |g| g.setup_cpu_ns),
@@ -5040,56 +5684,77 @@ pub(crate) fn read_page_guarded(
         authority_guard: authority_guard.map(|g| g.callback),
         ..Control::default()
     };
-    control.foreground.store(false, Ordering::Release);
-    let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(2));
-    let output = job.join("output");
-    let bytes = read_private(&output.join("result.json"), 768 * 1024, &mut budget)?;
-    let _result_payload = budget.json(&bytes)?;
-    if budget.hash(&bytes)?
-        != record
-            .view
-            .result_sha256
-            .as_ref()
-            .ok_or(Code::ProtocolError)?
-            .0
-    {
-        return Err(Code::ProtocolError);
-    }
-    let result: Paced<w::ResultDescriptor> = decode_canonical(&bytes, &mut budget, false)?;
-    drop(bytes);
-    let reference = result.pages.get(index as usize).ok_or(Code::BadRequest)?;
-    let bytes = read_private(
-        &output.join(format!("page-{index:06}.json")),
-        16 * 1024,
-        &mut budget,
-    )?;
-    let _page_payload = budget.json(&bytes)?;
-    if bytes.len() as u64 != reference.len.0 || budget.hash(&bytes)? != reference.sha256.0 {
-        return Err(Code::ProtocolError);
-    }
-    let page: Paced<w::Page> = decode_canonical(&bytes, &mut budget, true)?;
-    drop(bytes);
-    if page.run_id.0 != record.view.run_id.0
-        || page.manifest_sha256.0
+    let result = (|| {
+        if control.authority_setup_cpu_ns.load(Ordering::Acquire) > 1_000_000 {
+            return Err(Code::ResourceLimit);
+        }
+        if record.view.state != State::Completed || !record.view.settled {
+            return Err(Code::NotFound);
+        }
+        if index >= record.view.pages {
+            return Err(Code::BadRequest);
+        }
+        utility()?;
+        control.foreground.store(false, Ordering::Release);
+        let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(2));
+        let output = job.join("output");
+        let bytes = read_private(&output.join("result.json"), 768 * 1024, &mut budget)?;
+        let _result_payload = budget.json(&bytes)?;
+        if budget.hash(&bytes)?
             != record
                 .view
-                .manifest_sha256
+                .result_sha256
                 .as_ref()
                 .ok_or(Code::ProtocolError)?
                 .0
-        || page.index != index
-    {
-        return Err(Code::ProtocolError);
-    }
-    let mut public = Paced::new(mirror_page(&page, &mut budget)?, &control);
-    // The final result cannot escape before all decoded owners have actually
-    // retired, including cleanup after an earlier cancellation/clock failure.
-    drop(page);
-    drop(result);
+        {
+            return Err(Code::ProtocolError);
+        }
+        let result: Paced<w::ResultDescriptor> = decode_canonical(&bytes, &mut budget, false)?;
+        drop(bytes);
+        let reference = result.pages.get(index as usize).ok_or(Code::BadRequest)?;
+        let bytes = read_private(
+            &output.join(format!("page-{index:06}.json")),
+            16 * 1024,
+            &mut budget,
+        )?;
+        let _page_payload = budget.json(&bytes)?;
+        if bytes.len() as u64 != reference.len.0 || budget.hash(&bytes)? != reference.sha256.0 {
+            return Err(Code::ProtocolError);
+        }
+        let page: Paced<w::Page> = decode_canonical(&bytes, &mut budget, true)?;
+        drop(bytes);
+        if page.run_id.0 != record.view.run_id.0
+            || page.manifest_sha256.0
+                != record
+                    .view
+                    .manifest_sha256
+                    .as_ref()
+                    .ok_or(Code::ProtocolError)?
+                    .0
+            || page.index != index
+        {
+            return Err(Code::ProtocolError);
+        }
+        let mut public = Paced::new(mirror_page(&page, &mut budget)?, &control);
+        // The final result cannot escape before all decoded owners have actually
+        // retired, including cleanup after an earlier cancellation/clock failure.
+        drop(page);
+        drop(result);
+        if control.cleanup.overruns.load(Ordering::Acquire) > 0 {
+            return Err(Code::ResourceLimit);
+        }
+        Ok(public.take_value())
+    })();
+    let mut result = Paced::new(result, &control);
+    let retired = retirement
+        .as_ref()
+        .map_or(Ok(()), |session| retire_public_session(session, &control));
+    retired?;
     if control.cleanup.overruns.load(Ordering::Acquire) > 0 {
         return Err(Code::ResourceLimit);
     }
-    Ok(public.take_value())
+    result.take_value()
 }
 
 struct Frames {
@@ -5723,6 +6388,33 @@ fn write_start_receipt(
     )
 }
 
+fn prepare_start_frame(
+    control: &Control,
+    run: &str,
+    nonce: &str,
+    manifest: &str,
+    deadline: Instant,
+    revision: u64,
+) -> Result<transport::PreparedStart, Code> {
+    let mut work = Budget::new(control, deadline);
+    let frame = work.unit(|| {
+        let remaining = deadline
+            .saturating_duration_since(Instant::now())
+            .as_millis()
+            .min(30_000) as u32;
+        if remaining == 0 {
+            return Err(Code::Deadline);
+        }
+        transport::PreparedStart::from_parts(run, nonce, manifest, remaining, revision, false)
+            .map_err(wire_error)
+    })?;
+    work.pay_work_debt()?;
+    Ok(frame)
+}
+fn start_frame_current(control: &Control, revision: u64) -> bool {
+    !control.is_foreground() && control.activity_version() == revision
+}
+
 fn execute_inner(
     binary: &Path,
     job: &Path,
@@ -6001,6 +6693,8 @@ fn execute_inner(
     let mut snapshot_result = None;
     let mut stop: Option<(Code, Instant)> = None;
     let mut started = false;
+    let mut start_refused = false;
+    let mut prepared_start: Option<(u64, transport::PreparedStart)> = None;
     let mut child_work_claimed = false;
     let mut cancel_sent = false;
     let mut activity_sent = 0;
@@ -6096,29 +6790,44 @@ fn execute_inner(
             {
                 record.view.manifest_sha256 = Some(public::Hex(snapshot.hash.clone()));
                 let revision = control.activity_version();
-                let remaining = deadline
-                    .saturating_duration_since(Instant::now())
-                    .as_millis()
-                    .min(30_000) as u32;
-                if remaining == 0 {
-                    stop = Some((Code::Deadline, Instant::now()));
-                } else {
-                    let start = w::WorkerIn::Start(w::Start {
-                        protocol: w::Protocol::V1,
-                        run_id: w::Ulid(record.view.run_id.0.clone()),
-                        nonce: w::Ulid(record.nonce.0.clone()),
-                        manifest_sha256: w::Hex(snapshot.hash.clone()),
-                        timeout_ms: remaining,
-                        activity_revision: w::Number(revision),
-                        foreground: control.is_foreground(),
-                    });
+                // One bounded frozen frame is refreshed only on a monotonic
+                // activity edge, never by replaying source/hash/manifest work.
+                if prepared_start
+                    .as_ref()
+                    .is_none_or(|(old, _)| *old != revision)
+                {
+                    match prepare_start_frame(
+                        control,
+                        &record.view.run_id.0,
+                        &record.nonce.0,
+                        &snapshot.hash,
+                        deadline,
+                        revision,
+                    ) {
+                        Ok(frame) => prepared_start = Some((revision, frame)),
+                        Err(code) => {
+                            start_refused = true;
+                            worker.close_input();
+                            stop = Some((code, Instant::now()));
+                        }
+                    }
+                }
+                // Foreground/revision changes during paid preparation return
+                // to bounded admission state BEFORE consuming the one final
+                // authority callback/Start attempt. No authorization is cached.
+                if stop.is_none() && start_frame_current(control, revision) {
+                    let frame = &prepared_start
+                        .as_ref()
+                        .expect("successful bounded Start preparation")
+                        .1;
+                    control.phase(PREPARING);
                     let before = control.bootstrap_control_cpu_ns.load(Ordering::Acquire);
                     let admission = final_admission_control(control, FinalHandoff::Start, || {
                         effect_guard(control)?;
                         if control.cancelled.load(Ordering::Acquire) {
                             return Err(Code::Cancelled);
                         }
-                        if control.is_foreground() {
+                        if !start_frame_current(control, revision) {
                             return Err(Code::Cancelled);
                         }
                         if Instant::now() >= deadline {
@@ -6126,9 +6835,7 @@ fn execute_inner(
                         }
                         control.begin_child_work()?;
                         child_work_claimed = true;
-                        worker.send(&start).map_err(wire_error)?;
-                        // A partial control write remains the ONE pending
-                        // Start. Only control flush/cancel may follow.
+                        worker.send_prepared_start(frame).map_err(wire_error)?;
                         started = true;
                         activity_sent = revision;
                         Ok(())
@@ -6141,8 +6848,15 @@ fn execute_inner(
                         Ordering::Release,
                     );
                     if let Err(code) = admission {
+                        // Post-check/clock/write refusal retires stdin. The
+                        // original child remains owned through actual reap;
+                        // no later control flush can complete a refused Start.
+                        start_refused = true;
+                        worker.close_input();
                         stop = Some((code, Instant::now()));
                     }
+                } else if stop.is_none() {
+                    control.phase(PAUSED);
                 }
             }
             if let Some((_, since)) = stop {
@@ -6150,7 +6864,7 @@ fn execute_inner(
                 control.cancelled.store(true, Ordering::Release);
                 control.phase(CANCELLING);
                 if !cancel_sent {
-                    if started && worker.flush().is_ok_and(|ready| ready) {
+                    if started && !start_refused && worker.flush().is_ok_and(|ready| ready) {
                         let _ = worker.send(&w::WorkerIn::Cancel(w::WorkerCancel {
                             protocol: w::Protocol::V1,
                             run_id: w::Ulid(record.view.run_id.0.clone()),
@@ -6853,7 +7567,8 @@ mod tests {
                 0,
                 Some(PreparedGuard {
                     callback: Arc::new(|| Err(Code::StaleContext)),
-                    setup_cpu_ns: 0
+                    setup_cpu_ns: 0,
+                    retire_session: None,
                 })
             ),
             Err(Code::StaleContext)
@@ -7293,7 +8008,8 @@ mod tests {
         assert_eq!(
             control.install_authority_guard(PreparedGuard {
                 callback: Arc::new(|| Ok(())),
-                setup_cpu_ns: 1_000_001
+                setup_cpu_ns: 1_000_001,
+                retire_session: None,
             }),
             Err(Code::ResourceLimit)
         );
@@ -7302,12 +8018,14 @@ mod tests {
             .install_authority_guard(PreparedGuard {
                 callback: Arc::new(|| Err(Code::StaleContext)),
                 setup_cpu_ns: 123,
+                retire_session: None,
             })
             .unwrap();
         assert_eq!(
             control.install_authority_guard(PreparedGuard {
                 callback: Arc::new(|| Ok(())),
-                setup_cpu_ns: 456
+                setup_cpu_ns: 456,
+                retire_session: None,
             }),
             Err(Code::Busy)
         );
@@ -7962,6 +8680,76 @@ mod disposal_tests {
     use serde_json::json;
 
     #[test]
+    fn dream_c1_public_prelude_refusal_retains_lexical_and_returned_owners() {
+        struct ProofOwner {
+            debt: Arc<WorkDebt>,
+            drops: Arc<AtomicU64>,
+        }
+        impl Drain for ProofOwner {
+            fn drain_step(&mut self) -> bool {
+                false
+            }
+        }
+        impl Drop for ProofOwner {
+            fn drop(&mut self) {
+                assert!(
+                    WORK_FRAME.with(|frame| frame
+                        .borrow()
+                        .as_ref()
+                        .is_some_and(|frame| Arc::ptr_eq(&frame.debt, &self.debt))),
+                    "public proof escaped required cleanup ownership"
+                );
+                self.drops.fetch_add(1, Ordering::AcqRel);
+            }
+        }
+        for missing_clock in [false, true] {
+            for returns_owner in [false, true] {
+                let quantum = JournalQuantum::default();
+                let drops = Arc::new(AtomicU64::new(0));
+                let result = quantum.public_prelude_sampled(
+                    |checkpoint| {
+                        let owner = ProofOwner {
+                            debt: quantum.control.cleanup.debt.clone(),
+                            drops: drops.clone(),
+                        };
+                        let verdict = checkpoint();
+                        assert!(verdict.is_err());
+                        if returns_owner {
+                            // Even a broken accessor ignoring the refusal cannot
+                            // release its completed value outside paced ownership.
+                            Ok(owner)
+                        } else {
+                            verdict.map_err(|_| Code::StaleContext)?;
+                            Ok(owner)
+                        }
+                    },
+                    |_| {
+                        if missing_clock {
+                            Err(Code::ResourceLimit)
+                        } else {
+                            Ok(UNIT + Duration::from_nanos(1))
+                        }
+                    },
+                );
+                assert!(matches!(result, Err(Code::ResourceLimit)));
+                assert_eq!(drops.load(Ordering::Acquire), 1);
+                assert!(quantum.control.cleanup.units.load(Ordering::Acquire) > 0);
+                assert!(!quantum.control.cleanup.debt.held.load(Ordering::Acquire));
+                assert!(WORK_FRAME.with(|frame| frame.borrow().is_none()));
+                assert_eq!(
+                    quantum
+                        .control
+                        .cleanup
+                        .debt
+                        .poisoned
+                        .load(Ordering::Acquire),
+                    missing_clock
+                );
+            }
+        }
+    }
+
+    #[test]
     fn dream_c1_tiny_json_combines_scan_decode_work_and_reuses_complex_fallback() {
         let control = Control::default();
         control.foreground.store(false, Ordering::Release);
@@ -8403,17 +9191,16 @@ pub(crate) mod runner_provision {
         compiler: &'a str,
         binary: &'a str,
     }
-    // No approved native correction exists yet. The historical47182320 cut
-    // cannot authorize a wider metrics interpretation. Oracle fills this exact
-    // tuple only after the reviewed source/compiler/features/artifact handoff.
-    const APPROVED_NATIVE: Option<Expected<'static>> = None;
+    // Decision65736 approves this exact canonical Make1.99.1 build closure.
+    // This is pre-birth eligibility, not a successful runtime/profile verdict.
+    const APPROVED_NATIVE: Option<Expected<'static>> = Some(Expected {
+        source: "d06e696f99472ed754e84353baf11a2974589d6d",
+        compiler: "e003fd3d385fcd0de16bc6b049124efb20207831dd810fd4ab39ff079bbb12a5",
+        binary: "12ba4006b694bdce3c44d199de460d09f0f2414fafb7fd17880921a7d397a3b4",
+    });
     // Exact signed development milestone only; never receipt self-approval or
     // final production conformance. Cleared when the reviewed tuple is promoted.
-    const PRIVATE_DEVELOPMENT_NATIVE: Option<Expected<'static>> = Some(Expected {
-        source: "bab543e2116d0bf08488fbd753a6114f30d615a4",
-        compiler: "352d6857968e80a6357a926ac685b9b07f77c479aaafde33e73a53945e802909",
-        binary: "bacace4bf5e2ab4d4c91bf07e5e22c81885d967448dff87efbe6eaf6f81ca13e",
-    });
+    const PRIVATE_DEVELOPMENT_NATIVE: Option<Expected<'static>> = None;
 
     #[derive(Clone, Copy, PartialEq, Eq)]
     struct Stamp {
@@ -9074,6 +9861,112 @@ mod quantum_debt_tests {
             std::fs::read(&publication.target).unwrap(),
             b"private exact staged effect\n"
         );
+    }
+
+    #[test]
+    fn dream_c1_before_start_activity_defers_without_spending_final_attempt() {
+        let control = control();
+        let run = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+        let nonce = "01ARZ3NDEKTSV4RRFFQ69G5FAW";
+        let manifest = "0".repeat(64);
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let first = prepare_start_frame(&control, run, nonce, &manifest, deadline, 0).unwrap();
+        assert!(!first.as_bytes().is_empty());
+        assert_eq!(control.cleanup.debt.remaining_ns(), 0);
+        control.foreground.store(true, Ordering::Release);
+        control.activity_revision.store(1, Ordering::Release);
+        assert!(!start_frame_current(&control, 0));
+        assert_eq!(control.start_admission_attempts.load(Ordering::Acquire), 0);
+        assert!(!control.cancelled.load(Ordering::Acquire));
+        control.foreground.store(false, Ordering::Release);
+        control.activity_revision.store(2, Ordering::Release);
+        assert!(!start_frame_current(&control, 0));
+        let next = prepare_start_frame(&control, run, nonce, &manifest, deadline, 2).unwrap();
+        assert!(start_frame_current(&control, 2));
+        assert_eq!(control.start_admission_attempts.load(Ordering::Acquire), 0);
+        assert_ne!(first.as_bytes(), next.as_bytes());
+        final_admission_control(&control, FinalHandoff::Start, || Ok(())).unwrap();
+        assert_eq!(control.start_admission_attempts.load(Ordering::Acquire), 1);
+        assert_eq!(control.work_unit_count.load(Ordering::Acquire), 2);
+    }
+
+    #[test]
+    fn dream_c1_probe_claim_survives_owner_loss_and_preserves_replacement() {
+        let root = tempfile::tempdir().unwrap();
+        std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+        private_dir(root.path()).unwrap();
+        let mut original = ProbeClaim::create(root.path(), [1; 16]).unwrap();
+        original.file.sync_all().unwrap();
+        assert!(ProbeClaim::create(root.path(), [2; 16]).is_err());
+        let old_inode = original.identity;
+        // A new in-process owner sees the same durable exclusion after the old
+        // descriptor disappears. There is no restart adoption or birth retry.
+        drop(original);
+        assert!(ProbeClaim::create(root.path(), [3; 16]).is_err());
+        let named = root.path().join("bootstrap-probe.claim");
+        assert_eq!(
+            (
+                std::fs::metadata(&named).unwrap().dev(),
+                std::fs::metadata(&named).unwrap().ino()
+            ),
+            old_inode
+        );
+        // Reopen the original exact custody only to exercise its release fence;
+        // this is a private metadata test, never Runtime predecessor adoption.
+        original = ProbeClaim {
+            path: named.clone(),
+            file: OpenOptions::new()
+                .read(true)
+                .write(true)
+                .custom_flags(libc::O_NOFOLLOW)
+                .open(&named)
+                .unwrap(),
+            identity: old_inode,
+            token: [1; 16],
+        };
+        let retired = root.path().join("test-owned-retired-claim");
+        std::fs::rename(&named, &retired).unwrap();
+        let mut replacement = ProbeClaim::create(root.path(), [4; 16]).unwrap();
+        assert!(original.release().is_err());
+        assert_eq!(std::fs::read(&named).unwrap(), [4; 16]);
+        replacement.release().unwrap();
+        std::fs::remove_file(retired).unwrap();
+    }
+
+    #[test]
+    fn dream_c1_probe_empty_cleanup_is_exact_nonrecursive_and_inode_fenced() {
+        use std::os::unix::fs::DirBuilderExt;
+        let root = tempfile::tempdir().unwrap();
+        std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o700)).unwrap();
+        private_dir(root.path()).unwrap();
+        let mut directories = ProbeDirectories::new(root.path(), crate::Ulid::new()).unwrap();
+        directories.create_job().unwrap();
+        directories.create_temporary().unwrap();
+        let foreign = directories.temporary.join("test-owned-foreign-content");
+        std::fs::write(&foreign, b"preserve exact bytes").unwrap();
+        assert!(directories.remove_temporary().is_err());
+        assert_eq!(std::fs::read(&foreign).unwrap(), b"preserve exact bytes");
+        std::fs::remove_file(&foreign).unwrap();
+        let retired = directories.job.join("test-owned-retired-tmp");
+        std::fs::rename(&directories.temporary, &retired).unwrap();
+        std::fs::DirBuilder::new()
+            .mode(0o700)
+            .create(&directories.temporary)
+            .unwrap();
+        assert!(
+            directories.remove_temporary().is_err(),
+            "replacement inode was deleted"
+        );
+        assert!(directories.temporary.is_dir());
+        std::fs::remove_dir(&directories.temporary).unwrap();
+        std::fs::rename(&retired, &directories.temporary).unwrap();
+        directories.remove_temporary().unwrap();
+        directories.remove_job().unwrap();
+        assert!(!directories.job.exists());
+        assert!(std::mem::size_of::<ProbeAudit>() <= 1024);
+        let audit = ProbeOutcome::refused("provision", Code::RunnerUnavailable).audit;
+        assert!(!audit.known_birth && !audit.actual_reaped && !audit.parent_cost_known);
+        assert!(serde_json::to_vec(&audit).unwrap().len() <= 4096);
     }
 
     #[test]
@@ -9954,9 +10847,16 @@ mod quantum_debt_tests {
             std::env::var_os("DREAM_C1_RUNNER")
                 .expect("gated component witness requires provisioned DREAM_C1_RUNNER"),
         );
-        let proof = Arc::new(runner_provision::verify_native_provision(&binary, true)
-            .expect("signed private development source/compiler/hash/bootstrap receipt must verify BEFORE birth"));
-        assert!(proof.is_private_development());
+        let proof = Arc::new(
+            runner_provision::verify_native_provision(&binary, true)
+                .expect("approved source/compiler/hash/bootstrap receipt must verify BEFORE birth"),
+        );
+        let private_development = proof.is_private_development();
+        let artifact_class = if private_development {
+            "signed_private_development"
+        } else {
+            "approved_production"
+        };
         assert!(!proof.control_only_wrapper());
         assert_eq!(proof.capability_binary(), binary);
         let mut rows = Vec::new();
@@ -10318,8 +11218,9 @@ mod quantum_debt_tests {
             let path = PathBuf::from(evidence).join("runtime-bootstrap-component.json");
             let receipt = json!({"schema":"bboxy.dream.c1.bootstrap-component/1",
                 "driver_nonce":std::env::var("DREAM_C1_GATE_NONCE").expect("driver evidence requires nonce"),
-                "private_development_only":true,"producer_native_conformance":false,"worker_sha256":proof.worker_sha256(),
-                "producer_source":"bab543e2116d0bf08488fbd753a6114f30d615a4","bootstrap_profile":"dream-bootstrap/1","cases":rows});
+                "private_development_only":private_development,"artifact_class":artifact_class,
+                "producer_native_conformance":false,"worker_sha256":proof.worker_sha256(),
+                "bootstrap_profile":"dream-bootstrap/1","cases":rows});
             let mut file = std::fs::OpenOptions::new()
                 .create_new(true)
                 .write(true)

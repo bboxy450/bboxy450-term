@@ -40,6 +40,15 @@ pub(super) fn verify_public_device(
     head: &Signed<AccountHead>,
     now: u64,
 ) -> Result<()> {
+    verify_public_device_cooperative(identity, pinned, head, now, &mut || Ok(()))
+}
+pub(super) fn verify_public_device_cooperative(
+    identity: &DeviceIdentity,
+    pinned: &str,
+    head: &Signed<AccountHead>,
+    now: u64,
+    checkpoint: &mut dyn FnMut() -> Result<()>,
+) -> Result<()> {
     if now >= identity.grant.payload.expires_at {
         return Err(invalid("expired DeviceGrant"));
     }
@@ -55,6 +64,9 @@ pub(super) fn verify_public_device(
     if head.payload.account_epoch != identity.grant.payload.account_epoch {
         return Err(invalid("stale device account epoch"));
     }
+    // Root parsing/head verification and DeviceIdentity's complete existing
+    // certificate/grant verification are distinct ordinary work phases.
+    checkpoint()?;
     identity.verify(pinned, head, now)?;
     Ok(())
 }
