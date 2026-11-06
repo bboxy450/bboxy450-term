@@ -167,8 +167,13 @@ impl Pane {
         draft: Draft,
     ) -> Self {
         let (save_draft, next_draft) = tokio::sync::oneshot::channel();
-        // Reserve the next position synchronously, before either worker is scheduled.
-        let previous_draft = draft.lock().unwrap().replace(next_draft);
+        // The single UI owner reserves the next position before scheduling
+        // either worker. Workers receive only the predecessor receiver; they
+        // never hold this mutex. Contention violates ownership and must not
+        // block the UI or silently discard the ordered draft handoff.
+        let previous_draft = draft.try_lock()
+            .expect("draft reservation belongs exclusively to its UI owner")
+            .replace(next_draft);
         let dirty = bbt_rt::DirtySet::new(1, waker);
         let latest = Arc::new(bbt_rt::Latest::new(dirty.paint_source(0)));
         let (commands, mut input) = mpsc::channel(64);
@@ -524,6 +529,7 @@ fn hit(r: Rect, at: [f32; 2]) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[allow(clippy::disallowed_methods, reason = "tokio::test owns a private test runtime outside the UI; its generated block_on drives the draft witness")]
     #[tokio::test]
     async fn draft_handoff_drains_last_edit_before_reopening_and_isolates_panels() {
         let temp = tempfile::tempdir().unwrap();
@@ -540,7 +546,7 @@ mod tests {
         assert!(pane.send(Input::Edit(ui::text_edit::Command::Insert(" retained".into()))));
         drop(pane);
         for (draft, expected) in [(a, "first panel retained"), (b, "second panel")] {
-            let saved = draft.lock().unwrap().take().unwrap();
+            let saved = draft.try_lock().unwrap().take().unwrap();
             let saved = tokio::time::timeout(Duration::from_secs(10), saved).await.unwrap().unwrap();
             let mut view = HarnessView::default();
             view.restore_draft(saved);

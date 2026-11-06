@@ -134,7 +134,7 @@ pub(super) fn run_verb(cx: VerbCx<'_>, command: Command) -> Result<(), String> {
     let scope = client.workspace_scope(swarm)?;
     let mut invoke = |request| -> Result<_, String> {
         let op = client.mint();
-        match client.call_workspace(op, GuiAction::Plugin { scope: scope.clone(), id: op, request },
+        match client.call_workspace(op, GuiAction::Plugin { scope, id: op, request },
             |reply| matches!(reply, GuiReply::Plugin {op: id,..} if *id == op))? {
             GuiReply::Plugin { entries, .. } => Ok(entries),
             _ => unreachable!(),
