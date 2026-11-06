@@ -1,4 +1,7 @@
 #!/bin/sh
+# bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# LicenseRef-Respectful-Slop-1.0-Draft; keep accurate source credit on reuse.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 # Local CI: the same gates as .github/workflows/ci.yml, run before every handoff and acceptance.
 # Run it in a clean worktree of the commit being handed off, never in the shared tree:
 #   git worktree add --detach /tmp/ci-<name> <sha>; cd there; sh scripts/ci-local.sh
@@ -6,7 +9,7 @@
 # The watcher's --after-tests continuation reports post-test checks only.
 # --parity runs visual parity; --slow also runs the scale gates.
 set -eu
-python3 -I "$(dirname "$0")/harness-submodule.py"
+sh "$(dirname "$0")/qos.sh" utility python3 -I "$(dirname "$0")/harness-submodule.py"
 gate_clean() {
     [ -z "$(git status --porcelain --untracked-files=no)" ] &&
     [ -z "$(git ls-files --others --exclude-standard -- crates scripts verification lab design .cargo Cargo.toml Cargo.lock build.rs)" ]
@@ -67,12 +70,14 @@ if [ -f "$ledger_helper" ]; then
     export BBOXY_LEDGER_SAMPLER
 fi
 if [ "$after_tests" = false ]; then
-    ledger smoke sh scripts/layering.sh
+    # Aggregate orchestration stays unclamped for explicit timing gates. Clamp
+    # ordinary interpreted leaves here; Cargo and Make classify their own trees.
+    ledger smoke sh scripts/qos.sh utility sh scripts/layering.sh
     ledger integration python3 -I scripts/test-landing.py
     if [ -f "$ledger_helper" ]; then
-        ledger integration python3 -I scripts/test-resource-ledger.py
+        ledger integration sh scripts/qos.sh utility python3 -I scripts/test-resource-ledger.py
     fi
-    ledger integration python3 -I scripts/test-landing-budget-controls.py --out "$BBOXY_CARGO_TARGET_DIR/landing-budget-controls"
+    ledger integration sh scripts/qos.sh utility python3 -I scripts/test-landing-budget-controls.py --out "$BBOXY_CARGO_TARGET_DIR/landing-budget-controls"
     ledger build cargo build --workspace --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
     ledger build cargo clippy --workspace --all-targets --locked --target-dir "$BBOXY_CARGO_TARGET_DIR" -- -D warnings
     # The harness deliberately clears CLOEXEC in this one fixture. Run it in
@@ -85,7 +90,7 @@ ledger integration make test-capability-scan TARGET_DIR="$BBOXY_CARGO_TARGET_DIR
 ledger integration make test-capability-control TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger integration make test-harness-native TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR" FORMAL_REUSE=0
-ledger smoke sh scripts/ui-lint.sh
+ledger smoke sh scripts/qos.sh utility sh scripts/ui-lint.sh
 ledger build cargo build -p bboxy450-term --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
 smoke_bin="$BBOXY_CARGO_TARGET_DIR/debug/bboxy450-term"
 case "$smoke_bin" in
@@ -96,7 +101,7 @@ smoke_run=$(mktemp -d "${TMPDIR:-/tmp}/bboxy-smoke.XXXXXX")
 # The real GUI has its own fixture inputs, as well as its own identity and sockets.
 # Checkout/build provenance events are work, not an idle fixture.
 mkdir "$smoke_run/repository" "$smoke_run/home"
-if ledger smoke env -i PATH="$PATH" TERM="${TERM:-xterm-256color}" LANG="${LANG:-en_US.UTF-8}" TMPDIR="${TMPDIR:-/tmp}" \
+if ledger smoke sh scripts/qos.sh utility env -i PATH="$PATH" TERM="${TERM:-xterm-256color}" LANG="${LANG:-en_US.UTF-8}" TMPDIR="${TMPDIR:-/tmp}" \
   HOME="$smoke_run/home" CODEX_HOME="$smoke_run/home/.codex" CLAUDE_CONFIG_DIR="$smoke_run/home/.claude" ZDOTDIR="$smoke_run/home" \
   "$smoke_bin" --headless --smoke --ctl --unattended --test-account "$smoke_run/account" \
   --run-dir "$smoke_run/run" --repository "$smoke_run/repository" </dev/null; then

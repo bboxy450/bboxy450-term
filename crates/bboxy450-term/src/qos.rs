@@ -1,9 +1,8 @@
 // Copyright 2026 Boxy (bboxy450) and contributors.
 // SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
-// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
-// LicenseRef-Respectful-Slop-1.0-Draft; credit copied/adapted/translated reuse.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Process entry classes. UI threads outrank logic; tools retain their own role.
 pub fn startup(role: &str) {

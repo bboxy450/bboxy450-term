@@ -139,10 +139,21 @@ def cargo_qos(arguments):
         return "background"
     if command_name == "bench" or "--benches" in options:
         return "default"
-    timed = {"gates_seats", "input_latency", "dream_c1", "dream_replay", "gui_budget", "formal_contracts"}
+    timed = {"gates_seats", "input_latency", "dream_c1", "dream_replay", "gui_budget", "formal_contracts", "capture_fairness"}
+    timed_filters = {
+        "dream::c1::", "gpu::streaming_tests::",
+        "lazy_projection_tests::input_frame_cpu_profile", "repeated_text_frame_cpu_profile",
+        "rich_faces::budget_verification::rich_four_view_aggregate_budget",
+        "logic::idle_command_tests", "seat_socket::input_check_tests",
+        "seat_socket::gui_tests::busy_gui_poll_and_locked_cursor_keep_the_session_and_queued_events",
+        "logic::ring_batch_tests",
+    }
     targets = {options[i+1] for i, value in enumerate(options[:-1]) if value == "--test"}
     targets.update(value.split("=", 1)[1] for value in options if value.startswith("--test="))
-    if targets & timed or "dream::c1::" in options or os.environ.get("BBOXY_QOS_TIMED_GATE") == "dream-c1":
+    packages = {options[i+1] for i, value in enumerate(options[:-1]) if value in {"-p", "--package"}}
+    packages.update(value.split("=", 1)[1] for value in options if value.startswith("--package="))
+    host_timing = "bboxy450-harness-host" in packages and {"client::tests", "transport::tests"}.intersection(options)
+    if targets & timed or timed_filters.intersection(options) or host_timing or os.environ.get("BBOXY_QOS_TIMED_GATE") == "dream-c1":
         return "default"
     return "utility"
 
@@ -183,7 +194,23 @@ def qos_cargo_exec(arguments):
         if result.returncode:
             sys.stderr.buffer.write(result.stdout)
             return result.returncode if result.returncode >= 0 else 128 - result.returncode
+        # Darwin exec discards accumulated child resource usage. Keep this
+        # waiting parent alive so land's getrusage includes the prebuild CPU.
+        result = subprocess.run(["/bin/sh", wrapper, cargo_qos(arguments), cargo, *arguments])
+        return result.returncode if result.returncode >= 0 else 128 - result.returncode
     os.execv("/bin/sh", ["/bin/sh", wrapper, cargo_qos(arguments), cargo, *arguments])
+
+
+def invariant_qos(check):
+    """Leave orchestration/timed leaves unclamped; lower ordinary checks."""
+    words = shlex.split(check)
+    while words and (words[0] == "env" or re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*=.*", words[0])):
+        words.pop(0)
+    if words and Path(words[0]).name in {"cargo", "make"}:
+        return "default"  # These classify their own build/test descendants.
+    if len(words) > 1 and words[0] in {"sh", "bash", "dash"} and Path(words[1]).name in {"gates.sh", "fast-tests.sh"}:
+        return "default"
+    return "utility"
 
 
 def cost_command(arguments):

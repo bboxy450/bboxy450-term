@@ -36,7 +36,7 @@ SOURCE = Path(__file__).with_name("landing.py")
 FIXTURE_SCRIPTS = ("landing.py", "formal.py", "formal-stage.py", "harness-submodule.py", "presubmit.sh", "land.sh",
                    "quarantine.py", "quarantine.sh", "quarantine-test.sh", "main_watch.py", "main-watch.sh",
                    "landing_recovery.py", "main-red-bounded.sh", "release-inputs.py", "verify-signatures.py",
-                   "verify-signatures-core.py", "test-landing-budget-controls.py")
+                   "verify-signatures-core.py", "test-landing-budget-controls.py", "qos.sh")
 spec = importlib.util.spec_from_file_location("landing", SOURCE)
 landing = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(landing)
@@ -690,7 +690,8 @@ except Exception as error:
         self.assertEqual(result.returncode, 23, result.stdout + result.stderr)
         self.assertEqual((self.repo.state / 'check-count').read_text(), 'x')
         trace = next(line for line in result.stdout.splitlines() if line.startswith('ci-command: '))
-        self.assertEqual(json.loads(trace.removeprefix('ci-command: ')), ['sh', 'scripts/layering.sh'])
+        self.assertEqual(json.loads(trace.removeprefix('ci-command: ')),
+                         ['sh', 'scripts/qos.sh', 'utility', 'sh', 'scripts/layering.sh'])
         self.assertFalse((self.repo.state / 'cargo.jsonl').exists())
 
     def test_recheck_refuses_crates_outside_the_cut_without_running_tests(self):
@@ -1117,7 +1118,9 @@ class GateReceiptTests(unittest.TestCase):
         binary.parent.mkdir(parents=True)
         binary.write_text("#!/bin/sh\nexit 0\n")
         binary.chmod(0o700)
-        repo.write("scripts/test-landing-budget-controls.py", 'print("budget-control-sentinel")\nraise SystemExit(19)\n')
+        policy = ('import os,subprocess\npriority=int(subprocess.check_output(["ps","-o","pri=","-p",str(os.getpid())],text=True))\nassert 4 < priority <= 20,priority\n'
+                  if sys.platform == "darwin" else '')
+        repo.write("scripts/test-landing-budget-controls.py", policy + 'print("budget-control-sentinel")\nraise SystemExit(19)\n')
         repo.commit("Fixture failing budget controls")
         result = subprocess.run(["sh", "scripts/ci-local.sh"], cwd=repo.root,
                                 env=dict(repo.environment, BBOXY_GATE_SLOT="none"), capture_output=True, text=True, timeout=30)
@@ -3044,6 +3047,11 @@ class CostTests(unittest.TestCase):
                  (["run", "--", "--no-run"], "default"),
                  (["run", "--example", "verify"], "utility"),
                  (["test", "--", "gates_seats", "--no-run"], "utility"),
+                 (["test", "--bin", "app", "lazy_projection_tests::input_frame_cpu_profile"], "default"),
+                 (["test", "--lib", "repeated_text_frame_cpu_profile"], "default"),
+                 (["test", "--bin", "app", "rich_faces::budget_verification::rich_four_view_aggregate_budget"], "default"),
+                 (["test", "-p", "bboxy450-harness-host", "--lib", "client::tests"], "default"),
+                 (["test", "-p", "other", "--lib", "client::tests"], "utility"),
                  (["bench"], "default")]
         for arguments, expected in cases:
             self.assertEqual(landing.cargo_qos(arguments), expected, arguments)
@@ -3056,6 +3064,14 @@ class CostTests(unittest.TestCase):
                                      str(Path(directory) / "growth")], capture_output=True, text=True)
             self.assertEqual(result.returncode, 7, result.stderr)
             self.assertRegex(result.stdout, r"land-cost: fixture wall=\d+\.\d+s cpu=\d+\.\d+s disk=\+[1-9]\d*B exit=7")
+
+    def test_invariant_leaves_separate_timing_from_ordinary_checks(self):
+        for command, role in [("python3 -I scripts/release-inputs.py", "utility"),
+                              ("sh scripts/ui-lint.sh", "utility"),
+                              ("make test-formal", "default"),
+                              ("cargo test --test formal_contracts", "default"),
+                              ("GATE_BUDGET=8.33 sh scripts/gates.sh frame", "default")]:
+            self.assertEqual(landing.invariant_qos(command), role)
 
 
 @unittest.skipUnless(sys.platform == "darwin", "Darwin effective-priority witness")
@@ -3073,6 +3089,25 @@ class QosTests(unittest.TestCase):
             self.assertLessEqual(snapshot["priority"], 20)
         elif role == "default":
             self.assertGreater(snapshot["priority"], 20)
+
+    def test_cost_retains_the_cpu_of_the_background_prebuild(self):
+        root = SOURCE.parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            fake = Path(directory) / "cargo"
+            fake.write_text("#!" + sys.executable + "\nimport sys,time\n"
+                            "if '--no-run' in sys.argv:\n"
+                            "    until=time.process_time()+0.4\n"
+                            "    while time.process_time()<until: pass\n")
+            fake.chmod(0o700)
+            environment = dict(os.environ, BBOXY_REAL_CARGO=str(fake), BBOXY_CACHE_MODE="off",
+                               BBOXY_CARGO_TARGET_DIR=str(Path(directory) / "target"))
+            result = subprocess.run([sys.executable, "-I", str(SOURCE), "cost", directory,
+                                     "native-qos", "sh", "-c", ". scripts/cache-env.sh; cargo test"],
+                                    cwd=root, env=environment, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            cost = next(line for line in result.stdout.splitlines() if line.startswith("land-cost:"))
+            fields = dict(field.split("=", 1) for field in cost.split()[2:])
+            self.assertGreaterEqual(float(fields["cpu"].removesuffix("s")), .35, cost)
 
     def test_rustdoc_compiles_background_and_executes_utility(self):
         root = SOURCE.parents[1]
@@ -3112,6 +3147,98 @@ class QosTests(unittest.TestCase):
                                     cwd=root, capture_output=True, text=True)
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assert_role(json.loads(result.stdout), "utility")
+
+    def test_real_invariant_dispatcher_clamps_only_ordinary_leaves(self):
+        root = SOURCE.parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            own = Path(directory)
+            (own / "scripts").mkdir()
+            (own / ".bboxy/invariants").mkdir(parents=True)
+            for name in ("invariants.sh", "landing.py", "qos.sh"):
+                shutil.copy2(root / "scripts" / name, own / "scripts" / name)
+            (own / "scripts/cache-env.sh").write_text("# private fixture; no cache or operator paths\n")
+            for name, role in [("ordinary", "utility"), ("timed", "default")]:
+                script = "gates.sh" if role == "default" else "ordinary.sh"
+                (own / "scripts" / script).write_text("#!/bin/sh\n" + shlex.join([sys.executable, "-I", "-c", self.SNAPSHOT]) + "\n")
+                (own / ".bboxy/invariants" / (name + ".md")).write_text(
+                    "---\ntype: invariant\ncheck: sh scripts/" + script + "\n---\n")
+            result = subprocess.run(["sh", "scripts/invariants.sh"], cwd=own,
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            snapshots = [json.loads(line) for line in result.stdout.splitlines() if line.startswith("{")]
+            self.assertEqual(len(snapshots), 2, result.stdout)
+            self.assert_role(snapshots[0], "utility")
+            self.assert_role(snapshots[1], "default")
+
+    def test_real_make_timing_entries_leave_the_measured_process_unclamped(self):
+        root = SOURCE.parents[1]
+        # A utility ancestor cannot be undone by clearing Darwin background.
+        # Keep timing orchestration default, with utility only on sibling leaves.
+        inherited = subprocess.run(["sh", str(root / "scripts/qos.sh"), "utility", "sh",
+                                    str(root / "scripts/qos.sh"), "default", sys.executable,
+                                    "-I", "-c", self.SNAPSHOT], capture_output=True, text=True)
+        self.assertEqual(inherited.returncode, 0, inherited.stderr)
+        self.assert_role(json.loads(inherited.stdout), "utility")
+        with tempfile.TemporaryDirectory() as directory:
+            fake = Path(directory) / "cargo"
+            fake.write_text("#!" + sys.executable + "\n" + self.SNAPSHOT + "\n")
+            fake.chmod(0o700)
+            environment = dict(os.environ, BBOXY_REAL_CARGO=str(fake), BBOXY_CACHE_MODE="off")
+            for target, expected in [("test-input-latency", "default"),
+                                     ("profile-input-ui", "default"),
+                                     ("profile-render-input", "default"),
+                                     ("bench-budgets", "default"),
+                                     ("test-input-layout", "utility")]:
+                result = subprocess.run(["make", "-s", "-o", "tools", "-o", "init-submodules",
+                                         target, "TARGET_DIR=" + str(Path(directory) / "target")],
+                                        cwd=root, env=environment, capture_output=True, text=True)
+                self.assertEqual(result.returncode, 0, target + result.stdout + result.stderr)
+                snapshots = [json.loads(line) for line in result.stdout.splitlines()]
+                self.assertTrue(snapshots, target)
+                for snapshot in snapshots:
+                    self.assert_role(snapshot, expected)
+            nested = Path(directory) / "nested.mk"
+            nested.write_text("test-harness-native:\n\t@$(MAKE) -s -o init-submodules bench-budgets\n")
+            result = subprocess.run(["make", "-s", "-f", "Makefile", "-f", str(nested),
+                                     "-o", "init-submodules", "test-harness-native",
+                                     "TARGET_DIR=" + str(Path(directory) / "target")],
+                                    cwd=root, env=environment, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            snapshots = [json.loads(line) for line in result.stdout.splitlines()]
+            self.assertTrue(snapshots)
+            for snapshot in snapshots:
+                self.assert_role(snapshot, "default")
+
+    def test_timed_make_parents_do_not_inherit_utility(self):
+        root = SOURCE.parents[1]
+        bodies = {}
+        current = []
+        for line in (root / "Makefile").read_text().splitlines():
+            if line.startswith("\t"):
+                for target in current:
+                    bodies[target] = bodies.get(target, "") + "\n" + line
+            elif __import__("re").match(r"^[\w-]+(?: [\w-]+)*:", line):
+                current = line.split(":", 1)[0].split()
+            else:
+                current = []
+        # Inventory actual timed leaves and every literal recursive Make parent;
+        # this fails when a new parent accidentally clamps a timed descendant.
+        timed = {target for target, body in bodies.items()
+                 if "cargo test " in body and "--test formal_contracts" in body}
+        timed.update({"bench-budgets", "test-input-latency", "profile-input-ui", "profile-render-input"})
+        while True:
+            parents = {target for target, body in bodies.items() if target != "help" and
+                       any("$(MAKE)" in line and any(child in line.split() for child in timed)
+                           for line in body.splitlines())}
+            if parents <= timed:
+                break
+            timed.update(parents)
+        for target in timed:
+            command = shlex.join([sys.executable, "-I", "-c", self.SNAPSHOT])
+            result = subprocess.run(["sh", str(root / "scripts/qos.sh"), "make-" + target,
+                                     "-c", command], capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assert_role(json.loads(result.stdout), "default")
 
     def test_cache_env_routes_cargo_and_compiler_independently(self):
         root = SOURCE.parents[1]

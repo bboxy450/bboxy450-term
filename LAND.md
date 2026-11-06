@@ -52,16 +52,24 @@ run at background policy. Test execution outside this list stays utility.
 | --- | --- |
 | `test-dream-c1`, `test-dream-c1-integration`; Cargo selections `dream_c1`, `dream_replay`, `dream::c1::` | Dream C1 CPU/latency bounds (the harness owns these targets) |
 | `test-perf-p1`, `test-perf-p2`; Cargo selection `gates_seats` | P1 frame/hitch and P2 bus/PTY budgets |
-| `bench-budgets`; Cargo selection `gui_budget` | UI drain/composition and GUI frame budgets |
+| `bench-budgets`; Cargo selections `gui_budget`, `rich_faces::budget_verification::rich_four_view_aggregate_budget` | UI drain/composition and GUI frame budgets |
 | Cargo `bench` and `test --benches` | Benchmark execution (compiler children remain background) |
-| `test-input-backend`; Cargo selection `input_latency` | Input/echo latency |
-| `test-terminal-streaming`, `test-codex-streaming`, `test-native-strip` | Frame latency and streamed rendering |
-| `test-seat-ingestion`, `profile-ingestion` | Watched-seat read/parse/publication latency |
-| `profile-input-ui`, `profile-render-input` | UI layout/glyph CPU timings |
+| `test-input-latency`, `test-input-backend`; Cargo selections `input_latency`, `logic::idle_command_tests`, `seat_socket::input_check_tests`, `seat_socket::gui_tests::busy_gui_poll_and_locked_cursor_keep_the_session_and_queued_events` | Input/echo latency |
+| `test-terminal-streaming`, `test-codex-streaming`, `test-native-strip`; Cargo selection `gpu::streaming_tests::` | Frame latency and streamed rendering |
+| `test-seat-ingestion`, `profile-ingestion`; Cargo selections `client::tests`, `transport::tests`, `logic::ring_batch_tests`, `capture_fairness` | Watched-seat read/parse/publication latency |
+| `profile-input-ui`, `profile-render-input`; Cargo selections `lazy_projection_tests::input_frame_cpu_profile`, `repeated_text_frame_cpu_profile` | UI layout/glyph CPU timings |
 | `test-formal`, `test-formal-contracts`; Cargo selection `formal_contracts` | Real-time API witnesses paired with the contract corpus |
 | `test-qos`, `test-qos-app`, `scripts/qos-probe.py` | Private MCP latency/policy controls and app startup class witnesses |
 | `test-landing`, `test-landing-extended` | Actual default/background/utility process-priority witnesses |
 | `test-parity` | Aggregate parent of the full CI timing gates |
+| `test-harness-native` | Aggregate parent of `bench-budgets`; ordinary Cargo selections remain utility |
+| Invariant leaves `seats-1000-bus`, `seats-400-memory-idle`, `seats-967-frame` (`scripts/gates.sh`); `presubmit-tests-fast` (`scripts/fast-tests.sh`) | Bus/CPU, memory/idle, frame and test-runtime budgets; Cargo/Make invariant commands orchestrate their own policies |
+| `test-terminal-replies`, `test-task-pages`, `test-task-panel-formal`, `test-jsonl-recovery`, `test-capture-storage-model`, `test-watcher-models`, `test-toolkit-models`, `test-knowledge-orientation-formal`, `test-provenance-background-formal`, `test-provenance-mcp-formal` | Explicit parents of the `formal_contracts` measurement executable; ordinary Cargo selections remain utility and model-checker Python leaves use utility |
+
+Aggregate `test`/`check` orchestration stays at default; ordinary CI leaf drivers
+run at utility. A Darwin utility clamp is inherited and cannot be cleared by
+the background-policy reset: timed Make parents must stay unclamped, then their
+explicit Cargo selections choose default independently of ordinary utility tests.
 
 The probe compares default versus background logical-CPU saturation. Its actual
 native bridge forwards `self_status` through a private mux/socket and identity.

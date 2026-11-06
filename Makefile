@@ -28,7 +28,7 @@ test-qos-app:
 	cargo build --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)'; \
 	cargo nextest run --locked -p bboxy450-rt --lib -E 'test(qos::)' --target-dir '$(TARGET_DIR)'; \
 	cargo nextest run --locked -p $(APP) --bin $(APP) -E 'test(qos::tests::startup_role_ceilings)' --target-dir '$(TARGET_DIR)'; \
-	python3 -I -c 'import json,subprocess,sys; expected={"supervisor":25,"logic":25,"mcp":25,"desktop":33,"ui":33}; rows=[json.loads(subprocess.check_output([sys.argv[1],"--qos-witness",role],text=True)) for role in expected]; assert all(r["requested_class"]==expected[r["role"]] for r in rows),rows; print(json.dumps(rows))' '$(abspath $(TARGET_DIR))/debug/$(APP)'
+	python3 -I -c 'import json,subprocess,sys; expected={"supervisor":25,"logic":25,"mcp":25,"desktop":33,"ui":33}; rows=[json.loads(subprocess.check_output([sys.argv[1],"--qos-witness",role],text=True)) for role in expected]; assert all(r["requested_class"]==(expected[r["role"]] if sys.platform=="darwin" else 0) for r in rows),rows; print(json.dumps(rows))' '$(abspath $(TARGET_DIR))/debug/$(APP)'
 
 .PHONY: test-dream-c1 test-dream-c1-integration
 test-dream-c1 test-dream-c1-integration:
@@ -414,7 +414,7 @@ test-cursors:
 test-task-panel-formal:
 	@set -eu; . ./scripts/cache-env.sh; \
 	BBOXY_TASK_PANEL_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/task-panel-formal/models' cargo test --locked --release -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts selected_task_panel_retry -- --exact --nocapture; \
-	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(pathlib.Path(sys.argv[2]).resolve()); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"TaskPanelRetry":"pass","BrokenTaskPanelRetry":"safety","TaskRetryTimerLifetime":"pass","BrokenTaskRetryTimerLifetime":"liveness"}; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/task-panel-formal' '$(FORMAL_DIR)'
+	sh scripts/qos.sh utility python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(pathlib.Path(sys.argv[2]).resolve()); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"TaskPanelRetry":"pass","BrokenTaskPanelRetry":"safety","TaskRetryTimerLifetime":"pass","BrokenTaskRetryTimerLifetime":"liveness"}; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/task-panel-formal' '$(FORMAL_DIR)'
 
 .PHONY: test-task-glow
 test-task-glow:
@@ -1531,7 +1531,7 @@ verify-workspace-ready: init-submodules
 	BBOXY_WORKSPACE_READY_MODELS='$(abspath $(TARGET_DIR))/workspace-ready/models' cargo test --locked -p bboxy450-term-mux --features model --target-dir '$(TARGET_DIR)' --lib workspace_ready -- --nocapture; \
 	cargo test --locked -p bboxy450-term-mux --features model --target-dir '$(TARGET_DIR)' --lib logic::knowledge_responsiveness_tests::workspace_held_scan_keeps_input_chat_and_other_root_live_and_excludes_writes -- --exact --nocapture; \
 	cargo clippy --locked -p bboxy450-term-mux --features model --target-dir '$(TARGET_DIR)' --lib --tests -- -D warnings; \
-	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[line.split("\t") for line in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"WorkspaceReady":"pass","BrokenWorkspaceReady":"liveness"}; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/workspace-ready'
+	sh scripts/qos.sh utility python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[line.split("\t") for line in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"WorkspaceReady":"pass","BrokenWorkspaceReady":"liveness"}; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/workspace-ready'
 
 .PHONY: verify-workspace-ready-restart
 verify-workspace-ready-restart: init-submodules
@@ -2180,7 +2180,7 @@ init-submodules:
 
 .PHONY: test-harness-native format-harness-embed
 test-harness-native: init-submodules
-	@python3 -I scripts/harness-submodule.py --check-resolution
+	@sh scripts/qos.sh utility python3 -I scripts/harness-submodule.py --check-resolution
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-harness-wake-up --test rich_socket --test harness_status --target-dir '$(TARGET_DIR)'; \
 	cargo build --locked -p bboxy450-harness --features test-fixtures --target-dir '$(TARGET_DIR)'; \
@@ -2438,7 +2438,7 @@ verify-ui-only-reopen: bundle-unsigned prepare-rich-native-fixture
 	BBOXY_PREPARED_GUI_BUNDLE='$(abspath $(BUNDLE))' BBOXY_HARNESS_TEST_BIN='$(abspath $(TARGET_DIR))/debug/bboxy450-harness' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test swarm_workdir rich_detach::rich_gui_handoff_preserves_turn_and_rolls_back_failed_activation -- --ignored --exact --nocapture; \
 	mkdir -p '$(abspath $(TARGET_DIR))/ui-only-reopen/models'; \
 	BBOXY_GUI_BACKEND_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/ui-only-reopen/models' cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test formal_contracts selected_gui_backend_preservation -- --exact --nocapture; \
-	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"GuiBackendPreservation":"pass","BrokenGuiBackendPreservation":"safety"}; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/ui-only-reopen'
+	sh scripts/qos.sh utility python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"GuiBackendPreservation":"pass","BrokenGuiBackendPreservation":"safety"}; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/ui-only-reopen'
 
 # Only a throwaway signed fixture may remove this static rollback capability.
 .PHONY: fixture-ui-only-legacy
@@ -2555,7 +2555,7 @@ test-knowledge-orientation-formal:
 	@set -eu; . ./scripts/cache-env.sh; \
 	mkdir -p '$(abspath $(TARGET_DIR))/knowledge-orient/models'; \
 	BBOXY_KNOWLEDGE_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/knowledge-orient/models' cargo test --locked --release -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)' selected_knowledge_orientation_ownership -- --exact; \
-	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert len(rows)==6; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/knowledge-orient'
+	sh scripts/qos.sh utility python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert len(rows)==6; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/knowledge-orient'
 
 .PHONY: check-provenance-background test-provenance-background
 check-provenance-background:
@@ -2572,7 +2572,7 @@ test-provenance-background:
 test-provenance-background-formal:
 	@set -eu; . ./scripts/cache-env.sh; mkdir -p '$(abspath $(TARGET_DIR))/provenance-background/models'; \
 	BBOXY_PROVENANCE_FORMAL_OUTPUT='$(abspath $(TARGET_DIR))/provenance-background/models' cargo test --locked --release -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)' selected_provenance_background -- --exact; \
-	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert len(rows)==4; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/provenance-background'
+	sh scripts/qos.sh utility python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert len(rows)==4; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/provenance-background'
 
 .PHONY: test-provenance-workflow
 test-provenance-workflow:
@@ -2616,7 +2616,7 @@ test-provenance-inventory:
 test-provenance-mcp-formal: test-provenance-inventory
 	@set -eu; . ./scripts/cache-env.sh; mkdir -p '$(abspath $(TARGET_DIR))/provenance-query/models'; \
 	BBOXY_PROVENANCE_QUERY_MODELS='$(abspath $(TARGET_DIR))/provenance-query/models' cargo test --locked --release -p bboxy450-term --test formal_contracts --target-dir '$(TARGET_DIR)' selected_provenance_queries -- --exact; \
-	python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert len(rows)==4; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/provenance-query'
+	sh scripts/qos.sh utility python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[r.split("\t") for r in (root/"manifest.tsv").read_text().splitlines()]; assert len(rows)==4; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/provenance-query'
 
 
 .PHONY: check-mcp-feedback test-mcp-feedback

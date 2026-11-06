@@ -1,4 +1,7 @@
 #!/bin/sh
+# bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# LicenseRef-Respectful-Slop-1.0-Draft; keep accurate source credit on reuse.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 # Run the one-line shell checks in invariant frontmatter. README/body text is not executable.
 set -eu
 invariant_tools=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
@@ -287,7 +290,8 @@ try:
             if results != ["ok"]:
                 print(f"invariants: {name} expected one passing {check['test']}; observed {results}", file=sys.stderr)
         else:
-            code = subprocess.run(metered(["sh", "-c", shell_check, "invariant-check", command])).returncode
+            policy = ["sh", str(Path(tools) / "qos.sh"), landing.invariant_qos(command)]
+            code = subprocess.run(metered([*policy, "sh", "-c", shell_check, "invariant-check", command])).returncode
         if code < 0:
             code = 128 - code
         print(f"invariant {name}: " + ("pass" if code == 0 else f"fail (exit {code})"), flush=True)
