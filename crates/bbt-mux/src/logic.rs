@@ -5481,7 +5481,8 @@ impl Worker {
                 op,
                 serde_json::json!({
                     "status":"applied", "seat_id":target.seat,
-                    "process_generation":target.generation.to_string(), "closure":"orphan_retained"
+                    "process_generation":target.generation.to_string(), "closure":"orphan_retained",
+                    "lifecycle":"closed_retained", "reason":"process was gone"
                 }),
             ),
             Err(error) => crate::mcp::error(
@@ -10949,7 +10950,12 @@ impl Worker {
                     }
                     Command::ControlCatalogue(id, generation, reply) => {
                         let result = self.control_actor(id, generation).map(|(actor, _)| {
-                            crate::mcp::tools::catalogue(&actor, self.plugin_catalogue(&actor))
+                            let mut catalogue =
+                                crate::mcp::tools::catalogue(&actor, self.plugin_catalogue(&actor));
+                            catalogue["_meta"]["bboxy450/authority"] = serde_json::json!({
+                                "grant_epoch":actor.grant_epoch,"role":actor.role
+                            });
+                            catalogue
                         });
                         let _ = reply.send(result);
                     }

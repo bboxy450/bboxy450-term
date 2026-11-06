@@ -20,6 +20,8 @@ mod record_supervisor;
 mod workspace_tests;
 #[path = "mcp/python_execution.rs"]
 mod python_execution_tests;
+#[path = "mcp/live_catalogue.rs"]
+mod live_catalogue_tests;
 use record_supervisor::RecordLink;
 use std::io::{Cursor, Read, Write};
 use std::os::unix::net::UnixStream;
@@ -1403,7 +1405,7 @@ fn initialize(bridge: &mut Bridge) {
     assert_eq!(value["result"]["protocolVersion"], "2025-11-25");
     assert_eq!(
         value["result"]["capabilities"]["tools"]["listChanged"],
-        false
+        true
     );
     assert!(
         bridge

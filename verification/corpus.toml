@@ -1411,3 +1411,33 @@ frontend = "project"
 name = "BrokenPythonNativeContext"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "LiveCatalogue"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenLiveCatalogue"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "DelegationPointer"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenDelegationPointer"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "AbsentSeatClose"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenAbsentSeatClose"
+expected = "safety"
+frontend = "project"

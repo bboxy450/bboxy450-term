@@ -1331,3 +1331,33 @@ implementation_tests = ["crates/bbt-mux/tests/mcp/python_execution.rs", "crates/
 assumptions = "One runtime preflight, one native effect, two root/authority/lifecycle transitions including A-B-A, one actual immutable provider-port capture and current-context result publication. Owner admission/port selection is synchronous; async jobs retain existing actor/root/provider guards. The finite quotient does not prove arbitrary Rust, Python, filesystem or external-server atomicity. Real MCP/owned-process fixtures witness byte framing, native admission, closed-seat rejection and refused retargeting. Lifecycle revision fencing also keeps close/undo from reviving an older execution. External effects are never claimed exactly-once or rolled back. Unmanaged cwd comes from the captured harness session while native root/provider/actor fields compare exactly; managed cwd and record revision remain guarded."
 property = "NativeEffectCannotRetarget; OldResultIsNotCurrent. Broken preflight-only dispatch must fail safety after a root/grant change, including A-B-A. Python errors/unknown results never authorize whole-script replay."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "LiveCatalogue"
+title = "Current grant catalogue and downgrade refusal"
+models = ["LiveCatalogue", "BrokenLiveCatalogue"]
+sources = ["crates/bbt-mux/src/mcp/bridge.rs", "crates/bbt-mux/src/mcp/live_models.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp/live_catalogue.rs"]
+assumptions = "One seat, two role transitions and three monotonically distinct epochs (A-B-A). Change, observation, list and call are atomic actions on their respective owners. No fairness is assumed for safety; the implementation observes on a one-second bounded idle cadence while the transport responds. Unavailable transport retains the previous snapshot and retries observation, never the effect. JSON framing, real role-policy epochs, plugin schema bytes, actual idle notification delivery and call refusal use private socket/API witnesses. Changes occurring entirely between authority observations require the host grant epoch to advance; unobserved intermediate registry edits are not modeled."
+property = "Lists use current authority and a previously listed privileged tool cannot execute after downgrade. The broken control substitutes last-observed authority at the shared list/call boundary. Private run_frames witnesses observe idle list_changed notifications through upgrade, downgrade and same-class role epoch change."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "DelegationPointer"
+title = "Large task bodies remain behind bounded path wakes"
+models = ["DelegationPointer", "BrokenDelegationPointer"]
+sources = ["crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-mux/src/mcp/live_models.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp/live_catalogue.rs"]
+assumptions = "One task with three body-size classes (small, 40 KiB, arbitrary larger) and at most two wakes, delegate then reassign. Brief growth and wake construction are atomic. Wake content is a fixed role/path/fetch instruction independent of body bytes; production paths and roles retain their existing validation and the 16 KiB hard bound. UTF-8 byte encoding, persistent task body preservation, signatures and actual delivery use the 40 KiB API witness. No fairness, provider availability or whole-Rust refinement is claimed."
+property = "Every emitted delegate/reassign wake retains the task path and is within the wake budget. The broken control drops only the path and fails WakeRetainsPath. Native witnesses delegate and reassign a 40 KiB UTF-8 task and inspect both signed wake summaries."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "AbsentSeatClose"
+title = "Record-only close requires confirmed process absence"
+models = ["AbsentSeatClose", "BrokenAbsentSeatClose"]
+sources = ["crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/mcp/live_models.rs"]
+implementation_tests = ["crates/bbt-mux/tests/mcp/live_catalogue.rs"]
+assumptions = "One target, two process generations, missing/present viewport and three ownership observations (absent, live, unavailable). Capture, replacement, ownership observation and close are atomic owner turns. A successful absent-owner query is required; dependency failure is not evidence of absence. Recovering attachments and pending endpoints refuse closure, and caller authority is revalidated before the registry update. No fairness or liveness promise for an unavailable owner. Real supervisor ownership replies, registry transactions, replay, process/viewport races outside the logic owner and live GUI close remain native implementation coverage; the model is not OS or arbitrary-Rust refinement."
+property = "Only the captured current generation with no live viewport and confirmed absent process takes the record-only close path. The broken control drops the process-absence guard and closes a live owner without a viewport, violating safety. Private API witnesses exercise wrong generation, retained replay, live owner without viewport and unchanged attached-process close dispatch."
+checks = ["make test-formal", "make test"]

@@ -1420,11 +1420,7 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
             notices.push((
                 Recipient::Seat(target.id),
                 "delegate",
-                format!(
-                    "ROLE: {}. Execute this: {path}\n\n{}",
-                    role.to_uppercase(),
-                    doc.body
-                ),
+                delegation_wake(&role, &path),
             ));
         }
         Action::Reassign(target) => {
@@ -1445,11 +1441,7 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
             notices.push((
                 Recipient::Seat(target.id),
                 "delegate",
-                format!(
-                    "ROLE: {}. Execute this: {path}\n\n{}",
-                    role.to_uppercase(),
-                    doc.body
-                ),
+                delegation_wake(role, &path),
             ));
             doc.metadata["assignee"] = json!(format!("seat:{}", target.id));
             doc.metadata["delegated_by"] = json!(actor.reference());
@@ -1505,6 +1497,14 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
         wakes,
     })
 }
+/// Task bodies are fetched separately (and paged); wake size never depends on brief size.
+fn delegation_wake(role: &str, path: &str) -> String {
+    format!(
+        "ROLE: {}. Execute this: {path}\n\nRead the full task through task_status or knowledge_fetch before acting; follow knowledge_fetch body continuation when truncated.",
+        role.to_uppercase()
+    )
+}
+
 fn clear_report(metadata: &mut Value) {
     let map = metadata.as_object_mut().unwrap();
     for key in ["report", "verify_result", "rejection"] {

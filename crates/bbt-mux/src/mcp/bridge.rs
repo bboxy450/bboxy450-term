@@ -109,6 +109,7 @@ fn rpc_error(id: Value, code: i64, message: &str) -> Value {
 pub struct Bridge {
     config: Config,
     initialized: bool,
+    catalogue: Option<Value>,
     /// The harness's ATC session attribution, sent beside every call.
     attribution: BTreeMap<String, String>,
     python_socket: Option<PathBuf>,
@@ -169,6 +170,7 @@ impl Bridge {
         Self {
             config,
             initialized: false,
+            catalogue: None,
             attribution: BTreeMap::new(),
             python_socket: std::env::var_os("BBOXY_PYTHON_SOCKET").map(PathBuf::from),
         }
@@ -281,7 +283,7 @@ impl Bridge {
                 self.initialized = true;
                 Ok(
                     json!({"protocolVersion":if VERSIONS.contains(&version){version}else{VERSIONS[0]},
-                    "capabilities":{"tools":{"listChanged":false},"resources":{"listChanged":false,"subscribe":false}},
+                    "capabilities":{"tools":{"listChanged":true},"resources":{"listChanged":false,"subscribe":false}},
                     "serverInfo":{"name":"bboxy450","version":env!("CARGO_PKG_VERSION")},
                     // Decision #260: a curious agent finding the binary in PATH is the common case.
                     "instructions":"These tools are your interface to bboxy450-term. Call orient first and use your role-filtered tools. Tool responses include a hints graph: concrete useful next MCP requests; errors show corrective calls. Hints never execute actions or grant authority. After orient, call knowledge_orient before knowledge work: it loads the selected provider skill, document types and writing/task workflow. Use skill_list and skill_read for additional plugin guidance, or MCP resources. Knowledge writes are drafts, not artifacts. Commit explicit selected documents with knowledge_commit for a substantial checkpoint, sharing preparation, or final accepted/done work; do not commit every edit. Commit never pushes. Reading guidance grants no authority. Oracle orchestration uses seat_spawn, seat_split, seat_focus or the MCP ctl tool. The shell command `bboxy450-term ctl` is the operator's door and refuses seats."}),
@@ -298,6 +300,9 @@ impl Bridge {
                     return Some(rpc_error(id, -32602, "No catalogue cursor is available"));
                 }
                 self.forward(Action::Catalogue).map(|mut value| {
+                    if self.catalogue.is_none() {
+                        self.catalogue = Some(value.clone());
+                    }
                     if let Ok(extra) = self.python_catalogue()
                         && let Some(tools) = value["tools"].as_array_mut()
                     {
@@ -505,28 +510,92 @@ impl Bridge {
         })
     }
 
+    /// Observe the current admitted catalogue, retaining the last successful
+    /// snapshot across transport failures. Epochs distinguish role A → B → A.
+    pub fn catalogue_notification(&mut self) -> Option<Value> {
+        if !self.initialized {
+            return None;
+        }
+        let current = self.forward(Action::Catalogue).ok()?;
+        // Initial discovery also announces availability; initialization itself
+        // must not mount a knowledge root or wait on a native dependency.
+        let changed = self.catalogue.as_ref().is_none_or(|old| old != &current);
+        self.catalogue = Some(current);
+        changed.then(|| json!({"jsonrpc":"2.0","method":"notifications/tools/list_changed"}))
+    }
+
+    fn write_frame(writer: &mut impl Write, response: &Value) -> io::Result<()> {
+        let mut bytes = serde_json::to_vec(response).map_err(io::Error::other)?;
+        if bytes.len() + 1 > MAX_FRAME {
+            return Err(io::Error::other("MCP response exceeds bound"));
+        }
+        bytes.push(b'\n');
+        writer.write_all(&bytes)?;
+        writer.flush()
+    }
+
     pub fn run(&mut self, reader: &mut impl BufRead, writer: &mut impl Write) -> io::Result<()> {
         while let Some(bytes) = read_frame(reader)? {
+            if let Some(notification) = self.catalogue_notification() {
+                Self::write_frame(writer, &notification)?;
+            }
             if let Some(response) = self.handle(&bytes) {
-                let mut bytes = serde_json::to_vec(&response).map_err(io::Error::other)?;
-                if bytes.len() + 1 > MAX_FRAME {
-                    return Err(io::Error::other("MCP response exceeds bound"));
-                }
-                bytes.push(b'\n');
-                writer.write_all(&bytes)?;
-                writer.flush()?;
+                Self::write_frame(writer, &response)?;
             }
         }
         Ok(())
+    }
+
+    /// Separate stdin framing from catalogue observation so an idle harness
+    /// receives role/plugin changes without first sending another request.
+    /// A one-frame queue bounds read-ahead; no tool calls are retried here.
+    pub fn run_frames(
+        &mut self,
+        frames: &std::sync::mpsc::Receiver<io::Result<Vec<u8>>>,
+        writer: &mut impl Write,
+    ) -> io::Result<()> {
+        let period = Duration::from_secs(1);
+        let mut next = Instant::now() + period;
+        loop {
+            match frames.recv_timeout(next.saturating_duration_since(Instant::now())) {
+                Ok(bytes) => {
+                    if let Some(response) = self.handle(&bytes?) {
+                        Self::write_frame(writer, &response)?;
+                    }
+                }
+                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => return Ok(()),
+                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => (),
+            }
+            if Instant::now() >= next {
+                if let Some(notification) = self.catalogue_notification() {
+                    Self::write_frame(writer, &notification)?;
+                }
+                next = Instant::now() + period;
+            }
+        }
     }
 }
 
 pub fn run_cli() -> io::Result<()> {
     let config = Config::from_env()?;
-    // Captured once, from the harness that spawned this bridge.
+    let (sender, receiver) = std::sync::mpsc::sync_channel(1);
+    std::thread::spawn(move || {
+        let mut input = io::stdin().lock();
+        loop {
+            let frame = match read_frame(&mut input) {
+                Ok(Some(frame)) => Ok(frame),
+                Ok(None) => break,
+                Err(error) => Err(error),
+            };
+            let failed = frame.is_err();
+            if sender.send(frame).is_err() || failed {
+                break;
+            }
+        }
+    });
     Bridge::new(config)
         .with_attribution(attribution(std::env::vars_os()))
-        .run(&mut io::stdin().lock(), &mut io::stdout().lock())
+        .run_frames(&receiver, &mut io::stdout().lock())
 }
 
 #[cfg(test)]

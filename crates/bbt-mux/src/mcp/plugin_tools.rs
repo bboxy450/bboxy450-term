@@ -29,9 +29,9 @@
 //! - A result is returned as `{"result": <plugin result>}`.
 //! - The catalogue is a per-root snapshot, refreshed when the workspace mounts
 //!   and after every plugin control mutation. `tools/list` reads it each time
-//!   and `listChanged` stays false: a harness that caches its first list sees
-//!   a newly enabled plugin in its next session. A call rereads the plugin's
-//!   current authority, so a stale entry is refused, never served.
+//!   against current authority. The bridge advertises `listChanged` and emits
+//!   a notification on authority or catalogue changes, including plugin changes.
+//!   A call rereads current authority, so a stale entry is refused, never served.
 use crate::{
     knowledge::{seat_reads::Completion, workspaces::RootBinding},
     mcp::{self, Call, SeatActor, journal::Journal},

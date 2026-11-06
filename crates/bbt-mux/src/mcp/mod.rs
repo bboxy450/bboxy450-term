@@ -12,6 +12,8 @@ pub(crate) mod diagnostics;
 pub(crate) mod hints;
 pub(crate) mod journal;
 pub(crate) mod knowledge;
+#[cfg(feature = "model")]
+pub mod live_models;
 pub(crate) mod messaging;
 pub(crate) mod plugin_tools;
 pub(crate) mod provenance;

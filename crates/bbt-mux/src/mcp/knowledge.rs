@@ -450,28 +450,60 @@ pub(crate) fn write_plan(
         }
         if let Some(old) = current {
             let reservation = task_reservation(old);
-            let mut before = old.frontmatter.clone();
-            let mut after = request.frontmatter.clone();
-            for field in ["verify", "allowed_paths"] {
-                before
-                    .as_object_mut()
-                    .expect("record frontmatter")
-                    .remove(field);
-                after
-                    .as_object_mut()
-                    .expect("validated frontmatter")
-                    .remove(field);
+            // Missing host stamps are not authored changes. Explicit replacements
+            // still compare below, including the protected verification revision.
+            let after = request
+                .frontmatter
+                .as_object_mut()
+                .expect("validated frontmatter");
+            for field in [
+                "id",
+                "number",
+                "created",
+                "updated",
+                "created_by",
+                "updated_by",
+                "authorship",
+                "provenance",
+                "verify_revision",
+            ] {
+                if let Some(value) = old.frontmatter.get(field) {
+                    after.entry(field).or_insert_with(|| value.clone());
+                }
             }
-            if before != after
-                || (!reservation
-                    && (!matches!(
-                        old.frontmatter["status"].as_str(),
-                        Some("open" | "claimed" | "running" | "reported" | "rejected" | "blocked")
-                    ) || old.frontmatter["delegated_by"] != format!("seat:{}", actor.seat_id)))
+            let before = old.frontmatter.as_object().expect("record frontmatter");
+            let differences: std::collections::BTreeSet<_> = before
+                .keys()
+                .chain(after.keys())
+                .filter(|field| !matches!(field.as_str(), "verify" | "allowed_paths"))
+                .filter(|field| before.get(*field) != after.get(*field))
+                .cloned()
+                .collect();
+            if !differences.is_empty() {
+                return Err(denied(
+                    "task_field_protected",
+                    &format!(
+                        "protected task fields differ: {}; only brief, verify and allowed_paths may change; use task_* for lifecycle and assignment",
+                        differences.into_iter().collect::<Vec<_>>().join(", ")
+                    ),
+                ));
+            }
+            if !reservation
+                && !matches!(
+                    old.frontmatter["status"].as_str(),
+                    Some("open" | "claimed" | "running" | "reported" | "rejected" | "blocked")
+                )
             {
                 return Err(denied(
                     "task_field_protected",
-                    "only the delegating Oracle seat may amend a nonterminal task's brief, verify and allowed_paths; use task_* for lifecycle and assignment",
+                    "terminal task status cannot be amended",
+                ));
+            }
+            if !reservation && old.frontmatter["delegated_by"] != format!("seat:{}", actor.seat_id)
+            {
+                return Err(denied(
+                    "task_field_protected",
+                    "only the delegating Oracle seat may amend this task",
                 ));
             }
             if reservation {
