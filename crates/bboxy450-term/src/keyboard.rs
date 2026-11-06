@@ -571,6 +571,40 @@ fn protocol_physical(key: PhysicalKey) -> protocol::PhysicalKey {
     ))
 }
 
+/// Neutral modal intents keep raw native key classification at this boundary.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum DiagramKey {
+    Close,
+    Select { backwards: bool },
+    Submit,
+    Pan([f32; 2]),
+    ZoomIn,
+    ZoomOut,
+    Actual,
+    Character,
+    Ignore,
+}
+pub fn diagram_key(input: &Input<'_>) -> DiagramKey {
+    match &input.logical_key {
+        Key::Named(NamedKey::Escape) => DiagramKey::Close,
+        Key::Named(NamedKey::Tab) => DiagramKey::Select {
+            backwards: input.modifiers.state.shift_key(),
+        },
+        Key::Named(NamedKey::Enter | NamedKey::Space) => DiagramKey::Submit,
+        Key::Named(NamedKey::ArrowLeft) => DiagramKey::Pan([-40., 0.]),
+        Key::Named(NamedKey::ArrowRight) => DiagramKey::Pan([40., 0.]),
+        Key::Named(NamedKey::ArrowUp) => DiagramKey::Pan([0., -40.]),
+        Key::Named(NamedKey::ArrowDown) => DiagramKey::Pan([0., 40.]),
+        Key::Character(key) => match key.as_str() {
+            "+" | "=" => DiagramKey::ZoomIn,
+            "-" => DiagramKey::ZoomOut,
+            "0" => DiagramKey::Actual,
+            _ => DiagramKey::Character,
+        },
+        _ => DiagramKey::Ignore,
+    }
+}
+
 /// Typed rich-face intents share this adapter's single key interpretation boundary.
 pub enum RichKey {
     Global,
@@ -737,6 +771,109 @@ pub(crate) fn assert_adapter() {
     assert!(caps.caps && !caps.num);
     let keypad = macos_locks(1 << 21);
     assert!(!keypad.caps && !keypad.num);
+}
+
+#[cfg(test)]
+#[test]
+fn fullscreen_mermaid_modal_key_classifier_preserves_neutral_intents() {
+    for (key, modifiers, expected) in [
+        (
+            Key::Named(NamedKey::Escape),
+            ModifiersState::empty(),
+            DiagramKey::Close,
+        ),
+        (
+            Key::Named(NamedKey::Tab),
+            ModifiersState::empty(),
+            DiagramKey::Select { backwards: false },
+        ),
+        (
+            Key::Named(NamedKey::Tab),
+            ModifiersState::SHIFT,
+            DiagramKey::Select { backwards: true },
+        ),
+        (
+            Key::Named(NamedKey::Enter),
+            ModifiersState::empty(),
+            DiagramKey::Submit,
+        ),
+        (
+            Key::Named(NamedKey::Space),
+            ModifiersState::empty(),
+            DiagramKey::Submit,
+        ),
+        (
+            Key::Named(NamedKey::ArrowLeft),
+            ModifiersState::empty(),
+            DiagramKey::Pan([-40., 0.]),
+        ),
+        (
+            Key::Named(NamedKey::ArrowRight),
+            ModifiersState::empty(),
+            DiagramKey::Pan([40., 0.]),
+        ),
+        (
+            Key::Named(NamedKey::ArrowUp),
+            ModifiersState::empty(),
+            DiagramKey::Pan([0., -40.]),
+        ),
+        (
+            Key::Named(NamedKey::ArrowDown),
+            ModifiersState::empty(),
+            DiagramKey::Pan([0., 40.]),
+        ),
+        (
+            Key::Character("+".into()),
+            ModifiersState::empty(),
+            DiagramKey::ZoomIn,
+        ),
+        (
+            Key::Character("=".into()),
+            ModifiersState::empty(),
+            DiagramKey::ZoomIn,
+        ),
+        (
+            Key::Character("-".into()),
+            ModifiersState::empty(),
+            DiagramKey::ZoomOut,
+        ),
+        (
+            Key::Character("0".into()),
+            ModifiersState::empty(),
+            DiagramKey::Actual,
+        ),
+        (
+            Key::Character("w".into()),
+            ModifiersState::SUPER,
+            DiagramKey::Character,
+        ),
+        (
+            Key::Character("q".into()),
+            ModifiersState::SUPER,
+            DiagramKey::Character,
+        ),
+        (
+            Key::Named(NamedKey::F1),
+            ModifiersState::empty(),
+            DiagramKey::Ignore,
+        ),
+    ] {
+        let input = Input {
+            logical_key: key.clone(),
+            unmodified_key: key,
+            physical_key: PhysicalKey::Code(KeyCode::KeyA),
+            text: None,
+            text_all_modifiers: None,
+            location: KeyLocation::Standard,
+            state: ElementState::Pressed,
+            repeat: false,
+            modifiers: Modifiers {
+                state: modifiers,
+                locks: Locks::default(),
+            },
+        };
+        assert_eq!(diagram_key(&input), expected);
+    }
 }
 
 #[cfg(test)]

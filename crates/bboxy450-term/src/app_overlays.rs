@@ -831,22 +831,18 @@ impl App {
         if matches!(route_key(input, 0, Some("")), RoutedKey::Quit | RoutedKey::HardQuit) { return false; }
         if !input.state.is_pressed() { return true; }
         use viewer::Action;
+        use keyboard::DiagramKey;
         let diagram = self.app_overlays.diagram.as_mut().expect("diagram key route");
-        let close = match &input.logical_key {
-            Key::Named(NamedKey::Escape) => true,
-            Key::Named(NamedKey::Tab) => { diagram.select(input.modifiers.state.shift_key()); false },
-            Key::Named(NamedKey::Enter | NamedKey::Space) => diagram.submit(),
-            Key::Named(NamedKey::ArrowLeft) => { diagram.pan([-40., 0.]); false },
-            Key::Named(NamedKey::ArrowRight) => { diagram.pan([40., 0.]); false },
-            Key::Named(NamedKey::ArrowUp) => { diagram.pan([0., -40.]); false },
-            Key::Named(NamedKey::ArrowDown) => { diagram.pan([0., 40.]); false },
-            Key::Character(key) => match key.as_str() {
-                "+" | "=" => diagram.act(Action::In),
-                "-" => diagram.act(Action::Out),
-                "0" => diagram.act(Action::Actual),
-                _ => matches!(route_key(input, 0, Some("")), RoutedKey::CloseFocusedSeat),
-            },
-            _ => false,
+        let close = match keyboard::diagram_key(input) {
+            DiagramKey::Close => true,
+            DiagramKey::Select { backwards } => { diagram.select(backwards); false },
+            DiagramKey::Submit => diagram.submit(),
+            DiagramKey::Pan(delta) => { diagram.pan(delta); false },
+            DiagramKey::ZoomIn => diagram.act(Action::In),
+            DiagramKey::ZoomOut => diagram.act(Action::Out),
+            DiagramKey::Actual => diagram.act(Action::Actual),
+            DiagramKey::Character => matches!(route_key(input, 0, Some("")), RoutedKey::CloseFocusedSeat),
+            DiagramKey::Ignore => false,
         };
         if close { self.close_app_overlay(); }
         else { self.app_overlays.layout = None; self.request_redraw(); }
