@@ -136,7 +136,12 @@ mod tests {
     use super::*;
     #[test]
     fn mcp_live_contract_models_reject_broken_controls() {
-        for family in [live_catalogue, delegation_pointer, absent_seat_close] {
+        for family in [
+            live_catalogue,
+            delegation_pointer,
+            absent_seat_close,
+            crate::mcp::oracle_hint_model::oracle_in_turn,
+        ] {
             assert!(family(false).check(10000).unwrap().violations.is_empty());
             assert!(!family(true).check(10000).unwrap().violations.is_empty());
             if std::env::var_os("BBOXY_UPDATE_MCP_MODELS").is_some() {

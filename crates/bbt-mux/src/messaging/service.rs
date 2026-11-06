@@ -884,6 +884,20 @@ impl Messaging {
         self.swarm(record.swarm)?.ledger.inbox_summary(seat, 128)
     }
 
+    pub(crate) fn surface_result(
+        &mut self,
+        seat: Ulid,
+        generation: u64,
+        call: &crate::mcp::Call,
+        value: serde_json::Value,
+        now: u64,
+    ) -> Result<serde_json::Value> {
+        let record = self.record(seat, generation)?;
+        self.swarm(record.swarm)?
+            .ledger
+            .surface_result(seat, call, value, now)
+    }
+
     pub(crate) fn destinations(
         &mut self,
         seat: Ulid,

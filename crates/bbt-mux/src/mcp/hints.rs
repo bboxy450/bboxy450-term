@@ -308,7 +308,44 @@ pub(crate) fn schema() -> Value {
 /// Idempotent: the server socket and a newer bridge can both apply this. Socket
 /// projection also reaches old, still-running bridges after a logic refresh.
 pub(crate) fn attach(call: &Call, result: Value) -> Value {
-    let hints = next(call, &result);
+    let mut hints = next(call, &result);
+    for hint in result["structuredContent"]["hints"]
+        .as_array()
+        .into_iter()
+        .flatten()
+    {
+        if hint["kind"] == "unread_messages" && !hints.contains(hint) {
+            hints.insert(0, hint.clone());
+        }
+    }
+    project(result, hints)
+}
+
+pub(crate) fn with_message_hint(call: &Call, result: Value, hint: Value) -> Value {
+    let mut hints = next(call, &result);
+    hints.retain(|h| h["kind"] != "unread_messages");
+    hints.insert(0, hint);
+    project(result, hints)
+}
+
+/// Refresh a host JSON text mirror after adding receipt-only metadata.
+pub(crate) fn remirror(mut result: Value) -> Value {
+    let data = result["structuredContent"].clone();
+    if !data["op_id"].is_null() {
+        for block in result["content"].as_array_mut().into_iter().flatten() {
+            if block["text"]
+                .as_str()
+                .and_then(|s| serde_json::from_str::<Value>(s).ok())
+                .is_some_and(|old| old["op_id"] == data["op_id"])
+            {
+                block["text"] = data.to_string().into();
+            }
+        }
+    }
+    result
+}
+
+fn project(result: Value, hints: Vec<Value>) -> Value {
     let mut projected = result.clone();
     if let Some(data) = projected["structuredContent"].as_object_mut() {
         data.insert("hints".into(), json!(hints));

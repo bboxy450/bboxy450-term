@@ -14,14 +14,16 @@ mod harness_status;
 mod knowledge_types_tests;
 #[path = "mcp/launch.rs"]
 mod launch_tests;
+#[path = "mcp/live_catalogue.rs"]
+mod live_catalogue_tests;
+#[path = "mcp/oracle_hints.rs"]
+mod oracle_hint_tests;
+#[path = "mcp/python_execution.rs"]
+mod python_execution_tests;
 #[path = "common/record_supervisor.rs"]
 mod record_supervisor;
 #[path = "mcp/workspaces.rs"]
 mod workspace_tests;
-#[path = "mcp/python_execution.rs"]
-mod python_execution_tests;
-#[path = "mcp/live_catalogue.rs"]
-mod live_catalogue_tests;
 use record_supervisor::RecordLink;
 use std::io::{Cursor, Read, Write};
 use std::os::unix::net::UnixStream;
@@ -6271,6 +6273,10 @@ fn seat_native_fixture() {
                                 }
                                 json!({"thread":{"id":thread,"status":{"type":"idle"}}})
                             }
+                            "thread/queue/add" => {
+                                tx.send(value.clone()).unwrap();
+                                json!({"queuedSubmission":{"id":"worker-queue","clientUserMessageId":value["params"]["clientUserMessageId"],"input":value["params"]["input"]}})
+                            }
                             "turn/steer" => {
                                 assert_eq!(value["params"]["expectedTurnId"], "turn-fixture");
                                 tx.send(value.clone()).unwrap();
@@ -6318,10 +6324,40 @@ fn seat_native_fixture() {
             },
         ))
         .unwrap();
+    // Real messaging dispatch, while the turn ID remains open: Oracle DMs
+    // steer; worker DMs queue. The server rejects any cancel/interrupt method.
+    for (sender, method, evidence) in [
+        (f.oracle.id, "turn/steer", "native-steered"),
+        (f.peer.id, "thread/queue/add", "native-queued"),
+    ] {
+        let message = Ulid::new();
+        data(f.call(sender,message,"message_send",json!({"destination":format!("seats/{}/inbox",codex.id),"text":"in-turn ruling fixture"})));
+        let frame = f.runtime.block_on(async {
+            tokio::time::timeout(Duration::from_secs(10), frames.recv())
+                .await
+                .unwrap()
+                .unwrap()
+        });
+        assert_eq!(frame["method"], method);
+        let until = Instant::now() + Duration::from_secs(10);
+        loop {
+            let receipts = data(f.call(
+                sender,
+                Ulid::new(),
+                "message_receipts",
+                json!({"message":message}),
+            ));
+            if receipts["page"]["items"][0]["evidence"] == evidence {
+                break;
+            }
+            assert!(Instant::now() < until, "{receipts}");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
     let mut args = f.target(codex.id);
     args["text"] = json!("steer fixture");
     let first = data(f.mutate(f.oracle.id, Ulid::new(), "seat_interrupt", args.clone()));
-    assert_eq!(first["evidence"], "native-queued");
+    assert_eq!(first["evidence"], "native-steered");
     assert_eq!(first["native_id"], "turn-fixture");
     f.runtime.block_on(async {
         tokio::time::timeout(Duration::from_secs(120), frames.recv())
@@ -8135,7 +8171,17 @@ fn mcp_knowledge266_artifacts_keep_claims_observations_lineage_and_creator_corre
             ),
         )
         .unwrap();
-        let record = data(knowledge_fetch(&f, f.own.id, &path));
+        // This row was seeded directly on disk, outside knowledge_write's
+        // index update. Wait for the native watcher before testing protection.
+        let deadline = Instant::now() + Duration::from_secs(30);
+        let record = loop {
+            let response = knowledge_fetch(&f, f.own.id, &path);
+            if response["structuredContent"]["error"]["code"] != "not_found" {
+                break data(response);
+            }
+            assert!(Instant::now() < deadline, "seeded artifact did not reach the index: {response}");
+            std::thread::sleep(Duration::from_millis(10));
+        };
         let before = std::fs::read(&file).unwrap();
         for actor in [f.own.id, f.oracle.id] {
             for (field, value) in [
@@ -8606,7 +8652,23 @@ fn unknown_thread_mcp_refusal_keeps_the_visible_hint_and_replays_without_a_send(
         serde_json::from_str(refused["content"][0]["text"].as_str().unwrap()).unwrap();
     assert_eq!(text, *result);
     let replay = f.mutate(f.own.id, op, "message_send", args);
-    assert_eq!(replay, refused);
+    // Advisory inbox hints are fresh on each response; the canonical refusal
+    // and all static recovery guidance must remain identical on operation replay.
+    let canonical = |mut value: Value| {
+        for path in ["structuredContent", "_meta"] {
+            let key = if path == "_meta" {
+                "bboxy450/hints"
+            } else {
+                "hints"
+            };
+            if let Some(hints) = value[path][key].as_array_mut() {
+                hints.retain(|hint| hint["kind"] != "unread_messages");
+            }
+        }
+        value["content"][0]["text"] = value["structuredContent"].to_string().into();
+        value
+    };
+    assert_eq!(canonical(replay), canonical(refused));
 }
 
 // keeps: MA-10 real MCP tool signs resolved IDs; only named channel members wake; replay never resolves again.

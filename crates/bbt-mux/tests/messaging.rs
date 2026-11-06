@@ -165,7 +165,12 @@ fn mentions_are_signed_and_empty_mentions_keep_all_legacy_signing_bytes() {
 #[test]
 fn mention_ids_are_bounded_non_nil_unique_and_sorted_before_signing() {
     let mut request = SendRequest::text("channels/review/*", "named message");
-    for invalid in [vec![Ulid::nil()], vec![Ulid::from(2), Ulid::from(1)], vec![Ulid::from(1); 2], (1u128..=33).map(Ulid::from).collect()] {
+    for invalid in [
+        vec![Ulid::nil()],
+        vec![Ulid::from(2), Ulid::from(1)],
+        vec![Ulid::from(1); 2],
+        (1u128..=33).map(Ulid::from).collect(),
+    ] {
         request.mentions = invalid;
         assert!(request.validate().is_err());
     }
@@ -546,7 +551,13 @@ impl Fixture {
 fn persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart() {
     let mut f = Fixture::new();
     let first = f.send(f.a.id, "parent", 1000);
-    let r = f.messaging.receipts(f.a.id, first.envelope().expect("signed fixture envelope").id).unwrap();
+    let r = f
+        .messaging
+        .receipts(
+            f.a.id,
+            first.envelope().expect("signed fixture envelope").id,
+        )
+        .unwrap();
     assert_eq!(r[0].evidence, Evidence::RecipientStored);
     assert!(r[0].attempt.is_none());
     // One wake carries everything pending (decision #23); the reply below is
@@ -564,7 +575,12 @@ fn persist_before_dispatch_thread_retry_ack_race_and_unknown_survive_restart() {
     reply.text.push_str(" changed");
     assert!(f.messaging.send(f.a.id, 1, reply, 1003).is_err());
     f.messaging
-        .acknowledge(f.b.id, first.envelope().expect("signed fixture envelope").id, None, 1011)
+        .acknowledge(
+            f.b.id,
+            first.envelope().expect("signed fixture envelope").id,
+            None,
+            1011,
+        )
         .unwrap();
     f.finish(&work, Evidence::NativeWritten, 1012);
     assert_eq!(
@@ -779,7 +795,13 @@ fn mute_holds_both_directions_reopens_and_releases_only_under_current_grants() {
     f.messaging
         .set_mute(Actor::Operator, f.b.id, false, State::Active, 3000)
         .unwrap();
-    let held = f.messaging.receipts(f.a.id, blocked.envelope().expect("signed fixture envelope").id).unwrap();
+    let held = f
+        .messaging
+        .receipts(
+            f.a.id,
+            blocked.envelope().expect("signed fixture envelope").id,
+        )
+        .unwrap();
     assert!(held[0].held.as_ref().unwrap().contains("write"));
     assert!(
         f.messaging.receipts(f.a.id, inbound.envelope().expect("signed fixture envelope").id).unwrap()[0]
@@ -824,7 +846,12 @@ fn priority_fifo_four_to_one_and_burst_overflow_are_receiver_local() {
     let worker = f.send(f.a.id, "old worker", 1000);
     let mut ids = Vec::new();
     for _ in 0..32 {
-        ids.push(f.send(f.o.id, "oracle", 1000).envelope().expect("signed fixture envelope").id);
+        ids.push(
+            f.send(f.o.id, "oracle", 1000)
+                .envelope()
+                .expect("signed fixture envelope")
+                .id,
+        );
     }
     // Per-recipient wakes (decision #23), still under the fair queue: four
     // Oracle messages, then the waiting worker, then the rest of the Oracle
@@ -851,7 +878,9 @@ fn priority_fifo_four_to_one_and_burst_overflow_are_receiver_local() {
 fn priority_burst_overflow_delivers_every_message_once_in_each_priority_fifo() {
     let mut f = Fixture::new();
     let mut expected = BTreeMap::<_, Vec<_>>::new();
-    for i in 0..96 {
+    // 96 total messages exceed credit and batch bounds while fitting the
+    // independent eight-native-wake circuit (tested separately).
+    for i in 0..48 {
         // Interleave the classes and exceed both the 30-message Oracle credit
         // and the bounded native batch. No clock advance replenishes credit.
         for sender in [f.a.id, f.o.id] {
@@ -949,7 +978,14 @@ fn oracle_sink_filter_and_rate_batching_do_not_reorder_or_repeat_effects() {
     for t in [1000, 1001, 1002] {
         let mut request = SendRequest::text("#updates/*", "chunk");
         request.kind = MessageKind::Chunk;
-        ids.push(f.messaging.send(f.a.id, 1, request, t).unwrap().envelope().expect("signed fixture envelope").id);
+        ids.push(
+            f.messaging
+                .send(f.a.id, 1, request, t)
+                .unwrap()
+                .envelope()
+                .expect("signed fixture envelope")
+                .id,
+        );
     }
     f.messaging
         .send(

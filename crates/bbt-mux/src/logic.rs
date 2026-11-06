@@ -227,6 +227,13 @@ enum Command {
         Option<serde_json::Value>,
         oneshot::Sender<Result<serde_json::Value>>,
     ),
+    SurfaceHints(
+        Ulid,
+        u64,
+        crate::mcp::Call,
+        serde_json::Value,
+        oneshot::Sender<serde_json::Value>,
+    ),
     TaskImportAuthority(
         Box<task_import::Authority>,
         std::sync::mpsc::SyncSender<Result<()>>,
@@ -1187,6 +1194,27 @@ impl LogicClient {
             tokio::time::sleep(retry).await;
         }
     }
+    pub(crate) async fn surface_hints(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        value: serde_json::Value,
+    ) -> serde_json::Value {
+        let (tx, rx) = oneshot::channel();
+        let fallback = value.clone();
+        // Surfacing is advisory: a stopped owner never hides the actual outcome.
+        if self
+            .tx
+            .send(Command::SurfaceHints(seat, generation, call, value, tx))
+            .await
+            .is_err()
+        {
+            return fallback;
+        }
+        rx.await.unwrap_or(fallback)
+    }
+
     /// Only the operator's admitted GUI/ctl endpoint supplies Settings snapshots.
     /// The acknowledgement follows durable cache storage and Worker adoption.
     pub async fn configure_roles(
@@ -9678,7 +9706,20 @@ impl Worker {
                     let harness = view.adapter.record.kind.clone();
                     let endpoint = view.delivery_endpoint.clone();
                     let delivery_failure = view.delivery_failure.clone();
-                    let priority = if work.messages.iter().all(|m| m.view().priority > 0) {
+                    // Priority::Now uses turn/steer, never interrupt/cancel. Only
+                    // a batch containing authenticated Oracle input targeting a
+                    // known turn takes it, independent of scheduler credit.
+                    let steer = work
+                        .messages
+                        .iter()
+                        .any(|m| m.view().role.class == crate::registry::Class::Oracle)
+                        && matches!(
+                            &endpoint,
+                            crate::adapters::Endpoint::Codex { turn: Some(_), .. }
+                        );
+                    let priority = if steer {
+                        Priority::Now
+                    } else if work.messages.iter().all(|m| m.view().priority > 0) {
                         Priority::Later
                     } else {
                         Priority::Next
@@ -9686,7 +9727,7 @@ impl Worker {
                     self.deliveries.spawn_on(
                         async move {
                             let mut outcome = crate::adapters::native::wake(
-                                &binding, &endpoint, work.id, &text, priority, false,
+                                &binding, &endpoint, work.id, &text, priority, steer,
                             )
                             .await;
                             crate::messaging::wake_cost::note(
@@ -10986,13 +11027,29 @@ impl Worker {
                         });
                         let _ = reply.send(result);
                     }
+                    Command::SurfaceHints(id, generation, call, value, reply) => {
+                        let projected = self
+                            .control_actor(id, generation)
+                            .ok()
+                            .and_then(|_| {
+                                self.messaging
+                                    .surface_result(id, generation, &call, value.clone(), now_ms())
+                                    .ok()
+                            })
+                            .unwrap_or(value);
+                        let _ = reply.send(projected);
+                    }
                     Command::ControlCall(id, generation, call, attribution, expected, reply) => {
                         // A preflight is insufficient: the scoped guard also
                         // checks the actual provider port captured below.
                         if let Some(expected) = &expected
                             && let Err(reason) = self.validate_python_context(id, generation, expected)
                         {
-                            let _ = reply.send(Ok(crate::mcp::error(call.op_id, "execution_context_changed", &reason.to_string())));
+                            let _ = reply.send(Ok(crate::mcp::error(
+                                call.op_id,
+                                "execution_context_changed",
+                                &reason.to_string(),
+                            )));
                             continue;
                         }
                         let _python_scope = python_execution::scope(expected);

@@ -28,6 +28,7 @@ mod circuit;
 #[cfg(test)]
 mod power_tests;
 mod suppression;
+mod surfacing;
 
 // Origin: bboxy450-term; policy https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 // Measure the complete read envelope before advancing a private SQLite cursor.
@@ -234,6 +235,7 @@ impl Ledger {
             let db = ledger.store.connection()?;
             suppression::install(&db)?;
             circuit::install(&db)?;
+            surfacing::install(&db)?;
         }
         ledger.recover()?;
         ledger.classify_legacy()?;
@@ -1088,6 +1090,7 @@ impl Ledger {
             outcome.evidence,
             Evidence::RecipientStored
                 | Evidence::NativeQueued
+                | Evidence::NativeSteered
                 | Evidence::NativeWritten
                 | Evidence::NativeUnknown
         ) {
@@ -1180,6 +1183,7 @@ impl Ledger {
         if receipt.evidence != Evidence::ApplicationAcknowledged {
             receipt.evidence = Evidence::ApplicationAcknowledged;
             receipt.note = "explicit recipient application acknowledgement".into();
+            tx.execute("UPDATE msg_surface SET read_ms=?3 WHERE message=?1 AND recipient=?2 AND read_ms IS NULL",params![sqlint(receipt.message_sequence)?,actor.to_string(),sqlint(now)?])?;
             save_receipt(&tx, &receipt)?;
             receipt_event(&tx, &receipt, now)?;
         }
@@ -1779,6 +1783,18 @@ fn insert_deliveries(
                 serde_json::to_vec(&receipt)?
             ],
         )?;
+        // Every Oracle message is eligible; worker metadata keeps its inbox
+        // policy rather than consuming the worker conversation hint budget.
+        if route.agent.is_none()
+            && receipt.recipient != receipt.sender
+            && (envelope.priority_class == Class::Oracle
+                || envelope.kind.class() == MessageClass::Conversation)
+        {
+            tx.execute(
+                "INSERT OR IGNORE INTO msg_surface(message,recipient) VALUES(?1,?2)",
+                params![sqlint(sequence)?, route.recipient.to_string()],
+            )?;
+        }
         receipt_event(tx, &receipt, now)?;
     }
     Ok(())

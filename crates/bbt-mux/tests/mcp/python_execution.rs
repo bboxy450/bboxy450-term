@@ -210,6 +210,23 @@ impl HarnessFixture {
             }
         }
     }
+    fn bridge_call(&self, tool: &str, args: Value) -> Value {
+        let home=tempfile::tempdir().unwrap();
+        let input=home.path().join("mcp-input.jsonl");
+        let requests=[
+            json!({"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"python-hint-fixture","version":"1"}}}),
+            json!({"jsonrpc":"2.0","id":2,"method":"tools/call","params":{"name":tool,"arguments":args}}),
+        ];
+        std::fs::write(&input,requests.into_iter().map(|r|r.to_string()+"\n").collect::<String>()).unwrap();
+        let mut command=std::process::Command::new(std::env::var_os("BBOXY_PYTHON_EXECUTE_FIXTURE").unwrap());
+        command.arg("bridge").arg(self.run.join("input.json"))
+            .env_clear().env("HOME",home.path()).env("BBOXY_PYTHON_SOCKET",&self.socket)
+            .stdin(std::fs::File::open(input).unwrap());
+        let (status,stdout,stderr)=bounded_client(command,Duration::from_secs(15),&home);
+        assert!(status.success(),"private Python bridge failed: {}",String::from_utf8_lossy(&stderr));
+        String::from_utf8(stdout).unwrap().lines().map(|line|serde_json::from_str::<Value>(line).unwrap())
+            .find(|reply|reply["id"]==2).expect("Python bridge response")["result"].clone()
+    }
     fn execute(&self, source: &str, inputs: Value) -> Value {
         let start = self.call(
             "python_execute",
@@ -248,7 +265,22 @@ fn python_managed_worktree_executes_python_and_mcp_against_canonical_kb() {
     );
     assert_ne!(delegated["isError"], true, "{delegated}");
     let harness = HarnessFixture::start(&f, worker, &source);
-    let orientation = harness.call("python_execute_orient", json!({}));
+    let ruling = Ulid::new();
+    data(f.call(f.oracle.id,ruling,"message_send",json!({"destination":format!("seats/{worker}/inbox"),"text":"Oracle ruling during native Python execution"})));
+    let orientation = harness.bridge_call("python_execute_orient", json!({}));
+    assert!(
+        orientation["structuredContent"]["hints"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|hint| hint["kind"] == "unread_messages")
+            .any(|hint| hint["messages"]
+                .as_array()
+                .unwrap()
+                .iter()
+                .any(|m| m["message_id"] == ruling.to_string())),
+        "native Python tool lost the Oracle ruling: {orientation}"
+    );
     assert_eq!(
         orientation["structuredContent"]["ready"], true,
         "{orientation}"

@@ -78,7 +78,10 @@ pub(crate) fn record(
 ) -> io::Result<Option<Value>> {
     if !matches!(
         outcome.evidence,
-        Evidence::NativeQueued | Evidence::NativeWritten | Evidence::NativeUnknown
+        Evidence::NativeQueued
+            | Evidence::NativeSteered
+            | Evidence::NativeWritten
+            | Evidence::NativeUnknown
     ) {
         return Ok(None); // Definitively pre-write failures did not deliver a wake.
     }

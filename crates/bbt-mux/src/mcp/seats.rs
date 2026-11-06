@@ -585,10 +585,12 @@ pub(crate) fn failure(op: Ulid, code: &str, reason: &str, ids: Value) -> Value {
 pub(crate) fn input_result(call: &Call, id: Ulid, outcome: WakeOutcome) -> Value {
     let cause = outcome.cause;
     let mut result = match outcome.evidence {
-        Evidence::NativeWritten | Evidence::NativeQueued => super::success(
-            call.op_id,
-            json!({"status":if outcome.evidence==Evidence::NativeWritten{"applied"}else{"accepted"},"input_id":id,"evidence":outcome.evidence,"native_id":outcome.native_id,"note":outcome.note}),
-        ),
+        Evidence::NativeWritten | Evidence::NativeQueued | Evidence::NativeSteered => {
+            super::success(
+                call.op_id,
+                json!({"status":if outcome.evidence==Evidence::NativeWritten{"applied"}else{"accepted"},"input_id":id,"evidence":outcome.evidence,"native_id":outcome.native_id,"note":outcome.note}),
+            )
+        }
         Evidence::NativeUnknown => {
             failure(call.op_id, "unknown", &outcome.note, json!({"input_id":id}))
         }

@@ -81,10 +81,12 @@ pub fn native_evidence(evidence: super::Evidence) -> Result<kit::Evidence> {
     Ok(match evidence {
         super::Evidence::SenderStored => kit::Evidence::SenderStored,
         super::Evidence::RecipientStored => kit::Evidence::RecipientStored,
-        super::Evidence::NativeQueued => kit::Evidence::NativeQueued,
+        super::Evidence::NativeQueued | super::Evidence::NativeSteered => {
+            kit::Evidence::NativeQueued
+        }
         super::Evidence::NativeWritten => kit::Evidence::NativeWritten,
         super::Evidence::NativeUnknown => kit::Evidence::NativeUnknown,
-        super::Evidence::ApplicationAcknowledged => {
+        super::Evidence::ApplicationAcknowledged | super::Evidence::Hinted => {
             return Err(invalid("adapter cannot claim application acknowledgement"));
         }
     })

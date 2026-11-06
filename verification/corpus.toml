@@ -1441,3 +1441,13 @@ frontend = "project"
 name = "BrokenAbsentSeatClose"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "OracleInTurn"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenOracleInTurn"
+expected = "safety"
+frontend = "project"

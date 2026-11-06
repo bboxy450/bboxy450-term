@@ -433,7 +433,17 @@ impl Fixture {
             args,
         };
         let journal = self.worker.control_journal(actor.seat_id).unwrap();
-        self.worker.knowledge_call(actor, &call, &journal).unwrap()
+        let deadline = Instant::now() + Duration::from_secs(10);
+        loop {
+            self.worker.workspaces.poll(&self.worker.registry);
+            let value = self.worker.knowledge_call(actor, &call, &journal).unwrap();
+            if value["structuredContent"]["error"]["code"] != "workspace_pending" {
+                return value;
+            }
+            assert!(Instant::now() < deadline, "workspace never completed: {value}");
+            self.ready(actor);
+            std::thread::sleep(Duration::from_millis(2));
+        }
     }
     // This routing fixture has no live process owner. Exercise the same captured
     // source IO and root journal; harmony_host covers real owner admission/jobs.

@@ -86,14 +86,7 @@ impl Bridge {
         Ok(value["tools"].as_array().cloned().unwrap_or_default())
     }
     fn python_context(&self) -> Result<Value, TransportFailure> {
-        self.forward(Action::Call {
-            call: Call {
-                op_id: Ulid::new(),
-                tool: "python_execution_context".into(),
-                args: json!({}),
-            },
-            attribution: self.attribution.clone(),
-        })
+        self.forward(Action::PythonContext)
     }
     pub(super) fn python_call(
         &self,

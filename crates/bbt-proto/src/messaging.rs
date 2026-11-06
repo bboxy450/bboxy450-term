@@ -415,7 +415,7 @@ pub enum State {
     Errored,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum Evidence {
     SenderStored,
@@ -424,6 +424,26 @@ pub enum Evidence {
     NativeWritten,
     NativeUnknown,
     ApplicationAcknowledged,
+    /// Admitted to the currently running native turn; consumption is unverified.
+    NativeSteered,
+    /// Returned as a bounded MCP message hint; consumption is unverified.
+    Hinted,
+}
+// Unknown future receipt evidence remains readable without claiming admission.
+impl<'de> Deserialize<'de> for Evidence {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let value = String::deserialize(deserializer)?;
+        Ok(match value.as_str() {
+            "sender-stored" => Self::SenderStored,
+            "recipient-stored" => Self::RecipientStored,
+            "native-queued" => Self::NativeQueued,
+            "native-written" => Self::NativeWritten,
+            "application-acknowledged" => Self::ApplicationAcknowledged,
+            "native-steered" => Self::NativeSteered,
+            "hinted" => Self::Hinted,
+            _ => Self::NativeUnknown,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

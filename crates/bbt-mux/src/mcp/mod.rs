@@ -15,6 +15,8 @@ pub(crate) mod knowledge;
 #[cfg(feature = "model")]
 pub mod live_models;
 pub(crate) mod messaging;
+#[cfg(feature = "model")]
+pub mod oracle_hint_model;
 pub(crate) mod plugin_tools;
 pub(crate) mod provenance;
 pub(crate) mod read_pages;

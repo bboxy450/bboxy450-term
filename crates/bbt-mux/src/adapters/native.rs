@@ -16,7 +16,7 @@ pub async fn wake(
     priority: Priority,
     allow_interrupt: bool,
 ) -> WakeOutcome {
-    super::mapping::outcome(
+    let mut outcome = super::mapping::outcome(
         bboxy450_harness_wake_up::native::wake(
             binding,
             endpoint,
@@ -26,5 +26,14 @@ pub async fn wake(
             allow_interrupt,
         )
         .await,
-    )
+    );
+    // Codex turn/steer admits input without cancelling the running turn.
+    if priority == Priority::Now
+        && matches!(endpoint, Endpoint::Codex { .. })
+        && outcome.evidence == super::Evidence::NativeQueued
+    {
+        outcome.evidence = super::Evidence::NativeSteered;
+        outcome.note = "native turn steering admitted; model consumption unverified".into();
+    }
+    outcome
 }

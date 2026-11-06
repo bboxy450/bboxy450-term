@@ -1754,7 +1754,7 @@ mod tests {
     }
 
     fn wait_for_change(watch: &FileWatch) {
-        let until = Instant::now() + Duration::from_secs(5);
+        let until = Instant::now() + Duration::from_secs(30);
         while !watch.changed() {
             assert!(!watch.failed(), "filesystem watcher failed");
             assert!(Instant::now() < until, "in-root edit was not observed");

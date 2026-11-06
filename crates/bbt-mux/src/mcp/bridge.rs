@@ -439,7 +439,15 @@ impl Bridge {
                     ));
                 }
                 if python::handles(tool) && self.python_socket.is_some() {
-                    return Some(match self.python_call(&call, expected.as_ref()) {
+                    let result = self.python_call(&call, expected.as_ref()).map(|result| {
+                        // A failed surfacing query never hides an admitted runtime result.
+                        self.forward(Action::SurfaceHints {
+                            call: call.clone(),
+                            result: result.clone(),
+                        })
+                        .unwrap_or(result)
+                    });
+                    return Some(match result {
                         Ok(result) => {
                             json!({"jsonrpc":"2.0","id":id,"result":super::hints::attach(&call,result)})
                         }
@@ -452,7 +460,13 @@ impl Bridge {
                             failure["structuredContent"]["transport"] = error.diagnostic();
                             failure["content"][0]["text"] =
                                 json!(failure["structuredContent"].to_string());
-                            json!({"jsonrpc":"2.0","id":id,"result":failure})
+                            let failure = self
+                                .forward(Action::SurfaceHints {
+                                    call: call.clone(),
+                                    result: failure.clone(),
+                                })
+                                .unwrap_or(failure);
+                            json!({"jsonrpc":"2.0","id":id,"result":super::hints::attach(&call,failure)})
                         }
                     });
                 }

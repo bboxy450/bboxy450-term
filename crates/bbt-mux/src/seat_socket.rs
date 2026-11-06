@@ -55,6 +55,14 @@ pub enum Action {
         attribution: std::collections::BTreeMap<String, String>,
         expected: serde_json::Value,
     },
+    /// Bridge-only read: native admission for the Python proxy is not itself
+    /// a model-visible tool result, so it must not consume hint evidence.
+    PythonContext,
+    /// Project the final Python result with the same authenticated recipient.
+    SurfaceHints {
+        call: crate::mcp::Call,
+        result: serde_json::Value,
+    },
     Messaging {
         request: crate::messaging::api::Request,
     },
@@ -1863,11 +1871,22 @@ async fn session_inner(
                     Action::Call{call,attribution}=>{
                         // Project after journaling, off the logic owner. Old bridge
                         // processes must receive structured guidance after refresh too.
-                        client.control_call_attributed_within(seat,generation,call.clone(),attribution,crate::logic::SEAT_PENDING_WAIT)
-                            .await.map(|value| crate::mcp::hints::attach(&call,value))
+                        let value = client.control_call_attributed_within(seat,generation,call.clone(),attribution,crate::logic::SEAT_PENDING_WAIT).await?;
+                        Ok(crate::mcp::hints::attach(&call,client.surface_hints(seat,generation,call.clone(),value).await))
                     },
-                    Action::GuardedCall{call,attribution,expected}=>client.control_call_guarded_within(seat,generation,call.clone(),attribution,Some(expected),crate::logic::SEAT_PENDING_WAIT)
-                        .await.map(|value|crate::mcp::hints::attach(&call,value)),
+                    Action::GuardedCall{call,attribution,expected}=> {
+                        let value = client.control_call_guarded_within(seat,generation,call.clone(),attribution,Some(expected),crate::logic::SEAT_PENDING_WAIT).await?;
+                        Ok(crate::mcp::hints::attach(&call,client.surface_hints(seat,generation,call.clone(),value).await))
+                    },
+                    Action::PythonContext=>client.control_call(seat,generation,crate::mcp::Call{op_id:Ulid::new(),tool:"python_execution_context".into(),args:serde_json::json!({})}).await,
+                    Action::SurfaceHints{call,result}=> {
+                        call.validate()?;
+                        // Only the sidecar proxy returns caller-supplied result
+                        // bytes. Never treat those as native read/receipt proof.
+                        if !matches!(call.tool.as_str(),"python_execute"|"python_execute_orient"|"python_execution_get"|"python_execution_cancel") {
+                            Err(invalid("surface projection requires a Python runtime tool"))
+                        } else { Ok(client.surface_hints(seat,generation,call,result).await) }
+                    },
                     Action::Messaging{request}=>client.messaging(seat,generation,request).await.and_then(|v|Ok(serde_json::to_value(v)?)),
                     Action::Hook{event}=>Ok(serde_json::json!({"kind":"HookObserved","status":client.hook(seat,generation,event).await?})),
                     Action::HookDecide{event,wait_ms}=>hook_decide(&client,seat,generation,event,wait_ms).await,
