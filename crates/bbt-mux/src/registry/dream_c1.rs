@@ -196,8 +196,7 @@ impl Journal {
     pub fn open(runtime: &Path, seat: &w::Ulid) -> Result<Self, Code> {
         Self::open_mode(runtime, seat, true, false)
     }
-    /// Job checkpoints use the schema already published by admission. They never
-    /// repeat schema creation or change the persistent journal mode in a unit.
+    /// Test admission to a retained catalogue never creates a missing schema.
     #[cfg(test)]
     #[track_caller]
     pub fn open_existing(runtime: &Path, seat: &w::Ulid) -> Result<Self, Code> {
@@ -249,6 +248,10 @@ impl Journal {
             match version {
                 1 => {
                     if !read_only {
+                        // Decision66026: transition only this exact private
+                        // catalogue, outside a transaction and while busy0.
+                        // SQLite retains/settles existing WAL rows itself.
+                        journal.initialization_statement("PRAGMA journal_mode=DELETE", 0)?;
                         journal.configure_busy()?;
                     }
                 }
@@ -321,7 +324,7 @@ impl Journal {
                         .map_err(Self::initialization_error)?
                         .as_str()
                         .map_err(|_| Code::StorageUnavailable)?
-                        != "wal"
+                        != "delete"
                     {
                         return Err(Code::StorageUnavailable);
                     }
@@ -371,7 +374,7 @@ impl Journal {
         }
         Ok(())
     }
-    /// WAL conversion is outside the transaction. Schema and its ready marker
+    /// Rollback-journal selection is outside the transaction. Schema and its ready marker
     /// become durable atomically; CREATE no longer hides an implicit commit.
     /// The bounded IO owner uses busy0, never a writer wait on a UI/shared owner.
     fn initialize_schema(&self, inject_failure_after: Option<usize>) -> Result<(), Code> {
@@ -382,7 +385,7 @@ impl Journal {
                 .map_err(Self::initialization_error)
         })?;
         let initialized = (|| {
-            self.initialization_statement("PRAGMA journal_mode=WAL", 0)?;
+            self.initialization_statement("PRAGMA journal_mode=DELETE", 0)?;
             self.initialization_statement("BEGIN IMMEDIATE", 7)?;
             // This second cookie read is an atomic race check after acquiring
             // the writer transaction, not repeated preparation/warmup work.
@@ -1358,24 +1361,33 @@ impl Authority {
         Code,
     > {
         let cpu = bbt_rt::fault::thread_cpu_time().map_err(|_| Code::ResourceLimit)?;
-        let prepared = (|| -> Result<(Arc<engine::AuthorityGuard>, Arc<crate::identity::PublicFenceSession>), Code> {
-            let session = Arc::new(self
-                .fence
-                .prepare_session(|db| {
-                    drop(db.prepare_cached(AUTHORITY_MATCH_SQL)?);
-                    Ok(())
-                })
-                .map_err(|_| Code::StaleContext)?);
+        // Decision66026: each real preparation phase finishes its own strict
+        // unit and pays after-end debt before the next file/config/SQL phase.
+        let retirement = engine::JournalQuantum::preparation()?;
+        let prepared = retirement.public_prelude(|checkpoint| {
+            let session = Arc::new(
+                self.fence
+                    .prepare_session_cooperative(
+                        |db| {
+                            drop(db.prepare_cached(AUTHORITY_MATCH_SQL)?);
+                            Ok(())
+                        },
+                        checkpoint,
+                    )
+                    .map_err(|_| Code::StaleContext)?,
+            );
             let shared = session.clone();
             let authority = self.clone();
             let context = context.clone();
             let fence = fence.clone();
-            Ok((Arc::new(move || {
-                authority.matches_with_session(&context, &fence, Some(&shared))
-            }), session))
-        })();
-        let retirement = engine::JournalQuantum::default();
+            Ok((
+                Arc::new(move || authority.matches_with_session(&context, &fence, Some(&shared)))
+                    as Arc<engine::AuthorityGuard>,
+                session,
+            ))
+        });
         let mut prepared = retirement.retain(prepared);
+        let paid = retirement.pay();
         let used = bbt_rt::fault::thread_cpu_time()
             .map_err(|_| Code::ResourceLimit)
             .and_then(|after| after.checked_sub(cpu).ok_or(Code::ResourceLimit));
@@ -1385,8 +1397,15 @@ impl Authority {
         if let Some(observed) = setup_observed {
             observed.fetch_max(setup_cpu_ns, Ordering::Release);
         }
-        if used.is_err() || used.is_ok_and(|used| used > std::time::Duration::from_millis(1)) {
-            eprintln!("dream_c1_authority_setup_refused cpu_ns={setup_cpu_ns} limit_ns=1000000");
+        let setup_max_unit_cpu_ns = retirement.max_unit_cpu_ns();
+        if used.is_err()
+            || setup_cpu_ns > w::MAX_SAFE
+            || paid.is_err()
+            || retirement.check().is_err()
+        {
+            eprintln!(
+                "dream_c1_authority_setup_refused cumulative_cpu_ns={setup_cpu_ns} max_unit_cpu_ns={setup_max_unit_cpu_ns} limit_ns=1000000"
+            );
             if let Ok((_, session)) = prepared.as_ref() {
                 // Clock refusal retains and paces the actual connection before
                 // the callback/session shells can leave this setup owner.
@@ -1399,6 +1418,7 @@ impl Authority {
             engine::PreparedGuard {
                 callback,
                 setup_cpu_ns,
+                setup_max_unit_cpu_ns,
                 retire_session: Some(session.clone()),
             },
             session,
@@ -2603,8 +2623,11 @@ mod registry_tests {
                     .map_err(Journal::initialization_error)
             })
             .unwrap();
-        assert_eq!(mode, "wal");
-        assert_eq!(sync, 2, "recovery must preserve FULL WAL durability");
+        assert_eq!(mode, "delete");
+        assert_eq!(
+            sync, 2,
+            "recovery must preserve FULL rollback-journal durability"
+        );
         recovered.finish().unwrap();
         let durable = Journal::open_readonly_existing(&fixture.runtime, &seat).unwrap();
         assert_eq!(durable.schema_version().unwrap(), 1);
@@ -2617,7 +2640,7 @@ mod registry_tests {
         let seat = id(996);
         let writer = uninitialized_journal(&fixture, &seat);
         writer
-            .initialization_statement("PRAGMA journal_mode=WAL", 0)
+            .initialization_statement("PRAGMA journal_mode=DELETE", 0)
             .unwrap();
         let contender = uninitialized_journal(&fixture, &seat);
         writer
@@ -2650,6 +2673,238 @@ mod registry_tests {
     }
 
     #[test]
+    fn dream_c1_delete_catalogue_cold_init_commit_close_preserves_original_operation() {
+        let fixture = Fixture::new();
+        let record = fixture.record(440);
+        let cpu = bbt_rt::fault::thread_cpu_time().unwrap();
+        let mut journal = fixture.journal();
+        let quantum = journal.quantum.as_ref().unwrap().clone();
+        journal
+            .register("cold-original", &key(&record), &record)
+            .unwrap();
+        assert_eq!(cursor(&journal, &record), record.sources[0].cursor);
+        journal.finish().unwrap();
+        let cumulative = bbt_rt::fault::thread_cpu_time()
+            .unwrap()
+            .checked_sub(cpu)
+            .unwrap();
+        quantum.check().unwrap();
+        assert!(quantum.max_unit_cpu_ns() <= 1_000_000);
+        assert!(quantum.max_cleanup_unit_cpu_ns() <= 1_000_000);
+        eprintln!(
+            "dream_c1_delete_cold cumulative_cpu_ns={} max_unit_cpu_ns={} max_cleanup_unit_cpu_ns={} effects=durable_original_op_run_source_cursor",
+            cumulative.as_nanos(),
+            quantum.max_unit_cpu_ns(),
+            quantum.max_cleanup_unit_cpu_ns()
+        );
+        let journal = fixture.journal();
+        let old = journal
+            .operation("cold-original", &record.op_id, &record.request)
+            .unwrap()
+            .unwrap();
+        assert_eq!(old.view.run_id, record.view.run_id);
+        assert_eq!(old.nonce, record.nonce);
+        for table in ["sources", "runs", "ops", "close_cursor"] {
+            assert_eq!(count(&journal, table), 1);
+        }
+        journal.finish().unwrap();
+    }
+
+    fn catalogue_rows(db: &Connection) -> Vec<Vec<Vec<rusqlite::types::Value>>> {
+        ["source_errors", "sources", "runs", "ops", "close_cursor"]
+            .into_iter()
+            .map(|table| {
+                let mut statement = db
+                    .prepare(&format!("SELECT * FROM {table} ORDER BY 1,2"))
+                    .unwrap();
+                let width = statement.column_count();
+                statement
+                    .query_map([], |row| (0..width).map(|i| row.get(i)).collect())
+                    .unwrap()
+                    .collect::<rusqlite::Result<Vec<_>>>()
+                    .unwrap()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn dream_c1_legacy_wal_transition_preserves_rows_and_busy_reader_never_changes_custody() {
+        let fixture = Fixture::new();
+        let mut record = fixture.record(441);
+        let mut journal = fixture.journal();
+        journal
+            .register("legacy-original", &key(&record), &record)
+            .unwrap();
+        journal.finish().unwrap();
+        let path = fixture
+            .runtime
+            .join("journals")
+            .join(format!("{}.sqlite", id(10).0));
+        let inode = fs::metadata(&path).unwrap().ino();
+        // Unmeasured legacy-fixture construction only. This deliberately seeds
+        // the old supported WAL state; it is not a cold DELETE timing result.
+        let legacy = Connection::open(&path).unwrap();
+        assert_eq!(
+            legacy
+                .query_row("PRAGMA journal_mode=WAL", [], |r| r.get::<_, String>(0))
+                .unwrap(),
+            "wal"
+        );
+        legacy.pragma_update(None, "synchronous", "FULL").unwrap();
+        legacy.pragma_update(None, "wal_autocheckpoint", 0).unwrap();
+        record.view.revision.0 += 1;
+        legacy
+            .execute(
+                "UPDATE runs SET record=?1 WHERE id=?2",
+                params![record_bytes(&record).unwrap(), record.view.run_id.0],
+            )
+            .unwrap();
+        // Include all five tables in the byte-preservation witness. This raw
+        // legacy diagnostic is not promoted into current public authority.
+        legacy
+            .execute(
+                "INSERT INTO source_errors(session,generation,error) VALUES(?1,?2,?3)",
+                params![
+                    id(443).0,
+                    1,
+                    br#"{"legacy":"retained-diagnostic"}"#.as_slice()
+                ],
+            )
+            .unwrap();
+        for table in ["source_errors", "sources", "runs", "ops", "close_cursor"] {
+            assert_eq!(
+                legacy
+                    .query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r
+                        .get::<_, i64>(0))
+                    .unwrap(),
+                1
+            );
+        }
+        let before = catalogue_rows(&legacy);
+        let reader =
+            Connection::open_with_flags(&path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
+        reader.execute_batch("BEGIN").unwrap();
+        assert_eq!(
+            reader
+                .query_row("SELECT count(*) FROM runs", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
+        let start = std::time::Instant::now();
+        assert!(matches!(
+            Journal::open_existing(&fixture.runtime, &id(10)),
+            Err(Code::Busy)
+        ));
+        assert!(start.elapsed() < std::time::Duration::from_millis(250));
+        assert_eq!(fs::metadata(&path).unwrap().ino(), inode);
+        assert_eq!(catalogue_rows(&legacy), before);
+        assert_eq!(
+            legacy
+                .query_row("PRAGMA journal_mode", [], |r| r.get::<_, String>(0))
+                .unwrap(),
+            "wal"
+        );
+        reader.execute_batch("ROLLBACK").unwrap();
+        reader.close().unwrap();
+        legacy.close().unwrap(); // SQLite alone checkpoints/retires WAL/SHM.
+        // Explicitly new admission after the actual dependency is released.
+        let mut migrated = fixture.journal();
+        assert_eq!(fs::metadata(&path).unwrap().ino(), inode);
+        assert_eq!(catalogue_rows(&migrated.db), before);
+        assert_eq!(
+            migrated
+                .db
+                .query_row("PRAGMA journal_mode", [], |r| r.get::<_, String>(0))
+                .unwrap(),
+            "delete"
+        );
+        assert_eq!(
+            migrated
+                .db
+                .query_row("PRAGMA synchronous", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            2
+        );
+        let original = migrated
+            .register("legacy-original", &key(&record), &record)
+            .unwrap();
+        assert_eq!(original.view.run_id, record.view.run_id);
+        assert_eq!(original.view.revision, record.view.revision);
+        assert_eq!(original.nonce, record.nonce);
+        assert_eq!(catalogue_rows(&migrated.db), before);
+        migrated.finish().unwrap();
+    }
+
+    #[test]
+    #[ignore = "exact private subprocess of dream_c1_delete_crash_before_commit_recovers_without_partial_ready"]
+    fn dream_c1_catalogue_crash_child() {
+        let path = PathBuf::from(
+            std::env::var_os("BBOXY_C1_CATALOGUE_CRASH_FILE").expect("private parent path"),
+        );
+        let metadata = fs::symlink_metadata(&path).unwrap();
+        assert!(
+            path.is_absolute()
+                && metadata.is_file()
+                && metadata.nlink() == 1
+                && metadata.uid() == unsafe { libc::geteuid() }
+                && metadata.mode() & 0o777 == 0o600
+        );
+        let db = Connection::open_with_flags(
+            path,
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE | rusqlite::OpenFlags::SQLITE_OPEN_NOFOLLOW,
+        )
+        .unwrap();
+        db.execute_batch("PRAGMA journal_mode=DELETE; PRAGMA synchronous=FULL; BEGIN IMMEDIATE; CREATE TABLE source_errors(session TEXT NOT NULL,generation INTEGER NOT NULL,error BLOB NOT NULL,PRIMARY KEY(session,generation));").unwrap();
+        if std::env::var_os("BBOXY_C1_CRASH_AFTER_MARKER").is_some() {
+            db.pragma_update(None, "user_version", 1).unwrap();
+        }
+        std::process::exit(73); // Abrupt process death: no Rust/SQLite Drop or COMMIT.
+    }
+
+    #[test]
+    fn dream_c1_delete_crash_before_commit_recovers_without_partial_ready() {
+        for after_marker in [false, true] {
+            let fixture = Fixture::new();
+            let seat = id(442);
+            uninitialized_journal(&fixture, &seat).finish().unwrap();
+            let path = fixture
+                .runtime
+                .join("journals")
+                .join(format!("{}.sqlite", seat.0));
+            let inode = fs::metadata(&path).unwrap().ino();
+            let mut command = Command::new(std::env::current_exe().unwrap());
+            command
+                .args([
+                    "--ignored",
+                    "--exact",
+                    "registry::dream_c1::registry_tests::dream_c1_catalogue_crash_child",
+                ])
+                .env("BBOXY_C1_CATALOGUE_CRASH_FILE", &path)
+                .env_remove("BBOXY_C1_CRASH_AFTER_MARKER");
+            if after_marker {
+                command.env("BBOXY_C1_CRASH_AFTER_MARKER", "1");
+            }
+            let mut child = command.spawn().unwrap();
+            let pid = child.id();
+            assert_eq!(child.wait().unwrap().code(), Some(73));
+            let mut status = 0;
+            assert_eq!(
+                unsafe { libc::waitpid(pid as i32, &mut status, libc::WNOHANG) },
+                -1
+            );
+            assert_eq!(
+                std::io::Error::last_os_error().raw_os_error(),
+                Some(libc::ECHILD)
+            );
+            let reopened = Journal::open(&fixture.runtime, &seat).unwrap();
+            assert_eq!(fs::metadata(path).unwrap().ino(), inode);
+            assert_eq!(reopened.schema_version().unwrap(), 1);
+            assert_eq!(schema_table_count(&reopened), 5);
+            reopened.finish().unwrap();
+        }
+    }
+
+    #[test]
     fn dream_c1_existing_checkpoint_never_creates_or_initializes_a_missing_journal() {
         let fixture = Fixture::new();
         assert!(Journal::open_existing(&fixture.runtime, &id(10)).is_err());
@@ -2670,7 +2925,7 @@ mod registry_tests {
             .db
             .query_row("PRAGMA journal_mode", [], |row| row.get(0))
             .unwrap();
-        assert_eq!(mode, "wal");
+        assert_eq!(mode, "delete");
     }
 
     #[test]

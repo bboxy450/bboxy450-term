@@ -14776,6 +14776,58 @@ pub(super) mod dream_public_api_tests {
     }
 
     #[test]
+    fn dream_c1_held_private_delete_catalogue_keeps_mcp_gui_control_owner_independent() {
+        let f = Fixture::open();
+        let (run_dir, _) = f.retained_api_record();
+        let path = run_dir
+            .join("journals")
+            .join(format!("{}.sqlite", f.own.id));
+        let held = rusqlite::Connection::open_with_flags(
+            &path,
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_WRITE,
+        )
+        .unwrap();
+        held.busy_timeout(Duration::ZERO).unwrap();
+        held.execute_batch("BEGIN EXCLUSIVE").unwrap();
+        let before = f.counts();
+        let mut maximum = Duration::ZERO;
+        for args in [
+            f.status(None),
+            json!({"v":1,"method":"cancel","run_id":f.run}),
+        ] {
+            for gui in [false, true] {
+                let start = Instant::now();
+                let result = if gui {
+                    f.gui(f.own.id, args.clone())
+                } else {
+                    f.mcp(f.own.id, args.clone())
+                };
+                maximum = maximum.max(start.elapsed());
+                assert!(
+                    start.elapsed() <= Duration::from_millis(250),
+                    "private catalogue stalled control: {result}"
+                );
+                assert!(
+                    matches!(
+                        result["error"]["code"].as_str(),
+                        Some("busy" | "storage_unavailable")
+                    ),
+                    "{result}"
+                );
+                assert!(result.get("run").is_none() && result.get("page").is_none());
+            }
+        }
+        f.unchanged(before, "held private rollback catalogue MCP/GUI controls");
+        held.execute_batch("ROLLBACK").unwrap();
+        held.close().unwrap();
+        assert_eq!(f.mcp(f.own.id, f.status(Some(0)))["ok"], true);
+        eprintln!(
+            "dream_c1_held_delete_catalogue calls=4 max_wall_us={} native_or_signing_delta=0 scope=control_isolation_not_full_joined_latency",
+            maximum.as_micros()
+        );
+    }
+
+    #[test]
     fn dream_c1_held_provider_selection_refuses_actual_page_owner_before_next_unit() {
         let f = Fixture::open();
         let (runtime, record) = f.retained_api_record();
@@ -14804,6 +14856,7 @@ pub(super) mod dream_public_api_tests {
             Some(dream_c1::PreparedGuard {
                 callback: guard,
                 setup_cpu_ns: 0,
+                setup_max_unit_cpu_ns: 0,
                 retire_session: None,
             }),
         );

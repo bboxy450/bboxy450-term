@@ -2295,8 +2295,12 @@ def owned_running_proof(value, running_key):
 
 
 def authority_owner_bounds(metrics):
-    for name in ("authority_setup_cpu_ns", "authority_monitor_setup_cpu_ns", "authority_monitor_max_cpu_ns"):
-        if finite_number(metrics.get(name), name) > 1_000_000:
+    cumulative = known_duration(metrics.get("authority_setup_cpu_ns"), "authority_setup_cpu_ns")
+    maximum = known_duration(metrics.get("authority_setup_max_unit_cpu_ns"), "authority_setup_max_unit_cpu_ns")
+    if maximum > cumulative:
+        raise ValueError("authority preparation maximum exceeds cumulative CPU")
+    for name in ("authority_setup_max_unit_cpu_ns", "authority_monitor_setup_cpu_ns", "authority_monitor_max_cpu_ns"):
+        if known_duration(metrics.get(name), name) > 1_000_000:
             raise ValueError("authority helper exceeded1ms: " + name)
     if metrics.get("authority_monitor_overruns") != 0:
         raise ValueError("authority monitor CPU overrun")
@@ -2506,8 +2510,32 @@ def check_native_profile_controls():
     for field in publication_fields[1:]:
         refuses("zero_publication_nonzero_" + field, publication + field, 1,
                 source=zero_publication)
+    authority = {
+        "authority_setup_cpu_ns": 3_500_000,
+        "authority_setup_max_unit_cpu_ns": 750_000,
+        "authority_monitor_setup_cpu_ns": 500_000,
+        "authority_monitor_max_cpu_ns": 500_000,
+        "authority_monitor_overruns": 0,
+    }
+    authority_owner_bounds(authority)
+    for label, field, value in (
+        ("preparation_max_over_1ms", "authority_setup_max_unit_cpu_ns", 1_000_001),
+        ("preparation_max_over_cumulative", "authority_setup_cpu_ns", 749_999),
+        ("preparation_unknown_clock", "authority_setup_cpu_ns", (1 << 64) - 1),
+        ("preparation_negative_clock", "authority_setup_cpu_ns", -1),
+        ("preparation_missing_max", "authority_setup_max_unit_cpu_ns", None),
+        ("monitor_overrun", "authority_monitor_overruns", 1),
+    ):
+        changed = dict(authority, **{field: value})
+        try:
+            authority_owner_bounds(changed)
+        except ValueError:
+            rejected.append(label)
+        else:
+            raise AssertionError("authority preparation numeric control was accepted: " + label)
     return {"scope": "private numeric-validator causal controls; no runtime/process evidence",
-            "accepted": ["verified_2_5ms_inclusive", "cancelled_before_publication"],
+            "accepted": ["verified_2_5ms_inclusive", "cancelled_before_publication",
+                         "preparation_cumulative_above_1ms_with_bounded_units"],
             "refused": rejected}
 
 

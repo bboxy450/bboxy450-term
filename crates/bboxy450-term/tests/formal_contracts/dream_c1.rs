@@ -3064,8 +3064,290 @@ fn retained_cleanup(broken: bool) -> Model {
     m
 }
 
+// Decision66026. Private rollback-catalogue mode/transaction semantics and
+// cooperative public preparation; wall time, VFS calls and native cost need the
+// real cold/migration/crash/API witnesses. Account/provenance WAL is outside it.
+const PERSISTENCE_NAMES: [&str; 6] = [
+    "TermDreamC1CatalogueMigration",
+    "TermDreamC1CatalogueAtomicReady",
+    "TermDreamC1CatalogueBusy",
+    "TermDreamC1PreparationUnits",
+    "TermDreamC1PreparationAccounting",
+    "TermDreamC1PreparationClock",
+];
+fn catalogue_mode(kind: usize, broken: bool) -> Model {
+    // phase choose0,mode1,selected2,tx3,DDL4,marker5,ready6,refusal/crash7.
+    // mode WAL0/DELETE1; old rows abbreviate original-op/run/source/cursor bytes.
+    let mut m = model(
+        PERSISTENCE_NAMES[kind],
+        broken,
+        &[
+            ("phase", 7, 0),
+            ("mode", 1, 0),
+            ("busy", 1, 0),
+            ("existing", 1, 0),
+            ("old_rows", 1, 0),
+            ("ready", 1, 0),
+            ("tables", 1, 0),
+            ("staged", 1, 0),
+            ("marker", 1, 0),
+            ("control", 1, 0),
+            ("busy_admitted", 1, 0),
+            ("reopened", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "SeedLegacy",
+        eq(0, 0),
+        &[
+            (0, Int(1)),
+            (3, Int(1)),
+            (4, Int(1)),
+            (5, Int(1)),
+            (6, Int(1)),
+        ],
+    );
+    action(&mut m, "ChooseFresh", eq(0, 0), &[(0, Int(1))]);
+    action(
+        &mut m,
+        "HoldReaderOrWriter",
+        all([ne(0, 0), ne(0, 7), eq(2, 0)]),
+        &[(2, Int(1))],
+    );
+    action(&mut m, "ReleaseReaderOrWriter", eq(2, 1), &[(2, Int(0))]);
+    action(
+        &mut m,
+        "SelectDelete",
+        all([
+            eq(0, 1),
+            if broken && kind == 2 {
+                Bool(true)
+            } else {
+                eq(2, 0)
+            },
+        ]),
+        &[
+            (0, Int(2)),
+            (1, Int(1)),
+            (4, if broken && kind == 0 { Int(0) } else { Var(4) }),
+            (10, Var(2)),
+        ],
+    );
+    action(
+        &mut m,
+        "BusyRefusal",
+        all([eq(0, 1), eq(2, 1)]),
+        &[(0, Int(7))],
+    );
+    action(
+        &mut m,
+        "ExistingReady",
+        all([eq(0, 2), eq(5, 1)]),
+        &[(0, Int(6))],
+    );
+    action(
+        &mut m,
+        "BeginSchema",
+        all([eq(0, 2), eq(5, 0), eq(2, 0)]),
+        &[(0, Int(3))],
+    );
+    action(&mut m, "WriteDdl", eq(0, 3), &[(0, Int(4)), (7, Int(1))]);
+    action(
+        &mut m,
+        "StageReady",
+        eq(0, 4),
+        &[
+            (0, Int(5)),
+            (8, Int(1)),
+            (5, if broken && kind == 1 { Int(1) } else { Var(5) }),
+        ],
+    );
+    action(
+        &mut m,
+        "CommitSchemaAndMarker",
+        all([eq(0, 5), eq(2, 0)]),
+        &[
+            (0, Int(6)),
+            (5, Int(1)),
+            (6, Int(1)),
+            (7, Int(0)),
+            (8, Int(0)),
+        ],
+    );
+    action(
+        &mut m,
+        "CrashOrRollback",
+        all([Int(3).le(Var(0)), Var(0).le(Int(5))]),
+        &[(0, Int(7)), (7, Int(0)), (8, Int(0))],
+    );
+    action(
+        &mut m,
+        "ExplicitReopen",
+        all([eq(0, 7), eq(2, 0), eq(11, 0)]),
+        &[(0, Int(1)), (11, Int(1))],
+    );
+    action(&mut m, "DuplicateOriginal", eq(0, 6), &[]);
+    action(
+        &mut m,
+        "IndependentStatusCancel",
+        Bool(true),
+        &[(9, Int(1).minus(Var(9)))],
+    );
+    safe(
+        &mut m,
+        "LegacyRowsAndOriginalOperationPreserved",
+        Var(4).eq(Var(3)),
+    );
+    safe(
+        &mut m,
+        "ReadyOnlyAfterAtomicCommit",
+        implies(eq(5, 1), eq(6, 1)),
+    );
+    safe(&mut m, "BusyModeCannotAdmit", eq(10, 0));
+    m
+}
+fn preparation_phases(kind: usize, broken: bool) -> Model {
+    // Three representative real preparation phases, cost in1ms abstract units.
+    // debt1 means a full after-end9x obligation; total never stands for maximum.
+    let mut m = model(
+        PERSISTENCE_NAMES[kind + 3],
+        broken,
+        &[
+            ("phase", 5, 0),
+            ("known", 1, 1),
+            ("debt", 1, 0),
+            ("units", 3, 0),
+            ("cumulative", 3, 0),
+            ("maximum", 2, 0),
+            ("connection", 1, 0),
+            ("cache", 1, 0),
+            ("published", 1, 0),
+            ("control", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "PreparationPhase",
+        all([
+            Var(0).lt(Int(3)),
+            eq(2, 0),
+            Var(5).le(Int(1)),
+            if broken && kind == 2 {
+                Bool(true)
+            } else {
+                eq(1, 1)
+            },
+        ]),
+        &[
+            (0, Var(0).plus(Int(1))),
+            (2, Int(1)),
+            (3, Var(3).plus(Int(1))),
+            (
+                4,
+                if broken && kind == 1 {
+                    Int(1)
+                } else {
+                    Var(4).plus(Int(1))
+                },
+            ),
+            (5, Var(5).lt(Int(1)).ite(Int(1), Var(5))),
+            (6, Int(1)),
+            (7, Int(1)),
+        ],
+    );
+    if broken && kind == 0 {
+        action(
+            &mut m,
+            "CollapsedTwoPhases",
+            all([eq(0, 0), eq(2, 0)]),
+            &[
+                (0, Int(2)),
+                (2, Int(1)),
+                (3, Int(2)),
+                (4, Int(2)),
+                (5, Int(2)),
+                (6, Int(1)),
+                (7, Int(1)),
+            ],
+        );
+    }
+    action(
+        &mut m,
+        "UnknownOrReversedClock",
+        Var(0).lt(Int(3)),
+        &[(1, Int(0))],
+    );
+    let pay = m.actions.len();
+    action(&mut m, "PayAfterEndRest", eq(2, 1), &[(2, Int(0))]);
+    action(
+        &mut m,
+        "PublishPreparedGuard",
+        all([
+            eq(0, 3),
+            eq(2, 0),
+            if broken && kind == 2 {
+                Bool(true)
+            } else {
+                eq(1, 1)
+            },
+        ]),
+        &[(8, Int(1))],
+    );
+    action(
+        &mut m,
+        "RetainForCleanup",
+        all([eq(6, 1), Var(0).lt(Int(4))]),
+        &[(0, Int(4)), (8, Int(0))],
+    );
+    action(
+        &mut m,
+        "FinalizeCache",
+        all([eq(0, 4), eq(7, 1), eq(2, 0)]),
+        &[(7, Int(0)), (2, Int(1))],
+    );
+    action(
+        &mut m,
+        "CloseConnection",
+        all([eq(0, 4), eq(7, 0), eq(2, 0)]),
+        &[(0, Int(5)), (6, Int(0))],
+    );
+    action(
+        &mut m,
+        "IndependentStatusCancel",
+        Bool(true),
+        &[(9, Int(1).minus(Var(9)))],
+    );
+    safe(&mut m, "EveryPreparationUnitWithinOne", Var(5).le(Int(1)));
+    safe(
+        &mut m,
+        "CumulativeCostNeverClampedToMaximum",
+        Var(4).eq(Var(3)),
+    );
+    safe(
+        &mut m,
+        "UnknownClockCannotPublish",
+        implies(eq(8, 1), eq(1, 1)),
+    );
+    safe(
+        &mut m,
+        "PreparedConnectionRetained",
+        implies(eq(8, 1), eq(6, 1)),
+    );
+    m.weak_fair.push(vec![pay]);
+    m
+}
+
 pub(super) fn cases() -> Vec<(Model, &'static str)> {
     let mut cases = Vec::new();
+    for kind in 0..3 {
+        cases.extend([
+            (catalogue_mode(kind, false), "pass"),
+            (catalogue_mode(kind, true), "safety"),
+            (preparation_phases(kind, false), "pass"),
+            (preparation_phases(kind, true), "safety"),
+        ]);
+    }
     cases.push((bootstrap_admission(0, false), "pass"));
     for kind in 0..BOOTSTRAP_NAMES.len() {
         cases.push((bootstrap_admission(kind, true), "safety"));
@@ -3136,6 +3418,109 @@ pub(super) fn cases() -> Vec<(Model, &'static str)> {
 
 /// Keep the finite cap and expected semantic verdict identical to the complete
 /// exporter, while retaining the exact C1 case if exploration itself refuses.
+#[test]
+fn dream_c1_catalogue_migration_crash_busy_and_preparation_cost_controls_are_nonvacuous()
+-> Result<(), String> {
+    for kind in 0..3 {
+        let m = catalogue_mode(kind, false);
+        let r = m.check(100_000)?;
+        assert!(r.violations.is_empty());
+        let legacy = trace(
+            &m,
+            &r,
+            &[
+                "SeedLegacy",
+                "SelectDelete",
+                "ExistingReady",
+                "DuplicateOriginal",
+            ],
+        );
+        assert_eq!(r.states[legacy][4], 1);
+        let busy = trace(
+            &m,
+            &r,
+            &[
+                "SeedLegacy",
+                "HoldReaderOrWriter",
+                "BusyRefusal",
+                "IndependentStatusCancel",
+            ],
+        );
+        assert_eq!((r.states[busy][1], r.states[busy][4]), (0, 1));
+        let crash = trace(
+            &m,
+            &r,
+            &[
+                "ChooseFresh",
+                "SelectDelete",
+                "BeginSchema",
+                "WriteDdl",
+                "StageReady",
+                "CrashOrRollback",
+            ],
+        );
+        assert_eq!((r.states[crash][5], r.states[crash][6]), (0, 0));
+        let recovered = trace_from(
+            &m,
+            &r,
+            crash,
+            &[
+                "ExplicitReopen",
+                "SelectDelete",
+                "BeginSchema",
+                "WriteDdl",
+                "StageReady",
+                "CommitSchemaAndMarker",
+            ],
+        );
+        assert_eq!((r.states[recovered][5], r.states[recovered][6]), (1, 1));
+        let bad = catalogue_mode(kind, true).check(100_000)?;
+        assert!(bad.violations.iter().any(|v| v.property
+            == [
+                "LegacyRowsAndOriginalOperationPreserved",
+                "ReadyOnlyAfterAtomicCommit",
+                "BusyModeCannotAdmit"
+            ][kind]));
+        let m = preparation_phases(kind, false);
+        let r = m.check(100_000)?;
+        assert!(r.violations.is_empty());
+        let ready = trace(
+            &m,
+            &r,
+            &[
+                "PreparationPhase",
+                "PayAfterEndRest",
+                "PreparationPhase",
+                "PayAfterEndRest",
+                "PreparationPhase",
+                "PayAfterEndRest",
+                "PublishPreparedGuard",
+            ],
+        );
+        assert_eq!((r.states[ready][4], r.states[ready][5]), (3, 1));
+        let closed = trace_from(
+            &m,
+            &r,
+            ready,
+            &[
+                "RetainForCleanup",
+                "FinalizeCache",
+                "PayAfterEndRest",
+                "CloseConnection",
+            ],
+        );
+        assert_eq!(r.states[closed][6], 0);
+        let bad = preparation_phases(kind, true).check(100_000)?;
+        assert!(bad.violations.iter().any(|v| v.property
+            == [
+                "EveryPreparationUnitWithinOne",
+                "CumulativeCostNeverClampedToMaximum",
+                "UnknownClockCannotPublish"
+            ][kind]));
+    }
+    Ok(())
+}
+
 #[test]
 fn dream_c1_complete_corpus_has_named_native_verdicts() -> Result<(), String> {
     // Only bounded textual refusals survive each iteration. Complete reachable

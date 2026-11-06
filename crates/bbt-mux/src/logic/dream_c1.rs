@@ -680,7 +680,10 @@ pub(crate) type AuthorityGuard = dyn Fn() -> Result<(), Code> + Send + Sync;
 #[derive(Clone)]
 pub(crate) struct PreparedGuard {
     pub callback: Arc<AuthorityGuard>,
+    /// Cumulative preparation CPU, including the cooperative checkpoints.
     pub setup_cpu_ns: u64,
+    /// Maximum measured application unit; cumulative CPU is never clamped.
+    pub setup_max_unit_cpu_ns: u64,
     pub retire_session: Option<Arc<crate::identity::PublicFenceSession>>,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -725,6 +728,7 @@ pub(crate) struct Control {
     pub activity_latch: Option<Arc<AtomicU64>>,
     pub authority_guard: Option<Arc<AuthorityGuard>>,
     pub authority_setup_cpu_ns: AtomicU64,
+    pub authority_setup_max_unit_cpu_ns: AtomicU64,
     pub authority_prepared_guard: OnceLock<Arc<AuthorityGuard>>,
     pub authority_monitor_setup_cpu_ns: AtomicU64,
     pub authority_monitor_max_cpu_ns: AtomicU64,
@@ -823,6 +827,7 @@ impl Default for Control {
             activity_latch: None,
             authority_guard: None,
             authority_setup_cpu_ns: AtomicU64::new(0),
+            authority_setup_max_unit_cpu_ns: AtomicU64::new(0),
             authority_prepared_guard: OnceLock::new(),
             authority_monitor_setup_cpu_ns: AtomicU64::new(0),
             authority_monitor_max_cpu_ns: AtomicU64::new(0),
@@ -993,7 +998,10 @@ impl Control {
     /// Installed only by the admitted authority owner after its durable/permit
     /// fence. Deferred controls retain no prepared database connection.
     pub fn install_authority_guard(&self, guard: PreparedGuard) -> Result<(), Code> {
-        if guard.setup_cpu_ns > 1_000_000 {
+        if guard.setup_max_unit_cpu_ns > 1_000_000
+            || guard.setup_cpu_ns < guard.setup_max_unit_cpu_ns
+            || guard.setup_cpu_ns > public::MAX_SAFE
+        {
             return Err(Code::ResourceLimit);
         }
         let mut installed = false;
@@ -1001,6 +1009,8 @@ impl Control {
             installed = true;
             self.authority_setup_cpu_ns
                 .store(guard.setup_cpu_ns, Ordering::Release);
+            self.authority_setup_max_unit_cpu_ns
+                .store(guard.setup_max_unit_cpu_ns, Ordering::Release);
             guard.callback
         });
         if installed { Ok(()) } else { Err(Code::Busy) }
@@ -2535,6 +2545,28 @@ pub(crate) struct JournalQuantum {
     origin: Option<&'static std::panic::Location<'static>>,
 }
 impl JournalQuantum {
+    pub(crate) fn preparation() -> Result<Self, Code> {
+        // Fixed owner/context allocation is an ordinary measured prefix too.
+        // It owns no native effect; its full after-end debt precedes file IO.
+        let before = UnitClock::now()?;
+        let owner = Self::default();
+        let used = before.elapsed();
+        owner.control.cleanup.debt.charge(used, Instant::now());
+        let used = used?;
+        owner
+            .control
+            .max_unit_cpu_ns
+            .store(nanos(used), Ordering::Release);
+        if used > UNIT {
+            eprintln!(
+                "dream_c1_preparation_owner_refused cpu_ns={} limit_ns=1000000",
+                nanos(used)
+            );
+            return Err(Code::ResourceLimit);
+        }
+        owner.pay()?;
+        Ok(owner)
+    }
     pub(crate) fn at(origin: &'static std::panic::Location<'static>) -> Self {
         Self {
             origin: Some(origin),
@@ -2557,6 +2589,13 @@ impl JournalQuantum {
         } else {
             Ok(())
         }
+    }
+    pub(crate) fn max_unit_cpu_ns(&self) -> u64 {
+        self.control.max_unit_cpu_ns.load(Ordering::Acquire)
+    }
+    #[cfg(test)]
+    pub(crate) fn max_cleanup_unit_cpu_ns(&self) -> u64 {
+        self.control.cleanup.max_unit_cpu_ns.load(Ordering::Acquire)
     }
     #[track_caller]
     pub(crate) fn public_prelude<T: Drain>(
@@ -5729,11 +5768,25 @@ pub(crate) fn read_page_guarded(
         authority_setup_cpu_ns: AtomicU64::new(
             authority_guard.as_ref().map_or(0, |g| g.setup_cpu_ns),
         ),
+        authority_setup_max_unit_cpu_ns: AtomicU64::new(
+            authority_guard
+                .as_ref()
+                .map_or(0, |g| g.setup_max_unit_cpu_ns),
+        ),
         authority_guard: authority_guard.map(|g| g.callback),
         ..Control::default()
     };
     let result = (|| {
-        if control.authority_setup_cpu_ns.load(Ordering::Acquire) > 1_000_000 {
+        if control
+            .authority_setup_max_unit_cpu_ns
+            .load(Ordering::Acquire)
+            > 1_000_000
+            || control.authority_setup_cpu_ns.load(Ordering::Acquire)
+                < control
+                    .authority_setup_max_unit_cpu_ns
+                    .load(Ordering::Acquire)
+            || control.authority_setup_cpu_ns.load(Ordering::Acquire) > public::MAX_SAFE
+        {
             return Err(Code::ResourceLimit);
         }
         if record.view.state != State::Completed || !record.view.settled {
@@ -6236,6 +6289,7 @@ fn write_metrics(job: &Path, record: &Record, control: &Control) -> Result<(), C
         ("min_inter_unit_gap_ns", &control.min_inter_unit_gap_ns),
         ("source_owner_refusals", &control.owner_refusals),
         ("authority_setup_cpu_ns", &control.authority_setup_cpu_ns),
+        ("authority_setup_max_unit_cpu_ns", &control.authority_setup_max_unit_cpu_ns),
         (
             "authority_monitor_setup_cpu_ns",
             &control.authority_monitor_setup_cpu_ns,
@@ -7650,6 +7704,7 @@ mod tests {
                 Some(PreparedGuard {
                     callback: Arc::new(|| Err(Code::StaleContext)),
                     setup_cpu_ns: 0,
+                    setup_max_unit_cpu_ns: 0,
                     retire_session: None,
                 })
             ),
@@ -8091,6 +8146,7 @@ mod tests {
             control.install_authority_guard(PreparedGuard {
                 callback: Arc::new(|| Ok(())),
                 setup_cpu_ns: 1_000_001,
+                setup_max_unit_cpu_ns: 1_000_001,
                 retire_session: None,
             }),
             Err(Code::ResourceLimit)
@@ -8100,6 +8156,7 @@ mod tests {
             .install_authority_guard(PreparedGuard {
                 callback: Arc::new(|| Err(Code::StaleContext)),
                 setup_cpu_ns: 123,
+                setup_max_unit_cpu_ns: 123,
                 retire_session: None,
             })
             .unwrap();
@@ -8107,6 +8164,7 @@ mod tests {
             control.install_authority_guard(PreparedGuard {
                 callback: Arc::new(|| Ok(())),
                 setup_cpu_ns: 456,
+                setup_max_unit_cpu_ns: 456,
                 retire_session: None,
             }),
             Err(Code::Busy)
@@ -8122,6 +8180,62 @@ mod tests {
             Err(Code::StaleContext)
         );
         assert!(!effect.load(Ordering::Acquire));
+    }
+
+    #[test]
+    fn dream_c1_cooperative_preparation_preserves_cumulative_cost_and_paid_phase_maxima() {
+        let quantum = JournalQuantum::preparation().unwrap();
+        let before = bbt_rt::fault::thread_cpu_time().unwrap();
+        quantum
+            .public_prelude(|checkpoint| {
+                for _ in 0..8 {
+                    let start = bbt_rt::fault::thread_cpu_time().unwrap();
+                    while bbt_rt::fault::thread_cpu_time()
+                        .unwrap()
+                        .checked_sub(start)
+                        .unwrap()
+                        < Duration::from_micros(200)
+                    {
+                        std::hint::spin_loop();
+                    }
+                    checkpoint().map_err(|_| Code::ResourceLimit)?;
+                }
+                Ok(())
+            })
+            .unwrap();
+        let cumulative = nanos(
+            bbt_rt::fault::thread_cpu_time()
+                .unwrap()
+                .checked_sub(before)
+                .unwrap(),
+        );
+        quantum.pay().unwrap();
+        let maximum = quantum.max_unit_cpu_ns();
+        assert!(cumulative > 1_000_000 && maximum <= 1_000_000);
+        assert!(cumulative >= maximum);
+        let debt = &quantum.control.cleanup.debt;
+        assert!(debt.spans.load(Ordering::Acquire) >= 10);
+        assert_eq!(debt.remaining_ns(), 0);
+        assert!(debt.paid_ns.load(Ordering::Acquire) >= debt.charged_ns.load(Ordering::Acquire));
+        let control = Control::default();
+        control
+            .install_authority_guard(PreparedGuard {
+                callback: Arc::new(|| Ok(())),
+                setup_cpu_ns: cumulative,
+                setup_max_unit_cpu_ns: maximum,
+                retire_session: None,
+            })
+            .unwrap();
+        assert_eq!(
+            control.authority_setup_cpu_ns.load(Ordering::Acquire),
+            cumulative
+        );
+        assert_eq!(
+            control
+                .authority_setup_max_unit_cpu_ns
+                .load(Ordering::Acquire),
+            maximum
+        );
     }
 
     #[test]

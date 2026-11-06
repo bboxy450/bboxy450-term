@@ -429,6 +429,7 @@ impl PublicFenceReader {
     /// Preparation runs on the isolated admission owner and is separately CPU
     /// measured/enforced by its caller. Only a fixed prepared-statement cache
     /// and the native read-only connection survive; authority never does.
+    #[cfg(test)]
     pub(crate) fn prepare_session(
         &self,
         prepare_actor: impl FnOnce(&rusqlite::Connection) -> Result<()>,
@@ -448,6 +449,7 @@ impl PublicFenceReader {
         checkpoint()?;
         let db = public_connection_cooperative(&self.0.account, checkpoint)?;
         db.set_prepared_statement_cache_capacity(3);
+        checkpoint()?;
         drop(db.prepare_cached(PUBLIC_REVISION_SQL)?);
         checkpoint()?;
         drop(db.prepare_cached(PUBLIC_DIGEST_SQL)?);
@@ -455,9 +457,11 @@ impl PublicFenceReader {
         prepare_actor(&db)?;
         checkpoint()?;
         public_connection_current(&db)?;
+        checkpoint()?;
         if public_file(&self.0.account)? != file {
             return Err(invalid("stale public account session"));
         }
+        checkpoint()?;
         Ok(PublicFenceSession {
             file,
             db: std::sync::Mutex::new(Some(db)),

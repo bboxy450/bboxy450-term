@@ -1926,3 +1926,63 @@ frontend = "project"
 name = "BrokenC1FinalPublicRecursiveDebt"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "TermDreamC1CatalogueMigration"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1CatalogueMigration"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1CatalogueAtomicReady"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1CatalogueAtomicReady"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1CatalogueBusy"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1CatalogueBusy"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1PreparationUnits"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1PreparationUnits"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1PreparationAccounting"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1PreparationAccounting"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "TermDreamC1PreparationClock"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenTermDreamC1PreparationClock"
+expected = "safety"
+frontend = "project"
