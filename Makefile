@@ -2582,14 +2582,15 @@ check-mermaid-fullscreen:
 .PHONY: check-workspace-provisioning test-workspace-provisioning test-workspace-owner-progress test-workspace-mcp-regressions
 test-workspace-mcp-regressions: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo nextest run --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(knowledge_types_tests::) | test(mcp_artifact_) | test(mcp_channel_tools_)'
+	cargo nextest run --locked -p bboxy450-term-mux --test mcp --target-dir '$(TARGET_DIR)' --test-threads 1 -E 'test(knowledge_types_tests::) | test(mcp_artifact_) | test(mcp_channel_tools_) | test(mcp_knowledge266_class_rows_) | test(mcp_numeric_selectors_) | test(mcp_original_operation_recovers_) | test(task_migration_250_records_authenticated_collision_restart_and_replay)'
 
 test-workspace-owner-progress: init-submodules
 	@set -eu; . ./scripts/cache-env.sh; \
 	for witness in \
 	  logic::ownership_tests::projection_ownership_real_io_survives_cancel_restart_and_root_aba \
 	  logic::knowledge_responsiveness_tests::workspace_held_scan_keeps_input_chat_and_other_root_live_and_excludes_writes \
-	  logic::knowledge_responsiveness_tests::workspace_ready_activity_churn_reaches_writable; do \
+	  logic::knowledge_responsiveness_tests::workspace_ready_activity_churn_reaches_writable \
+	  logic::task_import::tests::task_migration_held_import_keeps_messages_tasks_and_other_roots_live_and_refuses_stale_publication; do \
 	  cargo nextest run --locked -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' --test-threads 1 -E "test(=$$witness)"; \
 	done
 

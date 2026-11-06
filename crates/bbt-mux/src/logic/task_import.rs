@@ -340,30 +340,32 @@ mod tests {
         }
     }
 
-    async fn call(client: &LogicClient, seat: Ulid, tool: &str, args: Value) -> Value {
+    async fn request(client: &LogicClient, seat: Ulid, tool: &str, args: Value) -> Value {
         let op_id = Ulid::new();
-        tokio::time::timeout(Duration::from_secs(15), async {
-            loop {
-                let reply = client
-                    .control_call(
-                        seat,
-                        1,
-                        Call {
-                            op_id,
-                            tool: tool.into(),
-                            args: args.clone(),
-                        },
-                    )
-                    .await
-                    .unwrap();
-                if reply["structuredContent"]["error"]["code"] != "workspace_pending" {
-                    return reply;
-                }
-                tokio::time::sleep(Duration::from_millis(5)).await;
+        loop {
+            let reply = client
+                .control_call(
+                    seat,
+                    1,
+                    Call {
+                        op_id,
+                        tool: tool.into(),
+                        args: args.clone(),
+                    },
+                )
+                .await
+                .unwrap();
+            if reply["structuredContent"]["error"]["code"] != "workspace_pending" {
+                return reply;
             }
-        })
-        .await
-        .unwrap_or_else(|_| panic!("import must not hold control reply for {tool}"))
+            tokio::time::sleep(Duration::from_millis(5)).await;
+        }
+    }
+
+    async fn call(client: &LogicClient, seat: Ulid, tool: &str, args: Value) -> Value {
+        tokio::time::timeout(Duration::from_secs(15), request(client, seat, tool, args))
+            .await
+            .unwrap_or_else(|_| panic!("held import must not block unrelated control {tool}"))
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -466,12 +468,16 @@ mod tests {
         let digest = crate::index::migration::bundle_digest(&manifest, &audit, &sources).unwrap();
         let args = json!({"expected_root":root,"manifest_path":manifest,"audit_path":audit,"source_dir":sources,"bundle_sha256":digest,"owner_seat":owner});
         let client = logic.client.clone();
-        let request = args.clone();
+        let request_args = args.clone();
+        // This admitted bulk operation intentionally retains its reply while
+        // the provider is held. Bound entry and post-release completion
+        // separately; unrelated calls below must still answer during the hold.
         let import =
-            tokio::spawn(async move { call(&client, owner, "task_import", request).await });
+            tokio::spawn(async move { request(&client, owner, "task_import", request_args).await });
         tokio::time::timeout(Duration::from_secs(15), gate.entered.notified())
             .await
             .unwrap();
+        assert!(!import.is_finished(), "held import replied before release");
         assert!(
             !root.join("imports").exists(),
             "staged subset became active"
@@ -570,7 +576,10 @@ mod tests {
             _ => unreachable!(),
         };
         drop(release);
-        let refused = import.await.unwrap();
+        let refused = tokio::time::timeout(Duration::from_secs(15), import)
+            .await
+            .expect("released import must complete")
+            .unwrap();
         assert_eq!(refused["isError"], true);
         assert!(refused.to_string().contains(expected), "{refused}");
         eprintln!(

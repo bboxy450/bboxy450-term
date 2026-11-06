@@ -3770,12 +3770,40 @@ fn migration_observer_barrier(f: &Fixture, reference: &str) {
         b"ordinary import observer control",
     )
     .unwrap();
+    // Ordinary writes and tool hooks are WIP. An explicit committed knowledge
+    // checkpoint supplies the positive observer barrier without reintroducing
+    // filesystem-triggered artifact publication or lengthening its deadline.
+    prepare_knowledge_fixture_git(f);
+    let path = format!("notes/{reference}.md");
+    knowledge_create(f, f.oracle.id, "note", &path, "Import observer checkpoint");
+    let checkpoint = data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "knowledge_commit",
+        json!({"locators":[path],"message":format!("Import observer {reference}")}),
+    ));
+    let id: Ulid = serde_json::from_value(checkpoint["artifact"]["id"].clone()).unwrap();
+    let committed_ref = format!(
+        "knowledge:commit/{}",
+        checkpoint["artifact"]["commit"].as_str().unwrap()
+    );
     let deadline = Instant::now() + Duration::from_secs(8);
     loop {
-        if migration_observations(f)
+        let observations = migration_observations(f);
+        if observations
             .iter()
-            .any(|doc| doc.metadata["ref"] == reference && doc.metadata["observed"] == true)
+            .any(|doc| {
+                doc.id == id
+                    && doc.metadata["ref"] == committed_ref
+                    && doc.metadata["observed"] == true
+            })
         {
+            assert!(
+                observations
+                    .iter()
+                    .all(|doc| doc.metadata["ref"] != reference),
+                "ordinary work in progress became an artifact"
+            );
             return;
         }
         assert!(
@@ -4614,7 +4642,10 @@ fn assert_claim_number_matches_actual_root(
 
 // Claims attach responsibility to an existing committed artifact. Ordinary
 // drafts and arbitrary external URLs do not create that observation boundary.
-fn committed_claim_fixture(f: &mut Fixture) -> (Ulid, String, String) {
+fn prepare_knowledge_fixture_git(f: &Fixture) {
+    if f.config.repository.join(".bboxy/.git").is_dir() {
+        return;
+    }
     // Use an ephemeral SSH signer, never the operator's GPG/Keychain identity.
     let key = f._temp.path().join("claim-signing");
     let ssh = if cfg!(target_os = "macos") {
@@ -4675,6 +4706,9 @@ fn committed_claim_fixture(f: &mut Fixture) -> (Ulid, String, String) {
     ] {
         run(&["config", "--local", name, value]);
     }
+}
+fn committed_claim_fixture(f: &mut Fixture) -> (Ulid, String, String) {
+    prepare_knowledge_fixture_git(f);
     let committed = data(f.mutate(
         f.oracle.id,
         Ulid::new(),
@@ -6430,7 +6464,7 @@ fn mcp_artifact_number_uses_unindexed_records_of_every_type_and_keeps_retry_byte
 // keeps: spec mcp-control-plane
 #[test]
 fn mcp_numeric_selectors_refuse_invalid_missing_and_ambiguous_handles() {
-    let f = Fixture::new();
+    let mut f = Fixture::new();
     for locator in [
         "#0",
         "#01",
@@ -6466,21 +6500,21 @@ fn mcp_numeric_selectors_refuse_invalid_missing_and_ambiguous_handles() {
     assert_eq!(result["isError"], true);
     assert!(result.to_string().contains("number_conflict"));
     assert!(!result.to_string().contains("Private duplicate content"));
-    // A scoped conflict must not disable unrelated artifact allocation.
+    // A scoped conflict must not disable an unrelated committed checkpoint
+    // or its responsibility claim. Draft file names are not artifacts.
+    let (id, reference, digest) = committed_claim_fixture(&mut f);
     let op = Ulid::new();
-    assert_eq!(
-        f.mutate(
-            f.own.id,
-            op,
-            "artifact_claim",
-            json!({"kind":"file","ref":"unrelated reported file"})
-        )["isError"],
-        false
-    );
+    let claimed = data(f.mutate(
+        f.own.id,
+        op,
+        "artifact_claim",
+        json!({"kind":"file","ref":reference,"digest":digest}),
+    ));
+    assert_eq!(claimed["artifact_id"], id.to_string());
     assert!(
         f.config
             .repository
-            .join(format!(".bboxy/artifacts/{op}.md"))
+            .join(format!(".bboxy/artifacts/{id}.md"))
             .exists()
     );
 }
@@ -7009,20 +7043,22 @@ fn knowledge_create(f: &Fixture, actor: Ulid, kind: &str, path: &str, body: &str
 fn mcp_original_operation_recovers_one_write_after_lost_response_and_restart() {
     let mut f = Fixture::new();
     let op = Ulid::new();
-    let original = f.mutate(
-        f.own.id,
-        op,
-        "knowledge_write",
-        knowledge_record_args("notes/lost-response.md", "note", "one durable artifact"),
-    );
+    let write = knowledge_record_args("notes/lost-response.md", "note", "one durable artifact");
+    let original = f.mutate(f.own.id, op, "knowledge_write", write.clone());
     assert_eq!(original["isError"], false, "{original}");
     let lookup = Ulid::new();
     let args = json!({"original_op_id":op});
     let recovered = data(f.call(f.own.id, lookup, "operation_status", args.clone()));
     assert_eq!(recovered["status"], "applied");
-    assert_eq!(recovered["result"], original["structuredContent"]);
+    // The journal retains the complete effect payload. Hints are derived
+    // presentation added after journaling, and replay must decorate them again.
+    let mut payload = original["structuredContent"].clone();
+    let hints = payload.as_object_mut().unwrap().remove("hints").unwrap();
+    assert_eq!(hints, original["_meta"]["bboxy450/hints"]);
+    assert_eq!(recovered["result"], payload);
     assert_eq!(recovered["retry_allowed"], false);
     f.restart();
+    assert_eq!(f.mutate(f.own.id, op, "knowledge_write", write), original);
     // Lookup is fresh even when its own operation ID is reused.
     assert_eq!(
         data(f.call(f.own.id, lookup, "operation_status", args.clone())),
@@ -7168,8 +7204,14 @@ fn knowledge_search(f: &Fixture, actor: Ulid, args: Value) -> Value {
 #[test]
 fn mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_types() {
     let f = Fixture::new();
-    for kind in ["e2e", "comment", "research", "note", "artifact"] {
-        let path = format!("records/worker-{kind}.md");
+    for (kind, directory) in [
+        ("e2e", "e2e"),
+        ("comment", "comments"),
+        ("research", "research"),
+        ("note", "notes"),
+        ("artifact", "artifacts"),
+    ] {
+        let path = format!("{directory}/worker-{kind}.md");
         let record = knowledge_create(&f, f.own.id, kind, &path, "original body");
         let mut update = knowledge_update_args(&record);
         update["body"] = json!("updated body");
@@ -7189,7 +7231,7 @@ fn mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_t
         );
         assert_item_signature(&doc, f.own.id);
     }
-    let note = data(knowledge_fetch(&f, f.own.id, "records/worker-note.md"));
+    let note = data(knowledge_fetch(&f, f.own.id, "notes/worker-note.md"));
     for actor in [f.own.id, f.oracle.id] {
         for kind in ["research", "spec", "unlisted-kind"] {
             let mut relabel = knowledge_update_args(&note);
@@ -7201,11 +7243,7 @@ fn mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_t
         }
     }
     for kind in ["spec", "decision", "invariant", "proposal"] {
-        let path = if kind == "decision" {
-            "decisions/oracle-decision.md".to_owned()
-        } else {
-            format!("records/oracle-{kind}.md")
-        };
+        let path = format!("{kind}s/oracle-{kind}.md");
         knowledge_denied(
             f.mutate(
                 f.own.id,
@@ -7278,7 +7316,7 @@ fn mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_t
             f.own.id,
             Ulid::new(),
             "knowledge_write",
-            knowledge_record_args("records/unknown-worker.md", "unlisted-kind", "denied"),
+            knowledge_record_args("unlisted-kind/unknown-worker.md", "unlisted-kind", "denied"),
         ),
         "knowledge_write_denied",
     );
@@ -7288,7 +7326,7 @@ fn mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_t
         &f,
         f.oracle.id,
         "unlisted-kind",
-        "records/unknown.md",
+        "unlisted-kind/unknown.md",
         "Oracle native custom type",
     );
     assert_eq!(custom["frontmatter"]["type"], "unlisted-kind");
