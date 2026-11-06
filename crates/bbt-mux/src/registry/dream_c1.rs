@@ -206,6 +206,37 @@ impl Journal {
     pub fn open_readonly_existing(runtime: &Path, seat: &w::Ulid) -> Result<Self, Code> {
         Self::open_mode(runtime, seat, false, true)
     }
+    /// Refusal-only preflight for a cold Status/Cancel. No schema/config/run
+    /// is read or retained. Fixed header preparation/step/finalization share a
+    /// strict ordinary unit; every included call must therefore fit that same
+    /// 1ms total, with the full after-end debt paid before the next phase.
+    #[track_caller]
+    fn probe_control_header(runtime: &Path, seat: &w::Ulid) -> Result<(), Code> {
+        let quantum = Arc::new(engine::JournalQuantum::at(std::panic::Location::caller()));
+        let existing = quantum.retain(quantum.unit(|| {
+            Self::prepare_path_mode(runtime, seat, false, true)
+        })?);
+        let mut journal = quantum.unit(|| Self::connect_existing(&existing))?;
+        journal.quantum = Some(quantum.clone());
+        journal.db.quantum = Some(quantum.clone());
+        quantum.unit(|| {
+            journal.db.busy_timeout(std::time::Duration::ZERO)
+                .map_err(Self::initialization_error)
+        })?;
+        let version = quantum.unit(|| {
+            journal.db.query_row("PRAGMA main.user_version", [], |row| row.get::<_, i64>(0))
+                .map_err(Self::initialization_error)
+        });
+        journal.finish()?;
+        drop(existing);
+        quantum.check()?;
+        quantum.pay()?;
+        match version? {
+            1 => Ok(()),
+            0 => Err(Code::Busy),
+            _ => Err(Code::StorageUnavailable),
+        }
+    }
     #[track_caller]
     fn open_mode(
         runtime: &Path,
@@ -1897,9 +1928,9 @@ impl Runtime {
                     // successful controls still capture/revalidate the full
                     // public actor/context below. Active cached runs keep their
                     // independent prepared-session path, with no catalogue IO.
-                    let mut preopened=if retained.is_none() && matches!(&request,w::Control::Status(_)|w::Control::Cancel(_)) {
-                        Some(Journal::open_readonly_existing(&runtime.path,&authority.seat.into())?)
-                    } else {None};
+                    if retained.is_none() && matches!(&request,w::Control::Status(_)|w::Control::Cancel(_)) {
+                        Journal::probe_control_header(&runtime.path,&authority.seat.into())?;
+                    }
                     let (context,identity_fence,request_session)=match retained {
                         Some((context,fence,session))=>(context,fence,Some(session)),
                         None=>{let (context,fence)=authority.capture_all()?;(context,fence,None)},
@@ -1922,14 +1953,8 @@ impl Runtime {
                     let mut journal=if matches!(&request,w::Control::Status(_)) {
                         // Read misses never bootstrap a catalogue, change WAL
                         // mode or open a writable foreign-seat database.
-                        match preopened.take() {
-                            Some(journal)=>journal,
-                            None=>Journal::open_readonly_existing(&runtime.path,&context.seat)?,
-                        }
-                    } else {
-                        if let Some(journal)=preopened.take() {journal.finish()?;}
-                        Journal::open(&runtime.path,&context.seat)?
-                    };
+                        Journal::open_readonly_existing(&runtime.path,&context.seat)?
+                    } else {Journal::open(&runtime.path,&context.seat)?};
                     journal_quantum=journal.quantum.clone();
                     match request {
                         w::Control::Inspect(mut inspect)=> {
