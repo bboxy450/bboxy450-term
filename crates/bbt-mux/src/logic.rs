@@ -4172,7 +4172,7 @@ impl Worker {
                 binding: port.binding,
                 read: WorkspaceRead::Seat(id, generation, Box::new(call), reply),
             });
-            if let Err(error) = self.workspaces.reconcile(&root) {
+            if let Err(error) = self.workspaces.reconcile_read(&root) {
                 eprintln!("workspace read reconciliation failed: {error}");
             }
             return;
@@ -10290,7 +10290,7 @@ impl Worker {
                 binding: port.binding,
                 read: WorkspaceRead::Knowledge(method, args, scope, reply),
             });
-            if let Err(error) = self.workspaces.reconcile(&root) {
+            if let Err(error) = self.workspaces.reconcile_read(&root) {
                 eprintln!("workspace GUI read reconciliation failed: {error}");
             }
             return;
@@ -10387,7 +10387,7 @@ impl Worker {
                         binding: port.binding,
                         read: WorkspaceRead::Task(id, Box::new(request), scope, origin, reply),
                     });
-                    if let Err(error) = self.workspaces.reconcile(&root) {
+                    if let Err(error) = self.workspaces.reconcile_read(&root) {
                         eprintln!("workspace task read reconciliation failed: {error}");
                     }
                 }

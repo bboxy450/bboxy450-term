@@ -51,6 +51,8 @@ struct ScanState {
     running: bool,
     queued: bool,
     force: bool,
+    /// A read waits only for the watcher's undebounced changes, never a full scan.
+    read: bool,
     generation: u64,
     failure: Option<(Instant, Error)>,
 }
@@ -342,6 +344,14 @@ impl Router {
     pub fn reconcile_pending(&mut self, root: &str) -> store::Result<()> {
         self.queue_scan(root, false)
     }
+    /// Before a read: scan the paths the watcher has seen change, undebounced;
+    /// with none, release the read at once. A failed watch still scans in full.
+    pub fn reconcile_read(&mut self, root: &str) -> store::Result<()> {
+        if self.cache.root_mut(root).is_some() {
+            self.scans.entry(root.to_owned()).or_default().read = true;
+        }
+        self.queue_scan(root, false)
+    }
     fn queue_scan(&mut self, root: &str, force: bool) -> store::Result<()> {
         if self.cache.root_mut(root).is_none() {
             return Err(store::invalid("unknown workspace root"));
@@ -379,9 +389,16 @@ impl Router {
             let Some(workspace) = self.cache.root_mut(&root) else {
                 continue;
             };
+            let read = std::mem::take(&mut state.read);
             let batch = if state.force {
                 let _ = workspace.watch.take(true);
                 ScanBatch::Full
+            } else if read && !workspace.failed() {
+                let Some(batch) = workspace.watch.take(true) else {
+                    self.ready_scans.insert(root);
+                    continue;
+                };
+                batch
             } else {
                 let Some(batch) = workspace.watch.take(false) else {
                     continue;

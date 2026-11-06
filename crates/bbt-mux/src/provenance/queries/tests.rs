@@ -301,7 +301,7 @@ fn provenance_queries_verify_separates_cached_signature_event_integrity_and_trus
     assert_eq!(verified["limits"]["account_key_trust"], "not_checked");
     assert_eq!(verified["limits"]["external_artifact_bytes"], "not_checked");
     assert_eq!(verified["limits"]["historical_chain"], "not_audited");
-    f.index.documents.get_mut("notes/0001.md").unwrap().body = "tampered cached bytes".into();
+    std::sync::Arc::make_mut(&mut f.index.documents).get_mut("notes/0001.md").unwrap().body = "tampered cached bytes".into();
     let changed = f.call("provenance_verify", json!({"locator":id})).unwrap();
     assert_eq!(changed["document_signature"]["status"], "invalid");
     assert_eq!(changed["event"]["recorded_state_matches"], false);
@@ -377,7 +377,7 @@ fn provenance_queries_revoked_task_assignment_blocks_old_replay_and_completion_w
     let paths = authority_paths(&f.index, &call, &response).unwrap();
     assert!(retained(&f.index, &f.actor, &f.seat, &call, &response));
     assert!(current_authority(&f.index, &f.actor, &f.seat, &paths));
-    f.index.documents.get_mut("notes/0001.md").unwrap().metadata["assignee"] =
+    std::sync::Arc::make_mut(&mut f.index.documents).get_mut("notes/0001.md").unwrap().metadata["assignee"] =
         json!(format!("seat:{}", Ulid(99)));
     assert!(!retained(&f.index, &f.actor, &f.seat, &call, &response));
     assert!(!current_authority(&f.index, &f.actor, &f.seat, &paths));

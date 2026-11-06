@@ -316,8 +316,10 @@ pub struct Index {
     activity_sink: Option<(crate::bus::BusHandle, tokio::runtime::Handle, String)>,
     writer: Option<Arc<crate::provenance::projection::WriterLease>>,
     issued_by: Option<String>,
-    pub documents: BTreeMap<String, Document>,
-    pub graphs: BTreeMap<GraphKind, DiGraph<String, Link>>,
+    // Shared copy-on-write: cloning an Index for a scan or provenance step is
+    // cheap, and only the first mutation of a clone copies the map.
+    pub documents: Arc<BTreeMap<String, Document>>,
+    pub graphs: Arc<BTreeMap<GraphKind, DiGraph<String, Link>>>,
     // A reopened index cold-reconciles its root. Persisted documents alone do
     // not prove that an on-disk file still has the same contents.
     file_states: BTreeMap<String, FileState>,
@@ -390,8 +392,8 @@ impl Index {
             writer: None,
             issued_by: None,
             store,
-            documents: BTreeMap::new(),
-            graphs: BTreeMap::new(),
+            documents: Arc::default(),
+            graphs: Arc::default(),
             file_states: BTreeMap::new(),
             numbers: Arc::default(),
             #[cfg(test)]
@@ -400,7 +402,7 @@ impl Index {
         index.store.connection()?.execute_batch("CREATE TABLE IF NOT EXISTS document_outbox(seq INTEGER PRIMARY KEY AUTOINCREMENT,id TEXT NOT NULL UNIQUE,payload BLOB NOT NULL)")?;
         for (_, bytes) in index.store.list("doc/")? {
             let doc: Document = serde_json::from_slice(&bytes)?;
-            index.documents.insert(doc.path.clone(), doc);
+            Arc::make_mut(&mut index.documents).insert(doc.path.clone(), doc);
         }
         index.rebuild_graphs();
         Ok(index)
@@ -548,7 +550,7 @@ impl Index {
             }
             tx.commit()?;
             self.file_states.insert(relative.clone(), state);
-            self.documents.insert(relative, doc);
+            Arc::make_mut(&mut self.documents).insert(relative, doc);
             changed = true;
         }
         let removed: Vec<_> = match scope {
@@ -565,7 +567,7 @@ impl Index {
                 .collect(),
         };
         for path in removed {
-            if let Some(doc) = self.documents.remove(&path) {
+            if let Some(doc) = Arc::make_mut(&mut self.documents).remove(&path) {
                 let event_start = events.len();
                 events.push(Draft::new(
                     format!("doc/{}/deleted", doc.id),
@@ -617,16 +619,18 @@ impl Index {
         self.scan()
     }
     pub fn rebuild_graphs(&mut self) {
-        self.graphs = [
-            GraphKind::Markdown,
-            GraphKind::Task,
-            GraphKind::Execution,
-            GraphKind::Artifact,
-            GraphKind::Provenance,
-        ]
-        .into_iter()
-        .map(|kind| (kind, DiGraph::new()))
-        .collect();
+        self.graphs = Arc::new(
+            [
+                GraphKind::Markdown,
+                GraphKind::Task,
+                GraphKind::Execution,
+                GraphKind::Artifact,
+                GraphKind::Provenance,
+            ]
+            .into_iter()
+            .map(|kind| (kind, DiGraph::new()))
+            .collect(),
+        );
         let mut aliases: BTreeMap<String, Vec<String>> = BTreeMap::new();
         for doc in self.documents.values() {
             for alias in [
@@ -651,11 +655,11 @@ impl Index {
         }
         let mut nodes: BTreeMap<GraphKind, BTreeMap<String, NodeIndex>> = BTreeMap::new();
         for doc in self.documents.values() {
-            for graph in self.graphs.values_mut() {
+            for graph in Arc::make_mut(&mut self.graphs).values_mut() {
                 graph.add_node(doc.id.clone());
             }
         }
-        for (kind, graph) in &self.graphs {
+        for (kind, graph) in self.graphs.iter() {
             nodes.insert(
                 *kind,
                 graph
@@ -686,7 +690,7 @@ impl Index {
                     _ => (),
                 }
                 for kind in kinds {
-                    let graph = self.graphs.get_mut(&kind).unwrap();
+                    let graph = Arc::make_mut(&mut self.graphs).get_mut(&kind).unwrap();
                     let map = nodes.get_mut(&kind).unwrap();
                     let from = map[&doc.id];
                     let to = *map

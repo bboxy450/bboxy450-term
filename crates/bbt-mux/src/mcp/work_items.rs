@@ -1741,7 +1741,7 @@ mod task_role_tests {
         std::fs::create_dir_all(root.path().join("docs/tasks")).unwrap();
         std::fs::write(root.path().join("docs/tasks/brief.md"), &source).unwrap();
         let document = Document::parse("tasks/brief.md", &source);
-        index.documents.insert(document.path.clone(), document);
+        std::sync::Arc::make_mut(&mut index.documents).insert(document.path.clone(), document);
         let actor = Actor::Operator {
             device_id: Ulid(4),
             door: super::super::Door::Gui,
