@@ -34,10 +34,12 @@ ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_SHA256 = "5e3d8a602eeaa1da5cb97d0f6af0b4f331b216a02255d3dff990be84c30d6a30"
 LOCK_SHA256 = "31113dd0968ace9daf43b1e610b53a3fc9b586e7ff9a707136ec25ab5e9f2c31"
 # Updated only with the Oracle's reviewed producer pin/artifact handoff.
+# Decision66058 admits this exact canonical ordinary tuple; historical diagnosis
+# below remains consumed/stopped. Eligibility never certifies runtime readiness.
 APPROVED_NATIVE_BUILD = (  # source, exact rustc -vV SHA256, ordinary executable
-    "d06e696f99472ed754e84353baf11a2974589d6d",
+    "2ce4359df034405043d419fe550b0f6cafe7887e",
     "e003fd3d385fcd0de16bc6b049124efb20207831dd810fd4ab39ff079bbb12a5",
-    "12ba4006b694bdce3c44d199de460d09f0f2414fafb7fd17880921a7d397a3b4",
+    "2b85c7114545f35a62842115ae91e08e1a22fbfcd24dfd27e3aa45fa1d3837cb",
 )
 BOOTSTRAP_VECTORS_SHA256 = "de919016ac6e5a464de60c86b2bf3bf6b54edc08e29c05f89688a5c80da37307"
 PRIVATE_DEVELOPMENT_BUILD = None
