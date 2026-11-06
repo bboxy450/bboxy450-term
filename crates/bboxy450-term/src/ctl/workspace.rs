@@ -500,6 +500,7 @@ mod tests {
             .unwrap();
         let op = Ulid::new();
         client.op = Some(op);
+        let (release_peer, hold_peer) = std::sync::mpsc::channel();
         let server = std::thread::spawn(move || {
             let mut reader = BufReader::new(door.try_clone().unwrap());
             read(&mut reader);
@@ -514,6 +515,9 @@ mod tests {
                 .unwrap();
             let mut next = String::new();
             assert!(reader.read_line(&mut next).is_err());
+            // Keep the connection live through the restoration assertion even
+            // when the client is descheduled beyond the no-retry read budget.
+            let _ = hold_peer.recv();
         });
         let started = Instant::now();
         assert!(
@@ -527,6 +531,7 @@ mod tests {
             client.reader.get_ref().read_timeout().unwrap(),
             Some(budget)
         );
+        release_peer.send(()).unwrap();
         server.join().unwrap();
     }
 
