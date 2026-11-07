@@ -18,7 +18,8 @@ pub(crate) fn chrome_line(value: &str) -> String {
     let mut line = String::new();
     for _ in 0..192 {
         let Some(c) = chars.next() else { return line };
-        line.push(if c.is_whitespace() { ' ' } else { c });
+        // NBSP is deliberate preformatted indentation (pane rows): keep it.
+        line.push(if c.is_whitespace() && c != '\u{a0}' { ' ' } else { c });
     }
     if chars.next().is_some() {
         line.pop();
