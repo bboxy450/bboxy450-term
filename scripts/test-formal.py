@@ -241,10 +241,13 @@ print("Model checking completed. No error has been found.")
             (own / "bin").mkdir()
             (own / "scripts").mkdir()
             (own / "scripts/cache-env.sh").write_text(":\n")
+            (own / "scripts/qos.sh").write_bytes((root / "scripts/qos.sh").read_bytes())
             fixtures = {
                 "gh": 'printf "%s\\n" "$FIXTURE_ACTOR"',
                 "git": 'case "$1" in status) printf "%s" "$FIXTURE_DIRTY";; rev-parse) echo fixture-head;; esac',
-                "python3": 'echo invoked > "$FIXTURE_CALLED"',
+                # The Make shell's native QoS bootstrap uses real Python;
+                # only the publication command remains the original sentinel.
+                "python3": 'if [ "$1" = -I ] && [ "$2" = -c ]; then exec "$FIXTURE_PYTHON" "$@"; fi; echo invoked > "$FIXTURE_CALLED"',
             }
             for name, body in fixtures.items():
                 path = own / "bin" / name
@@ -252,7 +255,7 @@ print("Model checking completed. No error has been found.")
                 path.chmod(0o700)
             called, log = own / "called", own / "ci.log"
             env = {k: v for k, v in publisher.os.environ.items() if k not in {"MAKEFLAGS", "MFLAGS", "MAKELEVEL"}}
-            env.update(PATH=str(own / "bin") + ":" + env["PATH"], FIXTURE_CALLED=str(called))
+            env.update(PATH=str(own / "bin") + ":" + env["PATH"], FIXTURE_CALLED=str(called), FIXTURE_PYTHON=sys.executable)
             for actor, dirty, receipt, accepted in [
                 ("bboxy450", "", "fixture-head normal 0", True),
                 ("other", "", "fixture-head normal 0", False),
