@@ -421,10 +421,21 @@ pub fn progress_bar(metric: &UsageMetric, width: f32) -> c::Element {
     let size = [width, height];
     let track = stroked(size, line(width - height / 2.), height, ui::Paint::solid(ui::Color::Muted), 0.25);
     let mut overlays = Vec::new();
-    if let (Some(p), Some(color)) = (metric.percent.filter(|p| *p > 0), band_color(metric)) {
-        let to = height / 2. + (width - height) * p.min(100) as f32 / 100.;
+    let at = |p: f32| height / 2. + (width - height) * p.min(100.) / 100.;
+    // Pace as a ghost of the same band out to where this window lands by reset,
+    // so the bar itself answers "will I make it".
+    if let (Some(p), Some(projected), Some(color)) = (metric.percent, metric.projected, band_color(metric))
+        && projected > u16::from(p)
+    {
         overlays.push(c::Placed {
-            content: stroked(size, line(to), height, ui::Paint::solid(color), 1.),
+            content: stroked(size, line(at(f32::from(projected))), height, ui::Paint::solid(color), 0.28),
+            left: 0.,
+            bottom: 0.,
+        });
+    }
+    if let (Some(p), Some(color)) = (metric.percent.filter(|p| *p > 0), band_color(metric)) {
+        overlays.push(c::Placed {
+            content: stroked(size, line(at(f32::from(p))), height, ui::Paint::solid(color), 1.),
             left: 0.,
             bottom: 0.,
         });
@@ -482,8 +493,41 @@ pub fn usage_breakdown(usage: &UsageStrip, width: f32) -> c::Element {
     let muted = ui::Color::Muted;
     let mut sections: Vec<c::Item> = Vec::new();
     if !usage.machine.is_empty() {
-        let line = usage.machine.iter().map(|m| m.description(false)).collect::<Vec<_>>().join("  ·  ");
-        sections.push(caption(line, 500, muted, ui::TypeStep::Caption).into());
+        // CPU, memory and disk as three small meters on one row, in the same bands.
+        let gap = 14.;
+        let n = usage.machine.len() as f32;
+        let each = ((width - gap * (n - 1.)) / n).max(24.);
+        let meters = usage
+            .machine
+            .iter()
+            .map(|m| {
+                let value = m.percent.map_or("—".to_string(), |p| format!("{p}%"));
+                let tone = band_color(m).unwrap_or(ui::Color::Foreground);
+                c::Item {
+                    element: column(
+                        3.,
+                        vec![
+                            spread(
+                                caption(m.label.clone(), 500, muted, ui::TypeStep::Micro),
+                                Some(caption(value, 650, tone, ui::TypeStep::Micro)),
+                            )
+                            .into(),
+                            progress_bar(m, each).into(),
+                        ],
+                    ),
+                    extent: c::Extent::Fixed(each),
+                }
+            })
+            .collect();
+        sections.push(
+            c::Element::Stack(c::Stack {
+                direction: Axis::Row,
+                gap: ui::Length::Px(gap),
+                align: c::Alignment::Start,
+                children: meters,
+            })
+            .into(),
+        );
     }
     for provider in &usage.providers {
         let mut name = provider.label.clone();
@@ -514,6 +558,7 @@ pub fn usage_breakdown(usage: &UsageStrip, width: f32) -> c::Element {
             let used = window
                 .percent
                 .map_or("—".to_string(), |p| format!("{p}% Used"));
+            let tone = band_color(&window).unwrap_or(ui::Color::Foreground);
             let pace = window.pace_caption().map(|mut c| {
                 if let Some(first) = c.get_mut(..1) {
                     first.make_ascii_uppercase();
@@ -526,7 +571,7 @@ pub fn usage_breakdown(usage: &UsageStrip, width: f32) -> c::Element {
                     vec![
                         spread(caption(title, 500, ui::Color::Foreground, ui::TypeStep::Caption), resets).into(),
                         progress_bar(&window, width).into(),
-                        spread(caption(used, 400, muted, ui::TypeStep::Caption), pace).into(),
+                        spread(caption(used, 650, tone, ui::TypeStep::Caption), pace).into(),
                     ],
                 )
                 .into(),
@@ -538,6 +583,6 @@ pub fn usage_breakdown(usage: &UsageStrip, width: f32) -> c::Element {
         }
         sections.push(column(8., rows).into());
     }
-    sections.push(caption("Click to refresh accounts", 400, muted, ui::TypeStep::Caption).into());
-    named("usage/breakdown", column(14., sections))
+    sections.push(caption("Click to refresh accounts", 400, muted, ui::TypeStep::Micro).into());
+    named("usage/breakdown", column(12., sections))
 }
