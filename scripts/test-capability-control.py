@@ -17,8 +17,8 @@ root = Path(__file__).resolve().parents[1]
 target = Path(sys.argv[1]).resolve()
 out = target / 'capability-file'
 out.mkdir(parents=True, exist_ok=True)
-command = ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--test', 'capability_file',
-           '--target-dir', str(target), 'every_seat_kind_keeps_capability_out_of_seat_and_ancestor_environments',
+command = ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--test', 'it',
+           '--target-dir', str(target), 'capability_file::every_seat_kind_keeps_capability_out_of_seat_and_ancestor_environments',
            '--', '--exact', '--nocapture']
 source = root / 'crates/bbt-supervisor/src/supervisor.rs'
 anchor = '            command.env("BBOXY_PROCESS_GENERATION", spec.generation.to_string());'

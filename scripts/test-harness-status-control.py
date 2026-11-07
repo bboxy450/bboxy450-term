@@ -24,8 +24,8 @@ for old, new in [
 ]:
     assert mutant.count(old) == 1, 'cadence control source changed; update its exact guard'
     mutant = mutant.replace(old, new)
-command = ['cargo', 'test', '--locked', '-p', 'bboxy450-term-mux', '--test', 'mcp',
-           '--target-dir', str(target), 'mcp_harness_seat_status_survives_quiet_tool',
+command = ['cargo', 'test', '--locked', '-p', 'bboxy450-term-mux', '--test', 'it',
+           '--target-dir', str(target), 'mcp::mcp_harness_seat_status_survives_quiet_tool',
            '--', '--exact', '--ignored', '--nocapture']
 env = {**os.environ, 'BBOXY_HARNESS_TEST_BIN': str(target / 'debug/bboxy450-harness')}
 target.mkdir(parents=True, exist_ok=True)

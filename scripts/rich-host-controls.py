@@ -19,7 +19,7 @@ output.mkdir(parents=True, exist_ok=True)
 base = ['cargo', 'test', '--locked', '--target-dir', str(a.target)]
 controls = [
     ('fresh-id', base + ['-p', 'bboxy450-harness-wake-up', '--test', 'rich_socket', 'private_socket_duplicate_busy_closed_reconnect_and_generation', '--', '--exact', '--nocapture'], 'duplicate control must produce two turns'),
-    ('pty-fallback', base + ['-p', 'bboxy450-term-mux', '--test', 'mcp', 'mcp_harness_seat_completes_and_closes_without_orphans', '--', '--exact', '--ignored', '--nocapture'], 'zero bytes for socket delivery'),
+    ('pty-fallback', base + ['-p', 'bboxy450-term-mux', '--test', 'it', 'mcp::mcp_harness_seat_completes_and_closes_without_orphans', '--', '--exact', '--ignored', '--nocapture'], 'zero bytes for socket delivery'),
 ]
 results = []
 for control, command, assertion in controls:

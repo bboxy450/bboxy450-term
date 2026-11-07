@@ -43,9 +43,9 @@ def run(name, command):
 initial = source_hashes()
 run('producer', ['python3', '-I', str(PRODUCER / 'scripts/verify-harness-attachments.py')])
 cargo = ['--offline', '--locked', '--jobs', '2', '--target-dir', str(TARGET)]
-run('native-worker', ['cargo', 'nextest', 'run', *cargo, '-p', 'bboxy450-term', '--test', 'harness_attachments'])
+run('native-worker', ['cargo', 'nextest', 'run', *cargo, '-p', 'bboxy450-term', '--test', 'it', '-E', 'binary(it)&test(/^harness_attachments::/)'])
 run('private-native-clipboard', ['cargo', 'nextest', 'run', *cargo, '-p', 'bboxy450-term-desktop-macos', '--lib', '-E', 'test(clipboard_private_pasteboard_snapshots_png_tiff_text_without_general_clipboard)'])
-run('strict-consumer', ['cargo', 'clippy', *cargo, '-p', 'bboxy450-term', '--lib', '--bin', 'bboxy450-term', '--test', 'harness_attachments', '--no-deps', '--', '-D', 'warnings'])
+run('strict-consumer', ['cargo', 'clippy', *cargo, '-p', 'bboxy450-term', '--lib', '--bin', 'bboxy450-term', '--test', 'it', '--no-deps', '--', '-D', 'warnings'])
 assert source_hashes() == initial, 'source changed while focused verification ran'
 producer = json.loads((OUT / 'producer.json').read_text())
 report = dict(verify=dict(command='make verify-harness-attachments', exit_code=0), producer_head=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=PRODUCER, text=True).strip(), consumer_head=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(), source_hashes=initial, commands=commands, producer=producer, operator_input=False, skipped=['full test/parity/formal/runtime corpus', 'paid provider', 'desktop input', 'backend restart', 'pin update', 'push', 'install'])

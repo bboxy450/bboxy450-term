@@ -24,8 +24,8 @@ if original.count(guard) != 1:
 broken = original.replace(guard, b'Input::Enter | Input::Click(_)')
 out = a.target / 'rich-cancel-control'
 out.mkdir(parents=True, exist_ok=True)
-command = ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--test', 'rich_client',
-           '--target-dir', str(a.target), 'delayed_cancel_cannot_deny_a_new_approval',
+command = ['cargo', 'test', '--locked', '-p', 'bboxy450-term', '--test', 'it',
+           '--target-dir', str(a.target), 'rich_client::delayed_cancel_cannot_deny_a_new_approval',
            '--', '--exact', '--nocapture']
 try:
     source.write_bytes(broken)
