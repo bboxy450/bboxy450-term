@@ -15,6 +15,39 @@ extern crate self as bbt_yarn;
 
 extern crate alloc;
 
+#[cfg(test)]
+mod tests {
+    use crate::protocol::{FiniteDomain, Set};
+
+    #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+    enum Member {
+        First,
+        Last,
+    }
+
+    impl FiniteDomain for Member {
+        fn ordinal(self) -> u32 {
+            match self {
+                Self::First => 0,
+                Self::Last => 62,
+            }
+        }
+    }
+
+    #[test]
+    fn finite_set_updates_preserve_the_input_and_other_domain_members() {
+        let empty = Set::empty();
+        let both = empty.with(Member::First).with(Member::Last);
+        assert!(!empty.contains(Member::First));
+        assert!(!empty.contains(Member::Last));
+        assert!(both.contains(Member::First) && both.contains(Member::Last));
+        let last = both.without(Member::First);
+        assert!(!last.contains(Member::First) && last.contains(Member::Last));
+        assert!(both.contains(Member::First));
+        assert_eq!(both.with(Member::First), both);
+    }
+}
+
 #[cfg(any(feature = "model", test))]
 extern crate std;
 
