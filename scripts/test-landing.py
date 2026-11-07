@@ -96,7 +96,10 @@ class Repository:
         for name, value in (("user.name", "Landing Fixture"),
                             ("user.email", "fixture@bboxy450.invalid"),
                             ("user.signingkey", key), ("gpg.program", str(program)),
-                            ("commit.gpgsign", "true")):
+                            ("commit.gpgsign", "true"),
+                            # A developer's global excludes (e.g. a private
+                            # `.bboxy/`) must not hide fixture records.
+                            ("core.excludesFile", os.devnull)):
             run("git", "config", name, value, cwd=self.root)
         self.write("Cargo.toml", '[workspace]\nresolver="3"\nmembers=["crates/a","crates/b","crates/c"]\n')
         for name, deps in (("a", ""), ("b", 'alias={package="a",path="../a"}\n'),
