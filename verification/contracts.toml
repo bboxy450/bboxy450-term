@@ -145,6 +145,16 @@ property = "No immediate dirty bit loses its wake after publication/drain comple
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "IdleFrameDemand"
+title = "Quiet frames pause; endless visible attention uses retained deadline-capped pulses"
+models = ["IdleFrameDemand", "BrokenIdleFrameDemand"]
+sources = ["crates/bboxy450-term/src/attention_frames.rs", "crates/bboxy450-term/src/gpu.rs", "crates/bboxy450-term/src/display_link.rs", "crates/bboxy450-term/src/main.rs", "crates/bboxy450-term/src/scene.rs", "crates/bboxy450-term/tests/formal_contracts/idle_frame_model.rs"]
+implementation_tests = ["crates/bboxy450-term/tests/idle_cpu.py", "crates/bboxy450-term/tests/idle_cpu.rs", "crates/bboxy450-term/src/display_link.rs", "crates/bboxy450-term/src/scene.rs"]
+assumptions = "One UI owner; two finite data revisions; an indefinitely recurring waiting cue; visible/occluded transitions; one coalesced drawable token and one pulse token per deadline. Output, waiting transition, occlusion/reveal, deadline, display tick and paint are separate atomic actions. Each modeled deadline represents at least 1/30 second; its actual duration is an implementation assumption. Safety only: no scheduling/fairness or wall-clock CPU claim. Late ticks after pause create no demand. Process witnesses use six real PTYs, assert waiting/question readiness, sample total/full/pulse frames and process CPU, and privately hide the native window to observe actual occlusion."
+property = "Quiet settled state pauses the display link. Visible waiting may pulse indefinitely, at most once per deadline, using retained rendering rather than full-scene reconstruction. Occlusion clears active/tick/pulse tokens; reveal restores data demand. Every completed full paint retains the newest revision. Broken controls force quiet continuous redraw, bypass the pulse deadline, or rebuild the full scene for a pulse and violate the same safety properties. CPU <=5% and zero quiet/occluded frames; visible waiting <=30 fps and <=10% CPU are process-test budgets, not formal timing proofs."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "AsyncRenderPreparation"
 title = "Background renderer preparation never mutates a retired owner"
 models = ["AsyncRenderPreparation", "BrokenAsyncRenderPreparation"]

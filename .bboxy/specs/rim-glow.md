@@ -86,3 +86,5 @@ Verbatim: "and same swell and same border effect as on terminal blocks should be
 ## 9. Attention
 
 A seat waiting for the operator (question, permission, auth) auto-swells and pulses strongly until handled, and fires a desktop notification whose click focuses it: [[attention]] (decision [[d44-waiting-attention|#44]]).
+
+Rendering (Oracle ruling, 2026-11-07): cap persistent attention at 30 fps, repaint retained waiting-row/pane rim damage, and suspend occluded/minimized/hidden windows while notifications remain active; budgets are ≤5% core for quiet idle, ≤10% for visible waiting, and approximately zero when occluded.

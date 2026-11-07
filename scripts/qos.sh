@@ -25,7 +25,7 @@ case "$role" in
         # These gates measure real latency/CPU/frame budgets. Build children
         # still pass through the compiler shim. Keep the list in LAND.md.
         case "$target" in
-            test-dream-c1-qos|test-dream-c1|test-dream-c1-integration|test-perf-p1|test-perf-p2|bench-budgets|profile-ingestion|profile-input-ui|profile-render-input|test-input-latency|test-input-backend|test-terminal-streaming|test-codex-streaming|test-native-strip|test-seat-ingestion|test-formal-contracts|test-formal|test-qos|test-qos-app|test-landing|test-landing-extended|test-parity)
+            test-dream-c1-qos|test-dream-c1|test-dream-c1-integration|test-perf-p1|test-perf-p2|bench-budgets|profile-ingestion|profile-input-ui|profile-render-input|test-input-latency|test-input-backend|test-terminal-streaming|test-codex-streaming|test-native-strip|test-seat-ingestion|test-formal-contracts|test-formal|test-qos|test-qos-app|test-landing|test-landing-extended|test-parity|test-gui-cpu|test-gui-idle|profile-gui-idle)
                 role=default ;;
         esac
         # These explicit parents invoke the timed formal_contracts executable

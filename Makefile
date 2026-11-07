@@ -216,6 +216,8 @@ help:
 	  'make test-input-ui               Wheel bursts, pointer motion, selection and sidebar regressions' \
 	  'make profile-input-ui            Repeatable CPU host-layout profile (no GPU latency claim)' \
 	  'make profile-render-input        Layout and cached chrome text CPU profiles' \
+	  'make test-gui-idle               Private six-seat CPU/redraw, attention and occlusion gates' \
+	  'make profile-gui-idle            Private waiting-seat samples and logic memory breakdown' \
 	  'make test-power                  Outbox and namespace idle-query bounds, migration and delivery' \
 	  'make profile-power               Before/after aged-ledger CPU/query-work profiles' \
 	  'make test-render-input           Native glyph-plan, memory, worker and cancellation checks' \
@@ -1079,6 +1081,18 @@ profile-input-ui:
 	@set -eu; . ./scripts/cache-env.sh; BBOXY_INPUT_PROFILE=1 cargo test --locked -p $(APP) --target-dir '$(TARGET_DIR)' --bin $(APP) lazy_projection_tests::input_frame_cpu_profile -- --exact --nocapture
 
 .PHONY: profile-render-input
+.PHONY: test-gui-idle test-gui-cpu profile-gui-idle
+test-gui-cpu:
+	@set -eu; . ./scripts/cache-env.sh; cargo nextest run -p bboxy450-term -p bboxy450-ui -E 'test(/idle|frame|redraw/)'
+	@$(MAKE) test-formal-contracts
+
+test-gui-idle:
+	@set -eu; . ./scripts/cache-env.sh; cargo nextest run --locked -p $(APP) --test idle_cpu --run-ignored all --test-threads 1 --target-dir '$(TARGET_DIR)'
+
+GUI_IDLE_PROFILE_ARGS ?=
+profile-gui-idle: build
+	@python3 -I -B crates/bboxy450-term/tests/idle_cpu.py '$(abspath $(TARGET_DIR))/debug/$(APP)' --mode native --waiting --profile $(GUI_IDLE_PROFILE_ARGS)
+
 profile-render-input: profile-input-ui
 	@set -eu; . ./scripts/cache-env.sh; BBOXY_RENDER_PROFILE=1 cargo test --locked -p bboxy450-render --target-dir '$(TARGET_DIR)' --lib repeated_text_frame_cpu_profile -- --nocapture
 

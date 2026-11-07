@@ -9,6 +9,9 @@
 use Expr::{Bool, Int, Var};
 use bboxy450_tlc::{Action, Expr, Invariant, Model, Response, Variable};
 
+#[path = "idle_frame_model.rs"]
+mod idle_frame_model;
+
 #[path = "dream_c1.rs"]
 mod dream_c1;
 
@@ -1828,7 +1831,7 @@ fn native_frame_observation(b: bool) -> Model {
 }
 
 pub fn cases() -> Vec<(Model, &'static str)> {
-    let families: [fn(bool) -> Model; 39] = [
+    let families: [fn(bool) -> Model; 40] = [
         seat_models::diagnostic_routing,
         native_surface_resize,
         crate_publication,
@@ -1845,6 +1848,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         native_input,
         wheel_model::wheel_ownership,
         sidebar_reveal,
+        idle_frame_model::idle_frame_demand,
         async_render_preparation,
         render_line_plan,
         sidebar_accordions,

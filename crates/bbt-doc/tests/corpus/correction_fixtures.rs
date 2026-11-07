@@ -240,7 +240,7 @@ fn corrections_cannot_repair_an_earlier_unlisted_commit_or_bypass_metadata() {
         (
             "author: seat:01M6AGAA0G0436ZEJAFB708CF1",
             "author: unknown",
-            "author must name a seat",
+            "report author must name your authenticated seat:ULID, not a display name",
         ),
         ("type: report", "type: note", "type: report"),
         ("number: 2", "number: 1", "duplicate record number"),

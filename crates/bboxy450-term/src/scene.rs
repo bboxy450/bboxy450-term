@@ -703,6 +703,11 @@ impl Scene {
     }
     /// Whether any swell or attention loop still needs frames at `now`.
     pub fn animating(&self, now: Instant) -> bool {
+        self.transient_animating(now)
+            || (self.glow && self.attention.values().any(|(_, muted)| !muted))
+    }
+    /// Transient motion uses display cadence; persistent attention has its own 30Hz deadline.
+    pub fn transient_animating(&self, now: Instant) -> bool {
         if self.sidebar_reveals.values().any(|r| r.active(now)) {
             return true;
         }
@@ -718,11 +723,77 @@ impl Scene {
             return false;
         }
         let ms = TOKENS.glow.swell_ms as f32;
-        self.attention.values().any(|(_, muted)| !muted)
-            || self
-                .swells
+        self.swells
                 .values()
                 .any(|pulse| (now.saturating_duration_since(pulse.at).as_secs_f32() * 1000.) < ms)
+    }
+
+    /// Bind the retained rim geometry to exact seat episodes, without using a color/hash as identity.
+    pub fn attention_frame_origins(&self, layouts: &[c::Layout]) -> Vec<(Rect, Instant)> {
+        fn collect<'a>(scene: &Scene, node: &'a c::Layout, mut seat: Option<SeatId>, mut tab: Option<&'a str>, viewport: Rect, out: &mut Vec<(Rect, Instant)>) {
+            if let c::LayoutKind::Named(name) = &node.kind
+                && let Some(key) = name.strip_prefix("seat/")
+                && let Ok(id) = key.parse::<bbt_mux::Ulid>()
+            {
+                seat = Some(SeatId::from_u128(id.0));
+                tab = None;
+            } else if let c::LayoutKind::Named(name) = &node.kind
+                && let Some((_, keys)) = name.split_once("/tab/")
+            {
+                tab = Some(keys);
+                seat = None;
+            }
+            if let c::LayoutKind::Box { style, .. } = &node.kind
+                && style.rim.is_some_and(|rim| rim.attention)
+                && node.rect.x < viewport.x + viewport.w && node.rect.x + node.rect.w > viewport.x
+                && node.rect.y < viewport.y + viewport.h && node.rect.y + node.rect.h > viewport.y
+            {
+                for id in seat.into_iter().chain(tab.into_iter().flat_map(|keys| keys.split('/').filter_map(|key| key.parse::<bbt_mux::Ulid>().ok()).map(|id| SeatId::from_u128(id.0)))) {
+                    if let Some((since, false)) = scene.attention.get(&id) { out.push((node.rect, *since)); }
+                }
+            }
+            let viewport = if matches!(
+                node.kind,
+                c::LayoutKind::ScrollView { .. } | c::LayoutKind::Box { clip: true, .. }
+            ) {
+                let left = viewport.x.max(node.rect.x);
+                let top = viewport.y.max(node.rect.y);
+                let right = viewport.right().min(node.rect.right());
+                let bottom = viewport.bottom().min(node.rect.bottom());
+                if right <= left || bottom <= top {
+                    return;
+                }
+                Rect::new(left, top, right - left, bottom - top)
+            } else {
+                viewport
+            };
+            for child in &node.children { collect(scene, child, seat, tab, viewport, out); }
+        }
+        let mut out = vec![];
+        if !self.glow { return out; }
+        if let Some(sidebar) = layouts.get(1) { collect(self, sidebar, None, None, sidebar.rect, &mut out); }
+        for (slot, layout) in self.pane_keys().zip(layouts.iter().skip(2)) {
+            if let Slot::Seat(id) = slot { collect(self, layout, Some(id), None, layout.rect, &mut out); }
+        }
+        out
+    }
+
+    pub fn update_attention_paint(origins: &[(Rect, Instant)], ops: &mut [c::Paint], now: Instant) {
+        for op in ops {
+            match op {
+                c::Paint::Material { rect, rim: Some(rim), .. } if rim.attention => {
+                    let mut matching = origins.iter().filter(|(bounds, _)| bounds == rect).peekable();
+                    if matching.peek().is_some() {
+                        rim.swell = matching.map(|(_, since)| {
+                            let elapsed = now.saturating_duration_since(*since).as_secs_f32() * 1000.;
+                            (std::f32::consts::PI * elapsed / TOKENS.glow.swell_ms as f32).sin().abs()
+                        }).fold(0., f32::max);
+                    }
+                }
+                c::Paint::Group { ops, .. } => Self::update_attention_paint(origins, ops, now),
+                _ => {}
+            }
+        }
     }
     /// The seat's swell envelope at `now` and whether it is the attention loop: |sin| for
     /// attention, one half sine over glow.swell_ms for a focus swell, else 0.
@@ -3433,6 +3504,81 @@ mod depth_tests {
                 .iter()
                 .all(|r| *r == (0., false))
         );
+    }
+
+    #[test]
+    fn idle_attention_frame_ignores_rims_hidden_by_ancestor_clips() {
+        let mut scene = Scene::new();
+        let since = Instant::now();
+        let seat = SeatId::from_u128(5);
+        scene.set_attention(seat, Some((since, false)));
+        let root = Rect::new(0., 0., 200., 200.);
+        let style = ui::Style::new(ui::Preset::CardRow)
+            .resolve(scene.ui_context()).unwrap();
+        let mut rim_style = style.clone();
+        rim_style.rim = Some(ui::Rim { attention: true, ..Default::default() });
+        for kind in [
+            c::LayoutKind::ScrollView { content: [200., 400.], offset: [0.; 2] },
+            c::LayoutKind::Box { style: Box::new(style), clip: true, group: false, mask: None },
+        ] {
+            for (top, clip_height, visible) in [(20., 100., false), (60., 100., true), (60., 0., false)] {
+                let rect = Rect::new(10., top, 100., 20.);
+                let row = c::Layout {
+                    rect, baseline: 0., kind: c::LayoutKind::Named(format!("seat/{seat}")),
+                    children: vec![c::Layout {
+                        rect, baseline: 0.,
+                        kind: c::LayoutKind::Box {
+                            style: Box::new(rim_style.clone()), clip: false, group: false, mask: None,
+                        },
+                        children: vec![],
+                    }],
+                };
+                let sidebar = c::Layout {
+                    rect: root, baseline: 0., kind: c::LayoutKind::Stack,
+                    children: vec![c::Layout {
+                        rect: Rect::new(0., 50., 200., clip_height), baseline: 0.,
+                        kind: kind.clone(), children: vec![row],
+                    }],
+                };
+                let layouts = vec![c::Layout {
+                    rect: root, baseline: 0., kind: c::LayoutKind::Spacer, children: vec![],
+                }, sidebar];
+                let origins = scene.attention_frame_origins(&layouts);
+                assert_eq!(origins.len(), usize::from(visible), "{kind:?} row_top={top} clip_height={clip_height}");
+                if visible {
+                    assert_eq!(origins, vec![(rect, since)]);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn idle_attention_frame_keeps_collapsed_tab_episode_phases() {
+        let mut scene = Scene::new();
+        let at = Instant::now();
+        let a = SeatId::from_u128(5);
+        let b = SeatId::from_u128(6);
+        scene.set_attention(a, Some((at, false)));
+        scene.set_attention(b, Some((at + std::time::Duration::from_millis(450), false)));
+        let rect = Rect::new(0., 0., 200., 28.);
+        let mut style = ui::Style::new(ui::Preset::CardRow).resolve(scene.ui_context()).unwrap();
+        style.rim = Some(ui::Rim { attention: true, ..Default::default() });
+        let header = c::Layout {
+            rect, baseline: 0.,
+            kind: c::LayoutKind::Named(format!("swarm/fixture/tab/{a}/{b}")),
+            children: vec![c::Layout { rect, baseline: 0.,
+                kind: c::LayoutKind::Box { style: Box::new(style), clip: false, group: false, mask: None },
+                children: vec![],
+            }],
+        };
+        let layouts = vec![c::Layout { rect, baseline: 0., kind: c::LayoutKind::Spacer, children: vec![] }, header];
+        let origins = scene.attention_frame_origins(&layouts);
+        assert_eq!(origins.len(), 2, "a collapsed tab still owns both waiting episodes");
+        let mut ops = c::paint(&layouts[1], scene.ui_context());
+        for milliseconds in [450, 900] {
+            Scene::update_attention_paint(&origins, &mut ops, at + std::time::Duration::from_millis(milliseconds));
+            assert!(ops.iter().any(|op| matches!(op, c::Paint::Material { rim: Some(rim), .. } if rim.attention && (rim.swell - 1.).abs() < 1e-5)));
+        }
     }
 
     // keeps: spec ux-prototype §5

@@ -13,7 +13,7 @@ from pathlib import Path
 import sys
 
 TIMED_TARGETS = {"gates_seats", "input_latency", "dream_c1", "dream_replay",
-                 "gui_budget", "formal_contracts", "capture_fairness"}
+                 "gui_budget", "formal_contracts", "capture_fairness", "idle_cpu"}
 TIMED_FILTERS = {
     "dream::c1::", "gpu::streaming_tests::",
     "lazy_projection_tests::input_frame_cpu_profile", "repeated_text_frame_cpu_profile",

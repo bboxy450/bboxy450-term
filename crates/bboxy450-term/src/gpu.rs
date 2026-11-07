@@ -467,6 +467,480 @@ fn timed_paint(op: &Paint) -> bool {
         Paint::Draw(_) | Paint::Underlay(_) => false,
     }
 }
+
+/// A stable cockpit below the alive rims. Pulse frames restore only the
+/// maximum rim bands, then repaint their intersecting rims in original order.
+/// Origin/credit: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+struct AttentionCache {
+    below: wgpu::Texture,
+    suffix: Vec<Paint>,
+    scale: u32,
+    static_time_ms: f32,
+    damage: Vec<[u32; 4]>,
+}
+
+fn region_intersection(a: [u32; 4], b: [u32; 4]) -> Option<[u32; 4]> {
+    let left = a[0].max(b[0]);
+    let top = a[1].max(b[1]);
+    let right = (a[0] + a[2]).min(b[0] + b[2]);
+    let bottom = (a[1] + a[3]).min(b[1] + b[3]);
+    (right > left && bottom > top).then_some([
+        left,
+        top,
+        right.saturating_sub(left),
+        bottom.saturating_sub(top),
+    ])
+}
+
+/// Add a rectangle to a disjoint pixel union: no pulse pixel is blended twice.
+fn add_damage(regions: &mut Vec<[u32; 4]>, next: [u32; 4]) {
+    let mut pieces = vec![next];
+    for &old in regions.iter() {
+        pieces = pieces
+            .into_iter()
+            .flat_map(|piece| {
+                let Some(overlap) = region_intersection(piece, old) else {
+                    return vec![piece];
+                };
+                let [x, y, w, h] = piece;
+                let [left, top, width, height] = overlap;
+                [
+                    [x, y, w, top - y],
+                    [x, top + height, w, y + h - top - height],
+                    [x, top, left - x, height],
+                    [left + width, top, x + w - left - width, height],
+                ]
+                .into_iter()
+                .filter(|r| r[2] > 0 && r[3] > 0)
+                .collect()
+            })
+            .collect();
+    }
+    regions.extend(pieces);
+}
+
+fn pixel_region(rect: Rect, scale: f32, size: wgpu::Extent3d) -> Option<[u32; 4]> {
+    if rect.w <= 0. || rect.h <= 0. {
+        return None;
+    }
+    let left = (rect.x * scale).floor().clamp(0., size.width as f32) as u32;
+    let top = (rect.y * scale).floor().clamp(0., size.height as f32) as u32;
+    let right = ((rect.x + rect.w) * scale)
+        .ceil()
+        .clamp(0., size.width as f32) as u32;
+    let bottom = ((rect.y + rect.h) * scale)
+        .ceil()
+        .clamp(0., size.height as f32) as u32;
+    (right > left && bottom > top).then_some([
+        left,
+        top,
+        right.saturating_sub(left),
+        bottom.saturating_sub(top),
+    ])
+}
+
+fn rim_extent(rect: Rect, rim: ui::Rim, scale: f32) -> Rect {
+    let size = rim.size.unwrap_or(TOKENS.glow.rim as f32);
+    let outer = rim.outer.unwrap_or(size * 0.5).clamp(0., size * 0.5);
+    // Material vertex expansion and fragment antialiasing get two extra pixels.
+    let reach = outer + TOKENS.glow.swell as f32 + 2. / scale;
+    Rect::new(
+        rect.x - reach,
+        rect.y - reach,
+        rect.w + 2. * reach,
+        rect.h + 2. * reach,
+    )
+}
+
+fn attention_damage(suffix: &[Paint], scale: f32, size: wgpu::Extent3d) -> Option<Vec<[u32; 4]>> {
+    if !scale.is_finite() || scale <= 0. {
+        return None;
+    }
+    let mut damage = vec![];
+    for op in suffix {
+        match op {
+            Paint::Material {
+                rect,
+                radii,
+                kind: ui::Material::Rim,
+                rim: Some(rim),
+                ..
+            } => {
+                if !rim.attention {
+                    continue;
+                }
+                let Some(outer) = pixel_region(rim_extent(*rect, *rim, scale), scale, size) else {
+                    continue;
+                };
+                // Rounded corners, the band and inward bloom stay outside this
+                // conservative inner rectangle. Terminal interiors are untouched.
+                let inset = radii
+                    .iter()
+                    .copied()
+                    .fold(rim.depth.unwrap_or(TOKENS.glow.depth as f32), f32::max)
+                    .max(rim.size.unwrap_or(TOKENS.glow.rim as f32) * 0.5)
+                    + 2. / scale;
+                let inner = Rect::new(
+                    rect.x + inset,
+                    rect.y + inset,
+                    (rect.w - 2. * inset).max(0.),
+                    (rect.h - 2. * inset).max(0.),
+                );
+                let Some(inner) = pixel_region(inner, scale, size)
+                    .and_then(|inner| region_intersection(outer, inner))
+                else {
+                    add_damage(&mut damage, outer);
+                    continue;
+                };
+                let [x, y, w, h] = outer;
+                let [ix, iy, iw, ih] = inner;
+                for band in [
+                    [x, y, w, iy - y],
+                    [x, iy + ih, w, y + h - iy - ih],
+                    [x, iy, ix - x, ih],
+                    [ix + iw, iy, x + w - ix - iw, ih],
+                ] {
+                    if band[2] > 0 && band[3] > 0 {
+                        add_damage(&mut damage, band);
+                    }
+                }
+            }
+            Paint::Draw(_) | Paint::Underlay(_) | Paint::Material { .. } => {}
+            Paint::Group { ops, .. } => {
+                // The host updates top-level attention rims only. Static groups
+                // retain their painter order, mask and group opacity below.
+                if ops.iter().any(nested_attention) {
+                    return None;
+                }
+            }
+        }
+    }
+    // A frosted overlay samples earlier pixels beyond its visible rectangle.
+    // If that dependency changes, restore and replay its entire sampling area
+    // before painting it once. Merely clipping a blur separately into strips
+    // would let later strips sample that same overlay's earlier output.
+    let mut dependencies = vec![];
+    for op in suffix {
+        frost_dependencies(op, scale, size, &mut dependencies)?;
+    }
+    let mut included = vec![false; dependencies.len()];
+    loop {
+        let mut changed = false;
+        for (index, &(sampled, painted)) in dependencies.iter().enumerate() {
+            if !included[index]
+                && damage
+                    .iter()
+                    .any(|region| region_intersection(*region, sampled).is_some())
+            {
+                included[index] = true;
+                add_damage(&mut damage, sampled);
+                add_damage(&mut damage, painted);
+                changed = true;
+            }
+        }
+        if !changed {
+            break;
+        }
+    }
+    (!damage.is_empty()).then_some(damage)
+}
+
+fn nested_attention(op: &Paint) -> bool {
+    match op {
+        Paint::Material { rim: Some(rim), .. } => rim.attention,
+        Paint::Group { ops, .. } => ops.iter().any(nested_attention),
+        _ => false,
+    }
+}
+
+fn frost_region(op: &Paint, scale: f32, size: wgpu::Extent3d) -> Option<Option<[u32; 4]>> {
+    let Paint::Material {
+        rect,
+        radii,
+        kind: ui::Material::Frosted,
+        blur,
+        ..
+    } = op
+    else {
+        return Some(None);
+    };
+    m::Surface {
+        rect: *rect,
+        radii: *radii,
+        material: m::Material::Frosted(m::Frosted {
+            tint: Color::TRANSPARENT,
+            blur_radius: blur.map_or(STYLE.material.panel_blur_px as f32, |b| b.radius),
+            saturation: blur.map_or(STYLE.material.panel_saturate as f32, |b| b.saturation),
+        }),
+        clips: vec![],
+    }
+    .backdrop_region(scale, size.width, size.height)
+    .ok()
+}
+
+fn frost_dependencies(
+    op: &Paint,
+    scale: f32,
+    size: wgpu::Extent3d,
+    out: &mut Vec<([u32; 4], [u32; 4])>,
+) -> Option<()> {
+    if let Paint::Group { ops, .. } = op {
+        for op in ops {
+            frost_dependencies(op, scale, size, out)?;
+        }
+    }
+    if let Some(sampled) = frost_region(op, scale, size)? {
+        let Paint::Material { rect, .. } = op else {
+            unreachable!()
+        };
+        let margin = 2. / scale;
+        let painted = pixel_region(
+            Rect::new(
+                rect.x - margin,
+                rect.y - margin,
+                rect.w + 2. * margin,
+                rect.h + 2. * margin,
+            ),
+            scale,
+            size,
+        )?;
+        out.push((sampled, painted));
+    }
+    Some(())
+}
+
+fn clip_attention_suffix(
+    op: &Paint,
+    damage: &[[u32; 4]],
+    scale: f32,
+    size: wgpu::Extent3d,
+) -> Vec<Paint> {
+    if let Paint::Group {
+        ops,
+        opacity,
+        saturation,
+        mask,
+    } = op
+    {
+        let ops: Vec<_> = ops
+            .iter()
+            .flat_map(|op| clip_attention_suffix(op, damage, scale, size))
+            .collect();
+        return if ops.is_empty() {
+            vec![]
+        } else {
+            vec![Paint::Group {
+                ops,
+                opacity: *opacity,
+                saturation: *saturation,
+                mask: *mask,
+            }]
+        };
+    }
+    if let Paint::Material {
+        kind: ui::Material::Frosted,
+        ..
+    } = op
+    {
+        return frost_region(op, scale, size)
+            .flatten()
+            .filter(|sampled| {
+                damage
+                    .iter()
+                    .any(|region| region_intersection(*sampled, *region).is_some())
+            })
+            .map_or_else(Vec::new, |_| vec![op.clone()]);
+    }
+    damage
+        .iter()
+        .filter_map(|&[x, y, w, h]| {
+            let clip = Rect::new(
+                x as f32 / scale,
+                y as f32 / scale,
+                w as f32 / scale,
+                h as f32 / scale,
+            );
+            match op {
+                Paint::Material {
+                    rect,
+                    rim: Some(rim),
+                    kind: ui::Material::Rim,
+                    ..
+                } if pixel_region(rim_extent(*rect, *rim, scale), scale, size)
+                    .and_then(|extent| region_intersection(extent, [x, y, w, h]))
+                    .is_none() =>
+                {
+                    None
+                }
+                Paint::Material { .. } => {
+                    let mut op = op.clone();
+                    if let Paint::Material { clips, .. } = &mut op {
+                        clips.push(ui::components::Clip {
+                            rect: clip,
+                            radii: [0.; 4],
+                        });
+                    }
+                    Some(op)
+                }
+                Paint::Draw(list) | Paint::Underlay(list) => {
+                    if list.primitives.is_empty() {
+                        return None;
+                    }
+                    let mut clipped = DrawList::default();
+                    clipped.clip(clip, [0.; 4]);
+                    clipped.primitives.extend(list.primitives.iter().cloned());
+                    clipped.unclip();
+                    Some(if matches!(op, Paint::Underlay(_)) {
+                        Paint::Underlay(clipped)
+                    } else {
+                        Paint::Draw(clipped)
+                    })
+                }
+                Paint::Group { .. } => unreachable!(),
+            }
+        })
+        .collect()
+}
+
+impl AttentionCache {
+    fn capture(
+        device: &wgpu::Device,
+        target: &wgpu::Texture,
+        suffix: Vec<Paint>,
+        scale: f32,
+        time_ms: f32,
+        encoder: &mut wgpu::CommandEncoder,
+        previous: Option<Self>,
+    ) -> Option<Self> {
+        let damage = attention_damage(&suffix, scale, target.size())?;
+        let below = previous
+            .map(|old| old.below)
+            .filter(|texture| texture.size() == target.size())
+            .unwrap_or_else(|| texture(device, [target.width(), target.height()]));
+        bbt_render::passes::count(bbt_render::passes::Kind::Copy);
+        encoder.copy_texture_to_texture(
+            target.as_image_copy(),
+            below.as_image_copy(),
+            target.size(),
+        );
+        Some(Self {
+            below,
+            suffix,
+            scale: scale.to_bits(),
+            static_time_ms: time_ms,
+            damage,
+        })
+    }
+
+    fn updated_suffix(&self, mut update: impl FnMut(&mut Vec<Paint>)) -> Option<Vec<Paint>> {
+        let mut next = self.suffix.clone();
+        update(&mut next);
+        let mut allowed = self.suffix.clone();
+        for (old, new) in allowed.iter_mut().zip(&next) {
+            if let (Paint::Material { rim: Some(old), .. }, Paint::Material { rim: Some(new), .. }) =
+                (old, new)
+                && old.attention
+            {
+                if !new.swell.is_finite() || !(0. ..=1.).contains(&new.swell) {
+                    return None;
+                }
+                old.swell = new.swell;
+            }
+        }
+        (allowed == next).then_some(next)
+    }
+
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "retained target and ordered rim composition"
+    )]
+    fn repaint(
+        &mut self,
+        renderer: &mut ChromeRenderer,
+        materials: &m::Pass,
+        target: &wgpu::Texture,
+        backdrop: &wgpu::Texture,
+        suffix: Vec<Paint>,
+        time_ms: f32,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<(), String> {
+        let scale = f32::from_bits(self.scale);
+        for &[x, y, width, height] in &self.damage {
+            let origin = wgpu::Origin3d { x, y, z: 0 };
+            let mut source = self.below.as_image_copy();
+            source.origin = origin;
+            let mut destination = target.as_image_copy();
+            destination.origin = origin;
+            bbt_render::passes::count(bbt_render::passes::Kind::Copy);
+            encoder.copy_texture_to_texture(
+                source,
+                destination,
+                wgpu::Extent3d {
+                    width,
+                    height,
+                    depth_or_array_layers: 1,
+                },
+            );
+        }
+        let mut groups: Vec<(f32, Vec<Paint>)> = vec![];
+        let mut pending = vec![];
+        for op in &suffix {
+            let mut clipped = clip_attention_suffix(op, &self.damage, scale, target.size());
+            if matches!(op, Paint::Draw(_) | Paint::Underlay(_)) {
+                // Keep an underlay in the same encoder call as its following
+                // material, whose backdrop must be sampled before the underlay.
+                pending.append(&mut clipped);
+                continue;
+            }
+            // Unchanged neighbours and overlays retain their original shader
+            // phase. Only the host's top-level attention rims advance.
+            let phase = if matches!(op, Paint::Material { rim: Some(rim), .. } if rim.attention) {
+                time_ms
+            } else {
+                self.static_time_ms
+            };
+            if groups
+                .last()
+                .is_none_or(|(old, _)| old.to_bits() != phase.to_bits())
+            {
+                groups.push((phase, vec![]));
+            }
+            let group = &mut groups.last_mut().expect("suffix phase group").1;
+            group.append(&mut pending);
+            group.append(&mut clipped);
+        }
+        if !pending.is_empty() {
+            if groups.is_empty() {
+                groups.push((self.static_time_ms, vec![]));
+            }
+            groups
+                .last_mut()
+                .expect("suffix phase group")
+                .1
+                .append(&mut pending);
+        }
+        for (time_ms, clipped) in groups {
+            encode_ops(
+                renderer,
+                materials,
+                target,
+                backdrop,
+                clipped,
+                FrameTime {
+                    scale,
+                    time_ms,
+                    external_before: true,
+                    clear: false,
+                },
+                encoder,
+            )
+            .map_err(|error| error.to_string())?;
+        }
+        self.suffix = suffix;
+        Ok(())
+    }
+}
+
 pub struct Gpu {
     pub surface: wgpu::Surface<'static>,
     pub config: wgpu::SurfaceConfiguration,
@@ -481,6 +955,10 @@ pub struct Gpu {
     cells: CellTextures,
     chrome: ChromeCache,
     overlay_layer: OverlayLayer,
+    attention_enabled: bool,
+    attention_cache: Option<AttentionCache>,
+    /// Last presented frame reused the static cockpit and repainted only rim damage.
+    pub pulse_frame: bool,
     gpu_sender: SyncSender<GpuSample>,
     gpu_samples: Receiver<GpuSample>,
     native_probe: Option<native_probe::NativeProbe>,
@@ -642,6 +1120,9 @@ impl Gpu {
                 cells: CellTextures::default(),
                 chrome: ChromeCache::default(),
                 overlay_layer: OverlayLayer::default(),
+                attention_enabled: false,
+                attention_cache: None,
+                pulse_frame: false,
                 gpu_sender,
                 gpu_samples,
                 native_probe,
@@ -664,6 +1145,7 @@ impl Gpu {
         }
         self.config.width = width;
         self.config.height = height;
+        self.attention_cache = None;
         self.configure();
         self.target = texture(&self.renderer.context.device, [width, height]);
         self.backdrop = texture(&self.renderer.context.device, [width, height]);
@@ -694,6 +1176,7 @@ impl Gpu {
         layer.setDrawableSize(extent);
         self.config.width = width;
         self.config.height = height;
+        self.attention_cache = None;
         self.target = texture(&self.renderer.context.device, [width, height]);
         self.backdrop = texture(&self.renderer.context.device, [width, height]);
         if let Some(probe) = &mut self.native_probe {
@@ -848,6 +1331,8 @@ impl Gpu {
         frame_id: u64,
         panes: Option<Panes<'_>>,
     ) -> Result<Option<(Duration, Duration)>, String> {
+        self.pulse_frame = false;
+        let previous_attention = self.attention_cache.take();
         let AcquiredFrame { frame, wait } = acquired;
         let encode = Instant::now();
         let mut split = EncodeSplit::default();
@@ -915,6 +1400,22 @@ impl Gpu {
             )?;
             split.cells = at.elapsed();
             let at = Instant::now();
+            let mut after = panes.overlay_after;
+            let attention_start = (self.attention_enabled && self.native_probe.is_none())
+                .then(|| {
+                    after.iter().position(|op| {
+                        matches!(
+                            op,
+                            Paint::Material {
+                                kind: ui::Material::Rim,
+                                ..
+                            }
+                        )
+                    })
+                })
+                .flatten()
+                .filter(|at| attention_damage(&after[*at..], scale, self.target.size()).is_some());
+            let suffix = attention_start.map(|at| after.split_off(at));
             split.retained = draw_overlay_or_live(
                 &mut self.renderer,
                 &self.materials,
@@ -923,7 +1424,7 @@ impl Gpu {
                 &self.backdrop,
                 panes.overlay,
                 panes.retained,
-                panes.overlay_after,
+                after,
                 FrameTime {
                     scale,
                     time_ms,
@@ -932,6 +1433,32 @@ impl Gpu {
                 },
                 &mut encoder,
             )?;
+            if let Some(suffix) = suffix {
+                self.attention_cache = AttentionCache::capture(
+                    &self.renderer.context.device,
+                    &self.target,
+                    suffix.clone(),
+                    scale,
+                    time_ms,
+                    &mut encoder,
+                    previous_attention,
+                );
+                encode_ops(
+                    &mut self.renderer,
+                    &self.materials,
+                    &self.target,
+                    &self.backdrop,
+                    suffix,
+                    FrameTime {
+                        scale,
+                        time_ms,
+                        external_before: true,
+                        clear: false,
+                    },
+                    &mut encoder,
+                )
+                .map_err(|error| error.to_string())?;
+            }
             split.overlay = at.elapsed();
         }
         if let (Some(probe), Some(sample)) = (&self.native_probe, &probe_sample) {
@@ -961,6 +1488,119 @@ impl Gpu {
             probe.inject(&sample, "final", frame.texture(), &mut encoder);
             probe.record(sample, &self.target, frame.texture(), &mut encoder);
         }
+        self.submit_frame(
+            frame,
+            wait,
+            frame_id,
+            encoder,
+            encode,
+            split,
+            (misses0, shadows0),
+        )
+    }
+
+    /// Only an ordinary frame may replace the static scene under attention rims.
+    pub fn set_attention_cache(&mut self, enabled: bool) {
+        self.attention_enabled = enabled;
+        if !enabled {
+            self.attention_cache = None;
+        }
+    }
+
+    pub fn can_draw_attention(&self) -> bool {
+        self.attention_enabled
+            && self.native_probe.is_none()
+            && self
+                .attention_cache
+                .as_ref()
+                .is_some_and(|cache| cache.below.size() == self.target.size())
+    }
+
+    pub fn draw_attention(
+        &mut self,
+        acquired: AcquiredFrame,
+        frame_id: u64,
+        scale: f32,
+        time_ms: f32,
+        update: impl FnMut(&mut Vec<Paint>),
+    ) -> Result<Option<(Duration, Duration)>, String> {
+        self.pulse_frame = false;
+        if !self.can_draw_attention() {
+            return Ok(None);
+        }
+        let mut cache = self
+            .attention_cache
+            .take()
+            .expect("attention cache checked");
+        if cache.scale != scale.to_bits() {
+            return Ok(None);
+        }
+        let Some(suffix) = cache.updated_suffix(update) else {
+            return Ok(None);
+        };
+        let AcquiredFrame { frame, wait } = acquired;
+        let encode = Instant::now();
+        let masks = self.renderer.mask_stats();
+        self.renderer.begin_frame();
+        self.materials.begin_frame();
+        let mut encoder = self
+            .renderer
+            .context
+            .device
+            .create_command_encoder(&Default::default());
+        cache.repaint(
+            &mut self.renderer,
+            &self.materials,
+            &self.target,
+            &self.backdrop,
+            suffix,
+            time_ms,
+            &mut encoder,
+        )?;
+        let mut split = EncodeSplit {
+            overlay: encode.elapsed(),
+            ..Default::default()
+        };
+        let at = Instant::now();
+        let source = self.target.create_view(&Default::default());
+        let destination = frame.texture().create_view(&Default::default());
+        self.renderer
+            .composite_group_clearing(
+                &source,
+                group::Filter {
+                    opacity: 1.,
+                    saturation: 1.,
+                },
+                ChromeTarget {
+                    width: self.config.width,
+                    height: self.config.height,
+                    scale,
+                    view: &destination,
+                    format: self.config.format,
+                },
+                &mut encoder,
+            )
+            .map_err(|error| error.to_string())?;
+        split.composite = at.elapsed();
+        self.attention_cache = Some(cache);
+        self.pulse_frame = true;
+        self.submit_frame(frame, wait, frame_id, encoder, encode, split, masks)
+    }
+
+    #[allow(
+        clippy::too_many_arguments,
+        reason = "shared measured native submission and present"
+    )]
+    fn submit_frame(
+        &mut self,
+        frame: Acquired,
+        wait: Duration,
+        frame_id: u64,
+        encoder: wgpu::CommandEncoder,
+        encode: Instant,
+        mut split: EncodeSplit,
+        (misses0, shadows0): (u64, u64),
+    ) -> Result<Option<(Duration, Duration)>, String> {
         let at = Instant::now();
         // wgpu 30 prohibits mixing its encoding API with as_hal_mut. Native
         // queue markers bracket the submission (including staging uploads),
@@ -1884,6 +2524,219 @@ mod backdrop_key_tests {
 #[cfg(test)]
 mod clear_fold_tests {
     use super::*;
+
+    fn attention_rim(rect: Rect, attention: bool, swell: f32) -> Paint {
+        Paint::Material {
+            rect,
+            radii: [12.; 4],
+            kind: ui::Material::Rim,
+            color: Color::hex("#ffa030"),
+            blur: None,
+            rim: Some(ui::Rim {
+                attention,
+                swell,
+                activity: ui::GlowActivity::Waiting,
+                depth: Some(10.),
+                size: Some(2.),
+                outer: Some(1.),
+                ..Default::default()
+            }),
+            clips: vec![],
+        }
+    }
+
+    #[test]
+    fn attention_frame_damage_is_disjoint_and_excludes_unchanged_interiors() {
+        let mut union = vec![];
+        let inputs = [[1, 1, 12, 9], [6, 5, 13, 10], [0, 8, 15, 11]];
+        for region in inputs {
+            add_damage(&mut union, region);
+        }
+        for x in 0..20 {
+            for y in 0..20 {
+                let count = union
+                    .iter()
+                    .filter(|region| region_intersection(**region, [x, y, 1, 1]).is_some())
+                    .count();
+                let wanted = inputs
+                    .iter()
+                    .any(|region| region_intersection(*region, [x, y, 1, 1]).is_some());
+                assert_eq!(count, usize::from(wanted), "pixel ({x},{y})");
+            }
+        }
+        let suffix = vec![attention_rim(Rect::new(100., 100., 600., 400.), true, 0.5)];
+        let damage = attention_damage(
+            &suffix,
+            2.,
+            wgpu::Extent3d {
+                width: 1600,
+                height: 1200,
+                depth_or_array_layers: 1,
+            },
+        )
+        .unwrap();
+        assert!(
+            damage
+                .iter()
+                .all(|region| region_intersection(*region, [400, 400, 800, 400]).is_none())
+        );
+        assert!(
+            attention_damage(
+                &[backdrop_key_tests::draw("#ffffff")],
+                1.,
+                wgpu::Extent3d {
+                    width: 10,
+                    height: 10,
+                    depth_or_array_layers: 1
+                }
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn attention_frame_damage_matches_fresh_rims_without_pulse_trails() {
+        use super::backdrop_key_tests::draw;
+        let paint_rect = |rect, rgba| {
+            let mut list = DrawList::default();
+            list.rect(rect, 3., Color(rgba));
+            Paint::Draw(list)
+        };
+        let frost = |rect| Paint::Material {
+            rect,
+            radii: [8.; 4],
+            kind: ui::Material::Frosted,
+            color: Color([0.1, 0.2, 0.3, 0.6]),
+            blur: Some(ui::ResolvedBlur {
+                radius: 8.,
+                saturation: 0.8,
+            }),
+            rim: None,
+            clips: vec![],
+        };
+        let suffix = vec![
+            attention_rim(Rect::new(90.25, 80.5, 300., 240.), true, 1.),
+            attention_rim(Rect::new(380.25, 130.5, 240., 180.), false, 0.),
+            paint_rect(Rect::new(110., 70., 200., 40.), [0.7, 0.1, 0.3, 0.5]),
+            Paint::Material {
+                rect: Rect::new(360., 110., 100., 90.),
+                radii: [6.; 4],
+                kind: ui::Material::Flat,
+                color: Color([0.1, 0.6, 0.3, 0.7]),
+                blur: None,
+                rim: None,
+                clips: vec![],
+            },
+            {
+                let Paint::Draw(list) =
+                    paint_rect(Rect::new(190., 55., 170., 65.), [0., 0., 0., 0.3])
+                else {
+                    unreachable!()
+                };
+                Paint::Underlay(list)
+            },
+            frost(Rect::new(200., 65., 150., 40.)),
+            paint_rect(Rect::new(210., 80., 120., 8.), [1., 1., 1., 0.8]),
+            Paint::Group {
+                ops: vec![
+                    paint_rect(Rect::new(70., 260., 180., 85.), [0.2, 0.1, 0.8, 0.7]),
+                    frost(Rect::new(100., 285., 160., 50.)),
+                    paint_rect(Rect::new(110., 300., 120., 8.), [1., 1., 1., 0.8]),
+                ],
+                opacity: 0.75,
+                saturation: 0.7,
+                mask: None,
+            },
+        ];
+        let mut final_suffix = suffix.clone();
+        if let Paint::Material { rim: Some(rim), .. } = &mut final_suffix[0] {
+            rim.swell = 0.25;
+        }
+        let expected = render_with(vec![draw("#172b42")], true, |renderer, target, encoder| {
+            let pass = m::Pass::new(&renderer.context.device, FORMAT);
+            let backdrop = texture(&renderer.context.device, [target.width(), target.height()]);
+            let attention = final_suffix.remove(0);
+            for (ops, time_ms) in [(vec![attention], 900.), (final_suffix, 450.)] {
+                encode_ops(
+                    renderer,
+                    &pass,
+                    target,
+                    &backdrop,
+                    ops,
+                    FrameTime {
+                        scale: 1.,
+                        time_ms,
+                        external_before: true,
+                        clear: false,
+                    },
+                    encoder,
+                )
+                .unwrap();
+            }
+            pass.flush(&renderer.context);
+        })
+        .0;
+        let (actual, _) = render_with(vec![draw("#172b42")], true, |renderer, target, encoder| {
+            let pass = m::Pass::new(&renderer.context.device, FORMAT);
+            let backdrop = texture(&renderer.context.device, [target.width(), target.height()]);
+            let mut cache = AttentionCache::capture(
+                &renderer.context.device,
+                target,
+                suffix.clone(),
+                1.,
+                450.,
+                encoder,
+                None,
+            )
+            .unwrap();
+            encode_ops(
+                renderer,
+                &pass,
+                target,
+                &backdrop,
+                suffix.clone(),
+                FrameTime {
+                    scale: 1.,
+                    time_ms: 450.,
+                    external_before: true,
+                    clear: false,
+                },
+                encoder,
+            )
+            .unwrap();
+            // A full peak, trough and new rising edge must exactly match a
+            // fresh full composition, including a neighbouring static rim.
+            for (swell, time_ms) in [(0., 700.), (0.25, 900.)] {
+                let next = cache
+                    .updated_suffix(|ops| {
+                        if let Paint::Material { rim: Some(rim), .. } = &mut ops[0] {
+                            rim.swell = swell;
+                        }
+                    })
+                    .unwrap();
+                cache
+                    .repaint(renderer, &pass, target, &backdrop, next, time_ms, encoder)
+                    .unwrap();
+            }
+            assert!(
+                cache
+                    .updated_suffix(|ops| {
+                        if let Paint::Material { rect, .. } = &mut ops[0] {
+                            rect.x += 1.;
+                        }
+                    })
+                    .is_none(),
+                "geometry must be replaced by an ordinary frame"
+            );
+            pass.flush(&renderer.context);
+        });
+        let mismatches = actual.iter().zip(&expected).filter(|(a, b)| a != b).count();
+        let first = actual.iter().zip(&expected).position(|(a, b)| a != b);
+        assert!(
+            actual.len() == expected.len() && mismatches == 0,
+            "rim damage changed stable pixels or retained a previous pulse: bytes={mismatches} first={first:?}"
+        );
+    }
 
     /// Paint ops into a fresh 1600x960 target: `folded` folds the clear into the first pass,
     /// else an explicit clear pass runs first (the old path). Pixels and pass counts.

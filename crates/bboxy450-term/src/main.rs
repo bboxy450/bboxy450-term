@@ -9,6 +9,7 @@ mod animation_clock;
 mod app_overlays;
 mod app_starting;
 mod assets;
+mod attention_frames;
 mod budget;
 mod capture;
 mod command_retry;
@@ -67,6 +68,7 @@ use bbt_ui_model::{
 };
 use display_link::{DisplayLink, Mode, WakeAction, wake_action};
 use e2e_checklist::{LocalTab, PageCommand};
+use std::cell::Cell;
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::{
     Arc,
@@ -136,6 +138,7 @@ pub enum UiEvent {
     VerifyScrollTop,
     VerifyWheel,
     VerifyClose,
+    IdleProbeHide,
     VerifyFailed(String),
     Capture,
     /// A capture asked through an operator door (`ctl capture`); answered when written.
@@ -2403,6 +2406,11 @@ struct App {
     smoke_wake_seen: bool,
     window: Option<Arc<Window>>,
     pacer: Option<DisplayLink>,
+    normal_redraw: Cell<bool>,
+    attention_tick: Option<Instant>,
+    attention_requested: bool,
+    attention_origins: Vec<(Rect, Instant)>,
+    gui_frames: attention_frames::Frames,
     pacing: Mode,
     clock: animation_clock::Clock,
     clock_frame: animation_clock::Frame,
@@ -2641,6 +2649,11 @@ impl App {
             smoke_wake_seen: false,
             window: None,
             pacer: None,
+            normal_redraw: Cell::new(true),
+            attention_tick: None,
+            attention_requested: false,
+            attention_origins: vec![],
+            gui_frames: attention_frames::Frames::default(),
             pacing,
             clock,
             clock_frame,
@@ -5545,12 +5558,23 @@ impl App {
         self.request_redraw_sources(&[stall::DIRECT_REDRAW_SOURCE]);
     }
     fn request_redraw_sources(&self, sources: &[usize]) {
+        if sources.iter().any(|source| *source != attention_frames::PULSE_SOURCE) {
+            self.normal_redraw.set(true);
+        }
         self.wake_counters.borrow_mut().redraw(sources);
         let first = !self.redraw_pending.replace(true);
         if !self.occluded
             && let Some(pacer) = &self.pacer
         {
             pacer.request_frame();
+        }
+        // A Metal invalidation retains demand and waits for its display tick.
+        // Calling winit here used to drain/layout before a drawable existed.
+        if self.pacer.as_ref().is_some_and(DisplayLink::is_metal)
+            && !sources.contains(&display_link::TICK_SOURCE)
+        {
+            self.wake_counters.borrow_mut().coalesced(sources);
+            return;
         }
         // Paint demand survives a tickless callback. Only a tick, GPU-ready
         // notice or direct window action can request its next delivery. FIFO
@@ -5630,6 +5654,12 @@ impl App {
                 )
                 .map_err(|e| e.to_string())?,
         );
+        if self.verify.idle_probe {
+            window.set_window_level(winit::window::WindowLevel::AlwaysOnTop);
+            let mtm = objc2::MainThreadMarker::new().ok_or("idle probe requires UI owner")?;
+            objc2_app_kit::NSApplication::sharedApplication(mtm).activate();
+            window.focus_window();
+        }
         self.install_desktop_menu();
         if !self.document.open
             && self.text_ime_allowed()
@@ -5792,6 +5822,7 @@ impl App {
         self.wake_counters.borrow_mut().drained(&sources);
         self.drain_runtime_notices();
         if let Some(sequence) = self.updates.take() {
+            self.normal_redraw.set(true);
             self.scene.update(sequence);
             self.last_update = sequence;
         }
@@ -5801,6 +5832,8 @@ impl App {
         drop(latest_measurement);
         let received_at = bbt_rt::diagnostics::now();
         if let Some(state) = state {
+            // The publication can race the preceding dirty-bit snapshot.
+            self.normal_redraw.set(true);
             if !self.window_restored
                 && state.metadata_initialized
                 && let Some(saved) = &state.window_restore
@@ -8093,6 +8126,9 @@ impl App {
             bbt_rt::diagnostics::calls(bbt_rt::diagnostics::Phase::UiProjection);
         let sources = self.drain();
         self.rich_drain();
+        if wake_action(&sources, false) == WakeAction::Invalidate {
+            self.normal_redraw.set(true);
+        }
         // A native redraw can consume data before its queued Wake arrives.
         // If no drawable is pending, preserve that invalidation before the
         // later empty Wake is ignored.
@@ -8129,6 +8165,36 @@ impl App {
             .as_mut()
             .unwrap()
             .acquire(tick.as_mut().and_then(|tick| tick.drawable.take()))?;
+        if self.attention_requested
+            && !self.normal_redraw.get()
+            && !self.verify.full_scene_pulse
+            && self.gpu.as_ref().unwrap().can_draw_attention()
+            && let Some(acquired) = frame
+        {
+            self.clock_frame = self.clock.frame();
+            let origins = &self.attention_origins;
+            let now = self.clock_frame.now;
+            let scale = self.window.as_ref().unwrap().scale_factor() as f32;
+            let rendered = self.gpu.as_mut().unwrap().draw_attention(
+                acquired, self.meter.total_frames() + 1, scale,
+                self.clock_frame.time_ms,
+                |ops| scene::Scene::update_attention_paint(origins, ops, now),
+            )?;
+            if let Some((encode, wait)) = rendered {
+                self.gui_frames.pulse += 1;
+                self.redraw_pending.set(false);
+                self.attention_requested = false;
+                self.complete_paint_sources();
+                self.wake_counters.borrow_mut().frame();
+                let _ = self.meter.record(Instant::now(), Phases { encode, present_wait: wait, ..Default::default() });
+                self.last_presented = Some(std::time::SystemTime::now());
+                self.gpu.as_ref().unwrap().collect_gpu(&mut self.budget, |_| {});
+                self.pace_after_frame()?;
+            } else {
+                self.request_redraw();
+            }
+            return Ok(());
+        }
         let project_start = self.stall.as_ref().map(|_| Instant::now());
         self.project_scene(frame.is_some());
         let project_scene = project_start.map(|start| start.elapsed());
@@ -8162,6 +8228,7 @@ impl App {
                 .install_document_images(&pane.snapshot.images)?;
         }
         let layouts = self.solve_ui(logical)?;
+        self.attention_origins = self.scene.attention_frame_origins(&layouts);
         let bounds = self.pane_bounds.clone();
         self.focus_layout_ready();
         self.fit_verify_grid(&bounds, scale);
@@ -8296,6 +8363,11 @@ impl App {
             .filter(|(id, _)| !self.rich_face(*id))
             .copied()
             .collect();
+        let cache_attention = !self.verify.full_scene_pulse
+            && !self.animate && !self.overlay
+            && !self.task_panel_animating()
+            && !self.scene.transient_animating(self.clock_frame.now);
+        self.gpu.as_mut().unwrap().set_attention_cache(cache_attention);
         if let Some((encode, wait)) = self.gpu.as_mut().unwrap().draw(
             ops,
             scale,
@@ -8311,6 +8383,9 @@ impl App {
                 overlay_after,
             }),
         )? {
+            self.gui_frames.full += 1;
+            self.normal_redraw.set(false);
+            self.attention_requested = false;
             self.redraw_pending.set(false);
             self.complete_paint_sources();
             self.wake_counters.borrow_mut().frame();
@@ -8365,13 +8440,7 @@ impl App {
                         stall.gpu_complete(sample.frame, sample.completed_at);
                     }
                 });
-            if !self.animate || self.clock.is_frozen() {
-                // Idle frames pause the link, except while a swell or attention loop runs.
-                let swelling = !self.clock.is_frozen()
-                    && (self.scene.animating(self.clock_frame.now) || self.task_panel_animating())
-                    && !self.occluded;
-                self.pacer.as_ref().unwrap().set_active(swelling)?;
-            }
+            self.pace_after_frame()?;
             if self.meter.total_frames() == 1 {
                 self.logger.write(format!(
                     "first frame: native scene presented, seats={}",
@@ -8465,7 +8534,7 @@ impl App {
                 self.schedule_idle_check();
             }
         }
-        if (self.animate && fifo)
+        if ((self.animate || self.verify.continuous_redraw) && fifo)
             || !self.inbox.messages.is_empty()
             || !self.inbox.output.is_empty()
         {
@@ -8479,6 +8548,7 @@ impl ApplicationHandler<UiEvent> for App {
         let _callback = bbt_rt::diagnostics::callback(bbt_rt::diagnostics::Phase::AboutToWait);
         self.apply_notification_click();
         self.sync_role_settings();
+        self.poll_attention_frame();
         if self.startup.visible && Instant::now() >= self.startup_tick {
             self.startup_tick = Instant::now() + Duration::from_secs(1);
             self.request_redraw();
@@ -8500,6 +8570,7 @@ impl ApplicationHandler<UiEvent> for App {
                 .chain(self.custody.wake_at())
                 .chain(self.role_settings.wake_at())
                 .chain(self.startup.visible.then_some(self.startup_tick))
+                .chain(self.attention_tick)
                 .min()
                 .map_or(ControlFlow::Wait, ControlFlow::WaitUntil),
         );
@@ -8525,6 +8596,9 @@ impl ApplicationHandler<UiEvent> for App {
             _ => bbt_rt::diagnostics::Phase::UserOther,
         });
         match event {
+            UiEvent::IdleProbeHide => {
+                if let Some(window) = &self.window { window.set_visible(false); }
+            }
             UiEvent::Usage(update) => {
                 self.scene.apply_usage(update);
                 self.request_redraw();
@@ -8743,6 +8817,7 @@ impl ApplicationHandler<UiEvent> for App {
                     self.meter.total_frames(),
                     usize::from(self.window.is_some()),
                 );
+                if self.verify.idle_probe { status.history = self.gui_render_observation(); }
                 if request == bbt_proto::gui::AppRequest::Notifications {
                     status.notifications = self.recording_status();
                 }
@@ -9094,6 +9169,8 @@ impl ApplicationHandler<UiEvent> for App {
             WindowEvent::Occluded(occluded) => {
                 self.occluded = occluded;
                 if occluded {
+                    self.attention_tick = None;
+                    self.attention_requested = false;
                     self.rich_panes.clear();
                     self.rich_focused.clear();
                 }
@@ -9658,6 +9735,11 @@ Debug and verification only, never for normal use:
 /// driven from the app's own queue so no OS input injection is needed.
 #[derive(Default)]
 struct Verify {
+    idle_probe: bool,
+    continuous_redraw: bool,
+    full_scene_pulse: bool,
+    idle_occluded: bool,
+    idle_hide_scheduled: bool,
     spawn: usize,
     capture_after: Option<Duration>,
     input: Option<Vec<u8>>,
@@ -9677,6 +9759,18 @@ struct Verify {
 }
 impl Verify {
     fn from_args(args: &[String]) -> Result<Self, String> {
+        let idle_probe = args.iter().any(|arg| arg == "--idle-cpu-probe");
+        let continuous_redraw = args.iter().any(|arg| arg == "--idle-redraw-control");
+        let full_scene_pulse = args.iter().any(|arg| arg == "--idle-full-scene-control");
+        let idle_occluded = args.iter().any(|arg| arg == "--idle-occluded");
+        if (idle_probe || continuous_redraw || full_scene_pulse || idle_occluded)
+            && (!cfg!(debug_assertions)
+                || !args.iter().any(|arg| arg == "--unattended")
+                || bboxy450_term::cockpit::Config::test_account_from_args(args)
+                    .map_err(|error| error.to_string())?.is_none())
+        {
+            return Err("idle probe controls require a debug unattended test account".into());
+        }
         let value = |flag: &str| {
             args.windows(2)
                 .find(|pair| pair[0] == flag)
@@ -9716,6 +9810,10 @@ impl Verify {
                 .transpose()
         };
         Ok(Self {
+            idle_probe,
+            continuous_redraw,
+            full_scene_pulse,
+            idle_occluded,
             spawn: value("--spawn-zsh")
                 .and_then(|n| n.parse().ok())
                 .unwrap_or(0),
@@ -9763,6 +9861,16 @@ impl App {
                     });
                 }
             }
+        }
+        if self.verify.idle_occluded && !self.verify.idle_hide_scheduled
+            && self.live_state.as_ref().is_some_and(|model| model.ui.seats.len() >= self.verify.spawn)
+        {
+            self.verify.idle_hide_scheduled = true;
+            let proxy = self.proxy.clone();
+            bbt_rt::handle().spawn(async move {
+                tokio::time::sleep(Duration::from_secs(8)).await;
+                let _ = proxy.send_event(UiEvent::IdleProbeHide);
+            });
         }
         if self.verify.grid_size.is_some() && !self.verify.grid_ready {
             return;
@@ -10409,6 +10517,16 @@ mod capture_step_tests {
 mod lazy_projection_tests {
     use super::*;
     use bbt_ui_model::{Axis, Seat, SplitNode, Swarm, SwarmId, Tab, TabId};
+
+    #[test]
+    fn idle_frame_model_take_invalidates_retained_scene_without_source_dispatch() {
+        if isolated_ui_case("lazy_projection_tests::idle_frame_model_take_invalidates_retained_scene_without_source_dispatch") { return; }
+        let (mut app, latest) = fixture();
+        app.normal_redraw.set(false);
+        latest.publish(published_model(1));
+        app.drain();
+        assert!(app.normal_redraw.get(), "consuming a model must retire retained pulse eligibility");
+    }
 
     /// CPU-only profile of the real host solve; socket echo and completed GPU
     /// frames have separate fixtures. Keep this workload stable for comparisons.

@@ -180,11 +180,19 @@ impl App {
         let start = Instant::now();
         self.rich_drain_with_clock(|| start.elapsed());
     }
+    /// Paint bits remain retained until Pane::drain completes the publication.
+    pub(super) fn rich_pending(&self) -> bool {
+        self.rich_panes.values().any(|pane| !pane.dirty.drain().is_empty())
+    }
     fn rich_drain_with_clock(&mut self, mut elapsed: impl FnMut() -> Duration) {
         let ids: Vec<_> = self.rich_panes.keys().copied().collect();
         for i in 0..ids.len() {
             if elapsed() >= Duration::from_micros(300) {
-                self.request_redraw(); // Deferred dirty views need another frame even while idle.
+                if (i..ids.len()).any(|offset| {
+                    !self.rich_panes[&ids[(self.rich_round + offset) % ids.len()]].dirty.drain().is_empty()
+                }) {
+                    self.request_redraw();
+                }
                 break;
             }
             let id = ids[(self.rich_round + i) % ids.len()];

@@ -372,6 +372,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             0,
                         );
                         status.custody_backend = custody.clone();
+                        if app.verify.idle_probe { status.history = app.gui_render_observation(); }
                         if request == bbt_proto::gui::AppRequest::Notifications {
                             status.notifications = app.recording_status();
                         }
@@ -409,6 +410,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
             }
             while let Ok((frame, at)) = completions.try_recv() {
                 rendered = rendered.max(frame);
+                app.gui_frames.full = rendered;
                 rendered_at = Some(
                     crate::now_ms()
                         .saturating_sub(at.elapsed().as_millis().try_into().unwrap_or(u64::MAX)),
@@ -427,6 +429,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
             }
             app.rich_drain();
             dirty |= app.redraw_pending.replace(false);
+            dirty |= app.verify.continuous_redraw;
             app.redraw_queued.set(false);
             if let Some(next) = &app.live_state
                 && !Arc::ptr_eq(next, &model)
