@@ -69,7 +69,7 @@ run at background policy. Test execution outside this list stays utility.
 | `test-input-latency`, `test-input-backend`; Cargo selections `input_latency`, `logic::idle_command_tests`, `seat_socket::input_check_tests`, `seat_socket::gui_tests::busy_gui_poll_and_locked_cursor_keep_the_session_and_queued_events` | Input/echo latency |
 | `test-terminal-streaming`, `test-codex-streaming`, `test-native-strip`; Cargo selection `gpu::streaming_tests::` | Frame latency and streamed rendering |
 | `test-seat-ingestion`, `profile-ingestion`; Cargo selections `client::tests`, `transport::tests`, `logic::ring_batch_tests`, `capture_fairness` | Watched-seat read/parse/publication latency |
-| `profile-input-ui`, `profile-render-input`; Cargo selections `lazy_projection_tests::input_frame_cpu_profile`, `repeated_text_frame_cpu_profile` | UI layout/glyph CPU timings |
+| `profile-input-ui`, `profile-render-input`, `profile-power`; Cargo selections `lazy_projection_tests::input_frame_cpu_profile`, `repeated_text_frame_cpu_profile`, `cpu_profile`, `rich_native_parity_and_composition_microbench` | UI layout/glyph CPU, idle-power CPU and native composition timings |
 | `test-formal`, `test-formal-contracts`; Cargo selection `formal_contracts` | Real-time API witnesses paired with the contract corpus |
 | `test-qos`, `test-qos-app`, `scripts/qos-probe.py` | Private MCP latency/policy controls and app startup class witnesses |
 | `test-landing`, `test-landing-extended` | Actual default/background/utility process-priority witnesses |

@@ -21,6 +21,7 @@ TIMED_FILTERS = {
     "logic::idle_command_tests", "seat_socket::input_check_tests",
     "seat_socket::gui_tests::busy_gui_poll_and_locked_cursor_keep_the_session_and_queued_events",
     "logic::ring_batch_tests",
+    "cpu_profile", "rich_native_parity_and_composition_microbench",
 }
 # These C1 API, native-work and paced-retirement tests assert measured CPU or
 # wall budgets. Keep their individual names attached to the measurements.
