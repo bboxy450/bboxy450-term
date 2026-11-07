@@ -37,7 +37,7 @@ fn shipped_gitkb_models_match_their_rust_source() {
             }
             assert!(
                 std::fs::read_to_string(&path).unwrap_or_default() == text,
-                "{} drifted from plugins/gitkb/models.rs; run BBOXY_UPDATE_MODELS=1 cargo test -p bboxy450-term --test formal_contracts shipped_gitkb",
+                "{} drifted from plugins/gitkb/models.rs; run BBOXY_UPDATE_MODELS=1 cargo test -p bboxy450-term --test it formal_contracts::shipped_gitkb",
                 path.display()
             );
             expected.insert(name);

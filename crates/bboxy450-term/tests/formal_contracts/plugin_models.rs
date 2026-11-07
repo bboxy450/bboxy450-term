@@ -77,7 +77,7 @@ fn shipped_plugin_models_match_their_rust_sources() {
                     let shipped = std::fs::read_to_string(&path).unwrap_or_default();
                     assert!(
                         shipped == text,
-                        "{} drifted from its Rust model; run BBOXY_UPDATE_MODELS=1 cargo test -p bboxy450-term --test formal_contracts",
+                        "{} drifted from its Rust model; run BBOXY_UPDATE_MODELS=1 cargo test -p bboxy450-term --test it formal_contracts::",
                         path.display()
                     );
                     expected.insert(name);

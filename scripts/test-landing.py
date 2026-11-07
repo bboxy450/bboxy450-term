@@ -512,6 +512,13 @@ class ConsolidatedIntegrationTests(unittest.TestCase):
         row = {"package": "c", "kind": "test", "target": "it", "test": "alpha::selected", "result": "ok"}
         self.assertTrue(namespace["covered"](check, [row]))
         self.assertFalse(namespace["covered"](check, [dict(row, result="ignored")]))
+        manifest = self.repo.root / "crates/c/Cargo.toml"
+        manifest.write_text(manifest.read_text() + '\n[[test]]\nname="allocator"\npath="tests/allocator.rs"\n')
+        self.repo.write("crates/c/tests/allocator.rs", '#[test] fn private_allocator() {}\n')
+        separate = namespace["test_check"]("cargo test -p c --locked --test allocator private_allocator -- --exact")
+        self.assertEqual(separate["targets"], [("--test", "allocator")])
+        self.assertEqual(separate["test"], "private_allocator")
+        self.assertTrue(namespace["covered"](separate, [dict(row, target="allocator", test="private_allocator")]))
 
     def test_shared_helpers_select_the_whole_integration_binary(self):
         for path in ("crates/c/tests/common/mod.rs", "crates/c/tests/support/events.rs", "crates/c/tests/it.rs"):

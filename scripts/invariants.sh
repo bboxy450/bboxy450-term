@@ -182,6 +182,7 @@ def test_check(command):
             manifest = tomllib.loads(manifest_path.read_text())
             if (manifest["package"].get("autotests") is False
                     and any(t.get("name") == "it" for t in manifest.get("test", []))
+                    and not any(t.get("name") == target[1] for t in manifest.get("test", []))
                     and (manifest_path.parent / "tests" / (target[1] + ".rs")).is_file()):
                 result["targets"] = [("--test", "it")]
                 result["test"] = target[1] + "::" + result["test"]
