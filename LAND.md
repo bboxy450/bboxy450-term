@@ -97,6 +97,7 @@ native/cleanup CPU maxima and 100/250 ms API bounds. Their fixture requirements
 and existing ignored status, when applicable, are independent of QoS:
 
 - `dream_c1_final_actual_authority_held_clock_cpu_refusals_keep_owned_child`
+- `dream_c1_registration_commits_close_cursor_original_op_and_source_key_once_after_reopen`
 - `dream_c1_final_actual_authority_rechecks_row_head_grant_inode_aba_after_debt`
 - `dream_c1_held_provider_selection_refuses_real_mcp_gui_controls_within_250ms`
 - `dream_c1_held_provider_selection_refuses_actual_page_owner_before_next_unit`
