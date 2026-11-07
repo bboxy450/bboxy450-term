@@ -2500,7 +2500,7 @@ verify-ui-status:
 verify-rich-text-safety:
 	@set -eu; . ./scripts/cache-env.sh; export CARGO_BUILD_JOBS=2; \
 	mkdir -p '$(TARGET_DIR)/rich-text-safety'; \
-	BBOXY_RICH_TEXT_OUT='$(abspath $(TARGET_DIR))/rich-text-safety' cargo nextest run -E 'binary(it)&test(/^(rich_text_safety)::/)' --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' --no-capture; \
+	BBOXY_RICH_TEXT_OUT='$(abspath $(TARGET_DIR))/rich-text-safety' cargo nextest run -E 'binary(it)&test(/^(rich_text_safety)::/)' --run-ignored all --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' --no-capture; \
 	cargo nextest run --locked -p bboxy450-render --test chrome_long_lines --target-dir '$(TARGET_DIR)'; \
 	cargo nextest run --locked -p bboxy450-render --lib --target-dir '$(TARGET_DIR)' -E 'test(rich_text_safety_) or test(cropped_glyph_components_reproduce_native_line_masks) or test(cached_fallback_font_variations_and_phases_preserve_native_coverage) or test(resolved_text_baseline_places_actual_ink_and_shadow_at_both_device_scales) or test(emoji_sequences_shape_as_one_native_glyph_and_truncate_only_between_clusters)'; \
 	cargo nextest run --locked -p bboxy450-doc --test inline_code --target-dir '$(TARGET_DIR)'; \
@@ -2514,7 +2514,7 @@ verify-harness-theme:
 	mkdir -p '$(TARGET_DIR)/harness-theme'; \
 	BBOXY_HARNESS_THEME_OUT='$(abspath $(TARGET_DIR))/harness-theme' cargo nextest run --locked -p bboxy450-harness --features standalone --test gui_theme --target-dir '$(TARGET_DIR)' --no-capture; \
 	cargo nextest run --locked -p bboxy450-harness --features standalone --lib --target-dir '$(TARGET_DIR)' -E 'test(quiet_code_python_uses_shared_markdown_highlight_spans)'; \
-	cargo nextest run --locked -p $(APP) --bin $(APP) --test it --target-dir '$(TARGET_DIR)' -E '(not binary(it)|test(/^(harness_theme)::/))&(test(harness_theme_))' --no-capture; \
+	cargo nextest run --locked -p $(APP) --bin $(APP) --test it --target-dir '$(TARGET_DIR)' -E '(not binary(it)|test(/^(harness_theme)::/))&(test(harness_theme_))' --run-ignored all --no-capture; \
 	cargo clippy --no-deps --locked -p bboxy450-harness --features standalone --lib --test gui_theme --target-dir '$(TARGET_DIR)' -- -D warnings; \
 	cargo clippy --no-deps --locked -p $(APP) --lib --bin $(APP) --test it --target-dir '$(TARGET_DIR)' -- -D warnings
 
