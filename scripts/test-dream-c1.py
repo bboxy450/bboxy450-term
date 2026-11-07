@@ -63,6 +63,7 @@ SOURCES = [
     "Cargo.toml", "Cargo.lock", "scripts/quarantine-test.sh", "scripts/landing.py",
     "scripts/quarantine.py", "scripts/test-landing.py",
     "rust-toolchain.toml", ".cargo/config.toml", ".config/nextest.toml", "scripts/cache-env.sh",
+    "scripts/qos.sh", "scripts/qos-policy.py",
     "crates/bboxy450-harness/Cargo.toml", "crates/bboxy450-harness/Cargo.lock",
     "crates/bbt-proto/src/lib.rs", "crates/bbt-proto/src/gui/mod.rs",
     "crates/bbt-proto/src/dream.rs", "crates/bbt-proto/src/gui/dream.rs",
@@ -303,7 +304,8 @@ def build_closure_before(*, cargo_argv, target, source_hashes, compiler_version,
                        "version_sha256": hashlib.sha256(version.encode()).hexdigest(),
                        "invocation": _build_closure_file(program(name))}
     wrappers = {}
-    for name in ("RUSTC_WRAPPER", "RUSTC_WORKSPACE_WRAPPER"):
+    wrapper_names = ["RUSTC_WRAPPER", "RUSTC_WORKSPACE_WRAPPER"]
+    for name in wrapper_names:
         value = environment.get(name)
         if not value:
             wrappers[name] = {"present": name in environment, "enabled": False,
@@ -315,6 +317,14 @@ def build_closure_before(*, cargo_argv, target, source_hashes, compiler_version,
                 raise ValueError("unexpected known-wrapper version record")
             wrappers[name] = {"present": True, "enabled": True, "kind": "sccache", **identity,
                               "version": version}
+        elif (name == "RUSTC_WRAPPER" and Path(value).name == "rustc-qos"
+              and environment.get("BBOXY_QOS_ROOT", str(ROOT.resolve())) == str(ROOT.resolve())
+              and program(value).resolve() == (ROOT / "scripts/qos.sh").resolve()):
+            # cache-env.sh's compiler shim delegates to the recorded inner
+            # wrapper. Admit only our actual script, never its basename alone.
+            wrappers[name] = {"present": True, "enabled": True, "kind": "bboxy-qos",
+                              **_build_closure_file(program(value))}
+            wrapper_names.append("BBOXY_INNER_RUSTC_WRAPPER")
         else:
             wrappers[name] = {"present": True, "enabled": True, "value_redacted": True}
             refusals.append("unknown_" + name)
@@ -355,7 +365,8 @@ def build_closure_before(*, cargo_argv, target, source_hashes, compiler_version,
                    "effective": (None if incremental.get("value_redacted") else
                                  False if environment.get("CARGO_INCREMENTAL") == "0" else configured_incremental)}
     config_paths = {ROOT / "Cargo.toml", ROOT / "Cargo.lock", ROOT / "rust-toolchain.toml",
-                    ROOT / "crates/bboxy450-harness/rust-toolchain.toml", ROOT / "scripts/cache-env.sh"}
+                    ROOT / "crates/bboxy450-harness/rust-toolchain.toml", ROOT / "scripts/cache-env.sh",
+                    ROOT / "scripts/qos.sh", ROOT / "scripts/qos-policy.py"}
     cargo_home = Path(environment.get("CARGO_HOME") or Path.home() / ".cargo")
     for config_dir in [*(directory / ".cargo" for directory in [ROOT, *ROOT.parents]), cargo_home]:
         for name in ("config", "config.toml"):
@@ -367,7 +378,7 @@ def build_closure_before(*, cargo_argv, target, source_hashes, compiler_version,
         configs.append(_build_closure_file(path, 2 * 1024 * 1024) if path.exists()
                        else {"path": str(path.absolute()), "present": False})
     cache = {"mode": state("BBOXY_CACHE_MODE", {"auto", "off", ""}),
-             "wrapper_enabled": any(v["enabled"] for v in wrappers.values()),
+             "wrapper_enabled": any(v.get("kind") == "sccache" for v in wrappers.values()),
              "server_contacted_by_evidence_helper": False}
     cache["selected_mode"] = (environment.get("BBOXY_CACHE_MODE") or "auto") if not cache["mode"].get("value_redacted") else "unknown_redacted"
     for name in ("SCCACHE_DIR", "SCCACHE_SERVER_PORT", "SCCACHE_CACHE_SIZE"):
@@ -509,6 +520,10 @@ def check_build_closure_controls(canonical_receipt=None):
         put(root / "Cargo.lock", b"version = 4\n")
         put(root / "rust-toolchain.toml", b'[toolchain]\nchannel="1.99.1"\n')
         put(root / "scripts/cache-env.sh", b"# private helper input, never sourced\n")
+        put(root / "scripts/qos.sh", b"# private QoS helper input, never executed\n", True)
+        put(root / "scripts/qos-policy.py", b"# private policy input, never executed\n")
+        qos = tools / "rustc-qos"
+        qos.symlink_to(root / "scripts/qos.sh")
         put(root / "source.rs", b"// source input before build\n")
         versions = {"rustc": "rustc 1.99.1 (private helper metadata)\n", "cargo": "cargo 1.99.1"}
         environment = {"PATH": str(tools), "CARGO_HOME": str(root / "cargo-home"),
@@ -560,6 +575,22 @@ def check_build_closure_controls(canonical_receipt=None):
                             assert value.encode() not in canonical(result), label
                 refused.append(label)
 
+            qos_environment = {**environment, "RUSTC_WRAPPER": str(qos),
+                               "BBOXY_QOS_ROOT": str(root), "BBOXY_INNER_RUSTC_WRAPPER": "sccache"}
+            qos_before = build_closure_before(**parameters, environment=qos_environment)
+            assert qos_before["admissible"] and qos_before["cache"]["wrapper_enabled"]
+            assert qos_before["wrappers"]["RUSTC_WRAPPER"]["kind"] == "bboxy-qos"
+            assert qos_before["wrappers"]["BBOXY_INNER_RUSTC_WRAPPER"]["kind"] == "sccache"
+            without_cache = build_closure_before(
+                **parameters, environment={**qos_environment, "BBOXY_INNER_RUSTC_WRAPPER": ""})
+            assert without_cache["admissible"] and not without_cache["cache"]["wrapper_enabled"]
+            accepted.extend(["canonical_qos_wrapper_and_inner_cache_recorded", "qos_without_cache_recorded"])
+            foreign_qos = tools / "foreign/rustc-qos"
+            put(foreign_qos, b"PRIVATE_FOREIGN_WRAPPER_NEVER_EXECUTED", True)
+            denied_before("foreign_qos_wrapper_refused", changes={"RUSTC_WRAPPER": str(foreign_qos)}, reason="unknown_RUSTC_WRAPPER")
+            denied_before("foreign_qos_root_redacted", changes={**qos_environment, "BBOXY_QOS_ROOT": "PRIVATE_QOS_ROOT"}, reason="unknown_RUSTC_WRAPPER")
+            denied_before("unknown_qos_inner_wrapper_redacted", changes={**qos_environment, "BBOXY_INNER_RUSTC_WRAPPER": "PRIVATE_INNER_WRAPPER"}, reason="unknown_BBOXY_INNER_RUSTC_WRAPPER")
+
             denied_before("nonempty_flags_redacted", changes={"RUSTFLAGS": "PRIVATE_FLAG_MARKER"}, reason="unexpected_RUSTFLAGS")
             denied_before("unknown_profile_redacted", changes={"CARGO_PROFILE_RELEASE_DEBUG": "PRIVATE_PROFILE_MARKER"}, reason="unexpected_CARGO_PROFILE_RELEASE_DEBUG")
             denied_before("changed_Make_default_redacted", changes={"CARGO_PROFILE_DEV_DEBUG": "PRIVATE_DEFAULT_MARKER"}, reason="unexpected_CARGO_PROFILE_DEV_DEBUG")
@@ -596,6 +627,14 @@ def check_build_closure_controls(canonical_receipt=None):
             assert metadata["deps"][0][0] == str((1 << 53) + 1)
             assert metadata["deps"][0][3] == str((1 << 64) - 1)
             accepted.extend(["same_features_different_bytes_select_exact_deps_SHA", "u64_fingerprints_preserve_exact_string_values"])
+            assert build_closure_after(qos_before, runner=runner)["admissible"]
+            for path in (root / "scripts/qos.sh", tools / "sccache"):
+                retained = path.read_bytes()
+                put(path, b"changed wrapper input", True)
+                changed = build_closure_after(qos_before, runner=runner)
+                assert not changed["admissible"] and "build_tool_changed" in changed["refusals"]
+                put(path, retained, True)
+            refused.extend(["changed_qos_wrapper_after_build", "changed_inner_cache_after_build"])
 
             def denied_after(label, reason=None):
                 try:
