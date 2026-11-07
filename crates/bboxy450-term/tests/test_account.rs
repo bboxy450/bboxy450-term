@@ -431,7 +431,7 @@ async fn ui_only_reopen_real_gui_and_supported_or_legacy_rollback() {
             .args([
                 "--ignored",
                 "--exact",
-                "ui_only_bootstrap_child",
+                "test_account::ui_only_bootstrap_child",
                 "--nocapture",
             ])
             .env("BBOXY_UI_ONLY_BOOTSTRAP", root.path())

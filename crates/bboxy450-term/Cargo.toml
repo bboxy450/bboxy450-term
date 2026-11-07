@@ -1,4 +1,5 @@
 [package]
+autotests = false
 readme = "README.md"
 name = "bboxy450-term"
 version.workspace = true
@@ -65,3 +66,7 @@ objc2-app-kit = { version = "=0.3.2", default-features = false, features = ["std
 objc2-foundation = { version = "=0.3.2", default-features = false, features = ["std", "NSObject", "NSRange", "NSRunLoop", "NSString"] }
 objc2-metal = { version = "=0.3.2", default-features = false, features = ["std", "block2", "objc2-core-foundation", "MTLBlitCommandEncoder", "MTLBuffer", "MTLCommandEncoder", "MTLCommandBuffer", "MTLCommandQueue", "MTLDevice", "MTLDrawable", "MTLResource", "MTLTexture", "MTLTypes"] }
 objc2-quartz-core = { version = "=0.3.2", default-features = false, features = ["std", "CALayer", "CAMetalLayer", "CAMetalDisplayLink", "CAFrameRateRange", "objc2-metal", "objc2-core-foundation"] }
+
+[[test]]
+name = "it"
+path = "tests/it.rs"

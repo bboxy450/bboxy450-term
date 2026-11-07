@@ -9,7 +9,7 @@
     reason = "owned, explicit-key PTY checkpoint fixtures"
 )]
 
-mod common;
+use crate::common;
 
 use std::collections::BTreeMap;
 use std::sync::{

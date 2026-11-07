@@ -155,7 +155,8 @@ def cargo_qos(arguments):
     packages = {options[i+1] for i, value in enumerate(options[:-1]) if value in {"-p", "--package"}}
     packages.update(value.split("=", 1)[1] for value in options if value.startswith("--package="))
     host_timing = "bboxy450-harness-host" in packages and {"client::tests", "transport::tests"}.intersection(options)
-    timed_filter = any(part in value for value in options for part in timed_filters)
+    timed_filter = (any(part in value for value in options for part in timed_filters)
+                    or any(value.split("::")[0] in timed for value in options))
     # libtest runs a whole selection inside one process. These mixed binaries
     # contain named timing witnesses; an unfiltered batch must stay default.
     # Canonical nextest instead assigns utility/default to each individual test.
@@ -177,7 +178,7 @@ def cargo_qos(arguments):
     mixed_selection = bool(packages & mixed) or "--workspace" in options or "--all" in options
     if not packages:
         mixed_selection |= local_package in mixed or ("workspace" in manifest and not local_package)
-    mixed_batch = command_name == "test" and not filters and (not targets or "--lib" in options) and mixed_selection
+    mixed_batch = command_name == "test" and not filters and (not targets or "it" in targets or "--lib" in options) and mixed_selection
     opt_in_batches = policy.OPT_IN_BATCHES
     selected_packages = packages or ({local_package} if local_package else set(opt_in_batches))
     selected_measurements = {name for package in selected_packages for target in targets
@@ -553,7 +554,7 @@ def native_input_crates(root, paths, packages):
 def lean(range_spec, *, root=None):
     """Lean land plan: one line per touched crate with its test selection, then the
     dependents that only need to compile. A crate whose source changed runs its lib
-    and bin tests; a changed integration-test file adds that test target."""
+    and bin tests; a changed integration-test file selects its module in `it`."""
     root = Path(root or repository()).resolve()
     result = affected(range_spec, root=root)
     paths = {(root / p).resolve() for p in changed_paths(range_spec, cwd=root)}
@@ -565,6 +566,24 @@ def lean(range_spec, *, root=None):
         targets = package["targets"]
         tests = sorted(t["name"] for t in targets
                        if "test" in t["kind"] and Path(t["src_path"]).resolve() in paths)
+        aggregate = next((t for t in targets if t["name"] == "it" and "test" in t["kind"]), None)
+        modules = set()
+        whole = False
+        if aggregate:
+            entry = Path(aggregate["src_path"])
+            declared = set(re.findall(r'#\[path\s*=\s*"([^/\"]+)\.rs"\]\s*mod\s+\w+\s*;', entry.read_text()))
+            for path in paths:
+                if path.is_relative_to(base / "tests"):
+                    relative = path.relative_to(base / "tests")
+                    module = Path(relative.parts[0]).stem
+                    if module in declared:
+                        modules.add(module)
+                    else:
+                        # Entry point, common/support helpers, and shared fixtures
+                        # can affect every module in this integration binary.
+                        whole = True
+            if modules or whole:
+                tests = sorted(set(tests) | {"it"})
         source = any(p.is_relative_to(base) and not p.is_relative_to(base / "tests")
                      for p in paths)
         selection = []
@@ -573,12 +592,28 @@ def lean(range_spec, *, root=None):
             selection += ["--bins"] if any("bin" in t["kind"] for t in targets) else []
         for test in tests:
             selection += ["--test", test]
+        if modules and not whole:
+            expressions = ["binary(=it)&test(/^(" + "|".join(sorted(modules)) + ")::/)"]
+            expressions += ["binary(=" + test + ")" for test in tests if test != "it"]
+            if "--lib" in selection:
+                expressions.append("kind(lib)")
+            if "--bins" in selection:
+                expressions.append("kind(bin)")
+            # Serialize an argv, including filters containing shell punctuation.
+            selection += ["-E", "|".join("(" + value + ")" for value in expressions)]
         if selection:
-            lines.append(" ".join(["test", name, *selection]))
+            lines.append(shlex.join(["test", name, *selection]))
     check = sorted(set(result["affected"]) - set(result["touched"]))
     if check:
         lines.append(" ".join(["check", *check]))
     return lines
+
+
+def lean_test(package, selection):
+    argv = ["sh", "scripts/quarantine-test.sh", "--allow-ignored-only", "--locked", "-p", package,
+            *shlex.split(selection)]
+    code = subprocess.run(argv).returncode
+    return code if code >= 0 else 128 - code
 
 
 def affected(range_spec, *, root=None):
@@ -2051,6 +2086,9 @@ def main():
     p.add_argument("--crates", action="store_true")
     p = sub.add_parser("lean")
     p.add_argument("range", nargs="?", default="origin/main..HEAD")
+    p = sub.add_parser("lean-test")
+    p.add_argument("package")
+    p.add_argument("selection")
     sub.add_parser("state-dir")
     sub.add_parser("parity-dir")
     p = sub.add_parser("check-is-cargo")
@@ -2076,6 +2114,8 @@ def main():
         print(" ".join(result["affected"]) if args.crates else json.dumps(result))
     elif args.verb == "lean":
         print("\n".join(lean(args.range)))
+    elif args.verb == "lean-test":
+        return lean_test(args.package, args.selection)
     elif args.verb == "state-dir":
         print(state_directory())
     elif args.verb == "parity-dir":

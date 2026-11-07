@@ -5,7 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 #![allow(clippy::disallowed_methods)] // Disposable native/PTY fixtures, never UI.
-mod common;
+use crate::common;
 use bbt_mux::adapters::{
     Adapter, ArbiterView, Binding, Evidence, HarnessRecord, OscTap, Readiness, Session, State,
     WaitingKind,
@@ -31,7 +31,7 @@ fn terminal_colors_scrub_ambient_and_preserve_launch_and_shell_choices() {
     let output = std::process::Command::new(std::env::current_exe().unwrap())
         .args([
             "--exact",
-            "terminal_colors_private_process_fixture",
+            "adapters::terminal_colors_private_process_fixture",
             "--ignored",
             "--nocapture",
         ])

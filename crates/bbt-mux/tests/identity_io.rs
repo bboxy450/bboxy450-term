@@ -193,7 +193,7 @@ fn debug_process_override_uses_only_memory_custody() {
             .args([
                 "--ignored",
                 "--exact",
-                "memory_custody_process_fixture",
+                "identity_io::memory_custody_process_fixture",
                 "--nocapture",
             ])
             .env("BBOXY_TEST_CUSTODY", "memory")

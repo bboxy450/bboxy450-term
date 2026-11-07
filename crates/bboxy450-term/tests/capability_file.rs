@@ -201,7 +201,7 @@ fn every_seat_kind_keeps_capability_out_of_seat_and_ancestor_environments() {
         .args([
             "--ignored",
             "--exact",
-            "capability_process_fixture_child",
+            "capability_file::capability_process_fixture_child",
             "--nocapture",
         ])
         .stdout(Stdio::null())

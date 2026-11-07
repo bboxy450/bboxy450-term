@@ -8,7 +8,7 @@
     clippy::disallowed_methods,
     reason = "private raw PTY/socket measurement fixture"
 )]
-mod common;
+use crate::common;
 
 use bbt_mux::{
     LaunchSpec, Supervisor, Ulid,

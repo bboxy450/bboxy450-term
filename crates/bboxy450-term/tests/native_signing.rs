@@ -137,7 +137,7 @@ fn native_bundle_recipe_installs_the_same_requirement_without_real_signing() {
     let output = Command::new(std::env::current_exe().unwrap())
         .args([
             "--exact",
-            "native_bundle_fixture_child",
+            "native_signing::native_bundle_fixture_child",
             "--ignored",
             "--nocapture",
         ])

@@ -10,7 +10,7 @@
 )]
 //! Disposable interoperability/custody checks. Every GnuPG command has an
 //! explicit throwaway homedir; these tests never query the operator keyring.
-mod common;
+use crate::common;
 use bbt_mux::messaging::wire::EnvelopeExt;
 use std::{
     cell::RefCell,

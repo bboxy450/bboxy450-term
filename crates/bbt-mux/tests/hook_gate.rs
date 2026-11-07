@@ -12,7 +12,7 @@
     clippy::disallowed_methods,
     reason = "owned private accounts, plugin fixtures and child processes; no operator account"
 )]
-mod common;
+use crate::common;
 use bbt_mux::{
     LaunchSpec, Supervisor, Ulid,
     adapters::hook::{Gate, GateEntry, GatePolicy, gate_path},
@@ -125,7 +125,7 @@ fn shim(seat: Ulid, run: &Path, socket: &Path, capability: [u8; 32], raw: &str) 
         bboxy450_harness_wake_up::capability::create(admission.path(), &capability).unwrap();
     let mut child = Command::new(std::env::current_exe().unwrap());
     child
-        .args(["--ignored", "--exact", "hook_shim_child", "--nocapture"])
+        .args(["--ignored", "--exact", "hook_gate::hook_shim_child", "--nocapture"])
         .env("BBOXY_SEAT_ID", seat.to_string())
         .env("BBOXY_SOCK", socket)
         .env_remove("BBOXY_CAPABILITY")

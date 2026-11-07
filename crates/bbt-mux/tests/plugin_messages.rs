@@ -12,7 +12,7 @@
     clippy::disallowed_methods,
     reason = "owned private accounts, plugin fixtures and child processes; no operator account"
 )]
-mod common;
+use crate::common;
 use bbt_mux::{
     LaunchSpec, Supervisor, Ulid,
     identity::TestAccount,

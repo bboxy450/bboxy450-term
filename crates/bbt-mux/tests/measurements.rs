@@ -6,7 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Opt-in, finite W2.2 measurements; no provider or user harness is touched.
 #![allow(clippy::disallowed_methods)] // Disposable IO/process test harness.
-mod common;
+use crate::common;
 use std::time::Instant;
 
 use bbt_mux::bus::{Broker, Consumer};

@@ -67,7 +67,7 @@ fn rich_text_safety_private_mcp_expansion_and_inline_paint() {
         child
             .args([
                 "--exact",
-                "rich_text_safety_private_mcp_expansion_and_inline_paint",
+                "rich_text_safety::rich_text_safety_private_mcp_expansion_and_inline_paint",
                 "--nocapture",
             ])
             .env_clear()

@@ -861,7 +861,7 @@ fn settings_roles_and_harness_policies_persist_and_reach_native_launches() {
     let initialize = serde_json::json!({"jsonrpc":"2.0","id":0,"method":"initialize","params":{"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"settings-codex-fixture","version":"1"}}});
     let orient = serde_json::json!({"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"orient","arguments":{}}});
     fs::write(&codex, format!(
-        "#!/bin/sh\nif [ \"$1\" = app-server ]; then\n  BBOXY_SETTINGS_CODEX_SOCKET=\"${{3#unix://}}\" exec '{}' --ignored --exact settings_codex_service_fixture --nocapture\nfi\nprintf '%s\\0' \"$@\" > '{}'\nprintf '%s\\n' '{}' '{}' | '{}' mcp > \"$HOME/$BBOXY_SEAT_ID.orient\"\nprintf '\\nCWD:%s\\n' \"$PWD\"\nexec /bin/cat\n",
+        "#!/bin/sh\nif [ \"$1\" = app-server ]; then\n  BBOXY_SETTINGS_CODEX_SOCKET=\"${{3#unix://}}\" exec '{}' --ignored --exact swarm_workdir::settings_codex_service_fixture --nocapture\nfi\nprintf '%s\\0' \"$@\" > '{}'\nprintf '%s\\n' '{}' '{}' | '{}' mcp > \"$HOME/$BBOXY_SEAT_ID.orient\"\nprintf '\\nCWD:%s\\n' \"$PWD\"\nexec /bin/cat\n",
         std::env::current_exe().unwrap().display(), fixture.root.join("codex-argv").display(), initialize, orient, BIN,
     )).unwrap();
     fs::set_permissions(&codex, fs::Permissions::from_mode(0o700)).unwrap();

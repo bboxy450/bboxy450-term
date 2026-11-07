@@ -8,7 +8,7 @@
     clippy::disallowed_methods,
     reason = "test/fixture IO, not the UI thread"
 )]
-mod common;
+use crate::common;
 use bbt_mux::{
     LaunchSpec, Supervisor, Ulid,
     index::Document,

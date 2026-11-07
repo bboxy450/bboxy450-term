@@ -1,4 +1,7 @@
 #!/bin/sh
+# bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# LicenseRef-Respectful-Slop-1.0-Draft; retain accurate source credit on reuse.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 # C1d 1000-seat gates (.bboxy/specs/c1-live-seats.md §5, decision #10).
 # Usage: [GATE_BUDGET=N] sh scripts/gates.sh memory|bus|poller|frame
 # Prints one "GATE <name> value=..." line; exits non-zero when value > GATE_BUDGET.
@@ -42,4 +45,4 @@ case "${1:-}" in
   *) echo "usage: sh scripts/gates.sh memory|bus|poller|frame" >&2; exit 2 ;;
 esac
 cargo build --release --locked -q -p bboxy450-term-firehose
-cargo test --release --locked -q -p bboxy450-term-mux --test gates_seats "gate_$1" -- --ignored --nocapture --test-threads=1
+command cargo nextest run --target-dir "${BBOXY_CARGO_TARGET_DIR:-${CARGO_TARGET_DIR:-target}}" --release --locked --cargo-quiet -p bboxy450-term-mux --test it -E "test(=gates_seats::gate_$1)" -- --ignored --nocapture

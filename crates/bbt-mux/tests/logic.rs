@@ -7,7 +7,7 @@
 #![allow(clippy::disallowed_methods)] // Disposable IO/process test harness.
 #[path = "common/capture_priority.rs"]
 mod capture_priority;
-mod common;
+use crate::common;
 
 // keeps: invariant watched-replay-priority
 #[test]
@@ -468,7 +468,7 @@ fn hard_killed_separate_logic_process_recovers_the_same_zsh_view() {
         let mut child = std::process::Command::new(std::env::current_exe().unwrap())
             .args([
                 "--exact",
-                "external_logic_fixture",
+                "logic::external_logic_fixture",
                 "--ignored",
                 "--nocapture",
             ])

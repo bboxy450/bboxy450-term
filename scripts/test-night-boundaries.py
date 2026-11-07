@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
+# bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# LicenseRef-Respectful-Slop-1.0-Draft; keep accurate source credit on reuse.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """Night-selector migration and the public shell dispatch contract (#327)."""
 from collections import Counter
+from functools import cache
 import json
 import os
 from pathlib import Path
@@ -8,9 +12,38 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+import tomllib
 import unittest
 
 SCRIPTS = Path(__file__).resolve().parent
+ROOT = SCRIPTS.parent
+
+
+@cache
+def package_aliases():
+    aliases = {}
+    for path in (ROOT / 'crates').glob('*/Cargo.toml'):
+        aliases[path.parent.name] = tomllib.loads(path.read_text())['package']['name']
+    return aliases
+
+
+def effective_selector(line):
+    """Compare the same exact test across package and integration namespace moves."""
+    words = shlex.split(line.decode())
+    index = words.index('-p') + 1
+    words[index] = package_aliases().get(words[index], words[index])
+    if words[index] in {'bboxy450-term-mux', 'bboxy450-term'} and '--test' in words:
+        target = words.index('--test') + 1
+        if words[target] != 'it':
+            words[target + 1] = words[target] + '::' + words[target + 1]
+            words[target] = 'it'
+    # A private build directory and a single libtest thread do not change the
+    # identity of the one exact test selected by these commands.
+    if '--target-dir' in words:
+        target = words.index('--target-dir')
+        del words[target:target + 2]
+    words = [word for word in words if word != '--test-threads=1']
+    return tuple(words)
 
 
 def selectors(path):
@@ -28,12 +61,13 @@ class NightBoundaries(unittest.TestCase):
         for part in parts:
             for line in selectors(part):
                 words = shlex.split(line.decode())
-                self.assertEqual(words[words.index('-p') + 1], part.stem)
-                self.assertEqual(words[-4:], ['--', '--ignored', '--exact', '--nocapture'])
+                self.assertEqual(words[words.index('-p') + 1], package_aliases().get(part.stem, part.stem))
+                tail = [word for word in words[words.index('--'):] if word != '--test-threads=1']
+                self.assertEqual(tail, ['--', '--ignored', '--exact', '--nocapture'])
                 current.append(line)
         # Future named additions need no edit to this shared historical fixture.
-        self.assertFalse(Counter(baseline) - Counter(current))
-        self.assertEqual(len(current), len(set(current)))
+        self.assertFalse(Counter(map(effective_selector, baseline)) - Counter(map(effective_selector, current)))
+        self.assertEqual(len(current), len(set(map(effective_selector, current))))
 
     def fixture(self):
         temp = tempfile.TemporaryDirectory(prefix='bbt night boundaries ')
@@ -79,7 +113,9 @@ sys.exit(19 if os.environ.get('BBT_NIGHT_FAIL') in sys.argv[1:] else 0)
         expected = []
         for source in sorted((SCRIPTS / 'night-boundaries.d').glob('*.sh')):
             shutil.copy2(source, parts)
-            expected.extend(shlex.split(line.decode())[1:] for line in selectors(source))
+            expected.extend([word.replace('${BBOXY_CARGO_TARGET_DIR:-target}',
+                                          env.get('BBOXY_CARGO_TARGET_DIR') or 'target')
+                             for word in shlex.split(line.decode())[1:]] for line in selectors(source))
         result, calls = self.run_fixture(root, env)
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertEqual([row['argv'] for row in calls], expected)

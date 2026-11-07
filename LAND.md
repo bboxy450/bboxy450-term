@@ -15,8 +15,11 @@ It runs `scripts/land-fast.sh` (`make push` is the same command):
    and `rust-toolchain.toml` touch every crate; docs/lab-only diffs touch none.
 3. **Lean gate (default):** `cargo clippy -D warnings` over the touched crates; for each
    touched crate, nextest over its lib and bin tests (when its source changed) plus each
-   changed integration-test file; `cargo check` of the dependents. A test-only change runs
-   only that test. `.bboxy/` changes add the doc corpus test; model or `verification/`
+   changed integration-test file; `cargo check` of the dependents. The mux and app each
+   link one `it` integration binary. A test-only change selects that file's module with
+   nextest (`-E 'binary(it)&test(/^module::/)'`); nested files select their parent module,
+   and shared helpers or the entry point select the whole integration binary.
+   `.bboxy/` changes add the doc corpus test; model or `verification/`
    changes add `make test-formal`. A nonempty integration target skipped entirely by
    `#[ignore]` is metadata-checked and reported as compiled only; its native Make check
    remains explicit. Empty filters and build/test failures still fail the gate.

@@ -13,7 +13,7 @@
     reason = "owned private account, fixture plugin processes and PTYs"
 )]
 
-mod common;
+use crate::common;
 
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};

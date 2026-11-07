@@ -1,3 +1,6 @@
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# LicenseRef-Respectful-Slop-1.0-Draft; credit copied/adapted/translated reuse.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """Seven-day quarantine administration and exact, logged retries (#323 §7)."""
 import argparse
 from datetime import date, datetime, timedelta, timezone
@@ -139,10 +142,11 @@ def administer(arguments, api):
     return 0
 
 
-def retry_args(arguments, crate, test, api):
+def retry_args(arguments, crate, test, api, *, integration=False):
     # Remove old package/name filters. Preserve build/feature/target arguments as
     # arrays, so a retry cannot silently select zero tests or split quoted args.
     kept = []
+    ignored = None
     valued = {"--features", "-F", "--target", "--target-dir", "--manifest-path",
               "--profile", "--test", "--bin", "--example", "--color", "-j", "--jobs", "--config"}
     i = 0
@@ -151,16 +155,54 @@ def retry_args(arguments, crate, test, api):
         i += 1
         if arg in ("-p", "--package", "--exclude"):
             i += 1
+        elif arg in ("-E", "--filterset"):
+            if i == len(arguments):
+                raise api.Refusal("quarantine_invalid_cargo_arguments")
+            i += 1  # The qualified exact retry replaces the nextest module filter.
+        elif arg.startswith(("--filterset=", "-E")):
+            continue
+        elif arg == "--test-threads":
+            if i == len(arguments):
+                raise api.Refusal("quarantine_invalid_cargo_arguments")
+            i += 1
+        elif arg.startswith("--test-threads="):
+            continue
+        elif arg == "--run-ignored" or arg.startswith("--run-ignored="):
+            if arg == "--run-ignored":
+                if i == len(arguments):
+                    raise api.Refusal("quarantine_invalid_cargo_arguments")
+                mode = arguments[i]
+                i += 1
+            else:
+                mode = arg.split("=", 1)[1]
+            if mode not in {"default", "all", "only"}:
+                raise api.Refusal("quarantine_invalid_cargo_arguments")
+            ignored = {"default": None, "all": "--include-ignored", "only": "--ignored"}[mode]
         elif arg in ("--workspace", "--all", "--no-fail-fast") or arg.startswith(("--package=", "--exclude=")) or (arg.startswith("-p") and not arg.startswith("--")):
             continue
         elif arg in valued:
             if i == len(arguments):
                 raise api.Refusal("quarantine_invalid_cargo_arguments")
-            kept.extend((arg, arguments[i]))
+            if not integration or arg not in {"--test", "--bin", "--example"}:
+                kept.extend((arg, arguments[i]))
             i += 1
+        elif integration and (arg in {"--lib", "--bins", "--tests", "--examples", "--all-targets"}
+                              or arg.startswith(("--test=", "--bin=", "--example="))):
+            continue
         elif arg.startswith("-"):
             kept.append(arg)
-    return ["cargo", "test", *kept, "-p", crate, "--", "--exact", test]
+    # Keep the run's ignored-test mode while replacing its name/skip filters.
+    # A skip-pattern value itself must never be interpreted as a mode flag.
+    tail = iter(arguments[i + 1:] if i < len(arguments) else [])
+    for arg in tail:
+        if arg in {"--skip", "--test-threads", "--color", "--format", "--logfile", "--shuffle-seed"}:
+            next(tail, None)
+        elif arg in {"--ignored", "--include-ignored"}:
+            ignored = arg
+    if integration:
+        kept += ["--test", "it"]
+    return ["cargo", "test", *kept, "-p", crate, "--", "--exact", test,
+            *([ignored] if ignored else [])]
 
 
 def nextest(api):
@@ -212,6 +254,7 @@ def ignored_integration_suite(root, build, filters, api):
     parser.add_argument("--test", action="append")
     parser.add_argument("--target-dir")
     parser.add_argument("--profile")
+    parser.add_argument("-E", "--filterset", action="append")
     parser.add_argument("--locked", action="store_true")
     parser.add_argument("--no-fail-fast", action="store_true")
     try:
@@ -222,14 +265,32 @@ def ignored_integration_suite(root, build, filters, api):
         return False
     listing = api.command(["cargo", "nextest", "list",
                            *nextest_build_args([arg for arg in build if arg != "--no-fail-fast"]),
+                           *(["--run-ignored", "all"] if selection.filterset else []),
                            "--message-format", "json"], cwd=root, check=False)
     if listing.returncode:
         return False
     try:
         suites = json.loads(listing.stdout)["rust-suites"]
         cases = [case for suite in suites.values() for case in suite["testcases"].values()]
-        ignored = bool(cases) and all(case.get("kind") == "test" and case.get("ignored") is True and
-            case.get("filter-match", {}).get("reason") == "ignored" for case in cases)
+        if selection.filterset:
+            # Nextest checks #[ignore] before the expression, so its ordinary
+            # listing labels even nonmatching ignored tests as `ignored`.
+            # Listing with ignored tests included exposes the actual selection.
+            selected = []
+            for case in cases:
+                match = case.get("filter-match", {})
+                if case.get("kind") != "test":
+                    return False
+                if match.get("status") == "matches":
+                    selected.append(case)
+                elif (match.get("status") != "mismatch"
+                      or match.get("reason") not in {"expression", "default-filter"}):
+                    return False
+            cases = selected
+            ignored = bool(cases) and all(case.get("ignored") is True for case in cases)
+        else:
+            ignored = bool(cases) and all(case.get("kind") == "test" and case.get("ignored") is True and
+                case.get("filter-match", {}).get("reason") == "ignored" for case in cases)
     except (KeyError, TypeError, ValueError, AttributeError):
         return False
     if ignored:
@@ -319,20 +380,45 @@ def test(arguments, api):
 
 def retry_quarantined(failed, arguments, coverage, root, api, code=1):
     """Only listed, unexpired tests are retried, once each and alone; anything else fails."""
-    entries = {row["test"]: row for row in rows(root) if not row["expired"]}
+    listed = [row for row in rows(root) if not row["expired"]]
+    entries = {}
+    integration = set()
     if len(failed) != len(set(failed)):
         return code
     for name in failed:
-        if name not in entries:
-            print("quarantine: unlisted or expired: " + name, file=sys.stderr)
+        observed = [row for row in coverage.tests
+                    if row.get("result") == "FAILED" and row.get("test") == name]
+        if len(observed) > 1:
+            print("quarantine: ambiguous failure: " + name, file=sys.stderr)
             return code
+        package = observed[0].get("package") if observed else None
+        candidates = [row for row in listed if row["test"] == name
+                      and (not observed or row["crate"] == package)]
+        if (observed and observed[0].get("kind") == "test"
+                and observed[0].get("target") == "it"
+                and package in {"bboxy450-term-mux", "bboxy450-term"}):
+            integration.add(name)
+            module, separator, original = name.partition("::")
+            if separator and re.fullmatch(r"[A-Za-z_][A-Za-z_0-9]*", module):
+                # Only the newly added integration module is removed. Nested
+                # names keep their complete original identity and crate.
+                candidates += [row for row in listed
+                               if row["test"] == original and row["crate"] == package]
+        if len(candidates) != 1:
+            reason = "ambiguous" if candidates else "unlisted or expired"
+            print("quarantine: " + reason + ": " + name, file=sys.stderr)
+            return code
+        entries[name] = candidates[0]
     for name in failed:
-        retry = api.command(retry_args(arguments, entries[name]["crate"], name, api), cwd=root, check=False)
+        retry = api.command(retry_args(arguments, entries[name]["crate"], name, api,
+                                       integration=name in integration), cwd=root, check=False)
         print(retry.stdout + retry.stderr, end="", flush=True)
         passed = re.search(r"(?m)^test " + re.escape(name) + r" \.\.\. ok$", retry.stdout)
         record = {"timestamp": api.now(), "sha": api.git("rev-parse", "HEAD", cwd=root),
                   "test": name, "crate": entries[name]["crate"], "exit": retry.returncode,
                   "verdict": "flake" if retry.returncode == 0 and passed else "failed"}
+        if entries[name]["test"] != name:
+            record["listed_test"] = entries[name]["test"]
         api.append_record("quarantine-retries.log", record)
         if record["verdict"] != "flake":
             return retry.returncode or 1

@@ -3419,15 +3419,15 @@ def main():
         tests("bboxy450-harness-wake-up", ["--test", "dream_c1", "--test", "dream_bootstrap"])
         tests("bboxy450-term-mux", ["--lib", "-E", "test(dream_c1) | test(dream_public_) | test(harness_status)", "--", "--nocapture"])
         receipt["admitted_api_witnesses"] = admitted_api_witnesses(receipt["commands"][-1])
-        tests("bboxy450-term-mux", ["--test", "dream_c1", "--", "--nocapture"])
+        tests("bboxy450-term-mux", ["--test", "it", "-E", "test(/^dream_c1::/)", "--", "--nocapture"])
         tests("bboxy450-term", ["--lib", "ctl::dream::tests", "--", "--nocapture"])
         tests("bboxy450-term", ["--bin", "bboxy450-term", "stall::", "--", "--nocapture"])
-        tests("bboxy450-term", ["--test", "dream_c1", "--run-ignored", "all", "--", "--nocapture"])
+        tests("bboxy450-term", ["--test", "it", "-E", "test(/^dream_c1::/)", "--run-ignored", "all", "--", "--nocapture"])
         # Reuse current compiled private native routing fixture. Its passing exit
         # is not renamed a 240-frame/heap/CPU performance measurement.
-        tests("bboxy450-term", ["--test", "swarm_workdir", "--", "--ignored", "--exact",
-                               "rich_detach::rich_app_routes_composer_approval_scroll_and_focus",
-                               "--nocapture", "--test-threads=1"])
+        tests("bboxy450-term", ["--test", "it", "--test-threads=1", "--", "--ignored", "--exact",
+                               "swarm_workdir::rich_detach::rich_app_routes_composer_approval_scroll_and_focus",
+                               "--nocapture"])
         if receipt["source_hashes"] != {name: sha(ROOT / name) for name in source_names}:
             raise ValueError("C1 source changed while gate ran; receipt cannot bind current source")
         if (sha(runner) != receipt["real_worker_probe"]["runner_sha256"]

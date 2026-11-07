@@ -9,7 +9,7 @@
     reason = "owned PTYs and explicit-key GUI/replay fixture"
 )]
 
-mod common;
+use crate::common;
 use bbt_mux::logic::{Logic, LogicConfig, SupervisorConnection};
 use bbt_mux::provider::{
     Host, HostId, LinkState, LocalProvider, Provider, ProviderEvent, ProviderKind,

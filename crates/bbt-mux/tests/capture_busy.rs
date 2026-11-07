@@ -6,7 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 #![allow(clippy::disallowed_methods)] // Bounded real-PTY/IO-worker fault fixture.
 
-mod common;
+use crate::common;
 use std::sync::{
     Arc,
     atomic::{AtomicBool, AtomicU64, Ordering},

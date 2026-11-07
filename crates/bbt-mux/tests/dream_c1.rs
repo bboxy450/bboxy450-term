@@ -11,7 +11,7 @@
     clippy::disallowed_methods,
     reason = "private unattended process fixture"
 )]
-mod common;
+use crate::common;
 use bbt_mux::logic::{Logic, LogicConfig};
 use bbt_mux::mcp::{
     Call,

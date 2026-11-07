@@ -5,7 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 #![allow(clippy::disallowed_methods)] // Disposable broker/database/socket fixtures.
-mod common;
+use crate::common;
 use bbt_mux::Ulid;
 use bbt_mux::messaging::{
     keys::{LocalSeatKeys, SeatKeys},

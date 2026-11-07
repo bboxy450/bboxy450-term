@@ -440,6 +440,94 @@ pub const EXAMPLE:&str=r#"include_str!("../../lab/web/lab.js")"#;
         self.assertEqual(result["native_inputs"], [])
 
 
+class ConsolidatedIntegrationTests(unittest.TestCase):
+    def test_repository_entrypoints_include_every_integration_file(self):
+        for crate in ("bbt-mux", "bboxy450-term"):
+            with self.subTest(crate=crate):
+                base = SOURCE.parents[1] / "crates" / crate
+                manifest = landing.tomllib.loads((base / "Cargo.toml").read_text())
+                self.assertIs(manifest["package"]["autotests"], False)
+                self.assertEqual(manifest["test"], [{"name": "it", "path": "tests/it.rs"}])
+                entry = (base / "tests/it.rs").read_text()
+                declared = landing.re.findall(r'#\[path = "([^/\"]+)\.rs"\]\s*mod (\w+);', entry)
+                expected = sorted(p.stem for p in (base / "tests").glob("*.rs") if p.stem != "it")
+                self.assertEqual(sorted(name for name, _ in declared), expected)
+                self.assertTrue(all(name == module for name, module in declared))
+
+    def setUp(self):
+        self.repo = Repository()
+        self.addCleanup(self.repo.close)
+        manifest = self.repo.root / "crates/c/Cargo.toml"
+        manifest.write_text(manifest.read_text().replace('[package]', '[package]\nautotests=false')
+                            + '\n[[test]]\nname="it"\npath="tests/it.rs"\n')
+        self.repo.write("crates/c/tests/it.rs", '#[path="alpha.rs"] mod alpha;\n#[path="beta.rs"] mod beta;\n')
+        self.repo.write("crates/c/tests/alpha.rs", '#[test] fn selected() {}\n')
+        self.repo.write("crates/c/tests/beta.rs", '#[test] fn unselected() { panic!("unselected module ran"); }\n')
+        self.repo.base = self.repo.commit("Private consolidated integration target")
+
+    def plan(self, *paths):
+        for path in paths:
+            file = self.repo.root / path
+            self.repo.write(path, (file.read_text() if file.exists() else "") + "// fixture change\n")
+        self.repo.commit("Private selected files")
+        return landing.lean(self.repo.base + "..HEAD", root=self.repo.root)
+
+    def test_one_changed_file_selects_only_its_module(self):
+        self.assertEqual(self.plan("crates/c/tests/alpha.rs"),
+                         ["test c --test it -E '(binary(=it)&test(/^(alpha)::/))'"])
+
+    def test_nested_module_and_source_preserve_unit_tests(self):
+        self.assertEqual(self.plan("crates/c/tests/alpha/child.rs", "crates/c/src/lib.rs"),
+                         ["test c --lib --test it -E '(binary(=it)&test(/^(alpha)::/))|(kind(lib))'"])
+
+    def test_quoted_filter_is_one_argument_without_shell_evaluation(self):
+        expression = "binary(it) & test(/^alpha::/)"
+        with patch.object(landing.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
+            self.assertEqual(landing.lean_test("c", shlex.join(["--test", "it", "-E", expression])), 0)
+        self.assertEqual(run.call_args.args[0], ["sh", "scripts/quarantine-test.sh", "--allow-ignored-only",
+                                               "--locked", "-p", "c", "--test", "it", "-E", expression])
+
+    def test_invariant_selection_and_coverage_use_the_qualified_test(self):
+        source = SOURCE.with_name("invariants.sh").read_text().split("<<'PY_INVARIANTS'\n", 1)[1]
+        functions = [node for node in landing.ast.parse(source).body
+                     if isinstance(node, landing.ast.FunctionDef) and node.name in {"test_check", "covered"}]
+        namespace = {"re": landing.re, "shlex": shlex, "tomllib": landing.tomllib,
+                     "workspace_packages": lambda: {"c": self.repo.root / "crates/c/Cargo.toml"}}
+        exec(compile(landing.ast.Module(body=functions, type_ignores=[]), "invariant module selection", "exec"), namespace)
+        check = namespace["test_check"]("cargo test -p c --locked --test alpha selected -- --exact")
+        self.assertEqual(check["targets"], [("--test", "it")])
+        self.assertEqual(check["test"], "alpha::selected")
+        row = {"package": "c", "kind": "test", "target": "it", "test": "alpha::selected", "result": "ok"}
+        self.assertTrue(namespace["covered"](check, [row]))
+        self.assertFalse(namespace["covered"](check, [dict(row, result="ignored")]))
+
+    def test_shared_helpers_select_the_whole_integration_binary(self):
+        for path in ("crates/c/tests/common/mod.rs", "crates/c/tests/support/events.rs", "crates/c/tests/it.rs"):
+            with self.subTest(path=path):
+                self.assertEqual(self.plan(path), ["test c --test it"])
+
+    def test_make_land_runs_only_the_changed_module(self):
+        self.repo.tooling()
+        for name in ("land-fast.sh", "affected.sh"):
+            shutil.copy2(SOURCE.with_name(name), self.repo.root / "scripts" / name)
+        # Use real Cargo/nextest, a private signer, and a local bare origin.
+        # The unselected module panics if the actual land selection is widened.
+        (self.repo.bin / "cargo").unlink()
+        environment = dict(self.repo.environment, BBOXY_TEST_RUNNER="nextest",
+                           CARGO_BUILD_BUILD_DIR=str(self.repo.state / "target"))
+        makefile = self.repo.root / "Makefile"
+        makefile.write_text(makefile.read_text() + '\nland:\n\t@sh scripts/land-fast.sh\ninit-submodules:\n\t@true\n')
+        self.repo.commit("Private lean landing workflow")
+        self.repo.remote()
+        self.repo.write("crates/c/tests/alpha.rs", '#[test] fn selected() {} // changed\n')
+        candidate = self.repo.commit("Private one-module cut")
+        result = subprocess.run(["make", "land"], cwd=self.repo.root, env=environment,
+                                capture_output=True, text=True, timeout=45)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("1 test run: 1 passed", result.stdout + result.stderr)
+        self.assertEqual(self.repo.remote_head(), candidate)
+
+
 class StateTests(unittest.TestCase):
     def test_phase_accounting_clips_an_active_compile_without_inventing_test_time(self):
         with tempfile.TemporaryDirectory(prefix="landing-timing-") as temp:
@@ -1990,11 +2078,44 @@ class IgnoredIntegrationTests(unittest.TestCase):
         self.assertNotIn("--allow-ignored-only", argv)
 
     def test_explicit_filters_cannot_be_mistaken_for_ignored_tests(self):
-        for extra in [("--", "missing_case"), ("missing_case",), ("-E", "test(missing_case)")]:
+        for extra in [("--", "missing_case"), ("missing_case",)]:
             with self.subTest(extra=extra):
                 code, listing, _, _ = self.invoke(self.ignored(), extra=extra)
                 self.assertEqual(code, 4)
                 listing.assert_not_called()
+
+    def test_module_filter_counts_only_matching_ignored_tests(self):
+        expression = "binary(=it)&test(/^native::/)"
+        cases = {"native::case": {"kind": "test", "ignored": True, "filter-match": {"status": "matches"}},
+                 "other::ignored": {"kind": "test", "ignored": True,
+                                    "filter-match": {"status": "mismatch", "reason": "expression"}},
+                 "other::ordinary": {"kind": "test", "ignored": False,
+                                     "filter-match": {"status": "mismatch", "reason": "expression"}}}
+        code, listing, argv, output = self.invoke(cases, extra=("-E", expression))
+        self.assertEqual(code, 0)
+        self.assertIn(expression, argv)
+        self.assertIn("--run-ignored", listing.call_args[0][0])
+        self.assertIn("all", listing.call_args[0][0])
+        self.assertIn("all 1 selected tests are ignored", output)
+
+    def test_module_filter_empty_nonmatching_and_nonignored_selections_fail(self):
+        expression = "binary(=it)&test(/^missing::/)"
+        for cases in [{}, self.ignored(),
+                      {"other::ignored": {"kind": "test", "ignored": True,
+                                          "filter-match": {"status": "mismatch", "reason": "expression"}}},
+                      {"native::case": {"kind": "test", "ignored": False, "filter-match": {"status": "matches"}}},
+                      {"native::case": {"kind": "bench", "ignored": True, "filter-match": {"status": "matches"}}},
+                      {"native::case": {"kind": "test", "ignored": True,
+                                        "filter-match": {"status": "mismatch", "reason": "unknown"}}}]:
+            with self.subTest(cases=cases):
+                self.assertEqual(self.invoke(cases, extra=("-E", expression))[0], 4)
+
+    def test_module_filter_never_accepts_failed_run_or_listing(self):
+        cases = {"native::case": {"kind": "test", "ignored": True, "filter-match": {"status": "matches"}}}
+        extra = ("-E", "binary(=it)&test(/^native::/)")
+        for code in (100, 101):
+            self.assertEqual(self.invoke(cases, extra=extra, run_code=code)[0], code)
+        self.assertEqual(self.invoke(cases, extra=extra, listing_code=101)[0], 4)
 
     def test_empty_or_filtered_metadata_keeps_no_tests_failure(self):
         for cases in [{}, {"case": {"kind": "test", "ignored": False}},
@@ -2029,6 +2150,69 @@ class IgnoredIntegrationTests(unittest.TestCase):
 
 
 class CargoProfileForwardingTests(unittest.TestCase):
+    def test_exact_retry_preserves_ignored_mode_and_drops_nextest_threads(self):
+        module = self.module()
+        for option in [["--test-threads", "1"], ["--test-threads=1"]]:
+            actual = module.retry_args(["--test", "it", *option, "--run-ignored", "only"],
+                                       "bboxy450-term-mux", "mcp::case", Mock())
+            self.assertEqual(actual, ["cargo", "test", "--test", "it", "-p", "bboxy450-term-mux",
+                                      "--", "--exact", "mcp::case", "--ignored"])
+        for tail, expected in [(["--run-ignored=all"], ["--include-ignored"]),
+                               (["--", "--ignored"], ["--ignored"]),
+                               (["--", "--include-ignored"], ["--include-ignored"]),
+                               (["--", "--skip", "--ignored"], [])]:
+            self.assertEqual(module.retry_args(["--test", "it", *tail], "fixture", "mcp::case", Mock()),
+                             ["cargo", "test", "--test", "it", "-p", "fixture",
+                              "--", "--exact", "mcp::case", *expected])
+
+    def test_qualified_quarantine_requires_observed_crate_and_original_identity(self):
+        module = self.module()
+        entry = {"test": "case", "crate": "bboxy450-term-mux", "expired": False}
+        observed = {"test": "mcp::case", "package": "bboxy450-term-mux", "kind": "test",
+                    "target": "it", "result": "FAILED"}
+        def invoke(entries, observations, name="mcp::case"):
+            api = Mock()
+            api.command.return_value = subprocess.CompletedProcess([], 0, f"test {name} ... ok\n", "")
+            coverage = Mock(tests=observations)
+            arguments = ["--lib", "--bins", "--test", "it", "-E", "binary(it)&test(/^mcp::/)"]
+            with patch.object(module, "rows", return_value=entries), contextlib.redirect_stdout(io.StringIO()):
+                code = module.retry_quarantined([name], arguments, coverage, Path("."), api, 100)
+            return code, api, coverage
+        code, api, coverage = invoke([entry], [observed])
+        self.assertEqual(code, 0)
+        self.assertEqual(api.command.call_args.args[0], ["cargo", "test", "--test", "it", "-p",
+                                                        "bboxy450-term-mux", "--", "--exact", "mcp::case"])
+        self.assertEqual(api.append_record.call_args.args[1]["listed_test"], "case")
+        coverage.passed.assert_called_once()
+        negatives = [([entry], []), ([dict(entry, expired=True)], [observed]),
+                     ([entry, entry], [observed]), ([entry], [observed, observed]),
+                     ([entry], [dict(observed, kind="lib")]),
+                     ([entry], [dict(observed, target="other")]),
+                     ([entry], [dict(observed, package="other")]),
+                     ([entry], [dict(observed, test="mcp::nested::case")])]
+        for entries, observations in negatives:
+            with self.subTest(entries=entries, observations=observations):
+                name = observations[0]["test"] if observations else "mcp::case"
+                code, api, coverage = invoke(entries, observations, name)
+                self.assertEqual(code, 100)
+                api.command.assert_not_called()
+                coverage.passed.assert_not_called()
+        library = dict(observed, test="logic::case", kind="lib", target="bbt_mux")
+        self.assertEqual(invoke([dict(entry, test="logic::case")], [library], "logic::case")[0], 0)
+        nested = dict(observed, test="mcp::nested::case")
+        self.assertEqual(invoke([dict(entry, test="nested::case")], [nested], nested["test"])[0], 0)
+
+    def test_exact_retry_replaces_module_filter_with_qualified_test(self):
+        module = self.module()
+        for selection in [["-E", "binary(=it)&test(/^native::/)"],
+                          ["--filterset", "binary(=it)&test(/^native::/)"],
+                          ["--filterset=binary(=it)&test(/^native::/)"],
+                          ["-Ebinary(=it)&test(/^native::/)"]]:
+            arguments = ["--profile", "fixture", "-p", "old", "--test", "it", *selection]
+            self.assertEqual(module.retry_args(arguments, "fixture", "native::case", Mock()),
+                             ["cargo", "test", "--profile", "fixture", "--test", "it",
+                              "-p", "fixture", "--", "--exact", "native::case"])
+
     def module(self):
         spec = importlib.util.spec_from_file_location("profile_quarantine", SOURCE.with_name("quarantine.py"))
         module = importlib.util.module_from_spec(spec)
@@ -2085,7 +2269,7 @@ class CargoProfileForwardingTests(unittest.TestCase):
                 retry = module.retry_args([*profile, "-p", "old", *options, "old_filter", "--", "--ignored"],
                                           "fixture", "native::case", Mock())
                 self.assertEqual(retry, ["cargo", "test", *profile, *options,
-                                         "-p", "fixture", "--", "--exact", "native::case"])
+                                         "-p", "fixture", "--", "--exact", "native::case", "--ignored"])
 
     def test_filter_tail_profile_text_is_never_translated(self):
         _, calls = self.invoke(["--lib", "-p", "fixture", "--", "--profile=literal_filter"])
@@ -2991,6 +3175,16 @@ def fixture_suite(extended=False):
 
 
 class CostTests(unittest.TestCase):
+    def test_consolidated_modules_preserve_timing_policy(self):
+        policy = landing.qos_policy()
+        for target in policy.TIMED_TARGETS:
+            with self.subTest(target=target):
+                self.assertTrue(policy.timed_test("fixture::" + target, "ordinary_case"))
+                self.assertTrue(policy.timed_test("fixture::it", target + "::ordinary_case"))
+                self.assertFalse(policy.timed_test("fixture::other", target + "::ordinary_case"))
+        self.assertFalse(policy.timed_test("fixture::it", "ordinary::case"))
+        self.assertFalse(policy.timed_test("fixture::it", "gates_seats_extra::case"))
+
     def test_qos_probe_accepts_catalog_notifications_before_rpc_reply(self):
         spec = importlib.util.spec_from_file_location("qos_probe", SOURCE.with_name("qos-probe.py"))
         probe = importlib.util.module_from_spec(spec)
@@ -3058,6 +3252,9 @@ class CostTests(unittest.TestCase):
                  (["test", "-p", "bboxy450-term-mux", "--lib", "ordinary"], "utility"),
                  (["test", "--workspace", "--lib"], "default"),
                  (["test", "-p", "bboxy450-term-mux", "--lib", "--test", "mcp"], "default"),
+                 (["test", "-p", "bboxy450-term-mux", "--test", "it"], "default"),
+                 (["test", "-p", "bboxy450-term", "--test", "it", "formal_contracts::selected"], "default"),
+                 (["test", "-p", "bboxy450-term", "--test", "it", "ordinary::selected"], "utility"),
                  (["test", "--lib", "logic::dream_c1::tests::dream_c1_source_error_capacity_is_atomic_across_real_sqlite_owners"], "default"),
                  (["test", "-p", "bboxy450-term-mux", "--test", "logic", "--", "--ignored"], "default"),
                  (["test", "-p", "bboxy450-term-mux", "--test", "logic", "ordinary", "--", "--include-ignored"], "utility"),
@@ -3113,7 +3310,7 @@ class QosTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="qos-nextest-") as directory:
             own = Path(directory)
             (own / "src").mkdir()
-            (own / "Cargo.toml").write_text('[package]\nname="qos-fixture"\nversion="0.0.0"\nedition="2024"\n[workspace]\n')
+            (own / "Cargo.toml").write_text('[package]\nname="qos-fixture"\nversion="0.0.0"\nedition="2024"\nautotests=false\n[workspace]\n[[test]]\nname="it"\npath="tests/it.rs"\n')
             witness = '''unsafe extern "C" { fn getpriority(which: i32, who: u32) -> i32; }
 fn priority() -> i32 {
     let wanted = std::env::var("NEXTEST_DYLD_FALLBACK_LIBRARY_PATH").unwrap();
@@ -3128,6 +3325,15 @@ fn priority() -> i32 {
 #[test] fn actual_private_control_invalid_ulids_and_unsafe_revision_emit_no_new_frame() { let p=priority(); assert!(p>20, "{p}"); }
 '''
             (own / "src/lib.rs").write_text(witness)
+            (own / "tests").mkdir()
+            (own / "tests/it.rs").write_text(witness.split("#[test]", 1)[0] + '''
+mod gates_seats {
+    #[test] fn ordinary_case() { let p=super::priority(); assert!(p>20, "{p}"); }
+}
+mod ordinary {
+    #[test] fn ordinary_case() { let p=super::priority(); assert!(p>4 && p<=20, "{p}"); }
+}
+''')
             inner = own / "inner-runner"
             inner.write_text("#!" + sys.executable + "\nimport os,sys\nwith open(os.environ['QOS_INNER_TRACE'],'a') as f: f.write(repr(sys.argv[1:])+'\\n')\nos.execv(sys.argv[1],sys.argv[1:])\n")
             inner.chmod(0o700)
@@ -3135,12 +3341,14 @@ fn priority() -> i32 {
             environment = dict(os.environ, BBOXY_CACHE_MODE="off", BBOXY_CARGO_TARGET_DIR=str(own / "target"),
                                QOS_INNER_TRACE=str(own / "trace"), QOS_RUNNER_KEY="CARGO_TARGET_" + triple + "_RUNNER",
                                QOS_EXPECTED_RUNNER=str(inner), **{"CARGO_TARGET_" + triple + "_RUNNER": str(inner)})
-            result = subprocess.run(["sh", "-c", '. scripts/cache-env.sh; cd "$1"; cargo nextest run --offline --lib --test-threads 1', "fixture", directory],
+            result = subprocess.run(["sh", "-c", '. scripts/cache-env.sh; cd "$1"; cargo nextest run --offline --lib --test it --test-threads 1', "fixture", directory],
                                     cwd=root, env=environment, capture_output=True, text=True, timeout=90)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn("2 tests run: 2 passed", result.stdout + result.stderr)
+            self.assertIn("4 tests run: 4 passed", result.stdout + result.stderr)
             self.assertIn("ordinary", (own / "trace").read_text())
             self.assertIn("actual_private_control", (own / "trace").read_text())
+            self.assertIn("gates_seats::ordinary_case", (own / "trace").read_text())
+            self.assertIn("ordinary::ordinary_case", (own / "trace").read_text())
 
     def test_cargo_shim_survives_private_environment_filtering(self):
         root = SOURCE.parents[1]
@@ -3306,7 +3514,10 @@ fn priority() -> i32 {
         # Inventory actual timed leaves and every literal recursive Make parent;
         # this fails when a new parent accidentally clamps a timed descendant.
         timed = {target for target, body in bodies.items()
-                 if "cargo test " in body and "--test formal_contracts" in body}
+                 if ("cargo test " in body or "cargo nextest run " in body)
+                 and ("--test formal_contracts" in body
+                      or ("--test it" in body and "formal_contracts::" in body)
+                      or ("--test it" in body and "(formal_contracts)" in body))}
         timed.update({"bench-budgets", "test-input-latency", "profile-input-ui", "profile-render-input", "test-harmony-host", "test-harness-startup"})
         while True:
             parents = {target for target, body in bodies.items() if target != "help" and

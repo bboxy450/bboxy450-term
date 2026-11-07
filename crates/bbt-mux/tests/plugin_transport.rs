@@ -6,7 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! SDK transport through the real owner/supervisor boundary, without network.
 #![allow(clippy::disallowed_methods)]
-mod common;
+use crate::common;
 use bbt_mux::{
     LaunchSpec, Supervisor, Ulid,
     identity::TestAccount,
@@ -64,7 +64,7 @@ async fn sdk_transport_fields_reach_real_argv_and_stale_wraps_never_launch() {
         let output = std::process::Command::new(std::env::current_exe().unwrap())
             .args([
                 "--exact",
-                "sdk_transport_fields_reach_real_argv_and_stale_wraps_never_launch",
+                "plugin_transport::sdk_transport_fields_reach_real_argv_and_stale_wraps_never_launch",
                 "--nocapture",
             ])
             .env_clear()

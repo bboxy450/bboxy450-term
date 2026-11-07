@@ -623,7 +623,7 @@ fn checkpoint_bounded_recovery() {
             Command::new(std::env::current_exe().unwrap())
                 .args([
                     "--exact",
-                    "checkpoint_recovery_child",
+                    "recovery::checkpoint_recovery_child",
                     "--ignored",
                     "--nocapture",
                 ])

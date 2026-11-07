@@ -10,8 +10,7 @@
     reason = "headless integration tests own their Tokio runtimes"
 )]
 
-#[path = "support/events.rs"]
-mod events;
+use crate::events;
 use bboxy450_term::cockpit::{Config, Event, Session};
 use bbt_mux::{
     Ulid,
@@ -87,7 +86,7 @@ async fn start(root: &Path) -> Session {
     for harness in ["claude", "codex"] {
         let server = if harness == "codex" {
             format!(
-                "if [ \"$1\" = app-server ]; then\n  BBT_RECOVERY_CODEX_SOCKET=\"${{3#unix://}}\" exec '{}' --ignored --exact codex_service_fixture --nocapture\nfi\n",
+                "if [ \"$1\" = app-server ]; then\n  BBT_RECOVERY_CODEX_SOCKET=\"${{3#unix://}}\" exec '{}' --ignored --exact recovery::codex_service_fixture --nocapture\nfi\n",
                 std::env::current_exe().unwrap().display()
             )
         } else {

@@ -22,7 +22,7 @@ if os.environ.get('BBOXY_SEAT_ID') and args[0] != 'app-server':
 if args[0] == 'app-server':
     os.environ['BBOXY_SETTINGS_CODEX_SOCKET'] = args[2].removeprefix('unix://')
     os.execv(str(root / 'fixture-test'), [str(root / 'fixture-test'), '--ignored', '--exact',
-                                       'settings_codex_service_fixture', '--nocapture'])
+                                       'swarm_workdir::settings_codex_service_fixture', '--nocapture'])
 
 def flag(key):
     return args[args.index(key) + 1]

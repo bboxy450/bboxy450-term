@@ -109,7 +109,12 @@ C1_DEFERRED_TESTS = {
 
 def timed_test(binary, name):
     target = binary.split("::")[-1]
-    return (target in TIMED_TARGETS or name.split("::")[-1] in (C1_TIMED_TESTS | TIMED_TESTS)
+    module, separator, _ = name.partition("::")
+    # Consolidated integration binaries keep the former target as a module.
+    # Only that module's tests inherit its timing policy; `it` is mixed.
+    timed_module = target == "it" and bool(separator) and module in TIMED_TARGETS
+    return (target in TIMED_TARGETS or timed_module
+            or name.split("::")[-1] in (C1_TIMED_TESTS | TIMED_TESTS)
             or any(part in name for part in TIMED_FILTERS)
             or (binary.startswith("bboxy450-harness-host")
                 and name.startswith(("client::tests::", "transport::tests::"))))

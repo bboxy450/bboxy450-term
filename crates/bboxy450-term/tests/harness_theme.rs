@@ -69,7 +69,7 @@ fn harness_theme_worker_preserves_identity_draft_and_latest_aba() {
         let output = std::process::Command::new(std::env::current_exe().unwrap())
             .args([
                 "--exact",
-                "harness_theme_worker_preserves_identity_draft_and_latest_aba",
+                "harness_theme::harness_theme_worker_preserves_identity_draft_and_latest_aba",
                 "--nocapture",
             ])
             .env_clear()

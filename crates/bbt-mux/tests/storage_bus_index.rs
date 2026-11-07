@@ -666,7 +666,7 @@ fn concurrent_processes_allocate_under_one_root_lock() {
         let child = std::process::Command::new(std::env::current_exe().unwrap())
             .args([
                 "--exact",
-                "number_allocation_child",
+                "storage_bus_index::number_allocation_child",
                 "--ignored",
                 "--nocapture",
             ])

@@ -308,7 +308,7 @@ fn rich_actor_forwards_composer_stop_approval_and_detaches_without_close() {
         let output = std::process::Command::new(std::env::current_exe().unwrap())
             .args([
                 "--exact",
-                "rich_actor_forwards_composer_stop_approval_and_detaches_without_close",
+                "rich_client::rich_actor_forwards_composer_stop_approval_and_detaches_without_close",
                 "--nocapture",
                 "--test-threads=1",
             ])
@@ -762,7 +762,7 @@ fn delayed_cancel_cannot_deny_a_new_approval() {
         child
             .args([
                 "--exact",
-                "delayed_cancel_cannot_deny_a_new_approval",
+                "rich_client::delayed_cancel_cannot_deny_a_new_approval",
                 "--nocapture",
                 "--test-threads=1",
             ])

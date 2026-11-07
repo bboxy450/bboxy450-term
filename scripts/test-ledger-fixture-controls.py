@@ -30,8 +30,8 @@ def main():
         .map(|line| serde_json::from_str(line).unwrap()).collect()
 }
 ''' + original[end:]
-        command = ["cargo", "test", "--locked", "-p", "bboxy450-term-mux", "--test", "plugin_host",
-                   "a_hook_fragment_is_ignored_until_its_newline", "--", "--exact", "--nocapture"]
+        command = ["cargo", "test", "--locked", "-p", "bboxy450-term-mux", "--test", "it",
+                   "plugin_host::a_hook_fragment_is_ignored_until_its_newline", "--", "--exact", "--nocapture"]
         assertion = "EOF while parsing"
     else:
         path = root / "crates/bbt-supervisor/src/ring/writer.rs"

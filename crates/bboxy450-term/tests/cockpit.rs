@@ -4,8 +4,7 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-#[path = "support/events.rs"]
-mod events;
+use crate::events;
 #[path = "cockpit/launch_environment.rs"]
 mod launch_environment;
 use events::StateEvents;

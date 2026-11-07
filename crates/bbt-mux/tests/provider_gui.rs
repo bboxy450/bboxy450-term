@@ -360,7 +360,7 @@ fn isolated_case(case: &str) {
     command
         .args([
             "--exact",
-            "provider_gui_isolated_process",
+            "provider_gui::provider_gui_isolated_process",
             "--ignored",
             "--nocapture",
         ])

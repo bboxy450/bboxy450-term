@@ -183,7 +183,7 @@ impl Process {
         let child = Command::new(std::env::current_exe().unwrap())
             .args([
                 "--exact",
-                "gui_event_fixture_child",
+                "gui_events::gui_event_fixture_child",
                 "--ignored",
                 "--nocapture",
             ])

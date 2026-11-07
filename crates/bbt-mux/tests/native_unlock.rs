@@ -8,7 +8,7 @@
     clippy::disallowed_methods,
     reason = "throwaway account and injected custody; no native credential service"
 )]
-mod common;
+use crate::common;
 
 use bbt_mux::{
     LaunchSpec, Supervisor, Ulid,

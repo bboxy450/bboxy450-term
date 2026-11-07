@@ -108,14 +108,25 @@ def fields(path):
     return result
 
 
-def workspace_names():
+_workspace_packages = None
+
+
+def workspace_packages():
+    global _workspace_packages
+    if _workspace_packages is not None:
+        return _workspace_packages
     manifest = tomllib.loads(Path("Cargo.toml").read_text())
     paths = {Path("Cargo.toml")} if "package" in manifest else set()
     workspace = manifest.get("workspace", {})
     excluded = {Path(p) for pattern in workspace.get("exclude", []) for p in glob.glob(pattern)}
     for pattern in workspace.get("members", []):
         paths.update(Path(p) / "Cargo.toml" for p in glob.glob(pattern) if Path(p) not in excluded)
-    return {tomllib.loads(path.read_text())["package"]["name"] for path in paths}
+    _workspace_packages = {tomllib.loads(path.read_text())["package"]["name"]: path for path in paths}
+    return _workspace_packages
+
+
+def workspace_names():
+    return set(workspace_packages())
 
 
 def packages(words):
@@ -161,6 +172,19 @@ def test_check(command):
         result["grep"] = True
     elif words != ["--", "--exact"]:
         return None
+    # Invariant records identify the original source-file namespace. Resolve
+    # that exact test against the crate's current integration entry point;
+    # coverage and the libtest batch must use the same qualified name.
+    if len(result["packages"]) == 1 and len(result["targets"]) == 1:
+        target = result["targets"][0]
+        manifest_path = workspace_packages().get(result["packages"][0])
+        if manifest_path and len(target) == 2 and target[0] == "--test" and target[1] != "it":
+            manifest = tomllib.loads(manifest_path.read_text())
+            if (manifest["package"].get("autotests") is False
+                    and any(t.get("name") == "it" for t in manifest.get("test", []))
+                    and (manifest_path.parent / "tests" / (target[1] + ".rs")).is_file()):
+                result["targets"] = [("--test", "it")]
+                result["test"] = target[1] + "::" + result["test"]
     return result
 
 

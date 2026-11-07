@@ -8,7 +8,7 @@
     clippy::disallowed_methods,
     reason = "owned headless socket and file-account fixtures"
 )]
-mod common;
+use crate::common;
 use bbt_mux::{
     Supervisor, Ulid,
     ctl_door::{self, Peers},

@@ -115,7 +115,7 @@ fn caller_harness_markers_never_cross_any_profile_or_companion_exec() {
         let mut process = Command::new(std::env::current_exe().unwrap());
         process.env_clear().env("BBOXY_ENV_WITNESS_CHILD", "1").args([
             "--ignored", "--exact",
-            "launch_environment::caller_harness_markers_never_cross_any_profile_or_companion_exec",
+            "cockpit::launch_environment::caller_harness_markers_never_cross_any_profile_or_companion_exec",
         ]);
         for key in KEEP {
             if *key != "CLAUDE_CODE_FORCE_SESSION_PERSISTENCE" {
@@ -255,7 +255,7 @@ fn broken_control_without_the_scrub_fails_the_environment_assertion() {
         .args([
             "--ignored",
             "--exact",
-            "launch_environment::broken_control_without_the_scrub_fails_the_environment_assertion",
+            "cockpit::launch_environment::broken_control_without_the_scrub_fails_the_environment_assertion",
         ])
         .output()
         .unwrap();

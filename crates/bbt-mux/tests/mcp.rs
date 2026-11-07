@@ -7,7 +7,7 @@
 #![allow(clippy::disallowed_methods)] // Controlled blocking IO/process fixtures.
 
 use bbt_mux::messaging::wire::EnvelopeExt;
-mod common;
+use crate::common;
 #[path = "mcp/harness_status.rs"]
 mod harness_status;
 #[path = "mcp/knowledge_types.rs"]
@@ -5261,7 +5261,7 @@ fn isolated_seat_fixture(mode: &str) {
     command
         .args([
             "--exact",
-            "mcp_seat_isolated_process",
+            "mcp::mcp_seat_isolated_process",
             "--ignored",
             "--nocapture",
         ])

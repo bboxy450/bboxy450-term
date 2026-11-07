@@ -7,7 +7,7 @@
 #![allow(clippy::disallowed_methods)] // Private filesystem/account fixtures.
 use bbt_mux::{registry::Registry, store::sqlite::SqliteStore};
 use ulid::Ulid;
-mod common;
+use crate::common;
 
 #[test]
 fn swarm_metadata_persists_canonical_paths_and_noops_keep_the_revision() {
