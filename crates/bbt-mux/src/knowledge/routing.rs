@@ -81,12 +81,37 @@ pub(crate) struct Router {
     pub fail_next_prepare: bool,
 }
 fn io_result<T>(repository: &std::path::Path, job: impl FnOnce() -> Result<T>) -> Result<T> {
-    std::panic::catch_unwind(std::panic::AssertUnwindSafe(job)).unwrap_or_else(|_| {
-        Err(Error::Unavailable {
-            repository: repository.to_owned(),
-            reason: "workspace IO worker panicked; retry the root".into(),
+    bbt_rt::qos::with_utility_qos(|| {
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(job)).unwrap_or_else(|_| {
+            Err(Error::Unavailable {
+                repository: repository.to_owned(),
+                reason: "workspace IO worker panicked; retry the root".into(),
+            })
         })
     })
+}
+
+#[test]
+#[cfg(target_os = "macos")]
+fn workspace_io_qos_restores_its_owner_after_success_and_caught_panic() {
+    std::thread::spawn(|| {
+        bbt_rt::qos::initiated_thread();
+        let repository = std::path::Path::new("private-qos-witness");
+        io_result(repository, || {
+            assert_eq!(bbt_rt::qos::requested_class(), 0x11);
+            Ok(())
+        })
+        .unwrap();
+        assert_eq!(bbt_rt::qos::requested_class(), 0x19);
+        let result: Result<()> = io_result(repository, || {
+            assert_eq!(bbt_rt::qos::requested_class(), 0x11);
+            panic!("private workspace IO panic");
+        });
+        assert!(result.is_err());
+        assert_eq!(bbt_rt::qos::requested_class(), 0x19);
+    })
+    .join()
+    .unwrap();
 }
 impl Router {
     pub fn new(cache: Workspaces, runtime: Handle) -> Self {
