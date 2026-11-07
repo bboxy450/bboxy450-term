@@ -3109,6 +3109,19 @@ class QosTests(unittest.TestCase):
             fields = dict(field.split("=", 1) for field in cost.split()[2:])
             self.assertGreaterEqual(float(fields["cpu"].removesuffix("s")), .35, cost)
 
+    def test_main_watcher_does_not_nice_its_timing_descendants(self):
+        root = SOURCE.parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            own = Path(directory)
+            for name in ("main-watch.sh", "qos.sh"):
+                shutil.copy2(root / "scripts" / name, own / name)
+            (own / "cache-env.sh").write_text("# private launcher fixture\n")
+            (own / "landing.py").write_text(self.SNAPSHOT + "\n")
+            result = subprocess.run(["sh", str(own / "main-watch.sh")],
+                                    capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assert_role(json.loads(result.stdout), "default")
+
     def test_rustdoc_compiles_background_and_executes_utility(self):
         root = SOURCE.parents[1]
         with tempfile.TemporaryDirectory() as directory:

@@ -159,8 +159,21 @@ fn capture_sigkill_replays_a_crc_valid_prefix_with_at_most_one_tick_lost() {
     let source = temp.path().join("producer.rs");
     let producer = temp.path().join("producer");
     std::fs::write(&source, include_str!("crash_producer.rs")).unwrap();
+    // Honor Make's compiler policy for this standalone fixture as Cargo does.
+    let rustc = std::env::var_os("RUSTC")
+        .filter(|value| !value.is_empty())
+        .unwrap_or_else(|| "rustc".into());
+    let mut compiler = if let Some(wrapper) =
+        std::env::var_os("RUSTC_WRAPPER").filter(|value| !value.is_empty())
+    {
+        let mut command = Command::new(wrapper);
+        command.arg(&rustc);
+        command
+    } else {
+        Command::new(&rustc)
+    };
     assert!(
-        Command::new("rustc")
+        compiler
             .args(["--edition=2024", "-O"])
             .arg(&source)
             .arg("-o")

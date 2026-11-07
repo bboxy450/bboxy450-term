@@ -67,7 +67,8 @@ run at background policy. Test execution outside this list stays utility.
 | `test-terminal-replies`, `test-task-pages`, `test-task-panel-formal`, `test-jsonl-recovery`, `test-capture-storage-model`, `test-watcher-models`, `test-toolkit-models`, `test-knowledge-orientation-formal`, `test-provenance-background-formal`, `test-provenance-mcp-formal` | Explicit parents of the `formal_contracts` measurement executable; ordinary Cargo selections remain utility and model-checker Python leaves use utility |
 
 Aggregate `test`/`check` orchestration stays at default; ordinary CI leaf drivers
-run at utility. A Darwin utility clamp is inherited and cannot be cleared by
+run at utility. The macOS main watcher also stays unclamped, letting its CI
+leaves select their policies; non-macOS watchers retain `nice`. A Darwin utility clamp is inherited and cannot be cleared by
 the background-policy reset: timed Make parents must stay unclamped, then their
 explicit Cargo selections choose default independently of ordinary utility tests.
 
