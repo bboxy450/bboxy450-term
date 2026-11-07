@@ -1087,7 +1087,7 @@ test-gui-cpu:
 	@$(MAKE) test-formal-contracts
 
 test-gui-idle:
-	@set -eu; . ./scripts/cache-env.sh; cargo nextest run --locked -p $(APP) --test idle_cpu --run-ignored all --test-threads 1 --target-dir '$(TARGET_DIR)'
+	@set -eu; . ./scripts/cache-env.sh; cargo nextest run --locked -p $(APP) --test it -E 'binary(it)&test(/^idle_cpu::/)' --run-ignored all --test-threads 1 --target-dir '$(TARGET_DIR)'
 
 GUI_IDLE_PROFILE_ARGS ?=
 profile-gui-idle: build

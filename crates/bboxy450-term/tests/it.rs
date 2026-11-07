@@ -45,6 +45,8 @@ mod gui_events;
 mod harness_attachments;
 #[path = "harness_theme.rs"]
 mod harness_theme;
+#[path = "idle_cpu.rs"]
+mod idle_cpu;
 #[path = "headless.rs"]
 mod headless;
 #[path = "hosts.rs"]
