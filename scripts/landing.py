@@ -571,8 +571,12 @@ def lean(range_spec, *, root=None):
         whole = False
         if aggregate:
             entry = Path(aggregate["src_path"])
+            separate = {Path(t["src_path"]).resolve() for t in targets
+                        if "test" in t["kind"] and t["name"] != "it"}
             declared = set(re.findall(r'#\[path\s*=\s*"([^/\"]+)\.rs"\]\s*mod\s+\w+\s*;', entry.read_text()))
             for path in paths:
+                if path in separate:
+                    continue
                 if path.is_relative_to(base / "tests"):
                     relative = path.relative_to(base / "tests")
                     module = Path(relative.parts[0]).stem

@@ -447,12 +447,17 @@ class ConsolidatedIntegrationTests(unittest.TestCase):
                 base = SOURCE.parents[1] / "crates" / crate
                 manifest = landing.tomllib.loads((base / "Cargo.toml").read_text())
                 self.assertIs(manifest["package"]["autotests"], False)
-                self.assertEqual(manifest["test"], [{"name": "it", "path": "tests/it.rs"}])
+                separate = ["scrollback"] if crate == "bboxy450-term" else []
+                self.assertEqual(manifest["test"], [{"name": name, "path": f"tests/{name}.rs"}
+                                                   for name in ["it", *separate]])
                 entry = (base / "tests/it.rs").read_text()
                 declared = landing.re.findall(r'#\[path = "([^/\"]+)\.rs"\]\s*mod (\w+);', entry)
-                expected = sorted(p.stem for p in (base / "tests").glob("*.rs") if p.stem != "it")
+                expected = sorted(p.stem for p in (base / "tests").glob("*.rs")
+                                  if p.stem not in ["it", *separate])
                 self.assertEqual(sorted(name for name, _ in declared), expected)
                 self.assertTrue(all(name == module for name, module in declared))
+                for name in expected:
+                    self.assertNotIn("#[global_allocator]", (base / f"tests/{name}.rs").read_text())
 
     def setUp(self):
         self.repo = Repository()
@@ -475,6 +480,13 @@ class ConsolidatedIntegrationTests(unittest.TestCase):
     def test_one_changed_file_selects_only_its_module(self):
         self.assertEqual(self.plan("crates/c/tests/alpha.rs"),
                          ["test c --test it -E '(binary(=it)&test(/^(alpha)::/))'"])
+
+    def test_separate_allocator_binary_does_not_select_shared_modules(self):
+        manifest = self.repo.root / "crates/c/Cargo.toml"
+        manifest.write_text(manifest.read_text() + '\n[[test]]\nname="allocator"\npath="tests/allocator.rs"\n')
+        self.repo.write("crates/c/tests/allocator.rs", '#[test] fn private_allocator() {}\n')
+        self.repo.base = self.repo.commit("Private standalone allocator target")
+        self.assertEqual(self.plan("crates/c/tests/allocator.rs"), ["test c --test allocator"])
 
     def test_nested_module_and_source_preserve_unit_tests(self):
         self.assertEqual(self.plan("crates/c/tests/alpha/child.rs", "crates/c/src/lib.rs"),

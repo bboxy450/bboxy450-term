@@ -2015,7 +2015,7 @@ test-remote-launch:
 test-history-admission:
 	@set -eu; . scripts/cache-env.sh; \
 	cargo test --locked --target-dir '$(TARGET_DIR)' -p $(APP) --lib allocated_core_viewport; \
-	cargo nextest run -E 'binary(it)&test(/^(scrollback)::/)' --locked --target-dir '$(TARGET_DIR)' -p $(APP) --test it; \
+	cargo nextest run --locked --target-dir '$(TARGET_DIR)' -p $(APP) --test scrollback; \
 	cargo build --locked --target-dir '$(TARGET_DIR)' -p $(APP); \
 	BBT='$(abspath $(TARGET_DIR))/debug/$(APP)' sh scripts/e2e-night.sh scrollback >'$(TARGET_DIR)/history-night.jsonl'; \
 	python3 -I -c 'import json,sys; rows=[json.loads(s) for s in open(sys.argv[1]) if s.startswith("{")]; s4=[r for r in rows if r.get("function")=="S4" and r.get("kind")=="e2e"]; assert len(s4)==1 and s4[0]["verdict"]=="pass" and s4[0]["coverage"]=="full",s4; print(s4[0])' '$(TARGET_DIR)/history-night.jsonl'

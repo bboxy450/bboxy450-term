@@ -70,3 +70,9 @@ objc2-quartz-core = { version = "=0.3.2", default-features = false, features = [
 [[test]]
 name = "it"
 path = "tests/it.rs"
+
+# This allocation-budget fixture installs #[global_allocator]. Its allocator
+# must not replace the allocator of every other integration test in `it`.
+[[test]]
+name = "scrollback"
+path = "tests/scrollback.rs"

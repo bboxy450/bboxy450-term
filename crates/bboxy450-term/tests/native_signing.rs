@@ -196,6 +196,8 @@ fn native_bundle_fixture_child() {
         fs::create_dir_all(p.join(dir)).unwrap();
     }
     fs::write(p.join("Makefile"), include_str!("../../../Makefile")).unwrap();
+    // Preserve the Makefile's real recipe dispatcher inside this private tree.
+    fs::write(p.join("scripts/qos.sh"), include_str!("../../../scripts/qos.sh")).unwrap();
     fs::write(
         p.join("scripts/cache-env.sh"),
         "# isolated fake build tools\n",

@@ -19,6 +19,8 @@ It runs `scripts/land-fast.sh` (`make push` is the same command):
    link one `it` integration binary. A test-only change selects that file's module with
    nextest (`-E 'binary(it)&test(/^module::/)'`); nested files select their parent module,
    and shared helpers or the entry point select the whole integration binary.
+   The app's `scrollback` allocation fixture keeps a separate binary because its
+   `#[global_allocator]` would otherwise change every linked test's allocator.
    `.bboxy/` changes add the doc corpus test; model or `verification/`
    changes add `make test-formal`. A nonempty integration target skipped entirely by
    `#[ignore]` is metadata-checked and reported as compiled only; its native Make check

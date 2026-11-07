@@ -4,7 +4,7 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! One integration binary; nextest isolates every test in its own process.
+//! Shared integration binary; scrollback's global allocator stays in its own binary.
 
 #[path = "support/events.rs"]
 mod events;
@@ -77,8 +77,6 @@ mod remote_launch;
 mod rich_client;
 #[path = "rich_text_safety.rs"]
 mod rich_text_safety;
-#[path = "scrollback.rs"]
-mod scrollback;
 #[path = "settings.rs"]
 mod settings;
 #[path = "swarm_workdir.rs"]
