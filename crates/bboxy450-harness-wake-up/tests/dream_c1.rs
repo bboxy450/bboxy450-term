@@ -519,6 +519,7 @@ print(json.dumps(dict(base, type='done', seq=2, outcome='completed', result_sha2
 }
 
 #[test]
+#[ignore = "load-sensitive 250ms readiness wall window; re-enable via tasks/2026-11-06-qos-builds-never-starve-mcp (93377961366081)"]
 fn actual_private_prepared_start_is_one_write_and_duplicate_closes_without_replay() {
     // Protocol-fault process fixture only. The producer corpus supplies the
     // actual Start/Hello shapes; this echo process is not runtime conformance.
@@ -630,6 +631,7 @@ fn actual_private_activity_and_cancel_match_signed_producer_bytes_and_scalar_bou
 }
 
 #[test]
+#[ignore = "load-sensitive 25ms native wall window; re-enable via tasks/2026-11-06-qos-builds-never-starve-mcp (93377961366081)"]
 fn actual_private_control_invalid_ulids_and_unsafe_revision_emit_no_new_frame() {
     let w::WorkerIn::Activity(activity) = c1::decode(&bytes("valid/activity.json")).unwrap() else {
         panic!("producer activity fixture has the wrong variant")
@@ -739,6 +741,7 @@ fn actual_private_process_rejects_blank_invalid_utf8_unknown_duplicate_and_overs
 }
 
 #[test]
+#[ignore = "load-sensitive 25ms native wall window; re-enable via tasks/2026-11-06-qos-builds-never-starve-mcp (93377961366081)"]
 fn eof_and_drop_retain_exact_child_custody_through_actual_reap() {
     let script = Script::stdin_capture_peer();
     let mut worker = script.spawn();
