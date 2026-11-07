@@ -178,7 +178,14 @@ def cargo_qos(arguments):
     if not packages:
         mixed_selection |= local_package in mixed or ("workspace" in manifest and not local_package)
     mixed_batch = command_name == "test" and not filters and (not targets or "--lib" in options) and mixed_selection
-    if targets & timed or timed_filter or mixed_batch or host_timing or os.environ.get("BBOXY_QOS_TIMED_GATE") == "dream-c1":
+    opt_in_batches = policy.OPT_IN_BATCHES
+    selected_packages = packages or ({local_package} if local_package else set(opt_in_batches))
+    selected_measurements = {name for package in selected_packages for target in targets
+                             for name in opt_in_batches.get(package, {}).get(target, set())}
+    ignored_batch = (command_name == "test" and any(value in arguments for value in {"--ignored", "--include-ignored"})
+                     and bool(selected_measurements)
+                     and (not filters or any(value in name for value in filters for name in selected_measurements)))
+    if targets & timed or timed_filter or mixed_batch or ignored_batch or host_timing or os.environ.get("BBOXY_QOS_TIMED_GATE") == "dream-c1":
         return "default"
     return "utility"
 

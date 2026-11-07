@@ -23,8 +23,8 @@ TIMED_FILTERS = {
     "logic::ring_batch_tests",
     "cpu_profile", "rich_native_parity_and_composition_microbench",
 }
-# These C1 API, native-work and paced-retirement tests assert measured CPU or
-# wall budgets. Keep their individual names attached to the measurements.
+# These API, native-work, retirement and opt-in profiling witnesses measure CPU,
+# latency or throughput. Keep their individual names attached to measurements.
 TIMED_TESTS = {
     "dream_c1_held_provider_selection_refuses_real_mcp_gui_controls_within_250ms",
     "dream_c1_held_provider_selection_refuses_actual_page_owner_before_next_unit",
@@ -47,6 +47,17 @@ TIMED_TESTS = {
     "dream_c1_final_public_control_is_once_after_debt_and_retains_component_child_on_refusal",
     "dream_c1_private_signed_gated_worker_held_parent_paid_probe_and_refusals",
 }
+OPT_IN_BATCHES = {
+    "bboxy450-term-mux": {"logic": {
+        "ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap",
+        "ring_capture_throughput_with_logic_running_and_stopped",
+        "ring_cold_replay_twenty_mib_profile",
+        "ring_capture_twenty_mib_profile_running_and_stopped",
+    }},
+    "bboxy450-harness-host": {"reaping": {"final_output_and_exit_reach_the_owner", "exit_events_at_machine_scale"}},
+    "bboxy450-rt": {"runtime": {"million_messages_per_second_never_wait_for_a_consumer"}},
+}
+TIMED_TESTS.update(name for targets in OPT_IN_BATCHES.values() for names in targets.values() for name in names)
 # Load-family ignores recorded by the C1 source landing. These ten process/API
 # witnesses retain their original CPU and wall assertions when re-enabled.
 C1_TIMED_TESTS = {

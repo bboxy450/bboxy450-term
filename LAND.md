@@ -117,6 +117,19 @@ and existing ignored status, when applicable, are independent of QoS:
 - `dream_c1_final_public_control_is_once_after_debt_and_retains_component_child_on_refusal`
 - `dream_c1_private_signed_gated_worker_held_parent_paid_probe_and_refusals`
 
+These existing opt-in performance witnesses also run at default when selected;
+their ignores are retained. A Cargo libtest `logic`, `reaping` or `runtime`
+integration batch that includes these ignored measurements stays default;
+nextest continues to classify each selected test separately:
+
+- `ring_seals_twenty_mib_with_logic_stopped_and_a_stalled_notification_queue_then_replays_without_gap`
+- `ring_capture_throughput_with_logic_running_and_stopped`
+- `ring_cold_replay_twenty_mib_profile`
+- `ring_capture_twenty_mib_profile_running_and_stopped`
+- `final_output_and_exit_reach_the_owner`
+- `exit_events_at_machine_scale`
+- `million_messages_per_second_never_wait_for_a_consumer`
+
 Aggregate `test`/`check` orchestration stays at default; ordinary CI leaf drivers
 run at utility. The macOS main watcher also stays unclamped, letting its CI
 leaves select their policies; non-macOS watchers retain `nice`. A Darwin utility clamp is inherited and cannot be cleared by

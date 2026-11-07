@@ -3057,6 +3057,10 @@ class CostTests(unittest.TestCase):
                  (["test", "--workspace", "--lib"], "default"),
                  (["test", "-p", "bboxy450-term-mux", "--lib", "--test", "mcp"], "default"),
                  (["test", "--lib", "logic::dream_c1::tests::dream_c1_source_error_capacity_is_atomic_across_real_sqlite_owners"], "default"),
+                 (["test", "-p", "bboxy450-term-mux", "--test", "logic", "--", "--ignored"], "default"),
+                 (["test", "-p", "bboxy450-term-mux", "--test", "logic", "ordinary", "--", "--include-ignored"], "utility"),
+                 (["test", "-p", "bboxy450-rt", "--test", "runtime", "million_messages_per_second_never_wait_for_a_consumer", "--", "--ignored"], "default"),
+                 (["test", "-p", "bboxy450-term-mux", "--lib", "cpu_profile"], "default"),
                  (["bench"], "default")]
         for arguments, expected in cases:
             self.assertEqual(landing.cargo_qos(arguments), expected, arguments)
@@ -3110,6 +3114,10 @@ class QosTests(unittest.TestCase):
             (own / "Cargo.toml").write_text('[package]\nname="qos-fixture"\nversion="0.0.0"\nedition="2024"\n[workspace]\n')
             witness = '''unsafe extern "C" { fn getpriority(which: i32, who: u32) -> i32; }
 fn priority() -> i32 {
+    let wanted = std::env::var("NEXTEST_DYLD_FALLBACK_LIBRARY_PATH").unwrap();
+    assert_eq!(std::env::var("DYLD_FALLBACK_LIBRARY_PATH").unwrap(), wanted);
+    let runner_key = std::env::var("QOS_RUNNER_KEY").unwrap();
+    assert_eq!(std::env::var(runner_key).unwrap(), std::env::var("QOS_EXPECTED_RUNNER").unwrap());
     assert_eq!(unsafe { getpriority(4, std::process::id()) }, 0);
     let output = std::process::Command::new("ps").args(["-o", "pri=", "-p", &std::process::id().to_string()]).output().unwrap();
     String::from_utf8(output.stdout).unwrap().trim().parse().unwrap()
@@ -3123,7 +3131,8 @@ fn priority() -> i32 {
             inner.chmod(0o700)
             triple = "AARCH64_APPLE_DARWIN" if os.uname().machine == "arm64" else "X86_64_APPLE_DARWIN"
             environment = dict(os.environ, BBOXY_CACHE_MODE="off", BBOXY_CARGO_TARGET_DIR=str(own / "target"),
-                               QOS_INNER_TRACE=str(own / "trace"), **{"CARGO_TARGET_" + triple + "_RUNNER": str(inner)})
+                               QOS_INNER_TRACE=str(own / "trace"), QOS_RUNNER_KEY="CARGO_TARGET_" + triple + "_RUNNER",
+                               QOS_EXPECTED_RUNNER=str(inner), **{"CARGO_TARGET_" + triple + "_RUNNER": str(inner)})
             result = subprocess.run(["sh", "-c", '. scripts/cache-env.sh; cd "$1"; cargo nextest run --offline --lib --test-threads 1', "fixture", directory],
                                     cwd=root, env=environment, capture_output=True, text=True, timeout=90)
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
