@@ -10004,8 +10004,7 @@ fn diagnostic_root(args: &[String]) -> Result<std::path::PathBuf, String> {
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hook_args: Vec<_> = std::env::args().skip(1).collect();
-    let role = hook_args.first().map_or("ui", String::as_str);
-    qos::startup(if role.starts_with("--") { "ui" } else { role });
+    qos::startup(hook_args.first().map_or("", String::as_str));
     if cfg!(debug_assertions) && hook_args.len() == 2 && hook_args[0] == "--qos-witness" {
         qos::startup(&hook_args[1]);
         println!("{}", serde_json::json!({"role": hook_args[1], "requested_class": bbt_rt::qos::requested_class()}));
@@ -10149,6 +10148,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(config) = stall_config.as_ref().filter(|config| config.headless) {
         return stall::headless(config.clone()).map_err(Into::into);
     }
+    // Headless measurement/tool entries above retain the caller's default QoS.
+    // Claim the UI role when entering the real window thread, before AppKit.
+    qos::startup("ui");
     let mut event_loop_builder = EventLoop::<UiEvent>::with_user_event();
     #[cfg(target_os = "macos")]
     {

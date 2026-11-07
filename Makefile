@@ -27,7 +27,7 @@ test-qos-app:
 	@set -eu; . scripts/cache-env.sh; \
 	cargo build --locked -p $(APP) --bin $(APP) --target-dir '$(TARGET_DIR)'; \
 	cargo nextest run --locked -p bboxy450-rt --lib -E 'test(qos::)' --target-dir '$(TARGET_DIR)'; \
-	cargo nextest run --locked -p $(APP) --bin $(APP) -E 'test(qos::tests::startup_role_ceilings)' --target-dir '$(TARGET_DIR)'; \
+	cargo nextest run --locked -p $(APP) --bin $(APP) -E 'test(qos::tests::)' --target-dir '$(TARGET_DIR)'; \
 	python3 -I -c 'import json,subprocess,sys; expected={"supervisor":25,"logic":25,"mcp":25,"desktop":33,"ui":33}; rows=[json.loads(subprocess.check_output([sys.argv[1],"--qos-witness",role],text=True)) for role in expected]; assert all(r["requested_class"]==(expected[r["role"]] if sys.platform=="darwin" else 0) for r in rows),rows; print(json.dumps(rows))' '$(abspath $(TARGET_DIR))/debug/$(APP)'
 
 .PHONY: test-dream-c1-integration

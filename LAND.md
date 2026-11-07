@@ -53,6 +53,10 @@ target's `du -sk` delta; shared cache growth is outside it.
 
 ### Explicit default-QoS measurements
 
+Headless measurement/tool entries retain default; the app claims interactive
+when it enters the actual window thread. Supervisor, logic, desktop and MCP
+claim their explicit roles at startup.
+
 Only these measurement entries opt out. Their compiler/linker children still
 run at background policy. Test execution outside this list stays utility.
 

@@ -17,6 +17,21 @@ pub fn startup(role: &str) {
 mod tests {
     #[test]
     #[cfg(target_os = "macos")]
+    fn measurement_flags_do_not_promote_tool_threads() {
+        std::thread::spawn(|| {
+            bbt_rt::qos::with_default_qos(|| {
+                for role in ["", "--p1-headless", "--stall-test", "--headless", "plugin"] {
+                    super::startup(role);
+                    assert_eq!(bbt_rt::qos::requested_class(), 0x15, "{role}");
+                }
+            });
+        })
+        .join()
+        .unwrap();
+    }
+
+    #[test]
+    #[cfg(target_os = "macos")]
     fn startup_role_ceilings() {
         for (role, expected) in [
             ("supervisor", 0x19),
