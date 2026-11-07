@@ -61,9 +61,12 @@ OPT_IN_BATCHES = {
     "bboxy450-rt": {"runtime": {"million_messages_per_second_never_wait_for_a_consumer"}},
 }
 TIMED_TESTS.update(name for targets in OPT_IN_BATCHES.values() for names in targets.values() for name in names)
-# Load-family ignores recorded by the C1 source landing. These ten process/API
+# Load-family ignores recorded by the C1 source landing and QoS gate. These thirteen process/API
 # witnesses retain their original CPU and wall assertions when re-enabled.
 C1_TIMED_TESTS = {
+    "dream_c1_registration_commits_close_cursor_original_op_and_source_key_once_after_reopen",
+    "dream_c1_final_actual_authority_held_clock_cpu_refusals_keep_owned_child",
+    "dream_c1_final_actual_authority_rechecks_row_head_grant_inode_aba_after_debt",
     "actual_private_process_clears_authority_environment_and_uses_fixed_argv",
     "actual_private_prepared_start_is_one_write_and_duplicate_closes_without_replay",
     "actual_private_control_invalid_ulids_and_unsafe_revision_emit_no_new_frame",

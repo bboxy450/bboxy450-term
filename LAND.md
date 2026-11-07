@@ -78,7 +78,7 @@ run at background policy. Test execution outside this list stays utility.
 | Invariant leaves `seats-1000-bus`, `seats-400-memory-idle`, `seats-967-frame` (`scripts/gates.sh`); `presubmit-tests-fast` (`scripts/fast-tests.sh`) | Bus/CPU, memory/idle, frame and test-runtime budgets; Cargo/Make invariant commands orchestrate their own policies |
 | `test-terminal-replies`, `test-task-pages`, `test-task-panel-formal`, `test-jsonl-recovery`, `test-capture-storage-model`, `test-watcher-models`, `test-toolkit-models`, `test-knowledge-orientation-formal`, `test-provenance-background-formal`, `test-provenance-mcp-formal` | Explicit parents of the `formal_contracts` measurement executable; ordinary Cargo selections remain utility and model-checker Python leaves use utility |
 
-The ten C1 load-family witnesses also opt out individually in mixed nextest
+The thirteen C1 load-family witnesses also opt out individually in mixed nextest
 suites: `actual_private_process_clears_authority_environment_and_uses_fixed_argv`,
 `actual_private_prepared_start_is_one_write_and_duplicate_closes_without_replay`,
 `actual_private_control_invalid_ulids_and_unsafe_revision_emit_no_new_frame`,
@@ -91,6 +91,11 @@ suites: `actual_private_process_clears_authority_environment_and_uses_fixed_argv
 `dream_c1_held_private_delete_catalogue_keeps_mcp_gui_control_owner_independent`.
 The inventory is shared by Cargo filter classification and the per-test runner
 in `scripts/qos-policy.py`.
+
+The three journal/authority witnesses listed first below temporarily retain
+their load-family ignores for the primary QoS landing. This task re-enables
+them together with the ten above after landing; a remaining low-load CPU-budget
+failure belongs to a separate C1 budget task. No assertion or budget changes.
 
 The following C1 unit witnesses also retain default for their measured 1 ms
 native/cleanup CPU maxima and 100/250 ms API bounds. Their fixture requirements

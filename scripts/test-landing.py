@@ -1118,7 +1118,9 @@ class GateReceiptTests(unittest.TestCase):
         binary.parent.mkdir(parents=True)
         binary.write_text("#!/bin/sh\nexit 0\n")
         binary.chmod(0o700)
-        policy = ('import os,subprocess\npriority=int(subprocess.check_output(["ps","-o","pri=","-p",str(os.getpid())],text=True))\nassert 4 < priority <= 20,priority\n'
+        # Dynamic ps priority can be temporarily boosted by IPC. Inspect the
+        # actual calling thread's requested class, which taskpolicy inherits.
+        policy = ('import ctypes\nlibc=ctypes.CDLL(None)\nlibc.pthread_self.restype=ctypes.c_void_p\nqos=ctypes.c_uint()\nrelative=ctypes.c_int()\nassert libc.pthread_get_qos_class_np(ctypes.c_void_p(libc.pthread_self()),ctypes.byref(qos),ctypes.byref(relative))==0\nassert qos.value==0x11,qos.value\n'
                   if sys.platform == "darwin" else '')
         repo.write("scripts/test-landing-budget-controls.py", policy + 'print("budget-control-sentinel")\nraise SystemExit(19)\n')
         repo.commit("Fixture failing budget controls")

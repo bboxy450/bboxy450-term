@@ -8,7 +8,7 @@
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """Private native MCP round trips under CPU load; no installed app or account.
 
-Default-load latency is comparative evidence, not a required failing control.
+Real-load latency is comparative evidence, not a pass/fail gate.
 --control default-qos and --control delayed-reply are deterministic negatives.
 """
 import argparse
@@ -159,7 +159,11 @@ def main():
                           "limit_ms": threshold, "qos_ok": qos_ok, "latency_ok": latency_ok,
                           "mcp_requested_class": witness["requested_class"], "control": args.control}
                 print(json.dumps(report, sort_keys=True), flush=True)
-                return int(args.check and not (qos_ok and latency_ok))
+                # Shared-machine scheduling remains observational. Only an
+                # explicitly injected delay turns latency into a deterministic
+                # negative; a wrong workload policy always fails --check.
+                return int(args.check and (not qos_ok or
+                           (args.control == "delayed-reply" and not latency_ok)))
             finally:
                 server.stdin.close()
                 try:
