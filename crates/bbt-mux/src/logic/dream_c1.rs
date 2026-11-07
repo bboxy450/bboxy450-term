@@ -7404,7 +7404,6 @@ mod tests {
     }
 
     #[test]
-    #[ignore = "load-sensitive per-unit CPU budget (ResourceLimit at load ~18); re-enable via tasks/2026-11-06-qos-builds-never-starve-mcp (93377961366081)"]
     fn custody_copies_exact_ir_and_only_typed_blob_carriers_into_private_new_inodes() {
         let blob_bytes = b"private fixture\nwith zero\0byte";
         let hash = digest(blob_bytes);
@@ -11108,7 +11107,6 @@ mod quantum_debt_tests {
         }
 
         #[test]
-        #[ignore = "load-sensitive per-unit CPU budget (ResourceLimit 1.045/1.360/2.150 ms vs 1 ms at default QoS); re-enable via this task"]
         fn dream_c1_final_actual_authority_rechecks_row_head_grant_inode_aba_after_debt() {
             for site in [FinalHandoff::Permit, FinalHandoff::Start] {
                 for fault in ["row", "head", "grant", "inode", "aba", "cell", "expiry"] {
@@ -11118,7 +11116,6 @@ mod quantum_debt_tests {
         }
 
         #[test]
-        #[ignore = "load-sensitive per-unit CPU budget (ResourceLimit 1.045/1.360/2.150 ms vs 1 ms at default QoS); re-enable via this task"]
         fn dream_c1_final_actual_authority_held_clock_cpu_refusals_keep_owned_child() {
             for site in [FinalHandoff::Permit, FinalHandoff::Start] {
                 for fault in ["none", "held", "clock", "cpu"] {

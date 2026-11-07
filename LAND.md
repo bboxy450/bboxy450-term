@@ -62,7 +62,7 @@ run at background policy. Test execution outside this list stays utility.
 
 | Entry | Measured work |
 | --- | --- |
-| `test-dream-c1`, `test-dream-c1-integration`; Cargo selections `dream_c1`, `dream_replay`, `dream::c1::` | Dream C1 CPU/latency bounds; the root native workflow and harness integration workflow retain their own entry points |
+| `test-dream-c1`, `test-dream-c1-integration`, `test-dream-c1-qos`; Cargo selections `dream_c1`, `dream_replay`, `dream::c1::` | Dream C1 CPU/latency bounds; the root native workflow, harness integration workflow and thirteen private QoS re-enable witnesses retain their own entry points |
 | `test-perf-p1`, `test-perf-p2`; Cargo selection `gates_seats` | P1 frame/hitch and P2 bus/PTY budgets |
 | `bench-budgets`; Cargo selections `gui_budget`, `rich_faces::budget_verification::rich_four_view_aggregate_budget` | UI drain/composition and GUI frame budgets |
 | Cargo `bench` and `test --benches` | Benchmark execution (compiler children remain background) |
@@ -92,10 +92,13 @@ suites: `actual_private_process_clears_authority_environment_and_uses_fixed_argv
 The inventory is shared by Cargo filter classification and the per-test runner
 in `scripts/qos-policy.py`.
 
-The three journal/authority witnesses listed first below temporarily retain
-their load-family ignores for the primary QoS landing. This task re-enables
-them together with the ten above after landing; a remaining low-load CPU-budget
-failure belongs to a separate C1 budget task. No assertion or budget changes.
+The three journal/authority witnesses listed first below complete this thirteen
+test re-enable inventory. `make test-dream-c1-qos` runs each private component/API
+witness separately and refuses empty or ignored-only selections. It does not
+launch the one-shot C1 runtime or require producer provisioning. All thirteen
+load-family ignores are removed after the primary QoS landing; a remaining
+low-load CPU-budget failure belongs to a separate C1 budget task. No assertion
+or budget changes.
 
 The following C1 unit witnesses also retain default for their measured 1 ms
 native/cleanup CPU maxima and 100/250 ms API bounds. Their fixture requirements

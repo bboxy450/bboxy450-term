@@ -1169,7 +1169,20 @@ fn main() {{ println!("{{}} {{}} {{}}",
         ("release", "no", "false true true\n"),
     ] {
         let bin = root.path().join(profile);
-        let compile = Command::new("rustc")
+        // Honor the same inherited compiler policy as Cargo for this fixture.
+        let rustc = std::env::var_os("RUSTC")
+            .filter(|value| !value.is_empty())
+            .unwrap_or_else(|| "rustc".into());
+        let mut compiler = if let Some(wrapper) =
+            std::env::var_os("RUSTC_WRAPPER").filter(|value| !value.is_empty())
+        {
+            let mut command = Command::new(wrapper);
+            command.arg(&rustc);
+            command
+        } else {
+            Command::new(&rustc)
+        };
+        let compile = compiler
             .arg("--edition=2024")
             .args(["-C", &format!("debug-assertions={debug}")])
             .arg(&source)

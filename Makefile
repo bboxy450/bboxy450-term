@@ -31,6 +31,16 @@ test-qos-app:
 	python3 -I -c 'import json,subprocess,sys; expected={"supervisor":25,"logic":25,"mcp":25,"desktop":33,"ui":33}; rows=[json.loads(subprocess.check_output([sys.argv[1],"--qos-witness",role],text=True)) for role in expected]; assert all(r["requested_class"]==(expected[r["role"]] if sys.platform=="darwin" else 0) for r in rows),rows; print(json.dumps(rows))' '$(abspath $(TARGET_DIR))/debug/$(APP)'
 
 .PHONY: test-dream-c1-integration
+test-dream-c1-qos:
+	@set -eu; . scripts/cache-env.sh; mkdir -p '$(TARGET_DIR)'; \
+	python3 -I -c 'import runpy; print("\n".join(sorted(runpy.run_path("scripts/qos-policy.py")["C1_TIMED_TESTS"])))' >'$(TARGET_DIR)/qos-c1-selection.txt'; \
+	qos_status=0; while read -r qos_test; do \
+	printf 'QOS_C1_CASE %s\n' "$$qos_test"; \
+	python3 -I -c 'import json,os,time; print(json.dumps(dict(time=time.time(),logical_cpus=os.cpu_count(),load=os.getloadavg())))'; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux -p bboxy450-harness-wake-up --lib --test dream_c1 --target-dir '$(TARGET_DIR)' -E "test(/(^|::)$${qos_test}$$/)" || qos_status=1; \
+	done <'$(TARGET_DIR)/qos-c1-selection.txt'; exit $$qos_status
+
+.PHONY: test-dream-c1-qos
 test-dream-c1-integration:
 	@set -eu; . scripts/cache-env.sh; \
 	BBOXY_QOS_TIMED_GATE=dream-c1 $(MAKE) -C crates/bboxy450-harness $@ TARGET_DIR='$(abspath $(TARGET_DIR))'

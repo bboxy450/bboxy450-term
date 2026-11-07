@@ -14802,7 +14802,6 @@ pub(super) mod dream_public_api_tests {
     }
 
     #[test]
-    #[ignore = "load-sensitive 250ms control wall window; re-enable via tasks/2026-11-06-qos-builds-never-starve-mcp (93377961366081)"]
     fn dream_c1_held_private_delete_catalogue_keeps_mcp_gui_control_owner_independent() {
         let f = Fixture::open();
         let (run_dir, _) = f.retained_api_record();
