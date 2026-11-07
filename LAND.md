@@ -96,6 +96,8 @@ The following C1 unit witnesses also retain default for their measured 1 ms
 native/cleanup CPU maxima and 100/250 ms API bounds. Their fixture requirements
 and existing ignored status, when applicable, are independent of QoS:
 
+- `dream_c1_final_actual_authority_held_clock_cpu_refusals_keep_owned_child`
+- `dream_c1_final_actual_authority_rechecks_row_head_grant_inode_aba_after_debt`
 - `dream_c1_held_provider_selection_refuses_real_mcp_gui_controls_within_250ms`
 - `dream_c1_held_provider_selection_refuses_actual_page_owner_before_next_unit`
 - `dream_c1_held_provider_refuses_ordinary_mcp_and_gui_read_admission`

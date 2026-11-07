@@ -26,6 +26,8 @@ TIMED_FILTERS = {
 # These API, native-work, retirement and opt-in profiling witnesses measure CPU,
 # latency or throughput. Keep their individual names attached to measurements.
 TIMED_TESTS = {
+    "dream_c1_final_actual_authority_held_clock_cpu_refusals_keep_owned_child",
+    "dream_c1_final_actual_authority_rechecks_row_head_grant_inode_aba_after_debt",
     "dream_c1_held_provider_selection_refuses_real_mcp_gui_controls_within_250ms",
     "dream_c1_held_provider_selection_refuses_actual_page_owner_before_next_unit",
     "dream_c1_held_provider_refuses_ordinary_mcp_and_gui_read_admission",
