@@ -128,6 +128,14 @@ def cargo_parts(arguments):
     return command_name, options, command_index
 
 
+def qos_policy():
+    path = Path(__file__).resolve().with_name("qos-policy.py")
+    spec = importlib.util.spec_from_file_location("qos_policy", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def cargo_qos(arguments):
     command_name, options, _ = cargo_parts(arguments)
     if command_name == "run":
@@ -139,21 +147,38 @@ def cargo_qos(arguments):
         return "background"
     if command_name == "bench" or "--benches" in options:
         return "default"
-    timed = {"gates_seats", "input_latency", "dream_c1", "dream_replay", "gui_budget", "formal_contracts", "capture_fairness"}
-    timed_filters = {
-        "dream::c1::", "gpu::streaming_tests::",
-        "lazy_projection_tests::input_frame_cpu_profile", "repeated_text_frame_cpu_profile",
-        "rich_faces::budget_verification::rich_four_view_aggregate_budget",
-        "logic::idle_command_tests", "seat_socket::input_check_tests",
-        "seat_socket::gui_tests::busy_gui_poll_and_locked_cursor_keep_the_session_and_queued_events",
-        "logic::ring_batch_tests",
-    }
+    policy = qos_policy()
+    timed = policy.TIMED_TARGETS
+    timed_filters = policy.TIMED_FILTERS | policy.C1_TIMED_TESTS
     targets = {options[i+1] for i, value in enumerate(options[:-1]) if value == "--test"}
     targets.update(value.split("=", 1)[1] for value in options if value.startswith("--test="))
     packages = {options[i+1] for i, value in enumerate(options[:-1]) if value in {"-p", "--package"}}
     packages.update(value.split("=", 1)[1] for value in options if value.startswith("--package="))
     host_timing = "bboxy450-harness-host" in packages and {"client::tests", "transport::tests"}.intersection(options)
-    if targets & timed or timed_filters.intersection(options) or host_timing or os.environ.get("BBOXY_QOS_TIMED_GATE") == "dream-c1":
+    timed_filter = any(part in value for value in options for part in timed_filters)
+    # libtest runs a whole selection inside one process. These mixed binaries
+    # contain named timing witnesses; an unfiltered batch must stay default.
+    # Canonical nextest instead assigns utility/default to each individual test.
+    value_options = {"-p", "--package", "--bin", "--test", "--example", "--bench", "--target-dir",
+                     "--target", "--manifest-path", "--features", "--jobs", "-j", "--color", "--message-format"}
+    filters = []
+    skip_value = False
+    for value in options:
+        if skip_value:
+            skip_value = False
+        elif value in value_options:
+            skip_value = True
+        elif not value.startswith("-"):
+            filters.append(value)
+    mixed = {"bboxy450-term-mux", "bboxy450-harness-wake-up", "bboxy450-harness-host", "bboxy450-term"}
+    local = Path.cwd() / "Cargo.toml"
+    manifest = tomllib.loads(local.read_text()) if local.is_file() else {}
+    local_package = manifest.get("package", {}).get("name")
+    mixed_selection = bool(packages & mixed) or "--workspace" in options or "--all" in options
+    if not packages:
+        mixed_selection |= local_package in mixed or ("workspace" in manifest and not local_package)
+    mixed_batch = command_name == "test" and not filters and (not targets or "--lib" in options) and mixed_selection
+    if targets & timed or timed_filter or mixed_batch or host_timing or os.environ.get("BBOXY_QOS_TIMED_GATE") == "dream-c1":
         return "default"
     return "utility"
 
@@ -181,11 +206,52 @@ def cargo_prebuild(arguments):
     return [*build, "--no-run", *arguments[len(before):]]
 
 
+def nextest_environment(options, environment):
+    environment = dict(environment)
+    triples = {"aarch64-apple-darwin" if os.uname().machine == "arm64" else "x86_64-apple-darwin"}
+    for index, value in enumerate(options):
+        if value == "--target" and index + 1 < len(options):
+            triples.add(options[index + 1])
+        elif value.startswith("--target="):
+            triples.add(value.split("=", 1)[1])
+    if environment.get("CARGO_BUILD_TARGET"):
+        triples.add(environment["CARGO_BUILD_TARGET"])
+    previous = {}
+    runners = {}
+    for triple in triples:
+        if not triple.endswith("-apple-darwin"):
+            continue
+        key = "CARGO_TARGET_" + triple.upper().replace("-", "_") + "_RUNNER"
+        previous[key] = environment.get(key, "")
+        runners[triple] = previous[key].split()
+        environment[key] = "bboxy-qos-test --target-triple " + triple
+    environment["BBOXY_QOS_PREVIOUS_TEST_RUNNERS"] = json.dumps(previous)
+    environment["BBOXY_QOS_INNER_TEST_RUNNERS"] = json.dumps(runners)
+    return environment
+
+
 def qos_cargo_exec(arguments):
-    root = Path(os.environ["BBOXY_QOS_ROOT"])
+    root = Path(os.environ.get("BBOXY_QOS_ROOT", Path(__file__).resolve().parents[1]))
     wrapper = str(root / "scripts/qos.sh")
-    cargo = os.environ["BBOXY_REAL_CARGO"]
+    cargo = os.environ.get("BBOXY_REAL_CARGO")
+    if not cargo:
+        # Private test homes deliberately remove BBOXY_* variables. Resolve
+        # the real Cargo without recursing into any inherited worktree shim.
+        cargo = next((str(Path(part) / "cargo") for part in os.get_exec_path()
+                      if (Path(part) / "cargo").is_file()
+                      and os.access(Path(part) / "cargo", os.X_OK)
+                      and (Path(part) / "cargo").resolve() != Path(wrapper).resolve()), None)
+        if not cargo:
+            raise Refusal("qos: real Cargo unavailable")
     prebuild = cargo_prebuild(arguments)
+    role = cargo_qos(arguments)
+    environment = dict(os.environ)
+    command_name, options, _ = cargo_parts(arguments)
+    if sys.platform == "darwin" and command_name == "nextest" and options[:1] == ["run"] and "--no-run" not in options:
+        # Stable Cargo target runners select policy for each test, preserving
+        # nextest's single selection, result aggregation, retries and coverage.
+        environment = nextest_environment(options, environment)
+        role = "default"
     if prebuild:
         # Do not duplicate Cargo's machine-readable stdout. On failure retain
         # diagnostics even when Cargo itself emitted them as JSON on stdout.
@@ -196,9 +262,9 @@ def qos_cargo_exec(arguments):
             return result.returncode if result.returncode >= 0 else 128 - result.returncode
         # Darwin exec discards accumulated child resource usage. Keep this
         # waiting parent alive so land's getrusage includes the prebuild CPU.
-        result = subprocess.run(["/bin/sh", wrapper, cargo_qos(arguments), cargo, *arguments])
+        result = subprocess.run(["/bin/sh", wrapper, role, cargo, *arguments], env=environment)
         return result.returncode if result.returncode >= 0 else 128 - result.returncode
-    os.execv("/bin/sh", ["/bin/sh", wrapper, cargo_qos(arguments), cargo, *arguments])
+    os.execve("/bin/sh", ["/bin/sh", wrapper, role, cargo, *arguments], environment)
 
 
 def invariant_qos(check):

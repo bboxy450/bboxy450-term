@@ -36,7 +36,7 @@ SOURCE = Path(__file__).with_name("landing.py")
 FIXTURE_SCRIPTS = ("landing.py", "formal.py", "formal-stage.py", "harness-submodule.py", "presubmit.sh", "land.sh",
                    "quarantine.py", "quarantine.sh", "quarantine-test.sh", "main_watch.py", "main-watch.sh",
                    "landing_recovery.py", "main-red-bounded.sh", "release-inputs.py", "verify-signatures.py",
-                   "verify-signatures-core.py", "test-landing-budget-controls.py", "qos.sh")
+                   "verify-signatures-core.py", "test-landing-budget-controls.py", "qos.sh", "qos-policy.py")
 spec = importlib.util.spec_from_file_location("landing", SOURCE)
 landing = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(landing)
@@ -3037,7 +3037,7 @@ class CostTests(unittest.TestCase):
         self.assertIsNone(landing.cargo_prebuild(["test", "--no-run"]))
         self.assertEqual(landing.cargo_prebuild(["test", "--doc"]), ["test", "--lib", "--no-run"])
     def test_cargo_policy_parses_only_cargo_arguments(self):
-        cases = [(["+stable", "--color", "never", "test"], "utility"),
+        cases = [(["+stable", "--color", "never", "test"], "default"),
                  (["test", "--test=gates_seats"], "default"),
                  (["test", "--test", "formal_contracts"], "default"),
                  (["test", "--test", "gates_seats", "--no-run"], "background"),
@@ -3046,15 +3046,27 @@ class CostTests(unittest.TestCase):
                  (["nextest", "run", "--test", "input_latency"], "default"),
                  (["run", "--", "--no-run"], "default"),
                  (["run", "--example", "verify"], "utility"),
-                 (["test", "--", "gates_seats", "--no-run"], "utility"),
+                 (["test", "--", "gates_seats", "--no-run"], "default"),
                  (["test", "--bin", "app", "lazy_projection_tests::input_frame_cpu_profile"], "default"),
                  (["test", "--lib", "repeated_text_frame_cpu_profile"], "default"),
                  (["test", "--bin", "app", "rich_faces::budget_verification::rich_four_view_aggregate_budget"], "default"),
                  (["test", "-p", "bboxy450-harness-host", "--lib", "client::tests"], "default"),
                  (["test", "-p", "other", "--lib", "client::tests"], "utility"),
+                 (["test", "-p", "bboxy450-term-mux", "--lib"], "default"),
+                 (["test", "-p", "bboxy450-term-mux", "--lib", "ordinary"], "utility"),
+                 (["test", "--workspace", "--lib"], "default"),
+                 (["test", "-p", "bboxy450-term-mux", "--lib", "--test", "mcp"], "default"),
+                 (["test", "--lib", "logic::dream_c1::tests::dream_c1_source_error_capacity_is_atomic_across_real_sqlite_owners"], "default"),
                  (["bench"], "default")]
         for arguments, expected in cases:
             self.assertEqual(landing.cargo_qos(arguments), expected, arguments)
+
+    def test_nextest_runner_covers_both_darwin_architectures(self):
+        key = "CARGO_TARGET_X86_64_APPLE_DARWIN_RUNNER"
+        environment = landing.nextest_environment(["--target", "x86_64-apple-darwin"], {key: "custom --flag"})
+        self.assertEqual(environment[key], "bboxy-qos-test --target-triple x86_64-apple-darwin")
+        self.assertEqual(json.loads(environment["BBOXY_QOS_PREVIOUS_TEST_RUNNERS"])[key], "custom --flag")
+        self.assertEqual(json.loads(environment["BBOXY_QOS_INNER_TEST_RUNNERS"])["x86_64-apple-darwin"], ["custom", "--flag"])
 
     def test_cost_counts_descendants_disk_and_preserves_failure(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -3089,6 +3101,52 @@ class QosTests(unittest.TestCase):
             self.assertLessEqual(snapshot["priority"], 20)
         elif role == "default":
             self.assertGreater(snapshot["priority"], 20)
+
+    def test_mixed_nextest_tests_select_their_own_effective_policy(self):
+        root = SOURCE.parents[1]
+        with tempfile.TemporaryDirectory(prefix="qos-nextest-") as directory:
+            own = Path(directory)
+            (own / "src").mkdir()
+            (own / "Cargo.toml").write_text('[package]\nname="qos-fixture"\nversion="0.0.0"\nedition="2024"\n[workspace]\n')
+            witness = '''unsafe extern "C" { fn getpriority(which: i32, who: u32) -> i32; }
+fn priority() -> i32 {
+    assert_eq!(unsafe { getpriority(4, std::process::id()) }, 0);
+    let output = std::process::Command::new("ps").args(["-o", "pri=", "-p", &std::process::id().to_string()]).output().unwrap();
+    String::from_utf8(output.stdout).unwrap().trim().parse().unwrap()
+}
+#[test] fn ordinary() { let p=priority(); assert!(p>4 && p<=20, "{p}"); }
+#[test] fn actual_private_control_invalid_ulids_and_unsafe_revision_emit_no_new_frame() { let p=priority(); assert!(p>20, "{p}"); }
+'''
+            (own / "src/lib.rs").write_text(witness)
+            inner = own / "inner-runner"
+            inner.write_text("#!" + sys.executable + "\nimport os,sys\nwith open(os.environ['QOS_INNER_TRACE'],'a') as f: f.write(repr(sys.argv[1:])+'\\n')\nos.execv(sys.argv[1],sys.argv[1:])\n")
+            inner.chmod(0o700)
+            triple = "AARCH64_APPLE_DARWIN" if os.uname().machine == "arm64" else "X86_64_APPLE_DARWIN"
+            environment = dict(os.environ, BBOXY_CACHE_MODE="off", BBOXY_CARGO_TARGET_DIR=str(own / "target"),
+                               QOS_INNER_TRACE=str(own / "trace"), **{"CARGO_TARGET_" + triple + "_RUNNER": str(inner)})
+            result = subprocess.run(["sh", "-c", '. scripts/cache-env.sh; cd "$1"; cargo nextest run --offline --lib --test-threads 1', "fixture", directory],
+                                    cwd=root, env=environment, capture_output=True, text=True, timeout=90)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("2 tests run: 2 passed", result.stdout + result.stderr)
+            self.assertIn("ordinary", (own / "trace").read_text())
+            self.assertIn("actual_private_control", (own / "trace").read_text())
+
+    def test_cargo_shim_survives_private_environment_filtering(self):
+        root = SOURCE.parents[1]
+        with tempfile.TemporaryDirectory() as directory:
+            own = Path(directory)
+            real = own / "real"
+            real.mkdir()
+            fake = real / "cargo"
+            fake.write_text("#!" + sys.executable + "\n" + self.SNAPSHOT + "\n")
+            fake.chmod(0o700)
+            launcher = 'import os,subprocess; e={k:v for k,v in os.environ.items() if not k.startswith("BBOXY_")}; r=subprocess.run(["cargo","build"],env=e); raise SystemExit(r.returncode)'
+            environment = dict(os.environ, BBOXY_CACHE_MODE="off", BBOXY_CARGO_TARGET_DIR=str(own / "target"),
+                               PATH=str(real) + os.pathsep + os.environ["PATH"])
+            result = subprocess.run(["sh", "-c", '. scripts/cache-env.sh; exec "$1" -I -c "$2"', "fixture", sys.executable, launcher],
+                                    cwd=root, env=environment, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assert_role(json.loads(result.stdout), "background")
 
     def test_cost_retains_the_cpu_of_the_background_prebuild(self):
         root = SOURCE.parents[1]
@@ -3238,7 +3296,7 @@ class QosTests(unittest.TestCase):
         # this fails when a new parent accidentally clamps a timed descendant.
         timed = {target for target, body in bodies.items()
                  if "cargo test " in body and "--test formal_contracts" in body}
-        timed.update({"bench-budgets", "test-input-latency", "profile-input-ui", "profile-render-input"})
+        timed.update({"bench-budgets", "test-input-latency", "profile-input-ui", "profile-render-input", "test-harmony-host", "test-harness-startup"})
         while True:
             parents = {target for target, body in bodies.items() if target != "help" and
                        any("$(MAKE)" in line and any(child in line.split() for child in timed)
@@ -3265,7 +3323,7 @@ class QosTests(unittest.TestCase):
             fake.chmod(0o700)
             environment = dict(os.environ, BBOXY_REAL_CARGO=str(fake), BBOXY_CACHE_MODE="off",
                                BBOXY_CARGO_TARGET_DIR=str(Path(directory) / "target"), QOS_TRACE=str(Path(directory) / "trace"))
-            for arguments, role in [("build", "background"), ("test", "utility"), ("test --test gates_seats", "default")]:
+            for arguments, role in [("build", "background"), ("test --lib ordinary", "utility"), ("test --test gates_seats", "default")]:
                 Path(environment["QOS_TRACE"]).write_text("")
                 result = subprocess.run(["sh", "-c", '. scripts/cache-env.sh; cargo ' + arguments],
                                         cwd=root, env=environment, capture_output=True, text=True)

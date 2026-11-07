@@ -25,25 +25,32 @@ case "$role" in
         # These gates measure real latency/CPU/frame budgets. Build children
         # still pass through the compiler shim. Keep the list in LAND.md.
         case "$target" in
-            test-dream-c1|test-dream-c1-integration|test-perf-p1|test-perf-p2|bench-budgets|profile-ingestion|profile-input-ui|profile-render-input|test-input-latency|test-input-backend|test-terminal-streaming|test-codex-streaming|test-native-strip|test-seat-ingestion|test-formal-contracts|test-formal|test-qos|test-qos-app|test-landing|test-landing-extended|test-parity)
+            test-dream-c1-qos|test-dream-c1|test-dream-c1-integration|test-perf-p1|test-perf-p2|bench-budgets|profile-ingestion|profile-input-ui|profile-render-input|test-input-latency|test-input-backend|test-terminal-streaming|test-codex-streaming|test-native-strip|test-seat-ingestion|test-formal-contracts|test-formal|test-qos|test-qos-app|test-landing|test-landing-extended|test-parity)
                 role=default ;;
         esac
         # These explicit parents invoke the timed formal_contracts executable
         # or recurse into bench-budgets. Their ordinary Cargo leaves still use
         # utility; a utility ancestor would irreversibly clamp timed siblings.
         case "$target" in
-            test-harness-native|test-terminal-replies|test-task-pages|test-task-panel-formal|test-jsonl-recovery|test-capture-storage-model|test-watcher-models|test-toolkit-models|test-knowledge-orientation-formal|test-provenance-background-formal|test-provenance-mcp-formal)
+            test-harmony-host|test-harness-startup|test-harness-native|test-terminal-replies|test-task-pages|test-task-panel-formal|test-jsonl-recovery|test-capture-storage-model|test-watcher-models|test-toolkit-models|test-knowledge-orientation-formal|test-provenance-background-formal|test-provenance-mcp-formal)
                 role=default ;;
         esac
         set -- /bin/sh "$@" ;;
     cargo)
-        exec python3 -I "${BBOXY_QOS_ROOT:?}/scripts/landing.py" qos-cargo-exec "$@" ;;
+        if [ -z "${BBOXY_QOS_ROOT:-}" ]; then
+            BBOXY_QOS_ROOT=$(python3 -I -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve().parents[1])' "$0")
+            export BBOXY_QOS_ROOT
+        fi
+        exec python3 -I "$BBOXY_QOS_ROOT/scripts/landing.py" qos-cargo-exec "$@" ;;
     compiler)
         role=background
         if [ -n "${BBOXY_INNER_RUSTC_WRAPPER:-}" ]; then
             set -- "$BBOXY_INNER_RUSTC_WRAPPER" "$@"
         fi ;;
     rustdoc)
+        if [ -z "${BBOXY_QOS_ROOT:-}" ]; then
+            BBOXY_QOS_ROOT=$(python3 -I -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve().parents[1])' "$0")
+        fi
         role=background
         for argument do
             if [ "$argument" = --test ]; then
@@ -51,7 +58,7 @@ case "$role" in
                 break
             fi
         done
-        set -- "${BBOXY_REAL_RUSTDOC:?}" "$@" ;;
+        set -- "${BBOXY_REAL_RUSTDOC:-$(command -v rustdoc)}" "$@" ;;
     background|utility|default) ;;
     *) echo "qos: unknown role $role" >&2; exit 2 ;;
 esac

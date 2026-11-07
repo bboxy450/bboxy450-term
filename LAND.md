@@ -29,7 +29,15 @@ On macOS, Cargo builds/checks/clippy and compiler/linker children run under
 `taskpolicy -b`; test trees use `taskpolicy -c utility`. `cache-env.sh` installs
 private Cargo/compiler shims in the selected target, inherited through scripts.
 Test selections prebuild with `--no-run` as a background tree (including native
-build scripts), then execute with utility policy against that warm selection.
+build scripts), then execute against that warm selection. Nextest's controller stays unclamped;
+a command-scoped stable Cargo target runner assigns utility to each ordinary
+test and default to the named timing witnesses below. The pathless private shim
+works in checkout paths containing spaces, preserves an existing environment
+runner, restores nextest's Darwin library paths after taskpolicy, and restores
+the previous runner configuration before executing the test. Cargo libtest
+cannot split one process by test: an unfiltered mux, wake-up, harness-host or app
+batch runs at default because it contains these witnesses. Filtered ordinary
+libtest selections stay utility. No tests or assertions are dropped.
 Rustdoc compiles doctests at background policy and uses its stable test runtool
 to execute each doctest at utility; `--doc` first prebuilds library dependencies.
 The sccache daemon is started at background policy as well. Linux retains
@@ -50,7 +58,7 @@ run at background policy. Test execution outside this list stays utility.
 
 | Entry | Measured work |
 | --- | --- |
-| `test-dream-c1`, `test-dream-c1-integration`; Cargo selections `dream_c1`, `dream_replay`, `dream::c1::` | Dream C1 CPU/latency bounds (the harness owns these targets) |
+| `test-dream-c1`, `test-dream-c1-integration`; Cargo selections `dream_c1`, `dream_replay`, `dream::c1::` | Dream C1 CPU/latency bounds; the root native workflow and harness integration workflow retain their own entry points |
 | `test-perf-p1`, `test-perf-p2`; Cargo selection `gates_seats` | P1 frame/hitch and P2 bus/PTY budgets |
 | `bench-budgets`; Cargo selections `gui_budget`, `rich_faces::budget_verification::rich_four_view_aggregate_budget` | UI drain/composition and GUI frame budgets |
 | Cargo `bench` and `test --benches` | Benchmark execution (compiler children remain background) |
@@ -62,9 +70,23 @@ run at background policy. Test execution outside this list stays utility.
 | `test-qos`, `test-qos-app`, `scripts/qos-probe.py` | Private MCP latency/policy controls and app startup class witnesses |
 | `test-landing`, `test-landing-extended` | Actual default/background/utility process-priority witnesses |
 | `test-parity` | Aggregate parent of the full CI timing gates |
-| `test-harness-native` | Aggregate parent of `bench-budgets`; ordinary Cargo selections remain utility |
+| `test-harmony-host`, `test-harness-startup`, `test-harness-native` | Explicit mixed-library parents and parent of `bench-budgets`; ordinary filtered Cargo selections and individual nextest tests remain utility |
 | Invariant leaves `seats-1000-bus`, `seats-400-memory-idle`, `seats-967-frame` (`scripts/gates.sh`); `presubmit-tests-fast` (`scripts/fast-tests.sh`) | Bus/CPU, memory/idle, frame and test-runtime budgets; Cargo/Make invariant commands orchestrate their own policies |
 | `test-terminal-replies`, `test-task-pages`, `test-task-panel-formal`, `test-jsonl-recovery`, `test-capture-storage-model`, `test-watcher-models`, `test-toolkit-models`, `test-knowledge-orientation-formal`, `test-provenance-background-formal`, `test-provenance-mcp-formal` | Explicit parents of the `formal_contracts` measurement executable; ordinary Cargo selections remain utility and model-checker Python leaves use utility |
+
+The ten C1 load-family witnesses also opt out individually in mixed nextest
+suites: `actual_private_process_clears_authority_environment_and_uses_fixed_argv`,
+`actual_private_prepared_start_is_one_write_and_duplicate_closes_without_replay`,
+`actual_private_control_invalid_ulids_and_unsafe_revision_emit_no_new_frame`,
+`actual_private_process_rejects_blank_invalid_utf8_unknown_duplicate_and_oversized_frames`,
+`eof_and_drop_retain_exact_child_custody_through_actual_reap`,
+`custody_copies_exact_ir_and_only_typed_blob_carriers_into_private_new_inodes`,
+`dream_c1_source_failure_is_bounded_immutable_and_fenced_before_any_replay`,
+`dream_c1_source_error_capacity_is_atomic_across_real_sqlite_owners`,
+`dream_c1_admitted_mcp_is_exact_own_seat_and_reports_honest_missing_runs`, and
+`dream_c1_held_private_delete_catalogue_keeps_mcp_gui_control_owner_independent`.
+The inventory is shared by Cargo filter classification and the per-test runner
+in `scripts/qos-policy.py`.
 
 Aggregate `test`/`check` orchestration stays at default; ordinary CI leaf drivers
 run at utility. The macOS main watcher also stays unclamped, letting its CI

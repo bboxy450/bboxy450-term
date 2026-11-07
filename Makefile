@@ -30,8 +30,8 @@ test-qos-app:
 	cargo nextest run --locked -p $(APP) --bin $(APP) -E 'test(qos::tests::startup_role_ceilings)' --target-dir '$(TARGET_DIR)'; \
 	python3 -I -c 'import json,subprocess,sys; expected={"supervisor":25,"logic":25,"mcp":25,"desktop":33,"ui":33}; rows=[json.loads(subprocess.check_output([sys.argv[1],"--qos-witness",role],text=True)) for role in expected]; assert all(r["requested_class"]==(expected[r["role"]] if sys.platform=="darwin" else 0) for r in rows),rows; print(json.dumps(rows))' '$(abspath $(TARGET_DIR))/debug/$(APP)'
 
-.PHONY: test-dream-c1 test-dream-c1-integration
-test-dream-c1 test-dream-c1-integration:
+.PHONY: test-dream-c1-integration
+test-dream-c1-integration:
 	@set -eu; . scripts/cache-env.sh; \
 	BBOXY_QOS_TIMED_GATE=dream-c1 $(MAKE) -C crates/bboxy450-harness $@ TARGET_DIR='$(abspath $(TARGET_DIR))'
 

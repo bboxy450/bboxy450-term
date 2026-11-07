@@ -117,6 +117,7 @@ if [ -f "$bboxy_qos_root/scripts/qos.sh" ]; then
     ln -sf "$bboxy_qos_root/scripts/qos.sh" "$bboxy_qos_bin/cargo"
     ln -sf "$bboxy_qos_root/scripts/qos.sh" "$bboxy_qos_bin/rustc-qos"
     ln -sf "$bboxy_qos_root/scripts/qos.sh" "$bboxy_qos_bin/rustdoc-qos"
+    ln -sf "$bboxy_qos_root/scripts/qos-policy.py" "$bboxy_qos_bin/bboxy-qos-test"
     BBOXY_REAL_RUSTDOC=${BBOXY_REAL_RUSTDOC:-${RUSTDOC:-$(command -v rustdoc)}}
     RUSTDOC=$bboxy_qos_bin/rustdoc-qos
     BBOXY_INNER_RUSTC_WRAPPER=$RUSTC_WRAPPER
