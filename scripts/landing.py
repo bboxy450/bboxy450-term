@@ -149,7 +149,7 @@ def cargo_qos(arguments):
         return "default"
     policy = qos_policy()
     timed = policy.TIMED_TARGETS
-    timed_filters = policy.TIMED_FILTERS | policy.C1_TIMED_TESTS
+    timed_filters = policy.TIMED_FILTERS | policy.C1_TIMED_TESTS | policy.TIMED_TESTS
     targets = {options[i+1] for i, value in enumerate(options[:-1]) if value == "--test"}
     targets.update(value.split("=", 1)[1] for value in options if value.startswith("--test="))
     packages = {options[i+1] for i, value in enumerate(options[:-1]) if value in {"-p", "--package"}}

@@ -22,6 +22,30 @@ TIMED_FILTERS = {
     "seat_socket::gui_tests::busy_gui_poll_and_locked_cursor_keep_the_session_and_queued_events",
     "logic::ring_batch_tests",
 }
+# These C1 API, native-work and paced-retirement tests assert measured CPU or
+# wall budgets. Keep their individual names attached to the measurements.
+TIMED_TESTS = {
+    "dream_c1_held_provider_selection_refuses_real_mcp_gui_controls_within_250ms",
+    "dream_c1_held_provider_selection_refuses_actual_page_owner_before_next_unit",
+    "dream_c1_held_provider_refuses_ordinary_mcp_and_gui_read_admission",
+    "dream_c1_held_provider_suppresses_actual_successful_ordinary_gui_completion",
+    "dream_c1_schema_bootstrap_busy_writer_refuses_without_waiting_or_partial_publication",
+    "dream_c1_delete_catalogue_cold_init_commit_close_preserves_original_operation",
+    "dream_c1_legacy_wal_transition_preserves_rows_and_busy_reader_never_changes_custody",
+    "dream_public_prepared_session_releases_transaction_and_lock_between_fresh_units",
+    "dream_c1_tiny_json_combines_scan_decode_work_and_reuses_complex_fallback",
+    "dream_c1_tiny_json_error_and_cpu_verdict_keep_owned_cleanup",
+    "dream_c1_collection_growth_reserves_old_overlap_and_preserves_resource_limit",
+    "dream_c1_native_buffer_free_is_measured_and_retains_reservation_through_cancel",
+    "dream_c1_rejected_owned_results_drain_before_credit_for_cpu_clock_cancel_deadline",
+    "dream_c1_dense_value_success_and_later_error_scope_retirement_are_paced",
+    "dream_c1_partial_serde_value_after_mid_reader_stop_has_owned_paced_collections",
+    "dream_c1_typed_descriptor_and_nested_episode_partial_collections_retire_before_error",
+    "dream_c1_cooperative_preparation_preserves_cumulative_cost_and_paid_phase_maxima",
+    "dream_c1_withheld_returned_effect_retains_lease_and_independent_cached_controls",
+    "dream_c1_final_public_control_is_once_after_debt_and_retains_component_child_on_refusal",
+    "dream_c1_private_signed_gated_worker_held_parent_paid_probe_and_refusals",
+}
 # Load-family ignores recorded by the C1 source landing. These ten process/API
 # witnesses retain their original CPU and wall assertions when re-enabled.
 C1_TIMED_TESTS = {
@@ -40,7 +64,7 @@ C1_TIMED_TESTS = {
 
 def timed_test(binary, name):
     target = binary.split("::")[-1]
-    return (target in TIMED_TARGETS or name.split("::")[-1] in C1_TIMED_TESTS
+    return (target in TIMED_TARGETS or name.split("::")[-1] in (C1_TIMED_TESTS | TIMED_TESTS)
             or any(part in name for part in TIMED_FILTERS)
             or (binary.startswith("bboxy450-harness-host")
                 and name.startswith(("client::tests::", "transport::tests::"))))
