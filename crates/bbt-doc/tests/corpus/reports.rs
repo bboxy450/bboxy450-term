@@ -99,7 +99,10 @@ pub(super) fn report_errors(sources: &[(String, String)], message: &str) -> Vec<
 }
 
 fn git(root: &Path, args: &[&str]) -> Vec<u8> {
+    // A developer's global excludes (e.g. a private `.bboxy/`) must not hide
+    // fixture records.
     let out = Command::new("git")
+        .args(["-c", "core.excludesFile=/dev/null"])
         .args(args)
         .current_dir(root)
         .output()
