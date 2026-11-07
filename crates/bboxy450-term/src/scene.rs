@@ -2578,7 +2578,13 @@ impl Scene {
             ui::Style::new(ui::Preset::Hud),
             vec![text.into()],
         ));
-        let rect = Rect::new((size[0] - 330.).max(0.), (size[1] - 42.).max(0.), 316., 0.);
+        // Sized to its text in the bottom-left corner, where it covers no composer
+        // or send control (each pane's composer sits bottom-centre to right).
+        let width = card
+            .natural(f32::INFINITY, ctx, &self.metrics)
+            .map_or(316., |([w, _], _)| w.ceil())
+            .min((size[0] - 28.).max(1.));
+        let rect = Rect::new(14., (size[1] - 42.).max(0.), width, 0.);
         card.layout(rect, ctx, &self.metrics)
             .map(|layout| c::paint(&layout, ctx))
             .unwrap_or_default()
