@@ -33,7 +33,8 @@ test-qos-app:
 .PHONY: test-dream-c1-integration
 test-dream-c1-qos:
 	@set -eu; . scripts/cache-env.sh; mkdir -p '$(TARGET_DIR)'; \
-	python3 -I -c 'import runpy; print("\n".join(sorted(runpy.run_path("scripts/qos-policy.py")["C1_TIMED_TESTS"])))' >'$(TARGET_DIR)/qos-c1-selection.txt'; \
+	python3 -I -c 'import runpy; p=runpy.run_path("scripts/qos-policy.py"); print("\n".join(sorted(p["C1_TIMED_TESTS"]-p["C1_DEFERRED_TESTS"].keys())))' >'$(TARGET_DIR)/qos-c1-selection.txt'; \
+	python3 -I -c 'import runpy; p=runpy.run_path("scripts/qos-policy.py"); [print("QOS_C1_DEFERRED",name,task) for name,task in sorted(p["C1_DEFERRED_TESTS"].items())]'; \
 	qos_status=0; while read -r qos_test; do \
 	printf 'QOS_C1_CASE %s\n' "$$qos_test"; \
 	python3 -I -c 'import json,os,time; print(json.dumps(dict(time=time.time(),logical_cpus=os.cpu_count(),load=os.getloadavg())))'; \

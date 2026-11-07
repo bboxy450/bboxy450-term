@@ -61,9 +61,12 @@ OPT_IN_BATCHES = {
     "bboxy450-rt": {"runtime": {"million_messages_per_second_never_wait_for_a_consumer"}},
 }
 TIMED_TESTS.update(name for targets in OPT_IN_BATCHES.values() for names in targets.values() for name in names)
-# Load-family ignores recorded by the C1 source landing and QoS gate. These thirteen process/API
+# Original load-family witnesses and subsequent C1 land-time budget failures.
 # witnesses retain their original CPU and wall assertions when re-enabled.
 C1_TIMED_TESTS = {
+    "dream_c1_concurrent_register_original_operation_wins_before_candidate_source_key",
+    "dream_c1_schema_bootstrap_busy_writer_refuses_without_waiting_or_partial_publication",
+    "dream_c1_actual_control_routes_reject_expired_public_grant_without_credentials",
     "dream_c1_registration_commits_close_cursor_original_op_and_source_key_once_after_reopen",
     "dream_c1_final_actual_authority_held_clock_cpu_refusals_keep_owned_child",
     "dream_c1_final_actual_authority_rechecks_row_head_grant_inode_aba_after_debt",
@@ -77,6 +80,30 @@ C1_TIMED_TESTS = {
     "dream_c1_source_error_capacity_is_atomic_across_real_sqlite_owners",
     "dream_c1_admitted_mcp_is_exact_own_seat_and_reports_honest_missing_runs",
     "dream_c1_held_private_delete_catalogue_keeps_mcp_gui_control_owner_independent",
+}
+# Oracle's final ruling transfers these reproduced defects and their
+# re-enable duty. Keep every deferral named; QoS does not repair these defects.
+C1_DEFERRED_TESTS = {
+    "dream_c1_final_actual_authority_held_clock_cpu_refusals_keep_owned_child":
+        "tasks/2026-11-07-dream-c1-native-unit-budget-overruns",
+    "dream_c1_concurrent_register_original_operation_wins_before_candidate_source_key":
+        "tasks/2026-11-07-dream-c1-native-unit-budget-overruns",
+    "dream_c1_registration_commits_close_cursor_original_op_and_source_key_once_after_reopen":
+        "tasks/2026-11-07-dream-c1-native-unit-budget-overruns",
+    "dream_c1_schema_bootstrap_busy_writer_refuses_without_waiting_or_partial_publication":
+        "tasks/2026-11-07-dream-c1-native-unit-budget-overruns",
+    "dream_c1_actual_control_routes_reject_expired_public_grant_without_credentials":
+        "tasks/2026-11-07-dream-c1-native-unit-budget-overruns",
+    "dream_c1_admitted_mcp_is_exact_own_seat_and_reports_honest_missing_runs":
+        "tasks/2026-11-06-dream-c1-honest-capture-errors",
+    "dream_c1_held_private_delete_catalogue_keeps_mcp_gui_control_owner_independent":
+        "tasks/2026-11-06-dream-c1-cold-mcp-latency",
+    "dream_c1_source_error_capacity_is_atomic_across_real_sqlite_owners":
+        "tasks/2026-11-06-dream-c1-two-owner-storage-race",
+    "dream_c1_final_actual_authority_rechecks_row_head_grant_inode_aba_after_debt":
+        "tasks/2026-11-07-dream-c1-native-unit-budget-overruns",
+    "dream_c1_source_failure_is_bounded_immutable_and_fenced_before_any_replay":
+        "tasks/2026-11-07-dream-c1-native-unit-budget-overruns",
 }
 
 

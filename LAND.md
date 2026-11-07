@@ -78,7 +78,7 @@ run at background policy. Test execution outside this list stays utility.
 | Invariant leaves `seats-1000-bus`, `seats-400-memory-idle`, `seats-967-frame` (`scripts/gates.sh`); `presubmit-tests-fast` (`scripts/fast-tests.sh`) | Bus/CPU, memory/idle, frame and test-runtime budgets; Cargo/Make invariant commands orchestrate their own policies |
 | `test-terminal-replies`, `test-task-pages`, `test-task-panel-formal`, `test-jsonl-recovery`, `test-capture-storage-model`, `test-watcher-models`, `test-toolkit-models`, `test-knowledge-orientation-formal`, `test-provenance-background-formal`, `test-provenance-mcp-formal` | Explicit parents of the `formal_contracts` measurement executable; ordinary Cargo selections remain utility and model-checker Python leaves use utility |
 
-The thirteen C1 load-family witnesses also opt out individually in mixed nextest
+The thirteen original C1 load-family witnesses also opt out individually in mixed nextest
 suites: `actual_private_process_clears_authority_environment_and_uses_fixed_argv`,
 `actual_private_prepared_start_is_one_write_and_duplicate_closes_without_replay`,
 `actual_private_control_invalid_ulids_and_unsafe_revision_emit_no_new_frame`,
@@ -92,13 +92,30 @@ suites: `actual_private_process_clears_authority_environment_and_uses_fixed_argv
 The inventory is shared by Cargo filter classification and the per-test runner
 in `scripts/qos-policy.py`.
 
+The subsequently observed
+`dream_c1_actual_control_routes_reject_expired_public_grant_without_credentials`
+and `dream_c1_schema_bootstrap_busy_writer_refuses_without_waiting_or_partial_publication`
+and `dream_c1_concurrent_register_original_operation_wins_before_candidate_source_key`
+also retain default for their native CPU units, bringing the inventory to sixteen.
+
 The three journal/authority witnesses listed first below complete this thirteen
 test re-enable inventory. `make test-dream-c1-qos` runs each private component/API
 witness separately and refuses empty or ignored-only selections. It does not
 launch the one-shot C1 runtime or require producer provisioning. All thirteen
-load-family ignores are removed after the primary QoS landing; a remaining
-low-load CPU-budget failure belongs to a separate C1 budget task. No assertion
-or budget changes.
+load-family ignores are removed after the primary QoS landing. Six witnesses
+remain enabled. Per the Oracle's final ruling, these seven original defects and
+the subsequent expired-grant admission, busy-writer schema and concurrent-registration failures (ten
+witnesses in total)
+retain known-defect ignores and their owning tasks assume re-enabling them:
+
+- admitted-MCP stale-context mapping: `tasks/2026-11-06-dream-c1-honest-capture-errors`;
+- held-catalogue control latency: `tasks/2026-11-06-dream-c1-cold-mcp-latency`;
+- source-error capacity / busy0 contention: `tasks/2026-11-06-dream-c1-two-owner-storage-race`;
+- both final-authority setup witnesses, immutable source-error replay, expired-grant admission, busy-writer schema and journal-registration CPU units: `tasks/2026-11-07-dream-c1-native-unit-budget-overruns`.
+
+The target prints all ten deferrals and runs the other six; it does not claim
+a thirteen-test pass. Each owner removes its ignore and the corresponding
+`C1_DEFERRED_TESTS` entry on repair. No assertion or budget changes.
 
 The following C1 unit witnesses also retain default for their measured 1 ms
 native/cleanup CPU maxima and 100/250 ms API bounds. Their fixture requirements
