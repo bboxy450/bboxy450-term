@@ -72,8 +72,7 @@ impl ChromeRenderer {
     }
     /// Mask cache counters for the frame log.
     pub fn mask_stats(&self) -> (u64, u64) {
-        let s = self.text.stats();
-        (s.misses, s.shadow_requests)
+        self.text.counters()
     }
     pub fn begin_frame(&mut self) {
         self.arenas.begin_frame();

@@ -150,6 +150,9 @@ pub(super) struct Cache {
     color_dirty: Vec<AtlasRect>,
     entries: FxHashMap<MaskKey, Entry>,
     ids: FxHashMap<u64, MaskKey>,
+    /// Ids of cached masks without an atlas slot. A frame's pinned glyphs are
+    /// checked against this small set instead of hashing every full mask key.
+    unplaced: FxHashSet<u64>,
     bytes: usize,
     byte_budget: usize,
     entry_budget: usize,
@@ -185,6 +188,7 @@ impl Cache {
             color_dirty: vec![],
             entries: FxHashMap::default(),
             ids: FxHashMap::default(),
+            unplaced: FxHashSet::default(),
             bytes: 0,
             byte_budget,
             entry_budget,
@@ -227,6 +231,7 @@ impl Cache {
         let id = self.next_id;
         self.bytes += mask.pixels.len();
         self.ids.insert(id, key.clone());
+        self.unplaced.insert(id);
         self.entries.insert(
             key,
             Entry {
@@ -513,6 +518,7 @@ impl Cache {
     fn remove(&mut self, id: u64) -> bool {
         let key = self.ids.remove(&id).expect("cache id");
         let entry = self.entries.remove(&key).expect("cache entry");
+        self.unplaced.remove(&id);
         self.bytes -= entry.mask.pixels.len();
         self.totals.evictions += 1;
         entry.rect.is_some()
@@ -537,6 +543,9 @@ impl Cache {
         ids.sort_unstable();
         if !repack {
             for id in &ids {
+                if !self.unplaced.contains(id) {
+                    continue;
+                }
                 let key = self.ids.get(id).ok_or("missing pinned chrome glyph")?;
                 let entry = self.entries.get_mut(key).unwrap();
                 if entry.rect.is_some() {
@@ -551,6 +560,7 @@ impl Cache {
                     Ok(rect) => {
                         entry.rect = Some(rect);
                         dirty.push(rect);
+                        self.unplaced.remove(id);
                     }
                     Err(_) => {
                         repack = true;
@@ -561,6 +571,21 @@ impl Cache {
         }
         if !repack {
             return Ok(false);
+        }
+        // Repack only the hot half: the least recently used placed masks lose their
+        // slot (their pixels stay cached), so the next new glyphs fit without another
+        // full repack. Keeping every placed mask made each new glyph repack it all.
+        let mut placed: Vec<_> = self
+            .entries
+            .values()
+            .filter(|e| e.rect.is_some() && !pinned.contains(&e.id))
+            .map(|e| (e.last_use, e.id))
+            .collect();
+        placed.sort_unstable();
+        for (_, id) in &placed[..placed.len() / 2] {
+            let key = self.ids[id].clone();
+            self.entries.get_mut(&key).unwrap().rect = None;
+            self.unplaced.insert(*id);
         }
         loop {
             let mut retained: Vec<_> = self
@@ -598,9 +623,11 @@ impl Cache {
                 for e in self.entries.values_mut() {
                     e.rect = None;
                 }
+                self.unplaced = self.ids.keys().copied().collect();
                 for (id, rect) in rectangles {
                     let key = &self.ids[&id];
                     self.entries.get_mut(key).unwrap().rect = Some(rect);
+                    self.unplaced.remove(&id);
                 }
                 self.atlas = atlas;
                 self.color_atlas = color_atlas;
@@ -627,6 +654,10 @@ impl Cache {
     }
     pub fn upload_color(&mut self) -> (&GlyphAtlas, &mut Vec<AtlasRect>) {
         (&self.color_atlas, &mut self.color_dirty)
+    }
+    /// The frame log's miss and shadow counters, without walking every mask.
+    pub fn counters(&self) -> (u64, u64) {
+        (self.totals.misses, self.totals.shadow_requests)
     }
     pub fn stats(&self) -> Stats {
         let mut stats = self.totals;
