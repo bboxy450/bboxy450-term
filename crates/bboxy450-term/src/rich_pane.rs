@@ -124,7 +124,15 @@ impl bbt_rt::Waker for Signal {
 }
 /// Per-seat draft custody is handed off after accepted local edits drain.
 /// Hidden views retain no transcript or layout worker.
-pub type Draft = Arc<std::sync::Mutex<Option<tokio::sync::oneshot::Receiver<bboxy450_harness::frontends::gui::view::Draft>>>>;
+/// What a pane leaves when it goes off screen: its whole view (draft, scroll,
+/// folds), the transcript and solved rows it showed, and its clock origin.
+/// Parked costs memory only; coming back shows it at once and streams the rest.
+pub struct Parked {
+    view: HarnessView,
+    retained: bboxy450_harness::frontends::gui::bridge::Retained,
+    started: Instant,
+}
+pub type Draft = Arc<std::sync::Mutex<Option<tokio::sync::oneshot::Receiver<Parked>>>>;
 pub struct Pane {
     appearance: Arc<AtomicU64>,
     appearance_wake: Arc<Notify>,
@@ -191,15 +199,26 @@ impl Pane {
             let saved = match previous_draft { Some(previous) => previous.await.ok(), None => None };
             let notify=Arc::new(Notify::new());
             let mut bridge=Bridge::new(Arc::new(Signal(notify.clone())));
-            let mut view=HarnessView::default();
-            if let Some(draft) = saved { view.restore_draft(draft); }
-            view.anim=bboxy450_harness::frontends::gui::anim::Clock::live(bboxy450_harness::frontends::gui::anim::Clock::reduced_motion_preferred());
-            // Embedded text is one zoom step smaller; standalone keeps its own size.
-            view.restore_zoom(view.zoom().step(-1),&bridge);
-            bridge.connect(socket,after);
+            let (mut view, started) = match saved {
+                // Same view, same clock: what was on screen, then only newer events.
+                Some(Parked{view,retained,started}) => {
+                    let zoom=view.zoom();
+                    bridge.set_zoom(zoom.percent());
+                    bridge.reattach(socket,retained);
+                    (view, started)
+                }
+                None => {
+                    let mut view=HarnessView::default();
+                    view.anim=bboxy450_harness::frontends::gui::anim::Clock::live(bboxy450_harness::frontends::gui::anim::Clock::reduced_motion_preferred());
+                    // Embedded text is one zoom step smaller; standalone keeps its own size.
+                    view.restore_zoom(view.zoom().step(-1),&bridge);
+                    bridge.connect(socket,after);
+                    (view, Instant::now())
+                }
+            };
+            view.invalidate();
             let mut rect=rect;
             let mut completed_inputs=0_u64;
-            let started=Instant::now();
             loop {
                 let mut batch=Vec::new();
                 let animation=view.anim.next_frame();
@@ -270,7 +289,8 @@ impl Pane {
                 }).await;
                 let (b,v,r,o,c)=prepared;bridge=b;view=v;rect=r;out=o;completed_inputs=c;
             }
-            let _ = save_draft.send(view.take_draft());
+            let retained=bridge.retained();
+            let _ = save_draft.send(Parked{view,retained,started});
         });
         Self {
             appearance,
@@ -548,9 +568,7 @@ mod tests {
         for (draft, expected) in [(a, "first panel retained"), (b, "second panel")] {
             let saved = draft.try_lock().unwrap().take().unwrap();
             let saved = tokio::time::timeout(Duration::from_secs(10), saved).await.unwrap().unwrap();
-            let mut view = HarnessView::default();
-            view.restore_draft(saved);
-            assert_eq!(view.composer.view.text, expected);
+            assert_eq!(saved.view.composer.view.text, expected);
         }
     }
     #[test]
