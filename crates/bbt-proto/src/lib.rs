@@ -24,3 +24,5 @@ pub use seat_state::{
     SeatState, SpawnSpec, SubagentRow, TransportSpec, WaitKind, Where,
 };
 pub use streams::{Delta, Screen, Snapshot, Update, View};
+
+pub mod dream_read;

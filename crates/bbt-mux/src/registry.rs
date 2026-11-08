@@ -636,3 +636,5 @@ mod close_policy_tests {
         assert!(registry.undo(record.id, 1, 1, 7, elapsed).is_err());
     }
 }
+
+pub(crate) mod dream_read;

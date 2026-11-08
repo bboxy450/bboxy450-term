@@ -12,7 +12,7 @@ import os
 from pathlib import Path
 import sys
 
-TIMED_TARGETS = {"gates_seats", "input_latency", "dream_c1", "dream_replay",
+TIMED_TARGETS = {"gates_seats", "input_latency", "dream_c1", "dream_replay", "dream_read",
                  "gui_budget", "formal_contracts", "capture_fairness", "idle_cpu"}
 TIMED_FILTERS = {
     "dream::c1::", "gpu::streaming_tests::",
@@ -26,6 +26,12 @@ TIMED_FILTERS = {
 # These API, native-work, retirement and opt-in profiling witnesses measure CPU,
 # latency or throughput. Keep their individual names attached to measurements.
 TIMED_TESTS = {
+    "dream_read_actual_admitted_empty_cold_lesson_foreign_and_bad_requests",
+    "dream_read_actual_admitted_row_pins_context_tamper_and_currentness",
+    "dream_read_two_session_cluster_episode_origins_and_honest_pagination",
+    "dream_read_actual_row_binding_kind_fabricated_origin_and_member_controls",
+    "dream_read_actual_inflight_snapshot_invalidation_refuses_old_page",
+    "dream_read_process_native_admitted_discovery_and_cold_reads_start_no_job",
     "dream_c1_registration_commits_close_cursor_original_op_and_source_key_once_after_reopen",
     "dream_c1_final_actual_authority_held_clock_cpu_refusals_keep_owned_child",
     "dream_c1_final_actual_authority_rechecks_row_head_grant_inode_aba_after_debt",

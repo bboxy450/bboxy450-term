@@ -68,6 +68,7 @@ run at background policy. Test execution outside this list stays utility.
 | Entry | Measured work |
 | --- | --- |
 | `test-dream-c1`, `test-dream-c1-integration`, `test-dream-c1-qos`; Cargo selections `dream_c1`, `dream_replay`, `dream::c1::` | Dream C1 CPU/latency bounds; the root native workflow, harness integration workflow and thirteen private QoS re-enable witnesses retain their own entry points |
+| `test-dream-mcp`; Cargo selection `dream_read` and its named admitted read/process fixtures | Prepared observation reads retain the existing C1 public-authority, preparation and cleanup CPU budgets |
 | `test-perf-p1`, `test-perf-p2`; Cargo selection `gates_seats` | P1 frame/hitch and P2 bus/PTY budgets |
 | `bench-budgets`; Cargo selections `gui_budget`, `rich_faces::budget_verification::rich_four_view_aggregate_budget` | UI drain/composition and GUI frame budgets |
 | Cargo `bench` and `test --benches` | Benchmark execution (compiler children remain background) |

@@ -1657,6 +1657,7 @@ impl RootState {
 #[derive(Clone)]
 pub(crate) struct Runtime {
     incarnation: w::Ulid,
+    read_cache: Arc<super::dream_read::Cache>,
     launch_counter: Arc<std::sync::atomic::AtomicU64>,
     path: PathBuf,
     binary: PathBuf,
@@ -1689,6 +1690,7 @@ impl Runtime {
     ) -> Self {
         let runtime = Self {
             incarnation: crate::Ulid::new().into(),
+            read_cache: Default::default(),
             launch_counter: Arc::new(std::sync::atomic::AtomicU64::new(0)),
             path,
             binary,
@@ -2129,6 +2131,7 @@ impl Runtime {
                             }
                             run.control.state.store(engine::PREPARING,Ordering::Release);
                             run.control.revision.fetch_add(1,Ordering::AcqRel);
+                            runtime.read_cache.pending(&record);
                             let admission=if run.control.authority_prepared_guard.get().is_some_and(|guard|guard().is_ok()) {
                                 reply(&record)
                             } else {
@@ -2250,8 +2253,14 @@ impl Runtime {
                             if let Err(code)=persisted {record.view.state=w::State::Quarantined;record.view.settled=false;record.view.error=Some(w::Error {code,source:None});}
                             let settled=record.view.settled;
                             if !settled {std::mem::forget(account);std::mem::forget(root_permit);}
-                            let _=run.final_record.set(record);
+                            // Publish actual C1 settlement before disposable read
+                            // preparation. Cache work cannot delay its terminal view.
+                            let _=run.final_record.set(record.clone());
                             if settled {root.retire(&run);}
+                            if settled && record.view.state==w::State::Completed {
+                                let _=runtime.read_cache.prepare(&runtime.path,&record,&authority,&run.control);
+                            }
+                            if settled {runtime.read_cache.settled(&record);}
                             runtime.activity(&runtime_handle,authority.clone());
                             Ok(failure(Code::NotFound)) // admission was already returned exactly once
                         }
@@ -4266,4 +4275,33 @@ mod registry_tests {
             "invalid metadata is not legacy absence"
         );
     }
+}
+
+impl Runtime {
+    pub(crate) fn read(&self,handle:&tokio::runtime::Handle,authority:Authority,call:crate::mcp::Call,done:impl FnOnce(serde_json::Value)+Send+'static) {
+        let permit=match Permit::claim(&self.requests,2) {Ok(p)=>p,Err(_)=>{done(crate::mcp::dream_read::result(&call,bbt_proto::dream_read::Reply::unavailable(bbt_proto::dream_read::Reason::Busy)));return;}};
+        let runtime=self.clone();
+        handle.spawn_blocking(move||{
+            let output=if engine::utility().is_err() || runtime.retired.load(Ordering::Acquire) {
+                crate::mcp::dream_read::result(&call,bbt_proto::dream_read::Reply::failure(bbt_proto::dream_read::Code::StaleContext))
+            }else{runtime.read_cache.respond(&runtime.path,&authority,&call)};
+            done(output);drop(permit);
+        });
+    }
+}
+
+#[cfg(test)]
+impl Runtime {
+    pub(crate) fn prepare_read_fixture(&self,record:&Record,authority:&Authority)->Result<(),Code> {
+        self.read_cache.prepare(&self.path,record,authority,&engine::Control::default())
+    }
+}
+#[cfg(test)]
+impl Runtime {
+    pub(crate) fn corrupt_read_fixture(&self,context:&w::Context,kind:&str) {self.read_cache.corrupt_fixture(context,kind);}
+}
+
+#[cfg(test)]
+impl Runtime {
+    pub(crate) fn read_cache_fixture(&self)->Arc<super::dream_read::Cache> {self.read_cache.clone()}
 }

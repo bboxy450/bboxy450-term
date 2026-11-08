@@ -2006,3 +2006,63 @@ frontend = "project"
 name = "BrokenTermDreamC1FirstLaunchAdmission"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "DreamReadOwnership"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenDreamReadOwnershipForeign"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenDreamReadOwnershipABA"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "DreamReadSnapshot"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenDreamReadSnapshotMixedCursor"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "DreamReadEligibility"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenDreamReadEligibilityFakeLesson"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenDreamReadEligibilityRowBinding"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenDreamReadEligibilityClusterOrigin"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenDreamReadEligibilityMemberCompleteness"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenDreamReadEligibilityReservation"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenDreamReadEligibilityMissingPause"
+expected = "safety"
+frontend = "project"

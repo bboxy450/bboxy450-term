@@ -181,9 +181,9 @@ sources = ["crates/bbt-mux/src/mcp/oracle_hint_model.rs", "crates/bbt-mux/src/me
 [[crate]]
 name = "bboxy450-term-proto"
 status = "contract-model"
-models = ["TransportCapture", "InputReceipt", "AttentionLifecycle", "SidebarAccordions", "TermDreamC1Ownership"]
+models = ["TransportCapture", "InputReceipt", "AttentionLifecycle", "SidebarAccordions", "TermDreamC1Ownership", "DreamReadOwnership", "DreamReadSnapshot", "DreamReadEligibility"]
 scope = "Dream C1 admission/scheduling/ownership are bounded projections with closed-only dedup, independent root/cooldown/capacity and monotonic context/settlement controls. Source/manifest/frame byte law, real CPU/heap/RSS/disk/latency/native frame limits, nonblocking owners and actual kill/reap require make test-dream-c1 process evidence; no measured pass is claimed by this inventory. Input identity/lease and shared current-notification episode identity contracts; serialization, transport bytes and cryptography use implementation tests."
-sources = ["crates/bbt-proto/src/lib.rs", "crates/bbt-proto/src/seat_state.rs", "crates/bbt-proto/src/gui/events.rs", "crates/bbt-proto/src/dream.rs", "crates/bbt-proto/src/gui/dream.rs"]
+sources = ["crates/bbt-proto/src/lib.rs", "crates/bbt-proto/src/seat_state.rs", "crates/bbt-proto/src/gui/events.rs", "crates/bbt-proto/src/dream.rs", "crates/bbt-proto/src/dream_read.rs", "crates/bbt-mux/src/registry/dream_read.rs", "crates/bbt-proto/src/gui/dream.rs"]
 
 [[crate]]
 name = "bboxy450-rt"

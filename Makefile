@@ -2753,3 +2753,11 @@ test-dream-c1: init-submodules
 	@python3 -I scripts/test-landing.py CargoProfileForwardingTests IgnoredIntegrationTests
 	@set -eu; . ./scripts/cache-env.sh; \
 	BBOXY_DREAM_BUILD_ENTRY=test-dream-c1 CARGO_BUILD_JOBS=2 RUST_TEST_THREADS=1 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))'
+
+# Q1 closed observation DTOs, actual admitted private socket and native term process.
+.PHONY: test-dream-mcp
+test-dream-mcp: init-submodules
+	@set -eu; . scripts/cache-env.sh; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-term-proto --test dream_read --target-dir '$(TARGET_DIR)'; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux --lib dream_read --target-dir '$(TARGET_DIR)'; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-term --test it dream_read --target-dir '$(TARGET_DIR)'

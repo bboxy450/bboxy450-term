@@ -1886,6 +1886,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
         .collect::<Vec<_>>();
     // Toolkit registration stays away from concurrent module append sites.
     cases.extend(toolkit_models::cases());
+    cases.extend(dream_read::cases());
     cases.extend([
         (input_dedup_model::input_dedup_eviction(false), "pass"),
         (input_dedup_model::input_dedup_eviction(true), "liveness"),
@@ -2002,3 +2003,8 @@ fn native_surface_resize(b: bool) -> Model {
 
 #[path = "toolkit_models.rs"]
 mod toolkit_models;
+
+#[path = "dream_read.rs"]
+mod dream_read;
+#[path = "../dream_read.rs"]
+mod dream_read_process;

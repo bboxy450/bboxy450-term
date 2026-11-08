@@ -2475,6 +2475,7 @@ impl ViewState {
 mod harness_status;
 #[path = "logic/dream_c1.rs"]
 pub(crate) mod dream_c1;
+mod dream_read;
 
 struct ViewState {
     dream_activity_latch: Arc<AtomicU64>,
@@ -3045,6 +3046,8 @@ const PROVENANCE_RETRY_MAX: Duration = Duration::from_secs(30);
 
 struct Worker {
     dream_runtime: crate::registry::dream_c1::Runtime,
+    #[cfg(test)]
+    dream_read_isolate_identity: bool,
     dream_owned: BTreeSet<(Ulid,u64)>,
     dream_source_bindings: BTreeMap<(Ulid,u64),RootBinding>,
     connections: Connections,
@@ -3371,6 +3374,8 @@ impl Worker {
         let dream_runtime=crate::registry::dream_c1::Runtime::new(config.run_dir.join("dream-c1"),std::env::current_exe()?.parent().ok_or_else(||invalid("missing sibling directory"))?.join("bboxy450-harness"),dream_private_provision,&handle);
         let mut worker = Self {
             dream_runtime,
+            #[cfg(test)]
+            dream_read_isolate_identity: false,
             dream_owned: BTreeSet::new(),
             dream_source_bindings: BTreeMap::new(),
             connections,
@@ -11186,6 +11191,14 @@ impl Worker {
                         let _ = reply.send(result);
                     }
                     Command::SurfaceHints(id, generation, call, value, reply) => {
+                        // Q1 has already charged every copy of the shared host
+                        // hints before selecting whole hits. Do not append an
+                        // unrelated optional unread-message preview afterward.
+                        // Message delivery/read state is independent of this UI hint.
+                        if crate::mcp::dream_read::handles(&call.tool) {
+                            let _=reply.send(value);
+                            continue;
+                        }
                         let projected = self
                             .control_actor(id, generation)
                             .ok()
@@ -11254,6 +11267,8 @@ impl Worker {
                             && call.args.get("workspace").is_some()
                         {
                             self.start_workspace_spawn(id, generation, call, reply);
+                        } else if crate::mcp::dream_read::handles(&call.tool) {
+                            self.start_dream_read(id,generation,call,reply);
                         } else if crate::mcp::dream_c1::handles(&call.tool) {
                             self.start_dream_call(id,generation,call,reply);
                         } else if call.tool == "history_read" {
@@ -12414,7 +12429,11 @@ impl Worker {
                     phase.finish(Outcome::Ok, 0, 0);
                     adapters_at = Instant::now();
                 }
-                self.refresh_identity_due(&mut identity_at, Instant::now)?;
+                #[cfg(test)]
+                let identity_due=!self.dream_read_isolate_identity;
+                #[cfg(not(test))]
+                let identity_due=true;
+                if identity_due {self.refresh_identity_due(&mut identity_at, Instant::now)?;}
                 if messages_at.elapsed() >= Duration::from_millis(100) {
                     let phase = self.client.capture_diagnostics.start(
                         Phase::MaintenanceMessages,
@@ -13770,6 +13789,7 @@ pub(super) mod dream_public_api_tests {
         }
     }
     struct Fixture {
+        read_cache:Arc<crate::registry::dream_read::Cache>,
         runtime: tokio::runtime::Runtime,
         logic: Option<Logic>,
         supervisor: Option<crate::Supervisor>,
@@ -13789,7 +13809,9 @@ pub(super) mod dream_public_api_tests {
         _directory: tempfile::TempDir,
     }
     impl Fixture {
-        fn open() -> Self {
+        fn open() -> Self { Self::open_with_rows(None) }
+        fn open_with_rows(rows: Option<Vec<w::Row>>) -> Self {Self::open_with_control(rows,None)}
+        fn open_with_control(rows: Option<Vec<w::Row>>,corrupt:Option<&str>) -> Self {
             let directory = tempfile::tempdir().unwrap();
             // NOFOLLOW rejects aliases in any pathname component: on macOS
             // tempfile's /var/folders prefix is an alias of /private/var.
@@ -13983,19 +14005,33 @@ pub(super) mod dream_public_api_tests {
             let request = w::canonical(&json!({"v":1,"context":context,"sources":[
                 {"session":source,"source_generation":own.generation}],"algorithm":"d0-c1/1"}))
             .unwrap();
-            let manifest = w::Hex(crate::store::digest(b"public API fixture manifest"));
+            let manifest_bytes=w::canonical(&json!({"schema":"bboxy.dream.c1.manifest/1","run_id":run,"nonce":nonce,"context":context,"trigger":"session_closed","algorithm":"d0-c1/1","sources":[]})).unwrap();
+            let manifest = w::Hex(crate::store::digest(&manifest_bytes));
+            let prepared_fixture=rows.is_some();
+            // Only Q1's long API spy fixtures park the unrelated30s identity
+            // refresh. The real read path retains its native/signing spy; any
+            // credential call made by a read still fails. Identity maintenance
+            // is independently exercised by identity_retry_clock_tests.
+            worker.dream_read_isolate_identity=prepared_fixture;
+
+            let rows=rows.unwrap_or_default();
+            let episodes=rows.iter().filter(|r|matches!(r,w::Row::Episode(_))).count();
+            let clusters=rows.len()-episodes;
+            let sessions:std::collections::BTreeSet<_>=rows.iter().filter_map(|r|match r {w::Row::Episode(e)=>Some(e.session.clone()),_=>None}).collect();
+            let sources:Vec<_>=if sessions.is_empty(){vec![bookmark.clone()]}else{sessions.into_iter().map(|session|{let mut source=bookmark.clone();source.session=session;source}).collect()};
+
             let page = w::Page {
                 schema: w::PageSchema::V1,
                 run_id: run.clone(),
                 manifest_sha256: manifest.clone(),
                 index: 0,
-                rows: vec![],
+                rows,
                 next: None,
             };
             let page_bytes = w::canonical(&page).unwrap();
             let result = json!({"schema":"bboxy.dream.c1.result/1","run_id":run,"nonce":nonce,
-                "manifest_sha256":manifest,"algorithm":"d0-c1/1","source_count":1,
-                "episode_count":0,"cluster_count":0,"max_poll_cpu_ns":0,
+                "manifest_sha256":manifest,"algorithm":"d0-c1/1","source_count":sources.len(),
+                "episode_count":episodes,"cluster_count":clusters,"max_poll_cpu_ns":0,
                 "knowledge":"not_requested","trust":"not_evaluated",
                 "pages":[{"index":0,"len":page_bytes.len(),"sha256":crate::store::digest(&page_bytes)}]});
             let result_bytes = w::canonical(&result).unwrap();
@@ -14020,7 +14056,7 @@ pub(super) mod dream_public_api_tests {
                 identity_fence: Some(current_fence.clone()),
                 op_id: Ulid::new().into(),
                 nonce,
-                sources: vec![bookmark],
+                sources,
                 request: request.clone(),
                 view: w::RunView {
                     run_id: run.clone(),
@@ -14034,12 +14070,26 @@ pub(super) mod dream_public_api_tests {
                     error: None,
                 },
             };
+            if prepared_fixture {
+                let job=run_dir.join("dream-c1").join(&run.0);
+                let manifest_path=job.join("manifest.json");
+                std::fs::write(&manifest_path,&manifest_bytes).unwrap();
+                std::fs::set_permissions(&manifest_path,std::fs::Permissions::from_mode(0o600)).unwrap();
+                authority.foreground.store(false,Ordering::Release);
+                if corrupt!=Some("unprepared") {
+                    worker.dream_runtime.prepare_read_fixture(&record,&authority).unwrap();
+                    if let Some(kind)=corrupt {worker.dream_runtime.corrupt_read_fixture(&record.context,kind);}
+                }
+            }
             let actor =
                 crate::store::digest(&w::canonical(&json!([context, current_fence])).unwrap());
+            if !prepared_fixture {
             Journal::open(&run_dir.join("dream-c1"), &record.context.seat)
                 .unwrap()
                 .register(&actor, &format!("api-fixture-{}", run.0), &record)
                 .unwrap();
+            }
+            let read_cache=worker.dream_runtime.read_cache_fixture();
             let stop = Arc::new(StopSignal::default());
             let stopping = stop.clone();
             let thread = std::thread::Builder::new()
@@ -14057,6 +14107,7 @@ pub(super) mod dream_public_api_tests {
                 thread: Some(thread),
             };
             let fixture = Self {
+                read_cache,
                 runtime,
                 logic: Some(logic),
                 supervisor: Some(supervisor),
@@ -14078,6 +14129,7 @@ pub(super) mod dream_public_api_tests {
             // Snapshot only after disposable native-policy/signing bootstrap.
             let until = Instant::now() + Duration::from_secs(10);
             loop {
+                if prepared_fixture {break;} // Q1 reads only the completed projection, never the C1 catalogue.
                 let page = fixture.mcp(fixture.own.id, fixture.status(Some(0)));
                 if page["ok"] == true {
                     assert_eq!(page["page"]["index"], 0);
@@ -14287,6 +14339,8 @@ pub(super) mod dream_public_api_tests {
         fixture.unchanged(before, "final prepared public admission control");
         result
     }
+
+    include!(concat!(env!("CARGO_MANIFEST_DIR"),"/tests/dream_read.rs"));
 
     #[test]
     fn dream_c1_real_admitted_mcp_and_gui_controls_make_zero_native_or_signing_calls() {
