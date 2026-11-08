@@ -26,6 +26,7 @@ TIMED_FILTERS = {
 # These API, native-work, retirement and opt-in profiling witnesses measure CPU,
 # latency or throughput. Keep their individual names attached to measurements.
 TIMED_TESTS = {
+    "dream_c1_structured_only_success_page_and_foreign_refusal_use_advertised_schema",
     "dream_read_actual_admitted_empty_cold_lesson_foreign_and_bad_requests",
     "dream_read_actual_admitted_row_pins_context_tamper_and_currentness",
     "dream_read_two_session_cluster_episode_origins_and_honest_pagination",
