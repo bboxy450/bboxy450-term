@@ -133,6 +133,55 @@ impl Drop for Cache {
 fn key(context: &c1::Context) -> String {
     crate::store::digest(&c1::canonical(context).expect("closed context"))
 }
+/// Original-operation recovery uses the existing own-seat journal. This narrow
+/// slice makes no offers and records no positive feedback/provenance event.
+/// Unsupported or foreign delivery references remain ordinary bounded refusals.
+pub(crate) fn journal_feedback(
+    journal: &crate::mcp::journal::Journal,
+    authority: &Authority,
+    call: &Call,
+    output: Value,
+) -> Value {
+    let execute = || -> Result<d::Reply, d::Code> {
+        if output["structuredContent"]["error"]["code"] == "stale_context" {
+            return Err(d::Code::StaleContext);
+        }
+        let (context, fence) = authority.capture_all().map_err(code)?;
+        // Read only the exact admitted seat's bounded public role. No signing
+        // hold, credential admission or operator account is consulted.
+        let role=authority.fence.with_current(&fence,|db| {
+            let bytes:Vec<u8>=db.query_row("SELECT CASE WHEN length(role)<=1024 THEN role ELSE NULL END FROM msg_policies WHERE seat=?1 AND epoch=?2 AND muted=0",rusqlite::params![authority.seat.to_string(),i64::try_from(context.grant_epoch.0)?],|row|row.get(0))?;
+            Ok(serde_json::from_slice::<crate::registry::Role>(&bytes)?)
+        }).map_err(|_|d::Code::StaleContext)?;
+        let actor = crate::mcp::SeatActor {
+            seat_id: authority.seat,
+            process_generation: context.generation.0,
+            swarm_id: context.swarm.0.parse().map_err(|_| d::Code::StaleContext)?,
+            role,
+            grant_epoch: context.grant_epoch.0,
+            issuer_kind: fence.issuer.kind,
+        };
+        let retained = journal
+            .call(&actor, call, || output)
+            .map_err(|_| d::Code::ResourceLimit)?;
+        if retained["structuredContent"]["error"]["code"] == "op_id_reused" {
+            return Err(d::Code::OpIdReused);
+        }
+        let mut domain = retained["structuredContent"].clone();
+        let fields = domain.as_object_mut().ok_or(d::Code::ProtocolError)?;
+        if fields.remove("op_id") != Some(json!(call.op_id))
+            || !fields.remove("hints").is_some_and(|h| h.is_array())
+        {
+            return Err(d::Code::ProtocolError);
+        }
+        let domain = serde_json::from_value(domain).map_err(|_| d::Code::ProtocolError)?;
+        if !authority.matches(&context, &Some(fence)) {
+            return Err(d::Code::StaleContext);
+        }
+        Ok(domain)
+    };
+    result(call, execute().unwrap_or_else(d::Reply::failure))
+}
 fn code(code: c1::Code) -> d::Code {
     match code {
         c1::Code::StaleContext => d::Code::StaleContext,
@@ -597,6 +646,11 @@ impl Cache {
         let response = (|| -> Result<d::Reply, d::Code> {
             let request = parse(call)?;
             let (context, fence) = authority.capture_all().map_err(code)?;
+            if matches!(&request, Request::Feedback) {
+                // Offer provenance/positive report admission belongs to Q3b.
+                // A delivery digest supplied by a caller is never proof.
+                return Err(d::Code::NotFound);
+            }
             if let Request::Search(s) = &request
                 && s.kind == d::Kind::Lesson
             {
@@ -631,6 +685,7 @@ impl Cache {
                     }
                     Request::Search(_) => d::Reply::failure(d::Code::StaleCursor),
                     Request::Read(_) => d::Reply::failure(d::Code::NotFound),
+                    Request::Feedback => unreachable!(),
                 });
             };
             let q = Quantum::new(None).map_err(code)?;
@@ -694,6 +749,7 @@ impl Cache {
                         }
                     }
                 }
+                Request::Feedback => unreachable!(),
             };
             q.retire(descriptor);
             #[cfg(test)]

@@ -22,6 +22,8 @@ pub mod capability;
 pub mod dream_bootstrap;
 /// Dream C1 narrow worker protocol and owned process transport.
 pub mod dream_c1;
+/// Strict prepared-lesson codec pinned to the accepted producer schema/corpus.
+pub mod dream_read;
 /// Single-use positive readiness and guarded literal terminal input.
 pub mod guard;
 /// Read-only, process-bound harness session log observation.

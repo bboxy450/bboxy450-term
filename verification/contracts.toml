@@ -1917,3 +1917,15 @@ assumptions = "Two principals, epochs A0/B1/A2, three immutable revisions, two q
 property = "OnlyCurrentOwnIncarnation; CursorNeverMixesRevisionOrQuery; OnlyPreparedBoundReservedObservations; PreparationNeverRunsWhileForeground. Causal controls remove foreign/ABA/cursor/fake-lesson/row-binding/cluster-origin/member-honesty/reservation/foreground guards independently. The disposable core indexes up to128 entries and reports omitted coverage, with four contexts and bounded cursors; no memory authority or lesson is created."
 checks = ["make test-formal", "make test"]
 focused_checks = ["make test-dream-mcp", "make test-formal-contracts"]
+
+[[contract]]
+name = "DreamReadFeedback"
+title = "Original-operation reported-only own-seat Dream feedback"
+models = ["DreamReadFeedback", "BrokenDreamReadFeedbackForeignOffer", "BrokenDreamReadFeedbackForeignEvidence", "BrokenDreamReadFeedbackABA", "BrokenDreamReadFeedbackDigest", "BrokenDreamReadFeedbackDuplicate", "BrokenDreamReadFeedbackPromote"]
+controls = [{ name = "BrokenDreamReadFeedbackForeignOffer", expected = "safety" }, { name = "BrokenDreamReadFeedbackForeignEvidence", expected = "safety" }, { name = "BrokenDreamReadFeedbackABA", expected = "safety" }, { name = "BrokenDreamReadFeedbackDigest", expected = "safety" }, { name = "BrokenDreamReadFeedbackDuplicate", expected = "safety" }, { name = "BrokenDreamReadFeedbackPromote", expected = "safety" }]
+sources = ["crates/bbt-proto/src/dream_read.rs", "crates/bbt-mux/src/registry/dream_read.rs", "crates/bbt-mux/src/logic/dream_read.rs", "crates/bboxy450-harness-wake-up/src/dream_read.rs"]
+implementation_tests = ["crates/bbt-proto/tests/dream_read.rs", "crates/bbt-mux/tests/dream_read.rs", "crates/bboxy450-harness-wake-up/tests/dream_read.rs"]
+assumptions = "Two callers/evidence classes, one original operation, two body digests and epochs A0/B1/A2. The finite contract models an eligible offer and atomic report commit; lost/delayed replies can retry. In this deliberately narrow shipped slice no Offer action is admitted and feedback refuses unknown delivery digests. Positive report/provenance admission is deferred to Q3b. No dependency fairness, OS timing, unbounded retention, cryptographic correctness or Rust refinement is claimed. Producer codec conformance does not authorize publication or process settlement. No live selected-provider proof exporter or read-prepare scheduler bridge is inferred from DTOs; unsupported lessons remain unavailable."
+property = "OnlySameOfferEvidenceAndOriginalRequest; OriginalOperationAtMostOneReport; ReportedOnlyNeverPolicyAuthority. Independently broken scope, evidence, ABA, digest, duplicate and policy guards fail safety. Host reports and offers never imply Recall, model use, adoption or knowledge authority. The current admitted witness proves idempotent refusals, not a positive report or offered-content event."
+checks = ["make test-formal", "make test"]
+focused_checks = ["make test-dream-mcp", "make test-formal-contracts"]

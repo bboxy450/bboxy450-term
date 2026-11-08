@@ -14,6 +14,17 @@ pub(super) fn cases() -> Vec<(Model, &'static str)> {
         ("DreamReadOwnership", &["Foreign", "ABA"][..]),
         ("DreamReadSnapshot", &["MixedCursor"][..]),
         (
+            "DreamReadFeedback",
+            &[
+                "ForeignOffer",
+                "ForeignEvidence",
+                "ABA",
+                "Digest",
+                "Duplicate",
+                "Promote",
+            ][..],
+        ),
+        (
             "DreamReadEligibility",
             &[
                 "FakeLesson",
@@ -37,7 +48,72 @@ pub(super) fn cases() -> Vec<(Model, &'static str)> {
     cases
 }
 fn projection(family: &str, broken: Option<&str>) -> Model {
-    if family == "DreamReadOwnership" {
+    if family == "DreamReadFeedback" {
+        // One original operation, two request digests and callers; revocation
+        // A0/B1/A2 cannot revive an offer. Journal commit is atomic; a delayed
+        // or lost reply permits retry, never another report or policy effect.
+        let mut m = model(
+            family,
+            false,
+            &[
+                ("offered", 1, 0),
+                ("foreign", 1, 0),
+                ("evidence", 1, 0),
+                ("epoch", 2, 0),
+                ("request", 1, 0),
+                ("claimed", 1, 0),
+                ("reports", 2, 0),
+                ("policy", 1, 0),
+                ("bad", 1, 0),
+            ],
+        );
+        action(&mut m, "Offer", eq(5, 0), &[(0, Int(1))]);
+        action(&mut m, "ForeignActor", Bool(true), &[(1, Int(1))]);
+        action(&mut m, "ForeignEvidence", Bool(true), &[(2, Int(1))]);
+        action(
+            &mut m,
+            "Invalidate",
+            Var(3).lt(Int(2)),
+            &[(3, Var(3).plus(Int(1)))],
+        );
+        action(&mut m, "ChangeBody", Bool(true), &[(4, Int(1))]);
+        let mut guards = vec![eq(0, 1)];
+        for (control, index) in [
+            ("ForeignOffer", 1),
+            ("ForeignEvidence", 2),
+            ("ABA", 3),
+            ("Digest", 4),
+        ] {
+            if broken != Some(control) {
+                guards.push(eq(index, 0));
+            }
+        }
+        let invalid = eq(1, 1).or(eq(2, 1)).or(Int(0).lt(Var(3))).or(eq(4, 1));
+        let duplicate = if broken == Some("Duplicate") {
+            eq(6, 1).ite(Int(2), Int(1))
+        } else {
+            Int(1)
+        };
+        action(
+            &mut m,
+            "ReportOrRetryLostResponse",
+            all(guards),
+            &[
+                (5, Int(1)),
+                (6, duplicate),
+                (7, Int(i64::from(broken == Some("Promote")))),
+                (8, invalid.ite(Int(1), Var(8))),
+            ],
+        );
+        safe(&mut m, "OnlySameOfferEvidenceAndOriginalRequest", eq(8, 0));
+        safe(
+            &mut m,
+            "OriginalOperationAtMostOneReport",
+            Var(6).le(Int(1)),
+        );
+        safe(&mut m, "ReportedOnlyNeverPolicyAuthority", eq(7, 0));
+        m
+    } else if family == "DreamReadOwnership" {
         // epoch0=A,1=B,2=A: equal label after ABA is not equal incarnation.
         let mut m = model(
             family,

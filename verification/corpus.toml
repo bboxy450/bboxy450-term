@@ -2066,3 +2066,38 @@ frontend = "project"
 name = "BrokenDreamReadEligibilityMissingPause"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "DreamReadFeedback"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenDreamReadFeedbackForeignOffer"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenDreamReadFeedbackForeignEvidence"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenDreamReadFeedbackABA"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenDreamReadFeedbackDigest"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenDreamReadFeedbackDuplicate"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenDreamReadFeedbackPromote"
+expected = "safety"
+frontend = "project"

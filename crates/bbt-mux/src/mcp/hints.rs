@@ -65,6 +65,33 @@ fn next(call: &Call, result: &Value) -> Vec<Value> {
         }
         return vec![];
     }
+    if call.tool == "dream_feedback"
+        && (data["status"] == "unknown"
+            || matches!(
+                data["error"]["code"].as_str(),
+                Some("unknown" | "op_id_reused")
+            ))
+    {
+        return vec![tool(
+            "orient",
+            json!({}),
+            "Retain original host operation ID and identical arguments. Dream operation_status unavailable.",
+        )];
+    }
+    if call.tool == "dream_feedback" && data["error"]["code"] == "not_found" {
+        return vec![tool(
+            "orient",
+            json!({}),
+            "No qualifying host offer; no report recorded. A tool result is not model use or Recall.",
+        )];
+    }
+    if call.tool == "dream_search" && data["reason"] == "no_published_input" {
+        return vec![tool(
+            "orient",
+            json!({}),
+            "Lesson proof/transport unavailable; reads never prepare. Observations are historical.",
+        )];
+    }
     if data["status"] == "unknown"
         || matches!(
             data["error"]["code"].as_str(),

@@ -4,7 +4,7 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! Closed Q1 observation read DTOs. The public owner is this module.
+//! Closed observation reads and reported-feedback DTOs; unavailable lessons fail closed.
 use crate::dream::{self as c1, Hex, Id, Ulid, Version};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
@@ -176,6 +176,100 @@ impl ObservationProof {
         }
     }
 }
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct RecordPin {
+    pub root: Id,
+    pub id: Id,
+    pub path: String,
+    pub commit: String,
+    pub digest: String,
+}
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "kind", rename_all = "snake_case", deny_unknown_fields)]
+pub enum Pin {
+    Event(c1::Origin),
+    Record(RecordPin),
+}
+impl Pin {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        let digest = match self {
+            Self::Event(p) => &p.digest,
+            Self::Record(p) => {
+                if p.path.is_empty()
+                    || p.path.len() > 4096
+                    || p.path.contains('\0')
+                    || !matches!(p.commit.len(), 40 | 64)
+                    || !p.commit.bytes().all(|b| b.is_ascii_hexdigit())
+                {
+                    return Err("bad_request");
+                }
+                &p.digest
+            }
+        };
+        digest
+            .strip_prefix("sha256:")
+            .and_then(|s| Hex::try_from(s.to_owned()).ok())
+            .map(|_| ())
+            .ok_or("bad_request")
+    }
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FeedbackOutcome {
+    Used,
+    NotApplicable,
+    Contradicted,
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Feedback {
+    pub v: Version,
+    pub delivery: Hex,
+    pub outcome: FeedbackOutcome,
+    pub evidence: Vec<Pin>,
+    #[serde(
+        default,
+        deserialize_with = "present",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub note: Option<String>,
+}
+impl Feedback {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        if self.evidence.len() > 8
+            || self
+                .note
+                .as_ref()
+                .is_some_and(|s| s.len() > 512 || s.contains('\0'))
+        {
+            return Err("bad_request");
+        }
+        for pin in &self.evidence {
+            pin.validate()?;
+        }
+        Ok(())
+    }
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct FeedbackResult {
+    pub v: Version,
+    pub status: Recorded,
+    pub report: Hex,
+    pub assessment: Assessment,
+    pub duplicate: bool,
+}
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub enum Recorded {
+    #[serde(rename = "recorded")]
+    Recorded,
+}
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub enum Assessment {
+    #[serde(rename = "reported_only")]
+    ReportedOnly,
+}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Hit {
@@ -316,6 +410,7 @@ pub enum Reply {
     Read(Box<ReadPage>),
     Unavailable(Unavailable),
     Failure(Failure),
+    Feedback(FeedbackResult),
 }
 impl Reply {
     pub fn unavailable(reason: Reason) -> Self {
@@ -375,6 +470,12 @@ pub fn read_schema() -> Value {
         &["v", "handle", "view"],
     )
 }
+pub fn feedback_schema() -> Value {
+    obj(
+        json!({"v":{"const":1,"type":"integer"},"delivery":hex(),"outcome":choice(&["used","not_applicable","contradicted"]),"evidence":array(pin_schema(),8),"note":{"type":"string","maxLength":512}}),
+        &["v", "delivery", "outcome", "evidence"],
+    )
+}
 fn row_schema() -> Value {
     obj(
         json!({"run_id":ulid(),"manifest":hex(),"result":hex(),"page_index":number(),"page_sha256":hex(),"row_index":number()}),
@@ -393,6 +494,27 @@ fn origin_schema() -> Value {
         json!({"session":ulid(),"seq":number(),"digest":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"}}),
         &["session", "seq", "digest"],
     )
+}
+fn record_schema() -> Value {
+    obj(
+        json!({"root":string(256),"id":string(256),"path":string(4096),"commit":{"type":"string","pattern":"^([0-9a-fA-F]{40}|[0-9a-fA-F]{64})$"},"digest":{"type":"string","pattern":"^sha256:[0-9a-f]{64}$"}}),
+        &["root", "id", "path", "commit", "digest"],
+    )
+}
+fn pin_schema() -> Value {
+    let mut event = origin_schema();
+    event["properties"]["kind"] = json!({"const":"event"});
+    event["required"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!("kind"));
+    let mut record = record_schema();
+    record["properties"]["kind"] = json!({"const":"record"});
+    record["required"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!("kind"));
+    json!({"oneOf":[event,record]})
 }
 fn proof_schema() -> Value {
     json!({"oneOf":[
@@ -463,6 +585,7 @@ pub fn output_schema(hints: Value) -> Value {
             &["v", "status", "error"],
         ),
     ];
+    variants.push(obj(json!({"v":{"const":1},"status":{"const":"recorded"},"report":hex(),"assessment":{"const":"reported_only"},"duplicate":{"type":"boolean"}}), &["v","status","report","assessment","duplicate"]));
     for v in &mut variants {
         v["properties"]["op_id"] = ulid();
         v["properties"]["hints"] = hints.clone();
