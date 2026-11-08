@@ -1815,7 +1815,13 @@ pub fn probe(binary: &Path, job: &Path) -> Result<DreamOwner, Code> {
 }
 
 pub fn canonical<T: serde::Serialize>(value: &T) -> Result<Vec<u8>, serde_json::Error> {
-    serde_json::to_vec(&serde_json::to_value(value)?)
+    // Adapted from bboxy450-harness src/dream/c1_wire.rs at f848c03f:
+    // https://github.com/bboxy450/bboxy450-harness/blob/f848c03ff0462e55dfa0b17fcfd550626a52db2b/src/dream/c1_wire.rs
+    // Keep producer canonical bytes stable under ACP's preserve_order feature.
+    // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    let mut value = serde_json::to_value(value)?;
+    value.sort_all_objects();
+    serde_json::to_vec(&value)
 }
 
 pub fn decode<T: serde::de::DeserializeOwned>(bytes: &[u8]) -> Result<T, Code> {
@@ -1932,15 +1938,16 @@ impl PreparedStart {
         }
         #[derive(serde::Serialize)]
         struct Envelope<'a> {
-            #[serde(rename = "type")]
-            kind: &'static str,
-            protocol: wire::Protocol,
-            run_id: &'a str,
-            nonce: &'a str,
-            manifest_sha256: &'a str,
-            timeout_ms: u32,
+            // Producer canonical key order, without an intermediate JSON tree.
             activity_revision: u64,
             foreground: bool,
+            manifest_sha256: &'a str,
+            nonce: &'a str,
+            protocol: wire::Protocol,
+            run_id: &'a str,
+            timeout_ms: u32,
+            #[serde(rename = "type")]
+            kind: &'static str,
         }
         let mut bytes = [0; 512];
         let len = {

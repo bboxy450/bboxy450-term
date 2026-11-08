@@ -87,8 +87,9 @@ fn prepared_start_matches_signed_producer_fixture_without_second_golden() {
     );
     let decoded: w::WorkerIn = c1::decode(prepared.as_bytes()).unwrap();
     assert_eq!(decoded, w::WorkerIn::Start(start));
-    // JSON member order is not a wire constraint. Canonicalizing the prepared
-    // bytes must reproduce the producer's exact signed fixture, not a local golden.
+    // Preserve the canonicalization witness and also require the actual fixed
+    // buffer to match the producer's signed bytes before the transport LF.
+    assert_eq!(&prepared.as_bytes()[..prepared.as_bytes().len() - 1], raw);
     assert_eq!(c1::canonical(&decoded).unwrap(), raw);
 }
 

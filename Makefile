@@ -2765,7 +2765,7 @@ test-dream-c1: init-submodules
 .PHONY: test-dream-mcp
 test-dream-mcp: init-submodules
 	@set -eu; . scripts/cache-env.sh; \
-	DREAM_READ_FIXTURES='$(abspath crates/bboxy450-harness/tests/fixtures/dream-read)' sh scripts/quarantine-test.sh --locked -p bboxy450-harness-wake-up --test dream_read --target-dir '$(TARGET_DIR)'; \
+	DREAM_READ_FIXTURES='$(abspath crates/bboxy450-harness/tests/fixtures/dream-read)' sh scripts/quarantine-test.sh --locked -p bboxy450-harness-wake-up --test dream_read --test dream_c1 --target-dir '$(TARGET_DIR)'; \
 	sh scripts/quarantine-test.sh --locked -p bboxy450-term-proto --test dream_read --target-dir '$(TARGET_DIR)'; \
 	sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux --lib dream_read --target-dir '$(TARGET_DIR)'; \
 	sh scripts/quarantine-test.sh --locked -p bboxy450-term --test it dream_read --target-dir '$(TARGET_DIR)'
