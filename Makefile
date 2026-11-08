@@ -298,6 +298,7 @@ help:
 	  'make smoke                      Unsigned private install + headless smoke' \
 	  'make smoke-installed             Private smoke of the installed signed app' \
 	  'make install                    Release app, Apple identity signed, ~/Applications' \
+	  'make restart-recover            Hard restart (window, logic, supervisor) resuming every running seat' \
 	  'make install-unsigned            Debug app, ad-hoc only, target/install-unsigned' \
 	  'make release                    Signed app ZIP, SHA256 and detached GPG signature' \
 	  'make package-crate CRATE=name    Package and GPG-sign one crate, without publishing' \
@@ -750,6 +751,12 @@ endef
 
 install: bundle
 	@$(call install_bundle,$(INSTALL_DIR))
+
+# Hard restart of window, logic and supervisor that resumes every running seat
+# with its id, role, swarm, tasks and native session (scripts/restart-recover.sh).
+.PHONY: restart-recover
+restart-recover:
+	@INSTALL_DIR='$(INSTALL_DIR)' sh scripts/restart-recover.sh
 
 .PHONY: privacy-1password
 privacy-1password:
