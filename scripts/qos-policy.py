@@ -16,7 +16,7 @@ TIMED_TARGETS = {"gates_seats", "input_latency", "dream_c1", "dream_replay", "dr
                  "gui_budget", "formal_contracts", "capture_fairness", "idle_cpu"}
 TIMED_FILTERS = {
     "registry::dream_c1::registry_tests::", "logic::dream_public_api_tests::",
-    "dream::c1::", "gpu::streaming_tests::",
+    "dream::c1::", "dream::read::helper_tests::", "gpu::streaming_tests::",
     "lazy_projection_tests::input_frame_cpu_profile", "repeated_text_frame_cpu_profile",
     "rich_faces::budget_verification::rich_four_view_aggregate_budget",
     "logic::idle_command_tests", "seat_socket::input_check_tests",

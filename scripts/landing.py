@@ -551,7 +551,67 @@ def native_input_crates(root, paths, packages):
     return consumers
 
 
-def lean(range_spec, *, root=None):
+HARNESS_PACKAGE = "bboxy450-harness"
+HARNESS_PATH = "crates/bboxy450-harness"
+# Native wire/bootstrap/process consumers do not Cargo-depend on the producer.
+# A producer pointer change still requires their full suites (Oracle Q3 scope).
+HARNESS_CONSUMER_OWNERS = frozenset({"bboxy450-harness-wake-up", "bboxy450-harness-host",
+                                    "bboxy450-term-mux", "bboxy450-term-proto", "bboxy450-term"})
+
+
+def harness_pointer_bump(range_spec, *, root=None):
+    """Only an actual changed gitlink receives the submodule-owner test policy."""
+    root = Path(root or repository()).resolve()
+    paths = changed_paths(range_spec, cwd=root)
+    if HARNESS_PATH not in paths or any(p.startswith(HARNESS_PATH + "/") for p in paths):
+        return False
+    raw = git("diff", "--raw", "--no-abbrev", "-z", range_spec, "--", HARNESS_PATH, cwd=root)
+    fields = raw.split("\0")
+    if len(fields) != 3 or fields[1] != HARNESS_PATH or fields[2]:
+        return False
+    header = fields[0].split()
+    return (len(header) == 5 and header[:2] == [":160000", "160000"]
+            and header[2] != header[3] and header[4] == "M")
+
+
+def package_dependencies(packages):
+    directories = {Path(p["manifest_path"]).parent.resolve(): name for name, p in packages.items()}
+    dependencies = {name: set() for name in packages}
+    for name, package in packages.items():
+        for dep in package["dependencies"]:
+            path = dep.get("path")
+            if path and Path(path).resolve() in directories:
+                dependencies[name].add(directories[Path(path).resolve()])
+            elif dep["name"] in packages:
+                dependencies[name].add(dep["name"])
+    return dependencies
+
+
+def dependent_closure(names, dependencies):
+    result = set(names)
+    while True:
+        more = {name for name, deps in dependencies.items() if deps & result} - result
+        if not more:
+            return result
+        result |= more
+
+
+def harness_library_selection(packages):
+    """Use the features declared by actual workspace consumers, not harness defaults."""
+    directory = Path(packages[HARNESS_PACKAGE]["manifest_path"]).parent.resolve()
+    consumers = [dep for name, package in packages.items() if name != HARNESS_PACKAGE
+                 for dep in package["dependencies"]
+                 if dep.get("path") and Path(dep["path"]).resolve() == directory]
+    selection = ["--lib"]
+    if not any(dep.get("uses_default_features", True) for dep in consumers):
+        selection.append("--no-default-features")
+    features = sorted({feature for dep in consumers for feature in dep.get("features", [])})
+    if features:
+        selection += ["--features", ",".join(features)]
+    return selection
+
+
+def lean(range_spec, *, root=None, wide=False):
     """Lean land plan: one line per touched crate with its test selection, then the
     dependents that only need to compile. A crate whose source changed runs its lib
     and bin tests; a changed integration-test file selects its module in `it`."""
@@ -560,7 +620,23 @@ def lean(range_spec, *, root=None):
     paths = {(root / p).resolve() for p in changed_paths(range_spec, cwd=root)}
     packages = metadata(root)
     lines = []
+    bump = harness_pointer_bump(range_spec, root=root)
+    full = set()
+    if bump:
+        if HARNESS_PACKAGE not in packages:
+            raise Refusal("harness pointer changed without its workspace package")
+        selection = harness_library_selection(packages)
+        lines += [shlex.join([kind, HARNESS_PACKAGE, *selection])
+                  for kind in ("harness-check", "harness-test")]
+        owners = {HARNESS_PACKAGE} | (HARNESS_CONSUMER_OWNERS & set(packages))
+        full = dependent_closure(owners, package_dependencies(packages)) - {HARNESS_PACKAGE}
+    if wide:
+        full |= set(result["affected"]) - ({HARNESS_PACKAGE} if bump else set())
+    for name in sorted(full):
+        lines.append(shlex.join(["full", name]))
     for name in result["touched"]:
+        if name in full or (bump and name == HARNESS_PACKAGE):
+            continue
         package = packages[name]
         base = Path(package["manifest_path"]).parent.resolve()
         targets = package["targets"]
@@ -607,7 +683,8 @@ def lean(range_spec, *, root=None):
             selection += ["-E", "|".join("(" + value + ")" for value in expressions)]
         if selection:
             lines.append(shlex.join(["test", name, *selection]))
-    check = sorted(set(result["affected"]) - set(result["touched"]))
+    check = sorted(set(result["affected"]) - set(result["touched"]) - full
+                   - ({HARNESS_PACKAGE} if bump else set()))
     if check:
         lines.append(" ".join(["check", *check]))
     return lines
@@ -620,21 +697,19 @@ def lean_test(package, selection):
     return code if code >= 0 else 128 - code
 
 
+def lean_check(package, selection):
+    code = subprocess.run(["cargo", "check", "--locked", "-q", "-p", package,
+                           *shlex.split(selection)]).returncode
+    return code if code >= 0 else 128 - code
+
+
 def affected(range_spec, *, root=None):
     root = Path(root or repository()).resolve()
     paths = changed_paths(range_spec, cwd=root)
     packages = metadata(root)
     directories = {name: Path(p["manifest_path"]).parent.resolve()
                    for name, p in packages.items()}
-    by_directory = {p: name for name, p in directories.items()}
-    dependencies = {name: set() for name in packages}
-    for name, package in packages.items():
-        for dep in package["dependencies"]:
-            path = dep.get("path")
-            if path and Path(path).resolve() in by_directory:
-                dependencies[name].add(by_directory[Path(path).resolve()])
-            elif dep["name"] in packages:
-                dependencies[name].add(dep["name"])
+    dependencies = package_dependencies(packages)
     tier = "lab" if paths and all(p.startswith(("lab/", "design/", ".bboxy/"))
                                  for p in paths) else "code"
     broad = [p for p in paths if p in ("Cargo.toml", "Cargo.lock", "rust-toolchain.toml")
@@ -660,12 +735,7 @@ def affected(range_spec, *, root=None):
         tier = "code"
     if tier == "lab":
         touched.clear()  # lab truth is the last green native set, not a product build
-    result = set(touched)
-    while True:
-        more = {name for name, deps in dependencies.items() if deps & result} - result
-        if not more:
-            break
-        result |= more
+    result = dependent_closure(touched, dependencies)
     if len(result) * 2 > len(packages):
         tier = "wide"
     ui = {"bboxy450-ui", "bboxy450-ui-core", "bboxy450-render", "bboxy450-book"}
@@ -2090,7 +2160,13 @@ def main():
     p.add_argument("--crates", action="store_true")
     p = sub.add_parser("lean")
     p.add_argument("range", nargs="?", default="origin/main..HEAD")
+    p.add_argument("--wide", action="store_true")
+    p = sub.add_parser("harness-bump")
+    p.add_argument("range", nargs="?", default="origin/main..HEAD")
     p = sub.add_parser("lean-test")
+    p.add_argument("package")
+    p.add_argument("selection")
+    p = sub.add_parser("lean-check")
     p.add_argument("package")
     p.add_argument("selection")
     sub.add_parser("state-dir")
@@ -2117,9 +2193,13 @@ def main():
         result = affected(args.range)
         print(" ".join(result["affected"]) if args.crates else json.dumps(result))
     elif args.verb == "lean":
-        print("\n".join(lean(args.range)))
+        print("\n".join(lean(args.range, wide=args.wide)))
+    elif args.verb == "harness-bump":
+        print("yes" if harness_pointer_bump(args.range) else "no")
     elif args.verb == "lean-test":
         return lean_test(args.package, args.selection)
+    elif args.verb == "lean-check":
+        return lean_check(args.package, args.selection)
     elif args.verb == "state-dir":
         print(state_directory())
     elif args.verb == "parity-dir":

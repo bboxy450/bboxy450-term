@@ -42,9 +42,9 @@ case "$LAND_MODE" in lean|wide) ;; *) echo "land: LAND_MODE must be lean or wide
 
 # `gate || ...` suspends `set -e` inside the function: every check returns explicitly.
 lean_gate() {
-    plan=$(python3 -I scripts/landing.py lean origin/main..HEAD) || return 1
+    plan=$(python3 -I scripts/landing.py lean origin/main..HEAD "$@") || return 1
     echo "land: lean plan:"; printf '%s\n' "$plan" | sed 's/^/  /'
-    touched=$(printf '%s\n' "$plan" | awk '$1=="test"{printf " -p %s", $2}')
+    touched=$(printf '%s\n' "$plan" | awk '$1=="test" || $1=="full"{printf " -p %s", $2}')
     if [ -n "$touched" ]; then
         # shellcheck disable=SC2086
         run cargo clippy --locked -q $touched --all-targets -- -D warnings || return 1
@@ -52,21 +52,34 @@ lean_gate() {
     printf '%s\n' "$plan" | while read -r kind name selection; do
         # shellcheck disable=SC2086
         case "$kind" in
+            harness-check)
+                # Library only, with the term consumers' feature union. The
+                # harness Makefile owns its standalone integration fixtures.
+                run python3 -I scripts/landing.py lean-check "$name" -- "$selection" || exit 1 ;;
+            harness-test)
+                run python3 -I scripts/landing.py lean-test "$name" -- "$selection" || exit 1 ;;
+            full)
+                run sh scripts/quarantine-test.sh --locked -p "$name" || exit 1 ;;
             test)
                 # Real-process tests run the crate's executable; build it as wide runs do.
                 case " $selection " in
                     *" --bins "*) run cargo build --locked -q -p "$name" --bins || exit 1 ;;
                 esac
                 # Decode the planner's quoted argv without shell evaluation.
-                run python3 -I scripts/landing.py lean-test "$name" "$selection" || exit 1 ;;
+                run python3 -I scripts/landing.py lean-test "$name" -- "$selection" || exit 1 ;;
             check) run cargo check --locked -q $(printf -- '-p %s ' $name $selection) || exit 1 ;;
         esac
     done || return 1
 }
 
 gate() {
+    bump=$(python3 -I scripts/landing.py harness-bump origin/main..HEAD) || return 1
     if [ "$LAND_MODE" = lean ]; then
         lean_gate || return 1
+    elif [ "$bump" = yes ]; then
+        # Wide still tests every affected term crate. A pointer update never
+        # implicitly adopts the harness repository's fixture environment.
+        lean_gate --wide || return 1
     elif [ -n "$packages" ]; then
         # shellcheck disable=SC2086
         run cargo clippy --locked -q $packages --all-targets -- -D warnings || return 1

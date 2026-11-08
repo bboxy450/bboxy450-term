@@ -27,6 +27,17 @@ It runs `scripts/land-fast.sh` (`make push` is the same command):
    remains explicit. Empty filters and build/test failures still fail the gate.
    `LAND_MODE=wide make land` instead lints and tests the
    whole affected set, doctests included.
+   For an actual harness gitlink bump (with or without `Cargo.lock`), both modes
+   check the harness library and run its library unit tests with the term
+   consumers' declared feature union (`--no-default-features --features embedded`
+   today), then run full tests/doctests of every transitive term dependent.
+   This includes the native protocol owners `bboxy450-harness-wake-up`,
+   `bboxy450-harness-host`, `bboxy450-term-mux`, `bboxy450-term-proto` and
+   `bboxy450-term`, plus their
+   transitive dependents, even where there is no Cargo edge to the harness.
+   Harness `tests/*.rs` integration binaries belong to the harness Make targets
+   and are excluded from this pointer-update gate; ordinary non-bump modes keep
+   their existing selections.
 4. Push. If `main` moved, rebase, initialize the current harness pin, rerun the
    current-source gate and push again (up to 5 times).
 
@@ -70,6 +81,7 @@ run at background policy. Test execution outside this list stays utility.
 | `test-dream-c1`, `test-dream-c1-integration`, `test-dream-c1-qos`; Cargo selections `dream_c1`, `dream_replay`, `dream::c1::` | Dream C1 CPU/latency bounds; the root native workflow, harness integration workflow and thirteen private QoS re-enable witnesses retain their own entry points |
 | `test-dream-mcp`; Cargo selection `dream_read` and its named admitted read/process fixtures | Prepared observation reads retain the existing C1 public-authority, preparation and cleanup CPU budgets |
 | Cargo test families `registry::dream_c1::registry_tests::`, `logic::dream_public_api_tests::` | Existing C1 journal and admitted API fixtures retain their 1 ms unit guards at default QoS |
+| Cargo test family `dream::read::helper_tests::` | The pinned harness's existing native helper retirement and CPU/debt witnesses retain their assertions at default QoS; the Q3 wide gate's utility-QoS retirement refusal prompted this registration |
 | `test-perf-p1`, `test-perf-p2`; Cargo selection `gates_seats` | P1 frame/hitch and P2 bus/PTY budgets |
 | `bench-budgets`; Cargo selections `gui_budget`, `rich_faces::budget_verification::rich_four_view_aggregate_budget` | UI drain/composition and GUI frame budgets |
 | Cargo `bench` and `test --benches` | Benchmark execution (compiler children remain background) |

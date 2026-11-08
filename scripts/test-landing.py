@@ -452,11 +452,36 @@ class ConsolidatedIntegrationTests(unittest.TestCase):
                                                    for name in ["it", *separate]])
                 entry = (base / "tests/it.rs").read_text()
                 declared = landing.re.findall(r'#\[path = "([^/\"]+)\.rs"\]\s*mod (\w+);', entry)
+                # These two known Q1 support files have explicit existing
+                # owners. They cannot compile as independent `it` modules.
+                # Verify their exact ownership before excluding only them.
+                support = {"dream_read"}
+                self.assertTrue((base / "tests/dream_read.rs").is_file())
+                if crate == "bbt-mux":
+                    source = (base / "src/logic.rs").read_text()
+                    mask, _ = landing.rust_paths(source)
+                    owners = list(landing.re.finditer(r'\bmod\s+dream_public_api_tests\s*\{', mask))
+                    self.assertEqual(len(owners), 1)
+                    first = mask.index("{", owners[0].start()) + 1
+                    last = landing.balanced_end(mask, first, "{", "}")
+                    self.assertRegex(source[first:last],
+                        r'include!\(\s*concat!\(\s*env!\("CARGO_MANIFEST_DIR"\)\s*,\s*"/tests/dream_read\.rs"\s*\)\s*\)\s*;')
+                    self.assertEqual(source.count('"/tests/dream_read.rs"'), 1)
+                else:
+                    owner = base / "tests/formal_contracts/models.rs"
+                    models = owner.read_text()
+                    self.assertEqual(models.count('#[path = "../dream_read.rs"]'), 1)
+                    self.assertRegex(models,
+                        r'#\[path = "\.\./dream_read\.rs"\]\s*mod dream_read_process;')
+                    self.assertEqual((owner.parent / "../dream_read.rs").resolve(),
+                                     (base / "tests/dream_read.rs").resolve())
+                    self.assertRegex((base / "tests/formal_contracts.rs").read_text(),
+                        r'#\[path = "formal_contracts/models\.rs"\]\s*mod models;')
                 expected = sorted(p.stem for p in (base / "tests").glob("*.rs")
-                                  if p.stem not in ["it", *separate])
+                                  if p.stem not in {"it", *separate, *support})
                 self.assertEqual(sorted(name for name, _ in declared), expected)
                 self.assertTrue(all(name == module for name, module in declared))
-                for name in expected:
+                for name in [*expected, *support]:
                     self.assertNotIn("#[global_allocator]", (base / f"tests/{name}.rs").read_text())
 
     def setUp(self):
@@ -545,6 +570,176 @@ class ConsolidatedIntegrationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("1 test run: 1 passed", result.stdout + result.stderr)
         self.assertEqual(self.repo.remote_head(), candidate)
+
+
+class HarnessBumpTests(unittest.TestCase):
+    def setUp(self):
+        self.repo = Repository()
+        self.addCleanup(self.repo.close)
+        self.harness = self.repo.root / landing.HARNESS_PATH
+        self.repo.write(landing.HARNESS_PATH + "/Cargo.toml", '''[package]
+name="bboxy450-harness"
+version="0.1.0"
+edition="2024"
+[features]
+default=["standalone"]
+standalone=[]
+embedded=[]
+''')
+        self.repo.write(landing.HARNESS_PATH + "/src/lib.rs", '''pub fn value() {}
+#[cfg(test)] mod tests {
+ #[test] fn term_features() {
+  assert!(cfg!(feature="embedded"));
+  assert!(!cfg!(feature="standalone"));
+ }
+}
+''')
+        # Compiling this integration target is an error: only the harness's
+        # own Make workflow supplies its standalone fixture environment.
+        self.repo.write(landing.HARNESS_PATH + "/tests/standalone.rs",
+                        'compile_error!("harness Make owns this integration fixture");\n')
+        run("git", "init", "-q", "--initial-branch=main", cwd=self.harness)
+        key, wrapper = fixture_identity()
+        for name, value in (("user.name", "Landing Fixture"),
+                            ("user.email", "fixture@bboxy450.invalid"),
+                            ("user.signingkey", key), ("gpg.program", str(wrapper)),
+                            ("commit.gpgsign", "true")):
+            run("git", "config", name, value, cwd=self.harness)
+        self.harness_commit()
+        manifest = self.repo.root / "Cargo.toml"
+        manifest.write_text(manifest.read_text().replace('"crates/c"',
+                            '"crates/c","' + landing.HARNESS_PATH + '"'))
+        consumer = self.repo.root / "crates/b/Cargo.toml"
+        consumer.write_text(consumer.read_text() +
+            'renamed_harness={package="bboxy450-harness",path="../bboxy450-harness",default-features=false,features=["embedded"]}\n')
+        for name in ("b", "c"):
+            self.repo.write(f"crates/{name}/tests/consumer.rs",
+                            '#[test] fn embedded_dependency_contract() {}\n')
+        run("cargo", "generate-lockfile", "--offline", cwd=self.repo.root)
+        self.repo.base = self.repo.commit("Private embedded harness gitlink")
+
+    def harness_commit(self):
+        run("git", "add", ".", cwd=self.harness)
+        run("git", "commit", "-q", "-m", "Private harness source", cwd=self.harness)
+
+    def bump(self, lock=False):
+        source = self.harness / "src/lib.rs"
+        source.write_text(source.read_text() + "// private pointer bump\n")
+        self.harness_commit()
+        if lock:
+            path = self.repo.root / "Cargo.lock"
+            path.write_text(path.read_text() + "# pointer-bump lock update\n")
+        return self.repo.commit("Private harness pointer update")
+
+    def test_gitlink_bump_checks_unit_only_with_term_features_and_full_transitive_tests(self):
+        self.bump()
+        selected = landing.lean(self.repo.base + "..HEAD", root=self.repo.root)
+        self.assertEqual(selected, [
+            "harness-check bboxy450-harness --lib --no-default-features --features embedded",
+            "harness-test bboxy450-harness --lib --no-default-features --features embedded",
+            "full b", "full c",
+        ])
+        self.assertNotIn("full a", selected, "a is a dependency, not a harness dependent")
+
+    def test_lock_bump_keeps_ordinary_workspace_coverage_and_harness_owned_fixtures_out(self):
+        self.bump(lock=True)
+        selected = landing.lean(self.repo.base + "..HEAD", root=self.repo.root)
+        self.assertIn("test a --lib", selected)
+        self.assertIn("full b", selected)
+        self.assertIn("full c", selected)
+        self.assertFalse(any("standalone" in line or "--test" in line for line in selected))
+        wide = landing.lean(self.repo.base + "..HEAD", root=self.repo.root, wide=True)
+        self.assertIn("full a", wide)
+        self.assertNotIn("test a --lib", wide)
+
+    def test_native_protocol_owners_and_their_dependents_run_full_without_cargo_producer_edge(self):
+        self.assertIn("bboxy450-term-proto", landing.HARNESS_CONSUMER_OWNERS,
+                      "the environment-selected signed producer corpus has no Cargo edge")
+        members = []
+        for name in sorted(landing.HARNESS_CONSUMER_OWNERS):
+            directory = "crates/" + name
+            members.append(directory)
+            self.repo.write(directory + "/Cargo.toml",
+                f'[package]\nname="{name}"\nversion="0.1.0"\nedition="2024"\n')
+            self.repo.write(directory + "/src/lib.rs", 'pub fn value() {}\n')
+            self.repo.write(directory + "/tests/native.rs", '#[test] fn native_wire() {}\n')
+        members.append("crates/transport-dependent")
+        self.repo.write("crates/transport-dependent/Cargo.toml", '''[package]
+name="transport-dependent"
+version="0.1.0"
+edition="2024"
+[dependencies]
+wire={package="bboxy450-harness-wake-up",path="../bboxy450-harness-wake-up"}
+''')
+        self.repo.write("crates/transport-dependent/src/lib.rs", 'pub fn value() {}\n')
+        manifest = self.repo.root / "Cargo.toml"
+        manifest.write_text(manifest.read_text().replace('"crates/c"',
+                            '"crates/c",' + ",".join(json.dumps(p) for p in members)))
+        run("cargo", "generate-lockfile", "--offline", cwd=self.repo.root)
+        self.repo.base = self.repo.commit("Private protocol owners without producer dependency")
+        dependencies = landing.package_dependencies(landing.metadata(self.repo.root))
+        for owner in landing.HARNESS_CONSUMER_OWNERS:
+            self.assertNotIn(landing.HARNESS_PACKAGE, dependencies[owner])
+        self.bump()
+        plan = landing.lean(self.repo.base + "..HEAD", root=self.repo.root)
+        for owner in landing.HARNESS_CONSUMER_OWNERS | {"transport-dependent", "b", "c"}:
+            self.assertIn("full " + owner, plan)
+        self.assertNotIn("full a", plan)
+
+    def test_ordinary_lock_change_keeps_existing_lean_plan(self):
+        path = self.repo.root / "Cargo.lock"
+        path.write_text(path.read_text() + "# ordinary lock change\n")
+        self.repo.commit("Private ordinary lock update")
+        selected = landing.lean(self.repo.base + "..HEAD", root=self.repo.root)
+        self.assertEqual(selected, ["test a --lib", "test b --lib",
+                                    "test bboxy450-harness --lib", "test c --lib"])
+
+    def test_source_tree_or_non_gitlink_cannot_receive_pointer_policy(self):
+        with patch.object(landing, "changed_paths", return_value=[landing.HARNESS_PATH,
+                            landing.HARNESS_PATH + "/src/lib.rs"]):
+            self.assertFalse(landing.harness_pointer_bump("base..HEAD", root=self.repo.root))
+        with patch.object(landing, "changed_paths", return_value=[landing.HARNESS_PATH]), \
+             patch.object(landing, "git", return_value=":100644 100644 old new M\0" + landing.HARNESS_PATH + "\0"):
+            self.assertFalse(landing.harness_pointer_bump("base..HEAD", root=self.repo.root))
+
+    def gate(self, mode):
+        self.repo.tooling()
+        for name in ("land-fast.sh", "affected.sh"):
+            shutil.copy2(SOURCE.with_name(name), self.repo.root / "scripts" / name)
+        path = self.repo.root / "Makefile"
+        path.write_text(path.read_text() + "\ninit-submodules:\n\t@true\n")
+        self.repo.commit("Private pointer-gate tooling")
+        self.repo.remote()
+        candidate = self.bump(lock=True)
+        environment = dict(self.repo.environment)
+        if mode is not None:
+            environment["LAND_MODE"] = mode
+        else:
+            environment.pop("LAND_MODE", None)
+        result = subprocess.run(["sh", "scripts/land-fast.sh"], cwd=self.repo.root,
+            env=environment, capture_output=True, text=True, timeout=45)
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertEqual(self.repo.remote_head(), candidate)
+        calls = [json.loads(line) for line in (self.repo.state / "cargo.jsonl").read_text().splitlines()]
+        harness = [args for args in calls if any(args[i:i+2] == ["-p", landing.HARNESS_PACKAGE]
+                                                for i in range(len(args) - 1))]
+        self.assertEqual({args[0] for args in harness}, {"check", "test"})
+        for args in harness:
+            self.assertIn("--lib", args)
+            self.assertIn("--no-default-features", args)
+            self.assertEqual(args[args.index("--features") + 1], "embedded")
+            self.assertFalse(set(args) & {"--all-targets", "--tests", "--test", "--bins", "--doc"})
+        for name in ("b", "c"):
+            tests = [args for args in calls if args[0] == "test"
+                     and any(args[i:i+2] == ["-p", name] for i in range(len(args) - 1))]
+            self.assertTrue(tests, f"missing full term dependent: {name}")
+            self.assertTrue(any(not set(args) & {"--lib", "--test", "--bins"} for args in tests))
+
+    def test_default_lean_gate_runs_pointer_policy_without_harness_integration(self):
+        self.gate(None)
+
+    def test_explicit_wide_gate_retains_term_coverage_without_harness_integration(self):
+        self.gate("wide")
 
 
 class StateTests(unittest.TestCase):
