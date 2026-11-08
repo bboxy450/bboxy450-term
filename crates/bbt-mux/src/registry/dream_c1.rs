@@ -2390,6 +2390,35 @@ impl Runtime {
     }
 }
 
+impl Runtime {
+    pub(crate) fn read(&self,handle:&tokio::runtime::Handle,authority:Authority,call:crate::mcp::Call,done:impl FnOnce(serde_json::Value)+Send+'static) {
+        let permit=match Permit::claim(&self.requests,2) {Ok(p)=>p,Err(_)=>{done(crate::mcp::dream_read::result(&call,bbt_proto::dream_read::Reply::unavailable(bbt_proto::dream_read::Reason::Busy)));return;}};
+        let runtime=self.clone();
+        handle.spawn_blocking(move||{
+            let output=if engine::utility().is_err() || runtime.retired.load(Ordering::Acquire) {
+                crate::mcp::dream_read::result(&call,bbt_proto::dream_read::Reply::failure(bbt_proto::dream_read::Code::StaleContext))
+            }else{runtime.read_cache.respond(&runtime.path,&authority,&call)};
+            done(output);drop(permit);
+        });
+    }
+}
+
+#[cfg(test)]
+impl Runtime {
+    pub(crate) fn prepare_read_fixture(&self,record:&Record,authority:&Authority)->Result<(),Code> {
+        self.read_cache.prepare(&self.path,record,authority,&engine::Control::default())
+    }
+}
+#[cfg(test)]
+impl Runtime {
+    pub(crate) fn corrupt_read_fixture(&self,context:&w::Context,kind:&str) {self.read_cache.corrupt_fixture(context,kind);}
+}
+
+#[cfg(test)]
+impl Runtime {
+    pub(crate) fn read_cache_fixture(&self)->Arc<super::dream_read::Cache> {self.read_cache.clone()}
+}
+
 // Copyright 2026 Boxy (bboxy450) and contributors.
 // SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
 // Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
@@ -4275,33 +4304,4 @@ mod registry_tests {
             "invalid metadata is not legacy absence"
         );
     }
-}
-
-impl Runtime {
-    pub(crate) fn read(&self,handle:&tokio::runtime::Handle,authority:Authority,call:crate::mcp::Call,done:impl FnOnce(serde_json::Value)+Send+'static) {
-        let permit=match Permit::claim(&self.requests,2) {Ok(p)=>p,Err(_)=>{done(crate::mcp::dream_read::result(&call,bbt_proto::dream_read::Reply::unavailable(bbt_proto::dream_read::Reason::Busy)));return;}};
-        let runtime=self.clone();
-        handle.spawn_blocking(move||{
-            let output=if engine::utility().is_err() || runtime.retired.load(Ordering::Acquire) {
-                crate::mcp::dream_read::result(&call,bbt_proto::dream_read::Reply::failure(bbt_proto::dream_read::Code::StaleContext))
-            }else{runtime.read_cache.respond(&runtime.path,&authority,&call)};
-            done(output);drop(permit);
-        });
-    }
-}
-
-#[cfg(test)]
-impl Runtime {
-    pub(crate) fn prepare_read_fixture(&self,record:&Record,authority:&Authority)->Result<(),Code> {
-        self.read_cache.prepare(&self.path,record,authority,&engine::Control::default())
-    }
-}
-#[cfg(test)]
-impl Runtime {
-    pub(crate) fn corrupt_read_fixture(&self,context:&w::Context,kind:&str) {self.read_cache.corrupt_fixture(context,kind);}
-}
-
-#[cfg(test)]
-impl Runtime {
-    pub(crate) fn read_cache_fixture(&self)->Arc<super::dream_read::Cache> {self.read_cache.clone()}
 }

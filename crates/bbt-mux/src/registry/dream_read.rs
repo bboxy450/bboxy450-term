@@ -942,6 +942,15 @@ impl Cache {
 }
 
 #[cfg(test)]
+impl Cache {
+    pub(crate) fn invalidate_on_presentation(self: &Arc<Self>) {
+        let cache = self.clone();
+        *self.before_present.lock().unwrap() =
+            Some(Box::new(move || cache.snapshots.lock().unwrap().clear()));
+    }
+}
+
+#[cfg(test)]
 mod quantum_tests {
     use super::*;
     #[test]
@@ -979,14 +988,5 @@ mod quantum_tests {
         );
         assert!(!called.load(Ordering::Acquire));
         quantum.check().unwrap();
-    }
-}
-
-#[cfg(test)]
-impl Cache {
-    pub(crate) fn invalidate_on_presentation(self: &Arc<Self>) {
-        let cache = self.clone();
-        *self.before_present.lock().unwrap() =
-            Some(Box::new(move || cache.snapshots.lock().unwrap().clear()));
     }
 }
