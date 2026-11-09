@@ -10,6 +10,14 @@
 use crate::*;
 use bbt_ui_model::{SeatId, SidebarMove, SwarmId};
 
+/// The scene key of a pressed region: `toggle-swarm:<id>` drags `swarm:<id>`.
+fn drag_key(pressed: &str) -> String {
+    pressed
+        .strip_prefix("toggle-")
+        .unwrap_or(pressed)
+        .to_owned()
+}
+
 /// Movement before a press becomes a drag, in logical pixels.
 const SLOP: f32 = 4.;
 
@@ -41,6 +49,15 @@ impl App {
             press.dragging = true;
         }
         self.pointer = at;
+        if press.dragging {
+            // The scene draws the row under the pointer and slides the others aside.
+            let drag = crate::scene::SidebarDrag {
+                key: drag_key(&press.id),
+                dy: at[1] - press.from[1],
+            };
+            self.scene.set_sidebar_drag(Some(drag));
+            self.request_redraw();
+        }
         true
     }
     /// Completes the press: a click navigates, a drag queues its move.
@@ -51,11 +68,45 @@ impl App {
         if !press.dragging {
             self.logger.write(format!("ui navigation: {}", press.id));
             self.navigate_to(&press.id);
-        } else if let Some(change) = self.row_drop(&press.id, self.pointer) {
+            return true;
+        }
+        // Drop where the preview showed it; the scene eases every row into place.
+        let previewed = self
+            .scene
+            .sidebar_drop_target()
+            .and_then(|target| self.keyed_move(&press.id, &target));
+        self.scene.set_sidebar_drag(None);
+        self.request_redraw();
+        if let Some(change) = previewed.or_else(|| self.row_drop(&press.id, self.pointer)) {
             self.logger.write(format!("ui sidebar move: {change:?}"));
             self.queue(live::UiMsg::SidebarMove(change));
         }
         true
+    }
+    /// The move a drop onto `target` (a scene key) makes for the pressed region.
+    fn keyed_move(&self, pressed: &str, target: &str) -> Option<SidebarMove> {
+        let model = self.live_state.as_ref()?;
+        let swarm = |text: &str| {
+            model
+                .ui
+                .window
+                .sidebar
+                .swarms
+                .iter()
+                .find(|s| s.id.to_string() == text)
+                .map(|s| s.id)
+        };
+        match (pressed.split_once(':')?, target.split_once(':')?) {
+            (("toggle-swarm", a), ("swarm", b)) => Some(SidebarMove::Swarm {
+                swarm: swarm(a)?,
+                target: swarm(b)?,
+            }),
+            (("seat", a), ("seat", b)) => Some(SidebarMove::Seat {
+                seat: a.parse().ok()?,
+                target: b.parse().ok()?,
+            }),
+            _ => None,
+        }
     }
     fn row_drop(&self, dragged: &str, at: [f32; 2]) -> Option<SidebarMove> {
         let model = self.live_state.as_ref()?;
@@ -76,7 +127,9 @@ impl App {
             .navigation_regions
             .iter()
             .filter(|(id, rect)| {
-                (id.starts_with("toggle-swarm:") || id.starts_with("seat:")) && contains(rect)
+                (id.starts_with("toggle-swarm:") || id.starts_with("seat:"))
+                    && id.as_str() != dragged
+                    && contains(rect)
             })
             .map(|(id, _)| id.as_str())
             .next()?;

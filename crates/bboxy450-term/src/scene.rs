@@ -6,7 +6,9 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Native sidebar metadata and the optional frozen scene-15 smoke fixture.
 mod navigation;
+mod sidebar_motion;
 mod starting;
+pub use sidebar_motion::SidebarDrag;
 use bboxy450_term::model::FocusSwell;
 use bboxy450_term::starting::Slot;
 use bbt_ui::{
@@ -290,6 +292,8 @@ pub struct Scene {
     /// Terminal-only publications do not change chrome geometry. Keep the solved
     /// visible tree rather than rebuilding all 1000 sidebar component trees.
     layout_cache: RefCell<Option<(LayoutKey, Vec<c::Layout>)>>,
+    sidebar_drag: Option<SidebarDrag>,
+    sidebar_motion: RefCell<sidebar_motion::Motion>,
 }
 #[derive(PartialEq)]
 struct LayoutShape {
@@ -519,6 +523,8 @@ impl Scene {
             restart_generations: HashMap::new(),
             restart_lines: vec![],
             layout_cache: RefCell::new(None),
+            sidebar_drag: None,
+            sidebar_motion: RefCell::default(),
             attention: HashMap::new(),
             attention_origins: HashMap::new(),
         }
@@ -708,6 +714,9 @@ impl Scene {
     }
     /// Transient motion uses display cadence; persistent attention has its own 30Hz deadline.
     pub fn transient_animating(&self, now: Instant) -> bool {
+        if self.sidebar_motion_active() {
+            return true;
+        }
         if self.sidebar_reveals.values().any(|r| r.active(now)) {
             return true;
         }
@@ -851,6 +860,8 @@ impl Scene {
             restart_generations: HashMap::new(),
             restart_lines: vec![],
             layout_cache: RefCell::new(None),
+            sidebar_drag: None,
+            sidebar_motion: RefCell::default(),
             attention: HashMap::new(),
             attention_origins: HashMap::new(),
         }
@@ -1511,18 +1522,25 @@ impl Scene {
             context: self.context,
             sidebar: self.sidebar_layout,
         };
-        if cacheable
+        let mut layouts = if cacheable
             && let Some((old, layouts)) = self.layout_cache.borrow().as_ref()
             && old.matches(self, &shape)
         {
-            return Ok(layouts.clone());
-        }
-        // A timed or failed solve cannot leave a pre-animation entry reusable.
-        self.layout_cache.borrow_mut().take();
-        let layouts =
-            self.solve_layout_contents(size, effects, dock_height, now, panes, full_sidebar)?;
-        if cacheable {
-            *self.layout_cache.borrow_mut() = Some((LayoutKey::new(self, shape), layouts.clone()));
+            layouts.clone()
+        } else {
+            // A timed or failed solve cannot leave a pre-animation entry reusable.
+            self.layout_cache.borrow_mut().take();
+            let layouts =
+                self.solve_layout_contents(size, effects, dock_height, now, panes, full_sidebar)?;
+            if cacheable {
+                *self.layout_cache.borrow_mut() =
+                    Some((LayoutKey::new(self, shape), layouts.clone()));
+            }
+            layouts
+        };
+        // Drag-and-drop motion offsets the solved sidebar; the cache keeps it unmoved.
+        if panes && let Some(sidebar) = layouts.get_mut(1) {
+            self.animate_sidebar(sidebar, now);
         }
         Ok(layouts)
     }
