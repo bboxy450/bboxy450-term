@@ -1,0 +1,18 @@
+[package]
+name = "bboxy450-term-remote"
+version.workspace = true
+edition.workspace = true
+license-file = "LICENSE"
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+description = "Remote supervisor link for bboxy450-term: one IR-framed protocol between a local mux and a per-swarm remote supervisor hosting bboxy450-harness ACP seats"
+readme = "README.md"
+
+[dependencies]
+bbt_yarn = { package = "bboxy450-yarn", version = "=0.1.1", path = "../bbt-yarn", default-features = false, features = ["macros"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+bbt_yarn = { package = "bboxy450-yarn", version = "=0.1.1", path = "../bbt-yarn", default-features = false, features = ["macros", "model"] }

@@ -17,6 +17,8 @@ mod protocol_language;
 #[path = "../tests/protocol.rs"]
 #[allow(dead_code)] // Model export includes runtime-only declarations and contract references.
 mod protocols;
+#[path = "../../bboxy450-term-remote/src/delivery.rs"]
+mod remote_delivery;
 #[path = "../tests/protocol_temporal.rs"]
 mod temporal_protocols;
 
@@ -181,6 +183,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (yield_reactor, "pass"),
         (protocols::LatestResult::model(), "pass"),
         (protocols::BrokenLatestResult::model(), "safety"),
+        (remote_delivery::RemoteDelivery::model(), "pass"),
+        (remote_delivery::BrokenRemoteDelivery::model(), "safety"),
         (protocol_language::ProtocolLanguage::model(), "pass"),
         (temporal_protocols::PresentGeneration::model(), "pass"),
         (

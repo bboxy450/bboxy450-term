@@ -92,6 +92,17 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+# Remote supervisor link: exactly-once delivery, exported by the Yarn example.
+name = "RemoteDelivery"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenRemoteDelivery"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "ProtocolLanguage"
 expected = "pass"
 frontend = "yarn"

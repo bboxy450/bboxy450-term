@@ -876,6 +876,17 @@ assumptions = "One owner, atomic step, Id={A,B}; desired/visible start None, sub
 property = "RESULT-001: visible.is_none() || visible == desired. Correct declaration has exactly 21 reachable states and 105 enabled labeled edges, all compared with generated Rust steps along reachable paths. Broken declaration removes pending/current-desire freshness guards from Complete::current and its complementary stale case; native BFS yields Submit(A), Submit(B), Complete(A), replaying to desired=B, visible=A and a false generated invariant. Symbolic export is independently explored by Java TLC; exact states, labeled edges and safety verdicts must agree. The finite language corpus also compares every edge for bool, domain, Option, Set and simultaneous updates, without claiming arbitrary Rust refinement."
 checks = ["make test-formal", "make test"]
 
+[[contract]]
+name = "RemoteDelivery"
+title = "Remote supervisor link: exactly-once message application across drop, duplicate and crash replay"
+models = ["RemoteDelivery", "BrokenRemoteDelivery"]
+sources = ["crates/bboxy450-term-remote/src/delivery.rs", "crates/bboxy450-term-remote/src/link.rs", "crates/bboxy450-term-remote/src/frame.rs"]
+implementation_tests = ["crates/bboxy450-term-remote/tests/delivery_witness.rs"]
+methods = ["native_tlc_differential"]
+assumptions = "Two message identities A/B. The local outbox and the remote applied set are separate owners; the link may drop, duplicate and replay frames, and the remote may crash. A crash keeps the journalled applied set (fsync before apply). Journal-and-apply is one atomic model step; the runtime orders journal first, so a crash in between loses that turn and the local side reports its outcome unknown (never a second apply). No fairness is assumed and no liveness is claimed. SSH transport, session epoch/seq resume, cross-host routing and identity are not modelled."
+property = "REMOTE-DELIVERY-001: a message is applied at most once (ghost history `ever`). REMOTE-DELIVERY-002: an acknowledged message was applied. REMOTE-DELIVERY-003: an acknowledged message leaves the outbox. BrokenRemoteDelivery clears the applied set on RemoteCrash, so a replayed unacked message is applied twice and violates REMOTE-DELIVERY-001. The witness drives the runtime Outbox/Inbox/FileJournal and the generated Rust step through the same duplicate, drop and crash-replay sequence and compares applied and acked sets."
+checks = ["make test-formal", "cargo nextest run -p bboxy450-term-remote"]
+
 # Adapted from bboxy450-term, verification/contracts.toml, LogicWorker* at 954ce04e.
 # https://github.com/bboxy450/bboxy450-term — fill the implementation witness slot.
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md

@@ -256,6 +256,13 @@ scope = "Pinned workspace harness models and broken controls imported into the p
 sources = ["crates/bboxy450-harness/verification/coverage.toml", "crates/bboxy450-harness/verification/contracts.toml", "crates/bboxy450-harness/tests/formal/models.rs", "crates/bbt-mux/tests/mcp.rs", "scripts/harness-submodule.py", "scripts/bump-harness.py"]
 
 [[crate]]
+name = "bboxy450-term-remote"
+status = "contract-model"
+models = ["RemoteDelivery", "BrokenRemoteDelivery"]
+scope = "Two messages A/B through submit, send, duplicate arrival, ack, link drop, reconnect and remote crash with replay; the remote applied set is durable (BrokenRemoteDelivery makes it volatile and double-applies). tests/delivery_witness.rs drives the runtime Outbox/Inbox/FileJournal and the Yarn model with the same steps. Abstraction: journal-then-apply is one atomic model step; the runtime fsyncs the id first, so a crash between journal and apply loses that turn (reported unknown), never doubles it. Frame codec bounds, unknown-frame skipping and exact IR bytes are unit-tested only. SSH transport, remote daemon, session epoch/seq resume and cross-host messaging are not built yet."
+sources = ["crates/bboxy450-term-remote/src/delivery.rs", "crates/bboxy450-term-remote/src/link.rs", "crates/bboxy450-term-remote/src/frame.rs", "crates/bboxy450-term-remote/src/lib.rs"]
+
+[[crate]]
 name = "bboxy450-usage"
 status = "contract-model"
 models = ["UsagePoller"]
