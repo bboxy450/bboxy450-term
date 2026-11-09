@@ -532,9 +532,7 @@ fn declared_hue(g: &mm::Geometry, n: &mm::Node) -> Option<ui::Color> {
     for style in styles {
         for declaration in style.split([';', ',']) {
             match declaration.split_once(':') {
-                Some((name, value)) if name.trim() == "stroke" => {
-                    stroke = parse(value).or(stroke)
-                }
+                Some((name, value)) if name.trim() == "stroke" => stroke = parse(value).or(stroke),
                 Some((name, value)) if name.trim() == "fill" => fill = parse(value).or(fill),
                 _ => {}
             }
