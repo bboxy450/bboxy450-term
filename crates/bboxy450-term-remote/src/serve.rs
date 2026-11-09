@@ -286,7 +286,7 @@ impl Server {
         };
         send(Frame::Welcome {
             version: VERSION,
-            supervisor: format!("bboxy450-term-remote epoch {}", self.epoch),
+            supervisor: self.id.clone(),
         })?;
         self.inner.lock().unwrap().out = Some((id, tx.clone()));
         let pinger = tx.clone();
