@@ -28,6 +28,7 @@ pub(crate) fn handles(name: &str) -> bool {
             | "workspace_prepare"
             | "workspace_get"
             | "workspace_list"
+            | "workspace_audit"
             | "workspace_release"
     )
 }
@@ -46,6 +47,7 @@ pub(crate) fn catalogue(actor: &SeatActor) -> Vec<Value> {
         rows.extend([
             ("workspace_prepare","Prepare an isolated local Git worktree for a task. repository is current or an absolute Git root beneath the selected knowledge repository; base defaults to origin/main. Returns preparing promptly; inspect workspace_get. Keeps the swarm's canonical KB. Remote providers are explicitly unavailable. Never shell out to the retired dispatch script.",json!({"task_path":{"type":"string","minLength":1,"maxLength":4096},"repository":{"type":"string","minLength":1,"maxLength":4096},"base":{"type":"string","minLength":1,"maxLength":256},"provider":{"enum":["git"]},"profile":{"enum":["git"]},"attempt":{"type":"integer","minimum":1},"integration_ref":{"type":"string","minLength":1,"maxLength":256}}),vec!["task_path","repository","provider"]),
             ("workspace_list","List managed workspaces in your swarm, including partial/unknown resources. Bounded opaque cursor; no filesystem scan.",json!({"cursor":id,"limit":{"type":"integer","minimum":1,"maximum":128},"state":{"enum":["preparing","ready","in_use","failed","unknown","releasing","released"]},"task_id":{"type":"string"}}),vec![]),
+            ("workspace_audit","Audit worktrees against managed records and task status: release_due (task accepted/done, worktree not released), release_failed, missing_worktree, multiple_live_attempts, and unmanaged Git worktrees with no record. Read-only; each release-ready workspace comes back as a workspace_release hint. Optional task_path narrows to one task.",json!({"task_path":{"type":"string","minLength":1,"maxLength":4096}}),vec![]),
             ("workspace_release","Release only this service's exact owned resources. Requires a closed/dead writer, preserved commits and no tracked, untracked, ignored private files or open processes. Never force-removes or stashes. Returns releasing; inspect workspace_get.",json!({"workspace_id":id,"expected_revision":{"type":"integer","minimum":1}}),vec!["workspace_id","expected_revision"]),
         ]);
     }
@@ -298,7 +300,7 @@ impl Service {
         source: &dyn DataSource,
         registry: &Registry,
     ) -> Result<Begun> {
-        if (mutation(&call.tool) || call.tool == "workspace_list")
+        if (mutation(&call.tool) || matches!(call.tool.as_str(), "workspace_list" | "workspace_audit"))
             && actor.role.class != Class::Oracle
         {
             return Err(invalid("workspace_forbidden: requires oracle authority"));
@@ -352,10 +354,10 @@ impl Service {
                 if !matches!(
                     task.frontmatter["type"].as_str(),
                     Some("task" | "bug" | "epic")
-                ) || !matches!(
-                    task.frontmatter["status"].as_str(),
-                    Some("open" | "assigned" | "active" | "running" | "blocked")
-                ) {
+                ) || !task.frontmatter["status"]
+                    .as_str()
+                    .is_some_and(super::work_items::live_status)
+                {
                     return Err(invalid(
                         "workspace_task_invalid: expected an open native task",
                     ));
@@ -511,6 +513,75 @@ impl Service {
                 }
                 Ok(Begun {
                     value: json!({"items":rows.iter().map(Record::view).collect::<Vec<_>>(),"next":if more{rows.last().map(|r|r.workspace_id)}else{None}}),
+                    work: None,
+                })
+            }
+            "workspace_audit" => {
+                #[derive(Deserialize)]
+                #[serde(deny_unknown_fields)]
+                struct Audit {
+                    task_path: Option<String>,
+                }
+                let args: Audit = tools::parse(&call.args).map_err(|e| invalid(e.to_string()))?;
+                let status = |locator: String| {
+                    source
+                        .resolve(d::ResolveRequest { locator })
+                        .and_then(|reference| source.fetch(d::FetchRequest { reference }))
+                        .ok()
+                        .map(|doc| (doc.reference.id.clone(), doc.frontmatter["status"].as_str().unwrap_or("unknown").to_owned()))
+                };
+                let only = match args.task_path {
+                    Some(path) => Some(status(path).ok_or_else(|| invalid("workspace_task_invalid: task_path did not resolve"))?.0),
+                    None => None,
+                };
+                let canonical = |p: &Path| p.canonicalize().unwrap_or_else(|_| p.to_owned());
+                let repo = canonical(repository);
+                let worktrees: Vec<PathBuf> = git::worktrees(&repo)?.iter().map(|p| canonical(p)).collect();
+                let db = self.store.connection()?;
+                let mut query = db.prepare("SELECT value FROM kv WHERE key GLOB 'workspace/*'")?;
+                let mut records = Vec::new();
+                for bytes in query.query_map([], |row| row.get::<_, Vec<u8>>(0))? {
+                    let r: Record = serde_json::from_slice(&bytes?)?;
+                    if r.swarm_id == actor.swarm_id {
+                        records.push(r);
+                    }
+                }
+                let known: Vec<PathBuf> = records.iter().map(|r| canonical(&r.cwd)).collect();
+                let mut live = std::collections::BTreeMap::<String, usize>::new();
+                for r in records.iter().filter(|r| r.state != State::Released) {
+                    *live.entry(r.task_ref.id.clone()).or_default() += 1;
+                }
+                let mut items = Vec::new();
+                for r in records.iter().filter(|r| r.state != State::Released && only.as_ref().is_none_or(|id| id == &r.task_ref.id)) {
+                    let task_status = status(r.task_ref.id.clone()).map_or_else(|| "unknown".to_owned(), |(_, s)| s);
+                    let exists = worktrees.contains(&canonical(&r.cwd));
+                    let mut findings = Vec::new();
+                    if task_status != "unknown" && !super::work_items::live_status(&task_status) {
+                        findings.push("release_due");
+                    }
+                    if r.state == State::Failed {
+                        findings.push("release_failed");
+                    }
+                    if !exists && r.state != State::Preparing {
+                        findings.push("missing_worktree");
+                    }
+                    if live.get(&r.task_ref.id).is_some_and(|n| *n > 1) {
+                        findings.push("multiple_live_attempts");
+                    }
+                    items.push(json!({"workspace_id":r.workspace_id,"revision":r.revision,"state":r.state,
+                        "task":r.task_ref.path,"task_status":task_status,"cwd":r.cwd,"worktree_exists":exists,
+                        "findings":findings,"error":r.error}));
+                }
+                let unmanaged: Vec<_> = if only.is_none() {
+                    worktrees.iter().filter(|p| **p != repo && !known.contains(p)).collect()
+                } else {
+                    Vec::new()
+                };
+                let truncated = items.len() > 128 || unmanaged.len() > 128;
+                items.truncate(128);
+                Ok(Begun {
+                    value: json!({"workspaces":items,"unmanaged_worktrees":unmanaged.into_iter().take(128).collect::<Vec<_>>(),"truncated":truncated,
+                        "guidance":"release_due/release_failed: close the writer seat, keep only generated outputs dirty, then workspace_release {workspace_id, expected_revision}. unmanaged_worktrees have no record: verify every commit is on main (git cherry), check lsof, then remove them by hand."}),
                     work: None,
                 })
             }

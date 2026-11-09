@@ -331,6 +331,15 @@ fn same_source(r: &Record) -> Result<()> {
     }
     Ok(())
 }
+/// Every checkout Git knows for `repo`, main checkout first (porcelain order).
+pub(super) fn worktrees(repo: &Path) -> Result<Vec<std::path::PathBuf>> {
+    let list = checked(repo, &["worktree", "list", "--porcelain"])?;
+    Ok(list
+        .lines()
+        .filter_map(|line| line.strip_prefix("worktree "))
+        .map(std::path::PathBuf::from)
+        .collect())
+}
 fn registered(r: &Record) -> Result<bool> {
     let list = checked(&r.source.repository, &["worktree", "list", "--porcelain"])?;
     let expected = format!("worktree {}", r.cwd.to_string_lossy());

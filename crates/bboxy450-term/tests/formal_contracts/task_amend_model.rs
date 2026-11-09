@@ -85,6 +85,8 @@ fn amendment(control: Option<&str>) -> Model {
         ]),
         &[(1, Int(6))],
     );
+    // task_close: only an accepted task becomes done; the brief stays frozen.
+    action(&mut m, "CloseAccepted", eq(1, 6), &[(1, Int(7))]);
     let owner = match control {
         Some("Worker") => eq(0, 1).or(eq(0, 0)),
         Some("Delegator") => eq(0, 1).or(eq(0, 2)),

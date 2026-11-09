@@ -4398,7 +4398,9 @@ fn mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_onl
         )["isError"],
         true
     );
-    assert_eq!(data(accept())["task_status"], "accepted");
+    let accepted = data(accept());
+    assert_eq!(accepted["task_status"], "accepted");
+    assert_eq!(accepted["hints"][0]["params"]["name"], "task_close");
     assert_eq!(f.task_document().metadata["status"], "accepted");
     // Accepted and done are frozen: Reject is live-only, like Report and Delegate.
     let reject = || {
@@ -4411,6 +4413,35 @@ fn mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_onl
     };
     assert!(reject().to_string().contains("closed task cannot be rejected"));
     assert_eq!(f.task_document().metadata["status"], "accepted");
+    // task_close: accepted -> done, then hints guide seat close and worktree cleanup.
+    let close = || {
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "task_close",
+            json!({"task_path":f.task_path()}),
+        )
+    };
+    let closed = data(close());
+    assert_eq!(closed["task_status"], "done");
+    assert_eq!(f.task_document().metadata["status"], "done");
+    let names: Vec<_> = closed["hints"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|h| h["params"]["name"].as_str().unwrap().to_owned())
+        .collect();
+    assert_eq!(names, ["seat_close", "workspace_audit"]);
+    assert_eq!(
+        closed["hints"][0]["params"]["arguments"]["seat_id"],
+        f.own.id.to_string()
+    );
+    assert!(close().to_string().contains("only an accepted task can be closed"));
+    assert_eq!(
+        f.mutate(f.own.id, Ulid::new(), "task_close", json!({"task_path":f.task_path()}))["isError"],
+        true,
+        "workers cannot close tasks"
+    );
     let mut done = f.task_metadata();
     done["status"] = json!("done");
     write(done);
@@ -9737,4 +9768,90 @@ fn mcp_feedback_socket_reaches_structured_only_clients_without_a_new_bridge() {
     assert_eq!(result["structuredContent"]["hints"][0]["params"]["name"], "knowledge_orient");
     let text: Value = serde_json::from_str(result["content"][0]["text"].as_str().unwrap()).unwrap();
     assert_eq!(text, result["structuredContent"]);
+}
+
+// keeps: KB skills — skills/<name>/SKILL.md documents are listed, searched and read
+// with origin kb; an invalid skill is reported beside the others, never fatal.
+#[test]
+fn kb_skills_are_listed_searched_and_read_with_kb_origin() {
+    let f = Fixture::new();
+    let skills = f.config.repository.join(".bboxy/skills");
+    let body = "---\nname: land-cut\ndescription: Land a signed cut through the lean gate.\n---\n# Land a cut\n\nRebase, run make land, push.\n";
+    std::fs::create_dir_all(skills.join("land-cut")).unwrap();
+    std::fs::write(skills.join("land-cut/SKILL.md"), body).unwrap();
+    std::fs::create_dir_all(skills.join("wrong-dir")).unwrap();
+    std::fs::write(
+        skills.join("wrong-dir/SKILL.md"),
+        "---\nname: other-name\ndescription: mismatched\n---\nbody\n",
+    )
+    .unwrap();
+    let list = data(f.call(f.own.id, Ulid::new(), "skill_list", json!({})));
+    let kb: Vec<_> = list["skills"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .filter(|s| s["origin"] == "bboxy450-term/kb")
+        .collect();
+    assert_eq!(kb.len(), 1, "{list}");
+    assert_eq!(kb[0]["name"], "land-cut");
+    assert!(list["provider_error"].to_string().contains("skill_name_mismatch"), "{list}");
+    let found = data(f.call(f.own.id, Ulid::new(), "skill_search", json!({"query":"make land"})));
+    assert_eq!(found["skills"][0]["name"], "land-cut", "{found}");
+    assert!(found["skills"][0].get("content").is_none(), "search returns metadata only");
+    let none = data(f.call(f.own.id, Ulid::new(), "skill_search", json!({"query":"zzqqxx"})));
+    assert_eq!(none["skills"].as_array().unwrap().len(), 0);
+    let uri = kb[0]["uri"].as_str().unwrap();
+    let read = data(f.call(f.own.id, Ulid::new(), "skill_read", json!({"uri":uri})));
+    assert_eq!(read["skill"]["content"], body);
+}
+
+// keeps: close-out rigor — acceptance refuses report commits that are not on
+// origin/main, and workspace_audit lists Git worktrees that have no record.
+#[test]
+fn acceptance_requires_origin_main_commit_and_audit_finds_unmanaged_worktrees() {
+    let f = Fixture::new();
+    let repo = f.config.repository.clone();
+    let git = |args: &[&str]| {
+        let out = std::process::Command::new("git")
+            .arg("-C")
+            .arg(&repo)
+            .args(["-c", "user.name=fixture", "-c", "user.email=fixture@invalid", "-c", "commit.gpgsign=false"])
+            .args(args)
+            .output()
+            .unwrap();
+        assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+        String::from_utf8(out.stdout).unwrap().trim().to_owned()
+    };
+    git(&["init", "-q", "-b", "main"]);
+    git(&["commit", "-q", "--allow-empty", "-m", "base"]);
+    git(&["update-ref", "refs/remotes/origin/main", "HEAD"]);
+    let on_main = git(&["rev-parse", "HEAD"]);
+    git(&["switch", "-q", "-c", "side"]);
+    git(&["commit", "-q", "--allow-empty", "-m", "unlanded"]);
+    let unlanded = git(&["rev-parse", "HEAD"]);
+    git(&["switch", "-q", "main"]);
+    let write = |metadata: Value| {
+        f.task_file(metadata);
+    };
+    let report = |commit: &str| {
+        data(f.mutate(f.own.id, Ulid::new(), "task_report", json!({"task_path":f.task_path(),
+            "summary":"Fixture report: verified","commit":commit,"verify_result":verification("true",0,json!([]))})));
+    };
+    let accept = || f.mutate(f.oracle.id, Ulid::new(), "task_accept", json!({"task_path":f.task_path()}));
+    write(f.task_metadata());
+    report(&unlanded);
+    assert!(accept().to_string().contains("is not on origin/main"), "unlanded commit refused");
+    assert_eq!(f.task_document().metadata["status"], "reported");
+    report(&on_main);
+    assert_eq!(data(accept())["task_status"], "accepted");
+    let side = repo.with_file_name(format!("{}-side", repo.file_name().unwrap().to_string_lossy()));
+    git(&["worktree", "add", "-q", side.to_str().unwrap(), "side"]);
+    let audit = data(f.call(f.oracle.id, Ulid::new(), "workspace_audit", json!({})));
+    let side = side.canonicalize().unwrap();
+    assert!(
+        audit["unmanaged_worktrees"].as_array().unwrap().iter().any(|p| p == side.to_str().unwrap()),
+        "{audit}"
+    );
+    assert_eq!(f.call(f.own.id, Ulid::new(), "workspace_audit", json!({}))["isError"], true);
+    git(&["worktree", "remove", side.to_str().unwrap()]);
 }

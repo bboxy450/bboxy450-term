@@ -32,7 +32,10 @@ pub(crate) fn recovery(op: crate::Ulid) -> Vec<Value> {
     )]
 }
 
-/// All tool edges target reads available to both worker and Oracle roles.
+/// Tool edges target reads available to both worker and Oracle roles, except
+/// after the Oracle-only close-out tools (task_accept, task_close,
+/// workspace_audit): those guide the Oracle through accept → close → seat_close
+/// → workspace_release, one step per hint. Advice never performs the step.
 fn next(call: &Call, result: &Value) -> Vec<Value> {
     let data = &result["structuredContent"];
     if matches!(
@@ -154,6 +157,59 @@ fn next(call: &Call, result: &Value) -> Vec<Value> {
                 hints.extend(recovery(op));
             }
             return hints;
+        }
+        "task_accept" => {
+            if let Some(path) = call.args["task_path"].as_str() {
+                return vec![tool(
+                    "task_close",
+                    json!({"task_path":path}),
+                    "Accepted. Once the work is landed on origin/main, close the task as done; the next hints guide closing its seat and releasing its worktree.",
+                )];
+            }
+            return Vec::new();
+        }
+        "task_close" => {
+            let mut hints = Vec::new();
+            if let Some(seat) = data["assignee"]
+                .as_str()
+                .and_then(|a| a.strip_prefix("seat:"))
+                .filter(|seat| seat.parse::<crate::Ulid>().is_ok())
+            {
+                hints.push(tool(
+                    "seat_close",
+                    json!({"seat_id":seat}),
+                    "Task is done. Now consider closing the assignee's seat if it holds no other live task; finished seats are clutter (60 s undo).",
+                ));
+            }
+            if let Some(path) = call.args["task_path"].as_str() {
+                hints.push(tool(
+                    "workspace_audit",
+                    json!({"task_path":path}),
+                    "Then clean up the task's worktree: audit returns a workspace_release hint for each release-ready checkout.",
+                ));
+            }
+            return hints;
+        }
+        "workspace_audit" => {
+            return data["workspaces"]
+                .as_array()
+                .into_iter()
+                .flatten()
+                .filter(|w| {
+                    w["worktree_exists"] == true
+                        && w["findings"].as_array().is_some_and(|f| {
+                            f.iter().any(|f| f == "release_due" || f == "release_failed")
+                        })
+                })
+                .take(8)
+                .map(|w| {
+                    tool(
+                        "workspace_release",
+                        json!({"workspace_id":w["workspace_id"],"expected_revision":w["revision"]}),
+                        "Release this worktree after its writer seat is closed and only generated outputs remain; commits are kept on the branch.",
+                    )
+                })
+                .collect();
         }
         "workspace_prepare" | "workspace_release" => {
             return data["workspace"]["workspace_id"].as_str().map(|id|vec![tool("workspace_get",json!({"workspace_id":id}),"Inspect the durable workspace state. Preparing/releasing is not readiness; never replace an unknown operation.")]).unwrap_or_default();

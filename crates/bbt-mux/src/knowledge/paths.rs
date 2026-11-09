@@ -85,6 +85,7 @@ mod tests {
             ("specs/auth/a.md", "spec"),
             ("research/a.md", "research"),
             ("e2e/a.md", "e2e"),
+            ("skills/land/SKILL.md", "skill"),
             ("policies/a.md", "policy"),
             ("policy/a.md", "policy"),
         ] {

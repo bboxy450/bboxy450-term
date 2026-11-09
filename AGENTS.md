@@ -153,12 +153,15 @@ Drive this app through its flags, `ctl`, sockets and captures. Never inject OS k
 
 **Track work in the built-in bboxy task system** (`.bboxy/tasks/`, through the bboxy MCP `knowledge_*`/`task_*` tools or `ctl task`), never in GitKB tasks, even when a seat's swarm selects a GitKB knowledge provider. Create tasks only through `knowledge_write`, `task_delegate` or `ctl task create`, never as hand-written Markdown: the tools set a native status (`open`…`done`) and an owner, which `task_*` lifecycle requires. A task left without an owner is closed by the operator (`ctl task reconcile`); a legacy status goes through `task_import`. Use GitHub for handoffs. **GitKB, ATC and ICQ are retired as workflow tools; never invoke `git-kb` for this repository's tasks or notes.** Only the GitKB plugin and its tests call it. `scripts/land.sh` runs the signed landing gates and records its receipt locally, without messaging. Use it when the brief requires it; use the Make targets above for build/test/install work. Do not recruit, assign, merge or publish outside that brief.
 
-**Close out landed work at once** (operator, 2026-11-02). After an Executor's work lands, the Oracle does three things straight away:
-- marks its task `accepted` (or `done`) with the landing commit and the verification evidence;
-- closes the Executor's seat with MCP `seat_close`;
-- removes its worktree with `git worktree remove` and `git worktree prune`.
+**Close out landed work at once** (operator, 2026-11-02), entirely through MCP, following the hints each step returns:
+- `task_accept` once the work is reported and verified. It refuses report commits that are not on `origin/main`.
+- `task_close` (accepted → done). Its hints lead to the next two steps.
+- `seat_close` the assignee's seat if it holds no other live task.
+- `workspace_audit {task_path}`, then `workspace_release` each release-ready worktree. Release refuses unpreserved commits, dirty files or open processes, and never force-removes.
 
-Before removing a worktree, check that every commit on it is on main (`git cherry origin/main HEAD`, matching subjects for rebased cuts), that only generated outputs are dirty, and that no process has it open (`lsof`). Keep a seat or worktree only while it still has assigned work. Finished seats and stale worktrees are clutter and use disk.
+`workspace_audit` with no arguments also lists unmanaged worktrees (no record). Remove those by hand only after `git cherry origin/main HEAD` shows nothing unlanded and `lsof` shows no users. Keep a seat or worktree only while it still has assigned work. Finished seats and stale worktrees are clutter and use disk.
+
+**Skills live in the KB** at `.bboxy/skills/<name>/SKILL.md` (`skill` document type, Oracle-written through `knowledge_write`), and `.agents/skills` links to them so every harness sees the same repository-crafted skills. Find them with MCP `skill_search` and read them with `skill_read`.
 
 The Oracle verifies landed code and logs; the Architect owns interface/spec consistency; Creativity owns the reference lab. Design gaps are written into the relevant spec/interface, not answered only in a message. Operator instructions outrank defaults.
 

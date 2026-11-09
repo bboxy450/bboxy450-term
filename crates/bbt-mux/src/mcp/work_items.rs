@@ -468,6 +468,7 @@ pub(crate) fn mutation(tool: &str) -> bool {
             | "task_delegate"
             | "task_reassign"
             | "task_accept"
+            | "task_close"
             | "task_reject"
             | "task_reconcile"
             | "task_import"
@@ -516,6 +517,7 @@ pub(crate) fn catalogue(actor: &Actor) -> Vec<Value> {
             ("task_delegate", "Assign a scoped task and send its signed brief. Omit role to use the target’s current role; an explicit role must be that exact role or an authorized legacy executor/oracle/creativity override.", json!({"task_path":path,"seat_id":id,"role":{"type":"string","minLength":1,"maxLength":128,"description":"The target's exact current role, or an authorized legacy executor/oracle/creativity override."}}), vec!["task_path","seat_id"]),
             ("task_reassign", "Move responsibility to an existing seat, releasing the old assignee and waking the new one.", json!({"task_path":path,"seat_id":id}), vec!["task_path","seat_id"]),
             ("task_accept", "Accept only a reported task with matching verify command, recorded exit zero, evidence for every declared criterion and a valid matching report when linked.", json!({"task_path":path}), vec!["task_path"]),
+            ("task_close", "Close an accepted task as done. The task's report commits must be on origin/main. Then follow the returned hints: close the assignee's seat and release its worktree.", json!({"task_path":path}), vec!["task_path"]),
             ("task_reject", "Reject a scoped task with a recorded reason and wake its assignee.", json!({"task_path":path,"reason":text}), vec!["task_path","reason"]),
             ("task_reconcile", "Record an evidenced historical disposition as done, without fresh acceptance or historical wakes.", json!({"task_path":path,"disposition":{"enum":["implemented","superseded","cancelled"]},"reason":text,"evidence":{"type":"array","minItems":1,"maxItems":128,"items":text}}), vec!["task_path","disposition","reason","evidence"]),
             ("task_import", "Atomically import pinned local source records and audited dispositions into the exact selected knowledge root; no historical wakes.", json!({"expected_root":path,"manifest_path":path,"audit_path":path,"source_dir":path,"bundle_sha256":{"type":"string","pattern":"^[a-f0-9]{64}$"},"owner_seat":id}), vec!["expected_root","manifest_path","audit_path","source_dir","bundle_sha256","owner_seat"]),
@@ -656,6 +658,7 @@ pub(crate) enum Action {
     Delegate { target: SeatRecord, role: String },
     Reassign(SeatRecord),
     Accept,
+    Close,
     Reject(String),
     Reconcile(Reconcile),
 }
@@ -784,6 +787,7 @@ pub(crate) fn prepare(
         "task_delegate"
             | "task_reassign"
             | "task_accept"
+            | "task_close"
             | "task_reject"
             | "task_reconcile"
             | "task_import"
@@ -988,9 +992,19 @@ pub(crate) fn prepare(
             let args: TaskPath = tools::parse(&call.args)?;
             let document = task(&args.task_path)?;
             linked_report(index, &document)?;
+            integrated(index, &document)?;
             Effect::Task {
                 document,
                 action: Box::new(Action::Accept),
+            }
+        }
+        "task_close" => {
+            let args: TaskPath = tools::parse(&call.args)?;
+            let document = task(&args.task_path)?;
+            integrated(index, &document)?;
+            Effect::Task {
+                document,
+                action: Box::new(Action::Close),
             }
         }
         "task_reject" => {
@@ -1461,6 +1475,15 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
                 format!("Task {task_id} accepted: {path}"),
             ));
         }
+        Action::Close => {
+            if current != "accepted" {
+                return Err(format!(
+                    "only an accepted task can be closed (status is {current}); task_accept it first, or record history with task_reconcile"
+                ));
+            }
+            doc.metadata["status"] = json!("done");
+            doc.metadata["closed"] = json!({"by":actor.reference(),"op_id":call.op_id});
+        }
         Action::Reject(reason) => {
             let assignee = assignee.ok_or("task has no assignee")?;
             // TaskAmendment models Reject as live-only (status < accepted).
@@ -1491,7 +1514,7 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
         })
         .collect::<Checked<Vec<_>>>()?;
     Ok(Plan {
-        data: json!({"status":"accepted","task_id":task_id,"path":path,"task_status":doc.metadata["status"],"message_ids":wakes.iter().map(|w|w.id).collect::<Vec<_>>()}),
+        data: json!({"status":"accepted","task_id":task_id,"path":path,"task_status":doc.metadata["status"],"assignee":doc.metadata["assignee"],"message_ids":wakes.iter().map(|w|w.id).collect::<Vec<_>>()}),
         writes: vec![Update {
             path: doc.path,
             metadata: doc.metadata,
@@ -1606,6 +1629,57 @@ pub(crate) fn linked_report(index: &impl TaskDocuments, document: &Document) -> 
     }
     Ok(())
 }
+/// A task is live until it is accepted or done. Legacy "assigned"/"active"
+/// records predate the native lifecycle and stay live.
+pub(crate) fn live_status(status: &str) -> bool {
+    matches!(
+        status,
+        "open" | "claimed" | "running" | "reported" | "rejected" | "blocked" | "assigned" | "active"
+    )
+}
+
+/// Report commits must already be on the integration ref (`origin/main`) of the
+/// Git checkout holding the knowledge root. Values that are not commit SHAs, and
+/// roots without Git or `origin/main`, are unchecked rather than refused.
+fn integrated(index: &impl TaskDocuments, doc: &Document) -> Checked<()> {
+    let Some(commit) = doc.metadata["report"]["commit"]
+        .as_str()
+        .map(str::trim)
+        .filter(|c| (7..=64).contains(&c.len()) && c.bytes().all(|b| b.is_ascii_hexdigit()))
+    else {
+        return Ok(());
+    };
+    let Ok(root) = index.import_root() else {
+        return Ok(());
+    };
+    let git = |args: &[&str]| {
+        std::process::Command::new("git")
+            .arg("-C")
+            .arg(&root)
+            .args(args)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .status()
+            .ok()
+            .and_then(|status| status.code())
+    };
+    if git(&["rev-parse", "--verify", "--quiet", "origin/main^{commit}"]) != Some(0) {
+        return Ok(());
+    }
+    if git(&["cat-file", "-e", &format!("{commit}^{{commit}}")]) != Some(0) {
+        return Err(format!(
+            "report commit {commit} is not in this repository; push and fetch it, or land it before acceptance"
+        ));
+    }
+    match git(&["merge-base", "--is-ancestor", commit, "origin/main"]) {
+        Some(0) => Ok(()),
+        _ => Err(format!(
+            "report commit {commit} is not on origin/main; land it (make land) and fetch before acceptance"
+        )),
+    }
+}
+
 fn acceptance(doc: &Document) -> Checked<()> {
     if verify_revision(&doc.metadata["report"])? != verify_revision(&doc.metadata)? {
         return Err("task verify changed after reporting; a fresh report is required".into());

@@ -370,6 +370,10 @@ impl Host {
     pub(crate) fn root_id(&self) -> &str {
         &self.0.id
     }
+    /// The repository (or bare knowledge directory) this host serves.
+    pub(crate) fn root_path(&self) -> &std::path::Path {
+        &self.0.root
+    }
     pub(crate) fn close(&self) {
         self.0.plugin_host.close();
         let external = self

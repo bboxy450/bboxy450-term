@@ -97,6 +97,12 @@ pub const DOCUMENT_TYPES: &[DocumentType] = &[
         writing: "State the goal, prerequisites, inputs, steps, examples, expected result and verification. Name the tools and permissions needed, plus common failures and recovery steps. A recipe may describe any tool or workflow; reading it grants no execution authority. Requires Oracle authority to write through MCP.",
     },
     DocumentType {
+        kind: "skill",
+        purpose: "Repository-crafted guidance a harness loads into its context for a kind of work. Served by skill_list, skill_search and skill_read, with signed revisions and provenance like any document, so skills can be improved from evidence.",
+        path: "skills/<name>/SKILL.md",
+        writing: "Agent Skills format: frontmatter name (lowercase words joined by hyphens, equal to the directory name) and description (when to use it), then concise Markdown instructions. Link the reports or research that motivated a revision with derived_from. The repository links .agents/skills to .bboxy/skills so every harness sees the same skills. A skill grants no authority. Requires Oracle authority to write through MCP.",
+    },
+    DocumentType {
         kind: "e2e",
         purpose: "An end-to-end acceptance record for one promised user-facing function. It records the procedure, observed result and coverage gaps.",
         path: "e2e/<slug>.md",
