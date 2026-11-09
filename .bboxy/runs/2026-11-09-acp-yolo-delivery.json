@@ -1,0 +1,81 @@
+{
+  "source_commit": "3681c3b6a9d93ec98258ff7e603c7cb406ede8c2",
+  "harness_commit": "d64b817091189f106c8bf245408a915683f754c4",
+  "commands": [
+    {
+      "command": "make test-acp-unrestricted TARGET_DIR=/Users/feral/mydev/bboxy450-term/target",
+      "exit_code": 0,
+      "tests_passed": 30,
+      "log_sha256": "8d80ce06b2c902477f98997b5b78afcdd789098caf44ebcac1f057d0bc5a036a"
+    },
+    {
+      "command": "private pi-acp / omp --mode acp --yolo initialize probes",
+      "exit_code": 0,
+      "tools_executed": 0,
+      "evidence_sha256": "e267263bb335ef986291e1942e73582b8c89ff94928e0c43c528106b679845da"
+    },
+    {
+      "command": "BBOXY_CARGO_TARGET_DIR=/Users/feral/mydev/bboxy450-term/target make -o check-licenses bundle TARGET_DIR=/Users/feral/mydev/bboxy450-term/target",
+      "exit_code": 0,
+      "log_sha256": "e00e10e5f39c0b105fd062212d3a74ea4c77d936518f503505ba2ff999ef5ab5"
+    },
+    {
+      "command": "make reopen-prepared BUNDLE=target/release/bboxy450-term.app GUI_CTL=1",
+      "exit_code": 0,
+      "log_sha256": "78e8df0740cdf51b58239cbd1422ecca6742b578b18d6d4948577d5357265bf9"
+    }
+  ],
+  "backend_before": {
+    "supervisor": {
+      "pid": 24351,
+      "birth": [
+        1793985974,
+        714884
+      ]
+    },
+    "logic": {
+      "pid": 24354,
+      "birth": [
+        1793985974,
+        732777
+      ]
+    }
+  },
+  "backend_after": {
+    "supervisor": {
+      "pid": 24351,
+      "birth": [
+        1793985974,
+        714884
+      ]
+    },
+    "logic": {
+      "pid": 24354,
+      "birth": [
+        1793985974,
+        732777
+      ]
+    }
+  },
+  "gui": {
+    "pid": 88974,
+    "instance": "01M715E0GVSSF4DP4M16M7PQ4Y",
+    "source_revision": "3681c3b6a9d93ec98258ff7e603c7cb406ede8c2"
+  },
+  "ready": {
+    "running": true,
+    "backend_ready": true,
+    "gui_ready": true,
+    "events_ready": true,
+    "frame_seq": 673
+  },
+  "previous_frame_seq": 4,
+  "installed_binary_sha256": {
+    "bboxy450-term": "fc8eed235ce9948eeb5212097deb88479ed5a94690a286e46720ac9f53504dfa",
+    "bboxy450-harness": "9fc285a233072f2d3d12a44f96d03d801ec9f8d0bd21c3686a93825c3fff7cf8"
+  },
+  "worker_receipt_sha256": "db0e060777e6ebde2088864553d9585ff78eb1deed4b0bb63f7a4abc42a7fb4d",
+  "worker_scope": "Ordinary release worker preparation only; consumer verification incomplete",
+  "ci": "operator-authorized bypass; skip-ci signed commits; zero workflow runs observed for both source commits",
+  "broader_onboarding_raster": "failed: conversation scroll restored, f32::MAX versus 123; outside scoped delivery checks"
+}
