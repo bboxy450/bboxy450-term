@@ -863,6 +863,7 @@ table.tok th { color: var(--fg-dim); font-weight: 500; }
 /* document view (work-items.md): frontmatter header, body, provenance strip, markdown-graph rail */
 .doc-view { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 18px; padding: 18px; background: var(--bg); border-radius: var(--r-pill); color: var(--fg); font-size: var(--t-body, 13px); }
 @media (max-width: 760px) { .doc-view { grid-template-columns: 1fr; } }
+.doc-view.solo { grid-template-columns: minmax(0, 1fr); }
 .doc-main { min-width: 0; }
 .doc-head { border-left: 3px solid var(--doc); padding: var(--s1) 0 var(--s1) var(--s6); margin-bottom: var(--s6); }
 .doc-top { display: flex; align-items: center; gap: var(--s4); flex-wrap: wrap; }

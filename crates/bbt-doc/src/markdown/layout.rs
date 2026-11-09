@@ -519,7 +519,7 @@ impl Markdown {
                     .frontmatter
                     .fields
                     .keys()
-                    .filter(|k| !KNOWN_FIELDS.contains(&k.as_str()))
+                    .filter(|k| !KNOWN_FIELDS.contains(&k.as_str()) && k.as_str() != "number")
                     .cloned()
                     .collect();
                 if extra.is_empty() {
@@ -560,6 +560,48 @@ const KNOWN_FIELDS: &[&str] = &[
     "derived_from",
     "digest",
 ];
+/// A frontmatter value as a reader sees it: no YAML quoting or list dashes.
+/// Scalars print bare, a scalar list joins on commas, maps print `key: value`
+/// lines with nested values indented beneath their key.
+fn plain_value(value: &serde_yaml::Value, depth: usize) -> String {
+    use serde_yaml::Value as V;
+    let scalar = |v: &V| match v {
+        V::String(s) => Some(s.clone()),
+        V::Null => Some(String::new()),
+        V::Bool(b) => Some(b.to_string()),
+        V::Number(n) => Some(n.to_string()),
+        _ => None,
+    };
+    if let Some(s) = scalar(value) {
+        return s;
+    }
+    let pad = "  ".repeat(depth);
+    match value {
+        V::Sequence(items) if items.iter().all(|v| scalar(v).is_some()) => items
+            .iter()
+            .filter_map(scalar)
+            .collect::<Vec<_>>()
+            .join(", "),
+        V::Sequence(items) => items
+            .iter()
+            .map(|v| format!("{pad}{}", plain_value(v, depth + 1).trim_start()))
+            .collect::<Vec<_>>()
+            .join("\n"),
+        V::Mapping(map) => map
+            .iter()
+            .map(|(k, v)| {
+                let k = scalar(k).unwrap_or_default();
+                match scalar(v) {
+                    Some(s) => format!("{pad}{k}: {s}"),
+                    None => format!("{pad}{k}:\n{}", plain_value(v, depth + 1)),
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n"),
+        V::Tagged(tagged) => plain_value(&tagged.value, depth),
+        _ => String::new(),
+    }
+}
 fn finite_width(width: f32) -> f32 {
     if width.is_finite() { width.max(0.) } else { 0. }
 }
@@ -1491,9 +1533,11 @@ impl Render<'_> {
             .map(|(r, min)| min + r.w)
             .collect();
         let mut lines = vec![];
+        // An empty header draws no row; data rows keep their indices from 1.
         for (ri, cells) in std::iter::once(header)
             .chain(rows.iter().map(Vec::as_slice))
             .enumerate()
+            .skip(usize::from(header.is_empty()))
         {
             let mut items = vec![];
             for (i, width) in widths.iter().copied().enumerate() {
@@ -1691,16 +1735,9 @@ impl Render<'_> {
             if evidence(key) {
                 continue;
             }
-            let value = match value {
-                serde_yaml::Value::String(s) => s.clone(),
-                _ => serde_yaml::to_string(value)
-                    .unwrap_or_default()
-                    .trim()
-                    .to_owned(),
-            };
             rows.push(vec![
                 vec![Inline::Code(key.clone())],
-                vec![Inline::Text(value)],
+                vec![Inline::Text(plain_value(value, 0))],
             ]);
         }
         let mut children = vec![];
@@ -1760,14 +1797,16 @@ impl Render<'_> {
             }
         }
         if !rows.is_empty() {
+            let wide = Render {
+                width: self.table_width,
+                ..*self
+            };
             children.push(
-                self.table(
+                wide.table(
                     "metadata/grid",
                     &[TableAlign::Start; 2],
-                    &[
-                        vec![Inline::Text("Field".into())],
-                        vec![Inline::Text("Value".into())],
-                    ],
+                    // A key/value grid needs no "Field | Value" header row.
+                    &[],
                     &rows,
                     // Generated YAML/cryptographic metadata keeps its existing
                     // min-word horizontal viewport; fitting is for GFM tables.

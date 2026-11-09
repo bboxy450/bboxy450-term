@@ -177,6 +177,48 @@ pub(super) fn page_pixels(
     )?)
 }
 
+/// Real records as the app shows them: the document modal over a window of
+/// `size`, in both themes, top viewport. For reviewing the viewer on real data.
+pub fn preview(root: &Path, out: &Path, paths: &[String], size: [u32; 2]) -> Result<()> {
+    fs::create_dir_all(out)?;
+    let metrics = Metrics::default();
+    let mut renderer = bbt_render::chrome::ChromeRenderer::new(crate::images()?)?;
+    let [width, height] = size;
+    for relative in paths {
+        let markdown = bbt_doc::parse(&fs::read_to_string(root.join(relative))?);
+        let path = relative.strip_prefix(".bboxy/").unwrap_or(relative);
+        for theme in [ui::Theme::Light, ui::Theme::Dark] {
+            let ctx = ui::Context::new(theme, ui::Density::Cozy);
+            let element =
+                markdown.modal_element(path, true, [width as f32, height as f32], ctx, &metrics);
+            let layout = element.layout(
+                Rect::new(0., 0., width as f32, height as f32),
+                ctx,
+                &metrics,
+            )?;
+            let color = bbt_ui_model::draw::Color::hex(theme.palette().bg).0;
+            let bg = (0..width * height)
+                .flat_map(|_| color.map(|v| (v * 255.).round() as u8))
+                .collect();
+            let pixels = page_pixels(
+                &mut renderer,
+                c::paint_with_draw(&layout, DrawCtx::new(theme, ctx.density)),
+                bg,
+                [width, height],
+                ctx,
+            )?;
+            let name = format!(
+                "{}.{}.png",
+                path.replace('/', "__").trim_end_matches(".md"),
+                gallery::theme_name(theme)
+            );
+            bbt_render::write_png(out.join(&name), &pixels, width, height)?;
+            println!("{}", out.join(name).display());
+        }
+    }
+    Ok(())
+}
+
 pub fn render(root: &Path, out: &Path) -> Result<()> {
     render_mode(root, out, false)
 }

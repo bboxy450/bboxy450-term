@@ -792,10 +792,14 @@
       el('span', { class: 'dig' }, el('code', {}, (pv.digest || '').slice(0, 12)), pv.signed ? el('i', { class: 'ok' }, '✓ signed · ' + pv.signed) : el('i', { class: 'no' }, 'unsigned · no write is anonymous: updated_by stamped')));
     const details = doc.provenanceDetails == null ? null : provenanceDetails(doc.provenanceDetails, opts.provenanceDetailsOpen);
     const main = el('div', { class: 'doc-main' }, head, fm, details, mdLite(bodyAfterTitle(doc.body, doc.title)), prov);
-    const backs = (doc.near || []).filter(x => x.back);
-    const rail = el('div', { class: 'doc-rail' }, el('div', { class: 'rail-h' }, 'markdown graph · neighbourhood'), neighbourhood(doc),
-      el('div', { class: 'rail-legend' }, ...Object.keys(DOC_HUE).map(t => el('span', {}, el('i', { style: 'background:' + DOC_HUE[t] }), t))),
-      backs.length ? el('div', { class: 'rail-h' }, 'backlinks') : null, ...backs.map(x => el('div', { class: 'rail-back' }, el('i', { style: 'background:' + (DOC_HUE[x.type] || 'var(--fg-dim)') }), el('code', {}, x.slug), el('span', {}, x.rel || 'ref'))));
+    // A record with no links has no neighbourhood: no rail, its width goes to the text. No eyebrow headings; the legend
+    // names only the kinds on the graph.
+    const near = doc.near || [], backs = near.filter(x => x.back);
+    if (!near.length) return el('div', { class: 'doc-view solo', style: '--doc:' + hue }, main);
+    const kinds = Object.keys(DOC_HUE).filter(t => t === doc.type || near.some(x => x.type === t));
+    const rail = el('div', { class: 'doc-rail' }, neighbourhood(doc),
+      el('div', { class: 'rail-legend' }, ...kinds.map(t => el('span', {}, el('i', { style: 'background:' + DOC_HUE[t] }), t))),
+      ...backs.map(x => el('div', { class: 'rail-back' }, el('i', { style: 'background:' + (DOC_HUE[x.type] || 'var(--fg-dim)') }), el('code', {}, x.slug), el('span', {}, x.rel || 'ref'))));
     return el('div', { class: 'doc-view', style: '--doc:' + hue }, main, rail);
   }
   // Document modal (document-viewer.md "What it is"): open, scroll, copy maybe, close, feed into the harness. Centred over the

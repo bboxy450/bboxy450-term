@@ -26,8 +26,10 @@ fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let command = args.first().map(String::as_str).unwrap_or("gallery");
     if command == "toolkit" {
-        let out=PathBuf::from(value(&args,"--out").unwrap_or_else(||"target/bboxybook/toolkit".into()));
-        parity::replay_images(&out,&bboxybook::toolkit::cases())?;
+        let out = PathBuf::from(
+            value(&args, "--out").unwrap_or_else(|| "target/bboxybook/toolkit".into()),
+        );
+        parity::replay_images(&out, &bboxybook::toolkit::cases())?;
         return Ok(());
     }
     if command == "documents" {
@@ -38,6 +40,10 @@ fn run() -> Result<()> {
             let root = value(&args, "--root")
                 .map(PathBuf::from)
                 .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."));
+            if let Some(paths) = value(&args, "--preview") {
+                let paths: Vec<String> = paths.split(',').map(str::to_owned).collect();
+                return bboxybook::documents::repository::preview(&root, &out, &paths, [1100, 900]);
+            }
             if args.iter().any(|a| a == "--single-renderer") {
                 return bboxybook::documents::repository::render_single_renderer(&root, &out);
             }

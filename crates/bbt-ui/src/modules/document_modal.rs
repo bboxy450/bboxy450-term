@@ -15,8 +15,8 @@ use bbt_ui_model::{
 };
 use serde::{Deserialize, Serialize};
 pub mod controller;
-pub mod viewer;
 mod diagram;
+pub mod viewer;
 pub use diagram::{Diagram, Figure, FlowEdge, FlowGraph, FlowNode};
 
 impl Diagram {
@@ -938,13 +938,7 @@ impl Build<'_> {
         )
     }
     fn rail(&self, d: &Document) -> c::Element {
-        let mut hf = font(10., 400, false, ui::Color::Muted);
-        hf.tracking_em = 0.12;
-        hf.uppercase = true;
         let mut children = vec![
-            space(2.),
-            text("rail/h0", "markdown graph · neighbourhood", hf).into(),
-            space(6.),
             row(
                 "rail/graph-slot",
                 plain(None, [0.; 4], 0.),
@@ -955,6 +949,8 @@ impl Build<'_> {
             space(4.),
         ];
         let mut legend = vec![];
+        let present =
+            |kind: &str| d.kind.as_deref() == Some(kind) || d.near.iter().any(|n| n.kind == kind);
         for kind in [
             "epic",
             "spec",
@@ -963,7 +959,10 @@ impl Build<'_> {
             "note",
             "invariant",
             "artifact",
-        ] {
+        ]
+        .into_iter()
+        .filter(|kind| present(kind))
+        {
             let mut dot_style = plain(Some(7.), [0.; 4], 3.5);
             dot_style.overrides.width = Some(ui::Length::Px(7.));
             dot_style.overrides.fill = Some(ui::Paint::solid(hue(kind)));
@@ -988,11 +987,6 @@ impl Build<'_> {
         children.push(flow("rail/legend", legend, 4., 10., c::Alignment::Center).into());
         children.push(space(14.));
         let backs: Vec<_> = d.near.iter().filter(|n| n.back).collect();
-        if !backs.is_empty() {
-            children.push(space(0.));
-            children.push(text("rail/h1", "backlinks", hf).into());
-            children.push(space(6.));
-        }
         for (i, n) in backs.iter().enumerate() {
             let mut s = surface(hue(&n.kind), 1., 3.5, [0.; 4]);
             s.overrides.height = Some(ui::Length::Px(7.));
@@ -1118,7 +1112,8 @@ impl Build<'_> {
     }
     fn view(&self, d: &Document, w: f32, modal: bool) -> c::Element {
         let plain_doc = d.kind.is_none();
-        let rail = !plain_doc;
+        // A record with no links has no neighbourhood: its width goes to the text.
+        let rail = !plain_doc && !d.near.is_empty();
         let main_w = (w - 36. - if rail { 298. } else { 0. }).max(0.);
         let mut children = vec![self.heading(d, plain_doc).into(), space(12.)];
         if let Some(notice) = self.notice {

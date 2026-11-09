@@ -259,7 +259,7 @@ window.STYLE = {
   },
   "spacing": {
     "band": 24,
-    "doc_measure": 576,
+    "doc_measure": 720,
     "empty_measure": 240,
     "grid": 8,
     "new_swarm": 40,
