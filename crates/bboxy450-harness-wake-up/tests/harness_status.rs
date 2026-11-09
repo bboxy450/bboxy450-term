@@ -9,7 +9,7 @@
     reason = "private unattended filesystem/socket witnesses, never UI"
 )]
 use bboxy450_harness_wake_up::{
-    Binding, Grade, HarnessRecord, Session, State, StateSource, Ulid,
+    Binding, Grade, HarnessRecord, Session, State, StateSource, Ulid, WaitingKind,
     harness_log::{self, Log},
 };
 use serde_json::{Value, json};
@@ -170,8 +170,17 @@ fn log_reports_open_tool_and_approval_through_quiet_pty_then_clears_detail() {
     f.append(json!({"type":"item_started","turn":"t","item":"a","kind":"approval"}));
     update(&mut log, &mut s, 22_000);
     assert_eq!(s.status.state, State::Waiting);
+    assert_eq!(s.status.waiting_kind, Some(WaitingKind::Permission));
     f.append(json!({"type":"item_completed","item":"a"}));
     update(&mut log, &mut s, 23_000);
+    assert_eq!(s.status.state, State::Active);
+    // An agent's question (ACP elicitation) needs the human: waiting, as a question.
+    f.append(json!({"type":"item_started","turn":"t","item":"q","kind":"question"}));
+    update(&mut log, &mut s, 23_100);
+    assert_eq!(s.status.state, State::Waiting);
+    assert_eq!(s.status.waiting_kind, Some(WaitingKind::Question));
+    f.append(json!({"type":"item_completed","item":"q"}));
+    update(&mut log, &mut s, 23_200);
     assert_eq!(s.status.state, State::Active);
     assert_eq!(s.status.detail.as_deref(), Some("bash"));
     f.append(json!({"type":"item_completed","item":"i"}));

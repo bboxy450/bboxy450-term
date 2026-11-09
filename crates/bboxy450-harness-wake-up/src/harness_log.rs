@@ -134,7 +134,7 @@ pub struct Log {
     epoch: u64,
     observed_ms: u64,
     turns: BTreeSet<String>,
-    items: Vec<(String, String, bool)>,
+    items: Vec<(String, String, Option<&'static str>)>,
     error: Option<String>,
 }
 impl Log {
@@ -260,7 +260,12 @@ impl Log {
                 let kind = e["kind"].as_str().unwrap_or("item");
                 if matches!(
                     kind,
-                    "tool_call" | "terminal" | "approval" | "reasoning" | "agent_message"
+                    "tool_call"
+                        | "terminal"
+                        | "approval"
+                        | "question"
+                        | "reasoning"
+                        | "agent_message"
                 ) {
                     let name = e["head"]["name"]
                         .as_str()
@@ -269,7 +274,11 @@ impl Log {
                     self.items.push((
                         e["item"].to_string(),
                         crate::observe::short(name, 160),
-                        kind == "approval",
+                        match kind {
+                            "approval" => Some("permission"),
+                            "question" => Some("question"),
+                            _ => None,
+                        },
                     ));
                     if self.items.len() > 128 {
                         return Err(invalid("too many open harness items"));
@@ -284,7 +293,11 @@ impl Log {
         Ok(true)
     }
     fn projection(&self) -> Value {
-        let waiting = self.items.iter().rev().find(|(_, _, approval)| *approval);
+        let waiting = self
+            .items
+            .iter()
+            .rev()
+            .find(|(_, _, waiting)| waiting.is_some());
         let state = if self.error.is_some() {
             "errored"
         } else if waiting.is_some() {
@@ -299,7 +312,8 @@ impl Log {
                 .or_else(|| self.items.last())
                 .map(|(_, name, _)| name.as_str())
         });
-        json!({"session":self.session,"state":state,"detail":detail,"log_seq":self.seq,"epoch":self.epoch,"observed_ms":self.observed_ms})
+        let waiting_kind = waiting.and_then(|(_, _, kind)| *kind);
+        json!({"session":self.session,"state":state,"detail":detail,"waiting_kind":waiting_kind,"log_seq":self.seq,"epoch":self.epoch,"observed_ms":self.observed_ms})
     }
 }
 use std::os::unix::fs::OpenOptionsExt;
@@ -356,7 +370,10 @@ pub fn observe(
     );
     obs.resolves = state != State::Waiting;
     obs.detail = event["detail"].as_str().map(str::to_owned);
-    obs.waiting_kind = (state == State::Waiting).then_some(WaitingKind::Permission);
+    obs.waiting_kind = (state == State::Waiting).then(|| match event["waiting_kind"].as_str() {
+        Some("question") => WaitingKind::Question,
+        _ => WaitingKind::Permission,
+    });
     Ok(if session.apply(obs.clone()) {
         vec![obs]
     } else {
