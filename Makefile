@@ -2567,7 +2567,9 @@ test-pane-recovery-formal:
 .PHONY: test-acp-unrestricted
 test-acp-unrestricted:
 	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked --release -p bboxy450-harness --features embedded,acp-agent --test acp_agent --target-dir '$(TARGET_DIR)' -- --test-threads=2
+	cargo test --locked --release --jobs 2 -p bboxy450-harness --features embedded,acp-agent --lib --target-dir '$(TARGET_DIR)' backend::acp_permissions::tests:: -- --test-threads=2; \
+	cargo test --locked --release --jobs 2 -p bboxy450-harness --features embedded,acp-agent --test acp_agent --target-dir '$(TARGET_DIR)' -- --test-threads=1; \
+	cargo test --locked --release --jobs 2 -p bboxy450-harness --features embedded,acp-agent --test harness_onboarding --target-dir '$(TARGET_DIR)' private_discovery_later_addition_and_profile_bytes -- --exact --test-threads=1
 
 .PHONY: check-pane-recovery
 check-pane-recovery:
