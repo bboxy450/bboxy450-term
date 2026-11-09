@@ -143,6 +143,23 @@ fn usage() -> ExitCode {
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.first().map(String::as_str) {
+        Some("mcp") => {
+            // Run by the remote harness as a relayed MCP server (see attach).
+            let (Some(state), Some(session), Some(name)) = (
+                flag(&args, "--state"),
+                flag(&args, "--session"),
+                flag(&args, "--name"),
+            ) else {
+                return usage();
+            };
+            return match bboxy450_term_remote::attach::mcp(Path::new(&state), &session, &name) {
+                Ok(()) => ExitCode::SUCCESS,
+                Err(e) => {
+                    eprintln!("bboxy450-term-remote mcp: {e}");
+                    ExitCode::FAILURE
+                }
+            };
+        }
         Some("stop") => {
             // End the daemon and every harness it started (one process group).
             let Some(state) = flag(&args, "--state") else {

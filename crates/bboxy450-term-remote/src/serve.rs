@@ -36,6 +36,9 @@ struct Inner {
     /// never clears a newer one's.
     out: Option<(u64, Sender<Frame>)>,
     connections: u64,
+    /// MCP relay channels: remote `mcp` processes, by channel id.
+    mcp: BTreeMap<u64, Sender<Frame>>,
+    channels: u64,
 }
 
 pub struct Server {
@@ -81,6 +84,8 @@ impl Server {
                 failed: BTreeMap::new(),
                 out: None,
                 connections: 0,
+                mcp: BTreeMap::new(),
+                channels: 0,
             })),
         })
     }
@@ -277,6 +282,9 @@ impl Server {
                     "link major version mismatch",
                 ));
             }
+            Some(Frame::McpOpen { session, name, .. }) => {
+                return self.mcp_channel(reader, tx, &session, &name);
+            }
             None => return Ok(()),
             Some(_) => return Err(io::Error::new(io::ErrorKind::InvalidData, "expected hello")),
         }
@@ -326,9 +334,66 @@ impl Server {
                     }
                 }
                 Frame::Close { session } => self.close(&session),
+                Frame::McpData { channel, line } => {
+                    if let Some(to) = self.inner.lock().unwrap().mcp.get(&channel) {
+                        let _ = to.send(Frame::McpData { channel, line });
+                    }
+                }
+                Frame::McpClose { channel } => {
+                    if let Some(to) = self.inner.lock().unwrap().mcp.remove(&channel) {
+                        let _ = to.send(Frame::McpClose { channel });
+                    }
+                }
                 _ => {} // remote→local frames and unknown types are ignored
             }
         }
+        // The link ended: its MCP channels end too; remote servers see EOF.
+        let channels: Vec<_> = std::mem::take(&mut self.inner.lock().unwrap().mcp)
+            .into_iter()
+            .collect();
+        for (channel, to) in channels {
+            let _ = to.send(Frame::McpClose { channel });
+        }
+        Ok(())
+    }
+
+    /// One remote `bboxy450-term-remote mcp` process: its lines go to the live
+    /// link as McpData on a fresh channel, and the link's replies come back.
+    fn mcp_channel(
+        &self,
+        reader: &mut impl Read,
+        tx: &Sender<Frame>,
+        session: &str,
+        name: &str,
+    ) -> io::Result<()> {
+        let channel = {
+            let mut inner = self.inner.lock().unwrap();
+            let Some((_, out)) = inner.out.clone() else {
+                let _ = tx.send(Frame::McpClose { channel: 0 });
+                return Ok(()); // no live link: the MCP server ends at once
+            };
+            inner.channels += 1;
+            let channel = inner.channels;
+            inner.mcp.insert(channel, tx.clone());
+            let _ = out.send(Frame::McpOpen {
+                session: session.into(),
+                channel,
+                name: name.into(),
+            });
+            channel
+        };
+        let forward = |f: Frame| {
+            if let Some((_, out)) = &self.inner.lock().unwrap().out {
+                let _ = out.send(f);
+            }
+        };
+        while let Some(frame) = frame::read(reader)? {
+            if let Frame::McpData { line, .. } = frame {
+                forward(Frame::McpData { channel, line });
+            }
+        }
+        self.inner.lock().unwrap().mcp.remove(&channel);
+        forward(Frame::McpClose { channel });
         Ok(())
     }
 }

@@ -48,6 +48,14 @@ fn remote_line(state: &str) -> String {
 }
 
 impl Transport {
+    /// The remote state directory this transport serves.
+    pub fn state(&self) -> &str {
+        match self {
+            Transport::Ssh { state, .. }
+            | Transport::Via { state, .. }
+            | Transport::Local { state, .. } => state,
+        }
+    }
     /// Run one shell line on the remote (install, probes) through the same carrier.
     pub fn shell(&self, line: &str) -> Command {
         let line = format!("{REMOTE_PATH} {line}");
@@ -105,17 +113,40 @@ impl Transport {
 #[derive(Debug, PartialEq, Eq)]
 pub enum Received {
     /// Show this event's envelope for the session.
-    Show { session: String, envelope: String },
+    Show {
+        session: String,
+        envelope: String,
+    },
     /// The view of this session was cleared for a new epoch.
-    Cleared { session: String },
+    Cleared {
+        session: String,
+    },
     /// The op is applied remotely and left the outbox.
-    Applied { message_id: String },
+    Applied {
+        message_id: String,
+    },
     /// The op will never apply; the caller labels it failed.
-    Refused { message_id: String, reason: String },
+    Refused {
+        message_id: String,
+        reason: String,
+    },
     /// Duplicate/stale/out-of-order event, or a frame needing no action.
     Nothing,
     /// The link ended or carried no bytes for the dead-line timeout.
     Down,
+    /// MCP relay: the remote opened, wrote to or closed a channel.
+    McpOpen {
+        session: String,
+        channel: u64,
+        name: String,
+    },
+    McpData {
+        channel: u64,
+        line: String,
+    },
+    McpClose {
+        channel: u64,
+    },
 }
 
 struct Live {
@@ -330,6 +361,11 @@ impl Client {
         Ok(())
     }
 
+    /// Send an MCP relay frame now; MCP is not queued across a drop.
+    pub fn mcp(&mut self, f: &Frame) -> io::Result<()> {
+        self.send(f)
+    }
+
     /// Any op still waiting for its `applied`.
     pub fn has_pending(&self) -> bool {
         self.outbox.has_unacked()
@@ -406,6 +442,17 @@ impl Client {
                 self.outbox.on_applied(&message_id); // retire: it will never apply
                 Received::Refused { message_id, reason }
             }
+            Frame::McpOpen {
+                session,
+                channel,
+                name,
+            } => Received::McpOpen {
+                session,
+                channel,
+                name,
+            },
+            Frame::McpData { channel, line } => Received::McpData { channel, line },
+            Frame::McpClose { channel } => Received::McpClose { channel },
             _ => Received::Nothing,
         }))
     }

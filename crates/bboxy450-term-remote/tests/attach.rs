@@ -96,12 +96,8 @@ fn attach_bridges_acp_lines_to_the_remote_harness_and_rewrites_session_new() {
         "remote cwd"
     );
     assert_eq!(
-        second["result"]["saw"]["mcpServers"]
-            .as_array()
-            .unwrap()
-            .len(),
-        0,
-        "local socket MCP dropped"
+        second["result"]["saw"]["mcpServers"][0]["command"], "bboxy450-term-remote",
+        "local socket MCP becomes a relay"
     );
     drop(stdin);
     let status = child.wait().unwrap();
@@ -272,6 +268,60 @@ fn real_harness_acp_turn_crosses_the_link() {
     let (done, updates) = until(3);
     assert_eq!(done["result"]["stopReason"], "end_turn");
     assert!(updates > 0, "streamed session/update notifications");
+    drop(stdin);
+    assert!(child.wait().unwrap().success());
+}
+
+/// Remote agent that, on session/new, starts its first MCP server the way a
+/// harness would, asks it one question and answers with the reply.
+const MCP_AGENT: &str = "#!/usr/bin/env python3\nimport sys, json, subprocess\nfor line in sys.stdin:\n    m = json.loads(line)\n    if m.get('method') == 'session/new':\n        s = m['params']['mcpServers'][0]\n        p = subprocess.Popen([s['command']] + s['args'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)\n        p.stdin.write(json.dumps({'jsonrpc': '2.0', 'id': 9, 'method': 'tools/list'}) + '\\n'); p.stdin.flush()\n        reply = p.stdout.readline().strip()\n        p.stdin.close(); p.wait(timeout=10)\n        print(json.dumps({'jsonrpc': '2.0', 'id': m['id'], 'result': {'mcp_reply': reply, 'server': s}}))\n    else:\n        print(json.dumps({'jsonrpc': '2.0', 'id': m.get('id'), 'result': {}}))\n    sys.stdout.flush()\n";
+
+/// Stands in for the local `nc -U <bboxy MCP socket>`: answers tools/list.
+const LOCAL_MCP: &str = "#!/usr/bin/env python3\nimport sys, json\nfor line in sys.stdin:\n    m = json.loads(line)\n    print(json.dumps({'jsonrpc': '2.0', 'id': m['id'], 'result': {'tools': ['local-bboxy']}}))\n    sys.stdout.flush()\n";
+
+#[test]
+fn a_remote_harness_reaches_the_local_mcp_server_through_the_link() {
+    let (_guard, dir) = scratch("m");
+    let write = |name: &str, body: &str| {
+        let p = dir.join(name);
+        std::fs::write(&p, body).unwrap();
+        std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o700)).unwrap();
+        p
+    };
+    let agent = write("mcp-agent.py", MCP_AGENT);
+    let local = write("local-mcp.py", LOCAL_MCP);
+    unsafe { std::env::set_var("BBOXY450_REMOTE_AGENT", &agent) };
+    std::fs::create_dir_all(dir.join("app")).unwrap();
+    let mut child = Command::new(env!("CARGO_BIN_EXE_bboxy450-term-remote"))
+        .args(["attach", "--via"])
+        .arg(dir.join("carrier.sh"))
+        .arg("--state")
+        .arg(dir.join("s"))
+        .args(["--swarm", "sw", "--session", "seat", "--cwd"])
+        .arg(dir.join("app"))
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .spawn()
+        .unwrap();
+    let mut stdin = child.stdin.take().unwrap();
+    let mut lines = BufReader::new(child.stdout.take().unwrap()).lines();
+    let new = serde_json::json!({"jsonrpc":"2.0","id":2,"method":"session/new","params":{"cwd":"/local","mcpServers":[
+        {"name":"bboxy","command":local.to_str().unwrap(),"args":["-U","/tmp/not-used.sock"],"env":[]}]}});
+    writeln!(stdin, "{new}").unwrap();
+    stdin.flush().unwrap();
+    let reply: serde_json::Value = serde_json::from_str(&lines.next().unwrap().unwrap()).unwrap();
+    assert_eq!(reply["id"], 2);
+    assert_eq!(
+        reply["result"]["server"]["command"], "bboxy450-term-remote",
+        "remote ran the relay"
+    );
+    let answer: serde_json::Value =
+        serde_json::from_str(reply["result"]["mcp_reply"].as_str().unwrap()).unwrap();
+    assert_eq!(answer["id"], 9);
+    assert_eq!(
+        answer["result"]["tools"][0], "local-bboxy",
+        "the local MCP server answered across the link"
+    );
     drop(stdin);
     assert!(child.wait().unwrap().success());
 }

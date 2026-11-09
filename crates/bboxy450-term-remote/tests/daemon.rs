@@ -131,7 +131,10 @@ fn sessions_outlive_a_dropped_link_and_queued_ops_apply_once_on_reconnect() {
     pinned.disconnect();
     // A plain daemon restart keeps its identity: reconnect is accepted.
     let pid: String = std::fs::read_to_string(state.join("daemon.pid")).unwrap();
-    std::process::Command::new("kill").arg(pid.trim()).status().unwrap();
+    std::process::Command::new("kill")
+        .arg(pid.trim())
+        .status()
+        .unwrap();
     std::thread::sleep(std::time::Duration::from_millis(300));
     pinned
         .reconnect(std::time::Instant::now() + std::time::Duration::from_secs(10))

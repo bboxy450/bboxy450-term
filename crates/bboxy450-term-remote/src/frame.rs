@@ -94,6 +94,17 @@ pub enum Frame {
     },
     /// Remote → local: an op was not journalled or applied (unknown session).
     Refused { message_id: String, reason: String },
+    /// Remote → local: a remote harness started MCP server `name` for
+    /// `session`; the local side runs the matching local server for `channel`.
+    McpOpen {
+        session: String,
+        channel: u64,
+        name: String,
+    },
+    /// One MCP stdio line on a channel, either direction.
+    McpData { channel: u64, line: String },
+    /// A channel ended, either direction.
+    McpClose { channel: u64 },
     /// Remote → local keepalive; a link that carries no bytes for the
     /// dead-line timeout is treated as gone (time-based liveness counts any
     /// bytes, so a big frame on a slow link is never mistaken for a dead one).
