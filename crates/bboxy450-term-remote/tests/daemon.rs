@@ -52,8 +52,20 @@ fn sessions_outlive_a_dropped_link_and_queued_ops_apply_once_on_reconnect() {
     std::fs::set_permissions(&agent, std::fs::Permissions::from_mode(0o700)).unwrap();
     unsafe { std::env::set_var("BBOXY450_REMOTE_AGENT", &agent) };
     let state = dir.join("s");
-    let transport = Transport::Local {
-        program: env!("CARGO_BIN_EXE_bboxy450-term-remote").into(),
+    // A carrier whose remote login prints a banner first, as real shells do.
+    let bin = env!("CARGO_BIN_EXE_bboxy450-term-remote");
+    let carrier = dir.join("carrier.sh");
+    std::fs::write(
+        &carrier,
+        format!(
+            "#!/bin/sh\necho 'Welcome to the box (motd)'\nPATH='{}':$PATH\neval \"$1\"\n",
+            std::path::Path::new(bin).parent().unwrap().display()
+        ),
+    )
+    .unwrap();
+    std::fs::set_permissions(&carrier, std::fs::Permissions::from_mode(0o700)).unwrap();
+    let transport = Transport::Via {
+        command: carrier.to_string_lossy().into(),
         state: state.to_string_lossy().into(),
     };
     let mut c = Client::new(transport, "swarm");
@@ -96,6 +108,40 @@ fn sessions_outlive_a_dropped_link_and_queued_ops_apply_once_on_reconnect() {
     );
     assert!(!c.is_pending("m2"));
     drop(c);
+
+    // A different supervisor behind the same transport (cloned disk, wrong
+    // host) is refused, never mixed in; reconnect stops at once.
+    std::fs::write(state.join("supervisor.id"), "someone-else\n").unwrap();
+    let pid: String = std::fs::read_to_string(state.join("daemon.pid")).unwrap();
+    std::process::Command::new("kill")
+        .arg(pid.trim())
+        .status()
+        .unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    let mut pinned = Client::new(
+        Transport::Via {
+            command: carrier.to_string_lossy().into(),
+            state: state.to_string_lossy().into(),
+        },
+        "swarm",
+    );
+    pinned.connect().unwrap();
+    pinned.disconnect();
+    std::fs::write(state.join("supervisor.id"), "a-third-one\n").unwrap();
+    let pid: String = std::fs::read_to_string(state.join("daemon.pid")).unwrap();
+    std::process::Command::new("kill")
+        .arg(pid.trim())
+        .status()
+        .unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(300));
+    let refused = pinned
+        .reconnect(std::time::Instant::now() + std::time::Duration::from_secs(5))
+        .unwrap_err();
+    assert_eq!(
+        refused.kind(),
+        std::io::ErrorKind::PermissionDenied,
+        "{refused}"
+    );
 
     let pid: i32 = std::fs::read_to_string(state.join("daemon.pid"))
         .unwrap()

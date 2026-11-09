@@ -15,14 +15,28 @@ use std::collections::BTreeMap;
 use std::io;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
 
-/// How to reach a swarm's remote supervisor.
+/// How to reach a swarm's remote supervisor. Every variant is one local
+/// command whose stdin/stdout carry the link unchanged and never prompt.
+/// Inspired by herdr-core's `hc machine add --via` (Apache-2.0,
+/// https://github.com/herdrdev/herdr-core, docs/machines.md).
 #[derive(Debug, Clone)]
 pub enum Transport {
-    /// `ssh HOST bboxy450-term-remote serve --state STATE` with BatchMode: the
-    /// user's SSH config and agent decide identity; nothing ever prompts.
+    /// `ssh -T` with BatchMode, ConnectTimeout and ServerAliveInterval; the
+    /// user's SSH config decides host, user, port and key.
     Ssh { host: String, state: String },
+    /// Any carrier (`fly ssh console -C`, `wsl.exe -e sh -c`, a sandbox CLI):
+    /// run as `sh -c 'VIA "exec bboxy450-term-remote serve --state STATE"'`.
+    Via { command: String, state: String },
     /// A local program run with `serve --state STATE` (loopback and tests).
     Local { program: String, state: String },
+}
+
+fn quote(s: &str) -> String {
+    format!("'{}'", s.replace('\'', "'\\''"))
+}
+
+fn remote_line(state: &str) -> String {
+    format!("exec bboxy450-term-remote serve --state {}", quote(state))
 }
 
 impl Transport {
@@ -31,15 +45,21 @@ impl Transport {
             Transport::Ssh { host, state } => {
                 let mut c = Command::new("ssh");
                 c.args([
+                    "-T",
                     "-o",
                     "BatchMode=yes",
-                    "-T",
-                    host,
-                    "bboxy450-term-remote",
-                    "serve",
-                    "--state",
-                    state,
+                    "-o",
+                    "ConnectTimeout=10",
+                    "-o",
+                    "ServerAliveInterval=15",
                 ]);
+                c.arg(host).arg(remote_line(state));
+                c
+            }
+            Transport::Via { command, state } => {
+                let mut c = Command::new("sh");
+                c.arg("-c")
+                    .arg(format!("{command} {}", quote(&remote_line(state))));
                 c
             }
             Transport::Local { program, state } => {
@@ -79,6 +99,7 @@ pub struct Client {
     outbox: Outbox<Frame>,
     cursors: BTreeMap<String, Cursor>,
     spawns: BTreeMap<String, Frame>,
+    supervisor: Option<String>,
 }
 
 impl Client {
@@ -90,6 +111,7 @@ impl Client {
             outbox: Outbox::new(),
             cursors: BTreeMap::new(),
             spawns: BTreeMap::new(),
+            supervisor: None,
         }
     }
 
@@ -105,6 +127,11 @@ impl Client {
             .spawn()?;
         let mut input = child.stdin.take().expect("piped");
         let mut output = child.stdout.take().expect("piped");
+        if let Err(e) = frame::expect_magic(&mut output) {
+            let _ = child.kill();
+            let _ = child.wait();
+            return Err(e);
+        }
         frame::write(
             &mut input,
             &Frame::Hello {
@@ -114,7 +141,26 @@ impl Client {
             },
         )?;
         match frame::read(&mut output)? {
-            Some(Frame::Welcome { version, .. }) if version == VERSION => {}
+            Some(Frame::Welcome {
+                version,
+                supervisor,
+            }) if version == VERSION => {
+                if self
+                    .supervisor
+                    .as_ref()
+                    .is_some_and(|pinned| *pinned != supervisor)
+                {
+                    let _ = child.kill();
+                    let _ = child.wait();
+                    return Err(io::Error::new(
+                        io::ErrorKind::PermissionDenied,
+                        format!(
+                            "remote supervisor changed identity ({supervisor}); refusing to mix sessions"
+                        ),
+                    ));
+                }
+                self.supervisor = Some(supervisor);
+            }
             other => {
                 let _ = child.kill();
                 let _ = child.wait();
@@ -147,6 +193,24 @@ impl Client {
             output,
         });
         Ok(())
+    }
+
+    /// Redial until `deadline`: immediately first (most drops are a restart
+    /// there), then 250 ms doubling to 30 s. An identity change is final.
+    /// Backoff adapted in spirit from herdr-core's line reconnect (Apache-2.0).
+    pub fn reconnect(&mut self, deadline: std::time::Instant) -> io::Result<()> {
+        let mut wait = std::time::Duration::from_millis(250);
+        loop {
+            match self.connect() {
+                Ok(()) => return Ok(()),
+                Err(e) if e.kind() == io::ErrorKind::PermissionDenied => return Err(e),
+                Err(e) if std::time::Instant::now() + wait > deadline => return Err(e),
+                Err(_) => {
+                    std::thread::sleep(wait);
+                    wait = (wait * 2).min(std::time::Duration::from_secs(30));
+                }
+            }
+        }
     }
 
     /// The link is gone (or being replaced): nothing is in flight any more.

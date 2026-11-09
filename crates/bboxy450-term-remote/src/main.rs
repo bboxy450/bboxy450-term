@@ -83,6 +83,11 @@ fn serve(state: &Path) -> io::Result<()> {
             }
         }
     };
+    {
+        let mut out = io::stdout().lock();
+        out.write_all(bboxy450_term_remote::frame::MAGIC)?;
+        out.flush()?;
+    }
     let mut from = stream.try_clone()?;
     // Stdout is line-buffered; frames are binary, so flush every chunk.
     let up = std::thread::spawn(move || pump(&mut from, &mut io::stdout().lock()));

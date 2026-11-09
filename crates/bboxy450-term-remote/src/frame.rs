@@ -14,6 +14,34 @@ use std::io::{self, Read, Write};
 
 /// Link protocol major version. A peer refuses a different major.
 pub const VERSION: u16 = 1;
+/// Written by `serve` before any frame. A remote login may print banners or
+/// MOTD text on stdout first; the client skips every byte before this line.
+/// Inspired by herdr-core's banner-tolerant `hc connect` handshake
+/// (Apache-2.0, https://github.com/herdrdev/herdr-core, machines.rs).
+pub const MAGIC: &[u8] = b"bboxy450-remote 1\n";
+/// Bytes a client tolerates before MAGIC.
+pub const MAX_BANNER: usize = 64 * 1024;
+
+/// Skip banner bytes until MAGIC; error if it never appears within MAX_BANNER.
+pub fn expect_magic(r: &mut impl Read) -> io::Result<()> {
+    let mut window: Vec<u8> = Vec::with_capacity(MAGIC.len());
+    let mut byte = [0u8; 1];
+    for _ in 0..MAX_BANNER + MAGIC.len() {
+        r.read_exact(&mut byte)?;
+        window.push(byte[0]);
+        if window.len() > MAGIC.len() {
+            window.remove(0);
+        }
+        if window == MAGIC {
+            return Ok(());
+        }
+    }
+    Err(io::Error::new(
+        io::ErrorKind::InvalidData,
+        "no bboxy450-remote handshake within the banner limit",
+    ))
+}
+
 /// Largest frame body; the IR caps one envelope at 256 KiB.
 pub const MAX_FRAME: usize = 1024 * 1024;
 

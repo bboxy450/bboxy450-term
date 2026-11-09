@@ -36,6 +36,9 @@ struct Inner {
 
 pub struct Server {
     epoch: u64,
+    /// Stable identity of this state directory; a client pins it, so a cloned
+    /// disk or a different host is refused rather than mixed in.
+    id: String,
     inbox: Mutex<Inbox<FileJournal>>,
     inner: Arc<Mutex<Inner>>,
 }
@@ -54,8 +57,18 @@ impl Server {
         let epoch = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map_or(1, |d| d.as_nanos() as u64);
+        let id_path = state.join("supervisor.id");
+        let id = match std::fs::read_to_string(&id_path) {
+            Ok(id) if !id.trim().is_empty() => id.trim().to_owned(),
+            _ => {
+                let id = format!("{:x}-{:x}", epoch, std::process::id());
+                std::fs::write(&id_path, format!("{id}\n"))?;
+                id
+            }
+        };
         Ok(Self {
             epoch,
+            id,
             inbox: Mutex::new(Inbox::new(FileJournal::open(&state.join("applied.log"))?)),
             inner: Arc::new(Mutex::new(Inner {
                 sessions: BTreeMap::new(),
@@ -66,6 +79,9 @@ impl Server {
     }
     pub fn epoch(&self) -> u64 {
         self.epoch
+    }
+    pub fn id(&self) -> &str {
+        &self.id
     }
 
     fn spawn(&self, session: &str, cwd: &str) -> io::Result<()> {
