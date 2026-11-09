@@ -10,6 +10,7 @@
 //! DIR/link.sock (0600), so seats outlive any one SSH connection.
 // A backend daemon binary: the UI-only bbt-rt IO rule does not apply.
 #![allow(clippy::disallowed_methods)]
+use bboxy450_term_remote::client::Transport;
 use bboxy450_term_remote::serve::Server;
 use std::io::{self, Read, Write};
 use std::os::unix::fs::PermissionsExt;
@@ -66,7 +67,11 @@ fn serve(state: &Path) -> io::Result<()> {
     let stream = match UnixStream::connect(&sock) {
         Ok(s) => s,
         Err(_) => {
+            // Its own process group: harness children share it, a closing
+            // SSH session's signals do not reach it, and `stop` ends them all.
+            use std::os::unix::process::CommandExt;
             std::process::Command::new(std::env::current_exe()?)
+                .process_group(0)
                 .args(["daemon", "--state"])
                 .arg(state)
                 .stdin(Stdio::null())
@@ -98,16 +103,158 @@ fn serve(state: &Path) -> io::Result<()> {
     Ok(())
 }
 
+/// `--ssh HOST`, `--via CMD` or `--local PROGRAM`, plus `--state DIR`.
+fn transport(args: &[String]) -> Result<Transport, String> {
+    let value = |flag: &str| {
+        args.iter()
+            .position(|a| a == flag)
+            .and_then(|i| args.get(i + 1))
+            .cloned()
+    };
+    let state = value("--state").unwrap_or_else(|| "~/.bboxy450-remote".into());
+    if let Some(host) = value("--ssh") {
+        Ok(Transport::Ssh { host, state })
+    } else if let Some(command) = value("--via") {
+        Ok(Transport::Via { command, state })
+    } else if let Some(program) = value("--local") {
+        Ok(Transport::Local { program, state })
+    } else {
+        Err("one of --ssh HOST, --via CMD or --local PROGRAM is required".into())
+    }
+}
+
+fn flag(args: &[String], name: &str) -> Option<String> {
+    args.iter()
+        .position(|a| a == name)
+        .and_then(|i| args.get(i + 1))
+        .cloned()
+}
+
+fn usage() -> ExitCode {
+    eprintln!(
+        "usage:\n  bboxy450-term-remote serve|daemon --state DIR\n  \
+         bboxy450-term-remote attach (--ssh HOST|--via CMD|--local PROG) [--state DIR] --swarm ID [--session NAME] --cwd REMOTE_DIR\n  \
+         bboxy450-term-remote profile (--ssh HOST|--via CMD) [--state DIR] --name NAME --swarm ID --cwd REMOTE_DIR\n  \
+         bboxy450-term-remote install (--ssh HOST|--via CMD) [--harness PATH]\n  bboxy450-term-remote stop --state DIR\n  bboxy450-term-remote version"
+    );
+    ExitCode::from(2)
+}
+
 fn main() -> ExitCode {
+    let args: Vec<String> = std::env::args().skip(1).collect();
+    match args.first().map(String::as_str) {
+        Some("stop") => {
+            // End the daemon and every harness it started (one process group).
+            let Some(state) = flag(&args, "--state") else {
+                return usage();
+            };
+            let pid =
+                std::fs::read_to_string(Path::new(&state).join("daemon.pid")).unwrap_or_default();
+            let pid = pid.trim();
+            if pid.is_empty() {
+                eprintln!("bboxy450-term-remote stop: no daemon.pid in {state}");
+                return ExitCode::FAILURE;
+            }
+            let ok = std::process::Command::new("kill")
+                .args(["-TERM", "--", &format!("-{pid}")])
+                .status()
+                .is_ok_and(|s| s.success());
+            return if ok {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::FAILURE
+            };
+        }
+        Some("version") => {
+            println!("bboxy450-term-remote {}", env!("CARGO_PKG_VERSION"));
+            return ExitCode::SUCCESS;
+        }
+        Some("attach") => {
+            let (Ok(t), Some(swarm), Some(session), Some(cwd)) = (
+                transport(&args),
+                flag(&args, "--swarm"),
+                flag(&args, "--session").or_else(|| std::env::var("BBOXY_SEAT_ID").ok()),
+                flag(&args, "--cwd"),
+            ) else {
+                return usage();
+            };
+            return match bboxy450_term_remote::attach::run(t, &swarm, &session, &cwd) {
+                Ok(code) => ExitCode::from(code as u8),
+                Err(e) => {
+                    eprintln!("bboxy450-term-remote attach: {e}");
+                    ExitCode::FAILURE
+                }
+            };
+        }
+        Some("profile") => {
+            // Print a bboxy450-harness acp-agent profile whose agent is this
+            // bridge; save it as ~/.bboxy450-harness/profiles/<name>.md and
+            // spawn seats with harness_profile <name>. Session defaults to the
+            // seat id (BBOXY_SEAT_ID), so one profile serves every seat.
+            let (Ok(_), Some(name), Some(swarm), Some(cwd)) = (
+                transport(&args),
+                flag(&args, "--name"),
+                flag(&args, "--swarm"),
+                flag(&args, "--cwd"),
+            ) else {
+                return usage();
+            };
+            let me = std::env::current_exe()
+                .map(|p| p.display().to_string())
+                .unwrap_or_else(|_| "bboxy450-term-remote".into());
+            let mut command = vec![me, "attach".into()];
+            for f in ["--ssh", "--via", "--local", "--state"] {
+                if let Some(v) = flag(&args, f) {
+                    command.push(f.into());
+                    command.push(v);
+                }
+            }
+            command.extend(["--swarm".into(), swarm, "--cwd".into(), cwd]);
+            let yaml: Vec<String> = command
+                .iter()
+                .map(|a| serde_json::to_string(a).unwrap())
+                .collect();
+            println!(
+                "---\nname: {name}\nprovider: acp-agent\npolicy: yolo\nagent:\n  command: [{}]\n---\nRemote seat: bboxy450-harness acp on the swarm's remote supervisor.",
+                yaml.join(", ")
+            );
+            return ExitCode::SUCCESS;
+        }
+        Some("install") => {
+            let Ok(t) = transport(&args) else {
+                return usage();
+            };
+            let me = match std::env::current_exe() {
+                Ok(p) => p,
+                Err(e) => {
+                    eprintln!("bboxy450-term-remote install: {e}");
+                    return ExitCode::FAILURE;
+                }
+            };
+            let harness = flag(&args, "--harness").map(PathBuf::from);
+            let mut files: Vec<(&Path, &str)> = vec![(me.as_path(), "bboxy450-term-remote")];
+            if let Some(h) = harness.as_deref() {
+                files.push((h, "bboxy450-harness"));
+            }
+            return match bboxy450_term_remote::install::install(&t, &files) {
+                Ok(there) => {
+                    println!("installed on {there}");
+                    ExitCode::SUCCESS
+                }
+                Err(e) => {
+                    eprintln!("bboxy450-term-remote install: {e}");
+                    ExitCode::FAILURE
+                }
+            };
+        }
+        _ => {}
+    }
     let args: Vec<String> = std::env::args().skip(1).collect();
     let (cmd, state) = match args.as_slice() {
         [cmd, flag, dir] if flag == "--state" && (cmd == "serve" || cmd == "daemon") => {
             (cmd.as_str(), PathBuf::from(dir))
         }
-        _ => {
-            eprintln!("usage: bboxy450-term-remote (serve|daemon) --state DIR");
-            return ExitCode::from(2);
-        }
+        _ => return usage(),
     };
     let result = if cmd == "daemon" {
         daemon(&state)

@@ -34,7 +34,9 @@ struct Cleanup(std::path::PathBuf);
 impl Drop for Cleanup {
     fn drop(&mut self) {
         if let Ok(pid) = std::fs::read_to_string(self.0.join("s/daemon.pid")) {
-            let _ = std::process::Command::new("kill").arg(pid.trim()).status();
+            let _ = std::process::Command::new("kill")
+                .args(["-TERM", "--", &format!("-{}", pid.trim())])
+                .status();
         }
         let _ = std::fs::remove_dir_all(&self.0);
     }

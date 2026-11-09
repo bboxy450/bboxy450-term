@@ -24,10 +24,14 @@ struct Session {
     log: SessionLog,
     stdin: ChildStdin,
     child: Child,
+    /// The agent closed its stdout; ops are refused with its last stderr line.
+    exited: bool,
 }
 
 struct Inner {
     sessions: BTreeMap<String, Session>,
+    /// Sessions whose agent could not start, with the reason.
+    failed: BTreeMap<String, String>,
     /// The live connection's writer, tagged so a closing older connection
     /// never clears a newer one's.
     out: Option<(u64, Sender<Frame>)>,
@@ -39,6 +43,7 @@ pub struct Server {
     /// Stable identity of this state directory; a client pins it, so a cloned
     /// disk or a different host is refused rather than mixed in.
     id: String,
+    state: std::path::PathBuf,
     inbox: Mutex<Inbox<FileJournal>>,
     inner: Arc<Mutex<Inner>>,
 }
@@ -69,9 +74,11 @@ impl Server {
         Ok(Self {
             epoch,
             id,
+            state: state.to_owned(),
             inbox: Mutex::new(Inbox::new(FileJournal::open(&state.join("applied.log"))?)),
             inner: Arc::new(Mutex::new(Inner {
                 sessions: BTreeMap::new(),
+                failed: BTreeMap::new(),
                 out: None,
                 connections: 0,
             })),
@@ -90,13 +97,28 @@ impl Server {
             return Ok(()); // adopt: a reconnecting client re-sends Spawn
         }
         let (program, args) = agent();
-        let mut child = Command::new(program)
-            .args(args)
-            .current_dir(cwd)
-            .stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()?;
+        // Each agent's stderr goes to agent-<session>.log in the state dir, so
+        // a missing feature or a crash is diagnosable instead of a silent hang.
+        let log = self.agent_log(session);
+        let spawned = std::fs::File::create(&log).and_then(|err| {
+            Command::new(&program)
+                .args(&args)
+                .current_dir(cwd)
+                .stdin(Stdio::piped())
+                .stdout(Stdio::piped())
+                .stderr(Stdio::from(err))
+                .spawn()
+        });
+        let mut child = match spawned {
+            Ok(child) => child,
+            Err(e) => {
+                inner.failed.insert(
+                    session.to_owned(),
+                    format!("agent {program} failed to start: {e}"),
+                );
+                return Ok(());
+            }
+        };
         let stdin = child.stdin.take().expect("piped stdin");
         let stdout = child.stdout.take().expect("piped stdout");
         inner.sessions.insert(
@@ -105,6 +127,7 @@ impl Server {
                 log: SessionLog::new(session, self.epoch),
                 stdin,
                 child,
+                exited: false,
             },
         );
         let shared = Arc::clone(&self.inner);
@@ -123,8 +146,37 @@ impl Server {
                     inner.out = None;
                 }
             }
+            if let Some(s) = shared.lock().unwrap().sessions.get_mut(&name) {
+                s.exited = true;
+            }
         });
         Ok(())
+    }
+
+    fn agent_log(&self, session: &str) -> std::path::PathBuf {
+        let safe: String = session
+            .chars()
+            .map(|c| {
+                if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                    c
+                } else {
+                    '_'
+                }
+            })
+            .collect();
+        self.state.join(format!("agent-{safe}.log"))
+    }
+
+    fn last_error(&self, session: &str) -> String {
+        std::fs::read_to_string(self.agent_log(session))
+            .ok()
+            .and_then(|t| {
+                t.lines()
+                    .rev()
+                    .find(|l| !l.trim().is_empty())
+                    .map(str::to_owned)
+            })
+            .unwrap_or_else(|| "no stderr".into())
     }
 
     fn op(&self, session: &str, message_id: &str, envelope: &str) -> io::Result<Frame> {
@@ -134,6 +186,18 @@ impl Server {
         if inbox.is_applied(message_id) {
             return Ok(Frame::Applied {
                 message_id: message_id.into(),
+            });
+        }
+        if let Some(reason) = inner.failed.get(session) {
+            return Ok(Frame::Refused {
+                message_id: message_id.into(),
+                reason: reason.clone(),
+            });
+        }
+        if inner.sessions.get(session).is_some_and(|s| s.exited) {
+            return Ok(Frame::Refused {
+                message_id: message_id.into(),
+                reason: format!("agent exited: {}", self.last_error(session)),
             });
         }
         let Some(s) = inner.sessions.get_mut(session) else {
@@ -225,6 +289,17 @@ impl Server {
             supervisor: format!("bboxy450-term-remote epoch {}", self.epoch),
         })?;
         self.inner.lock().unwrap().out = Some((id, tx.clone()));
+        let pinger = tx.clone();
+        std::thread::spawn(move || {
+            let every = std::env::var("BBOXY450_REMOTE_PING_MS")
+                .ok()
+                .and_then(|v| v.parse().ok())
+                .unwrap_or(15_000);
+            while pinger.send(Frame::Ping).is_ok() {
+                std::thread::sleep(std::time::Duration::from_millis(every));
+            }
+        });
+
         while let Some(frame) = frame::read(reader)? {
             match frame {
                 Frame::Spawn { session, cwd, .. } => self.spawn(&session, &cwd)?,

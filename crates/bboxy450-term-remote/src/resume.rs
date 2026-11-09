@@ -48,7 +48,16 @@ impl SessionLog {
         }
     }
     /// Frames that bring a cursor at (epoch, after_seq) up to date.
+    /// `after_seq == u64::MAX` asks for a reset "from now" with no history:
+    /// a newly attached view that must not see earlier replies.
     pub fn replay(&self, epoch: u64, after_seq: u64) -> Vec<Frame> {
+        if after_seq == u64::MAX {
+            return vec![Frame::Reset {
+                session: self.session.clone(),
+                epoch: self.epoch,
+                from_seq: self.next,
+            }];
+        }
         let first = self.events.front().map_or(self.next, |(seq, _)| *seq);
         let mut frames = Vec::new();
         let from = if epoch == self.epoch && after_seq + 1 >= first && after_seq < self.next {

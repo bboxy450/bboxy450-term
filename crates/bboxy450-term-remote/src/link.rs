@@ -79,6 +79,9 @@ impl<T: Clone> Outbox<T> {
     pub fn reconnect(&mut self) {
         self.down = false;
     }
+    pub fn has_unacked(&self) -> bool {
+        !self.unacked.is_empty()
+    }
     pub fn is_unacked(&self, id: &str) -> bool {
         self.unacked.contains_key(id)
     }

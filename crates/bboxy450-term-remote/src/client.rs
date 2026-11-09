@@ -14,6 +14,8 @@ use crate::resume::{Accept, Cursor};
 use std::collections::BTreeMap;
 use std::io;
 use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
+use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
+use std::time::Duration;
 
 /// How to reach a swarm's remote supervisor. Every variant is one local
 /// command whose stdin/stdout carry the link unchanged and never prompt.
@@ -35,11 +37,39 @@ fn quote(s: &str) -> String {
     format!("'{}'", s.replace('\'', "'\\''"))
 }
 
+/// `install` puts binaries in ~/.local/bin, which a non-login shell may lack.
+const REMOTE_PATH: &str = "PATH=\"$HOME/.local/bin:$PATH\"; export PATH;";
+
 fn remote_line(state: &str) -> String {
-    format!("exec bboxy450-term-remote serve --state {}", quote(state))
+    format!(
+        "{REMOTE_PATH} exec bboxy450-term-remote serve --state {}",
+        quote(state)
+    )
 }
 
 impl Transport {
+    /// Run one shell line on the remote (install, probes) through the same carrier.
+    pub fn shell(&self, line: &str) -> Command {
+        let line = format!("{REMOTE_PATH} {line}");
+        match self {
+            Transport::Ssh { host, .. } => {
+                let mut c = Command::new("ssh");
+                c.args(["-T", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10"]);
+                c.arg(host).arg(line);
+                c
+            }
+            Transport::Via { command, .. } => {
+                let mut c = Command::new("sh");
+                c.arg("-c").arg(format!("{command} {}", quote(&line)));
+                c
+            }
+            Transport::Local { .. } => {
+                let mut c = Command::new("sh");
+                c.arg("-c").arg(line);
+                c
+            }
+        }
+    }
     fn command(&self) -> Command {
         match self {
             Transport::Ssh { host, state } => {
@@ -84,12 +114,40 @@ pub enum Received {
     Refused { message_id: String, reason: String },
     /// Duplicate/stale/out-of-order event, or a frame needing no action.
     Nothing,
+    /// The link ended or carried no bytes for the dead-line timeout.
+    Down,
 }
 
 struct Live {
     child: Child,
     input: ChildStdin,
-    output: ChildStdout,
+    frames: Receiver<io::Result<Option<Frame>>>,
+    /// When the last frame arrived; silence past the dead line means gone.
+    heard: std::time::Instant,
+}
+
+/// No bytes for this long means the line is dead (pings arrive every 15 s).
+fn dead_line() -> Duration {
+    Duration::from_millis(
+        std::env::var("BBOXY450_REMOTE_DEAD_MS")
+            .ok()
+            .and_then(|v| v.parse().ok())
+            .unwrap_or(45_000),
+    )
+}
+
+fn reader(mut output: ChildStdout) -> Receiver<io::Result<Option<Frame>>> {
+    let (tx, rx) = mpsc::channel();
+    std::thread::spawn(move || {
+        loop {
+            let next = frame::read(&mut output);
+            let end = !matches!(next, Ok(Some(_)));
+            if tx.send(next).is_err() || end {
+                break;
+            }
+        }
+    });
+    rx
 }
 
 pub struct Client {
@@ -190,7 +248,8 @@ impl Client {
         self.live = Some(Live {
             child,
             input,
-            output,
+            frames: reader(output),
+            heard: std::time::Instant::now(),
         });
         Ok(())
     }
@@ -231,8 +290,15 @@ impl Client {
         frame::write(&mut live.input, f)
     }
 
-    /// Start (or adopt) a session; its first frame back is a reset.
+    /// Start (or adopt) a session; its first frame back is a reset with the
+    /// retained history. `spawn_live` instead starts the view "from now".
     pub fn spawn(&mut self, session: &str, cwd: &str) -> io::Result<()> {
+        self.spawn_at(session, cwd, 0)
+    }
+    pub fn spawn_live(&mut self, session: &str, cwd: &str) -> io::Result<()> {
+        self.spawn_at(session, cwd, u64::MAX)
+    }
+    fn spawn_at(&mut self, session: &str, cwd: &str, after_seq: u64) -> io::Result<()> {
         let f = Frame::Spawn {
             session: session.into(),
             profile: None,
@@ -244,7 +310,7 @@ impl Client {
         self.send(&Frame::Resume {
             session: session.into(),
             epoch: 0,
-            after_seq: 0,
+            after_seq,
         })
     }
 
@@ -264,19 +330,43 @@ impl Client {
         Ok(())
     }
 
+    /// Any op still waiting for its `applied`.
+    pub fn has_pending(&self) -> bool {
+        self.outbox.has_unacked()
+    }
     pub fn is_pending(&self, message_id: &str) -> bool {
         self.outbox.is_unacked(message_id)
     }
 
     /// Block for the next frame and interpret it. `Ok(None)`: the link ended.
     pub fn recv(&mut self) -> io::Result<Option<Received>> {
-        let live = self
-            .live
-            .as_mut()
-            .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "link down"))?;
-        let Some(f) = frame::read(&mut live.output)? else {
-            self.disconnect();
-            return Ok(None);
+        loop {
+            match self.recv_timeout(dead_line())? {
+                Some(Received::Down) => return Ok(None),
+                Some(r) => return Ok(Some(r)),
+                None => continue, // timed out just before the dead line
+            }
+        }
+    }
+
+    /// Wait up to `timeout` for a frame. `Ok(None)`: nothing yet (link alive);
+    /// `Received::Down`: the link ended or stayed silent past the dead line.
+    pub fn recv_timeout(&mut self, timeout: Duration) -> io::Result<Option<Received>> {
+        let Some(live) = self.live.as_mut() else {
+            return Ok(Some(Received::Down));
+        };
+        let f = match live.frames.recv_timeout(timeout) {
+            Ok(Ok(Some(f))) => {
+                live.heard = std::time::Instant::now();
+                f
+            }
+            Err(RecvTimeoutError::Timeout) if live.heard.elapsed() < dead_line() => {
+                return Ok(None);
+            }
+            _ => {
+                self.disconnect();
+                return Ok(Some(Received::Down));
+            }
         };
         Ok(Some(match f {
             Frame::Event {

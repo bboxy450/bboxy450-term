@@ -94,6 +94,10 @@ pub enum Frame {
     },
     /// Remote → local: an op was not journalled or applied (unknown session).
     Refused { message_id: String, reason: String },
+    /// Remote → local keepalive; a link that carries no bytes for the
+    /// dead-line timeout is treated as gone (time-based liveness counts any
+    /// bytes, so a big frame on a slow link is never mistaken for a dead one).
+    Ping,
     /// A frame type this build does not know; skipped, never an error.
     #[serde(other)]
     Unknown,

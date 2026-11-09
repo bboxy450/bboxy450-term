@@ -78,7 +78,12 @@ fn op(c: &mut UnixStream, id: &str, text: &str) {
 
 /// Next frame that is not an event for which the predicate is false.
 fn next(c: &mut UnixStream) -> Frame {
-    frame::read(c).unwrap().expect("frame before timeout")
+    loop {
+        match frame::read(c).unwrap().expect("frame before timeout") {
+            Frame::Ping => continue, // keepalives interleave anywhere
+            f => return f,
+        }
+    }
 }
 
 fn event_n(f: &Frame) -> Option<(u64, u64, u64)> {
