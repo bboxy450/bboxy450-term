@@ -579,7 +579,9 @@ impl Build<'_> {
     }
     fn frontmatter(&self, d: &Document, w: f32) -> c::Element {
         let mut fields: Vec<(&str, Cells)> = vec![];
-        fields.push(("id", vec![(d.id.clone(), true, false)]));
+        if !d.id.is_empty() {
+            fields.push(("id", vec![(d.id.clone(), true, false)]));
+        }
         if let Some(v) = &d.assignee {
             fields.push(("assignee", vec![(v.clone(), false, true)]))
         }

@@ -506,7 +506,46 @@ fn arrow(
     ))
 }
 
-fn node_color(n: &mm::Node) -> ui::Color {
+/// The hue a source's own `classDef` or `style` gives a node: its `stroke`,
+/// else its `fill`, as `#rgb` or `#rrggbb`. Later declarations win, and the
+/// node's own `style` beats its classes. The theme tints it like any node.
+fn declared_hue(g: &mm::Geometry, n: &mm::Node) -> Option<ui::Color> {
+    let parse = |value: &str| {
+        let hex = value.trim().strip_prefix('#')?;
+        if !hex.bytes().all(|b| b.is_ascii_hexdigit()) {
+            return None;
+        }
+        let full: String = match hex.len() {
+            3 => hex.chars().flat_map(|c| [c, c]).collect(),
+            6 => hex.into(),
+            _ => return None,
+        };
+        Some(ui::Color::Rgba(Rgba::hex(&full).0))
+    };
+    let styles = g
+        .class_defs
+        .iter()
+        .filter(|c| n.classes.contains(&c.name))
+        .map(|c| c.style.as_str())
+        .chain(n.style.iter().map(String::as_str));
+    let (mut stroke, mut fill) = (None, None);
+    for style in styles {
+        for declaration in style.split([';', ',']) {
+            match declaration.split_once(':') {
+                Some((name, value)) if name.trim() == "stroke" => {
+                    stroke = parse(value).or(stroke)
+                }
+                Some((name, value)) if name.trim() == "fill" => fill = parse(value).or(fill),
+                _ => {}
+            }
+        }
+    }
+    stroke.or(fill)
+}
+fn node_color(g: &mm::Geometry, n: &mm::Node) -> ui::Color {
+    if let Some(hue) = declared_hue(g, n) {
+        return hue;
+    }
     let color = n.classes.iter().find_map(|c| match c.as_str() {
         "oracle" => Some(TOKENS.color.role.oracle),
         "executor" => Some(TOKENS.color.role.executor),
@@ -531,7 +570,7 @@ fn dash(g: &mm::Geometry, n: &mm::Node) -> Vec<f32> {
             .map(|c| c.style.as_str()),
     );
     for style in styles {
-        for declaration in style.split(';') {
+        for declaration in style.split([';', ',']) {
             if let Some((name, value)) = declaration.split_once(':')
                 && name.trim() == "stroke-dasharray"
             {
@@ -697,7 +736,7 @@ pub fn canvas(g: &mm::Geometry, ctx: ui::Context, m: &dyn c::Measure) -> c::Elem
     }
     for (i, node) in g.nodes.iter().enumerate() {
         let r = node.rect;
-        let co = node_color(node);
+        let co = node_color(g, node);
         let fill = ui::Paint::solid(mix(
             co,
             ui::Color::Surface,
@@ -1050,4 +1089,37 @@ pub fn canvas(g: &mm::Geometry, ctx: ui::Context, m: &dyn c::Measure) -> c::Elem
             overlays,
         },
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    struct Metrics;
+    impl bbt_ui_model::layout::TextMeasure for Metrics {
+        fn width(&self, value: &str, font: &bbt_ui_model::layout::TextStyle) -> f32 {
+            value.chars().count() as f32 * font.size * 0.5
+        }
+    }
+    impl c::Measure for Metrics {
+        fn font_metrics(&self, font: &bbt_ui_model::layout::TextStyle) -> [f32; 2] {
+            [font.size * 0.8, font.size * 0.2]
+        }
+    }
+    // keeps: spec document-viewer §Mermaid — a source's classDef colours its nodes.
+    #[test]
+    fn class_def_stroke_or_fill_colours_its_nodes_and_style_wins() {
+        let ctx = ui::Context::new(ui::Theme::Light, ui::Density::Cozy);
+        let source = "flowchart TB\n  A[a]:::base --> B[b]:::fillonly\n  B --> C[c]\n  C --> D[d]:::base\n  \
+            classDef base fill:#d8eee3,stroke:#237650,stroke-dasharray:5 4\n  classDef fillonly fill:#abc\n  style D stroke:#ff0000";
+        let g = geometry(source, ctx, &Metrics).unwrap();
+        let hue = |label: &str| {
+            let n = g.nodes.iter().find(|n| n.id == label).unwrap();
+            (declared_hue(&g, n), dash(&g, n))
+        };
+        let rgba = |s: &str| Some(ui::Color::Rgba(Rgba::hex(s).0));
+        assert_eq!(hue("A"), (rgba("237650"), vec![5., 4.]));
+        assert_eq!(hue("B").0, rgba("aabbcc"));
+        assert_eq!(hue("C").0, None);
+        assert_eq!(hue("D").0, rgba("ff0000"));
+    }
 }
