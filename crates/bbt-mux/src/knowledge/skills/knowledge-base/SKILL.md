@@ -53,6 +53,12 @@ do not prove that a write, commit or task transition happened.
 
 ## Write for agents and humans
 
+Subtract before you add. Search first, then extend the record that already holds
+the idea rather than writing a near-duplicate. One idea lives in one record and
+everything else links to it. A record that only explains another record belongs
+inside it. A rule that a check can hold names that check instead of restating it.
+The stand behind this is `specs/philosophy.md`.
+
 A spec defines observable behavior: purpose, scope, inputs/outputs, failure cases,
 invariants and verifiable acceptance criteria. A task defines work to perform,
 its owner, dependencies and completion evidence. Link tasks to specs and research;

@@ -43,7 +43,11 @@ impl CatalogStore {
         // builtin policy offers it; saved roles keep their edits.
         let builtin = RoleCatalog::builtin();
         for (name, role) in builtin.roles {
-            if catalog.roles.contains_key(&name) {
+            if let Some(saved) = catalog.roles.get_mut(&name) {
+                if bbt_proto::gui::RETIRED_PROMPTS.contains(&(name.as_str(), saved.prompt.as_str()))
+                {
+                    saved.prompt = role.prompt;
+                }
                 continue;
             }
             catalog.roles.insert(name.clone(), role);
@@ -297,6 +301,35 @@ mod tests {
             loaded.harnesses["codex"].available_roles,
             ["executor", bbt_proto::gui::SUDO_ROLE]
         );
+    }
+    #[test]
+    fn a_saved_retired_builtin_prompt_takes_the_current_one_and_edits_stay() {
+        let directory = tempfile::tempdir().unwrap();
+        let store = SqliteStore::open(directory.path()).unwrap();
+        let mut old = RoleCatalog::builtin();
+        let (_, retired) = bbt_proto::gui::RETIRED_PROMPTS
+            .iter()
+            .find(|(name, _)| *name == "executor")
+            .unwrap();
+        old.roles.get_mut("executor").unwrap().prompt = (*retired).into();
+        old.roles.get_mut("oracle").unwrap().prompt = "Operator's own words.".into();
+        store
+            .put(
+                KEY,
+                &serde_json::to_vec(&Saved {
+                    version: 1,
+                    catalog: old,
+                })
+                .unwrap(),
+            )
+            .unwrap();
+        let loaded = CatalogStore::new(store).load().unwrap();
+        let builtin = RoleCatalog::builtin();
+        assert_eq!(
+            loaded.roles["executor"].prompt,
+            builtin.roles["executor"].prompt
+        );
+        assert_eq!(loaded.roles["oracle"].prompt, "Operator's own words.");
     }
     #[test]
     fn cached_custom_roles_reload_and_malformed_cache_never_falls_back() {

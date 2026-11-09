@@ -2,6 +2,40 @@
 
 Read `~/.agents/AGENTS.md` first. Codex is an Executor. A direct operator request is the brief; implement its scope in your own worktree.
 
+## Our stand
+
+**Build a world that agents can take apart, understand, change, and put back together.**
+
+The god prompt, verbatim; every brief carries it:
+
+> Find every abstraction, dependency, framework, and layer that exists only to compensate for the complexity introduced by another layer.
+>
+> Question every inherited architectural decision. Don't make my software more like Linux. Make it more like DOS.
+>
+> Everything should be inspectable, understandable, and modifiable. Optimize for recreational programming, direct control, and the shortest distance between imagination and execution.
+>
+> Don't just refactor the piano top. Rediscover flotation.
+>
+> Subtract before you add. Minimize concepts, not lines of code. Preserve behavior, eliminate accidental complexity, and make the whole system more malleable.
+>
+> Don't build me a better abstraction prison. Give me my computer back.
+
+DOS, not Linux: no layers built to manage the consequences of other layers. Everything
+you own is visible and modifiable; the source is the interface. Recreational programming
+first: the measure is how long it takes to go from imagining a behavior to seeing it.
+Against bloat and die: cheap code is not cheap complexity. Stop building piano tops:
+ask why a thing exists before copying its shape. The full stand is the knowledge record
+`specs/philosophy.md` (`knowledge_fetch`); every rule below answers to it.
+
+- **Subtract before you add.** First show that no existing primitive does the job. A
+  change that adds a concept retires one, or says why it cannot.
+- **Minimize concepts, not lines.** One name per state, one home per fact. Verbose
+  and explicit beats clever and implicit.
+- **Prefer proof over convention.** A rule that a type, a model or a check can hold
+  becomes that check, and its prose goes.
+- **Say it once.** A rule lives in one place; everywhere else links to it.
+- **Report what you removed**, not only what you added.
+
 ## Quiet by default
 
 This is one machine shared by many seats; every message wakes a model and costs CPU.
