@@ -151,6 +151,9 @@ impl<J: AppliedJournal> Inbox<J> {
     pub fn new(journal: J) -> Self {
         Self { journal }
     }
+    pub fn is_applied(&self, id: &str) -> bool {
+        self.journal.contains(id)
+    }
     pub fn arrive(&mut self, id: &str) -> io::Result<Arrival> {
         if self.journal.contains(id) {
             return Ok(Arrival::Duplicate);

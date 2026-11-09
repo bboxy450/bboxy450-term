@@ -57,6 +57,11 @@ pub enum Frame {
     },
     /// Local → remote: close one session.
     Close { session: String },
+    /// Remote → local: the epoch changed or the tail is gone; clear the view,
+    /// then accept events of `epoch` from `from_seq`.
+    Reset { session: String, epoch: u64, from_seq: u64 },
+    /// Remote → local: an op was not journalled or applied (unknown session).
+    Refused { message_id: String, reason: String },
     /// A frame type this build does not know; skipped, never an error.
     #[serde(other)]
     Unknown,

@@ -877,6 +877,17 @@ property = "RESULT-001: visible.is_none() || visible == desired. Correct declara
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "RemoteResume"
+title = "Remote supervisor link: ordered event resume across drop and epoch change"
+models = ["RemoteResume", "BrokenRemoteResume"]
+sources = ["crates/bboxy450-term-remote/src/resume_model.rs", "crates/bboxy450-term-remote/src/resume.rs", "crates/bboxy450-term-remote/src/serve.rs"]
+implementation_tests = ["crates/bboxy450-term-remote/tests/serve.rs", "crates/bboxy450-term-remote/tests/delivery_witness.rs"]
+methods = ["native_tlc_differential"]
+assumptions = "Ev={A,B} are the first two events of one epoch, produced in order. Drop and Reconnect keep the remote log and the local view. RemoteRestart starts a new epoch: the log loses its tail and the remote owes the view a reset before any new-epoch event. Sequence numbers, the bounded tail and cursor gap/duplicate arithmetic are abstracted and implementation-tested. No fairness and no liveness claimed."
+property = "REMOTE-RESUME-001: every event the view shows is in the remote's current log unless a reset is pending. REMOTE-RESUME-002: B is shown only after A. BrokenRemoteResume restarts without owing a reset and violates REMOTE-RESUME-001."
+checks = ["make test-formal", "cargo nextest run -p bboxy450-term-remote"]
+
+[[contract]]
 name = "RemoteDelivery"
 title = "Remote supervisor link: exactly-once message application across drop, duplicate and crash replay"
 models = ["RemoteDelivery", "BrokenRemoteDelivery"]
