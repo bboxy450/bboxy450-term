@@ -106,9 +106,13 @@ fn exported_model_holds_and_volatile_dedup_control_fails() {
 #[test]
 fn resume_model_holds_and_resetless_restart_control_fails() {
     use bboxy450_term_remote::resume_model::{BrokenRemoteResume, RemoteResume};
-    let pass = RemoteResume::model().check(100_000).expect("model check runs");
+    let pass = RemoteResume::model()
+        .check(100_000)
+        .expect("model check runs");
     assert!(pass.violations.is_empty(), "{:?}", pass.violations);
-    let broken = BrokenRemoteResume::model().check(100_000).expect("control runs");
+    let broken = BrokenRemoteResume::model()
+        .check(100_000)
+        .expect("control runs");
     assert!(
         !broken.violations.is_empty(),
         "a restart without reset must leave the view holding events the new log lacks"

@@ -1,0 +1,264 @@
+// Copyright 2026 Boxy (bboxy450) and contributors.
+// SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+// Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+// Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+//! Local end of the link: an [Outbox] of ops and a [Cursor] per session, over a
+//! [Transport] that is re-dialled after a drop. Reconnect re-sends hello, every
+//! spawn (the daemon adopts live sessions), a resume per session and every
+//! unacknowledged op; the remote's durable dedup makes the resend safe.
+use crate::frame::{self, Frame, VERSION};
+use crate::link::Outbox;
+use crate::resume::{Accept, Cursor};
+use std::collections::BTreeMap;
+use std::io;
+use std::process::{Child, ChildStdin, ChildStdout, Command, Stdio};
+
+/// How to reach a swarm's remote supervisor.
+#[derive(Debug, Clone)]
+pub enum Transport {
+    /// `ssh HOST bboxy450-term-remote serve --state STATE` with BatchMode: the
+    /// user's SSH config and agent decide identity; nothing ever prompts.
+    Ssh { host: String, state: String },
+    /// A local program run with `serve --state STATE` (loopback and tests).
+    Local { program: String, state: String },
+}
+
+impl Transport {
+    fn command(&self) -> Command {
+        match self {
+            Transport::Ssh { host, state } => {
+                let mut c = Command::new("ssh");
+                c.args([
+                    "-o",
+                    "BatchMode=yes",
+                    "-T",
+                    host,
+                    "bboxy450-term-remote",
+                    "serve",
+                    "--state",
+                    state,
+                ]);
+                c
+            }
+            Transport::Local { program, state } => {
+                let mut c = Command::new(program);
+                c.args(["serve", "--state", state]);
+                c
+            }
+        }
+    }
+}
+
+/// What a received frame meant to the client.
+#[derive(Debug, PartialEq, Eq)]
+pub enum Received {
+    /// Show this event's envelope for the session.
+    Show { session: String, envelope: String },
+    /// The view of this session was cleared for a new epoch.
+    Cleared { session: String },
+    /// The op is applied remotely and left the outbox.
+    Applied { message_id: String },
+    /// The op will never apply; the caller labels it failed.
+    Refused { message_id: String, reason: String },
+    /// Duplicate/stale/out-of-order event, or a frame needing no action.
+    Nothing,
+}
+
+struct Live {
+    child: Child,
+    input: ChildStdin,
+    output: ChildStdout,
+}
+
+pub struct Client {
+    transport: Transport,
+    swarm: String,
+    live: Option<Live>,
+    outbox: Outbox<Frame>,
+    cursors: BTreeMap<String, Cursor>,
+    spawns: BTreeMap<String, Frame>,
+}
+
+impl Client {
+    pub fn new(transport: Transport, swarm: &str) -> Self {
+        Self {
+            transport,
+            swarm: swarm.into(),
+            live: None,
+            outbox: Outbox::new(),
+            cursors: BTreeMap::new(),
+            spawns: BTreeMap::new(),
+        }
+    }
+
+    /// Dial (or re-dial) the remote and bring every session up to date.
+    pub fn connect(&mut self) -> io::Result<()> {
+        self.disconnect();
+        let mut child = self
+            .transport
+            .command()
+            .stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::null())
+            .spawn()?;
+        let mut input = child.stdin.take().expect("piped");
+        let mut output = child.stdout.take().expect("piped");
+        frame::write(
+            &mut input,
+            &Frame::Hello {
+                version: VERSION,
+                swarm_id: self.swarm.clone(),
+                host: String::new(),
+            },
+        )?;
+        match frame::read(&mut output)? {
+            Some(Frame::Welcome { version, .. }) if version == VERSION => {}
+            other => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    format!("bad welcome: {other:?}"),
+                ));
+            }
+        }
+        for spawn in self.spawns.values() {
+            frame::write(&mut input, spawn)?;
+        }
+        for (session, cursor) in &self.cursors {
+            frame::write(
+                &mut input,
+                &Frame::Resume {
+                    session: session.clone(),
+                    epoch: cursor.epoch,
+                    after_seq: cursor.seq,
+                },
+            )?;
+        }
+        self.outbox.reconnect();
+        for (_, op) in self.outbox.sendable() {
+            frame::write(&mut input, &op)?;
+        }
+        self.live = Some(Live {
+            child,
+            input,
+            output,
+        });
+        Ok(())
+    }
+
+    /// The link is gone (or being replaced): nothing is in flight any more.
+    pub fn disconnect(&mut self) {
+        if let Some(mut live) = self.live.take() {
+            drop(live.input);
+            let _ = live.child.kill();
+            let _ = live.child.wait();
+        }
+        self.outbox.drop_link();
+    }
+
+    fn send(&mut self, f: &Frame) -> io::Result<()> {
+        let live = self
+            .live
+            .as_mut()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "link down"))?;
+        frame::write(&mut live.input, f)
+    }
+
+    /// Start (or adopt) a session; its first frame back is a reset.
+    pub fn spawn(&mut self, session: &str, cwd: &str) -> io::Result<()> {
+        let f = Frame::Spawn {
+            session: session.into(),
+            profile: None,
+            cwd: cwd.into(),
+        };
+        self.spawns.insert(session.into(), f.clone());
+        self.cursors.entry(session.into()).or_default();
+        self.send(&f)?;
+        self.send(&Frame::Resume {
+            session: session.into(),
+            epoch: 0,
+            after_seq: 0,
+        })
+    }
+
+    /// Queue one ACP message for a session; sent now if the link is up, else on reconnect.
+    pub fn op(&mut self, session: &str, message_id: &str, envelope: &str) -> io::Result<()> {
+        let f = Frame::Op {
+            session: session.into(),
+            message_id: message_id.into(),
+            envelope: envelope.into(),
+        };
+        self.outbox.submit(message_id, f).map_err(|_| {
+            io::Error::new(io::ErrorKind::AlreadyExists, "message id already submitted")
+        })?;
+        for (_, op) in self.outbox.sendable() {
+            self.send(&op)?;
+        }
+        Ok(())
+    }
+
+    pub fn is_pending(&self, message_id: &str) -> bool {
+        self.outbox.is_unacked(message_id)
+    }
+
+    /// Block for the next frame and interpret it. `Ok(None)`: the link ended.
+    pub fn recv(&mut self) -> io::Result<Option<Received>> {
+        let live = self
+            .live
+            .as_mut()
+            .ok_or_else(|| io::Error::new(io::ErrorKind::NotConnected, "link down"))?;
+        let Some(f) = frame::read(&mut live.output)? else {
+            self.disconnect();
+            return Ok(None);
+        };
+        Ok(Some(match f {
+            Frame::Event {
+                session,
+                epoch,
+                seq,
+                envelope,
+            } => match self.cursors.get_mut(&session).map(|c| c.accept(epoch, seq)) {
+                Some(Accept::Apply) => Received::Show { session, envelope },
+                Some(Accept::Gap) => {
+                    let c = self.cursors[&session];
+                    self.send(&Frame::Resume {
+                        session,
+                        epoch: c.epoch,
+                        after_seq: c.seq,
+                    })?;
+                    Received::Nothing
+                }
+                _ => Received::Nothing,
+            },
+            Frame::Reset {
+                session,
+                epoch,
+                from_seq,
+            } => {
+                self.cursors
+                    .entry(session.clone())
+                    .or_default()
+                    .reset(epoch, from_seq);
+                Received::Cleared { session }
+            }
+            Frame::Applied { message_id } => {
+                self.outbox.on_applied(&message_id);
+                Received::Applied { message_id }
+            }
+            Frame::Refused { message_id, reason } => {
+                self.outbox.on_applied(&message_id); // retire: it will never apply
+                Received::Refused { message_id, reason }
+            }
+            _ => Received::Nothing,
+        }))
+    }
+}
+
+impl Drop for Client {
+    fn drop(&mut self) {
+        self.disconnect();
+    }
+}

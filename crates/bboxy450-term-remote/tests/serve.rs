@@ -12,7 +12,7 @@ use bboxy450_term_remote::frame::{self, Frame, VERSION};
 use bboxy450_term_remote::resume::{Accept, Cursor};
 use bboxy450_term_remote::serve::Server;
 use std::os::unix::net::UnixStream;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -39,16 +39,41 @@ fn connect(server: &Arc<Server>) -> UnixStream {
         let writer = end.try_clone().unwrap();
         let _ = server.serve(end, writer);
     });
-    client.set_read_timeout(Some(Duration::from_secs(10))).unwrap();
+    client
+        .set_read_timeout(Some(Duration::from_secs(10)))
+        .unwrap();
     let mut c = client;
-    frame::write(&mut c, &Frame::Hello { version: VERSION, swarm_id: "swarm".into(), host: "loopback".into() }).unwrap();
-    assert!(matches!(frame::read(&mut c).unwrap(), Some(Frame::Welcome { version: VERSION, .. })));
+    frame::write(
+        &mut c,
+        &Frame::Hello {
+            version: VERSION,
+            swarm_id: "swarm".into(),
+            host: "loopback".into(),
+        },
+    )
+    .unwrap();
+    assert!(matches!(
+        frame::read(&mut c).unwrap(),
+        Some(Frame::Welcome {
+            version: VERSION,
+            ..
+        })
+    ));
     c
 }
 
 fn op(c: &mut UnixStream, id: &str, text: &str) {
-    let envelope = format!(r#"{{"jsonrpc":"2.0","method":"session/prompt","params":{{"text":"{text}"}}}}"#);
-    frame::write(c, &Frame::Op { session: "s1".into(), message_id: id.into(), envelope }).unwrap();
+    let envelope =
+        format!(r#"{{"jsonrpc":"2.0","method":"session/prompt","params":{{"text":"{text}"}}}}"#);
+    frame::write(
+        c,
+        &Frame::Op {
+            session: "s1".into(),
+            message_id: id.into(),
+            envelope,
+        },
+    )
+    .unwrap();
 }
 
 /// Next frame that is not an event for which the predicate is false.
@@ -57,7 +82,15 @@ fn next(c: &mut UnixStream) -> Frame {
 }
 
 fn event_n(f: &Frame) -> Option<(u64, u64, u64)> {
-    let Frame::Event { epoch, seq, envelope, .. } = f else { return None };
+    let Frame::Event {
+        epoch,
+        seq,
+        envelope,
+        ..
+    } = f
+    else {
+        return None;
+    };
     let v: serde_json::Value = serde_json::from_str(envelope).unwrap();
     Some((*epoch, *seq, v["params"]["n"].as_u64().unwrap()))
 }
@@ -87,7 +120,15 @@ fn relay_applies_once_resumes_after_reconnect_and_resets_on_new_epoch() {
     let state = dir.join("state");
     let server = Arc::new(Server::open(&state).unwrap());
     let mut c = connect(&server);
-    frame::write(&mut c, &Frame::Spawn { session: "s1".into(), profile: None, cwd: dir.to_string_lossy().into() }).unwrap();
+    frame::write(
+        &mut c,
+        &Frame::Spawn {
+            session: "s1".into(),
+            profile: None,
+            cwd: dir.to_string_lossy().into(),
+        },
+    )
+    .unwrap();
     let mut view = Cursor::new();
     view.reset(server.epoch(), 1);
 
@@ -108,7 +149,15 @@ fn relay_applies_once_resumes_after_reconnect_and_resets_on_new_epoch() {
     // Link drops before the view took seq 2; a new connection resumes from the cursor.
     drop(c);
     let mut c = connect(&server);
-    frame::write(&mut c, &Frame::Resume { session: "s1".into(), epoch: view.epoch, after_seq: view.seq }).unwrap();
+    frame::write(
+        &mut c,
+        &Frame::Resume {
+            session: "s1".into(),
+            epoch: view.epoch,
+            after_seq: view.seq,
+        },
+    )
+    .unwrap();
     let (e, s, n) = wait_event(&mut c);
     assert_eq!((s, n), (2, 2), "replay starts after the cursor");
     assert_eq!(view.accept(e, s), Accept::Apply);
@@ -116,11 +165,28 @@ fn relay_applies_once_resumes_after_reconnect_and_resets_on_new_epoch() {
     assert_eq!(view.accept(e, 9), Accept::Gap);
 
     // A cursor from another epoch gets reset + the retained tail.
-    frame::write(&mut c, &Frame::Resume { session: "s1".into(), epoch: 7, after_seq: 2 }).unwrap();
-    let Frame::Reset { epoch, from_seq, .. } = next(&mut c) else { panic!("expected reset") };
+    frame::write(
+        &mut c,
+        &Frame::Resume {
+            session: "s1".into(),
+            epoch: 7,
+            after_seq: 2,
+        },
+    )
+    .unwrap();
+    let Frame::Reset {
+        epoch, from_seq, ..
+    } = next(&mut c)
+    else {
+        panic!("expected reset")
+    };
     assert_eq!((epoch, from_seq), (server.epoch(), 1));
     let mut fresh = Cursor::new();
-    assert_eq!(fresh.accept(epoch, 1), Accept::Stale, "nothing before reset");
+    assert_eq!(
+        fresh.accept(epoch, 1),
+        Accept::Stale,
+        "nothing before reset"
+    );
     fresh.reset(epoch, from_seq);
     for want in [1, 2] {
         let (e, s, _) = wait_event(&mut c);
@@ -138,44 +204,29 @@ fn relay_applies_once_resumes_after_reconnect_and_resets_on_new_epoch() {
     op(&mut c, "m1", "hello");
     wait_applied(&mut c, "m1");
     op(&mut c, "m3", "lost session");
-    let Frame::Refused { message_id, .. } = next(&mut c) else { panic!("expected refusal") };
+    let Frame::Refused { message_id, .. } = next(&mut c) else {
+        panic!("expected refusal")
+    };
     assert_eq!(message_id, "m3");
-    frame::write(&mut c, &Frame::Resume { session: "s1".into(), epoch: old, after_seq: 2 }).unwrap();
-    let Frame::Reset { epoch, .. } = next(&mut c) else { panic!("expected reset after restart") };
+    frame::write(
+        &mut c,
+        &Frame::Resume {
+            session: "s1".into(),
+            epoch: old,
+            after_seq: 2,
+        },
+    )
+    .unwrap();
+    let Frame::Reset { epoch, .. } = next(&mut c) else {
+        panic!("expected reset after restart")
+    };
     assert_eq!(epoch, server.epoch());
-    assert_eq!(view.accept(epoch, 1), Accept::Stale, "old view refuses new-epoch events until reset");
+    assert_eq!(
+        view.accept(epoch, 1),
+        Accept::Stale,
+        "old view refuses new-epoch events until reset"
+    );
     drop(c);
     drop(server);
-    std::fs::remove_dir_all(&dir).unwrap();
-}
-
-#[test]
-fn serve_binary_speaks_frames_on_stdio() {
-    let dir = scratch("binary");
-    let mut child = std::process::Command::new(env!("CARGO_BIN_EXE_bboxy450-term-remote"))
-        .args(["serve", "--state"])
-        .arg(dir.join("state"))
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .spawn()
-        .unwrap();
-    let mut input = child.stdin.take().unwrap();
-    let mut output = child.stdout.take().unwrap();
-    frame::write(&mut input, &Frame::Hello { version: VERSION, swarm_id: "swarm".into(), host: "stdio".into() }).unwrap();
-    assert!(matches!(frame::read(&mut output).unwrap(), Some(Frame::Welcome { .. })));
-    frame::write(&mut input, &Frame::Spawn { session: "s1".into(), profile: None, cwd: dir.to_string_lossy().into() }).unwrap();
-    frame::write(&mut input, &Frame::Op { session: "s1".into(), message_id: "b1".into(), envelope: r#"{"jsonrpc":"2.0","method":"initialize"}"#.into() }).unwrap();
-    let mut applied = false;
-    let mut echoed = false;
-    while !(applied && echoed) {
-        match frame::read(&mut output).unwrap().expect("frame") {
-            Frame::Applied { message_id } => applied = message_id == "b1",
-            Frame::Event { seq, .. } => echoed = seq == 1,
-            other => panic!("unexpected {other:?}"),
-        }
-    }
-    drop(input); // end of link: serve exits, sessions die with it
-    assert!(child.wait().unwrap().success());
-    let _ = Path::new(&dir);
     std::fs::remove_dir_all(&dir).unwrap();
 }

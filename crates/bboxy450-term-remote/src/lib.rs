@@ -13,6 +13,7 @@
 // A backend daemon crate like bbt-supervisor: the UI-only bbt-rt IO rule does not apply.
 #![allow(clippy::disallowed_methods)]
 
+pub mod client;
 pub mod delivery;
 pub mod frame;
 pub mod link;

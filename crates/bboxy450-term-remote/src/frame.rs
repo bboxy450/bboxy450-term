@@ -17,7 +17,7 @@ pub const VERSION: u16 = 1;
 /// Largest frame body; the IR caps one envelope at 256 KiB.
 pub const MAX_FRAME: usize = 1024 * 1024;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum Frame {
     /// Local → remote, first frame on every connection.
@@ -59,7 +59,11 @@ pub enum Frame {
     Close { session: String },
     /// Remote → local: the epoch changed or the tail is gone; clear the view,
     /// then accept events of `epoch` from `from_seq`.
-    Reset { session: String, epoch: u64, from_seq: u64 },
+    Reset {
+        session: String,
+        epoch: u64,
+        from_seq: u64,
+    },
     /// Remote → local: an op was not journalled or applied (unknown session).
     Refused { message_id: String, reason: String },
     /// A frame type this build does not know; skipped, never an error.

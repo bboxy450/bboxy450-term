@@ -28,7 +28,10 @@ struct Session {
 
 struct Inner {
     sessions: BTreeMap<String, Session>,
-    out: Option<Sender<Frame>>,
+    /// The live connection's writer, tagged so a closing older connection
+    /// never clears a newer one's.
+    out: Option<(u64, Sender<Frame>)>,
+    connections: u64,
 }
 
 pub struct Server {
@@ -54,7 +57,11 @@ impl Server {
         Ok(Self {
             epoch,
             inbox: Mutex::new(Inbox::new(FileJournal::open(&state.join("applied.log"))?)),
-            inner: Arc::new(Mutex::new(Inner { sessions: BTreeMap::new(), out: None })),
+            inner: Arc::new(Mutex::new(Inner {
+                sessions: BTreeMap::new(),
+                out: None,
+                connections: 0,
+            })),
         })
     }
     pub fn epoch(&self) -> u64 {
@@ -76,16 +83,25 @@ impl Server {
             .spawn()?;
         let stdin = child.stdin.take().expect("piped stdin");
         let stdout = child.stdout.take().expect("piped stdout");
-        inner.sessions.insert(session.to_owned(), Session { log: SessionLog::new(session, self.epoch), stdin, child });
+        inner.sessions.insert(
+            session.to_owned(),
+            Session {
+                log: SessionLog::new(session, self.epoch),
+                stdin,
+                child,
+            },
+        );
         let shared = Arc::clone(&self.inner);
         let name = session.to_owned();
         std::thread::spawn(move || {
             for line in BufReader::new(stdout).lines() {
                 let Ok(line) = line else { break };
                 let mut inner = shared.lock().unwrap();
-                let Some(s) = inner.sessions.get_mut(&name) else { break };
+                let Some(s) = inner.sessions.get_mut(&name) else {
+                    break;
+                };
                 let event = s.log.push(line);
-                if let Some(out) = &inner.out
+                if let Some((_, out)) = &inner.out
                     && out.send(event).is_err()
                 {
                     inner.out = None;
@@ -100,13 +116,21 @@ impl Server {
         let mut inbox = self.inbox.lock().unwrap();
         // Durable dedup first: an applied id is acknowledged even after restart.
         if inbox.is_applied(message_id) {
-            return Ok(Frame::Applied { message_id: message_id.into() });
+            return Ok(Frame::Applied {
+                message_id: message_id.into(),
+            });
         }
         let Some(s) = inner.sessions.get_mut(session) else {
-            return Ok(Frame::Refused { message_id: message_id.into(), reason: "unknown session".into() });
+            return Ok(Frame::Refused {
+                message_id: message_id.into(),
+                reason: "unknown session".into(),
+            });
         };
         if envelope.contains('\n') {
-            return Ok(Frame::Refused { message_id: message_id.into(), reason: "envelope must be one line".into() });
+            return Ok(Frame::Refused {
+                message_id: message_id.into(),
+                reason: "envelope must be one line".into(),
+            });
         }
         match inbox.arrive(message_id)? {
             Arrival::Fresh => {
@@ -116,7 +140,9 @@ impl Server {
             }
             Arrival::Duplicate => {}
         }
-        Ok(Frame::Applied { message_id: message_id.into() })
+        Ok(Frame::Applied {
+            message_id: message_id.into(),
+        })
     }
 
     fn close(&self, session: &str) {
@@ -127,7 +153,11 @@ impl Server {
     }
 
     /// Serve one link connection until it ends; sessions outlive it.
-    pub fn serve(&self, mut reader: impl Read, writer: impl Write + Send + 'static) -> io::Result<()> {
+    pub fn serve(
+        &self,
+        mut reader: impl Read,
+        writer: impl Write + Send + 'static,
+    ) -> io::Result<()> {
         let (tx, rx) = mpsc::channel::<Frame>();
         let writer = std::thread::spawn(move || {
             let mut writer = writer;
@@ -137,36 +167,68 @@ impl Server {
                 }
             }
         });
-        let result = self.connection(&mut reader, &tx);
+        let id = {
+            let mut inner = self.inner.lock().unwrap();
+            inner.connections += 1;
+            inner.connections
+        };
+        let result = self.connection(&mut reader, &tx, id);
         {
             let mut inner = self.inner.lock().unwrap();
-            inner.out = None;
+            if inner
+                .out
+                .as_ref()
+                .is_some_and(|(current, _)| *current == id)
+            {
+                inner.out = None;
+            }
         }
         drop(tx);
         let _ = writer.join();
         result
     }
 
-    fn connection(&self, reader: &mut impl Read, tx: &Sender<Frame>) -> io::Result<()> {
+    fn connection(&self, reader: &mut impl Read, tx: &Sender<Frame>, id: u64) -> io::Result<()> {
         match frame::read(reader)? {
             Some(Frame::Hello { version, .. }) if version == VERSION => {}
             Some(Frame::Hello { .. }) => {
-                return Err(io::Error::new(io::ErrorKind::InvalidData, "link major version mismatch"));
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidData,
+                    "link major version mismatch",
+                ));
             }
             None => return Ok(()),
             Some(_) => return Err(io::Error::new(io::ErrorKind::InvalidData, "expected hello")),
         }
-        let send = |f: Frame| tx.send(f).map_err(|_| io::Error::new(io::ErrorKind::BrokenPipe, "link writer gone"));
-        send(Frame::Welcome { version: VERSION, supervisor: format!("bboxy450-term-remote epoch {}", self.epoch) })?;
-        self.inner.lock().unwrap().out = Some(tx.clone());
+        let send = |f: Frame| {
+            tx.send(f)
+                .map_err(|_| io::Error::new(io::ErrorKind::BrokenPipe, "link writer gone"))
+        };
+        send(Frame::Welcome {
+            version: VERSION,
+            supervisor: format!("bboxy450-term-remote epoch {}", self.epoch),
+        })?;
+        self.inner.lock().unwrap().out = Some((id, tx.clone()));
         while let Some(frame) = frame::read(reader)? {
             match frame {
                 Frame::Spawn { session, cwd, .. } => self.spawn(&session, &cwd)?,
-                Frame::Op { session, message_id, envelope } => send(self.op(&session, &message_id, &envelope)?)?,
-                Frame::Resume { session, epoch, after_seq } => {
+                Frame::Op {
+                    session,
+                    message_id,
+                    envelope,
+                } => send(self.op(&session, &message_id, &envelope)?)?,
+                Frame::Resume {
+                    session,
+                    epoch,
+                    after_seq,
+                } => {
                     let frames = match self.inner.lock().unwrap().sessions.get(&session) {
                         Some(s) => s.log.replay(epoch, after_seq),
-                        None => vec![Frame::Reset { session: session.clone(), epoch: self.epoch, from_seq: 1 }],
+                        None => vec![Frame::Reset {
+                            session: session.clone(),
+                            epoch: self.epoch,
+                            from_seq: 1,
+                        }],
                     };
                     for f in frames {
                         send(f)?;
@@ -182,7 +244,14 @@ impl Server {
 
 impl Drop for Server {
     fn drop(&mut self) {
-        let names: Vec<_> = self.inner.lock().unwrap().sessions.keys().cloned().collect();
+        let names: Vec<_> = self
+            .inner
+            .lock()
+            .unwrap()
+            .sessions
+            .keys()
+            .cloned()
+            .collect();
         for name in names {
             self.close(&name);
         }

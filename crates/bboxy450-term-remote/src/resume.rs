@@ -25,7 +25,12 @@ pub struct SessionLog {
 
 impl SessionLog {
     pub fn new(session: &str, epoch: u64) -> Self {
-        Self { session: session.to_owned(), epoch, next: 1, events: VecDeque::new() }
+        Self {
+            session: session.to_owned(),
+            epoch,
+            next: 1,
+            events: VecDeque::new(),
+        }
     }
     /// Append one event; returns its frame.
     pub fn push(&mut self, envelope: String) -> Frame {
@@ -35,7 +40,12 @@ impl SessionLog {
             self.events.pop_front();
         }
         self.events.push_back((seq, envelope.clone()));
-        Frame::Event { session: self.session.clone(), epoch: self.epoch, seq, envelope }
+        Frame::Event {
+            session: self.session.clone(),
+            epoch: self.epoch,
+            seq,
+            envelope,
+        }
     }
     /// Frames that bring a cursor at (epoch, after_seq) up to date.
     pub fn replay(&self, epoch: u64, after_seq: u64) -> Vec<Frame> {
@@ -44,15 +54,24 @@ impl SessionLog {
         let from = if epoch == self.epoch && after_seq + 1 >= first && after_seq < self.next {
             after_seq + 1
         } else {
-            frames.push(Frame::Reset { session: self.session.clone(), epoch: self.epoch, from_seq: first });
+            frames.push(Frame::Reset {
+                session: self.session.clone(),
+                epoch: self.epoch,
+                from_seq: first,
+            });
             first
         };
-        frames.extend(self.events.iter().filter(|(seq, _)| *seq >= from).map(|(seq, envelope)| Frame::Event {
-            session: self.session.clone(),
-            epoch: self.epoch,
-            seq: *seq,
-            envelope: envelope.clone(),
-        }));
+        frames.extend(
+            self.events
+                .iter()
+                .filter(|(seq, _)| *seq >= from)
+                .map(|(seq, envelope)| Frame::Event {
+                    session: self.session.clone(),
+                    epoch: self.epoch,
+                    seq: *seq,
+                    envelope: envelope.clone(),
+                }),
+        );
         frames
     }
 }
@@ -81,7 +100,11 @@ pub struct Cursor {
 impl Cursor {
     /// A view that has not seen this session yet; the first frame must be a reset.
     pub fn new() -> Self {
-        Self { epoch: 0, seq: 0, reset_pending: true }
+        Self {
+            epoch: 0,
+            seq: 0,
+            reset_pending: true,
+        }
     }
     /// The view was cleared for `epoch`; accept from `from_seq`.
     pub fn reset(&mut self, epoch: u64, from_seq: u64) {
