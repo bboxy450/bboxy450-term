@@ -481,7 +481,8 @@ def build_closure_after(before, *, runner):
     candidates.sort(key=lambda candidate: candidate["fingerprint"]["path"])
     if len(selected) != 1:
         refusals.append("runner_has_no_unique_matching_Cargo_fingerprint")
-    elif (sorted(selected[0]["metadata"]["features"]) != ["acp-agent", "default"]
+    # Harness builds always serve ACP (operator, 2026-11-09; harness c6e57ff).
+    elif (sorted(selected[0]["metadata"]["features"]) != ["acp", "acp-agent", "default"]
           or not selected[0]["metadata"]["rustflags"]["empty"]):
         refusals.append("selected_fingerprint_has_unapproved_features_or_flags")
     receipt = {"before_sha256": hashlib.sha256(canonical(before)).hexdigest(), "runner": runner,
@@ -605,8 +606,8 @@ def check_build_closure_controls(canonical_receipt=None):
             fingerprint = {"rustc": (1 << 64) - 1, "target": (1 << 53) + 1,
                            "profile": 854319013279132213, "path": 15914529373502866653,
                            "config": 9396254390672932401, "compile_kind": 0,
-                           "features": '["acp-agent","default"]',
-                           "declared_features": '["acp-agent","default","test-fixtures"]',
+                           "features": '["acp","acp-agent","default"]',
+                           "declared_features": '["acp","acp-agent","default","test-fixtures"]',
                            "deps": [[(1 << 53) + 1, "helper_dependency", False, (1 << 64) - 1]],
                            "rustflags": []}
             old_suffix, current_suffix = "a" * 16, "b" * 16
@@ -666,7 +667,7 @@ def check_build_closure_controls(canonical_receipt=None):
                 ("selected_flags_redacted", {**fingerprint, "rustflags": ["PRIVATE_FINGERPRINT_FLAG_MARKER"]}, "selected_fingerprint_has_unapproved_features_or_flags"),
                 ("noninteger_fingerprint", {**fingerprint, "profile": True}, None),
                 ("u64_overflow", {**fingerprint, "rustc": 1 << 64}, None),
-                ("malformed_feature_encoding", {**fingerprint, "features": ["acp-agent", "default"]}, None),
+                ("malformed_feature_encoding", {**fingerprint, "features": ["acp", "acp-agent", "default"]}, None),
                 ("missing_fingerprint_fields", {"features": fingerprint["features"]}, None),
             ):
                 put(candidate(current_suffix), canonical(value))
