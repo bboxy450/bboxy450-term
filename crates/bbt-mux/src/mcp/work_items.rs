@@ -1463,6 +1463,10 @@ fn transition(mut doc: Document, action: Action, actor: &Actor, call: &Call) -> 
         }
         Action::Reject(reason) => {
             let assignee = assignee.ok_or("task has no assignee")?;
+            // TaskAmendment models Reject as live-only (status < accepted).
+            if matches!(current, "accepted" | "done") {
+                return Err("closed task cannot be rejected".into());
+            }
             doc.metadata["status"] = json!("rejected");
             doc.metadata["rejection"] = json!({"reason":reason,"by":actor.reference()});
             notices.push((

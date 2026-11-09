@@ -4400,6 +4400,22 @@ fn mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_onl
     );
     assert_eq!(data(accept())["task_status"], "accepted");
     assert_eq!(f.task_document().metadata["status"], "accepted");
+    // Accepted and done are frozen: Reject is live-only, like Report and Delegate.
+    let reject = || {
+        f.mutate(
+            f.oracle.id,
+            Ulid::new(),
+            "task_reject",
+            json!({"task_path":f.task_path(),"reason":"late rejection"}),
+        )
+    };
+    assert!(reject().to_string().contains("closed task cannot be rejected"));
+    assert_eq!(f.task_document().metadata["status"], "accepted");
+    let mut done = f.task_metadata();
+    done["status"] = json!("done");
+    write(done);
+    assert!(reject().to_string().contains("closed task cannot be rejected"));
+    assert_eq!(f.task_document().metadata["status"], "done");
     // Legacy tasks without a criteria list still need the exact command and zero.
     write(f.task_metadata());
     data(f.report(verification("true", 0, json!([]))));
