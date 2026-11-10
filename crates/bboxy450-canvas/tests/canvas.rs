@@ -66,7 +66,7 @@ fn canvas_replay_jsonl_and_record_roundtrip() {
     );
 }
 #[test]
-fn canvas_rejects_duplicate_reordered_missing_and_other_author_ops() {
+fn canvas_rejects_duplicate_reordered_missing_and_empty_author_ops() {
     let ops = fixture();
     let mut duplicate = ops.clone();
     duplicate.insert(1, ops[0].clone());
@@ -94,6 +94,11 @@ fn canvas_rejects_duplicate_reordered_missing_and_other_author_ops() {
     ));
     let mut author = ops.clone();
     author[1].author = "another-seat".into();
+    assert_eq!(
+        Canvas::replay(&author).unwrap().digest(),
+        Canvas::replay(&ops).unwrap().digest()
+    );
+    author[1].author.clear();
     assert_eq!(Canvas::replay(&author), Err(ReplayError::Author));
     // All permutations of three additions: exactly the original sequence wins.
     for order in [
@@ -228,8 +233,10 @@ fn canvas_references_changes_removal_invalid_geometry_and_cap() {
         Err(ReplayError::DuplicateId("a".into()))
     );
     assert_eq!(
-        Canvas::replay(&[add, op(2, Action::Remove { id: "a".into() })]).unwrap(),
-        Canvas::default()
+        Canvas::replay(&[add, op(2, Action::Remove { id: "a".into() })])
+            .unwrap()
+            .digest(),
+        Canvas::default().digest()
     );
     let mut bad = element("bad");
     bad.content = Content::Shape {

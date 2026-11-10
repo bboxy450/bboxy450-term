@@ -16,6 +16,7 @@
 )]
 use bbt_mux::Ulid;
 mod app;
+mod canvas;
 mod debug;
 mod dream;
 mod e2e;
@@ -99,6 +100,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   knowledge status [--swarm ID]
   knowledge select <root-id> <candidate-id> [--swarm ID]
   knowledge reset <root-id> [--swarm ID]    select the native local KB
+  canvas open|list|draw|read <JSON> --swarm ID   same arguments as canvas MCP tools; list defaults to {}
   dream inspect <seat> <session>:<generation>...   1..32 exact retained closed sessions
   dream status <seat> <run> [page]         immutable own-seat status/result page
   dream cancel <seat> <run>                cancel and retain ownership through actual settlement
@@ -221,6 +223,7 @@ macro_rules! commands {
 }
 
 use app::app_commands;
+use canvas::canvas_commands;
 use debug::debug_commands;
 use dream::dream_commands;
 use e2e::e2e_commands;
@@ -250,6 +253,7 @@ commands! {
         debug_commands,
         dream_commands,
         app_commands,
+        canvas_commands,
     ]
 }
 
@@ -270,6 +274,7 @@ const NOUN_VERBS: &[&[Verb]] = &[
     debug::VERBS,
     dream::VERBS,
     app::VERBS,
+    canvas::VERBS,
 ];
 const fn verb_count(parts: &[&[Verb]]) -> usize {
     let (mut n, mut i) = (0, 0);
@@ -348,6 +353,7 @@ const NOUN_PARSERS: &[NounParse] = &[
     events::parse,
     identity::parse,
     app::parse,
+    canvas::parse,
 ];
 
 /// Parses everything after `ctl`; returns the endpoint file override and the command.
@@ -1810,6 +1816,7 @@ struct VerbCx<'a> {
 type NounVerbRun = fn(VerbCx<'_>, Command) -> Result<(), String>;
 /// Each noun's noun-verb runner; a verb is run in its noun's file.
 const NOUN_VERB_RUNNERS: &[(&str, NounVerbRun)] = &[
+    ("canvas", canvas::run_verb),
     ("debug", debug::run_verb),
     ("dream", dream::run_verb),
     ("plugin", plugin::run_verb),
@@ -2416,6 +2423,7 @@ mod tests {
             knowledge::PARSE_SAMPLES,
             events::PARSE_SAMPLES,
             app::PARSE_SAMPLES,
+            canvas::PARSE_SAMPLES,
         ]
         .concat();
         assert_eq!(

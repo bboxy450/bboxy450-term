@@ -71,6 +71,8 @@ mod provenance_models;
 
 #[path = "event_log_model.rs"]
 mod event_log_model;
+#[path = "canvas_model.rs"]
+mod canvas_model;
 
 #[path = "logic_worker_model.rs"]
 mod logic_worker_model;
@@ -1914,6 +1916,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(launch_readiness::cases());
     cases.extend(provenance_models::cases());
     cases.extend(event_log_model::cases());
+    cases.extend(canvas_model::cases());
     cases.extend(logic_worker_model::cases());
     cases.extend(provenance_background_model::cases());
     cases.extend(provenance_query_model::cases());

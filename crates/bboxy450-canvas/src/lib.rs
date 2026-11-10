@@ -4,16 +4,18 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! C0 is a single writer, contiguous sequence starting at one. Replay rejects
-//! reordered/duplicate operations and author changes; no convergence is claimed.
+//! The canonical log supplies contiguous operation sequence numbers. Multiple
+//! authors replay in append order; removed stable ids never resurrect.
 mod camera;
+pub mod log;
+pub mod record;
+pub mod store;
 pub use camera::*;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, BTreeSet},
     fmt,
-    io::{self, BufRead, Write},
 };
 
 pub type ElementId = String;
@@ -186,6 +188,7 @@ impl std::error::Error for ReplayError {}
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Canvas {
     elements: BTreeMap<ElementId, Element>,
+    removed: BTreeSet<ElementId>,
 }
 impl Canvas {
     pub fn elements(&self) -> impl DoubleEndedIterator<Item = &Element> {
@@ -204,61 +207,76 @@ impl Canvas {
                     actual: op.seq,
                 });
             }
-            if op.author.is_empty() || op.author != ops[0].author {
+            if op.author.is_empty() {
                 return Err(ReplayError::Author);
             }
-            match &op.action {
-                Action::Add { element } | Action::Change { element } => {
-                    let exists = canvas.elements.contains_key(&element.id);
-                    if matches!(op.action, Action::Add { .. }) {
-                        if exists {
-                            return Err(ReplayError::DuplicateId(element.id.clone()));
-                        }
-                        if canvas.elements.len() == MAX_ELEMENTS {
-                            return Err(ReplayError::ElementCap { cap: MAX_ELEMENTS });
-                        }
-                    } else if !exists {
-                        return Err(ReplayError::UnknownId(element.id.clone()));
+            canvas.apply(&op.action)?;
+        }
+        Ok(canvas)
+    }
+    /// The store validates a whole candidate batch before making any append.
+    pub(crate) fn apply(&mut self, action: &Action) -> Result<(), ReplayError> {
+        match action {
+            Action::Add { element } | Action::Change { element } => {
+                if self.removed.contains(&element.id) {
+                    return Ok(());
+                }
+                let exists = self.elements.contains_key(&element.id);
+                if matches!(action, Action::Add { .. }) {
+                    if exists {
+                        return Err(ReplayError::DuplicateId(element.id.clone()));
                     }
-                    canvas.validate(element)?;
-                    // An endpoint cannot be replaced by a connector: references
-                    // always resolve directly to an element with world bounds.
-                    if element.content.bounds().is_none() && canvas.elements.values().any(|e| {
+                    if self.elements.len() == MAX_ELEMENTS {
+                        return Err(ReplayError::ElementCap { cap: MAX_ELEMENTS });
+                    }
+                } else if !exists {
+                    return Err(ReplayError::UnknownId(element.id.clone()));
+                }
+                self.validate(element)?;
+                // An endpoint cannot be replaced by a connector: references
+                // always resolve directly to an element with world bounds.
+                if element.content.bounds().is_none() && self.elements.values().any(|e| {
                         matches!(&e.content, Content::Connector { from, to, .. } if from == &element.id || to == &element.id)
                     }) { return Err(ReplayError::ReferencedId(element.id.clone())); }
-                    let mut element = element.clone();
-                    element.tags.sort();
-                    element.tags.dedup();
-                    canvas.elements.insert(element.id.clone(), element);
+                let mut element = element.clone();
+                element.tags.sort();
+                element.tags.dedup();
+                self.elements.insert(element.id.clone(), element);
+            }
+            Action::Remove { id } => {
+                if self.removed.contains(id) {
+                    return Ok(());
                 }
-                Action::Remove { id } => {
-                    if !canvas.elements.contains_key(id) {
-                        return Err(ReplayError::UnknownId(id.clone()));
-                    }
-                    if canvas
-                        .elements
-                        .values()
-                        .any(|e| e.content.references().contains(&id.as_str()))
-                    {
-                        return Err(ReplayError::ReferencedId(id.clone()));
-                    }
-                    canvas.elements.remove(id);
+                if !self.elements.contains_key(id) {
+                    return Err(ReplayError::UnknownId(id.clone()));
                 }
-                Action::Tag { id, tag } => {
-                    if tag.is_empty() {
-                        return Err(ReplayError::InvalidTag);
-                    }
-                    let element = canvas
-                        .elements
-                        .get_mut(id)
-                        .ok_or_else(|| ReplayError::UnknownId(id.clone()))?;
-                    if let Err(at) = element.tags.binary_search(tag) {
-                        element.tags.insert(at, tag.clone());
-                    }
+                if self
+                    .elements
+                    .values()
+                    .any(|e| e.content.references().contains(&id.as_str()))
+                {
+                    return Err(ReplayError::ReferencedId(id.clone()));
+                }
+                self.elements.remove(id);
+                self.removed.insert(id.clone());
+            }
+            Action::Tag { id, tag } => {
+                if self.removed.contains(id) {
+                    return Ok(());
+                }
+                if tag.is_empty() {
+                    return Err(ReplayError::InvalidTag);
+                }
+                let element = self
+                    .elements
+                    .get_mut(id)
+                    .ok_or_else(|| ReplayError::UnknownId(id.clone()))?;
+                if let Err(at) = element.tags.binary_search(tag) {
+                    element.tags.insert(at, tag.clone());
                 }
             }
         }
-        Ok(canvas)
+        Ok(())
     }
     fn validate(&self, element: &Element) -> Result<(), ReplayError> {
         if element.id.is_empty() || element.content.bounds().is_some_and(|b| !b.valid()) {
@@ -292,28 +310,4 @@ impl Canvas {
     }
 }
 
-/// JSONL is serialization only: replay performs sequence/reference validation.
-/// Empty lines are ignored; malformed records report their one-based line.
-pub fn load_log(reader: impl BufRead) -> io::Result<Vec<Op>> {
-    let mut ops = vec![];
-    for (index, line) in reader.lines().enumerate() {
-        let line = line?;
-        if line.trim().is_empty() {
-            continue;
-        }
-        ops.push(serde_json::from_str(&line).map_err(|e| {
-            io::Error::new(
-                io::ErrorKind::InvalidData,
-                format!("line {}: {e}", index + 1),
-            )
-        })?);
-    }
-    Ok(ops)
-}
-pub fn save_log(ops: &[Op], mut writer: impl Write) -> io::Result<()> {
-    for op in ops {
-        serde_json::to_writer(&mut writer, op).map_err(io::Error::other)?;
-        writer.write_all(b"\n")?;
-    }
-    Ok(())
-}
+pub use log::{load_log, save_log};

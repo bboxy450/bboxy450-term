@@ -11,6 +11,11 @@ rust-version.workspace = true
 description = "Local terminal sessions, durable messaging and knowledge-provider coordination"
 
 [dependencies]
+bboxy450-canvas = { version = "0.1.1", path = "../bboxy450-canvas" }
+bbt-ui = { package = "bboxy450-ui", version = "0.1.1", path = "../bbt-ui" }
+bbt-render.workspace = true
+bbt-ui-model.workspace = true
+png = "0.18"
 bboxy450-keychain = { package = "bboxy450-keychain", version = "0.1.1", path = "../bboxy450-keychain" }
 bboxy450-harness-wake-up = { workspace = true, features = ["runtime-assertions"] }
 bbt-plugin = { package = "bboxy450-plugin", version = "0.1.1", path = "../bbt-plugin" }

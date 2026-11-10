@@ -3086,6 +3086,8 @@ struct Worker {
     gui_knowledge_jobs: tokio::task::JoinSet<GuiKnowledgeCompletion>,
     gui_task_reads: tokio::task::JoinSet<GuiTaskReadCompletion>,
     task_import_jobs: tokio::task::JoinSet<()>,
+    canvas_jobs: tokio::task::JoinSet<()>,
+    canvas_rates: crate::mcp::canvas::Rates,
     task_import_capacity: BTreeMap<String, Arc<tokio::sync::Semaphore>>,
     #[cfg(test)]
     task_import_hook: Option<Arc<dyn Fn() + Send + Sync>>,
@@ -3408,6 +3410,8 @@ impl Worker {
             gui_knowledge_jobs: tokio::task::JoinSet::new(),
             gui_task_reads: tokio::task::JoinSet::new(),
             task_import_jobs: tokio::task::JoinSet::new(),
+            canvas_jobs: tokio::task::JoinSet::new(),
+            canvas_rates: Default::default(),
             task_import_capacity: BTreeMap::new(),
             #[cfg(test)]
             task_import_hook: None,
@@ -9726,6 +9730,11 @@ impl Worker {
                 eprintln!("plugin task interrupted; admitted operation remains unknown");
             }
         }
+        while let Some(result) = self.canvas_jobs.try_join_next() {
+            if result.is_err() {
+                eprintln!("canvas worker interrupted; retry the same operation to recover from its log");
+            }
+        }
         while let Some(result) = self.task_import_jobs.try_join_next() {
             if result.is_err() {
                 eprintln!(
@@ -10475,6 +10484,217 @@ impl Worker {
             self.workspace_reads.entry(root).or_default().push(pending);
         }
     }
+    /// Canvas IO/rendering uses the existing blocking pool. No append lock or
+    /// GPU work holds the logic turn or a SQLite journal transaction.
+    fn start_canvas(
+        &mut self,
+        actor: crate::mcp::Actor,
+        port: WorkspacePort,
+        journal: crate::mcp::journal::Journal,
+        task: Option<String>,
+        call: crate::mcp::Call,
+        done: impl FnOnce(Result<serde_json::Value>) + Send + 'static,
+    ) {
+        match journal.retained(&actor, &call) {
+            Ok(Some(value)) if value["structuredContent"]["status"] != "unknown" => {
+                done(Ok(value));
+                return;
+            }
+            Err(error) => {
+                done(Err(error));
+                return;
+            }
+            Ok(_) => {}
+        }
+        let count = crate::mcp::canvas::op_count(&call);
+        if count != 0
+            && let Err(reason) = self
+                .canvas_rates
+                .admit(&actor.reference(), count, Instant::now())
+        {
+            done(Ok(crate::mcp::error(
+                call.op_id,
+                "canvas_rate_cap",
+                &reason,
+            )));
+            return;
+        }
+        let root = port.host.root_path().to_owned();
+        let swarm = port.binding.swarm.to_string();
+        self.canvas_jobs.spawn_blocking_on(
+            move || {
+                // Reuse common admission to bind the ID before any file effect.
+                // Unknown attempts can resume because both create and append
+                // dedupe this same ID in their own durable files.
+                match journal.admit(&actor, &call) {
+                    Ok((value, false)) if value["structuredContent"]["status"] != "unknown" => {
+                        done(Ok(value));
+                        return;
+                    }
+                    Err(error) => {
+                        done(Err(error));
+                        return;
+                    }
+                    Ok(_) => {}
+                }
+                let value = match crate::mcp::canvas::execute(
+                    &root,
+                    &swarm,
+                    &actor,
+                    task.as_deref(),
+                    &call,
+                ) {
+                    Ok(mut value) => {
+                        value["structuredContent"]["knowledge_root_id"] =
+                            serde_json::json!(port.binding.root_id);
+                        value["structuredContent"]["swarm_workspace_id"] =
+                            serde_json::json!(port.binding.swarm);
+                        value["content"][0]["text"] =
+                            serde_json::json!(value["structuredContent"].to_string());
+                        value
+                    }
+                    Err(error) => {
+                        let value = crate::mcp::error(call.op_id, &error.code, &error.message);
+                        if matches!(error.code.as_str(), "canvas_busy" | "canvas_io") {
+                            // Keep admission unknown so a transient refusal can
+                            // retry the original ID, including after restart.
+                            done(Ok(value));
+                            return;
+                        }
+                        value
+                    }
+                };
+                done(journal.complete(&actor, &call, value));
+            },
+            &self.handle,
+        );
+    }
+    fn start_seat_canvas(
+        &mut self,
+        id: Ulid,
+        generation: u64,
+        call: crate::mcp::Call,
+        reply: oneshot::Sender<Result<serde_json::Value>>,
+    ) {
+        let prepared = (|| -> Result<_> {
+            let (actor, record) = self.control_actor(id, generation)?;
+            call.validate()?;
+            let port = self.seat_workspace(&actor)?;
+            let journal = self.control_journal(id)?;
+            let journal = self.root_journal(&journal, &port);
+            Ok((actor, record, port, journal))
+        })();
+        match prepared {
+            Ok((actor, record, port, journal)) => self.start_canvas(
+                (&actor).into(),
+                port,
+                journal,
+                record.tasks.first().map(ToString::to_string),
+                call,
+                move |result| {
+                    let _ = reply.send(result);
+                },
+            ),
+            Err(error) => {
+                let _ = reply.send(Ok(crate::mcp::error(
+                    call.op_id,
+                    &workspace_command_error(error.as_ref()).code,
+                    &error.to_string(),
+                )));
+            }
+        }
+    }
+    /// ctl reuses the admitted GUI knowledge transport, bypassing provider IO:
+    /// canvases own their codec and never mutate provider documents.
+    fn start_gui_canvas(
+        &mut self,
+        method: String,
+        mut args: serde_json::Value,
+        port: WorkspacePort,
+        reply: oneshot::Sender<crate::knowledge::data_source::Result<serde_json::Value>>,
+    ) {
+        if port.binding.swarm.is_nil() {
+            let _ = reply.send(Err(crate::knowledge::data_source::CommandError::new(
+                "canvas_swarm_required",
+                "ctl canvas requires --swarm ID",
+            )));
+            return;
+        }
+        let prepared = (|| -> Result<_> {
+            let op_id: Ulid = serde_json::from_value(
+                args.as_object_mut()
+                    .and_then(|a| a.remove("op_id"))
+                    .ok_or_else(|| invalid("canvas control requires its operation id"))?,
+            )?;
+            let call = crate::mcp::Call {
+                op_id,
+                tool: method,
+                args,
+            };
+            call.validate()?;
+            let reference = self.gui_device()?;
+            let actor = match reference.kind {
+                bbt_proto::messaging::OperatorReferenceKind::DeviceDerived => {
+                    crate::mcp::Actor::Operator {
+                        device_id: reference.id,
+                        door: crate::mcp::Door::Ctl,
+                        issued_by: None,
+                    }
+                }
+                bbt_proto::messaging::OperatorReferenceKind::OperatorLocal => {
+                    crate::mcp::Actor::OperatorLocal {
+                        reference,
+                        door: crate::mcp::Door::Ctl,
+                        issued_by: None,
+                    }
+                }
+            };
+            let journal = self.root_journal(&self.operator_journal, &port);
+            Ok((actor, call, journal))
+        })();
+        match prepared {
+            Ok((actor, call, journal)) => {
+                self.start_canvas(actor, port, journal, None, call, move |result| {
+                    let result = result
+                        .map_err(|e| {
+                            crate::knowledge::data_source::CommandError::new(
+                                "canvas_unavailable",
+                                e.to_string(),
+                            )
+                        })
+                        .and_then(|value| {
+                            if value["isError"] == true {
+                                Err(crate::knowledge::data_source::CommandError::new(
+                                    value["structuredContent"]["error"]["code"]
+                                        .as_str()
+                                        .unwrap_or("canvas_error"),
+                                    value["structuredContent"]["error"]["message"]
+                                        .as_str()
+                                        .unwrap_or("canvas request refused"),
+                                ))
+                            } else {
+                                let mut data = value["structuredContent"].clone();
+                                // ctl keeps image blocks in JSON; no temporary image path or second renderer.
+                                if value["content"]
+                                    .as_array()
+                                    .is_some_and(|items| items.len() > 1)
+                                {
+                                    data["content"] = value["content"].clone();
+                                }
+                                Ok(data)
+                            }
+                        });
+                    let _ = reply.send(result);
+                })
+            }
+            Err(error) => {
+                let _ = reply.send(Err(crate::knowledge::data_source::CommandError::new(
+                    "invalid_canvas_control",
+                    error.to_string(),
+                )));
+            }
+        }
+    }
     fn start_gui_knowledge(
         &mut self,
         method: String,
@@ -10490,6 +10710,10 @@ impl Worker {
                 return;
             }
         };
+        if crate::mcp::canvas::handles(&method) {
+            self.start_gui_canvas(method, args, port, reply);
+            return;
+        }
         if let Some(binding) = ready {
             if binding != port.binding {
                 let _ = reply.send(Err(crate::knowledge::data_source::CommandError::new(
@@ -11261,7 +11485,9 @@ impl Worker {
                         } else {
                             call
                         };
-                        if crate::mcp::workspaces::handles(&call.tool) {
+                        if crate::mcp::canvas::handles(&call.tool) {
+                            self.start_seat_canvas(id, generation, call, reply);
+                        } else if crate::mcp::workspaces::handles(&call.tool) {
                             self.start_workspace_call(id, generation, call, reply);
                         } else if matches!(call.tool.as_str(), "seat_spawn" | "seat_split")
                             && call.args.get("workspace").is_some()

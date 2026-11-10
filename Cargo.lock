@@ -327,9 +327,13 @@ dependencies = [
 name = "bboxy450-canvas"
 version = "0.1.1"
 dependencies = [
+ "libc",
  "serde",
  "serde_json",
+ "serde_yaml",
  "sha2 0.10.9",
+ "tempfile",
+ "ulid",
 ]
 
 [[package]]
@@ -652,16 +656,20 @@ name = "bboxy450-term-mux"
 version = "0.1.1"
 dependencies = [
  "base64 0.22.1",
+ "bboxy450-canvas",
  "bboxy450-doc",
  "bboxy450-harness-host",
  "bboxy450-harness-wake-up",
  "bboxy450-keychain",
  "bboxy450-plugin",
+ "bboxy450-render",
  "bboxy450-rt",
  "bboxy450-term-core",
  "bboxy450-term-plugin-fixture",
  "bboxy450-term-proto",
  "bboxy450-tlc",
+ "bboxy450-ui",
+ "bboxy450-ui-core",
  "core-foundation 0.10.1",
  "ed25519-dalek 3.0.0",
  "futures-util",
@@ -672,6 +680,7 @@ dependencies = [
  "notify",
  "petgraph",
  "pgp",
+ "png",
  "rusqlite",
  "security-framework",
  "security-framework-sys",

@@ -271,17 +271,17 @@ sources = ["crates/bboxy450-usage/src/poller.rs", "crates/bboxy450-usage/src/lib
 
 [[crate]]
 name = "bboxy450-canvas"
-status = "implementation-tests"
-models = []
-sources = ["crates/bboxy450-canvas/src/lib.rs", "crates/bboxy450-canvas/src/camera.rs"]
-scope = "C0 single-writer deterministic in-memory replay only: strict contiguous sequence, reference integrity, element cap, canonical digest, JSONL, f64 camera and semantic zoom. No persistent append custody, lifecycle, multi-writer convergence or arbitrary Rust proof; C1/C6 require a convergence model."
+status = "contract-model"
+models = ["CanvasConvergence"]
+sources = ["crates/bboxy450-canvas/src/lib.rs", "crates/bboxy450-canvas/src/store.rs", "crates/bboxy450-canvas/src/camera.rs"]
+scope = "C1a CanvasConvergence projects three immutable batches from two seats and the operator, each delivered at most twice in arbitrary order, at most two restarts, store-assigned per-operation sequence and durable batch-id dedupe. The picture is the replay of the canonical appended order, including a stale-expectation add and a late change/remove no-op after removal; conflicting operations are not claimed to commute. Already durable batches eventually receive replies under weakly fair recovery/reply actions; network delivery and failed dependencies need not progress. BrokenCanvasConvergence removes dedupe and must fail safety. Real file locking/fsync/torn-tail behavior, record codecs, caps, schema/authorization, JSON and SHA-256 bytes, f64 camera/semantic zoom and GPU pixels remain implementation witnesses; no arbitrary Rust/OS or unbounded refinement is claimed."
 
 [[implementation_only]]
 name = "CanvasC0Replay"
 sources = ["crates/bboxy450-canvas/src/lib.rs", "crates/bboxy450-canvas/src/camera.rs", "crates/bbt-ui/src/modules/canvas.rs"]
 tests = ["crates/bboxy450-canvas/tests/canvas.rs", "crates/bbt-ui/tests/canvas.rs"]
 models = []
-scope = "Pure deterministic replay and geometry. State starts with empty elements and next sequence 1; one author owns the finite slice. Add/Change/Remove/Tag are atomic steps with no interleaving. Safety: sequence/reference/cap guards, canonical id order, tag sets and validated finite geometry. Finite replay terminates without scheduler fairness. No IO/persistence/concurrency model is claimed; two-writer convergence deferred to C1/C6."
+scope = "Pure deterministic replay and geometry outside the CanvasConvergence abstraction. State starts with empty elements and next sequence 1. Add/Change/Remove/Tag are atomic replay steps. Safety: sequence/reference/cap guards, canonical id order, tag sets and validated finite geometry. Finite replay terminates without scheduler fairness. Exact JSON/SHA-256, geometry and GPU pixels remain implementation-only; C1a persistence/convergence is separately modeled by CanvasConvergence."
 bounds = "All six orders of three operations, repeated/omitted sequence and changed author, cap 10000 plus one, zoom 1e-9/1/1e9 and world center 1e12; fixed 13-element fixture with both themes. PNG comparison is exact decoded RGBA on the headless Metal renderer. Native font/platform changes require explicit reviewed golden refresh."
 broken_control = "canvas_canonical_digest_and_broken_unsorted_control serializes the same object in insertion order rather than sorted id order and asserts its SHA-256 differs. Camera witness also detects narrowing absolute world coordinates before camera subtraction."
 checks = ["cargo nextest run -p bboxy450-canvas", "cargo nextest run -p bboxy450-ui -E 'test(~canvas)'", "make test-formal"]

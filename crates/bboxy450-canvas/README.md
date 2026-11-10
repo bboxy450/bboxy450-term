@@ -5,13 +5,24 @@ picture digests and f64 camera geometry. No GPU or terminal dependency.
 Origin: https://github.com/bboxy450/bboxy450-term
 Reuse policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 
-C0 accepts one author, with contiguous sequence numbers starting at 1. Duplicate,
-reordered, missing and mixed-author operations are refused. Change replaces an
-element; Tag adds a unique tag; Remove refuses referenced elements. Remove their
-connectors/frame memberships first. Connectors attach to bounded elements only.
-Replay starts empty and applies each operation atomically in slice order. It
-performs no IO, scheduling, retries or merging. Multi-writer convergence and
-persistent append custody belong to later canvas steps.
+The store writes an interim Markdown record beside a JSONL batch log. The record
+codec is separate from log serialization. A per-canvas OS file lock guards
+append, sequence allocation and fsync; contention returns `canvas_busy` for a
+same-operation retry. One newline-terminated JSON object holds an entire batch,
+so an incomplete tail is dropped and its byte count reported. Complete malformed
+lines fail. No second picture is stored.
+
+Replay accepts nonempty authors and contiguous sequence numbers starting at one.
+The store assigns them and dedupes `batch_id` even after restart; changed retry
+arguments fail. Stale expectations are recorded and still appended. Change/Remove/
+Tag on a removed id are recorded no-ops; stable ids cannot resurrect. Adds of an
+existing live id fail. Change replaces an element; Tag adds a unique tag; Remove
+refuses referenced elements. Remove connectors/frame memberships first. Conflicts
+are resolved by append order, not a claim that arbitrary order produces identical
+pictures. Batches validate fully before append. Acknowledgement follows fsync.
+
+`load_log`/`save_log` retain C0's per-operation interchange format for fixtures;
+the durable store uses the separate atomic batch codec in `log`.
 
 Bounds and camera calculations use f64. Screen coordinates are relative to the
 viewport center; the UI subtracts the camera before narrowing to f32. Zoom has

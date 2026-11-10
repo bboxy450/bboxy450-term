@@ -10,6 +10,8 @@ use bbt_mux::messaging::wire::EnvelopeExt;
 use crate::common;
 #[path = "mcp/harness_status.rs"]
 mod harness_status;
+#[path = "mcp/canvas.rs"]
+mod canvas;
 #[path = "mcp/knowledge_types.rs"]
 mod knowledge_types_tests;
 #[path = "mcp/launch.rs"]
