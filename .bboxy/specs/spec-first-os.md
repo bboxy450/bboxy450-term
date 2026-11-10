@@ -86,7 +86,7 @@ W1 and W2 unblock the rest.
 
 | # | Workstream | Done when | Retires |
 |---|---|---|---|
-| W1 | Bind specs to running code | Every edge of the checked model is taken by the real runtime and agrees; a seeded runtime divergence fails | The "not a refinement proof" caveat per bound component |
+| W1 | Bind specs to running code | Every step the real runtime can take maps to steps its model allows, with the same observable result; a seeded runtime divergence fails | The "not a refinement proof" caveat per bound component |
 | W2 | Composable interface contracts | Two components verify against each other's interface spec, neither reading the other's code | Markdown-only interface files |
 | W3 | Larger spec language | Bounded integers, maps, sequences; symmetry reduction; one unbounded backend | Two-element stand-in domains |
 | W4 | Effects and environment | An effect is a declared `reactor!` source with a completion; Linux-boundary models; deterministic fault simulator | "Effect execution outside checked scope" |
@@ -127,9 +127,16 @@ is the count of green arrows over all arrows.
 
 ### W1 has two forms
 
-- **Conformance walk** (pure components): for each edge of the model's reachable graph,
-  replay its path on a fresh real runtime, apply the event, and compare decision, effects
-  and projected state. Exhaustive over the bounded model, deterministic, seconds to run.
+- **Refinement walk** (pure components): a test harness holds the real component and an
+  explicit model of its environment (for a link: the frames on the wire). Breadth-first
+  over the harness's reachable states; each runtime operation maps to one or more model
+  events and must agree on acceptance, effects and projected state. Exhaustive over the
+  bounded model, deterministic, seconds to run. Model edges the runtime never takes are
+  counted and reported, not failed: the runtime may be stricter than its model.
+  First run, 2026-11-09: walking the model's edges instead demanded two things the
+  `RemoteDelivery` runtime rightly does not do (send one of two queued messages alone;
+  accept an ack the remote never sent). The direction is runtime-refines-model, and what
+  a component assumes of its neighbor is written down as an environment assumption.
 - **Trace replay** (components with real I/O): production logs the events the spec names;
   a replayer maps real identifiers onto the model domain and feeds the generated step.
 
