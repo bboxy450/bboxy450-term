@@ -633,6 +633,65 @@ beyond its bound; implemented by any code (the macro judge is for that); making 
   their lifecycle spec by the host.
 - **The viewer renders Den.** Prose fields render as Markdown; a spec renders as its card.
 
+## Views: every record draws itself
+
+Operator, 2026-11-10: "mermaid and visualization should be a big part of the .den format
+and lowering". A Den record is read by people at a glance and by agents in full. So each
+kind has **generated diagrams**, drawn by the checker's renderer from the checked record,
+never by hand and never by a model ([[spec-first-os]], Views). They appear in the native
+viewer, in every lowered Markdown record, and as data through MCP.
+
+| Kind | View | Mermaid form | Shows |
+|---|---|---|---|
+| spec, interface | states | state diagram | Reachable states collapsed by the record's `view`; edges are events; a failing invariant's state is marked |
+| spec, interface | scenario | sequence diagram | One diagram per `scenario`: who sends which event, the outcome, effects emitted |
+| spec with `include` | parts | flowchart | Each part as a node, `do` calls as edges, exposed events on the boundary, discharged and open assumptions |
+| loop | lanes | sequence diagram | Roles as participants, events as messages on their channels, in the order of a scenario |
+| loop | stages | state diagram | Stages colored by the role in `waits`; a stage nobody waits on is drawn as an error |
+| epic | work | flowchart | Work items grouped by role, `needs` and `feeds` as edges, colored open, working, done, blocked |
+| epic | channels | flowchart | Roles as nodes, channels as labeled edges with what they carry |
+| task, report | chain | flowchart | Spec, epic, task, report, commits: the provenance chain of this record |
+| any record | neighborhood | flowchart | The record and everything one typed link away, edges labeled with the relation |
+| the knowledge base | map | flowchart | Specs as nodes, interfaces as edges, colored sound, unsound, unspecified |
+
+### `view`: the record says how to be drawn
+
+A reachable graph is too large to read. The record names the picture it wants, and the
+renderer computes it from the checked model:
+
+```scala
+  view "one message" {
+    node "new"          if !unacked(Msg.A) && !acked(Msg.A)
+    node "queued"       if unacked(Msg.A) && !inflight(Msg.A)
+    node "in flight"    if inflight(Msg.A) && !applied(Msg.A)
+    node "applied"      if applied(Msg.A) && !acked(Msg.A)
+    node "acknowledged" if acked(Msg.A)
+  }
+```
+
+- Each reachable state belongs to the first `node` whose predicate is true. Edges between
+  nodes are the events that move a state from one to the other; self-loops are dropped.
+- A spec may have several views; the first is the default on its card.
+- With no `view`, the renderer uses one node per value of the first `enum`-typed state
+  variable, or the raw states when there are at most twelve.
+
+### Rules for every diagram
+
+- **Generated only.** Nodes and edges come from the checked record. There is no syntax
+  for hand-drawing a diagram inside a Den record.
+- **At most twelve nodes.** A larger diagram is a diagnostic asking for a `view`, never a
+  truncated picture.
+- **Valid by construction.** Every generated diagram is parsed and laid out with
+  `bbt-mermaid` when it is rendered; a diagram the native viewer cannot draw is a renderer
+  bug that fails the render.
+- **Status is color, with a legend.** Sound, unsound, unspecified, and for work: open,
+  working, done, blocked. The same colors everywhere.
+- **Link nodes.** A node that stands for a record is a link to it, so a map opens a card
+  and a card opens its neighbors.
+
+New diagnostics: `X751` a reachable state matches no `node` of a `view`; `X752` a `node`
+matches no reachable state; `X753` a diagram needs more than twelve nodes.
+
 ## Lowering to Markdown
 
 Not every consumer reads Den. The GitKB knowledge provider, used by another project on
@@ -661,8 +720,11 @@ Rules:
   record with its diagnostics.
 - **Nothing is dropped silently.** A Den construct with no Markdown form is rendered as
   its source in a fenced block and listed under a `not_lowered:` header key.
-- **Diagrams are optional.** With `--mermaid`, a spec's lowered body also carries its
-  generated state diagram, for consumers whose viewer renders Mermaid.
+- **Diagrams are part of the record.** A lowered record carries its views as Mermaid
+  blocks, default view first, under a "Views" heading: the states and scenarios of a
+  spec, the work graph and channels of an epic, the chain of a task or report. GitHub,
+  GitKB viewers and the native viewer all render them. `--no-mermaid` drops them for
+  consumers that cannot.
 
 ### As MCP tools
 
@@ -672,7 +734,8 @@ they reach everything else ([[philosophy]]):
 | Tool | Input | Effect |
 |---|---|---|
 | `den_check` | `path`: a `.den` file or a KB locator | Read-only. Returns sound or the diagnostics (code, line, repair) and the summary. |
-| `den_render` | `source`: a `.den` file or KB locator; `output`: a path ending `.md`; optional `mermaid`, `overwrite` | Checks the record, lowers it, and writes the Markdown file. Returns the output path, the source hash and the output digest. |
+| `den_view` | `path`, optional `view` name | Read-only. Returns the named view (or all) as Mermaid text plus the nodes and edges as data. |
+| `den_render` | `source`: a `.den` file or KB locator; `output`: a path ending `.md`; optional `no_mermaid`, `overwrite` | Checks the record, lowers it, and writes the Markdown file. Returns the output path, the source hash and the output digest. |
 
 `den_render` rules:
 
@@ -727,7 +790,8 @@ One step at a time; the knowledge base stays usable at every step.
    `protocol!` declaration.
 2. Modules, imports, `Ref`, the prelude, and the remaining record kinds: the Graph group.
    `make check-kb`.
-3. Lowering: `render --markdown` for every record kind, so Markdown-only providers such
+3. Views: `view`, the generated diagrams for every record kind, validated with `bbt-mermaid`.
+   Lowering: `render --markdown` for every record kind, with its views, so Markdown-only providers such
    as GitKB keep working.
 4. The MCP tools `den_check` and `den_render`, and lowering at the provider boundary for
    GitKB.
