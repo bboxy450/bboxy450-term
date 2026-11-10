@@ -68,7 +68,7 @@ This is a hybrid, on purpose:
 
 | Part | Who produces it | Why |
 |---|---|---|
-| Spec | An authoring agent with the operator, approved through cards | The scarce thing; small enough to own |
+| Spec, in `bspec` ([[spec-language]]) | An authoring agent with the operator; checked sound on commit to the KB; approved through cards | The scarce thing; small enough to own |
 | Vocabulary: state, event and effect types, the trait an implementation must fill | Macros, deterministically | Code cannot name an event or effect the spec does not know |
 | The implementation: data structures, batching, I/O, performance | An agent, by inference | Cheap, replaceable, free to be clever |
 | The conformance check and its broken controls | Macros, deterministically, from the spec | The implementer never writes or edits its own judge |
@@ -236,13 +236,17 @@ target. The Oracle seat writes specs and verifies; a bboxy450-harness seat on Co
 
 1. [[tasks/2026-11-09-remote-delivery-conformance-and-card]]: W1 conformance walk and the
    level-1 card on `RemoteDelivery`.
-2. **The generated judge, and one re-inference.** Lift milestone 1's hand-written walk into
+2. **The spec language.** [[spec-language]]: `bspec`, a small language for the exact part
+   of a spec, living in KB documents as fenced blocks, with a soundness checker in
+   `crates/bboxy450-spec` ([[tasks/2026-11-09-bspec-checker-crate]]). Then the KB gate:
+   `knowledge_commit` refuses a document whose block is unsound.
+3. **The generated judge, and one re-inference.** Lift milestone 1's hand-written walk into
    `bbt-yarn`: `protocol!` emits the implementation trait and the conformance check from
    the declaration plus a declared environment. Then the proof of the whole idea in
    miniature: a fresh agent that sees only the spec, the card and the generated trait
    writes a new `RemoteDelivery` runtime; the gate must pass it, and must fail seeded
    mutants of it. The old hand-written walk is deleted.
-3. W2 on one slice of the supervisor-logic boundary: the logic lease (exactly one lease
+4. W2 on one slice of the supervisor-logic boundary: the logic lease (exactly one lease
    mutates supervisor state; a stale lease is fenced; replacement takes it over). The
    contract is a `protocol!` module; `bbt-supervisor` and `bbt-mux` each refine it alone.
    `bbt-supervisor` is 8,383 lines, 4,280 of them in `supervisor.rs`: it is not yet the
