@@ -1,0 +1,13 @@
+{
+  "harness_commit": "60807ac595de8bc0b5e69664cd6a36bd51c4f237",
+  "harness_signature_key": "9B07E849480C68328CA20684844ECC0587DE7AB0",
+  "term_base": "3d3a708b5d6b7ed9ce10df3ad1ed047502526715",
+  "command": "CARGO_NET_OFFLINE=true make bump-harness REV=60807ac595de8bc0b5e69664cd6a36bd51c4f237",
+  "exit_code": 0,
+  "log": "/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxy-subscription-fix-20261110-60pn6n1q/bump-harness.log",
+  "log_sha256": "fea2202af5edea27b617d05c97cc7dbc09669634c3474ec7219880c4cb92bc13",
+  "cargo_lock_changed": false,
+  "focused_harness_tests_passed": 4,
+  "runtime_restarts": 0,
+  "ci": "skipped by direct operator request"
+}
