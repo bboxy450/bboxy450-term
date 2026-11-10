@@ -1,0 +1,17 @@
+sequenceDiagram
+  participant O as Oracle
+  participant W as Workspace service
+  participant P as Provider worker
+  participant S as Seat launcher
+  participant T as Task service
+  O->>W: workspace_prepare(task, source, provider, op)
+  W-->>O: handle, preparing
+  W->>P: prepare with stable resource token
+  P-->>W: verified source and target
+  O->>W: workspace_get(handle)
+  W-->>O: ready and revision
+  O->>S: seat_spawn(workspace, approved profile)
+  S->>W: reserve and bind one writer
+  S-->>O: seat and process generation
+  O->>T: task_delegate(task, seat)
+  T-->>O: confirmed delivery or named failure

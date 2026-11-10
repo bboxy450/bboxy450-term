@@ -385,6 +385,17 @@ preservation). Independently implemented; no source copied. Keep the project
 credit and [reuse policy](https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md)
 with extracts.
 
+## Generated component cards
+
+With `model`, `card::generate` checks a model and produces deterministic Markdown
+from `ProtocolMetadata`, ordered named predicates over encoded states, intent and
+recorded assumptions. The first matching predicate names each state's node;
+unmatched states, more than twelve reachable nodes, violations and incomplete
+exploration fail. Edges come from the checked graph, merge duplicates and omit
+self-loops. The card records finite domains, liveness/fairness scope, all declared
+cases (including reject/ignore), unsupported waivers and the existing source-token
+hash. No diagram or second case-outcome parser is maintained by hand.
+
 ## Native verification and TLA+ export
 
 Enable the optional `model` feature for the hosted, pure Rust explicit-state

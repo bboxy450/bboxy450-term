@@ -1,0 +1,9 @@
+flowchart LR
+  H[Harness] --> E[code_execute MCP]
+  E --> W[Separate Python worker]
+  W --> B[Current-seat tool broker]
+  B --> D[Existing authorized dispatcher]
+  D --> K[Selected KB and other tools]
+  B --> J[Existing operation journal]
+  W --> O[Bounded output and execution handle]
+  O --> H

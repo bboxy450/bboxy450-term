@@ -41,6 +41,7 @@ fn all() -> Vec<(String, String)> {
     let mut v = fixtures("bboxy");
     v.extend(fixtures("docs"));
     v.extend(fixtures("state"));
+    v.extend(fixtures("cards"));
     v
 }
 
@@ -353,6 +354,26 @@ fn flowchart_fixture_back_edges_do_not_intersect_node_rectangles() {
 fn fixture_counts() {
     assert_eq!(fixtures("docs").len(), 20);
     assert_eq!(fixtures("state").len(), 20);
+}
+
+#[test]
+fn remote_delivery_fixture_is_the_generated_card_diagram() {
+    let card = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../bboxy450-term-remote/cards/RemoteDelivery.md"),
+    )
+    .unwrap();
+    let diagram = card
+        .split_once("```mermaid\n")
+        .unwrap()
+        .1
+        .split_once("```\n")
+        .unwrap()
+        .0;
+    assert_eq!(
+        fixtures("cards"),
+        vec![("RemoteDelivery.mmd".into(), diagram.into())]
+    );
 }
 
 // keeps: spec document-viewer §Build order — real corpus fixtures, no overlap, border endpoints and deterministic layout

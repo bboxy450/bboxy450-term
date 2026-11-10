@@ -1,0 +1,7 @@
+flowchart LR
+  H[Harness] --> E[Existing script execution]
+  E --> P[Python script and SDK]
+  H --> M[Admitted seat MCP bridge]
+  P --> M
+  M --> L[Logic authorization and operation journal]
+  L --> T[Tools and selected providers]

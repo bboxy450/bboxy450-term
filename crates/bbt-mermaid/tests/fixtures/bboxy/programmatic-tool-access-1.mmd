@@ -1,0 +1,10 @@
+flowchart LR
+  H[Harness] --> P[python_execute MCP]
+  P --> R[Execution records and workspace resolver]
+  R --> W[Owned CPython worker]
+  W --> B[Current harness MCP broker]
+  B --> T[All configured MCP servers]
+  W --> C[Direct command bindings]
+  C --> X[Owned command processes]
+  B --> J[Nested call receipts and results]
+  X --> J

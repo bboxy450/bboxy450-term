@@ -1,0 +1,13 @@
+stateDiagram-v2
+  [*] --> preparing
+  preparing --> ready: provider and source verified
+  preparing --> failed: known failure
+  preparing --> unknown: effect cannot be established
+  ready --> in_use: reserve and bind seat generation
+  in_use --> ready: holder closed and detached
+  ready --> releasing: preservation checks pass
+  failed --> releasing: known owned partial resources
+  unknown --> preparing: reconcile original prepare
+  unknown --> releasing: reconcile original release
+  releasing --> released: exact resources confirmed absent
+  releasing --> unknown: lost deletion outcome

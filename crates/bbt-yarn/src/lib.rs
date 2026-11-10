@@ -62,6 +62,10 @@ pub mod model;
 #[cfg(feature = "model")]
 pub mod verify;
 
+/// Generated Markdown component views of a completely checked graph.
+#[cfg(feature = "model")]
+pub use verify::card;
+
 /// Declares stable required claim ids for a protocol.
 #[cfg(all(feature = "macros", feature = "model"))]
 pub use bbt_yarn_macros::requirements;
