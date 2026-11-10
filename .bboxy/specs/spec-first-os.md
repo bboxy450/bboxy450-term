@@ -33,7 +33,13 @@ Source: the operator's agent brief of 2026-11-09, corrected against `bboxy450-te
 Make the bboxy450 spec system strong enough that a swarm of agents can build a Linux-based
 OS around bboxy450-term from specs alone, with no human in the loop during the run.
 
-We are not building the OS yet. We are building what makes it buildable: a spec format
+**No image is built under this programme.** Operator, 2026-11-09: "we should not actually
+try to build a booting image yet". The OS is the direction that sets the bar, not a
+deliverable: no kernel work, no image, no boot test, no unattended swarm run is planned or
+authorized here. The programme ends when the spec system could carry such a run, shown on
+components of bboxy450-term and bboxy450-harness themselves.
+
+We are building what makes an OS buildable: a spec format
 every agent can check its own work against, cheaply and locally. The Fermat run finished in
 30 hours because Lean gave every agent a cheap, trusted, local check. Our suite has to be
 for an OS what Lean was for that proof.
