@@ -581,6 +581,7 @@ pub enum DiagramKey {
     ZoomIn,
     ZoomOut,
     Actual,
+    Fit,
     Character,
     Ignore,
 }
@@ -599,6 +600,7 @@ pub fn diagram_key(input: &Input<'_>) -> DiagramKey {
             "+" | "=" => DiagramKey::ZoomIn,
             "-" => DiagramKey::ZoomOut,
             "0" => DiagramKey::Actual,
+            "f" | "F" => DiagramKey::Fit,
             _ => DiagramKey::Character,
         },
         _ => DiagramKey::Ignore,
@@ -841,6 +843,16 @@ fn fullscreen_mermaid_modal_key_classifier_preserves_neutral_intents() {
             Key::Character("0".into()),
             ModifiersState::empty(),
             DiagramKey::Actual,
+        ),
+        (
+            Key::Character("f".into()),
+            ModifiersState::empty(),
+            DiagramKey::Fit,
+        ),
+        (
+            Key::Character("F".into()),
+            ModifiersState::SHIFT,
+            DiagramKey::Fit,
         ),
         (
             Key::Character("w".into()),

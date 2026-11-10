@@ -33,6 +33,8 @@ fn canvas_mcp_script_ten_elements_three_batches_restart_list_and_gpu_image() {
     let opened = data(created["result"].clone());
     let id = opened["id"].clone();
     assert_eq!(opened["shown"], false);
+    assert_eq!(opened["presentation"], "detached");
+    assert!(opened["reason"].as_str().unwrap().contains("ui_detached"));
     let mut seq = 0;
     for (index, range) in [0..3, 3..7, 7..10].into_iter().enumerate() {
         let ops: Vec<_> = range.map(add).collect();

@@ -55,6 +55,16 @@ const GUI_WRITE_CAPACITY: usize = 64;
 /// App-defined, bounded UI-to-IO messages. A full sender returns ownership to
 /// the UI for retry; no socket or process operation runs in the window handler.
 pub enum UiMsg {
+    CloseCanvas {
+        pane: bbt_proto::SeatId,
+    },
+    Canvas {
+        source: bbt_proto::gui::UiCanvasSource,
+        beside: Option<bbt_mux::Ulid>,
+    },
+    CanvasRefresh {
+        swarm: Option<bbt_mux::Ulid>,
+    },
     ConfigureRoles {
         id: bbt_mux::Ulid,
         catalog: bbt_proto::gui::RoleCatalog,

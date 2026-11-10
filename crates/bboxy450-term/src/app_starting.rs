@@ -243,6 +243,7 @@ impl App {
         self.answer_ui(
             id,
             Ok(bbt_proto::gui::UiLayout {
+                canvases: Default::default(),
                 notification_frontmost: None,
                 regions: Default::default(),
                 test_clipboard: None,

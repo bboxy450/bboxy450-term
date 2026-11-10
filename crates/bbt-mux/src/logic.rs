@@ -10496,7 +10496,15 @@ impl Worker {
         done: impl FnOnce(Result<serde_json::Value>) + Send + 'static,
     ) {
         match journal.retained(&actor, &call) {
-            Ok(Some(value)) if value["structuredContent"]["status"] != "unknown" => {
+            Ok(Some(mut value)) if value["structuredContent"]["status"] != "unknown" => {
+                crate::mcp::canvas::present(
+                    &mut value,
+                    &call,
+                    &self.client.captures,
+                    port.host.root_path(),
+                    port.binding.swarm,
+                    &actor,
+                );
                 done(Ok(value));
                 return;
             }
@@ -10521,13 +10529,22 @@ impl Worker {
         }
         let root = port.host.root_path().to_owned();
         let swarm = port.binding.swarm.to_string();
+        let captures = self.client.captures.clone();
         self.canvas_jobs.spawn_blocking_on(
             move || {
                 // Reuse common admission to bind the ID before any file effect.
                 // Unknown attempts can resume because both create and append
                 // dedupe this same ID in their own durable files.
                 match journal.admit(&actor, &call) {
-                    Ok((value, false)) if value["structuredContent"]["status"] != "unknown" => {
+                    Ok((mut value, false)) if value["structuredContent"]["status"] != "unknown" => {
+                        crate::mcp::canvas::present(
+                            &mut value,
+                            &call,
+                            &captures,
+                            &root,
+                            port.binding.swarm,
+                            &actor,
+                        );
                         done(Ok(value));
                         return;
                     }
@@ -10564,7 +10581,17 @@ impl Worker {
                         value
                     }
                 };
-                done(journal.complete(&actor, &call, value));
+                done(journal.complete(&actor, &call, value).map(|mut value| {
+                    crate::mcp::canvas::present(
+                        &mut value,
+                        &call,
+                        &captures,
+                        &root,
+                        port.binding.swarm,
+                        &actor,
+                    );
+                    value
+                }));
             },
             &self.handle,
         );

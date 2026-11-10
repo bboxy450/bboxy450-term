@@ -954,6 +954,7 @@ async fn ctl_capture_is_answered_by_the_window() {
                     .send(GuiAction::UiReply {
                         id: op,
                         result: Box::new(Ok(bbt_proto::gui::UiLayout {
+                            canvases: Default::default(),
                             notification_frontmost: None,
                             regions: Default::default(),
                             test_clipboard: None,
@@ -1747,6 +1748,7 @@ async fn ctl_gui_seats(
                 .send(GuiAction::UiReply {
                     id: op,
                     result: Box::new(Ok(bbt_proto::gui::UiLayout {
+                        canvases: Default::default(),
                         notification_frontmost: None,
                         regions: Default::default(),
                         test_clipboard: None,

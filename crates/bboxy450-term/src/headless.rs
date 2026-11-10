@@ -578,6 +578,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                             rims,
                         );
                         foreground.splice(0..0, app.rich_paints());
+                        foreground.splice(0..0, app.canvas_paints());
                         foreground.splice(0..0, app.paint_terminal_selection());
                         foreground.splice(
                             0..0,
@@ -592,7 +593,9 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         let terminal_bounds: Vec<_> = app
                             .pane_bounds
                             .iter()
-                            .filter(|(id, _)| !app.rich_face(*id))
+                            .filter(|(id, _)| {
+                                !app.rich_face(*id) && !model.canvas_sources.contains_key(id)
+                            })
                             .copied()
                             .collect();
                         gpu.draw_layers_notifying(
@@ -752,6 +755,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
             }
         }
     })();
+    if let Err(reason)=&pumped {logger.write(format!("headless composition failed: {reason}"));}
     // Rendering/admission errors also close through the IO owner. Returning
     // directly here would strand the two children after a GUI-side failure.
     if !finished {

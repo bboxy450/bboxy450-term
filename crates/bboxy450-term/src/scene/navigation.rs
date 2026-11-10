@@ -25,7 +25,7 @@ impl Scene {
             .sidebar_extent(layouts)
             .map_or(sidebar.rect, |(r, _)| r);
         let mut add = |id: String, name: &str, clip: Rect| {
-            if let Some(layout) = named(sidebar, name) {
+            if let Some(layout) = named(sidebar, name).or_else(|| named_suffix(sidebar, name)) {
                 let r = layout.rect;
                 let x = r.x.max(clip.x);
                 let y = r.y.max(clip.y);
@@ -38,6 +38,22 @@ impl Scene {
         };
         for (i, swarm) in self.swarms.iter().enumerate() {
             let base = format!("swarm{i}");
+            if let Some(rows) = self.canvas_rows.get(&swarm.id) {
+                add(
+                    format!("canvas-toggle:{}", swarm.id),
+                    &format!("canvas/{}/toggle", swarm.id),
+                    viewport,
+                );
+                if !self.canvas_closed.contains(&swarm.id) {
+                    for row in rows {
+                        add(
+                            format!("canvas-open:{}/{}", swarm.id, row.id),
+                            &format!("canvas/{}/open/{}", swarm.id, row.id),
+                            viewport,
+                        );
+                    }
+                }
+            }
             for (j, tab) in swarm.tabs.iter().enumerate() {
                 let path = format!("{base}/body/tab{j}");
                 // Mini cells precede the encompassing header in pointer priority.

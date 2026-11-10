@@ -301,6 +301,10 @@ fn canvas_camera_roundtrips_extreme_zoom_and_large_centers() {
     camera.zoom_at(1e9, [20., -30.]).unwrap();
     let after = camera.screen_to_world([20., -30.]).unwrap();
     assert_eq!(anchor, after);
+    camera.zoom_at(1e-9, [20., -30.]).unwrap();
+    assert!((camera.zoom - 1.).abs() < f64::EPSILON);
+    assert_eq!(anchor, camera.screen_to_world([20., -30.]).unwrap());
+    camera.zoom_at(1e9, [20., -30.]).unwrap();
     camera.pan([5., -10.]).unwrap();
     assert!((camera.world_to_screen(anchor).unwrap()[0] - 25.).abs() < 1e-5);
     let before = camera;
@@ -316,6 +320,64 @@ fn canvas_camera_roundtrips_extreme_zoom_and_large_centers() {
             zoom: 0.
         }
         .world_to_screen([0.; 2])
+        .is_err()
+    );
+}
+#[test]
+fn canvas_camera_fit_content_and_invalid_viewports() {
+    let bounds = [
+        Bounds {
+            origin: [-100., -20.],
+            size: [50., 40.],
+        },
+        Bounds {
+            origin: [150., 100.],
+            size: [50., 80.],
+        },
+    ];
+    let camera = Camera::fit(bounds, [640., 480.], 20.).unwrap();
+    assert_eq!(camera.center, [50., 80.]);
+    assert_eq!(camera.zoom, 2.);
+    for point in [[-100., -20.], [200., 180.]] {
+        let screen = camera.world_to_screen(point).unwrap();
+        assert!(screen[0].abs() <= 300. && screen[1].abs() <= 220.);
+    }
+    assert_eq!(Camera::fit([], [640., 480.], 20.), Ok(Camera::default()));
+    for viewport in [[0., 480.], [640., f64::NAN], [40., 480.]] {
+        assert!(Camera::fit(bounds, viewport, 20.).is_err());
+    }
+    for padding in [-1., f64::INFINITY, f64::NAN] {
+        assert!(Camera::fit(bounds, [640., 480.], padding).is_err());
+    }
+    for size in [[0., 10.], [f64::INFINITY, 10.]] {
+        assert!(
+            Camera::fit(
+                [Bounds {
+                    origin: [0.; 2],
+                    size
+                }],
+                [640., 480.],
+                20.
+            )
+            .is_err()
+        );
+    }
+    // Finite bounds whose union overflows still cannot manufacture an invalid camera.
+    assert!(
+        Camera::fit(
+            [
+                Bounds {
+                    origin: [-f64::MAX, 0.],
+                    size: [1., 1.]
+                },
+                Bounds {
+                    origin: [f64::MAX / 2., 0.],
+                    size: [1., 1.]
+                },
+            ],
+            [640., 480.],
+            0.
+        )
         .is_err()
     );
 }

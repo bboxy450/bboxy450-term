@@ -14,6 +14,147 @@ use crate::{
     },
 };
 use bbt_ui_model::{STYLE, layout::Axis};
+
+/// Canvas activity is already sorted and formatted by the host, just like seat rows.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CanvasRow {
+    pub id: String,
+    pub title: String,
+    pub last_change: String,
+    pub last_author: String,
+    pub tags: Vec<String>,
+}
+
+/// A swarm's canvas rows use ordinary sidebar row and chip styles. The host
+/// owns disclosure and opening; an empty swarm contributes no section.
+pub fn canvas_section(
+    swarm: &str,
+    rows: &[CanvasRow],
+    expanded: bool,
+    ctx: ui::Context,
+) -> Option<c::Element> {
+    if rows.is_empty() {
+        return None;
+    }
+    let key = format!("canvas/{swarm}");
+    let label = |value: &str, size: f32, color| {
+        text(super::seat_row::chrome_line(value), size, 400, false, color)
+    };
+    let mut children = vec![
+        named(
+            format!("{key}/toggle"),
+            flow(
+                ui::Style::new(ui::Preset::CardRow),
+                Axis::Row,
+                ctx.density.tokens().gap as f32,
+                c::Alignment::Center,
+                vec![
+                    label(
+                        if expanded {
+                            "▾ Canvases"
+                        } else {
+                            "▸ Canvases"
+                        },
+                        ctx.density.tokens().font_small as f32,
+                        ui::Color::Muted,
+                    )
+                    .into(),
+                    c::Element::Spacer.into(),
+                    label(
+                        &rows.len().to_string(),
+                        STYLE.r#type.note as f32,
+                        ui::Color::Muted,
+                    )
+                    .into(),
+                ],
+            ),
+        )
+        .into(),
+    ];
+    if expanded {
+        for row in rows {
+            let row_key = format!("{key}/open/{}", row.id);
+            let mut parts = vec![
+                named(
+                    format!("{row_key}/title"),
+                    label(&row.title, STYLE.r#type.row as f32, ui::Color::Foreground),
+                )
+                .into(),
+                named(
+                    format!("{row_key}/activity"),
+                    label(
+                        &format!("{} · {}", row.last_change, row.last_author),
+                        STYLE.r#type.caption as f32,
+                        ui::Color::Muted,
+                    ),
+                )
+                .into(),
+            ];
+            if !row.tags.is_empty() {
+                let tags = row
+                    .tags
+                    .iter()
+                    .take(3)
+                    .enumerate()
+                    .map(|(i, tag)| {
+                        named(
+                            format!("{row_key}/tag/{i}"),
+                            flow(
+                                ui::Style::new(ui::Preset::Chip),
+                                Axis::Row,
+                                0.,
+                                c::Alignment::Center,
+                                vec![
+                                    label(tag, STYLE.r#type.micro as f32, ui::Color::Muted).into(),
+                                ],
+                            ),
+                        )
+                        .into()
+                    })
+                    .collect();
+                parts.push(
+                    flow(
+                        plain(None, [0.; 4], ui::Color::Transparent, 0.),
+                        Axis::Row,
+                        STYLE.spacing.s2 as f32,
+                        c::Alignment::Center,
+                        tags,
+                    )
+                    .into(),
+                );
+            }
+            let style = plain(
+                None,
+                [
+                    0.,
+                    STYLE.spacing.s4 as f32,
+                    STYLE.spacing.s3 as f32,
+                    STYLE.spacing.s4 as f32,
+                ],
+                ui::Color::Transparent,
+                0.,
+            );
+            children.push(
+                named(
+                    row_key,
+                    flow(style, Axis::Column, 0., c::Alignment::Stretch, parts),
+                )
+                .into(),
+            );
+        }
+    }
+    Some(named(
+        key,
+        flow(
+            plain(None, [0.; 4], ui::Color::Transparent, 0.),
+            Axis::Column,
+            0.,
+            c::Alignment::Stretch,
+            children,
+        ),
+    ))
+}
+
 #[derive(Debug, Clone)]
 pub struct Sidebar {
     pub cards: Vec<SwarmCard>,

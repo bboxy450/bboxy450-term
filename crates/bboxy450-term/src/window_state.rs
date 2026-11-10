@@ -83,6 +83,17 @@ pub fn capture(
                         expanded: tab.expanded,
                         seats: tab.seats.iter().map(|id| Ulid(id.0.0)).collect(),
                         tree: tree(&tab.tree),
+                        canvases: tab
+                            .tree
+                            .leaves()
+                            .into_iter()
+                            .filter_map(|id| {
+                                model
+                                    .canvas_sources
+                                    .get(&id)
+                                    .map(|source| (Ulid(id.0.0), source.clone()))
+                            })
+                            .collect(),
                     })
                     .collect(),
             })
@@ -96,7 +107,9 @@ pub fn capture(
             .ui
             .seats
             .iter()
-            .filter(|(_, seat)| seat.lifecycle == ui::Lifecycle::Open)
+            .filter(|(id, seat)| {
+                seat.lifecycle == ui::Lifecycle::Open && !model.canvas_sources.contains_key(id)
+            })
             .map(|(id, _)| {
                 if model.window_waiting.contains(id)
                     && let Some(old) =
@@ -124,6 +137,42 @@ pub fn capture(
 }
 /// Metadata stays authoritative. Remove gone seats; append seats created while no GUI was attached.
 pub fn restore(model: &mut crate::model::Model, saved: &WindowState) -> Result<(), String> {
+    // Hydrate canvas presentation before pruning missing process seats. Their
+    // source metadata is explicit in the saved tab; no registry row is restored.
+    for swarm in &saved.swarms {
+        for tab in &swarm.tabs {
+            let leaves = decoded(&tab.tree).leaves();
+            for (id, source) in &tab.canvases {
+                let id = ui::SeatId::from_u128(id.0);
+                if source.swarm != swarm.id || !leaves.contains(&id) {
+                    return Err("window canvas source does not match its leaf and swarm".into());
+                }
+                if model.ui.seats.contains_key(&id) && !model.canvas_sources.contains_key(&id) {
+                    return Err("window canvas key conflicts with a current seat".into());
+                }
+                model
+                    .ui
+                    .seats
+                    .insert(id, crate::model::canvas_presentation(id, source));
+                model.canvas_sources.insert(id, source.clone());
+            }
+        }
+        if !model
+            .ui
+            .window
+            .sidebar
+            .swarms
+            .iter()
+            .any(|row| row.id.0.0 == swarm.id.0)
+            && swarm.tabs.iter().any(|tab| !tab.canvases.is_empty())
+        {
+            model.ui.window.sidebar.swarms.push(ui::Swarm::new(
+                ui::SwarmId::from_u128(swarm.id.0),
+                "swarm",
+                vec![],
+            ));
+        }
+    }
     let mut seen = BTreeSet::new();
     for swarm in &mut model.ui.window.sidebar.swarms {
         let Some(old) = saved.swarms.iter().find(|s| s.id.0 == swarm.id.0.0) else {
@@ -233,6 +282,86 @@ pub fn restore(model: &mut crate::model::Model, saved: &WindowState) -> Result<(
 mod tests {
     use super::*;
     #[test]
+    fn canvas_window_roundtrip_restores_empty_swarm_without_registry() {
+        let mut model = crate::model::Model::default();
+        let source = bbt_proto::gui::UiCanvasSource {
+            root: "/tmp/canvas-window-fixture".into(),
+            swarm: Ulid(3),
+            id: "canvas-one".into(),
+            title: "Services".into(),
+        };
+        let id = model.open_canvas(source.clone(), None);
+        let state = capture(&model, &model.ui.window.stage, [1280., 720.], None);
+        assert_eq!(state.swarms[0].tabs[0].canvases[&Ulid(id.0.0)], source);
+        assert!(state.scroll.is_empty());
+        let state: WindowState =
+            serde_json::from_slice(&serde_json::to_vec(&state).unwrap()).unwrap();
+        let mut next = crate::model::Model::default();
+        restore(&mut next, &state).unwrap();
+        assert_eq!(next.canvas_sources[&id], source);
+        assert_eq!(next.ui.window.stage.focused, Some(id));
+        assert!(next.gui_seats.is_empty());
+        assert!(next.screens.is_empty());
+        assert_eq!(
+            capture(&next, &next.ui.window.stage, [1280., 720.], None),
+            state
+        );
+        let rebuilt = crate::model::build(&[], &crate::grids::Grids::new(), &next);
+        assert_eq!(rebuilt.canvas_sources[&id], source);
+        assert_eq!(
+            rebuilt.ui.window.sidebar.swarms[0].tabs[0].tree,
+            ui::SplitNode::Leaf(id)
+        );
+        assert!(rebuilt.gui_seats.is_empty());
+    }
+
+    #[test]
+    fn canvas_open_is_adjacent_and_deduplicates_its_source() {
+        let mut model = crate::model::Model::default();
+        let source = bbt_proto::gui::UiCanvasSource {
+            root: "/tmp/canvas-window-fixture".into(),
+            swarm: Ulid(3),
+            id: "one".into(),
+            title: "One".into(),
+        };
+        let first = model.open_canvas(source.clone(), None);
+        let last = model.open_canvas(
+            bbt_proto::gui::UiCanvasSource {
+                id: "last".into(),
+                title: "Last".into(),
+                ..source.clone()
+            },
+            None,
+        );
+        let middle = model.open_canvas(
+            bbt_proto::gui::UiCanvasSource {
+                id: "middle".into(),
+                title: "Middle".into(),
+                ..source.clone()
+            },
+            Some(Ulid(first.0.0)),
+        );
+        let tabs = &model.ui.window.sidebar.swarms[0].tabs;
+        assert_eq!(
+            tabs.iter().map(|tab| tab.seats[0]).collect::<Vec<_>>(),
+            [first, middle, last]
+        );
+        assert_eq!(
+            model.open_canvas(
+                bbt_proto::gui::UiCanvasSource {
+                    title: "Renamed".into(),
+                    ..source
+                },
+                None
+            ),
+            first
+        );
+        assert_eq!(model.canvas_sources.len(), 3);
+        assert_eq!(model.ui.window.sidebar.swarms[0].tabs[0].name, "Renamed");
+        assert_eq!(model.ui.window.stage.focused, Some(first));
+    }
+
+    #[test]
     fn capture_preserves_prior_section_choices_before_restore_fallback() {
         let mut model = crate::model::Model::default();
         let stage = model.ui.window.stage.clone();
@@ -328,6 +457,7 @@ mod tests {
             .unwrap()
             .remove("recent_directories");
         let legacy: WindowState = serde_json::from_value(legacy).unwrap();
+        assert!(legacy.swarms[0].tabs[0].canvases.is_empty());
         restore(&mut next, &legacy).unwrap();
         assert_eq!(next.ui.window.sidebar.swarms[0].workdir, None);
         assert_eq!(next.ui.window.sidebar.swarms[0].launch_environment, None);

@@ -43,7 +43,10 @@ impl Snapshot {
             .map_or(&self.record.creator, |b| &b.author)
     }
     pub fn last_change(&self) -> u64 {
-        self.batches.last().map_or(0, |b| b.at)
+        self.batches.last().map_or_else(
+            || ulid::Ulid::from_string(&self.record.id).map_or(0, |id| id.timestamp_ms()),
+            |b| b.at,
+        )
     }
 }
 #[derive(Debug)]

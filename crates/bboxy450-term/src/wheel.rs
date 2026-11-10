@@ -117,6 +117,36 @@ impl App {
     }
 
     pub(super) fn mouse_wheel(&mut self, delta: MouseScrollDelta) {
+        if let Some(id) = self.canvas_target()
+            && let Some(view) = self.canvas_views.get_mut(&id)
+        {
+            let (dx, dy) = match delta {
+                MouseScrollDelta::LineDelta(x, y) => (-x * 28., -y * 28.),
+                MouseScrollDelta::PixelDelta(p) => {
+                    let s = self.window.as_ref().map_or(1., |w| w.scale_factor() as f32);
+                    (-p.x as f32 / s, -p.y as f32 / s)
+                }
+            };
+            if self
+                .pane_bounds
+                .iter()
+                .find(|(pane, _)| *pane == id)
+                .is_some_and(|(_, r)| {
+                    self.pointer[0] >= r.x
+                        && self.pointer[0] < r.right()
+                        && self.pointer[1] >= r.y
+                        && self.pointer[1] < r.bottom()
+                })
+            {
+                if self.modifiers.super_key() || self.modifiers.control_key() {
+                    view.zoom_at((-dy * 0.005).exp(), self.pointer);
+                } else {
+                    view.pan([dx, dy]);
+                }
+                self.request_redraw();
+                return;
+            }
+        }
         if self.rich_wheel(&delta) { return; }
         let previous = self.scroll_wheel.take();
         match () {

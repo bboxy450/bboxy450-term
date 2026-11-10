@@ -6,6 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! R2 app shell: event-driven native scene, memory-only UI drain and hitch meter.
 mod animation_clock;
+mod app_canvas;
 mod app_overlays;
 mod app_starting;
 mod assets;
@@ -648,6 +649,9 @@ fn pane_controls(
     let mut watched: Vec<_> = bounds
         .iter()
         .filter_map(|(id, _)| {
+            if model.canvas_sources.contains_key(id) {
+                return None;
+            }
             let generation = model.ui.seats.get(id)?.process_generation;
             let view = previous
                 .iter()
@@ -664,6 +668,9 @@ fn pane_controls(
     watched.sort_by_key(|(id, _)| Some(*id) != focused);
     let mut sizes = Vec::new();
     for (id, rect) in bounds {
+        if model.canvas_sources.contains_key(id) {
+            continue;
+        }
         let Some(metadata) = model.ui.seats.get(id) else {
             continue;
         };
@@ -2265,6 +2272,10 @@ impl UiProxy {
     }
 }
 struct App {
+    canvas_views: BTreeMap<SeatId, app_canvas::View>,
+    canvas_observation: BTreeMap<bbt_mux::Ulid, bbt_proto::gui::UiCanvasView>,
+    canvas_roots: Vec<(bbt_ui_model::SwarmId, Option<String>)>,
+    canvas_pending: Option<bbt_proto::gui::UiCanvasSource>,
     rich_panes: BTreeMap<SeatId, bboxy450_term::rich_pane::Pane>,
     rich_drafts: BTreeMap<SeatId, bboxy450_term::rich_pane::Draft>,
     rich_focused: BTreeMap<SeatId, bool>,
@@ -2497,6 +2508,10 @@ impl App {
             let _ = time_proxy.send_event(UiEvent::LocalTimeReady);
         }));
         Self {
+            canvas_views: BTreeMap::new(),
+            canvas_observation: BTreeMap::new(),
+            canvas_roots: vec![],
+            canvas_pending: None,
             rich_panes: BTreeMap::new(),
             rich_drafts: BTreeMap::new(),
             rich_focused: BTreeMap::new(),
@@ -5232,6 +5247,15 @@ impl App {
         false
     }
     fn close_seat(&mut self, seat: SeatId, id: bbt_mux::Ulid, undo: bool) {
+        if self.live_state
+            .as_ref()
+            .is_some_and(|m| m.canvas_sources.contains_key(&seat))
+        {
+            if !undo {
+                self.queue(live::UiMsg::CloseCanvas { pane: seat });
+            }
+            return;
+        }
         if self.closing || self.live_commands.is_none() {
             if let Some(effects) = &mut self.ui_collect {
                 effects.push(UiEffect::Refused("ui_not_ready: no command sender".into()));
@@ -6036,6 +6060,32 @@ impl App {
             {
                 let _drop = bbt_rt::diagnostics::span(bbt_rt::diagnostics::Phase::UiOldModelDrop);
                 self.live_state = Some(state);
+            }
+            let roots = self
+                .live_state
+                .as_ref()
+                .map(|m| {
+                    m.ui.window
+                        .sidebar
+                        .swarms
+                        .iter()
+                        .map(|s| (s.id, s.workdir.clone()))
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+            if self.canvas_roots != roots {
+                self.canvas_roots = roots;
+                self.refresh_canvases(None);
+            }
+            if let Some(id) = self.canvas_pending.as_ref().and_then(|source| {
+                self.live_state
+                    .as_ref()?
+                    .canvas_sources
+                    .iter()
+                    .find_map(|(id, s)| (s == source).then_some(*id))
+            }) {
+                self.canvas_pending = None;
+                self.focus_action(FocusAction::Activate(id, FocusOrigin::Row));
             }
             self.sync_role_settings();
             self.sync_workspace_knowledge();
@@ -6901,6 +6951,14 @@ impl App {
             self.answer_ui(id, Err(reason.into()));
             return false;
         }
+        if matches!(
+            request,
+            UiRequest::Canvas { .. } | UiRequest::CanvasRefresh { .. }
+        ) {
+            let _ = self.apply_ui(id, request);
+            self.request_redraw();
+            return false;
+        }
         if matches!(request, UiRequest::NotificationForeground { .. })
             && let Err(reason) = self.notification_foreground_allowed()
         {
@@ -7222,6 +7280,10 @@ impl App {
             self.keyboard.consumed(input.physical_key, input.state);
             return None;
         }
+        if self.canvas_key(input) {
+            self.keyboard.consumed(input.physical_key,input.state);
+            return None;
+        }
         if self.overlay_key(input) {
             self.keyboard.consumed(input.physical_key, input.state);
             return None;
@@ -7292,6 +7354,9 @@ impl App {
         None
     }
     fn send_terminal_bytes(&mut self, bytes: Vec<u8>) {
+        if self.canvas_target().is_some() {
+            return;
+        }
         if let Some(seat) = self.focus.stage.as_ref().and_then(|stage| stage.focused)
             && let Some(generation) = self
                 .live_state
@@ -7314,6 +7379,15 @@ impl App {
     ) -> Result<Option<UiSpawnCapture>, String> {
         use bbt_proto::gui::{UiRequest, UiTarget};
         match request {
+            UiRequest::Canvas { mut source, beside } => {
+                source.root=bboxy450_term::canvas_host::normalize_root(&source.root);
+                self.local_tab = None;
+                self.canvas_pending = Some(source.clone());
+                self.queue(live::UiMsg::Canvas { source, beside });
+            }
+            // Invalidation is coalesced: any queued canvas refresh covers every
+            // retained root, including other swarms whose notice met a full relay.
+            UiRequest::CanvasRefresh { .. } => self.refresh_canvases(None),
             UiRequest::Input(inputs) => {
                 if !self.test_account
                     || self
@@ -7511,6 +7585,7 @@ impl App {
             UiRequest::Key(keys) => {
                 for (applied, key) in keys.into_iter().enumerate() {
                     let input = chrome_input(&key)?;
+                    if self.canvas_key(&input) {self.keyboard.consumed(input.physical_key,input.state);continue;}
                     if self.overlay_key(&input) {
                         continue;
                     }
@@ -7725,6 +7800,7 @@ impl App {
             },
         );
         let layout = UiLayout {
+            canvases: self.canvas_observation.clone(),
             sidebar_sections: self.sidebar_section_positions(),
             notification_frontmost: self
                 .notification_foreground_allowed()
@@ -8046,6 +8122,7 @@ impl App {
     fn window_restore_waits(&self) -> bool {
         self.live_state.as_ref().is_some_and(|model| {
             self.pane_bounds.iter().any(|(id, _)| {
+                if model.canvas_sources.contains_key(id) {return false;}
                 model.window_waiting.contains(id)
                     || (self.window_first_frame && !model.frames.contains_key(id))
             })
@@ -8314,6 +8391,7 @@ impl App {
         };
         pane_overlay.extend(self.paint_terminal_selection());
         pane_overlay.extend(self.rich_paints());
+        pane_overlay.extend(self.canvas_paints());
         let (document_paints, document_observation) =
             self.document_paint(self.meter.total_frames() + 1);
         // The conversation dock is painted between the pane foreground and the
@@ -8360,7 +8438,13 @@ impl App {
         let terminal_bounds: Vec<_> = self
             .pane_bounds
             .iter()
-            .filter(|(id, _)| !self.rich_face(*id))
+            .filter(|(id, _)| {
+                !self.rich_face(*id)
+                    && !self
+                        .live_state
+                        .as_ref()
+                        .is_some_and(|m| m.canvas_sources.contains_key(id))
+            })
             .copied()
             .collect();
         let cache_attention = !self.verify.full_scene_pulse
@@ -9138,6 +9222,9 @@ impl ApplicationHandler<UiEvent> for App {
                     self.pointer_released();
                 }
                 self.set_frontmost(focused);
+                if focused {
+                    self.refresh_canvases(None);
+                }
             }
             WindowEvent::ThemeChanged(theme) => {
                 self.system_theme = if theme == winit::window::Theme::Light {
@@ -11656,7 +11743,10 @@ mod input_tests {
                 | live::UiMsg::Scroll { .. }
                 | live::UiMsg::DocumentRead { .. }
                 | live::UiMsg::ConsumeDocument { .. } => {}
-                live::UiMsg::NewSwarm(_)
+                live::UiMsg::CloseCanvas { .. }
+                | live::UiMsg::Canvas { .. }
+                | live::UiMsg::CanvasRefresh { .. }
+                | live::UiMsg::NewSwarm(_)
                 | live::UiMsg::SidebarMove(_)
                 | live::UiMsg::ConfigureRoles { .. }
                 | live::UiMsg::SwarmWorkdir { .. }

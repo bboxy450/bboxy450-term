@@ -65,24 +65,8 @@ fn fit(canvas: &Canvas, frame: Option<Bounds>) -> d::Result<Camera> {
         },
         |b| vec![b],
     );
-    if bounds.is_empty() {
-        return Ok(Camera::default());
-    }
-    let mut min = [f64::INFINITY; 2];
-    let mut max = [f64::NEG_INFINITY; 2];
-    for b in bounds {
-        for axis in 0..2 {
-            min[axis] = min[axis].min(b.origin[axis]);
-            max[axis] = max[axis].max(b.origin[axis] + b.size[axis]);
-        }
-    }
-    let size = [max[0] - min[0], max[1] - min[1]];
-    let camera = Camera {
-        center: [min[0] + size[0] / 2., min[1] + size[1] / 2.],
-        zoom: ((f64::from(WIDTH) - 64.) / size[0]).min((f64::from(HEIGHT) - 64.) / size[1]),
-    };
-    camera.validate().map_err(|s| error("canvas_render", s))?;
-    Ok(camera)
+    Camera::fit(bounds, [f64::from(WIDTH), f64::from(HEIGHT)], 32.)
+        .map_err(|s| error("canvas_render", s))
 }
 pub(super) fn png(canvas: &Canvas, frame: Option<Bounds>) -> d::Result<Vec<u8>> {
     let map = |e: &dyn std::fmt::Display| error("canvas_render", e.to_string());

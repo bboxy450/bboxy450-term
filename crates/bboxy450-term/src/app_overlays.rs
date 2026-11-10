@@ -17,6 +17,77 @@ use bbt_ui::{
 const FIELD: &str = "app-dialog:input";
 const SUBMIT: &str = "app-dialog:submit";
 const CANCEL: &str = "app-dialog:cancel";
+/// Native events have one decoder; each surface retains its own camera and
+/// contacts. Canvas gestures use the same input path as expanded diagrams.
+trait GestureSurface {
+    fn zoom_at(&mut self, factor: f32, at: [f32; 2]);
+    fn pan(&mut self, delta: [f32; 2]);
+    fn smart_zoom(&mut self, at: [f32; 2]);
+    fn touch(&mut self, id: u64, phase: viewer::TouchPhase, at: [f32; 2]) -> bool;
+    fn touching(&self) -> bool;
+    fn begin_pan(&mut self, at: [f32; 2]);
+    fn drag(&mut self, at: [f32; 2]) -> bool;
+    fn release(&mut self);
+    fn cancel_gestures(&mut self);
+}
+impl GestureSurface for viewer::Viewer {
+    fn zoom_at(&mut self, factor: f32, at: [f32; 2]) {
+        Self::zoom_at(self, factor, at);
+    }
+    fn pan(&mut self, delta: [f32; 2]) {
+        Self::pan(self, delta);
+    }
+    fn smart_zoom(&mut self, at: [f32; 2]) {
+        Self::smart_zoom(self, at);
+    }
+    fn touch(&mut self, id: u64, phase: viewer::TouchPhase, at: [f32; 2]) -> bool {
+        Self::touch(self, id, phase, at)
+    }
+    fn touching(&self) -> bool {
+        Self::touching(self)
+    }
+    fn begin_pan(&mut self, at: [f32; 2]) {
+        Self::begin_pan(self, at);
+    }
+    fn drag(&mut self, at: [f32; 2]) -> bool {
+        Self::drag(self, at)
+    }
+    fn release(&mut self) {
+        Self::release(self);
+    }
+    fn cancel_gestures(&mut self) {
+        Self::cancel_gestures(self);
+    }
+}
+impl GestureSurface for crate::app_canvas::View {
+    fn zoom_at(&mut self, factor: f32, at: [f32; 2]) {
+        Self::zoom_at(self, factor, at);
+    }
+    fn pan(&mut self, delta: [f32; 2]) {
+        Self::pan(self, delta);
+    }
+    fn smart_zoom(&mut self, at: [f32; 2]) {
+        Self::smart_zoom(self, at);
+    }
+    fn touch(&mut self, id: u64, phase: viewer::TouchPhase, at: [f32; 2]) -> bool {
+        Self::touch(self, id, phase, at)
+    }
+    fn touching(&self) -> bool {
+        Self::touching(self)
+    }
+    fn begin_pan(&mut self, at: [f32; 2]) {
+        Self::begin_pan(self, at);
+    }
+    fn drag(&mut self, at: [f32; 2]) -> bool {
+        Self::drag(self, at)
+    }
+    fn release(&mut self) {
+        Self::release(self);
+    }
+    fn cancel_gestures(&mut self) {
+        Self::cancel_gestures(self);
+    }
+}
 #[derive(Clone, Copy)]
 pub(super) enum Target {
     Swarm(bbt_proto::SwarmId),
@@ -800,30 +871,70 @@ impl App {
     /// platform pinch streams share the same transform and never reach a seat.
     pub(super) fn diagram_gesture(&mut self, event: &WindowEvent) -> bool {
         use winit::event::TouchPhase as Native;
-        let Some(diagram) = &mut self.app_overlays.diagram else { return false; };
         let scale = self.window.as_ref().map_or(1., |w| w.scale_factor() as f32);
+        let diagram_open = self.app_overlays.diagram.is_some();
+        let canvas = if !self.app_overlays.open() && self.local_tab.is_none() {
+            self.canvas_target()
+        } else {
+            None
+        };
+        for (id, view) in &mut self.canvas_views {
+            if Some(*id) != canvas {
+                view.cancel_gestures();
+            }
+        }
+        let pan_here = diagram_open || canvas
+            .and_then(|id| self.canvas_views.get(&id))
+            .is_some_and(|view| view.contains(self.pointer));
+        let surface: &mut dyn GestureSurface = if let Some(diagram) = &mut self.app_overlays.diagram
+        {
+            diagram
+        } else if let Some(view) = canvas.and_then(|id| self.canvas_views.get_mut(&id)) {
+            view
+        } else { return false; };
         let close = match event {
             WindowEvent::PinchGesture { delta, phase, .. } => {
-                if *phase == Native::Cancelled { diagram.cancel_gestures(); }
-                else { diagram.zoom_at((1. + *delta) as f32, self.pointer); } false
+                if *phase == Native::Cancelled {
+                    surface.cancel_gestures(); }
+                else {
+                    surface.zoom_at((1. + *delta) as f32, self.pointer); } false
             }
             WindowEvent::PanGesture { delta, phase, .. } => {
-                if *phase == Native::Cancelled { diagram.cancel_gestures(); }
-                else if !diagram.touching() { diagram.pan([-delta.x / scale, -delta.y / scale]); } false
+                if *phase == Native::Cancelled {
+                    surface.cancel_gestures(); }
+                else if !pan_here { return false; }
+                else if !surface.touching() {
+                    surface.pan([-delta.x / scale, -delta.y / scale]); } false
             }
-            WindowEvent::DoubleTapGesture { .. } => { diagram.smart_zoom(self.pointer); false }
+            WindowEvent::DoubleTapGesture { .. } => {
+                surface.smart_zoom(self.pointer); false }
             WindowEvent::Touch(touch) => {
-                let phase = match touch.phase { Native::Started => viewer::TouchPhase::Started, Native::Moved => viewer::TouchPhase::Moved, Native::Ended => viewer::TouchPhase::Ended, Native::Cancelled => viewer::TouchPhase::Cancelled };
-                diagram.touch(touch.id, phase, [touch.location.x as f32 / scale, touch.location.y as f32 / scale])
+                let phase = match touch.phase { Native::Started => viewer::TouchPhase::Started, Native::Moved => viewer::TouchPhase::Moved, Native::Ended => viewer::TouchPhase::Ended, Native::Cancelled => viewer::TouchPhase::Cancelled,
+                };
+                surface.touch(touch.id, phase, [touch.location.x as f32 / scale, touch.location.y as f32 / scale,
+                    ],
+                )
             }
             WindowEvent::MouseInput { button: MouseButton::Middle, state, .. } => {
-                if state.is_pressed() { diagram.begin_pan(self.pointer); } else { diagram.release(); } false
+                if state.is_pressed() {
+                    surface.begin_pan(self.pointer); } else {
+                    surface.release(); }
+                false
             }
-            WindowEvent::Focused(false) | WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => { diagram.cancel_gestures(); return false; }
-            WindowEvent::CursorLeft { .. } => { diagram.release(); return false; }
+            WindowEvent::CursorMoved { position, .. } => {
+                let at = [position.x as f32 / scale, position.y as f32 / scale];
+                if !surface.drag(at) {
+                    return false; }
+                self.pointer = at;
+                false
+            }
+            WindowEvent::Focused(false) | WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => {
+                surface.cancel_gestures(); return false; }
+            WindowEvent::CursorLeft { .. } => {
+                surface.release(); return false; }
             _ => return false,
         };
-        if close { self.close_app_overlay(); }
+        if close && diagram_open { self.close_app_overlay(); }
         else { self.app_overlays.layout = None; self.request_redraw(); }
         true
     }
@@ -842,7 +953,7 @@ impl App {
             DiagramKey::ZoomOut => diagram.act(Action::Out),
             DiagramKey::Actual => diagram.act(Action::Actual),
             DiagramKey::Character => matches!(route_key(input, 0, Some("")), RoutedKey::CloseFocusedSeat),
-            DiagramKey::Ignore => false,
+            DiagramKey::Fit | DiagramKey::Ignore => false,
         };
         if close { self.close_app_overlay(); }
         else { self.app_overlays.layout = None; self.request_redraw(); }

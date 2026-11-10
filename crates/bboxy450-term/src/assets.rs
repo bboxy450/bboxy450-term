@@ -40,6 +40,9 @@ pub fn images() -> Result<Assets, String> {
         rgba,
     });
     let mut assets = Assets::with_svgs(images, BAKED_ICONS);
+    // A kept canvas uses the suite's existing document mark.
+    let (_, book)=assets.svgs.iter().find(|(name,_)|name=="book").ok_or("missing document mark")?;
+    assets.svgs.push(("canvas".into(),book.clone()));
     // The linked harness keeps its native icon bytes without replacing term's
     // same-named marks. rich_pane namespaces only the embedded Frame references.
     let rich = bboxy450_harness::frontends::gui::assets::icons();

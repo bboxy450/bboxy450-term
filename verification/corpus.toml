@@ -2132,3 +2132,13 @@ frontend = "project"
 name = "BrokenCanvasConvergence"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "CanvasRefreshGeneration"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenCanvasRefreshGeneration"
+expected = "safety"
+frontend = "project"

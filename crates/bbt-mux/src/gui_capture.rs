@@ -17,6 +17,7 @@ use tokio::sync::{broadcast, oneshot};
 /// How long an asker waits for the window to present, read back and write the frame;
 /// inside `ctl`'s 15 s read timeout.
 const WAIT: Duration = Duration::from_secs(10);
+const NOTICE_CAPACITY: usize = 8;
 
 /// One capture the window is asked to make.
 #[derive(Debug, Clone)]
@@ -92,7 +93,7 @@ pub(crate) struct Captures {
 impl Default for Captures {
     fn default() -> Self {
         Self {
-            asks: broadcast::channel(8).0,
+            asks: broadcast::channel(NOTICE_CAPACITY).0,
             pending: Mutex::default(),
             app: Mutex::default(),
             focus: Mutex::default(),
@@ -101,6 +102,33 @@ impl Default for Captures {
     }
 }
 impl Captures {
+    /// Canvas presentation and invalidation are one-way notices. A detached or
+    /// slow GUI never holds a writer, journal transaction or tool reply. Canvas
+    /// bursts cannot evict an unread open. Any queued refresh reloads all known
+    /// canvas roots; focus/startup covers notices refused by a busy/full relay.
+    /// Other relay traffic retains its existing broadcast semantics.
+    pub(crate) fn canvas(
+        &self,
+        id: Ulid,
+        request: bbt_proto::gui::UiRequest,
+    ) -> Result<(), &'static str> {
+        let _admission = match self.ui.try_lock() {
+            Ok(guard) => guard,
+            Err(std::sync::TryLockError::Poisoned(error)) => error.into_inner(),
+            Err(std::sync::TryLockError::WouldBlock) => {
+                return Err("ui_busy: GUI relay admission is busy; retry canvas_open");
+            }
+        };
+        if !self.attached() {
+            return Err("ui_detached: no GUI owner is attached");
+        }
+        if self.asks.len() >= NOTICE_CAPACITY {
+            return Err("ui_busy: GUI relay is full; retry canvas_open");
+        }
+        self.asks.send(Notice::Ui { id, request })
+            .map(|_| ())
+            .map_err(|_| "ui_detached: no GUI owner is attached")
+    }
     pub(crate) async fn ui(
         &self,
         id: Ulid,
@@ -313,6 +341,37 @@ mod tests {
     use super::*;
     use futures_util::poll;
 
+    #[test]
+    fn canvas_burst_keeps_unread_open_and_refresh_without_waiting() {
+        use bbt_proto::gui::{UiCanvasSource, UiRequest};
+        let captures = Captures::default();
+        let mut owner = captures.subscribe();
+        let source = UiCanvasSource {
+            root: "/private/project/.bboxy".into(), swarm: Ulid(2),
+            id: "drawing".into(), title: "Plan".into(),
+        };
+        captures.canvas(Ulid(1), UiRequest::Canvas { source, beside: Some(Ulid(3)) }).unwrap();
+        for id in 4..104 {
+            let _ = captures.canvas(Ulid(id), UiRequest::CanvasRefresh { swarm: Ulid(2) });
+        }
+        assert!(matches!(owner.try_recv().unwrap(), Notice::Ui {
+            id: Ulid(1), request: UiRequest::Canvas { beside: Some(Ulid(3)), .. },
+        }), "a refresh burst must not evict the earlier open");
+        let mut refreshes = 0;
+        while let Ok(notice) = owner.try_recv() {
+            assert!(matches!(notice, Notice::Ui { request: UiRequest::CanvasRefresh { swarm: Ulid(2) }, .. }));
+            refreshes += 1;
+        }
+        assert_eq!(refreshes, NOTICE_CAPACITY - 1, "retained refreshes reload the latest log after the burst");
+        captures.canvas(Ulid(104), UiRequest::CanvasRefresh { swarm: Ulid(2) }).unwrap();
+        assert!(matches!(owner.try_recv().unwrap(), Notice::Ui { id: Ulid(104), .. }));
+        let admission = captures.ui.lock().unwrap();
+        assert!(captures.canvas(Ulid(105), UiRequest::CanvasRefresh { swarm: Ulid(2) }).unwrap_err().starts_with("ui_busy:"));
+        drop(admission);
+        drop(owner);
+        assert!(captures.canvas(Ulid(106), UiRequest::CanvasRefresh { swarm: Ulid(2) }).unwrap_err().starts_with("ui_detached:"));
+    }
+
     // keeps: spec ctl-cli
     #[tokio::test(start_paused = true)]
     async fn focus_waits_for_the_gui_frame_answer_and_keeps_its_correlation() {
@@ -371,6 +430,7 @@ mod tests {
             captures.ui_answer(
                 id,
                 Ok(UiLayout {
+                    canvases: Default::default(),
                     notification_frontmost: None,
                     regions: Default::default(),
                     test_clipboard: None,

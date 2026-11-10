@@ -1220,6 +1220,8 @@ async fn run_with_control(
     let mut history = History::default();
     let mut action_replies = ActionReplies::default();
     let mut swarm_mutations = SwarmMutations::default();
+    let mut canvas_reads = bboxy450_term::canvas_host::Reads::default();
+    let mut canvas_jobs: tokio::task::JoinSet<bboxy450_term::canvas_host::Completion> = tokio::task::JoinSet::new();
     let mut document_reader = documents::Reader::default();
     let mut document_preparation: Option<(Ulid, tokio::task::JoinHandle<Arc<documents::Reply>>)> =
         None;
@@ -1402,6 +1404,14 @@ async fn run_with_control(
                         }
                     }
                 },
+                canvas=canvas_jobs.join_next(), if !canvas_jobs.is_empty()=> {
+                    if let Some(Ok((swarm,root,generation,result)))=canvas
+                        && canvas_reads.current(swarm,&root,generation) { match result {
+                            Ok(rows)=> {Arc::make_mut(&mut model).canvas_catalog.insert((bbt_ui_model::SwarmId::from_u128(swarm.0),root),Arc::new(rows)); updates.publish(model.clone());},
+                            Err(reason)=>logger.write(format!("canvas refresh: {reason}")),
+                        }
+                    }
+                },
                 prepared=async {(&mut document_preparation.as_mut().expect("guarded document worker").1).await}, if document_preparation.is_some()=> {
                     let (id,_)=document_preparation.take().expect("completed document worker");
                     let reply=prepared.unwrap_or_else(|error|Arc::new(documents::Reply {id,response:documents::Response::Failed(format!("document_preparation_failed: {error}"))}));
@@ -1487,6 +1497,37 @@ async fn run_with_control(
                             row.launch_environment=Some(environment.clone());
                             row.recent_directories.retain(|p|p!=directory); row.recent_directories.insert(0,directory.clone()); row.recent_directories.truncate(6);
                             publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                        }
+                    },
+                    UiMsg::CloseCanvas {pane}=> {
+                        let current=Arc::make_mut(&mut model);
+                        current.canvas_sources.remove(pane);current.ui.seats.remove(pane);
+                        for swarm in &mut current.ui.window.sidebar.swarms {
+                            swarm.tabs.retain_mut(|tab| {let Some(tree)=bbt_ui_model::prune(&tab.tree,*pane) else {return false;};tab.tree=tree;tab.seats.retain(|id|id!=pane);true});
+                        }
+                        publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                    },
+                    UiMsg::Canvas {source,beside}=> {
+                        Arc::make_mut(&mut model).open_canvas(source.clone(),*beside);
+                        publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                        let source=source.clone();let root=bboxy450_term::canvas_host::normalize_root(&source.root);
+                        let generation=canvas_reads.begin(source.swarm,&root);
+                        canvas_jobs.spawn_blocking(move || {let result=bboxy450_term::canvas_host::load(&root,source.swarm);(source.swarm,root,generation,result)});
+                    },
+                    UiMsg::CanvasRefresh {swarm}=> {
+                        let mut roots=std::collections::BTreeSet::new();
+                        for row in &model.ui.window.sidebar.swarms {
+                            let id=Ulid(row.id.0.0);
+                            if swarm.is_none_or(|s|s==id) && let Some(root)=&row.workdir {roots.insert((id,bboxy450_term::canvas_host::normalize_root(root)));}
+                        }
+                        for source in model.canvas_sources.values() {
+                            if swarm.is_none_or(|s|s==source.swarm) {roots.insert((source.swarm,bboxy450_term::canvas_host::normalize_root(&source.root)));}
+                        }
+                        for (id,root) in model.canvas_catalog.keys() {
+                            let id=Ulid(id.0.0);
+                            if swarm.is_none_or(|s|s==id) {roots.insert((id,root.clone()));}
+                        }
+                        for (swarm,root) in roots {let generation=canvas_reads.begin(swarm,&root); canvas_jobs.spawn_blocking(move || {let result=bboxy450_term::canvas_host::load(&root,swarm);(swarm,root,generation,result)});
                         }
                     },
                     UiMsg::NewSwarm(id) => {
@@ -3539,8 +3580,10 @@ mod tests {
                 ..Default::default()
             };
             let channels = dock.entries.iter().find_map(|entry| match entry {
-                Entry::Tabs { channels, .. } => Some(channels.iter().map(|c| c.name.clone()).collect::<Vec<_>>()),
-                _ => None,
+                Entry::Tabs { channels, .. } => {
+                        Some(channels.iter().map(|c| c.name.clone()).collect::<Vec<_>>())
+                    }
+                    _ => None,
             }).expect("selected swarm's channel tabs");
             let name = channel.trim_start_matches("channels/");
             assert_eq!(channels, [name.to_owned(), format!("{name}-other")]);

@@ -187,6 +187,9 @@ pub struct WindowSwarm {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct WindowTab {
+    /// Additive pane content. The split tree keeps its existing stable leaf ids.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub canvases: std::collections::BTreeMap<Ulid, super::UiCanvasSource>,
     pub id: Ulid,
     pub name: String,
     pub shortcut: Option<u8>,
@@ -255,5 +258,79 @@ mod sidebar_state_compatibility {
                     .is_none()
             );
         }
+    }
+}
+
+#[cfg(test)]
+mod canvas_state_compatibility {
+    use super::*;
+
+    // Captured seat-only WindowTab shape from the version-5 schema preceding
+    // canvas support; this fixture deliberately has no new fields.
+    fn seat_only() -> serde_json::Value {
+        serde_json::json!({
+            "id": "00000000000000000000000001",
+            "name": "kept terminal",
+            "shortcut": 1,
+            "expanded": true,
+            "seats": ["00000000000000000000000002"],
+            "tree": {"kind": "seat", "id": "00000000000000000000000002"}
+        })
+    }
+
+    #[test]
+    fn canvas_additive_state_preserves_seat_only_tab_fields() {
+        let old = seat_only();
+        let decoded: WindowTab = serde_json::from_value(old.clone()).unwrap();
+        assert!(decoded.canvases.is_empty());
+        assert_eq!(serde_json::to_value(decoded).unwrap(), old);
+    }
+
+    #[test]
+    fn canvas_seat_only_window_serializes_byte_identically_to_v5() {
+        // Frozen version-5 serializer output: absent optional fields stay absent.
+        const OLD: &[u8] = br#"{"version":5,"size":[1280.0,720.0],"sidebar_width":300.0,"sidebar_scroll":0.0,"sidebar_shown":true,"open_swarms":["00000000000000000000000003"],"swarms":[{"id":"00000000000000000000000003","tabs":[{"id":"00000000000000000000000001","name":"kept terminal","shortcut":1,"expanded":true,"seats":["00000000000000000000000002"],"tree":{"kind":"seat","id":"00000000000000000000000002"}}]}],"stage":{"swarm":"00000000000000000000000003","tab":"00000000000000000000000001","focused":"00000000000000000000000002"},"scroll":[]}"#;
+        let state: WindowState=serde_json::from_slice(OLD).unwrap();
+        assert_eq!(serde_json::to_vec(&state).unwrap(),OLD);
+        assert!(state.swarms[0].tabs[0].canvases.is_empty());
+    }
+
+    #[derive(Serialize, Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct LegacyWindowTab {
+        id: Ulid,
+        name: String,
+        shortcut: Option<u8>,
+        expanded: bool,
+        seats: Vec<Ulid>,
+        tree: WindowTree,
+    }
+
+    #[test]
+    fn canvas_downgrade_refuses_canvas_tab_but_preserves_seat_only_format() {
+        // Older GUIs strictly decode persisted tabs during attachment. A canvas
+        // field refuses that attachment; this does not run an older binary.
+        let old = seat_only();
+        let old_bytes = serde_json::to_vec(&old).unwrap();
+        let loaded: LegacyWindowTab = serde_json::from_slice(&old_bytes).unwrap();
+        assert_eq!(serde_json::to_value(loaded).unwrap(), old);
+
+        let mut canvas = old;
+        canvas["canvases"] = serde_json::json!({
+            "00000000000000000000000002": {
+                "root": "/private/canvas-fixture/.bboxy",
+                "swarm": "00000000000000000000000003",
+                "id": "00000000000000000000000004",
+                "title": "Kept canvas"
+            }
+        });
+        let bytes = serde_json::to_vec(&canvas).unwrap();
+        let current: WindowTab = serde_json::from_slice(&bytes).unwrap();
+        assert_eq!(current.canvases.len(), 1);
+        let error = serde_json::from_slice::<LegacyWindowTab>(&bytes)
+            .err()
+            .unwrap();
+        assert!(error.to_string().contains("unknown field `canvases`"));
+
     }
 }

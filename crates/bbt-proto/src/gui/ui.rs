@@ -17,7 +17,8 @@ use super::*;
 // Version 12: disclosure acknowledgements observe settled live-clock frames;
 // frozen clocks expose the requested intermediate frame for deterministic ctl.
 // Version 14: native wheel input and private shared HarnessView observations.
-pub const UI_CONTROL_VERSION: u16 = 14;
+// Version 15: explicit kept canvas panes and nonblocking refresh notices.
+pub const UI_CONTROL_VERSION: u16 = 15;
 pub const MAX_SECTION_WHEEL_DY: f32 = 32768.;
 
 /// The completed frame which acknowledged a focus command.
@@ -33,6 +34,15 @@ pub struct FocusFrame {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "kind", content = "body", rename_all = "snake_case")]
 pub enum UiRequest {
+    /// Nonblocking canvas presentation from an admitted swarm writer.
+    Canvas {
+        source: UiCanvasSource,
+        beside: Option<Ulid>,
+    },
+    /// Re-read the swarm log after an append; no animation or frame-time IO.
+    CanvasRefresh {
+        swarm: Ulid,
+    },
     /// Verified test accounts only; normalized native input, never OS injection.
     Input(Vec<UiInput>),
     /// Set a swarm's default launch folder; None restores the app default.
@@ -119,6 +129,14 @@ impl UiRequest {
     /// Transport bounds; the window decides whether each chrome key is applicable.
     pub fn validate(&self) -> Result<(), &'static str> {
         match self {
+            Self::Canvas { source, .. }
+                if !valid_workdir(&source.root)
+                    || source.id.is_empty()
+                    || source.id.len() > 64
+                    || source.title.len() > 256 =>
+            {
+                Err("invalid_canvas_source")
+            }
             Self::Input(inputs) => {
                 if inputs.is_empty() || inputs.len() > 32 { return Err("invalid_ui_input: expected 1-32 events"); }
                 inputs.iter().try_for_each(UiInput::validate)
@@ -496,6 +514,24 @@ pub enum UiTarget {
     Docs(String),
 }
 
+/// A canvas pane is content, never a process identity or an execution grant.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct UiCanvasSource {
+    pub root: String,
+    pub swarm: Ulid,
+    pub id: String,
+    pub title: String,
+}
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct UiCanvasView {
+    pub source: UiCanvasSource,
+    pub rect: [f32; 4],
+    pub camera: [f64; 3],
+    pub seq: u64,
+    pub digest: String,
+}
+
 /// Bounded rich face evidence; the replay cursor never grants input authority.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UiRichObservation {
@@ -516,6 +552,9 @@ pub struct UiRichObservation {
 /// The GUI's solved tree, not a reconstruction by logic or ctl.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct UiLayout {
+    /// Canvas facts sampled from the same snapshot and camera actually painted.
+    #[serde(default, skip_serializing_if = "std::collections::BTreeMap::is_empty")]
+    pub canvases: std::collections::BTreeMap<Ulid, UiCanvasView>,
     /// Private recording account state sampled with this produced frame.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub notification_frontmost: Option<bool>,

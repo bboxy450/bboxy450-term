@@ -545,6 +545,7 @@ dependencies = [
 name = "bboxy450-term"
 version = "0.1.1"
 dependencies = [
+ "bboxy450-canvas",
  "bboxy450-desktop-notifications",
  "bboxy450-doc",
  "bboxy450-harness",

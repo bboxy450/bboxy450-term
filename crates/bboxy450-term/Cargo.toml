@@ -18,6 +18,7 @@ name = "notification_probe"
 required-features = ["notification-probe"]
 
 [dependencies]
+bboxy450-canvas = { version = "0.1.1", path = "../bboxy450-canvas" }
 bboxy450-harness = { path = "../bboxy450-harness", default-features = false, features = ["embedded"] }
 bboxy450-usage = { version = "0.1.1", path = "../bboxy450-usage" }
 bboxy450-term-desktop = { version = "0.1.1", path = "../bboxy450-term-desktop" }

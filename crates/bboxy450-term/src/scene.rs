@@ -247,6 +247,8 @@ fn named_suffix<'a>(layout: &'a c::Layout, name: &str) -> Option<&'a c::Layout> 
 }
 
 pub struct Scene {
+    canvas_rows: BTreeMap<bbt_ui_model::SwarmId, Vec<ui::modules::sidebar::CanvasRow>>,
+    pub canvas_closed: BTreeSet<bbt_ui_model::SwarmId>,
     pub usage: bbt_ui_model::usage::UsageStrip,
     pub sidebar_scroll: f32,
     pub sidebar_width: f32,
@@ -491,6 +493,8 @@ impl Scene {
             sidebar_width: TOKENS.sidebar.width as f32,
             sidebar_layout: Default::default(),
             open_swarms: BTreeSet::new(),
+            canvas_rows: BTreeMap::new(),
+            canvas_closed: BTreeSet::new(),
             sidebar_sections_closed: BTreeSet::new(),
             sidebar_reveals: BTreeMap::new(),
             sidebar_motion_now: Instant::now(),
@@ -757,7 +761,9 @@ impl Scene {
                 && node.rect.x < viewport.x + viewport.w && node.rect.x + node.rect.w > viewport.x
                 && node.rect.y < viewport.y + viewport.h && node.rect.y + node.rect.h > viewport.y
             {
-                for id in seat.into_iter().chain(tab.into_iter().flat_map(|keys| keys.split('/').filter_map(|key| key.parse::<bbt_mux::Ulid>().ok()).map(|id| SeatId::from_u128(id.0)))) {
+                for id in seat.into_iter().chain(tab.into_iter().flat_map(|keys| {
+                    keys.split('/').filter_map(|key| key.parse::<bbt_mux::Ulid>().ok()).map(|id| SeatId::from_u128(id.0))
+                })) {
                     if let Some((since, false)) = scene.attention.get(&id) { out.push((node.rect, *since)); }
                 }
             }
@@ -828,6 +834,8 @@ impl Scene {
             sidebar_width: TOKENS.sidebar.width as f32,
             sidebar_layout: Default::default(),
             open_swarms: BTreeSet::new(),
+            canvas_rows: BTreeMap::new(),
+            canvas_closed: BTreeSet::new(),
             sidebar_sections_closed: BTreeSet::new(),
             sidebar_reveals: BTreeMap::new(),
             sidebar_motion_now: Instant::now(),
@@ -871,6 +879,23 @@ impl Scene {
     pub fn set_model(&mut self, model: &bboxy450_term::model::Model, stage: &Stage) {
         self.set_model_at(model, stage, None);
     }
+    pub fn toggle_canvases(&mut self, swarm: bbt_ui_model::SwarmId) {
+        if !self.canvas_closed.remove(&swarm) {
+            self.canvas_closed.insert(swarm);
+        }
+        self.layout_cache.borrow_mut().take();
+    }
+    pub fn canvas_paint(
+        &self,
+        canvas: &bboxy450_canvas::Canvas,
+        camera: &bboxy450_canvas::Camera,
+        rect: Rect,
+    ) -> Result<Vec<c::Paint>, &'static str> {
+        let ctx = self.ui_context();
+        let element = ui::modules::canvas::render(canvas, camera, rect, ctx.theme)?;
+        let layout = element.layout(rect, ctx, &self.metrics)?;
+        Ok(c::paint(&layout, ctx))
+    }
     pub fn set_pane_views(&mut self, views: BTreeMap<SeatId, ui::modules::strip::ViewTarget>) {
         self.pane_views = views;
     }
@@ -897,6 +922,21 @@ impl Scene {
             bbt_rt::diagnostics::ProbeStage::LatestTaken,
             bbt_rt::diagnostics::ProbeStage::ProjectionStarted,
         );
+        let canvas_rows = model
+            .ui
+            .window
+            .sidebar
+            .swarms
+            .iter()
+            .filter_map(|swarm| {
+                model.canvas_rows(swarm.id)
+                    .map(|rows| (swarm.id, rows.iter().map(|r| r.sidebar()).collect()))
+            })
+            .collect();
+        if self.canvas_rows != canvas_rows {
+            self.canvas_rows = canvas_rows;
+            self.layout_cache.borrow_mut().take();
+        }
         self.starting = None;
         self.identity = model.identity.clone();
         self.hosts = model.hosts.clone();
@@ -1012,7 +1052,7 @@ impl Scene {
             .filter(|(_, s)| s.lifecycle == bbt_ui_model::Lifecycle::Open)
             .map(|(id, seat)| {
                 let mut row = SeatRow::new(id.to_string(), &seat.name, &seat.harness.0);
-                row.role = seat.role.as_ref().map(|role| role.name.clone());
+                row.role = if model.canvas_sources.contains_key(id) {Some("canvas".into())} else {seat.role.as_ref().map(|role|role.name.clone())};
                 row.title = model
                     .history_errors
                     .get(id)
@@ -1026,7 +1066,7 @@ impl Scene {
                 row.grade = seat.grade;
                 row.stale = model.states.get(id).is_some_and(|state| state.stale);
                 row.muted = seat.muted;
-                row.may_mute = self.live;
+                row.may_mute = self.live && !model.canvas_sources.contains_key(id);
                 row.deferred = model.messaging_deferred.get(id).cloned();
                 row.focused = Some(*id) == self.focused;
                 // An inactive card dims its whole body once. In the selected
@@ -1714,6 +1754,16 @@ impl Scene {
                             .element(ctx, &self.metrics, strip_width)
                         })
                         .collect();
+                    if let Some(section) = self.canvas_rows.get(&swarm.id).and_then(|rows| {
+                        ui::modules::sidebar::canvas_section(
+                            &swarm.id.to_string(),
+                            rows,
+                            !self.canvas_closed.contains(&swarm.id),
+                            ctx,
+                        )
+                    }) {
+                        view.extra.push(section);
+                    }
                     view.extra.extend(self.starting_rows(Some(swarm.id), ctx));
                     view.extra.push(ui::modules::swarm_card::workdir_row(
                         &swarm.id.to_string(),

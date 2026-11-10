@@ -505,6 +505,9 @@ pub struct Model {
     pub launch_directory: String,
     /// Exact public rows retained for GUI-owned listings, without a logic round trip.
     pub gui_seats: Arc<[GuiSeat]>,
+    /// Presentation leaves only: these keys never identify registry seats or processes.
+    pub canvas_sources: BTreeMap<SeatId, bbt_proto::gui::UiCanvasSource>,
+    pub canvas_catalog: BTreeMap<(ui::SwarmId, String), Arc<Vec<crate::canvas_host::Row>>>,
     pub messaging_deferred: BTreeMap<SeatId, bbt_ui::modules::seat_row::Deferred>,
     pub hosts: Vec<bbt_proto::GuiHost>,
     /// Versioned authoritative swarm metadata, independent of the window layout.
@@ -558,6 +561,101 @@ pub struct Model {
 }
 
 impl Model {
+    /// Open beside the caller's tab, reusing the existing tab/split presentation.
+    /// Canvas pane keys are private UI identities, never the canvas or seat ID.
+    pub fn open_canvas(
+        &mut self,
+        mut source: bbt_proto::gui::UiCanvasSource,
+        beside: Option<Ulid>,
+    ) -> SeatId {
+        source.root = crate::canvas_host::normalize_root(&source.root);
+        let existing = self.canvas_sources.iter().find_map(|(id, old)| {
+            (old.root == source.root && old.swarm == source.swarm && old.id == source.id)
+                .then_some(*id)
+        });
+        let id = existing.unwrap_or_else(|| {
+            loop {
+                let id = SeatId::from_u128(Ulid::new().0);
+                if !self.ui.seats.contains_key(&id) {
+                    break id;
+                }
+            }
+        });
+        self.ui.seats.insert(id, canvas_presentation(id, &source));
+        self.canvas_sources.insert(id, source.clone());
+        let location = self.ui.tab_of(id).unwrap_or_else(|| {
+            let swarm = ui::SwarmId::from_u128(source.swarm.0);
+            let si = self
+                .ui
+                .window
+                .sidebar
+                .swarms
+                .iter()
+                .position(|row| row.id == swarm)
+                .unwrap_or_else(|| {
+                    self.ui
+                        .window
+                        .sidebar
+                        .swarms
+                        .push(ui::Swarm::new(swarm, "swarm", vec![]));
+                    self.ui.window.sidebar.swarms.len() - 1
+                });
+            let ti = beside
+                .and_then(|seat| self.ui.tab_of(SeatId::from_u128(seat.0)))
+                .filter(|(index, _)| *index == si)
+                .map_or(self.ui.window.sidebar.swarms[si].tabs.len(), |(_, ti)| {
+                    ti + 1
+                });
+            self.ui.window.sidebar.swarms[si].tabs.insert(
+                ti,
+                ui::Tab::new(
+                    ui::TabId::from_u128(Ulid::new().0),
+                    &source.title,
+                    ui::SplitNode::Leaf(id),
+                ),
+            );
+            (si, ti)
+        });
+        let swarm = &mut self.ui.window.sidebar.swarms[location.0];
+        let tab = &mut swarm.tabs[location.1];
+        if tab.seats.len() == 1 {
+            tab.name.clone_from(&source.title);
+        }
+        self.ui.window.sidebar.open.insert(swarm.id);
+        self.ui.window.stage = ui::Stage {
+            swarm: Some(swarm.id),
+            tab: Some(tab.id),
+            focused: Some(id),
+        };
+        id
+    }
+
+    /// Sidebar lists the current workspace; old-root tabs retain their own snapshots.
+    pub fn canvas_rows(&self, swarm: ui::SwarmId) -> Option<&Arc<Vec<crate::canvas_host::Row>>> {
+        let root = self
+            .ui
+            .window
+            .sidebar
+            .swarms
+            .iter()
+            .find(|row| row.id == swarm)
+            .and_then(|row| row.workdir.as_deref())
+            .or_else(|| {
+                self.canvas_sources
+                    .values()
+                    .find(|source| source.swarm.0 == swarm.0.0)
+                    .map(|source| source.root.as_str())
+            })
+            .or_else(|| {
+                self.canvas_catalog
+                    .keys()
+                    .find(|(id, _)| *id == swarm)
+                    .map(|(_, root)| root.as_str())
+            })?;
+        self.canvas_catalog
+            .get(&(swarm, crate::canvas_host::normalize_root(root)))
+    }
+
     /// A native root-bearing operation binds to acknowledged metadata. Known
     /// absence is scope0 only when no legacy working-folder intent remains.
     pub fn swarm_scope(
@@ -635,6 +733,18 @@ impl Model {
     }
 }
 
+pub(crate) fn canvas_presentation(id: SeatId, source: &bbt_proto::gui::UiCanvasSource) -> ui::Seat {
+    let mut row = ui::Seat::new(
+        id,
+        ui::SwarmId::from_u128(source.swarm.0),
+        [0; 32],
+        &source.title,
+        "canvas",
+    );
+    row.process_generation = 0;
+    row
+}
+
 /// A focus cue retains its destination across IO publication and frame fences.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FocusSwell {
@@ -646,6 +756,8 @@ impl Default for Model {
         Self {
             launch_directory: String::new(),
             gui_seats: Arc::default(),
+            canvas_sources: BTreeMap::new(),
+            canvas_catalog: BTreeMap::new(),
             messaging_deferred: BTreeMap::new(),
             ui: ui::Model::new(vec![], vec![]).expect("empty model"),
             screens: BTreeMap::new(),
@@ -1138,7 +1250,7 @@ fn build_with_clock(
     if closes.needs_reconcile(seats) {
         closes.reconcile(seats, layout_source.to_mut(), now, now_ms);
     }
-    let metadata: BTreeMap<_, _> = seats
+    let mut metadata: BTreeMap<_, _> = seats
         .iter()
         .map(|record| {
             let id = SeatId::from_u128(record.id.0);
@@ -1192,6 +1304,11 @@ fn build_with_clock(
             (id, seat)
         })
         .collect();
+    for (id, source) in &previous.canvas_sources {
+        metadata
+            .entry(*id)
+            .or_insert_with(|| canvas_presentation(*id, source));
+    }
     let mut groups: BTreeMap<ui::SwarmId, Vec<SeatId>> = BTreeMap::new();
     for swarm in &layout_source.window.sidebar.swarms {
         groups.entry(swarm.id).or_default();
@@ -1430,6 +1547,8 @@ fn build_with_clock(
     let mut next = Model {
         launch_directory: previous.launch_directory.clone(),
         gui_seats: previous.gui_seats.clone(),
+        canvas_sources: previous.canvas_sources.clone(),
+        canvas_catalog: previous.canvas_catalog.clone(),
         messaging_deferred: previous.messaging_deferred.clone(),
         hosts: previous.hosts.clone(),
         swarm_metadata: previous.swarm_metadata.clone(),

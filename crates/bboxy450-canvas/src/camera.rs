@@ -20,6 +20,47 @@ impl Default for Camera {
     }
 }
 impl Camera {
+    /// Fit world bounds into a logical-pixel viewport with padding on each edge.
+    /// Empty content uses the default camera; invalid geometry never produces
+    /// a partial camera or introduces a zoom limit.
+    pub fn fit(
+        bounds: impl IntoIterator<Item = crate::Bounds>,
+        viewport: [f64; 2],
+        padding: f64,
+    ) -> Result<Self, &'static str> {
+        if !padding.is_finite()
+            || padding < 0.
+            || viewport
+                .iter()
+                .any(|n| !n.is_finite() || *n <= padding * 2.)
+        {
+            return Err("invalid canvas fit viewport");
+        }
+        let mut min = [f64::INFINITY; 2];
+        let mut max = [f64::NEG_INFINITY; 2];
+        let mut empty = true;
+        for bounds in bounds {
+            if !bounds.valid() {
+                return Err("invalid canvas fit bounds");
+            }
+            empty = false;
+            for axis in 0..2 {
+                min[axis] = min[axis].min(bounds.origin[axis]);
+                max[axis] = max[axis].max(bounds.origin[axis] + bounds.size[axis]);
+            }
+        }
+        if empty {
+            return Ok(Self::default());
+        }
+        let size = finite(std::array::from_fn(|axis| max[axis] - min[axis]))?;
+        let next = Self {
+            center: std::array::from_fn(|axis| min[axis] + size[axis] / 2.),
+            zoom: ((viewport[0] - padding * 2.) / size[0])
+                .min((viewport[1] - padding * 2.) / size[1]),
+        };
+        next.validate()?;
+        Ok(next)
+    }
     pub fn validate(self) -> Result<(), &'static str> {
         if self.center.iter().all(|v| v.is_finite()) && self.zoom.is_finite() && self.zoom > 0. {
             Ok(())

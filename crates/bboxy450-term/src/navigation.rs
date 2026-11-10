@@ -472,6 +472,51 @@ impl App {
         self.request_redraw();
     }
     pub(super) fn navigate_to(&mut self, id: &str) {
+        if let Some(swarm) = id
+            .strip_prefix("canvas-toggle:")
+            .and_then(|s| s.parse().ok())
+        {
+            self.scene.toggle_canvases(swarm);
+            self.request_redraw();
+            return;
+        }
+        if let Some((swarm, id)) = id
+            .strip_prefix("canvas-open:")
+            .and_then(|s| s.split_once('/'))
+        {
+            let source = swarm
+                .parse::<bbt_ui_model::SwarmId>()
+                .ok()
+                .and_then(|swarm| {
+                    self.live_state
+                        .as_ref()?
+                        .canvas_rows(swarm)?
+                        .iter()
+                        .find(|r| r.source.id == id)
+                        .map(|r| r.source.clone())
+                });
+            if let Some(source) = source {
+                self.local_tab = None;
+                let open = self.live_state.as_ref().and_then(|model| {
+                    model.canvas_sources.iter().find_map(|(pane, old)| {
+                        (old.root == source.root && old.swarm == source.swarm
+                            && old.id == source.id && model.ui.tab_of(*pane).is_some())
+                            .then_some(*pane)
+                    })
+                });
+                if let Some(pane) = open {
+                    self.canvas_pending = None;
+                    // Existing tabs use the ordinary synchronous focus action;
+                    // no redundant IO open may supersede this click's frame.
+                    self.focus_action(FocusAction::Activate(pane, FocusOrigin::Row));
+                    self.request_redraw();
+                } else {
+                    self.canvas_pending = Some(source.clone());
+                    self.queue(live::UiMsg::Canvas { source, beside: None });
+                }
+            }
+            return;
+        }
         if let Some(seat) = id
             .strip_prefix("pane-view:")
             .and_then(|id| id.parse::<bbt_ui_model::SeatId>().ok())

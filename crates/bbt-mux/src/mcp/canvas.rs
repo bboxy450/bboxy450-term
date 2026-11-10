@@ -95,7 +95,7 @@ pub(crate) fn catalogue() -> Vec<Value> {
     );
     open["oneOf"] = json!([{"required":["title"]},{"required":["number"]},{"required":["id"]}]);
     [
-        ("canvas_open", "Create or open a swarm canvas by title, number or id. C1a returns shown:false. Default drawing authority is creator plus Oracle; explicit grants are a later step.", open, false),
+        ("canvas_open", "Create or open a swarm canvas by title, number or id. Enqueues presentation beside the calling seat when a GUI is attached; shown:false names a detached or busy reason. Retry a busy presentation with the same operation ID. Never waits for the GUI. Default drawing authority is creator plus Oracle; explicit grants are a later step.", open, false),
         ("canvas_list", "List this swarm's canvases, newest activity first, in bounded pages. Filter by tag; pass next as cursor.", object(json!({"tag":{"type":"string","minLength":1},"cursor":{"type":"string","maxLength":256}}),json!([])), true),
         ("canvas_draw", "Append a small semantic batch. Store assigns seq; op_id dedupes delivery across restart. Stale expect_seq is recorded, not refused. Colours, fonts and weights are forbidden. MAX_ELEMENTS, MAX_BATCH_OPS and MAX_OPS_PER_MINUTE bound drawing.", object(json!({"id":id,"ops":{"type":"array","items":action_schema(),"minItems":1,"maxItems":bboxy450_canvas::store::MAX_BATCH_OPS},"expect_seq":{"type":"integer","minimum":0}}),json!(["id","ops"])), false),
         ("canvas_read", "Read semantic elements, seq and digest; image:true also returns a headless GPU-rendered PNG image block. Optional frame fits that region.", object(json!({"id":id,"frame":{"type":"string","minLength":1},"image":{"type":"boolean"}}),json!(["id"])), true)
@@ -160,13 +160,65 @@ fn summary(s: &Snapshot) -> Value {
 }
 fn activity(s: &Snapshot) -> (u64, String) {
     (
-        if s.batches.is_empty() {
-            ulid::Ulid::from_string(&s.record.id).map_or(0, |id| id.timestamp_ms())
-        } else {
-            s.last_change()
-        },
+        s.last_change(),
         s.record.id.clone(),
     )
+}
+/// Presentation is volatile, not part of the durable drawing result. Replaying
+/// an operation reuses its semantic result and checks the current GUI owner.
+pub(crate) fn present(
+    value: &mut Value,
+    call: &Call,
+    captures: &crate::gui_capture::Captures,
+    root: &Path,
+    swarm: crate::Ulid,
+    actor: &Actor,
+) {
+    if value["isError"] != false {
+        return;
+    }
+    match call.tool.as_str() {
+        "canvas_open" => {
+            let (Some(id), Some(title)) = (
+                value["structuredContent"]["id"].as_str(),
+                value["structuredContent"]["title"].as_str(),
+            ) else {
+                return;
+            };
+            let presentation = captures.canvas(
+                call.op_id,
+                bbt_proto::gui::UiRequest::Canvas {
+                    source: bbt_proto::gui::UiCanvasSource {
+                        root: root.to_string_lossy().into_owned(),
+                        swarm,
+                        id: id.into(),
+                        title: title.into(),
+                    },
+                    beside: actor.seat().map(|seat| seat.seat_id),
+                },
+            );
+            let data = &mut value["structuredContent"];
+            data["shown"] = json!(presentation.is_ok());
+            match presentation {
+                Ok(()) => {
+                    data["presentation"] = json!("enqueued");
+                    data.as_object_mut().unwrap().remove("reason");
+                }
+                Err(reason) => {
+                    data["presentation"] = json!(if reason.starts_with("ui_detached:") { "detached" } else { "busy" });
+                    data["reason"] = json!(reason);
+                }
+            }
+        }
+        "canvas_draw" => {
+            let _ = captures.canvas(
+                call.op_id,
+                bbt_proto::gui::UiRequest::CanvasRefresh { swarm },
+            );
+        }
+        _ => return,
+    }
+    value["content"][0]["text"] = json!(value["structuredContent"].to_string());
 }
 /// Root and swarm come from admission, never from a caller-controlled path.
 /// Image bytes are kept outside structuredContent and appended as MCP content.
@@ -239,9 +291,7 @@ pub(crate) fn execute(
                     "canvas is not in the current swarm",
                 ));
             };
-            let mut value = summary(&s);
-            value["shown"] = json!(false);
-            value
+            summary(&s)
         }
         "canvas_list" => {
             let args: List = parse(&call.args)?;
@@ -364,6 +414,108 @@ mod render;
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn canvas_presentation_rechecks_gui_attachment_on_replay_without_waiting() {
+        let captures = crate::gui_capture::Captures::default();
+        let actor = Actor::Operator {
+            device_id: crate::Ulid(1),
+            door: super::super::Door::Gui,
+            issued_by: None,
+        };
+        let call = Call {
+            op_id: crate::Ulid(2),
+            tool: "canvas_open".into(),
+            args: json!({"title":"Plan"}),
+        };
+        // This is the semantic result retained in the operation journal. The
+        // GUI result is derived each time, rather than replaying a stale flag.
+        let retained = super::super::success(call.op_id, json!({"id":"drawing","title":"Plan"}));
+        let mut result = retained.clone();
+        present(
+            &mut result,
+            &call,
+            &captures,
+            Path::new("/private/project/.bboxy"),
+            crate::Ulid(3),
+            &actor,
+        );
+        assert_eq!(result["structuredContent"]["shown"], false);
+        assert!(
+            result["structuredContent"]["reason"]
+                .as_str()
+                .unwrap()
+                .contains("ui_detached")
+        );
+        let mut owner = captures.subscribe();
+        result = retained.clone();
+        present(
+            &mut result,
+            &call,
+            &captures,
+            Path::new("/private/project/.bboxy"),
+            crate::Ulid(3),
+            &actor,
+        );
+        assert_eq!(result["structuredContent"]["shown"], true);
+        assert_eq!(result["structuredContent"]["presentation"], "enqueued");
+        assert!(result["structuredContent"].get("reason").is_none());
+        assert_eq!(
+            result["content"][0]["text"],
+            result["structuredContent"].to_string()
+        );
+        assert!(
+            matches!(owner.try_recv().unwrap(), crate::gui_capture::Notice::Ui {
+            id: crate::Ulid(2), request: bbt_proto::gui::UiRequest::Canvas { source, beside: None }
+        } if source.id == "drawing" && source.root == "/private/project/.bboxy" && source.swarm == crate::Ulid(3))
+        );
+        let draw = Call {
+            tool: "canvas_draw".into(),
+            ..call.clone()
+        };
+        present(
+            &mut result,
+            &draw,
+            &captures,
+            Path::new("/private/project/.bboxy"),
+            crate::Ulid(3),
+            &actor,
+        );
+        assert!(matches!(
+            owner.try_recv().unwrap(),
+            crate::gui_capture::Notice::Ui {
+                request: bbt_proto::gui::UiRequest::CanvasRefresh {
+                    swarm: crate::Ulid(3)
+                },
+                ..
+            }
+        ));
+        for id in 10..18 {
+            captures.canvas(crate::Ulid(id), bbt_proto::gui::UiRequest::CanvasRefresh { swarm: crate::Ulid(3) }).unwrap();
+        }
+        present(
+            &mut result, &call, &captures, Path::new("/private/project/.bboxy"), crate::Ulid(3), &actor,
+        );
+        assert_eq!(result["structuredContent"]["shown"], false);
+        assert_eq!(result["structuredContent"]["presentation"], "busy");
+        assert!(result["structuredContent"]["reason"].as_str().unwrap().contains("ui_busy: GUI relay is full; retry"));
+        for _ in 0..8 { owner.try_recv().unwrap(); }
+        present(
+            &mut result, &call, &captures, Path::new("/private/project/.bboxy"), crate::Ulid(3), &actor,
+        );
+        assert_eq!(result["structuredContent"]["shown"], true, "retry can enqueue after the GUI drains");
+        assert!(matches!(owner.try_recv().unwrap(), crate::gui_capture::Notice::Ui { request: bbt_proto::gui::UiRequest::Canvas { .. }, .. }));
+        drop(owner);
+        present(
+            &mut result,
+            &call,
+            &captures,
+            Path::new("/private/project/.bboxy"),
+            crate::Ulid(3),
+            &actor,
+        );
+        assert_eq!(result["structuredContent"]["shown"], false);
+        assert!(retained["structuredContent"].get("shown").is_none());
+    }
     #[test]
     fn canvas_rate_cap_names_per_seat_cap_and_recovers() {
         let mut rates = Rates::default();

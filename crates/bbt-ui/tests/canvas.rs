@@ -192,6 +192,69 @@ fn canvas_camera_relative_output_preserves_large_world_centers() {
     );
 }
 #[test]
+fn canvas_camera_gesture_scale_extremes_keep_finite_rendering() {
+    let canvas = fixture();
+    let mut camera = camera();
+    for factor in [1e9, 1e-9, 1e-9, 1e9] {
+        camera.zoom_at(factor, [0.; 2]).unwrap();
+        for theme in [Theme::Dark, Theme::Light] {
+            render(&canvas, &camera, viewport(), theme)
+                .unwrap()
+                .validate()
+                .unwrap();
+        }
+    }
+    assert!((camera.zoom - 1.).abs() < f64::EPSILON);
+}
+#[test]
+fn canvas_sidebar_limits_tags_and_empty_section() {
+    use ui::modules::sidebar::{CanvasRow, canvas_section};
+    let ctx = ui::Context::new(Theme::Dark, ui::Density::Cozy);
+    assert!(canvas_section("swarm", &[], true, ctx).is_none());
+    let rows = [CanvasRow {
+        id: "drawing".into(),
+        title: "Kept drawing".into(),
+        last_change: "2m ago".into(),
+        last_author: "Canvas Executor".into(),
+        tags: (1..=5).map(|i| format!("tag{i}")).collect(),
+    }];
+    fn names_and_text(node: &c::Layout, names: &mut Vec<String>, texts: &mut Vec<String>) {
+        match &node.kind {
+            c::LayoutKind::Named(name) => names.push(name.clone()),
+            c::LayoutKind::Text { runs, .. } => {
+                texts.extend(runs.iter().map(|run| run.text.clone()));
+            }
+            _ => {}
+        }
+        for child in &node.children {
+            names_and_text(child, names, texts);
+        }
+    }
+    for expanded in [true, false] {
+        let element = canvas_section("swarm", &rows, expanded, ctx).unwrap();
+        let layout = element
+            .layout(Rect::new(0., 0., 300., 300.), ctx, &Metrics)
+            .unwrap();
+        let (mut names, mut texts) = (vec![], vec![]);
+        names_and_text(&layout, &mut names, &mut texts);
+        assert!(names.contains(&"canvas/swarm/toggle".into()));
+        assert_eq!(
+            names.contains(&"canvas/swarm/open/drawing".into()),
+            expanded
+        );
+        assert_eq!(texts.iter().any(|s| s == "Kept drawing"), expanded);
+        assert_eq!(
+            texts.iter().any(|s| s == "2m ago · Canvas Executor"),
+            expanded
+        );
+        assert_eq!(
+            texts.iter().filter(|s| s.starts_with("tag")).count(),
+            if expanded { 3 } else { 0 }
+        );
+        assert!(!texts.iter().any(|s| s == "tag4" || s == "tag5"));
+    }
+}
+#[test]
 fn canvas_connector_follows_changed_endpoint_geometry() {
     let mut ops = load_log(LOG).unwrap();
     let canvas = Canvas::replay(&ops).unwrap();
