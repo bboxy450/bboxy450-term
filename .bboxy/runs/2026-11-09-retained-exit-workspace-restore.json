@@ -1,0 +1,164 @@
+{
+  "tests": {
+    "command": "set -eu; . scripts/cache-env.sh; sh scripts/quarantine-test.sh --locked --release -p bboxy450-term-mux --lib --target-dir /Users/feral/mydev/bboxy450-term/target -E \"test(retained_exit_restore) | test(managed_workspace_)\"",
+    "exit_code": 0,
+    "started": "2026-11-10T05:01:17.014896+00:00",
+    "finished": "2026-11-10T05:08:28.341070+00:00"
+  },
+  "test_count": 18,
+  "initial_compile": {
+    "exit_code": 101,
+    "reason": "Test used ExitInfo from crate root; corrected to public protocol::ExitInfo."
+  },
+  "formal": {
+    "exit_code": 0,
+    "models": [
+      {
+        "name": "ManagedWorkspaceOwnership",
+        "expected": "pass",
+        "states": 16,
+        "edges": 28,
+        "tlc_exit": 0,
+        "graph_equal": true,
+        "contract_metadata": null,
+        "reuse_key": "652c6426b46ce251cc1b174fc431db6bbc19568b4287578bd39c74783738d25e",
+        "checker_sha256": "5f228fb8e4a2e9b54ff3a828aaa0589b2f9a06780db2a43de7a3d147d0dea843",
+        "graph_sha256": {
+          ".dot": "099ee004093f9ab32b522030707b3b6c35dc5eaf288553f2a68e118269323fa3",
+          ".states": "3c17d2b91c289bf60ec9c3949b20cfd1d284cead8dd05d48d80908e0af0deae2",
+          ".edges": "c0c8688f597b9cb3efdeb0efee467ea9c6a61c7baf77aa963f860170e474f5a9"
+        },
+        "tla_sha256": "80c4d5d14e7b7299b7194f51196b56d04fdeb3b939c88fc121d157d3f6bba93c"
+      },
+      {
+        "name": "BrokenManagedWorkspaceOwnership",
+        "expected": "safety",
+        "states": 25,
+        "edges": 40,
+        "tlc_exit": 12,
+        "graph_equal": true,
+        "contract_metadata": null,
+        "reuse_key": "7ca6a3ef7993f030d2fb9bd3597c43c3e55e23c4be8285eaca735dcd12ed0d55",
+        "checker_sha256": "5f228fb8e4a2e9b54ff3a828aaa0589b2f9a06780db2a43de7a3d147d0dea843",
+        "graph_sha256": {
+          ".dot": "9989fab0849270cd71acdbae296bced46060d1fe9d7e4f9bc0560e40c8cfe9e2",
+          ".states": "ef018fc677707e31f6ec2835fad36d5eee4263f900f1b67b9674608ff136e352",
+          ".edges": "7b5094f31b3dd0193880a208d49b0d661d2e60d7546547d8a0dc58a357041a85"
+        },
+        "tla_sha256": "0ed71c7e71b0c0f29fc01f80b9324a6bc4561b6f1f5b8cd19a004e691c45dd85"
+      }
+    ],
+    "isolated_stale_history_negative_control": true,
+    "full_suite": false,
+    "finished": "2026-11-10T05:12:30.900834+00:00"
+  },
+  "source_sha256": {
+    "crates/bbt-mux/models/BrokenManagedWorkspaceOwnership.cfg": "772faa3beb208c622411d3a708ce3a646be3eafc4879932597d42cda461d67bd",
+    "crates/bbt-mux/models/BrokenManagedWorkspaceOwnership.tla": "0ed71c7e71b0c0f29fc01f80b9324a6bc4561b6f1f5b8cd19a004e691c45dd85",
+    "crates/bbt-mux/models/ManagedWorkspaceOwnership.cfg": "772faa3beb208c622411d3a708ce3a646be3eafc4879932597d42cda461d67bd",
+    "crates/bbt-mux/models/ManagedWorkspaceOwnership.tla": "80c4d5d14e7b7299b7194f51196b56d04fdeb3b939c88fc121d157d3f6bba93c",
+    "crates/bbt-mux/src/logic.rs": "cd55931c93b97964c9ce81607bfa6744edba6b2464bd6e390c901651e942b1de",
+    "crates/bbt-mux/src/mcp/workspaces.rs": "2ec5f13b70f3ec9e46466570433a828ef42ae9610d16d6d0e12aa9a1e6368970",
+    "crates/bbt-mux/src/mcp/workspaces/tests.rs": "e77be8381dbd56e426ec33823de595e136979ba5e95cfc8be3d3e4897e62c936",
+    "crates/bbt-mux/src/models/managed_workspace.rs": "f51f5871ec99721eff3e577ab323885bcefebefa32c4577c6a6e0b5ae0ab815b",
+    "verification/contracts.toml": "bf62d123d09b5e48dcf4b4762f75923e690d366dd7719d56c4548e32b0aa8d48"
+  },
+  "owners_before": {
+    "gui": {
+      "process": {
+        "pid": 81771,
+        "birth": [
+          1794285577,
+          99074
+        ]
+      },
+      "gui": {
+        "pid": 81771,
+        "instance": "01M71W28YNKX4JKZDYKG2TG3HF",
+        "source_revision": "3da65fd563c86bbd02d7a0f8102656d3b3029509"
+      },
+      "repository": "/Users/feral/Library/Application Support/bboxy450-term/workspace"
+    },
+    "supervisor": {
+      "process": {
+        "pid": 84759,
+        "birth": [
+          1794273616,
+          96520
+        ]
+      }
+    },
+    "logic": {
+      "process": {
+        "pid": 84761,
+        "birth": [
+          1794273616,
+          108748
+        ]
+      }
+    }
+  },
+  "supervisor_seats_before": [
+    {
+      "seat": "01M71GNVXV7ZHXMGM50M5SB2RA",
+      "generation": 1,
+      "pid": 86143,
+      "exited": null
+    },
+    {
+      "seat": "01M71H0S7MDHJ0QTCQFPQYXJHW",
+      "generation": 1,
+      "pid": 9999,
+      "exited": null
+    },
+    {
+      "seat": "01M71RQWJ3C0DW2E1QHRTKKT3V",
+      "generation": 1,
+      "pid": 34927,
+      "exited": null
+    },
+    {
+      "seat": "01M71S3G1SRJYHFYXYC48VBCAD",
+      "generation": 1,
+      "pid": 59593,
+      "exited": {
+        "code": 1,
+        "signal": "Killed: 9"
+      }
+    },
+    {
+      "seat": "01M71SWK9JK0BK2D8C1ND25RQ2",
+      "generation": 1,
+      "pid": 19453,
+      "exited": null
+    },
+    {
+      "seat": "01M71TWWSEW21999BGTJY4WTCE",
+      "generation": 1,
+      "pid": 99314,
+      "exited": {
+        "code": 1,
+        "signal": null
+      }
+    },
+    {
+      "seat": "01M71TXG8HDSP2XBCH84F7XR0X",
+      "generation": 1,
+      "pid": 851,
+      "exited": {
+        "code": 1,
+        "signal": null
+      }
+    }
+  ],
+  "harness_processes_before": {
+    "supervisor_pid": 84759,
+    "child_pids": [
+      9999,
+      19453,
+      34927,
+      86143
+    ]
+  },
+  "deployment": "Pending signed app build; preserve existing Supervisor and harness processes. Never recover/relaunch seats for this Logic-only fix."
+}

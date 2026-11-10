@@ -912,9 +912,19 @@ impl Service {
             Ok(true)
         })
     }
-    pub fn observe_launch(&self, seat: Ulid, generation: u64, pid: u32) -> Result<()> {
-        if let Some(bytes) = self.store.get(&format!("holder-seat/{seat}"))? {
-            self.launched(String::from_utf8(bytes)?.parse()?, seat, generation, pid)?;
+    pub fn observe_launch(&self, info: &bbt_supervisor::SeatInfo) -> Result<()> {
+        // Retained exits are history, not launch confirmations. Their workspace
+        // may already belong to a different seat; never reclaim that old lease.
+        if info.exited.is_some() {
+            return Ok(());
+        }
+        if let Some(bytes) = self.store.get(&format!("holder-seat/{}", info.seat))? {
+            self.launched(
+                String::from_utf8(bytes)?.parse()?,
+                info.seat,
+                info.generation,
+                info.pid,
+            )?;
         }
         Ok(())
     }

@@ -321,16 +321,27 @@ fn managed_workspace_launch_planning_rolls_back_but_uncertain_request_retains_wr
             .unwrap()
     );
     let service = Service::open(&f.temp.path().join("runtime")).unwrap();
-    service.observe_launch(seat, 1, 999999).unwrap();
+    let observe = |generation, pid| {
+        service.observe_launch(&bbt_supervisor::SeatInfo {
+            seat,
+            generation,
+            pid,
+            size: Default::default(),
+            next_sequence: 1,
+            exited: None,
+            companion: None,
+        })
+    };
+    observe(1, 999999).unwrap();
     let observed = service.get(ready.workspace_id).unwrap();
     assert_eq!(observed.holder.unwrap().pid, Some(999999));
-    service.observe_launch(seat, 1, 999999).unwrap();
+    observe(1, 999999).unwrap();
     assert_eq!(
         service.get(ready.workspace_id).unwrap().revision,
         observed.revision
     );
-    assert!(service.observe_launch(seat, 1, 999998).is_err());
-    assert!(service.observe_launch(seat, 2, 999999).is_err());
+    assert!(observe(1, 999998).is_err());
+    assert!(observe(2, 999999).is_err());
 }
 #[test]
 fn managed_workspace_restart_inspects_original_resource_without_duplicate_creation() {
@@ -858,4 +869,52 @@ fn managed_workspace_provider_lease_survives_parent_descriptor_drop() {
     child.kill().unwrap();
     child.wait().unwrap();
     assert!(Service::provider_idle(&r).unwrap());
+}
+
+#[test]
+fn retained_exit_restore_never_reclaims_a_reassigned_workspace() {
+    let f = Fixture::new();
+    let ready = f.prepare();
+    let old_seat = Ulid::new();
+    f.service.reserve(&ready, old_seat, Ulid::new()).unwrap();
+    f.service.launched(ready.workspace_id, old_seat, 1, 999998).unwrap();
+    // A completed reservation retains its reverse index for stale-writer fencing.
+    f.service.update(ready.workspace_id, |r| {
+        r.state = State::Ready;
+        r.holder = None;
+        r.revision += 1;
+        Ok(())
+    }).unwrap();
+    let ready = f.service.get(ready.workspace_id).unwrap();
+    let new_seat = Ulid::new();
+    f.service.reserve(&ready, new_seat, Ulid::new()).unwrap();
+    f.service.launched(ready.workspace_id, new_seat, 1, 999999).unwrap();
+    let before = f.service.store.get(&key(ready.workspace_id)).unwrap().unwrap();
+    let mut old = bbt_supervisor::SeatInfo {
+        seat: old_seat,
+        generation: 1,
+        pid: 999998,
+        size: Default::default(),
+        next_sequence: 2,
+        exited: Some(bbt_supervisor::protocol::ExitInfo { code: 1, signal: None }),
+        companion: None,
+    };
+    f.service.observe_launch(&old).unwrap();
+    assert_eq!(f.service.store.get(&key(ready.workspace_id)).unwrap().unwrap(), before);
+    assert_eq!(f.service.get(ready.workspace_id).unwrap().holder.unwrap().seat_id, new_seat);
+    let mut actor = f.actor.clone();
+    actor.seat_id = old_seat;
+    assert!(f.service.own(&actor).unwrap_err().to_string().contains("workspace_stale_holder"));
+    old.exited = None;
+    assert!(f.service.observe_launch(&old).unwrap_err().to_string().contains("workspace_stale_holder"));
+    f.service.update(ready.workspace_id, |r| {
+        r.state = State::Failed;
+        r.holder = None;
+        r.revision += 1;
+        Ok(())
+    }).unwrap();
+    let failed = f.service.store.get(&key(ready.workspace_id)).unwrap().unwrap();
+    old.exited = Some(bbt_supervisor::protocol::ExitInfo { code: 1, signal: None });
+    f.service.observe_launch(&old).unwrap();
+    assert_eq!(f.service.store.get(&key(ready.workspace_id)).unwrap().unwrap(), failed);
 }

@@ -6654,7 +6654,7 @@ impl Worker {
         // A lost Spawned reply is reconciled from the supervisor's exact owned
         // seat/generation/PID, never by launching another writer.
         self.implementation_workspaces
-            .observe_launch(info.seat, info.generation, info.pid)?;
+            .observe_launch(&info)?;
         self.parsers.retire(info.seat);
         self.ring_reads.remove(&info.seat);
         let host = self.host_for_seat(info.seat)?;

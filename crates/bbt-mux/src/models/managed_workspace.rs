@@ -153,7 +153,14 @@ pub(super) fn managed_workspace_ownership(b: bool) -> Model {
     let mut m = model(
         "ManagedWorkspaceOwnership",
         b,
-        &[("owned_identity", 1, 1), ("deleted", 1, 0), ("bad", 1, 0)],
+        &[
+            ("owned_identity", 1, 1),
+            ("deleted", 1, 0),
+            ("bad", 1, 0),
+            ("historical_lease_current", 1, 1),
+            ("history_restored", 1, 0),
+            ("restore_failed", 1, 0),
+        ],
     );
     action(&mut m, "ReplacePath", eq(0, 1), &[(0, Int(0))]);
     action(
@@ -162,7 +169,20 @@ pub(super) fn managed_workspace_ownership(b: bool) -> Model {
         all([eq(1, 0), if b { Expr::Bool(true) } else { eq(0, 1) }]),
         &[(1, Int(1)), (2, eq(0, 0).ite(Int(1), Var(2)))],
     );
+    action(&mut m, "ReassignHistoricalWorkspace", eq(3, 1), &[(3, Int(0))]);
+    // A retained exited process is observed as history, without confirming a
+    // writer lease. The broken control attempts the stale launch confirmation.
+    action(
+        &mut m,
+        "RestoreRetainedExit",
+        eq(4, 0),
+        &[
+            (4, Int(1)),
+            (5, if b { eq(3, 0).ite(Int(1), Var(5)) } else { Var(5) }),
+        ],
+    );
     no_bad(&mut m, 2);
+    safe(&mut m, "RetainedExitCannotFailRestore", eq(5, 0));
     m
 }
 pub(super) fn managed_workspace_provider_lease(b: bool) -> Model {
