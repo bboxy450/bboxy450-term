@@ -8,7 +8,7 @@ links:
   - { to: "[[vision]]", rel: direction }
   - { to: "[[mantras]]", rel: governs }
 created: 2026-11-09T20:28:39Z
-updated: "2026-11-09T20:28:39Z"
+updated: "2026-11-10T01:40:00Z"
 ---
 # Philosophy: our stand
 
@@ -115,6 +115,20 @@ There is no separate agent framework living on top of bboxy. Agents are native i
 - **No hidden machinery.** No daemon you did not start. No config you cannot find. No retry you cannot see in a journal.
 
 We take DOS's relationship, not its implementation. DOS is another piano top: 16 colors, real mode and no memory protection were accidents of their time. Capabilities, signatures and plugin trust stay, as boundaries between independent owners. They are visible: you can read a grant, verify a signature and list a plugin's trust. Openness is for whoever owns the machine, not for whatever code happens to run on it.
+
+### Open to agents, all the time
+
+DOS was built for one person at one keyboard. bboxy is built for many agents and one operator. The reader who must hold the machine in its head is now an agent, and it reads through tools, not through a screen. That makes access stricter than DOS ever needed:
+
+1. **Everything that exists is reachable.** Every state, event, decision, spec, proof and budget can be read through the same tool catalogue by any agent with the grant. What a human can see in the GUI, an agent can read as data. No pixel-only state.
+2. **All the time.** Reading never waits for a build, a restart, a debug mode or a quiet moment. The running system answers. A crashed component leaves a record that says why.
+3. **Past as well as present.** Events are an ordered, replayable log. "What happened and why" is a query, not archaeology.
+4. **Read leads to change.** For each thing an agent can read, the path to change it is named: the spec that owns it, the check that guards it, the command that lands it.
+5. **Authority is the only wall.** What an agent may not do is refused by a grant, with a reason. Nothing is out of reach merely because it is hidden, undocumented or hard to find.
+
+The test for any design: could an agent that arrived one minute ago find this, understand it and safely change it, using only its tools? If not, the design is unfinished.
+
+This is also why a Linux kernel under a bboxy OS does not break the stand, and a userland nobody can read would. The kernel is hardware with a stable contract: we keep it, model its boundary, and write everything above it so these properties hold. [[spec-first-os]] applies this to building an OS from specs.
 
 **The measure:** an agentic environment is judged by how many capabilities an agent can invent without asking the environment's permission, not by how many it exposes. Maximize the malleability of the environment itself, not only the productivity of agents inside it.
 
