@@ -62,7 +62,7 @@ def main():
           'paths = ("scripts/test-formal.py", "scripts/test-formal.py", "crates/bboxy450-tlc", "crates/bbt-yarn")')),
         ("CI-controls", "ci-local.sh", "test-landing.py", "GateReceiptTests.test_real_ci_runs_budget_controls_and_propagates_failure",
          "budget controls did not block full CI", lambda s: once(s,
-          '    ledger integration python3 -I scripts/test-landing-budget-controls.py --out "$BBOXY_CARGO_TARGET_DIR/landing-budget-controls"\n', '')),
+          '    ledger integration sh scripts/qos.sh utility python3 -I scripts/test-landing-budget-controls.py --out "$BBOXY_CARGO_TARGET_DIR/landing-budget-controls"\n', '')),
         ("R4", "landing.py", "test-landing.py", "BudgetPresubmitTests.test_allocation_overrun_is_advisory",
          "stage advisory blocked presubmit", lambda s: once(s,
           'record["findings"] = budget_findings(record, load_start, record["load_average_end"])',
