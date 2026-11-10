@@ -330,6 +330,42 @@ epic DenChecker {
 - `gate` names a check, who runs it, and what they must read.
 - `done when` is the epic's acceptance, over the work items and the specs it realizes.
 
+### Work items carry their instructions and their outputs
+
+Den is the swarm's orchestration language: an operator prompt becomes an epic, and the
+epic is the execution graph the host runs. So each work item says what to do, who does it,
+what it needs, and **which record it must produce**:
+
+```scala
+  work {
+    research KbSurvey by Researcher {
+      brief    """Read every record kind under .bboxy. For each: its fields, its links,
+                  how many exist, and what a checker would reject today. Evidence as file:line."""
+      produces research.KbRecordSurvey
+    }
+    design LinkTypes by Architect needs KbSurvey {
+      brief    """From the survey, decide the Link relations and their kinds. Record every
+                  relation you drop and why."""
+      produces specs.kb.Links, decisions.LinkRelations
+    }
+    task Graph by Executor needs LinkTypes {
+      serves   SpecLanguage
+      verify   $ cargo nextest run -p bboxy450-den && make check-kb
+      produces reports.DenGraph
+    }
+  }
+```
+
+- The verbs are fixed: `research` (evidence), `design` (specs, interfaces, decisions),
+  `task` (code), `review` (a verdict on another item's output).
+- `produces` names the record the item must write, by module path. Its kind must fit the
+  verb: `research` produces research, `design` produces specs, interfaces or decisions,
+  `task` produces a report. An item is done when that record exists and is sound.
+- `needs` makes the producer's output an input: the host hands `LinkTypes` the survey
+  record, not a summary of it.
+- The host runs the graph: it starts every item whose `needs` are done, on a seat of the
+  item's role, within `staff` and `budget`, and takes each one around the epic's loop.
+
 ### loop
 
 The responsibility loop is not prose. It is a spec whose events are owned by roles and
@@ -557,6 +593,8 @@ Checks run in order; a later group runs only when the earlier ones are clean.
 | | X375 | a role both produces and accepts the same work in one loop |
 | | X376 | a spec in `realizes` is served by no work item |
 | | X377 | head counts in `staff` exceed `budget` |
+| | X378 | a work item has no `produces`, or produces a record kind its verb may not write |
+| | X379 | a work item is done but its produced record is missing or unsound |
 | Totality | X401 | two cases of one `on` block can both be true |
 | | X402 | no case is true for some state and arguments |
 | Steps | X501 | a case assigns one variable twice |
