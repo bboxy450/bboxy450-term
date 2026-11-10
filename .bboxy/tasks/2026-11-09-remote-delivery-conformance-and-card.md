@@ -13,14 +13,14 @@ allowed_paths:
 - scripts/harness-submodule.py
 - scripts/test-harness-submodule.py
 verify: python3 -I scripts/test-harness-submodule.py && python3 -I scripts/harness-submodule.py --check-json-features && ! python3 -I scripts/harness-submodule.py --check-json-features --acp-control && cargo nextest run -p bboxy450-term-remote -p bboxy450-yarn -p bboxy450-mermaid && make test-formal-contracts
-status: claimed
+status: done
 assignee: seat:01M71H0S7MDHJ0QTCQFPQYXJHW
 delegated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 swarm: 01M649102FBS60QWNPZS5VAGF9
 id: 01M71GYNQAVZP9XCTR3G4T99PX
 number: 205483610615695
 created: 2026-11-10T01:25:25.181Z
-updated: 2026-11-10T03:01:08.054Z
+updated: 2026-11-10T07:50:20.889Z
 created_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 updated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 authorship:
@@ -29,16 +29,38 @@ authorship:
   public_key: V5Zkz4W1rnaDG/FsjK3//xQX+WByyxD7/fuIYoV6NbU=
   process_generation: '1'
 verify_revision: 1
+verify_result:
+  command: python3 -I scripts/test-harness-submodule.py && python3 -I scripts/harness-submodule.py --check-json-features && ! python3 -I scripts/harness-submodule.py --check-json-features --acp-control && cargo nextest run -p bboxy450-term-remote -p bboxy450-yarn -p bboxy450-mermaid && make test-formal-contracts
+  exit_code: 0
+  evidence:
+  - criterion: Amended verification command
+    reference: /tmp/bboxy-task-verify-amended-01M71H0S.log — Executor exit 0; 11 Python feature tests, 126 affected-crate tests, 45 native formal tests and QoS controls.
+  - criterion: Exhaustive walk, runtime broken control and generated card
+    reference: crates/bboxy450-term-remote/tests/delivery_witness.rs:456 and :472; tests/delivery_card.rs:14; /tmp/bboxy-refinement-walk-01M71H0S.log:40 — pinned 72 states/502 transitions, 50/52 model states, 298/572 edges; five-node card.
+  - criterion: Final source landing and formal verification
+    reference: /tmp/oracle-land2-01M71H0S.log:4958 — Oracle make land exit 0; source e5eb99944d217430c6b528174554e70f9b8e8691, dirty=false, 943 models/35 crates/288 contracts; lines 4962–4963 LANDED and exit 0; retained receipt SHA-256 74c9bed7047316797e046c8c9ca82051240165d52965e39f1a8b7e9c7781f879.
+  - criterion: Full committed handoff including removals, failures and gaps
+    reference: reports/2026-11-09-remote-delivery-landed.md — native checkpoint d72fee418ef06fbf376c30d2c45f1a73182f9570; source signatures G and origin/main containment inspected; clean worktree.
+report:
+  summary: Landed signed commits 4ea5787d9, 97c1a4d87 and e5eb99944. Added the exhaustive runtime refinement walk (72 harness states / 502 transitions; 50/52 model states), five-node generated card and checks, consumer feature-closure validation, and corrected formal inventory/fixtures. Removed the scripted trace/helper, probe/scratch tests, workspace-union interpretation, 20 retired model references and obsolete fixture content. The committed final report supersedes both earlier reports, records every gate failure and mapping/abstraction gap, and distinguishes my passing amended verify from the Oracle's final make land (exit 0, two gate passes; 943 models / 35 crates / 288 contracts). Inspected all three good signatures, origin/main containment, matching retained receipt/log hashes and a clean source worktree; ran no builds during close-out. Report checkpoint d72fee418ef06fbf376c30d2c45f1a73182f9570.
+  commit: e5eb99944d217430c6b528174554e70f9b8e8691
+  reported_by: seat:01M71H0S7MDHJ0QTCQFPQYXJHW
+  op_id: 01M726Z50GSPXYN8GT2K173T7C
+  verify_revision: 1
+  report: '[[reports/2026-11-09-remote-delivery-landed.md]]'
+closed:
+  by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
+  op_id: 01M726ZFJZP3ZE71ZR835CYP6A
 provenance:
-  digest: sha256:9f234343bc406b259e34c96d1c88b0dacadb14737a9403c0300a5144be1c86a2
-  frontmatter_digest: sha256:a7c8880ddc39daffaa57afa70436ab5d1a62842097d50ea886fdceaf08910f74
+  digest: sha256:7e5dd4f9c6ee84f38111787a79389bcd9a83bca5e14666b65a96197369d36dda
+  frontmatter_digest: sha256:db91f0ea25d33742fd452d169ba4525877e5005da953b38c122c69b4ebb6736b
   signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-  sig: eXdeM7MPd0UBLHgfZMNRrpfiikcD8S1cccCOhXGagMr8eDEm9bOcr1RFv+qHZbIUZW5d2vxcscEcxgBco0amCw==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151304
+  sig: Cik7DB0T1Gfo0QI9H6a0DJUr7CPK48wW+P+IpKZvY+7xqVQvbk7qQ7e0vcR3x/DJvH3bEYBoHXCBaPW0IcXkAQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151413
   event:
-    id: 01M71PDYDT9DJME7MRRWC3FKYP
-    sequence: 151304
-    hash: 781cb0e6b68ec82f28789f41d53d3d444c7fcf0ca0494a7fd2c342faa608b3e1
+    id: 01M726ZGMJWYYN5HCHB5Z1SXJ1
+    sequence: 151413
+    hash: 50943ad26f09a2420e2ceed688e0bf61c08fc15e3d04a7a2b7ab90476af9900b
 ---
 ROLE: EXECUTOR
 
@@ -132,3 +154,38 @@ Follow `AGENTS.md`: stay silent while working. Include: files and mechanisms, wh
 removed, every command with its real exit status, the coverage counts, the before and
 after output of the harness feature check, mapping corrections, abstraction gaps, and
 "What generalizes".
+
+
+## Report from seat:01M71H0S7MDHJ0QTCQFPQYXJHW
+
+Landed signed commits 4ea5787d9, 97c1a4d87 and e5eb99944. Added the exhaustive runtime refinement walk (72 harness states / 502 transitions; 50/52 model states), five-node generated card and checks, consumer feature-closure validation, and corrected formal inventory/fixtures. Removed the scripted trace/helper, probe/scratch tests, workspace-union interpretation, 20 retired model references and obsolete fixture content. The committed final report supersedes both earlier reports, records every gate failure and mapping/abstraction gap, and distinguishes my passing amended verify from the Oracle's final make land (exit 0, two gate passes; 943 models / 35 crates / 288 contracts). Inspected all three good signatures, origin/main containment, matching retained receipt/log hashes and a clean source worktree; ran no builds during close-out. Report checkpoint d72fee418ef06fbf376c30d2c45f1a73182f9570.
+
+```json
+{
+  "op_id": "01M726Z50GSPXYN8GT2K173T7C",
+  "commit": "e5eb99944d217430c6b528174554e70f9b8e8691",
+  "report": "[[reports/2026-11-09-remote-delivery-landed.md]]",
+  "verify_result": {
+    "command": "python3 -I scripts/test-harness-submodule.py && python3 -I scripts/harness-submodule.py --check-json-features && ! python3 -I scripts/harness-submodule.py --check-json-features --acp-control && cargo nextest run -p bboxy450-term-remote -p bboxy450-yarn -p bboxy450-mermaid && make test-formal-contracts",
+    "exit_code": 0,
+    "evidence": [
+      {
+        "criterion": "Amended verification command",
+        "reference": "/tmp/bboxy-task-verify-amended-01M71H0S.log — Executor exit 0; 11 Python feature tests, 126 affected-crate tests, 45 native formal tests and QoS controls."
+      },
+      {
+        "criterion": "Exhaustive walk, runtime broken control and generated card",
+        "reference": "crates/bboxy450-term-remote/tests/delivery_witness.rs:456 and :472; tests/delivery_card.rs:14; /tmp/bboxy-refinement-walk-01M71H0S.log:40 — pinned 72 states/502 transitions, 50/52 model states, 298/572 edges; five-node card."
+      },
+      {
+        "criterion": "Final source landing and formal verification",
+        "reference": "/tmp/oracle-land2-01M71H0S.log:4958 — Oracle make land exit 0; source e5eb99944d217430c6b528174554e70f9b8e8691, dirty=false, 943 models/35 crates/288 contracts; lines 4962–4963 LANDED and exit 0; retained receipt SHA-256 74c9bed7047316797e046c8c9ca82051240165d52965e39f1a8b7e9c7781f879."
+      },
+      {
+        "criterion": "Full committed handoff including removals, failures and gaps",
+        "reference": "reports/2026-11-09-remote-delivery-landed.md — native checkpoint d72fee418ef06fbf376c30d2c45f1a73182f9570; source signatures G and origin/main containment inspected; clean worktree."
+      }
+    ]
+  }
+}
+```
