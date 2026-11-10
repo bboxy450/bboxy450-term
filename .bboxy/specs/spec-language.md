@@ -74,7 +74,10 @@ The reader and the writer are language models; the syntax is Scala 3 with Haskel
 5. **Says why.** Intent, invariant text and scenario names are required prose.
 6. **Examples are checked.** A `scenario` is a trace with expected outcomes.
 7. **Errors are repair instructions**: stable code, position, one sentence.
-8. **Small.** The reference fits in one prompt.
+8. **Small.** The reference fits in one prompt. That reference is
+   `crates/bboxy450-den/README.md`, and it describes only what the checker implements.
+   This record is the design, including what is not built yet; an agent writing Den reads
+   the README, and the checker is the final word on both.
 
 ## One model, many engines
 
