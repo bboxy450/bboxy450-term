@@ -268,3 +268,20 @@ status = "contract-model"
 models = ["UsagePoller"]
 scope = "Three refresh attempts and account incarnations A/B/A, delayed/duplicate completion, deadline, and age-to-stale. Weak fairness of deadline service ensures pending polls retire, without fairness of network replies. Source API witnesses exercise the real generation fence, injected fetcher/reader and timeout. HTTP schemas, credential-source priority, bounded OS IO, machine counters and measured CPU cost remain implementation-only coverage. Account identity is observed at poll boundaries, not continuously; no OS cancellation or arbitrary Rust refinement claim."
 sources = ["crates/bboxy450-usage/src/poller.rs", "crates/bboxy450-usage/src/lib.rs", "crates/bboxy450-usage/src/machine.rs", "crates/bboxy450-usage/src/io.rs"]
+
+[[crate]]
+name = "bboxy450-canvas"
+status = "implementation-tests"
+models = []
+sources = ["crates/bboxy450-canvas/src/lib.rs", "crates/bboxy450-canvas/src/camera.rs"]
+scope = "C0 single-writer deterministic in-memory replay only: strict contiguous sequence, reference integrity, element cap, canonical digest, JSONL, f64 camera and semantic zoom. No persistent append custody, lifecycle, multi-writer convergence or arbitrary Rust proof; C1/C6 require a convergence model."
+
+[[implementation_only]]
+name = "CanvasC0Replay"
+sources = ["crates/bboxy450-canvas/src/lib.rs", "crates/bboxy450-canvas/src/camera.rs", "crates/bbt-ui/src/modules/canvas.rs"]
+tests = ["crates/bboxy450-canvas/tests/canvas.rs", "crates/bbt-ui/tests/canvas.rs"]
+models = []
+scope = "Pure deterministic replay and geometry. State starts with empty elements and next sequence 1; one author owns the finite slice. Add/Change/Remove/Tag are atomic steps with no interleaving. Safety: sequence/reference/cap guards, canonical id order, tag sets and validated finite geometry. Finite replay terminates without scheduler fairness. No IO/persistence/concurrency model is claimed; two-writer convergence deferred to C1/C6."
+bounds = "All six orders of three operations, repeated/omitted sequence and changed author, cap 10000 plus one, zoom 1e-9/1/1e9 and world center 1e12; fixed 13-element fixture with both themes. PNG comparison is exact decoded RGBA on the headless Metal renderer. Native font/platform changes require explicit reviewed golden refresh."
+broken_control = "canvas_canonical_digest_and_broken_unsorted_control serializes the same object in insertion order rather than sorted id order and asserts its SHA-256 differs. Camera witness also detects narrowing absolute world coordinates before camera subtraction."
+checks = ["cargo nextest run -p bboxy450-canvas", "cargo nextest run -p bboxy450-ui -E 'test(~canvas)'", "make test-formal"]

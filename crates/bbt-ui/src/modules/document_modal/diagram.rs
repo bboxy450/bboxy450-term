@@ -393,25 +393,10 @@ fn edge_path(
 }
 fn arrow(key: &str, sz: [f32; 2], tip: [f32; 2], direction: [f32; 2], weight: f32) -> c::Element {
     // The static figure uses an L6 stroked marker; paths remain stroke-only.
-    let u = weight * 0.7;
-    let base = [
-        tip[0] - direction[0] * 8. * u,
-        tip[1] - direction[1] * 8. * u,
-    ];
-    let normal = [-direction[1] * 3.5 * u, direction[0] * 3.5 * u];
-    let a = [base[0] + normal[0], base[1] + normal[1]];
-    let b = [base[0] - normal[0], base[1] - normal[1]];
     path(
         key,
         sz,
-        vec![
-            c::PathCommand::Move(a),
-            c::PathCommand::Line(tip),
-            c::PathCommand::Line(b),
-            c::PathCommand::Line(a),
-            c::PathCommand::Move(base),
-            c::PathCommand::Line(tip),
-        ],
+        crate::modules::arrow_points(tip, direction, weight),
         weight * 0.75,
         paint(ui::Color::Muted, 0.95),
         vec![],

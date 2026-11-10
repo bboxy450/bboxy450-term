@@ -6,6 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! L7 modules compose retained components; they never emit draw primitives.
 pub mod accordion;
+pub mod canvas;
 pub mod closed_strip;
 pub mod composer;
 pub mod e2e_checklist;
@@ -33,3 +34,30 @@ pub mod transcript;
 pub mod diff;
 pub mod tool_call;
 pub mod approval;
+
+// Moved from document_modal/diagram.rs::arrow; shared by document and canvas.
+// bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+pub(crate) fn arrow_points(
+    tip: [f32; 2],
+    direction: [f32; 2],
+    weight: f32,
+) -> Vec<bbt_ui_model::draw::PathCommand> {
+    use bbt_ui_model::draw::PathCommand as P;
+    let u = weight * 0.7;
+    let base = [
+        tip[0] - direction[0] * 8. * u,
+        tip[1] - direction[1] * 8. * u,
+    ];
+    let normal = [-direction[1] * 3.5 * u, direction[0] * 3.5 * u];
+    let a = [base[0] + normal[0], base[1] + normal[1]];
+    let b = [base[0] - normal[0], base[1] - normal[1]];
+    vec![
+        P::Move(a),
+        P::Line(tip),
+        P::Line(b),
+        P::Line(a),
+        P::Move(base),
+        P::Line(tip),
+    ]
+}

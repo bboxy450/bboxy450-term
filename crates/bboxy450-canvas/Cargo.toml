@@ -1,0 +1,15 @@
+[package]
+name = "bboxy450-canvas"
+version.workspace = true
+edition.workspace = true
+license-file = "LICENSE"
+repository.workspace = true
+authors.workspace = true
+rust-version.workspace = true
+readme = "README.md"
+description = "Semantic canvas operation logs, deterministic replay and camera geometry"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
