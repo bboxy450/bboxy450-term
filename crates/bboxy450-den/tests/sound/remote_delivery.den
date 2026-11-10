@@ -1,0 +1,86 @@
+module specs.delivery.RemoteDelivery
+
+spec RemoteDelivery {
+  intent "A message accepted locally is applied on the remote at most once and acknowledged only after it was applied, across duplicate frames, link drops and remote crashes."
+
+  enum Msg { A, B }
+
+  state {
+    linkUp: Bool = true
+    unacked: Set[Msg] = Set()
+    inflight: Set[Msg] = Set()
+    applied: Set[Msg] = Set()
+    acked: Set[Msg] = Set()
+    ever: Set[Msg] = Set()
+    doubled: Bool = false
+  }
+
+  event Submit(m: Msg)
+  event Send(m: Msg)
+  event Arrive(m: Msg)
+  event AckArrive(m: Msg)
+  event Drop
+  event Reconnect
+  event RemoteCrash
+  effect Apply(m: Msg)
+
+  on Submit(m) {
+    case accept if !unacked(m) && !acked(m) => { unacked += m }
+    case known otherwise => reject AlreadySubmitted
+  }
+  on Send(m) {
+    case send if linkUp && unacked(m) && !inflight(m) => { inflight += m }
+    case hold otherwise => ignore NotSendable
+  }
+  on Arrive(m) {
+    case fresh if linkUp && inflight(m) && !applied(m) => {
+      applied += m
+      ever += m
+      doubled = doubled || ever(m)
+      emit Apply(m)
+    }
+    case duplicate if linkUp && inflight(m) && applied(m) => ignore AlreadyApplied
+    case lost otherwise => ignore NotInFlight
+  }
+  on AckArrive(m) {
+    case ack if linkUp && inflight(m) && applied(m) => {
+      unacked -= m
+      inflight -= m
+      acked += m
+    }
+    case stale otherwise => ignore NoAck
+  }
+  on Drop {
+    case drop if linkUp => { linkUp = false; inflight = Set() }
+    case down otherwise => ignore AlreadyDown
+  }
+  on Reconnect {
+    case up if !linkUp => { linkUp = true }
+    case live otherwise => ignore AlreadyUp
+  }
+  on RemoteCrash {
+    case crash if linkUp || (exists m: Msg. inflight(m)) => { linkUp = false; inflight = Set() }
+    case down otherwise => ignore AlreadyDown
+  }
+
+  invariant REMOTE_DELIVERY_001 "a message is applied at most once" = !doubled
+  invariant REMOTE_DELIVERY_002 "acknowledged implies applied" =
+    forall m: Msg. acked(m) ==> applied(m)
+  invariant REMOTE_DELIVERY_003 "acknowledged leaves the outbox" =
+    forall m: Msg. acked(m) ==> !unacked(m)
+
+  assume REMOTE_DELIVERY_A1 "the link does not forge Applied frames"
+
+  scenario "a duplicate after a crash is applied once" {
+    Submit(Msg.A)    ~> accepted
+    Send(Msg.A)      ~> accepted
+    Arrive(Msg.A)    ~> accepted emits Apply(Msg.A)
+    Arrive(Msg.A)    ~> ignored AlreadyApplied
+    RemoteCrash      ~> accepted
+    Reconnect        ~> accepted
+    Send(Msg.A)      ~> accepted
+    Arrive(Msg.A)    ~> ignored AlreadyApplied
+    AckArrive(Msg.A) ~> accepted
+    expect acked(Msg.A) && !unacked(Msg.A)
+  }
+}

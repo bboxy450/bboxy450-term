@@ -1,0 +1,18 @@
+module specs.Toggle
+
+spec Toggle {
+  intent "Two flags toggle together."
+  state {
+    x: Int[0..65536] = 0
+    y: Int[0..65536] = 0
+  }
+  event Toggle
+  on Toggle {
+    case toggle if true => { x = if x == 0 then 1 else 0; y = if y == 0 then 1 else 0 }
+  }
+  invariant TOGGLE_001 "the flags agree" = x == y
+  scenario "toggle both flags" {
+    Toggle ~> accepted
+    expect x == y
+  }
+}
