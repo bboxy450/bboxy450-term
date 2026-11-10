@@ -789,7 +789,7 @@ Checks run in order; a later group runs only when the earlier ones are clean.
 | | X402 | no case is true for some state and arguments |
 | Steps | X501 | a case assigns one variable twice |
 | | X502 | a `reject` or `ignore` case updates state or emits |
-| | X503 | an accepting case changes nothing and emits nothing |
+| | X503 | an accepting case, in some state and for some arguments that select it, changes nothing and emits nothing |
 | | X504 | `do` fires a part's event in a state where the part does not accept it |
 | Model | X601 | an invariant is false in a reachable state (shortest trace reported) |
 | | X602 | an update can leave a variable's range |
@@ -1091,6 +1091,25 @@ One step at a time; the knowledge base stays usable at every step.
 7. Convert the strong-fit kinds in place, one kind per change, reports first (pure
    evidence, frozen), tasks last (live).
 8. The host stops reading YAML headers for the converted kinds. Markdown remains for prose.
+
+## Checked examples
+
+The machines this record shows are real files, checked by `make check-den` on every
+landing. Where the text above and a file differ, the file is right.
+
+| File | Spec | Reachable states | Transitions |
+|---|---|---:|---:|
+| `specs/delivery/outbox.den` | `Outbox` | 25 | 200 |
+| `specs/delivery/inbox.den` | `Inbox` | 4 | 8 |
+| `specs/delivery/remote_delivery.den` | `RemoteDelivery` | 52 | 572 |
+| `specs/kb/task_lifecycle.den` | `TaskLifecycle` | 11 | 77 |
+| `specs/kb/delegate_verify_land.den` | `DelegateVerifyLand`, as a plain spec without roles, channels or `waits` | 16 | 160 |
+
+First dogfood result, 2026-11-10: the three specs written by hand before any checker
+existed (`Inbox`, `TaskLifecycle`, `DelegateVerifyLand`) were sound on the first run. The
+one hand-written spec the checker did reject was `RemoteDelivery`: its `RemoteCrash` case
+accepted a crash that changes nothing when the link is already down (X503). The file
+carries the corrected guard.
 
 ## Out of scope for v1
 

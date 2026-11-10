@@ -1,0 +1,36 @@
+module specs.delivery.Inbox
+
+spec Inbox {
+  intent "The remote applies each message at most once and confirms it every time it arrives."
+
+  enum Msg { A, B }
+
+  state {
+    applied: Set[Msg] = Set()
+    ever: Set[Msg] = Set()
+    doubled: Bool = false
+  }
+
+  event Arrive(m: Msg)
+  effect Apply(m: Msg)
+  effect SendApplied(m: Msg)
+
+  on Arrive(m) {
+    case fresh if !applied(m) => {
+      applied += m
+      ever += m
+      doubled = doubled || ever(m)
+      emit Apply(m)
+      emit SendApplied(m)
+    }
+    case duplicate otherwise => { emit SendApplied(m) }
+  }
+
+  invariant INBOX_001 "a message is applied at most once" = !doubled
+
+  scenario "a duplicate is confirmed again but not applied again" {
+    Arrive(Msg.A) ~> accepted emits Apply(Msg.A), SendApplied(Msg.A)
+    Arrive(Msg.A) ~> accepted emits SendApplied(Msg.A)
+    expect !doubled && applied(Msg.A)
+  }
+}
