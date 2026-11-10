@@ -1,0 +1,250 @@
+{
+  "source_commit": "1881181123d1dca79ec1f2fcfa2d96831243e244",
+  "build": {
+    "command": "make -o check-licenses bundle TARGET_DIR=/var/folders/zd/mv_mr2d92p5_1r8yghzbs5vw0000gn/T/bboxy-restore-fix-20261109-x6y64eqb/term/target",
+    "source": "1881181123d1dca79ec1f2fcfa2d96831243e244",
+    "exit_code": 0,
+    "started": "2026-11-10T05:31:59.714365+00:00",
+    "finished": "2026-11-10T06:14:45.205573+00:00"
+  },
+  "interrupted_shared_build": {
+    "command": "make -o check-licenses bundle TARGET_DIR=/Users/feral/mydev/bboxy450-term/target",
+    "source": "1881181123d1dca79ec1f2fcfa2d96831243e244",
+    "exit_code": 2,
+    "started": "2026-11-10T05:15:07.614025+00:00",
+    "finished": "2026-11-10T05:29:42.723549+00:00"
+  },
+  "interruption_reason": "Shared target/release/deps disappeared while rustc was writing a Term object; make exited 2. Rebuild isolated to owned worktree target.",
+  "activation": {
+    "exit_code": 0,
+    "source": "1881181123d1dca79ec1f2fcfa2d96831243e244",
+    "harness_revision": "20e52d0f937c7ed19abbf506564a3dd8a0c8cdd4",
+    "gui_pid": 35862,
+    "before_gui": {
+      "preserve_backend_supported": 1,
+      "backend": null,
+      "running": false,
+      "process": null,
+      "gui": null,
+      "repository": null
+    },
+    "protected_before": {
+      "84759": {
+        "start": "Mon Nov  9 17:20:16 2026",
+        "parent": 1
+      },
+      "86143": {
+        "start": "Mon Nov  9 17:20:36 2026",
+        "parent": 84759
+      },
+      "9999": {
+        "start": "Mon Nov  9 17:26:34 2026",
+        "parent": 84759
+      },
+      "34927": {
+        "start": "Mon Nov  9 19:41:31 2026",
+        "parent": 84759
+      },
+      "19453": {
+        "start": "Mon Nov  9 20:01:34 2026",
+        "parent": 84759
+      }
+    },
+    "protected_after": {
+      "84759": {
+        "start": "Mon Nov  9 17:20:16 2026",
+        "parent": 1
+      },
+      "86143": {
+        "start": "Mon Nov  9 17:20:36 2026",
+        "parent": 84759
+      },
+      "9999": {
+        "start": "Mon Nov  9 17:26:34 2026",
+        "parent": 84759
+      },
+      "34927": {
+        "start": "Mon Nov  9 19:41:31 2026",
+        "parent": 84759
+      },
+      "19453": {
+        "start": "Mon Nov  9 20:01:34 2026",
+        "parent": 84759
+      }
+    },
+    "sha256": {
+      "bboxy450-term": "86753a33d40f17d6cebf8f6a37d6baa66f86e6e9b763e584491dac18b11bd75b",
+      "bboxy450-harness": "584d13ef3d85279f092356de5efea658b2dbf2b31b10a05dc2ba9095381a0b21"
+    },
+    "previous_contents": "/Users/feral/Applications/.bboxy450-term-install.whUYNe/previous-Contents",
+    "ready": {
+      "gui": {
+        "pid": 35862,
+        "instance": "01M721J7FTWGW6A1H45H1PHFNA",
+        "source_revision": "1881181123d1dca79ec1f2fcfa2d96831243e244"
+      },
+      "running": true,
+      "mode": "window",
+      "unattended": false,
+      "backend_ready": true,
+      "gui_ready": true,
+      "events_ready": true,
+      "custody_backend": "login-keychain",
+      "generation": 1,
+      "frame_seq": 61,
+      "windows": 1,
+      "close": null
+    },
+    "finished": "2026-11-10T06:15:52.430705+00:00"
+  },
+  "verification": {
+    "exit_code": 0,
+    "source": "1881181123d1dca79ec1f2fcfa2d96831243e244",
+    "probe": {
+      "preserve_backend_supported": 1,
+      "backend": {
+        "supervisor": {
+          "pid": 84759,
+          "birth": [
+            1794273616,
+            96520
+          ]
+        },
+        "logic": {
+          "pid": 36049,
+          "birth": [
+            1794291343,
+            799633
+          ]
+        }
+      },
+      "running": true,
+      "process": {
+        "pid": 35862,
+        "birth": [
+          1794291342,
+          274439
+        ]
+      },
+      "gui": {
+        "pid": 35862,
+        "instance": "01M721J7FTWGW6A1H45H1PHFNA",
+        "source_revision": "1881181123d1dca79ec1f2fcfa2d96831243e244"
+      },
+      "repository": "/Users/feral/Library/Application Support/bboxy450-term/workspace"
+    },
+    "frames": [
+      658,
+      664
+    ],
+    "ready": true,
+    "restored_record_count": 7,
+    "live_seats": [
+      {
+        "seat": "01M71GNVXV7ZHXMGM50M5SB2RA",
+        "generation": 1,
+        "pid": 86143
+      },
+      {
+        "seat": "01M71H0S7MDHJ0QTCQFPQYXJHW",
+        "generation": 1,
+        "pid": 9999
+      },
+      {
+        "seat": "01M71RQWJ3C0DW2E1QHRTKKT3V",
+        "generation": 1,
+        "pid": 34927
+      },
+      {
+        "seat": "01M71SWK9JK0BK2D8C1ND25RQ2",
+        "generation": 1,
+        "pid": 19453
+      }
+    ],
+    "protected_processes": {
+      "84759": {
+        "start": "Mon Nov  9 17:20:16 2026",
+        "parent": 1
+      },
+      "86143": {
+        "start": "Mon Nov  9 17:20:36 2026",
+        "parent": 84759
+      },
+      "9999": {
+        "start": "Mon Nov  9 17:26:34 2026",
+        "parent": 84759
+      },
+      "34927": {
+        "start": "Mon Nov  9 19:41:31 2026",
+        "parent": 84759
+      },
+      "19453": {
+        "start": "Mon Nov  9 20:01:34 2026",
+        "parent": 84759
+      }
+    },
+    "installed_signature_exit": 0,
+    "finished": "2026-11-10T06:16:48.244430+00:00"
+  },
+  "focused_tests": {
+    "command": "set -eu; . scripts/cache-env.sh; sh scripts/quarantine-test.sh --locked --release -p bboxy450-term-mux --lib --target-dir /Users/feral/mydev/bboxy450-term/target -E \"test(retained_exit_restore) | test(managed_workspace_)\"",
+    "exit_code": 0,
+    "started": "2026-11-10T05:01:17.014896+00:00",
+    "finished": "2026-11-10T05:08:28.341070+00:00"
+  },
+  "formal": {
+    "exit_code": 0,
+    "models": [
+      {
+        "name": "ManagedWorkspaceOwnership",
+        "expected": "pass",
+        "states": 16,
+        "edges": 28,
+        "tlc_exit": 0,
+        "graph_equal": true,
+        "contract_metadata": null,
+        "reuse_key": "652c6426b46ce251cc1b174fc431db6bbc19568b4287578bd39c74783738d25e",
+        "checker_sha256": "5f228fb8e4a2e9b54ff3a828aaa0589b2f9a06780db2a43de7a3d147d0dea843",
+        "graph_sha256": {
+          ".dot": "099ee004093f9ab32b522030707b3b6c35dc5eaf288553f2a68e118269323fa3",
+          ".states": "3c17d2b91c289bf60ec9c3949b20cfd1d284cead8dd05d48d80908e0af0deae2",
+          ".edges": "c0c8688f597b9cb3efdeb0efee467ea9c6a61c7baf77aa963f860170e474f5a9"
+        },
+        "tla_sha256": "80c4d5d14e7b7299b7194f51196b56d04fdeb3b939c88fc121d157d3f6bba93c"
+      },
+      {
+        "name": "BrokenManagedWorkspaceOwnership",
+        "expected": "safety",
+        "states": 25,
+        "edges": 40,
+        "tlc_exit": 12,
+        "graph_equal": true,
+        "contract_metadata": null,
+        "reuse_key": "7ca6a3ef7993f030d2fb9bd3597c43c3e55e23c4be8285eaca735dcd12ed0d55",
+        "checker_sha256": "5f228fb8e4a2e9b54ff3a828aaa0589b2f9a06780db2a43de7a3d147d0dea843",
+        "graph_sha256": {
+          ".dot": "9989fab0849270cd71acdbae296bced46060d1fe9d7e4f9bc0560e40c8cfe9e2",
+          ".states": "ef018fc677707e31f6ec2835fad36d5eee4263f900f1b67b9674608ff136e352",
+          ".edges": "7b5094f31b3dd0193880a208d49b0d661d2e60d7546547d8a0dc58a357041a85"
+        },
+        "tla_sha256": "0ed71c7e71b0c0f29fc01f80b9324a6bc4561b6f1f5b8cd19a004e691c45dd85"
+      }
+    ],
+    "isolated_stale_history_negative_control": true,
+    "full_suite": false,
+    "finished": "2026-11-10T05:12:30.900834+00:00"
+  },
+  "worker": {
+    "scope": "Ordinary release worker preparation only; consumer verification incomplete",
+    "sha256": "e00788c0f63c5d4ecfce62165184c7d848643152ad4c3753e11fe21763934bf6"
+  },
+  "log_sha256": {
+    "bundle-private.log": "f6fcbb04a6324c086040dee382045dc6cae05bb526def9527da42e16e4210cd6",
+    "bundle.log": "40cb5e045117daf41afd8aa576f8cb05e88482988f049d1c52f30f337ca1e74a",
+    "tests-corrected.log": "0bee59398723af7e8a1e883397d459ca3414a016ceb339b5448bb1c465fc9301",
+    "formal-export.log": "c259d4326e00c7be15a77f76f4a37098a404fe4f80dd1f4d58874d02816376dc",
+    "install.log": "7f831805daf7578f6503a23d93e9544a0bb819baaefebaabefe45379aa15c1f4",
+    "gui-fixed.log": "11a425eb4fb76e274b097c68cbcc2a1a67a66b064245efa4b5c43e2c535ebcac"
+  },
+  "ci": "Full CI and make land skipped; scoped tests and native/TLC checks recorded separately."
+}
