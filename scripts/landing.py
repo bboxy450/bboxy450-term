@@ -690,11 +690,46 @@ def lean(range_spec, *, root=None, wide=False):
     return lines
 
 
+# Dream C1 work units are budgeted for optimized code (1 ms CPU per unit, decision
+# d93377961364684-dream-c1-optimized-private-fixture). Their tests assert that budget, so
+# in the lean land they run under the same `dream-c1-fixture` profile and filter that
+# `make test-dream-c1` uses (scripts/test-dream-c1.py); every other test of the package
+# runs as before. Nothing is dropped: the two runs partition the planned selection.
+OPTIMIZED_FIXTURE_PROFILE = "dream-c1-fixture"
+OPTIMIZED_FIXTURE_TESTS = {
+    "bboxy450-term-mux": "test(dream_c1) | test(dream_public_) | test(harness_status)",
+    "bboxy450-harness-wake-up": "test(dream_bootstrap) | test(dream_c1)",
+}
+
+
+def restrict_selection(argv, expression):
+    """Add a nextest filter to an argv, conjoined with any filter already present."""
+    argv = list(argv)
+    for index, arg in enumerate(argv):
+        if arg in ("-E", "--filterset") and index + 1 < len(argv):
+            argv[index + 1] = f"({argv[index + 1]}) & ({expression})"
+            return argv
+    split = argv.index("--") if "--" in argv else len(argv)
+    return [*argv[:split], "-E", expression, *argv[split:]]
+
+
 def lean_test(package, selection):
-    argv = ["sh", "scripts/quarantine-test.sh", "--allow-ignored-only", "--locked", "-p", package,
-            *shlex.split(selection)]
-    code = subprocess.run(argv).returncode
-    return code if code >= 0 else 128 - code
+    argv = shlex.split(selection)
+    optimized = OPTIMIZED_FIXTURE_TESTS.get(package)
+    if optimized:
+        # A partition of the planned selection may be empty on one side.
+        runs = [["--no-tests=pass", *restrict_selection(argv, f"not ({optimized})")],
+                ["--profile", OPTIMIZED_FIXTURE_PROFILE, "--no-tests=pass",
+                 *restrict_selection(argv, optimized)]]
+    else:
+        runs = [argv]
+    for run in runs:
+        code = subprocess.run(["sh", "scripts/quarantine-test.sh", "--allow-ignored-only",
+                               "--locked", "-p", package, *run]).returncode
+        code = code if code >= 0 else 128 - code
+        if code:
+            return code
+    return 0
 
 
 def lean_check(package, selection):

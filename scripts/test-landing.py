@@ -715,6 +715,37 @@ class ConsolidatedIntegrationTests(unittest.TestCase):
         self.assertEqual(run.call_args.args[0], ["sh", "scripts/quarantine-test.sh", "--allow-ignored-only",
                                                "--locked", "-p", "c", "--test", "it", "-E", expression])
 
+    def test_dream_c1_tests_run_in_the_optimized_profile_and_the_rest_unchanged(self):
+        with patch.object(landing.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
+            self.assertEqual(landing.lean_test("bboxy450-term-mux", "--lib"), 0)
+        family = landing.OPTIMIZED_FIXTURE_TESTS["bboxy450-term-mux"]
+        prefix = ["sh", "scripts/quarantine-test.sh", "--allow-ignored-only", "--locked", "-p", "bboxy450-term-mux"]
+        self.assertEqual([call.args[0] for call in run.call_args_list], [
+            [*prefix, "--no-tests=pass", "--lib", "-E", f"not ({family})"],
+            [*prefix, "--profile", "dream-c1-fixture", "--no-tests=pass", "--lib", "-E", family],
+        ])
+
+    def test_optimized_split_conjoins_an_existing_filter_and_keeps_test_arguments(self):
+        with patch.object(landing.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
+            landing.lean_test("bboxy450-harness-wake-up", shlex.join(["--test", "it", "-E", "binary(=it)", "--", "--nocapture"]))
+        family = landing.OPTIMIZED_FIXTURE_TESTS["bboxy450-harness-wake-up"]
+        first, second = (call.args[0][6:] for call in run.call_args_list)
+        self.assertEqual(first, ["--no-tests=pass", "--test", "it", "-E", f"(binary(=it)) & (not ({family}))", "--", "--nocapture"])
+        self.assertEqual(second, ["--profile", "dream-c1-fixture", "--no-tests=pass", "--test", "it",
+                                  "-E", f"(binary(=it)) & ({family})", "--", "--nocapture"])
+
+    def test_first_failing_half_fails_the_package(self):
+        results = [subprocess.CompletedProcess([], 100), subprocess.CompletedProcess([], 0)]
+        with patch.object(landing.subprocess, "run", side_effect=results) as run:
+            self.assertEqual(landing.lean_test("bboxy450-term-mux", "--lib"), 100)
+        self.assertEqual(run.call_count, 1)
+
+    def test_other_packages_run_once_as_before(self):
+        with patch.object(landing.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
+            landing.lean_test("bboxy450-den", "--lib")
+        self.assertEqual(run.call_args_list[0].args[0][6:], ["--lib"])
+        self.assertEqual(run.call_count, 1)
+
     def test_invariant_selection_and_coverage_use_the_qualified_test(self):
         source = SOURCE.with_name("invariants.sh").read_text().split("<<'PY_INVARIANTS'\n", 1)[1]
         functions = [node for node in landing.ast.parse(source).body
