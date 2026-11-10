@@ -45,42 +45,55 @@ for an OS what Lean was for that proof.
 - **Spec** is a declaration that generates or binds the running code and feeds the model
   checker. A model beside the code is evidence, not a spec.
 
-## The spec is the program
+## The spec is the program; inference is the compiler; macros are the judge
 
-**Code is cheap. Correctness is scarce.** So the thing we write, review and keep is the
-spec, and Rust is what it compiles to. `protocol!` and `reactor!` are not a way to test
-code: they are the programming language. One declaration compiles two ways:
+**Code is cheap. Correctness is scarce.** So what we write, review and keep is the spec.
+The spec is a programming language in its own right: states, events, guards, effects,
+invariants, progress, bounds. It is not compiled by a deterministic code generator.
+It is compiled **by inference**: an agent reads the spec and writes the Rust. The macro
+system does not write the program. It decides whether the program is the spec's.
 
 ```mermaid
 flowchart LR
-  D[One declaration] --> F[Finite model: checked exhaustively]
-  D --> R[Production Rust: real types, real sizes]
-  F --> V[Verdict + card]
-  R --> B[The running system]
+  S[Spec: the source language] --> C[Checker: is the spec itself sound]
+  S --> O[Macros emit obligations: types, events, the trait to fill, the conformance check]
+  S --> A[Agent writes Rust by inference]
+  A --> G{Gate: generated check runs on the agent's code}
+  O --> G
+  G -->|green| K[Kept, verdict keyed by spec + code hash]
+  G -->|red, with a counterexample trace| A
 ```
 
-The end state for every stateful component: **no hand-written state machine exists**. An
-agent that wants different behavior edits the declaration; the checker rules on it in
-seconds; the compiler emits the Rust. Hand-written Rust remains only at the edges, as
-effect handlers (write this file, send this frame), each bound to a declared effect.
+This is a hybrid, on purpose:
 
-What stops this today, in order:
+| Part | Who produces it | Why |
+|---|---|---|
+| Spec | An authoring agent with the operator, approved through cards | The scarce thing; small enough to own |
+| Vocabulary: state, event and effect types, the trait an implementation must fill | Macros, deterministically | Code cannot name an event or effect the spec does not know |
+| The implementation: data structures, batching, I/O, performance | An agent, by inference | Cheap, replaceable, free to be clever |
+| The conformance check and its broken controls | Macros, deterministically, from the spec | The implementer never writes or edits its own judge |
+| The verdict | Exit codes | Not a report |
 
-1. **Bounded domains only.** `RemoteDelivery` is declared over `Msg { A, B }`, so the
-   generated reducer cannot hold real message ids, and `link.rs` re-implements the same
-   machine by hand over strings. The language needs **parametric domains**: checked at a
-   small bound, compiled over a real key type (`Set<Msg>` becomes a set of ids). The
-   license to do that is data independence: a spec that only compares ids for equality
-   behaves the same at any size beyond a small bound. The macro enforces the condition
-   (no id constants in guards; invariants quantify with `forall`), or refuses to compile.
-2. **Effects stop at the reducer.** A declared effect must name its handler and its
-   completion event, and durability ("applied survives a crash") must be a declared
-   property of state, not a comment about `fsync`.
-3. **Scheduling is separate.** `reactor!` must take a `protocol!` as what it runs.
+What this buys: an implementation can be thrown away and re-inferred at any time, by any
+agent, from the spec alone, and the gate says in seconds whether the new one is right.
+Freedom lives in the implementation; the check allows any code that **refines** the spec
+(see "One primitive: refinement"), so a runtime may batch, cache or be stricter than its
+model. `RemoteDelivery` showed this on its first run: the hand-written outbox sends all
+queued messages at once, and that is a legal compilation of a spec that sends one at a time.
 
-Until a component is compiled this way, a refinement walk (W1) is the bridge: it proves
-the hand-written code obeys the spec, and it is the safety net for swapping that code out.
-Once the component is generated, its walk and its hand-written machine are both deleted.
+What the macro system still lacks for this, in order:
+
+1. **A generated judge.** Today a refinement walk is written by hand per component
+   (milestone 1). `protocol!` must emit the implementation trait and the walk, so a new
+   spec comes with its gate and the implementing agent only fills the trait.
+2. **Declared environment.** What a component assumes of its neighbors (for the outbox:
+   "the link does not forge acknowledgements") is part of the spec, so the generated walk
+   models the environment the same way every time.
+3. **A language large enough to be worth compiling from.** Parametric domains, bounded
+   integers, maps, sequences (W3). The spec is checked at a small bound; the implementation
+   runs at real size; the card states the bound.
+4. **Effects with completions**, and durability as a declared property of state (W4).
+5. **A sealed gate.** The implementing agent's grant excludes the spec and the judge (W7).
 
 ## The agent-access rule
 
@@ -223,10 +236,12 @@ target. The Oracle seat writes specs and verifies; a bboxy450-harness seat on Co
 
 1. [[tasks/2026-11-09-remote-delivery-conformance-and-card]]: W1 conformance walk and the
    level-1 card on `RemoteDelivery`.
-2. **Compile `RemoteDelivery`.** Parametric domains in `protocol!`; generate the outbox and
-   inbox state machines from the declaration over real message ids; delete the hand-written
-   ones in `link.rs`, keeping only the journal as an effect handler. Milestone 1's walk
-   must stay green across the swap, then goes too.
+2. **The generated judge, and one re-inference.** Lift milestone 1's hand-written walk into
+   `bbt-yarn`: `protocol!` emits the implementation trait and the conformance check from
+   the declaration plus a declared environment. Then the proof of the whole idea in
+   miniature: a fresh agent that sees only the spec, the card and the generated trait
+   writes a new `RemoteDelivery` runtime; the gate must pass it, and must fail seeded
+   mutants of it. The old hand-written walk is deleted.
 3. W2 on one slice of the supervisor-logic boundary: the logic lease (exactly one lease
    mutates supervisor state; a stale lease is fenced; replacement takes it over). The
    contract is a `protocol!` module; `bbt-supervisor` and `bbt-mux` each refine it alone.
