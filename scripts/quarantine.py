@@ -178,7 +178,7 @@ def retry_args(arguments, crate, test, api, *, integration=False):
             if mode not in {"default", "all", "only"}:
                 raise api.Refusal("quarantine_invalid_cargo_arguments")
             ignored = {"default": None, "all": "--include-ignored", "only": "--ignored"}[mode]
-        elif arg in ("--workspace", "--all", "--no-fail-fast") or arg.startswith(("--package=", "--exclude=")) or (arg.startswith("-p") and not arg.startswith("--")):
+        elif arg in ("--workspace", "--all", "--no-fail-fast") or arg.startswith(("--package=", "--exclude=", "--no-tests=")) or (arg.startswith("-p") and not arg.startswith("--")):
             continue
         elif arg in valued:
             if i == len(arguments):

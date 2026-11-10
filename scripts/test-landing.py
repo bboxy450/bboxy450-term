@@ -2649,6 +2649,14 @@ class CargoProfileForwardingTests(unittest.TestCase):
                              ["cargo", "test", "--profile", "fixture", "--test", "it",
                               "-p", "fixture", "--", "--exact", "native::case"])
 
+    def test_isolated_retry_drops_the_nextest_only_empty_selection_option(self):
+        module = self.module()
+        arguments = ["--profile", "dream-c1-fixture", "--no-tests=pass", "-p", "old", "--lib",
+                     "-E", "test(dream_c1)"]
+        self.assertEqual(module.retry_args(arguments, "fixture", "index::case", Mock()),
+                         ["cargo", "test", "--profile", "dream-c1-fixture", "--lib",
+                          "-p", "fixture", "--", "--exact", "index::case"])
+
     def module(self):
         spec = importlib.util.spec_from_file_location("profile_quarantine", SOURCE.with_name("quarantine.py"))
         module = importlib.util.module_from_spec(spec)
