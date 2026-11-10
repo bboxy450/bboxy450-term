@@ -233,6 +233,32 @@ flowchart LR
 - A build failure, timeout or empty test selection is not a passing broken control.
 - Do not raise a budget because a run missed it.
 
+## Dogfood
+
+Operator, 2026-11-10: "as den format lands we should start migrating this work to den
+format, dogfood".
+
+This programme is the first user of Den. The rule: **when a record kind lands in the
+checker, this programme's own records of that kind move to Den in the next change**,
+before any other part of the knowledge base.
+
+| When this lands | These records of the programme become `.den` |
+|---|---|
+| `spec` (state machines) | `Outbox`, `Inbox`, `RemoteDelivery`, the task lifecycle, the delegate-verify-land loop as a plain spec |
+| modules, imports, typed links | the links between this programme's specs, tasks and reports |
+| `include`, `interface` | `Delivery` as a composition; the supervisor-logic lease contract |
+| `epic`, `loop`, graph literals | this programme itself as an epic: staff, channels, the work graph, its loop |
+| `task`, `report` | every task and report of this programme, newest first |
+| views and lowering | the cards for the above; their Markdown projections replace the hand-written Markdown |
+
+Two things this is for. It finds what the language gets wrong while it is cheap to
+change: a construct we cannot use for our own work is not ready for anyone else's. And it
+keeps the migration honest: the first records converted are ones whose authors are here
+to say whether the result still means what they wrote.
+
+Each migration reports what the checker rejected and whether the fix was in the record
+or in the language.
+
 ## Staffing
 
 Operator, 2026-11-09: at most three agents on this programme; one patient Executor is the
