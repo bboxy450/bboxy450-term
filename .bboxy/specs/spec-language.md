@@ -664,6 +664,29 @@ Rules:
 - **Diagrams are optional.** With `--mermaid`, a spec's lowered body also carries its
   generated state diagram, for consumers whose viewer renders Mermaid.
 
+### As MCP tools
+
+Agents reach the checker and the lowering through the bboxy tool catalogue, the same way
+they reach everything else ([[philosophy]]):
+
+| Tool | Input | Effect |
+|---|---|---|
+| `den_check` | `path`: a `.den` file or a KB locator | Read-only. Returns sound or the diagnostics (code, line, repair) and the summary. |
+| `den_render` | `source`: a `.den` file or KB locator; `output`: a path ending `.md`; optional `mermaid`, `overwrite` | Checks the record, lowers it, and writes the Markdown file. Returns the output path, the source hash and the output digest. |
+
+`den_render` rules:
+
+- It writes exactly one file, the `output` path, and creates missing parent directories.
+- `output` may be anywhere on disk the calling seat may write: its own workspace, the
+  knowledge root, or a directory the operator has configured as an export root (for
+  example another project's GitKB checkout). Anything else is refused with the reason.
+- It refuses to replace an existing file unless that file is a previous lowering of the
+  same record (its `generated_from:` names the same module), or `overwrite` is set. It
+  never replaces a hand-written record by accident.
+- An unsound source writes nothing and returns the diagnostics.
+- It takes an `op_id` like every mutating tool; a retry with the same arguments returns
+  the first result.
+
 Lowering is also the second half of the migration's round-trip check: converting a
 Markdown record to Den and lowering it again must give back the original header keys,
 links and body, up to a stated normalization.
