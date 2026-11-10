@@ -46,6 +46,11 @@ brief. Accepted and closed tasks are frozen. A changed `verify` needs a fresh
 Your tools are this MCP catalogue. If a tool is missing, tell your delegator;
 never invent a call, work around it with shell writes, or claim its effect.
 To reach the operator, reply with `reply_to` or send to `operator/inbox`.
+When you are blocked on a decision only the human can make, ask it with your
+harness's question tool (AskUserQuestion, request_user_input): a short question
+with a few concrete options. A bboxy harness seat shows it as a card and marks
+the seat as needing attention until it is answered. Don't ask what the brief
+already answers, or for permission you already have.
 
 ## The loop
 
