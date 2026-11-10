@@ -633,6 +633,104 @@ beyond its bound; implemented by any code (the macro judge is for that); making 
   their lifecycle spec by the host.
 - **The viewer renders Den.** Prose fields render as Markdown; a spec renders as its card.
 
+## Graphs are data: everything is a tree or a graph
+
+Operator, 2026-11-10: "think mermaid to use visualization for humans but also showing and
+encoding some graph type of relationships, everything is a tree or a graph".
+
+Almost everything a record says is a graph: the knowledge base is a graph of records, a
+module path is a tree, an epic's work is a dependency graph, channels are a graph over
+roles, a composed spec is a tree of parts, a state machine is a graph of states, a
+scenario is one path through it, provenance is a chain. Den makes that literal. A graph
+is a typed value, **written in Mermaid's own edge syntax**, so the text an agent writes is
+at once the data the checker checks and the picture a person sees.
+
+### Graph types and literals
+
+```scala
+Graph[N, E]   // nodes of type N, edges labeled with E
+Dag[N, E]     // a Graph the checker proves has no cycle
+Tree[N]       // a Dag with one root and one parent per node
+
+work: Dag[Work, Needs] = graph {
+  subgraph Researcher { KbSurvey }
+  subgraph Architect  { LinkTypes }
+  subgraph Executor   { Parser; Graph; CommitGate; Converter; Migration }
+
+  KbSurvey --> LinkTypes --> Graph
+  Parser --> Graph
+  Graph --> CommitGate & Converter
+  CommitGate & Converter --> Migration
+}
+
+channels: Graph[Role, Carries] = graph {
+  Oracle   -->|brief: Task|        Executor
+  Executor -->|blocked: Blocker|   Oracle
+  Executor -->|report: Report|     Oracle
+  Oracle   -->|ruling: Amendment|  Executor
+  Oracle   -->|question: SpecQuestion| Architect
+  Architect -->|law: SpecChange|   Oracle
+}
+```
+
+- Inside `graph { }` the syntax is the Mermaid flowchart subset: `A --> B`, chains
+  `A --> B --> C`, fan `A & B --> C`, labeled edges `A -->|label| B`, and
+  `subgraph Name { … }` for grouping. Nothing else of Mermaid is accepted there: no
+  styling, no shapes, no direction. Those belong to rendering.
+- Node names are declared names of type `N`. An edge label is a value of type `E`. A
+  subgraph name is a declared grouping (here, a role). So a graph literal is checked like
+  any other value: an undeclared node, a wrongly typed label or a cycle in a `Dag` is a
+  diagnostic at that edge.
+- The earlier `work { task A by Executor needs B }` and `channel x : A -> B carries T`
+  forms are the same data written longhand. A record uses one form per graph; the graph
+  literal is preferred where the shape matters more than the per-node detail.
+
+### Declared shape, checked against the computed one
+
+For a graph the checker **computes** (the stages of a loop, the states of a spec under a
+view), the record may draw the shape it expects. The checker proves the two are equal:
+
+```scala
+  shape "task loop" over stage = graph {
+    Briefed --> Working --> Reported --> Verified --> Landed --> Closed
+    Working --> Blocked --> Working
+    Reported --> Working
+  }
+```
+
+A person approves a picture; the machine holds the spec to it. An edge in the drawing the
+machine cannot take, or a move the machine can make that the drawing lacks, is unsound.
+
+### Graph operations
+
+Expressions over graphs are few and total: `g.roots`, `g.leaves`, `g.parents(n)`,
+`g.children(n)`, `g.reaches(a, b)`, `g.path(a, b)`, `g.acyclic`. They let an invariant
+talk about structure, for example `forall t: Work. work.reaches(Parser, t) || t == KbSurvey`.
+
+### Views are graph operations
+
+Every view in the next section is one of four operations on a graph the record already
+holds, which is why diagrams need no drawing code per kind:
+
+| Operation | Meaning | Used for |
+|---|---|---|
+| quotient | merge nodes by a predicate | a spec's states under a `view` |
+| ego | a node and its neighbors within n links | a record's neighborhood |
+| path | one walk through the graph | a scenario; a provenance chain |
+| restrict | keep nodes and edges matching a filter | work still open; one role's lane |
+
+### Lowering and reading back
+
+A graph literal lowers to a Mermaid block with the same edges in the same order, plus
+styling. Because the edge syntax is shared, the reverse also works: a Mermaid flowchart
+found in an existing Markdown record can be read as a graph candidate by the converter,
+typed against the record's declared names, and checked.
+
+New diagnostics: `X361` a graph names an undeclared node or group; `X362` an edge label
+has the wrong type; `X363` a `Dag` has a cycle or a `Tree` has a second root or parent;
+`X364` a declared `shape` differs from the computed graph (reports the missing and the
+extra edges).
+
 ## Views: every record draws itself
 
 Operator, 2026-11-10: "mermaid and visualization should be a big part of the .den format
@@ -677,8 +775,9 @@ renderer computes it from the checked model:
 
 ### Rules for every diagram
 
-- **Generated only.** Nodes and edges come from the checked record. There is no syntax
-  for hand-drawing a diagram inside a Den record.
+- **Data or derived, never decoration.** A diagram is either a graph the record declares
+  as a typed value (a `graph { }` literal, drawn as written) or one the renderer computes
+  from the checked record. There is no way to place an unchecked picture in a Den record.
 - **At most twelve nodes.** A larger diagram is a diagnostic asking for a `view`, never a
   truncated picture.
 - **Valid by construction.** Every generated diagram is parsed and laid out with
