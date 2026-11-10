@@ -11,18 +11,18 @@ allowed_paths:
 - .bboxy/reports/
 verify: python3 -I scripts/test-landing.py && make test-formal-infrastructure
 id: 01M731QJQJ3A2RGJSGACQDTDPD
-status: reported
+status: done
 delegated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-10T15:52:02.856Z
+updated: 2026-11-10T15:52:40.836Z
 created: 2026-11-10T15:37:53.007Z
 number: 1794292861627449
 created_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-updated_by: seat:01M731RY7V5R0Y66H8G05M8EEJ
+updated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 authorship:
-  signer: seat:01M731RY7V5R0Y66H8G05M8EEJ
+  signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
   kind: seat
-  public_key: ym9yQeNXPWyMX6qW4la2g0gA5teyC7I/mAj2fL59w2w=
+  public_key: V5Zkz4W1rnaDG/FsjK3//xQX+WByyxD7/fuIYoV6NbU=
   process_generation: '1'
 assignee: seat:01M731RY7V5R0Y66H8G05M8EEJ
 verify_result:
@@ -46,16 +46,19 @@ report:
   op_id: 01M732HFSE7XX17PF0WPZB8GCN
   verify_revision: 0
   report: '[[reports/2026-11-10-land-plan-member-only-manifest.md]]'
+closed:
+  by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
+  op_id: 01M732JH48C88201A3NJX3156W
 provenance:
   digest: sha256:13879bce4510cf9024925573a86b8ea495d6a4296beef08354200dcab8b9c56e
-  frontmatter_digest: sha256:b44d2de26aa34225433160f026d53798b8d2dc50b2b95182344e6015712ddba7
-  signer: seat:01M731RY7V5R0Y66H8G05M8EEJ
-  sig: Ua3l8Notv9zf24W27jfxhjIhlHkHTVsFJN0aoprl2ZSeN1iBRlheW77YzlNFzdHGvrvC/Dsyoie46iR4ffiAAw==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151504
+  frontmatter_digest: sha256:806abddb3ad0a914ddc1b413fd6e704ce481a03084305b4218d523b69a3fb3ec
+  signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
+  sig: dniMpO+g55TS2FTXStEpNSLAbx1hNi0Txfc2pvH+hdkaXdt/asTLgOhuynWdDJJHw+PPonedMJpgNYMebHvbCw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151508
   event:
-    id: 01M732HH4MJMPFFS7E52GX7NRB
-    sequence: 151504
-    hash: 0eaed0ca548a2dd48c62110d3785d98015c35a77c77d3a7b8b1825411e993a0e
+    id: 01M732JP8CSPWEBEJ51ZQFCCR8
+    sequence: 151508
+    hash: 4e856193968df27070a7217557652c5921be668afce963ee7bb46f763274e43e
 ---
 ROLE: EXECUTOR
 
