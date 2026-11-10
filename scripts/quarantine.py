@@ -314,6 +314,18 @@ def ignored_integration_suite(root, build, filters, api):
     return ignored
 
 
+def test_environment(root):
+    """Tests get a private, empty HOME: code under test (the harness's profiles,
+    git and shell config) never reads the operator's. Cargo and rustup keep theirs."""
+    home = Path(root).resolve() / "target" / "test-home"
+    shutil.rmtree(home, ignore_errors=True)
+    home.mkdir(parents=True)
+    real = Path.home()
+    return {**os.environ, "HOME": str(home),
+            "CARGO_HOME": os.environ.get("CARGO_HOME", str(real / ".cargo")),
+            "RUSTUP_HOME": os.environ.get("RUSTUP_HOME", str(real / ".rustup"))}
+
+
 def nextest_run(root, cargo_args, target, api, *, allow_ignored_only=False):
     """Every test binary of the selection runs concurrently; doctests run after, by cargo."""
     split = cargo_args.index("--") if "--" in cargo_args else len(cargo_args)
@@ -322,7 +334,7 @@ def nextest_run(root, cargo_args, target, api, *, allow_ignored_only=False):
     junit.unlink(missing_ok=True)
     argv = ["cargo", "nextest", "run", *nextest_build_args(build), *(["--", *filters] if filters else [])]
     print("quarantine: " + " ".join(argv), flush=True)
-    code = subprocess.run(argv, cwd=root).returncode
+    code = subprocess.run(argv, cwd=root, env=test_environment(root)).returncode
     if code == 4 and allow_ignored_only and ignored_integration_suite(root, build, filters, api):
         code = 0
     packages = api.metadata(root)
@@ -341,7 +353,8 @@ def nextest_run(root, cargo_args, target, api, *, allow_ignored_only=False):
             doc = ["cargo", "test", "--doc", *kept, *[x for n in libraries for x in ("-p", n)],
                    *(["--", *filters] if filters else [])]
             print("quarantine: " + " ".join(doc), flush=True)
-            result = subprocess.run(doc, cwd=root, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            result = subprocess.run(doc, cwd=root, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+                                    env=test_environment(root))
             output = result.stdout
             print(output, end="", flush=True)
             if result.returncode:
@@ -375,6 +388,7 @@ def test(arguments, api):
     # One ordered stream preserves Cargo's binary headings alongside libtest's
     # per-binary durations; --no-fail-fast guarantees later suites still run.
     child = subprocess.Popen(["cargo", "test", *cargo_args], cwd=root, text=True,
+                             env=test_environment(root),
                              stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     lines = []
     for line in child.stdout:
@@ -428,7 +442,8 @@ def retry_quarantined(failed, arguments, coverage, root, api, code=1):
         entries[name] = candidates[0]
     for name in failed:
         retry = api.command(retry_args(arguments, entries[name]["crate"], name, api,
-                                       integration=name in integration), cwd=root, check=False)
+                                       integration=name in integration), cwd=root, check=False,
+                             env=test_environment(root))
         print(retry.stdout + retry.stderr, end="", flush=True)
         passed = re.search(r"(?m)^test " + re.escape(name) + r" \.\.\. ok$", retry.stdout)
         record = {"timestamp": api.now(), "sha": api.git("rev-parse", "HEAD", cwd=root),
