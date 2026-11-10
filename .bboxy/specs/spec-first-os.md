@@ -45,6 +45,43 @@ for an OS what Lean was for that proof.
 - **Spec** is a declaration that generates or binds the running code and feeds the model
   checker. A model beside the code is evidence, not a spec.
 
+## The spec is the program
+
+**Code is cheap. Correctness is scarce.** So the thing we write, review and keep is the
+spec, and Rust is what it compiles to. `protocol!` and `reactor!` are not a way to test
+code: they are the programming language. One declaration compiles two ways:
+
+```mermaid
+flowchart LR
+  D[One declaration] --> F[Finite model: checked exhaustively]
+  D --> R[Production Rust: real types, real sizes]
+  F --> V[Verdict + card]
+  R --> B[The running system]
+```
+
+The end state for every stateful component: **no hand-written state machine exists**. An
+agent that wants different behavior edits the declaration; the checker rules on it in
+seconds; the compiler emits the Rust. Hand-written Rust remains only at the edges, as
+effect handlers (write this file, send this frame), each bound to a declared effect.
+
+What stops this today, in order:
+
+1. **Bounded domains only.** `RemoteDelivery` is declared over `Msg { A, B }`, so the
+   generated reducer cannot hold real message ids, and `link.rs` re-implements the same
+   machine by hand over strings. The language needs **parametric domains**: checked at a
+   small bound, compiled over a real key type (`Set<Msg>` becomes a set of ids). The
+   license to do that is data independence: a spec that only compares ids for equality
+   behaves the same at any size beyond a small bound. The macro enforces the condition
+   (no id constants in guards; invariants quantify with `forall`), or refuses to compile.
+2. **Effects stop at the reducer.** A declared effect must name its handler and its
+   completion event, and durability ("applied survives a crash") must be a declared
+   property of state, not a comment about `fsync`.
+3. **Scheduling is separate.** `reactor!` must take a `protocol!` as what it runs.
+
+Until a component is compiled this way, a refinement walk (W1) is the bridge: it proves
+the hand-written code obeys the spec, and it is the safety net for swapping that code out.
+Once the component is generated, its walk and its hand-written machine are both deleted.
+
 ## The agent-access rule
 
 Every artifact of this programme is data an agent can read at any time through its tools:
@@ -186,7 +223,11 @@ target. The Oracle seat writes specs and verifies; a bboxy450-harness seat on Co
 
 1. [[tasks/2026-11-09-remote-delivery-conformance-and-card]]: W1 conformance walk and the
    level-1 card on `RemoteDelivery`.
-2. W2 on one slice of the supervisor-logic boundary: the logic lease (exactly one lease
+2. **Compile `RemoteDelivery`.** Parametric domains in `protocol!`; generate the outbox and
+   inbox state machines from the declaration over real message ids; delete the hand-written
+   ones in `link.rs`, keeping only the journal as an effect handler. Milestone 1's walk
+   must stay green across the swap, then goes too.
+3. W2 on one slice of the supervisor-logic boundary: the logic lease (exactly one lease
    mutates supervisor state; a stale lease is fenced; replacement takes it over). The
    contract is a `protocol!` module; `bbt-supervisor` and `bbt-mux` each refine it alone.
    `bbt-supervisor` is 8,383 lines, 4,280 of them in `supervisor.rs`: it is not yet the
