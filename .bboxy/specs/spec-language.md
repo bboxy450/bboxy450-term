@@ -633,6 +633,41 @@ beyond its bound; implemented by any code (the macro judge is for that); making 
   their lifecycle spec by the host.
 - **The viewer renders Den.** Prose fields render as Markdown; a spec renders as its card.
 
+## Lowering to Markdown
+
+Not every consumer reads Den. The GitKB knowledge provider, used by another project on
+another machine, stores and serves Markdown records only. So Den lowers to Markdown:
+`bboxy450-den render --markdown PATH` turns one sound `.den` record into one Markdown
+record in today's format, a YAML header followed by a body.
+
+| Den | Markdown |
+|---|---|
+| record keyword and name | `type:` and `title:` (from `title` or `intent`) |
+| typed fields (`status`, `verify`, `paths`, `check`, `commits`, …) | the same header keys the kind uses today |
+| `import` and typed link fields | `links:` entries `{ to: "[[path]]", rel: <relation> }`, and `[[path]]` in the body |
+| `managed { }` | the host-stamped header keys (`id`, `number`, `created`, signatures) |
+| prose fields (`brief`, `body`, `steps`) | the Markdown body, verbatim |
+| `spec`, `loop`, `interface` machine | a generated section: intent, a state table, events and cases, invariants and assumptions as sentences, scenarios as numbered steps, and the Den source in a fenced block |
+| `epic` | staff and channels as tables, the work graph as a list with `needs`, gates and budget |
+
+Rules:
+
+- **One direction.** Den is the source; the Markdown is a projection. A lowered file says
+  so in its header (`generated_from:` with the module path and a hash of the Den source)
+  and is never edited by hand. A consumer that edits it has forked the record.
+- **Deterministic.** The same Den text gives the same Markdown bytes. No timestamps, no
+  ordering that depends on the machine.
+- **Only sound records lower.** `render` runs the check first and refuses an unsound
+  record with its diagnostics.
+- **Nothing is dropped silently.** A Den construct with no Markdown form is rendered as
+  its source in a fenced block and listed under a `not_lowered:` header key.
+- **Diagrams are optional.** With `--mermaid`, a spec's lowered body also carries its
+  generated state diagram, for consumers whose viewer renders Mermaid.
+
+Lowering is also the second half of the migration's round-trip check: converting a
+Markdown record to Den and lowering it again must give back the original header keys,
+links and body, up to a stated normalization.
+
 ## Migration
 
 One step at a time; the knowledge base stays usable at every step.
@@ -642,13 +677,15 @@ One step at a time; the knowledge base stays usable at every step.
    `protocol!` declaration.
 2. Modules, imports, `Ref`, the prelude, and the remaining record kinds: the Graph group.
    `make check-kb`.
-3. A converter from today's Markdown records to Den, with a round-trip check: every
-   field and link of the original is in the result, and nothing is invented. Run it on a
+3. Lowering: `render --markdown` for every record kind, so Markdown-only providers such
+   as GitKB keep working.
+4. A converter from today's Markdown records to Den, with a round-trip check against the
+   lowering: every field and link of the original comes back, and nothing is invented. Run it on a
    copy first; report every record it cannot convert.
-4. The host reads both forms; new strong-fit records are written in Den.
-5. Convert the strong-fit kinds in place, one kind per change, reports first (pure
+5. The host reads both forms; new strong-fit records are written in Den.
+6. Convert the strong-fit kinds in place, one kind per change, reports first (pure
    evidence, frozen), tasks last (live).
-6. The host stops reading YAML headers for the converted kinds. Markdown remains for prose.
+7. The host stops reading YAML headers for the converted kinds. Markdown remains for prose.
 
 ## Out of scope for v1
 
