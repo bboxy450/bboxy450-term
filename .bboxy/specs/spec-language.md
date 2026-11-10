@@ -1,6 +1,6 @@
 ---
 type: spec
-title: 'bx: the knowledge-graph language of mux 2.0, and what it means for a record to be sound'
+title: 'Den: the knowledge-graph language of mux 2.0, and what it means for a record to be sound'
 id: 01M71JX1D359A2BSM88TTEDH18
 updated: 2026-11-10T01:59:29.092Z
 created: 2026-11-10T01:59:29.092Z
@@ -23,10 +23,10 @@ provenance:
     sequence: 151284
     hash: 3519ea076200beea1c7df370960e6651d757b928c499f16fedb267d996cd38bf
 ---
-# bx: the knowledge-graph language of mux 2.0
+# Den: the knowledge-graph language of mux 2.0
 
-Part of [[spec-first-os]]; answers to [[philosophy]]. Working name `bx` (files `*.bx`,
-crate `crates/bboxy450-bx`). Supersedes the first draft of this record (`bspec`, fenced
+Part of [[spec-first-os]]; answers to [[philosophy]]. The language is **Den** (files `*.den`, crate `crates/bboxy450-den`): a den is where a
+fox keeps what it knows. The name was Den in the previous revision. Supersedes the first draft of this record (`bspec`, fenced
 blocks inside Markdown), kept in Git at `2d4731440`.
 
 ## Purpose
@@ -37,13 +37,13 @@ and other natural language".
 
 Today a knowledge record is Markdown with a YAML header. Nothing checks that a report
 points at a task, that a link resolves, that an invariant has a command, or that a spec
-means one thing. `bx` makes every structured record a **typed declaration** in one
+means one thing. Den makes every structured record a **typed declaration** in one
 language, and the knowledge base a **typed graph**: links are imports, the kind of a link
 is a type, and a record that does not check is refused at commit.
 
 ```mermaid
 flowchart LR
-  W[Agent writes a record] --> C{bx check}
+  W[Agent writes a record] --> C{den check}
   C -->|sound| K[Committed to the KB]
   C -->|unsound: code, line, repair| W
   K --> I[Agents implement from specs]
@@ -51,16 +51,16 @@ flowchart LR
   K --> G[The graph is queryable as data]
 ```
 
-No compiler. `bx` is checked, never executed: agents compile specs to Rust by inference
+No compiler. Den is checked, never executed: agents compile specs to Rust by inference
 and the macro system judges the result ([[spec-first-os]]).
 
 ## What moves and what stays
 
 | Kind | Form in mux 2.0 |
 |---|---|
-| spec, interface, invariant, task, report, e2e | `bx`, fully typed and checked |
-| decision, proposal, epic, bug, recipe | `bx` header (status, dates, typed links) with a Markdown body |
-| note, research, skill, vision, philosophy, comment | Markdown, as today; `bx` records may link to them |
+| spec, interface, epic, loop, invariant, task, report, e2e | Den, fully typed and checked |
+| decision, proposal, bug, recipe | Den header (status, dates, typed links) with a Markdown body |
+| note, research, skill, vision, philosophy, comment | Markdown, as today; Den records may link to them |
 
 ## Design rules
 
@@ -79,7 +79,7 @@ The reader and the writer are language models; the syntax is Scala 3 with Haskel
 ## Modules and links
 
 A file is one module holding one record. Its module path is its KB path:
-`specs/delivery/outbox.bx` is `specs.delivery.Outbox`. A link is an import:
+`specs/delivery/outbox.den` is `specs.delivery.Outbox`. A link is an import:
 
 ```scala
 module specs.delivery.Delivery
@@ -105,9 +105,12 @@ record Run { command: Command, exit: Int }
 Algebraic data types are Scala 3 enums whose cases may fix the type index: GADTs.
 
 ```scala
-enum Kind { Spec, Interface, Invariant, Task, Report, E2e, Decision, Prose }
+enum Kind { Spec, Interface, Epic, Loop, Invariant, Task, Report, E2e, Decision, Prose }
 
 enum Link[From <: Kind, To <: Kind] {
+  case Realizes    extends Link[Epic, Spec]
+  case PartOf      extends Link[Task, Epic]
+  case Runs        extends Link[Epic, Loop]
   case Serves      extends Link[Task, Spec]
   case Constrains  extends Link[Invariant, Spec]
   case Evidence    extends Link[Report, Task]
@@ -120,7 +123,7 @@ enum Link[From <: Kind, To <: Kind] {
 
 `Link` is why the language needs GADTs: each relation carries the kinds it may join, so
 "a report supersedes a task" does not type-check. The record kinds and `Link` are declared
-in `bx` itself, in `kb/prelude.bx`; the knowledge base's schema is a record in the
+in Den itself, in `kb/prelude.den`; the knowledge base's schema is a record in the
 knowledge base.
 
 ## Records
@@ -265,6 +268,156 @@ happen only through the parent. `discharge` closes a part's `assume`; one that i
 discharged carries up. A part must be sound alone, and its invariants must still hold in
 the whole.
 
+### epic
+
+Spec, then epic, then tasks. A spec says **what must be true**. An epic says **how a swarm
+gets there**: who is on it, how the work is split, which channels carry what, who verifies,
+and the loop every piece of work goes around. A task is one unit of that split.
+
+```scala
+module epics.DenChecker
+
+import specs.SpecLanguage
+import specs.SpecFirstOs
+import loops.DelegateVerifyLand
+
+epic DenChecker {
+  intent   "A record that does not check cannot be committed to the knowledge base."
+  realizes SpecLanguage, SpecFirstOs
+
+  staff {
+    Oracle     x 1     owns "briefs, rulings, verification, that the work lands"
+    Architect  x 1     owns "SpecLanguage and every boundary between tasks"
+    Executor   x 1..1  owns "one task at a time, in its own worktree"
+    Researcher x 0..1  owns "evidence as file:line, never conclusions"
+  }
+
+  channel brief    : Oracle    -> Executor   carries Task
+  channel blocked  : Executor  -> Oracle     carries Blocker
+  channel report   : Executor  -> Oracle     carries Report
+  channel ruling   : Oracle    -> Executor   carries Amendment
+  channel question : Oracle    -> Architect  carries SpecQuestion
+  channel law      : Architect -> Oracle     carries SpecChange
+  channel finding  : Researcher -> Oracle    carries Research
+
+  work {
+    task Parser     by Executor  serves SpecLanguage
+    task Graph      by Executor  needs Parser
+    task CommitGate by Executor  needs Graph
+    task Converter  by Executor  needs Graph
+    task Migration  by Executor  needs Converter, CommitGate
+    research KbSurvey by Researcher feeds Converter
+  }
+
+  loop DelegateVerifyLand for each task
+
+  gate verify { check task.verify ~> exit 0   by Oracle   reads diff, log }
+  gate land   { check $ make land ~> exit 0   by Executor }
+
+  budget { agents <= 3; fullSuite <= 1 at a time }
+
+  done when all work Done && SpecLanguage.acceptance
+}
+```
+
+- `staff` gives each role a head count and one sentence of ownership. `x 1..1` is the
+  operator's "one executor at a time", as a checked bound.
+- `channel` declares every path a message may take: who sends, who receives, what kind of
+  record it carries. A message outside a declared channel is not part of the epic.
+- `work` is the split: a graph of tasks and research items with `needs` and `feeds` edges,
+  each owned by a staffed role. The host creates one task record per `task` line; each
+  carries `partOf` back to the epic.
+- `gate` names a check, who runs it, and what they must read.
+- `done when` is the epic's acceptance, over the work items and the specs it realizes.
+
+### loop
+
+The responsibility loop is not prose. It is a spec whose events are owned by roles and
+travel on channels, so the checker can ask the swarm's questions: who acts next, can this
+get stuck, can someone approve their own work.
+
+```scala
+module loops.DelegateVerifyLand
+
+loop DelegateVerifyLand {
+  intent "One task goes from brief to landed with exactly one role responsible at every moment."
+  roles  Oracle, Executor
+
+  enum Stage { Briefed, Working, Blocked, Reported, Verified, Landed, Closed }
+
+  state {
+    stage: Stage = Stage.Briefed
+    failedLandings: Int[0..3] = 0
+  }
+
+  event Start     by Executor
+  event Block     by Executor  on blocked
+  event Rule      by Oracle    on ruling
+  event Report    by Executor  on report
+  event Accept    by Oracle
+  event Reject    by Oracle    on ruling
+  event Land      by Executor
+  event LandFails by Executor  on blocked
+  event TakeOver  by Oracle
+  event Close     by Oracle
+
+  on Start     { case go if stage == Stage.Briefed => { stage = Stage.Working }
+                 case no otherwise => reject NotBriefed }
+  on Block     { case stop if stage == Stage.Working => { stage = Stage.Blocked }
+                 case no otherwise => reject NotWorking }
+  on Rule      { case unblock if stage == Stage.Blocked => { stage = Stage.Working }
+                 case no otherwise => reject NothingToRule }
+  on Report    { case hand if stage == Stage.Working => { stage = Stage.Reported }
+                 case no otherwise => reject NotWorking }
+  on Accept    { case ok if stage == Stage.Reported => { stage = Stage.Verified }
+                 case no otherwise => reject NothingReported }
+  on Reject    { case back if stage == Stage.Reported => { stage = Stage.Working }
+                 case no otherwise => reject NothingReported }
+  on Land      { case landed if stage == Stage.Verified => { stage = Stage.Landed }
+                 case no otherwise => reject NotVerified }
+  on LandFails { case again if stage == Stage.Verified && failedLandings < 3 => { failedLandings = failedLandings + 1 }
+                 case no otherwise => reject NotLanding }
+  on TakeOver  { case seize if stage == Stage.Verified && failedLandings == 3 => { stage = Stage.Landed }
+                 case no otherwise => reject NotYet }
+  on Close     { case close if stage == Stage.Landed => { stage = Stage.Closed }
+                 case no otherwise => reject NotLanded }
+
+  waits {
+    Briefed  -> Executor
+    Working  -> Executor
+    Blocked  -> Oracle
+    Reported -> Oracle
+    Verified -> Executor unless failedLandings == 3 then Oracle
+    Landed   -> Oracle
+  }
+
+  invariant LOOP_001 "only verified work can fail to land" =
+    failedLandings > 0 ==> (stage == Stage.Verified || stage == Stage.Landed || stage == Stage.Closed)
+
+  scenario "the Oracle takes over a landing that keeps failing" {
+    Start ~> accepted
+    Report ~> accepted
+    Accept ~> accepted
+    LandFails ~> accepted
+    LandFails ~> accepted
+    LandFails ~> accepted
+    TakeOver ~> accepted
+    Close ~> accepted
+    expect stage == Stage.Closed
+  }
+}
+```
+
+A loop adds three things to a spec:
+
+- `by Role` on every event: who is allowed to cause it. `Accept by Oracle` and
+  `Report by Executor` is how "nobody verifies their own work" becomes a type.
+- `on channel`: the event is a message, and the channel must exist in the epic with that
+  sender.
+- `waits`: for each non-final stage, the one role that must act next. This is **never
+  block the swarm** as a check: a stage nobody waits on, or a stage whose waiting role has
+  no accepted event there, is unsound.
+
 ### interface
 
 A contract between exactly two specs: a `spec` with a `between` line. It is what each side
@@ -299,17 +452,17 @@ invariant SignedMain {
 ### task
 
 ```scala
-module tasks.`2026-11-09-bx-checker-crate`
+module tasks.`2026-11-09-den-checker-crate`
 
 import specs.SpecLanguage
 import specs.SpecFirstOs
 
-task BxCheckerCrate {
-  title  "bx v1: the checker crate and make check-kb"
+task DenCheckerCrate {
+  title  "Den v1: the checker crate and make check-kb"
   serves SpecLanguage, SpecFirstOs
   role   Executor
-  paths  "crates/bboxy450-bx/", "Cargo.toml", "Makefile", "verification/coverage.toml"
-  verify $ cargo nextest run -p bboxy450-bx && make check-kb
+  paths  "crates/bboxy450-den/", "Cargo.toml", "Makefile", "verification/coverage.toml"
+  verify $ cargo nextest run -p bboxy450-den && make check-kb
   brief  """
     Build the parser and soundness checker defined in SpecLanguage.
     ...Markdown...
@@ -373,8 +526,8 @@ decision D365MandatoryFormalVerification {
 
 ### Markdown records
 
-Notes, research, skills and comments stay `.md`. A `bx` record links to one with an
-import; its type is `Doc[Prose]`. A Markdown record links to a `bx` record with `[[path]]`
+Notes, research, skills and comments stay `.md`. A Den record links to one with an
+import; its type is `Doc[Prose]`. A Markdown record links to a Den record with `[[path]]`
 as today.
 
 ## What "sound" means
@@ -397,6 +550,13 @@ Checks run in order; a later group runs only when the earlier ones are clean.
 | | X353 | `include` forms a cycle |
 | | X354 | a required field of the record's kind is missing, or a field is not of that kind |
 | | X355 | a `managed` block was written by anything but the host |
+| Swarm | X371 | a work item, event or channel names a role that is not in `staff` |
+| | X372 | `needs` or `feeds` forms a cycle, or names no work item |
+| | X373 | a loop event travels on a channel the epic does not declare, or against its direction |
+| | X374 | a stage has no waiting role, more than one, or a waiting role with no accepted event there |
+| | X375 | a role both produces and accepts the same work in one loop |
+| | X376 | a spec in `realizes` is served by no work item |
+| | X377 | head counts in `staff` exceed `budget` |
 | Totality | X401 | two cases of one `on` block can both be true |
 | | X402 | no case is true for some state and arguments |
 | Steps | X501 | a case assigns one variable twice |
@@ -426,28 +586,28 @@ beyond its bound; implemented by any code (the macro judge is for that); making 
 
 ## In mux 2.0
 
-- **Commit is the gate.** `knowledge_commit` checks every `bx` record it is asked to
+- **Commit is the gate.** `knowledge_commit` checks every Den record it is asked to
   commit, and every record that imports one of them, and refuses on any diagnostic.
   Drafts are never refused.
 - **The graph is data.** Every record, field and link is readable through the tool
   catalogue as typed values, not scraped text ([[philosophy]], open to agents).
 - **Lifecycles are specs.** Task, report and decision state changes are checked against
   their lifecycle spec by the host.
-- **The viewer renders `bx`.** Prose fields render as Markdown; a spec renders as its card.
+- **The viewer renders Den.** Prose fields render as Markdown; a spec renders as its card.
 
 ## Migration
 
 One step at a time; the knowledge base stays usable at every step.
 
-1. `crates/bboxy450-bx`: parser and checker for `spec` (Syntax through Completeness,
-   without Graph). Anchor: `RemoteDelivery` in `bx` reaches the same states as its
+1. `crates/bboxy450-den`: parser and checker for `spec` (Syntax through Completeness,
+   without Graph). Anchor: `RemoteDelivery` in Den reaches the same states as its
    `protocol!` declaration.
 2. Modules, imports, `Ref`, the prelude, and the remaining record kinds: the Graph group.
    `make check-kb`.
-3. A converter from today's Markdown records to `bx`, with a round-trip check: every
+3. A converter from today's Markdown records to Den, with a round-trip check: every
    field and link of the original is in the result, and nothing is invented. Run it on a
    copy first; report every record it cannot convert.
-4. The host reads both forms; new strong-fit records are written in `bx`.
+4. The host reads both forms; new strong-fit records are written in Den.
 5. Convert the strong-fit kinds in place, one kind per change, reports first (pure
    evidence, frozen), tasks last (live).
 6. The host stops reading YAML headers for the converted kinds. Markdown remains for prose.
