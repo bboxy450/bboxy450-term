@@ -18,7 +18,7 @@ use std::{
 
 const BIN: &str = env!("CARGO_BIN_EXE_bboxy450-term");
 
-#[path = "canvas.rs"]
+#[path = "headless/canvas.rs"]
 mod canvas;
 
 // keeps: release #54 (Finder launches from / keep real logic alive with file custody).
