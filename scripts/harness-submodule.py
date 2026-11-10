@@ -64,41 +64,49 @@ def import_models(root, source, target):
     print(f'harness: imported {len(rows)} native models for parent TLC parity', flush=True)
 
 
-def workspace_metadata(root, features=()):
-    command = ['cargo', 'metadata', '--format-version', '1', '--locked']
-    if features:
-        command += ['--features', ','.join(features)]
-    return json.loads(subprocess.check_output(command, cwd=root))
+def workspace_metadata(root):
+    return json.loads(subprocess.check_output(['cargo', 'metadata', '--format-version', '1', '--locked'], cwd=root))
 
 
 def validate_json_features(data):
-    packages = {p['id']: p['name'] for p in data['packages']
-                if p['name'] in {'serde_json', 'bboxy450-harness'}}
-    nodes = {n['id']: set(n['features']) for n in data['resolve']['nodes']}
-    if set(packages.values()) != {'serde_json', 'bboxy450-harness'} or not packages.keys() <= nodes.keys():
+    if set(data) != {'serde_json', 'bboxy450-harness'}:
         raise ValueError('harness: parent JSON feature inventory is missing')
-    harness_features = set().union(*(nodes[ident] for ident, name in packages.items() if name == 'bboxy450-harness'))
+    harness_features = data['bboxy450-harness']
     violations = set()
-    for ident, name in packages.items():
-        # The requested ACP-agent backend enables preserve_order upstream. The
-        # legacy ACP frontend remains forbidden in term's embedded dependency.
-        if name == 'serde_json' and 'preserve_order' in nodes[ident] and 'acp-agent' not in harness_features:
-            violations.add('serde_json/preserve_order')
-        if name == 'bboxy450-harness' and 'acp' in nodes[ident]:
-            violations.add('bboxy450-harness/acp')
+    # The requested ACP-agent backend enables preserve_order upstream. The
+    # legacy ACP frontend remains forbidden in term's embedded dependency.
+    if 'preserve_order' in data['serde_json'] and 'acp-agent' not in harness_features:
+        violations.add('serde_json/preserve_order')
+    if 'acp' in harness_features:
+        violations.add('bboxy450-harness/acp')
     if violations:
         raise ValueError('harness: parent feature isolation rejected: ' + ', '.join(sorted(violations)))
-    return sorted(set().union(*(nodes[ident] for ident, name in packages.items() if name == 'serde_json')))
+    return sorted(data['serde_json'])
 
 
 def check_json_features(root, features=()):
-    resolved = validate_json_features(workspace_metadata(root, features))
-    print('harness: parent JSON features (ACP-agent includes preserve_order): ' + ', '.join(resolved), flush=True)
+    # Workspace metadata unions the standalone harness defaults with the
+    # embedded consumer. Cargo tree selects the consumer's actual closure.
+    command = ['cargo', 'tree', '-p', 'bboxy450-term', '--locked', '-e', 'normal,build',
+               '--prefix', 'none', '-f', '{p}|{f}']
+    if features:
+        command += ['--features', ','.join(features)]
+    data = {}
+    for row in subprocess.check_output(command, cwd=root, text=True).splitlines():
+        package, separator, selected = row.rpartition('|')
+        if not separator or not package.split():
+            raise ValueError('harness: malformed consumer feature row')
+        name = package.split()[0]
+        if name in {'serde_json', 'bboxy450-harness'}:
+            data.setdefault(name, set()).update(filter(None, selected.removesuffix(' (*)').split(',')))
+    resolved = validate_json_features(data)
+    print('harness: consumer JSON features (ACP-agent includes preserve_order): ' + ', '.join(resolved), flush=True)
+    return resolved
 
 
 def check_resolution(root):
     data = workspace_metadata(root)
-    validate_json_features(data)
+    check_json_features(root)
     toolkit = {"bboxy450-rt": "bbt-rt", "bboxy450-yarn": "bbt-yarn", "bboxy450-tlc": "bboxy450-tlc",
                "bboxy450-ui": "bbt-ui", "bboxy450-ui-core": "bbt-ui-model", "bboxy450-render": "bbt-render", "bboxy450-doc": "bbt-doc", "bboxy450-term-desktop-core": "bboxy450-term-desktop-core", "bboxy450-term-desktop-macos": "bboxy450-term-desktop-macos", "bboxy450-term-desktop": "bboxy450-term-desktop"}
     for name, directory in toolkit.items():
@@ -155,7 +163,7 @@ def main():
     parser.add_argument('--standalone', action='store_true')
     parser.add_argument('--check-resolution', action='store_true')
     parser.add_argument('--check-json-features', action='store_true')
-    parser.add_argument('--acp-control', action='store_true', help='reject the real ACP-enabled metadata graph (negative control)')
+    parser.add_argument('--acp-control', action='store_true', help='reject the real ACP-enabled consumer closure (negative control)')
     parser.add_argument('--target', type=Path)
     args = parser.parse_args()
     if args.acp_control and not args.check_json_features:

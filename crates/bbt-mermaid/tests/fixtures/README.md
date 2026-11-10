@@ -30,10 +30,16 @@ repository-local records became tracked (source: bboxy450-term):
 - `2026-11-05-python-sdk-proposal-superseded-1.mmd` — Copied from [.bboxy/notes/2026-11-05-python-sdk-proposal-superseded.md](https://github.com/bboxy450/bboxy450-term/blob/main/.bboxy/notes/2026-11-05-python-sdk-proposal-superseded.md).
 - `programmatic-execution-patterns-1.mmd` — Copied from [.bboxy/research/programmatic-execution-patterns.md](https://github.com/bboxy450/bboxy450-term/blob/main/.bboxy/research/programmatic-execution-patterns.md).
 - `programmatic-tool-access-1.mmd` — Copied from [.bboxy/specs/programmatic-tool-access.md](https://github.com/bboxy450/bboxy450-term/blob/main/.bboxy/specs/programmatic-tool-access.md).
-- `spec-first-os-1.mmd` — Copied from [.bboxy/specs/spec-first-os.md](https://github.com/bboxy450/bboxy450-term/blob/main/.bboxy/specs/spec-first-os.md).
+- `spec-first-os-3.mmd` — Copied from [.bboxy/specs/spec-first-os.md](https://github.com/bboxy450/bboxy450-term/blob/main/.bboxy/specs/spec-first-os.md).
 - `workspace-provisioning-1.mmd` — Copied from [.bboxy/specs/workspace-provisioning.md](https://github.com/bboxy450/bboxy450-term/blob/main/.bboxy/specs/workspace-provisioning.md).
 - `workspace-provisioning-2.mmd` — Copied from [.bboxy/specs/workspace-provisioning.md](https://github.com/bboxy450/bboxy450-term/blob/main/.bboxy/specs/workspace-provisioning.md).
 
 `cards/RemoteDelivery.mmd` is generated from `RemoteDelivery` by
 `bboxy450-term-remote/tests/delivery_card.rs`; the fixture test compares it with
 the card and runs the same parse/layout checks as the rest of this corpus.
+
+New diagrams copied from the parent records after rebasing:
+
+- `spec-first-os-1.mmd` — Copied from [.bboxy/specs/spec-first-os.md](https://github.com/bboxy450/bboxy450-term/blob/main/.bboxy/specs/spec-first-os.md).
+- `spec-first-os-2.mmd` — Copied from [.bboxy/specs/spec-first-os.md](https://github.com/bboxy450/bboxy450-term/blob/main/.bboxy/specs/spec-first-os.md).
+- `spec-language-1.mmd` — Copied from [.bboxy/specs/spec-language.md](https://github.com/bboxy450/bboxy450-term/blob/main/.bboxy/specs/spec-language.md).

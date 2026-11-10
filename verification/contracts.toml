@@ -885,7 +885,7 @@ implementation_tests = ["crates/bboxy450-term-remote/tests/serve.rs", "crates/bb
 methods = ["native_tlc_differential"]
 assumptions = "Ev={A,B} are the first two events of one epoch, produced in order. Drop and Reconnect keep the remote log and the local view. RemoteRestart starts a new epoch: the log loses its tail and the remote owes the view a reset before any new-epoch event. Sequence numbers, the bounded tail and cursor gap/duplicate arithmetic are abstracted and implementation-tested. No fairness and no liveness claimed."
 property = "REMOTE-RESUME-001: every event the view shows is in the remote's current log unless a reset is pending. REMOTE-RESUME-002: B is shown only after A. BrokenRemoteResume restarts without owing a reset and violates REMOTE-RESUME-001."
-checks = ["make test-formal", "cargo nextest run -p bboxy450-term-remote"]
+checks = ["make test-formal", "make test"]
 
 [[contract]]
 name = "RemoteDelivery"
@@ -896,7 +896,7 @@ implementation_tests = ["crates/bboxy450-term-remote/tests/delivery_witness.rs"]
 methods = ["native_tlc_differential"]
 assumptions = "Two message identities A/B. The local outbox and the remote applied set are separate owners; the link may drop, duplicate and replay frames, and the remote may crash. A crash keeps the journalled applied set (fsync before apply). Journal-and-apply is one atomic model step; the runtime orders journal first, so a crash in between loses that turn and the local side reports its outcome unknown (never a second apply). The link does not forge `Applied` frames: every such frame comes from a real Inbox arrival on the current connection. No fairness is assumed and no liveness is claimed. SSH transport, session epoch/seq resume, cross-host routing and identity are not modelled."
 property = "REMOTE-DELIVERY-001: a message is applied at most once (ghost history `ever`). REMOTE-DELIVERY-002: an acknowledged message was applied. REMOTE-DELIVERY-003: an acknowledged message leaves the outbox. BrokenRemoteDelivery clears the applied set on RemoteCrash, so a replayed unacked message is applied twice and violates REMOTE-DELIVERY-001. The breadth-first refinement walk replays every enabled runtime operation from every reachable harness observation through Outbox/Inbox/FileJournal and the generated Rust step. A flush refines a sequence of Send events; acknowledgements are causal. It compares decisions, Fresh/Apply, unacked/acked/applied sets, message frames/inflight and connection state, checks all three invariants, and pins runtime/model coverage counts. A memory-journal runtime control fails on applied-state loss after crash. Unused model edges and late message frames after acknowledgement retirement are explicitly outside this link projection."
-checks = ["make test-formal", "cargo nextest run -p bboxy450-term-remote"]
+checks = ["make test-formal", "make test"]
 
 # Adapted from bboxy450-term, verification/contracts.toml, LogicWorker* at 954ce04e.
 # https://github.com/bboxy450/bboxy450-term — fill the implementation witness slot.

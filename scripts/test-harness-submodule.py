@@ -34,19 +34,43 @@ class SubmoduleTests(unittest.TestCase):
                                    '--check-json-features', '--acp-control'], cwd=root, text=True, capture_output=True)
         self.assertEqual(rejected.returncode, 1, rejected.stdout + rejected.stderr)
         self.assertIn('bboxy450-harness/acp', rejected.stderr)
-        print(f'harness: real ACP metadata control exits 1: {rejected.stderr.splitlines()[-1]}', flush=True)
+        print(f'harness: real ACP consumer control exits 1: {rejected.stderr.splitlines()[-1]}', flush=True)
 
     def test_missing_json_feature_inventory_is_rejected(self):
         with self.assertRaisesRegex(ValueError, 'feature inventory is missing'):
-            harness.validate_json_features({'packages': [], 'resolve': {'nodes': []}})
+            harness.validate_json_features({})
 
     def test_unexpected_ordering_feature_without_acp_agent_is_rejected(self):
-        data = {'packages': [{'id': 'json', 'name': 'serde_json'}, {'id': 'harness', 'name': 'bboxy450-harness'}],
-                'resolve': {'nodes': [{'id': 'json', 'features': ['preserve_order']}, {'id': 'harness', 'features': []}]}}
+        data = {'serde_json': {'preserve_order'}, 'bboxy450-harness': {'embedded'}}
         with self.assertRaisesRegex(ValueError, 'serde_json/preserve_order'):
             harness.validate_json_features(data)
-        data['resolve']['nodes'][1]['features'] = ['embedded', 'acp-agent']
+        data['bboxy450-harness'].add('acp-agent')
         self.assertEqual(harness.validate_json_features(data), ['preserve_order'])
+
+    def test_workspace_acp_default_does_not_leak_into_consumer_features(self):
+        workspace = {'packages': [{'id': 'h', 'name': 'bboxy450-harness'}],
+                     'resolve': {'nodes': [{'id': 'h', 'features': ['default', 'acp', 'acp-agent', 'embedded']}]}}
+        consumer = 'bboxy450-term v0.1.1|default\nbboxy450-harness v0.1.0 (/own path/harness)|embedded\nserde_json v1.0.154|default,std\n'
+        with patch.object(harness, 'workspace_metadata', return_value=workspace) as metadata, patch.object(subprocess, 'check_output', return_value=consumer) as tree:
+            self.assertEqual(harness.check_json_features(Path('/own path')), ['default', 'std'])
+        metadata.assert_not_called()
+        self.assertEqual(tree.call_args.args[0], ['cargo', 'tree', '-p', 'bboxy450-term', '--locked', '-e', 'normal,build',
+                                                '--prefix', 'none', '-f', '{p}|{f}'])
+        self.assertEqual(tree.call_args.kwargs['cwd'], Path('/own path'))
+
+    def test_consumer_legacy_acp_is_rejected(self):
+        with self.assertRaisesRegex(ValueError, 'bboxy450-harness/acp'):
+            harness.validate_json_features({'serde_json': {'std'}, 'bboxy450-harness': {'embedded', 'acp'}})
+
+    def test_consumer_feature_instances_are_merged_without_dedupe_marker(self):
+        consumer = 'bboxy450-harness v0.1.0|embedded,acp-agent\nserde_json v1.0.154|std\nserde_json v1.0.154|std,preserve_order (*)\n'
+        with patch.object(subprocess, 'check_output', return_value=consumer):
+            self.assertEqual(harness.check_json_features(Path('/own')), ['preserve_order', 'std'])
+
+    def test_malformed_consumer_feature_output_is_rejected(self):
+        with patch.object(subprocess, 'check_output', return_value='serde_json std\n'):
+            with self.assertRaisesRegex(ValueError, 'malformed consumer feature row'):
+                harness.check_json_features(Path('/own'))
 
     def test_missing_checkout_fails_after_initialization_instead_of_skipping(self):
         with tempfile.TemporaryDirectory() as own:

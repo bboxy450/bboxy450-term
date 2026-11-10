@@ -1,6 +1,8 @@
 flowchart LR
-  S[Spec source] --> M[Checked model]
-  M --> V0[Level 0: system map]
-  M --> V1[Level 1: component card]
-  M --> V2[Level 2: scenario]
-  M --> A[Agent tools: same data]
+  S[Spec: the source language] --> C[Checker: is the spec itself sound]
+  S --> O[Macros emit obligations: types, events, the trait to fill, the conformance check]
+  S --> A[Agent writes Rust by inference]
+  A --> G{Gate: generated check runs on the agent's code}
+  O --> G
+  G -->|green| K[Kept, verdict keyed by spec + code hash]
+  G -->|red, with a counterexample trace| A
