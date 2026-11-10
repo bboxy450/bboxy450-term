@@ -2122,3 +2122,13 @@ frontend = "project"
 name = "BrokenDreamReadFeedbackPromote"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "CanvasConvergence"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenCanvasConvergence"
+expected = "safety"
+frontend = "project"
