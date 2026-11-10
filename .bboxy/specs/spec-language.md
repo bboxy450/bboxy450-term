@@ -76,6 +76,41 @@ The reader and the writer are language models; the syntax is Scala 3 with Haskel
 7. **Errors are repair instructions**: stable code, position, one sentence.
 8. **Small.** The reference fits in one prompt.
 
+## One model, many engines
+
+Operator, 2026-11-10: "if we are able to load den files into objects, having our data
+model in Rust we can do anything we want".
+
+The centre of Den is not the syntax. It is the **typed model in Rust** that a `.den` file
+loads into. Everything else is an engine that reads that model:
+
+| Layer | What it is | State |
+|---|---|---|
+| Front end | text → syntax tree → resolved, typed, checked model | `spec` kind landing; other kinds next |
+| Model | Rust types for records, fields, links, machines and graphs; the one public, stable interface of `bboxy450-den` | to be made public (next task) |
+| Check engine | soundness: the X-code table | with the front end |
+| View engine | graph operations → Mermaid | planned |
+| Lowering engine | model → Markdown | planned; the first engine that writes |
+| Query engine | the knowledge base as a typed graph, through MCP | planned |
+| Execution engine | the host runs an epic's work graph and loop | later |
+| Compilation engine | a spec → the `protocol!` declaration and the conformance check | later; today agents do this by inference |
+
+Rules that keep this open:
+
+- **Load once.** `load(source) -> Result<Model, Diagnostics>` is the only way in. No engine
+  parses Den text for itself, so every engine sees the same meaning.
+- **Engines only read the model.** A new engine is a new consumer; it needs no change to
+  the language or to the other engines.
+- **The model is additive.** New record kinds, fields and constructs are added; existing
+  ones are not renamed, removed or retyped (the same rule as the bboxy log IR). A file
+  that was sound stays sound and means the same thing.
+- **Unknown is explicit.** An engine that meets a construct it does not handle says so
+  (lowering lists it under `not_lowered:`; the checker reports `X190`). Nothing is skipped
+  silently.
+
+This is why Den is checked today and not compiled or executed: those are later engines
+over the same model, added when there is a use for them, without redesigning the format.
+
 ## Modules and links
 
 A file is one module holding one record. Its module path is its KB path:
