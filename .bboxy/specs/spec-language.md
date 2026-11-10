@@ -161,6 +161,89 @@ enum Link[From <: Kind, To <: Kind] {
 in Den itself, in `kb/prelude.den`; the knowledge base's schema is a record in the
 knowledge base.
 
+## GADTs: the index carries the fact
+
+Operator, 2026-11-10: "GADT is big inspiration for us for .den design".
+
+A generalized algebraic data type lets each constructor fix the type it returns. Den uses
+that everywhere a rule can be turned into a type: the **index** of a type records a fact,
+and a record that breaks the rule cannot be written down, so there is nothing left to
+check at run time. `Link[From, To]` above is the first case. The others:
+
+```scala
+// 1. A record knows its kind.
+enum Doc[K <: Kind] {
+  case Spec(intent: Text, machine: Machine)            extends Doc[Kind.Spec]
+  case Task(serves: List[Ref[Kind.Spec]], verify: Command) extends Doc[Kind.Task]
+  case Report(task: Ref[Kind.Task], verify: Run)       extends Doc[Kind.Report]
+}
+
+// 2. A lifecycle step knows where it starts and ends.
+enum Step[From <: Stage, To <: Stage] {
+  case Delegate(to: Seat)                 extends Step[Open, Claimed]
+  case Report(r: Ref[Kind.Report])        extends Step[Claimed, Reported]
+  case Accept(r: Evidence[Passed])        extends Step[Reported, Accepted]
+  case Reject(why: Text)                  extends Step[Reported, Claimed]
+  case Close                              extends Step[Accepted, Done]
+}
+
+// 3. A piece of work knows what it must produce.
+enum Work[Out <: Kind] {
+  case Research(brief: Markdown)  extends Work[Kind.Prose]
+  case Design(brief: Markdown)    extends Work[Kind.Spec]
+  case Build(serves: Ref[Kind.Spec], verify: Command) extends Work[Kind.Report]
+}
+
+// 4. A channel knows who may speak and what it carries.
+enum Channel[From <: Role, To <: Role, Payload <: Kind] {
+  case Brief   extends Channel[Oracle, Executor, Kind.Task]
+  case Blocked extends Channel[Executor, Oracle, Kind.Blocker]
+  case Report  extends Channel[Executor, Oracle, Kind.Report]
+}
+
+// 5. Evidence knows how it was obtained.
+enum Evidence[How <: Basis] {
+  case Model(states: Int, bound: Text)      extends Evidence[Proven]
+  case Run(command: Command, exit: Int)     extends Evidence[Passed]
+  case Benchmark(value: Int, budget: Int)   extends Evidence[Measured]
+}
+
+// 6. An expression knows its type.
+enum Expr[T] {
+  case Lit(b: Bool)                          extends Expr[Bool]
+  case Member[D](s: Expr[Set[D]], x: Expr[D]) extends Expr[Bool]
+  case And(a: Expr[Bool], b: Expr[Bool])     extends Expr[Bool]
+  case Plus(a: Expr[Int], b: Expr[Int])      extends Expr[Int]
+}
+```
+
+What each index buys:
+
+| Index | The rule it makes unwritable |
+|---|---|
+| `Doc[K]`, `Ref[K]` | a link to the wrong kind of record |
+| `Step[From, To]` | an illegal lifecycle move: accepting an unreported task, closing an unaccepted one |
+| `Work[Out]` | a research item that "produces" a report, a build with no verification |
+| `Channel[From, To, Payload]` | a message from a role that may not send it, or carrying the wrong thing |
+| `Evidence[How]` | presenting a measurement where a proof is required ([[spec-first-os]], rule 3) |
+| `Expr[T]` | an ill-typed guard, update or invariant |
+
+Three consequences for the implementation:
+
+- **Elaboration.** The front end turns surface syntax into this typed core. The check
+  groups Names, Types, Graph and Swarm are what elaboration reports when it cannot build
+  the core. Whatever loads is well-typed by construction; the engines never re-check it.
+- **In Rust.** Rust has no GADTs. The model encodes the index with marker types and
+  sealed traits (`Step<Open, Claimed>`, `Expr<Bool>`), so an engine written in Rust gets
+  the same guarantees from the Rust compiler.
+- **User-defined.** A record may declare its own indexed `enum` with the syntax above;
+  the prelude's types are not special.
+
+A lifecycle is then stated twice on purpose, and the checker proves the two agree: the
+`Step` type says which moves exist, and the lifecycle `spec` or `loop` says when each is
+allowed. A move the machine takes that has no `Step` constructor, or a constructor the
+machine can never take, is unsound.
+
 ## Records
 
 Every record has a keyword, a name, typed fields, and at most one `managed` block that
