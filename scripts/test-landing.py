@@ -2649,6 +2649,15 @@ class CargoProfileForwardingTests(unittest.TestCase):
                              ["cargo", "test", "--profile", "fixture", "--test", "it",
                               "-p", "fixture", "--", "--exact", "native::case"])
 
+    def test_quarantine_entry_points_clear_a_seats_live_context(self):
+        module = self.module()
+        seat = {name: "PRIVATE_SEAT_MARKER" for name in module.SEAT_CONTEXT}
+        with patch.dict(module.os.environ, seat):
+            module.administer(["list"], landing)
+            self.assertFalse(set(module.SEAT_CONTEXT) & set(module.os.environ))
+        source = SOURCE.with_name("quarantine.py").read_text()
+        self.assertEqual(source.count("    clear_seat_context()\n"), 2)
+
     def test_isolated_retry_drops_the_nextest_only_empty_selection_option(self):
         module = self.module()
         arguments = ["--profile", "dream-c1-fixture", "--no-tests=pass", "-p", "old", "--lib",

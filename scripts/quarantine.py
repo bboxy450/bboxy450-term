@@ -80,7 +80,23 @@ def rows(root):
     return result
 
 
+# Tests are hermetic: a gate or quarantine retry run from inside a bboxy seat must not
+# hand that seat's live identity to the code under test
+# (bugs/harness-python-execute-tests-leak-seat-context). These are exactly the variables
+# the launcher sets for a seat (bboxy450-harness-wake-up src/launch.rs, bbt-supervisor);
+# fixtures that need them set their own. Both entry points below clear them first.
+SEAT_CONTEXT = ("BBOXY_CAPABILITY", "BBOXY_CAPABILITY_FILE", "BBOXY_GENERATION",
+                "BBOXY_HOOK_SOCKET_ONLY", "BBOXY_PROCESS_GENERATION", "BBOXY_ROLE",
+                "BBOXY_RUN_DIR", "BBOXY_SEAT_ID", "BBOXY_SOCK", "BBOXY_USER_ZDOTDIR")
+
+
+def clear_seat_context():
+    for name in SEAT_CONTEXT:
+        os.environ.pop(name, None)
+
+
 def administer(arguments, api):
+    clear_seat_context()
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=("add", "expire", "list"))
     parser.add_argument("test", nargs="?")
@@ -334,6 +350,7 @@ def nextest_run(root, cargo_args, target, api, *, allow_ignored_only=False):
 
 
 def test(arguments, api):
+    clear_seat_context()
     root = api.repository()
     if arguments and arguments[0] == "--":
         arguments = arguments[1:]
