@@ -1,6 +1,6 @@
 ---
 type: spec
-title: 'bspec: the spec language, and what it means for a spec to be sound'
+title: 'bx: the knowledge-graph language of mux 2.0, and what it means for a record to be sound'
 id: 01M71JX1D359A2BSM88TTEDH18
 updated: 2026-11-10T01:59:29.092Z
 created: 2026-11-10T01:59:29.092Z
@@ -23,224 +23,436 @@ provenance:
     sequence: 151284
     hash: 3519ea076200beea1c7df370960e6651d757b928c499f16fedb267d996cd38bf
 ---
-# bspec: the spec language
+# bx: the knowledge-graph language of mux 2.0
 
-Part of [[spec-first-os]]; answers to [[philosophy]]. Working name `bspec`; renaming it is
-one search-and-replace and does not change this design.
+Part of [[spec-first-os]]; answers to [[philosophy]]. Working name `bx` (files `*.bx`,
+crate `crates/bboxy450-bx`). Supersedes the first draft of this record (`bspec`, fenced
+blocks inside Markdown), kept in Git at `2d4731440`.
 
 ## Purpose
 
-Markdown says what we mean. Nothing checks it. `bspec` is a small language for the part of
-a spec that must be exact: states, events, what each event does, what must always hold.
-It lives **inside** KB documents, as a fenced code block tagged `bspec`, beside the prose
-that explains it. The document stays Markdown; the block is the part a machine holds us to.
+Operator, 2026-11-09: "we are moving to our Haskell/Scala inspired GADT enabled language
+for knowledge graphs! all of things becomes this language, except notes, research, skills
+and other natural language".
 
-A checker in Rust (`crates/bboxy450-spec`) rules on every block. Like a Haskell program
-that type-checks, a `bspec` that checks is **sound**: it is complete, consistent and
-means exactly one thing. Sound does not mean compiled. No compiler exists and none is
-needed yet: agents compile specs to Rust by inference, and the macro system judges the
-result ([[spec-first-os]]). The checker's job is earlier and simpler: **never let an
-unsound spec into the knowledge base.**
+Today a knowledge record is Markdown with a YAML header. Nothing checks that a report
+points at a task, that a link resolves, that an invariant has a command, or that a spec
+means one thing. `bx` makes every structured record a **typed declaration** in one
+language, and the knowledge base a **typed graph**: links are imports, the kind of a link
+is a type, and a record that does not check is refused at commit.
 
 ```mermaid
 flowchart LR
-  W[Agent writes a document] --> C{bspec check}
+  W[Agent writes a record] --> C{bx check}
   C -->|sound| K[Committed to the KB]
   C -->|unsound: code, line, repair| W
-  K --> I[Agents implement from it]
-  K --> V[Cards are generated from it]
+  K --> I[Agents implement from specs]
+  K --> V[Cards and views are generated]
+  K --> G[The graph is queryable as data]
 ```
+
+No compiler. `bx` is checked, never executed: agents compile specs to Rust by inference
+and the macro system judges the result ([[spec-first-os]]).
+
+## What moves and what stays
+
+| Kind | Form in mux 2.0 |
+|---|---|
+| spec, interface, invariant, task, report, e2e | `bx`, fully typed and checked |
+| decision, proposal, epic, bug, recipe | `bx` header (status, dates, typed links) with a Markdown body |
+| note, research, skill, vision, philosophy, comment | Markdown, as today; `bx` records may link to them |
 
 ## Design rules
 
-The reader and the writer are language models. The language is shaped for them.
+The reader and the writer are language models; the syntax is Scala 3 with Haskell's types.
 
-1. **One way to say each thing.** No synonyms, no optional syntax, no shorthand.
-2. **Regular.** Every declaration starts with a keyword. Blocks use braces, statements end
-   with `;`. Whitespace never matters.
-3. **Local.** A spec is one self-contained block. Reading it needs nothing else.
-4. **Says why.** `intent`, invariant text and scenario names are required prose, in the
-   block, next to what they describe.
-5. **Examples are checked.** A `scenario` is a concrete trace with expected outcomes. It
-   is how the operator answers questions and how a model learns the spec by example.
-6. **Errors are repair instructions.** Each diagnostic has a stable code, a position and
-   one sentence saying what to change.
-7. **Small.** The whole reference fits in one prompt, under 200 lines.
+1. **One way to say each thing.** No synonyms, no optional syntax.
+2. **Regular.** Every declaration starts with a keyword; blocks use braces; one statement
+   per line; indentation never matters.
+3. **Typed links.** `Ref[Task]` can only point at a task. A wrong link is a type error.
+4. **Local.** A record names everything it depends on in its `import` lines.
+5. **Says why.** Intent, invariant text and scenario names are required prose.
+6. **Examples are checked.** A `scenario` is a trace with expected outcomes.
+7. **Errors are repair instructions**: stable code, position, one sentence.
+8. **Small.** The reference fits in one prompt.
 
-## The language
+## Modules and links
 
-```
-file      = spec+
-spec      = "spec" NAME "{" item* "}"
-item      = intent | domain | state | event | effect | on | invariant | assume | scenario
-intent    = "intent" STRING ";"
-domain    = "domain" NAME "=" "{" NAME ("," NAME)* "}" ";"
-state     = "state" "{" (NAME ":" type "=" expr ";")* "}"
-type      = "Bool" | "Int" "[" INT ".." INT "]" | NAME | "Set" "<" NAME ">"
-event     = "event" NAME params? ";"
-effect    = "effect" NAME params? ";"
-params    = "(" NAME ":" NAME ("," NAME ":" NAME)* ")"
-on        = "on" NAME ("(" NAME ("," NAME)* ")")? "{" case+ "}"
-case      = "case" NAME ("when" expr | "otherwise") "{" stmt* end? "}"
-stmt      = NAME "=" expr ";" | NAME "+=" expr ";" | NAME "-=" expr ";"
-          | "emit" NAME ("(" expr ("," expr)* ")")? ";"
-end       = ("reject" | "ignore") NAME ";"
-invariant = "invariant" ID STRING ":" expr ";"
-assume    = "assume" ID STRING ";"
-scenario  = "scenario" STRING "{" (step | expect)* "}"
-step      = call "->" ("accepted" ("emits" call ("," call)*)? | "rejected" NAME | "ignored" NAME) ";"
-expect    = "expect" expr ";"
-call      = NAME ("(" expr ("," expr)* ")")?
-expr      = quantified | implication
-quantified= ("forall" | "exists") NAME ":" NAME "." expr
-implication, then or, and, not, comparison (== != < <=), in, + -, primary
-primary   = "true" | "false" | INT | NAME | NAME "." NAME | "{" (expr ("," expr)*)? "}"
-          | "if" expr "then" expr "else" expr | "(" expr ")"
+A file is one module holding one record. Its module path is its KB path:
+`specs/delivery/outbox.bx` is `specs.delivery.Outbox`. A link is an import:
+
+```scala
+module specs.delivery.Delivery
+
+import specs.delivery.Outbox
+import specs.delivery.Inbox
+import decisions.D220SignedMain
 ```
 
-Operators are words where a word exists: `and`, `or`, `not`, `in`, `=>`.
-`Msg.A` names a domain member. `{}` is the empty set. `//` starts a comment.
-`ID` is a stable claim id such as `REMOTE-DELIVERY-001`.
+An imported record is a value whose type is its kind: `Outbox: Doc[Spec]`. Imports must
+resolve, and may form cycles only through `Ref` fields, never through `include`.
 
-### Meaning
+## Types
 
-- A spec is one state machine. Its state is the `state` block; it starts at the given
-  initial values.
-- An event instance (an event with a value for each parameter) is handled by exactly one
-  `case` of its `on` block: the one whose guard is true. `otherwise` is true exactly when
-  no other guard in the block is.
-- A case with no `end` **accepts**: all its updates apply at once, each right-hand side
-  reading the state before the step. A variable the case does not mention keeps its value.
-- A case ending in `reject X` or `ignore X` changes nothing and emits nothing. `reject`
-  means the caller made an error; `ignore` means the event was harmless and had no effect.
-- `emit` names an effect the implementation must perform when the case is taken.
-- An `invariant` must hold in every reachable state.
-- An `assume` is something the spec takes from its environment and cannot check. It is
-  counted and shown on every card.
-- `n <= 3` would not be accepted as an invariant in the example below: the type `Int[0..3]` already
-  says it, so the claim is empty (B702). An invariant must be able to fail.
-- Domains are the **bound**: a spec with `domain Msg = { A, B }` is checked for two
-  messages, and says so.
+```scala
+Bool   Int[0..3]   Text   Markdown   Path   Sha   Time   Command
+Set[T]   List[T]   Option[T]   (A, B)
+Ref[K]            // a link to a record of kind K
+enum Msg { A, B }                       // a finite domain: also the model-checking bound
+record Run { command: Command, exit: Int }
+```
 
-### Example
+Algebraic data types are Scala 3 enums whose cases may fix the type index: GADTs.
 
-```bspec
-spec Counter {
-  intent "A counter that never passes its limit and can be reset by its owner.";
+```scala
+enum Kind { Spec, Interface, Invariant, Task, Report, E2e, Decision, Prose }
 
-  domain Who = { Owner, Guest };
+enum Link[From <: Kind, To <: Kind] {
+  case Serves      extends Link[Task, Spec]
+  case Constrains  extends Link[Invariant, Spec]
+  case Evidence    extends Link[Report, Task]
+  case Supersedes[K <: Kind] extends Link[K, K]
+  case Amends      extends Link[Decision, Decision]
+  case Decides     extends Link[Decision, Spec]
+  case BuildsOn[K <: Kind] extends Link[K, K]
+}
+```
+
+`Link` is why the language needs GADTs: each relation carries the kinds it may join, so
+"a report supersedes a task" does not type-check. The record kinds and `Link` are declared
+in `bx` itself, in `kb/prelude.bx`; the knowledge base's schema is a record in the
+knowledge base.
+
+## Records
+
+Every record has a keyword, a name, typed fields, and at most one `managed` block that
+only the host writes (identity, lifecycle state, signatures).
+
+### spec
+
+A state machine: what exists, what can happen, what each event does, what always holds.
+
+```scala
+module specs.delivery.Outbox
+
+spec Outbox {
+  intent "The local side keeps every accepted message until the remote confirms it was applied."
+
+  enum Msg { A, B }
 
   state {
-    n: Int[0..3] = 0;
-    locked: Bool = false;
+    up: Bool = true
+    unacked: Set[Msg] = Set()
+    inflight: Set[Msg] = Set()
+    acked: Set[Msg] = Set()
   }
 
-  event Bump;
-  event Reset(by: Who);
-  effect Notify;
+  event Submit(m: Msg)
+  event Send(m: Msg)
+  event Applied(m: Msg)
+  event Drop
+  event Reconnect
 
-  on Bump {
-    case count when n < 3 and not locked { n = n + 1; }
-    case full when n == 3 and not locked { locked = true; emit Notify; }
-    case held otherwise { ignore Locked; }
+  on Submit(m) {
+    case accept if !unacked(m) && !acked(m) => { unacked += m }
+    case known otherwise => reject AlreadySubmitted
+  }
+  on Send(m) {
+    case send if up && unacked(m) && !inflight(m) => { inflight += m }
+    case hold otherwise => ignore NotSendable
+  }
+  on Applied(m) {
+    case retire if up && inflight(m) => { unacked -= m; inflight -= m; acked += m }
+    case stale otherwise => ignore NoAck
+  }
+  on Drop {
+    case drop if up => { up = false; inflight = Set() }
+    case down otherwise => ignore AlreadyDown
+  }
+  on Reconnect {
+    case restore if !up => { up = true }
+    case live otherwise => ignore AlreadyUp
   }
 
-  on Reset(by) {
-    case owner when by == Who.Owner { n = 0; locked = false; }
-    case guest otherwise { reject NotOwner; }
-  }
+  invariant OUTBOX_001 "an acknowledged message has left the outbox" =
+    forall m: Msg. acked(m) ==> !unacked(m)
+  invariant OUTBOX_002 "only unacknowledged messages are in flight" =
+    forall m: Msg. inflight(m) ==> unacked(m)
 
-  invariant COUNTER-001 "locked only when full": locked => n == 3;
+  assume OUTBOX_A1 "an Applied frame is sent only by a remote that applied the message"
 
-  scenario "a guest cannot reset" {
-    Bump -> accepted;
-    Reset(Who.Guest) -> rejected NotOwner;
-    expect n == 1;
+  scenario "a dropped link makes the message sendable again" {
+    Submit(Msg.A)  ~> accepted
+    Send(Msg.A)    ~> accepted
+    Drop           ~> accepted
+    Reconnect      ~> accepted
+    Send(Msg.A)    ~> accepted
+    Applied(Msg.A) ~> accepted
+    Submit(Msg.A)  ~> rejected AlreadySubmitted
+    expect acked(Msg.A)
   }
 }
 ```
 
+Meaning. An event instance is handled by exactly one `case`: the one whose guard is true;
+`otherwise` is true exactly when no other guard in the block is. An accepting case applies
+all its updates at once, each reading the state before the step; an unmentioned variable
+keeps its value. `reject` (caller error) and `ignore` (harmless) change nothing. `emit`
+names an effect the implementation must perform. `Set` application is membership. An
+`assume` is taken from the environment, cannot be checked here, and shows on every card.
+
+### spec composition: `include`
+
+A bigger spec is built from parts. This is `#include`, typed.
+
+```scala
+module specs.delivery.Delivery
+
+import specs.delivery.Outbox
+import specs.delivery.Inbox
+
+spec Delivery {
+  intent "Across a link that drops, duplicates and replays, each submitted message is applied once and acknowledged only after it was applied."
+
+  enum Msg { A, B }
+
+  include Outbox as out with { Msg = Msg }
+  include Inbox  as inb with { Msg = Msg }
+
+  event Deliver(m: Msg)
+  event Confirm(m: Msg)
+  event RemoteCrash
+
+  expose out.Submit, out.Send, out.Drop, out.Reconnect
+
+  on Deliver(m) {
+    case cross if out.up && out.inflight(m) => { do inb.Arrive(m) }
+    case lost otherwise => ignore NotInFlight
+  }
+  on Confirm(m) {
+    case cross if out.up && out.inflight(m) && inb.applied(m) => { do out.Applied(m) }
+    case none otherwise => ignore NoAck
+  }
+  on RemoteCrash {
+    case crash if out.up => { do out.Drop }
+    case already otherwise => ignore AlreadyDown
+  }
+
+  invariant DELIVERY_001 "acknowledged implies applied" =
+    forall m: Msg. out.acked(m) ==> inb.applied(m)
+
+  discharge out.OUTBOX_A1 "Confirm is the only way an Applied frame reaches the outbox, and it requires the inbox to have applied the message"
+
+  scenario "a crash before confirmation does not apply twice" {
+    out.Submit(Msg.A) ~> accepted
+    out.Send(Msg.A)   ~> accepted
+    Deliver(Msg.A)    ~> accepted emits inb.Apply(Msg.A), inb.SendApplied(Msg.A)
+    RemoteCrash       ~> accepted
+    Confirm(Msg.A)    ~> ignored NoAck
+    out.Reconnect     ~> accepted
+    out.Send(Msg.A)   ~> accepted
+    Deliver(Msg.A)    ~> accepted emits inb.SendApplied(Msg.A)
+    Confirm(Msg.A)    ~> accepted
+    expect out.acked(Msg.A) && !inb.doubled
+  }
+}
+```
+
+`include P as p with { D = D }` makes `P` a part: its state is `p.field`, its domain is
+bound to the parent's. `do p.Event(args)` fires a part's event inside one parent step and
+must be accepted. `expose` lists the part events the outside may still fire; the rest
+happen only through the parent. `discharge` closes a part's `assume`; one that is not
+discharged carries up. A part must be sound alone, and its invariants must still hold in
+the whole.
+
+### interface
+
+A contract between exactly two specs: a `spec` with a `between` line. It is what each side
+is checked against instead of the other side's code.
+
+```scala
+interface SupervisorLogicLease {
+  between specs.Supervisor, specs.Logic
+  intent "Exactly one logic process may change supervisor state; a replaced one is fenced."
+  // state, events, cases, invariants, scenarios: as in spec
+}
+```
+
+### invariant
+
+```scala
+module invariants.SignedMain
+
+import specs.Provenance
+import specs.Identity
+
+invariant SignedMain {
+  holds      "every commit on main carries a pinned verified signature"
+  check      $ python3 -I scripts/verify-signatures.py "${SIGNED_RANGE:-HEAD}"
+  passes     exit 0
+  cost       "an unsigned commit breaks the chain from artifact to key; releases inherit the gap"
+  constrains Provenance, Identity
+  status     Active
+}
+```
+
+### task
+
+```scala
+module tasks.`2026-11-09-bx-checker-crate`
+
+import specs.SpecLanguage
+import specs.SpecFirstOs
+
+task BxCheckerCrate {
+  title  "bx v1: the checker crate and make check-kb"
+  serves SpecLanguage, SpecFirstOs
+  role   Executor
+  paths  "crates/bboxy450-bx/", "Cargo.toml", "Makefile", "verification/coverage.toml"
+  verify $ cargo nextest run -p bboxy450-bx && make check-kb
+  brief  """
+    Build the parser and soundness checker defined in SpecLanguage.
+    ...Markdown...
+  """
+
+  managed {
+    id        = id"01M71JZAEJPC72B5QT15N0E09Q"
+    status    = Open
+    delegator = seat"01M71GNVXV7ZHXMGM50M5SB2RA"
+  }
+}
+```
+
+A task's legal status changes are not prose: they are `specs.kb.TaskLifecycle`, a `spec`
+in this language (delegate, report, amend, accept, reject, close), and the host refuses a
+transition that spec rejects. The same holds for every kind with a lifecycle.
+
+### report
+
+```scala
+module reports.`2026-11-09-remote-delivery-landed`
+
+import tasks.`2026-11-09-remote-delivery-conformance-and-card`
+import reports.`2026-11-09-remote-delivery-refinement-and-card`
+
+report RemoteDeliveryLanded {
+  task       `2026-11-09-remote-delivery-conformance-and-card`
+  author     seat"01M71H0S7MDHJ0QTCQFPQYXJHW"
+  commits    sha"cd1f193b9...", sha"ae541605f..."
+  verify     $ cargo nextest run -p bboxy450-term-remote ~> exit 0
+  supersedes `2026-11-09-remote-delivery-refinement-and-card`
+  body       """ ...Markdown: mechanisms, what was removed, gaps... """
+}
+```
+
+### e2e
+
+```scala
+e2e WorkspacePythonDeployment {
+  function "Managed workspace/Python MCP installation and retained-session GUI refresh"
+  group    Deployment
+  steps    """ ...Markdown... """
+  expected "Both latest signed apps, ready current-source GUI/logic, retained identities"
+  result   Passed "source, signature, installed hash, readiness and owner checks"
+  coverage Full
+  lastRun  time"2026-11-06T05:11:11Z" by Operator
+  evidence path"~/.local/state/bboxy450-term/python-execute-20261105/deployment/installed-verification.json"
+}
+```
+
+### decision and the other header kinds
+
+```scala
+decision D365MandatoryFormalVerification {
+  status  Decided on date"2026-10-29" by Operator
+  decides specs.TestPolicy
+  amends  decisions.D220SignedMain
+  body    """ ...Markdown: alternatives, choice, reason... """
+}
+```
+
+### Markdown records
+
+Notes, research, skills and comments stay `.md`. A `bx` record links to one with an
+import; its type is `Doc[Prose]`. A Markdown record links to a `bx` record with `[[path]]`
+as today.
+
 ## What "sound" means
 
-A spec is sound when every check below passes. Checks run in order; a later group runs
-only if the earlier ones are clean.
+Checks run in order; a later group runs only when the earlier ones are clean.
 
-| Group | Code | The spec is unsound when |
+| Group | Code | Unsound when |
 |---|---|---|
-| Syntax | B101 | the text does not parse |
-| Names | B201 | a name is used but not declared |
-| | B202 | a name is declared twice in one scope |
-| | B203 | a domain, state variable, event or effect is declared and never used |
-| | B204 | an event has no `on` block, or an `on` block names no declared event |
-| Types | B301 | an expression has the wrong type for its place |
-| | B302 | an initial value is outside its type |
-| | B303 | an event, effect or scenario call has the wrong number or type of arguments |
-| Totality | B401 | two cases of one `on` block can both be true (reports the state and arguments) |
-| | B402 | no case of an `on` block is true for some state and arguments |
-| Steps | B501 | a case assigns one variable twice |
-| | B502 | a `reject` or `ignore` case updates state or emits |
-| | B503 | an accepting case changes nothing and emits nothing |
-| Model | B601 | an invariant is false in a reachable state (reports the shortest trace) |
-| | B602 | an update can leave a variable's range in a reachable state (reports the trace) |
-| | B603 | the reachable state space exceeds the limit |
-| Vacuity | B701 | a case is never taken from any reachable state |
-| | B702 | an invariant is true in every state of the type universe, reachable or not |
-| Scenarios | B801 | a scenario step has a different outcome than written (reports actual) |
-| | B802 | an `expect` is false at that point |
-| Completeness | B901 | `intent` is missing or empty |
-| | B902 | the spec has no invariant |
-| | B903 | the spec has no scenario |
+| Syntax | X101 | the text does not parse |
+| Module | X151 | the module path does not match the file path, or the file holds more than one record |
+| Names | X201 | a name is used but not declared or imported |
+| | X202 | a name is declared twice in one scope |
+| | X203 | a declaration or import is never used |
+| | X204 | an event has no `on` block, or an `on` block names no event |
+| Types | X301 | an expression or field has the wrong type |
+| | X302 | an initial value is outside its type |
+| | X303 | a call has the wrong number or type of arguments |
+| Graph | X351 | an import does not resolve to a record |
+| | X352 | a link points at a record of the wrong kind |
+| | X353 | `include` forms a cycle |
+| | X354 | a required field of the record's kind is missing, or a field is not of that kind |
+| | X355 | a `managed` block was written by anything but the host |
+| Totality | X401 | two cases of one `on` block can both be true |
+| | X402 | no case is true for some state and arguments |
+| Steps | X501 | a case assigns one variable twice |
+| | X502 | a `reject` or `ignore` case updates state or emits |
+| | X503 | an accepting case changes nothing and emits nothing |
+| | X504 | `do` fires a part's event in a state where the part does not accept it |
+| Model | X601 | an invariant is false in a reachable state (shortest trace reported) |
+| | X602 | an update can leave a variable's range |
+| | X603 | the state space exceeds the limit |
+| | X604 | a part's invariant is false in the whole |
+| Vacuity | X701 | a case is never taken from any reachable state |
+| | X702 | an invariant cannot be false in any state of the types |
+| Scenarios | X801 | a step has a different outcome than written |
+| | X802 | an `expect` is false at that point |
+| Completeness | X901 | `intent` is missing or empty |
+| | X902 | a spec has no invariant |
+| | X903 | a spec has no scenario |
+| | X904 | an `assume` of a part is neither discharged nor restated |
 
-Totality (B401, B402) is checked over **every** value of the state types and arguments,
-not only reachable ones: a spec must mean one thing even in states it believes it cannot
-reach. Model, vacuity and scenario checks use the reachable states, explored exhaustively
-by the existing `bboxy450-tlc` checker. There is one model checker in the suite, not two.
+Totality is checked over every value of the types, not only reachable states. Model,
+vacuity and scenario checks use the reachable states, explored by the existing
+`bboxy450-tlc` checker: one model checker in the suite.
 
-A sound verdict also reports what was checked, so a card can say it: domain sizes,
-reachable states, transitions, and the list of `assume` lines.
+Sound does not mean: what the operator wants (cards and scenarios are for that); true
+beyond its bound; implemented by any code (the macro judge is for that); making progress
+(v1 is safety only; `leads to` and fairness come from `protocol!` next).
 
-## What sound does not mean
+## In mux 2.0
 
-- Not that the spec is what the operator wants. Cards and scenarios are for that.
-- Not that it holds beyond its bound.
-- Not that any code implements it. The macro judge is for that.
-- Not that it terminates or makes progress: v1 has safety only. Progress (`leads to`,
-  fairness) is the first planned extension, taken from `protocol!`.
+- **Commit is the gate.** `knowledge_commit` checks every `bx` record it is asked to
+  commit, and every record that imports one of them, and refuses on any diagnostic.
+  Drafts are never refused.
+- **The graph is data.** Every record, field and link is readable through the tool
+  catalogue as typed values, not scraped text ([[philosophy]], open to agents).
+- **Lifecycles are specs.** Task, report and decision state changes are checked against
+  their lifecycle spec by the host.
+- **The viewer renders `bx`.** Prose fields render as Markdown; a spec renders as its card.
 
-## In the knowledge base
+## Migration
 
-- A `bspec` block may appear in any KB document; spec and interface documents are
-  expected to have one once this lands.
-- **Commit is the gate.** `knowledge_commit` checks every `bspec` block in the documents
-  it is asked to commit and refuses the commit when any is unsound, returning the
-  diagnostics. Drafts (`knowledge_write`) are never refused: an agent can save unsound
-  work in progress, it cannot checkpoint it.
-- `make check-specs` runs the same check over every Markdown file under `.bboxy`, for
-  records that reach the repository by Git.
-- Diagnostics use the document's own line numbers.
+One step at a time; the knowledge base stays usable at every step.
 
-## Relation to `protocol!`
-
-`protocol!` is the same idea embedded in Rust, and it stays: it is how Rust code binds to
-a spec. `bspec` is the source of truth an agent reads; a `protocol!` declaration is what
-that agent (by inference) writes for it. The anchor between them is mechanical: the
-`bspec` text of `RemoteDelivery` and the existing `protocol!` declaration must explore to
-the same reachable graph. Later, `protocol!` can read a `bspec` block directly, and one
-of the two syntaxes goes.
+1. `crates/bboxy450-bx`: parser and checker for `spec` (Syntax through Completeness,
+   without Graph). Anchor: `RemoteDelivery` in `bx` reaches the same states as its
+   `protocol!` declaration.
+2. Modules, imports, `Ref`, the prelude, and the remaining record kinds: the Graph group.
+   `make check-kb`.
+3. A converter from today's Markdown records to `bx`, with a round-trip check: every
+   field and link of the original is in the result, and nothing is invented. Run it on a
+   copy first; report every record it cannot convert.
+4. The host reads both forms; new strong-fit records are written in `bx`.
+5. Convert the strong-fit kinds in place, one kind per change, reports first (pure
+   evidence, frozen), tasks last (live).
+6. The host stops reading YAML headers for the converted kinds. Markdown remains for prose.
 
 ## Out of scope for v1
 
-Compilation; references between specs and interface contracts (`uses`); progress and
-fairness; maps and sequences; parametric bounds; durability markers. Each is a named
-extension, added only with a check that holds it.
-
-## Acceptance
-
-- [ ] `crates/bboxy450-spec` exists with no dependency beyond `bboxy450-tlc`.
-- [ ] Every code in the table has a fixture that produces exactly that code.
-- [ ] The `Counter` example above and `RemoteDelivery` are sound.
-- [ ] `RemoteDelivery` in `bspec` and in `protocol!` reach the same number of states and
-      transitions.
-- [ ] `make check-specs` exits 0 on the repository and 1 on a seeded unsound block.
-- [ ] `knowledge_commit` refuses a document with an unsound block and commits a sound one
-      (second task).
+Compilation; progress and fairness; maps and sequences in spec state; parametric bounds;
+user-defined type classes; any evaluation beyond expressions in specs.
