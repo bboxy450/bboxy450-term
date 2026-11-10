@@ -10,7 +10,9 @@ allowed_paths:
 - verification/coverage.toml
 - Cargo.lock
 - .bboxy/reports/
-verify: cargo nextest run -p bboxy450-term-remote -p bboxy450-yarn -p bboxy450-mermaid && make test-formal-contracts
+- scripts/harness-submodule.py
+- scripts/test-harness-submodule.py
+verify: python3 -I scripts/test-harness-submodule.py && python3 -I scripts/harness-submodule.py --check-json-features && ! python3 -I scripts/harness-submodule.py --check-json-features --acp-control && cargo nextest run -p bboxy450-term-remote -p bboxy450-yarn -p bboxy450-mermaid && make test-formal-contracts
 status: claimed
 assignee: seat:01M71H0S7MDHJ0QTCQFPQYXJHW
 delegated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
@@ -18,7 +20,7 @@ swarm: 01M649102FBS60QWNPZS5VAGF9
 id: 01M71GYNQAVZP9XCTR3G4T99PX
 number: 205483610615695
 created: 2026-11-10T01:25:25.181Z
-updated: 2026-11-10T01:33:24.003Z
+updated: 2026-11-10T03:01:08.054Z
 created_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 updated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 authorship:
@@ -26,171 +28,80 @@ authorship:
   kind: seat
   public_key: V5Zkz4W1rnaDG/FsjK3//xQX+WByyxD7/fuIYoV6NbU=
   process_generation: '1'
+verify_revision: 1
 provenance:
-  digest: sha256:fa44c14e02398f75147a90a3c6991e101ef3ea69ff31e5bc88b489db62025932
-  frontmatter_digest: sha256:39ec99c4e04962f2d05677073c95254e98a7a5baa43d530be44e2274f7675ade
+  digest: sha256:9f234343bc406b259e34c96d1c88b0dacadb14737a9403c0300a5144be1c86a2
+  frontmatter_digest: sha256:a7c8880ddc39daffaa57afa70436ab5d1a62842097d50ea886fdceaf08910f74
   signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-  sig: vSpW7Aprm81Xik2OnmlJscCPiPFSYvx7StF/73rAeU8sl+ZMb/jbbD09JNXGWG8Q+W6YhAMfyjLDmjF/dRhyAw==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151270
+  sig: eXdeM7MPd0UBLHgfZMNRrpfiikcD8S1cccCOhXGagMr8eDEm9bOcr1RFv+qHZbIUZW5d2vxcscEcxgBco0amCw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151304
   event:
-    id: 01M71HD9RV7EEX8XQDB5QSRHDS
-    sequence: 151270
-    hash: 40ba492b24e733a1ec9eba1c90e7edfe7f11136fc312095267c79085f293a6c1
+    id: 01M71PDYDT9DJME7MRRWC3FKYP
+    sequence: 151304
+    hash: 781cb0e6b68ec82f28789f41d53d3d444c7fcf0ca0494a7fd2c342faa608b3e1
 ---
 ROLE: EXECUTOR
 
-# Goal
+# Amendment 3, 2026-11-09: unblock the landing (Oracle ruling on your second block)
 
-First milestone of [[spec-first-os]] (read it, and [[philosophy]], first).
-On one component, `RemoteDelivery`, prove two things:
+Your diagnosis is confirmed. I reproduced it: workspace-wide `cargo metadata` reports the
+harness node with `acp, acp-agent, default, embedded` since `a58a0fcfb` pinned a harness
+whose default features include `acp`; `crates/bboxy450-term/Cargo.toml:21` selects only
+`embedded`. The gate reads the wrong set. You are authorized to fix it: the two script
+paths are now in `allowed_paths`.
 
-1. **W1 binding.** The real runtime (`link.rs`: `Outbox`, `Inbox`, `FileJournal`) **refines**
-   the checked model: every step the runtime can take is a step, or a short sequence of
-   steps, the model allows, with the same observable result.
-2. **Level-1 view.** A deterministic generator turns the checked model into a Markdown card
-   with a collapsed Mermaid state diagram and a generated "Does not promise" section.
+**The rule the check holds, unchanged:** the harness as linked into `bboxy450-term` must
+not have the legacy `acp` frontend, and `serde_json/preserve_order` is allowed only with
+`acp-agent`. The check must read the features the consumer selects, not the union over
+the workspace.
 
-Worktree: the managed workspace this seat was launched in. Base `origin/main`.
+## Do it in this order
 
-# Amendment 1, 2026-11-09 (Oracle ruling on your two counterexamples)
+1. In `scripts/harness-submodule.py`, change how `check_json_features` obtains the feature
+   sets: resolve for the consumer package only. Suggested mechanism:
+   `cargo tree -p bboxy450-term --locked -e normal,build --prefix none -f '{p}|{f}'`,
+   reading the feature lists on the `bboxy450-harness` and `serde_json` lines; pass the
+   negative control's extra feature with `--features bboxy450-harness/acp`. If another
+   mechanism is more reliable, use it and say why. Keep `validate_json_features` a pure
+   function over data so its tests stay unit tests.
+2. Keep both rules and the `--acp-control` negative control: with the flag the check must
+   still fail, naming `bboxy450-harness/acp`.
+3. In `scripts/test-harness-submodule.py`, add cases: (a) the workspace default includes
+   `acp` but the consumer selects only `embedded` → passes; (b) the consumer's closure
+   includes `acp` → rejected; (c) `preserve_order` without `acp-agent` in the consumer's
+   closure → rejected. Keep every existing case; adapt its input shape only if step 1
+   changed it.
+4. Commit this as its own signed commit on your branch, separate from `fd38ec4c0`.
+5. Run the verify command (it now starts with the three script checks; the third proves
+   the negative control still fails). Then `make land` for both commits.
+6. Write one new report that supersedes your last one and covers both commits, then
+   `task_report`.
 
-Both counterexamples are real and both are the brief's error, not the runtime's. The first
-brief walked every *model* edge and demanded the runtime take it. That is the wrong
-direction: it asks the model to refine the runtime. Part 1 below is rewritten to walk the
-*runtime's* operations and check each against the model. No change to `link.rs` or
-`delivery.rs` is needed.
+**Stop only if** the consumer's real closure contains `acp`. That would be a true
+violation: report it and do not change the rule.
 
-- **Batch send.** `Outbox::sendable()` puts every unacked, not-in-flight message on the
-  link at once. It maps to the *sequence* `Send(m)` for each returned id, in returned
-  order. The runtime can never send A alone while B is queued; that model edge is simply
-  unused by this runtime. Unused model edges are counted and reported, never a failure.
-- **Causal ack.** `Outbox` is one side of an open system. It trusts an `Applied` frame; the
-  model's `AckArrive` guard (`applied.contains(m)`) is a fact about the *remote*. The walk
-  therefore owns the link: an `Applied` frame for `m` exists only because the real
-  `Inbox::arrive(m)` returned `Fresh` or `Duplicate` on the current connection. The walk
-  never hands `Outbox::on_applied` a frame the `Inbox` did not produce. Record this as the
-  environment assumption "the link does not forge `Applied` frames" in the report, in the
-  `RemoteDelivery` assumptions text in `verification/contracts.toml`, and so on the card.
+The same instructions are also filed as
+[[tasks/2026-11-09-harness-feature-check-consumer-closure]]; that record is a pointer,
+this task is your brief.
 
-Keep your probe's two findings in the report under "What the first walk found".
+# The original work (done at fd38ec4c0, still part of this task's acceptance)
 
-# Latitude
+First milestone of [[spec-first-os]]. On `RemoteDelivery`:
 
-You decide, without asking, and note it in the report:
+1. **W1 binding.** The real runtime (`link.rs`: `Outbox`, `Inbox`, `FileJournal`) refines
+   the checked model: an exhaustive breadth-first walk over a test harness that owns the
+   link (message frames and `Applied` frames), each runtime operation mapped to model
+   events, agreeing on acceptance, `Apply`, projected state and REMOTE-DELIVERY-001..003;
+   coverage counts printed and pinned; a memory-journal broken control that fails on a
+   `Fresh`-versus-`Apply` or `applied` disagreement. Environment assumption recorded:
+   the link does not forge `Applied` frames.
+2. **Level-1 view.** `bbt_yarn::card` turns the checked model into a Markdown card with a
+   state diagram of at most twelve nodes and a generated "Does not promise" section; the
+   card is stored at `crates/bboxy450-term-remote/cards/RemoteDelivery.md` and a test
+   fails when it is stale.
 
-- corrections to the mapping table below when the code says otherwise;
-- test structure, helper names, file layout inside the allowed paths;
-- the card's view predicates and wording;
-- any edit inside `crates/bbt-yarn/` and the tests of the three crates that the work needs.
-
-Stop and message only if, under a mapping you believe is correct, the real runtime
-violates REMOTE-DELIVERY-001, -002 or -003, or the verify command cannot pass without
-weakening a spec, a bound or an existing assumption. A mapping mismatch is not a stop:
-fix the mapping, record the reason, continue.
-
-# Do it in this order
-
-1. Write the harness struct and the operation-to-model mapping (table below).
-2. Write the walk with the real `FileJournal`. Get it green. Record the counts.
-3. Add the memory-journal broken control. Confirm it fails for the stated reason.
-4. Delete the scripted trace test and your probe.
-5. Write `bbt_yarn::card`, with unit tests in `crates/bbt-yarn` on a tiny inline protocol.
-6. Generate and store the `RemoteDelivery` card; add the stale-card test.
-7. Add the Mermaid fixture. Update `contracts.toml` and `coverage.toml`.
-8. Run clippy and the verify command. Commit signed. `make land`. Report.
-
-# What exists (verified at 3da65fd56)
-
-- `crates/bboxy450-term-remote/src/delivery.rs` — `protocol!` spec `RemoteDelivery`, domain
-  `Msg { A, B }`, invariants REMOTE-DELIVERY-001..003, model control `BrokenRemoteDelivery`.
-- `crates/bboxy450-term-remote/src/link.rs` — hand-written runtime of that spec.
-- `crates/bboxy450-term-remote/tests/delivery_witness.rs` — one scripted trace driving both.
-- `M::model()` returns the `bboxy450_tlc::Model` (`check`, edges, report);
-  `M::verification_metadata()` returns `bbt_yarn::verify::ProtocolMetadata` (name, source,
-  domains, claims, cases). `bbt_mermaid::parse` accepts state diagrams.
-- `verification/contracts.toml` entry `RemoteDelivery` holds the recorded `assumptions`.
-
-# Part 1: refinement walk
-
-In `crates/bboxy450-term-remote/tests/`, replace the scripted
-`runtime_and_model_agree_through_duplicate_drop_and_crash_replay` with an exhaustive walk.
-
-**The system under test** is a test-local harness holding the real `Outbox`, the real
-`Inbox` over a real `FileJournal`, and an explicit link: the set of message frames and the
-set of `Applied` frames currently on the connection. The link may duplicate (a delivered
-frame stays deliverable) and drop (both sets are cleared).
-
-**Harness operations** (the walk's alphabet), each mapped to model events in one explicit,
-commented function:
-
-| Harness operation | Runtime calls | Model events |
-|---|---|---|
-| submit(m) | `Outbox::submit` | `Submit(m)` |
-| flush | `Outbox::sendable`; returned ids become message frames | `Send(m)` per returned id, in order; none when empty |
-| deliver(m), only if a message frame for m is on the link | `Inbox::arrive(m)`; an `Applied(m)` frame joins the link | `Arrive(m)` |
-| deliver_applied(m), only if an `Applied(m)` frame is on the link | `Outbox::on_applied(m)` | `AckArrive(m)` |
-| drop | `Outbox::drop_link`; clear both frame sets | `Drop` |
-| reconnect | `Outbox::reconnect` | `Reconnect` |
-| crash | drop the `Inbox`, reopen `FileJournal` on the same path, `Outbox::drop_link`, clear frames | `RemoteCrash` |
-
-**The check.** Breadth-first over harness states from the initial state, for m in {a, b},
-keeping the shortest operation path to each state (replay the path on a fresh harness and
-a fresh temp journal to reach it). Two harness states are the same when their observation
-is the same: per message `is_unacked`, `is_acked`, `is_applied`, frame-set membership for
-both frame kinds, and link up/down. For every reachable harness state and every operation
-enabled there, assert:
-
-- each mapped model event is **accepted** by `M::step` when the runtime acted, and is
-  rejected/ignored by the model exactly when the runtime refused or did nothing
-  (`submit` → `AlreadySubmitted`; `on_applied` → `false`; `flush` → empty);
-- `Arrival::Fresh` exactly when the model emits `Apply`;
-- after the step, the runtime observation equals the model state under the mapping:
-  `is_unacked`/`unacked`, `is_acked`/`acked`, `is_applied`/`applied`, message frames /
-  `inflight`, link up / `link_up`;
-- REMOTE-DELIVERY-001..003 hold in the mapped model state.
-
-**Coverage, reported not gated.** Print: harness states, harness transitions, model states
-reached out of the model's reachable total, model edges exercised out of total, and list
-the unexercised model edges by kind (expected: solo `Send` while another is queued, and
-any `AckArrive`/`Arrive` the link cannot produce). Pin the counts as fixed expected numbers
-in the test, so a change on either side shows up as a diff.
-
-**Broken control on the runtime side.** The same walk against an `Inbox` whose journal
-forgets on crash (a test-local memory journal recreated empty) must fail, and the test
-asserts it fails on a `Fresh`-versus-`Apply` or `applied` disagreement, not on any error.
-A walker generic over the journal constructor is enough; add no production API.
-
-Keep `exported_model_holds_and_volatile_dedup_control_fails` and the resume test.
-
-# Part 2: card generator
-
-Add one module to `crates/bbt-yarn` (no new crate), e.g. `bbt_yarn::card`:
-
-- Input: `ProtocolMetadata`, the `Model` (or its checked report), a *view*: an ordered list
-  of `(name, predicate over model state)` where the first matching name is the state's
-  node, and free-text `intent` and `assumptions` strings supplied by the caller.
-- Output: one deterministic Markdown `String`:
-  - title and the intent paragraph;
-  - **Invariants**: each claim id and predicate name;
-  - **States**: a Mermaid `stateDiagram-v2` of the reachable graph quotiented by the view;
-    edges labelled by event name, duplicates merged, self-loops omitted. More than twelve
-    nodes, or a reachable state no predicate names, is an error, not a truncated diagram;
-  - **Does not promise**, always present: each domain with its size ("checked for 2
-    messages"), reachable state count, that no liveness or fairness is claimed when none is
-    declared, every `reject`/`ignore` case label, any waivers, and the `assumptions` text;
-  - a footer with a hash of `metadata.source` so a changed spec changes the card.
-- No model writes the diagram by hand: nodes and edges come only from the explored graph.
-
-In `bboxy450-term-remote`:
-
-- A test builds the `RemoteDelivery` card with a per-message view (suggested names for
-  message A: new, queued, in flight, applied, acknowledged; refine as the graph requires)
-  and takes `assumptions` from the `RemoteDelivery` entry in `verification/contracts.toml`.
-- The card is stored at `crates/bboxy450-term-remote/cards/RemoteDelivery.md`. The test
-  fails when the stored card differs from the generated one, and rewrites it only when
-  `BBOXY_UPDATE_CARDS=1` is set.
-- The card's Mermaid block parses and lays out with `bbt_mermaid`; add it as a fixture in
-  `crates/bbt-mermaid/tests/fixtures` the way that crate's tests require.
+The full definition of both parts is this record's previous revision (digest
+`6f79710cc72672f957573e365e70397adfd19a54ecaa8ba70139982727516104`, in Git at `2d4731440`).
 
 # Acceptance
 
@@ -198,26 +109,26 @@ In `bboxy450-term-remote`:
       the coverage counts are printed and pinned.
 - [ ] Unexercised model edges are listed by kind in the report.
 - [ ] The runtime-side broken control fails for the stated reason only.
-- [ ] The scripted single-trace test and the probe are removed; say so in the report.
+- [ ] The scripted single-trace test and the probe are removed.
 - [ ] `cards/RemoteDelivery.md` is generated, at most twelve nodes, with "Does not promise"
       including the no-forged-`Applied` assumption.
 - [ ] Editing a guard in a scratch copy of the spec makes the card test fail (show the run).
 - [ ] The Mermaid block has a `bbt-mermaid` fixture and passes that crate's tests.
-- [ ] `verification/contracts.toml` / `coverage.toml` text for `RemoteDelivery` describes
-      the walk and the new assumption. No existing assumption is weakened or removed.
+- [ ] `verification/contracts.toml` / `coverage.toml` describe the walk and the new
+      assumption. No existing assumption is weakened or removed.
 - [ ] `cargo clippy -p bboxy450-term-remote -p bboxy450-yarn --all-targets -- -D warnings` exits 0.
-- [ ] The verify command exits 0.
+- [ ] The harness feature check passes on the consumer's closure and its negative control
+      still fails; no rule removed.
+- [ ] The verify command exits 0 and `make land` completes.
 
 # Out of scope
 
 Changing `protocol!` syntax; `link.rs`/`delivery.rs` behaviour; GUI or document-viewer
-changes; level 0 and level 2 views; any other component.
+changes; level 0 and level 2 views; any other component; any other script.
 
 # Report
 
-Follow `AGENTS.md`: stay silent while working. When done: signed commit(s), land with
-`make land`, write a new report that supersedes your first one, then `task_report`.
-Include: files and mechanisms, **what you removed**, every command with its real exit
-status, the coverage counts, every mapping correction you made and why, abstraction gaps
-between model and runtime, and a short section "What generalizes": which parts the next
-component can reuse unchanged.
+Follow `AGENTS.md`: stay silent while working. Include: files and mechanisms, what you
+removed, every command with its real exit status, the coverage counts, the before and
+after output of the harness feature check, mapping corrections, abstraction gaps, and
+"What generalizes".
