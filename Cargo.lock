@@ -337,6 +337,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "bboxy450-den"
+version = "0.1.1"
+dependencies = [
+ "bboxy450-term-remote",
+ "bboxy450-tlc",
+]
+
+[[package]]
 name = "bboxy450-desktop-notifications"
 version = "0.1.1"
 dependencies = [

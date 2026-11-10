@@ -295,3 +295,10 @@ scope = "Native retained canvas panes reuse split leaf keys without process auth
 bounds = "Ten semantic elements in three MCP batches, GUI-only restart preserving independent backend owners, five tags limited to three chips, extreme camera factors 1e9 and 1e-9, native pinch/pan/touch/drag and normalized F fit. Frozen v5 seat-only window bytes roundtrip unchanged without an empty canvases key; the legacy strict decoder rejects canvas-bearing tabs, so an older GUI refuses attachment through its existing decode-error path. The private process witness closes the canvas through ctl, checks the persisted old-format bytes, retained real seat and unchanged backend owners. Full legacy-binary startup is not run."
 broken_control = "BrokenCanvasRefreshGeneration removes only the latest-generation completion fence; BrokenCanvasConvergence removes durable batch dedupe. Renderer draw-list validation and private source/layout/digest assertions are implementation checks."
 checks = ["cargo nextest run -p bboxy450-term -E 'test(~canvas)'", "cargo nextest run -p bboxy450-ui -p bboxy450-term-proto", "make test-formal"]
+
+[[crate]]
+name = "bboxy450-den"
+status = "implementation-tests"
+models = []
+scope = "Den parsing, naming, typing, reporting and CLI are implementation-tested. Reachable-state safety checks lower into bboxy450-tlc using the existing finite expression primitive. Sound fixtures are differentially explored by an independent interpreter; diagnostic fixtures are broken controls. No arbitrary Rust or complete TLA+ semantics are claimed."
+sources = ["crates/bboxy450-den/src/lib.rs"]

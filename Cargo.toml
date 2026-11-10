@@ -20,6 +20,7 @@ members = [
   "crates/bbt-plugin-fixture",
   "plugins/gitkb",
   "crates/bboxy450-tlc",
+  "crates/bboxy450-den",
   "crates/bbt-yarn-macros",
   "crates/bbt-yarn",
   "crates/bbt-core",
