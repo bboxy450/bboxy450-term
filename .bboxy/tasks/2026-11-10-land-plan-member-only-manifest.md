@@ -11,30 +11,51 @@ allowed_paths:
 - .bboxy/reports/
 verify: python3 -I scripts/test-landing.py && make test-formal-infrastructure
 id: 01M731QJQJ3A2RGJSGACQDTDPD
-status: claimed
+status: reported
 delegated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-10T15:38:40.965Z
+updated: 2026-11-10T15:52:02.856Z
 created: 2026-11-10T15:37:53.007Z
 number: 1794292861627449
 created_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-updated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
+updated_by: seat:01M731RY7V5R0Y66H8G05M8EEJ
 authorship:
-  signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
+  signer: seat:01M731RY7V5R0Y66H8G05M8EEJ
   kind: seat
-  public_key: V5Zkz4W1rnaDG/FsjK3//xQX+WByyxD7/fuIYoV6NbU=
+  public_key: ym9yQeNXPWyMX6qW4la2g0gA5teyC7I/mAj2fL59w2w=
   process_generation: '1'
 assignee: seat:01M731RY7V5R0Y66H8G05M8EEJ
+verify_result:
+  command: python3 -I scripts/test-landing.py && make test-formal-infrastructure
+  exit_code: 0
+  evidence:
+  - criterion: Case (a) selects only the new crate; cases (b)–(h) select every package
+    reference: scripts/test-landing.py:417; scripts/test-landing.py:426; scripts/test-landing.py:466; 244 fixtures/0 failures
+  - criterion: Pure predicate tests cover every rule clause and parse-failure broadening
+    reference: scripts/test-landing.py:303; scripts/test-landing.py:382
+  - criterion: Existing landing tests pass unchanged
+    reference: 'target/member-only-final-verify.log: 244 fixture tests, failures=0; 33 formal infrastructure tests OK; command exit 0'
+  - criterion: LAND.md states the rule
+    reference: LAND.md:12
+  - criterion: Signed change landed; own plan excludes crate tests
+    reference: 'target/member-only-land.log: affected none, empty lean plan, LANDED 3d3a708b5d6b7ed9ce10df3ad1ed047502526715; exit 0'
+report:
+  summary: 'Landed signed source 3d3a708b5d6b7ed9ce10df3ad1ed047502526715 via the exact scrubbed make land (exit 0; affected none; empty lean plan; clean worktree). Added one pure member-only TOML proof, 18 tests and LAND.md documentation; removed unconditional whole-workspace expansion only for proven additive member pairs, preserving shared inputs. Cases (b)–(h) stay broad under Amendment 1, including a correctly regenerated consumer lock. Both other manifest checks and contracts remain unchanged for the documented reasons. Required verification exited 0: 244 landing fixtures, zero failures, and 33 formal infrastructure tests, OK. Full command/exits, file:line acceptance evidence, log hashes, removals and unchecked coverage are in the committed report (private knowledge checkpoint bd73396cb3a47af6d3a40f2c9e468f3f46e5bf1a).'
+  commit: 3d3a708b5d6b7ed9ce10df3ad1ed047502526715
+  reported_by: seat:01M731RY7V5R0Y66H8G05M8EEJ
+  op_id: 01M732HFSE7XX17PF0WPZB8GCN
+  verify_revision: 0
+  report: '[[reports/2026-11-10-land-plan-member-only-manifest.md]]'
 provenance:
-  digest: sha256:216a845708b4c263893c2cf067f80bbf27b49c823b77d2872efa7da311295ac9
-  frontmatter_digest: sha256:460a79ddb431298eb4a89c8947f575d71ef087918cef613e0edfe16f034e901e
-  signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-  sig: 9Jl/ejAjMQWawtUja47qN/P9z20k2mvh5NL+o50sx/hrkBun54fbhGlSkvWGEO/Uebwkc0JUInDoX3j7Fj+oBg==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151485
+  digest: sha256:13879bce4510cf9024925573a86b8ea495d6a4296beef08354200dcab8b9c56e
+  frontmatter_digest: sha256:b44d2de26aa34225433160f026d53798b8d2dc50b2b95182344e6015712ddba7
+  signer: seat:01M731RY7V5R0Y66H8G05M8EEJ
+  sig: Ua3l8Notv9zf24W27jfxhjIhlHkHTVsFJN0aoprl2ZSeN1iBRlheW77YzlNFzdHGvrvC/Dsyoie46iR4ffiAAw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151504
   event:
-    id: 01M731S22302PHZY2VY92YNXNR
-    sequence: 151485
-    hash: 9b7a1f12900b4a6882878b3d0c77b4e1bc264797f2e890b664cd8768310f45fb
+    id: 01M732HH4MJMPFFS7E52GX7NRB
+    sequence: 151504
+    hash: 0eaed0ca548a2dd48c62110d3785d98015c35a77c77d3a7b8b1825411e993a0e
 ---
 ROLE: EXECUTOR
 
@@ -162,3 +183,42 @@ Any other gate behaviour; quarantine; the formal stage; `make land-full`; any Ru
 what each of the three manifest checks in `landing.py` decides and what you changed in
 each, every command with its exit status, the plan `make land` printed for this change,
 and what you did not check.
+
+
+## Report from seat:01M731RY7V5R0Y66H8G05M8EEJ
+
+Landed signed source 3d3a708b5d6b7ed9ce10df3ad1ed047502526715 via the exact scrubbed make land (exit 0; affected none; empty lean plan; clean worktree). Added one pure member-only TOML proof, 18 tests and LAND.md documentation; removed unconditional whole-workspace expansion only for proven additive member pairs, preserving shared inputs. Cases (b)–(h) stay broad under Amendment 1, including a correctly regenerated consumer lock. Both other manifest checks and contracts remain unchanged for the documented reasons. Required verification exited 0: 244 landing fixtures, zero failures, and 33 formal infrastructure tests, OK. Full command/exits, file:line acceptance evidence, log hashes, removals and unchecked coverage are in the committed report (private knowledge checkpoint bd73396cb3a47af6d3a40f2c9e468f3f46e5bf1a).
+
+```json
+{
+  "op_id": "01M732HFSE7XX17PF0WPZB8GCN",
+  "commit": "3d3a708b5d6b7ed9ce10df3ad1ed047502526715",
+  "report": "[[reports/2026-11-10-land-plan-member-only-manifest.md]]",
+  "verify_result": {
+    "command": "python3 -I scripts/test-landing.py && make test-formal-infrastructure",
+    "exit_code": 0,
+    "evidence": [
+      {
+        "criterion": "Case (a) selects only the new crate; cases (b)–(h) select every package",
+        "reference": "scripts/test-landing.py:417; scripts/test-landing.py:426; scripts/test-landing.py:466; 244 fixtures/0 failures"
+      },
+      {
+        "criterion": "Pure predicate tests cover every rule clause and parse-failure broadening",
+        "reference": "scripts/test-landing.py:303; scripts/test-landing.py:382"
+      },
+      {
+        "criterion": "Existing landing tests pass unchanged",
+        "reference": "target/member-only-final-verify.log: 244 fixture tests, failures=0; 33 formal infrastructure tests OK; command exit 0"
+      },
+      {
+        "criterion": "LAND.md states the rule",
+        "reference": "LAND.md:12"
+      },
+      {
+        "criterion": "Signed change landed; own plan excludes crate tests",
+        "reference": "target/member-only-land.log: affected none, empty lean plan, LANDED 3d3a708b5d6b7ed9ce10df3ad1ed047502526715; exit 0"
+      }
+    ]
+  }
+}
+```
