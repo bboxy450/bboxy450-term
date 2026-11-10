@@ -703,6 +703,48 @@ def lean_check(package, selection):
     return code if code >= 0 else 128 - code
 
 
+def member_only_manifest_delta(old_toml, new_toml, old_lock, new_lock, packages):
+    """Prove an additive member edit; packages maps exact member paths to names.
+
+    None pairs mean unchanged files. Missing endpoints, unknown member paths
+    (including unexpanded globs), or malformed documents cannot narrow a gate.
+    """
+    if old_toml is None or new_toml is None:
+        return False  # Lock-only changes stay broad, even formatting-only edits.
+    try:
+        old, new = tomllib.loads(old_toml), tomllib.loads(new_toml)
+        old_members = old["workspace"].pop("members")
+        new_members = new["workspace"].pop("members")
+        if (not isinstance(old_members, list) or not isinstance(new_members, list)
+                or not all(isinstance(m, str) for m in old_members + new_members)
+                or len(set(old_members)) != len(old_members)
+                or len(set(new_members)) != len(new_members)
+                or [m for m in new_members if m in old_members] != old_members
+                or old != new):
+            return False
+        added = set(new_members) - set(old_members)
+        if not added or not added <= packages.keys():
+            return False
+        added_names = {packages[member] for member in added}
+        if old_lock is None and new_lock is None:
+            return True
+        if old_lock is None or new_lock is None:
+            return False
+        old, new = tomllib.loads(old_lock), tomllib.loads(new_lock)
+        old_packages, new_packages = old.pop("package", []), new.pop("package", [])
+        if (old != new or not isinstance(old_packages, list) or not isinstance(new_packages, list)
+                or not all(isinstance(p, dict) for p in old_packages + new_packages)):
+            return False
+        # Remove equal tables one at a time: duplicates cannot hide a removal.
+        for package in old_packages:
+            if package not in new_packages:
+                return False
+            new_packages.remove(package)
+        return all("source" not in p and p.get("name") in added_names for p in new_packages)
+    except (tomllib.TOMLDecodeError, KeyError, TypeError, AttributeError):
+        return False
+
+
 def affected(range_spec, *, root=None):
     root = Path(root or repository()).resolve()
     paths = changed_paths(range_spec, cwd=root)
@@ -718,6 +760,27 @@ def affected(range_spec, *, root=None):
     # dependencies. Their fixture suite and the fast invariants check them.
     tooling = [p for p in paths if (p.startswith("scripts/") and not p.startswith("scripts/e2e/"))
                or p.startswith("verification/") or p == "Makefile"]
+    shared = sorted(set(broad) | set(tooling))
+    manifests = ("Cargo.toml", "Cargo.lock")
+    if "Cargo.toml" in paths and "..." not in range_spec:
+        old_revision, separator, new_revision = range_spec.partition("..")
+        if separator and not new_revision:
+            new_revision = "HEAD"
+        try:
+            texts = []
+            for path in manifests:
+                if path not in paths:
+                    texts.extend((None, None))
+                    continue
+                texts.append(git("show", f"{old_revision or 'HEAD'}:{path}", cwd=root))
+                texts.append(git("show", f"{new_revision}:{path}", cwd=root) if new_revision
+                             else (root / path).read_text())
+            members = {directory.relative_to(root).as_posix(): name
+                       for name, directory in directories.items() if directory.is_relative_to(root)}
+            if member_only_manifest_delta(*texts, members):
+                broad = [p for p in broad if p not in manifests]
+        except (Refusal, OSError, UnicodeError):
+            pass  # A missing/unreadable endpoint is not a positive proof.
     touched = set()
     for path in paths:
         absolute = root / path
@@ -742,7 +805,6 @@ def affected(range_spec, *, root=None):
     parity = any(p.startswith(("lab/", "design/")) for p in paths) or bool(touched & ui)
     lab_pages = affected_lab_pages(root, paths)
     parity |= bool(lab_pages)
-    shared = sorted(set(broad) | set(tooling))
     return {"tier": tier, "touched": sorted(touched), "affected": sorted(result),
             "parity": "yes" if parity else "no", "paths": paths, "shared": shared,
             "lab_pages": lab_pages, "native_inputs": sorted(native)}

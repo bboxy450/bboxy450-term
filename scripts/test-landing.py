@@ -300,6 +300,93 @@ print("test result: ok. 1 passed; 0 failed; 0 ignored")
                               env=self.environment, capture_output=True, text=True, timeout=30)
 
 
+class MemberOnlyManifestTests(unittest.TestCase):
+    old_toml = '[workspace]\nmembers=["crates/a","crates/c"]\n[workspace.dependencies]\nshared="1"\n'
+    new_toml = old_toml.replace('"crates/c"', '"crates/leaf","crates/c"')
+    old_lock = ('version=4\n[[package]]\nname="a"\nversion="0.1.0"\ndependencies=["registry"]\n'
+                '[[package]]\nname="registry"\nversion="1.0.0"\nsource="registry+fixture"\nchecksum="abc"\n')
+    leaf = '[[package]]\nname="new-package"\nversion="0.1.0"\n'
+    new_lock = old_lock + leaf
+    packages = {"crates/a": "a", "crates/c": "c", "crates/leaf": "new-package"}
+
+    def delta(self, **changes):
+        values = dict(old_toml=self.old_toml, new_toml=self.new_toml,
+                      old_lock=self.old_lock, new_lock=self.new_lock, packages=self.packages)
+        values.update(changes)
+        return landing.member_only_manifest_delta(**values)
+
+    def test_appended_inserted_and_multiple_members_use_package_names(self):
+        self.assertTrue(self.delta())
+        self.assertTrue(self.delta(new_toml=self.old_toml.replace('"crates/c"]', '"crates/c","crates/leaf"]')))
+        self.assertTrue(self.delta(new_toml=self.new_toml.replace('"crates/leaf"', '"crates/second","crates/leaf"'),
+                                   new_lock=self.new_lock + self.leaf.replace('new-package', 'second'),
+                                   packages={**self.packages, "crates/second": "second"}))
+
+    def test_members_cannot_be_removed_changed_reordered_or_duplicated(self):
+        for members in ('["crates/leaf","crates/c"]', '["crates/a","crates/leaf"]',
+                        '["crates/c","crates/a","crates/leaf"]',
+                        '["crates/a","crates/leaf","crates/c","crates/leaf"]',
+                        '["crates/a","crates/c"]', '"crates/leaf"', '[1]'):
+            with self.subTest(members=members):
+                self.assertFalse(self.delta(new_toml='[workspace]\nmembers=' + members + '\n[workspace.dependencies]\nshared="1"\n'))
+
+    def test_all_other_manifest_fields_must_be_equal(self):
+        for text in (self.new_toml.replace('shared="1"', 'shared="2"'),
+                     self.new_toml + 'other="1"\n',
+                     self.new_toml + '[workspace.package]\nversion="2"\n',
+                     self.new_toml + '[profile.dev]\nopt-level=1\n',
+                     self.new_toml + '[features]\nextra=[]\n'):
+            with self.subTest(text=text):
+                self.assertFalse(self.delta(new_toml=text))
+
+    def test_every_existing_lock_table_and_its_dependency_order_are_preserved(self):
+        self.assertTrue(self.delta(new_lock='version=4\n' + self.leaf + self.old_lock.removeprefix('version=4\n')))
+        for text in (self.new_lock.replace('version="0.1.0"', 'version="0.2.0"', 1),
+                     self.new_lock.replace('name="a"', 'name="renamed"'),
+                     self.new_lock.replace('source="registry+fixture"', 'source="registry+other"'),
+                     self.new_lock.replace('checksum="abc"', 'checksum="def"'),
+                     self.new_lock.replace('["registry"]', '["registry","new-package"]')):
+            with self.subTest(text=text):
+                self.assertFalse(self.delta(new_lock=text))
+        removed = self.new_lock.replace('[[package]]\nname="a"\nversion="0.1.0"\ndependencies=["registry"]\n', '')
+        landing.tomllib.loads(removed)
+        self.assertFalse(self.delta(new_lock=removed))
+        self.assertFalse(self.delta(old_lock=self.old_lock
+                                   + '[[package]]\nname="a"\nversion="0.1.0"\ndependencies=["registry"]\n'))
+        self.assertFalse(self.delta(old_lock=self.old_lock.replace('["registry"]', '["registry","other"]'),
+                                   new_lock=self.new_lock.replace('["registry"]', '["other","registry"]')))
+
+    def test_extra_lock_tables_are_only_added_path_members(self):
+        for extra in (self.leaf + 'source=""\n', self.leaf.replace('new-package', 'unrelated'),
+                      self.leaf + 'source="registry+fixture"\nchecksum="abc"\n'):
+            with self.subTest(extra=extra):
+                self.assertFalse(self.delta(new_lock=self.new_lock + extra))
+        self.assertFalse(self.delta(packages={}))
+        self.assertFalse(self.delta(new_toml=self.new_toml.replace('crates/leaf', 'crates/*')))
+
+    def test_lock_metadata_and_table_shape_must_match(self):
+        for text in (self.new_lock.replace('version=4', 'version=3'),
+                     self.new_lock + '[metadata]\nextra=true\n', 'version=4\npackage=[1]\n'):
+            with self.subTest(text=text):
+                self.assertFalse(self.delta(new_lock=text))
+
+    def test_unchanged_lock_is_allowed_but_lock_only_or_missing_endpoint_is_broad(self):
+        self.assertTrue(self.delta(old_lock=None, new_lock=None))
+        self.assertTrue(self.delta(new_lock=self.old_lock))
+        for changes in (dict(old_toml=None, new_toml=None), dict(old_toml=None),
+                        dict(new_toml=None), dict(old_lock=None), dict(new_lock=None),
+                        dict(old_toml=None, new_toml=None, new_lock=self.old_lock + '# comment\n')):
+            with self.subTest(changes=changes):
+                self.assertFalse(self.delta(**changes))
+
+    def test_parse_failures_and_missing_members_are_broad(self):
+        for field in ('old_toml', 'new_toml', 'old_lock', 'new_lock'):
+            with self.subTest(field=field):
+                self.assertFalse(self.delta(**{field: '['}))
+        self.assertFalse(self.delta(old_toml='[workspace]\n'))
+        self.assertFalse(self.delta(new_toml='workspace=1\n'))
+
+
 class AffectedTests(unittest.TestCase):
     def setUp(self):
         self.repo = Repository()
@@ -309,6 +396,104 @@ class AffectedTests(unittest.TestCase):
         self.repo.write(path, "// fixture change\n")
         self.repo.commit("Fixture change")
         return landing.affected(self.repo.base + "..HEAD", root=self.repo.root)
+
+    def add_leaf(self):
+        manifest = self.repo.root / "Cargo.toml"
+        manifest.write_text(manifest.read_text().replace('"crates/c"', '"crates/leaf","crates/c"'))
+        self.repo.write("crates/leaf/Cargo.toml", '[package]\nname="new-package"\nversion="0.1.0"\nedition="2024"\n')
+        self.repo.write("crates/leaf/src/lib.rs", "pub fn leaf() {}\n")
+        run("cargo", "generate-lockfile", "--offline", cwd=self.repo.root)
+
+    def manifest_result(self):
+        self.repo.commit("Fixture manifest delta")
+        return landing.affected(self.repo.base + "..HEAD", root=self.repo.root)
+
+    def assert_broad_manifest(self):
+        result = self.manifest_result()
+        self.assertEqual(result["touched"], sorted(landing.metadata(self.repo.root)))
+        self.assertEqual(result["affected"], result["touched"])
+        self.assertEqual(result["tier"], "wide")
+
+    def test_member_only_leaf_addition_tests_exactly_the_new_crate(self):
+        self.add_leaf()
+        result = self.manifest_result()
+        self.assertEqual(result["touched"], ["new-package"])
+        self.assertEqual(result["affected"], ["new-package"])
+        self.assertNotEqual(result["tier"], "wide")
+        self.assertEqual(result["shared"], ["Cargo.lock", "Cargo.toml"])
+        self.assertEqual(landing.lean(self.repo.base + "..HEAD", root=self.repo.root), ['test new-package --lib'])
+
+    def test_member_addition_with_root_dependency_version_change_is_broad(self):
+        manifest = self.repo.root / "Cargo.toml"
+        manifest.write_text(manifest.read_text() + '[workspace.dependencies]\nunused="1"\n')
+        self.repo.base = self.repo.commit("Fixture shared dependency")
+        self.add_leaf()
+        manifest.write_text(manifest.read_text().replace('unused="1"', 'unused="2"'))
+        self.assert_broad_manifest()
+
+    def test_member_addition_with_registry_lock_addition_is_broad(self):
+        self.add_leaf()
+        lock = self.repo.root / "Cargo.lock"
+        lock.write_text(lock.read_text() + '[[package]]\nname="third-party"\nversion="1.0.0"\nsource="registry+fixture"\nchecksum="abc"\n')
+        self.assert_broad_manifest()
+
+    def test_member_addition_with_changed_existing_lock_dependencies_is_broad(self):
+        self.add_leaf()
+        lock = self.repo.root / "Cargo.lock"
+        lock.write_text(lock.read_text().replace('name = "a"', 'dependencies = ["new-package"]\nname = "a"'))
+        self.assert_broad_manifest()
+
+    def test_member_removal_is_broad(self):
+        manifest = self.repo.root / "Cargo.toml"
+        manifest.write_text(manifest.read_text().replace(',"crates/c"', ''))
+        run("cargo", "generate-lockfile", "--offline", cwd=self.repo.root)
+        self.assert_broad_manifest()
+
+    def test_member_addition_never_narrows_toolchain_or_cargo_config_changes(self):
+        self.add_leaf()
+        toolchain = run("rustup", "show", "active-toolchain", cwd=self.repo.root).split()[0]
+        self.repo.write("rust-toolchain.toml", f'[toolchain]\nchannel="{toolchain}"\n')
+        self.assert_broad_manifest()
+        (self.repo.root / "rust-toolchain.toml").unlink()
+        self.repo.write(".cargo/config.toml", '[build]\njobs=2\n')
+        self.assert_broad_manifest()
+
+    def test_lock_only_change_is_broad(self):
+        lock = self.repo.root / "Cargo.lock"
+        lock.write_text(lock.read_text() + '# lock-only edit\n')
+        self.assert_broad_manifest()
+
+    def test_member_addition_with_existing_consumer_and_regenerated_lock_is_broad(self):
+        self.add_leaf()
+        manifest = self.repo.root / "crates/b/Cargo.toml"
+        manifest.write_text(manifest.read_text() + 'new-package={path="../leaf"}\n')
+        run("cargo", "generate-lockfile", "--offline", cwd=self.repo.root)
+        lock = landing.tomllib.loads((self.repo.root / "Cargo.lock").read_text())
+        self.assertIn('new-package', next(p for p in lock['package'] if p['name'] == 'b')['dependencies'])
+        self.assert_broad_manifest()
+
+    def test_missing_old_lock_is_broad(self):
+        (self.repo.root / "Cargo.lock").unlink()
+        self.repo.base = self.repo.commit("Fixture missing old lock")
+        self.add_leaf()
+        self.assert_broad_manifest()
+
+    def test_historical_ranges_read_their_own_new_manifest_endpoint(self):
+        self.add_leaf()
+        member_revision = self.repo.commit("Fixture historical member-only endpoint")
+        manifest = self.repo.root / "Cargo.toml"
+        member_text = manifest.read_text()
+        manifest.write_text(member_text + '[profile.dev]\nopt-level=1\n')
+        broad_revision = self.repo.commit("Fixture later broad endpoint")
+        result = landing.affected(self.repo.base + ".." + member_revision, root=self.repo.root)
+        self.assertEqual(result["touched"], ["new-package"])
+        manifest.write_text(member_text)
+        result = landing.affected(self.repo.base + ".." + broad_revision, root=self.repo.root)
+        self.assertEqual(result["touched"], ["a", "b", "c", "new-package"])
+        result = landing.affected(self.repo.base + "..", root=self.repo.root)
+        self.assertEqual(result["touched"], ["a", "b", "c", "new-package"])
+        result = landing.affected(self.repo.base, root=self.repo.root)
+        self.assertEqual(result["touched"], ["new-package"])
 
     def test_reverse_closure_includes_renamed_and_transitive_dependencies(self):
         result = self.changed("crates/a/src/lib.rs")

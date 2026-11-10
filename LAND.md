@@ -11,8 +11,13 @@ It runs `scripts/land-fast.sh` (`make push` is the same command):
 1. Rebase on `origin/main` (exit 78 on conflict); refuse unsigned commits and
    initialize the newly pinned harness before computing or compiling the plan.
 2. Compute the plan with `scripts/landing.py lean`: the crates whose files changed
-   ("touched") and every crate that depends on them. `Cargo.toml`, `Cargo.lock`, `.cargo/`
-   and `rust-toolchain.toml` touch every crate; docs/lab-only diffs touch none.
+   ("touched") and every crate that depends on them. Root manifests normally touch every
+   crate; docs/lab-only diffs touch none. A manifest pair proven to only add workspace
+   members selects those members through their own files and the existing dependency
+   closure: all other parsed manifest fields and existing lock package tables must stay
+   equal, and extra lock tables must be source-free packages named by the added members.
+   Both manifests remain shared validation inputs. Any other root manifest/lock change,
+   missing or unparseable endpoint, `.cargo/` or `rust-toolchain.toml` change stays broad.
 3. **Lean gate (default):** `cargo clippy -D warnings` over the touched crates; for each
    touched crate, nextest over its lib and bin tests (when its source changed) plus each
    changed integration-test file; `cargo check` of the dependents. The mux and app each
