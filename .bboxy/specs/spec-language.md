@@ -687,6 +687,33 @@ they reach everything else ([[philosophy]]):
 - It takes an `op_id` like every mutating tool; a retry with the same arguments returns
   the first result.
 
+### In a Markdown-only provider: GitKB
+
+When a swarm's knowledge provider is GitKB (`crates/bboxy450-term-data_source-gitkb`), the
+store holds Markdown and nothing else. Den still works there, because the host lowers at
+the provider boundary:
+
+- **Write.** `knowledge_write` of a Den record checks it, lowers it, and hands GitKB the
+  Markdown. Drafts of unsound records are stored as their Den source in a fenced block
+  under a header that says `den_state: draft-unsound`, so work in progress is never lost.
+- **Commit.** `knowledge_commit` refuses an unsound record exactly as with the built-in
+  provider, then uses GitKB's native commit on the lowered Markdown.
+- **Read.** Every lowered record carries its full Den source in a fenced `den` block at
+  the end of the body, plus `generated_from:` with the source hash. `knowledge_fetch`
+  returns the Den source recovered from that block and verifies the hash; a mismatch
+  means the Markdown was edited outside the host and is reported as `den_state: forked`,
+  never silently accepted or overwritten.
+- **Links.** Typed Den links become GitKB's native relationships (`references`,
+  `depends_on`, `blocks`, `parent`) where one fits, and `links:` header entries otherwise,
+  so `git-kb` on the other machine sees the graph.
+- **Capability, not special case.** The provider declares whether it stores Den natively.
+  The host lowers for any provider that does not; GitKB is the first, not a hard-coded
+  exception.
+
+So a project that only has GitKB gets readable Markdown records, and the Den source
+travels inside them. Nothing in that project needs to understand Den to store, show or
+sync the records.
+
 Lowering is also the second half of the migration's round-trip check: converting a
 Markdown record to Den and lowering it again must give back the original header keys,
 links and body, up to a stated normalization.
@@ -702,13 +729,15 @@ One step at a time; the knowledge base stays usable at every step.
    `make check-kb`.
 3. Lowering: `render --markdown` for every record kind, so Markdown-only providers such
    as GitKB keep working.
-4. A converter from today's Markdown records to Den, with a round-trip check against the
+4. The MCP tools `den_check` and `den_render`, and lowering at the provider boundary for
+   GitKB.
+5. A converter from today's Markdown records to Den, with a round-trip check against the
    lowering: every field and link of the original comes back, and nothing is invented. Run it on a
    copy first; report every record it cannot convert.
-5. The host reads both forms; new strong-fit records are written in Den.
-6. Convert the strong-fit kinds in place, one kind per change, reports first (pure
+6. The host reads both forms; new strong-fit records are written in Den.
+7. Convert the strong-fit kinds in place, one kind per change, reports first (pure
    evidence, frozen), tasks last (live).
-7. The host stops reading YAML headers for the converted kinds. Markdown remains for prose.
+8. The host stops reading YAML headers for the converted kinds. Markdown remains for prose.
 
 ## Out of scope for v1
 
