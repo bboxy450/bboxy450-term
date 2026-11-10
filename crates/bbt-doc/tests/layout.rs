@@ -149,6 +149,19 @@ fn table_columns_wrap_oversized_words_and_preserve_styled_source() {
     assert_eq!(doc.source, source);
 }
 
+// Inline code is aligned by its capsule, which owns the padding around the text.
+fn capsules<'a>(node: &'a c::Layout, out: &mut Vec<&'a c::Layout>) {
+    if let c::LayoutKind::Named(name) = &node.kind
+        && name.ends_with("/capsule")
+    {
+        out.push(node);
+        return;
+    }
+    for child in &node.children {
+        capsules(child, out);
+    }
+}
+
 fn runs(node: &c::Layout) -> Vec<&c::PositionedRun> {
     let mut result = vec![];
     if let c::LayoutKind::Text { runs, .. } = &node.kind {
@@ -183,10 +196,14 @@ fn fitted_tables_use_the_offered_width_and_align_short_and_wrapped_cells() {
             for col in [0, 1] {
                 let cell = named(&layout, &format!("block1/row{row}/cell{col}/text")).unwrap();
                 let runs = runs(cell);
-                assert!(
-                    runs.iter()
-                        .all(|r| r.style.size == ui::TypeStep::Body.pixels())
-                );
+                // Inline code keeps its in-prose size (0.88 of the surrounding step).
+                let body = ui::TypeStep::Body.pixels();
+                let size = if (row, col) == (1, 1) {
+                    body * 0.88
+                } else {
+                    body
+                };
+                assert!(runs.iter().all(|r| r.style.size == size));
                 for first in &runs {
                     let line: Vec<_> = runs
                         .iter()
@@ -204,6 +221,14 @@ fn fitted_tables_use_the_offered_width_and_align_short_and_wrapped_cells() {
                             "centered row {row}, width {width}"
                         );
                     } else {
+                        let mut code = vec![];
+                        capsules(&layout, &mut code);
+                        let end = code
+                            .iter()
+                            .filter(|k| k.rect.y <= first.rect.y && first.rect.y < k.rect.bottom())
+                            .filter(|k| k.rect.x < end && end <= k.rect.right())
+                            .map(|k| k.rect.right())
+                            .fold(end, f32::max);
                         assert!(
                             (end - cell.rect.right()).abs() < 0.01,
                             "right-aligned row {row}, width {width}"

@@ -918,9 +918,9 @@ mod tests {
             let Some(method) = tool["name"].as_str().unwrap().strip_prefix("task_") else {
                 continue;
             };
-            // These authenticated Index maintenance operations are local to the
-            // host, not methods added to the portable task_system 1.0 contract.
-            if matches!(method, "import" | "import_context" | "reconcile") {
+            // These authenticated Index maintenance and Git close-out operations are
+            // local to the host, not methods added to the portable task_system 1.0 contract.
+            if matches!(method, "close" | "import" | "import_context" | "reconcile") {
                 host_local.push(method.to_owned());
                 continue;
             }
@@ -949,7 +949,10 @@ mod tests {
             ]
         );
         host_local.sort();
-        assert_eq!(host_local, ["import", "import_context", "reconcile"]);
+        assert_eq!(
+            host_local,
+            ["close", "import", "import_context", "reconcile"]
+        );
     }
 
     #[tokio::test]

@@ -58,6 +58,9 @@ GITKB_CHECK_PLUGIN ?= $(abspath $(GITKB_PLUGIN))
 # for its own scenario rather than unrelated GUI fixture startup.
 SWARM_TEST_THREADS ?= 2
 export RUST_TEST_THREADS ?= 2
+# A seat's live identity must not reach tests: code under test would try the real
+# seat instead of its fixture. Builds and tests run the same in a seat and a shell.
+unexport BBOXY_CAPABILITY_FILE BBOXY_GENERATION BBOXY_PROCESS_GENERATION BBOXY_ROLE BBOXY_RUN_DIR BBOXY_SEAT_ID BBOXY_SOCK
 INSTALL_DIR ?= $(HOME)/Applications
 UNSIGNED_INSTALL_DIR ?= $(TARGET_DIR)/install-unsigned
 BUNDLE ?= $(TARGET_DIR)/$(PROFILE)/$(APP).app

@@ -7096,7 +7096,7 @@ fn d264_orient_and_the_skill_say_how_to_reach_the_operator() {
     let skill = include_str!("../src/adapters/skills/bboxy450/SKILL.md");
     assert!(
         skill
-            .contains("To reach the operator, reply with `reply_to`, or send to `operator/inbox`."),
+            .contains("To reach the operator, reply with `reply_to` or send to `operator/inbox`."),
         "the skill names the operator's inbox"
     );
 }

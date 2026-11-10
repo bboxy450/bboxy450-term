@@ -51,7 +51,7 @@ fn mcp_hint_graph_prefix_refusal_lists_types_and_leads_to_the_dictionary() {
             .as_array()
             .unwrap()
             .len(),
-        16
+        bbt_mux::knowledge::types::DOCUMENT_TYPES.len()
     );
     assert_eq!(
         dictionary["result"]["_meta"]["bboxy450/hints"][0]["params"]["name"],
@@ -144,7 +144,7 @@ fn mcp_knowledge_types_are_discoverable_and_readable_by_workers_and_oracles() {
             .iter()
             .map(|entry| entry["type"].as_str().unwrap())
             .collect();
-        assert_eq!(kinds.len(), 16);
+        assert_eq!(kinds.len(), bbt_mux::knowledge::types::DOCUMENT_TYPES.len());
         for kind in ["concern", "artifact", "report", "interface", "recipe"] {
             assert!(kinds.contains(kind));
         }

@@ -1,5 +1,5 @@
 flowchart LR
-  W[Agent writes a record] --> C{bx check}
+  W[Agent writes a record] --> C{den check}
   C -->|sound| K[Committed to the KB]
   C -->|unsound: code, line, repair| W
   K --> I[Agents implement from specs]

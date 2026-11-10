@@ -82,12 +82,12 @@ fn startup_checklist_keeps_every_step_actions_and_wrapped_diagnostics_in_bounds(
                         assert!(positions.windows(2).all(|p| p[0] < p[1]));
                         assert_eq!(text.iter().filter(|s| s.as_str() == "Done").count(), active);
                         assert_eq!(
-                            text.iter().filter(|s| s.as_str() == "Pending").count(),
+                            text.iter().filter(|s| s.as_str() == "Waiting").count(),
                             3 - active
                         );
                         assert!(
                             text.iter()
-                                .any(|s| s == if failed { "Failed" } else { "In progress" })
+                                .any(|s| s == if failed { "Failed" } else { "Running" })
                         );
                         assert!(actions.contains(&"startup/quit".into()));
                         assert_eq!(actions.contains(&"startup/retry".into()), failed);
