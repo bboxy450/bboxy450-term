@@ -11,10 +11,10 @@ allowed_paths:
 - .bboxy/reports/
 verify: python3 -I scripts/test-landing.py && make test-formal-infrastructure
 id: 01M731QJQJ3A2RGJSGACQDTDPD
-status: open
+status: claimed
 delegated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-10T15:37:53.007Z
+updated: 2026-11-10T15:38:40.965Z
 created: 2026-11-10T15:37:53.007Z
 number: 1794292861627449
 created_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
@@ -24,16 +24,17 @@ authorship:
   kind: seat
   public_key: V5Zkz4W1rnaDG/FsjK3//xQX+WByyxD7/fuIYoV6NbU=
   process_generation: '1'
+assignee: seat:01M731RY7V5R0Y66H8G05M8EEJ
 provenance:
   digest: sha256:216a845708b4c263893c2cf067f80bbf27b49c823b77d2872efa7da311295ac9
-  frontmatter_digest: sha256:bea429ebbd6ddbc45faa34e35184ddac4303e538f7bde1f84bc9612d28f3a78e
+  frontmatter_digest: sha256:460a79ddb431298eb4a89c8947f575d71ef087918cef613e0edfe16f034e901e
   signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-  sig: hhFhWgNhgAA+yw8uKw3zspBjCh0Jfl7scBWboGnYHdAxFLntyjUDtth9a0GN+blLhnqFguMsL0DB/0tDveUABw==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151481
+  sig: 9Jl/ejAjMQWawtUja47qN/P9z20k2mvh5NL+o50sx/hrkBun54fbhGlSkvWGEO/Uebwkc0JUInDoX3j7Fj+oBg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151485
   event:
-    id: 01M731QKV6RAW0CMWA655JZ9HB
-    sequence: 151481
-    hash: f0db75f68975ada556be8c3cbb35c72dbdb45981ed3b77050ed05256cbb629b9
+    id: 01M731S22302PHZY2VY92YNXNR
+    sequence: 151485
+    hash: 9b7a1f12900b4a6882878b3d0c77b4e1bc264797f2e890b664cd8768310f45fb
 ---
 ROLE: EXECUTOR
 
@@ -109,9 +110,12 @@ a positive proof.
    - (e) a member removed → every package.
    - (f) `rust-toolchain.toml` changed alongside (a) → every package.
    - (g) `Cargo.lock` changed alone → every package.
-   - (h) a new member that an existing crate now depends on (existing crate's own
-     `Cargo.toml` changes) → the new crate, that crate and its dependents; not every
-     package unless the closure really is.
+   - (h) a new member that an existing crate now depends on: that crate's `Cargo.toml`
+     changes and, with the lock regenerated, its existing lock stanza gains the
+     dependency → every package (clause 2 fails). Amendment 1, 2026-11-10: the first
+     wording expected a narrow plan here and contradicted clause 2 and case (d). Clause 2
+     wins. The rule narrows only for a pure leaf: a new member nothing else depends on.
+     Build this fixture with a correctly regenerated lock, never a stale one.
    Also unit-test the pure function directly on small TOML strings for each rule clause.
 5. Update `LAND.md` where it describes what the lean gate tests: one short paragraph
    stating the rule and that anything else in the root manifest stays broad.
@@ -142,8 +146,7 @@ env -u BBOXY_CAPABILITY_FILE -u BBOXY_GENERATION -u BBOXY_PROCESS_GENERATION -u 
 
 # Acceptance
 
-- [ ] Case (a) plans exactly the new crate; cases (b) to (g) plan every package; case (h)
-      plans the dependency closure.
+- [ ] Case (a) plans exactly the new crate; cases (b) to (h) plan every package.
 - [ ] The pure function has a unit test per rule clause, including parse failure → broad.
 - [ ] Every existing test in `scripts/test-landing.py` still passes, unchanged.
 - [ ] `LAND.md` states the rule.
