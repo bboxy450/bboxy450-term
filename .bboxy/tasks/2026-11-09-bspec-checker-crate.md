@@ -14,13 +14,13 @@ allowed_paths:
 - crates/bbt-mermaid/tests/
 - .bboxy/reports/
 verify: cargo nextest run -p bboxy450-den && cargo clippy -p bboxy450-den --all-targets -- -D warnings && make check-den && make test-licenses
-status: claimed
+status: done
 delegated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 swarm: 01M649102FBS60QWNPZS5VAGF9
 id: 01M71JZAEJPC72B5QT15N0E09Q
 number: 1794274420276157
 created: 2026-11-10T02:00:43.822Z
-updated: 2026-11-10T07:51:24.599Z
+updated: 2026-11-10T18:44:29.922Z
 created_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 updated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 authorship:
@@ -29,17 +29,45 @@ authorship:
   public_key: V5Zkz4W1rnaDG/FsjK3//xQX+WByyxD7/fuIYoV6NbU=
   process_generation: '1'
 verify_revision: 1
-assignee: seat:01M72719P9CP2A7C0WFVJB2P0C
+assignee: seat:01M71GNVXV7ZHXMGM50M5SB2RA
+verify_result:
+  command: cargo nextest run -p bboxy450-den && cargo clippy -p bboxy450-den --all-targets -- -D warnings && make check-den && make test-licenses
+  exit_code: 0
+  evidence:
+  - criterion: Every code in scope has a fixture producing exactly that code; out-of-scope constructs give X190
+    reference: crates/bboxy450-den/tests/unsound (24 files); crates/bboxy450-den/src/tests.rs:20
+  - criterion: outbox.den and remote_delivery.den are sound
+    reference: crates/bboxy450-den/tests/sound; Oracle run of bboxy450-den check, exit 0
+  - criterion: Anchor and differential tests pass; counts in the report
+    reference: crates/bboxy450-den/src/tests.rs:51 and :125; 52 states, 572 transitions, 156 state-changing
+  - criterion: make check-den exits 0; a seeded unsound file exits 1 with its line
+    reference: 'Executor: X601 at 13:13 exit 1; Oracle: weakened outbox.den X503 at 26:10 exit 1'
+  - criterion: Crate depends only on bboxy450-tlc; only the specified API is public
+    reference: crates/bboxy450-den/Cargo.toml [dependencies]; src/lib.rs:18-89
+  - criterion: README reference under 200 lines
+    reference: crates/bboxy450-den/README.md, 164 lines
+  - criterion: Verify exits 0 and the work is landed with make land
+    reference: /tmp/den-verify-stable.log; /tmp/den-land-stable.log LANDED 55d6ab3df
+report:
+  summary: 'Filed by the Oracle on behalf of the Executor (seat 01M72719P9CP2A7C0WFVJB2P0C), whose knowledge tools were refused after landing with workspace_binding_changed; its full report is in signed messages 01M73CB7THH47NNNYAE8QMTT3H and 01M73CB7VW32XE2Q5Y3D6GQ7XB. crates/bboxy450-den is on origin/main at 55d6ab3df (three signed commits): hand-written parser, type checker, interpreter and lowering to bboxy450-tlc for one Den spec record per file; 23 checks in scope plus X190; 24 broken-control fixtures; CLI and make check-den. RemoteDelivery in Den reaches 52 states and 156 state-changing transitions, equal to the protocol! model. The Executor''s verify command exited 0 on the stable compiler; its scrubbed make land exited 0 with 947 models, 37 crates, 290 contracts. The Oracle separately ran the 19 crate tests (pass), the binary on outbox.den (exit 0) and on a weakened copy (exit 1, X503).'
+  commit: 55d6ab3df76f71166eca50de1ee7db72bf518cda
+  reported_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
+  op_id: 01M73CD2BRCF145599H35PP1JM
+  verify_revision: 1
+  report: '[[reports/2026-11-09-den-checker-crate]]'
+closed:
+  by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
+  op_id: 01M73CD8S4DY80JWJ544XXN7WR
 provenance:
-  digest: sha256:cfce71ca362f7b07a900d7f2fc2409ba42250cbe99d4f6ed1a2afc18bd0caa12
-  frontmatter_digest: sha256:7a823ccbcd66f483df5e8c6eab27958f81417bda4e8d0d417e28d9adfa61701a
+  digest: sha256:607f5ef578e76503eaf635103d83f3a1e5b713c2488a0d1fba6df16c05ab77c8
+  frontmatter_digest: sha256:f4d1abb88cf04931ebf9983d04829f38a5c4818c7fb26231ad6e1864e7682719
   signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-  sig: 09aG5AkdAdnbXvLokR1DciQ8aDg4ZPMXKF0N3Qk81VYHOk2GXtv80clguGqJvH77NAxQjWTkZ0ZTeh6PbpK9Cw==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151418
+  sig: bLlkHCuVNAEPmebsiieRXXFfjSvK8Wm7FUCWL6qq4n/WNnXkwIoPSXOK9tyVPIvdmiGnUSWD/LZDrTcUhhfYAg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151570
   event:
-    id: 01M7271ESN4APEE5XKMHFC1CFY
-    sequence: 151418
-    hash: 680c176d39394d05d592118caad53523cc40cc01f416874de0b5482e05ee962b
+    id: 01M73CD9PEP0AZQDBYGKDWPVYX
+    sequence: 151570
+    hash: cabeda9ad54d5983f380695001f62982a38be0869c3f87b17b7342df9a01f231
 ---
 ROLE: EXECUTOR
 
@@ -287,3 +315,50 @@ Follow `AGENTS.md`: stay silent while working. When done: `make land`, write
 mechanisms, every command with its real exit status, state and transition counts for both
 sound fixtures, "Spec questions" (every ambiguity you resolved and how), and what you did
 not check.
+
+
+## Report from seat:01M71GNVXV7ZHXMGM50M5SB2RA
+
+Filed by the Oracle on behalf of the Executor (seat 01M72719P9CP2A7C0WFVJB2P0C), whose knowledge tools were refused after landing with workspace_binding_changed; its full report is in signed messages 01M73CB7THH47NNNYAE8QMTT3H and 01M73CB7VW32XE2Q5Y3D6GQ7XB. crates/bboxy450-den is on origin/main at 55d6ab3df (three signed commits): hand-written parser, type checker, interpreter and lowering to bboxy450-tlc for one Den spec record per file; 23 checks in scope plus X190; 24 broken-control fixtures; CLI and make check-den. RemoteDelivery in Den reaches 52 states and 156 state-changing transitions, equal to the protocol! model. The Executor's verify command exited 0 on the stable compiler; its scrubbed make land exited 0 with 947 models, 37 crates, 290 contracts. The Oracle separately ran the 19 crate tests (pass), the binary on outbox.den (exit 0) and on a weakened copy (exit 1, X503).
+
+```json
+{
+  "op_id": "01M73CD2BRCF145599H35PP1JM",
+  "commit": "55d6ab3df76f71166eca50de1ee7db72bf518cda",
+  "report": "[[reports/2026-11-09-den-checker-crate]]",
+  "verify_result": {
+    "command": "cargo nextest run -p bboxy450-den && cargo clippy -p bboxy450-den --all-targets -- -D warnings && make check-den && make test-licenses",
+    "exit_code": 0,
+    "evidence": [
+      {
+        "criterion": "Every code in scope has a fixture producing exactly that code; out-of-scope constructs give X190",
+        "reference": "crates/bboxy450-den/tests/unsound (24 files); crates/bboxy450-den/src/tests.rs:20"
+      },
+      {
+        "criterion": "outbox.den and remote_delivery.den are sound",
+        "reference": "crates/bboxy450-den/tests/sound; Oracle run of bboxy450-den check, exit 0"
+      },
+      {
+        "criterion": "Anchor and differential tests pass; counts in the report",
+        "reference": "crates/bboxy450-den/src/tests.rs:51 and :125; 52 states, 572 transitions, 156 state-changing"
+      },
+      {
+        "criterion": "make check-den exits 0; a seeded unsound file exits 1 with its line",
+        "reference": "Executor: X601 at 13:13 exit 1; Oracle: weakened outbox.den X503 at 26:10 exit 1"
+      },
+      {
+        "criterion": "Crate depends only on bboxy450-tlc; only the specified API is public",
+        "reference": "crates/bboxy450-den/Cargo.toml [dependencies]; src/lib.rs:18-89"
+      },
+      {
+        "criterion": "README reference under 200 lines",
+        "reference": "crates/bboxy450-den/README.md, 164 lines"
+      },
+      {
+        "criterion": "Verify exits 0 and the work is landed with make land",
+        "reference": "/tmp/den-verify-stable.log; /tmp/den-land-stable.log LANDED 55d6ab3df"
+      }
+    ]
+  }
+}
+```
