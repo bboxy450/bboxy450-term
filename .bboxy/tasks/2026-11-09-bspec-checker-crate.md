@@ -14,13 +14,13 @@ allowed_paths:
 - crates/bbt-mermaid/tests/
 - .bboxy/reports/
 verify: cargo nextest run -p bboxy450-den && cargo clippy -p bboxy450-den --all-targets -- -D warnings && make check-den && make test-licenses
-status: open
+status: claimed
 delegated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 swarm: 01M649102FBS60QWNPZS5VAGF9
 id: 01M71JZAEJPC72B5QT15N0E09Q
 number: 1794274420276157
 created: 2026-11-10T02:00:43.822Z
-updated: 2026-11-10T07:45:31.055Z
+updated: 2026-11-10T07:51:24.599Z
 created_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 updated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 authorship:
@@ -29,16 +29,17 @@ authorship:
   public_key: V5Zkz4W1rnaDG/FsjK3//xQX+WByyxD7/fuIYoV6NbU=
   process_generation: '1'
 verify_revision: 1
+assignee: seat:01M72719P9CP2A7C0WFVJB2P0C
 provenance:
   digest: sha256:cfce71ca362f7b07a900d7f2fc2409ba42250cbe99d4f6ed1a2afc18bd0caa12
-  frontmatter_digest: sha256:0a44a31094a56703f5e4e3235ef0457fcb16987043491f722f22be9759655fba
+  frontmatter_digest: sha256:7a823ccbcd66f483df5e8c6eab27958f81417bda4e8d0d417e28d9adfa61701a
   signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-  sig: xdeEvS76Bkrc4mfxm2aEuZmohGuhXsunUmKn9nz39blKxY1/sbxF99G2AUg5RKODGfbQzsVJMwDiIQk3hqaZBQ==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151402
+  sig: 09aG5AkdAdnbXvLokR1DciQ8aDg4ZPMXKF0N3Qk81VYHOk2GXtv80clguGqJvH77NAxQjWTkZ0ZTeh6PbpK9Cw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151418
   event:
-    id: 01M726PNGX6B00Y13XR9SC3WJN
-    sequence: 151402
-    hash: 15ee0fe6b08471d5353c3c1afa9993430e62068cb409a48d539f5769c8ad5fd1
+    id: 01M7271ESN4APEE5XKMHFC1CFY
+    sequence: 151418
+    hash: 680c176d39394d05d592118caad53523cc40cc01f416874de0b5482e05ee962b
 ---
 ROLE: EXECUTOR
 
