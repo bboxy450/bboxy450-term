@@ -60,7 +60,9 @@ SWARM_TEST_THREADS ?= 2
 export RUST_TEST_THREADS ?= 2
 # A seat's live identity must not reach tests: code under test would try the real
 # seat instead of its fixture. Builds and tests run the same in a seat and a shell.
-unexport BBOXY_CAPABILITY_FILE BBOXY_GENERATION BBOXY_PROCESS_GENERATION BBOXY_ROLE BBOXY_RUN_DIR BBOXY_SEAT_ID BBOXY_SOCK
+# The same list as SEAT_CONTEXT in scripts/quarantine.py, which covers test runs outside
+# Make; scripts/test-landing.py holds the two equal.
+unexport BBOXY_CAPABILITY BBOXY_CAPABILITY_FILE BBOXY_GENERATION BBOXY_HOOK_SOCKET_ONLY BBOXY_PROCESS_GENERATION BBOXY_ROLE BBOXY_RUN_DIR BBOXY_SEAT_ID BBOXY_SOCK BBOXY_USER_ZDOTDIR
 INSTALL_DIR ?= $(HOME)/Applications
 UNSIGNED_INSTALL_DIR ?= $(TARGET_DIR)/install-unsigned
 BUNDLE ?= $(TARGET_DIR)/$(PROFILE)/$(APP).app

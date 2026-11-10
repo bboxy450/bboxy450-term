@@ -662,12 +662,6 @@ class ConsolidatedIntegrationTests(unittest.TestCase):
                                      (base / "tests/dream_read.rs").resolve())
                     self.assertRegex((base / "tests/formal_contracts.rs").read_text(),
                         r'#\[path = "formal_contracts/models\.rs"\]\s*mod models;')
-                    # The canvas witness reuses the private headless owner's fixture.
-                    support.add("canvas")
-                    headless = (base / "tests/headless.rs").read_text()
-                    self.assertEqual(headless.count('#[path = "canvas.rs"]'), 1)
-                    self.assertRegex(headless, r'#\[path = "canvas\.rs"\]\s*mod canvas;')
-                    self.assertIn(("headless", "headless"), declared)
                 expected = sorted(p.stem for p in (base / "tests").glob("*.rs")
                                   if p.stem not in {"it", *separate, *support})
                 self.assertEqual(sorted(name for name, _ in declared), expected)
@@ -2648,6 +2642,13 @@ class CargoProfileForwardingTests(unittest.TestCase):
             self.assertEqual(module.retry_args(arguments, "fixture", "native::case", Mock()),
                              ["cargo", "test", "--profile", "fixture", "--test", "it",
                               "-p", "fixture", "--", "--exact", "native::case"])
+
+    def test_make_and_quarantine_clear_the_same_seat_variables(self):
+        module = self.module()
+        make = (SOURCE.parents[1] / "Makefile").read_text()
+        lines = [line for line in make.splitlines() if line.startswith("unexport BBOXY_")]
+        self.assertEqual(len(lines), 1)
+        self.assertEqual(sorted(lines[0].split()[1:]), sorted(module.SEAT_CONTEXT))
 
     def test_quarantine_entry_points_clear_a_seats_live_context(self):
         module = self.module()
