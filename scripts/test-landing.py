@@ -662,6 +662,12 @@ class ConsolidatedIntegrationTests(unittest.TestCase):
                                      (base / "tests/dream_read.rs").resolve())
                     self.assertRegex((base / "tests/formal_contracts.rs").read_text(),
                         r'#\[path = "formal_contracts/models\.rs"\]\s*mod models;')
+                    # The canvas witness reuses the private headless owner's fixture.
+                    support.add("canvas")
+                    headless = (base / "tests/headless.rs").read_text()
+                    self.assertEqual(headless.count('#[path = "canvas.rs"]'), 1)
+                    self.assertRegex(headless, r'#\[path = "canvas\.rs"\]\s*mod canvas;')
+                    self.assertIn(("headless", "headless"), declared)
                 expected = sorted(p.stem for p in (base / "tests").glob("*.rs")
                                   if p.stem not in {"it", *separate, *support})
                 self.assertEqual(sorted(name for name, _ in declared), expected)
