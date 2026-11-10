@@ -1,0 +1,44 @@
+{
+  "source": "ff573affcabfc664f4b5efd66afaf65bfed3eacb",
+  "harness": "133d0cc53ca610346e72a2a9cf293a0f1df25607",
+  "verification": [
+    {
+      "command": "make test-capture-storage-pressure",
+      "exit": 0,
+      "tests": 16
+    },
+    {
+      "command": "make test-retained-seat-recovery",
+      "exit": 0,
+      "coverage": "bounded nonblocking workers; cancellation; real supervisor/logic restart; precise and fast resume; failed launch isolation"
+    },
+    {
+      "command": "make test-capture-storage-model",
+      "exit": 0,
+      "coverage": "healthy and broken capture/recovery models, command responsiveness"
+    },
+    {
+      "command": "make test-licenses",
+      "exit": 0
+    },
+    {
+      "command": "make test-boundaries",
+      "exit": 0
+    },
+    {
+      "command": "make install-reopen SIGNING_IDENTITY=<approved same-Team certificate>",
+      "exit": 0,
+      "coverage": "signed release, installed revision, rendered UI ready, exact supervisor/logic PID and birth identities preserved"
+    }
+  ],
+  "full_ci": "skipped at operator request",
+  "original_seats_recovered": 12,
+  "codex_mcp_failures_repaired": 5,
+  "old_backend_preserved": {
+    "supervisor_pid": 31174,
+    "logic_pid": 31191
+  },
+  "cleanup_removed_bytes_after_push": 9541180928,
+  "available_bytes": 36503875584,
+  "report": "/Users/feral/.local/state/bboxy450-term/crash-recovery-2026-11-04/recovery-report.md"
+}

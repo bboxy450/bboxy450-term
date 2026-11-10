@@ -6,6 +6,7 @@ title: "mantras — the design's core rules, each tied to the gate that holds it
 status: decided
 links:
   - { to: "[[vision]]", rel: direction }
+  - { to: "[[philosophy]]", rel: direction }
   - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
   - { to: "[[d53-evolve-and-restart]]", rel: decides }
   - { to: "[[work-items]]", rel: uses }
@@ -13,6 +14,8 @@ created: 2026-10-24T00:06:11Z
 updated: "2026-10-24T19:32:03Z"
 ---
 # Mantras
+
+The mantras answer to [[philosophy]] (our stand: against bloat and die, stop building piano tops, DOS not Linux, recreational programming first). A mantra that adds a layer to manage another layer is drift. The set is a complexity budget: a new mantra replaces or merges an old one.
 
 Owner: Corvin Duskmantle <ARCHITECT>. Distilled 2026-10-23 by a read-only subagent from all 156 records under `.bboxy/` plus `AGENTS.md`, under the Architect's brief and the operator's list of that evening (verbatim where quoted). Twenty-seven mantras. Each names where it already binds, the executable gate that holds it today, the candidate gate where none exists, and the mantra it trades against. A mantra with no gate is judgement, and says so: no command, no invariant ([[invariants/README|README]]). The operator's words that lived only in chat are recorded here for the first time and marked **chat**.
 
@@ -80,7 +83,7 @@ Operator: "all those crates are reusable part of #bboxy450-* suite, term is just
 
 ## 16. LESS IS MORE; KISS; super good enough, not perfect
 
-Operator: "LESS IS MORE, KISS, super good enough, not perfect." (#1 to #12 round); "KISS for now so we can keep developing our system" ([[d47-decision-nodes]]); v0.1 cut down ([[vision]]); "high velocity is the goal" ([[tasks/README|README]] of tasks). Binds: every spec's lens line, taffy refused ([[gui-components]]), #24. Gate: none; judgement only, a line or dependency budget invites gaming; #39 keeps the app's line count against the crates as an advisory drift signal read at each architecture round. Tension: 3, 4, 8 all pull the other way, and the operator overruled the Architect once to lean in on identity (#4 of round one).
+See [[philosophy]]: minimize concepts, not lines; subtract before you add; every abstraction justifies its continued existence. Operator: "LESS IS MORE, KISS, super good enough, not perfect." (#1 to #12 round); "KISS for now so we can keep developing our system" ([[d47-decision-nodes]]); v0.1 cut down ([[vision]]); "high velocity is the goal" ([[tasks/README|README]] of tasks). Binds: every spec's lens line, taffy refused ([[gui-components]]), #24. Gate: none; judgement only, a line or dependency budget invites gaming; #39 keeps the app's line count against the crates as an advisory drift signal read at each architecture round. Tension: 3, 4, 8 all pull the other way, and the operator overruled the Architect once to lean in on identity (#4 of round one).
 
 ## 17. The spec signs off, not the agent; hard gates block, judgement advises; no command, no invariant
 

@@ -8,6 +8,8 @@ updated: "2026-10-24T00:10:38Z"
 ---
 # bboxy450-term — vision
 
+Our stand is [[philosophy]]: against bloat and die, stop building piano tops, DOS not Linux, recreational programming first. Every brief, prompt and spec answers to it.
+
 Status: DECIDED where marked, ASSUMED where marked, **Gap:** where open. Updated 2026-10-21 by Vesper Greywind <ORACLE> from the operator's answers.
 
 Index: [[#57|README]] · tasks in `tasks/` · research in `research/` · specs in `specs/` · [[ux-sidebar]] · [[roadmap]]
