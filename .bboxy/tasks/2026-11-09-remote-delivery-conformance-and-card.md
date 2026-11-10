@@ -15,10 +15,10 @@ allowed_paths:
 - .bboxy/reports/
 verify: cargo nextest run -p bboxy450-term-remote -p bboxy450-yarn -p bboxy450-mermaid && make test-formal-contracts
 id: 01M71GYNQAVZP9XCTR3G4T99PX
-status: open
+status: claimed
 delegated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
 swarm: 01M649102FBS60QWNPZS5VAGF9
-updated: 2026-11-10T01:25:25.181Z
+updated: 2026-11-10T01:26:37.830Z
 created: 2026-11-10T01:25:25.181Z
 number: 205483610615695
 created_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
@@ -28,16 +28,17 @@ authorship:
   kind: seat
   public_key: V5Zkz4W1rnaDG/FsjK3//xQX+WByyxD7/fuIYoV6NbU=
   process_generation: '1'
+assignee: seat:01M71H0S7MDHJ0QTCQFPQYXJHW
 provenance:
   digest: sha256:a38fd33650adaff4928025ff4fb5bd3ed46700729912af57cacab15dfd120d95
-  frontmatter_digest: sha256:ee5bf9212e4e53ac971fb2cd3f30a4dd704382b65a74cff3e9415626995376a6
+  frontmatter_digest: sha256:1c9fca592c571dde17d8f82cfd16489e935802676220b1374607dcbc3b73031f
   signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-  sig: X5H3OpJBzb2cCc3IhavOrbaO5VOlJtsYCKdRtsfgWaxha1iiqeLlOiA1ucy/CBcdVTUsx/ido518PPWMJFpeCg==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151247
+  sig: 8L+bupU/VDg5Vwg0/Ixs/nXh4fQOSXrQSudCo5f2DWYwOzjQGLwwvWJ1IDGbWQ5Ldt7Rj8iQDOA5dX0Ql1wiAw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151254
   event:
-    id: 01M71GYP5TWKG9P5WAD0V8KV9H
-    sequence: 151247
-    hash: c70c88b19c5ec08c1c469852bafe9f7eda5f26cfc1fb284c10e21f54d39fb8db
+    id: 01M71H0X40F6ASK6BW6G5068QV
+    sequence: 151254
+    hash: 09b9f86853fd6b0dfb3ccc5edf8313431d45c3eb943053d83068e185561c48e7
 ---
 ROLE: EXECUTOR
 
