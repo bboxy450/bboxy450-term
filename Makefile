@@ -93,6 +93,7 @@ help:
 	  'make parity-startup             Boxybook startup checklist web/native preview and geometry comparison' \
 	  'make preview-startup-web        Capture startup design states in an isolated web preview' \
 	  'make test-startup-modal         Focused startup checklist layout and observation tests' \
+	  'make check-den                  Check repository Den specs (excluding broken controls)' \
 	  'make lock                       Refresh workspace lock metadata offline' \
 	  'make lock-online                Resolve added dependencies with the registry' \
 	  'make bump-harness [REV=sha]      Move and stage the harness submodule and changed lockfile (default origin/main)' \
@@ -2783,3 +2784,9 @@ test-dream-mcp: init-submodules
 	sh scripts/quarantine-test.sh --locked -p bboxy450-term-proto --test dream_read --target-dir '$(TARGET_DIR)'; \
 	sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux --lib dream_read --target-dir '$(TARGET_DIR)'; \
 	sh scripts/quarantine-test.sh --locked -p bboxy450-term --test it dream_read --target-dir '$(TARGET_DIR)'
+
+.PHONY: check-den
+check-den:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo build --locked -p bboxy450-den --bin bboxy450-den --target-dir '$(TARGET_DIR)'; \
+	git ls-files -z -- '*.den' ':!:crates/bboxy450-den/tests/unsound/*.den' | xargs -0 '$(TARGET_DIR)/debug/bboxy450-den' check

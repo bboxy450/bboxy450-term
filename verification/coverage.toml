@@ -300,5 +300,5 @@ checks = ["cargo nextest run -p bboxy450-term -E 'test(~canvas)'", "cargo nextes
 name = "bboxy450-den"
 status = "implementation-tests"
 models = []
-scope = "Den parsing, naming, typing, reporting and CLI are implementation-tested. Reachable-state safety checks lower into bboxy450-tlc using the existing finite expression primitive. Sound fixtures are differentially explored by an independent interpreter; diagnostic fixtures are broken controls. No arbitrary Rust or complete TLA+ semantics are claimed."
-sources = ["crates/bboxy450-den/src/lib.rs"]
+scope = "Den parsing, naming, typing, reporting and CLI are implementation-tested. Reachable-state safety checks lower into bboxy450-tlc using the existing finite expression primitive. Sound fixtures are differentially explored by an independent interpreter; diagnostic fixtures are broken controls. Bounds: 65,536 total state/argument valuations per handler and 100,000 reachable states; no fairness or liveness. Parser limits are implementation-only resource checks. No arbitrary Rust or complete TLA+ semantics are claimed."
+sources = ["crates/bboxy450-den/src/lib.rs", "crates/bboxy450-den/src/parser.rs", "crates/bboxy450-den/src/types.rs", "crates/bboxy450-den/src/eval.rs", "crates/bboxy450-den/src/lower.rs", "crates/bboxy450-den/src/checker.rs", "crates/bboxy450-den/src/main.rs"]
