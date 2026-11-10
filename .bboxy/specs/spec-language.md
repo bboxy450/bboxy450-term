@@ -187,11 +187,12 @@ enum Step[From <: Stage, To <: Stage] {
   case Close                              extends Step[Accepted, Done]
 }
 
-// 3. A piece of work knows what it must produce.
-enum Work[Out <: Kind] {
-  case Research(brief: Markdown)  extends Work[Kind.Prose]
-  case Design(brief: Markdown)    extends Work[Kind.Spec]
-  case Build(serves: Ref[Kind.Spec], verify: Command) extends Work[Kind.Report]
+// 3. A piece of work knows what it needs and what it must produce
+//    (see "Category theory" for how these compose).
+enum Work[In, Out] {
+  case Research(brief: Markdown)  extends Work[Unit, Kind.Prose]
+  case Design(brief: Markdown)    extends Work[Kind.Prose, Kind.Spec]
+  case Build(verify: Command)     extends Work[Kind.Spec, Kind.Report]
 }
 
 // 4. A channel knows who may speak and what it carries.
@@ -223,7 +224,7 @@ What each index buys:
 |---|---|
 | `Doc[K]`, `Ref[K]` | a link to the wrong kind of record |
 | `Step[From, To]` | an illegal lifecycle move: accepting an unreported task, closing an unaccepted one |
-| `Work[Out]` | a research item that "produces" a report, a build with no verification |
+| `Work[In, Out]` | a research item that "produces" a report, a build with no verification, a step fed the wrong input |
 | `Channel[From, To, Payload]` | a message from a role that may not send it, or carrying the wrong thing |
 | `Evidence[How]` | presenting a measurement where a proof is required ([[spec-first-os]], rule 3) |
 | `Expr[T]` | an ill-typed guard, update or invariant |
@@ -243,6 +244,77 @@ A lifecycle is then stated twice on purpose, and the checker proves the two agre
 `Step` type says which moves exist, and the lifecycle `spec` or `loop` says when each is
 allowed. A move the machine takes that has no `Step` constructor, or a constructor the
 machine can never take, is unsound.
+
+## Category theory: the laws the format must obey
+
+Operator, 2026-11-10: "category theory and that would also be great to have!"
+
+GADTs say what a single record may be. Category theory says how records, specs, graphs
+and engines **compose**, and gives each composition a law. Den takes it for the laws, not
+the vocabulary: every statement below is a check the tooling runs.
+
+### The categories Den has
+
+| Category | Objects | Arrows | Composition means |
+|---|---|---|---|
+| Schema | record kinds | link relations (`Link[From, To]`) | a path of links is a derived relation with a known type |
+| Knowledge base | records | typed links | following links; the neighborhood and chain views are paths |
+| Specs | specs | refinements: "every step of A is a step of B" | refinement is transitive: code refines a detailed spec refines an abstract one |
+| Graphs | graphs | structure-preserving maps | a view of a view is a view |
+| Work | record kinds (inputs and outputs) | work items `Work[In, Out]` | one item's output is the next one's input |
+
+```scala
+// A work item is an arrow from what it needs to what it produces.
+enum Work[In, Out] {
+  case Research(brief: Markdown)           extends Work[Unit, Kind.Prose]
+  case Design(brief: Markdown)             extends Work[Kind.Prose, Kind.Spec]
+  case Build(verify: Command)              extends Work[Kind.Spec, Kind.Report]
+  case Review                              extends Work[Kind.Report, Kind.Verdict]
+}
+
+// Sequential composition: the types must meet.
+val pipeline = KbSurvey >> LinkTypes >> Graph        // Work[Unit, Kind.Report]
+
+// Parallel composition: independent work, side by side.
+val both = CommitGate || Converter                    // Work[(Spec, Spec), (Report, Report)]
+```
+
+`>>` and `||` are what the arrows and the `&` of a `graph { }` literal mean. An epic's
+work graph is therefore a diagram in a monoidal category: a Mermaid flowchart of it is a
+string diagram, and the engine may run in parallel exactly the items composed with `||`.
+
+### The laws, as checks
+
+| Law | Statement in Den | Check |
+|---|---|---|
+| Composition is typed | `a >> b` needs `a`'s output kind to be `b`'s input kind | X381: a work edge joins items whose kinds do not meet |
+| Identity | every record has the trivial link to itself and every spec refines itself | holds by construction; the refinement checker is tested on it |
+| Associativity | grouping a chain of links, refinements or work differently changes nothing | holds by construction: chains are stored flat |
+| Refinement composes | if A refines B and B refines C, then A refines C under the composed mapping | X611: a composed mapping is not a refinement although each half is (a broken mapping) |
+| A view is a homomorphism | every state maps to exactly one node, every transition to an edge or to staying put | X751, X752, and the edge rule of `shape` (X364) |
+| An engine is a functor | lowering, rendering and conversion preserve links and composition | lowering a record keeps every link (round-trip); lowering an `include` contains the lowering of its parts |
+| Interfaces glue | two specs that each refine a shared contract compose to a spec that satisfies it | the soundness test of interface composition, with a broken control ([[spec-first-os]], W2) |
+
+### Three constructions Den uses by name
+
+- **Product: `include`.** A spec built from parts is their product, with `do` and `expose`
+  choosing which joint steps exist. Each part is recovered by projection, which is why a
+  part's invariants must still hold in the whole (X604).
+- **Gluing along a contract: `interface`.** Two specs and the contract between them form
+  a span, `A ← Contract → B`. The composed system is the two glued along the contract
+  (a pushout). This is the precise sense in which each side is checked "against the
+  contract, never the other side's code".
+- **Schema maps: migration.** Converting today's Markdown records to Den, and lowering
+  Den to Markdown, are maps between two schemas. The round-trip check says they are
+  inverse up to a stated normalization. A future change to Den's schema is another such
+  map, which is how the additive rule is enforced mechanically and not by review.
+
+### What this does not mean
+
+No monads, no functors and no arrows appear in the surface language. An agent writing a
+spec never needs the words. The category theory lives in two places: the composition
+operators (`include`, `interface`, `>>`, `||`, link paths) and the laws the checker and
+the engines' tests hold them to.
 
 ## Records
 
