@@ -1,6 +1,6 @@
-# One compiler for every worktree, gate and harness: same artifacts, same cache keys.
-# Bump together with `rust-version` in Cargo.toml.
+# One compiler on this machine for every worktree, gate and harness: latest stable.
+# `rustup update stable` moves everyone at once; keep `rust-version` in Cargo.toml <= it.
 [toolchain]
-channel = "1.99.1"
+channel = "stable"
 components = ["clippy", "rustfmt"]
 profile = "minimal"
