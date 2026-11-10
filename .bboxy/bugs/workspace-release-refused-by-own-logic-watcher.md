@@ -31,7 +31,7 @@ provenance:
 ## Expected
 
 After a task is done and its writer seat is closed, `workspace_release` removes the
-checkout ([[AGENTS]] close-out).
+checkout (the close-out in `AGENTS.md`).
 
 ## Actual
 

@@ -2,7 +2,7 @@
 type: note
 title: Full q2 brief before the landing handoff
 derived_from:
-- '[[2026-11-05-dream-mcp-verified-snapshot]]'
+- '[[tasks/2026-11-05-dream-mcp-verified-snapshot]]'
 id: 01M6RMQ501HETDWCHPP8YCWXBH
 updated: 2026-11-06T14:38:03.864Z
 created: 2026-11-06T14:38:03.864Z
