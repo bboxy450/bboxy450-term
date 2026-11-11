@@ -76,14 +76,15 @@ fn rpc(peer: &mut Bridge, id: u64, method: &str, params: Value) -> Value {
                 .unwrap(),
             )
             .unwrap();
-        if value["result"]["structuredContent"]["error"]["code"] != "workspace_pending" {
+        let code = &value["result"]["structuredContent"]["error"]["code"];
+        if code != "workspace_pending" && code != "canvas_busy" {
             return value;
         }
-        // A workspace_pending refusal has no canvas effect. Retain the same
-        // explicit operation ID while the private root's admission completes.
+        // Both refusals have no canvas effect and ask for the same request
+        // again: the private root's admission, or another append, completes.
         assert!(
             Instant::now() < deadline,
-            "private canvas workspace did not become ready: {value}"
+            "canvas request still refused after 10 s: {value}"
         );
         std::thread::sleep(Duration::from_millis(20));
     }
