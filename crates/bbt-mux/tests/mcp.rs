@@ -5874,10 +5874,11 @@ os.execv(BINARY, [BINARY, *args])
             } else {
                 assert!(adapter["source"] == "7501", "{status}");
             }
+            // The log reader shows the command head as its item kind.
             assert!(
-                adapter["detail"]
-                    .as_str()
-                    .is_some_and(|detail| detail.contains("bash")),
+                adapter["detail"].as_str().is_some_and(|detail| {
+                    detail.contains("bash") || (quiet == Some(true) && detail == "terminal")
+                }),
                 "{status}"
             );
             samples += 1;

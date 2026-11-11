@@ -140,9 +140,16 @@ pub(super) fn run() {
     .unwrap();
     assert_eq!(observed_ms, last["ts_ms"].as_u64().unwrap());
     let elapsed = Instant::now();
-    let mut samples = 0;
+    // Every sample re-checks the quiet status: no unobserved window over 1 s.
+    let mut last_sample = Instant::now();
     loop {
         let status = read(&f, seat);
+        assert!(
+            last_sample.elapsed() < Duration::from_secs(1),
+            "unobserved silence window: {:?}",
+            last_sample.elapsed()
+        );
+        last_sample = Instant::now();
         let adapter = &status["adapter"];
         assert_eq!(adapter["state"], "active", "quiet state changed: {status}");
         assert_eq!(adapter["grade"], "reported", "{status}");
@@ -171,13 +178,8 @@ pub(super) fn run() {
             elapsed.elapsed() < Duration::from_millis(62_500),
             "missing expiry: {status}"
         );
-        samples += 1;
         std::thread::sleep(Duration::from_millis(200));
     }
-    assert!(
-        samples >= 250,
-        "insufficient native silence samples: {samples}"
-    );
     assert_eq!(
         std::fs::read(&path).unwrap(),
         bytes,
@@ -192,7 +194,7 @@ pub(super) fn run() {
             .stale
     );
     eprintln!(
-        "harness-native: phase_1c=osc-only,log-only,approval,error,closed stale_ms={} samples={samples}",
+        "harness-native: phase_1c=osc-only,log-only,approval,error,closed stale_ms={}",
         elapsed.elapsed().as_millis()
     );
 }
