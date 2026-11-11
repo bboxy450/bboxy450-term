@@ -11,6 +11,7 @@ mod checker;
 mod eval;
 mod lower;
 mod parser;
+pub mod render;
 mod types;
 
 /// Result of checking one source file. Any diagnostic makes it unsound.

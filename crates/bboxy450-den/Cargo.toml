@@ -11,6 +11,7 @@ readme = "README.md"
 
 [dependencies]
 bboxy450-tlc = { path = "../bboxy450-tlc", version = "0.1.1" }
+sha2 = "0.10"
 
 [dev-dependencies]
 bboxy450-term-remote = { path = "../bboxy450-term-remote", version = "0.1.1" }

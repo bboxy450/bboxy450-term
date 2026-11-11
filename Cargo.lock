@@ -343,6 +343,7 @@ dependencies = [
  "bboxy450-term-remote",
  "bboxy450-tlc",
  "bboxy450-yarn",
+ "sha2 0.10.9",
 ]
 
 [[package]]

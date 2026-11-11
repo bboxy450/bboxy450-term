@@ -99,6 +99,7 @@ help:
 	  'make preview-startup-web        Capture startup design states in an isolated web preview' \
 	  'make test-startup-modal         Focused startup checklist layout and observation tests' \
 	  'make check-den                  Check repository Den specs (excluding broken controls)' \
+	  'make render-den [DEN_OUT=dir]   Mirror tracked Den specs to Markdown beside them, or under DEN_OUT' \
 	  'make lock                       Refresh workspace lock metadata offline' \
 	  'make lock-online                Resolve added dependencies with the registry' \
 	  'make bump-harness [REV=sha]      Move and stage the harness submodule and changed lockfile (default origin/main)' \
@@ -2795,3 +2796,12 @@ check-den:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo build --locked -p bboxy450-den --bin bboxy450-den --target-dir '$(TARGET_DIR)'; \
 	git ls-files -z -- '*.den' ':!:crates/bboxy450-den/tests/unsound/*.den' | xargs -0 '$(TARGET_DIR)/debug/bboxy450-den' check
+
+# Mirror every tracked .den record to Markdown: beside its source, or under
+# DEN_OUT (a GitKB checkout, say) keeping the relative path. The Den source
+# travels inside each .md; the .md is a projection, never the record.
+.PHONY: render-den
+render-den:
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo build --locked -p bboxy450-den --bin bboxy450-den --target-dir '$(TARGET_DIR)'; \
+	git ls-files -z -- '*.den' ':!:crates/bboxy450-den/tests/*.den' | xargs -0 '$(TARGET_DIR)/debug/bboxy450-den' render --markdown $(if $(DEN_OUT),--out '$(DEN_OUT)')

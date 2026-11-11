@@ -123,3 +123,38 @@ fn refuses_directory_symlink_cycles_without_hanging() {
             .contains("symbolic links")
     );
 }
+
+#[test]
+fn render_markdown_writes_a_lowering_beside_the_source_and_refuses_to_replace_a_hand_written_file() {
+    let temp = Temp::new();
+    let den = temp.0.join("outbox.den");
+    fs::copy(fixture("sound/outbox.den"), &den).unwrap();
+    let md = temp.0.join("outbox.md");
+    let first = cli(&["render".as_ref(), "--markdown".as_ref(), den.as_os_str()]);
+    assert!(first.status.success(), "{first:?}");
+    let written = fs::read_to_string(&md).unwrap();
+    assert!(written.starts_with("---\ntype: spec\n"), "{written}");
+    assert!(written.contains("\n```den\n"), "{written}");
+    // Unchanged source: same bytes, reported as unchanged.
+    let again = cli(&["render".as_ref(), "--markdown".as_ref(), den.as_os_str()]);
+    assert!(again.status.success());
+    assert!(String::from_utf8_lossy(&again.stdout).contains("unchanged"));
+    assert_eq!(fs::read_to_string(&md).unwrap(), written);
+    // A hand-written file is never replaced by accident.
+    let hand = temp.0.join("hand.den");
+    fs::copy(&den, &hand).unwrap();
+    fs::write(temp.0.join("hand.md"), "# mine\n").unwrap();
+    let refused = cli(&["render".as_ref(), "--markdown".as_ref(), hand.as_os_str()]);
+    assert_eq!(refused.status.code(), Some(2), "{refused:?}");
+    assert_eq!(fs::read_to_string(temp.0.join("hand.md")).unwrap(), "# mine\n");
+    let forced = cli(&["render".as_ref(), "--markdown".as_ref(), "--overwrite".as_ref(), hand.as_os_str()]);
+    assert!(forced.status.success(), "{forced:?}");
+    // --out mirrors the path; unsound input writes nothing and exits 1.
+    let out = temp.0.join("mirror");
+    let mirrored = cli(&["render".as_ref(), "--markdown".as_ref(), "--out".as_ref(), out.as_os_str(), den.as_os_str()]);
+    assert!(mirrored.status.success(), "{mirrored:?}");
+    assert!(out.join(den.strip_prefix("/").unwrap()).with_extension("md").is_file());
+    let unsound = cli(&["render".as_ref(), "--markdown".as_ref(), fixture("unsound/X201-unknown-name.den").as_os_str()]);
+    assert_eq!(unsound.status.code(), Some(1), "{unsound:?}");
+    assert!(!fixture("unsound/X201-unknown-name.md").exists());
+}

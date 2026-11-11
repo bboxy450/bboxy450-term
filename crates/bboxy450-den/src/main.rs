@@ -61,10 +61,106 @@ fn json_string(value: &str) -> String {
     result
 }
 
+const USAGE: &str = "usage: bboxy450-den check [--json] PATH...\n       bboxy450-den render --markdown [--out DIR] [--overwrite] PATH...";
+
+/// `render --markdown`: one `.md` beside each sound `.den` (or under `--out DIR`,
+/// mirroring the input path). A file that is not a previous lowering is kept
+/// unless `--overwrite`. Unsound input writes nothing and prints diagnostics.
+fn render(args: impl Iterator<Item = std::ffi::OsString>) -> Result<bool, String> {
+    let mut markdown = false;
+    let mut overwrite = false;
+    let mut out: Option<PathBuf> = None;
+    let mut paths = Vec::new();
+    let mut options = true;
+    let mut args = args.peekable();
+    while let Some(arg) = args.next() {
+        if options && arg == OsStr::new("--") {
+            options = false;
+        } else if options && arg == OsStr::new("--markdown") {
+            markdown = true;
+        } else if options && arg == OsStr::new("--overwrite") {
+            overwrite = true;
+        } else if options && arg == OsStr::new("--out") {
+            out = Some(PathBuf::from(args.next().ok_or("--out needs a directory")?));
+        } else if options && arg.to_string_lossy().starts_with('-') {
+            return Err(format!("unknown option: {}", arg.to_string_lossy()));
+        } else {
+            paths.push(PathBuf::from(arg));
+        }
+    }
+    if !markdown || paths.is_empty() {
+        return Err(USAGE.into());
+    }
+    let mut files = Vec::new();
+    for path in &paths {
+        collect(path, &mut files).map_err(|error| format!("{}: {error}", path.display()))?;
+    }
+    files.sort();
+    files.dedup();
+    let mut sound = true;
+    for path in files {
+        let source =
+            fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))?;
+        let target = match &out {
+            Some(dir) => {
+                // Mirror the path under DIR: relative to the current directory
+                // when inside it, else from the filesystem root.
+                let cwd = std::env::current_dir().map_err(|e| e.to_string())?;
+                let relative = path
+                    .strip_prefix(&cwd)
+                    .or_else(|_| path.strip_prefix("/"))
+                    .or_else(|_| path.strip_prefix("./"))
+                    .unwrap_or(&path);
+                dir.join(relative)
+            }
+            None => path.clone(),
+        }
+        .with_extension("md");
+        match bboxy450_den::render::render(&source) {
+            Err(report) => {
+                sound = false;
+                for line in report.to_text().lines() {
+                    println!("{}:{line}", path.display());
+                }
+            }
+            Ok(rendered) => {
+                if let Ok(existing) = fs::read_to_string(&target) {
+                    let lowering = bboxy450_den::render::embedded(&existing).is_some();
+                    if !lowering && !overwrite {
+                        return Err(format!(
+                            "{}: exists and is not a lowering; pass --overwrite to replace it",
+                            target.display()
+                        ));
+                    }
+                    if existing == rendered.markdown {
+                        println!("{} unchanged", target.display());
+                        continue;
+                    }
+                }
+                if let Some(parent) = target.parent() {
+                    fs::create_dir_all(parent)
+                        .map_err(|error| format!("{}: {error}", parent.display()))?;
+                }
+                fs::write(&target, &rendered.markdown)
+                    .map_err(|error| format!("{}: {error}", target.display()))?;
+                println!(
+                    "{} <- {} {}",
+                    target.display(),
+                    rendered.module,
+                    &rendered.source_sha256[..12]
+                );
+            }
+        }
+    }
+    Ok(sound)
+}
+
 fn run() -> Result<bool, String> {
     let mut args = std::env::args_os().skip(1);
-    if args.next().as_deref() != Some(OsStr::new("check")) {
-        return Err("usage: bboxy450-den check [--json] PATH...".into());
+    match args.next() {
+        Some(verb) if verb == OsStr::new("check") => {}
+        Some(verb) if verb == OsStr::new("render") => return render(args),
+        _ => return Err(USAGE.into()),
     }
     let mut json = false;
     let mut paths = Vec::new();
@@ -81,7 +177,7 @@ fn run() -> Result<bool, String> {
         }
     }
     if paths.is_empty() {
-        return Err("usage: bboxy450-den check [--json] PATH...".into());
+        return Err(USAGE.into());
     }
     let mut files = Vec::new();
     for path in paths {
