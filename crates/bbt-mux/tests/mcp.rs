@@ -6079,7 +6079,9 @@ os.execv(BINARY, [BINARY, *args])
         let resumed_group = unsafe { libc::getpgid(resumed_pid) };
         assert!(resumed_group > 0);
         groups.0.push(resumed_group);
-        f.wait_screen(resumed_seat, "Done.");
+        // The restored transcript can sit above the viewport once startup
+        // notices print; the harness's restore line is the resume witness.
+        f.wait_screen(resumed_seat, "recovered ");
         let until = Instant::now() + Duration::from_secs(8);
         while f
             .registry()
