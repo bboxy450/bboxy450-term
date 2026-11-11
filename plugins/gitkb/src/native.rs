@@ -379,6 +379,26 @@ pub fn prefix(text: &str, n: usize) -> String {
 }
 
 /// Random lowercase hex from the OS generator.
+/// A provisional native id for a workspace record that carries no `id:`
+/// header before GitKB assigns one at commit: stable for this root and slug
+/// (UUID version 8, canonical form), replaced by GitKB's id at commit.
+pub fn derived_native(root: &str, slug: &str) -> String {
+    use sha2::{Digest, Sha256};
+    let digest = Sha256::digest(format!("bboxy450 gitkb provisional\0{root}\0{slug}").as_bytes());
+    let mut n = u128::from_be_bytes(digest[..16].try_into().expect("16 bytes"));
+    n = (n & !(0xf << 76)) | (0x8 << 76);
+    n = (n & !(0x3 << 62)) | (0x2 << 62);
+    format_uuid(n)
+}
+
+/// A fresh random native id (UUID version 4, canonical form).
+pub fn fresh_native() -> String {
+    let mut hex = random_hex(16).into_bytes();
+    hex[12] = b'4';
+    hex[16] = b"89ab"[(hex[16] as usize) & 3];
+    format_uuid(u128::from_str_radix(std::str::from_utf8(&hex).expect("hex"), 16).expect("hex"))
+}
+
 pub fn random_hex(bytes: usize) -> String {
     let mut buffer = vec![0u8; bytes];
     std::fs::File::open("/dev/urandom")

@@ -33,7 +33,21 @@ the executable needs no adjacent source, schema or skill files.
 `plugins/gitkb/SKILL.md` is the canonical UTF-8 skill: its exact contents and
 frontmatter metadata are embedded in `Shape.skills`. Rebuilding after a skill
 edit changes the executable digest and requires retrust. The pinned GitKB
-installation is the only runtime dependency.
+installation is the only runtime dependency. After a `git-kb` upgrade, rebuild
+with `make build-gitkb-plugin`, install with `make install-gitkb-plugin-prepared
+PLUGIN_WORKSPACE=<project>` and approve the new digest with `ctl plugin approve`;
+until then every call refuses `backend_changed`.
+
+GitKB 0.2.19 and 1.0 are both served. 1.0 wraps `list --json` in a `documents`
+envelope, names the kind `type`, and assigns a document id at commit, so an
+uncommitted workspace record reports `id: null`; the plugin reads such a
+record's identity from its own `id:` header, which every write carries (a new
+record without one gets a fresh UUID; a hand-written workspace file without
+one reads as a stable id derived from the root and slug). Under 1.0 that id is provisional:
+commit assigns GitKB's own id and rewrites the header, so a reference taken
+before a commit no longer matches the committed record; `commit` returns the
+new ids and a fresh resolve finds them. Graph edges name uncommitted documents
+`new:<slug>`; the plugin resolves those through the record's header.
 
 `initialize` hashes the backend once and refuses `backend_changed` when it differs
 from the pin. Every later call compares the binary's file identity (device,

@@ -108,8 +108,10 @@ impl GitKb {
                 .cloned()
                 .collect();
             // Explicit native numbers take precedence within each record.
-            let rows = self.cli(&["list", "--where", &format!("number = {digits}"), "--json"])?;
-            for row in rows.as_array().into_iter().flatten() {
+            let rows = crate::store::listed(
+                self.cli(&["list", "--where", &format!("number = {digits}"), "--json"])?,
+            )?;
+            for row in &rows {
                 if let Some(slug) = row["slug"].as_str() {
                     candidates.insert(slug.into());
                 }
@@ -126,8 +128,15 @@ impl GitKb {
             let catalog = self.catalog(&[])?;
             let mut records = Vec::new();
             for slug in &catalog.order {
-                if catalog.rows[slug]["id"] == identifier {
+                let listed = &catalog.rows[slug]["id"];
+                if listed == &identifier {
                     records.push(self.read(&slug.as_str().into(), None)?);
+                } else if listed.is_null() {
+                    // GitKB 1.0 lists no id before commit; the record's header has it.
+                    let record = self.read(&slug.as_str().into(), None)?;
+                    if record["external_id"] == identifier {
+                        records.push(record);
+                    }
                 }
             }
             records
@@ -275,11 +284,10 @@ impl GitKb {
                 flags.extend([format!("--{field}"), value]);
             }
         }
-        for field in ["assignee", "swarm"] {
-            if let Some(value) = wanted(field)? {
-                flags.extend(["--where".into(), format!("{field} = {value}")]);
-            }
-        }
+        // `assignee` and `swarm` are not native prefilters: GitKB 1.0 evaluates
+        // `--where` and `--assigned-to` against the committed document, so an
+        // uncommitted reassignment would hide the task. The summary filter
+        // below reads the workspace record's own fields.
         if let Some(status) = wanted("status")?
             && let Some(natives) = native_statuses(&status)
         {
@@ -534,14 +542,37 @@ impl GitKb {
         let mut args = vec!["graph", "--json", "--depth", &depth, "--"];
         args.extend(slugs.iter().map(String::as_str));
         let result = self.cli(&args)?;
-        let edges = result["edges"]
-            .as_array()
-            .into_iter()
-            .flatten()
-            .filter_map(portable_edge)
-            .collect();
-        let nodes = result["nodes"].as_array().cloned().unwrap_or_default();
+        let mut edges = Vec::new();
+        for edge in result["edges"].as_array().into_iter().flatten() {
+            let (Some(from), Some(to)) = (
+                edge["from"].as_str().and_then(|id| self.native_graph_id(id)),
+                edge["to"].as_str().and_then(|id| self.native_graph_id(id)),
+            ) else {
+                continue;
+            };
+            let mut edge = edge.clone();
+            edge["from"] = from.into();
+            edge["to"] = to.into();
+            edges.extend(portable_edge(&edge));
+        }
+        let mut nodes = result["nodes"].as_array().cloned().unwrap_or_default();
+        for node in &mut nodes {
+            if let Some(id) = node["id"].as_str().and_then(|id| self.native_graph_id(id)) {
+                node["id"] = id.into();
+            }
+        }
         Ok((edges, nodes))
+    }
+
+    /// A graph id as GitKB's native document id. GitKB 1.0 names an
+    /// uncommitted document `new:<slug>`; its identity is its own header's.
+    fn native_graph_id(&mut self, id: &str) -> Option<String> {
+        let Some(slug) = id.strip_prefix("new:") else {
+            return Some(id.to_owned());
+        };
+        self.read(&slug.into(), None).ok()?["external_id"]
+            .as_str()
+            .map(str::to_owned)
     }
 
     pub fn links(&mut self, args: &Value) -> Result<Value, Refusal> {
@@ -599,13 +630,10 @@ impl GitKb {
             }
             "swarm" => {
                 let swarm = string(&scope["swarm"], "scope.swarm")?;
-                let rows = self.cli(&["list", "--where", &format!("swarm = {swarm}"), "--json"])?;
-                let member: BTreeSet<&str> = rows
-                    .as_array()
-                    .into_iter()
-                    .flatten()
-                    .filter_map(|r| r["slug"].as_str())
-                    .collect();
+                let rows = crate::store::listed(
+                    self.cli(&["list", "--where", &format!("swarm = {swarm}"), "--json"])?,
+                )?;
+                let member: BTreeSet<&str> = rows.iter().filter_map(|r| r["slug"].as_str()).collect();
                 selected.retain(|s| member.contains(s.as_str()));
             }
             "all" => {}
@@ -762,10 +790,13 @@ impl GitKb {
                 ));
             }
             generation = Value::Null;
-            if let Some(id) = fm.get("id").filter(|v| truthy(v)) {
-                let id = native(string(id, "frontmatter.id")?)?;
-                fm.insert("id".into(), id.into());
-            }
+            // GitKB 1.0 assigns no id before commit, so a new record carries
+            // its own: the caller's, else a fresh one. Commit may replace it.
+            let id = match fm.get("id").filter(|v| truthy(v)) {
+                Some(id) => native(string(id, "frontmatter.id")?)?,
+                None => crate::native::fresh_native(),
+            };
+            fm.insert("id".into(), id.into());
         }
         if fm.get("slug").is_some_and(|s| s != slug.as_str()) {
             return Err(Refusal::new(

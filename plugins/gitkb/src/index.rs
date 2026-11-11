@@ -66,6 +66,9 @@ type Fields = [Value; 3];
 /// GitKB's `.cache` database is excluded: every read rewrites it.
 pub fn store_signal(root: &Path) -> Option<String> {
     let store = root.join(".kb/store");
+    if !store.join("manifest.json").exists() {
+        return store_signal_1_0(root);
+    }
     let mut parts = Vec::new();
     for (relative, required) in [
         ("", true),
@@ -93,6 +96,38 @@ pub fn store_signal(root: &Path) -> Option<String> {
             Err(_) if !required => parts.push(Value::Null),
             _ => return None,
         }
+    }
+    Some(digest(&encoded(&Value::Array(parts))))
+}
+
+/// GitKB 1.0 keeps no `.kb/store/manifest.json`: every commit appends to the
+/// current `.kb/log/*.log` segment (or opens a new one), so the sorted
+/// segment stats, with `.kb/format.json`, are the committed-store signal.
+fn store_signal_1_0(root: &Path) -> Option<String> {
+    let stat = |path: &Path| -> Option<Value> {
+        let m = path.symlink_metadata().ok()?;
+        (!m.file_type().is_symlink()).then(|| {
+            json!([
+                m.dev(),
+                m.ino(),
+                m.size(),
+                m.mtime(),
+                m.mtime_nsec(),
+                m.ctime(),
+                m.ctime_nsec()
+            ])
+        })
+    };
+    let mut parts = vec![stat(&root.join(".kb/format.json"))?];
+    let mut segments: Vec<PathBuf> = std::fs::read_dir(root.join(".kb/log"))
+        .ok()?
+        .flatten()
+        .map(|e| e.path())
+        .filter(|p| p.extension().is_some_and(|x| x == "log"))
+        .collect();
+    segments.sort();
+    for segment in segments {
+        parts.push(json!([segment.file_name().map(|n| n.to_string_lossy().into_owned()), stat(&segment)?]));
     }
     Some(digest(&encoded(&Value::Array(parts))))
 }
@@ -274,11 +309,17 @@ fn entry(line: &[u8]) -> Option<(String, Doc, Map<String, Value>)> {
         .chars()
         .take(SNIPPET_CHARS)
         .collect();
+    // GitKB 0.2 exported the kind as `doc_type`; 1.0 exports `type`.
+    let doc_type = if content["doc_type"].is_null() {
+        content["type"].clone()
+    } else {
+        content["doc_type"].clone()
+    };
     let doc = Doc::new(
         id.into(),
         content["version"].clone(),
         content["title"].clone(),
-        content["doc_type"].clone(),
+        doc_type,
         fm,
         snippet,
         content["modified_at"].clone(),
@@ -544,14 +585,49 @@ fn native_outgoing(
     ];
     let result = backend.cli(ctx, &args, None, false).ok()?;
     let from = record["id"].as_str()?;
-    Some(
-        result["edges"]
-            .as_array()?
-            .iter()
-            .filter_map(portable_edge)
-            .filter(|e| e["from"] == from)
-            .collect(),
-    )
+    let external = record["external_id"].as_str()?;
+    // GitKB 1.0 names an uncommitted document `new:<slug>` in the graph: this
+    // record is known, another one's identity is read from its own header.
+    let mut resolved: HashMap<String, Option<String>> = HashMap::new();
+    let mut native_of = |id: &str| -> Option<String> {
+        let Some(other) = id.strip_prefix("new:") else {
+            return Some(id.to_owned());
+        };
+        if other == slug {
+            return Some(external.to_owned());
+        }
+        resolved
+            .entry(other.to_owned())
+            .or_insert_with(|| {
+                let shown = backend
+                    .cli(
+                        ctx,
+                        &["show", "--source", "workspace", "--raw-content", "--json", "--", other],
+                        None,
+                        false,
+                    )
+                    .ok()?;
+                let raw = shown["rawContent"].as_str()?;
+                crate::native::native(&crate::store::header_id(raw)?).ok()
+            })
+            .clone()
+    };
+    let mut edges = Vec::new();
+    for edge in result["edges"].as_array()? {
+        let (Some(f), Some(t)) = (
+            edge["from"].as_str().and_then(&mut native_of),
+            edge["to"].as_str().and_then(&mut native_of),
+        ) else {
+            continue;
+        };
+        let mut edge = edge.clone();
+        edge["from"] = f.into();
+        edge["to"] = t.into();
+        if let Some(edge) = portable_edge(&edge).filter(|e| e["from"] == from) {
+            edges.push(edge);
+        }
+    }
+    Some(edges)
 }
 
 /// What a list summary or graph node needs of an exact record.

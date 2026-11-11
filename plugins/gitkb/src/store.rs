@@ -223,6 +223,25 @@ pub struct Projected {
 }
 
 /// Workspace tags belong to these source bytes, not the committed graph's tag union.
+/// The `id:` of a raw record's YAML header, which GitKB's parsed
+/// `frontmatter` never carries (it lifts id, slug, type and title out).
+pub fn header_id(raw: &str) -> Option<String> {
+    let mut lines = raw.lines();
+    if lines.next() != Some("---") {
+        return None;
+    }
+    let header = lines
+        .take_while(|line| *line != "---")
+        .collect::<Vec<_>>()
+        .join("\n");
+    let source: Map<String, Value> = serde_yaml::from_str(&header).ok()?;
+    match source.get("id")? {
+        Value::String(id) => Some(id.clone()),
+        Value::Number(n) => Some(n.to_string()),
+        _ => None,
+    }
+}
+
 fn workspace_frontmatter(doc: &Value, raw: &str) -> Result<Map<String, Value>, Refusal> {
     let mut fields = doc["frontmatter"].as_object().cloned().unwrap_or_default();
     let mut lines = raw.lines();
@@ -246,6 +265,13 @@ fn workspace_frontmatter(doc: &Value, raw: &str) -> Result<Map<String, Value>, R
         }
         None => {
             fields.remove("tags");
+        }
+    }
+    // GitKB 1.0 lifts these header keys out of `frontmatter` into document
+    // fields; 0.2 left them in. The record keeps them where the header had them.
+    for key in ["status", "assignee", "priority"] {
+        if let Some(value) = source.get(key).filter(|_| !fields.contains_key(key)) {
+            fields.insert(key.into(), value.clone());
         }
     }
     Ok(fields)
@@ -525,13 +551,7 @@ impl GitKb {
     fn native_rows(&mut self, flags: &[String]) -> Result<Vec<Value>, Refusal> {
         let mut args = vec!["list", "--json", "--sort", "title", "--asc"];
         args.extend(flags.iter().map(String::as_str));
-        match self.cli(&args)? {
-            Value::Array(rows) => Ok(rows),
-            _ => Err(Refusal::new(
-                "backend_protocol_error",
-                "GitKB list is not an array",
-            )),
-        }
+        listed(self.cli(&args)?)
     }
 
     /// The index answer, or `None` for the backend path: unsupported flags,
@@ -664,29 +684,45 @@ pub fn read_source_state(
             "GitKB omitted source bytes",
         ));
     };
-    let native_id = doc["id"].as_str().unwrap_or("");
-    let id = portable(native_id)?;
+    // Both sources read the header the batched committed path reads, so a
+    // graph node and an exact fetch agree: GitKB 1.0 lifts status, assignee
+    // and priority out of `frontmatter`, the raw header still has them.
+    let source_frontmatter = if result["documentSource"]["kind"] == "workspace" {
+        workspace_frontmatter(doc, raw)?
+    } else {
+        match native_frontmatter(raw) {
+            Some(fm) => fm,
+            None => workspace_frontmatter(doc, raw)?,
+        }
+    };
+    // GitKB 1.0 assigns a document id at commit: an uncommitted workspace
+    // source reports `id: null`. Until then the record's own `id:` header,
+    // which every host write carries, is its identity.
+    let native_id = match doc["id"].as_str().filter(|id| !id.is_empty()) {
+        Some(id) => id.to_owned(),
+        None => match header_id(raw) {
+            Some(header) => crate::native::native(&header)?,
+            None => crate::native::derived_native(root_text, slug),
+        },
+    };
+    let id = portable(&native_id)?;
+    // GitKB 0.2 named the kind `doc_type`; 1.0 names it `type`.
+    let kind = if doc["doc_type"].is_null() {
+        doc["type"].clone()
+    } else {
+        doc["doc_type"].clone()
+    };
     let Projected {
         frontmatter: fm,
         native_status,
         number,
-    } = project(
-        &id,
-        slug,
-        doc,
-        &doc["doc_type"],
-        if result["documentSource"]["kind"] == "workspace" {
-            workspace_frontmatter(doc, raw)?
-        } else {
-            doc["frontmatter"].as_object().cloned().unwrap_or_default()
-        },
-    )?;
+    } = project(&id, slug, doc, &kind, source_frontmatter)?;
     let source = result["documentSource"].clone();
     // Committed sources digest their native id and version, so batched
     // and indexed references need no bytes; workspace sources digest bytes.
     let (digest, updated_at) = if source == json!({"kind": "committed"}) {
         (
-            committed_digest(root_text, native_id, &doc["version"]),
+            committed_digest(root_text, &native_id, &doc["version"]),
             committed_updated_at(&doc["modified_at"]),
         )
     } else {
@@ -696,7 +732,7 @@ pub fn read_source_state(
         )
     };
     let mut record = json!({
-        "id": id, "external_id": native_id, "number": number, "slug": slug,
+        "id": id, "external_id": native_id.as_str(), "number": number, "slug": slug,
         "path": format!("{slug}.md"),
         "digest": digest,
         "body": doc["content"], "etag": result["generation"], "resources": [],
@@ -705,7 +741,7 @@ pub fn read_source_state(
                   "version": doc["version"], "created_at": doc["created_at"],
                   "modified_at": doc["modified_at"], "raw_content": raw},
     });
-    if let Some(signed) = load_signed(&backend.cwd, native_id, &digest) {
+    if let Some(signed) = load_signed(&backend.cwd, &native_id, &digest) {
         record["signed_record"] = signed.into();
     }
     if !updated_at.is_null() {
@@ -1302,8 +1338,48 @@ impl GitKb {
     }
 }
 
+/// The rows of a `git-kb list --json` answer. GitKB 0.2 printed a bare array;
+/// 1.0 prints `{"documents": [...], "total", "count", "offset", "limit", "has_more"}`.
+/// Every list here asks for no limit, so a truncated page is a protocol error.
+pub fn listed(value: Value) -> Result<Vec<Value>, Refusal> {
+    let protocol = |what: &str| Refusal::new("backend_protocol_error", format!("GitKB list {what}"));
+    match value {
+        Value::Array(rows) => Ok(rows),
+        Value::Object(mut fields) => {
+            if fields.get("has_more").and_then(Value::as_bool) == Some(true) {
+                return Err(protocol("is truncated (has_more)"));
+            }
+            match fields.remove("documents") {
+                Some(Value::Array(rows)) => Ok(rows),
+                _ => Err(protocol("has no documents array")),
+            }
+        }
+        _ => Err(protocol("is not an array")),
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn listed_accepts_a_bare_array_and_the_1_0_documents_envelope_but_not_a_truncated_page() {
+        let rows = vec![json!({"slug": "tasks/a"})];
+        assert_eq!(listed(json!(rows)).unwrap(), rows);
+        assert_eq!(
+            listed(json!({"documents": rows, "total": 1, "count": 1, "offset": 0, "limit": null, "has_more": false}))
+                .unwrap(),
+            rows
+        );
+        for (value, what) in [
+            (json!({"documents": rows, "has_more": true}), "truncated"),
+            (json!({"total": 0}), "no documents"),
+            (json!("rows"), "not an array"),
+        ] {
+            let refusal = listed(value).unwrap_err();
+            assert_eq!(refusal.code, "backend_protocol_error");
+            assert!(refusal.message.contains(what), "{}", refusal.message);
+        }
+    }
+
     use super::*;
 
     #[test]

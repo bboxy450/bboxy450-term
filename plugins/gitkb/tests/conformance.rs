@@ -236,6 +236,15 @@ struct Conn {
     initialization: Value,
 }
 
+/// GitKB's own status for a raw source: in `frontmatter` for 0.2.19, lifted to
+/// the document in 1.0.
+fn native_status(source: &Value) -> Value {
+    match &source["document"]["frontmatter"]["status"] {
+        Value::Null => source["document"]["status"].clone(),
+        value => value.clone(),
+    }
+}
+
 fn with_unknown(args: Value) -> Value {
     let mut args = args;
     args["unknown_future"] = true.into();
@@ -466,7 +475,13 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
     assert_eq!(one["number"], 77);
     assert_eq!(one["external_id"], "01563e3a-b5d3-d676-4c61-efb99302bd5b");
     let raw = fx.source(&a, "notes/shared", "workspace");
-    assert_eq!(raw["document"]["id"], one["external_id"]);
+    // GitKB 0.2 reported the header id for a workspace source; 1.0 reports no
+    // id before commit. The record's own header carries it either way.
+    assert!(
+        raw["rawContent"].as_str().unwrap().contains(one["external_id"].as_str().unwrap()),
+        "{}",
+        raw["rawContent"]
+    );
     assert_eq!(
         raw["document"]["frontmatter"]["nested"],
         json!({"preserved": [1, true, "x"]})
@@ -558,7 +573,7 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
         assert!(native.get("bboxy_status").is_none());
         assert!(native.get("bboxy_signed_record").is_none());
         assert_eq!(
-            native["status"],
+            native_status(&actual),
             if status == "running" {
                 "active"
             } else {
@@ -680,7 +695,7 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
     );
     let committed = fx.source(&a, &task_slug, "committed");
     assert_eq!(committed["exists"], true);
-    assert_eq!(committed["document"]["frontmatter"]["status"], "accepted");
+    assert_eq!(native_status(&committed), "accepted");
     assert_eq!(fx.source(&a, "notes/shared", "committed")["exists"], false);
     assert_eq!(other.resolve("notes/shared")["id"], sibling["id"]);
     other.refuse(
@@ -809,12 +824,18 @@ fn check(fx: &mut Fixture, conns: &mut Vec<Conn>) -> Vec<&'static str> {
         .clone();
     let linked_ref = client.resolve(linked["slug"].as_str().unwrap());
     let outgoing = client.call("links", json!({ "ref": linked_ref }))["outgoing"].clone();
+    // GitKB 1.0 assigns the committed id at commit, so the task's identity is
+    // read again after it was committed above; 0.2.19 kept the header id.
+    let committed_task = client.resolve(&task_slug);
+    task = client.call("fetch", json!({ "ref": committed_task }));
     assert!(
         outgoing
             .as_array()
             .unwrap()
             .iter()
-            .any(|e| e["to"] == task["id"] && e["rel"] == "references")
+            .any(|e| e["to"] == task["id"] && e["rel"] == "references"),
+        "{outgoing} vs {}",
+        task["id"]
     );
     let task_ref = client.resolve(&task_slug);
     let incoming = client.call("links", json!({ "ref": task_ref }))["incoming"].clone();
@@ -1289,12 +1310,13 @@ fn index_checks(fx: &mut Fixture) -> Vec<Conn> {
     assert_eq!(cold["served"], 1, "{cold}");
     let mut off = fx.connect(&root, None, Some(off_env), false).unwrap();
     assert_eq!(index_facts(&mut off)["enabled"], false);
+    // The assignee filter is the plugin's own on both paths (GitKB's native
+    // filters read the committed assignment), so the backend path agrees.
     assert_eq!(
         slugs(&off.collect("list", carol_task), ""),
-        ["tasks/c", "tasks/w"]
+        ["tasks/a", "tasks/c", "tasks/w"]
     );
-    // Compare the two paths with the same source fields. Keep the uncommitted
-    // assignment witness above; do not require it to match native --where.
+    // Compare the two paths with the same source fields.
     native_write(
         fx,
         &root,
@@ -1344,10 +1366,10 @@ fn index_checks(fx: &mut Fixture) -> Vec<Conn> {
                 off.collect("search", search),
                 "{filter}"
             );
-            // Values native parsing might type or split use the backend.
-            let indexed = filter["swarm"] != "x y" && filter["assignee"] != "123";
+            // assignee and swarm are the plugin's own filters, so every one
+            // of these is served by the index; no value reaches native parsing.
             let now = index_facts(on)["served"].as_u64().unwrap();
-            assert_eq!(now > served, indexed, "{filter}");
+            assert!(now > served, "{filter}");
         }
         let graph = json!({"scope": {"kind": "type", "graph": "markdown", "type": "task"}});
         assert_eq!(on.call("graph", graph.clone()), off.call("graph", graph));
@@ -1627,12 +1649,12 @@ fn review_checks(fx: &mut Fixture) -> Vec<String> {
             continue;
         };
         current = written["record"].clone();
-        let native =
-            fx.source(&root, "tasks/status", "workspace")["document"]["frontmatter"].clone();
+        let source = fx.source(&root, "tasks/status", "workspace");
+        let native = source["document"]["frontmatter"].clone();
         expect(
             "3 status round trip",
             current["frontmatter"]["status"] == host
-                && native["status"] == gitkb
+                && native_status(&source) == gitkb
                 && native.get("bboxy_status").is_none(),
             format!(
                 "{host}: read {} native {native}",
@@ -1696,9 +1718,7 @@ fn review_checks(fx: &mut Fixture) -> Vec<String> {
         json!({"ref": reference(&unknown), "etag": unknown["etag"], "frontmatter": fm,
                "body": unknown["body"], "signed_record": "review investigating"}),
     );
-    let raw =
-        fx.source(&root, "tasks/investigating", "workspace")["document"]["frontmatter"]["status"]
-            .clone();
+    let raw = native_status(&fx.source(&root, "tasks/investigating", "workspace"));
     let open_items = slugs(
         &conn.collect(
             "list",
