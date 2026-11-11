@@ -99,7 +99,14 @@ pub(super) fn run() {
         )
         .unwrap();
         command(&f, seat, "start", "active", source, Some("bash"));
-        let blocked = command(&f, seat, "approval", "waiting", source, Some("Allow bash"));
+        // The log reader shows a name with whitespace as its item kind
+        // (wake-up harness_log.rs, 727ee8987); OSC 7501 keeps the label.
+        let label = if source == "sessions_file" {
+            "approval"
+        } else {
+            "Allow bash"
+        };
+        let blocked = command(&f, seat, "approval", "waiting", source, Some(label));
         assert_eq!(blocked["adapter"]["waiting_kind"], "permission");
         command(&f, seat, "resume", "active", source, Some("bash"));
         command(&f, seat, "done", "idle", source, None);

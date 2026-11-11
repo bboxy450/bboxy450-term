@@ -5545,19 +5545,36 @@ os.execv(BINARY, [BINARY, *args])
     let pgid = unsafe { libc::getpgid(pid) };
     assert!(pgid > 0);
     let mut groups = OwnedHarnessGroups(vec![pgid]);
-    f.wait_screen(
-        seat,
-        if quiet == Some(true) {
-            "session_started"
-        } else {
-            "session "
-        },
-    );
     let sessions = if quiet == Some(false) {
         home.join("osc-only-sessions")
     } else {
         home.join(".bboxy450-harness/sessions")
     };
+    if quiet == Some(true) {
+        // Quiet mode prints raw events; startup notices can scroll the first one
+        // off the screen. The durable session log is the readiness witness.
+        let until = Instant::now() + Duration::from_secs(120);
+        let started = || {
+            std::fs::read_dir(&sessions)
+                .into_iter()
+                .flatten()
+                .flatten()
+                .any(|e| {
+                    std::fs::read_to_string(e.path())
+                        .is_ok_and(|log| log.contains("\"session_started\""))
+                })
+        };
+        while !started() {
+            assert!(
+                Instant::now() < until,
+                "no session_started in {}",
+                sessions.display()
+            );
+            std::thread::sleep(Duration::from_millis(20));
+        }
+    } else {
+        f.wait_screen(seat, "session ");
+    }
     let logs: Vec<_> = std::fs::read_dir(&sessions)
         .unwrap()
         .map(|e| e.unwrap().path())
@@ -5776,9 +5793,11 @@ os.execv(BINARY, [BINARY, *args])
         let until = Instant::now() + Duration::from_secs(2);
         loop {
             let status = read(&f);
-            if status["adapter"]["detail"]
-                .as_str()
-                .is_some_and(|detail| detail.contains("bash"))
+            // The log reader shows a command head (it has whitespace) as its
+            // item kind; OSC 7501 keeps the command text.
+            let detail = status["adapter"]["detail"].as_str().unwrap_or_default();
+            if detail.contains("bash")
+                || (status["adapter"]["source"] == "sessions_file" && detail == "terminal")
             {
                 break;
             }
