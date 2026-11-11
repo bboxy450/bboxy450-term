@@ -120,7 +120,7 @@ for name, source, title in (
     ("osc7501-claude", "osc7501-claude.bin", "Claude status capture"),
     ("osc7501-preflight", "osc7501-claude-preflight.bin", "Claude preflight capture"),
 ):
-    capture = ROOT.joinpath(".bboxy/runs", source).read_bytes()
+    capture = HERE.parent.joinpath("tests/fixtures/captures", source).read_bytes()
     # The originals contain only OSC 7501 control sequences, no session text.
     display = f"{E}[1m{title}{E}[0m\r\n\r\n"
     display += f"Original control-only bytes: {len(capture)}\r\n"
@@ -132,7 +132,7 @@ for name, source, title in (
     display += "Visible text is synthetic; the captured bytes are unmodified.\r\n"
     HERE.joinpath(name + ".ansi").write_bytes(capture + display.encode())
 
-codex_captures = b"".join(p.read_bytes() for p in sorted(ROOT.joinpath(".bboxy/runs").glob("osc7501-codex*.bin")))
+codex_captures = b"".join(p.read_bytes() for p in sorted(HERE.parent.joinpath("tests/fixtures/captures").glob("osc7501-codex*.bin")))
 assert not codex_captures, "Review new capture bytes for private text before embedding"
 scene("osc7501-codex", f"""{E}[1mCodex OSC 7501 / explicit capture gap{E}[0m
 

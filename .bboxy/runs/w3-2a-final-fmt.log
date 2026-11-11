@@ -1,3 +1,0 @@
-$ cargo fmt -p bbt-ui-model -- --check
-
-exit_status=0

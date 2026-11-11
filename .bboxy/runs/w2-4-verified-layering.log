@@ -1,5 +1,0 @@
-$ bash scripts/layering.sh
-bboxy-firehose: not in ORDER (scripts/layering.sh)
-layering: VIOLATED
-
-exit_status=1

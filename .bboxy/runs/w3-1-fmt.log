@@ -1,3 +1,0 @@
-$ cargo fmt -p bbt-render
-
-exit_status: 0

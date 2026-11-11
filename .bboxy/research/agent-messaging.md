@@ -10,7 +10,7 @@ updated: "2026-10-24T00:10:38Z"
 
 2026-10-21 · Nyx Copperwing <EXECUTOR> · assignment B.
 
-[[vision]] · [[2026-10-21-agent-messaging-research]] · [[messaging]] · [[2026-10-21-agent-messaging-checks]]
+[[vision]] · [[2026-10-21-agent-messaging-research]] · [[messaging]] · [[runs/2026-10-21-agent-messaging-checks]]
 
 ## Source boundary
 

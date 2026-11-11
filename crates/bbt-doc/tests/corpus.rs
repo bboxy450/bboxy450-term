@@ -89,9 +89,13 @@ fn frontmatter_errors(root: &Path) -> io::Result<(usize, Vec<String>)> {
             }
         }
     }
-    errors.extend(reports::report_errors(&sources, ""));
+    errors.extend(reports::report_errors(&sources));
     Ok((sources.len(), errors))
 }
+
+/// Record folders .bboxy/.gitignore keeps on this machine: a link into one
+/// resolves only where that record exists locally.
+const MACHINE_LOCAL: [&str; 3] = ["artifacts/", "reports/", "runs/"];
 
 fn corpus_root() -> std::path::PathBuf {
     std::env::var_os("BBOXY_DOC_CORPUS_ROOT")
@@ -105,10 +109,7 @@ fn real_bboxy_frontmatter_parses() {
     // A subprocess fixture can check actual mux-authored files without writing
     // into this repository. Ordinary corpus gates retain the real root.
     let root = corpus_root();
-    let (count, mut errors) = frontmatter_errors(&root).unwrap();
-    if std::env::var_os("BBOXY_DOC_CORPUS_ROOT").is_none() {
-        errors.extend(reports::repository_commit_errors(&root));
-    }
+    let (count, errors) = frontmatter_errors(&root).unwrap();
     assert!(count > 0, "the real .bboxy corpus must not be empty");
     assert!(errors.is_empty(), "{}", errors.join("\n"));
     println!("frontmatter: {count} Markdown records, positive unique numbers, 0 errors");
@@ -343,7 +344,9 @@ fn real_corpus_links_numeric_handles_and_legacy_ledger_anchors_resolve() {
             .and_then(|value| serde_yaml::to_string(value).ok())
             .unwrap_or_default();
         for target in link_targets(record.markdown) {
-            if target.starts_with("artifacts/") || artifacts.contains(&format!("[[{target}]]")) {
+            if MACHINE_LOCAL.iter().any(|dir| target.starts_with(dir))
+                || artifacts.contains(&format!("[[{target}]]"))
+            {
                 continue;
             }
             let resolved = match resolve(records.iter().copied(), &target) {

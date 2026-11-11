@@ -142,22 +142,6 @@ pub fn locator(value: &Value) -> Result<&str, String> {
     }
 }
 
-/// Extract Report trailers; a present malformed link fails closed.
-pub fn trailers(message: &str) -> Result<Vec<&str>, String> {
-    message
-        .lines()
-        .filter_map(|line| line.strip_prefix("Report:"))
-        .map(|value| {
-            let value = value.trim();
-            if value.starts_with("[[") && value.ends_with("]]") && value.len() > 4 {
-                Ok(value)
-            } else {
-                Err("Report: trailer requires [[report-locator]]".into())
-            }
-        })
-        .collect()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -26,7 +26,7 @@ updated_by: seat:01M6ER6V2ZYS7Z1K05TE6ZJTJD
 
 2026-10-21 · Nyx Copperwing <EXECUTOR> · assignment B · proposal for Oracle review.
 
-[[vision]] · [[agent-messaging]] · [[2026-10-21-agent-messaging-research]] · [[2026-10-21-agent-messaging-checks]]
+[[vision]] · [[agent-messaging]] · [[2026-10-21-agent-messaging-research]] · [[runs/2026-10-21-agent-messaging-checks]]
 
 ## Decision and cost
 

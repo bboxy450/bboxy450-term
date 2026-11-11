@@ -83,11 +83,11 @@ fn originals_are_control_only_and_embedded_verbatim() {
     for (scene_name, original) in [
         (
             "osc7501-claude",
-            include_bytes!("../../../.bboxy/runs/osc7501-claude.bin").as_slice(),
+            include_bytes!("fixtures/captures/osc7501-claude.bin").as_slice(),
         ),
         (
             "osc7501-preflight",
-            include_bytes!("../../../.bboxy/runs/osc7501-claude-preflight.bin").as_slice(),
+            include_bytes!("fixtures/captures/osc7501-claude-preflight.bin").as_slice(),
         ),
     ] {
         let scene = SCENES.iter().find(|s| s.name == scene_name).unwrap();
@@ -99,16 +99,16 @@ fn originals_are_control_only_and_embedded_verbatim() {
         }
     }
     for capture in [
-        include_bytes!("../../../.bboxy/runs/osc7501-codex.bin").as_slice(),
-        include_bytes!("../../../.bboxy/runs/osc7501-codex-bboxy-baseline.bin"),
-        include_bytes!("../../../.bboxy/runs/osc7501-codex-choice-unavailable.bin"),
-        include_bytes!("../../../.bboxy/runs/osc7501-codex-explicit-untrusted.bin"),
-        include_bytes!("../../../.bboxy/runs/osc7501-codex-hooks-disabled.bin"),
-        include_bytes!("../../../.bboxy/runs/osc7501-codex-offset-diagnostic.bin"),
-        include_bytes!("../../../.bboxy/runs/osc7501-codex-preflight.bin"),
-        include_bytes!("../../../.bboxy/runs/osc7501-codex-startup-diagnostic.bin"),
-        include_bytes!("../../../.bboxy/runs/osc7501-codex-startup-gated.bin"),
-        include_bytes!("../../../.bboxy/runs/osc7501-codex-trust-chooser.bin"),
+        include_bytes!("fixtures/captures/osc7501-codex.bin").as_slice(),
+        include_bytes!("fixtures/captures/osc7501-codex-bboxy-baseline.bin"),
+        include_bytes!("fixtures/captures/osc7501-codex-choice-unavailable.bin"),
+        include_bytes!("fixtures/captures/osc7501-codex-explicit-untrusted.bin"),
+        include_bytes!("fixtures/captures/osc7501-codex-hooks-disabled.bin"),
+        include_bytes!("fixtures/captures/osc7501-codex-offset-diagnostic.bin"),
+        include_bytes!("fixtures/captures/osc7501-codex-preflight.bin"),
+        include_bytes!("fixtures/captures/osc7501-codex-startup-diagnostic.bin"),
+        include_bytes!("fixtures/captures/osc7501-codex-startup-gated.bin"),
+        include_bytes!("fixtures/captures/osc7501-codex-trust-chooser.bin"),
     ] {
         assert!(
             capture.is_empty(),

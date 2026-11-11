@@ -1,3 +1,0 @@
-$ cargo fmt -p bbt-mux -p bbt-core -- --check
-
-exit_status=0

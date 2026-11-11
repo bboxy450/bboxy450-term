@@ -1,4 +1,0 @@
-$ bash scripts/layering.sh
-layering: held
-
-exit_status=0

@@ -42,8 +42,8 @@ Broken pipes exit successfully. No renderer, mux, app or UI code is involved.
 | progress | CR spinners and bars, erase-line, relative cursor movement |
 | alternate | tool on alternate screen, restoration of the primary transcript |
 | scroll-links-sync | bounded scroll region, OSC 8 link, synchronized frame, ST status sequences |
-| osc7501-claude | original `.bboxy/runs/osc7501-claude.bin`, 482 control-only bytes |
-| osc7501-preflight | original `.bboxy/runs/osc7501-claude-preflight.bin`, 303 control-only bytes |
+| osc7501-claude | original `tests/fixtures/captures/osc7501-claude.bin`, 482 control-only bytes |
+| osc7501-preflight | original `tests/fixtures/captures/osc7501-claude-preflight.bin`, 303 control-only bytes |
 | osc7501-codex | ten empty original `osc7501-codex*.bin` entries; labelled synthetic exercise |
 
 `corpus/generate.py` is an author-time script. It writes the embedded `.ansi`

@@ -1166,22 +1166,13 @@ except Exception as error:
         self.assertIn("invariants.sh --affected  --covered-tests ", (self.repo.state / "shell.log").read_text())
         self.assertFalse((self.repo.state / "cargo.jsonl").exists())
 
-    def test_script_only_report_trailer_selects_the_committed_tree_gate(self):
+    def test_report_trailer_in_a_script_cut_adds_no_cargo_gate(self):
+        # Reports are machine-local KB records; a trailer naming one is inert.
         self.repo.write("scripts/fixture-gate.sh", "// fixture cut\n")
         self.repo.commit("Fixture report candidate\n\nReport: [[reports/2026-10-31-work]]")
         result = self.repo.presubmit()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-        calls = [json.loads(line) for line in (self.repo.state / "cargo.jsonl").read_text().splitlines()]
-        self.assertEqual(len(calls), 1)
-        self.assertIn("reports::committed_report_trailers_resolve_in_their_own_trees", calls[0])
-
-    def test_script_only_report_gate_failure_refuses_presubmit(self):
-        self.repo.write("scripts/fixture-gate.sh", "// fixture cut\n")
-        self.repo.commit("Fixture report candidate\n\nReport: [[missing]]")
-        (self.repo.state / "behavior.json").write_text('{"fail":"test"}')
-        result = self.repo.presubmit()
-        self.assertNotEqual(result.returncode, 0)
-        self.assertIn("reports::committed_report_trailers_resolve_in_their_own_trees", result.stdout + result.stderr)
+        self.assertFalse((self.repo.state / "cargo.jsonl").exists())
 
     def test_formal_failure_refuses_a_scoped_presubmit_before_cargo(self):
         self.repo.write("Makefile", "test-harness-native:\n\t@true\ntest-formal:\n\t@exit 23\n")

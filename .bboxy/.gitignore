@@ -2,3 +2,5 @@ log/
 artifacts/
 plugins/
 plugin-notices/
+reports/
+runs/
