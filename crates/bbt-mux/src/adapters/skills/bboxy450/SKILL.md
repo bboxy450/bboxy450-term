@@ -50,7 +50,11 @@ When you are blocked on a decision only the human can make, ask it with your
 harness's question tool (AskUserQuestion, request_user_input): a short question
 with a few concrete options. A bboxy harness seat shows it as a card and marks
 the seat as needing attention until it is answered. Don't ask what the brief
-already answers, or for permission you already have.
+already answers, or for permission you already have. When nobody answers and
+the brief is ambiguous, take its most reasonable reading, name it at the top of
+your report, and carry on. Stop only before a decision that cannot be undone
+and could reasonably go either way: do the preparatory work, set out the
+decision, and wait.
 
 ## The loop
 
@@ -86,7 +90,9 @@ by themselves prove the composer is ready.
 
 ## Handoff
 
-Report:
+Lead with the outcome. Do not restate the brief, recap the steps or pad with
+caveats; length comes from evidence. When something went wrong, say what and
+stay on the problem, without apology or self-critique. Report:
 
 - files changed, and the mechanism of each change;
 - what you removed;
