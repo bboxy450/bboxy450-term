@@ -6,7 +6,6 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 // Reports are machine-local KB records (.bboxy/.gitignore): this checks the ones
 // present, never that a commit carries or links one.
-use super::*;
 use bbt_doc::links::{Record, resolve};
 
 pub(super) fn report_errors(sources: &[(String, String)]) -> Vec<String> {
