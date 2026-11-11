@@ -17,7 +17,11 @@ use core_foundation::{
     dictionary::CFDictionary,
     string::{CFString, CFStringRef},
 };
-use security_framework_sys::{item::*, keychain_item::SecItemCopyMatching};
+use security_framework_sys::{
+    item::*,
+    keychain::{SecKeychainGetUserInteractionAllowed, SecKeychainSetUserInteractionAllowed},
+    keychain_item::SecItemCopyMatching,
+};
 
 #[link(name = "Security", kind = "framework")]
 unsafe extern "C" {
@@ -60,10 +64,31 @@ fn copy_bounded(data: &[u8], max_bytes: u64) -> Result<Vec<u8>, Error> {
     Ok(data.to_vec())
 }
 
-/// Read one generic-password service without authentication UI.
+/// Run `f` with this process's login-keychain user interaction disabled, then
+/// restore the prior setting.
+///
+/// `kSecUseAuthenticationUIFail` covers the data-protection keychain only. The
+/// login keychain's access-confirmation dialog ("wants to access key") is
+/// governed by this process-wide switch, and that call blocks until answered.
+fn without_interaction<T>(f: impl FnOnce() -> T) -> T {
+    unsafe {
+        let mut prior = 1;
+        let known = SecKeychainGetUserInteractionAllowed(&mut prior) == 0;
+        SecKeychainSetUserInteractionAllowed(0);
+        let out = f();
+        if !known || prior != 0 {
+            SecKeychainSetUserInteractionAllowed(1);
+        }
+        out
+    }
+}
+
+/// Read one generic-password service without authentication UI or an
+/// access-confirmation dialog.
 ///
 /// The caller owns the blocking IO slot and timeout. This function never writes,
-/// unlocks, refreshes credentials or spawns a process.
+/// unlocks, refreshes credentials or spawns a process. An item another
+/// application owns reads as [`Error::Unavailable`] until that access is granted.
 ///
 /// # Errors
 /// Returns [`Error::Unavailable`] for denied/locked access or an invalid OS
@@ -72,7 +97,8 @@ pub fn read_generic_password(service: &str, max_bytes: u64) -> Result<Option<Vec
     let query = query(service);
     unsafe {
         let mut result = std::ptr::null();
-        let status = SecItemCopyMatching(query.as_concrete_TypeRef(), &mut result);
+        let status =
+            without_interaction(|| SecItemCopyMatching(query.as_concrete_TypeRef(), &mut result));
         if !status_has_data(status, !result.is_null())? {
             return Ok(None);
         }
@@ -104,6 +130,21 @@ mod tests {
                 CFString::new("private-test-service").into_CFType()
             );
         }
+    }
+
+    #[test]
+    fn interaction_is_off_during_the_call_and_restored_after_it() {
+        let read = || unsafe {
+            let mut state = 2;
+            assert_eq!(SecKeychainGetUserInteractionAllowed(&mut state), 0);
+            state
+        };
+        let before = read();
+        assert_eq!(without_interaction(read), 0);
+        assert_eq!(read(), before);
+        // A nested call restores the outer disabled state, not "allowed".
+        assert_eq!(without_interaction(|| without_interaction(read) + read()), 0);
+        assert_eq!(read(), before);
     }
 
     #[test]

@@ -103,7 +103,7 @@ impl Failure {
     pub fn reason(self) -> &'static str {
         match self {
             Self::Credentials => "Cannot read credentials",
-            Self::KeychainLocked => "Keychain unavailable (interaction disabled)",
+            Self::KeychainLocked => "Keychain access not granted; no prompt is shown",
             Self::Auth => "Sign-in expired",
             Self::Network => "Network unavailable",
             Self::Timeout => "Read timed out",

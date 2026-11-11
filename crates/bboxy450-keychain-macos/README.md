@@ -1,7 +1,10 @@
 # bboxy450-keychain-macos
 
 Read-only generic-password lookup for macOS usage providers. Every query sets
-`kSecUseAuthenticationUIFail`; unavailable or locked items never request UI.
+`kSecUseAuthenticationUIFail` and runs with the process's login-keychain user
+interaction switched off for its duration, so neither the data-protection
+authentication UI nor the login keychain's "wants to access key" dialog can
+appear or block; an item another application owns reads as unavailable.
 The caller runs lookup on its bounded IO worker and supplies a byte limit.
 No credential mutation, unlock, refresh or subprocess API exists.
 
