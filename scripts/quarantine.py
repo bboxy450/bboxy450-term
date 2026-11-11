@@ -344,12 +344,13 @@ def nextest_run(root, cargo_args, target, api, *, allow_ignored_only=False):
     if not selective & set(build) and code in (0, 100):
         chosen = [build[i + 1] for i, a in enumerate(build[:-1]) if a in ("-p", "--package")]
         if "--workspace" in build or "--all" in build:
-            chosen = list(packages)
+            excluded = {build[i + 1] for i, a in enumerate(build[:-1]) if a == "--exclude"}
+            chosen = [n for n in packages if n not in excluded]
         libraries = [n for n in chosen if n in packages and any(
             set(t["kind"]) & {"lib", "proc-macro"} and t.get("doctest", True) for t in packages[n]["targets"])]
         if libraries:
-            kept = [a for i, a in enumerate(build) if a not in ("-p", "--package", "--workspace", "--all")
-                    and (i == 0 or build[i - 1] not in ("-p", "--package"))]
+            kept = [a for i, a in enumerate(build) if a not in ("-p", "--package", "--workspace", "--all", "--exclude")
+                    and (i == 0 or build[i - 1] not in ("-p", "--package", "--exclude"))]
             doc = ["cargo", "test", "--doc", *kept, *[x for n in libraries for x in ("-p", n)],
                    *(["--", *filters] if filters else [])]
             print("quarantine: " + " ".join(doc), flush=True)
