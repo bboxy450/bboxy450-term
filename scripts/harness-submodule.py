@@ -130,30 +130,18 @@ def archive_generated_evidence(child, artifacts):
 
 def standalone(root, artifacts):
     child = root / MEMBER
-    # These are test-owned outputs already tracked by the upstream repository.
-    # Preserve their actual results, then restore only these known artifacts so
-    # the submodule pin continues to describe source. Never reset source files.
+    # Harness run evidence is machine-local (.bboxy/.gitignore), so a gate run
+    # never changes what the pin describes. Keep this run's outputs beside it.
     if subprocess.check_output(['git', 'status', '--porcelain'], cwd=child).strip():
         raise ValueError('harness standalone gate requires a clean pinned checkout')
-    names = ("test-current.json", "formal-native.json", "gui-gate.json", "gui-smoke.png")
-    originals = {name: (child / ".bboxy/runs" / name).read_bytes() for name in names}
     artifacts.mkdir(parents=True, exist_ok=True)
     try:
         return subprocess.run(['make', 'test'], cwd=child).returncode
     finally:
-        for name, content in originals.items():
-            path = child / ".bboxy/runs" / name
-            if path.is_file():
-                shutil.copyfile(path, artifacts / name)
-            path.write_bytes(content)
         archive_generated_evidence(child, artifacts)
-        # The child's parity receipt also stays next to its models in its target.
         for path in (child / ".bboxy/runs").glob('*'):
-            if path.is_file() and path.name not in names:
-                tracked = subprocess.check_output(['git', 'ls-files', '--', str(path.relative_to(child))], cwd=child)
-                if not tracked:
-                    shutil.copyfile(path, artifacts / path.name)
-                    path.unlink()  # Only artifacts this invocation created in the initially clean checkout.
+            if path.is_file():
+                shutil.copyfile(path, artifacts / path.name)
 
 
 def main():

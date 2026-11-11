@@ -80,9 +80,14 @@ if [ "$after_tests" = false ]; then
     ledger integration sh scripts/qos.sh utility python3 -I scripts/test-landing-budget-controls.py --out "$BBOXY_CARGO_TARGET_DIR/landing-budget-controls"
     ledger build cargo build --workspace --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
     ledger build cargo clippy --workspace --all-targets --locked --target-dir "$BBOXY_CARGO_TARGET_DIR" -- -D warnings
-    # The harness deliberately clears CLOEXEC in this one fixture. Run it in
-    # test-harness-native, outside concurrent forking cases, as its own Make does.
-    ledger unit sh scripts/quarantine-test.sh --workspace --locked -- --skip non_pty_spawn_does_not_keep_a_sibling_master_alive
+    # The harness repository's own gate runs its suite in its own configuration;
+    # here it would rerun under this workspace's feature unification. Its CLOEXEC
+    # fixture and term-facing seats run in test-harness-native below.
+    # Dream C1 units are CPU-budgeted (1 ms per unit): run them alone, not under
+    # the parallel suite's contention.
+    dream='logic::dream_public_api_tests logic::dream_c1:: registry::dream_c1::'
+    ledger unit sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked -- $(printf -- '--skip %s ' $dream)
+    ledger unit env NEXTEST_TEST_THREADS=1 sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux --lib -- $dream
 fi
 # This real exec-environment control restores and hashes its source before
 # returning; no other compilation runs while the broken variant is present.
