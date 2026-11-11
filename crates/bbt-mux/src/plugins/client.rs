@@ -257,14 +257,14 @@ impl Client {
                         "response does not match the outstanding request",
                     ));
                 }
-                if value.get("error").is_some() {
+                if let Some(error) = value.get("error") {
                     if value.get("result").is_some() {
                         return Err(failure(
                             "protocol_error",
                             "response has both error and result",
                         ));
                     }
-                    return Err(failure("jsonrpc_error", "server returned a JSON-RPC error"));
+                    return Err(failure("jsonrpc_error", jsonrpc_error_text(error)));
                 }
                 return value
                     .get("result")
@@ -585,15 +585,41 @@ async fn write_frame(writer: &Writer, value: &Value) -> Result<(), Refusal> {
     input.flush().await.map_err(|e| failure("plugin_io", e))
 }
 
+/// The plugin's own refusal, as the SDK sends it: `data.code` and
+/// `data.message` when present, else the JSON-RPC `message`. One bounded line,
+/// so a seat reads "backend_changed: ..." instead of a bare "jsonrpc_error".
+fn jsonrpc_error_text(error: &Value) -> String {
+    const MAX: usize = 400;
+    fn field(v: &Value) -> Option<&str> {
+        v.as_str().map(str::trim).filter(|s| !s.is_empty())
+    }
+    let text = match (field(&error["data"]["code"]), field(&error["data"]["message"])) {
+        (Some(code), Some(message)) => format!("{code}: {message}"),
+        (Some(code), None) => code.to_owned(),
+        _ => field(&error["message"])
+            .unwrap_or("server returned a JSON-RPC error")
+            .to_owned(),
+    };
+    let mut text: String = text
+        .chars()
+        .map(|c| if c.is_control() { ' ' } else { c })
+        .take(MAX)
+        .collect();
+    if text.len() == MAX {
+        text.push('…');
+    }
+    text
+}
+
 fn response(value: &Value) -> Result<Value, Refusal> {
-    if value.get("error").is_some() {
+    if let Some(error) = value.get("error") {
         if value.get("result").is_some() {
             return Err(failure(
                 "protocol_error",
                 "response has both error and result",
             ));
         }
-        return Err(failure("jsonrpc_error", "server returned a JSON-RPC error"));
+        return Err(failure("jsonrpc_error", jsonrpc_error_text(error)));
     }
     value
         .get("result")
@@ -837,6 +863,21 @@ impl Drop for Client {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn a_jsonrpc_error_carries_the_plugins_refusal_code_and_message() {
+        let sdk = json!({"code": -32602, "message": "backend_changed: rebuild",
+            "data": {"code": "backend_changed", "message": "the installed GitKB changed; rebuild and retrust this executable"}});
+        assert_eq!(
+            jsonrpc_error_text(&sdk),
+            "backend_changed: the installed GitKB changed; rebuild and retrust this executable"
+        );
+        assert_eq!(jsonrpc_error_text(&json!({"code": -32601, "message": "method not found"})), "method not found");
+        assert_eq!(jsonrpc_error_text(&json!({"code": -32000})), "server returned a JSON-RPC error");
+        let long = json!({"message": "x\n".repeat(500)});
+        let text = jsonrpc_error_text(&long);
+        assert!(text.chars().count() == 401 && text.ends_with('…') && !text.contains('\n'), "{text}");
+    }
+
     use super::*;
     use bbt_plugin_fixture::{Kind, Knobs};
     use std::fs;
