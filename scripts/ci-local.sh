@@ -83,11 +83,11 @@ if [ "$after_tests" = false ]; then
     # The harness repository's own gate runs its suite in its own configuration;
     # here it would rerun under this workspace's feature unification. Its CLOEXEC
     # fixture and term-facing seats run in test-harness-native below.
-    # Dream C1 units are CPU-budgeted (1 ms per unit): run them alone, not under
-    # the parallel suite's contention.
-    dream='logic::dream_public_api_tests logic::dream_c1:: registry::dream_c1::'
-    ledger unit sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked -- $(printf -- '--skip %s ' $dream)
-    ledger unit env NEXTEST_TEST_THREADS=1 sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux --lib -- $dream
+    # Dream C1 units and head-of-line recovery hold millisecond CPU/wall budgets:
+    # run them alone after the parallel suite, not under its contention.
+    timed='(package(bboxy450-term-mux) & test(/^(logic::dream_public_api_tests|logic::dream_c1::|registry::dream_c1::|logic::hol_tests::)/)) | (package(bboxy450-harness-wake-up) & binary(dream_c1))'
+    ledger unit sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked -E "not ($timed)"
+    ledger unit env NEXTEST_TEST_THREADS=1 sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux -p bboxy450-harness-wake-up -E "$timed"
 fi
 # This real exec-environment control restores and hashes its source before
 # returning; no other compilation runs while the broken variant is present.
