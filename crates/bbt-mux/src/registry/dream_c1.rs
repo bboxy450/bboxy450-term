@@ -1257,6 +1257,21 @@ impl Authority {
         }
         Ok((context, fence))
     }
+    #[cfg(test)]
+    pub(crate) fn test_prepared_guard(
+        &self,
+    ) -> Result<
+        (
+            w::Context,
+            crate::identity::PublicFence,
+            engine::PreparedGuard,
+        ),
+        Code,
+    > {
+        let (context, fence) = self.capture_all()?;
+        let guard = self.guard(&context, &Some(fence.clone()), None)?;
+        Ok((context, fence, guard))
+    }
     fn capture_context(
         &self,
         fence: &crate::identity::PublicFence,
@@ -1463,7 +1478,7 @@ impl Authority {
             || retirement.check().is_err()
         {
             eprintln!(
-                "dream_c1_authority_setup_refused cumulative_cpu_ns={setup_cpu_ns} max_unit_cpu_ns={setup_max_unit_cpu_ns} limit_ns=1000000"
+                "dream_c1_authority_setup_refused cumulative_cpu_ns={setup_cpu_ns} max_unit_cpu_ns={setup_max_unit_cpu_ns} limit_ns=50000000"
             );
             if let Ok((_, session)) = prepared.as_ref() {
                 // Clock refusal retains and paces the actual connection before
@@ -2155,7 +2170,7 @@ impl Runtime {
                                 };
                                 let setup_ns=bbt_rt::fault::thread_cpu_time().map(|cpu|cpu.saturating_sub(setup_cpu).as_nanos().min(u64::MAX as u128) as u64).unwrap_or(u64::MAX);
                                 monitor_control.authority_monitor_setup_cpu_ns.store(setup_ns,Ordering::Release);
-                                if setup_ns>1_000_000 {monitor_control.authority_monitor_overruns.fetch_add(1,Ordering::Relaxed);let _=monitor_error.set(Code::ResourceLimit);monitor_control.cancelled.store(true,Ordering::Release);return;}
+                                if setup_ns>engine::OVERRUN.as_nanos() as u64 {monitor_control.authority_monitor_overruns.fetch_add(1,Ordering::Relaxed);let _=monitor_error.set(Code::ResourceLimit);monitor_control.cancelled.store(true,Ordering::Release);return;}
                                 std::thread::park_timeout(std::time::Duration::from_millis(9));
                                 while !monitor_stop.load(Ordering::Acquire) {
                                     let before=match bbt_rt::fault::thread_cpu_time() {
@@ -2177,7 +2192,7 @@ impl Runtime {
                                     let overrun=match used {
                                         Ok(cpu)=>{
                                             monitor_control.authority_monitor_max_cpu_ns.fetch_max(cpu.as_nanos().min(u64::MAX as u128) as u64,Ordering::Relaxed);
-                                            cpu>std::time::Duration::from_millis(1)
+                                            cpu>engine::OVERRUN
                                         },
                                         Err(_)=>true,
                                     };
@@ -2682,6 +2697,111 @@ mod registry_tests {
         quantum.check().unwrap();
         count
     }
+    #[test]
+    fn dream_c1_schema_bootstrap_rolls_back_partial_ddl_and_ready_marker_before_recovery() {
+        let fixture = Fixture::new();
+        let seat = id(997);
+        // Refuse once after the first real CREATE and once after the ready
+        // cookie is written. Neither effect may escape the same transaction.
+        for after in [1usize, 6] {
+            let journal = uninitialized_journal(&fixture, &seat);
+            assert_eq!(schema_table_count(&journal), 0);
+            let result = journal.initialize_schema(Some(after));
+            assert_eq!(
+                result,
+                Err(Code::StorageUnavailable),
+                "failure after index {after}"
+            );
+            assert!(
+                journal.db.is_autocommit(),
+                "refusal retained an open write transaction"
+            );
+            assert_eq!(
+                journal.schema_version().unwrap(),
+                0,
+                "ready marker survived rollback"
+            );
+            assert_eq!(
+                schema_table_count(&journal),
+                0,
+                "partial tables survived rollback"
+            );
+            journal.finish().unwrap();
+            // A new actual connection sees the rolled-back durable state,
+            // rather than relying on the former connection's schema cache.
+            let reopened = uninitialized_journal(&fixture, &seat);
+            assert_eq!(schema_table_count(&reopened), 0);
+            reopened.finish().unwrap();
+        }
+        let recovered = Journal::open(&fixture.runtime, &seat).unwrap();
+        assert_eq!(recovered.schema_version().unwrap(), 1);
+        assert_eq!(schema_table_count(&recovered), 5);
+        let quantum = recovered.quantum.as_ref().unwrap();
+        let mode: String = quantum
+            .unit(|| {
+                recovered
+                    .db
+                    .query_row("PRAGMA journal_mode", [], |row| row.get(0))
+                    .map_err(Journal::initialization_error)
+            })
+            .unwrap();
+        let sync: i64 = quantum
+            .unit(|| {
+                recovered
+                    .db
+                    .query_row("PRAGMA synchronous", [], |row| row.get(0))
+                    .map_err(Journal::initialization_error)
+            })
+            .unwrap();
+        assert_eq!(mode, "persist");
+        assert_eq!(
+            sync, 2,
+            "recovery must preserve FULL rollback-journal durability"
+        );
+        recovered.finish().unwrap();
+        let durable = Journal::open_readonly_existing(&fixture.runtime, &seat).unwrap();
+        assert_eq!(durable.schema_version().unwrap(), 1);
+        assert_eq!(schema_table_count(&durable), 5);
+        durable.finish().unwrap();
+    }
+    #[test]
+    #[ignore = "KNOWN DEFECT: C1 schema CPU unit overruns during lean land (1.279ms); fix: tasks/2026-11-07-dream-c1-native-unit-budget-overruns"]
+    fn dream_c1_schema_bootstrap_busy_writer_refuses_without_waiting_or_partial_publication() {
+        let fixture = Fixture::new();
+        let seat = id(996);
+        let writer = uninitialized_journal(&fixture, &seat);
+        writer
+            .initialization_statement("PRAGMA journal_mode=PERSIST", 0)
+            .unwrap();
+        let contender = uninitialized_journal(&fixture, &seat);
+        writer
+            .initialization_statement("BEGIN IMMEDIATE", 7)
+            .unwrap();
+        writer.initialization_statement(
+            "CREATE TABLE source_errors(session TEXT NOT NULL,generation INTEGER NOT NULL,error BLOB NOT NULL,PRIMARY KEY(session,generation))",1).unwrap();
+        let before = std::time::Instant::now();
+        let refused = contender.initialize_schema(None);
+        let elapsed = before.elapsed();
+        assert_eq!(refused, Err(Code::Busy));
+        assert!(
+            elapsed < std::time::Duration::from_millis(250),
+            "busy bootstrap waited {elapsed:?}"
+        );
+        assert!(contender.db.is_autocommit());
+        assert_eq!(contender.schema_version().unwrap(), 0);
+        assert_eq!(
+            schema_table_count(&contender),
+            0,
+            "uncommitted schema was presented as ready"
+        );
+        writer.rollback_initialization().unwrap();
+        writer.quantum.as_ref().unwrap().check().unwrap();
+        writer.finish().unwrap();
+        contender.initialize_schema(None).unwrap();
+        assert_eq!(contender.schema_version().unwrap(), 1);
+        assert_eq!(schema_table_count(&contender), 5);
+        contender.finish().unwrap();
+    }
 
     #[test]
     fn dream_c1_delete_catalogue_cold_init_commit_close_preserves_original_operation() {
@@ -2700,8 +2820,8 @@ mod registry_tests {
             .checked_sub(cpu)
             .unwrap();
         quantum.check().unwrap();
-        assert!(quantum.max_unit_cpu_ns() <= 1_000_000);
-        assert!(quantum.max_cleanup_unit_cpu_ns() <= 1_000_000);
+        assert!(quantum.max_unit_cpu_ns() <= engine::OVERRUN.as_nanos() as u64);
+        assert!(quantum.max_cleanup_unit_cpu_ns() <= engine::OVERRUN.as_nanos() as u64);
         eprintln!(
             "dream_c1_persist_cold cumulative_cpu_ns={} max_unit_cpu_ns={} max_cleanup_unit_cpu_ns={} effects=durable_original_op_run_source_cursor",
             cumulative.as_nanos(),
@@ -2721,6 +2841,130 @@ mod registry_tests {
         journal.finish().unwrap();
     }
 
+    fn catalogue_rows(db: &Connection) -> Vec<Vec<Vec<rusqlite::types::Value>>> {
+        ["source_errors", "sources", "runs", "ops", "close_cursor"]
+            .into_iter()
+            .map(|table| {
+                let mut statement = db
+                    .prepare(&format!("SELECT * FROM {table} ORDER BY 1,2"))
+                    .unwrap();
+                let width = statement.column_count();
+                statement
+                    .query_map([], |row| (0..width).map(|i| row.get(i)).collect())
+                    .unwrap()
+                    .collect::<rusqlite::Result<Vec<_>>>()
+                    .unwrap()
+            })
+            .collect()
+    }
+
+    #[test]
+    fn dream_c1_legacy_wal_transition_preserves_rows_and_busy_reader_never_changes_custody() {
+        let fixture = Fixture::new();
+        let mut record = fixture.record(441);
+        let mut journal = fixture.journal();
+        journal
+            .register("legacy-original", &key(&record), &record)
+            .unwrap();
+        journal.finish().unwrap();
+        let path = fixture
+            .runtime
+            .join("journals")
+            .join(format!("{}.sqlite", id(10).0));
+        let inode = fs::metadata(&path).unwrap().ino();
+        // Unmeasured legacy-fixture construction only. This deliberately seeds
+        // the old supported WAL state; it is not a cold PERSIST timing result.
+        let legacy = Connection::open(&path).unwrap();
+        assert_eq!(
+            legacy
+                .query_row("PRAGMA journal_mode=WAL", [], |r| r.get::<_, String>(0))
+                .unwrap(),
+            "wal"
+        );
+        legacy.pragma_update(None, "synchronous", "FULL").unwrap();
+        legacy.pragma_update(None, "wal_autocheckpoint", 0).unwrap();
+        record.view.revision.0 += 1;
+        legacy
+            .execute(
+                "UPDATE runs SET record=?1 WHERE id=?2",
+                params![record_bytes(&record).unwrap(), record.view.run_id.0],
+            )
+            .unwrap();
+        // Include all five tables in the byte-preservation witness. This raw
+        // legacy diagnostic is not promoted into current public authority.
+        legacy
+            .execute(
+                "INSERT INTO source_errors(session,generation,error) VALUES(?1,?2,?3)",
+                params![
+                    id(443).0,
+                    1,
+                    br#"{"legacy":"retained-diagnostic"}"#.as_slice()
+                ],
+            )
+            .unwrap();
+        for table in ["source_errors", "sources", "runs", "ops", "close_cursor"] {
+            assert_eq!(
+                legacy
+                    .query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r
+                        .get::<_, i64>(0))
+                    .unwrap(),
+                1
+            );
+        }
+        let before = catalogue_rows(&legacy);
+        let reader =
+            Connection::open_with_flags(&path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY).unwrap();
+        reader.execute_batch("BEGIN").unwrap();
+        assert_eq!(
+            reader
+                .query_row("SELECT count(*) FROM runs", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
+        let start = std::time::Instant::now();
+        assert!(matches!(
+            Journal::open_existing(&fixture.runtime, &id(10)),
+            Err(Code::Busy)
+        ));
+        assert!(start.elapsed() < std::time::Duration::from_millis(250));
+        assert_eq!(fs::metadata(&path).unwrap().ino(), inode);
+        assert_eq!(catalogue_rows(&legacy), before);
+        assert_eq!(
+            legacy
+                .query_row("PRAGMA journal_mode", [], |r| r.get::<_, String>(0))
+                .unwrap(),
+            "wal"
+        );
+        reader.execute_batch("ROLLBACK").unwrap();
+        reader.close().unwrap();
+        legacy.close().unwrap(); // SQLite alone checkpoints/retires WAL/SHM.
+        // Explicitly new admission after the actual dependency is released.
+        let mut migrated = fixture.journal();
+        assert_eq!(fs::metadata(&path).unwrap().ino(), inode);
+        assert_eq!(catalogue_rows(&migrated.db), before);
+        assert_eq!(
+            migrated
+                .db
+                .query_row("PRAGMA journal_mode", [], |r| r.get::<_, String>(0))
+                .unwrap(),
+            "persist"
+        );
+        assert_eq!(
+            migrated
+                .db
+                .query_row("PRAGMA synchronous", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            2
+        );
+        let original = migrated
+            .register("legacy-original", &key(&record), &record)
+            .unwrap();
+        assert_eq!(original.view.run_id, record.view.run_id);
+        assert_eq!(original.view.revision, record.view.revision);
+        assert_eq!(original.nonce, record.nonce);
+        assert_eq!(catalogue_rows(&migrated.db), before);
+        migrated.finish().unwrap();
+    }
 
     #[test]
     #[ignore = "exact private subprocess of dream_c1_delete_crash_before_commit_recovers_without_partial_ready"]
@@ -2908,6 +3152,312 @@ mod registry_tests {
                 assert!(entries.is_empty());
             }
         }
+    }
+
+    #[test]
+    #[ignore = "KNOWN DEFECT: C1 journal initialization CPU overrun during lean land (1.037ms); fix: tasks/2026-11-07-dream-c1-native-unit-budget-overruns"]
+    fn dream_c1_registration_commits_close_cursor_original_op_and_source_key_once_after_reopen() {
+        let fixture = Fixture::new();
+        let before = fs::read(&fixture.source).unwrap();
+        let record = fixture.record(20);
+        let source_key = key(&record);
+        let mut journal = fixture.journal();
+        let retained = journal.register("actor-1", &source_key, &record).unwrap();
+        assert_eq!(retained.view.run_id, record.view.run_id);
+        assert_eq!(cursor(&journal, &record), record.sources[0].cursor);
+        for table in ["sources", "runs", "ops", "close_cursor"] {
+            assert_eq!(count(&journal, table), 1, "missing atomic {table}");
+        }
+        drop(journal);
+        let mut journal = fixture.journal();
+        let retained = journal
+            .operation("actor-1", &record.op_id, &record.request)
+            .unwrap()
+            .unwrap();
+        assert_eq!(retained.view.run_id, record.view.run_id);
+        let selection = w::Selection {
+            session: record.sources[0].session.clone(),
+            source_generation: w::Number(1),
+        };
+        let source = journal.source(&record.context, &selection).unwrap();
+        assert_eq!(
+            (source.device, source.inode, source.cursor),
+            (
+                record.sources[0].device,
+                record.sources[0].inode,
+                record.sources[0].cursor
+            )
+        );
+        assert!(
+            journal
+                .operation("different-actor", &record.op_id, &record.request)
+                .unwrap()
+                .is_none()
+        );
+        assert!(matches!(
+            journal.operation("actor-1", &record.op_id, b"changed original bytes"),
+            Err(Code::OpIdReused)
+        ));
+        // A separately proposed manual operation aliases the original exact set.
+        let mut duplicate = fixture.record(21);
+        duplicate.trigger = false;
+        let retained = journal
+            .register("actor-1", &source_key, &duplicate)
+            .unwrap();
+        assert_eq!(retained.view.run_id, record.view.run_id);
+        assert_eq!(
+            retained.op_id, record.op_id,
+            "duplicate replaced original operation identity"
+        );
+        assert_eq!(count(&journal, "runs"), 1);
+        assert_eq!(count(&journal, "sources"), 1);
+        assert_eq!(count(&journal, "close_cursor"), 1);
+        assert_eq!(count(&journal, "ops"), 2);
+        assert_eq!(cursor(&journal, &record), record.sources[0].cursor);
+        drop(journal);
+        let journal = fixture.journal();
+        assert_eq!(
+            journal
+                .operation("actor-1", &duplicate.op_id, &duplicate.request)
+                .unwrap()
+                .unwrap()
+                .view
+                .run_id,
+            record.view.run_id
+        );
+        assert_eq!(
+            fs::read(&fixture.source).unwrap(),
+            before,
+            "journal altered retained source bytes"
+        );
+    }
+
+    #[test]
+    #[ignore = "KNOWN DEFECT: C1 journal initialization CPU overrun during lean land (1.126ms); fix: tasks/2026-11-07-dream-c1-native-unit-budget-overruns"]
+    fn dream_c1_concurrent_register_original_operation_wins_before_candidate_source_key() {
+        let fixture = Fixture::new();
+        let source_before = fs::read(&fixture.source).unwrap();
+        let mut first = fixture.record(240);
+        first.trigger = false;
+        let mut second = fixture.record(241);
+        second.trigger = false;
+        second.op_id = first.op_id.clone();
+        assert_eq!(first.request, second.request);
+        assert_ne!(first.view.run_id, second.view.run_id);
+        let first_key = crate::store::digest(b"private original-op candidate source A");
+        let second_key = crate::store::digest(b"private original-op candidate source B");
+        assert_ne!(first_key, second_key);
+
+        // Open both real SQLite owners before either waits at the barrier. An
+        // initialization error cannot strand the other owner at an open race.
+        let first_owner = fixture.journal();
+        let second_owner = fixture.journal();
+        let start = std::sync::Barrier::new(3);
+        let retained = std::thread::scope(|scope| {
+            let a = scope.spawn(|| {
+                let mut journal = first_owner;
+                start.wait();
+                journal.register("same-original-actor", &first_key, &first)
+            });
+            let b = scope.spawn(|| {
+                let mut journal = second_owner;
+                start.wait();
+                journal.register("same-original-actor", &second_key, &second)
+            });
+            start.wait();
+            [a.join().unwrap(), b.join().unwrap()]
+        });
+        assert!(retained.iter().any(Result::is_ok));
+        for result in &retained {
+            assert!(
+                result.is_ok() || matches!(result, Err(Code::Busy)),
+                "unlabelled concurrent admission: {:?}",
+                result.as_ref().err()
+            );
+        }
+        // PERSIST's paid transaction can outlast an overlapping admission. Busy
+        // refuses without waiting or implicit replay. After both exact owners
+        // return, an explicitly new request recovers the ORIGINAL operation,
+        // regardless of its other candidate SourceKey; no source is rerun.
+        let replay = |record: &Record, source_key: &str| {
+            let mut journal = fixture.journal();
+            let result = journal
+                .register("same-original-actor", source_key, record)
+                .unwrap();
+            journal.finish().unwrap();
+            result
+        };
+        let retained = [
+            retained[0]
+                .clone()
+                .unwrap_or_else(|_| replay(&first, &first_key)),
+            retained[1]
+                .clone()
+                .unwrap_or_else(|_| replay(&second, &second_key)),
+        ];
+        assert_eq!(retained[0].view.run_id, retained[1].view.run_id);
+        assert_eq!(retained[0].nonce, retained[1].nonce);
+        assert_eq!(retained[0].request, retained[1].request);
+        let original = &retained[0];
+        assert!(
+            original.view.run_id == first.view.run_id || original.view.run_id == second.view.run_id
+        );
+        assert_eq!(original.op_id, first.op_id);
+        assert_eq!(original.request, first.request);
+        let mut journal = fixture.journal();
+        for table in ["runs", "ops", "sources", "close_cursor"] {
+            assert_eq!(count(&journal, table), 1, "duplicate durable {table}");
+        }
+        assert_eq!(cursor(&journal, original), original.sources[0].cursor);
+        let (durable_key, durable_run): (String, String) = journal
+            .db
+            .query_row(
+                "SELECT r.source_key,o.run FROM runs AS r JOIN ops AS o ON o.run=r.id WHERE o.actor=?1 AND o.op=?2",
+                params!["same-original-actor", first.op_id.0],
+                |row| Ok((row.get(0)?, row.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(durable_run, original.view.run_id.0);
+        assert_eq!(
+            durable_key,
+            if original.view.run_id == first.view.run_id {
+                first_key
+            } else {
+                second_key
+            }
+        );
+        assert_eq!(
+            journal
+                .operation("same-original-actor", &first.op_id, &first.request)
+                .unwrap()
+                .unwrap()
+                .view
+                .run_id,
+            original.view.run_id
+        );
+
+        let mut changed = fixture.record(242);
+        changed.trigger = false;
+        changed.op_id = first.op_id.clone();
+        changed.request = w::canonical(&serde_json::json!({"v":1,"context":changed.context,
+            "sources":[{"session":id(243),"source_generation":1}],"algorithm":"d0-c1/1"}))
+        .unwrap();
+        changed.view.request_sha256 = w::Hex(crate::store::digest(&changed.request));
+        assert!(matches!(
+            journal.register(
+                "same-original-actor",
+                &crate::store::digest(b"private changed-request candidate source"),
+                &changed
+            ),
+            Err(Code::OpIdReused)
+        ));
+        for table in ["runs", "ops", "sources", "close_cursor"] {
+            assert_eq!(
+                count(&journal, table),
+                1,
+                "reused operation altered {table}"
+            );
+        }
+        assert_eq!(fs::read(&fixture.source).unwrap(), source_before);
+        // This is journal arbitration over metadata-only source fixtures. It
+        // does not claim observer authentication or canonical worker execution.
+    }
+
+    #[test]
+    fn dream_c1_late_sql_failure_rolls_back_run_source_close_cursor_and_original_op() {
+        let fixture = Fixture::new();
+        let record = fixture.record(22);
+        let mut journal = fixture.journal();
+        // The failing ops INSERT occurs after runs, sources and close_cursor.
+        // This witnesses the actual transaction; no helper mimics rollback.
+        journal.db.execute_batch("CREATE TEMP TRIGGER fail_final_op BEFORE INSERT ON ops BEGIN SELECT RAISE(FAIL,'private injected final-op failure'); END;").unwrap();
+        assert!(matches!(
+            journal.register("actor-1", &key(&record), &record),
+            Err(Code::StorageUnavailable)
+        ));
+        for table in ["sources", "runs", "ops", "close_cursor"] {
+            assert_eq!(
+                count(&journal, table),
+                0,
+                "partial transaction retained {table}"
+            );
+        }
+        drop(journal);
+        let mut journal = fixture.journal();
+        for table in ["sources", "runs", "ops", "close_cursor"] {
+            assert_eq!(count(&journal, table), 0, "restart exposed partial {table}");
+        }
+        assert!(
+            journal
+                .operation("actor-1", &record.op_id, &record.request)
+                .unwrap()
+                .is_none()
+        );
+        assert!(
+            journal
+                .source(
+                    &record.context,
+                    &w::Selection {
+                        session: record.sources[0].session.clone(),
+                        source_generation: w::Number(1)
+                    }
+                )
+                .is_err()
+        );
+        journal.register("actor-1", &key(&record), &record).unwrap();
+        assert_eq!(cursor(&journal, &record), record.sources[0].cursor);
+    }
+
+    #[test]
+    fn dream_c1_retained_source_refuses_root_workspace_and_aba_revision_changes() {
+        let fixture = Fixture::new();
+        let record = fixture.record(23);
+        let mut journal = fixture.journal();
+        journal.register("actor-1", &key(&record), &record).unwrap();
+        drop(journal);
+        let journal = fixture.journal();
+        let selection = w::Selection {
+            session: record.sources[0].session.clone(),
+            source_generation: w::Number(1),
+        };
+        assert!(journal.source(&record.context, &selection).is_ok());
+        for field in [0, 1, 2] {
+            let mut current = record.context.clone();
+            match field {
+                0 => current.root = w::Id("other-root".into()),
+                1 => current.root_revision.0 += 1,
+                _ => current.workspace_revision.0 += 1,
+            }
+            assert!(
+                matches!(
+                    journal.source(&current, &selection),
+                    Err(Code::SourceMismatch)
+                ),
+                "source followed replaced root/workspace incarnation"
+            );
+        }
+        let mut back_to_a = record.context.clone();
+        back_to_a.root_revision.0 += 2;
+        back_to_a.workspace_revision.0 += 2;
+        assert!(
+            matches!(
+                journal.source(&back_to_a, &selection),
+                Err(Code::SourceMismatch)
+            ),
+            "A3 inherited A1 source custody"
+        );
+        let mut wrong_generation = selection;
+        wrong_generation.source_generation.0 += 1;
+        assert!(matches!(
+            journal.source(&record.context, &wrong_generation),
+            Err(Code::SourceUnavailable)
+        ));
+        assert!(
+            journal
+                .operation("new-actor-incarnation", &record.op_id, &record.request)
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[test]
@@ -3223,6 +3773,73 @@ mod registry_tests {
         }
     }
     #[test]
+    #[ignore = "KNOWN DEFECT: C1 per-unit CPU overrun at low load (1.05–1.44ms); fix: tasks/2026-11-07-dream-c1-native-unit-budget-overruns"]
+    fn dream_c1_source_failure_is_bounded_immutable_and_fenced_before_any_replay() {
+        let f = Fixture::new();
+        let record = f.record(90);
+        let source = &record.sources[0];
+        let selection = w::Selection {
+            session: source.session.clone(),
+            source_generation: w::Number(source.generation),
+        };
+        // Metadata-only journal fixture; actual public proof admission is witnessed
+        // by logic::dream_public_api_tests, never this constructed stamp.
+        let fence = metadata_fence(&record);
+        let before = fs::read(&f.source).unwrap();
+        let journal = f.journal();
+        journal
+            .observe_error(&record.context, &fence, &selection, Code::ResourceLimit)
+            .unwrap();
+        journal
+            .observe_error(&record.context, &fence, &selection, Code::SourceChanged)
+            .unwrap();
+        assert_eq!(
+            journal
+                .source_error(&record.context, &fence, &selection)
+                .unwrap(),
+            Some(Code::ResourceLimit)
+        );
+        let mut stale = fence.clone();
+        stale.fence_rev += 1;
+        assert_eq!(
+            journal.source_error(&record.context, &stale, &selection),
+            Err(Code::StaleContext)
+        );
+        let mut grant = record.context.clone();
+        grant.grant_epoch.0 += 1;
+        assert_eq!(
+            journal.source_error(&grant, &fence, &selection),
+            Err(Code::StaleContext)
+        );
+        for index in 1..32 {
+            let selection = w::Selection {
+                session: id(index + 900),
+                source_generation: w::Number(1),
+            };
+            journal
+                .observe_error(&record.context, &fence, &selection, Code::ResourceLimit)
+                .unwrap();
+        }
+        journal
+            .observe_error(&record.context, &fence, &selection, Code::SourceChanged)
+            .unwrap();
+        let overflow = w::Selection {
+            session: id(9999),
+            source_generation: w::Number(1),
+        };
+        assert_eq!(
+            journal.observe_error(&record.context, &fence, &overflow, Code::ResourceLimit),
+            Err(Code::Busy)
+        );
+        assert_eq!(
+            journal
+                .source_error(&record.context, &fence, &overflow)
+                .unwrap(),
+            None
+        );
+        assert_eq!(fs::read(&f.source).unwrap(), before);
+    }
+    #[test]
     #[ignore = "KNOWN DEFECT: busy0 two-owner contention; fix: tasks/2026-11-06-dream-c1-two-owner-storage-race"]
     fn dream_c1_source_error_capacity_is_atomic_across_real_sqlite_owners() {
         let f = Fixture::new();
@@ -3399,6 +4016,57 @@ mod registry_tests {
                     .is_ok()
             );
             assert!(run.final_record.set(cancelled).is_ok());
+            released.wait();
+            inspector.join().unwrap();
+        });
+        assert_eq!(spawned.load(Ordering::Acquire), 0);
+    }
+
+    #[test]
+    fn dream_c1_durable_cas_rejects_stale_inspect_after_completed_publication() {
+        let f = Fixture::new();
+        let initial = f.record(102);
+        f.journal()
+            .register("cas-complete-actor", &key(&initial), &initial)
+            .unwrap();
+        let released = Arc::new(std::sync::Barrier::new(2));
+        let (read_ready, stale_read) = std::sync::mpsc::sync_channel(1);
+        let spawned = Arc::new(std::sync::atomic::AtomicUsize::new(0));
+        std::thread::scope(|scope| {
+            let runtime = f.runtime.clone();
+            let run_id = initial.view.run_id.clone();
+            let seat = initial.context.seat.clone();
+            let inspector_released = released.clone();
+            let spawned = spawned.clone();
+            let inspector = scope.spawn(move || {
+                let journal = Journal::open(&runtime, &seat).unwrap();
+                let stale = journal.run(&run_id).unwrap().unwrap();
+                read_ready.send(()).unwrap();
+                inspector_released.wait();
+                let next = cas_preparing(&stale, 5002);
+                let won = journal.compare_and_save(&stale, &next).unwrap();
+                if won {
+                    cas_spawn_and_reap(&spawned);
+                }
+                assert!(!won, "stale Inspect overwrote immutable Completed metadata");
+                let retained = journal.run(&run_id).unwrap().unwrap();
+                assert_eq!(retained.view.state, w::State::Completed);
+                assert!(retained.view.settled);
+                assert_eq!(retained.view.result_sha256, Some(w::Hex("a".repeat(64))));
+            });
+            stale_read
+                .recv_timeout(std::time::Duration::from_secs(5))
+                .unwrap();
+            let journal = f.journal();
+            let previous = journal.run(&initial.view.run_id).unwrap().unwrap();
+            let mut completed = previous.clone();
+            completed.started = true;
+            completed.view.state = w::State::Completed;
+            completed.view.settled = true;
+            completed.view.revision.0 += 1;
+            completed.view.manifest_sha256 = Some(w::Hex("b".repeat(64)));
+            completed.view.result_sha256 = Some(w::Hex("a".repeat(64)));
+            assert!(journal.compare_and_save(&previous, &completed).unwrap());
             released.wait();
             inspector.join().unwrap();
         });

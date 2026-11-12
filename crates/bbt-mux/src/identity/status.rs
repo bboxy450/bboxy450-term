@@ -650,6 +650,17 @@ impl PublicFenceReader {
         }
         Ok(value)
     }
+    /// Private clock seam drives the actual public expiry checker through MCP/
+    /// GUI; changing it invalidates old stamps even if a test restores time.
+    #[cfg(test)]
+    pub(crate) fn test_public_clock(&self, now: u64) {
+        self.0
+            .public_clock
+            .store(now, std::sync::atomic::Ordering::Release);
+        self.0
+            .publication
+            .fetch_add(2, std::sync::atomic::Ordering::AcqRel);
+    }
     #[cfg(test)]
     fn current_at(&self, now: u64) -> Result<PublicFence> {
         self.current_verified_at(now, self.verified_snapshot()?)
