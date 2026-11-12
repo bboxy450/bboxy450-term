@@ -74,8 +74,8 @@
       "column": 0
     },
     "tool_versions": {
-      "bboxy450-yarn": "0.1.1",
-      "bboxy450-yarn-macros": "0.1.1"
+      "bboxy450-yarn": "0.2.0",
+      "bboxy450-yarn-macros": "0.2.0"
     }
   },
   "states": 21,
