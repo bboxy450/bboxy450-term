@@ -129,6 +129,7 @@ help:
 	  'make prune-formal-evidence      Archive cold receipts (KEEP=10 DRY_RUN=1)' \
 	  'make test-formal-contracts      Project contracts and real API witnesses (native)' \
 	  'make test-yarn-model            Native checker, exporter and strict Rust lint' \
+	  'make build-remote               Build the remote supervisor CLI' \
 	  'make test-remote-live           Remote supervisor link with the real harness ACP server' \
 	  'make test-yarn-concurrency      Bounded Loom primitives/controls + seeded Shuttle reactors' \
 	  'make test-yarn-kani             Pinned repo-local Kani proofs of generated protocol reducers' \
@@ -1796,6 +1797,11 @@ test-wake-circuit-breaker: tools init-submodules
 	cargo nextest run -E 'binary(it)&test(/^(messaging_flow|messaging_suppression|attention_policy)::/)' --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)'
 
 .PHONY: test-wake-circuit-breaker
+
+.PHONY: build-remote
+build-remote: tools
+	@set -eu; . ./scripts/cache-env.sh; \
+	cargo build --locked -p bboxy450-term-remote --target-dir '$(TARGET_DIR)'
 
 # Remote supervisor link with the real bboxy450-harness ACP server (scripted
 # provider: no network, no tokens, no operator). Builds the harness with `acp`.
