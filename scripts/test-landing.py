@@ -1314,7 +1314,9 @@ except Exception as error:
         self.repo.remote()
         self.cut("crates/c/src/lib.rs")
         (self.repo.state / "behavior.json").write_text('{"block":"test","block_once":true}')
-        (self.repo.state / "fixture.json").write_text('{"build_cap_seconds":3,"run_bound_seconds":5}')
+        # The first attempt is blocked and always exceeds the cap; the warm retry is a real
+        # build that must fit it, so the cap leaves margin for a loaded machine (3 s missed).
+        (self.repo.state / "fixture.json").write_text('{"build_cap_seconds":10,"run_bound_seconds":5}')
         result = self.repo.land()
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         rows = [json.loads(line) for line in (self.repo.state / "presubmit.log").read_text().splitlines()]
