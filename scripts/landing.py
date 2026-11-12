@@ -722,7 +722,9 @@ def lean_test(package, selection):
                 ["--profile", OPTIMIZED_FIXTURE_PROFILE, "--no-tests=pass",
                  *restrict_selection(argv, optimized)]]
     else:
-        runs = [argv]
+        # A crate whose planned selection holds no test (its lib tests run in
+        # a lane of their own, or it has none) still passed clippy and check.
+        runs = [["--no-tests=pass", *argv]]
     for run in runs:
         code = subprocess.run(["sh", "scripts/quarantine-test.sh", "--allow-ignored-only",
                                "--locked", "-p", package, *run]).returncode
