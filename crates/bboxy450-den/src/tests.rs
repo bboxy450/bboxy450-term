@@ -226,7 +226,8 @@ fn a_theorem_is_stated_in_lean_for_every_size_of_an_unnamed_domain() {
         .unwrap()
         .unwrap();
     assert_eq!(lean.module, "DenOutbox");
-    assert_eq!(lean.theorems, ["OUTBOX_001", "OUTBOX_002"]);
+    assert_eq!(lean.theorems(), ["OUTBOX_001", "OUTBOX_002"]);
+    let statements = lean.statements().unwrap();
     for expected in [
         "-- `Msg` is a type of any size",
         "  unacked : Msg → Prop",
@@ -234,11 +235,11 @@ fn a_theorem_is_stated_in_lean_for_every_size_of_an_unnamed_domain() {
         "unacked := fun ξ2 => ξ2 ≠ m ∧ σ.unacked ξ2",
         "  ∀ (Msg : Type) (σ : (State Msg)), Reachable σ → OUTBOX_001 σ",
     ] {
-        assert!(lean.statements.contains(expected), "{expected}\n{}", lean.statements);
+        assert!(statements.contains(expected), "{expected}\n{statements}");
     }
     // Rejected and ignored cases change nothing and are not steps.
-    assert!(!lean.statements.contains("Submit_known"));
-    assert!(lean.check.contains(
+    assert!(!statements.contains("Submit_known"));
+    assert!(lean.check().contains(
         "theorem den_check_OUTBOX_002 : DenOutbox.OUTBOX_002_statement := DenOutbox.OUTBOX_002_proved"
     ));
 }
@@ -247,13 +248,14 @@ fn a_named_member_fixes_its_domain_and_an_integer_owes_its_range() {
     let lean = lean(include_str!("../tests/sound/turnstile.den"))
         .unwrap()
         .unwrap();
-    assert_eq!(lean.theorems, ["TURN_001", "TYPE_OK"]);
+    assert_eq!(lean.theorems(), ["TURN_001", "TYPE_OK"]);
+    let statements = lean.statements().unwrap();
     for expected in [
         "inductive Gate where\n  | Locked\n  | Open\n  deriving DecidableEq",
         "def TYPE_OK (σ : State) : Prop := ((0 : Int) ≤ σ.coins ∧ σ.coins ≤ (3 : Int))",
         "  ∀ (σ : State), Reachable σ → TURN_001 σ",
     ] {
-        assert!(lean.statements.contains(expected), "{expected}\n{}", lean.statements);
+        assert!(statements.contains(expected), "{expected}\n{statements}");
     }
 }
 #[test]
@@ -283,4 +285,144 @@ fn knowledge_base_specs_match_their_fixtures() {
             "{name}"
         );
     }
+}
+
+/// One Den scenario step for an event of the generated Rust reducer and its decision.
+fn recorded<S, E: std::fmt::Debug, R: std::fmt::Debug, I: std::fmt::Debug>(
+    event: &impl std::fmt::Debug,
+    decision: &bbt_yarn::protocol::Decision<S, E, R, I>,
+) -> String {
+    use bbt_yarn::protocol::Decision;
+    // `Send(A)` and `Apply(A)` are Rust's Debug forms; Den writes `Send(Msg.A)`.
+    let den = |value: &dyn std::fmt::Debug| format!("{value:?}").replace('(', "(Msg.");
+    match decision {
+        Decision::Accepted { effects, .. } if effects.is_empty() => {
+            format!("{} ~> accepted", den(event))
+        }
+        Decision::Accepted { effects, .. } => format!(
+            "{} ~> accepted emits {}",
+            den(event),
+            effects
+                .iter()
+                .map(|e| den(e))
+                .collect::<Vec<_>>()
+                .join(", ")
+        ),
+        Decision::Rejected { reason } => format!("{} ~> rejected {reason:?}", den(event)),
+        Decision::Ignored { reason } => format!("{} ~> ignored {reason:?}", den(event)),
+    }
+}
+/// A deterministic walk over the reducer: every event, in a scrambled order.
+macro_rules! record {
+    ($protocol:ident, $steps:expr, $allow:expr) => {{
+        use bboxy450_term_remote::delivery::$protocol::{Event, Msg, State, step};
+        use bbt_yarn::protocol::Decision;
+        let events = [
+            Event::Submit(Msg::A),
+            Event::Send(Msg::A),
+            Event::Arrive(Msg::A),
+            Event::RemoteCrash,
+            Event::Reconnect,
+            Event::Submit(Msg::B),
+            Event::Send(Msg::B),
+            Event::Arrive(Msg::B),
+            Event::AckArrive(Msg::A),
+            Event::Drop,
+            Event::AckArrive(Msg::B),
+        ];
+        let allow: fn(&State, &Event) -> bool = $allow;
+        let (mut state, mut seed, mut lines) = (State::default(), 0x9E37_79B9_u32, vec![]);
+        while lines.len() < $steps {
+            seed = seed.wrapping_mul(1_664_525).wrapping_add(1_013_904_223);
+            let event = events[(seed >> 16) as usize % events.len()];
+            if !allow(&state, &event) {
+                continue;
+            }
+            let decision = step(&state, event);
+            lines.push(recorded(&event, &decision));
+            if let Decision::Accepted { next, .. } = decision {
+                state = next;
+            }
+        }
+        lines.join("\n")
+    }};
+}
+#[test]
+fn a_trace_recorded_from_the_rust_reducer_conforms_to_the_spec() {
+    let spec = include_str!("../tests/sound/remote_delivery.den");
+    // The reducer accepts a crash of a remote that is already down; the spec
+    // ignores it (an accepted step must change something). The states agree.
+    let trace = record!(RemoteDelivery, 400, |state, event| {
+        state.link_up() || !matches!(event, Event::RemoteCrash)
+    });
+    for outcome in [
+        "accepted emits Apply(Msg.A)",
+        "rejected AlreadySubmitted",
+        "ignored NoAck",
+    ] {
+        assert!(trace.contains(outcome), "the walk never reached: {outcome}");
+    }
+    let report = replay(spec, &trace);
+    assert!(report.is_sound(), "{}", report.to_text());
+    // Teeth, on the real difference: that crash is refused at its own line.
+    let crash_while_down = record!(RemoteDelivery, 400, |_, _| true);
+    let refused = replay(spec, &crash_while_down);
+    assert_eq!(refused.diagnostics[0].code, "X801", "{}", refused.to_text());
+    let line = crash_while_down
+        .lines()
+        .nth(refused.diagnostics[0].line as usize - 1);
+    assert_eq!(line, Some("RemoteCrash ~> accepted"));
+}
+#[test]
+fn a_remote_that_forgets_what_it_applied_does_not_conform() {
+    use bboxy450_term_remote::delivery::BrokenRemoteDelivery::{Event, Msg, State, step};
+    use bbt_yarn::protocol::Decision;
+    // Apply, crash, replay: the volatile remote applies the same message again.
+    let mut state = State::default();
+    let mut lines = vec![];
+    for event in [
+        Event::Submit(Msg::A),
+        Event::Send(Msg::A),
+        Event::Arrive(Msg::A),
+        Event::RemoteCrash,
+        Event::Reconnect,
+        Event::Send(Msg::A),
+        Event::Arrive(Msg::A),
+    ] {
+        let decision = step(&state, event);
+        lines.push(recorded(&event, &decision));
+        if let Decision::Accepted { next, .. } = decision {
+            state = next;
+        }
+    }
+    let report = replay(
+        include_str!("../tests/sound/remote_delivery.den"),
+        &lines.join("\n"),
+    );
+    assert_eq!(report.diagnostics[0].code, "X801", "{}", report.to_text());
+    // The step the spec refuses is the second application, the last line.
+    assert_eq!(report.diagnostics[0].line, 7);
+    assert_eq!(lines[6], "Arrive(Msg.A) ~> accepted emits Apply(Msg.A)");
+}
+#[test]
+fn a_trace_must_parse_and_name_the_specs_events() {
+    let spec = include_str!("../tests/sound/outbox.den");
+    assert!(replay(spec, "Submit(Msg.A) ~> accepted\nexpect unacked(Msg.A)\n").is_sound());
+    for (trace, code) in [
+        (
+            "Submit(Msg.A) ~> accepted\nSubmit(Msg.A) ~> accepted",
+            "X801",
+        ),
+        ("Submit(Msg.A) ~> accepted\nexpect acked(Msg.A)", "X802"),
+        ("Publish(Msg.A) ~> accepted", "X201"),
+        ("Submit(Msg.A) accepted", "X101"),
+    ] {
+        let report = replay(spec, trace);
+        assert_eq!(report.diagnostics[0].code, code, "{}", report.to_text());
+    }
+    // The refused step is reported at its line in the trace.
+    assert_eq!(
+        replay(spec, "Drop ~> accepted\nDrop ~> accepted").diagnostics[0].line,
+        2
+    );
 }

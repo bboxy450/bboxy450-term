@@ -128,7 +128,7 @@ help:
 	  'make check-formal-evidence      Verify the source-bound formal landing receipt' \
 	  'make prune-formal-evidence      Archive cold receipts (KEEP=10 DRY_RUN=1)' \
 	  'make test-formal-contracts      Project contracts and real API witnesses (native)' \
-	  'make test-lean                  Den theorems proved for every domain size (pinned Lean 4)' \
+	  'make test-lean                  Den and Yarn theorems proved for every domain size (pinned Lean 4)' \
 	  'make test-yarn-model            Native checker, exporter and strict Rust lint' \
 	  'make build-remote               Build the remote supervisor CLI' \
 	  'make test-remote-live           Remote supervisor link with the real harness ACP server' \
@@ -1845,9 +1845,10 @@ test-formal:
 	python3 -I scripts/formal-stage.py lean -- $(MAKE) test-lean TARGET_DIR='$(TARGET_DIR)'; \
 	python3 -I scripts/formal-stage.py java-parity -- sh scripts/qos.sh utility python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' $(if $(filter 1,$(FORMAL_REUSE)),--reuse,)
 
-# Unbounded proofs: Den `theorem`s exported to Lean 4 and checked by the pinned
-# kernel (trimmed toolchain in a shared machine cache; no operator, no global
-# install). Every set has its own module namespace; `controls` must be refused.
+# Unbounded proofs: Den `theorem`s and Yarn `#[invariant(.., theorem)]`s exported
+# to Lean 4 and checked by the pinned kernel (trimmed toolchain in a shared
+# machine cache; no operator, no global install). Every set has its own module
+# namespace; the `controls` sets must be refused.
 .PHONY: test-lean
 test-lean:
 	@set -eu; . ./scripts/cache-env.sh; out='$(abspath $(TARGET_DIR))/lean'; rm -rf "$$out"; \
@@ -1855,7 +1856,8 @@ test-lean:
 	den --out "$$out/specs" .bboxy/specs; \
 	den --out "$$out/fixtures" crates/bboxy450-den/tests/sound; \
 	den --expect-fail --out "$$out/controls" crates/bboxy450-den/tests/unproved; \
-	for set in specs fixtures controls; do python3 -I scripts/lean.py --check "$$out/$$set"; done
+	cargo run --locked -q -p bboxy450-yarn --features model --example yarn_lean --target-dir '$(TARGET_DIR)' -- "$$out/yarn" "$$out/yarn-controls"; \
+	for set in specs fixtures controls yarn yarn-controls; do python3 -I scripts/lean.py --check "$$out/$$set"; done
 
 .PHONY: test-yarn-kani
 test-yarn-kani:

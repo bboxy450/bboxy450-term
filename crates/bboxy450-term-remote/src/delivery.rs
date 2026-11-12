@@ -105,7 +105,7 @@ bbt_yarn::protocol! {
                 preserve unacked, applied, acked, ever, doubled;
             }
         }
-        #[invariant(id = "REMOTE-DELIVERY-001")]
+        #[invariant(id = "REMOTE-DELIVERY-001", theorem)]
         fn applied_at_most_once() { !doubled }
         #[invariant(id = "REMOTE-DELIVERY-002")]
         fn ack_implies_applied() {
@@ -212,7 +212,7 @@ bbt_yarn::protocol! {
                 preserve unacked, acked, ever, doubled;
             }
         }
-        #[invariant(id = "REMOTE-DELIVERY-001")]
+        #[invariant(id = "REMOTE-DELIVERY-001", theorem)]
         fn applied_at_most_once() { !doubled }
     }
 }

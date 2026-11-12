@@ -613,8 +613,12 @@ impl Parser {
         let name = self.text()?;
         self.need("{")?;
         self.separators();
+        let steps = self.steps(|p| p.take("}"))?;
+        Ok(Scenario { name, pos, steps })
+    }
+    fn steps(&mut self, mut done: impl FnMut(&mut Self) -> bool) -> ParseResult<Vec<ScenarioStep>> {
         let mut steps = Vec::new();
-        while !self.take("}") {
+        while !done(self) {
             if self.take("expect") {
                 steps.push(ScenarioStep::Expect(self.expr()?));
             } else {
@@ -638,7 +642,7 @@ impl Parser {
             }
             self.end_statement()?;
         }
-        Ok(Scenario { name, pos, steps })
+        Ok(steps)
     }
     fn spec(mut self) -> ParseResult<Spec> {
         self.separators();
@@ -968,6 +972,23 @@ impl Parser {
     }
 }
 
+/// A recorded trace: scenario steps with no surrounding declaration.
+pub(crate) fn parse_trace(
+    source: &str,
+    record: &str,
+) -> Result<Vec<ScenarioStep>, Vec<Diagnostic>> {
+    let tokens = Lexer::new(source).tokens().map_err(|e| vec![e])?;
+    let mut parser = Parser {
+        tokens,
+        index: 0,
+        record: record.into(),
+        depth: 0,
+    };
+    parser.separators();
+    parser
+        .steps(|p| p.current().kind == TokenKind::End)
+        .map_err(|e| vec![e])
+}
 pub(crate) fn parse(source: &str) -> Result<Spec, Vec<Diagnostic>> {
     let tokens = Lexer::new(source).tokens().map_err(|e| vec![e])?;
     Parser {

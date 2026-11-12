@@ -91,7 +91,10 @@ loads into. Everything else is an engine that reads that model:
 |---|---|---|
 | Front end | text → syntax tree → resolved, typed, checked model | `spec` kind landing; other kinds next |
 | Model | Rust types for records, fields, links, machines and graphs; the one public, stable interface of `bboxy450-den` | to be made public (next task) |
-| Check engine | soundness: the X-code table | with the front end |
+| Check engine | soundness: the X-code table, safety and progress within the bounds, on `bboxy450-tlc` | built |
+| TLA+ engine | the same finite model as TLA+ text, compared with Java TLC state for state | built: `make test-formal`, stage `den-verify` |
+| Lean engine | the machine as Lean 4 declarations; each `theorem` proved for domains of every size and checked by the Lean kernel | built: `bboxy450-den lean`, `make test-lean` |
+| Conformance engine | a trace recorded from an implementation, replayed against the spec | built: `bboxy450-den replay`; recording is the implementation's job |
 | View engine | graph operations → Mermaid | planned |
 | Lowering engine | model → Markdown | planned; the first engine that writes |
 | Query engine | the knowledge base as a typed graph, through MCP | planned |
@@ -113,6 +116,25 @@ Rules that keep this open:
 
 This is why Den is checked today and not compiled or executed: those are later engines
 over the same model, added when there is a use for them, without redesigning the format.
+
+### TLA+ and Lean are engines, not second languages
+
+Operator, 2026-11-12: "can we make lean and tla+ work under .den?". They do. An agent
+writes one language, Den; TLA+ text is generated, and so is every Lean statement.
+
+| Question | Engine | Strength |
+|---|---|---|
+| Can the machine reach a bad state? | check | every state, for the declared members |
+| Does a request always get its response? | check, with `property` and `fair` | the same bound, under the declared fairness |
+| Is the native checker right? | TLA+ export, Java TLC | exact graph and verdict parity |
+| Does a theorem hold at every size? | Lean | a kernel-checked proof; no bound |
+| Does the Rust do what the spec says? | replay | the recorded runs, no more |
+
+The only Lean a person or agent writes is the proof, in `name.lean` beside `name.den`.
+The statement it must prove is generated, and a generated check file refuses a proof of
+anything else, a `sorry`, or a new axiom. Lean runs in `make test-lean`, never in
+`den check` or in the product. Yarn's `protocol!` uses the same Lean generator
+(`bboxy450_tlc::lean`), so a Rust protocol declaration and a Den spec owe proofs in one form.
 
 ## Modules and links
 
@@ -207,7 +229,8 @@ enum Channel[From <: Role, To <: Role, Payload <: Kind] {
 
 // 5. Evidence knows how it was obtained.
 enum Evidence[How <: Basis] {
-  case Model(states: Int, bound: Text)      extends Evidence[Proven]
+  case Model(states: Int, bound: Text)      extends Evidence[Bounded]   // true for these members
+  case Theorem(lean: Path, statement: Sha)  extends Evidence[Proven]    // true at every size
   case Run(command: Command, exit: Int)     extends Evidence[Passed]
   case Benchmark(value: Int, budget: Int)   extends Evidence[Measured]
 }
@@ -793,27 +816,40 @@ Checks run in order; a later group runs only when the earlier ones are clean.
 | Steps | X501 | a case assigns one variable twice |
 | | X502 | a `reject` or `ignore` case updates state or emits |
 | | X503 | an accepting case, in some state and for some arguments that select it, changes nothing and emits nothing |
+| | X505 | a case that rejects or ignores is declared `fair` |
 | | X504 | `do` fires a part's event in a state where the part does not accept it |
 | Model | X601 | an invariant is false in a reachable state (shortest trace reported) |
 | | X602 | an update can leave a variable's range |
 | | X603 | the state space exceeds the limit |
 | | X604 | a part's invariant is false in the whole |
+| Progress | X651 | a `property` is false: a fair loop never reaches the response (prefix and loop reported) |
 | Vacuity | X701 | a case is never taken from any reachable state |
 | | X702 | an invariant cannot be false in any state of the types |
+| | X703 | a `property` is never requested in a reachable state |
 | Scenarios | X801 | a step has a different outcome than written |
 | | X802 | an `expect` is false at that point |
 | Completeness | X901 | `intent` is missing or empty |
 | | X902 | a spec has no invariant |
 | | X903 | a spec has no scenario |
 | | X904 | an `assume` of a part is neither discharged nor restated |
+| | X905 | a `theorem` has no proof file beside the spec (reported by `den lean`, not by `check`) |
 
 Totality is checked over every value of the types, not only reachable states. Model,
 vacuity and scenario checks use the reachable states, explored by the existing
 `bboxy450-tlc` checker: one model checker in the suite.
 
 Sound does not mean: what the operator wants (cards and scenarios are for that); true
-beyond its bound; implemented by any code (the macro judge is for that); making progress
-(v1 is safety only; `leads to` and fairness come from `protocol!` next).
+beyond its bound (a `theorem` and its Lean proof are for that); implemented by any code
+(`replay` and the macro judge are for that). Progress is checked: a
+`property ID "text" = forall m: D. request leads to response` must hold under the cases
+declared `fair weak` or `fair strong`, and fairness is a promise about the environment
+that belongs in an `assume`.
+
+A `theorem ID "text" = expr` is an invariant, model-checked like any other, that also
+owes a Lean proof for every reachable state. An enum whose members neither the
+transitions nor a theorem name is an abstract type there, so the theorem holds for a
+domain of any size; an `Int[lo..hi]` field owes the generated `TYPE_OK`. Report evidence
+says which it is: `Evidence[Bounded]` from the model, `Evidence[Proven]` from Lean.
 
 ## In mux 2.0
 
@@ -1098,7 +1134,9 @@ One step at a time; the knowledge base stays usable at every step.
 ## Checked examples
 
 The machines this record shows are real files, checked by `make check-den` on every
-landing. Where the text above and a file differ, the file is right.
+landing. Where the text above and a file differ, the file is right. `Outbox` also carries
+the progress property `OUTBOX_L1` and the theorems `OUTBOX_001` and `OUTBOX_002`, proved
+in `specs/delivery/outbox.lean` for a message type of any size.
 
 | File | Spec | Reachable states | Transitions |
 |---|---|---:|---:|
@@ -1116,5 +1154,6 @@ carries the corrected guard.
 
 ## Out of scope for v1
 
-Compilation; progress and fairness; maps and sequences in spec state; parametric bounds;
-user-defined type classes; any evaluation beyond expressions in specs.
+Compilation; maps and sequences in spec state; parametric bounds; user-defined type
+classes; any evaluation beyond expressions in specs. Lean export covers safety theorems
+only: progress properties, effects and scenarios are not exported.

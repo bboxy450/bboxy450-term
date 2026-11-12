@@ -18,7 +18,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut manifest = std::fs::read_to_string(root.join("manifest.tsv"))?;
     // A broken control keeps its spec's name in Den; the corpus needs a distinct one.
     for (name, source, expected) in [
-        ("DenOutbox", include_str!("../tests/sound/outbox.den"), "pass"),
+        (
+            "DenOutbox",
+            include_str!("../tests/sound/outbox.den"),
+            "pass",
+        ),
         (
             "BrokenDenOutbox",
             include_str!("../tests/unsound/X651-unfair-progress.den"),

@@ -125,7 +125,8 @@ fn refuses_directory_symlink_cycles_without_hanging() {
 }
 
 #[test]
-fn render_markdown_writes_a_lowering_beside_the_source_and_refuses_to_replace_a_hand_written_file() {
+fn render_markdown_writes_a_lowering_beside_the_source_and_refuses_to_replace_a_hand_written_file()
+{
     let temp = Temp::new();
     let den = temp.0.join("outbox.den");
     fs::copy(fixture("sound/outbox.den"), &den).unwrap();
@@ -146,15 +147,128 @@ fn render_markdown_writes_a_lowering_beside_the_source_and_refuses_to_replace_a_
     fs::write(temp.0.join("hand.md"), "# mine\n").unwrap();
     let refused = cli(&["render".as_ref(), "--markdown".as_ref(), hand.as_os_str()]);
     assert_eq!(refused.status.code(), Some(2), "{refused:?}");
-    assert_eq!(fs::read_to_string(temp.0.join("hand.md")).unwrap(), "# mine\n");
-    let forced = cli(&["render".as_ref(), "--markdown".as_ref(), "--overwrite".as_ref(), hand.as_os_str()]);
+    assert_eq!(
+        fs::read_to_string(temp.0.join("hand.md")).unwrap(),
+        "# mine\n"
+    );
+    let forced = cli(&[
+        "render".as_ref(),
+        "--markdown".as_ref(),
+        "--overwrite".as_ref(),
+        hand.as_os_str(),
+    ]);
     assert!(forced.status.success(), "{forced:?}");
     // --out mirrors the path; unsound input writes nothing and exits 1.
     let out = temp.0.join("mirror");
-    let mirrored = cli(&["render".as_ref(), "--markdown".as_ref(), "--out".as_ref(), out.as_os_str(), den.as_os_str()]);
+    let mirrored = cli(&[
+        "render".as_ref(),
+        "--markdown".as_ref(),
+        "--out".as_ref(),
+        out.as_os_str(),
+        den.as_os_str(),
+    ]);
     assert!(mirrored.status.success(), "{mirrored:?}");
-    assert!(out.join(den.strip_prefix("/").unwrap()).with_extension("md").is_file());
-    let unsound = cli(&["render".as_ref(), "--markdown".as_ref(), fixture("unsound/X201-unknown-name.den").as_os_str()]);
+    assert!(
+        out.join(den.strip_prefix("/").unwrap())
+            .with_extension("md")
+            .is_file()
+    );
+    let unsound = cli(&[
+        "render".as_ref(),
+        "--markdown".as_ref(),
+        fixture("unsound/X201-unknown-name.den").as_os_str(),
+    ]);
     assert_eq!(unsound.status.code(), Some(1), "{unsound:?}");
     assert!(!fixture("unsound/X201-unknown-name.md").exists());
+}
+
+#[test]
+fn replay_exits_one_and_names_the_trace_line_the_spec_refuses() {
+    let temp = Temp::new();
+    let allowed = temp.0.join("allowed.trace");
+    let forbidden = temp.0.join("forbidden.trace");
+    fs::write(
+        &allowed,
+        "Submit(Msg.A) ~> accepted\nSend(Msg.A) ~> accepted\n",
+    )
+    .unwrap();
+    fs::write(
+        &forbidden,
+        "Submit(Msg.A) ~> accepted\nApplied(Msg.A) ~> accepted\n",
+    )
+    .unwrap();
+    let spec = fixture("sound/outbox.den");
+    let result = cli(&["replay".as_ref(), spec.as_os_str(), allowed.as_os_str()]);
+    assert_eq!(result.status.code(), Some(0), "{result:?}");
+    assert!(result.stdout.is_empty());
+    let result = cli(&[
+        "replay".as_ref(),
+        spec.as_os_str(),
+        allowed.as_os_str(),
+        forbidden.as_os_str(),
+    ]);
+    assert_eq!(result.status.code(), Some(1), "{result:?}");
+    let text = String::from_utf8(result.stdout).unwrap();
+    assert!(
+        text.starts_with(&format!("{}:2:1 X801", forbidden.display())),
+        "{text}"
+    );
+    assert_eq!(
+        cli(&["replay".as_ref(), spec.as_os_str()]).status.code(),
+        Some(2)
+    );
+}
+
+#[test]
+fn lean_writes_three_files_per_theorem_spec_and_refuses_a_missing_proof() {
+    let temp = Temp::new();
+    let out = temp.0.join("out");
+    let specs = temp.0.join("specs");
+    fs::create_dir(&specs).unwrap();
+    for name in ["outbox.den", "outbox.lean", "remote_delivery.den"] {
+        fs::copy(fixture("sound").join(name), specs.join(name)).unwrap();
+    }
+    let export = |out: &Path| {
+        cli(&[
+            "lean".as_ref(),
+            "--out".as_ref(),
+            out.as_os_str(),
+            specs.as_os_str(),
+        ])
+    };
+    let result = export(&out);
+    assert_eq!(result.status.code(), Some(0), "{result:?}");
+    // A spec with no theorem exports nothing.
+    let mut written: Vec<_> = fs::read_dir(&out)
+        .unwrap()
+        .map(|entry| entry.unwrap().file_name().into_string().unwrap())
+        .collect();
+    written.sort();
+    assert_eq!(
+        written,
+        [
+            "DenOutbox.lean",
+            "DenOutboxCheck.lean",
+            "DenOutboxProof.lean",
+            "lean.tsv"
+        ]
+    );
+    assert_eq!(
+        fs::read_to_string(out.join("lean.tsv")).unwrap(),
+        "DenOutbox\tpass\tOUTBOX_001,OUTBOX_002\n"
+    );
+    assert_eq!(
+        fs::read_to_string(out.join("DenOutboxProof.lean")).unwrap(),
+        fs::read_to_string(fixture("sound/outbox.lean")).unwrap()
+    );
+    // The same module twice in one directory is a usage error, never a silent overwrite.
+    assert_eq!(export(&out).status.code(), Some(2));
+    fs::remove_file(specs.join("outbox.lean")).unwrap();
+    let result = export(&temp.0.join("unproved"));
+    assert_eq!(result.status.code(), Some(1), "{result:?}");
+    assert!(
+        String::from_utf8(result.stdout)
+            .unwrap()
+            .contains("X905 theorems OUTBOX_001, OUTBOX_002 have no proof")
+    );
 }

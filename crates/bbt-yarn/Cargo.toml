@@ -52,3 +52,7 @@ required-features = ["macros", "model"]
 [[example]]
 name = "protocol_contracts"
 required-features = ["macros", "model"]
+
+[[example]]
+name = "yarn_lean"
+required-features = ["macros", "model"]

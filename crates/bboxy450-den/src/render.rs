@@ -92,9 +92,7 @@ pub fn embedded(markdown: &str) -> Option<(String, String)> {
 /// The record's title: the intent's first sentence (a list shows one line).
 fn title_of(intent: &str) -> &str {
     let intent = intent.trim();
-    intent
-        .find(". ")
-        .map_or(intent, |end| &intent[..=end])
+    intent.find(". ").map_or(intent, |end| &intent[..=end])
 }
 
 fn markdown(
@@ -432,7 +430,12 @@ mod tests {
         let md = &first.markdown;
         assert!(md.starts_with("---\ntype: spec\ntitle: 'Two flags toggle together.'\ngenerated_from:\n  module: specs.Toggle\n  source_sha256: "), "{md}");
         assert!(md.contains("## Views\n\nScenario 1: toggle both flags\n\n```mermaid\nflowchart TD\n    s0([\"start\"])\n    s0 --> s1[\"Toggle ~> accepted\"]\n    s1 --> s2[\"expect x && y\"]\n```"), "{md}");
-        assert!(!render_with(TOGGLE, false).unwrap().markdown.contains("## Views"));
+        assert!(
+            !render_with(TOGGLE, false)
+                .unwrap()
+                .markdown
+                .contains("## Views")
+        );
         assert_eq!(title_of("One. Two sentences."), "One.");
         assert_eq!(title_of("No period"), "No period");
         for needle in [
@@ -473,8 +476,14 @@ mod tests {
         )
         .unwrap_or_else(|d| panic!("{d:?}"));
         let case = &spec.handlers[0].cases[0];
-        assert_eq!(expr(case.guard.as_ref().unwrap()), "((n + k) <= 3) && !(d == D.Q)");
+        assert_eq!(
+            expr(case.guard.as_ref().unwrap()),
+            "((n + k) <= 3) && !(d == D.Q)"
+        );
         assert_eq!(stmt(&case.stmts[1]), "d = if n == 3 then D.Q else D.P");
-        assert_eq!(expr(&spec.invariants[0].expr), "forall m: D. (d == m) ==> true");
+        assert_eq!(
+            expr(&spec.invariants[0].expr),
+            "forall m: D. (d == m) ==> true"
+        );
     }
 }

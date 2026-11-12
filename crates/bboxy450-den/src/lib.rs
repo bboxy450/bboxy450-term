@@ -70,6 +70,15 @@ pub struct Summary {
 pub fn check(source: &str) -> Report {
     checker::check(source)
 }
+/// Checks that a recorded trace is a behavior the spec allows. The trace is the
+/// body of a scenario, one step per line: `Event(args) ~> accepted [emits ...]`,
+/// `~> rejected Reason`, `~> ignored Reason`, and optionally `expect expr`. An
+/// implementation that logs its events and outcomes in this form conforms when
+/// the replay is sound. A diagnostic's position is in the trace; an unsound
+/// spec returns its own diagnostics and replays nothing.
+pub fn replay(spec: &str, trace: &str) -> Report {
+    checker::replay(spec, trace)
+}
 /// The finite model `check` explores, for a spec that is well formed (names,
 /// types, totality, steps) but not necessarily sound: a broken control still
 /// has a model, and exporting it lets Java TLC refute it independently.
@@ -88,22 +97,12 @@ pub fn model(source: &str) -> Result<bboxy450_tlc::Model, Report> {
         )])
     })
 }
-/// Lean 4 text for a sound spec's theorems.
-#[derive(Debug)]
-pub struct Lean {
-    /// Lean module name, `Den` followed by the spec name.
-    pub module: String,
-    /// `MODULE.lean`: the machine and one `ID_statement` per theorem.
-    pub statements: String,
-    /// `MODULECheck.lean`: each `ID_proved` in `MODULEProof.lean` has its statement.
-    pub check: String,
-    /// IDs that owe a proof, including `TYPE_OK` when the state has integers.
-    pub theorems: Vec<String>,
-}
-/// Exports a spec's machine to Lean, where its `theorem`s are stated for
-/// domains of every size. `None` when the spec declares no theorem. Unsound
-/// specs are refused: a bounded counterexample is cheaper than a failed proof.
-pub fn lean(source: &str) -> Result<Option<Lean>, Report> {
+/// A sound spec's machine for Lean, where its `theorem`s are stated for
+/// domains of every size: `Machine::statements` is the text, `Machine::export`
+/// writes it beside a proof for `make test-lean`. `None` when the spec declares
+/// no theorem. Unsound specs are refused: a bounded counterexample is cheaper
+/// than a failed proof.
+pub fn lean(source: &str) -> Result<Option<bboxy450_tlc::lean::Machine>, Report> {
     let report = check(source);
     if !report.is_sound() {
         return Err(report);
@@ -113,21 +112,18 @@ pub fn lean(source: &str) -> Result<Option<Lean>, Report> {
     if machine.theorems().is_empty() {
         return Ok(None);
     }
-    let statements = machine.statements().map_err(|e| Report {
-        records: vec![],
-        diagnostics: vec![spec.name.pos.diagnostic(
-            "X190",
-            &spec.name.text,
-            e,
-            "rename the declaration: State, Step, Reachable, initial and TYPE_OK are generated",
-        )],
-    })?;
-    Ok(Some(Lean {
-        module: machine.module.clone(),
-        statements,
-        check: machine.check(),
-        theorems: machine.theorems().into_iter().map(String::from).collect(),
-    }))
+    match machine.statements() {
+        Ok(_) => Ok(Some(machine)),
+        Err(e) => Err(Report {
+            records: vec![],
+            diagnostics: vec![spec.name.pos.diagnostic(
+                "X190",
+                &spec.name.text,
+                e,
+                "rename the declaration: State, Step, Reachable, initial and TYPE_OK are generated",
+            )],
+        }),
+    }
 }
 impl Report {
     /// True exactly when no diagnostics were produced.

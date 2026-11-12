@@ -111,3 +111,12 @@ their own licenses; neither is shipped in this Rust crate.
 Original integration source and policy:
 https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md.
 Slop respectfully. Keep the credit attached.
+
+## Shared exporters
+
+`corpus::export` writes the artifacts the Java TLC parity gate reads; every frontend
+exports through it. `lean::Machine` prints a typed state machine as Lean 4 declarations:
+a frontend (Den, Yarn's `protocol!`) supplies the machine with its expressions already
+printed as Lean terms, and gets `MODULE.lean`, a check file and the manifest row for
+`scripts/lean.py`. The checker itself stays dependency-free and neither module runs
+another tool: Lean proves, in `make test-lean`.

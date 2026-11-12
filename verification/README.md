@@ -147,6 +147,43 @@ its actual source path and its modeled scope or remaining implementation-only
 coverage. Missing, duplicate and stale crate entries fail the gate. A contract
 model is a design check, not a proof that its mapped Rust implements it.
 
+## Unbounded proofs in Lean 4
+
+Model checking is exhaustive within a bound: two messages, three states of a counter.
+A theorem that must hold at every size is exported to Lean 4 and proved there.
+
+| Frontend | Declares a theorem | Proof lives |
+|---|---|---|
+| Den | `theorem ID "text" = expr` | beside the spec: `outbox.den` → `outbox.lean` |
+| Yarn `protocol!` | `#[invariant(id = "..", theorem)]` | beside the declaration, exported by `crates/bbt-yarn/examples/yarn_lean.rs` |
+
+Both print their typed machine through `bboxy450_tlc::lean`: the state is a structure of
+propositions, each accepting case is a constructor of an inductive `Step`, and a theorem
+is the statement that its predicate holds in every `Reachable` state. A domain whose
+members neither the transitions nor a theorem name is an abstract type, so the statement
+quantifies over domains of every size. `make test-lean` (a stage of `make test-formal`)
+checks every proof with the pinned kernel:
+
+- `scripts/lean.py` installs Lean 4.35.0 from the pinned archive, hashing the stream and
+  keeping only the kernel and core library (535 MB, shared machine cache, no global
+  install, no operator). No Mathlib, no SMT solver, no `lake`.
+- A generated check file requires each proof to have exactly the generated statement.
+- A proof may rest only on `propext`, `Classical.choice` and `Quot.sound`. `sorry`,
+  `native_decide` and declared axioms are refused.
+- Controls that must be refused run in the same gate. A tool failure or timeout is an
+  error, never a pass and never an accepted refusal.
+- Evidence is `target/lean/<set>/lean-evidence.json`: Lean version and archive hash, and
+  per module the theorems, their axioms and the hashes of statement and proof.
+
+What this does not show: that the printed Lean machine means what the Den or Rust source
+means (implementation-tested printers, one typed AST per frontend), progress (not
+exported), or anything about code outside the declared transition relation. Lean never
+runs in `den check`, in a commit hook or in the product. Java TLC parity is unchanged and
+still required: Lean adds strength, it does not replace the reference checker.
+
+Den also checks conformance: `bboxy450-den replay SPEC TRACE` replays a run recorded from
+an implementation and refuses the first step the spec decides differently.
+
 ## Project contracts
 
 Yarn's `requirements!` / `verify!` contract gate is

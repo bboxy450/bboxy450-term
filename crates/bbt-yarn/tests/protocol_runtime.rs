@@ -44,11 +44,11 @@ bbt_yarn::protocol! {
                 set members = incoming.without(id);
             }
         }
-        #[invariant(id = "BOOL-001")]
+        #[invariant(id = "BOOL-001", theorem)]
         fn complementary() { left != right && (left || right) && !(left && right) }
-        #[invariant(id = "SET-001")]
+        #[invariant(id = "SET-001", theorem)]
         fn set_algebra() { members.with(mode).contains(mode) && !members.without(mode).contains(mode) && members.with(mode) == members.without(mode).with(mode) }
-        #[invariant(id = "OPTION-001")]
+        #[invariant(id = "OPTION-001", theorem)]
         fn option_universe() { selected.is_none() || selected == Some(Mode::A) || selected == Some(Mode::B) }
     }
 }
@@ -76,6 +76,29 @@ mod checks {
         );
         let p::Decision::Accepted { next, .. } = p::step(&next, p::Event::Swap);
         assert_eq!(next, state);
+    }
+
+    #[cfg(feature = "model")]
+    #[test]
+    fn every_type_prints_as_a_lean_term_and_theorems_owe_proofs() {
+        let lean = p::lean();
+        assert_eq!(lean.module, "YarnProtocolLanguage");
+        assert_eq!(
+            lean.theorems(),
+            ["complementary", "set_algebra", "option_universe"]
+        );
+        let text = lean.statements().unwrap();
+        for expected in [
+            // A named member fixes the domain to its declared members.
+            "inductive Mode where\n  | A\n  | B\n  deriving DecidableEq",
+            "  selected : Option Mode\n  members : Mode → Prop",
+            "  selected := (some Mode.B)\n  members := fun ξ0 => (ξ0 = Mode.A)",
+            "(guard : ¬ active) :",
+            "members := fun ξ2 => (ξ2 ≠ id ∧ incoming ξ2)",
+            "(σ.selected = none)",
+        ] {
+            assert!(text.contains(expected), "{expected}\n{text}");
+        }
     }
 
     #[cfg(feature = "model")]

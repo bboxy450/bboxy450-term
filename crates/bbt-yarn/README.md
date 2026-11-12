@@ -249,6 +249,20 @@ Inspired by [Verus state_machine!](https://verus-lang.github.io/verus/state_mach
 (explicit pre-state transitions) and [machine-check](https://github.com/onderjan/machine-check)
 (a constrained Rust-facing language). Independently implemented; no source copied.
 
+## Theorems in Lean 4
+
+`#[invariant(id = "RESULT-001", theorem)]` marks an invariant that also owes a proof for
+every reachable state. With the `model` feature the declaration generates `lean()`, the
+machine for `bboxy450_tlc::lean`: a bool is a proposition, a set is a predicate on its
+domain, an option is an `Option`, and each accepting case is a constructor of `Step`. A
+domain whose members neither a transition nor a theorem names is an abstract type, so the
+theorem holds for a domain of any size, not only the declared members. The theorem is
+`<fn name>_statement`; prove it as `<fn name>_proved` in namespace `Yarn<Module>` and
+export it with `lean().export(dir, proof, "pass")`, as `examples/yarn_lean.rs` does.
+`make test-lean` checks it with the pinned Lean kernel and refuses `sorry`. Effects,
+fairness and response properties are not exported, and the proof is about the declared
+transitions: the reducer is generated from the same AST, which is tested, not proved.
+
 ## Temporal properties and effect lifecycle
 
 State predicates can be named with `#[predicate] fn ready() { ... }`,

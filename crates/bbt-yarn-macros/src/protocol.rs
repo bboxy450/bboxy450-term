@@ -17,6 +17,8 @@ use syn::parse::{Parse, ParseStream};
 use syn::spanned::Spanned;
 use syn::{Error, Ident, Result, Token, braced, parenthesized};
 
+mod lean;
+
 const MAX_UNIVERSE: usize = 65_536;
 
 mod kw {
@@ -106,6 +108,8 @@ struct Invariant {
     id: syn::LitStr,
     name: Ident,
     expression: syn::Expr,
+    /// Also owes a Lean proof for every reachable state: `#[invariant(id = "..", theorem)]`.
+    theorem: bool,
 }
 struct Predicate {
     name: Ident,
@@ -394,6 +398,7 @@ impl Parse for Declaration {
                     .iter()
                     .any(|name| attr.path().is_ident(name));
                 let mut id = None;
+                let mut theorem = false;
                 if !is_predicate && !attr.path().is_ident("invariant") {
                     return Err(error(
                         &d.name,
@@ -413,6 +418,10 @@ impl Parse for Declaration {
                     }
                 } else {
                     attr.parse_nested_meta(|meta| {
+                        if meta.path.is_ident("theorem") && !theorem {
+                            theorem = true;
+                            return Ok(());
+                        }
                         if !meta.path.is_ident("id") || id.is_some() {
                             return Err(meta.error(
                                 "PRO001 expected one invariant id. Repair: use id = \"stable-id\".",
@@ -462,6 +471,7 @@ impl Parse for Declaration {
                         id,
                         name,
                         expression,
+                        theorem,
                     });
                 } else {
                     d.predicates.push(Predicate { name, expression });
@@ -2026,8 +2036,10 @@ impl Checked {
                     .map(|c| format!("{}::{}", d.events[a.event].name, c.name))
             }),
         );
+        let lean = self.generate_lean();
         quote! {
             #verification_metadata
+            #lean
             impl State {
                 /// Exact finite encoding, in `model().variables` order.
                 pub fn model_values(&self) -> #path::protocol::Effects<::core::primitive::i64> {

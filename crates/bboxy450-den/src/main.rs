@@ -61,7 +61,30 @@ fn json_string(value: &str) -> String {
     result
 }
 
-const USAGE: &str = "usage: bboxy450-den check [--json] PATH...\n       bboxy450-den render --markdown [--out DIR] [--overwrite] [--no-mermaid] PATH...\n       bboxy450-den lean --out DIR [--expect-fail] PATH...";
+const USAGE: &str = "usage: bboxy450-den check [--json] PATH...\n       bboxy450-den render --markdown [--out DIR] [--overwrite] [--no-mermaid] PATH...\n       bboxy450-den lean --out DIR [--expect-fail] PATH...\n       bboxy450-den replay SPEC TRACE...";
+
+/// `replay SPEC TRACE...`: each trace file is a recorded run in scenario-step
+/// syntax; exit 1 when the spec does not allow one of them.
+fn replay(mut args: impl Iterator<Item = std::ffi::OsString>) -> Result<bool, String> {
+    let read = |path: &Path| {
+        fs::read_to_string(path).map_err(|error| format!("{}: {error}", path.display()))
+    };
+    let spec = PathBuf::from(args.next().ok_or(USAGE)?);
+    let source = read(&spec)?;
+    let traces: Vec<_> = args.map(PathBuf::from).collect();
+    if traces.is_empty() {
+        return Err(USAGE.into());
+    }
+    let mut conforms = true;
+    for trace in traces {
+        let report = bboxy450_den::replay(&source, &read(&trace)?);
+        conforms &= report.is_sound();
+        for line in report.to_text().lines() {
+            println!("{}:{line}", trace.display());
+        }
+    }
+    Ok(conforms)
+}
 
 /// `lean --out DIR`: for each sound spec that declares a `theorem`, write
 /// `MODULE.lean` and `MODULECheck.lean`, copy the proof beside the spec
@@ -95,13 +118,6 @@ fn lean(args: impl Iterator<Item = std::ffi::OsString>) -> Result<bool, String> 
     }
     files.sort();
     files.dedup();
-    fs::create_dir_all(&out).map_err(|error| format!("{}: {error}", out.display()))?;
-    let write = |name: String, text: &str| {
-        let target = out.join(name);
-        fs::write(&target, text).map_err(|error| format!("{}: {error}", target.display()))
-    };
-    let manifest = out.join("lean.tsv");
-    let mut rows = fs::read_to_string(&manifest).unwrap_or_default();
     let mut sound = true;
     for path in files {
         if path.extension() != Some(OsStr::new("den")) {
@@ -120,33 +136,22 @@ fn lean(args: impl Iterator<Item = std::ffi::OsString>) -> Result<bool, String> 
                 continue;
             }
         };
-        if rows.lines().any(|row| row.split('\t').next() == Some(&lean.module)) {
-            return Err(format!(
-                "{}: module {} is already exported to {}",
-                path.display(),
-                lean.module,
-                out.display()
-            ));
-        }
         let proof = path.with_extension("lean");
         let Ok(proof_text) = fs::read_to_string(&proof) else {
             sound = false;
             println!(
                 "{}:1:1 X905 theorems {} have no proof. Repair: write {} proving each ID_proved : ID_statement in namespace {}",
                 path.display(),
-                lean.theorems.join(", "),
+                lean.theorems().join(", "),
                 proof.display(),
                 lean.module
             );
             continue;
         };
-        write(format!("{}.lean", lean.module), &lean.statements)?;
-        write(format!("{}Proof.lean", lean.module), &proof_text)?;
-        write(format!("{}Check.lean", lean.module), &lean.check)?;
-        writeln!(rows, "{}\t{expected}\t{}", lean.module, lean.theorems.join(",")).unwrap();
+        lean.export(&out, &proof_text, expected)
+            .map_err(|error| format!("{}: {error}", path.display()))?;
         println!("{} -> {}", path.display(), out.join(&lean.module).display());
     }
-    fs::write(&manifest, rows).map_err(|error| format!("{}: {error}", manifest.display()))?;
     Ok(sound)
 }
 
@@ -251,6 +256,7 @@ fn run() -> Result<bool, String> {
         Some(verb) if verb == OsStr::new("check") => {}
         Some(verb) if verb == OsStr::new("render") => return render(args),
         Some(verb) if verb == OsStr::new("lean") => return lean(args),
+        Some(verb) if verb == OsStr::new("replay") => return replay(args),
         _ => return Err(USAGE.into()),
     }
     let mut json = false;

@@ -22,6 +22,7 @@
 use std::collections::BTreeSet;
 use std::fmt::Write as _;
 use std::format;
+use std::path::Path;
 use std::string::{String, ToString};
 use std::vec::Vec;
 
@@ -89,15 +90,86 @@ pub struct Machine {
 }
 
 const KEYWORDS: &[&str] = &[
-    "at", "by", "do", "end", "from", "fun", "have", "if", "in", "let", "match", "show", "then",
-    "else", "with", "where", "open", "def", "theorem", "example", "instance", "structure",
-    "inductive", "namespace", "section", "variable", "universe", "import", "export", "deriving",
-    "mutual", "private", "protected", "partial", "unsafe", "axiom", "opaque", "abbrev", "class",
-    "macro", "syntax", "notation", "infix", "prefix", "postfix", "set_option", "attribute",
-    "local", "scoped", "using", "suffices", "calc", "for", "while", "return", "try", "catch",
-    "finally", "unless", "nomatch", "nofun", "forall", "exists", "Type", "Sort", "Prop", "true",
-    "false", "this", "extends", "mut", "initialize", "noncomputable", "termination_by",
-    "decreasing_by", "omit", "include", "public", "meta", "module",
+    "at",
+    "by",
+    "do",
+    "end",
+    "from",
+    "fun",
+    "have",
+    "if",
+    "in",
+    "let",
+    "match",
+    "show",
+    "then",
+    "else",
+    "with",
+    "where",
+    "open",
+    "def",
+    "theorem",
+    "example",
+    "instance",
+    "structure",
+    "inductive",
+    "namespace",
+    "section",
+    "variable",
+    "universe",
+    "import",
+    "export",
+    "deriving",
+    "mutual",
+    "private",
+    "protected",
+    "partial",
+    "unsafe",
+    "axiom",
+    "opaque",
+    "abbrev",
+    "class",
+    "macro",
+    "syntax",
+    "notation",
+    "infix",
+    "prefix",
+    "postfix",
+    "set_option",
+    "attribute",
+    "local",
+    "scoped",
+    "using",
+    "suffices",
+    "calc",
+    "for",
+    "while",
+    "return",
+    "try",
+    "catch",
+    "finally",
+    "unless",
+    "nomatch",
+    "nofun",
+    "forall",
+    "exists",
+    "Type",
+    "Sort",
+    "Prop",
+    "true",
+    "false",
+    "this",
+    "extends",
+    "mut",
+    "initialize",
+    "noncomputable",
+    "termination_by",
+    "decreasing_by",
+    "omit",
+    "include",
+    "public",
+    "meta",
+    "module",
 ];
 /// A source identifier as a Lean identifier.
 pub fn ident(name: &str) -> String {
@@ -241,6 +313,44 @@ impl Machine {
         let _ = writeln!(out, "\nend {}", ident(&self.module));
         Ok(out)
     }
+    /// Writes `MODULE.lean`, `MODULECheck.lean` and the given proof as
+    /// `MODULEProof.lean` into `out`, and appends the `lean.tsv` row that
+    /// `scripts/lean.py --check` reads. `expected` is `pass`, or `fail` for a
+    /// broken control. A module already exported there is refused.
+    // Development-time exporter run by `make test-lean`; no UI thread exists here.
+    #[allow(clippy::disallowed_methods)]
+    pub fn export(&self, out: &Path, proof: &str, expected: &str) -> Result<(), String> {
+        let statements = self.statements()?;
+        let io = |path: &Path, e: std::io::Error| format!("{}: {e}", path.display());
+        std::fs::create_dir_all(out).map_err(|e| io(out, e))?;
+        let manifest = out.join("lean.tsv");
+        let mut rows = std::fs::read_to_string(&manifest).unwrap_or_default();
+        if rows
+            .lines()
+            .any(|row| row.split('\t').next() == Some(&self.module))
+        {
+            return Err(format!(
+                "module {} is already exported to {}",
+                self.module,
+                out.display()
+            ));
+        }
+        let _ = writeln!(
+            rows,
+            "{}\t{expected}\t{}",
+            self.module,
+            self.theorems().join(",")
+        );
+        for (suffix, text) in [
+            ("", statements.as_str()),
+            ("Proof", proof),
+            ("Check", self.check().as_str()),
+        ] {
+            let path = out.join(format!("{}{suffix}.lean", self.module));
+            std::fs::write(&path, text).map_err(|e| io(&path, e))?;
+        }
+        std::fs::write(&manifest, rows).map_err(|e| io(&manifest, e))
+    }
     /// `MODULECheck.lean`: every proof has exactly its generated statement, and
     /// reports the axioms it rests on. The proof module is `MODULEProof`.
     pub fn check(&self) -> String {
@@ -304,6 +414,10 @@ mod tests {
     fn a_name_that_collides_with_a_generated_declaration_is_refused() {
         let mut m = machine();
         m.domains[0].name = "Step".into();
-        assert!(m.statements().unwrap_err().contains("Step is declared twice"));
+        assert!(
+            m.statements()
+                .unwrap_err()
+                .contains("Step is declared twice")
+        );
     }
 }

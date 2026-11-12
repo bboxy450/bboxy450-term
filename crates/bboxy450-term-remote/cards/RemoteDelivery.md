@@ -54,4 +54,4 @@ stateDiagram-v2
 
 Two message identities A/B. The local outbox and the remote applied set are separate owners; the link may drop, duplicate and replay frames, and the remote may crash. A crash keeps the journalled applied set (fsync before apply). Journal-and-apply is one atomic model step; the runtime orders journal first, so a crash in between loses that turn and the local side reports its outcome unknown (never a second apply). The link does not forge `Applied` frames: every such frame comes from a real Inbox arrival on the current connection. No fairness is assumed and no liveness is claimed. SSH transport, session epoch/seq resume, cross-host routing and identity are not modelled.
 
-Spec source hash: `fnv1a64:2e535fa905c04e68`
+Spec source hash: `fnv1a64:b9eadf64ff750550`

@@ -96,6 +96,39 @@ pub(crate) fn load(source: &str) -> Result<Spec, Vec<Diagnostic>> {
         Err(diagnostics)
     }
 }
+/// Replays recorded steps against a sound spec, as one more scenario.
+pub(crate) fn replay(source: &str, trace: &str) -> Report {
+    let report = check(source);
+    if !report.is_sound() {
+        return report;
+    }
+    let mut spec = load(source).expect("sound");
+    let diagnostics = match parser::parse_trace(trace, &spec.name.text) {
+        Err(diagnostics) => diagnostics,
+        Ok(steps) => {
+            // Only the trace is checked: the spec's own scenarios already hold.
+            spec.scenarios = vec![Scenario {
+                name: "the recorded trace".into(),
+                pos: Pos { line: 1, column: 1 },
+                steps,
+            }];
+            let mut diagnostics = types::names(&spec);
+            // Dropping the spec's scenarios can leave a declaration only they used.
+            diagnostics.retain(|d| d.code != "X203");
+            if diagnostics.is_empty() {
+                diagnostics = types::types(&spec)
+            }
+            if diagnostics.is_empty() {
+                diagnostics = scenarios(&spec)
+            }
+            diagnostics
+        }
+    };
+    Report {
+        records: report.records,
+        diagnostics,
+    }
+}
 fn too_large(s: &Spec, pos: Pos) -> Diagnostic {
     diagnostic(
         s,
@@ -287,7 +320,10 @@ fn steps(s: &Spec) -> Vec<Diagnostic> {
                     s,
                     pos,
                     "X505",
-                    format!("case {} is fair but rejects or ignores its event", c.name.text),
+                    format!(
+                        "case {} is fair but rejects or ignores its event",
+                        c.name.text
+                    ),
                     "promise fairness only for a case that accepts the event",
                 ))
             }
@@ -478,8 +514,14 @@ fn model(s: &Spec, summary: &mut Summary) -> Vec<Diagnostic> {
     for p in &s.properties {
         for (params, label) in lower::property_instances(s, p) {
             if !graph.states.iter().any(|flat| {
-                eval(s, &p.request, &lower::unflatten(s, flat), &params, Some(&Ty::Bool))
-                    .is_ok_and(|v| v.truth())
+                eval(
+                    s,
+                    &p.request,
+                    &lower::unflatten(s, flat),
+                    &params,
+                    Some(&Ty::Bool),
+                )
+                .is_ok_and(|v| v.truth())
             }) {
                 ds.push(diagnostic(
                     s,

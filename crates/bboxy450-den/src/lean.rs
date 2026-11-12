@@ -7,12 +7,14 @@
 //! Den expressions as Lean terms, for `bboxy450_tlc::lean::Machine`.
 //!
 //! A Bool is a proposition, a set is a predicate on its domain, an Int is an
-//! `Int`. An enum whose members the machine never names is an abstract type,
-//! so a `theorem` is stated for a domain of any size; one whose members are
-//! named keeps exactly its declared members. Effects, scenarios and progress
+//! `Int`. An enum whose members neither the transitions nor a theorem name is
+//! an abstract type, so a `theorem` is stated for a domain of any size; one
+//! whose members are named keeps exactly its declared members. Effects, scenarios and progress
 //! properties are not exported.
 use crate::{ast::*, types::expr_type};
-use bboxy450_tlc::lean::{Claim as LeanClaim, Domain, Field as LeanField, Machine, STATE, Step, ident};
+use bboxy450_tlc::lean::{
+    Claim as LeanClaim, Domain, Field as LeanField, Machine, STATE, Step, ident,
+};
 
 struct Printer<'a> {
     s: &'a Spec,
@@ -203,7 +205,9 @@ pub(crate) fn machine(s: &Spec) -> Machine {
             }
         }
     }
-    for i in &s.invariants {
+    // An invariant that is not a theorem does not fix a domain: if it names a
+    // member of an otherwise abstract one, it stays a bounded claim only.
+    for i in s.invariants.iter().filter(|i| i.theorem) {
         names_member(&i.expr, &mut named);
     }
     let mut p = Printer {
@@ -245,11 +249,7 @@ pub(crate) fn machine(s: &Spec) -> Machine {
                 None if others.is_empty() => "True".into(),
                 None => format!("¬ ({})", others.join(" ∨ ")),
             }];
-            guard.extend(
-                p.locals
-                    .iter()
-                    .filter_map(|(n, ty)| range(&ident(n), ty)),
-            );
+            guard.extend(p.locals.iter().filter_map(|(n, ty)| range(&ident(n), ty)));
             let mut updates = vec![];
             for stmt in &c.stmts {
                 let StmtKind::Assign(n, op, e) = &stmt.kind else {
@@ -289,6 +289,11 @@ pub(crate) fn machine(s: &Spec) -> Machine {
     let mut claims: Vec<_> = s
         .invariants
         .iter()
+        .filter(|i| {
+            let mut own = vec![];
+            names_member(&i.expr, &mut own);
+            own.iter().all(|d| named.contains(d))
+        })
         .map(|i| LeanClaim {
             id: i.name.text.clone(),
             text: i.text.clone(),
