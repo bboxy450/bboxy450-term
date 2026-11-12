@@ -458,6 +458,28 @@ impl Canvas {
         }
         Ok(canvas)
     }
+    /// Applies one batch as a set: an action whose references are not present
+    /// yet waits for the rest of the batch, so a frame may list members added
+    /// after it. A reference nothing in the batch adds still fails. Returns
+    /// the order in which the actions applied.
+    pub fn apply_set(&mut self, actions: &[Action]) -> Result<Vec<usize>, ReplayError> {
+        let mut pending: Vec<usize> = (0..actions.len()).collect();
+        let mut order = Vec::with_capacity(actions.len());
+        while !pending.is_empty() {
+            let ready = pending.iter().position(|&i| match &actions[i] {
+                Action::Add { element } | Action::Change { element } => element
+                    .content
+                    .references()
+                    .iter()
+                    .all(|id| self.get(id).is_some()),
+                _ => true,
+            });
+            let i = pending.remove(ready.unwrap_or(0));
+            self.apply(&actions[i])?;
+            order.push(i);
+        }
+        Ok(order)
+    }
     /// The store validates a whole candidate batch before making any append.
     pub(crate) fn apply(&mut self, action: &Action) -> Result<(), ReplayError> {
         match action {

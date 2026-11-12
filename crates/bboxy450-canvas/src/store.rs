@@ -260,6 +260,7 @@ impl Store {
         let loaded = log::decode_batches(&bytes)?;
         let mut seen = BTreeSet::new();
         let mut ops = vec![];
+        let mut canvas = Canvas::default();
         for batch in &loaded.batches {
             if batch.batch_id.is_empty()
                 || batch.author.is_empty()
@@ -277,9 +278,15 @@ impl Store {
                     "invalid or duplicate batch metadata",
                 ));
             }
-            ops.extend(batch.ops.iter().cloned());
+            for op in &batch.ops {
+                if op.seq != ops.len() as u64 + 1 {
+                    return Err(refused("canvas_log_invalid", "sequence gap in log"));
+                }
+                ops.push(op.clone());
+            }
+            let actions: Vec<Action> = batch.ops.iter().map(|op| op.action.clone()).collect();
+            canvas.apply_set(&actions).map_err(replay_error)?;
         }
-        let canvas = Canvas::replay(&ops).map_err(replay_error)?;
         Ok(Snapshot {
             record: record.clone(),
             canvas,
@@ -336,25 +343,15 @@ impl Store {
         }
         let mut candidate = snapshot.canvas.clone();
         // A batch is one atomic set: a frame may list its members before
-        // they are added. Actions apply in listed order except that one whose
-        // references are not yet present waits for them; a reference nothing
-        // in the batch adds still fails as UnknownId. The log keeps the
-        // applied order, so replay never meets a reference before its target.
-        let mut pending: Vec<&Action> = actions.iter().collect();
-        let mut applied: Vec<&Action> = Vec::with_capacity(actions.len());
-        while !pending.is_empty() {
-            let ready = pending.iter().position(|action| match action {
-                Action::Add { element } | Action::Change { element } => element
-                    .content
-                    .references()
-                    .iter()
-                    .all(|id| candidate.get(id).is_some()),
-                _ => true,
-            });
-            let action = pending.remove(ready.unwrap_or(0));
-            candidate.apply(action).map_err(replay_error)?;
-            applied.push(action);
-        }
+        // they are added. The log keeps the applied order, and a load applies
+        // each batch as a set too, so an older log written in listed order
+        // still replays.
+        let applied: Vec<&Action> = candidate
+            .apply_set(actions)
+            .map_err(replay_error)?
+            .into_iter()
+            .map(|i| &actions[i])
+            .collect();
         let at = now_ms();
         let stale = expect_seq.is_some_and(|seq| seq != snapshot.seq);
         let batch = Batch {

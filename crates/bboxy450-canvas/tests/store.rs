@@ -431,3 +431,51 @@ fn canvas_store_frame_before_members_persists_and_retries_as_one_request() {
         matches!(loaded.batches[0].ops[2].action, Action::Add { ref element } if element.id == "group")
     );
 }
+// State: a log written by the earlier store, with a frame recorded before
+// its members in one batch. Safety: a load applies the batch as a set, so
+// the canvas that was wedged by that log reads again.
+#[test]
+fn canvas_store_loads_an_older_log_with_a_frame_recorded_before_its_members() {
+    let (dir, store, record) = setup();
+    let frame = Element {
+        content: Content::Frame {
+            bounds: Bounds { origin: [-10.; 2], size: [200., 100.] },
+            name: "Group".into(),
+            members: vec!["a".into()],
+        },
+        ..element("group")
+    };
+    let batch = log::Batch {
+        batch_id: "old".into(),
+        author: "seat:a".into(),
+        at: 1,
+        expect_seq: None,
+        stale: false,
+        ops: [Action::Add { element: frame }, Action::Add { element: element("a") }]
+            .into_iter()
+            .enumerate()
+            .map(|(i, action)| Op { author: "seat:a".into(), seq: i as u64 + 1, at: 1, action })
+            .collect(),
+    };
+    let path = dir.path().join("canvases").join(format!("canvas-{}.log.jsonl", record.number));
+    OpenOptions::new().append(true).open(&path).unwrap().write_all(&log::encode_batch(&batch).unwrap()).unwrap();
+    let loaded = store.load(&record).unwrap();
+    assert_eq!(loaded.seq, 2);
+    assert_eq!(loaded.canvas.elements().count(), 2);
+    // Later writes work on it again.
+    let next = store.append(&record, "next", "seat:a", Some(2), &[Action::Remove { id: "group".into() }]).unwrap();
+    assert_eq!(next.snapshot.canvas.elements().count(), 1);
+    // A reference nothing in the batch adds is still refused at load.
+    let mut dangling = batch.clone();
+    dangling.batch_id = "dangling".into();
+    dangling.ops.truncate(1);
+    dangling.ops[0].seq = 4;
+    if let Action::Add { element } = &mut dangling.ops[0].action {
+        element.id = "group2".into();
+        if let Content::Frame { members, .. } = &mut element.content {
+            members[0] = "ghost".into();
+        }
+    }
+    OpenOptions::new().append(true).open(&path).unwrap().write_all(&log::encode_batch(&dangling).unwrap()).unwrap();
+    assert!(store.load(&record).unwrap_err().to_string().contains("UnknownId"));
+}
