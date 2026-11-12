@@ -87,6 +87,15 @@ def fixture_identity():
     return IDENTITY
 
 
+
+# A parent make test passes its own build context: the CI target directory (often
+# many GB) and Make's TARGET_DIR overrides, which GNU Make exports through MAKEFLAGS.
+# No fixture process or private repository may inherit them, read that tree or write
+# another fixture's formal evidence.
+CALLER_BUILD_CONTEXT = ("BBOXY_CARGO_TARGET_DIR", "MAKEFLAGS", "MFLAGS", "GNUMAKEFLAGS",
+                        "MAKEOVERRIDES", "MAKELEVEL", "TARGET_DIR", "CI_LOG", "CI_ARGS",
+                        "CARGO_BUILD_BUILD_DIR")
+
 class Repository:
     def __init__(self):
         self.temp = tempfile.TemporaryDirectory(prefix="landing-fixture-")
@@ -131,12 +140,7 @@ class Repository:
                                 RUSTC_WRAPPER="", RUSTC_WORKSPACE_WRAPPER="",
                                 BBOXY_TEST_RUNNER="cargo",  # fixtures fake libtest output
                                 BBOXY_GATE_SLOTS="3", BBOXY_GATE_WAIT="0")
-        self.environment.pop("BBOXY_CARGO_TARGET_DIR", None)
-        # A parent make test may pass TARGET_DIR on its command line. GNU Make
-        # exports those overrides through MAKEFLAGS; no private repository may
-        # inherit them and write another fixture's formal evidence.
-        for name in ("MAKEFLAGS", "MFLAGS", "GNUMAKEFLAGS", "MAKEOVERRIDES", "MAKELEVEL",
-                     "TARGET_DIR", "CI_LOG", "CI_ARGS", "CARGO_BUILD_BUILD_DIR"):
+        for name in CALLER_BUILD_CONTEXT:
             self.environment.pop(name, None)
         for name in FIXTURE_SCRIPTS:
             target = self.root / "scripts" / name
@@ -3574,6 +3578,8 @@ def fixture_suite(extended=False):
     identity = wrapper.parent / "fixture-identity.json"
     identity.write_text(json.dumps({"key": key, "wrapper": str(wrapper)}))
     environment = dict(os.environ, BBOXY_LANDING_FIXTURE_IDENTITY=str(identity))
+    for name in CALLER_BUILD_CONTEXT:
+        environment.pop(name, None)
     def flatten(suite):
         for item in suite:
             if isinstance(item, unittest.TestSuite):
