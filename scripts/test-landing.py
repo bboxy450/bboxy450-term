@@ -707,7 +707,8 @@ class ConsolidatedIntegrationTests(unittest.TestCase):
         with patch.object(landing.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
             self.assertEqual(landing.lean_test("c", shlex.join(["--test", "it", "-E", expression])), 0)
         self.assertEqual(run.call_args.args[0], ["sh", "scripts/quarantine-test.sh", "--allow-ignored-only",
-                                               "--locked", "-p", "c", "--test", "it", "-E", expression])
+                                               "--locked", "-p", "c", "--no-tests=pass", "--test", "it",
+                                               "-E", expression])
 
     def test_dream_c1_tests_run_in_the_optimized_profile_and_the_rest_unchanged(self):
         with patch.object(landing.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
@@ -737,7 +738,7 @@ class ConsolidatedIntegrationTests(unittest.TestCase):
     def test_other_packages_run_once_as_before(self):
         with patch.object(landing.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
             landing.lean_test("bboxy450-den", "--lib")
-        self.assertEqual(run.call_args_list[0].args[0][6:], ["--lib"])
+        self.assertEqual(run.call_args_list[0].args[0][6:], ["--no-tests=pass", "--lib"])
         self.assertEqual(run.call_count, 1)
 
     def test_invariant_selection_and_coverage_use_the_qualified_test(self):
