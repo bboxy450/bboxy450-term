@@ -1500,12 +1500,35 @@ async fn run_with_control(
                         }
                     },
                     UiMsg::CloseCanvas {pane}=> {
+                        // Archive with a grace, like a seat close: the record moves to
+                        // closed/ at once and the pane waits in the closed strip for an undo.
                         let current=Arc::make_mut(&mut model);
-                        current.canvas_sources.remove(pane);current.ui.seats.remove(pane);
-                        for swarm in &mut current.ui.window.sidebar.swarms {
-                            swarm.tabs.retain_mut(|tab| {let Some(tree)=bbt_ui_model::prune(&tab.tree,*pane) else {return false;};tab.tree=tree;tab.seats.retain(|id|id!=pane);true});
+                        bboxy450_term::canvas_host::expire_closed(current, Instant::now());
+                        if let Some(source)=current.canvas_sources.get(pane).cloned() {
+                            if let Err(reason)=bboxy450_term::canvas_host::archive(&source) {
+                                logger.write(format!("canvas close {pane} refused: {reason}"));
+                            } else {
+                                match bbt_ui_model::close(&current.ui,*pane,Instant::now(),bboxy450_term::close::GRACE) {
+                                    Ok(next)=>current.ui=next,
+                                    Err(_)=> { current.canvas_sources.remove(pane);current.ui.seats.remove(pane); }
+                                }
+                            }
                         }
                         publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                        let swarm=model.canvas_sources.get(pane).map(|s|s.swarm);
+                        if let Some(swarm)=swarm { let root=model.canvas_sources[pane].root.clone(); let generation=canvas_reads.begin(swarm,&root); canvas_jobs.spawn_blocking(move || {let result=bboxy450_term::canvas_host::load(&root,swarm);(swarm,root,generation,result)}); }
+                    },
+                    UiMsg::RestoreCanvas {pane}=> {
+                        let current=Arc::make_mut(&mut model);
+                        if let Some(source)=current.canvas_sources.get(pane).cloned() {
+                            match bboxy450_term::canvas_host::restore(&source) {
+                                Err(reason)=>logger.write(format!("canvas restore {pane} refused: {reason}")),
+                                Ok(())=>{ if let Ok(next)=bbt_ui_model::undo(&current.ui,*pane,Instant::now()) {current.ui=next;} }
+                            }
+                        }
+                        publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                        let swarm=model.canvas_sources.get(pane).map(|s|s.swarm);
+                        if let Some(swarm)=swarm { let root=model.canvas_sources[pane].root.clone(); let generation=canvas_reads.begin(swarm,&root); canvas_jobs.spawn_blocking(move || {let result=bboxy450_term::canvas_host::load(&root,swarm);(swarm,root,generation,result)}); }
                     },
                     UiMsg::Canvas {source,beside}=> {
                         Arc::make_mut(&mut model).open_canvas(source.clone(),*beside);

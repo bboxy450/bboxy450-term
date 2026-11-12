@@ -46,7 +46,13 @@ impl Rates {
 pub(crate) fn handles(tool: &str) -> bool {
     matches!(
         tool,
-        "canvas_open" | "canvas_list" | "canvas_draw" | "canvas_read"
+        "canvas_open"
+            | "canvas_list"
+            | "canvas_draw"
+            | "canvas_read"
+            | "canvas_close"
+            | "canvas_archived_list"
+            | "canvas_restore"
     )
 }
 pub(crate) fn op_count(call: &Call) -> usize {
@@ -98,6 +104,9 @@ pub(crate) fn catalogue() -> Vec<Value> {
         ("canvas_open", "Create or open a swarm canvas by title, number or id. Enqueues presentation beside the calling seat when a GUI is attached; shown:false names a detached or busy reason. Retry a busy presentation with the same operation ID. Never waits for the GUI. Default drawing authority is creator plus Oracle; explicit grants are a later step.", open, false),
         ("canvas_list", "List this swarm's canvases, newest activity first, in bounded pages. Filter by tag; pass next as cursor.", object(json!({"tag":{"type":"string","minLength":1},"cursor":{"type":"string","maxLength":256}}),json!([])), true),
         ("canvas_draw", "Append a small semantic batch. Store assigns seq; op_id dedupes delivery across restart. Stale expect_seq is recorded, not refused. Colours, fonts and weights are forbidden. MAX_ELEMENTS, MAX_BATCH_OPS and MAX_OPS_PER_MINUTE bound drawing.", object(json!({"id":id,"ops":{"type":"array","items":action_schema(),"minItems":1,"maxItems":bboxy450_canvas::store::MAX_BATCH_OPS},"expect_seq":{"type":"integer","minimum":0}}),json!(["id","ops"])), false),
+        ("canvas_close", "Retire a canvas: it leaves canvas_list and the GUI; its record and log are kept under closed/, nothing is deleted. Granted to the creator and Oracle class. Closing an already closed canvas is a no-op.", object(json!({"id":id}),json!(["id"])), false),
+        ("canvas_archived_list", "List this swarm's closed canvases, newest first, so one can be restored.", object(json!({}),json!([])), true),
+        ("canvas_restore", "Bring a closed canvas back: it returns to canvas_list and the GUI with its drawing. Granted to the creator and Oracle class. Restoring an open canvas is a no-op.", object(json!({"id":id}),json!(["id"])), false),
         ("canvas_read", "Read semantic elements, seq and digest; image:true also returns a headless GPU-rendered PNG image block. Optional frame fits that region.", object(json!({"id":id,"frame":{"type":"string","minLength":1},"image":{"type":"boolean"}}),json!(["id"])), true)
     ].into_iter().map(|(name, description, input, read)|json!({"name":name,"description":description,"inputSchema":input,
         "outputSchema":{"type":"object","additionalProperties":true},"annotations":{"readOnlyHint":read,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}})).collect()
@@ -122,6 +131,11 @@ struct Draw {
     id: String,
     ops: Vec<Action>,
     expect_seq: Option<u64>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Close {
+    id: String,
 }
 #[derive(Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -210,7 +224,7 @@ pub(crate) fn present(
                 }
             }
         }
-        "canvas_draw" => {
+        "canvas_draw" | "canvas_close" | "canvas_restore" => {
             let _ = captures.canvas(
                 call.op_id,
                 bbt_proto::gui::UiRequest::CanvasRefresh { swarm },
@@ -358,6 +372,63 @@ pub(crate) fn execute(
             value["stale"] = json!(appended.stale);
             value["duplicate"] = json!(appended.duplicate);
             value
+        }
+        "canvas_close" => {
+            let args: Close = parse(&call.args)?;
+            match find(&store, swarm, &args.id) {
+                Ok(record) => {
+                    if actor.class() != Class::Oracle && actor.reference() != record.creator {
+                        return Err(error(
+                            "canvas_close_denied",
+                            "closing is granted to the creator and Oracle class",
+                        ));
+                    }
+                    store.close(&record).map_err(io)?;
+                    json!({"id":record.id,"number":record.number,"slug":record.slug,"closed":true})
+                }
+                // Already closed: the retry of a lost reply.
+                Err(e) if e.code == "canvas_not_found"
+                    && store
+                        .closed_records()
+                        .map_err(io)?
+                        .iter()
+                        .any(|r| r.swarm == swarm && r.id == args.id) =>
+                {
+                    json!({"id":args.id,"closed":true,"already":true})
+                }
+                Err(e) => return Err(e),
+            }
+        }
+        "canvas_archived_list" => {
+            let mut records: Vec<Record> = store
+                .closed_records()
+                .map_err(io)?
+                .into_iter()
+                .filter(|r| r.swarm == swarm)
+                .collect();
+            records.sort_by_key(|r| std::cmp::Reverse(r.number));
+            json!({"canvases": records.iter().map(|r| json!({"id":r.id,"number":r.number,"slug":r.slug,"title":r.title,"tags":r.tags,"creator":r.creator})).collect::<Vec<_>>()})
+        }
+        "canvas_restore" => {
+            let args: Close = parse(&call.args)?;
+            if let Ok(record) = find(&store, swarm, &args.id) {
+                json!({"id":record.id,"number":record.number,"slug":record.slug,"restored":true,"already":true})
+            } else {
+                let record = store
+                    .closed_records()
+                    .map_err(io)?
+                    .into_iter()
+                    .find(|r| r.swarm == swarm && r.id == args.id)
+                    .ok_or_else(|| error("canvas_not_found", "no closed canvas with this id in the current swarm"))?;
+                if actor.class() != Class::Oracle && actor.reference() != record.creator {
+                    return Err(error(
+                        "canvas_restore_denied",
+                        "restoring is granted to the creator and Oracle class",
+                    ));
+                }
+                store.restore(&record).map_err(io)?;
+                json!({"id":record.id,"number":record.number,"slug":record.slug,"restored":true})
+            }
         }
         "canvas_read" => {
             let args: Read = parse(&call.args)?;

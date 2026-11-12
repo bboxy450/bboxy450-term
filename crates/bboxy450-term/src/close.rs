@@ -241,6 +241,13 @@ impl State {
         ui::undo(model, seat, now).map_err(|e| e.to_string())?;
         Ok(request)
     }
+    /// The end of a confirmed close's grace, if it has one.
+    pub fn until(&self, seat: ui::SeatId) -> Option<Instant> {
+        self.entries
+            .get(&seat)
+            .filter(|e| e.confirmed)
+            .map(|e| e.intent.view.until)
+    }
     pub fn latest(&self, now: Instant) -> Option<ui::SeatId> {
         self.entries
             .iter()

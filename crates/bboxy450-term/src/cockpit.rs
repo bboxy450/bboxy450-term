@@ -58,6 +58,11 @@ pub enum UiMsg {
     CloseCanvas {
         pane: bbt_proto::SeatId,
     },
+    /// Undo of a canvas close within its grace: the pane returns and the
+    /// store brings the record back from `closed/`.
+    RestoreCanvas {
+        pane: bbt_proto::SeatId,
+    },
     Canvas {
         source: bbt_proto::gui::UiCanvasSource,
         beside: Option<bbt_mux::Ulid>,

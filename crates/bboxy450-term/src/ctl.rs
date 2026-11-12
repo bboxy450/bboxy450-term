@@ -100,7 +100,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   knowledge status [--swarm ID]
   knowledge select <root-id> <candidate-id> [--swarm ID]
   knowledge reset <root-id> [--swarm ID]    select the native local KB
-  canvas open|list|draw|read <JSON> --swarm ID   same arguments as canvas MCP tools; list defaults to {}
+  canvas open|list|draw|read|close|restore|archived-list <JSON> --swarm ID   same arguments as canvas MCP tools; lists default to {}
   dream inspect <seat> <session>:<generation>...   1..32 exact retained closed sessions
   dream status <seat> <run> [page]         immutable own-seat status/result page
   dream cancel <seat> <run>                cancel and retain ownership through actual settlement

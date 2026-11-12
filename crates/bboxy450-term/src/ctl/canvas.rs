@@ -12,6 +12,9 @@ pub(super) const VERBS: &[Verb] = &[
     ("canvas", "list", "Knowledge"),
     ("canvas", "draw", "Knowledge"),
     ("canvas", "read", "Knowledge"),
+    ("canvas", "close", "Knowledge"),
+    ("canvas", "archived-list", "Knowledge"),
+    ("canvas", "restore", "Knowledge"),
 ];
 
 macro_rules! canvas_commands {
@@ -25,8 +28,12 @@ pub(super) use canvas_commands;
 
 pub(super) fn parse(words: &[&str], cx: &ParseCx) -> Result<Option<Command>, String> {
     let (verb, source) = match *words {
-        ["canvas", verb @ ("open" | "list" | "draw" | "read"), source] => (verb, source),
+        ["canvas", verb @ ("open" | "list" | "draw" | "read" | "close" | "restore"), source] => {
+            (verb, source)
+        }
+        ["canvas", "archived-list", source] => ("archived_list", source),
         ["canvas", "list"] => ("list", "{}"),
+        ["canvas", "archived-list"] => ("archived_list", "{}"),
         _ => return Ok(None),
     };
     if cx.on_screen_flag || cx.cells_flag || cx.unassigned_flag {

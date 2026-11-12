@@ -5251,9 +5251,13 @@ impl App {
             .as_ref()
             .is_some_and(|m| m.canvas_sources.contains_key(&seat))
         {
-            if !undo {
-                self.queue(live::UiMsg::CloseCanvas { pane: seat });
-            }
+            // Cmd+W archives the canvas with the same grace as a seat; undo
+            // within it restores the record and the pane.
+            self.queue(if undo {
+                live::UiMsg::RestoreCanvas { pane: seat }
+            } else {
+                live::UiMsg::CloseCanvas { pane: seat }
+            });
             return;
         }
         if self.closing || self.live_commands.is_none() {
@@ -5279,11 +5283,30 @@ impl App {
         }
     }
     fn undo_latest_close(&mut self) {
-        if let Some(seat) = self
-            .live_state
-            .as_ref()
-            .and_then(|m| m.closes.latest(Instant::now()))
-        {
+        let now = Instant::now();
+        let latest = self.live_state.as_ref().and_then(|m| {
+            // Seats and canvases share one undo: the most recent grace wins.
+            let seat = m.closes.latest(now).map(|seat| {
+                (
+                    seat,
+                    m.closes
+                        .until(seat)
+                        .unwrap_or(now),
+                )
+            });
+            let canvas = m
+                .ui
+                .window
+                .sidebar
+                .swarms
+                .iter()
+                .flat_map(|s| &s.closed)
+                .filter(|c| now < c.until && m.canvas_sources.contains_key(&c.seat))
+                .max_by_key(|c| c.until)
+                .map(|c| (c.seat, c.until));
+            [seat, canvas].into_iter().flatten().max_by_key(|(_, until)| *until)
+        });
+        if let Some((seat, _)) = latest {
             self.close_seat(seat, bbt_mux::Ulid::new(), true);
         }
     }
@@ -11744,6 +11767,7 @@ mod input_tests {
                 | live::UiMsg::DocumentRead { .. }
                 | live::UiMsg::ConsumeDocument { .. } => {}
                 live::UiMsg::CloseCanvas { .. }
+                | live::UiMsg::RestoreCanvas { .. }
                 | live::UiMsg::Canvas { .. }
                 | live::UiMsg::CanvasRefresh { .. }
                 | live::UiMsg::NewSwarm(_)

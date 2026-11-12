@@ -734,13 +734,16 @@ impl Model {
 }
 
 pub(crate) fn canvas_presentation(id: SeatId, source: &bbt_proto::gui::UiCanvasSource) -> ui::Seat {
+    // The row reads like a seat's: the kind, then the full title as its
+    // context line. There is no separate canvas list.
     let mut row = ui::Seat::new(
         id,
         ui::SwarmId::from_u128(source.swarm.0),
         [0; 32],
-        &source.title,
+        "Canvas",
         "canvas",
     );
+    row.title = source.title.clone();
     row.process_generation = 0;
     row
 }

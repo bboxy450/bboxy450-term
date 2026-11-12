@@ -1754,16 +1754,6 @@ impl Scene {
                             .element(ctx, &self.metrics, strip_width)
                         })
                         .collect();
-                    if let Some(section) = self.canvas_rows.get(&swarm.id).and_then(|rows| {
-                        ui::modules::sidebar::canvas_section(
-                            &swarm.id.to_string(),
-                            rows,
-                            !self.canvas_closed.contains(&swarm.id),
-                            ctx,
-                        )
-                    }) {
-                        view.extra.push(section);
-                    }
                     view.extra.extend(self.starting_rows(Some(swarm.id), ctx));
                     view.extra.push(ui::modules::swarm_card::workdir_row(
                         &swarm.id.to_string(),

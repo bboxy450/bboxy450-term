@@ -328,3 +328,34 @@ fn canvas_store_refuses_symlink_log_and_temporary_record_writes() {
     assert!(store.create(&id, metadata).is_err());
     assert_eq!(std::fs::read(target).unwrap(), b"preserve");
 }
+
+#[test]
+fn canvas_store_close_retires_the_record_and_its_log_without_deleting() {
+    let (dir, store, record) = setup();
+    store
+        .append(&record, "op-1", "author", None, &[Action::Add { element: element("a") }])
+        .unwrap();
+    assert_eq!(store.records().unwrap().len(), 1);
+    store.close(&record).unwrap();
+    assert!(store.records().unwrap().is_empty());
+    let closed = dir.path().join("canvases/closed");
+    assert!(closed.join(format!("{}.md", record.slug)).is_file());
+    assert!(closed.join(format!("canvas-{}.log.jsonl", record.number)).is_file());
+    // A retry after a lost reply changes nothing.
+    store.close(&record).unwrap();
+    assert!(store.records().unwrap().is_empty());
+    // Restore brings it back with its drawing; restoring twice changes nothing.
+    store.restore(&record).unwrap();
+    assert_eq!(store.records().unwrap().len(), 1);
+    assert_eq!(store.load(&record).unwrap().canvas.elements().count(), 1);
+    store.restore(&record).unwrap();
+    store.close(&record).unwrap();
+    // The number is not reused: the next canvas is a new one.
+    let next = store
+        .create(&ulid::Ulid::new().to_string(), CanvasRecord {
+            title: "Next".into(), swarm: record.swarm.clone(), tags: vec![],
+            creator: record.creator.clone(), task: None,
+        })
+        .unwrap();
+    assert_ne!(next.record.id, record.id);
+}

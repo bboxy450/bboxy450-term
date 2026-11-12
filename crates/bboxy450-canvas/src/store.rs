@@ -82,7 +82,14 @@ impl Store {
         &self.directory
     }
     pub fn records(&self) -> io::Result<Vec<Record>> {
-        let entries = match fs::read_dir(&self.directory) {
+        Self::records_in(&self.directory)
+    }
+    /// Retired canvases, under `closed/`.
+    pub fn closed_records(&self) -> io::Result<Vec<Record>> {
+        Self::records_in(&self.directory.join("closed"))
+    }
+    fn records_in(directory: &Path) -> io::Result<Vec<Record>> {
+        let entries = match fs::read_dir(directory) {
             Ok(entries) => entries,
             Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(vec![]),
             Err(e) => return Err(e),
@@ -188,6 +195,44 @@ impl Store {
             return self.load(&record);
         }
         Err(refused("canvas_busy", "canvas number allocation occupied"))
+    }
+    /// Retire a canvas: its record and log move under `closed/`, where
+    /// `records` no longer lists them and nothing is deleted. Closing twice
+    /// is a no-op, so a lost reply is safe to retry.
+    pub fn close(&self, record: &Record) -> io::Result<()> {
+        let closed = self.directory.join("closed");
+        fs::create_dir_all(&closed)?;
+        let md = format!("{}.md", record.slug);
+        let log = format!("canvas-{}.log.jsonl", record.number);
+        for name in [md, log] {
+            let from = self.directory.join(&name);
+            if from.symlink_metadata().is_ok() {
+                fs::rename(&from, closed.join(&name))?;
+            }
+        }
+        File::open(&closed)?.sync_all()?;
+        File::open(&self.directory)?.sync_all()?;
+        Ok(())
+    }
+    /// Bring a retired canvas back from `closed/`. Restoring an open canvas
+    /// is a no-op, so an undo after a lost reply is safe.
+    pub fn restore(&self, record: &Record) -> io::Result<()> {
+        let closed = self.directory.join("closed");
+        let md = format!("{}.md", record.slug);
+        let log = format!("canvas-{}.log.jsonl", record.number);
+        // The log first: a crash between the two leaves a listed record whose
+        // log is already in place, never a record without its drawing.
+        for name in [log, md] {
+            let from = closed.join(&name);
+            if from.symlink_metadata().is_ok() {
+                fs::rename(&from, self.directory.join(&name))?;
+            }
+        }
+        File::open(&self.directory)?.sync_all()?;
+        if closed.is_dir() {
+            File::open(&closed)?.sync_all()?;
+        }
+        Ok(())
     }
     fn log_path(&self, record: &Record) -> PathBuf {
         self.directory

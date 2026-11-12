@@ -366,3 +366,54 @@ fn canvas_open_lost_create_result_recovers_its_id_among_equal_titles() {
     let result = data(f.call(f.own.id, op, "canvas_open", json!({"title":"Same title"})));
     assert_eq!(result["id"], op.to_string());
 }
+
+#[test]
+fn canvas_close_retires_the_canvas_for_creator_or_oracle_and_retries_safely() {
+    let mut f = Fixture::new();
+    let opened = data(f.call(f.own.id, Ulid::new(), "canvas_open", json!({"title":"Gone"})));
+    let id = opened["id"].clone();
+    assert_eq!(
+        f.call(f.peer.id, Ulid::new(), "canvas_close", json!({"id":id}))["structuredContent"]["error"]["code"],
+        "canvas_close_denied"
+    );
+    let op = Ulid::new();
+    let closed = data(f.call(f.own.id, op, "canvas_close", json!({"id":id})));
+    assert_eq!(closed["closed"], true);
+    assert!(
+        data(f.call(f.own.id, Ulid::new(), "canvas_list", json!({})))["canvases"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|c| c["id"] != id)
+    );
+    assert_eq!(
+        f.call(f.own.id, Ulid::new(), "canvas_read", json!({"id":id}))["structuredContent"]["error"]["code"],
+        "canvas_not_found"
+    );
+    // The same operation replays its result; a fresh close of a closed canvas is a no-op.
+    f.restart();
+    assert_eq!(closed, data(f.call(f.own.id, op, "canvas_close", json!({"id":id}))));
+    assert_eq!(
+        data(f.call(f.oracle.id, Ulid::new(), "canvas_close", json!({"id":id})))["already"],
+        true
+    );
+    // The archive lists it; restore brings it back for the creator or Oracle.
+    let archived = data(f.call(f.own.id, Ulid::new(), "canvas_archived_list", json!({})));
+    assert_eq!(archived["canvases"][0]["id"], id);
+    assert_eq!(
+        f.call(f.peer.id, Ulid::new(), "canvas_restore", json!({"id":id}))["structuredContent"]["error"]["code"],
+        "canvas_restore_denied"
+    );
+    let restored = data(f.call(f.oracle.id, Ulid::new(), "canvas_restore", json!({"id":id})));
+    assert_eq!(restored["restored"], true);
+    assert_eq!(
+        data(f.call(f.own.id, Ulid::new(), "canvas_read", json!({"id":id})))["id"],
+        id
+    );
+    assert!(
+        data(f.call(f.own.id, Ulid::new(), "canvas_archived_list", json!({})))["canvases"]
+            .as_array()
+            .unwrap()
+            .is_empty()
+    );
+}

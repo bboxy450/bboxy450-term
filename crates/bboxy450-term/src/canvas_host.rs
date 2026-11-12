@@ -49,6 +49,58 @@ impl Row {
         }
     }
 }
+fn store_for(source: &UiCanvasSource) -> bboxy450_canvas::store::Store {
+    bboxy450_canvas::store::Store::new(
+        Path::new(&normalize_root(&source.root))
+            .join(".bboxy")
+            .join("canvases"),
+    )
+}
+fn record_of(source: &UiCanvasSource, closed: bool) -> Result<bboxy450_canvas::record::Record, String> {
+    let store = store_for(source);
+    let records = if closed { store.closed_records() } else { store.records() }.map_err(|e| e.to_string())?;
+    records
+        .into_iter()
+        .find(|r| r.id == source.id && r.swarm == source.swarm.to_string())
+        .ok_or_else(|| "canvas record not found".to_owned())
+}
+/// Move the canvas record and log under `closed/`; the drawing is kept.
+pub fn archive(source: &UiCanvasSource) -> Result<(), String> {
+    match record_of(source, false) {
+        Ok(record) => store_for(source).close(&record).map_err(|e| e.to_string()),
+        // Already archived: nothing to do.
+        Err(_) if record_of(source, true).is_ok() => Ok(()),
+        Err(e) => Err(e),
+    }
+}
+/// Bring an archived canvas back.
+pub fn restore(source: &UiCanvasSource) -> Result<(), String> {
+    match record_of(source, true) {
+        Ok(record) => store_for(source).restore(&record).map_err(|e| e.to_string()),
+        Err(_) if record_of(source, false).is_ok() => Ok(()),
+        Err(e) => Err(e),
+    }
+}
+/// Drop canvas panes whose close grace has passed: their archive stays.
+pub fn expire_closed(model: &mut crate::model::Model, now: std::time::Instant) {
+    let expired: Vec<bbt_proto::SeatId> = model
+        .ui
+        .window
+        .sidebar
+        .swarms
+        .iter()
+        .flat_map(|s| &s.closed)
+        .filter(|c| now >= c.until && model.canvas_sources.contains_key(&c.seat))
+        .map(|c| c.seat)
+        .collect();
+    for pane in expired {
+        model.canvas_sources.remove(&pane);
+        model.ui.seats.remove(&pane);
+        for swarm in &mut model.ui.window.sidebar.swarms {
+            swarm.closed.retain(|c| c.seat != pane);
+        }
+    }
+}
 pub fn load(root: &str, swarm: bbt_mux::Ulid) -> Result<Vec<Row>, String> {
     let root = Path::new(root);
     let directory = if root.join(".bboxy").is_dir() {
