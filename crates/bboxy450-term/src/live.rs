@@ -1407,7 +1407,24 @@ async fn run_with_control(
                 canvas=canvas_jobs.join_next(), if !canvas_jobs.is_empty()=> {
                     if let Some(Ok((swarm,root,generation,result)))=canvas
                         && canvas_reads.current(swarm,&root,generation) { match result {
-                            Ok(rows)=> {Arc::make_mut(&mut model).canvas_catalog.insert((bbt_ui_model::SwarmId::from_u128(swarm.0),root),Arc::new(rows)); updates.publish(model.clone());},
+                            Ok(rows)=> {
+                                let current=Arc::make_mut(&mut model);
+                                // A pane whose canvas a seat closed (canvas_close) leaves with it;
+                                // a pane in its own close grace stays until the grace ends.
+                                let gone: Vec<bbt_proto::SeatId>=current.canvas_sources.iter()
+                                    .filter(|(pane,source)| source.swarm==swarm && source.root==root
+                                        && !rows.iter().any(|row| row.source.id==source.id)
+                                        && current.ui.seats.get(pane).is_some_and(|seat| seat.lifecycle==bbt_ui_model::Lifecycle::Open))
+                                    .map(|(pane,_)| *pane).collect();
+                                for pane in gone {
+                                    current.canvas_sources.remove(&pane);current.ui.seats.remove(&pane);
+                                    for swarm in &mut current.ui.window.sidebar.swarms {
+                                        swarm.tabs.retain_mut(|tab| {let Some(tree)=bbt_ui_model::prune(&tab.tree,pane) else {return false;};tab.tree=tree;tab.seats.retain(|id|id!=&pane);true});
+                                    }
+                                }
+                                current.canvas_catalog.insert((bbt_ui_model::SwarmId::from_u128(swarm.0),root),Arc::new(rows));
+                                publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                            },
                             Err(reason)=>logger.write(format!("canvas refresh: {reason}")),
                         }
                     }

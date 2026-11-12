@@ -34,6 +34,7 @@ pub fn render(
         viewport,
         overlays: vec![],
         labels: vec![],
+        zoom: camera.zoom as f32,
     };
     // Stable id order within three explicit paint passes. Frames under edges
     // under content; record insertion order never becomes an implicit layer.
@@ -91,11 +92,13 @@ pub fn render(
                     let mid = [(start[0] + end[0]) / 2., (start[1] + end[1]) / 2.];
                     if inside(mid, viewport) {
                         let p = narrow(mid)?;
-                        let lh = line_height(TypeStep::Caption);
+                        let Some(px) = out.text_px(TypeStep::Caption) else {
+                            continue;
+                        };
+                        let lh = out.line_height(TypeStep::Caption);
                         let lines: Vec<&str> = label.lines().collect();
                         let longest = lines.iter().map(|l| l.chars().count()).max().unwrap_or(0);
-                        let w = (longest as f32 * TypeStep::Caption.pixels() * 0.58 + 12.)
-                            .clamp(24., 320.);
+                        let w = (longest as f32 * px * 0.58 + 12.).clamp(24., 320. * out.zoom.max(1.));
                         let h = lh * lines.len().max(1) as f32;
                         let mut rect = Rect::new(p[0] - w / 2., p[1] - h - 2., w, h);
                         // Two labels in the same gap stack instead of overprinting.
@@ -120,6 +123,8 @@ pub fn render(
             let surface = Color::hex(theme.palette().surface);
             match &e.content {
                 Content::Frame { name, .. } => {
+                    let title_px = out.floor_px(TypeStep::Section);
+                    let title_h = title_px * 1.35;
                     if detail == Detail::Full {
                         box_prim(
                             &mut out,
@@ -129,7 +134,7 @@ pub fn render(
                             color.alpha(0.45),
                         );
                     }
-                    text(
+                    text_sized(
                         &mut out,
                         Rect::new(
                             rect.x + 8.,
@@ -139,19 +144,21 @@ pub fn render(
                             } else {
                                 rect.w - 16.
                             },
-                            24.,
+                            title_h,
                         ),
                         name,
                         TypeStep::Section,
                         color,
                         true,
+                        Some(title_px),
                     );
                 }
                 Content::Shape { shape, label, .. } => {
-                    let labelled =
-                        detail == Detail::Full && semantic_zoom(f64::from(rect.h)) == Detail::Full;
+                    // Text legibility is the only gate: it shrinks with the zoom
+                    // and leaves below MIN_TEXT_PX, so nothing pops at a threshold.
+                    let labelled = detail == Detail::Full && out.text_px(TypeStep::Body).is_some();
                     let lines = label.lines().count().max(1) as f32;
-                    let lh = line_height(TypeStep::Body);
+                    let lh = out.line_height(TypeStep::Body);
                     let (figure, text_rect) = if *shape == Shape::Actor {
                         // The figure and its label share the bounds: label below the figure.
                         let text_h = (lines * lh).min(rect.h * 0.5);
@@ -326,6 +333,31 @@ struct Composition {
     overlays: Vec<c::Placed>,
     /// Connector label boxes already placed; a colliding label moves down.
     labels: Vec<Rect>,
+    /// Camera zoom: text scales with the drawing, like every infinite
+    /// canvas (tldraw, Excalidraw, Figma), instead of staying a fixed UI size
+    /// while the boxes grow and shrink around it.
+    zoom: f32,
+}
+/// Smallest legible glyph size; below it a label is left out rather than
+/// rasterized as noise.
+const MIN_TEXT_PX: f32 = 6.;
+const MAX_TEXT_PX: f32 = 96.;
+impl Composition {
+    /// The pixel size for a type step at this zoom, snapped to whole pixels so
+    /// a zoom gesture passes through a bounded set of glyph rasters (a glyph
+    /// atlas with size buckets) instead of a new raster every frame.
+    fn text_px(&self, step: TypeStep) -> Option<f32> {
+        let px = (step.pixels() * self.zoom).round();
+        (px >= MIN_TEXT_PX).then(|| px.min(MAX_TEXT_PX))
+    }
+    fn line_height(&self, step: TypeStep) -> f32 {
+        self.text_px(step).unwrap_or(0.) * 1.35
+    }
+    /// Frame titles are navigation labels: they grow with the zoom but never
+    /// drop below their UI size, so a zoomed-out map still names its regions.
+    fn floor_px(&self, step: TypeStep) -> f32 {
+        (step.pixels() * self.zoom.max(1.)).round().min(MAX_TEXT_PX)
+    }
 }
 impl Composition {
     fn place(&mut self, content: c::Element, rect: Rect) {
@@ -380,10 +412,6 @@ fn box_prim(out: &mut Composition, rect: Rect, radius: f32, fill: Color, border:
     let element = c::Element::Box(c::Box::new(surface(rect, radius, fill, border), vec![]));
     out.place(element, rect);
 }
-/// One line's advance for a type step, the kit's default line height.
-fn line_height(step: TypeStep) -> f32 {
-    step.pixels() * 1.35
-}
 fn overlaps(a: Rect, b: Rect) -> bool {
     a.x < b.right() && b.x < a.right() && a.y < b.bottom() && b.y < a.bottom()
 }
@@ -398,10 +426,10 @@ fn label_lines(
     emphasis: bool,
     center: bool,
 ) {
-    if rect.w <= 0. || rect.h <= 0. {
+    if rect.w <= 0. || rect.h <= 0. || out.text_px(step).is_none() {
         return;
     }
-    let lh = line_height(step);
+    let lh = out.line_height(step);
     let lines: Vec<&str> = value.lines().collect();
     let total = lh * lines.len() as f32;
     let top = if center {
@@ -426,6 +454,9 @@ fn text_block(
     color: Color,
     emphasis: bool,
 ) {
+    let Some(size) = out.text_px(step) else {
+        return;
+    };
     if rect.w <= 0. || rect.h <= 0. {
         return;
     }
@@ -433,6 +464,7 @@ fn text_block(
         value,
         ui::Text {
             step,
+            size: Some(size),
             weight: if emphasis { 600 } else { 400 },
             paint: paint(color),
             ..Default::default()
@@ -456,6 +488,20 @@ fn text(
     color: Color,
     emphasis: bool,
 ) {
+    text_sized(out, rect, value, step, color, emphasis, None);
+}
+fn text_sized(
+    out: &mut Composition,
+    rect: Rect,
+    value: &str,
+    step: TypeStep,
+    color: Color,
+    emphasis: bool,
+    size: Option<f32>,
+) {
+    let Some(size) = size.or_else(|| out.text_px(step)) else {
+        return;
+    };
     if rect.w <= 0. || rect.h <= 0. {
         return;
     }
@@ -463,6 +509,7 @@ fn text(
         value,
         ui::Text {
             step,
+            size: Some(size),
             weight: if emphasis { 600 } else { 400 },
             paint: paint(color),
             ..Default::default()

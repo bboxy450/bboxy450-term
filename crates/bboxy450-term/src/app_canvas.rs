@@ -17,6 +17,17 @@ pub(super) struct View {
     smart_return: Option<Camera>,
     drag: Option<[f32; 2]>,
     contacts: [Option<(u64, [f32; 2])>; 2],
+    /// The last paint and what produced it: the drawing's digest, the camera,
+    /// the pane rect and the theme. A frame that changes none of them reuses
+    /// it instead of laying the whole drawing out again.
+    cache: Option<(PaintKey, Vec<bbt_ui::components::Paint>)>,
+}
+#[derive(Clone, PartialEq)]
+struct PaintKey {
+    digest: String,
+    camera: [f64; 3],
+    rect: [f32; 4],
+    theme: bbt_ui::Theme,
 }
 impl Default for View {
     fn default() -> Self {
@@ -27,6 +38,7 @@ impl Default for View {
             smart_return: None,
             drag: None,
             contacts: [None; 2],
+            cache: None,
         }
     }
 }
@@ -196,12 +208,27 @@ impl App {
                 if !view.fitted {
                     view.fit(&row.snapshot.canvas);
                 }
-                match self
-                    .scene
-                    .canvas_paint(&row.snapshot.canvas, &view.camera, *rect)
+                let key = PaintKey {
+                    digest: row.snapshot.canvas.digest(),
+                    camera: [view.camera.center[0], view.camera.center[1], view.camera.zoom],
+                    rect: rect_array(*rect),
+                    theme: self.scene.ui_context().theme,
+                };
+                if let Some((cached, ops)) = &view.cache
+                    && *cached == key
                 {
-                    Ok(ops) => paints.extend(ops),
-                    Err(reason) => self.logger.write(format!("canvas render: {reason}")),
+                    paints.extend(ops.iter().cloned());
+                } else {
+                    match self
+                        .scene
+                        .canvas_paint(&row.snapshot.canvas, &view.camera, *rect)
+                    {
+                        Ok(ops) => {
+                            paints.extend(ops.iter().cloned());
+                            view.cache = Some((key, ops));
+                        }
+                        Err(reason) => self.logger.write(format!("canvas render: {reason}")),
+                    }
                 }
                 facts.insert(
                     bbt_mux::Ulid(id.0.0),
