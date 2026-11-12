@@ -33,6 +33,7 @@ pub fn render(
     let mut out = Composition {
         viewport,
         overlays: vec![],
+        labels: vec![],
     };
     // Stable id order within three explicit paint passes. Frames under edges
     // under content; record insertion order never becomes an implicit layer.
@@ -90,14 +91,23 @@ pub fn render(
                     let mid = [(start[0] + end[0]) / 2., (start[1] + end[1]) / 2.];
                     if inside(mid, viewport) {
                         let p = narrow(mid)?;
-                        text(
-                            &mut out,
-                            Rect::new(p[0] - 44., p[1] - 22., 88., 20.),
-                            label,
-                            TypeStep::Caption,
-                            color,
-                            false,
-                        );
+                        let lh = line_height(TypeStep::Caption);
+                        let lines: Vec<&str> = label.lines().collect();
+                        let longest = lines.iter().map(|l| l.chars().count()).max().unwrap_or(0);
+                        let w = (longest as f32 * TypeStep::Caption.pixels() * 0.58 + 12.)
+                            .clamp(24., 320.);
+                        let h = lh * lines.len().max(1) as f32;
+                        let mut rect = Rect::new(p[0] - w / 2., p[1] - h - 2., w, h);
+                        // Two labels in the same gap stack instead of overprinting.
+                        for _ in 0..4 {
+                            if out.labels.iter().any(|placed| overlaps(*placed, rect)) {
+                                rect.y += lh;
+                            } else {
+                                break;
+                            }
+                        }
+                        out.labels.push(rect);
+                        label_lines(&mut out, rect, label, TypeStep::Caption, color, false, false);
                     }
                 }
                 continue;
@@ -138,24 +148,33 @@ pub fn render(
                     );
                 }
                 Content::Shape { shape, label, .. } => {
-                    shape_prims(&mut out, rect, *shape, color, surface.mix(color, 0.08));
-                    if detail == Detail::Full && semantic_zoom(f64::from(rect.h)) == Detail::Full {
-                        text(
+                    let labelled =
+                        detail == Detail::Full && semantic_zoom(f64::from(rect.h)) == Detail::Full;
+                    let lines = label.lines().count().max(1) as f32;
+                    let lh = line_height(TypeStep::Body);
+                    let (figure, text_rect) = if *shape == Shape::Actor {
+                        // The figure and its label share the bounds: label below the figure.
+                        let text_h = (lines * lh).min(rect.h * 0.5);
+                        (
+                            Rect::new(rect.x, rect.y, rect.w, (rect.h - text_h - 4.).max(1.)),
+                            Rect::new(rect.x + 4., rect.bottom() - text_h, rect.w - 8., text_h),
+                        )
+                    } else {
+                        (
+                            rect,
+                            Rect::new(rect.x + 8., rect.y + 4., rect.w - 16., rect.h - 8.),
+                        )
+                    };
+                    shape_prims(&mut out, figure, *shape, color, surface.mix(color, 0.08));
+                    if labelled {
+                        label_lines(
                             &mut out,
-                            Rect::new(
-                                rect.x + 8.,
-                                if *shape == Shape::Actor {
-                                    rect.bottom() + 4.
-                                } else {
-                                    rect.y + (rect.h - 20.) / 2.
-                                },
-                                rect.w - 16.,
-                                22.,
-                            ),
+                            text_rect,
                             label,
                             TypeStep::Body,
                             Color::hex(theme.palette().fg),
                             e.emphasis,
+                            true,
                         );
                     }
                 }
@@ -177,15 +196,10 @@ pub fn render(
                             color.alpha(0.5),
                             Color::TRANSPARENT,
                         );
+                    } else if *role == TextRole::Heading {
+                        text(&mut out, rect, value, scale, color, true);
                     } else {
-                        text(
-                            &mut out,
-                            rect,
-                            value,
-                            scale,
-                            color,
-                            *role == TextRole::Heading || e.emphasis,
-                        );
+                        text_block(&mut out, rect, value, scale, color, e.emphasis);
                     }
                 }
                 Content::Connector { .. } => unreachable!(),
@@ -310,6 +324,8 @@ fn clip_line(a: [f64; 2], b: [f64; 2], v: Rect) -> Option<([f64; 2], [f64; 2])> 
 struct Composition {
     viewport: Rect,
     overlays: Vec<c::Placed>,
+    /// Connector label boxes already placed; a colliding label moves down.
+    labels: Vec<Rect>,
 }
 impl Composition {
     fn place(&mut self, content: c::Element, rect: Rect) {
@@ -364,6 +380,74 @@ fn box_prim(out: &mut Composition, rect: Rect, radius: f32, fill: Color, border:
     let element = c::Element::Box(c::Box::new(surface(rect, radius, fill, border), vec![]));
     out.place(element, rect);
 }
+/// One line's advance for a type step, the kit's default line height.
+fn line_height(step: TypeStep) -> f32 {
+    step.pixels() * 1.35
+}
+fn overlaps(a: Rect, b: Rect) -> bool {
+    a.x < b.right() && b.x < a.right() && a.y < b.bottom() && b.y < a.bottom()
+}
+/// Each `\n` line of `value` at the step's size, one under the other, clipped
+/// to `rect`; `center` stacks them around the rect's vertical middle.
+fn label_lines(
+    out: &mut Composition,
+    rect: Rect,
+    value: &str,
+    step: TypeStep,
+    color: Color,
+    emphasis: bool,
+    center: bool,
+) {
+    if rect.w <= 0. || rect.h <= 0. {
+        return;
+    }
+    let lh = line_height(step);
+    let lines: Vec<&str> = value.lines().collect();
+    let total = lh * lines.len() as f32;
+    let top = if center {
+        rect.y + ((rect.h - total) / 2.).max(0.)
+    } else {
+        rect.y
+    };
+    for (i, line) in lines.into_iter().enumerate() {
+        let y = top + i as f32 * lh;
+        if y + lh > rect.bottom() + 0.5 {
+            break; // A label taller than its box clips; it never overprints.
+        }
+        text(out, Rect::new(rect.x, y, rect.w, lh), line, step, color, emphasis);
+    }
+}
+/// Wrapped prose inside its bounds: notes and paragraphs.
+fn text_block(
+    out: &mut Composition,
+    rect: Rect,
+    value: &str,
+    step: TypeStep,
+    color: Color,
+    emphasis: bool,
+) {
+    if rect.w <= 0. || rect.h <= 0. {
+        return;
+    }
+    let mut label = c::Text::new(
+        value,
+        ui::Text {
+            step,
+            weight: if emphasis { 600 } else { 400 },
+            paint: paint(color),
+            ..Default::default()
+        },
+    );
+    label.wrap = true;
+    label.inline = false;
+    let mut container = c::Box::new(
+        surface(rect, 0., Color::TRANSPARENT, Color::TRANSPARENT),
+        vec![c::Element::Text(label).into()],
+    );
+    container.clip = true;
+    container.align = c::Alignment::Start;
+    out.place(c::Element::Box(container), rect);
+}
 fn text(
     out: &mut Composition,
     rect: Rect,
@@ -395,8 +479,29 @@ fn text(
     out.place(c::Element::Box(container), rect);
 }
 fn stroke(out: &mut Composition, points: Vec<P>, color: Color, fill: Option<Color>, dashed: bool) {
-    let v = out.viewport;
-    let relative = |p: [f32; 2]| [p[0] - v.x, p[1] - v.y];
+    // The path lives in its own box: its mask is keyed by box-relative points,
+    // so a pan or zoom that keeps the geometry reuses the rasterized mask
+    // instead of redrawing every stroke against viewport coordinates.
+    let mut lo = [f32::INFINITY; 2];
+    let mut hi = [f32::NEG_INFINITY; 2];
+    let mut seen = |p: [f32; 2]| {
+        for i in 0..2 {
+            lo[i] = lo[i].min(p[i]);
+            hi[i] = hi[i].max(p[i]);
+        }
+    };
+    for p in &points {
+        match p {
+            P::Move(p) | P::Line(p) => seen(*p),
+            P::Cubic(c) => c.iter().for_each(|p| seen(*p)),
+        }
+    }
+    if lo.iter().chain(hi.iter()).any(|v| !v.is_finite()) {
+        return;
+    }
+    let pad = 6.;
+    let local = Rect::new(lo[0] - pad, lo[1] - pad, hi[0] - lo[0] + pad * 2., hi[1] - lo[1] + pad * 2.);
+    let relative = |p: [f32; 2]| [p[0] - local.x, p[1] - local.y];
     let points = points
         .into_iter()
         .map(|p| match p {
@@ -407,7 +512,7 @@ fn stroke(out: &mut Composition, points: Vec<P>, color: Color, fill: Option<Colo
         .collect::<Vec<_>>();
     out.place(
         c::Element::Path(c::Path {
-            size: [v.w, v.h],
+            size: [local.w, local.h],
             points: points.into(),
             stroke: PathStroke {
                 width: STYLE.material.hairline_px as f32 * 1.2,
@@ -423,7 +528,7 @@ fn stroke(out: &mut Composition, points: Vec<P>, color: Color, fill: Option<Colo
             fill: fill.map(paint),
             opacity: 1.,
         }),
-        v,
+        local,
     );
 }
 fn arrow(out: &mut Composition, tip: [f32; 2], direction: [f32; 2], color: Color) {
@@ -493,6 +598,9 @@ fn shape_prims(out: &mut Composition, r: Rect, shape: Shape, color: Color, fill:
             return;
         }
         Shape::Actor => {
+            // A stick figure keeps its proportions in a square inside the bounds.
+            let side = w.min(h).max(1.);
+            let [x, y, w, h] = [x + (w - side) / 2., y + (h - side) / 2., side, side];
             ellipse(&mut p, Rect::new(x + w * 0.4, y, w * 0.2, h * 0.25));
             p.extend([
                 P::Move([x + w / 2., y + h * 0.25]),

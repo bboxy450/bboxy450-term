@@ -384,9 +384,10 @@ pub(crate) fn execute(
                     .collect::<Vec<_>>()
             );
             if args.image {
-                image = Some(render::png(&s.canvas, frame.map(|(bounds, _)| bounds))?);
-                value["image"] =
-                    json!({"mimeType":"image/png","width":render::WIDTH,"height":render::HEIGHT});
+                let (png, [width, height]) =
+                    render::png(&s.canvas, frame.map(|(bounds, _)| bounds))?;
+                image = Some(png);
+                value["image"] = json!({"mimeType":"image/png","width":width,"height":height});
             }
             value
         }

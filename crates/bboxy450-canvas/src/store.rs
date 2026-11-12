@@ -290,7 +290,21 @@ impl Store {
             });
         }
         let mut candidate = snapshot.canvas.clone();
-        for action in actions {
+        // A batch is one atomic set: a frame may list its members before
+        // they are added. Actions apply in listed order except that one whose
+        // references are not yet present waits for them; a reference nothing
+        // in the batch adds still fails as UnknownId.
+        let mut pending: Vec<&Action> = actions.iter().collect();
+        while !pending.is_empty() {
+            let ready = pending.iter().position(|action| match action {
+                Action::Add { element } | Action::Change { element } => element
+                    .content
+                    .references()
+                    .iter()
+                    .all(|id| candidate.get(id).is_some()),
+                _ => true,
+            });
+            let action = pending.remove(ready.unwrap_or(0));
             candidate.apply(action).map_err(replay_error)?;
         }
         let at = now_ms();

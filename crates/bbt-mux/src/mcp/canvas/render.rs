@@ -15,6 +15,33 @@ use bbt_ui_model::{
 use std::cell::RefCell;
 pub(super) const WIDTH: u32 = 960;
 pub(super) const HEIGHT: u32 = 640;
+const MAX_WIDTH: u32 = 1920;
+const MAX_HEIGHT: u32 = 1440;
+
+/// The PNG's pixel size: the content at scale one plus a margin, between the
+/// default and the maximum, so a wide drawing is not shrunk to the default.
+pub(super) fn image_size(canvas: &Canvas, frame: Option<Bounds>) -> [u32; 2] {
+    let bounds: Vec<Bounds> = frame.map_or_else(
+        || canvas.elements().filter_map(|e| e.content.bounds()).collect(),
+        |b| vec![b],
+    );
+    let mut lo = [f64::INFINITY; 2];
+    let mut hi = [f64::NEG_INFINITY; 2];
+    for b in bounds {
+        for i in 0..2 {
+            lo[i] = lo[i].min(b.origin[i]);
+            hi[i] = hi[i].max(b.origin[i] + b.size[i]);
+        }
+    }
+    let extent = |i: usize, min: u32, max: u32| {
+        let size = hi[i] - lo[i];
+        if !size.is_finite() {
+            return min;
+        }
+        (size + 64.).clamp(f64::from(min), f64::from(max)) as u32
+    };
+    [extent(0, WIDTH, MAX_WIDTH), extent(1, HEIGHT, MAX_HEIGHT)]
+}
 
 // Adapted from bboxy450-term src/scene.rs Metrics, without its frame cache.
 // https://github.com/bboxy450/bboxy450-term — same native font measurement.
@@ -65,12 +92,14 @@ fn fit(canvas: &Canvas, frame: Option<Bounds>) -> d::Result<Camera> {
         },
         |b| vec![b],
     );
-    Camera::fit(bounds, [f64::from(WIDTH), f64::from(HEIGHT)], 32.)
+    let [width, height] = image_size(canvas, frame);
+    Camera::fit(bounds, [f64::from(width), f64::from(height)], 32.)
         .map_err(|s| error("canvas_render", s))
 }
-pub(super) fn png(canvas: &Canvas, frame: Option<Bounds>) -> d::Result<Vec<u8>> {
+pub(super) fn png(canvas: &Canvas, frame: Option<Bounds>) -> d::Result<(Vec<u8>, [u32; 2])> {
     let map = |e: &dyn std::fmt::Display| error("canvas_render", e.to_string());
-    let viewport = Rect::new(0., 0., WIDTH as f32, HEIGHT as f32);
+    let [width, height] = image_size(canvas, frame);
+    let viewport = Rect::new(0., 0., width as f32, height as f32);
     let element =
         ui::modules::canvas::render(canvas, &fit(canvas, frame)?, viewport, ui::Theme::Dark)
             .map_err(|e| map(&e))?;
@@ -96,11 +125,11 @@ pub(super) fn png(canvas: &Canvas, frame: Option<Bounds>) -> d::Result<Vec<u8>> 
         bbt_render::chrome::ChromeRenderer::new(bbt_render::chrome::icons::Assets::default())
             .map_err(|e| map(&e))?;
     let pixels = renderer
-        .render_to_rgba(&list, WIDTH, HEIGHT, 1.)
+        .render_to_rgba(&list, width, height, 1.)
         .map_err(|e| map(&e))?;
     let mut bytes = vec![];
     {
-        let mut encoder = png::Encoder::new(&mut bytes, WIDTH, HEIGHT);
+        let mut encoder = png::Encoder::new(&mut bytes, width, height);
         encoder.set_color(png::ColorType::Rgba);
         encoder.set_depth(png::BitDepth::Eight);
         encoder
@@ -109,5 +138,5 @@ pub(super) fn png(canvas: &Canvas, frame: Option<Bounds>) -> d::Result<Vec<u8>> 
             .write_image_data(&pixels)
             .map_err(|e| map(&e))?;
     }
-    Ok(bytes)
+    Ok((bytes, [width, height]))
 }

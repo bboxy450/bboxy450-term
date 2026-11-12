@@ -207,7 +207,7 @@ fn canvas_camera_gesture_scale_extremes_keep_finite_rendering() {
     assert!((camera.zoom - 1.).abs() < f64::EPSILON);
 }
 #[test]
-fn canvas_sidebar_limits_tags_and_empty_section() {
+fn canvas_sidebar_is_one_quiet_row_per_canvas_and_empty_section() {
     use ui::modules::sidebar::{CanvasRow, canvas_section};
     let ctx = ui::Context::new(Theme::Dark, ui::Density::Cozy);
     assert!(canvas_section("swarm", &[], true, ctx).is_none());
@@ -243,27 +243,33 @@ fn canvas_sidebar_limits_tags_and_empty_section() {
             expanded
         );
         assert_eq!(texts.iter().any(|s| s == "Kept drawing"), expanded);
-        assert_eq!(
-            texts.iter().any(|s| s == "2m ago · Canvas Executor"),
-            expanded
-        );
-        assert_eq!(
-            texts.iter().filter(|s| s.starts_with("tag")).count(),
-            if expanded { 3 } else { 0 }
-        );
-        assert!(!texts.iter().any(|s| s == "tag4" || s == "tag5"));
+        // The row shows the time of the last change; author and tags stay
+        // out of the sidebar.
+        assert_eq!(texts.iter().any(|s| s == "2m ago"), expanded);
+        assert!(!texts.iter().any(|s| s.contains("Canvas Executor")));
+        assert!(!texts.iter().any(|s| s.starts_with("tag")));
     }
 }
 #[test]
 fn canvas_connector_follows_changed_endpoint_geometry() {
     let mut ops = load_log(LOG).unwrap();
     let canvas = Canvas::replay(&ops).unwrap();
+    // A path's points are local to its own box; the absolute start is the
+    // box origin plus the first point.
     let edge_start = |canvas: &Canvas| {
         let list = render(canvas, &camera(), viewport(), Theme::Dark).unwrap();
         list.primitives
             .iter()
             .find_map(|p| match p {
-                Prim::Path { points, .. } => Some(points[0]),
+                Prim::Path { origin, points, .. } => match points[0] {
+                    bbt_ui_model::draw::PathCommand::Move(p) => {
+                        Some(bbt_ui_model::draw::PathCommand::Move([
+                            (origin[0] + p[0]).round(),
+                            (origin[1] + p[1]).round(),
+                        ]))
+                    }
+                    other => Some(other),
+                },
                 _ => None,
             })
             .unwrap()

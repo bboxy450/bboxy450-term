@@ -73,62 +73,29 @@ pub fn canvas_section(
     ];
     if expanded {
         for row in rows {
+            // One quiet line per canvas, like a seat row: title, then the
+            // time of its last change. Author and tags live in the canvas tab.
             let row_key = format!("{key}/open/{}", row.id);
-            let mut parts = vec![
+            let parts = vec![
+                label("▢", STYLE.r#type.caption as f32, ui::Color::Muted).into(),
                 named(
                     format!("{row_key}/title"),
                     label(&row.title, STYLE.r#type.row as f32, ui::Color::Foreground),
                 )
                 .into(),
+                c::Element::Spacer.into(),
                 named(
                     format!("{row_key}/activity"),
-                    label(
-                        &format!("{} · {}", row.last_change, row.last_author),
-                        STYLE.r#type.caption as f32,
-                        ui::Color::Muted,
-                    ),
+                    label(&row.last_change, STYLE.r#type.caption as f32, ui::Color::Muted),
                 )
                 .into(),
             ];
-            if !row.tags.is_empty() {
-                let tags = row
-                    .tags
-                    .iter()
-                    .take(3)
-                    .enumerate()
-                    .map(|(i, tag)| {
-                        named(
-                            format!("{row_key}/tag/{i}"),
-                            flow(
-                                ui::Style::new(ui::Preset::Chip),
-                                Axis::Row,
-                                0.,
-                                c::Alignment::Center,
-                                vec![
-                                    label(tag, STYLE.r#type.micro as f32, ui::Color::Muted).into(),
-                                ],
-                            ),
-                        )
-                        .into()
-                    })
-                    .collect();
-                parts.push(
-                    flow(
-                        plain(None, [0.; 4], ui::Color::Transparent, 0.),
-                        Axis::Row,
-                        STYLE.spacing.s2 as f32,
-                        c::Alignment::Center,
-                        tags,
-                    )
-                    .into(),
-                );
-            }
             let style = plain(
                 None,
                 [
-                    0.,
+                    STYLE.spacing.s1 as f32,
                     STYLE.spacing.s4 as f32,
-                    STYLE.spacing.s3 as f32,
+                    STYLE.spacing.s1 as f32,
                     STYLE.spacing.s4 as f32,
                 ],
                 ui::Color::Transparent,
@@ -137,7 +104,13 @@ pub fn canvas_section(
             children.push(
                 named(
                     row_key,
-                    flow(style, Axis::Column, 0., c::Alignment::Stretch, parts),
+                    flow(
+                        style,
+                        Axis::Row,
+                        ctx.density.tokens().gap as f32,
+                        c::Alignment::Center,
+                        parts,
+                    ),
                 )
                 .into(),
             );
