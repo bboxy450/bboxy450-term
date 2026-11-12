@@ -113,6 +113,9 @@ pub(super) const PARSE_SAMPLES: &[&str] = &[
     "canvas list",
     "canvas draw {\"id\":\"example\",\"ops\":[]}",
     "canvas read {\"id\":\"example\",\"image\":true}",
+    "canvas close {\"id\":\"example\"}",
+    "canvas archived-list",
+    "canvas restore {\"id\":\"example\"}",
 ];
 
 #[cfg(test)]
