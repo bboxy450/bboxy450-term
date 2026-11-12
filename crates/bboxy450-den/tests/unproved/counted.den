@@ -1,0 +1,28 @@
+module specs.Counted
+
+spec Counted {
+  intent "Counts distinct members as they are added."
+
+  enum D { A, B }
+
+  state {
+    held: Set[D] = Set()
+    n: Int[0..3] = 0
+  }
+
+  event Add(d: D)
+
+  on Add(d) {
+    case add if !held(d) && n < 3 => { held += d; n = n + 1 }
+    case known otherwise => ignore Known
+  }
+
+  theorem COUNTED_001 "at most two members are ever counted" = n <= 2
+
+  scenario "count both members" {
+    Add(D.A) ~> accepted
+    Add(D.B) ~> accepted
+    Add(D.A) ~> ignored Known
+    expect n == 2
+  }
+}

@@ -1,0 +1,34 @@
+module specs.Turnstile
+
+spec Turnstile {
+  intent "A coin opens the gate once; pushing through locks it again."
+
+  enum Gate { Locked, Open }
+
+  state {
+    latch: Gate = Gate.Locked
+    coins: Int[0..3] = 0
+  }
+
+  event Coin
+  event Push
+
+  on Coin {
+    case pay if latch == Gate.Locked && coins < 3 => { latch = Gate.Open; coins = coins + 1 }
+    case extra otherwise => ignore NotAccepting
+  }
+  on Push {
+    case pass if latch == Gate.Open => { latch = Gate.Locked }
+    case blocked otherwise => reject Locked
+  }
+
+  theorem TURN_001 "an open gate was paid for" = latch == Gate.Open ==> coins >= 1
+
+  scenario "pay, pass, and find it locked" {
+    Push ~> rejected Locked
+    Coin ~> accepted
+    Coin ~> ignored NotAccepting
+    Push ~> accepted
+    expect latch == Gate.Locked && coins == 1
+  }
+}

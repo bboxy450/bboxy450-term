@@ -39,9 +39,9 @@ spec Outbox {
     case live otherwise => ignore AlreadyUp
   }
 
-  invariant OUTBOX_001 "an acknowledged message has left the outbox" =
+  theorem OUTBOX_001 "an acknowledged message has left the outbox" =
     forall m: Msg. acked(m) ==> !unacked(m)
-  invariant OUTBOX_002 "only unacknowledged messages are in flight" =
+  theorem OUTBOX_002 "only unacknowledged messages are in flight" =
     forall m: Msg. inflight(m) ==> unacked(m)
 
   property OUTBOX_L1 "a submitted message is eventually acknowledged" =

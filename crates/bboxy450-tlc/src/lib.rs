@@ -25,6 +25,7 @@ use std::vec::Vec;
 
 pub mod build;
 pub mod corpus;
+pub mod lean;
 pub mod parse;
 
 /// An exact state, in model variable order.

@@ -2159,6 +2159,8 @@ expected = "safety"
 frontend = "project"
 
 # Den specs lowered by crates/bboxy450-den/examples/verify.rs.
+
+# Den specs lowered by crates/bboxy450-den/examples/den_corpus.rs.
 [[model]]
 name = "DenOutbox"
 expected = "pass"
@@ -2171,6 +2173,11 @@ frontend = "den"
 
 [[model]]
 name = "DenRemoteDelivery"
+expected = "pass"
+frontend = "den"
+
+[[model]]
+name = "DenTurnstile"
 expected = "pass"
 frontend = "den"
 

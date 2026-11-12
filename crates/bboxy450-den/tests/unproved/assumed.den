@@ -1,0 +1,18 @@
+module specs.Assumed
+
+spec Assumed {
+  intent "Two flags toggle together."
+  state {
+    x: Bool = false
+    y: Bool = false
+  }
+  event Toggle
+  on Toggle {
+    case toggle if true => { x = !x; y = !y }
+  }
+  theorem ASSUMED_001 "the flags agree" = x == y
+  scenario "toggle both flags" {
+    Toggle ~> accepted
+    expect x && y
+  }
+}

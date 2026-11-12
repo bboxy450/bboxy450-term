@@ -9,6 +9,7 @@
 mod ast;
 mod checker;
 mod eval;
+mod lean;
 mod lower;
 mod parser;
 pub mod render;
@@ -86,6 +87,47 @@ pub fn model(source: &str) -> Result<bboxy450_tlc::Model, Report> {
             "keep updates within the declared variable ranges",
         )])
     })
+}
+/// Lean 4 text for a sound spec's theorems.
+#[derive(Debug)]
+pub struct Lean {
+    /// Lean module name, `Den` followed by the spec name.
+    pub module: String,
+    /// `MODULE.lean`: the machine and one `ID_statement` per theorem.
+    pub statements: String,
+    /// `MODULECheck.lean`: each `ID_proved` in `MODULEProof.lean` has its statement.
+    pub check: String,
+    /// IDs that owe a proof, including `TYPE_OK` when the state has integers.
+    pub theorems: Vec<String>,
+}
+/// Exports a spec's machine to Lean, where its `theorem`s are stated for
+/// domains of every size. `None` when the spec declares no theorem. Unsound
+/// specs are refused: a bounded counterexample is cheaper than a failed proof.
+pub fn lean(source: &str) -> Result<Option<Lean>, Report> {
+    let report = check(source);
+    if !report.is_sound() {
+        return Err(report);
+    }
+    let spec = checker::load(source).expect("sound");
+    let machine = lean::machine(&spec);
+    if machine.theorems().is_empty() {
+        return Ok(None);
+    }
+    let statements = machine.statements().map_err(|e| Report {
+        records: vec![],
+        diagnostics: vec![spec.name.pos.diagnostic(
+            "X190",
+            &spec.name.text,
+            e,
+            "rename the declaration: State, Step, Reachable, initial and TYPE_OK are generated",
+        )],
+    })?;
+    Ok(Some(Lean {
+        module: machine.module.clone(),
+        statements,
+        check: machine.check(),
+        theorems: machine.theorems().into_iter().map(String::from).collect(),
+    }))
 }
 impl Report {
     /// True exactly when no diagnostics were produced.

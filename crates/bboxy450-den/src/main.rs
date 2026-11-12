@@ -61,7 +61,94 @@ fn json_string(value: &str) -> String {
     result
 }
 
-const USAGE: &str = "usage: bboxy450-den check [--json] PATH...\n       bboxy450-den render --markdown [--out DIR] [--overwrite] [--no-mermaid] PATH...";
+const USAGE: &str = "usage: bboxy450-den check [--json] PATH...\n       bboxy450-den render --markdown [--out DIR] [--overwrite] [--no-mermaid] PATH...\n       bboxy450-den lean --out DIR [--expect-fail] PATH...";
+
+/// `lean --out DIR`: for each sound spec that declares a `theorem`, write
+/// `MODULE.lean` and `MODULECheck.lean`, copy the proof beside the spec
+/// (`outbox.den` -> `outbox.lean`) to `MODULEProof.lean`, and append the row
+/// `scripts/lean.py --check DIR` reads. Nothing here runs Lean.
+fn lean(args: impl Iterator<Item = std::ffi::OsString>) -> Result<bool, String> {
+    let mut expected = "pass";
+    let mut out: Option<PathBuf> = None;
+    let mut paths = Vec::new();
+    let mut options = true;
+    let mut args = args.peekable();
+    while let Some(arg) = args.next() {
+        if options && arg == OsStr::new("--") {
+            options = false;
+        } else if options && arg == OsStr::new("--expect-fail") {
+            expected = "fail";
+        } else if options && arg == OsStr::new("--out") {
+            out = Some(PathBuf::from(args.next().ok_or("--out needs a directory")?));
+        } else if options && arg.to_string_lossy().starts_with('-') {
+            return Err(format!("unknown option: {}", arg.to_string_lossy()));
+        } else {
+            paths.push(PathBuf::from(arg));
+        }
+    }
+    let (Some(out), false) = (out, paths.is_empty()) else {
+        return Err(USAGE.into());
+    };
+    let mut files = Vec::new();
+    for path in &paths {
+        collect(path, &mut files).map_err(|error| format!("{}: {error}", path.display()))?;
+    }
+    files.sort();
+    files.dedup();
+    fs::create_dir_all(&out).map_err(|error| format!("{}: {error}", out.display()))?;
+    let write = |name: String, text: &str| {
+        let target = out.join(name);
+        fs::write(&target, text).map_err(|error| format!("{}: {error}", target.display()))
+    };
+    let manifest = out.join("lean.tsv");
+    let mut rows = fs::read_to_string(&manifest).unwrap_or_default();
+    let mut sound = true;
+    for path in files {
+        if path.extension() != Some(OsStr::new("den")) {
+            continue;
+        }
+        let source =
+            fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))?;
+        let lean = match bboxy450_den::lean(&source) {
+            Ok(Some(lean)) => lean,
+            Ok(None) => continue,
+            Err(report) => {
+                sound = false;
+                for line in report.to_text().lines() {
+                    println!("{}:{line}", path.display());
+                }
+                continue;
+            }
+        };
+        if rows.lines().any(|row| row.split('\t').next() == Some(&lean.module)) {
+            return Err(format!(
+                "{}: module {} is already exported to {}",
+                path.display(),
+                lean.module,
+                out.display()
+            ));
+        }
+        let proof = path.with_extension("lean");
+        let Ok(proof_text) = fs::read_to_string(&proof) else {
+            sound = false;
+            println!(
+                "{}:1:1 X905 theorems {} have no proof. Repair: write {} proving each ID_proved : ID_statement in namespace {}",
+                path.display(),
+                lean.theorems.join(", "),
+                proof.display(),
+                lean.module
+            );
+            continue;
+        };
+        write(format!("{}.lean", lean.module), &lean.statements)?;
+        write(format!("{}Proof.lean", lean.module), &proof_text)?;
+        write(format!("{}Check.lean", lean.module), &lean.check)?;
+        writeln!(rows, "{}\t{expected}\t{}", lean.module, lean.theorems.join(",")).unwrap();
+        println!("{} -> {}", path.display(), out.join(&lean.module).display());
+    }
+    fs::write(&manifest, rows).map_err(|error| format!("{}: {error}", manifest.display()))?;
+    Ok(sound)
+}
 
 /// `render --markdown`: one `.md` beside each sound `.den` (or under `--out DIR`,
 /// mirroring the input path). A file that is not a previous lowering is kept
@@ -163,6 +250,7 @@ fn run() -> Result<bool, String> {
     match args.next() {
         Some(verb) if verb == OsStr::new("check") => {}
         Some(verb) if verb == OsStr::new("render") => return render(args),
+        Some(verb) if verb == OsStr::new("lean") => return lean(args),
         _ => return Err(USAGE.into()),
     }
     let mut json = false;

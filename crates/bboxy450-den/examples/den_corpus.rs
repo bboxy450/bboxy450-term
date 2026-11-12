@@ -13,7 +13,7 @@ use std::path::Path;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let output = std::env::args()
         .nth(1)
-        .ok_or("usage: verify OUTPUT_DIRECTORY")?;
+        .ok_or("usage: den_corpus OUTPUT_DIRECTORY")?;
     let root = Path::new(&output);
     let mut manifest = std::fs::read_to_string(root.join("manifest.tsv"))?;
     // A broken control keeps its spec's name in Den; the corpus needs a distinct one.
@@ -27,6 +27,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (
             "DenRemoteDelivery",
             include_str!("../tests/sound/remote_delivery.den"),
+            "pass",
+        ),
+        (
+            "DenTurnstile",
+            include_str!("../tests/sound/turnstile.den"),
             "pass",
         ),
         (

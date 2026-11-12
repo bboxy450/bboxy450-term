@@ -51,6 +51,9 @@ fn broken_controls_are_exact_diagnostics() {
 fn sound_fixtures_match_interpreter_graphs() {
     for entry in std::fs::read_dir(fixture_dir("sound")).unwrap() {
         let path = entry.unwrap().path();
+        if path.extension().is_none_or(|x| x != "den") {
+            continue;
+        }
         let source = std::fs::read_to_string(&path).unwrap();
         let report = check(&source);
         assert!(
@@ -215,4 +218,69 @@ fn sets_conditionals_quantifiers_and_effects_read_the_prestate() {
     let r = check(source);
     assert!(r.is_sound(), "{}", r.to_text());
     assert_eq!(r.records[0].states, 4);
+}
+
+#[test]
+fn a_theorem_is_stated_in_lean_for_every_size_of_an_unnamed_domain() {
+    let lean = lean(include_str!("../tests/sound/outbox.den"))
+        .unwrap()
+        .unwrap();
+    assert_eq!(lean.module, "DenOutbox");
+    assert_eq!(lean.theorems, ["OUTBOX_001", "OUTBOX_002"]);
+    for expected in [
+        "-- `Msg` is a type of any size",
+        "  unacked : Msg → Prop",
+        "  | Applied_retire (σ : (State Msg)) (m : Msg) (guard : (σ.up ∧ σ.inflight m)) :",
+        "unacked := fun ξ2 => ξ2 ≠ m ∧ σ.unacked ξ2",
+        "  ∀ (Msg : Type) (σ : (State Msg)), Reachable σ → OUTBOX_001 σ",
+    ] {
+        assert!(lean.statements.contains(expected), "{expected}\n{}", lean.statements);
+    }
+    // Rejected and ignored cases change nothing and are not steps.
+    assert!(!lean.statements.contains("Submit_known"));
+    assert!(lean.check.contains(
+        "theorem den_check_OUTBOX_002 : DenOutbox.OUTBOX_002_statement := DenOutbox.OUTBOX_002_proved"
+    ));
+}
+#[test]
+fn a_named_member_fixes_its_domain_and_an_integer_owes_its_range() {
+    let lean = lean(include_str!("../tests/sound/turnstile.den"))
+        .unwrap()
+        .unwrap();
+    assert_eq!(lean.theorems, ["TURN_001", "TYPE_OK"]);
+    for expected in [
+        "inductive Gate where\n  | Locked\n  | Open\n  deriving DecidableEq",
+        "def TYPE_OK (σ : State) : Prop := ((0 : Int) ≤ σ.coins ∧ σ.coins ≤ (3 : Int))",
+        "  ∀ (σ : State), Reachable σ → TURN_001 σ",
+    ] {
+        assert!(lean.statements.contains(expected), "{expected}\n{}", lean.statements);
+    }
+}
+#[test]
+fn only_a_sound_spec_with_a_theorem_exports_to_lean() {
+    assert!(
+        lean(include_str!("../tests/sound/remote_delivery.den"))
+            .unwrap()
+            .is_none()
+    );
+    let unsound = include_str!("../tests/unsound/X601-reachable-violation.den")
+        .replace("invariant TOGGLE_001", "theorem TOGGLE_001");
+    assert_eq!(lean(&unsound).unwrap_err().diagnostics[0].code, "X601");
+    let clash = include_str!("../tests/unproved/weakened.den").replace("WEAK_001", "Reachable");
+    assert_eq!(lean(&clash).unwrap_err().diagnostics[0].code, "X190");
+}
+/// The knowledge base holds the specs; the crate keeps copies as fixtures.
+#[test]
+fn knowledge_base_specs_match_their_fixtures() {
+    let kb = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../.bboxy/specs/delivery");
+    if !kb.is_dir() {
+        return; // A packaged crate has no knowledge base.
+    }
+    for name in ["outbox.den", "outbox.lean"] {
+        assert_eq!(
+            std::fs::read_to_string(kb.join(name)).unwrap(),
+            std::fs::read_to_string(fixture_dir("sound").join(name)).unwrap(),
+            "{name}"
+        );
+    }
 }
