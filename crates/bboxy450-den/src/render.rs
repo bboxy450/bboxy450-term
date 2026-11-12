@@ -36,6 +36,11 @@ pub fn source_sha256(source: &str) -> String {
 /// Lower a sound record; an unsound one returns its report and nothing is
 /// written. Deterministic: the same source gives the same bytes.
 pub fn render(source: &str) -> Result<Rendered, Report> {
+    render_with(source, true)
+}
+
+/// [`render`], with the Mermaid views left out when `mermaid` is false.
+pub fn render_with(source: &str, mermaid: bool) -> Result<Rendered, Report> {
     let report = crate::check(source);
     if !report.is_sound() {
         return Err(report);
@@ -52,7 +57,7 @@ pub fn render(source: &str) -> Result<Rendered, Report> {
         .collect::<Vec<_>>()
         .join(".");
     let source_sha256 = source_sha256(source);
-    let markdown = markdown(&spec, summary, &module, &source_sha256, source);
+    let markdown = markdown(&spec, summary, &module, &source_sha256, source, mermaid);
     Ok(Rendered {
         markdown,
         module,
@@ -84,18 +89,27 @@ pub fn embedded(markdown: &str) -> Option<(String, String)> {
     Some((rest[..end + 1].to_owned(), sha))
 }
 
+/// The record's title: the intent's first sentence (a list shows one line).
+fn title_of(intent: &str) -> &str {
+    let intent = intent.trim();
+    intent
+        .find(". ")
+        .map_or(intent, |end| &intent[..=end])
+}
+
 fn markdown(
     spec: &Spec,
     summary: Option<&Summary>,
     module: &str,
     sha: &str,
     source: &str,
+    mermaid: bool,
 ) -> String {
     let mut out = String::new();
-    let title = spec.intent.trim();
+    let intent = spec.intent.trim();
     let _ = writeln!(out, "---");
     let _ = writeln!(out, "type: spec");
-    let _ = writeln!(out, "title: {}", yaml(title));
+    let _ = writeln!(out, "title: {}", yaml(title_of(intent)));
     let _ = writeln!(out, "generated_from:");
     let _ = writeln!(out, "  module: {module}");
     let _ = writeln!(out, "  source_sha256: {sha}");
@@ -105,7 +119,7 @@ fn markdown(
     }
     let _ = writeln!(out, "---");
     let _ = writeln!(out, "# {}\n", spec.name.text);
-    let _ = writeln!(out, "{title}\n");
+    let _ = writeln!(out, "{intent}\n");
     let _ = writeln!(
         out,
         "Lowered from `{module}` ({}); the Den source at the end of this record is the original.\n",
@@ -247,6 +261,37 @@ fn markdown(
         }
     }
 
+    if mermaid && !spec.scenarios.is_empty() {
+        let _ = writeln!(out, "## Views\n");
+        for (n, s) in spec.scenarios.iter().enumerate() {
+            let _ = writeln!(out, "Scenario {}: {}\n", n + 1, s.name.trim());
+            let _ = writeln!(out, "```mermaid");
+            let _ = writeln!(out, "flowchart TD");
+            let _ = writeln!(out, "    s0([\"start\"])");
+            for (i, step) in s.steps.iter().enumerate() {
+                let label = match step {
+                    ScenarioStep::Call { call, outcome, .. } => {
+                        let outcome = match outcome {
+                            Outcome::Accept => "accepted".to_owned(),
+                            Outcome::Reject(n) => format!("rejected {}", n.text),
+                            Outcome::Ignore(n) => format!("ignored {}", n.text),
+                        };
+                        format!("{} ~> {outcome}", call_text(call))
+                    }
+                    ScenarioStep::Expect(e) => format!("expect {}", expr(e)),
+                };
+                let _ = writeln!(
+                    out,
+                    "    s{} --> s{}[\"{}\"]",
+                    i,
+                    i + 1,
+                    mermaid_label(&label)
+                );
+            }
+            let _ = writeln!(out, "```\n");
+        }
+    }
+
     let _ = writeln!(out, "## Source\n");
     let _ = writeln!(out, "```den");
     out.push_str(source);
@@ -255,6 +300,11 @@ fn markdown(
     }
     let _ = writeln!(out, "```");
     out
+}
+
+/// A Mermaid node label: quotes and newlines cannot appear inside one.
+fn mermaid_label(text: &str) -> String {
+    text.replace('"', "#quot;").replace('\n', " ")
 }
 
 /// Single-quoted YAML scalar: safe for any text, no type guessing.
@@ -356,6 +406,10 @@ mod tests {
         assert_eq!(first.source_sha256.len(), 64);
         let md = &first.markdown;
         assert!(md.starts_with("---\ntype: spec\ntitle: 'Two flags toggle together.'\ngenerated_from:\n  module: specs.Toggle\n  source_sha256: "), "{md}");
+        assert!(md.contains("## Views\n\nScenario 1: toggle both flags\n\n```mermaid\nflowchart TD\n    s0([\"start\"])\n    s0 --> s1[\"Toggle ~> accepted\"]\n    s1 --> s2[\"expect x && y\"]\n```"), "{md}");
+        assert!(!render_with(TOGGLE, false).unwrap().markdown.contains("## Views"));
+        assert_eq!(title_of("One. Two sentences."), "One.");
+        assert_eq!(title_of("No period"), "No period");
         for needle in [
             "| `x` | `Bool` | `false` |",
             "### on Toggle",

@@ -61,7 +61,7 @@ fn json_string(value: &str) -> String {
     result
 }
 
-const USAGE: &str = "usage: bboxy450-den check [--json] PATH...\n       bboxy450-den render --markdown [--out DIR] [--overwrite] PATH...";
+const USAGE: &str = "usage: bboxy450-den check [--json] PATH...\n       bboxy450-den render --markdown [--out DIR] [--overwrite] [--no-mermaid] PATH...";
 
 /// `render --markdown`: one `.md` beside each sound `.den` (or under `--out DIR`,
 /// mirroring the input path). A file that is not a previous lowering is kept
@@ -69,6 +69,7 @@ const USAGE: &str = "usage: bboxy450-den check [--json] PATH...\n       bboxy450
 fn render(args: impl Iterator<Item = std::ffi::OsString>) -> Result<bool, String> {
     let mut markdown = false;
     let mut overwrite = false;
+    let mut mermaid = true;
     let mut out: Option<PathBuf> = None;
     let mut paths = Vec::new();
     let mut options = true;
@@ -80,6 +81,8 @@ fn render(args: impl Iterator<Item = std::ffi::OsString>) -> Result<bool, String
             markdown = true;
         } else if options && arg == OsStr::new("--overwrite") {
             overwrite = true;
+        } else if options && arg == OsStr::new("--no-mermaid") {
+            mermaid = false;
         } else if options && arg == OsStr::new("--out") {
             out = Some(PathBuf::from(args.next().ok_or("--out needs a directory")?));
         } else if options && arg.to_string_lossy().starts_with('-') {
@@ -116,7 +119,7 @@ fn render(args: impl Iterator<Item = std::ffi::OsString>) -> Result<bool, String
             None => path.clone(),
         }
         .with_extension("md");
-        match bboxy450_den::render::render(&source) {
+        match bboxy450_den::render::render_with(&source, mermaid) {
             Err(report) => {
                 sound = false;
                 for line in report.to_text().lines() {

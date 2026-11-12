@@ -306,6 +306,20 @@ impl Parser {
     fn error(&self, message: impl Into<String>) -> Diagnostic {
         let mut d = match &self.current().kind {
             TokenKind::Word(word) if is_unsupported(word) => unsupported(self.current().pos, word),
+            // A statement continues only after an operator: a line that starts
+            // with one has ended the statement before it.
+            TokenKind::Newline
+                if self
+                    .tokens
+                    .get(self.index + 1)
+                    .is_some_and(|next| continues(&next.kind)) =>
+            {
+                let mut d = syntax(self.current().pos, message);
+                d.repair =
+                    "the next line starts with an operator; move the operator to the end of this line"
+                        .into();
+                d
+            }
             _ => syntax(self.current().pos, message),
         };
         d.record.clone_from(&self.record);

@@ -122,6 +122,30 @@ The parser bounds expression nesting at 16 levels, each binary chain at 32 opera
 and the resulting expression tree at 64 levels. Exceeding these syntax bounds is X101.
 Checks run in groups below; a failed group prevents later groups from running.
 
+## Idioms
+
+A cross-cutting rule that is not a property of the state ("a browser session
+never reaches ATC") is checked as a guard audit: a Bool field that every
+accepting case sets from its own guard, and an invariant that the field is
+never true. The checker then refuses any later case that loosens the guard. It
+costs one field; a per-subject log of grants would multiply the state space and
+hit the valuation bound.
+
+## Lowering to Markdown
+
+```
+bboxy450-den render --markdown [--out DIR] [--overwrite] [--no-mermaid] PATH...
+```
+
+One sound `.den` gives one `.md` beside it (or under `DIR`, mirroring the
+path): a YAML header (`type: spec`, `title:` from the intent's first sentence,
+`generated_from:` with the module and source SHA-256), the intent, domains,
+state table, events, effects, handler cases, invariants, assumptions, numbered
+scenario steps, a Mermaid flowchart per scenario under "Views" (dropped by
+`--no-mermaid`) and the whole Den source in a fenced `den` block. The same
+source gives the same bytes. A file that is not a previous lowering is kept
+unless `--overwrite`; an unsound source writes nothing and exits 1.
+
 ## Diagnostics
 
 Every diagnostic carries a stable code, line, column, record name, message and repair.
