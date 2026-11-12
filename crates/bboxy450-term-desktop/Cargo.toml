@@ -10,8 +10,8 @@ readme = "README.md"
 description = "OS-agnostic desktop integration facade for bboxy450-term"
 
 [dependencies]
-bboxy450-term-desktop-core = { version = "0.1.1", path = "../bboxy450-term-desktop-core" }
+bboxy450-term-desktop-core = { version = "0.2.0", path = "../bboxy450-term-desktop-core" }
 raw-window-handle = "=0.6.2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-bboxy450-term-desktop-macos = { version = "0.1.1", path = "../bboxy450-term-desktop-macos" }
+bboxy450-term-desktop-macos = { version = "0.2.0", path = "../bboxy450-term-desktop-macos" }

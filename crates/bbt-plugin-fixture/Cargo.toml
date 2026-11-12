@@ -10,8 +10,8 @@ description = "Private host test fixture plugins for bboxy450-term, built on the
 publish = false
 
 [dependencies]
-bbt-plugin = { package = "bboxy450-plugin", version = "0.1.1", path = "../bbt-plugin" }
-bbt-plugin-sdk = { package = "bboxy450-term-plugin-sdk", version = "0.1.1", path = "../bbt-plugin-sdk" }
+bbt-plugin = { package = "bboxy450-plugin", version = "0.2.0", path = "../bbt-plugin" }
+bbt-plugin-sdk = { package = "bboxy450-term-plugin-sdk", version = "0.2.0", path = "../bbt-plugin-sdk" }
 libc = "0.2"
 regex = "1"
 rusqlite = { version = "0.40", features = ["bundled"] }

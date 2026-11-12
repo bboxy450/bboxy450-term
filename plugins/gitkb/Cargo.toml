@@ -12,7 +12,7 @@ build = "build.rs"
 
 [dependencies]
 hashbrown = "0.17.1"
-bbt-plugin-sdk = { package = "bboxy450-term-plugin-sdk", version = "0.1.1", path = "../../crates/bbt-plugin-sdk" }
+bbt-plugin-sdk = { package = "bboxy450-term-plugin-sdk", version = "0.2.0", path = "../../crates/bbt-plugin-sdk" }
 libc = "0.2"
 serde_json = "1"
 # GitKB parses frontmatter with this exact release; node frontmatter must match.
