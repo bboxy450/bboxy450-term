@@ -709,10 +709,14 @@ diagnose-fifty-seat-pty: build-fifty-seat-probe
 	@set -eu; \
 	python3 -c 'import subprocess,sys; sys.exit(subprocess.run([sys.argv[1]], timeout=30).returncode)' '$(TARGET_DIR)/night-fifty-seat-startup/pty-syscall-probe'
 
+# The Dream C1 gate admits only its pinned build inputs: ci-local's debug-assertion
+# overrides are for test builds, not for the packaged worker, so they are cleared for it.
 bundle-files: check-licenses compile
 	@set -eu; test "$$(uname -s)" = Darwin || { echo 'macOS is required' >&2; exit 2; }; \
 	case '$(BUNDLE)' in *.app) ;; *) echo 'BUNDLE must end in .app' >&2; exit 2 ;; esac; \
-	. ./scripts/cache-env.sh; BBOXY_DREAM_BUILD_ENTRY=bundle-files CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --worker-only; \
+	. ./scripts/cache-env.sh; \
+	env -u CARGO_PROFILE_DEV_DEBUG_ASSERTIONS -u CARGO_PROFILE_TEST_DEBUG_ASSERTIONS \
+	  BBOXY_DREAM_BUILD_ENTRY=bundle-files CARGO_BUILD_JOBS=2 python3 -I scripts/test-dream-c1.py --target '$(abspath $(TARGET_DIR))' --worker-only; \
 	mkdir -p '$(BUNDLE)/Contents/MacOS' '$(BUNDLE)/Contents/Resources'; \
 	cp packaging/macos/Info.plist '$(BUNDLE)/Contents/Info.plist'; \
 	cp '$(TARGET_DIR)/$(PROFILE)/$(APP)' '$(BUNDLE)/Contents/MacOS/$(APP)'; \

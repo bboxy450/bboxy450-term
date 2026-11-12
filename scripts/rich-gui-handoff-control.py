@@ -9,6 +9,7 @@
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 import subprocess
 
@@ -32,7 +33,26 @@ finally:
     if source.read_bytes() != broken:
         raise SystemExit('source changed during isolated control; refusing overwrite')
     source.write_bytes(original)
-if result.returncode != 2 or 'GUI handoff stopped a backend owner' not in result.stdout:
+# TERM to the GUI owner stops the backend owners too. The test proves it one of two
+# ways: the owners changed after a handoff that still reached readiness, or (since the
+# cockpit refuses cold startup when preserving the backend) the replacement GUI itself
+# refused because the live supervisor was gone. Only those exact causal facts count.
+OWNER_ASSERTION = 'GUI handoff stopped a backend owner'
+COLD_REFUSAL = 'preserve_backend: live supervisor required; cold startup refused'
+
+
+def detected(stdout):
+    if OWNER_ASSERTION in stdout:
+        return OWNER_ASSERTION
+    for evidence in re.findall(r'"evidence": "([^"]+)"', stdout):
+        log = Path(evidence) / 'gui.log'
+        if log.is_file() and COLD_REFUSAL in log.read_text(errors='replace'):
+            return COLD_REFUSAL
+    return None
+
+
+detection = detected(result.stdout) if result.returncode == 2 else None
+if detection is None:
     raise SystemExit(f'expected causal backend-owner assertion, got {result.returncode}:\n{result.stdout[-6000:]}')
 restored = subprocess.run(command, cwd=root, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
 (out / 'restored.log').write_text(restored.stdout)
@@ -41,5 +61,5 @@ if restored.returncode:
 (out / 'report.json').write_text(json.dumps({'source_sha256': hashlib.sha256(original).hexdigest(),
     'source_restored': source.read_bytes() == original, 'command': command,
     'broken_exit': result.returncode, 'restored_exit': restored.returncode,
-    'assertion': 'GUI handoff stopped a backend owner'}, indent=2) + '\n')
-print('rich-gui-handoff-control: GUI-only HUP replaced by TERM; backend-owner assertion; exact restored pass')
+    'assertion': detection}, indent=2) + '\n')
+print(f'rich-gui-handoff-control: GUI-only HUP replaced by TERM; detected: {detection}; exact restored pass')
