@@ -5,6 +5,10 @@ VM or SSH host. One remote supervisor serves the whole swarm and hosts only
 bboxy450-harness seats over ACP. The link is one protocol: length-prefixed JSON
 frames carrying Log IR v1 envelopes byte-for-byte.
 
+The remote host needs native builds of `bboxy450-term-remote` and
+`bboxy450-harness`, plus `/usr/bin/nc` for the harness's MCP socket bridge
+(`nmap-ncat` on Amazon Linux).
+
 It has these parts:
 
 - the frame codec (`frame`);
