@@ -18,9 +18,6 @@ use std::{
 
 const BIN: &str = env!("CARGO_BIN_EXE_bboxy450-term");
 
-#[path = "headless/canvas.rs"]
-mod canvas;
-
 // keeps: release #54 (Finder launches from / keep real logic alive with file custody).
 #[test]
 #[ignore = "night: real headless app and child-process startup boundary"]

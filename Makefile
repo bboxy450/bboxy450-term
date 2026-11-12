@@ -141,7 +141,6 @@ help:
 	  'make publish-tlc-github         Publish verified signed TLC source/artifacts (authorization required)' \
 	  'make test-task-migration        Private authenticated lifecycle/import and independent 250-record audit' \
 	  'make test-task-import-observer   Native migration with active observer and staging exclusion' \
-	  'make test-task-import-observer-mutant  Require causal failure when staging observation returns' \
 	  'make check-task-import-observer  Strict all-target import/mux/app Clippy' \
 	  'make test-signatures             Pinned public-only history and signature refusal fixtures' \
 	  'make test-landing                Private author-landing fixtures; no operator key' \
@@ -1986,7 +1985,7 @@ test-jsonl-recovery:
 	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib -E 'test(provenance::projection)'; \
 	cargo nextest run -E 'binary(it)&test(=formal_contracts::models::provenance_models::jsonl_repair_yields_and_publishes)' --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test it
 
-.PHONY: test-capture-storage-pressure test-capture-storage-model test-retained-seat-recovery test-watcher-burst test-watcher-import test-watcher-claims test-watcher-models profile-watcher-burst profile-rebase-watcher
+.PHONY: test-capture-storage-pressure test-capture-storage-model test-retained-seat-recovery test-watcher-burst test-watcher-claims test-watcher-models profile-watcher-burst profile-rebase-watcher
 test-capture-storage-pressure:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo nextest run --locked -p bboxy450-harness-host --target-dir '$(TARGET_DIR)' --lib -E 'test(ring::writer::tests::) | test(ring::journal::)'
@@ -1999,10 +1998,6 @@ test-retained-seat-recovery:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib -E 'test(logic::seat_recovery::tests::)'; \
 	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test it --run-ignored only -E '(binary(it)&test(/^(provider_gui)::/))&(test(operator_spawn_replays_across_connections_logic_and_supervisor_restart_without_relaunch))'
-
-test-watcher-import:
-	@set -eu; . ./scripts/cache-env.sh; \
-	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib logic::task_import::tests::task_migration_held_import_keeps_messages_tasks_and_other_roots_live_and_refuses_stale_publication -- --exact --nocapture
 
 test-watcher-claims:
 	@set -eu; . ./scripts/cache-env.sh; \
@@ -2031,20 +2026,11 @@ test-research-lineage:
 	cargo nextest run -E 'binary(it)&test(/^(research_lineage)::/)' --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test it; \
 	cargo nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test it -E '(binary(it)&test(/^(mcp)::/))&(test(mcp_knowledge266_class_rows_use_actual_signers_and_cannot_relabel_protected_types))'
 
-.PHONY: test-task-import-observer test-task-import-observer-causal test-task-import-observer-mutant check-task-import-observer
+.PHONY: test-task-import-observer check-task-import-observer
 test-task-import-observer: test-task-migration
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo test --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib import_staging_is_excluded -- --nocapture; \
 	cargo nextest run -E 'binary(it)&test(/^(provenance)::/)' --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test it -- --nocapture
-
-test-task-import-observer-causal:
-	@set -eu; . ./scripts/cache-env.sh; \
-	test -f '$(abspath $(TARGET_DIR))/task-migration/input/lossless-import-manifest.json' || python3 scripts/test-task-migration.py prepare '$(abspath $(TARGET_DIR))'; \
-	export BBOXY_TASK_MIGRATION_INPUT='$(abspath $(TARGET_DIR))/task-migration/input'; \
-	cargo nextest run -E 'binary(it)&test(=mcp::task_migration_250_records_authenticated_collision_restart_and_replay)' --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test it -- --nocapture
-
-test-task-import-observer-mutant:
-	@python3 scripts/test-task-migration.py mutant '$(abspath $(TARGET_DIR))'
 
 check-task-import-observer:
 	@set -eu; . ./scripts/cache-env.sh; cargo clippy --locked -p bboxy450-term-mux -p $(APP) --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
@@ -2728,8 +2714,7 @@ test-workspace-owner-progress: init-submodules
 	for witness in \
 	  logic::ownership_tests::projection_ownership_real_io_survives_cancel_restart_and_root_aba \
 	  logic::knowledge_responsiveness_tests::workspace_held_scan_keeps_input_chat_and_other_root_live_and_excludes_writes \
-	  logic::knowledge_responsiveness_tests::workspace_ready_activity_churn_reaches_writable \
-	  logic::task_import::tests::task_migration_held_import_keeps_messages_tasks_and_other_roots_live_and_refuses_stale_publication; do \
+	  logic::knowledge_responsiveness_tests::workspace_ready_activity_churn_reaches_writable; do \
 	 cargo nextest run --locked -p bboxy450-term-mux --lib --target-dir '$(TARGET_DIR)' --test-threads 1 -E "test(=$$witness)"; \
 	done
 

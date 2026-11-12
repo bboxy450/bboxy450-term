@@ -127,10 +127,6 @@ impl FileWatch {
     pub(crate) fn root(&self) -> &Path {
         &self.root
     }
-    #[cfg(test)]
-    pub(crate) fn inject_failure(&self) {
-        self.failed.store(true, Ordering::Release);
-    }
     pub fn failed(&self) -> bool {
         self.failed.load(Ordering::Acquire)
     }

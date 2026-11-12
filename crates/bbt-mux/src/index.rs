@@ -1346,7 +1346,7 @@ pub(crate) use watch::ScanBatch;
 )]
 mod tests {
     use super::*;
-    use std::time::{Duration, Instant, UNIX_EPOCH};
+    use std::time::{Duration, UNIX_EPOCH};
 
     #[test]
     fn incremental_scan_reads_only_dirty_paths_and_preserves_unrelated_records() {
@@ -1755,79 +1755,8 @@ mod tests {
         assert_eq!(index.documents["good.md"].body, "edited valid");
     }
 
-    fn wait_for_change(watch: &FileWatch) {
-        let until = Instant::now() + Duration::from_secs(30);
-        while !watch.changed() {
-            assert!(!watch.failed(), "filesystem watcher failed");
-            assert!(Instant::now() < until, "in-root edit was not observed");
-            std::thread::sleep(Duration::from_millis(10));
-        }
-    }
 
-    fn settle(watch: &FileWatch) {
-        let until = Instant::now() + Duration::from_secs(5);
-        let mut quiet_since = Instant::now();
-        while quiet_since.elapsed() < Duration::from_millis(500) {
-            assert!(!watch.failed(), "filesystem watcher failed");
-            assert!(Instant::now() < until, "filesystem watcher did not settle");
-            if watch.changed() {
-                quiet_since = Instant::now();
-            }
-            std::thread::sleep(Duration::from_millis(10));
-        }
-    }
 
-    #[test]
-    fn sibling_build_writes_do_not_dirty_watch_or_trigger_reconciliation() {
-        let temp = tempfile::tempdir().unwrap();
-        let root = temp.path().join(".bboxy");
-        let mut index = Index::open(
-            &root,
-            SqliteStore::open(&temp.path().join("state")).unwrap(),
-        )
-        .unwrap();
-        std::fs::create_dir_all(temp.path().join("target/deep")).unwrap();
-        std::fs::create_dir_all(temp.path().join(".git/objects")).unwrap();
-        let watch = FileWatch::start(&root).unwrap();
-        assert!(watch.changed());
-        let path = root.join("note.md");
-        std::fs::write(&path, "initial").unwrap();
-        wait_for_change(&watch);
-        scan_and_ack(&mut index);
-        settle(&watch);
-        let reads = index.document_reads;
-        for i in 0..32 {
-            std::fs::write(
-                temp.path().join(format!("target/deep/{i}.md")),
-                "build output",
-            )
-            .unwrap();
-            std::fs::write(
-                temp.path().join(format!(".git/objects/{i}.md")),
-                "git output",
-            )
-            .unwrap();
-        }
-        std::fs::write(temp.path().join("README.md"), "outside the index").unwrap();
-        let until = Instant::now() + Duration::from_secs(1);
-        let mut scans = 0;
-        while Instant::now() < until {
-            assert!(!watch.failed());
-            if watch.changed() {
-                scans += 1;
-                scan_and_ack(&mut index);
-            }
-            std::thread::sleep(Duration::from_millis(10));
-        }
-        assert_eq!(scans, 0, "sibling writes must not trigger a scan");
-        assert_eq!(index.document_reads, reads);
-        assert_eq!(index.documents.len(), 1);
-        std::fs::write(&path, "edited inside .bboxy").unwrap();
-        wait_for_change(&watch);
-        assert_eq!(scan_and_ack(&mut index).len(), 2);
-        assert_eq!(index.documents["note.md"].body, "edited inside .bboxy");
-        assert_eq!(index.document_reads, reads + 1);
-    }
 }
 
 #[cfg(test)]

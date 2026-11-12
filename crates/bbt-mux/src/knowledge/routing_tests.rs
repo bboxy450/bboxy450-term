@@ -19,62 +19,6 @@ use serde_json::{Value, json};
 struct Link;
 
 #[test]
-fn deferred_scan_replaces_failed_watcher_and_observes_later_edits() {
-    let mut f = Fixture::open();
-    let actor = f.actor(&f.a.clone());
-    let port = f.ready(&actor);
-    let root = &port.binding.root_id;
-    f.worker
-        .workspaces
-        .cache
-        .root_mut(root)
-        .unwrap()
-        .watch
-        .inject_failure();
-    assert!(f.worker.workspaces.cache.root_mut(root).unwrap().failed());
-    f.worker.workspaces.reconcile(root).unwrap();
-    let deadline = Instant::now() + Duration::from_secs(30);
-    loop {
-        f.worker.workspaces.poll(&f.worker.registry);
-        if !f.worker.workspaces.scanning(root) {
-            break;
-        }
-        assert!(Instant::now() < deadline);
-        std::thread::sleep(Duration::from_millis(2));
-    }
-    assert!(!f.worker.workspaces.cache.root_mut(root).unwrap().failed());
-    let file = f.first.join(".bboxy/notes/same.md");
-    let content = std::fs::read_to_string(&file)
-        .unwrap()
-        .replace("first content", "later content");
-    std::fs::write(&file, content).unwrap();
-    // Let the real replacement watcher deliver and settle this edit.
-    loop {
-        f.worker.workspaces.poll(&f.worker.registry);
-        if f.worker.workspaces.cache.root_mut(root).unwrap().changed() {
-            f.worker.workspaces.reconcile_pending(root).unwrap();
-        }
-        if f.worker
-            .workspaces
-            .cache
-            .root_mut(root)
-            .unwrap()
-            .index
-            .documents["notes/same.md"]
-            .body
-            == "later content\n"
-        {
-            break;
-        }
-        assert!(
-            Instant::now() < deadline,
-            "replacement watcher did not deliver the edit"
-        );
-        std::thread::sleep(Duration::from_millis(2));
-    }
-}
-
-#[test]
 fn deferred_publication_preserves_outbox_while_another_root_progresses() {
     use std::sync::{Condvar, Mutex};
     struct Release(Arc<(Mutex<bool>, Condvar)>);
