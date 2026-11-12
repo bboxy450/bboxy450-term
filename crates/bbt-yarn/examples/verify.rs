@@ -21,6 +21,8 @@ mod protocols;
 mod remote_delivery;
 #[path = "../../bboxy450-term-remote/src/resume_model.rs"]
 mod remote_resume;
+#[path = "../../bboxy450-term-remote/src/routing_model.rs"]
+mod remote_routing;
 #[path = "../tests/protocol_temporal.rs"]
 mod temporal_protocols;
 
@@ -189,6 +191,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         (remote_delivery::BrokenRemoteDelivery::model(), "safety"),
         (remote_resume::RemoteResume::model(), "pass"),
         (remote_resume::BrokenRemoteResume::model(), "safety"),
+        (remote_routing::RemoteRouting::model(), "pass"),
+        (remote_routing::BrokenRemoteRoutingOutput::model(), "safety"),
+        (
+            remote_routing::BrokenRemoteRoutingCleanup::model(),
+            "safety",
+        ),
         (protocol_language::ProtocolLanguage::model(), "pass"),
         (temporal_protocols::PresentGeneration::model(), "pass"),
         (

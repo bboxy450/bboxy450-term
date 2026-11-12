@@ -9,6 +9,11 @@ The remote host needs native builds of `bboxy450-term-remote` and
 `bboxy450-harness`, plus `/usr/bin/nc` for the harness's MCP socket bridge
 (`nmap-ncat` on Amazon Linux).
 
+Native agent commands run on the SSH host. Forwarded MCP servers still run
+locally, including BBoxy's Python command runtime. Use native agent commands
+for remote files and processes. This bridge does not provide managed remote
+workspaces.
+
 It has these parts:
 
 - the frame codec (`frame`);

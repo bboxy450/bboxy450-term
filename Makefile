@@ -1799,7 +1799,7 @@ test-wake-circuit-breaker: tools init-submodules
 .PHONY: test-wake-circuit-breaker
 
 .PHONY: build-remote
-build-remote: tools
+build-remote:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo build --locked -p bboxy450-term-remote --target-dir '$(TARGET_DIR)'
 

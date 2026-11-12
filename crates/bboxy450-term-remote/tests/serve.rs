@@ -33,11 +33,17 @@ fn scratch(name: &str) -> PathBuf {
 }
 
 fn connect(server: &Arc<Server>) -> UnixStream {
+    connect_tracked(server).0
+}
+
+fn connect_tracked(server: &Arc<Server>) -> (UnixStream, std::sync::mpsc::Receiver<()>) {
     let (client, end) = UnixStream::pair().unwrap();
+    let (done, closed) = std::sync::mpsc::channel();
     let server = Arc::clone(server);
     std::thread::spawn(move || {
         let writer = end.try_clone().unwrap();
         let _ = server.serve(end, writer);
+        let _ = done.send(());
     });
     client
         .set_read_timeout(Some(Duration::from_secs(10)))
@@ -59,7 +65,7 @@ fn connect(server: &Arc<Server>) -> UnixStream {
             ..
         })
     ));
-    c
+    (c, closed)
 }
 
 fn op(c: &mut UnixStream, id: &str, text: &str) {
@@ -78,7 +84,12 @@ fn op(c: &mut UnixStream, id: &str, text: &str) {
 
 /// Next frame that is not an event for which the predicate is false.
 fn next(c: &mut UnixStream) -> Frame {
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
     loop {
+        assert!(
+            std::time::Instant::now() < deadline,
+            "expected a non-ping frame"
+        );
         match frame::read(c).unwrap().expect("frame before timeout") {
             Frame::Ping => continue, // keepalives interleave anywhere
             f => return f,
@@ -234,4 +245,207 @@ fn relay_applies_once_resumes_after_reconnect_and_resets_on_new_epoch() {
     drop(c);
     drop(server);
     std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn independent_links_keep_each_sessions_events() {
+    unsafe { std::env::set_var("BBOXY450_REMOTE_PING_MS", "10") };
+    let dir = scratch("two-links");
+    let server = Arc::new(Server::open(&dir.join("state")).unwrap());
+    let (mut a, closed_a) = connect_tracked(&server);
+    let (mut b, closed_b) = connect_tracked(&server);
+    a.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+    for (client, session) in [(&mut a, "s1"), (&mut b, "s2")] {
+        frame::write(
+            client,
+            &Frame::Spawn {
+                session: session.into(),
+                profile: None,
+                cwd: dir.to_string_lossy().into(),
+            },
+        )
+        .unwrap();
+    }
+    op(&mut a, "a1", "first");
+    assert_eq!(
+        wait_event(&mut a).2,
+        1,
+        "another link stole the first session's event"
+    );
+    frame::write(
+        &mut b,
+        &Frame::Op {
+            session: "s2".into(),
+            message_id: "b1".into(),
+            envelope: "second".into(),
+        },
+    )
+    .unwrap();
+    assert_eq!(wait_event(&mut b).2, 1);
+    frame::write(
+        &mut a,
+        &Frame::Close {
+            session: "s1".into(),
+        },
+    )
+    .unwrap();
+    frame::write(
+        &mut b,
+        &Frame::Close {
+            session: "s2".into(),
+        },
+    )
+    .unwrap();
+    drop(a);
+    drop(b);
+    closed_a.recv_timeout(Duration::from_secs(2)).unwrap();
+    closed_b.recv_timeout(Duration::from_secs(2)).unwrap();
+    drop(server);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn disconnecting_one_link_keeps_another_links_mcp_channel() {
+    unsafe { std::env::set_var("BBOXY450_REMOTE_PING_MS", "10") };
+    let dir = scratch("mcp-isolation");
+    let server = Arc::new(Server::open(&dir.join("state")).unwrap());
+    let (mut a, closed_a) = connect_tracked(&server);
+    let (mut b, closed_b) = connect_tracked(&server);
+    for (client, session) in [(&mut a, "s1"), (&mut b, "s2")] {
+        frame::write(
+            client,
+            &Frame::Spawn {
+                session: session.into(),
+                profile: None,
+                cwd: dir.to_string_lossy().into(),
+            },
+        )
+        .unwrap();
+    }
+    frame::write(
+        &mut b,
+        &Frame::Op {
+            session: "s2".into(),
+            message_id: "ready".into(),
+            envelope: "ready".into(),
+        },
+    )
+    .unwrap();
+    wait_event(&mut b); // Spawn is committed before the independent MCP socket opens.
+    let (mut mcp, end) = UnixStream::pair().unwrap();
+    mcp.set_read_timeout(Some(Duration::from_secs(2))).unwrap();
+    let task = {
+        let server = Arc::clone(&server);
+        std::thread::spawn(move || {
+            let writer = end.try_clone().unwrap();
+            let _ = server.serve(end, writer);
+        })
+    };
+    frame::write(
+        &mut mcp,
+        &Frame::McpOpen {
+            session: "s2".into(),
+            channel: 0,
+            name: "probe".into(),
+        },
+    )
+    .unwrap();
+    let channel = match next(&mut b) {
+        Frame::McpOpen { channel, .. } => channel,
+        other => panic!("expected MCP open: {other:?}"),
+    };
+    // Another link cannot inject a reply or retire this channel either.
+    frame::write(
+        &mut a,
+        &Frame::McpData {
+            channel,
+            line: "foreign reply".into(),
+        },
+    )
+    .unwrap();
+    frame::write(&mut a, &Frame::McpClose { channel }).unwrap();
+    op(&mut a, "barrier", "barrier");
+    wait_applied(&mut a, "barrier");
+    drop(a);
+    closed_a.recv_timeout(Duration::from_secs(2)).unwrap();
+    frame::write(
+        &mut b,
+        &Frame::McpData {
+            channel,
+            line: "still connected".into(),
+        },
+    )
+    .unwrap();
+    assert!(
+        matches!(next(&mut mcp), Frame::McpData { line, .. } if line == "still connected"),
+        "an unrelated link closed the MCP channel"
+    );
+    drop(mcp);
+    task.join().unwrap();
+    frame::write(
+        &mut b,
+        &Frame::Close {
+            session: "s1".into(),
+        },
+    )
+    .unwrap();
+    frame::write(
+        &mut b,
+        &Frame::Close {
+            session: "s2".into(),
+        },
+    )
+    .unwrap();
+    drop(b);
+    closed_b.recv_timeout(Duration::from_secs(2)).unwrap();
+    drop(server);
+    std::fs::remove_dir_all(dir).unwrap();
+}
+
+#[test]
+fn reconnecting_session_ignores_old_link_ops_and_close() {
+    unsafe { std::env::set_var("BBOXY450_REMOTE_PING_MS", "10") };
+    let dir = scratch("adoption");
+    let server = Arc::new(Server::open(&dir.join("state")).unwrap());
+    let (mut a, closed_a) = connect_tracked(&server);
+    let spawn = Frame::Spawn {
+        session: "s1".into(),
+        profile: None,
+        cwd: dir.to_string_lossy().into(),
+    };
+    frame::write(&mut a, &spawn).unwrap();
+    op(&mut a, "a1", "before");
+    assert_eq!(wait_event(&mut a).2, 1);
+    let (mut b, closed_b) = connect_tracked(&server);
+    frame::write(&mut b, &spawn).unwrap();
+    op(&mut b, "b1", "adopted");
+    assert_eq!(wait_event(&mut b).2, 2, "adoption keeps the original agent");
+    op(&mut a, "stale", "must not run");
+    assert!(matches!(next(&mut a), Frame::Refused {message_id, ..} if message_id == "stale"));
+    frame::write(
+        &mut a,
+        &Frame::Close {
+            session: "s1".into(),
+        },
+    )
+    .unwrap();
+    drop(a);
+    closed_a.recv_timeout(Duration::from_secs(2)).unwrap();
+    op(&mut b, "b2", "after old close");
+    assert_eq!(
+        wait_event(&mut b).2,
+        3,
+        "old close or disconnect retired the new owner"
+    );
+    frame::write(
+        &mut b,
+        &Frame::Close {
+            session: "s1".into(),
+        },
+    )
+    .unwrap();
+    drop(b);
+    closed_b.recv_timeout(Duration::from_secs(2)).unwrap();
+    drop(server);
+    std::fs::remove_dir_all(dir).unwrap();
 }

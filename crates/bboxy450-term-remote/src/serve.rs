@@ -26,19 +26,37 @@ struct Session {
     child: Child,
     /// The agent closed its stdout; ops are refused with its last stderr line.
     exited: bool,
+    /// Each session follows its own link; a reconnect replaces only this owner.
+    out: Option<(u64, Sender<Frame>)>,
+}
+
+struct McpChannel {
+    session: String,
+    connection: u64,
+    to: Sender<Frame>,
 }
 
 struct Inner {
     sessions: BTreeMap<String, Session>,
     /// Sessions whose agent could not start, with the reason.
     failed: BTreeMap<String, String>,
-    /// The live connection's writer, tagged so a closing older connection
-    /// never clears a newer one's.
-    out: Option<(u64, Sender<Frame>)>,
     connections: u64,
     /// MCP relay channels: remote `mcp` processes, by channel id.
-    mcp: BTreeMap<u64, Sender<Frame>>,
+    mcp: BTreeMap<u64, McpChannel>,
     channels: u64,
+}
+
+impl Inner {
+    fn retire_mcp(&mut self, matches: impl Fn(&McpChannel) -> bool) {
+        self.mcp.retain(|channel, route| {
+            if matches(route) {
+                let _ = route.to.send(Frame::McpClose { channel: *channel });
+                false
+            } else {
+                true
+            }
+        });
+    }
 }
 
 pub struct Server {
@@ -82,7 +100,6 @@ impl Server {
             inner: Arc::new(Mutex::new(Inner {
                 sessions: BTreeMap::new(),
                 failed: BTreeMap::new(),
-                out: None,
                 connections: 0,
                 mcp: BTreeMap::new(),
                 channels: 0,
@@ -96,9 +113,13 @@ impl Server {
         &self.id
     }
 
-    fn spawn(&self, session: &str, cwd: &str) -> io::Result<()> {
+    fn spawn(&self, session: &str, cwd: &str, id: u64, out: &Sender<Frame>) -> io::Result<()> {
         let mut inner = self.inner.lock().unwrap();
-        if inner.sessions.contains_key(session) {
+        if let Some(s) = inner.sessions.get_mut(session) {
+            if s.out.as_ref().map(|(owner, _)| *owner) != Some(id) {
+                s.out = Some((id, out.clone()));
+                inner.retire_mcp(|route| route.session == session);
+            }
             return Ok(()); // adopt: a reconnecting client re-sends Spawn
         }
         let (program, args) = agent();
@@ -133,6 +154,7 @@ impl Server {
                 stdin,
                 child,
                 exited: false,
+                out: Some((id, out.clone())),
             },
         );
         let shared = Arc::clone(&self.inner);
@@ -145,10 +167,10 @@ impl Server {
                     break;
                 };
                 let event = s.log.push(line);
-                if let Some((_, out)) = &inner.out
+                if let Some((_, out)) = &s.out
                     && out.send(event).is_err()
                 {
-                    inner.out = None;
+                    s.out = None;
                 }
             }
             if let Some(s) = shared.lock().unwrap().sessions.get_mut(&name) {
@@ -184,8 +206,18 @@ impl Server {
             .unwrap_or_else(|| "no stderr".into())
     }
 
-    fn op(&self, session: &str, message_id: &str, envelope: &str) -> io::Result<Frame> {
+    fn op(&self, session: &str, message_id: &str, envelope: &str, id: u64) -> io::Result<Frame> {
         let mut inner = self.inner.lock().unwrap();
+        if inner
+            .sessions
+            .get(session)
+            .is_some_and(|s| s.out.as_ref().map(|(owner, _)| *owner) != Some(id))
+        {
+            return Ok(Frame::Refused {
+                message_id: message_id.into(),
+                reason: "session belongs to another link".into(),
+            });
+        }
         let mut inbox = self.inbox.lock().unwrap();
         // Durable dedup first: an applied id is acknowledged even after restart.
         if inbox.is_applied(message_id) {
@@ -230,8 +262,21 @@ impl Server {
         })
     }
 
-    fn close(&self, session: &str) {
-        if let Some(mut s) = self.inner.lock().unwrap().sessions.remove(session) {
+    fn close(&self, session: &str, owner: Option<u64>) {
+        let closed = {
+            let mut inner = self.inner.lock().unwrap();
+            if owner.is_some_and(|owner| {
+                inner
+                    .sessions
+                    .get(session)
+                    .is_none_or(|s| s.out.as_ref().map(|(id, _)| *id) != Some(owner))
+            }) {
+                return;
+            }
+            inner.retire_mcp(|route| route.session == session);
+            inner.sessions.remove(session)
+        };
+        if let Some(mut s) = closed {
             let _ = s.child.kill();
             let _ = s.child.wait();
         }
@@ -260,13 +305,16 @@ impl Server {
         let result = self.connection(&mut reader, &tx, id);
         {
             let mut inner = self.inner.lock().unwrap();
-            if inner
-                .out
-                .as_ref()
-                .is_some_and(|(current, _)| *current == id)
-            {
-                inner.out = None;
+            for session in inner.sessions.values_mut() {
+                if session
+                    .out
+                    .as_ref()
+                    .is_some_and(|(current, _)| *current == id)
+                {
+                    session.out = None;
+                }
             }
+            inner.retire_mcp(|route| route.connection == id);
         }
         drop(tx);
         let _ = writer.join();
@@ -296,7 +344,6 @@ impl Server {
             version: VERSION,
             supervisor: self.id.clone(),
         })?;
-        self.inner.lock().unwrap().out = Some((id, tx.clone()));
         let pinger = tx.clone();
         std::thread::spawn(move || {
             let every = std::env::var("BBOXY450_REMOTE_PING_MS")
@@ -310,12 +357,12 @@ impl Server {
 
         while let Some(frame) = frame::read(reader)? {
             match frame {
-                Frame::Spawn { session, cwd, .. } => self.spawn(&session, &cwd)?,
+                Frame::Spawn { session, cwd, .. } => self.spawn(&session, &cwd, id, tx)?,
                 Frame::Op {
                     session,
                     message_id,
                     envelope,
-                } => send(self.op(&session, &message_id, &envelope)?)?,
+                } => send(self.op(&session, &message_id, &envelope, id)?)?,
                 Frame::Resume {
                     session,
                     epoch,
@@ -333,26 +380,27 @@ impl Server {
                         send(f)?;
                     }
                 }
-                Frame::Close { session } => self.close(&session),
+                Frame::Close { session } => self.close(&session, Some(id)),
                 Frame::McpData { channel, line } => {
-                    if let Some(to) = self.inner.lock().unwrap().mcp.get(&channel) {
-                        let _ = to.send(Frame::McpData { channel, line });
+                    if let Some(route) = self.inner.lock().unwrap().mcp.get(&channel)
+                        && route.connection == id
+                    {
+                        let _ = route.to.send(Frame::McpData { channel, line });
                     }
                 }
                 Frame::McpClose { channel } => {
-                    if let Some(to) = self.inner.lock().unwrap().mcp.remove(&channel) {
-                        let _ = to.send(Frame::McpClose { channel });
+                    let mut inner = self.inner.lock().unwrap();
+                    if inner
+                        .mcp
+                        .get(&channel)
+                        .is_some_and(|route| route.connection == id)
+                        && let Some(route) = inner.mcp.remove(&channel)
+                    {
+                        let _ = route.to.send(Frame::McpClose { channel });
                     }
                 }
                 _ => {} // remote→local frames and unknown types are ignored
             }
-        }
-        // The link ended: its MCP channels end too; remote servers see EOF.
-        let channels: Vec<_> = std::mem::take(&mut self.inner.lock().unwrap().mcp)
-            .into_iter()
-            .collect();
-        for (channel, to) in channels {
-            let _ = to.send(Frame::McpClose { channel });
         }
         Ok(())
     }
@@ -368,13 +416,21 @@ impl Server {
     ) -> io::Result<()> {
         let channel = {
             let mut inner = self.inner.lock().unwrap();
-            let Some((_, out)) = inner.out.clone() else {
+            let Some((connection, out)) = inner.sessions.get(session).and_then(|s| s.out.clone())
+            else {
                 let _ = tx.send(Frame::McpClose { channel: 0 });
                 return Ok(()); // no live link: the MCP server ends at once
             };
             inner.channels += 1;
             let channel = inner.channels;
-            inner.mcp.insert(channel, tx.clone());
+            inner.mcp.insert(
+                channel,
+                McpChannel {
+                    session: session.into(),
+                    connection,
+                    to: tx.clone(),
+                },
+            );
             let _ = out.send(Frame::McpOpen {
                 session: session.into(),
                 channel,
@@ -383,18 +439,25 @@ impl Server {
             channel
         };
         let forward = |f: Frame| {
-            if let Some((_, out)) = &self.inner.lock().unwrap().out {
+            let inner = self.inner.lock().unwrap();
+            if let Some(route) = inner.mcp.get(&channel)
+                && let Some((owner, out)) = inner.sessions.get(session).and_then(|s| s.out.as_ref())
+                && *owner == route.connection
+            {
                 let _ = out.send(f);
             }
         };
-        while let Some(frame) = frame::read(reader)? {
-            if let Frame::McpData { line, .. } = frame {
-                forward(Frame::McpData { channel, line });
+        let result = (|| {
+            while let Some(frame) = frame::read(reader)? {
+                if let Frame::McpData { line, .. } = frame {
+                    forward(Frame::McpData { channel, line });
+                }
             }
-        }
-        self.inner.lock().unwrap().mcp.remove(&channel);
+            Ok(())
+        })();
         forward(Frame::McpClose { channel });
-        Ok(())
+        self.inner.lock().unwrap().mcp.remove(&channel);
+        result
     }
 }
 
@@ -409,7 +472,7 @@ impl Drop for Server {
             .cloned()
             .collect();
         for name in names {
-            self.close(&name);
+            self.close(&name, None);
         }
     }
 }

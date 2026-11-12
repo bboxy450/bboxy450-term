@@ -21,4 +21,5 @@ pub mod install;
 pub mod link;
 pub mod resume;
 pub mod resume_model;
+pub mod routing_model;
 pub mod serve;

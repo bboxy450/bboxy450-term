@@ -2142,3 +2142,18 @@ frontend = "project"
 name = "BrokenCanvasRefreshGeneration"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "RemoteRouting"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenRemoteRoutingOutput"
+expected = "safety"
+frontend = "project"
+
+[[model]]
+name = "BrokenRemoteRoutingCleanup"
+expected = "safety"
+frontend = "project"
