@@ -39,6 +39,8 @@ OWNED_FORK_FILES = {
     "crates/bbt-yarn/tests/concurrency/run.py",
     "crates/bbt-yarn/src/model.rs",
     "crates/bbt-yarn/examples/verify.rs",
+    "crates/bbt-yarn/examples/yarn_lean.rs",
+    "crates/bbt-yarn-macros/src/protocol/lean.rs",
     "crates/bbt-yarn/tests/model_projection.rs",
     "crates/bbt-yarn-macros/src/protocol.rs",
     "crates/bbt-yarn/src/protocol.rs",
