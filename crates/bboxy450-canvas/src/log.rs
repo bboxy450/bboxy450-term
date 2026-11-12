@@ -27,9 +27,19 @@ impl Batch {
         expect_seq: Option<u64>,
         ops: &[Action],
     ) -> bool {
+        // The log holds the batch in applied order, which may differ from the
+        // listed order; a retry compares the set of actions, not the sequence.
+        let mut remaining: Vec<&Action> = self.ops.iter().map(|op| &op.action).collect();
         self.author == author
             && self.expect_seq == expect_seq
-            && self.ops.iter().map(|op| &op.action).eq(ops.iter())
+            && remaining.len() == ops.len()
+            && ops.iter().all(|action| {
+                remaining
+                    .iter()
+                    .position(|r| *r == action)
+                    .map(|i| remaining.swap_remove(i))
+                    .is_some()
+            })
     }
 }
 #[derive(Debug)]

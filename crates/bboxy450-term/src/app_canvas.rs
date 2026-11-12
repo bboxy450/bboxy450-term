@@ -6,7 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Retained canvas cameras and ordinary GPU components; no IO in a frame.
 use super::*;
-use bboxy450_canvas::{Camera, Canvas};
+use bboxy450_canvas::{Camera, Canvas, FIT_PADDING};
 use bbt_ui::modules::document_modal::viewer::TouchPhase;
 use bbt_ui_model::layout::Rect;
 
@@ -56,10 +56,11 @@ impl View {
         ]
     }
     pub fn fit(&mut self, canvas: &Canvas) {
+        // The same extent and padding as the headless PNG: fit means one thing.
         if let Ok(camera) = Camera::fit(
-            canvas.elements().filter_map(|e| e.content.bounds()),
+            canvas.extent(),
             [f64::from(self.rect.w), f64::from(self.rect.h)],
-            32.,
+            FIT_PADDING,
         ) {
             self.camera = camera;
             self.smart_return = None;
@@ -210,7 +211,11 @@ impl App {
                 }
                 let key = PaintKey {
                     digest: row.snapshot.canvas.digest(),
-                    camera: [view.camera.center[0], view.camera.center[1], view.camera.zoom],
+                    camera: [
+                        view.camera.center[0],
+                        view.camera.center[1],
+                        view.camera.zoom,
+                    ],
                     rect: rect_array(*rect),
                     theme: self.scene.ui_context().theme,
                 };

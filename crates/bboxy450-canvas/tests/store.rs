@@ -14,6 +14,7 @@ fn element(id: &str) -> Element {
         kind: Some(Kind::Service),
         emphasis: false,
         status: Status::Normal,
+        style: None,
         content: Content::Shape {
             bounds: Bounds {
                 origin: [0.; 2],
@@ -333,14 +334,26 @@ fn canvas_store_refuses_symlink_log_and_temporary_record_writes() {
 fn canvas_store_close_retires_the_record_and_its_log_without_deleting() {
     let (dir, store, record) = setup();
     store
-        .append(&record, "op-1", "author", None, &[Action::Add { element: element("a") }])
+        .append(
+            &record,
+            "op-1",
+            "author",
+            None,
+            &[Action::Add {
+                element: element("a"),
+            }],
+        )
         .unwrap();
     assert_eq!(store.records().unwrap().len(), 1);
     store.close(&record).unwrap();
     assert!(store.records().unwrap().is_empty());
     let closed = dir.path().join("canvases/closed");
     assert!(closed.join(format!("{}.md", record.slug)).is_file());
-    assert!(closed.join(format!("canvas-{}.log.jsonl", record.number)).is_file());
+    assert!(
+        closed
+            .join(format!("canvas-{}.log.jsonl", record.number))
+            .is_file()
+    );
     // A retry after a lost reply changes nothing.
     store.close(&record).unwrap();
     assert!(store.records().unwrap().is_empty());
@@ -352,10 +365,69 @@ fn canvas_store_close_retires_the_record_and_its_log_without_deleting() {
     store.close(&record).unwrap();
     // The number is not reused: the next canvas is a new one.
     let next = store
-        .create(&ulid::Ulid::new().to_string(), CanvasRecord {
-            title: "Next".into(), swarm: record.swarm.clone(), tags: vec![],
-            creator: record.creator.clone(), task: None,
-        })
+        .create(
+            &ulid::Ulid::new().to_string(),
+            CanvasRecord {
+                title: "Next".into(),
+                swarm: record.swarm.clone(),
+                tags: vec![],
+                creator: record.creator.clone(),
+                task: None,
+            },
+        )
         .unwrap();
     assert_ne!(next.record.id, record.id);
+}
+// State: one batch that lists a frame before the members it groups. Safety:
+// the log keeps the applied order, so the same canvas loads again after a
+// restart, and a retry of the listed order is the same request.
+#[test]
+fn canvas_store_frame_before_members_persists_and_retries_as_one_request() {
+    let (dir, store, record) = setup();
+    let frame = Element {
+        content: Content::Frame {
+            bounds: Bounds {
+                origin: [-10.; 2],
+                size: [200., 100.],
+            },
+            name: "Group".into(),
+            members: vec!["a".into(), "b".into()],
+        },
+        ..element("group")
+    };
+    let ops = vec![
+        Action::Add { element: frame },
+        Action::Add {
+            element: element("a"),
+        },
+        Action::Add {
+            element: element("b"),
+        },
+    ];
+    let first = store
+        .append(&record, "batch", "seat:a", Some(0), &ops)
+        .unwrap();
+    assert!(!first.duplicate);
+    assert_eq!(first.snapshot.seq, 3);
+    let again = store
+        .append(&record, "batch", "seat:a", Some(0), &ops)
+        .unwrap();
+    assert!(again.duplicate);
+    assert!(
+        store
+            .append(&record, "batch", "seat:a", Some(0), &ops[1..])
+            .is_err(),
+        "a different set is a reused operation id"
+    );
+    drop(store);
+    let restarted = Store::new(dir.path().join("canvases"));
+    let loaded = restarted.load(&record).unwrap();
+    assert_eq!(loaded.canvas.digest(), first.snapshot.canvas.digest());
+    assert_eq!(loaded.seq, 3);
+    assert!(
+        matches!(loaded.batches[0].ops[0].action, Action::Add { ref element } if element.id == "a")
+    );
+    assert!(
+        matches!(loaded.batches[0].ops[2].action, Action::Add { ref element } if element.id == "group")
+    );
 }

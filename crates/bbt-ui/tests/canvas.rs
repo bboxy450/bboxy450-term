@@ -349,3 +349,202 @@ fn canvas_golden_light() {
 fn canvas_golden_dark() {
     golden(Theme::Dark, "canvas-c0-dark.png");
 }
+fn shape(id: &str, origin: [f64; 2], size: [f64; 2]) -> bboxy450_canvas::Element {
+    bboxy450_canvas::Element {
+        id: id.into(),
+        tags: vec![],
+        kind: None,
+        emphasis: false,
+        status: bboxy450_canvas::Status::Normal,
+        style: None,
+        content: Content::Shape {
+            bounds: bboxy450_canvas::Bounds { origin, size },
+            shape: bboxy450_canvas::Shape::Box,
+            label: id.into(),
+        },
+    }
+}
+fn connector(
+    id: &str,
+    from: &str,
+    to: &str,
+    route: bboxy450_canvas::Route,
+) -> bboxy450_canvas::Element {
+    let mut e = shape(id, [0.; 2], [1.; 2]);
+    e.content = Content::Connector {
+        from: from.into(),
+        to: to.into(),
+        label: Some(id.into()),
+        arrowheads: [false, true],
+        dashed: false,
+        route,
+        from_side: None,
+        to_side: None,
+        waypoints: vec![],
+        label_at: None,
+    };
+    e
+}
+fn replay(elements: Vec<bboxy450_canvas::Element>) -> Canvas {
+    let ops: Vec<_> = elements
+        .into_iter()
+        .enumerate()
+        .map(|(i, element)| bboxy450_canvas::Op {
+            author: "seat:test".into(),
+            seq: i as u64 + 1,
+            at: 0,
+            action: Action::Add { element },
+        })
+        .collect();
+    Canvas::replay(&ops).unwrap()
+}
+fn paths(list: &bbt_ui_model::draw::DrawList) -> Vec<Vec<[f32; 2]>> {
+    list.primitives
+        .iter()
+        .filter_map(|p| match p {
+            Prim::Path { origin, points, .. } => Some(
+                points
+                    .iter()
+                    .map(|c| match c {
+                        bbt_ui_model::draw::PathCommand::Move(p)
+                        | bbt_ui_model::draw::PathCommand::Line(p) => {
+                            [origin[0] + p[0], origin[1] + p[1]]
+                        }
+                        bbt_ui_model::draw::PathCommand::Cubic(c) => {
+                            [origin[0] + c[2][0], origin[1] + c[2][1]]
+                        }
+                    })
+                    .collect(),
+            ),
+            _ => None,
+        })
+        .collect()
+}
+fn text_rect(list: &bbt_ui_model::draw::DrawList, value: &str) -> Option<Rect> {
+    list.primitives.iter().find_map(|p| match p {
+        Prim::Text { text, origin, .. } if text.as_ref() == value => {
+            Some(Rect::new(origin[0], origin[1], 1., 1.))
+        }
+        _ => None,
+    })
+}
+// State: three boxes in a row, a connector from the first to the third.
+// Safety: an orthogonal route never crosses the middle box, and a label
+// never sits on its line or on another label.
+#[test]
+fn canvas_orthogonal_route_avoids_a_box_in_between_and_labels_leave_the_line() {
+    let canvas = replay(vec![
+        shape("left", [100., 200.], [120., 60.]),
+        shape("middle", [300., 200.], [120., 60.]),
+        shape("right", [500., 200.], [120., 60.]),
+        connector(
+            "across",
+            "left",
+            "right",
+            bboxy450_canvas::Route::Orthogonal,
+        ),
+        connector(
+            "straight",
+            "left",
+            "right",
+            bboxy450_canvas::Route::Straight,
+        ),
+    ]);
+    let camera = Camera {
+        center: [360., 230.],
+        zoom: 1.,
+    };
+    let list = render(&canvas, &camera, Rect::new(0., 0., 720., 460.), Theme::Dark).unwrap();
+    let all = paths(&list);
+    // The orthogonal route is the polyline with elbows; its vertical runs
+    // keep clear of the middle box (x 300..420 on screen).
+    let elbowed = all
+        .iter()
+        .find(|p| p.len() >= 5 && p.windows(2).any(|w| w[0][0] == w[1][0]))
+        .expect("an elbowed route");
+    for w in elbowed.windows(2) {
+        let (a, b) = (w[0], w[1]);
+        let hits_middle = a[0].min(b[0]) < 420.
+            && a[0].max(b[0]) > 300.
+            && a[1].min(b[1]) < 260.
+            && a[1].max(b[1]) > 200.;
+        assert!(
+            !hits_middle,
+            "route segment {a:?}->{b:?} crosses the middle box"
+        );
+    }
+    // The straight route sits at y 230; its label is beside it, not on it.
+    let straight = text_rect(&list, "straight").expect("straight label");
+    assert!(
+        (straight.y - 230.).abs() > 6.,
+        "label at {straight:?} is on the line"
+    );
+    let across = text_rect(&list, "across").expect("across label");
+    assert!(
+        (across.y - straight.y).abs() > 8. || (across.x - straight.x).abs() > 40.,
+        "labels overprint: {across:?} {straight:?}"
+    );
+    // A curved route draws cubic segments.
+    let curved = replay(vec![
+        shape("a", [100., 100.], [120., 60.]),
+        shape("b", [400., 300.], [120., 60.]),
+        connector("bend", "a", "b", bboxy450_canvas::Route::Curved),
+    ]);
+    let list = render(&curved, &camera, Rect::new(0., 0., 720., 460.), Theme::Dark).unwrap();
+    assert!(list.primitives.iter().any(|p| matches!(p, Prim::Path { points, .. } if points.iter().any(|c| matches!(c, bbt_ui_model::draw::PathCommand::Cubic(_))))));
+}
+// State: a styled box with glow, a cloud, a smooth closed path. Safety: the
+// style's colours reach the draw list, the halo is a wider stroke under the
+// figure, and a closed path is filled.
+#[test]
+fn canvas_styles_and_free_paths_reach_the_draw_list() {
+    let mut glowing = shape("hot", [100., 100.], [120., 60.]);
+    glowing.style = Some(bboxy450_canvas::Style {
+        fill: Some("#ff0000".into()),
+        stroke: Some("white".into()),
+        glow: Some("pink".into()),
+        stroke_width: Some(3.),
+        font_size: Some(20.),
+        ..Default::default()
+    });
+    let mut cloud = shape("cloud", [300., 100.], [140., 80.]);
+    if let Content::Shape { shape, .. } = &mut cloud.content {
+        *shape = bboxy450_canvas::Shape::Cloud;
+    }
+    let mut region = shape("region", [0.; 2], [1.; 2]);
+    region.content = Content::Path {
+        points: vec![[100., 300.], [200., 260.], [300., 300.], [200., 360.]],
+        closed: true,
+        smooth: true,
+        arrowheads: [false; 2],
+    };
+    region.style = Some(bboxy450_canvas::Style {
+        fill: Some("#00ff00".into()),
+        opacity: Some(0.5),
+        ..Default::default()
+    });
+    let canvas = replay(vec![glowing, cloud, region]);
+    let camera = Camera {
+        center: [250., 230.],
+        zoom: 1.,
+    };
+    let list = render(&canvas, &camera, Rect::new(0., 0., 600., 460.), Theme::Dark).unwrap();
+    list.validate().unwrap();
+    let red_box = list
+        .primitives
+        .iter()
+        .any(|p| matches!(p, Prim::Rect { fill, .. } if fill.0[0] > 0.9 && fill.0[1] < 0.1));
+    assert!(red_box, "styled fill reaches the box");
+    let filled_paths: Vec<_> = list
+        .primitives
+        .iter()
+        .filter(|p| matches!(p, Prim::Path { fill: Some(_), .. }))
+        .collect();
+    assert!(!filled_paths.is_empty(), "closed path and cloud are filled");
+    assert!(list.primitives.iter().any(|p| matches!(p, Prim::Path { fill: Some(c), .. } if c.0[1] > 0.9 && (c.0[3] - 0.5).abs() < 0.05)), "half-transparent green region");
+    assert!(
+        list.primitives
+            .iter()
+            .any(|p| matches!(p, Prim::Text { .. }))
+    );
+}

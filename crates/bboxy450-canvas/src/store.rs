@@ -338,8 +338,10 @@ impl Store {
         // A batch is one atomic set: a frame may list its members before
         // they are added. Actions apply in listed order except that one whose
         // references are not yet present waits for them; a reference nothing
-        // in the batch adds still fails as UnknownId.
+        // in the batch adds still fails as UnknownId. The log keeps the
+        // applied order, so replay never meets a reference before its target.
         let mut pending: Vec<&Action> = actions.iter().collect();
+        let mut applied: Vec<&Action> = Vec::with_capacity(actions.len());
         while !pending.is_empty() {
             let ready = pending.iter().position(|action| match action {
                 Action::Add { element } | Action::Change { element } => element
@@ -351,6 +353,7 @@ impl Store {
             });
             let action = pending.remove(ready.unwrap_or(0));
             candidate.apply(action).map_err(replay_error)?;
+            applied.push(action);
         }
         let at = now_ms();
         let stale = expect_seq.is_some_and(|seq| seq != snapshot.seq);
@@ -360,8 +363,8 @@ impl Store {
             at,
             expect_seq,
             stale,
-            ops: actions
-                .iter()
+            ops: applied
+                .into_iter()
                 .enumerate()
                 .map(|(i, action)| Op {
                     author: author.into(),

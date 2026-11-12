@@ -24,6 +24,7 @@ fn element(id: &str) -> Element {
         kind: None,
         emphasis: false,
         status: Status::Normal,
+        style: None,
         content: Content::Shape {
             bounds: Bounds {
                 origin: [0.; 2],
@@ -391,5 +392,237 @@ fn canvas_semantic_zoom_thresholds() {
     }
     for size in [24., 1000.] {
         assert_eq!(semantic_zoom(size), Detail::Full);
+    }
+}
+// State: a shape, a path and a frame; actions patch one field at a time.
+// Safety: a patch never changes identity or references, an invalid style or
+// geometry is refused whole, and a path's bounds are the box of its points.
+#[test]
+fn canvas_patch_style_path_and_extent() {
+    let mut ops = vec![op(
+        1,
+        Action::Add {
+            element: element("a"),
+        },
+    )];
+    let mut path = element("mark");
+    path.content = Content::Path {
+        points: vec![[100., 100.], [140., 100.]],
+        closed: false,
+        smooth: true,
+        arrowheads: [false, true],
+    };
+    ops.push(op(2, Action::Add { element: path }));
+    let canvas = Canvas::replay(&ops).unwrap();
+    // A horizontal stroke still has a positive extent.
+    assert_eq!(
+        canvas.get("mark").unwrap().content.bounds(),
+        Some(Bounds {
+            origin: [100., 100.],
+            size: [40., 1.]
+        })
+    );
+    assert_eq!(
+        canvas.extent(),
+        Some(Bounds {
+            origin: [0., 0.],
+            size: [140., 101.]
+        })
+    );
+    assert_eq!(
+        canvas.extent_of(["a", "missing"]),
+        canvas.get("a").unwrap().content.bounds()
+    );
+    let before = canvas.digest();
+    ops.push(op(
+        3,
+        Action::Patch {
+            id: "a".into(),
+            bounds: Some(Bounds {
+                origin: [10., 10.],
+                size: [20., 20.],
+            }),
+            label: Some("Renamed".into()),
+            style: Some(Style {
+                fill: Some("#123456".into()),
+                glow: Some("accent".into()),
+                ..Default::default()
+            }),
+            status: Some(Status::Done),
+            emphasis: Some(true),
+        },
+    ));
+    // A path moves and scales with its box.
+    ops.push(op(
+        4,
+        Action::Patch {
+            id: "mark".into(),
+            bounds: Some(Bounds {
+                origin: [0., 0.],
+                size: [80., 1.],
+            }),
+            label: None,
+            style: None,
+            status: None,
+            emphasis: None,
+        },
+    ));
+    let patched = Canvas::replay(&ops).unwrap();
+    let a = patched.get("a").unwrap();
+    assert_eq!(a.content.label(), Some("Renamed"));
+    assert_eq!(a.content.bounds().unwrap().origin, [10., 10.]);
+    assert_eq!(a.status, Status::Done);
+    assert!(a.emphasis);
+    assert_eq!(a.style.as_ref().unwrap().fill.as_deref(), Some("#123456"));
+    assert!(
+        matches!(&patched.get("mark").unwrap().content, Content::Path { points, .. } if points == &vec![[0., 0.], [80., 0.]])
+    );
+    assert_ne!(patched.digest(), before);
+    // An empty style clears it, so the digest returns to the unstyled form.
+    ops.push(op(
+        5,
+        Action::Patch {
+            id: "a".into(),
+            bounds: None,
+            label: None,
+            style: Some(Style::default()),
+            status: None,
+            emphasis: None,
+        },
+    ));
+    assert!(
+        Canvas::replay(&ops)
+            .unwrap()
+            .get("a")
+            .unwrap()
+            .style
+            .is_none()
+    );
+    for (id, bad) in [
+        (
+            "a",
+            Style {
+                fill: Some("blurple".into()),
+                ..Default::default()
+            },
+        ),
+        (
+            "a",
+            Style {
+                opacity: Some(1.5),
+                ..Default::default()
+            },
+        ),
+        (
+            "a",
+            Style {
+                weight: Some(50),
+                ..Default::default()
+            },
+        ),
+        (
+            "a",
+            Style {
+                stroke_width: Some(f64::NAN),
+                ..Default::default()
+            },
+        ),
+    ] {
+        let mut bad_ops = ops.clone();
+        bad_ops.push(op(
+            6,
+            Action::Patch {
+                id: id.into(),
+                bounds: None,
+                label: None,
+                style: Some(bad),
+                status: None,
+                emphasis: None,
+            },
+        ));
+        assert_eq!(
+            Canvas::replay(&bad_ops).unwrap_err(),
+            ReplayError::InvalidElement(id.into())
+        );
+    }
+    let mut bad_ops = ops.clone();
+    bad_ops.push(op(
+        6,
+        Action::Patch {
+            id: "mark".into(),
+            bounds: None,
+            label: Some("no".into()),
+            style: None,
+            status: None,
+            emphasis: None,
+        },
+    ));
+    assert_eq!(
+        Canvas::replay(&bad_ops).unwrap_err(),
+        ReplayError::InvalidElement("mark".into())
+    );
+    let mut bad_ops = ops.clone();
+    bad_ops.push(op(
+        6,
+        Action::Patch {
+            id: "ghost".into(),
+            bounds: None,
+            label: None,
+            style: None,
+            status: None,
+            emphasis: None,
+        },
+    ));
+    assert_eq!(
+        Canvas::replay(&bad_ops).unwrap_err(),
+        ReplayError::UnknownId("ghost".into())
+    );
+    let mut one_point = element("dot");
+    one_point.content = Content::Path {
+        points: vec![[0., 0.]],
+        closed: false,
+        smooth: false,
+        arrowheads: [false; 2],
+    };
+    assert_eq!(
+        Canvas::replay(&[op(1, Action::Add { element: one_point })]).unwrap_err(),
+        ReplayError::InvalidElement("dot".into())
+    );
+    let mut bad_label_at = element("edge");
+    bad_label_at.content = Content::Connector {
+        from: "a".into(),
+        to: "mark".into(),
+        label: None,
+        arrowheads: [false; 2],
+        dashed: false,
+        route: Route::Curved,
+        from_side: Some(Side::Right),
+        to_side: None,
+        waypoints: vec![],
+        label_at: Some(2.),
+    };
+    let mut edge_ops = ops.clone();
+    edge_ops.push(op(
+        6,
+        Action::Add {
+            element: bad_label_at.clone(),
+        },
+    ));
+    assert_eq!(
+        Canvas::replay(&edge_ops).unwrap_err(),
+        ReplayError::InvalidElement("edge".into())
+    );
+    // Old logs without the new fields replay and digest exactly as before.
+    let legacy = Canvas::replay(&fixture()).unwrap();
+    let serialized = serde_json::to_string(legacy.get("edge0").unwrap()).unwrap();
+    assert!(
+        !serialized.contains("route") && !serialized.contains("style"),
+        "{serialized}"
+    );
+    for color in ["#abc", "#aabbcc", "#aabbccdd", "accent", "pink"] {
+        assert!(valid_color(color), "{color}");
+    }
+    for color in ["abc", "#ab", "#ggg", "Accent", ""] {
+        assert!(!valid_color(color), "{color}");
     }
 }

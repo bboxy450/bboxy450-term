@@ -76,19 +76,30 @@ fn action_schema() -> Value {
         json!({"origin":point,"size":point}),
         json!(["origin", "size"]),
     );
+    let points = json!({"type":"array","items":point,"maxItems":bboxy450_canvas::MAX_POINTS});
+    let arrowheads = json!({"type":"array","items":{"type":"boolean"},"minItems":2,"maxItems":2});
+    let side = json!({"enum":["top","right","bottom","left"]});
+    // A colour is a theme token, a named hue or a hex literal; see NAMED_COLORS.
+    let color = json!({"type":"string","pattern":"^(#[0-9a-fA-F]{3}|#[0-9a-fA-F]{6}|#[0-9a-fA-F]{8}|accent|fg|dim|surface|bg|waiting|error|done|red|orange|yellow|green|teal|blue|indigo|violet|pink|white|black)$"});
+    let style = object(
+        json!({"fill":color,"stroke":color,"stroke_width":{"type":"number","minimum":0,"maximum":64},"opacity":{"type":"number","minimum":0,"maximum":1},"glow":color,"shadow":{"type":"boolean"},"radius":{"type":"number","minimum":0,"maximum":1000},"text":color,"font_size":{"type":"number","minimum":0,"maximum":400},"weight":{"type":"integer","minimum":100,"maximum":900},"italic":{"type":"boolean"},"mono":{"type":"boolean"},"align":{"enum":["left","center","right"]}}),
+        json!([]),
+    );
     let content = json!({"oneOf":[
-        object(json!({"type":{"const":"shape"},"bounds":bounds,"shape":{"enum":["box","rounded","ellipse","diamond","cylinder","actor"]},"label":string}),json!(["type","bounds","shape","label"])),
+        object(json!({"type":{"const":"shape"},"bounds":bounds,"shape":{"enum":["box","rounded","ellipse","diamond","cylinder","actor","hexagon","triangle","parallelogram","star","cloud"]},"label":string}),json!(["type","bounds","shape","label"])),
         object(json!({"type":{"const":"text"},"bounds":bounds,"text":string,"role":{"enum":["heading","paragraph","note"]}}),json!(["type","bounds","text","role"])),
         object(json!({"type":{"const":"frame"},"bounds":bounds,"name":string,"members":{"type":"array","items":string}}),json!(["type","bounds","name","members"])),
-        object(json!({"type":{"const":"connector"},"from":string,"to":string,"label":{"type":["string","null"]},"arrowheads":{"type":"array","items":{"type":"boolean"},"minItems":2,"maxItems":2},"dashed":{"type":"boolean"}}),json!(["type","from","to","arrowheads","dashed"]))
+        object(json!({"type":{"const":"connector"},"from":string,"to":string,"label":{"type":["string","null"]},"arrowheads":arrowheads,"dashed":{"type":"boolean"},"route":{"enum":["straight","orthogonal","curved"]},"from_side":side,"to_side":side,"waypoints":points,"label_at":{"type":"number","minimum":0,"maximum":1}}),json!(["type","from","to","arrowheads","dashed"])),
+        object(json!({"type":{"const":"path"},"points":{"type":"array","items":point,"minItems":2,"maxItems":bboxy450_canvas::MAX_POINTS},"closed":{"type":"boolean"},"smooth":{"type":"boolean"},"arrowheads":arrowheads}),json!(["type","points"]))
     ]});
     let element = object(
-        json!({"id":{"type":"string","minLength":1},"tags":tags,"kind":{"enum":[null,"service","store","queue","person","external"]},"emphasis":{"type":"boolean"},"status":{"enum":["normal","waiting","error","done"]},"content":content}),
+        json!({"id":{"type":"string","minLength":1},"tags":tags,"kind":{"enum":[null,"service","store","queue","person","external"]},"emphasis":{"type":"boolean"},"status":{"enum":["normal","waiting","error","done"]},"style":style,"content":content}),
         json!(["id", "tags", "content"]),
     );
     json!({"oneOf":[
         object(json!({"op":{"const":"add"},"element":element}),json!(["op","element"])),
         object(json!({"op":{"const":"change"},"element":element}),json!(["op","element"])),
+        object(json!({"op":{"const":"patch"},"id":string,"bounds":bounds,"label":string,"style":style,"status":{"enum":["normal","waiting","error","done"]},"emphasis":{"type":"boolean"}}),json!(["op","id"])),
         object(json!({"op":{"const":"remove"},"id":string}),json!(["op","id"])),
         object(json!({"op":{"const":"tag"},"id":string,"tag":{"type":"string","minLength":1}}),json!(["op","id","tag"]))
     ]})
@@ -103,11 +114,11 @@ pub(crate) fn catalogue() -> Vec<Value> {
     [
         ("canvas_open", "Create or open a swarm canvas by title, number or id. Enqueues presentation beside the calling seat when a GUI is attached; shown:false names a detached or busy reason. Retry a busy presentation with the same operation ID. Never waits for the GUI. Default drawing authority is creator plus Oracle; explicit grants are a later step.", open, false),
         ("canvas_list", "List this swarm's canvases, newest activity first, in bounded pages. Filter by tag; pass next as cursor.", object(json!({"tag":{"type":"string","minLength":1},"cursor":{"type":"string","maxLength":256}}),json!([])), true),
-        ("canvas_draw", "Append a small semantic batch. Store assigns seq; op_id dedupes delivery across restart. Stale expect_seq is recorded, not refused. Colours, fonts and weights are forbidden. MAX_ELEMENTS, MAX_BATCH_OPS and MAX_OPS_PER_MINUTE bound drawing.", object(json!({"id":id,"ops":{"type":"array","items":action_schema(),"minItems":1,"maxItems":bboxy450_canvas::store::MAX_BATCH_OPS},"expect_seq":{"type":"integer","minimum":0}}),json!(["id","ops"])), false),
+        ("canvas_draw", "Append a batch of ops: add, change, patch (bounds, label, style, status or emphasis of one element), remove, tag. A batch is one set: a frame may list members added later in the same batch. Elements: shape (box, rounded, ellipse, diamond, cylinder, actor, hexagon, triangle, parallelogram, star, cloud), text, frame, connector (route straight, orthogonal or curved; from_side/to_side ports; waypoints; label_at 0..1) and path (free world points, closed, smooth, arrowheads). Meaning (kind, emphasis, status) sets the house look; an optional style overrides it: fill, stroke, stroke_width, opacity, glow, shadow, radius, text, font_size, weight, italic, mono, align, with colours as theme tokens, named hues or hex. Store assigns seq; op_id dedupes delivery across restart. Stale expect_seq is recorded, not refused. MAX_ELEMENTS, MAX_BATCH_OPS, MAX_POINTS and MAX_OPS_PER_MINUTE bound drawing. Read the canvas skill for the full reference.", object(json!({"id":id,"ops":{"type":"array","items":action_schema(),"minItems":1,"maxItems":bboxy450_canvas::store::MAX_BATCH_OPS},"expect_seq":{"type":"integer","minimum":0}}),json!(["id","ops"])), false),
         ("canvas_close", "Retire a canvas: it leaves canvas_list and the GUI; its record and log are kept under closed/, nothing is deleted. Granted to the creator and Oracle class. Closing an already closed canvas is a no-op.", object(json!({"id":id}),json!(["id"])), false),
         ("canvas_archived_list", "List this swarm's closed canvases, newest first, so one can be restored.", object(json!({}),json!([])), true),
         ("canvas_restore", "Bring a closed canvas back: it returns to canvas_list and the GUI with its drawing. Granted to the creator and Oracle class. Restoring an open canvas is a no-op.", object(json!({"id":id}),json!(["id"])), false),
-        ("canvas_read", "Read semantic elements, seq and digest; image:true also returns a headless GPU-rendered PNG image block. Optional frame fits that region.", object(json!({"id":id,"frame":{"type":"string","minLength":1},"image":{"type":"boolean"}}),json!(["id"])), true)
+        ("canvas_read", "Read seq, digest, the fitted extent of the canvas and of every frame's members, and the elements; elements:false leaves the element list out for a cheap look. image:true also returns a headless GPU-rendered PNG image block fitted to the same extent the GUI fits, with FIT_PADDING around it. Optional frame restricts both to that frame.", object(json!({"id":id,"frame":{"type":"string","minLength":1},"image":{"type":"boolean"},"elements":{"type":"boolean"}}),json!(["id"])), true)
     ].into_iter().map(|(name, description, input, read)|json!({"name":name,"description":description,"inputSchema":input,
         "outputSchema":{"type":"object","additionalProperties":true},"annotations":{"readOnlyHint":read,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}})).collect()
 }
@@ -144,6 +155,11 @@ struct Read {
     frame: Option<String>,
     #[serde(default)]
     image: bool,
+    #[serde(default = "yes")]
+    elements: bool,
+}
+fn yes() -> bool {
+    true
 }
 fn error(code: &str, reason: impl Into<String>) -> d::CommandError {
     d::CommandError::new(code, reason)
@@ -173,10 +189,7 @@ fn summary(s: &Snapshot) -> Value {
     "seq":s.seq,"digest":s.canvas.digest(),"dropped_tail_bytes":s.dropped_tail_bytes})
 }
 fn activity(s: &Snapshot) -> (u64, String) {
-    (
-        s.last_change(),
-        s.record.id.clone(),
-    )
+    (s.last_change(), s.record.id.clone())
 }
 /// Presentation is volatile, not part of the durable drawing result. Replaying
 /// an operation reuses its semantic result and checks the current GUI owner.
@@ -219,7 +232,11 @@ pub(crate) fn present(
                     data.as_object_mut().unwrap().remove("reason");
                 }
                 Err(reason) => {
-                    data["presentation"] = json!(if reason.starts_with("ui_detached:") { "detached" } else { "busy" });
+                    data["presentation"] = json!(if reason.starts_with("ui_detached:") {
+                        "detached"
+                    } else {
+                        "busy"
+                    });
                     data["reason"] = json!(reason);
                 }
             }
@@ -387,12 +404,13 @@ pub(crate) fn execute(
                     json!({"id":record.id,"number":record.number,"slug":record.slug,"closed":true})
                 }
                 // Already closed: the retry of a lost reply.
-                Err(e) if e.code == "canvas_not_found"
-                    && store
-                        .closed_records()
-                        .map_err(io)?
-                        .iter()
-                        .any(|r| r.swarm == swarm && r.id == args.id) =>
+                Err(e)
+                    if e.code == "canvas_not_found"
+                        && store
+                            .closed_records()
+                            .map_err(io)?
+                            .iter()
+                            .any(|r| r.swarm == swarm && r.id == args.id) =>
                 {
                     json!({"id":args.id,"closed":true,"already":true})
                 }
@@ -419,7 +437,12 @@ pub(crate) fn execute(
                     .map_err(io)?
                     .into_iter()
                     .find(|r| r.swarm == swarm && r.id == args.id)
-                    .ok_or_else(|| error("canvas_not_found", "no closed canvas with this id in the current swarm"))?;
+                    .ok_or_else(|| {
+                        error(
+                            "canvas_not_found",
+                            "no closed canvas with this id in the current swarm",
+                        )
+                    })?;
                 if actor.class() != Class::Oracle && actor.reference() != record.creator {
                     return Err(error(
                         "canvas_restore_denied",
@@ -447,13 +470,33 @@ pub(crate) fn execute(
                 })
                 .transpose()?;
             let mut value = summary(&s);
-            value["elements"] = json!(
+            let shown = |e: &&bboxy450_canvas::Element| {
+                frame.is_none_or(|(_, members)| {
+                    members.contains(&e.id) || args.frame.as_ref() == Some(&e.id)
+                })
+            };
+            // Layout help: the fitted extent, and each frame's members' box,
+            // so a harness places the next element without a trial render.
+            value["extent"] = json!(frame.map_or_else(|| s.canvas.extent(), |(b, _)| Some(b)));
+            value["frames"] = json!(
                 s.canvas
                     .elements()
-                    .filter(|e| frame.is_none_or(|(_, members)| members.contains(&e.id)
-                        || args.frame.as_ref() == Some(&e.id)))
+                    .filter(shown)
+                    .filter_map(|e| match &e.content {
+                        Content::Frame {
+                            bounds, members, ..
+                        } => Some(json!({
+                            "id": e.id,
+                            "bounds": bounds,
+                            "members": s.canvas.extent_of(members.iter().map(String::as_str)),
+                        })),
+                        _ => None,
+                    })
                     .collect::<Vec<_>>()
             );
+            if args.elements {
+                value["elements"] = json!(s.canvas.elements().filter(shown).collect::<Vec<_>>());
+            }
             if args.image {
                 let (png, [width, height]) =
                     render::png(&s.canvas, frame.map(|(bounds, _)| bounds))?;
@@ -562,20 +605,53 @@ mod tests {
             }
         ));
         for id in 10..18 {
-            captures.canvas(crate::Ulid(id), bbt_proto::gui::UiRequest::CanvasRefresh { swarm: crate::Ulid(3) }).unwrap();
+            captures
+                .canvas(
+                    crate::Ulid(id),
+                    bbt_proto::gui::UiRequest::CanvasRefresh {
+                        swarm: crate::Ulid(3),
+                    },
+                )
+                .unwrap();
         }
         present(
-            &mut result, &call, &captures, Path::new("/private/project/.bboxy"), crate::Ulid(3), &actor,
+            &mut result,
+            &call,
+            &captures,
+            Path::new("/private/project/.bboxy"),
+            crate::Ulid(3),
+            &actor,
         );
         assert_eq!(result["structuredContent"]["shown"], false);
         assert_eq!(result["structuredContent"]["presentation"], "busy");
-        assert!(result["structuredContent"]["reason"].as_str().unwrap().contains("ui_busy: GUI relay is full; retry"));
-        for _ in 0..8 { owner.try_recv().unwrap(); }
-        present(
-            &mut result, &call, &captures, Path::new("/private/project/.bboxy"), crate::Ulid(3), &actor,
+        assert!(
+            result["structuredContent"]["reason"]
+                .as_str()
+                .unwrap()
+                .contains("ui_busy: GUI relay is full; retry")
         );
-        assert_eq!(result["structuredContent"]["shown"], true, "retry can enqueue after the GUI drains");
-        assert!(matches!(owner.try_recv().unwrap(), crate::gui_capture::Notice::Ui { request: bbt_proto::gui::UiRequest::Canvas { .. }, .. }));
+        for _ in 0..8 {
+            owner.try_recv().unwrap();
+        }
+        present(
+            &mut result,
+            &call,
+            &captures,
+            Path::new("/private/project/.bboxy"),
+            crate::Ulid(3),
+            &actor,
+        );
+        assert_eq!(
+            result["structuredContent"]["shown"], true,
+            "retry can enqueue after the GUI drains"
+        );
+        assert!(matches!(
+            owner.try_recv().unwrap(),
+            crate::gui_capture::Notice::Ui {
+                request: bbt_proto::gui::UiRequest::Canvas { .. },
+                ..
+            }
+        ));
         drop(owner);
         present(
             &mut result,
@@ -603,7 +679,7 @@ mod tests {
         rates.admit("a", 1, now + RATE_WINDOW).unwrap();
     }
     #[test]
-    fn canvas_schema_refuses_style_fields_at_every_depth() {
+    fn canvas_schema_keeps_look_under_style_and_refuses_stray_fields() {
         let catalogue = catalogue();
         let schema = jsonschema::validator_for(
             &catalogue
@@ -614,7 +690,9 @@ mod tests {
         .unwrap();
         let base = json!({"id":"canvas","ops":[{"op":"add","element":{"id":"a","tags":[],"content":{"type":"shape","bounds":{"origin":[0,0],"size":[100,50]},"shape":"box","label":"A"}}}]});
         assert!(schema.is_valid(&base));
-        for field in ["color", "colour", "font", "weight"] {
+        // The look lives in one place, the style object; loose colour or font
+        // fields anywhere else are refused at every depth.
+        for field in ["color", "colour", "font", "weight", "fill"] {
             for level in 0..3 {
                 let mut value = base.clone();
                 let target = match level {
@@ -627,6 +705,25 @@ mod tests {
                 assert!(parse::<Draw>(&value).is_err());
             }
         }
+        let mut styled = base.clone();
+        styled["ops"][0]["element"]["style"] = json!({"fill":"#1b2a4a","stroke":"violet","glow":"accent","stroke_width":2,"opacity":0.9,"font_size":18,"weight":700,"italic":true,"align":"left"});
+        assert!(schema.is_valid(&styled));
+        parse::<Draw>(&styled).unwrap();
+        let mut bad_color = base.clone();
+        bad_color["ops"][0]["element"]["style"] = json!({"fill":"not a colour"});
+        assert!(!schema.is_valid(&bad_color));
+        let mut unknown_style = base.clone();
+        unknown_style["ops"][0]["element"]["style"] = json!({"gradient":"#000"});
+        assert!(!schema.is_valid(&unknown_style));
+        assert!(parse::<Draw>(&unknown_style).is_err());
+        let routed = json!({"id":"canvas","ops":[
+            {"op":"add","element":{"id":"b","tags":[],"content":{"type":"shape","bounds":{"origin":[300,0],"size":[100,50]},"shape":"cloud","label":"B"}}},
+            {"op":"add","element":{"id":"ab","tags":[],"content":{"type":"connector","from":"a","to":"b","label":"x","arrowheads":[false,true],"dashed":false,"route":"orthogonal","from_side":"right","to_side":"left","waypoints":[[200,80]],"label_at":0.25}}},
+            {"op":"add","element":{"id":"mark","tags":[],"content":{"type":"path","points":[[0,0],[10,10],[20,0]],"smooth":true}}},
+            {"op":"patch","id":"a","bounds":{"origin":[5,5],"size":[100,50]},"style":{"glow":"pink"}}
+        ]});
+        assert!(schema.is_valid(&routed));
+        parse::<Draw>(&routed).unwrap();
         let mut seq = base;
         seq["ops"][0]["seq"] = json!(1);
         assert!(!schema.is_valid(&seq));

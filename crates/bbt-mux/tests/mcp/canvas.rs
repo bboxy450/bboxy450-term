@@ -370,10 +370,16 @@ fn canvas_open_lost_create_result_recovers_its_id_among_equal_titles() {
 #[test]
 fn canvas_close_retires_the_canvas_for_creator_or_oracle_and_retries_safely() {
     let mut f = Fixture::new();
-    let opened = data(f.call(f.own.id, Ulid::new(), "canvas_open", json!({"title":"Gone"})));
+    let opened = data(f.call(
+        f.own.id,
+        Ulid::new(),
+        "canvas_open",
+        json!({"title":"Gone"}),
+    ));
     let id = opened["id"].clone();
     assert_eq!(
-        f.call(f.peer.id, Ulid::new(), "canvas_close", json!({"id":id}))["structuredContent"]["error"]["code"],
+        f.call(f.peer.id, Ulid::new(), "canvas_close", json!({"id":id}))["structuredContent"]["error"]
+            ["code"],
         "canvas_close_denied"
     );
     let op = Ulid::new();
@@ -387,12 +393,16 @@ fn canvas_close_retires_the_canvas_for_creator_or_oracle_and_retries_safely() {
             .all(|c| c["id"] != id)
     );
     assert_eq!(
-        f.call(f.own.id, Ulid::new(), "canvas_read", json!({"id":id}))["structuredContent"]["error"]["code"],
+        f.call(f.own.id, Ulid::new(), "canvas_read", json!({"id":id}))["structuredContent"]["error"]
+            ["code"],
         "canvas_not_found"
     );
     // The same operation replays its result; a fresh close of a closed canvas is a no-op.
     f.restart();
-    assert_eq!(closed, data(f.call(f.own.id, op, "canvas_close", json!({"id":id}))));
+    assert_eq!(
+        closed,
+        data(f.call(f.own.id, op, "canvas_close", json!({"id":id})))
+    );
     assert_eq!(
         data(f.call(f.oracle.id, Ulid::new(), "canvas_close", json!({"id":id})))["already"],
         true
@@ -401,7 +411,8 @@ fn canvas_close_retires_the_canvas_for_creator_or_oracle_and_retries_safely() {
     let archived = data(f.call(f.own.id, Ulid::new(), "canvas_archived_list", json!({})));
     assert_eq!(archived["canvases"][0]["id"], id);
     assert_eq!(
-        f.call(f.peer.id, Ulid::new(), "canvas_restore", json!({"id":id}))["structuredContent"]["error"]["code"],
+        f.call(f.peer.id, Ulid::new(), "canvas_restore", json!({"id":id}))["structuredContent"]["error"]
+            ["code"],
         "canvas_restore_denied"
     );
     let restored = data(f.call(f.oracle.id, Ulid::new(), "canvas_restore", json!({"id":id})));
@@ -415,5 +426,96 @@ fn canvas_close_retires_the_canvas_for_creator_or_oracle_and_retries_safely() {
             .as_array()
             .unwrap()
             .is_empty()
+    );
+}
+#[test]
+fn canvas_read_reports_extents_skips_elements_on_request_and_keeps_a_frame_first_batch() {
+    let mut f = Fixture::new();
+    let opened = data(f.call(
+        f.own.id,
+        Ulid::new(),
+        "canvas_open",
+        json!({"title":"Routed"}),
+    ));
+    let id = opened["id"].clone();
+    // The frame is listed before its members: one set, not a sequence.
+    let batch = json!({"id":id,"ops":[
+        {"op":"add","element":{"id":"group","tags":[],"content":{"type":"frame","bounds":{"origin":[0,0],"size":[400,200]},"name":"Group","members":["a","b"]}}},
+        {"op":"add","element":{"id":"a","tags":[],"kind":"service","content":{"type":"shape","bounds":{"origin":[20,40],"size":[120,60]},"shape":"hexagon","label":"Alpha service\nowns the audience"}}},
+        {"op":"add","element":{"id":"b","tags":[],"style":{"fill":"#1b2a4a","stroke":"violet","glow":"pink","text":"white","weight":700},"content":{"type":"shape","bounds":{"origin":[260,40],"size":[120,60]},"shape":"cloud","label":"Beta"}}},
+        {"op":"add","element":{"id":"ab","tags":[],"content":{"type":"connector","from":"a","to":"b","label":"bearer, aud ATC","arrowheads":[false,true],"dashed":false,"route":"orthogonal","label_at":0.3}}},
+        {"op":"add","element":{"id":"mark","tags":[],"style":{"stroke":"orange","stroke_width":3},"content":{"type":"path","points":[[0,230],[60,260],[120,230]],"smooth":true,"arrowheads":[false,true]}}}
+    ]});
+    let drawn = data(f.call(f.own.id, Ulid::new(), "canvas_draw", batch));
+    assert_eq!(drawn["seq"], 5);
+    let patched = data(f.call(
+        f.own.id,
+        Ulid::new(),
+        "canvas_draw",
+        json!({"id":id,"ops":[{"op":"patch","id":"b","bounds":{"origin":[300,40],"size":[120,60]},"status":"done"}]}),
+    ));
+    assert_eq!(patched["seq"], 6);
+    let quick = data(f.call(
+        f.own.id,
+        Ulid::new(),
+        "canvas_read",
+        json!({"id":id,"elements":false}),
+    ));
+    assert!(quick.get("elements").is_none(), "{quick}");
+    assert_eq!(
+        quick["extent"],
+        json!({"origin":[0.,0.],"size":[420.,260.]})
+    );
+    assert_eq!(quick["frames"][0]["id"], "group");
+    assert_eq!(
+        quick["frames"][0]["members"],
+        json!({"origin":[20.,40.],"size":[400.,60.]})
+    );
+    f.restart();
+    let full = f.call(
+        f.own.id,
+        Ulid::new(),
+        "canvas_read",
+        json!({"id":id,"image":true}),
+    );
+    let after = data(full.clone());
+    assert_eq!(after["seq"], 6);
+    assert_eq!(after["digest"], quick["digest"]);
+    assert_eq!(after["elements"].as_array().unwrap().len(), 5);
+    let b = after["elements"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|e| e["id"] == "b")
+        .unwrap();
+    assert_eq!(b["content"]["bounds"]["origin"], json!([300., 40.]));
+    assert_eq!(b["status"], "done");
+    assert_eq!(b["style"]["glow"], "pink");
+    let image = full["content"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .find(|c| c["type"] == "image")
+        .expect("image block");
+    // CANVAS_DEMO_PNG=path keeps the rendered PNG for a human look.
+    if let Some(path) = std::env::var_os("CANVAS_DEMO_PNG") {
+        use base64::Engine;
+        std::fs::write(
+            path,
+            base64::engine::general_purpose::STANDARD
+                .decode(image["data"].as_str().unwrap())
+                .unwrap(),
+        )
+        .unwrap();
+    }
+    let framed = data(f.call(
+        f.own.id,
+        Ulid::new(),
+        "canvas_read",
+        json!({"id":id,"frame":"group","elements":false}),
+    ));
+    assert_eq!(
+        framed["extent"],
+        json!({"origin":[0.,0.],"size":[400.,200.]})
     );
 }
