@@ -83,14 +83,15 @@ if [ "$after_tests" = false ]; then
     # The harness repository's own gate runs its suite in its own configuration;
     # here it would rerun under this workspace's feature unification. Its CLOEXEC
     # fixture and term-facing seats run in test-harness-native below.
-    # Dream C1 units, head-of-line recovery and knowledge responsiveness hold
-    # millisecond CPU/wall budgets:
-    # run them alone after the parallel suite, not under its contention, and in the
-    # optimized profile their budgets are set for (decision
-    # d93377961364684-dream-c1-optimized-private-fixture; the lean land does the same).
-    timed='(package(bboxy450-term-mux) & test(/^(logic::dream_public_api_tests|logic::dream_c1::|registry::dream_c1::|logic::hol_tests::|logic::knowledge_responsiveness_tests::)/)) | (package(bboxy450-harness-wake-up) & binary(dream_c1))'
-    ledger unit sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked -E "not ($timed)"
-    ledger unit env NEXTEST_TEST_THREADS=1 sh scripts/quarantine-test.sh --locked --profile dream-c1-fixture -p bboxy450-term-mux -p bboxy450-harness-wake-up -E "$timed"
+    # The Dream C1 family asserts 1 ms per-unit CPU budgets on optimized code; it runs
+    # in its own gate, make test-dream-c1 (same filters, dream-c1-fixture profile), not
+    # here. scripts/landing.py DREAM_C1_GATE_TESTS names the same family.
+    dream='(package(bboxy450-term-mux) & (test(dream_c1) | test(dream_public_))) | (package(bboxy450-harness-wake-up) & (test(dream_c1) | test(dream_bootstrap) | binary(dream_c1) | binary(dream_bootstrap)))'
+    # Head-of-line recovery and knowledge responsiveness hold wall-clock budgets:
+    # run them alone after the parallel suite, not under its contention.
+    timed='package(bboxy450-term-mux) & test(/^(logic::hol_tests::|logic::knowledge_responsiveness_tests::)/)'
+    ledger unit sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked -E "not ($timed) & not ($dream)"
+    ledger unit env NEXTEST_TEST_THREADS=1 sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux -E "$timed"
 fi
 # This real exec-environment control restores and hashes its source before
 # returning; no other compilation runs while the broken variant is present.

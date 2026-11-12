@@ -690,15 +690,13 @@ def lean(range_spec, *, root=None, wide=False):
     return lines
 
 
-# Dream C1 work units are budgeted for optimized code (1 ms CPU per unit, decision
-# d93377961364684-dream-c1-optimized-private-fixture). Their tests assert that budget, so
-# in the lean land they run under the same `dream-c1-fixture` profile and filter that
-# `make test-dream-c1` uses (scripts/test-dream-c1.py); every other test of the package
-# runs as before. Nothing is dropped: the two runs partition the planned selection.
-OPTIMIZED_FIXTURE_PROFILE = "dream-c1-fixture"
-OPTIMIZED_FIXTURE_TESTS = {
-    "bboxy450-term-mux": "test(dream_c1) | test(dream_public_) | test(harness_status)",
-    "bboxy450-harness-wake-up": "test(dream_bootstrap) | test(dream_c1)",
+# The Dream C1 family asserts 1 ms per-unit CPU budgets on optimized code and runs in
+# its own gate, make test-dream-c1 (scripts/test-dream-c1.py, dream-c1-fixture profile).
+# The lean land runs every other test of these packages. scripts/ci-local.sh names the
+# same family.
+DREAM_C1_GATE_TESTS = {
+    "bboxy450-term-mux": "test(dream_c1) | test(dream_public_)",
+    "bboxy450-harness-wake-up": "test(dream_c1) | test(dream_bootstrap) | binary(dream_c1) | binary(dream_bootstrap)",
 }
 
 
@@ -715,23 +713,14 @@ def restrict_selection(argv, expression):
 
 def lean_test(package, selection):
     argv = shlex.split(selection)
-    optimized = OPTIMIZED_FIXTURE_TESTS.get(package)
-    if optimized:
-        # A partition of the planned selection may be empty on one side.
-        runs = [["--no-tests=pass", *restrict_selection(argv, f"not ({optimized})")],
-                ["--profile", OPTIMIZED_FIXTURE_PROFILE, "--no-tests=pass",
-                 *restrict_selection(argv, optimized)]]
-    else:
-        # A crate whose planned selection holds no test (its lib tests run in
-        # a lane of their own, or it has none) still passed clippy and check.
-        runs = [["--no-tests=pass", *argv]]
-    for run in runs:
-        code = subprocess.run(["sh", "scripts/quarantine-test.sh", "--allow-ignored-only",
-                               "--locked", "-p", package, *run]).returncode
-        code = code if code >= 0 else 128 - code
-        if code:
-            return code
-    return 0
+    family = DREAM_C1_GATE_TESTS.get(package)
+    if family:
+        argv = restrict_selection(argv, f"not ({family})")
+    # A crate whose planned selection holds no test (its lib tests run in a lane of
+    # their own, or it has none) still passed clippy and check.
+    code = subprocess.run(["sh", "scripts/quarantine-test.sh", "--allow-ignored-only",
+                           "--locked", "-p", package, "--no-tests=pass", *argv]).returncode
+    return code if code >= 0 else 128 - code
 
 
 def lean_check(package, selection):
