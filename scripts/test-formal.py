@@ -94,7 +94,7 @@ print("Model checking completed. No error has been found.")
         # Standalone exports omit frontend labels because only checker cases remain.
         if not (root / "crates/bboxy450-term").exists():
             return
-        self.assertEqual({row["frontend"] for row in rows}, {"checker", "yarn", "project"})
+        self.assertEqual({row["frontend"] for row in rows}, {"checker", "yarn", "den", "project"})
         project = {n for c in formal.contracts(root, {r["name"] for r in rows}) for n in c["models"]}
         self.assertEqual({r["name"] for r in rows if r["frontend"] == "project"}, project)
         # 12 original checker cases plus IteMax, QuantifiedScan and

@@ -166,6 +166,7 @@ pub(crate) fn names(spec: &Spec) -> Vec<Diagnostic> {
         .chain(spec.events.iter().map(|s| &s.name))
         .chain(spec.effects.iter().map(|s| &s.name))
         .chain(spec.invariants.iter().map(|c| &c.name))
+        .chain(spec.properties.iter().map(|p| &p.name))
         .chain(spec.assumptions.iter().map(|a| &a.name))
         .chain(imported)
         .collect();
@@ -279,6 +280,37 @@ pub(crate) fn names(spec: &Spec) -> Vec<Diagnostic> {
     }
     for invariant in &spec.invariants {
         check.expr(&invariant.expr, &[]);
+    }
+    for property in &spec.properties {
+        let mut locals = Vec::new();
+        let mut used = BTreeSet::new();
+        referenced_names(&property.request, &mut used);
+        referenced_names(&property.response, &mut used);
+        for (binding, domain) in &property.binders {
+            check.use_name(&domain.text, domain.pos, &[]);
+            reserved(spec, [binding], &mut check.diagnostics);
+            if locals.contains(&binding.text) {
+                check.diagnostics.push(diagnostic(
+                    spec,
+                    binding.pos,
+                    "X202",
+                    format!("{} is bound twice", binding.text),
+                    "give every binder of the property a unique name",
+                ));
+            }
+            if !used.contains(&binding.text) {
+                check.unused.push(diagnostic(
+                    spec,
+                    binding.pos,
+                    "X203",
+                    format!("{} is quantified but never used", binding.text),
+                    "use the quantified binding or remove the quantifier",
+                ));
+            }
+            locals.push(binding.text.clone());
+        }
+        check.expr(&property.request, &locals);
+        check.expr(&property.response, &locals);
     }
     for scenario in &spec.scenarios {
         for step in &scenario.steps {
@@ -783,6 +815,29 @@ pub(crate) fn types(spec: &Spec) -> Vec<Diagnostic> {
     for invariant in &spec.invariants {
         if let Err(error) = expr_type(spec, &invariant.expr, &[], Some(&Ty::Bool)) {
             errors.push(error);
+        }
+    }
+    for property in &spec.properties {
+        let mut bindings = Vec::new();
+        for (binding, domain) in &property.binders {
+            bindings.push((binding.text.clone(), Ty::Named(domain.text.clone())));
+        }
+        if let Some((_, domain)) = property
+            .binders
+            .iter()
+            .find(|(_, d)| !spec.enums.iter().any(|e| e.name.text == d.text))
+        {
+            errors.push(type_error(
+                spec,
+                domain.pos,
+                format!("{} is not an enum type", domain.text),
+            ));
+            continue;
+        }
+        for side in [&property.request, &property.response] {
+            if let Err(error) = expr_type(spec, side, &bindings, Some(&Ty::Bool)) {
+                errors.push(error);
+            }
         }
     }
     for scenario in &spec.scenarios {

@@ -9,7 +9,7 @@
 // Sets retain one Boolean model variable per member; enum values retain ordinal encoding.
 // Changes: lower the hand-written Den AST directly into the existing TLC expression API.
 use crate::{ast::*, eval::*, types::expr_type};
-use bboxy450_tlc::{Action, Expr as E, Invariant, Model, Variable};
+use bboxy450_tlc::{Action, Expr as E, Invariant, Model, Response, Variable};
 
 enum Lowered {
     Scalar(E),
@@ -208,8 +208,10 @@ pub(crate) fn model(s: &Spec) -> Result<Model, String> {
     if vars.is_empty() {
         vars.push(Variable::new("unit", 0, 0, 0));
     }
-    let mut m = Model::new("DenSpec", vars);
+    let mut m = Model::new(&format!("Den{}", s.name.text), vars);
     m.check_deadlock = false;
+    // One case is one fairness group over all its argument values, as in Yarn.
+    let mut groups: std::collections::BTreeMap<(usize, usize), Vec<usize>> = Default::default();
     for (hi, args) in instances(s).ok_or("event instance limit exceeded")? {
         let h = &s.handlers[hi];
         let p = bindings(s, h, &args);
@@ -274,6 +276,9 @@ pub(crate) fn model(s: &Spec) -> Result<Model, String> {
                 }
             }
             let name = format!("{}({args:?})/{}#{hi}:{ci}", h.event.text, c.name.text);
+            if c.fair.is_some() {
+                groups.entry((hi, ci)).or_default().push(m.actions.len());
+            }
             m.actions.push(Action::new(
                 &name,
                 guards[ci].clone().unwrap_or_else(|| otherwise.clone()),
@@ -287,7 +292,72 @@ pub(crate) fn model(s: &Spec) -> Result<Model, String> {
             condition: expression(s, &inv.expr, &vec![], Some(&Ty::Bool))?.scalar(),
         });
     }
+    for ((hi, ci), group) in groups {
+        match s.handlers[hi].cases[ci].fair {
+            Some((Fairness::Strong, _)) => m.strong_fair.push(group),
+            _ => m.weak_fair.push(group),
+        }
+    }
+    for p in &s.properties {
+        for (params, label) in property_instances(s, p) {
+            m.responses.push(Response {
+                name: format!("{}{label}", p.name.text),
+                request: expression(s, &p.request, &params, Some(&Ty::Bool))?.scalar(),
+                response: expression(s, &p.response, &params, Some(&Ty::Bool))?.scalar(),
+            });
+        }
+    }
     Ok(m)
+}
+/// Every valuation of a property's binders, with its `(Member, ...)` label.
+pub(crate) fn property_instances(s: &Spec, p: &Property) -> Vec<(Bindings, String)> {
+    let mut all: Vec<(Bindings, Vec<String>)> = vec![(vec![], vec![])];
+    for (binding, d) in &p.binders {
+        let members = &domain(s, &d.text).members;
+        all = all
+            .into_iter()
+            .flat_map(|(params, labels)| {
+                members.iter().enumerate().map(move |(n, member)| {
+                    let (mut params, mut labels) = (params.clone(), labels.clone());
+                    params.push((
+                        binding.text.clone(),
+                        Ty::Named(d.text.clone()),
+                        Value::Scalar(n as i64),
+                    ));
+                    labels.push(member.text.clone());
+                    (params, labels)
+                })
+            })
+            .collect();
+    }
+    all.into_iter()
+        .map(|(params, labels)| {
+            let label = if labels.is_empty() {
+                String::new()
+            } else {
+                format!("({})", labels.join(", "))
+            };
+            (params, label)
+        })
+        .collect()
+}
+/// The Den state a model state vector encodes.
+pub(crate) fn unflatten(s: &Spec, flat: &[i64]) -> State {
+    let mut at = 0;
+    s.fields
+        .iter()
+        .map(|f| match &f.ty.kind {
+            Ty::Set(d) => {
+                let n = domain(s, d).members.len();
+                at += n;
+                Value::Set(flat[at - n..at].iter().map(|b| *b != 0).collect())
+            }
+            _ => {
+                at += 1;
+                Value::Scalar(flat[at - 1])
+            }
+        })
+        .collect()
 }
 #[cfg(test)]
 pub(crate) fn flatten(s: &Spec, state: &State) -> Vec<i64> {

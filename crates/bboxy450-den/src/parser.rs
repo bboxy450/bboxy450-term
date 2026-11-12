@@ -62,8 +62,6 @@ fn is_unsupported(word: &str) -> bool {
             | "recipe"
             | "record"
             | "managed"
-            | "leads"
-            | "fair"
             | "staff"
             | "channel"
             | "work"
@@ -562,6 +560,17 @@ impl Parser {
         self.separators();
         let mut cases = Vec::new();
         while !self.take("}") {
+            let fair_pos = self.current().pos;
+            let fair = if self.take("fair") {
+                Some(if self.take("weak") {
+                    (Fairness::Weak, fair_pos)
+                } else {
+                    self.need("strong")?;
+                    (Fairness::Strong, fair_pos)
+                })
+            } else {
+                None
+            };
             self.need("case")?;
             let name = self.name()?;
             let guard = if self.take("if") {
@@ -586,6 +595,7 @@ impl Parser {
             };
             cases.push(Case {
                 name,
+                fair,
                 guard,
                 outcome,
                 stmts,
@@ -659,6 +669,7 @@ impl Parser {
             effects: Vec::new(),
             handlers: Vec::new(),
             invariants: Vec::new(),
+            properties: Vec::new(),
             assumptions: Vec::new(),
             scenarios: Vec::new(),
         };
@@ -731,12 +742,45 @@ impl Parser {
                 result.effects.push(self.signature()?);
             } else if self.take("on") {
                 result.handlers.push(self.handler()?);
-            } else if self.take("invariant") {
+            } else if self.at("invariant") || self.at("theorem") {
+                let theorem = self.take("theorem");
+                if !theorem {
+                    self.need("invariant")?;
+                }
                 let name = self.name()?;
                 let text = self.text()?;
                 self.need("=")?;
                 let expr = self.expr()?;
-                result.invariants.push(Claim { name, text, expr });
+                result.invariants.push(Claim {
+                    name,
+                    text,
+                    expr,
+                    theorem,
+                });
+            } else if self.take("property") {
+                let name = self.name()?;
+                let text = self.text()?;
+                self.need("=")?;
+                // Binders scope over both sides; a quantified side needs parentheses.
+                let mut binders = Vec::new();
+                while self.take("forall") {
+                    let binding = self.name()?;
+                    self.need(":")?;
+                    let domain = self.name()?;
+                    self.need(".")?;
+                    binders.push((binding, domain));
+                }
+                let request = self.expr()?;
+                self.need("leads")?;
+                self.need("to")?;
+                let response = self.expr()?;
+                result.properties.push(Property {
+                    name,
+                    text,
+                    binders,
+                    request,
+                    response,
+                });
             } else if self.take("assume") {
                 let name = self.name()?;
                 let text = self.text()?;

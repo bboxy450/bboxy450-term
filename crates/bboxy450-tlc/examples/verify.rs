@@ -8,9 +8,8 @@
 // Standalone development tool, outside the UI; depending on bbt-rt would invert layering.
 #![allow(clippy::disallowed_methods)]
 use Expr::{Bool as B, Int as I, Var as V};
+use bboxy450_tlc::corpus::export;
 use bboxy450_tlc::{Action, Expr, Invariant, Model, Response, Variable};
-use std::collections::BTreeSet;
-use std::fmt::Write as _;
 use std::path::Path;
 
 fn counter(name: &str, bad: bool, deadlock: bool) -> Model {
@@ -256,76 +255,6 @@ fn stutter() -> Model {
         response: V(0).eq(I(1)),
     });
     m
-}
-fn export(
-    m: Model,
-    expected: &str,
-    root: &Path,
-    manifest: &mut String,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let r = m.check(100_000)?;
-    let actual = if r.violations.is_empty() {
-        "pass"
-    } else if r.violations.iter().any(|v| !v.cycle.is_empty()) {
-        "liveness"
-    } else if r.violations.iter().any(|v| v.property == "Deadlock") {
-        "deadlock"
-    } else {
-        "safety"
-    };
-    if actual != expected {
-        return Err(format!("{}: native expected {expected}, got {actual}", m.name).into());
-    }
-    std::fs::write(root.join(format!("{}.tla", m.name)), m.tla()?)?;
-    std::fs::write(root.join(format!("{}.cfg", m.name)), m.config(false))?;
-    std::fs::write(root.join(format!("{}Graph.cfg", m.name)), m.config(true))?;
-    let states: BTreeSet<_> = r.states.iter().cloned().collect();
-    let mut rows = String::new();
-    for state in states {
-        writeln!(
-            &mut rows,
-            "{}",
-            state
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(",")
-        )?;
-    }
-    std::fs::write(root.join(format!("{}.states", m.name)), rows)?;
-    let mut transitions = BTreeSet::new();
-    for (i, edges) in r.edges.iter().enumerate() {
-        for edge in edges {
-            transitions.insert(format!(
-                "{:?}\t{}\t{:?}",
-                r.states[i], edge.action, r.states[edge.to]
-            ));
-        }
-    }
-    std::fs::write(
-        root.join(format!("{}.edges", m.name)),
-        transitions.into_iter().collect::<Vec<_>>().join("\n") + "\n",
-    )?;
-    let mut trace = String::new();
-    for v in &r.violations {
-        writeln!(
-            &mut trace,
-            "{} prefix={:?} cycle={:?}",
-            v.property,
-            v.prefix.iter().map(|i| &r.states[*i]).collect::<Vec<_>>(),
-            v.cycle.iter().map(|i| &r.states[*i]).collect::<Vec<_>>()
-        )?;
-    }
-    std::fs::write(root.join(format!("{}.native-trace", m.name)), trace)?;
-    writeln!(
-        manifest,
-        "{}\t{}\t{}\t{}",
-        m.name,
-        expected,
-        r.states.len(),
-        m.variables.len()
-    )?;
-    Ok(())
 }
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let output = std::env::args()

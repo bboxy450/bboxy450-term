@@ -23,11 +23,11 @@ spec Outbox {
     case known otherwise => reject AlreadySubmitted
   }
   on Send(m) {
-    case send if up && unacked(m) && !inflight(m) => { inflight += m }
+    fair strong case send if up && unacked(m) && !inflight(m) => { inflight += m }
     case hold otherwise => ignore NotSendable
   }
   on Applied(m) {
-    case retire if up && inflight(m) => { unacked -= m; inflight -= m; acked += m }
+    fair strong case retire if up && inflight(m) => { unacked -= m; inflight -= m; acked += m }
     case stale otherwise => ignore NoAck
   }
   on Drop {
@@ -35,7 +35,7 @@ spec Outbox {
     case down otherwise => ignore AlreadyDown
   }
   on Reconnect {
-    case restore if !up => { up = true }
+    fair weak case restore if !up => { up = true }
     case live otherwise => ignore AlreadyUp
   }
 
@@ -44,7 +44,11 @@ spec Outbox {
   invariant OUTBOX_002 "only unacknowledged messages are in flight" =
     forall m: Msg. inflight(m) ==> unacked(m)
 
+  property OUTBOX_L1 "a submitted message is eventually acknowledged" =
+    forall m: Msg. unacked(m) leads to acked(m)
+
   assume OUTBOX_A1 "an Applied frame is sent only by a remote that applied the message"
+  assume OUTBOX_A2 "a down link reconnects, and a message that keeps becoming sendable or in flight is eventually sent and applied"
 
   scenario "a dropped link makes the message sendable again" {
     Submit(Msg.A)  ~> accepted

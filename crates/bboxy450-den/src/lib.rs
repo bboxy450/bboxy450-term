@@ -57,12 +57,35 @@ pub struct Summary {
     pub invariants: Vec<(String, String)>,
     /// Environmental assumption IDs and prose.
     pub assumptions: Vec<(String, String)>,
+    /// Progress property IDs and prose, checked under the declared fairness.
+    pub properties: Vec<(String, String)>,
+    /// Invariant IDs declared `theorem`. `check` proves them only within the
+    /// bounds; the unbounded proof is the Lean gate's evidence, not this report's.
+    pub theorems: Vec<String>,
     /// Number of declared scenarios.
     pub scenarios: usize,
 }
 /// Checks syntax, names, types, totality, steps, bounded safety, vacuity and examples.
 pub fn check(source: &str) -> Report {
     checker::check(source)
+}
+/// The finite model `check` explores, for a spec that is well formed (names,
+/// types, totality, steps) but not necessarily sound: a broken control still
+/// has a model, and exporting it lets Java TLC refute it independently.
+pub fn model(source: &str) -> Result<bboxy450_tlc::Model, Report> {
+    let unsound = |diagnostics| Report {
+        records: vec![],
+        diagnostics,
+    };
+    let spec = checker::load(source).map_err(unsound)?;
+    lower::model(&spec).map_err(|e| {
+        unsound(vec![spec.name.pos.diagnostic(
+            "X602",
+            &spec.name.text,
+            e,
+            "keep updates within the declared variable ranges",
+        )])
+    })
 }
 impl Report {
     /// True exactly when no diagnostics were produced.
@@ -88,7 +111,7 @@ impl Report {
     }
     /// JSON with stable record, diagnostic and field ordering; no serialization dependency.
     pub fn to_json(&self) -> String {
-        let records=self.records.iter().map(|s|format!("{{\"kind\":{},\"name\":{},\"intent\":{},\"domains\":[{}],\"states\":{},\"transitions\":{},\"invariants\":[{}],\"assumptions\":[{}],\"scenarios\":{}}}",quote(s.kind),quote(&s.name),quote(&s.intent),s.domains.iter().map(|(n,c)|format!("[{},{}]",quote(n),c)).collect::<Vec<_>>().join(","),s.states,s.transitions,pairs(&s.invariants),pairs(&s.assumptions),s.scenarios)).collect::<Vec<_>>().join(",");
+        let records=self.records.iter().map(|s|format!("{{\"kind\":{},\"name\":{},\"intent\":{},\"domains\":[{}],\"states\":{},\"transitions\":{},\"invariants\":[{}],\"assumptions\":[{}],\"properties\":[{}],\"theorems\":[{}],\"scenarios\":{}}}",quote(s.kind),quote(&s.name),quote(&s.intent),s.domains.iter().map(|(n,c)|format!("[{},{}]",quote(n),c)).collect::<Vec<_>>().join(","),s.states,s.transitions,pairs(&s.invariants),pairs(&s.assumptions),pairs(&s.properties),s.theorems.iter().map(|t|quote(t)).collect::<Vec<_>>().join(","),s.scenarios)).collect::<Vec<_>>().join(",");
         let diagnostics=self.diagnostics.iter().map(|d|format!("{{\"code\":{},\"line\":{},\"column\":{},\"record\":{},\"message\":{},\"repair\":{}}}",quote(d.code),d.line,d.column,quote(&d.record),quote(&d.message),quote(&d.repair))).collect::<Vec<_>>().join(",");
         format!("{{\"records\":[{records}],\"diagnostics\":[{diagnostics}]}}")
     }

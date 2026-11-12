@@ -201,7 +201,12 @@ fn markdown(
                 Outcome::Reject(n) => format!("rejected `{}`", n.text),
                 Outcome::Ignore(n) => format!("ignored `{}`", n.text),
             };
-            let _ = writeln!(out, "| `{}` | {when} | {effect} |", c.name.text);
+            let fair = match c.fair {
+                Some((Fairness::Weak, _)) => " (fair weak)",
+                Some((Fairness::Strong, _)) => " (fair strong)",
+                None => "",
+            };
+            let _ = writeln!(out, "| `{}`{fair} | {when} | {effect} |", c.name.text);
         }
         let _ = writeln!(out);
     }
@@ -211,10 +216,30 @@ fn markdown(
         for i in &spec.invariants {
             let _ = writeln!(
                 out,
-                "- **{}**: {}. `{}`",
+                "- **{}**{}: {}. `{}`",
                 i.name.text,
+                if i.theorem { " (theorem)" } else { "" },
                 i.text.trim(),
                 expr(&i.expr)
+            );
+        }
+        let _ = writeln!(out);
+    }
+    if !spec.properties.is_empty() {
+        let _ = writeln!(out, "## Progress\n");
+        for p in &spec.properties {
+            let binders: String = p
+                .binders
+                .iter()
+                .map(|(b, d)| format!("forall {}: {}. ", b.text, d.text))
+                .collect();
+            let _ = writeln!(
+                out,
+                "- **{}**: {}. `{binders}{} leads to {}`",
+                p.name.text,
+                p.text.trim(),
+                expr(&p.request),
+                expr(&p.response)
             );
         }
         let _ = writeln!(out);

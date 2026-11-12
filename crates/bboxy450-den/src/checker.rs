@@ -39,10 +39,38 @@ pub(crate) fn check(source: &str) -> Report {
             .iter()
             .map(|a| (a.name.text.clone(), a.text.clone()))
             .collect(),
+        properties: s
+            .properties
+            .iter()
+            .map(|p| (p.name.text.clone(), p.text.clone()))
+            .collect(),
+        theorems: s
+            .invariants
+            .iter()
+            .filter(|i| i.theorem)
+            .map(|i| i.name.text.clone())
+            .collect(),
         scenarios: s.scenarios.len(),
     };
     // Module identity is parsed here; filesystem/import resolution belongs to the next version.
     let _module = &s.module;
+    let mut diagnostics = well_formed(s);
+    if diagnostics.is_empty() {
+        diagnostics = model(s, &mut summary)
+    }
+    if diagnostics.is_empty() {
+        diagnostics = scenarios(s)
+    }
+    if diagnostics.is_empty() {
+        diagnostics = completeness(s)
+    }
+    Report {
+        records: vec![summary],
+        diagnostics,
+    }
+}
+/// Names, types, totality and steps: everything a machine needs to have one meaning.
+fn well_formed(s: &Spec) -> Vec<Diagnostic> {
     let mut diagnostics = types::names(s);
     if diagnostics.is_empty() {
         diagnostics = types::types(s)
@@ -56,18 +84,16 @@ pub(crate) fn check(source: &str) -> Report {
     if diagnostics.is_empty() {
         diagnostics = steps(s)
     }
+    diagnostics
+}
+/// A well-formed spec, or the diagnostics that say why it has no single meaning.
+pub(crate) fn load(source: &str) -> Result<Spec, Vec<Diagnostic>> {
+    let spec = parser::parse(source)?;
+    let diagnostics = well_formed(&spec);
     if diagnostics.is_empty() {
-        diagnostics = model(s, &mut summary)
-    }
-    if diagnostics.is_empty() {
-        diagnostics = scenarios(s)
-    }
-    if diagnostics.is_empty() {
-        diagnostics = completeness(s)
-    }
-    Report {
-        records: vec![summary],
-        diagnostics,
+        Ok(spec)
+    } else {
+        Err(diagnostics)
     }
 }
 fn too_large(s: &Spec, pos: Pos) -> Diagnostic {
@@ -256,6 +282,15 @@ fn steps(s: &Spec) -> Vec<Diagnostic> {
                     ))
                 }
             }
+            if let (Some((_, pos)), false) = (c.fair, matches!(c.outcome, Outcome::Accept)) {
+                ds.push(diagnostic(
+                    s,
+                    pos,
+                    "X505",
+                    format!("case {} is fair but rejects or ignores its event", c.name.text),
+                    "promise fairness only for a case that accepts the event",
+                ))
+            }
             if !matches!(c.outcome, Outcome::Accept) && !c.stmts.is_empty() {
                 ds.push(diagnostic(
                     s,
@@ -317,6 +352,25 @@ fn model(s: &Spec, summary: &mut Summary) -> Vec<Diagnostic> {
     };
     summary.states = graph.states.len();
     summary.transitions = graph.edges.iter().map(Vec::len).sum();
+    // Event calls along a path of states; a repeated state is an implicit stutter.
+    let trace = |path: &[usize]| {
+        path.windows(2)
+            .map(|w| {
+                graph.edges[w[0]]
+                    .iter()
+                    .find(|e| e.to == w[1] && w[0] != w[1])
+                    .map_or("(nothing happens)".to_string(), |edge| {
+                        m.actions[edge.action]
+                            .name
+                            .split('/')
+                            .next()
+                            .unwrap_or_default()
+                            .to_string()
+                    })
+            })
+            .collect::<Vec<_>>()
+            .join(" -> ")
+    };
     let ds: Vec<_> = graph
         .violations
         .iter()
@@ -325,23 +379,7 @@ fn model(s: &Spec, summary: &mut Summary) -> Vec<Diagnostic> {
                 .iter()
                 .find(|i| i.name.text == v.property)
                 .map(|inv| {
-                    let trace = v
-                        .prefix
-                        .windows(2)
-                        .map(|w| {
-                            let edge = graph.edges[w[0]]
-                                .iter()
-                                .find(|e| e.to == w[1])
-                                .expect("trace edge");
-                            m.actions[edge.action]
-                                .name
-                                .split('/')
-                                .next()
-                                .unwrap_or_default()
-                                .to_string()
-                        })
-                        .collect::<Vec<_>>()
-                        .join(" -> ");
+                    let trace = trace(&v.prefix);
                     diagnostic(
                         s,
                         inv.name.pos,
@@ -358,6 +396,36 @@ fn model(s: &Spec, summary: &mut Summary) -> Vec<Diagnostic> {
                         "repair the transition or the invariant",
                     )
                 })
+        })
+        .collect();
+    if !ds.is_empty() {
+        return ds;
+    }
+    // One counterexample per property: its other binder values usually repeat it.
+    let ds: Vec<_> = s
+        .properties
+        .iter()
+        .filter_map(|p| {
+            let v = graph.violations.iter().find(|v| {
+                !v.cycle.is_empty() && v.property.split('(').next() == Some(p.name.text.as_str())
+            })?;
+            let prefix = trace(&v.prefix);
+            Some(diagnostic(
+                s,
+                p.name.pos,
+                "X651",
+                format!(
+                    "property {} is false: after {} the fair loop {} never reaches the response",
+                    v.property,
+                    if prefix.is_empty() {
+                        "the initial state"
+                    } else {
+                        &prefix
+                    },
+                    trace(&v.cycle)
+                ),
+                "mark the case that makes progress `fair weak` or `fair strong`, or weaken the property",
+            ))
         })
         .collect();
     if !ds.is_empty() {
@@ -405,6 +473,25 @@ fn model(s: &Spec, summary: &mut Summary) -> Vec<Diagnostic> {
                 ),
                 "state a property that excludes some typed states",
             ))
+        }
+    }
+    for p in &s.properties {
+        for (params, label) in lower::property_instances(s, p) {
+            if !graph.states.iter().any(|flat| {
+                eval(s, &p.request, &lower::unflatten(s, flat), &params, Some(&Ty::Bool))
+                    .is_ok_and(|v| v.truth())
+            }) {
+                ds.push(diagnostic(
+                    s,
+                    p.request.pos,
+                    "X703",
+                    format!(
+                        "property {}{label} is never requested in a reachable state",
+                        p.name.text
+                    ),
+                    "state a request that some reachable state satisfies",
+                ))
+            }
         }
     }
     ds

@@ -42,8 +42,8 @@ fn broken_controls_are_exact_diagnostics() {
     }
     let required = [
         "X101", "X190", "X201", "X202", "X203", "X204", "X301", "X302", "X303", "X401", "X402",
-        "X501", "X502", "X503", "X601", "X602", "X603", "X701", "X702", "X801", "X802", "X901",
-        "X902", "X903",
+        "X501", "X502", "X503", "X505", "X601", "X602", "X603", "X651", "X701", "X702", "X703",
+        "X801", "X802", "X901", "X902", "X903",
     ];
     assert_eq!(codes, required.into_iter().map(str::to_string).collect());
 }

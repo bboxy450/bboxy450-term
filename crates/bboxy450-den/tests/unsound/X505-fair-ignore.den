@@ -1,0 +1,63 @@
+module specs.delivery.Outbox
+
+spec Outbox {
+  intent "The local side keeps every accepted message until the remote confirms it was applied."
+
+  enum Msg { A, B }
+
+  state {
+    up: Bool = true
+    unacked: Set[Msg] = Set()
+    inflight: Set[Msg] = Set()
+    acked: Set[Msg] = Set()
+  }
+
+  event Submit(m: Msg)
+  event Send(m: Msg)
+  event Applied(m: Msg)
+  event Drop
+  event Reconnect
+
+  on Submit(m) {
+    case accept if !unacked(m) && !acked(m) => { unacked += m }
+    case known otherwise => reject AlreadySubmitted
+  }
+  on Send(m) {
+    fair strong case send if up && unacked(m) && !inflight(m) => { inflight += m }
+    fair weak case hold otherwise => ignore NotSendable
+  }
+  on Applied(m) {
+    fair strong case retire if up && inflight(m) => { unacked -= m; inflight -= m; acked += m }
+    case stale otherwise => ignore NoAck
+  }
+  on Drop {
+    case drop if up => { up = false; inflight = Set() }
+    case down otherwise => ignore AlreadyDown
+  }
+  on Reconnect {
+    fair weak case restore if !up => { up = true }
+    case live otherwise => ignore AlreadyUp
+  }
+
+  invariant OUTBOX_001 "an acknowledged message has left the outbox" =
+    forall m: Msg. acked(m) ==> !unacked(m)
+  invariant OUTBOX_002 "only unacknowledged messages are in flight" =
+    forall m: Msg. inflight(m) ==> unacked(m)
+
+  property OUTBOX_L1 "a submitted message is eventually acknowledged" =
+    forall m: Msg. unacked(m) leads to acked(m)
+
+  assume OUTBOX_A1 "an Applied frame is sent only by a remote that applied the message"
+  assume OUTBOX_A2 "a down link reconnects, and a message that keeps becoming sendable or in flight is eventually sent and applied"
+
+  scenario "a dropped link makes the message sendable again" {
+    Submit(Msg.A)  ~> accepted
+    Send(Msg.A)    ~> accepted
+    Drop           ~> accepted
+    Reconnect      ~> accepted
+    Send(Msg.A)    ~> accepted
+    Applied(Msg.A) ~> accepted
+    Submit(Msg.A)  ~> rejected AlreadySubmitted
+    expect acked(Msg.A)
+  }
+}

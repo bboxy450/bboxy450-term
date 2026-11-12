@@ -110,9 +110,17 @@ pub(crate) enum Outcome {
     Reject(Name),
     Ignore(Name),
 }
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum Fairness {
+    Weak,
+    Strong,
+}
 #[derive(Clone, Debug)]
 pub(crate) struct Case {
     pub name: Name,
+    /// The environment promises this case is eventually taken when it stays
+    /// (weak) or keeps becoming (strong) selectable. One case is one group.
+    pub fair: Option<(Fairness, Pos)>,
     pub guard: Option<Expr>,
     pub outcome: Outcome,
     pub stmts: Vec<Stmt>,
@@ -128,6 +136,17 @@ pub(crate) struct Claim {
     pub name: Name,
     pub text: String,
     pub expr: Expr,
+    /// Declared with `theorem`: also owes a Lean proof for every domain size.
+    pub theorem: bool,
+}
+/// `request leads to response`, once per value of the binders.
+#[derive(Clone, Debug)]
+pub(crate) struct Property {
+    pub name: Name,
+    pub text: String,
+    pub binders: Vec<(Name, Name)>,
+    pub request: Expr,
+    pub response: Expr,
 }
 #[derive(Clone, Debug)]
 pub(crate) struct Assumption {
@@ -161,6 +180,7 @@ pub(crate) struct Spec {
     pub effects: Vec<Signature>,
     pub handlers: Vec<Handler>,
     pub invariants: Vec<Claim>,
+    pub properties: Vec<Property>,
     pub assumptions: Vec<Assumption>,
     pub scenarios: Vec<Scenario>,
 }
