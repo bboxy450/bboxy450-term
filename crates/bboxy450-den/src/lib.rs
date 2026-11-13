@@ -70,6 +70,56 @@ pub struct Summary {
 pub fn check(source: &str) -> Report {
     checker::check(source)
 }
+/// One named declaration of a Den record, for navigation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Declaration {
+    /// spec, enum, field, event, effect, handler, invariant, theorem, property,
+    /// assumption or scenario.
+    pub kind: &'static str,
+    pub name: String,
+    /// One-based source line of the name.
+    pub line: u32,
+}
+/// The named declarations of a Den source in source order. This is the syntax
+/// only: a file that parses but is unsound still has an outline.
+pub fn declarations(source: &str) -> Result<Vec<Declaration>, Vec<Diagnostic>> {
+    let spec = parser::parse(source)?;
+    let mut out = vec![Declaration {
+        kind: "spec",
+        name: spec.name.text.clone(),
+        line: spec.name.pos.line,
+    }];
+    let mut add = |kind, name: &ast::Name| {
+        out.push(Declaration {
+            kind,
+            name: name.text.clone(),
+            line: name.pos.line,
+        })
+    };
+    spec.enums.iter().for_each(|e| add("enum", &e.name));
+    spec.fields.iter().for_each(|f| add("field", &f.name));
+    spec.events.iter().for_each(|e| add("event", &e.name));
+    spec.effects.iter().for_each(|e| add("effect", &e.name));
+    spec.handlers.iter().for_each(|h| add("handler", &h.event));
+    spec.invariants
+        .iter()
+        .for_each(|c| add(if c.theorem { "theorem" } else { "invariant" }, &c.name));
+    spec.properties
+        .iter()
+        .for_each(|p| add("property", &p.name));
+    spec.assumptions
+        .iter()
+        .for_each(|a| add("assumption", &a.name));
+    for scenario in &spec.scenarios {
+        out.push(Declaration {
+            kind: "scenario",
+            name: scenario.name.clone(),
+            line: scenario.pos.line,
+        });
+    }
+    out.sort_by_key(|declaration| declaration.line);
+    Ok(out)
+}
 /// Checks that a recorded trace is a behavior the spec allows. The trace is the
 /// body of a scenario, one step per line: `Event(args) ~> accepted [emits ...]`,
 /// `~> rejected Reason`, `~> ignored Reason`, and optionally `expect expr`. An

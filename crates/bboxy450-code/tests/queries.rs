@@ -238,7 +238,91 @@ fn files_and_outline_list_in_path_and_source_order() {
         outline["files"][1]["error"]
             .as_str()
             .unwrap()
-            .contains("only Rust files")
+            .contains("no outline for this file type")
+    );
+}
+
+// The three tiers: Rust in full, Den through its own parser, and Python,
+// TypeScript and Go by syntax so a port can list what there is to rebuild.
+#[test]
+fn den_lean_and_source_tier_files_have_outlines_and_enclosing_items() {
+    let dir = tempfile::tempdir().unwrap();
+    let write = |name: &str, body: &str| std::fs::write(dir.path().join(name), body).unwrap();
+    write(
+        "turnstile.den",
+        include_str!("../../bboxy450-den/tests/sound/turnstile.den"),
+    );
+    write(
+        "proof.lean",
+        "namespace Gate\n\ntheorem locked_stays (n : Nat) : n = n := by\n  rfl\n\ndef twice (n : Nat) := n + n\n",
+    );
+    write(
+        "app.py",
+        "class Store:\n    def get(self, key):\n        return key\n\ndef main():\n    return Store()\n",
+    );
+    write(
+        "app.ts",
+        "interface Seat { id: number }\nexport class Hub {\n  open(id: number): Seat {\n    return { id };\n  }\n}\nfunction main(): void {}\n",
+    );
+    write(
+        "app.go",
+        "package main\n\ntype Seat struct{ ID int }\n\nfunc (s Seat) Open() int { return s.ID }\n\nfunc main() {}\n",
+    );
+    let root = Root::new(dir.path()).unwrap();
+    let outline = call(
+        &root,
+        "outline",
+        &json!({"paths": ["turnstile.den", "proof.lean", "app.py", "app.ts", "app.go"]}),
+    )
+    .unwrap();
+    let kinds = |index: usize| -> Vec<String> {
+        outline["files"][index]["items"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|i| {
+                format!(
+                    "{} {}",
+                    i["kind"].as_str().unwrap(),
+                    i["name"].as_str().unwrap()
+                )
+            })
+            .collect()
+    };
+    let den = kinds(0);
+    assert_eq!(den[0], "spec Turnstile", "{den:?}");
+    assert!(
+        den.iter().any(|d| d.starts_with("event "))
+            && den.iter().any(|d| d.starts_with("handler ")),
+        "{den:?}"
+    );
+    assert_eq!(
+        outline["files"][0]["items"][1]["depth"], 1,
+        "declarations sit inside the spec"
+    );
+    assert_eq!(
+        kinds(1),
+        ["namespace Gate", "theorem locked_stays", "def twice"]
+    );
+    assert_eq!(kinds(2), ["class Store", "fn get", "fn main"]);
+    assert_eq!(
+        kinds(3),
+        ["interface Seat", "class Hub", "method open", "fn main"]
+    );
+    assert_eq!(kinds(4), ["type Seat", "method Open", "fn main"]);
+    let hit = call(
+        &root,
+        "search",
+        &json!({"patterns": ["return key", "return \\{ id"]}),
+    )
+    .unwrap();
+    assert_eq!(hit["hits"][0]["item"], "class Store :: fn get");
+    assert_eq!(hit["hits"][1]["item"], "class Hub :: method open");
+    let found = call(&root, "symbol", &json!({"names": ["Turnstile", "main"]})).unwrap();
+    assert_eq!(found["symbols"][0]["definitions"][0]["kind"], "spec");
+    assert_eq!(
+        found["symbols"][1]["definitions"].as_array().unwrap().len(),
+        3
     );
 }
 

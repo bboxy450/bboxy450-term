@@ -22,7 +22,7 @@ use serde_json::{Value, json};
 use std::path::{Component, Path, PathBuf};
 
 mod syntax;
-pub use syntax::{Item, enclosing, items};
+pub use syntax::{Item, enclosing, items, items_of, supported};
 
 /// A whole result stays under this many bytes.
 pub const RESULT_BYTES: usize = 16 * 1024;
@@ -137,10 +137,6 @@ fn clip(line: &str) -> String {
     }
 }
 
-fn is_rust(path: &Path) -> bool {
-    path.extension().is_some_and(|e| e == "rs")
-}
-
 /// Bytes a result may still spend. A producer that cannot afford its next
 /// element stops and says so.
 struct Budget(usize);
@@ -228,7 +224,7 @@ fn read_one(root: &Root, request: &ReadOne, room: usize) -> Result<Value, String
     );
     let mut item = None;
     if let Some(line) = request.around {
-        let found = if is_rust(&full) { items(&body) } else { vec![] };
+        let found = items_of(&full, &body);
         match found
             .iter()
             .filter(|i| i.start <= line && line <= i.end)
@@ -366,8 +362,8 @@ pub fn search(root: &Root, args: &Value) -> Result<Value, String> {
                 continue;
             }
             let found = parsed.get_or_insert_with(|| {
-                if is_rust(path) && body.len() <= PARSE_BYTES {
-                    items(&body)
+                if body.len() <= PARSE_BYTES {
+                    items_of(path, &body)
                 } else {
                     vec![]
                 }
@@ -447,7 +443,8 @@ pub fn symbol(root: &Root, args: &Value) -> Result<Value, String> {
         .iter()
         .map(|name| Regex::new(&format!(r"\b{}\b", regex::escape(name))).map_err(|e| e.to_string()))
         .collect::<Result<_, _>>()?;
-    let (found, missing) = root.walk(&args.paths, Some("*.rs"), None)?;
+    let (mut found, missing) = root.walk(&args.paths, None, None)?;
+    found.retain(|path| supported(path));
     let mut budget = Budget::new();
     let mut symbols: Vec<Value> = args
         .names
@@ -469,7 +466,7 @@ pub fn symbol(root: &Root, args: &Value) -> Result<Value, String> {
                 .push(json!({"path": root.show(path), "reason": "too large to parse; use search"}));
             continue;
         }
-        let found = items(&body);
+        let found = items_of(path, &body);
         let mut defined = vec![vec![]; args.names.len()];
         for (index, name) in args.names.iter().enumerate() {
             for item in found.iter().filter(|i| i.named(name)) {
@@ -594,10 +591,13 @@ pub fn outline(root: &Root, args: &Value) -> Result<Value, String> {
         let one = (|| {
             let full = root.resolve(given)?;
             let body = text(&full).ok_or("no such text file")?;
-            if !is_rust(&full) {
-                return Err("only Rust files have an outline; use read or search".to_owned());
+            if !supported(&full) {
+                return Err(
+                    "no outline for this file type (Rust, Den, Lean, Python, TypeScript, Go); use read or search"
+                        .to_owned(),
+                );
             }
-            let found = items(&body);
+            let found = items_of(&full, &body);
             let depth = |item: &Item| found.iter().filter(|o| o.contains(item)).count();
             let mut rows = vec![];
             let mut dropped = 0;
@@ -663,14 +663,14 @@ fn definitions() -> Value {
             "limit": {"type": "integer", "minimum": 1, "maximum": 500},
             "mode": {"enum": ["lines", "files", "count"], "description": "lines: hits; files: hit counts per file; count: totals only"},
             "fixed": {"type": "boolean", "description": "Take patterns literally"}}}},
-        {"name": "symbol", "description": "Find where Rust names are defined (fn, struct, enum, variant, trait, impl, mod, const, static, type, macro) with signature and line range; refs also lists uses with their containing items. Use instead of grepping for 'fn name'.",
+        {"name": "symbol", "description": "Find where names are defined, with signature and line range: Rust items in full, Den declarations (spec, event, invariant, theorem...), and Python, TypeScript, Go and Lean by syntax. refs also lists uses with their containing items. Use instead of grepping for 'fn name'.",
          "inputSchema": {"type": "object", "additionalProperties": false, "required": ["names"], "properties": {
             "names": {"type": "array", "minItems": 1, "items": {"type": "string"}}, "kind": {"type": "string"}, "paths": paths,
             "refs": {"type": "boolean", "description": "Also list uses of each name (at most 50 each, with the full count)"}}}},
         {"name": "files", "description": "List files under paths or matching a glob, with line counts. Honours .gitignore. Use instead of ls, find, rg --files and wc -l.",
          "inputSchema": {"type": "object", "additionalProperties": false, "properties": {
             "paths": paths, "glob": {"type": "string"}, "depth": {"type": "integer", "minimum": 1}}}},
-        {"name": "outline", "description": "List the items of Rust files in order: kind, name, signature, line range and nesting depth. Use before reading a large file.",
+        {"name": "outline", "description": "List a file's items in order: kind, name, signature, line range and nesting depth. Rust, Den, Lean, Python, TypeScript and Go. Use before reading a large file.",
          "inputSchema": {"type": "object", "additionalProperties": false, "required": ["paths"], "properties": {
             "paths": {"type": "array", "minItems": 1, "items": {"type": "string"}}}}}
     ])
