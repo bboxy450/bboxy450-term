@@ -288,9 +288,29 @@ pub fn task_item(
                 assignee_name(by, model)
             }
         }),
+        docs: touched(card),
         kind: "task".into(),
         ..Default::default()
     }
+}
+/// A task's documents in words, in the order a reader asks: what it reads,
+/// what it wrote, whether it reported.
+fn touched(card: &wire::TaskCard) -> String {
+    let count = |rel: &str| card.touches.iter().filter(|t| t.rel == rel).count();
+    let plural = |n: usize, one: &str| match n {
+        0 => None,
+        1 => Some(format!("1 {one}")),
+        n => Some(format!("{n} {one}s")),
+    };
+    [
+        plural(count("reads"), "doc"),
+        plural(count("wrote"), "artifact"),
+        (count("report") > 0).then(|| "report".to_owned()),
+    ]
+    .into_iter()
+    .flatten()
+    .collect::<Vec<_>>()
+    .join(" · ")
 }
 // Keep the provider path intact: Delegate consumes a task path. Only the
 // message-building seam below converts that locator to a wire wikilink.

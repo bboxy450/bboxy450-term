@@ -765,6 +765,8 @@ pub(crate) fn response(tool: &str, result: Value) -> Checked<TaskResponse> {
                             .as_i64()
                             .and_then(|code| i32::try_from(code).ok())
                             .map(|exit_code| TaskVerifySummary { exit_code }),
+                        touches: serde_json::from_value(m["touches"].clone())
+                            .unwrap_or_default(),
                     })
                 })
                 .collect::<Checked<Vec<_>>>()?;
@@ -1227,6 +1229,55 @@ fn projection(doc: &Document) -> Value {
     )
 }
 
+/// Rows a task list shows at most for the documents a task touches.
+const TOUCHES: usize = 16;
+
+/// The documents a task touches, from what its record already says: `reads` are
+/// its declared links (`links`, `parent`, `derived_from`, `depends_on`), `wrote`
+/// its claimed artifacts, `report` its report document. No new bookkeeping.
+fn touches(metadata: &Value) -> Vec<Value> {
+    fn locators(value: &Value, out: &mut Vec<String>) {
+        match value {
+            Value::String(text) => {
+                let mut rest = text.as_str();
+                while let Some((_, tail)) = rest.split_once("[[") {
+                    let Some((link, after)) = tail.split_once("]]") else {
+                        break;
+                    };
+                    let locator = link.split('|').next().unwrap_or(link).trim();
+                    if !locator.is_empty() && locator.len() <= 256 {
+                        out.push(locator.to_owned());
+                    }
+                    rest = after;
+                }
+            }
+            Value::Array(items) => items.iter().for_each(|item| locators(item, out)),
+            Value::Object(fields) => fields.values().for_each(|item| locators(item, out)),
+            _ => {}
+        }
+    }
+    let mut rows: Vec<(&str, String)> = vec![];
+    for (rel, fields) in [
+        ("reads", &["links", "parent", "derived_from", "depends_on"][..]),
+        ("wrote", &["artifacts"][..]),
+    ] {
+        for field in fields {
+            let mut found = vec![];
+            locators(&metadata[*field], &mut found);
+            rows.extend(found.into_iter().map(|locator| (rel, locator)));
+        }
+    }
+    let mut found = vec![];
+    locators(&metadata["report"]["report"], &mut found);
+    rows.extend(found.into_iter().map(|locator| ("report", locator)));
+    let mut seen = std::collections::BTreeSet::new();
+    rows.retain(|row| seen.insert(row.clone()));
+    rows.into_iter()
+        .take(TOUCHES)
+        .map(|(rel, locator)| json!({"rel":rel,"locator":locator}))
+        .collect()
+}
+
 /// Summary shared by MCP, the GUI TaskCard adapter and `ctl task list`.
 /// Keep full reports, verification evidence and provenance on task_status only.
 /// body_truncated marks every list item as a partial read, including empty bodies.
@@ -1253,6 +1304,10 @@ fn list_projection(doc: &Document) -> Value {
     }
     if let Some(exit_code) = doc.metadata["verify_result"]["exit_code"].as_i64() {
         metadata.insert("verify_result".into(), json!({"exit_code":exit_code}));
+    }
+    let touched = touches(&doc.metadata);
+    if !touched.is_empty() {
+        metadata.insert("touches".into(), json!(touched));
     }
     // An external provider can supply an arbitrarily long path. The stable ID
     // remains an exact task_status locator when that path cannot fit a card.
@@ -1794,6 +1849,40 @@ fn wake_id(op: Ulid, recipient: Recipient, event: &str) -> Ulid {
 
 #[cfg(test)]
 mod task_role_tests {
+    // A task row names the documents its own record already links.
+    #[test]
+    fn touches_come_from_the_tasks_own_links_artifacts_and_report() {
+        let metadata = serde_json::json!({
+            "links": ["[[specs/code-query]]", {"rel": "evidence", "to": "[[research/logs|the log study]]"}],
+            "parent": "[[epics/tools]]",
+            "derived_from": "[[specs/code-query]] and [[decisions/d41]]",
+            "depends_on": [],
+            "artifacts": ["[[artifacts/a1]]", "[[artifacts/a2]]"],
+            "report": {"summary": "done [[not/a/doc]]", "report": "[[reports/2026-11-13-x]]"},
+            "title": "[[ignored/title]]"
+        });
+        let rows: Vec<(String, String)> = super::touches(&metadata)
+            .into_iter()
+            .map(|row| (row["rel"].as_str().unwrap().into(), row["locator"].as_str().unwrap().into()))
+            .collect();
+        let row = |rel: &str, locator: &str| (rel.to_owned(), locator.to_owned());
+        assert_eq!(
+            rows,
+            [
+                row("reads", "specs/code-query"),
+                row("reads", "research/logs"),
+                row("reads", "epics/tools"),
+                row("reads", "decisions/d41"),
+                row("wrote", "artifacts/a1"),
+                row("wrote", "artifacts/a2"),
+                row("report", "reports/2026-11-13-x"),
+            ]
+        );
+        assert!(super::touches(&serde_json::json!({"title": "x"})).is_empty());
+        let many: Vec<String> = (0..40).map(|n| format!("[[specs/s{n}]]")).collect();
+        assert_eq!(super::touches(&serde_json::json!({"links": many})).len(), super::TOUCHES);
+    }
+
     use super::*;
     use crate::store::sqlite::SqliteStore;
     #[test]

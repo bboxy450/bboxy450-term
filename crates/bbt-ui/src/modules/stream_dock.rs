@@ -98,6 +98,8 @@ pub struct WorkItem {
     pub assignee: String,
     pub delegated_by: Option<String>,
     pub waits: String,
+    /// The documents the task touches, in words: "2 docs · 1 artifact · report".
+    pub docs: String,
     #[serde(rename = "type")]
     pub kind: String,
 }
@@ -1201,6 +1203,11 @@ fn task_item(item: &WorkItem, k: &str, delegate: bool) -> c::Element {
         (_, "") => "unassigned".to_owned(),
         (Some(by), assignee) => format!("delegated by {by} → {assignee}"),
         (None, assignee) => assignee.to_owned(),
+    };
+    let who = if item.docs.is_empty() {
+        who
+    } else {
+        format!("{who} · {}", item.docs)
     };
     cells.push(
         label(

@@ -1130,6 +1130,18 @@ pub struct TaskCard {
     pub delegated_by: Option<String>,
     pub updated: Option<String>,
     pub verify: Option<TaskVerifySummary>,
+    /// The documents this task touches, from its own record. Written only when
+    /// there are any, so a card without them keeps its bytes.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub touches: Vec<TaskTouch>,
+}
+
+/// One document a task touches. `rel` is `reads` (a declared link), `wrote` (a
+/// claimed artifact) or `report`; `locator` opens it.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct TaskTouch {
+    pub rel: String,
+    pub locator: String,
 }
 
 /// Same document projection returned by task_status today; Markdown remains authority.

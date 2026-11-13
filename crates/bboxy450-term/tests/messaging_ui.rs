@@ -408,12 +408,27 @@ fn task_views_keep_canonical_status_and_require_the_actual_zero_exit_report() {
         delegated_by: Some("operator:actual-device".into()),
         updated: None,
         verify: None,
+        touches: vec![],
     };
     let view = task_item(&card, &bboxy450_term::model::Model::default());
     assert_eq!(view.state, "claimed");
     assert_eq!(view.assignee, "seat:missing");
     // The card names who delegated it; the device identity stays on the record.
     assert_eq!(view.delegated_by.as_deref(), Some("operator"));
+    assert_eq!(view.docs, "", "a task that touches nothing says nothing");
+    // The row names the task's documents: what it reads, wrote and reported.
+    let touch = |rel: &str, locator: &str| bbt_proto::messaging::TaskTouch {
+        rel: rel.into(),
+        locator: locator.into(),
+    };
+    card.touches = vec![
+        touch("reads", "specs/code-query"),
+        touch("reads", "decisions/d41-plugins"),
+        touch("wrote", "artifacts/a1"),
+        touch("report", "reports/2026-11-13-check"),
+    ];
+    let view = task_item(&card, &bboxy450_term::model::Model::default());
+    assert_eq!(view.docs, "2 docs · 1 artifact · report");
     assert_eq!(task_attachment(&card).path, card.path);
     assert!(!task_row(&card).0.may_accept);
     card.status = "reported".into();
@@ -478,6 +493,7 @@ fn task_card(id: Ulid) -> bbt_proto::messaging::TaskCard {
         delegated_by: Some("operator:device".into()),
         updated: None,
         verify: Some(bbt_proto::messaging::TaskVerifySummary { exit_code: 0 }),
+        touches: vec![],
     }
 }
 #[test]

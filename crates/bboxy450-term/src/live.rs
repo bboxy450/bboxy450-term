@@ -4222,6 +4222,7 @@ mod tests {
             delegated_by: None,
             updated: None,
             verify: None,
+            touches: vec![],
         };
         editor.handle(composer::Command::Attach(
             bboxy450_term::messaging::task_attachment(&card),

@@ -331,6 +331,7 @@ fn task_delegate_keeps_its_provider_path() {
         delegated_by: None,
         updated: None,
         verify: None,
+        touches: vec![],
     };
     let attachment = messaging::task_attachment(&card);
     assert_eq!(attachment.path, card.path);
