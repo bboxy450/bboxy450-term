@@ -1067,6 +1067,9 @@ impl Scene {
                 row.stale = model.states.get(id).is_some_and(|state| state.stale);
                 row.muted = seat.muted;
                 row.may_mute = self.live && !model.canvas_sources.contains_key(id);
+                // Only a harness seat asks questions a decision model can answer.
+                row.automation = (self.live && seat.harness.0 == "bboxy450-harness")
+                    .then_some(seat.automation);
                 row.deferred = model.messaging_deferred.get(id).cloned();
                 row.focused = Some(*id) == self.focused;
                 // An inactive card dims its whole body once. In the selected

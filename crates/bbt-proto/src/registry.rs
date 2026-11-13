@@ -108,11 +108,24 @@ pub struct SeatRecord {
     pub lifecycle_revision: u64,
     pub close: Option<CloseRecord>,
     pub tasks: Vec<Ulid>,
+    /// Whether a configured decision model may answer this seat's harness
+    /// questions for the operator. On unless the operator switches it off, and
+    /// written only when off, so a record that never used the switch keeps its
+    /// bytes.
+    #[serde(default = "enabled", skip_serializing_if = "is_enabled")]
+    pub automation: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub attention: Option<AttentionPolicy>,
     /// Durable initial placement for seats launched while no window is attached.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub launch_placement: Option<crate::seat_state::Placement>,
+}
+
+fn enabled() -> bool {
+    true
+}
+fn is_enabled(value: &bool) -> bool {
+    *value
 }
 
 impl SeatRecord {
@@ -134,6 +147,7 @@ impl SeatRecord {
             },
             location: Location::Local,
             muted: false,
+            automation: true,
             generation: 1,
             lifecycle: Lifecycle::Open,
             lifecycle_revision: 0,

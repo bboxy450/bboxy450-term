@@ -105,6 +105,8 @@ pub struct Seat {
     pub grade: Grade,
     pub where_: Where,
     pub muted: bool,
+    /// A decision model may answer this seat's harness questions.
+    pub automation: bool,
     pub unread: Option<(u32, Role)>,
     pub lifecycle: Lifecycle,
     pub process_generation: u64,
@@ -134,6 +136,7 @@ impl Seat {
             grade: Grade::Inferred,
             where_: Where::Local,
             muted: false,
+            automation: true,
             unread: None,
             lifecycle: Lifecycle::Open,
             process_generation: 1,

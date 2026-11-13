@@ -1372,6 +1372,43 @@ fn seat_controls_case() {
     let assigned = std::fs::read_to_string(&task).unwrap();
     assert!(assigned.contains(&format!("seat:{target}")), "{assigned}");
     assert!(assigned.contains("claimed"), "{assigned}");
+    // Automation: on for a new seat; the operator's switch is the record.
+    assert!(
+        runtime
+            .block_on(logic.client.gui_seat(target))
+            .unwrap()
+            .record
+            .automation
+    );
+    for on in [false, true] {
+        runtime
+            .block_on(gui.control(
+                Ulid::new(),
+                target,
+                generation,
+                SeatControl::Automation { on },
+            ))
+            .unwrap();
+        assert_eq!(
+            runtime
+                .block_on(logic.client.gui_seat(target))
+                .unwrap()
+                .record
+                .automation,
+            on
+        );
+    }
+    assert!(
+        runtime
+            .block_on(gui.control(
+                Ulid::new(),
+                target,
+                generation + 1,
+                SeatControl::Automation { on: false },
+            ))
+            .unwrap_err()
+            .contains("StaleGeneration")
+    );
     assert!(
         runtime
             .block_on(gui.control(Ulid::new(), target, generation + 1, SeatControl::Kill))

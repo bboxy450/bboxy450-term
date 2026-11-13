@@ -1281,6 +1281,7 @@ fn build_with_clock(
                 },
             };
             seat.muted = record.muted;
+            seat.automation = record.automation;
             seat.tasks = record
                 .tasks
                 .iter()

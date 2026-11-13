@@ -7734,6 +7734,28 @@ impl Worker {
             stopped.map(|_| ())
         })
     }
+    /// Tell a harness seat's session whether a decision model may answer its
+    /// questions (harness `Op::SetAutomation`). Best effort: the record is the
+    /// truth, and it is sent again whenever the session's connection comes up.
+    fn push_automation(&self, id: Ulid, on: bool) {
+        let Some((client, hello)) = self
+            .views
+            .get(&id)
+            .and_then(|view| view.rich_delivery.as_ref())
+            .and_then(|delivery| Some((delivery.client.clone(), delivery.client.hello()?)))
+        else {
+            return;
+        };
+        self.handle.spawn(async move {
+            let _ = client
+                .send(
+                    Ulid::new(),
+                    hello.session,
+                    serde_json::json!({"type":"set_automation","on":on}),
+                )
+                .await;
+        });
+    }
     fn controlled_seat(&self, id: Ulid, generation: u64) -> Result<SeatRecord> {
         let record = self.registry.get(id)?;
         if record.generation != generation {
@@ -7818,6 +7840,31 @@ impl Worker {
                         crate::messaging::api::Response::Stored { .. } => Ok(()),
                         response => Err(invalid(format!("unknown: role authority changed; role notice was not stored: {response:?}; retain operation ID {op}"))),
                     }
+                })
+            }
+            SeatControl::Automation { on } => {
+                let args = serde_json::json!({"seat":id,"generation":generation,"on":on});
+                self.ctl_journaled(op, "seat_automation", args, origin, |this| {
+                    this.controlled_seat(id, generation)?;
+                    this.registry.update(id, |record| {
+                        if record.generation != generation {
+                            return Err(invalid(
+                                "StaleGeneration: captured seat process was replaced",
+                            ));
+                        }
+                        record.automation = on;
+                        Ok(())
+                    })?;
+                    this.publish(
+                        &format!("seat-{id}"),
+                        Draft::new(
+                            format!("seat/{id}/state"),
+                            "automation",
+                            serde_json::json!({"automation":on}),
+                        ),
+                    )?;
+                    this.push_automation(id, on);
+                    Ok(())
                 })
             }
             SeatControl::Kill => {
@@ -12115,6 +12162,11 @@ impl Worker {
                             self.persist_native_session(id)?;
                             // Announce metadata even when no PTY byte arrives after Hello.
                             self.publish_adapter(id, status)?;
+                            // A session starts with automation on; restate an
+                            // operator's off each time its connection comes up.
+                            if self.registry.get(id).is_ok_and(|record| !record.automation) {
+                                self.push_automation(id, false);
+                            }
                         }
                     }
                     Command::GuiInput(id, generation, input_id, bytes, reply) => {

@@ -22,6 +22,7 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("seat", "rename", "RenameSeat"),
     ("seat", "focus", "FocusSeat"),
     ("seat", "restart", "RestartSeat"),
+    ("seat", "automation", "SeatControl"),
     ("seat", "close", "CloseSeat"),
     ("seat", "undo-close", "UndoCloseSeat"),
     ("seat", "capture", "Capture"),
@@ -81,6 +82,12 @@ macro_rules! seat_commands {
             /// `seat restart <seat>`: the seat's next process generation.
             Restart {
                 seat: String,
+            },
+            /// `seat automation <seat> on|off`: whether a decision model may
+            /// answer the seat's harness questions for the operator.
+            Automation {
+                seat: String,
+                on: bool,
             },
             /// `seat focus <seat>`: the window focuses it.
             Focus {
@@ -209,6 +216,10 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
     },
     ["seat", "focus", seat] => Command::Focus { seat: seat.into() },
     ["seat", "restart", seat] => Command::Restart { seat: seat.into() },
+    ["seat", "automation", seat, state @ ("on" | "off")] => Command::Automation {
+        seat: seat.into(),
+        on: state == "on",
+    },
     ["seat", "close", seat] => Command::Close { seat: seat.into() },
     ["seat", "undo-close", seat] => Command::UndoClose { seat: seat.into() },
     ["seat", "watch", seat] => Command::Watch {
@@ -619,6 +630,21 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
             )?;
             json!({ "seat": seat.id, "from_generation": seat.generation })
         }
+        Command::Automation { seat, on } => {
+            let seat = resolve(&client.seats()?, &seat)?.record.clone();
+            let op = client.mint();
+            client.call(
+                Some(op),
+                GuiAction::SeatControl {
+                    id: op,
+                    seat: seat.id,
+                    generation: seat.generation,
+                    command: bbt_proto::gui::SeatControl::Automation { on },
+                },
+                |r| matches!(r, GuiReply::SeatControlled { op: o } if *o == op),
+            )?;
+            json!({ "seat": seat.id, "automation": on })
+        }
         command @ (Command::Close { .. } | Command::UndoClose { .. }) => {
             let (seat, undo) = match command {
                 Command::Close { seat } => (seat, false),
@@ -765,6 +791,7 @@ pub(super) const PARSE_SAMPLES: &[&str] = &[
     "seat undo-close s",
     "seat focus s",
     "seat restart s",
+    "seat automation s off",
     "seat resize s 80x24",
 ];
 

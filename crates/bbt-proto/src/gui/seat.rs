@@ -91,6 +91,10 @@ pub enum SeatControl {
     },
     Kill,
     Restart,
+    /// Whether a decision model may answer this seat's harness questions.
+    Automation {
+        on: bool,
+    },
 }
 
 /// This noun's GuiAction variants, spliced into the flat enum by `flat_enum` in `gui/mod.rs`.

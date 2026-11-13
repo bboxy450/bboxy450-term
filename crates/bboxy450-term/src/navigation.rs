@@ -532,6 +532,13 @@ impl App {
             self.mute_seat(seat);
             return;
         }
+        if let Some(seat) = id
+            .strip_prefix("pane-automation:")
+            .and_then(|id| id.parse::<bbt_ui_model::SeatId>().ok())
+        {
+            self.toggle_automation(seat);
+            return;
+        }
         if let Some(swarm) = id.strip_prefix("toggle-swarm:") {
             self.toggle_sidebar_section(&format!("swarm:{swarm}"));
             return;

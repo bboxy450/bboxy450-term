@@ -81,6 +81,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   seat resize <seat> <cols>x<rows>
   seat rename <seat> <name>
   seat restart <seat>                     stop the seat's process and start its next generation
+  seat automation <seat> on|off           whether a decision model may answer the seat's harness questions
   seat focus <seat>                       the window focuses it
   seat close <seat>                       close in the window, with 60 s undo
   seat undo-close <seat>                  restore the same PTY in its saved position
@@ -1345,6 +1346,7 @@ fn seat_line(seat: &GuiSeat) -> Value {
         "activity": state["activity"],
         "title": state["title"],
         "muted": r.muted,
+        "automation": r.automation,
     })
 }
 /// A seat by id, or by a name that names exactly one seat.
@@ -2353,6 +2355,12 @@ mod tests {
                 id,
                 seat: id,
                 generation: 1,
+            },
+            GuiAction::SeatControl {
+                id,
+                seat: id,
+                generation: 1,
+                command: bbt_proto::gui::SeatControl::Automation { on: false },
             },
             GuiAction::Dream {
                 id,

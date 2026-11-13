@@ -331,6 +331,27 @@ impl Strip {
                 false,
             )));
         }
+        if let Some(enabled) = seat.automation {
+            // Beside mute, same box. Green when a decision model may answer for
+            // the operator; dim when questions wait for the operator.
+            children.push(
+                named(
+                    "pane/strip/automation",
+                    icon(
+                        "pane/strip/automation/hicon",
+                        "auto",
+                        13.,
+                        if enabled {
+                            ui::Color::Rgba([0.36, 0.84, 0.55, 1.])
+                        } else {
+                            on
+                        },
+                        if enabled { 1. } else { 0.4 },
+                    ),
+                )
+                .into(),
+            );
+        }
         if self.may_mute {
             let alpha = if seat.authority.is_some() {
                 0.3

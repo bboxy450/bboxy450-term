@@ -279,6 +279,9 @@ pub struct SeatRow {
     pub muted: bool,
     /// The operator host exposes a swarm-mute control without changing focus.
     pub may_mute: bool,
+    /// A harness seat's automation switch, drawn beside mute: `Some(on)`.
+    /// `None` for seats that have no questions to answer.
+    pub automation: Option<bool>,
     pub authority: Option<String>,
     pub held: Vec<Held>,
     pub deferred: Option<Deferred>,
@@ -320,6 +323,7 @@ impl SeatRow {
             unfocused: false,
             muted: false,
             may_mute: false,
+            automation: None,
             authority: None,
             held: vec![],
             deferred: None,

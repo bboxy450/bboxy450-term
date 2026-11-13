@@ -3412,6 +3412,33 @@ impl App {
     fn mute_seat(&mut self, seat: SeatId) {
         self.request_mute(mute_seat_command(self.live_state.as_deref(), seat));
     }
+    /// Flip a harness seat's automation switch (the bolt beside mute).
+    fn toggle_automation(&mut self, seat: SeatId) {
+        let Some((generation, on)) = self
+            .live_state
+            .as_deref()
+            .and_then(|model| model.ui.seats.get(&seat))
+            .filter(|seat| seat.lifecycle == bbt_ui_model::Lifecycle::Open)
+            .map(|seat| (seat.process_generation, seat.automation))
+        else {
+            return;
+        };
+        if self.backend_lost || self.closing || self.live_commands.is_none() {
+            return;
+        }
+        let id = bbt_mux::Ulid::new();
+        if let Some(effects) = &mut self.ui_collect {
+            effects.push(UiEffect::Operation(id));
+        }
+        self.operation_backlog.push_back(live::UiMsg::SeatControl {
+            id,
+            seat: bbt_mux::Ulid(seat.0.0),
+            generation,
+            command: bbt_proto::gui::SeatControl::Automation { on: !on },
+        });
+        self.flush_operations();
+        self.request_redraw();
+    }
     fn request_mute(&mut self, message: Option<live::UiMsg>) {
         if self.mute.pending() {
             return;

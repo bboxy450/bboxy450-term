@@ -122,7 +122,7 @@ impl Scene {
         add("new-swarm".into(), "new-swarm", viewport);
         for (slot, layout) in self.pane_keys().zip(layouts.iter().skip(2)) {
             if let Slot::Seat(id) = slot {
-                for action in ["view", "mute"] {
+                for action in ["view", "automation", "mute"] {
                     if let Some(control) = named(layout, &format!("pane/strip/{action}")) {
                         result.push((format!("pane-{action}:{id}"), control.rect));
                     }
