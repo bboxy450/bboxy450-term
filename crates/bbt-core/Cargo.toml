@@ -10,7 +10,7 @@ rust-version.workspace = true
 description = "Forked terminal model and parser with resumable checkpoints"
 
 [dependencies]
-bboxy450-kitty-graphics = { path = "../bboxy450-kitty-graphics" }
+bboxy450-kitty-graphics = { version = "0.2.0", path = "../bboxy450-kitty-graphics" }
 arrayvec = { version = "0.7.2", features = ["serde"] }
 base64 = "0.22"
 bitflags = { version = "2.4.1", features = ["serde"] }
