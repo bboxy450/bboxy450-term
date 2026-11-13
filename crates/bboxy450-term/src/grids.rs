@@ -129,6 +129,8 @@ mod tests {
                     title: String::new(),
                     cwd: None,
                     gap: None,
+                    images: vec![],
+                    image_data: vec![],
                 },
             }),
         }
@@ -172,6 +174,8 @@ mod tests {
                 title: String::new(),
                 cwd: None,
                 gap: None,
+                images: None,
+                image_data: vec![],
             }),
         };
         assert!(grids.apply(a, &delta).is_err());

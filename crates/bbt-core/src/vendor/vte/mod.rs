@@ -49,6 +49,9 @@ pub use params::{Params, ParamsIter};
 const MAX_INTERMEDIATES: usize = 2;
 const MAX_OSC_PARAMS: usize = 16;
 const MAX_OSC_RAW: usize = 1024;
+/// A Kitty graphics command is control data plus at most 4096 bytes of
+/// base64 payload; one chunk never needs more than this.
+const MAX_APC_RAW: usize = 8192;
 
 /// Parser for raw _VTE_ protocol which delegates actions to a [`Perform`]
 ///
@@ -65,6 +68,10 @@ pub struct Parser<const OSC_RAW_BUF_SIZE: usize = MAX_OSC_RAW> {
     param: u16,
 
     osc_raw: Vec<u8>,
+    #[serde(default)]
+    apc_raw: Vec<u8>,
+    #[serde(default)]
+    apc: bool,
     osc_params: [(usize, usize); MAX_OSC_PARAMS],
     osc_num_params: usize,
     ignoring: bool,
@@ -81,11 +88,12 @@ impl Parser {
 
 impl<const OSC_RAW_BUF_SIZE: usize> Parser<OSC_RAW_BUF_SIZE> {
     pub(crate) fn retained_heap_bytes(&self) -> usize {
-        self.osc_raw.capacity()
+        self.osc_raw.capacity() + self.apc_raw.capacity()
     }
 
     pub(crate) fn release_spare_capacity(&mut self) {
         self.osc_raw.shrink_to_fit();
+        self.apc_raw.shrink_to_fit();
     }
 
     #[inline]
@@ -177,7 +185,7 @@ impl<const OSC_RAW_BUF_SIZE: usize> Parser<OSC_RAW_BUF_SIZE> {
             State::Escape => self.advance_esc(performer, byte),
             State::EscapeIntermediate => self.advance_esc_intermediate(performer, byte),
             State::OscString => self.advance_osc_string(performer, byte),
-            State::SosPmApcString => self.anywhere(performer, byte),
+            State::SosPmApcString => self.advance_sos_pm_apc(performer, byte),
             State::Ground => unreachable!(),
         }
     }
@@ -372,7 +380,14 @@ impl<const OSC_RAW_BUF_SIZE: usize> Parser<OSC_RAW_BUF_SIZE> {
                 self.osc_num_params = 0;
                 self.state = State::OscString
             }
-            0x5E..=0x5F => self.state = State::SosPmApcString,
+            0x5E => self.state = State::SosPmApcString,
+            0x5F => {
+                // APC: the Kitty graphics protocol. Collected, bounded, and
+                // dispatched whole at its ST (ESC \); SOS and PM stay ignored.
+                self.apc_raw.clear();
+                self.apc = true;
+                self.state = State::SosPmApcString
+            }
             0x60..=0x7E => {
                 performer.esc_dispatch(self.intermediates(), self.ignoring, byte);
                 self.state = State::Ground
@@ -421,6 +436,36 @@ impl<const OSC_RAW_BUF_SIZE: usize> Parser<OSC_RAW_BUF_SIZE> {
             }
             0x3B => self.action_osc_put_param(),
             _ => self.action_osc_put(byte),
+        }
+    }
+
+    /// An APC string is bytes until ESC; past the cap the command is dropped
+    /// whole. SOS and PM strings are skipped as before.
+    #[inline]
+    fn advance_sos_pm_apc<P: Perform>(&mut self, performer: &mut P, byte: u8) {
+        match byte {
+            0x1B => {
+                if self.apc {
+                    self.apc = false;
+                    if self.apc_raw.len() <= MAX_APC_RAW {
+                        performer.apc_dispatch(&self.apc_raw);
+                    }
+                    self.apc_raw.clear();
+                }
+                self.reset_params();
+                self.state = State::Escape
+            }
+            0x18 | 0x1A => {
+                self.apc = false;
+                self.apc_raw.clear();
+                performer.execute(byte);
+                self.state = State::Ground
+            }
+            _ => {
+                if self.apc && self.apc_raw.len() <= MAX_APC_RAW {
+                    self.apc_raw.push(byte);
+                }
+            }
         }
     }
 
@@ -755,6 +800,9 @@ enum State {
 pub trait Perform {
     /// Draw a character to the screen and update states.
     fn print(&mut self, _c: char) {}
+
+    /// A complete APC string (`ESC _ ... ESC \`) without its delimiters.
+    fn apc_dispatch(&mut self, _data: &[u8]) {}
 
     /// Execute a C0 or C1 control function.
     fn execute(&mut self, _byte: u8) {}

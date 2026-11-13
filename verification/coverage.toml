@@ -270,6 +270,13 @@ scope = "Three refresh attempts and account incarnations A/B/A, delayed/duplicat
 sources = ["crates/bboxy450-usage/src/poller.rs", "crates/bboxy450-usage/src/lib.rs", "crates/bboxy450-usage/src/machine.rs", "crates/bboxy450-usage/src/io.rs"]
 
 [[crate]]
+name = "bboxy450-kitty-graphics"
+status = "implementation-tests"
+models = []
+scope = "The Kitty graphics protocol subset: command parsing, chunk assembly, PNG/RGB/RGBA decoding, placements anchored to absolute rows, bounded images and pending bytes, replies and quiet levels. Pure deterministic state machine tested by unit tests (transmit/display/query/delete, chunked zlib, eviction, scroll and clear). The terminal integration (APC collection cap, cursor move, PTY reply, checkpoint round trip, scroll forgetting) is witnessed in bboxy450-term-core; the one-time pixel delivery and placement deltas in bboxy450-term-mux streams. GPU compositing is a private native witness. No formal model is claimed for a protocol with no concurrency."
+sources = ["crates/bboxy450-kitty-graphics/src/lib.rs", "crates/bbt-core/src/vendor/vte/mod.rs", "crates/bbt-core/src/vendor/alacritty/term/mod.rs", "crates/bbt-proto/src/streams.rs", "crates/bbt-mux/src/streams.rs", "crates/bbt-render/src/chrome/images.rs"]
+
+[[crate]]
 name = "bboxy450-canvas"
 status = "contract-model"
 models = ["CanvasConvergence"]

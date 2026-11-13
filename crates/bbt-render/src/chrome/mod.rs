@@ -10,6 +10,7 @@ mod atlas_gpu;
 pub mod diff;
 pub mod group;
 pub mod icons;
+pub mod images;
 pub mod materials;
 mod path_masks;
 mod paths;
@@ -50,6 +51,8 @@ pub struct ChromeRenderer {
     color_glyph_gpu: Option<atlas_gpu::AtlasTexture>,
     glyph_reset_pending: bool,
     image_sampler: wgpu::Sampler,
+    /// Terminal pictures (Kitty graphics): per-image textures, freed when unused.
+    images: images::Layer,
     pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
     group_pipelines: HashMap<wgpu::TextureFormat, wgpu::RenderPipeline>,
     group_depth: usize,
@@ -124,6 +127,7 @@ impl ChromeRenderer {
             color_glyph_gpu: None,
             glyph_reset_pending: false,
             image_sampler,
+            images: images::Layer::default(),
             pipelines: HashMap::new(),
             group_pipelines: HashMap::new(),
             group_layers: Vec::new(),

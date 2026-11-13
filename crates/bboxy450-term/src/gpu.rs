@@ -1398,6 +1398,7 @@ impl Gpu {
                 scale,
                 &mut encoder,
             )?;
+            draw_pane_pictures(&mut self.renderer, &self.target, &panes, scale, &mut encoder)?;
             split.cells = at.elapsed();
             let at = Instant::now();
             let mut after = panes.overlay_after;
@@ -1838,6 +1839,93 @@ impl CellTextures {
     }
 }
 
+/// Kitty graphics: every visible placement of every pane, as textured quads
+/// over the cells. Pixels are uploaded once per seat and image id and freed
+/// after a few frames without a placement.
+fn draw_pane_pictures(
+    renderer: &mut ChromeRenderer,
+    destination: &wgpu::Texture,
+    panes: &Panes<'_>,
+    scale: f32,
+    encoder: &mut wgpu::CommandEncoder,
+) -> Result<(), String> {
+    let Some([cell_w, cell_h]) = panes.model.terminal_cell_pixels else {
+        return Ok(());
+    };
+    let (cell_w, cell_h) = (cell_w as f32, cell_h as f32);
+    let mut quads = Vec::new();
+    for (id, rect) in panes.bounds {
+        let Some(screen) = panes.model.screens.get(id) else {
+            continue;
+        };
+        if screen.images.is_empty() {
+            continue;
+        }
+        let clip = [
+            (rect.x * scale).round(),
+            (rect.y * scale).round(),
+            (rect.w * scale).floor(),
+            (rect.h * scale).floor(),
+        ];
+        let mut placements: Vec<_> = screen.images.iter().collect();
+        placements.sort_by_key(|p| p.z);
+        for p in placements {
+            let key = format!("kitty/{id}/{}", p.id);
+            if !renderer.pictures().has(&key) {
+                let Some(data) = screen.image_data.iter().find(|d| d.id == p.id) else {
+                    continue;
+                };
+                let Ok((w, h, rgba)) = crate::assets::decode_png(&data.png) else {
+                    continue;
+                };
+                renderer
+                    .upload_picture(&key, w, h, &rgba)
+                    .map_err(|e| e.to_string())?;
+            }
+            let [sx, sy, sw, sh] = p.source;
+            let (sw, sh) = (sw.max(1) as f32, sh.max(1) as f32);
+            let (w, h) = if p.cols > 0 && p.rows > 0 {
+                (p.cols as f32 * cell_w, p.rows as f32 * cell_h)
+            } else {
+                (sw, sh)
+            };
+            quads.push(bbt_render::chrome::images::Quad {
+                key,
+                rect: [
+                    clip[0] + p.col as f32 * cell_w,
+                    clip[1] + p.row as f32 * cell_h,
+                    w,
+                    h,
+                ],
+                clip,
+                uv: [
+                    sx as f32 / p.width.max(1) as f32,
+                    sy as f32 / p.height.max(1) as f32,
+                    (sx as f32 + sw) / p.width.max(1) as f32,
+                    (sy as f32 + sh) / p.height.max(1) as f32,
+                ],
+            });
+        }
+    }
+    let view = destination.create_view(&Default::default());
+    let size = destination.size();
+    renderer
+        .draw_pictures(
+            &quads,
+            bbt_render::chrome::ChromeTarget {
+                width: size.width,
+                height: size.height,
+                scale,
+                view: &view,
+                format: destination.format(),
+            },
+            encoder,
+        )
+        .map_err(|e| e.to_string())?;
+    renderer.pictures().sweep(120);
+    Ok(())
+}
+
 fn copy_cells(
     source: &wgpu::Texture,
     destination: &wgpu::Texture,
@@ -2067,6 +2155,7 @@ impl VerificationFrame {
             .map_err(|e| e.to_string())?;
         self.cells
             .draw(&mut self.renderer, &self.target, &panes, 1., &mut encoder)?;
+        draw_pane_pictures(&mut self.renderer, &self.target, &panes, 1., &mut encoder)?;
         draw_overlay_or_live(
             &mut self.renderer,
             &self.materials,

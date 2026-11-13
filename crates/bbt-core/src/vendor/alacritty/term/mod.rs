@@ -319,6 +319,11 @@ pub struct Term<T> {
     /// Terminal focus controlling the cursor shape.
     pub is_focused: bool,
 
+    /// Kitty graphics: images and their placements, anchored to absolute rows
+    /// (`Grid::rows_scrolled` plus the screen line). bboxy450-term addition.
+    #[serde(default)]
+    pub graphics: bboxy450_kitty_graphics::Graphics,
+
     /// Currently active grid.
     ///
     /// Tracks the screen buffer currently in use. While the alternate screen buffer is active,
@@ -518,6 +523,7 @@ impl<T> Term<T> {
             colors: color::Colors::default(),
             title_stack: Default::default(),
             is_focused: Default::default(),
+            graphics: Default::default(),
             title: Default::default(),
             mode: Default::default(),
         }
@@ -783,6 +789,9 @@ impl<T> Term<T> {
 
         mem::swap(&mut self.grid, &mut self.inactive_grid);
         self.mode ^= TermMode::ALT_SCREEN;
+        // Pictures belong to the screen they were drawn on; this cut keeps
+        // none across the swap rather than a second placement set.
+        self.graphics.clear_placements();
         self.mark_fully_damaged();
     }
 
@@ -822,7 +831,18 @@ impl<T> Term<T> {
 
         let region = origin..self.scroll_region.end;
 
+        let whole = origin == Line(0) && self.scroll_region.end == Line(self.screen_lines() as i32);
+        if !whole {
+            // A region scroll moves text an image cannot follow: the rows it
+            // covered are cleared of pictures, as kitty does.
+            let base = self.grid.rows_scrolled();
+            self.graphics.clear_rows(
+                base + region.start.0.max(0) as u64,
+                base + region.end.0.max(0) as u64,
+            );
+        }
         self.grid.scroll_up(&region, lines);
+        self.graphics.forget_before(self.grid.rows_scrolled());
 
         self.mark_fully_damaged();
     }
@@ -1026,6 +1046,29 @@ impl<T> Dimensions for Term<T> {
 }
 
 impl<T: EventListener> Handler for Term<T> {
+    /// A Kitty graphics command at the cursor. The reply goes to the program
+    /// as a PTY write; a displayed image moves the cursor past itself.
+    fn graphics_command(&mut self, data: &[u8]) {
+        let cursor = self.grid.cursor.point;
+        let row = self.grid.rows_scrolled() + cursor.line.0.max(0) as u64;
+        let outcome = self
+            .graphics
+            .command(data, row, cursor.column.0 as u32);
+        if let Some(reply) = outcome.reply {
+            self.event_proxy.send_event(Event::PtyWrite(reply));
+        }
+        if let Some((rows, cols)) = outcome.cursor
+            && rows > 0
+            && cols > 0
+        {
+            let line = (cursor.line.0 + rows as i32 - 1).min(self.screen_lines() as i32 - 1);
+            let column = (cursor.column.0 + cols as usize).min(self.columns() - 1);
+            self.grid.cursor.point = Point::new(Line(line), Column(column));
+            self.grid.cursor.input_needs_wrap = false;
+        }
+        self.mark_fully_damaged();
+    }
+
     fn unhandled_osc(&mut self, params: &[&[u8]], _bell_terminated: bool) {
         self.event_proxy
             .send_event(Event::Osc(params.iter().map(|p| p.to_vec()).collect()));
@@ -1797,6 +1840,7 @@ impl<T: EventListener> Handler for Term<T> {
                 } else {
                     self.grid.clear_viewport();
                 }
+                self.graphics.clear_placements();
             }
             ansi::ClearMode::Saved if self.history_size() > 0 => {
                 self.grid.clear_history();
@@ -1835,6 +1879,7 @@ impl<T: EventListener> Handler for Term<T> {
         self.tabs = TabStops::new(self.columns());
         self.title_stack = Vec::new();
         self.title = None;
+        self.graphics = Default::default();
         self.keyboard_mode_stack = Default::default();
         self.inactive_keyboard_mode_stack = Default::default();
 

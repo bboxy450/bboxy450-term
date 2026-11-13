@@ -186,6 +186,8 @@ mod tests {
                     title: String::new(),
                     cwd: None,
                     gap: None,
+                    images: vec![],
+                    image_data: vec![],
                 }),
             },
         );

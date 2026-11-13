@@ -525,6 +525,9 @@ pub trait Handler {
     /// Forward an unrecognized OSC without interpreting or re-encoding its parameters.
     fn unhandled_osc(&mut self, _params: &[&[u8]], _bell_terminated: bool) {}
 
+    /// One Kitty graphics command (an APC string without its delimiters).
+    fn graphics_command(&mut self, _data: &[u8]) {}
+
     /// OSC to set window title.
     fn set_title(&mut self, _: Option<String>) {}
 
@@ -1365,6 +1368,11 @@ where
             C0::SO => self.handler.set_active_charset(CharsetIndex::G1),
             _ => debug!("[unhandled] execute byte={:02x}", byte),
         }
+    }
+
+    #[inline]
+    fn apc_dispatch(&mut self, data: &[u8]) {
+        self.handler.graphics_command(data);
     }
 
     #[inline]

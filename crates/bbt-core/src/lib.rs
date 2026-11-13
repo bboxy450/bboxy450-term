@@ -167,6 +167,15 @@ impl Term {
         self.collect_events();
     }
 
+    /// Kitty graphics: the images and placements this terminal holds.
+    pub fn graphics(&self) -> &bboxy450_kitty_graphics::Graphics {
+        &self.model.graphics
+    }
+    /// Rows that have scrolled off the top since the first screen; the
+    /// absolute row of screen line `l` is this plus `l`.
+    pub fn rows_scrolled(&self) -> u64 {
+        self.model.grid().rows_scrolled()
+    }
     /// Borrow the active grid, including its bounded retained history.
     pub fn grid(&self) -> &Grid<Cell> {
         self.model.grid()
@@ -285,4 +294,56 @@ impl Dimensions for Size {
 #[test]
 fn kitty_keyboard_invariant() {
     keyboard::assert_invariant();
+}
+
+#[cfg(test)]
+mod kitty_tests {
+    use super::*;
+    // State: an empty 20x5 terminal with its cursor at row 1. Safety: a chunked
+    // PNG transmit-and-display keeps one image, one placement at the cursor,
+    // moves the cursor past the picture, answers nothing when quiet, and a
+    // checkpoint round-trips it; scrolling the picture off the top forgets it.
+    #[test]
+    fn kitty_graphics_place_reply_scroll_and_checkpoint() {
+        let mut term = Term::new(20, 5, 100);
+        term.advance(b"\n");
+        let image = bboxy450_kitty_graphics::Image::new(0, 6, 4, vec![200; 6 * 4 * 4]);
+        let png = image.png();
+        term.advance(&bboxy450_kitty_graphics::encode_png(&png, 9, 3, 2));
+        let placements = term.graphics().placements().to_vec();
+        assert_eq!(placements.len(), 1);
+        assert_eq!((placements[0].row, placements[0].col, placements[0].cols, placements[0].rows), (1, 0, 3, 2));
+        assert_eq!(term.grid().cursor.point, Point::new(Line(2), Column(3)));
+        assert!(term.take_events().iter().all(|e| !matches!(e, Event::PtyWrite(_))), "quiet=1 answers nothing");
+        // A loud query answers OK on the PTY.
+        term.advance(b"\x1b_Ga=q,i=4,f=32,s=1,v=1;AAAAAA==\x1b\\");
+        let replies: Vec<String> = term
+            .take_events()
+            .into_iter()
+            .filter_map(|e| match e {
+                Event::PtyWrite(s) => Some(s),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(replies, vec!["\x1b_Gi=4;OK\x1b\\".to_owned()]);
+        let checkpoint = term.checkpoint();
+        let mut restored = Term::new(20, 5, 100);
+        restored.restore(checkpoint);
+        assert_eq!(restored.graphics().placements(), term.graphics().placements());
+        assert_eq!(restored.graphics().image(9).unwrap().rgba, image.rgba);
+        // Six linefeeds scroll the two picture rows past the top.
+        for _ in 0..8 {
+            term.advance(b"\n");
+        }
+        assert!(term.graphics().placements().is_empty());
+        assert!(term.rows_scrolled() >= 6);
+        // An oversized APC string is dropped whole, never half-applied.
+        let mut huge = b"\x1b_Ga=T,f=32,s=1,v=1,i=5;".to_vec();
+        huge.extend(std::iter::repeat_n(b'A', 9000));
+        huge.extend(b"\x1b\\");
+        term.advance(&huge);
+        assert!(term.graphics().image(5).is_none());
+        term.advance(b"\rafter");
+        assert_eq!(term.grid()[Line(4)][Column(0)].c, 'a');
+    }
 }

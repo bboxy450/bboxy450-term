@@ -66,6 +66,21 @@ impl ViewStream {
                     title: next.screen.title.clone(),
                     cwd: next.screen.cwd.clone(),
                     gap: next.screen.gap.clone(),
+                    images: (base.screen.images != next.screen.images)
+                        .then(|| next.screen.images.clone()),
+                    image_data: next
+                        .screen
+                        .image_data
+                        .iter()
+                        .filter(|d| {
+                            !base
+                                .screen
+                                .image_data
+                                .iter()
+                                .any(|b| b.id == d.id && b.png == d.png)
+                        })
+                        .cloned()
+                        .collect(),
                 }),
             }
         } else {
@@ -140,6 +155,8 @@ impl Replica {
                     title,
                     cwd,
                     gap,
+                    images,
+                    image_data,
                 } = *delta;
                 let old = self
                     .snapshot
@@ -166,6 +183,24 @@ impl Replica {
                 next.screen.title = title;
                 next.screen.cwd = cwd;
                 next.screen.gap = gap;
+                if let Some(images) = images {
+                    next.screen.images = images;
+                }
+                // Pixels arrive once; keep the ones still shown, drop the rest.
+                for data in image_data {
+                    next.screen.image_data.retain(|d| d.id != data.id);
+                    next.screen.image_data.push(data);
+                }
+                let shown = &next.screen.images;
+                next.screen
+                    .image_data
+                    .retain(|d| shown.iter().any(|i| i.id == d.id));
+                if shown
+                    .iter()
+                    .any(|i| !next.screen.image_data.iter().any(|d| d.id == i.id))
+                {
+                    return Err(invalid("delta shows an image without its pixels"));
+                }
                 self.snapshot = Some(next);
             }
         }
@@ -174,3 +209,109 @@ impl Replica {
 }
 
 pub use bbt_supervisor::ring::HistoryGap;
+
+#[cfg(test)]
+mod kitty_tests {
+    use super::*;
+    use bbt_core::Term;
+    fn shot(term: &Term, sequence: u64) -> Snapshot {
+        Snapshot {
+            view: View {
+                seat: ulid::Ulid::from(7_u128),
+                generation: 1,
+                view_generation: ulid::Ulid::from(1_u128),
+            },
+            sequence,
+            screen: Screen::from_term(term, String::new(), None, None),
+        }
+    }
+    // State: one viewer, a terminal that shows a picture then types beside it.
+    // Safety: the first update carries the pixels; the next delta carries the
+    // placement set only when it changed and never the pixels again; the
+    // replica always holds pixels for every placement it shows.
+    #[test]
+    fn deltas_send_picture_pixels_once_and_placements_on_change() {
+        let mut term = Term::new(20, 5, 10);
+        let png = bboxy450_kitty_graphics::Image::new(0, 4, 4, vec![9; 64]).png();
+        term.advance(&bboxy450_kitty_graphics::encode_png(&png, 1, 2, 2));
+        let mut stream = ViewStream::default();
+        let mut replica = Replica::default();
+        stream.offer(shot(&term, 1)).unwrap();
+        let first = stream.next_update().unwrap();
+        let Update::Snapshot { snapshot } = &first else {
+            panic!("first update is a snapshot")
+        };
+        assert_eq!(snapshot.screen.images.len(), 1);
+        assert_eq!(snapshot.screen.image_data.len(), 1);
+        let view = snapshot.view;
+        replica.apply(first).unwrap();
+        stream.applied(view, 1).unwrap();
+        term.advance(b"x");
+        stream.offer(shot(&term, 2)).unwrap();
+        let Update::Delta { delta } = stream.next_update().unwrap() else {
+            panic!("second update is a delta")
+        };
+        assert!(
+            delta.images.is_none(),
+            "unchanged placements are not resent"
+        );
+        assert!(delta.image_data.is_empty(), "pixels travel once");
+        replica
+            .apply(Update::Delta {
+                delta: delta.clone(),
+            })
+            .unwrap();
+        stream.applied(delta.view, 2).unwrap();
+        term.advance(b"\x1b_Ga=d,d=A\x1b\\");
+        stream.offer(shot(&term, 3)).unwrap();
+        let Update::Delta { delta } = stream.next_update().unwrap() else {
+            panic!("third update is a delta")
+        };
+        assert_eq!(delta.images.as_deref(), Some(&[][..]));
+        replica.apply(Update::Delta { delta }).unwrap();
+        let screen = &replica.snapshot.as_ref().unwrap().screen;
+        assert!(screen.images.is_empty() && screen.image_data.is_empty());
+        // A delta that shows an image without its pixels is refused.
+        let mut bad = stream.sent.take().unwrap();
+        bad.sequence = 4;
+        let _ = stream;
+        let mut broken = Replica::default();
+        broken
+            .apply(Update::Snapshot {
+                snapshot: Box::new(bad.clone()),
+            })
+            .unwrap();
+        let delta = Delta {
+            view: bad.view,
+            base: 4,
+            sequence: 5,
+            rows: vec![],
+            cursor: bad.screen.cursor,
+            modes: bad.screen.modes,
+            palette: bad.screen.palette.clone(),
+            cursor_style: bad.screen.cursor_style.clone(),
+            title: String::new(),
+            cwd: None,
+            gap: None,
+            images: Some(vec![bbt_proto::streams::ScreenImage {
+                id: 42,
+                row: 0,
+                col: 0,
+                cols: 1,
+                rows: 1,
+                z: 0,
+                source: [0, 0, 1, 1],
+                width: 1,
+                height: 1,
+            }]),
+            image_data: vec![],
+        };
+        assert!(
+            broken
+                .apply(Update::Delta {
+                    delta: Box::new(delta)
+                })
+                .is_err()
+        );
+    }
+}

@@ -509,6 +509,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "bboxy450-kitty-graphics"
+version = "0.1.1"
+dependencies = [
+ "base64 0.22.1",
+ "flate2",
+ "png",
+ "serde",
+]
+
+[[package]]
 name = "bboxy450-mermaid"
 version = "0.1.1"
 
@@ -601,6 +611,7 @@ version = "0.1.1"
 dependencies = [
  "arrayvec",
  "base64 0.22.1",
+ "bboxy450-kitty-graphics",
  "bitflags 2.13.2",
  "cursor-icon",
  "log",
@@ -672,6 +683,7 @@ dependencies = [
  "bboxy450-harness-host",
  "bboxy450-harness-wake-up",
  "bboxy450-keychain",
+ "bboxy450-kitty-graphics",
  "bboxy450-plugin",
  "bboxy450-render",
  "bboxy450-rt",
@@ -699,6 +711,7 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "sha2 0.10.9",
+ "shell-words",
  "tempfile",
  "tokio",
  "tokio-tungstenite",

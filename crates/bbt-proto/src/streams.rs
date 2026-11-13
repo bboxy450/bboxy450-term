@@ -16,6 +16,32 @@ pub struct View {
     pub view_generation: Ulid,
 }
 
+/// One Kitty graphics placement on the visible screen, in cells.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ScreenImage {
+    pub id: u32,
+    /// Screen row of the top-left cell; may be negative when the picture
+    /// started above the first row and still reaches into the screen.
+    pub row: i32,
+    pub col: u32,
+    /// Zero means the image's own pixel size at the GUI's cell metrics.
+    pub cols: u32,
+    pub rows: u32,
+    pub z: i32,
+    /// Source rectangle in image pixels.
+    pub source: [u32; 4],
+    pub width: u32,
+    pub height: u32,
+}
+/// The pixels of an image a screen shows, sent once per image per viewer.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct ImageData {
+    pub id: u32,
+    pub width: u32,
+    pub height: u32,
+    pub png: std::sync::Arc<Vec<u8>>,
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Screen {
     pub cols: usize,
@@ -28,11 +54,57 @@ pub struct Screen {
     pub title: String,
     pub cwd: Option<String>,
     pub gap: Option<String>,
+    /// Kitty graphics on this screen, drawn over the cells.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub images: Vec<ScreenImage>,
+    /// Pixels for every image in `images`; a delta carries only the new ones.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub image_data: Vec<ImageData>,
 }
 impl Screen {
+    /// The visible Kitty placements and the pixels they need.
+    pub fn graphics(term: &Term) -> (Vec<ScreenImage>, Vec<ImageData>) {
+        let graphics = term.graphics();
+        let origin = term.rows_scrolled();
+        let rows = term.grid().screen_lines() as i64;
+        let mut images = Vec::new();
+        let mut data: Vec<ImageData> = Vec::new();
+        for p in graphics.placements() {
+            let Some(image) = graphics.image(p.image) else {
+                continue;
+            };
+            let row = p.row as i64 - origin as i64;
+            if row >= rows || row + i64::from(p.rows.max(1)) <= 0 || row < i64::from(i32::MIN) {
+                continue;
+            }
+            images.push(ScreenImage {
+                id: p.image,
+                row: row as i32,
+                col: p.col,
+                cols: p.cols,
+                rows: p.rows,
+                z: p.z,
+                source: p.source,
+                width: image.width,
+                height: image.height,
+            });
+            if !data.iter().any(|d| d.id == p.image) {
+                data.push(ImageData {
+                    id: p.image,
+                    width: image.width,
+                    height: image.height,
+                    png: image.png(),
+                });
+            }
+        }
+        (images, data)
+    }
     pub fn from_term(term: &Term, title: String, cwd: Option<String>, gap: Option<String>) -> Self {
         let grid = term.grid();
+        let (images, image_data) = Self::graphics(term);
         Self {
+            images,
+            image_data,
             cols: grid.columns(),
             rows: grid.screen_lines(),
             cells: (0..grid.screen_lines())
@@ -74,6 +146,12 @@ pub struct Delta {
     pub title: String,
     pub cwd: Option<String>,
     pub gap: Option<String>,
+    /// `None` keeps the base's placements; `Some` replaces them.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub images: Option<Vec<ScreenImage>>,
+    /// Pixels the base did not have yet.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub image_data: Vec<ImageData>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -118,6 +196,8 @@ mod tests {
             title: "fixture".into(),
             cwd: Some("/fixture".into()),
             gap: Some("fixture gap".into()),
+            images: vec![],
+            image_data: vec![],
         }
     }
 
