@@ -74,6 +74,7 @@ impl Sync {
             self.disconnected();
             return None;
         }
+        let mut timed_out = false;
         if let Some((op, _, deadline)) = &self.pending {
             let result =
                 model.and_then(|model| model.operation_results.rows().find(|r| r.op == *op));
@@ -90,8 +91,11 @@ impl Sync {
                     _ => self.error = Some("Unexpected role settings response".into()),
                 }
             } else if now >= *deadline {
+                // A slow backend must not latch every launch shut: send the
+                // catalog again under a fresh id and keep the error visible.
                 self.pending = None;
-                self.error = Some("Role settings outcome unknown; reload settings to retry".into());
+                self.attempted = None;
+                timed_out = true;
             }
         }
         if self.pending.is_some()
@@ -103,7 +107,7 @@ impl Sync {
         let id = bbt_mux::Ulid::new();
         self.attempted = Some(desired.clone());
         self.pending = Some((id, desired.clone(), now + Duration::from_secs(10)));
-        self.error = None;
+        self.error = timed_out.then(|| "Role settings outcome unknown; retrying".into());
         Some(live::UiMsg::ConfigureRoles {
             id,
             catalog: desired,
@@ -113,7 +117,7 @@ impl Sync {
         self.applied.as_ref() == Some(desired)
     }
     pub fn settled(&self, desired: &bbt_proto::gui::RoleCatalog) -> bool {
-        self.applied(desired) || (self.pending.is_none() && self.error.is_some())
+        self.applied(desired) || self.error.is_some()
     }
     pub fn wake_at(&self) -> Option<Instant> {
         self.pending.as_ref().map(|p| p.2)
@@ -247,17 +251,33 @@ mod tests {
         ));
     }
     #[test]
-    fn role_sync_timeout_is_visible_and_does_not_claim_authority_was_applied() {
+    fn role_sync_timeout_is_visible_retries_itself_and_accepts_only_the_new_ack() {
         let catalog = bbt_proto::gui::RoleCatalog::builtin();
         let mut sync = Sync::default();
+        let mut model = bboxy450_term::model::Model::default();
         let now = Instant::now();
-        sync.update(catalog.clone(), None, true, now);
-        sync.update(catalog.clone(), None, true, now + Duration::from_secs(11));
+        let Some(live::UiMsg::ConfigureRoles { id: first, .. }) =
+            sync.update(catalog.clone(), None, true, now)
+        else {
+            panic!("catalog update not sent")
+        };
+        let later = now + Duration::from_secs(11);
+        let Some(live::UiMsg::ConfigureRoles { id: second, .. }) =
+            sync.update(catalog.clone(), None, true, later)
+        else {
+            panic!("timed-out catalog update not retried")
+        };
+        assert_ne!(first, second);
         assert!(!sync.applied(&catalog));
+        assert!(sync.settled(&catalog));
         assert!(sync.error.as_deref().unwrap().contains("unknown"));
-        assert!(sync.wake_at().is_none());
-        assert!(sync.update(catalog.clone(), None, true, now).is_none());
-        sync.retry();
-        assert!(sync.update(catalog, None, true, now).is_some());
+        assert!(sync.update(catalog.clone(), None, true, later).is_none());
+        Arc::make_mut(&mut model.operation_results).push(first, messaging::Reply::RolesConfigured);
+        sync.update(catalog.clone(), Some(&model), true, later);
+        assert!(!sync.applied(&catalog));
+        Arc::make_mut(&mut model.operation_results).push(second, messaging::Reply::RolesConfigured);
+        sync.update(catalog.clone(), Some(&model), true, later);
+        assert!(sync.applied(&catalog));
+        assert!(sync.error.is_none());
     }
 }
