@@ -7,6 +7,7 @@
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 """Mandatory native/reference differential gate; never accepts partial checking."""
 import argparse
+import concurrent.futures
 from contextlib import contextmanager
 from datetime import datetime, timezone
 import fcntl
@@ -248,6 +249,10 @@ def native_graph(root, name):
     return states, edges
 
 
+class TlcTimeout(ValueError):
+    """One TLC process exceeded its limit. In the pool that may be contention."""
+
+
 def tlc(java, jar, root, name, graph):
     suffix = "Graph" if graph else ""
     command = [str(java), "-XX:ActiveProcessorCount=2", "-Xmx256m", "-XX:+UseSerialGC", "-cp", str(jar),
@@ -264,8 +269,9 @@ def tlc(java, jar, root, name, graph):
             result = subprocess.run(command, cwd=root, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                                     text=True, timeout=60)
     except subprocess.TimeoutExpired as error:
-        (root / f"{name}{suffix}.log").write_bytes(error.stdout or b"")
-        raise ValueError(f"TLC timed out: {name}; incomplete is not a pass") from error
+        output = error.stdout or b""
+        (root / f"{name}{suffix}.log").write_bytes(output if isinstance(output, bytes) else output.encode())
+        raise TlcTimeout(f"TLC timed out: {name}; incomplete is not a pass") from error
     (root / f"{name}{suffix}.log").write_text(result.stdout)
     return result
 
@@ -834,6 +840,16 @@ def reused_model(store, root, name, expected, metadata, pins, key, checker):
         return None  # Missing, corrupt or stale cache always re-checks.
 
 
+def formal_jobs():
+    """Concurrent Java TLC processes: FORMAL_JOBS, else half the cores, at most 6."""
+    value = os.environ.get("FORMAL_JOBS", "")
+    if value:
+        if not re.fullmatch(r"[1-9][0-9]?", value):
+            raise ValueError("FORMAL_JOBS must be 1..99")
+        return int(value)
+    return max(1, min(6, (os.cpu_count() or 2) // 2))
+
+
 def check_model(root, row, contract_names, java, jar, pins, store, *, reuse=False, checker=None):
     name, expected, count, width = row
     if not re.fullmatch(r'[A-Za-z][A-Za-z0-9_]*', name) or expected not in {"pass", "safety", "deadlock", "liveness"}:
@@ -910,9 +926,32 @@ def main():
                 "crates": records, "contracts": contract_records, "models": [], "complete_tlc_replacement": False,
                 "dirty": source_dirty(ROOT),
                 "input_sha256": input_hashes(ROOT, records, contract_records)}
-    for row in rows:
-        evidence["models"].append(check_model(root, row, contract_names, java, jar, pins,
-                                               evidence_store(ROOT), reuse=args.reuse, checker=checker))
+    # Each model owns its files and its JVM temporary directory, so models check
+    # in a small pool; the receipt keeps manifest order and the first failure fails.
+    # A model that times out beside others is checked again alone, under the same
+    # limit: only a timeout with the machine to itself is a failure.
+    store = evidence_store(ROOT)
+
+    def check(row):
+        return check_model(root, row, contract_names, java, jar, pins, store, reuse=args.reuse, checker=checker)
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=formal_jobs()) as pool:
+        futures = [pool.submit(check, row) for row in rows]
+        results = []
+        try:
+            for row, future in zip(rows, futures):
+                try:
+                    results.append(future.result())
+                except TlcTimeout:
+                    results.append(row)
+        except BaseException:
+            pool.shutdown(wait=True, cancel_futures=True)
+            raise
+    for index, result in enumerate(results):
+        if isinstance(result, list):
+            print(f"formal: {result[0]}: timed out in the pool; checking alone", flush=True)
+            results[index] = check(result)
+    evidence["models"] = results
     (target / "evidence.json").write_text(json.dumps(evidence, indent=2) + '\n')
     archive = archive_evidence(target)
     print("formal: receipt " + json.dumps(evidence_receipt(archive, require_clean=False), sort_keys=True))

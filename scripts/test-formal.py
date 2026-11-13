@@ -11,6 +11,7 @@ import contextlib
 import copy
 from concurrent.futures import ThreadPoolExecutor
 import io
+import os
 import json
 from pathlib import Path
 import subprocess
@@ -31,6 +32,15 @@ publisher_spec.loader.exec_module(publisher)
 
 
 class GateTests(unittest.TestCase):
+    def test_tlc_pool_size_is_bounded_and_refuses_an_invalid_override(self):
+        with mock.patch.dict(os.environ,{"FORMAL_JOBS":"3"}):self.assertEqual(formal.formal_jobs(),3)
+        for bad in ("0","-1","many","100"):
+            with mock.patch.dict(os.environ,{"FORMAL_JOBS":bad}),self.assertRaises(ValueError):formal.formal_jobs()
+        with mock.patch.dict(os.environ,{"FORMAL_JOBS":""}),mock.patch.object(os,"cpu_count",return_value=64):
+            self.assertEqual(formal.formal_jobs(),6)
+        with mock.patch.dict(os.environ,{"FORMAL_JOBS":""}),mock.patch.object(os,"cpu_count",return_value=None):
+            self.assertEqual(formal.formal_jobs(),1)
+
     def test_concurrent_tlc_standard_module_cleanup_has_private_ownership(self):
         with tempfile.TemporaryDirectory() as own:
             root = Path(own)
