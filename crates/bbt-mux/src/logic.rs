@@ -6127,11 +6127,26 @@ impl Worker {
                 };
                 let empty = port.is_some() && tasks["items"].as_array().is_some_and(Vec::is_empty);
                 let tasks = tools::scoped_list(actor, tasks, empty.then_some("nothing_assigned"));
-                let destinations = crate::mcp::messaging::destination_list(
-                    self.messaging
-                        .destinations(record.id, record.generation)
-                        .map_err(|e| e.to_string())?,
-                );
+                // A swarm keeps a folder, an inbox and a swarm link for every seat it
+                // ever had. Closed seats cannot read, so their rows are counted, not
+                // listed: the grants are unchanged and the list stays the size of the
+                // live swarm.
+                let closed = self
+                    .registry
+                    .list()
+                    .map_err(|_| "seat registry unavailable")?
+                    .into_iter()
+                    .filter(|seat| seat.lifecycle != Lifecycle::Open)
+                    .map(|seat| seat.id.to_string())
+                    .collect::<std::collections::HashSet<_>>();
+                let mut destinations = self
+                    .messaging
+                    .destinations(record.id, record.generation)
+                    .map_err(|e| e.to_string())?;
+                let listed = destinations.len();
+                destinations.retain(|row| !row.path.split('/').any(|part| closed.contains(part)));
+                let closed_destinations = listed - destinations.len();
+                let destinations = crate::mcp::messaging::destination_list(destinations);
                 let summary = self
                     .messaging
                     .inbox_summary(record.id, record.generation)
@@ -6141,12 +6156,15 @@ impl Worker {
                     .as_array()
                     .unwrap()
                     .iter()
-                    .map(|tool| json!({"name":tool["name"],"description":tool["description"]}))
+                    // Names only: the client already holds each tool's description
+                    // and schema from tools/list.
+                    .map(|tool| json!({"name":tool["name"]}))
                     .collect::<Vec<_>>();
                 let value = json!({
                     "actor":actor,"seat":self.control_seat(record),"tasks":tasks,"tools":tools,
                     "implementation_workspace":self.implementation_workspaces.own(actor).map_err(|e|e.to_string())?.map(|r|r.view()),
                     "destinations":destinations,
+                    "closed_seat_destinations_omitted":closed_destinations,
                     "attention":crate::mcp::attention::view(record)?,
                     "operator":"to reach the operator, reply with reply_to, or send to operator/inbox",
                     "op_id_guidance":"ids are minted for you unless you retry",

@@ -27,7 +27,8 @@ impl Bridge {
         };
         for definition in runtime {
             if !tools.iter().any(|tool| tool["name"] == definition["name"]) {
-                tools.push(definition);
+                // Names only, as the host's own tools are listed.
+                tools.push(json!({"name": definition["name"]}));
             }
         }
         let after = result["structuredContent"].clone();

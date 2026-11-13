@@ -3177,6 +3177,43 @@ fn mcp_counts_have_a_basis_and_ack_ids_without_equating_acknowledgement_with_rea
 }
 
 // keeps: decision #266
+// orient stays the size of the live swarm (specs/gaps-and-improvements #2): a
+// closed seat's destinations are counted, not listed, and tools are names only.
+#[test]
+fn orient_lists_tool_names_only_and_counts_closed_seats_destinations() {
+    let f = Fixture::new();
+    let peer = f.peer.id.to_string();
+    let before = data(f.call(f.own.id, Ulid::new(), "orient", json!({})));
+    let listed = |orient: &Value| {
+        orient["destinations"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .filter(|row| row["path"].as_str().unwrap().contains(&peer))
+            .count()
+    };
+    assert!(listed(&before) > 0, "{before}");
+    assert_eq!(before["closed_seat_destinations_omitted"], 0);
+    assert!(
+        before["tools"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .all(|tool| tool.as_object().unwrap().keys().eq(["name"])),
+        "{}",
+        before["tools"]
+    );
+    f.registry()
+        .update(f.peer.id, |r| {
+            r.lifecycle = bbt_mux::registry::Lifecycle::ClosedRetained;
+            Ok(())
+        })
+        .unwrap();
+    let after = data(f.call(f.own.id, Ulid::new(), "orient", json!({})));
+    assert_eq!(listed(&after), 0, "{after}");
+    assert_eq!(after["closed_seat_destinations_omitted"], listed(&before));
+}
+
 #[test]
 fn mcp_destinations_explain_rights_and_write_only_reads_without_expanding_grants() {
     let f = Fixture::new();
@@ -3339,15 +3376,16 @@ fn mcp_orient_cold_start_names_identity_allowed_tools_tasks_counts_and_actions()
             .as_array()
             .unwrap()
             .iter()
-            .map(|tool| json!({"name":tool["name"],"description":tool["description"]}))
+            .map(|tool| json!({"name":tool["name"]}))
             .collect::<Vec<_>>();
+        // orient names the allowed tools; tools/list holds each description once.
         assert_eq!(value["tools"], json!(expected));
         let tools = value["tools"].as_array().unwrap();
         assert_eq!(
             tools.iter().any(|tool| tool["name"] == "ch_grant"),
             record.role.class == Class::Oracle
         );
-        for tool in tools {
+        for tool in catalogue["result"]["tools"].as_array().unwrap() {
             let line = tool["description"].as_str().unwrap();
             assert!(!line.is_empty() && !line.contains('\n'));
         }
