@@ -401,6 +401,7 @@ fn adapters_launch_overlays_leave_user_config_unchanged_and_keep_raw_hook_fields
         [
             other_approval,
             "mcp_servers.bboxy.default_tools_approval_mode=\"approve\"",
+            "mcp_servers.bboxy_code.default_tools_approval_mode=\"approve\"",
             "check_for_update_on_startup=false"
         ]
     );

@@ -423,8 +423,11 @@ fn startup_prompt(context: &LaunchContext<'_>) -> Result<String> {
 fn mcp_wiring(overlay: &Path, context: &LaunchContext<'_>) -> Result<()> {
     write(
         &overlay.join("mcp.json"),
+        // bboxy_code: bounded code reading and search, rooted at the seat's cwd.
         &serde_json::to_vec(&serde_json::json!({"mcpServers":{"bboxy":{
             "command":context.executable,"args":["mcp"]
+        },"bboxy_code":{
+            "command":context.executable,"args":["code"]
         }}}))?,
     )?;
     Ok(())
@@ -661,6 +664,17 @@ pub fn plan(record: &HarnessRecord, context: &LaunchContext<'_>) -> Result<Launc
                 "mcp_servers.bboxy.required=true".into(),
                 "-c".into(),
                 "mcp_servers.bboxy.default_tools_approval_mode=\"approve\"".into(),
+                "-c".into(),
+                format!(
+                    "mcp_servers.bboxy_code.command={}",
+                    serde_json::to_string(&context.executable.to_string_lossy())?
+                ),
+                "-c".into(),
+                "mcp_servers.bboxy_code.args=[\"code\"]".into(),
+                "-c".into(),
+                "mcp_servers.bboxy_code.enabled=true".into(),
+                "-c".into(),
+                "mcp_servers.bboxy_code.default_tools_approval_mode=\"approve\"".into(),
                 "-c".into(),
                 "check_for_update_on_startup=false".into(),
                 "-c".into(),

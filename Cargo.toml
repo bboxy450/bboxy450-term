@@ -2,6 +2,7 @@
 resolver = "3"
 members = [
   "crates/bboxy450-canvas",
+  "crates/bboxy450-code",
   "crates/bboxy450-kitty-graphics",
   "crates/bboxy450-usage",
   "crates/bboxy450-term-remote",

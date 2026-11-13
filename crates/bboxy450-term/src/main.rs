@@ -10320,6 +10320,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })?;
         return Ok(());
     }
+    if hook_args.first().is_some_and(|arg| arg == "code") {
+        // The code-query MCP server (specs/code-query.md), rooted at the seat's cwd.
+        let root = bboxy450_code::Root::new(std::env::current_dir()?)?;
+        bboxy450_code::serve(&root, std::io::stdin().lock(), std::io::stdout());
+        return Ok(());
+    }
     if hook_args.first().is_some_and(|arg| arg == "e2e") {
         // The unattended e2e runner (#282): its own windowless app, ctl scripts as verdicts.
         match bboxy450_term::e2e_night::main(&hook_args[1..]) {
