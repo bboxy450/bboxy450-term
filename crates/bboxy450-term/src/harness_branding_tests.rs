@@ -140,17 +140,17 @@ fn harness_branding_all_menu_surfaces_and_launch_keys() {
         .children
         .as_ref()
         .unwrap()[0];
-    complete(
-        "remote picker",
-        &host
-            .children
+    // A machine runs one thing: bboxy450-harness, which runs its agent there.
+    assert_eq!(
+        host.children
             .as_ref()
             .unwrap()
             .iter()
             .map(|i| i.harness.as_str())
             .collect::<Vec<_>>(),
-    )
-    .unwrap();
+        ["bboxy450-harness"],
+        "remote picker"
+    );
     let machines = std::collections::BTreeMap::from([(
         "ssh:fixture".into(),
         bbt_ui::modules::settings::Machine::default(),

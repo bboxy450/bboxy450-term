@@ -197,7 +197,11 @@ fn native_bundle_fixture_child() {
     }
     fs::write(p.join("Makefile"), include_str!("../../../Makefile")).unwrap();
     // Preserve the Makefile's real recipe dispatcher inside this private tree.
-    fs::write(p.join("scripts/qos.sh"), include_str!("../../../scripts/qos.sh")).unwrap();
+    fs::write(
+        p.join("scripts/qos.sh"),
+        include_str!("../../../scripts/qos.sh"),
+    )
+    .unwrap();
     fs::write(
         p.join("scripts/cache-env.sh"),
         "# isolated fake build tools\n",
@@ -239,6 +243,11 @@ fn native_bundle_fixture_child() {
     }
     fs::write(p.join("target/debug/bboxy450-term"), "fixture binary").unwrap();
     fs::write(p.join("target/debug/bboxy450-harness"), "fixture harness").unwrap();
+    fs::write(
+        p.join("target/debug/bboxy450-term-remote"),
+        "fixture remote",
+    )
+    .unwrap();
     // Private recipe seam only: these bytes are deliberately neither an
     // executable worker nor a production Dream provisioning receipt.
     let fake_worker = p.join("tools/private-fake-canonical-worker.txt");

@@ -331,11 +331,15 @@ fn golden(theme: Theme, name: &str) {
         (info.width, info.height, info.color_type),
         (800, 520, png::ColorType::Rgba)
     );
-    assert_eq!(
-        pixels,
-        &expected[..info.buffer_size()],
-        "canvas golden {} differs",
-        path.display()
+    // The renderer's tolerance policy, not byte equality: antialiasing on the
+    // same GPU differs between builds and worktrees (spec renderer §4.4a).
+    let difference =
+        bbt_render::chrome::diff::compare(&pixels, &expected[..info.buffer_size()]).unwrap();
+    assert!(
+        difference.changed_fraction <= bbt_render::chrome::diff::CHANGED_BUDGET,
+        "canvas golden {} differs: {:.4}% of pixels beyond tolerance",
+        path.display(),
+        difference.changed_fraction * 100.
     );
     assert_eq!(c.digest(), fixture().digest());
 }
