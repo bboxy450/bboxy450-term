@@ -23,7 +23,9 @@ pub const PROFILE: &str = "dream-bootstrap/1";
 pub const ENV: &str = "BBOXY_DREAM_BOOTSTRAP";
 pub const LENGTH: usize = 128;
 pub const BOOTSTRAP_CONTROL_BYTES: usize = 1024;
-pub const WINDOW: Duration = Duration::from_millis(250);
+/// Spawn-to-Hello readiness. A debug child on a loaded machine misses 250 ms;
+/// the 30 s job deadline bounds wall time (as in d1794292861627496).
+pub const WINDOW: Duration = Duration::from_secs(2);
 const ALPHABET: &[u8; 32] = b"0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Error {

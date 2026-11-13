@@ -3878,7 +3878,6 @@ fn mcp_task_accept_requires_matching_zero_verification_and_declared_criteria_onl
 #[test]
 fn mcp_task_list_is_most_recently_changed_first_and_a_transition_moves_it_to_the_top() {
     let f = Fixture::new();
-    f.task_file(f.task_metadata());
     let mut metadata = f.task_metadata();
     metadata["updated"] = json!("2026-10-01T00:00:00Z");
     f.task_file(metadata.clone());
@@ -3903,21 +3902,14 @@ fn mcp_task_list_is_most_recently_changed_first_and_a_transition_moves_it_to_the
         )
         .unwrap();
     }
+    rescan(&f);
     let list = |after: &Value| {
-        let deadline = Instant::now() + Duration::from_secs(10);
-        loop {
-            let page = data(f.call(
-                f.oracle.id,
-                Ulid::new(),
-                "task_list",
-                json!({"limit":2,"after":after}),
-            ));
-            if after.is_null() && page["next"].is_null() && Instant::now() < deadline {
-                std::thread::sleep(Duration::from_millis(20)); // The index has not seen every file yet.
-                continue;
-            }
-            return page;
-        }
+        data(f.call(
+            f.oracle.id,
+            Ulid::new(),
+            "task_list",
+            json!({"limit":2,"after":after}),
+        ))
     };
     let ids = |page: &Value| -> Vec<String> {
         page["items"]
@@ -6074,6 +6066,17 @@ fn mcp_numeric_selectors_refuse_invalid_missing_and_ambiguous_handles() {
     );
 }
 
+/// Make the index see files a test wrote directly on disk. The watcher can lag
+/// such edits by seconds on a loaded machine; a mux write rescans the root and
+/// later reads wait for that scan.
+fn rescan(f: &Fixture) {
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "knowledge_write",
+        knowledge_args(&format!("notes/rescan-{}.md", Ulid::new()), "# Rescan\n"),
+    ));
+}
 fn knowledge_args(path: &str, body: &str) -> Value {
     json!({"path":path,"frontmatter":{"type":"e2e","title":"T1 fixture","function":"T1","group":"terminal","status":"untested","expected":"fixture expectation","unknown":{"kept":true}},"body":body})
 }

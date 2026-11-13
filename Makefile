@@ -2754,11 +2754,9 @@ test-python-execute-native: init-submodules
 	cargo build --locked -p bboxy450-term --example python_execute_fixture --target-dir '$(TARGET_DIR)'; \
 	BBOXY_PYTHON_EXECUTE_FIXTURE='$(abspath $(TARGET_DIR))/debug/examples/python_execute_fixture' cargo nextest run --locked -p bboxy450-term-mux --test it --target-dir '$(TARGET_DIR)' -E '(binary(it)&test(/^(mcp)::/))&(test(python_))' --run-ignored all
 
-# C1 consumer join uses only the deliberately pinned embedded corpus by default.
+# C1 consumer join uses the pinned corpus named in .cargo/config.toml [env].
 # DREAM_C1_FIXTURES may name the approved producer worktree for development;
 # its receipt is explicitly not a final pinned-source join.
-export DREAM_C1_FIXTURES ?= $(abspath crates/bboxy450-harness/tests/fixtures/dream-c1)
-export DREAM_BOOTSTRAP_FIXTURES ?= $(abspath crates/bboxy450-harness/tests/fixtures/dream-bootstrap)
 .PHONY: test-dream-c1 test-dream-c1-profile prepare-dream-c1 prepare-dream-c1-worker prepare-dream-c1-seat prepare-dream-c1-development diagnose-dream-c1-launch
 test-dream-c1-profile:
 	@python3 -I scripts/test-dream-c1.py --check-profile-only

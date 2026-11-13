@@ -7,3 +7,9 @@
 [build]
 build-dir = "target"
 incremental = false
+
+# The pinned harness corpus the Dream conformance tests read, for plain cargo
+# and Make alike. An exported value (a producer worktree) still overrides it.
+[env]
+DREAM_C1_FIXTURES = { value = "crates/bboxy450-harness/tests/fixtures/dream-c1", relative = true }
+DREAM_BOOTSTRAP_FIXTURES = { value = "crates/bboxy450-harness/tests/fixtures/dream-bootstrap", relative = true }
