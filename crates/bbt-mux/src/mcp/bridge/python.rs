@@ -56,8 +56,10 @@ impl Bridge {
             )
         })?;
         let mut stream = UnixStream::connect(path).map_err(|e| failure("python_connect", e))?;
+        // The runtime holds a call for up to 25 s while a run finishes
+        // (python_execute wait_ms); reading must outlast that.
         stream
-            .set_read_timeout(Some(Duration::from_secs(8)))
+            .set_read_timeout(Some(Duration::from_secs(30)))
             .map_err(|e| failure("python_read_config", e))?;
         stream
             .set_write_timeout(Some(Duration::from_secs(2)))

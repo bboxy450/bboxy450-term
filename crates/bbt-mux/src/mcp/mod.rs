@@ -62,6 +62,25 @@ pub(crate) fn python_context_matches(expected: &Value, current: &Value) -> bool 
     expected == current
 }
 
+/// Characters of an intent that are kept.
+pub const INTENT_CHARS: usize = 160;
+
+/// Every tool takes `intent`: the caller says in a few words why it is making
+/// this call. It never reaches the tool and never changes its result or its
+/// retry identity; it is recorded beside the call (a `seat/<id>/control`
+/// event whose payload kind is `intent`) so use can be studied. Optional: a call is never refused for it.
+pub(crate) fn intent_schema() -> Value {
+    json!({"type":"string","description":"Say in a few words why you are making this call, e.g. \"find who owns the failing task\". Recorded for analysis; never changes the result."})
+}
+
+/// Take `intent` out of a call's arguments: the trimmed text, cut to
+/// [`INTENT_CHARS`], or `None` when absent, empty or not a string.
+pub fn take_intent(args: &mut Value) -> Option<String> {
+    let given = args.as_object_mut()?.remove("intent")?;
+    let text = given.as_str()?.split_whitespace().collect::<Vec<_>>().join(" ");
+    (!text.is_empty()).then(|| text.chars().take(INTENT_CHARS).collect())
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Call {

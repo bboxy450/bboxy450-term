@@ -3177,6 +3177,54 @@ fn mcp_counts_have_a_basis_and_ack_ids_without_equating_acknowledgement_with_rea
 }
 
 // keeps: decision #266
+// Every tool takes `intent`: why the caller makes this call. It is recorded
+// beside the call's audit and never reaches the tool, its result or its retry
+// identity (operator, 2026-11-13).
+#[test]
+fn intent_is_recorded_beside_the_call_and_never_reaches_the_tool() {
+    let f = Fixture::new();
+    let mut bridge = f.bridge(f.own.id);
+    initialize(&mut bridge);
+    let catalogue = rpc(&mut bridge, 2, "tools/list", json!({}));
+    for tool in catalogue["result"]["tools"].as_array().unwrap() {
+        let schema = &tool["inputSchema"];
+        assert_eq!(schema["properties"]["intent"]["type"], "string", "{}", tool["name"]);
+        assert!(
+            !schema["required"].as_array().unwrap().contains(&json!("intent")),
+            "{} never requires it",
+            tool["name"]
+        );
+    }
+    let op = Ulid::new();
+    let call = |intent: Value| json!({"name":"self_status","arguments":{"op_id":op,"intent":intent}});
+    let first = rpc(&mut bridge, 3, "tools/call", call(json!("  check   my own\nrole before acting ")));
+    assert_eq!(first["result"]["isError"], false, "{first}");
+    // A retry worded differently is the same operation.
+    let again = rpc(&mut bridge, 4, "tools/call", call(json!("same call, new words")));
+    assert_eq!(again["result"]["isError"], false, "{again}");
+    assert_eq!(
+        again["result"]["structuredContent"]["seat"],
+        first["result"]["structuredContent"]["seat"]
+    );
+    // Not a string, or empty: ignored, never a refusal.
+    for odd in [json!(7), json!(""), json!(null)] {
+        let reply = rpc(&mut bridge, 5, "tools/call", json!({"name":"self_status","arguments":{"intent":odd}}));
+        assert_eq!(reply["result"]["isError"], false, "{reply}");
+    }
+    let long = rpc(&mut bridge, 6, "tools/call", json!({"name":"self_status","arguments":{"intent":"x".repeat(500)}}));
+    assert_eq!(long["result"]["isError"], false, "{long}");
+    let intents: Vec<Value> = f
+        .audits(f.own.id, 9)
+        .into_iter()
+        .filter(|event| event.event.payload["kind"] == "intent")
+        .map(|event| event.event.payload)
+        .collect();
+    assert_eq!(intents.len(), 3, "{intents:?}");
+    assert_eq!(intents[0], json!({"kind":"intent","op_id":op,"tool":"self_status","intent":"check my own role before acting"}));
+    assert_eq!(intents[1]["intent"], "same call, new words");
+    assert_eq!(intents[2]["intent"].as_str().unwrap().chars().count(), 160);
+}
+
 // orient stays the size of the live swarm (specs/gaps-and-improvements #2): a
 // closed seat's destinations are counted, not listed, and tools are names only.
 #[test]

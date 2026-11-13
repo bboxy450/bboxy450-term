@@ -63,6 +63,12 @@ pub enum Action {
         call: crate::mcp::Call,
         result: serde_json::Value,
     },
+    /// Why the caller is making the call named by `op_id` (`mcp::take_intent`).
+    Intent {
+        op_id: Ulid,
+        tool: String,
+        intent: String,
+    },
     Messaging {
         request: crate::messaging::api::Request,
     },
@@ -1907,6 +1913,7 @@ async fn session_inner(
                             Err(invalid("surface projection requires a Python runtime tool"))
                         } else { Ok(client.surface_hints(seat,generation,call,result).await) }
                     },
+                    Action::Intent{op_id,tool,intent}=>client.intent(seat,generation,op_id,tool,intent).await.map(|()|serde_json::json!({"kind":"IntentRecorded"})),
                     Action::Messaging{request}=>client.messaging(seat,generation,request).await.and_then(|v|Ok(serde_json::to_value(v)?)),
                     Action::Hook{event}=>Ok(serde_json::json!({"kind":"HookObserved","status":client.hook(seat,generation,event).await?})),
                     Action::HookDecide{event,wait_ms}=>hook_decide(&client,seat,generation,event,wait_ms).await,

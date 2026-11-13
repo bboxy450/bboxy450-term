@@ -63,6 +63,13 @@ decision, and wait.
    report fields, and provenance queries are documented there and only there.
    `self_status`, `seat_list`, `seat_get` and `graph_read` show the current state.
    Plugin skills (`skill_list`, `skill_read`) are guidance, never permission.
+   **Write a program, not a chain of calls.** When `python_execute` is among
+   your tools and work takes more than one or
+   two tool calls, use `python_execute`: every tool is a function inside it
+   (`bboxy.task_list(status="open")`, `tools.search("close seat")`), with
+   loops, filtering, `sh("git status --porcelain").out` and
+   `fs.replace(path, old, new)`. Its final expression is the only thing that
+   returns, so large results stay out of your context.
 2. **Tasks.** Read the task and its cited specs. Make the smallest change that
    makes the behavior explicit and checked. Write the report with
    `knowledge_write` at `reports/YYYY-MM-DD-slug.md`, then send `task_report`

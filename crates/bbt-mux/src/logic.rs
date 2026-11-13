@@ -449,6 +449,8 @@ enum Command {
         bool,
         oneshot::Sender<Result<HookObserved>>,
     ),
+    /// Seat, generation, operation, tool and the caller's stated intent.
+    Intent(Ulid, u64, Ulid, String, String, oneshot::Sender<Result<()>>),
     /// A plugin's `host/messages.send`, admitted by its connection's authority.
     PluginMessage(
         Box<crate::messaging::service::PluginSender>,
@@ -1834,6 +1836,22 @@ impl LogicClient {
                 Box::new(request),
                 tx,
             ))
+            .await
+            .map_err(|_| self.unavailable("logic stopped"))?;
+        rx.await.map_err(|_| self.unavailable("logic stopped"))?
+    }
+    /// Record why a seat made one control call. Observation only.
+    pub async fn intent(
+        &self,
+        seat: Ulid,
+        generation: u64,
+        op: Ulid,
+        tool: String,
+        intent: String,
+    ) -> Result<()> {
+        let (tx, rx) = oneshot::channel();
+        self.tx
+            .send(Command::Intent(seat, generation, op, tool, intent, tx))
             .await
             .map_err(|_| self.unavailable("logic stopped"))?;
         rx.await.map_err(|_| self.unavailable("logic stopped"))?
@@ -12281,6 +12299,26 @@ impl Worker {
                                     ))),
                                 }),
                             None => Err(invalid("host_api_unavailable: no host signing key")),
+                        };
+                        let _ = reply.send(result);
+                    }
+                    Command::Intent(id, generation, op, tool, intent, reply) => {
+                        let result = if self
+                            .views
+                            .get(&id)
+                            .is_some_and(|view| view.generation == generation)
+                        {
+                            let mut event = Draft::new(
+                                format!("seat/{id}/control"),
+                                "mcp",
+                                serde_json::json!({"kind":"intent","op_id":op,"tool":tool,"intent":intent}),
+                            );
+                            event.seat = Some(id);
+                            event.generation = Some(generation);
+                            // Beside the call's own audit, on the seat's stream.
+                            self.publish(&format!("seat-{id}"), event)
+                        } else {
+                            Err(invalid("stale intent generation"))
                         };
                         let _ = reply.send(result);
                     }

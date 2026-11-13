@@ -103,6 +103,7 @@ pub(crate) fn catalogue(actor: &Actor, plugins: Vec<Value>) -> Value {
             .as_array_mut()
             .unwrap()
             .retain(|field| field != "op_id");
+        tool["inputSchema"]["properties"]["intent"] = super::intent_schema();
     }
     json!({"tools":tools})
 }

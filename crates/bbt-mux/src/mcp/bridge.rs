@@ -286,7 +286,7 @@ impl Bridge {
                     "capabilities":{"tools":{"listChanged":true},"resources":{"listChanged":false,"subscribe":false}},
                     "serverInfo":{"name":"bboxy450","version":env!("CARGO_PKG_VERSION")},
                     // Decision #260: a curious agent finding the binary in PATH is the common case.
-                    "instructions":"These tools are your interface to bboxy450-term. Call orient first and use your role-filtered tools. Tool responses include a hints graph: concrete useful next MCP requests; errors show corrective calls. Hints never execute actions or grant authority. After orient, call knowledge_orient before knowledge work: it loads the selected provider skill, document types and writing/task workflow. Use skill_list and skill_read for additional plugin guidance, or MCP resources. Knowledge writes are drafts, not artifacts. Commit explicit selected documents with knowledge_commit for a substantial checkpoint, sharing preparation, or final accepted/done work; do not commit every edit. Commit never pushes. Reading guidance grants no authority. Oracle orchestration uses seat_spawn, seat_split, seat_focus or the MCP ctl tool. The shell command `bboxy450-term ctl` is the operator's door and refuses seats."}),
+                    "instructions":"These tools are your interface to bboxy450-term. Call orient first and use your role-filtered tools. Tool responses include a hints graph: concrete useful next MCP requests; errors show corrective calls. Hints never execute actions or grant authority. After orient, call knowledge_orient before knowledge work: it loads the selected provider skill, document types and writing/task workflow. Use skill_list and skill_read for additional plugin guidance, or MCP resources. Knowledge writes are drafts, not artifacts. Commit explicit selected documents with knowledge_commit for a substantial checkpoint, sharing preparation, or final accepted/done work; do not commit every edit. Commit never pushes. Reading guidance grants no authority. For anything that takes more than one or two tool calls, write one program with python_execute: every tool here is a function inside it (`bboxy.task_list(status=\"open\")`, no await needed), with loops, filtering, `sh(...)` and file edits, and only its final expression comes back. Oracle orchestration uses seat_spawn, seat_split, seat_focus or the MCP ctl tool. The shell command `bboxy450-term ctl` is the operator's door and refuses seats."}),
                 )
             }
             "ping" => Ok(json!({})),
@@ -306,8 +306,10 @@ impl Bridge {
                     if let Ok(extra) = self.python_catalogue()
                         && let Some(tools) = value["tools"].as_array_mut()
                     {
-                        for tool in extra {
+                        for mut tool in extra {
                             if !tools.iter().any(|current| current["name"] == tool["name"]) {
+                                // The runtime's tools take `intent` like every other.
+                                tool["inputSchema"]["properties"]["intent"] = super::intent_schema();
                                 tools.push(tool);
                             }
                         }
@@ -412,6 +414,8 @@ impl Bridge {
                     (Some(value), _) | (_, Some(value)) => value,
                     (None, None) => Ulid::new(),
                 };
+                // Why the caller is making this call: recorded, never an argument.
+                let intent = super::take_intent(&mut args);
                 // The operation ID is retry metadata, not a tool argument and
                 // must not make an otherwise bounded retry exceed MAX_ARGS.
                 if !serde_json::to_vec(&args).is_ok_and(|b| b.len() <= super::MAX_ARGS) {
@@ -424,6 +428,14 @@ impl Bridge {
                 };
                 if call.validate().is_err() {
                     return Some(rpc_error(id, -32602, "Invalid control call"));
+                }
+                if let Some(intent) = intent {
+                    // Observation only: a failure to record never fails the call.
+                    let _ = self.forward(Action::Intent {
+                        op_id,
+                        tool: tool.into(),
+                        intent,
+                    });
                 }
                 let attribution = self.attribution.clone();
                 let expected = value["params"]["_meta"]
