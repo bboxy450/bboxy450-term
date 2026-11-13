@@ -348,7 +348,7 @@ bump-harness:
 
 compile: tools
 	@set -eu; case '$(PROFILE)' in debug) flag='' ;; release) flag='--release' ;; *) echo 'PROFILE must be debug or release' >&2; exit 2 ;; esac; \
-	. ./scripts/cache-env.sh; cargo build --locked -p $(APP) -p bboxy450-harness --target-dir '$(TARGET_DIR)' $$flag
+	. ./scripts/cache-env.sh; cargo build --locked -p $(APP) -p bboxy450-harness -p bboxy450-term-remote --target-dir '$(TARGET_DIR)' $$flag
 
 test check: tools test-signatures test-yarn-concurrency
 	@set -eu; mkdir -p "$$(dirname '$(CI_LOG)')"; \
@@ -717,6 +717,7 @@ bundle-files: check-licenses compile
 	cp packaging/macos/Info.plist '$(BUNDLE)/Contents/Info.plist'; \
 	cp '$(TARGET_DIR)/$(PROFILE)/$(APP)' '$(BUNDLE)/Contents/MacOS/$(APP)'; \
 	cp '$(TARGET_DIR)/release/bboxy450-harness' '$(BUNDLE)/Contents/MacOS/bboxy450-harness'; \
+	cp '$(TARGET_DIR)/$(PROFILE)/bboxy450-term-remote' '$(BUNDLE)/Contents/MacOS/bboxy450-term-remote'; \
 	if test -f '$(TARGET_DIR)/release/bboxy450-harness.dream-c1.json'; then cp '$(TARGET_DIR)/release/bboxy450-harness.dream-c1.json' '$(BUNDLE)/Contents/MacOS/bboxy450-harness.dream-c1.json'; else rm -f '$(BUNDLE)/Contents/MacOS/bboxy450-harness.dream-c1.json'; fi; \
 	cp LICENSE NOTICE ATTRIBUTION.md LICENSE-MIT LICENSE-APACHE packaging/macos/bboxy.icns '$(BUNDLE)/Contents/Resources/'; \
 	plutil -replace CFBundleShortVersionString -string '$(APP_VERSION)' '$(BUNDLE)/Contents/Info.plist'; \

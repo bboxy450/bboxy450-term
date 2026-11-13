@@ -1911,9 +1911,10 @@ fn configure_machine_items(
     if machines.is_empty() {
         return;
     }
+    // A machine runs one thing: bboxy450-harness here, its agent there.
     let local: Vec<_> = items
         .iter()
-        .filter(|item| launchables().any(|(id, ..)| id == item.id))
+        .filter(|item| item.id == "bboxy450-harness")
         .cloned()
         .collect();
     if !items.iter().any(|item| item.id == "ssh") {
@@ -13297,18 +13298,15 @@ mod default_spawn_tests {
             .as_ref()
             .unwrap();
         assert_eq!(hosts.len(), 1);
-        let codex = hosts[0]
-            .children
-            .as_ref()
-            .unwrap()
-            .iter()
-            .find(|row| row.harness == "codex")
-            .unwrap();
-        assert_eq!(codex.id, "ssh:fixture:codex");
-        assert!(codex.parameters);
+        // A machine offers one thing: bboxy450-harness here, its agent there.
+        let choices = hosts[0].children.as_ref().unwrap();
+        assert_eq!(choices.len(), 1);
+        let harness = &choices[0];
+        assert_eq!(harness.id, "ssh:fixture:bboxy450-harness");
+        assert!(harness.parameters);
         assert_eq!(
-            bboxy450_term::spawn_params::machine_target(&codex.id, &machines),
-            Some(("codex".into(), "ssh:fixture".into()))
+            bboxy450_term::spawn_params::machine_target(&harness.id, &machines),
+            Some(("bboxy450-harness".into(), "ssh:fixture".into()))
         );
         settings_destinations::filter(
             &mut items,

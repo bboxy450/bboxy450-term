@@ -222,6 +222,56 @@ pub(super) fn plan_neutral(
     Ok(plan)
 }
 
+/// The agent command of a `bboxy450-harness` seat placed on a machine: this
+/// process's sibling `bboxy450-term-remote attach`, carried by ssh to the
+/// machine's remote supervisor for `swarm`, with the machine's directory as
+/// the session cwd. The harness GUI stays local; only the agent runs there.
+pub fn remote_agent(
+    via: &bbt_proto::TransportSpec,
+    swarm: crate::Ulid,
+    remote_cwd: &str,
+) -> Result<Vec<String>> {
+    if via.kind != "ssh" {
+        return Err(crate::store::invalid(
+            "a machine seat is carried by ssh; mosh and et carry shells only",
+        ));
+    }
+    via.validate().map_err(crate::store::invalid)?;
+    let link = std::env::current_exe()?
+        .parent()
+        .ok_or_else(|| crate::store::invalid("missing sibling directory"))?
+        .join("bboxy450-term-remote");
+    let mut carrier = vec![
+        "ssh".to_owned(),
+        "-T".into(),
+        "-o".into(),
+        "BatchMode=yes".into(),
+        "-o".into(),
+        "ConnectTimeout=10".into(),
+        "-o".into(),
+        "ServerAliveInterval=15".into(),
+    ];
+    if let Some(port) = via.port {
+        carrier.extend(["-p".into(), port.to_string()]);
+    }
+    if let Some(key) = via.key.as_deref().filter(|k| !k.is_empty()) {
+        carrier.extend(["-i".into(), key.into()]);
+    }
+    carrier.extend(["--".into(), via.route.clone()]);
+    Ok(vec![
+        link.to_string_lossy().into_owned(),
+        "attach".into(),
+        "--via".into(),
+        shell_words::join(carrier),
+        "--state".into(),
+        format!("~/.bboxy450-remote/swarm-{swarm}"),
+        "--swarm".into(),
+        swarm.to_string(),
+        "--cwd".into(),
+        remote_cwd.to_owned(),
+    ])
+}
+
 /// The local supervisor owns the transport client. Remote cwd/environment live
 /// only in its configured command, never in the local process launch context.
 pub fn transport_spec(
@@ -373,5 +423,49 @@ mod login_shell_tests {
             assert_eq!(&fields[1..3], ["profile", "rc"]);
             assert_eq!(&fields[3..fields.len() - 1], expected);
         }
+    }
+}
+
+#[cfg(test)]
+mod remote_agent_tests {
+    use super::*;
+    // State: a machine with route, port and key. Safety: the agent is this
+    // process's sibling link over ssh with those options, the swarm's state
+    // directory under the remote home, and the machine's directory as cwd;
+    // mosh and et are refused for a harness.
+    #[test]
+    fn machine_seat_agent_is_the_sibling_link_over_ssh() {
+        let via = bbt_proto::TransportSpec {
+            kind: "ssh".into(),
+            route: "agent@build-box".into(),
+            port: Some(2222),
+            key: Some("/Users/me/.ssh/id_ed25519".into()),
+            fields: Default::default(),
+        };
+        let swarm = crate::Ulid::from(7_u128);
+        let argv = remote_agent(&via, swarm, "~/work").unwrap();
+        assert!(argv[0].ends_with("/bboxy450-term-remote"));
+        assert_eq!(argv[1], "attach");
+        assert_eq!(argv[2], "--via");
+        assert_eq!(
+            argv[3],
+            "ssh -T -o 'BatchMode=yes' -o 'ConnectTimeout=10' -o 'ServerAliveInterval=15' -p 2222 -i /Users/me/.ssh/id_ed25519 -- agent@build-box"
+        );
+        assert_eq!(
+            &argv[4..],
+            [
+                "--state",
+                &format!("~/.bboxy450-remote/swarm-{swarm}"),
+                "--swarm",
+                &swarm.to_string(),
+                "--cwd",
+                "~/work"
+            ]
+        );
+        let mosh = bbt_proto::TransportSpec {
+            kind: "mosh".into(),
+            ..via
+        };
+        assert!(remote_agent(&mosh, swarm, "~").is_err());
     }
 }

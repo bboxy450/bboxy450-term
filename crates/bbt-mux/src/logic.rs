@@ -7263,10 +7263,36 @@ impl Worker {
         &mut self,
         mut record: SeatRecord,
         mut harness: HarnessRecord,
-        options: crate::adapters::launch::LaunchOptions,
+        mut options: crate::adapters::launch::LaunchOptions,
     ) -> Result<SeatInfo> {
         if record.harness_kind != harness.kind {
             return Err(invalid("seat/harness kind mismatch"));
+        }
+        // A machine runs one thing: bboxy450-harness here with its agent
+        // there, through the remote link. The GUI never leaves this process.
+        let mut machine = false;
+        if let Some(via) = options
+            .via
+            .take_if(|via| !via.kind.starts_with("plugin:"))
+        {
+            if harness.kind != "bboxy450-harness" {
+                return Err(invalid("only bboxy450-harness runs on a machine"));
+            }
+            let agent = crate::adapters::launch::remote_agent(
+                &via,
+                record.swarm,
+                &options.cwd.to_string_lossy(),
+            )?;
+            options.cwd = options.user_home.clone();
+            options.env.retain(|(key, _)| key != "BBOXY450_HARNESS_PROFILE");
+            options
+                .env
+                .push(("BBOXY450_HARNESS_PROFILE".into(), "remote".into()));
+            options.env.push((
+                "BBOXY450_HARNESS_AGENT".into(),
+                serde_json::json!({ "command": agent }).to_string(),
+            ));
+            machine = true;
         }
         if harness.kind=="bboxy450-harness" {
             let mut input=std::mem::take(&mut harness.command).into_iter();
@@ -7276,7 +7302,7 @@ impl Worker {
                 harness.command.push(arg);
             }
         }
-        let dream_owned=harness.kind=="bboxy450-harness" && options.via.is_none() && self.dream_runtime.owner().is_some();
+        let dream_owned=harness.kind=="bboxy450-harness" && !machine && options.via.is_none() && self.dream_runtime.owner().is_some();
         if dream_owned {
             harness.command.extend(["--dream-owner".into(),"term-c1".into()]);
         }

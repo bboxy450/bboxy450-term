@@ -40,10 +40,17 @@ fn quote(s: &str) -> String {
 /// `install` puts binaries in ~/.local/bin, which a non-login shell may lack.
 const REMOTE_PATH: &str = "PATH=\"$HOME/.local/bin:$PATH\"; export PATH;";
 
+/// Quote for the remote shell; a leading `~/` is the remote home.
+fn quote_path(path: &str) -> String {
+    match path.strip_prefix("~/") {
+        Some(rest) => format!("\"$HOME\"/{}", quote(rest)),
+        None => quote(path),
+    }
+}
 fn remote_line(state: &str) -> String {
     format!(
         "{REMOTE_PATH} exec bboxy450-term-remote serve --state {}",
-        quote(state)
+        quote_path(state)
     )
 }
 

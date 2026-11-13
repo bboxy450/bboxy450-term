@@ -127,6 +127,11 @@ impl Server {
         // a missing feature or a crash is diagnosable instead of a silent hang.
         let log = self.agent_log(session);
         let spawned = std::fs::File::create(&log).and_then(|err| {
+            // A `~/` directory is this user's home on this machine.
+            let cwd = match (cwd.strip_prefix("~/"), std::env::var("HOME")) {
+                (Some(rest), Ok(home)) => format!("{home}/{rest}"),
+                _ => cwd.to_owned(),
+            };
             Command::new(&program)
                 .args(&args)
                 .current_dir(cwd)
