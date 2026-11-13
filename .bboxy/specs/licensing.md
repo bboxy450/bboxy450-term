@@ -2,21 +2,48 @@
 id: 01M5MSBWYSH6HK73HKZ8E9ZYV4
 number: 151
 type: spec
-title: "licensing — which crate carries which license, and why"
+title: licensing — which crate carries which license, and why
 status: decided
 links:
-  - { to: "[[d8-open-source]]", rel: decision }
-  - { to: "[[d34-licensing]]", rel: decision }
-  - { to: "[[d36-apache-code-placement]]", rel: decision }
-  - { to: "[[d50-licence-when-mit-when-apache]]", rel: decision }
-  - { to: "[[d51-frontmatter-is-the-gui-kit]]", rel: decision }
-  - { to: "[[d52-brand-and-face]]", rel: decision }
-  - { to: "[[open-source]]", rel: constrains }
-  - { to: "[[terminal-core]]", rel: spec }
-  - { to: "[[yarn]]", rel: spec }
-  - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
+- to: '[[d8-open-source]]'
+  rel: decision
+- to: '[[d34-licensing]]'
+  rel: decision
+- to: '[[d36-apache-code-placement]]'
+  rel: decision
+- to: '[[d50-licence-when-mit-when-apache]]'
+  rel: decision
+- to: '[[d51-frontmatter-is-the-gui-kit]]'
+  rel: decision
+- to: '[[d52-brand-and-face]]'
+  rel: decision
+- to: '[[open-source]]'
+  rel: constrains
+- to: '[[terminal-core]]'
+  rel: spec
+- to: '[[yarn]]'
+  rel: spec
+- to: '[[2026-10-22-architecture-round-1]]'
+  rel: decisions
 created: 2026-10-23T16:26:37Z
-updated: "2026-11-03T02:43:15Z"
+updated: 2026-11-12T23:21:03.784Z
+created_by: seat:01M788X1K2MZH0V5CH8RDS2EYS
+updated_by: seat:01M788X1K2MZH0V5CH8RDS2EYS
+authorship:
+  signer: seat:01M788X1K2MZH0V5CH8RDS2EYS
+  kind: seat
+  public_key: QirMRCVq4MGjLqozHY5Hg1PxrBTQC7432d3nv2JAmW0=
+  process_generation: '1'
+provenance:
+  digest: sha256:b85071e2b60bdeee8d7f0c1873f95f12c92d1437fcb06065acd38d3457131ce5
+  frontmatter_digest: sha256:69a23a8b269b786c9bd5e53394cc793ed2dc0ece1b096f91a4bb0246345a936f
+  signer: seat:01M788X1K2MZH0V5CH8RDS2EYS
+  sig: KI4Q1JdJ7DhJIGNc+zRIMQVxxhRak2DAU65o2nL85gI3S1N+YczUb/e+tvzvXOQVJMBZrpaVOSEdBWZDanc1BQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/82820
+  event:
+    id: 01M79114KBPHR9CMSB7S8DKCHR
+    sequence: 82820
+    hash: 956463d3ffad7f3a9668c18c995433e59d78ed6aba1b02420bca3509b275bc73
 ---
 # Licensing
 
@@ -54,6 +81,7 @@ the scope within that package.
 | `bboxy450-den` | `bboxy450-den` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | Parser and soundness checker for the Den knowledge-graph language; set and domain lowering adapted from this project's `bboxy450-yarn-macros` `protocol.rs`; no third-party source copied. |
 | `bbt-yarn`, `bbt-yarn-macros` | `bboxy450-yarn`, `bboxy450-yarn-macros` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | Custom terms for separately identified bboxy450-owned additions; pinned kittens-old/Yarn remains MIT OR Apache-2.0 | from `Gonzih/kittens-old` 293e134, the operator's code; upstream README and license files kept as provenance |
 | `bboxy450-canvas` | `bboxy450-canvas` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
+| `bboxy450-kitty-graphics` | `bboxy450-kitty-graphics` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | Independent implementation of the public Kitty graphics protocol specification (https://sw.kovidgoyal.net/kitty/graphics-protocol/); no kitty source copied | none |
 | `bbt-mermaid` | `bboxy450-mermaid` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | Mermaid MIT documentation fixtures, with attribution and license in tests/fixtures; original import revision unknown |
 | `bbt-ui-model` | `bboxy450-ui-core` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
 | `bbt-render` | `bboxy450-render` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | JetBrains Mono test font under OFL-1.1; tests/fonts/OFL.txt retained |
@@ -85,7 +113,7 @@ The app segment is an explicit classification, not inferred by a script.
 | Scope | Current Cargo package names | Reason |
 |---|---|---|
 | Terminal app | `bboxy450-term`, `bboxy450-term-core`, `bboxy450-term-mux`, `bboxy450-term-remote`, `bboxy450-term-proto`, `bboxy450-term-firehose`, `bboxy450-term-desktop-core`, `bboxy450-term-desktop-macos`, `bboxy450-term-desktop`, `bboxy450-term-plugin-sdk`, `bboxy450-term-plugin-fixture`, `bboxy450-term-data_source-gitkb` | App, terminal engine, seat orchestration/wire, terminal load generator, and terminal desktop integration. |
-| Generic | `bboxy450-canvas`, `bboxy450-usage`, `bboxy450-rt`, `bboxy450-tlc`, `bboxy450-den`, `bboxy450-yarn`, `bboxy450-yarn-macros`, `bboxy450-mermaid`, `bboxy450-ui-core`, `bboxy450-render`, `bboxy450-ui`, `bboxy450-doc`, `bboxy450-plugin` | Reusable runtime, verification, UI, document and plugin tools. Book independently consumes the renderer. |
+| Generic | `bboxy450-canvas`, `bboxy450-kitty-graphics`, `bboxy450-usage`, `bboxy450-rt`, `bboxy450-tlc`, `bboxy450-den`, `bboxy450-yarn`, `bboxy450-yarn-macros`, `bboxy450-mermaid`, `bboxy450-ui-core`, `bboxy450-render`, `bboxy450-ui`, `bboxy450-doc`, `bboxy450-plugin` | Reusable runtime, verification, UI, document and plugin tools. Book independently consumes the renderer. |
 | Generic harness kits | `bboxy450-harness-host`, `bboxy450-harness-wake-up` | Caller-configured harness execution and wake adapters, without terminal app policy. |
 | Generic platform kits | `bboxy450-keychain`, `bboxy450-keychain-macos`, `bboxy450-keychain-windows`, `bboxy450-keychain-file`, `bboxy450-desktop-notifications`, `bboxy450-desktop-notifications-macos`, `bboxy450-desktop-notifications-windows`, `bboxy450-desktop-notifications-linux` | Reusable custody and notification facades/backends. |
 | Separate app | `bboxy450-book` | Standalone component gallery and parity consumer; binary is also `bboxy450-book`. |

@@ -1,17 +1,38 @@
 ---
-id: "3TCEX7RVQBNCD3F245G23FTHNV"
-type: "spec"
+id: 3TCEX7RVQBNCD3F245G23FTHNV
+type: spec
 number: 91
-title: "Terminal core — the stack, as decisions"
-created: "2026-10-21T20:06:53Z"
-updated: "2026-10-24T00:10:38Z"
+title: Terminal core — the stack, as decisions
+created: 2026-10-21T20:06:53Z
 links:
-  - { to: "[[d32-kitty-keyboard]]", rel: decision }
-  - { to: "[[d36-apache-code-placement]]", rel: decision }
+- to: '[[d32-kitty-keyboard]]'
+  rel: decision
+- to: '[[d36-apache-code-placement]]'
+  rel: decision
+- to: '[[canvas]]'
+  rel: sibling
+updated: 2026-11-12T23:44:27.836Z
+created_by: seat:01M788X1K2MZH0V5CH8RDS2EYS
+updated_by: seat:01M788X1K2MZH0V5CH8RDS2EYS
+authorship:
+  signer: seat:01M788X1K2MZH0V5CH8RDS2EYS
+  kind: seat
+  public_key: QirMRCVq4MGjLqozHY5Hg1PxrBTQC7432d3nv2JAmW0=
+  process_generation: '1'
+provenance:
+  digest: sha256:f5841fe2ede0f21bf038f9cd9c02809f4f36014bb47169760424a5073b94b5e8
+  frontmatter_digest: sha256:ebce32099d457c9be4730eca5ac64a9890942c2d5deff341b956773447d816b5
+  signer: seat:01M788X1K2MZH0V5CH8RDS2EYS
+  sig: 9wEaNGvidy8L6DyqAuUInxVBFgZSml8r3CI4fPxj6p8lFgweO64dObq3WzwCXLys8lSQJvXZQswkvUcfTX2yBA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/82822
+  event:
+    id: 01M792BZQZ66R3V4K793WTSZ72
+    sequence: 82822
+    hash: 9cb6cbdc16e6724b75f592590375b8afbb9d09f9f9a2bbdc408f1afb3c06809c
 ---
 # Terminal core — the stack, as decisions
 
-Date: 2026-10-21. Derived from [[gpu-terminals-rust]], [[text-rendering]], [[cloud-and-mosh]], [[mux-daemon]], [[monorepo-weavie]]. Status: PROPOSED to the Oracle; operator decisions it implements are marked DECIDED; everything else is a recommendation with its reversal path.
+Date: 2026-10-21. Derived from [[gpu-terminals-rust]], [[text-rendering]], [[cloud-and-mosh]], [[mux-daemon]], [[monorepo-weavie]]. Status: PROPOSED to the Oracle; operator decisions it implements are marked DECIDED; everything else is a recommendation with its reversal path. Amended 2026-11-12 with D8, Kitty graphics (operator: "let's use the Kitty graphics protocol, add Kitty support").
 
 Lens: minimise code we own that upstream already gets right; own every byte on the path that our memory model, crash model and agent protocol touch. Assumes the daemon-side VTE split in [[vision]]. Breaks when a seat needs a GUI-side terminal (it never does: the GUI holds a line cache).
 
@@ -29,7 +50,7 @@ Reasons: selection and vi motions act on what the user sees, and under the daemo
 
 **Viewport-only grid is zero new code:** `Term::new` already builds the alt screen as `Grid::new(lines, cols, 0)` and `grid/mod.rs:209` has the `max_scroll_limit == 0` fast path. The daemon constructs the primary grid with `Config { scrolling_history: 0, .. }`. Keep `scrolling_history` configurable so a measurement harness can still run a 10k-history grid for parity tests against upstream ref-tests.
 
-Reversibility: high while file layout matches upstream — `git diff` against `alacritty/alacritty_terminal/src` stays reviewable and upstream fixes to `grid/` and `term/mod.rs` cherry-pick. The alternative base, `rio-vt` 0.5.28 (MIT, 39k lines, same alacritty lineage plus images, sixel, OSC 133, single maintainer), loses on size and on carrying image protocols we defer; it stays the reference for OSC 133 and kitty graphics when images arrive. Writing our own VTE lost on time: 71 handler methods and the reflow code in `grid/resize.rs` are exactly the parts that take years to get right.
+Reversibility: high while file layout matches upstream — `git diff` against `alacritty/alacritty_terminal/src` stays reviewable and upstream fixes to `grid/` and `term/mod.rs` cherry-pick. The alternative base, `rio-vt` 0.5.28 (MIT, 39k lines, same alacritty lineage plus images, sixel, OSC 133, single maintainer), loses on size and on carrying image protocols we defer; it stays the reference for OSC 133. Writing our own VTE lost on time: 71 handler methods and the reflow code in `grid/resize.rs` are exactly the parts that take years to get right.
 
 ## D2 — Parser: fork `vte` 0.15.0 into the same crate (recommendation)
 
@@ -38,7 +59,7 @@ Reversibility: high while file layout matches upstream — `git diff` against `a
 1. **Checkpoints need parser state.** [[mux-daemon]] "Ring records" requires a checkpoint to carry "parser state including incomplete sequences". `vte` `Parser` (`lib.rs:55-70`) and `Processor`/`SyncState` (`ansi.rs:253-297`) are fully private, with no state accessor at all — not even "am I in Ground".
 2. **OSC 7501/7502 must reach us** ([[subagent-detection]]). `ansi.rs:1523` drops unknown OSCs into a `debug!`; the `Performer` that could be wrapped is private (`ansi.rs:425`).
 
-So: copy `vte/src/{lib,params,ansi}.rs` (4,144 lines, `Apache-2.0 OR MIT`) into `term-core/src/vte/`, keep its `Perform`/`Handler` contract, and make four edits: (a) `#[derive(Serialize, Deserialize)]` on `Parser`, `ProcessorState`, `SyncState` (the `State` enum is already plain data), (b) `Processor::{export, import}` returning/accepting that struct, (c) a `Handler::unhandled_osc(&mut self, params: &[&[u8]], bell_terminated: bool)` default no-op, called from the `_` arm at `:1523`, (d) a `Handler::sync_pending() -> bool` accessor so the mux scheduler can arm the 150 ms timeout (`ansi.rs:36`) without owning the `Timeout` impl. Checkpoint = `Processor` state + `Term` state + the ring cursor the checkpoint follows; a torn mid-escape sequence restores because the parser's `intermediates`, `params`, `osc_raw`, `partial_utf8` and the 2026 `buffer` are all in it.
+So: copy `vte/src/{lib,params,ansi}.rs` (4,144 lines, `Apache-2.0 OR MIT`) into `term-core/src/vte/`, keep its `Perform`/`Handler` contract, and make four edits: (a) `#[derive(Serialize, Deserialize)]` on `Parser`, `ProcessorState`, `SyncState` (the `State` enum is already plain data), (b) `Processor::{export, import}` returning/accepting that struct, (c) a `Handler::unhandled_osc(&mut self, params: &[&[u8]], bell_terminated: bool)` default no-op, called from the `_` arm at `:1523`, (d) a `Handler::sync_pending() -> bool` accessor so the mux scheduler can arm the 150 ms timeout (`ansi.rs:36`) without owning the `Timeout` impl. Checkpoint = `Processor` state + `Term` state + the ring cursor the checkpoint follows; a torn mid-escape sequence restores because the parser's `intermediates`, `params`, `osc_raw`, `partial_utf8` and the 2026 `buffer` are all in it. A fifth edit (D8) collects APC strings, bounded, and hands them to `Handler::graphics_command`.
 
 Reversibility: medium. Upstream `vte` moves slowly (0.15.0 Feb 2025, repo quiet since Feb 2026), so drift is small; if upstream ever exposes state and an OSC fallback we delete the copy and re-depend. Keeping the crate layout (`vte/` subdir, same file names) makes that a `git diff`.
 
@@ -75,7 +96,8 @@ Reversibility: high. The trait surface is five methods; `rustix-openpty` (what u
 | Kitty keyboard protocol | upstream stacks `:1275-1323`, `Config.kitty_keyboard = true` | mode flags in the state stream (`Screen.modes`) | **core invariant [[kitty-keyboard]] (decision [[d32-kitty-keyboard\|#32]], operator 2026-10-23):** one encoder, `crates/bbt-core/src/keyboard.rs` (port of `alacritty/src/input/keyboard.rs` `build_sequence` at 5421470, Apache-2.0, so it lives in this Apache-only crate, decision [[d36-apache-code-placement\|#36]]; it takes a neutral key model, never winit types, and the app maps to it), encodes every key against the focused seat's live mode with the full progressive-enhancement stack (flags 1/2/4/8/16, push/pop/query) and legacy encoding when no flags are set; no second key path to the PTY. K1 (Sable) |
 | OSC 7501/7502 pass-through | **new** `Handler::unhandled_osc` → `Event::Osc(Vec<Vec<u8>>)` | subagent detection ([[subagent-detection]]), seat state | sidebar |
 | OSC 133 semantic prompts | same hook, parsed later | waiting-on-input state (v0.2) | — |
-| Images (kitty graphics, sixel) | deferred; `rio-vt/src/ansi/*` is the reference | — | — |
+| Images: Kitty graphics | **built (D8)**: `Handler::graphics_command` → `Term.graphics` (`bboxy450-kitty-graphics`) | `Screen.images` and `Screen.image_data` in the state stream; pixels sent once per viewer | picture layer in the chrome renderer, textured quads over the cells |
+| Images: sixel, Kitty animation, files and shared memory, Unicode placeholders | deferred | — | — |
 
 Gate: a `vttest`-style ref-test run. Keep upstream's `alacritty/tests/ref/*` harness working against the fork (`Term::new` with history for parity, viewport-only in production).
 
@@ -98,6 +120,22 @@ Dependency direction `term-core ← mux ← app`; `ui-model ← renderer ← {ap
 ## D7 — Daemon↔GUI protocol versus wezterm's codec
 
 Our state stream ([[mux-daemon]] "Logic ↔ GUI") is wezterm's `GetPaneRenderChanges`/`GetLines` model turned push-side: `Delta{base_seq, new_seq, rows}` replaces polled `GetPaneRenderChangesResponse{dirty_lines, seqno}` (`codec/src/lib.rs:915`), lazy `GetLines{Range<StableRowIndex>}` (`:933`) survives as history fetch by ring row index, and `Applied{seq}` is our ack. wezterm's 53-PDU surface (`:451-505`) is the checklist of what a mux client eventually asks for: spawn, split, zoom, focus direction, move-pane-to-tab, palette, alerts, client list, workspace rename. Frame it as `postcard`/`bincode` over length-prefixed streams as wezterm does (`:93-97`); the version handshake (`CODEC_VERSION`, `:445`) becomes our `Hello` capabilities. Not reused: wezterm's TLS bootstrap (we have key identity), its `Line` serialisation (ours is cell runs over our `Cell`).
+
+## D8 — Kitty graphics: a picture in a pane (DECIDED by operator, 2026-11-12)
+
+The operator, shown Rex panes carrying agent-drawn pictures: "let's use the Kitty graphics protocol for canvas, that's what canvas should be". Ruled: Kitty graphics is a terminal feature, built here; the semantic [[canvas]] stays as the kept, zoomable record, and the two meet later through the canvas `image` element. Any agent in any pane draws with one escape sequence and any tool that already lays pictures out (graphviz, mermaid-cli, matplotlib).
+
+Subset: transmit by direct data, chunked (`m`), zlib (`o=z`); RGB, RGBA and PNG; display at the cursor with cell extents (`c`, `r`), source rectangle, z-index, cursor movement (`C`); delete (`d=a/A/i/I`); query (`a=q`); quiet levels. Not built: files, shared memory, animation, Unicode placeholders, images in scrollback (a picture that scrolls off the screen is gone).
+
+| Part | Where | Mechanism |
+|---|---|---|
+| Protocol | `crates/bboxy450-kitty-graphics` (generic, independent of kitty's source) | `Graphics::command(apc, row, col)` parses the control keys, assembles chunks, decodes, keeps at most 32 images of at most 16 Mpx, places at absolute rows (`Grid::rows_scrolled` + screen line), answers `OK`/`E…`. `encode_png` is the program's side. |
+| Parser | `crates/bbt-core/src/vendor/vte/mod.rs` | APC strings (`ESC _ … ESC \`) are collected up to 8 KiB and dispatched whole through `Perform::apc_dispatch`; SOS and PM stay ignored. Parser state is still serializable. |
+| Terminal | `crates/bbt-core/src/vendor/alacritty/term/mod.rs` | `Handler::graphics_command` runs the command at the cursor, writes the reply as `Event::PtyWrite`, moves the cursor past the picture; scrolling forgets placements behind the origin, region scrolls clear the rows they move, clear-screen and the alternate screen clear placements, reset drops everything. `Term.graphics` is part of the checkpoint. |
+| State stream | `crates/bbt-proto/src/streams.rs`, `crates/bbt-mux/src/streams.rs` | `Screen.images` (visible placements in screen cells) and `Screen.image_data` (PNG per shown image, `Arc`). A delta carries `images` only when the set changed and `image_data` only for ids the base lacked; the replica keeps pixels for every placement it shows and refuses a delta that shows an image without them. |
+| GUI | `crates/bbt-render/src/chrome/images.rs`, `crates/bboxy450-term/src/gpu.rs` | A picture layer: one `Rgba8UnormSrgb` texture per (seat, image), uploaded once, drawn as clipped textured quads over the pane after its cells, in z order, freed after 120 frames without a placement. Cell size from the terminal metrics; zero extents mean the image's own pixels. |
+
+Checks: `cargo nextest run -p bboxy450-kitty-graphics` (protocol), `-p bboxy450-term-core` (`kitty_graphics_place_reply_scroll_and_checkpoint`), `-p bboxy450-term-mux -E 'test(~kitty)'` (pixels once, placements on change, refused delta). Coverage: `verification/coverage.toml` `bboxy450-kitty-graphics`, implementation tests; no concurrency to model.
 
 ## Order of work
 
