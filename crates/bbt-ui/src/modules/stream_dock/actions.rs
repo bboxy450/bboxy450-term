@@ -22,6 +22,7 @@ pub enum Action {
     SubmitReject(String),
     RejectInput(String),
     Channel(String),
+    Seat(String),
 }
 #[derive(Default)]
 pub struct Regions {
@@ -146,6 +147,12 @@ impl Regions {
                             out.add(&format!("{key}/accept"), Action::Accept(id.clone()));
                         }
                     }
+                }
+                Entry::Line { data } if !data.seat.is_empty() => {
+                    out.add(&key, Action::Seat(data.seat.clone()));
+                }
+                Entry::Line { data } if !data.task.is_empty() => {
+                    out.add(&key, Action::Task(data.task.clone()));
                 }
                 Entry::Tabs { channels, .. } => {
                     for (j, name) in std::iter::once("all")

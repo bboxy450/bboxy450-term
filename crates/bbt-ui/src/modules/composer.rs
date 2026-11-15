@@ -19,7 +19,7 @@ mod attachments;
 mod images;
 pub use attachments::AttachmentPicker;
 mod conversation;
-pub use conversation::{Conversation, SidebarLayout};
+pub use conversation::{Conversation, Feed, SidebarLayout};
 use serde::{Deserialize, Serialize};
 pub const SEND_KINDS: [&str; 3] = ["text", "chunk", "decision"];
 

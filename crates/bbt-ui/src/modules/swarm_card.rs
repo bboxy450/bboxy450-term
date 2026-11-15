@@ -238,9 +238,9 @@ pub struct SwarmCard {
 }
 impl SwarmCard {
     pub fn header_element(&self, ctx: ui::Context) -> c::Element {
-        self.header_element_with_count(ctx, self.seats.len())
+        self.header_element_with_count(ctx, &self.seats.len().to_string())
     }
-    pub fn header_element_with_count(&self, ctx: ui::Context, count: usize) -> c::Element {
+    pub fn header_element_with_count(&self, ctx: ui::Context, count: &str) -> c::Element {
         let band = ui::Style::new(ui::Preset::Band)
             .resolve(ctx)
             .expect("band Style");
@@ -267,7 +267,7 @@ impl SwarmCard {
             named(
                 "head/count",
                 text(
-                    count.to_string(),
+                    count,
                     STYLE.r#type.note as f32,
                     400,
                     true,

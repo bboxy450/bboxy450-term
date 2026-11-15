@@ -450,7 +450,7 @@ fn utility_accordion_uses_the_swarm_card_closed_chrome() {
         key: "utility",
         title: &card.name,
         color: card.color,
-        count: 0,
+        count: "0",
         open: false,
     }
     .element(ctx(), size, None)

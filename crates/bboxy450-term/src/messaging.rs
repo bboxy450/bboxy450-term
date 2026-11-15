@@ -18,6 +18,7 @@ use std::{
     collections::{BTreeMap, BTreeSet, VecDeque},
     sync::Arc,
 };
+pub mod feed;
 mod history;
 pub use history::{History, HistoryAction};
 

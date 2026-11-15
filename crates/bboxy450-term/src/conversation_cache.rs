@@ -27,6 +27,7 @@ struct Inputs<'a> {
     composer: &'a composer::Composer,
     scroll: f32,
     task_scroll: f32,
+    feed: Option<composer::Feed>,
 }
 struct Snapshot {
     geometry: Geometry,
@@ -46,6 +47,7 @@ impl Snapshot {
                 composer: input.composer.clone(),
                 scroll: input.scroll,
                 task_scroll: input.task_scroll,
+                feed: input.feed,
             },
         }
     }
@@ -55,6 +57,7 @@ impl Snapshot {
             && self.channel == input.channel
             && self.view.scroll == input.scroll
             && self.view.task_scroll == input.task_scroll
+            && self.view.feed == input.feed
             && self.view.stream == *input.stream
             && self.view.tasks.as_ref() == Some(input.tasks)
             && self.view.composer == *input.composer
@@ -90,6 +93,7 @@ impl App {
                 self.chat_scroll.layout_offset()
             },
             task_scroll: self.task_scroll,
+            feed: self.chat_feed,
         }
     }
     pub(super) fn conversation_cache_matches(&self, logical: [f32; 2]) -> bool {

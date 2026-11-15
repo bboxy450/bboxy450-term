@@ -256,6 +256,7 @@ mod tests {
             sidebar_shown: true,
             open_swarms: vec![],
             sidebar_sections_closed: vec![],
+            chat_all: false,
             swarms: vec![],
             stage: WindowStage {
                 swarm: None,

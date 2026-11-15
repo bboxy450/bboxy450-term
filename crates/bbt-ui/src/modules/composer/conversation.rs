@@ -43,6 +43,29 @@ impl SidebarLayout {
     }
 }
 
+/// The host's Chat projection: which rows it chose and how many it left out.
+/// The first `pinned` stream entries stay above the scrolling list.
+// Origin: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct Feed {
+    pub all: bool,
+    pub shown: usize,
+    pub total: usize,
+    pub pinned: usize,
+}
+impl Feed {
+    /// The header count, also the mode toggle: `12 / 128 · signal`.
+    pub fn label(self) -> String {
+        format!(
+            "{} / {} · {}",
+            self.shown,
+            self.total,
+            if self.all { "all" } else { "signal" }
+        )
+    }
+}
+
 /// Shared inline stream surface. Only rows scroll; the composer stays at its
 /// foot. The caller owns the selected stream, offset, focus and effects.
 #[derive(Default)]
@@ -52,6 +75,8 @@ pub struct Conversation {
     pub scroll: f32,
     pub tasks: Option<StreamDock>,
     pub task_scroll: f32,
+    /// None keeps every entry in the scrolling list and a plain message count.
+    pub feed: Option<Feed>,
 }
 impl Conversation {
     pub fn element(
@@ -187,11 +212,14 @@ impl Conversation {
             .iter()
             .filter(|entry| matches!(entry, crate::modules::stream_dock::Entry::Message { .. }))
             .count();
+        let chat_count = self
+            .feed
+            .map_or_else(|| chat_count.to_string(), Feed::label);
         let tasks = Accordion {
             key: "conversation/task-section",
             title: "Tasks",
             color: bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.section.tasks).0,
-            count: task_count,
+            count: &task_count.to_string(),
             open: open[0],
         }
         .element(ctx, [width, tasks_height], tasks_body);
@@ -199,7 +227,7 @@ impl Conversation {
             key: "conversation/chat-section",
             title: "Chat",
             color: bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.section.chat).0,
-            count: chat_count,
+            count: &chat_count,
             open: open[1],
         }
         .element(ctx, [width, chat_height], chat_body);
@@ -321,12 +349,33 @@ impl Conversation {
         } else {
             size[1].max(h + 2. * sp.s3 as f32 + 1.)
         };
+        let entries = self.stream.entries.len();
+        let pinned_rows = self.feed.map_or(0, |feed| feed.pinned.min(entries));
+        let pinned = crate::modules::stream_dock::column(
+            "conversation/pinned",
+            plain(None, [0.; 4], 0.),
+            self.stream.items_in(ctx, 0, 0..pinned_rows, m),
+        );
         let rows_h = (height - 2. * sp.s3 as f32 - 1. - h).max(0.);
+        let pinned_h = if pinned_rows == 0 {
+            0.
+        } else {
+            pinned
+                .layout(Rect::new(0., 0., inner, 0.), ctx, m)?
+                .rect
+                .h
+                .min(rows_h)
+        };
+        let content = crate::modules::stream_dock::column(
+            "dock/rows",
+            plain(None, [0.; 4], 0.),
+            self.stream.items_in(ctx, 0, pinned_rows..entries, m),
+        );
         let rows = c::Element::ScrollView(c::ScrollView {
-            viewport: [inner, rows_h],
+            viewport: [inner, rows_h - pinned_h],
             offset: [0., self.scroll],
             content_width: Some(inner),
-            content: Box::new(self.stream.content(ctx, m)),
+            content: Box::new(content),
         });
         let mut style = plain(
             Some(height),
@@ -350,10 +399,17 @@ impl Conversation {
             style.overrides.fill = Some(ui::Paint::solid(ui::Color::Surface));
             style.overrides.border = None;
         }
-        let mut b = c::Box::new(
-            style,
-            vec![named("conversation/rows", rows).into(), composer.into()],
-        );
+        let mut children = vec![named("conversation/rows", rows).into(), composer.into()];
+        if pinned_rows > 0 {
+            children.insert(
+                0,
+                c::Item {
+                    element: pinned,
+                    extent: c::Extent::Fixed(pinned_h),
+                },
+            );
+        }
+        let mut b = c::Box::new(style, children);
         b.direction = Axis::Column;
         b.gap = ui::Length::Px(0.);
         b.align = c::Alignment::Stretch;

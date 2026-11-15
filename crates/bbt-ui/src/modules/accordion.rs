@@ -17,7 +17,8 @@ pub struct Accordion<'a> {
     pub key: &'a str,
     pub title: &'a str,
     pub color: [f32; 4],
-    pub count: usize,
+    /// Header count as shown: a number, or `shown / total · mode`.
+    pub count: &'a str,
     pub open: bool,
 }
 impl Accordion<'_> {

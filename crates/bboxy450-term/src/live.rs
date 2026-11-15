@@ -4305,6 +4305,7 @@ mod tests {
             scroll: 0.,
             tasks: None,
             task_scroll: 0.,
+            feed: None,
         };
         let layout = crate::scene::Scene::new()
             .conversation_layout([1400., 1000.], &conversation)

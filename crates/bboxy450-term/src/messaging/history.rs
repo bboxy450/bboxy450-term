@@ -788,6 +788,18 @@ impl History {
                 .count() as u64,
         )
     }
+    /// Typed facts for the Chat projection, keyed like `Message::message_ids`.
+    pub fn facts(&self) -> BTreeMap<String, super::feed::Fact> {
+        self.rows
+            .iter()
+            .map(|row| {
+                (
+                    row.row.id.to_string(),
+                    super::feed::Fact::of(&row.row, &row.context),
+                )
+            })
+            .collect()
+    }
     pub fn entries(
         &self,
         model: &crate::model::Model,

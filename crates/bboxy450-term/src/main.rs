@@ -2369,6 +2369,9 @@ struct App {
     sidebar_wheel: bboxy450_term::chat_scroll::WheelIntent,
     sidebar_width: Option<f32>,
     sidebar_accordion_overrides: BTreeMap<String, bool>,
+    /// The operator's Chat mode this session; None follows the restored window.
+    chat_all: Option<bool>,
+    chat_feed: Option<composer::Feed>,
     sidebar_drag: bbt_ui_model::input::SidebarResize,
     titlebar: desktop_window::Titlebar,
     desktop_menu: Option<bboxy450_term_desktop::MenuBar>,
@@ -2605,6 +2608,8 @@ impl App {
             sidebar_wheel: Default::default(),
             sidebar_width: None,
             sidebar_accordion_overrides: BTreeMap::new(),
+            chat_all: None,
+            chat_feed: None,
             sidebar_drag: Default::default(),
             titlebar: Default::default(),
             desktop_menu: None,
@@ -3732,6 +3737,7 @@ impl App {
             .collect();
         self.scene.set_unread(&unread);
         self.append_close_notices();
+        self.project_chat_feed();
         self.schedule_chat_notice_expiry();
         self.sync_task_panel();
         if !self.conversation_cache_matches(self.solved_size) {
@@ -3745,6 +3751,7 @@ impl App {
             Action::RefreshTasks => self.task_records.refresh_tasks_now(),
             Action::OpenRecord(target) => self.open_document(target),
             Action::Task(id) => self.open_document(id),
+            Action::Seat(id) => self.navigate_to(&format!("seat:{id}")),
             Action::Delegate(id) => {
                 if let Some(task) = parse(&id).and_then(|id| self.task_records.task(id)) {
                     let attachment = messaging::task_attachment(task);
@@ -8100,6 +8107,7 @@ impl App {
                 .collect();
             state.sidebar_sections_closed =
                 self.scene.sidebar_sections_closed.iter().cloned().collect();
+            state.chat_all = self.chat_all();
             if self.window_last.as_ref() != Some(&state) {
                 self.window_last = Some(state.clone());
                 self.queue(live::UiMsg::WindowState(state));

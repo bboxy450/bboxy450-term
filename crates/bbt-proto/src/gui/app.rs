@@ -163,6 +163,9 @@ pub struct WindowState {
     /// Closed non-swarm sections; an absent field keeps older windows expanded.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub sidebar_sections_closed: Vec<String>,
+    /// Chat shows every message; an absent field keeps the default, signal only.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub chat_all: bool,
     pub swarms: Vec<WindowSwarm>,
     pub stage: WindowStage,
     pub scroll: Vec<WindowScroll>,
@@ -251,12 +254,15 @@ mod sidebar_state_compatibility {
             }))
             .unwrap();
             assert!(state.sidebar_sections_closed.is_empty());
-            assert!(
-                serde_json::to_value(&state)
-                    .unwrap()
-                    .get("sidebar_sections_closed")
-                    .is_none()
-            );
+            assert!(!state.chat_all, "Chat defaults to signal");
+            let saved = serde_json::to_value(&state).unwrap();
+            assert!(saved.get("sidebar_sections_closed").is_none());
+            assert!(saved.get("chat_all").is_none());
+            let mut all = state.clone();
+            all.chat_all = true;
+            let saved = serde_json::to_value(&all).unwrap();
+            assert_eq!(saved["chat_all"], true);
+            assert_eq!(serde_json::from_value::<WindowState>(saved).unwrap(), all);
         }
     }
 }

@@ -103,6 +103,26 @@ pub struct WorkItem {
     #[serde(rename = "type")]
     pub kind: String,
 }
+/// One ledger line, `time · who · verb · object`; empty parts are skipped.
+/// The host chooses the verb from typed facts; this view never reads prose.
+// Origin: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+#[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Line {
+    pub time: String,
+    pub who: String,
+    pub verb: String,
+    pub object: String,
+    /// Task a click opens. A seat, when present, takes the click instead.
+    pub task: String,
+    /// Seat a click focuses.
+    pub seat: String,
+    /// Waits on the operator.
+    pub needs: bool,
+    /// First line of a group: a small gap above.
+    pub first: bool,
+}
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Epic {
@@ -209,6 +229,9 @@ pub enum Entry {
     Note {
         text: String,
         padding: [f32; 4],
+    },
+    Line {
+        data: Line,
     },
 }
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -1167,6 +1190,84 @@ fn kind_chip(key: &str, value: &str) -> c::Element {
         vec![label(format!("{key}/text"), value, ts, false).into()],
     )
 }
+fn line_item(line: &Line, k: &str) -> c::Element {
+    let sp = &STYLE.spacing;
+    let small = STYLE.r#type.small as f32;
+    let waiting = rgba(TOKENS.color.state.waiting);
+    let verb = match line.verb.as_str() {
+        "rejected" => rgba(TOKENS.color.state.errored),
+        "accepted" => rgba(TOKENS.color.ui.ok),
+        "decided" => rgba(TOKENS.color.ui.invariant),
+        "reported" | "asked" | "waiting" => waiting,
+        _ => ui::Color::Muted,
+    };
+    let mut head = c::Text::new(
+        if line.needs { "● " } else { "" },
+        text_style(small, 400, false, waiting),
+    );
+    head.wrap = false;
+    let dot = || c::TextRun {
+        value: " · ".into(),
+        style: text_style(small, 400, false, ui::Color::Muted),
+    };
+    let parts = [
+        (&line.time, text_style(small, 400, true, ui::Color::Muted)),
+        (
+            &line.who,
+            text_style(small, 500, false, ui::Color::Foreground),
+        ),
+        (&line.verb, text_style(small, 500, false, verb)),
+    ];
+    let mut any = false;
+    for (value, style) in parts {
+        if value.is_empty() {
+            continue;
+        }
+        if any {
+            head.runs.push(dot());
+        }
+        any = true;
+        head.runs.push(c::TextRun {
+            value: value.clone(),
+            style,
+        });
+    }
+    if any && !line.object.is_empty() {
+        head.runs.push(dot());
+    }
+    row(
+        k,
+        plain(
+            None,
+            [
+                if line.first { sp.s3 as f32 } else { sp.s1 as f32 },
+                sp.s4 as f32,
+                sp.s1 as f32,
+                sp.s3 as f32,
+            ],
+            0.,
+        ),
+        0.,
+        c::Alignment::Center,
+        vec![
+            shrink(named(format!("{k}/head"), c::Element::Text(head))),
+            fill(clipped_text(
+                &format!("{k}/object"),
+                &line.object,
+                text_style(
+                    small,
+                    400,
+                    false,
+                    if any {
+                        ui::Color::Muted
+                    } else {
+                        ui::Color::Foreground
+                    },
+                ),
+            )),
+        ],
+    )
+}
 fn task_item(item: &WorkItem, k: &str, delegate: bool) -> c::Element {
     let sp = &STYLE.spacing;
     let t = &STYLE.r#type;
@@ -1453,10 +1554,27 @@ fn external(key: &str, events: &[External], open: bool) -> c::Element {
 }
 impl StreamDock {
     pub fn items_at(&self, ctx: ui::Context, start: usize, m: &dyn c::Measure) -> Vec<c::Item> {
+        self.items_in(ctx, start, 0..self.entries.len(), m)
+    }
+    /// A slice of the same entries under their whole-stream keys, so a host can
+    /// lay leading rows outside the scrolling list without renumbering actions.
+    pub fn items_in(
+        &self,
+        ctx: ui::Context,
+        start: usize,
+        range: std::ops::Range<usize>,
+        m: &dyn c::Measure,
+    ) -> Vec<c::Item> {
         let sp = &STYLE.spacing;
         let t = &STYLE.r#type;
         let mut children = vec![];
-        for (i, entry) in self.entries.iter().enumerate() {
+        for (i, entry) in self
+            .entries
+            .iter()
+            .enumerate()
+            .take(range.end)
+            .skip(range.start)
+        {
             let key = format!("e{}", i + start);
             children.push(
                 match entry {
@@ -1501,6 +1619,7 @@ impl StreamDock {
                             .into(),
                         ],
                     ),
+                    Entry::Line { data } => line_item(data, &key),
                     Entry::TaskState { data } => data.element(ctx, [240., 180.]),
                     Entry::Note { text, padding } => column(
                         &key,

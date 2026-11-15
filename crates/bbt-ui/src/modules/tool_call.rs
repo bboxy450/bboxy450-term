@@ -131,7 +131,7 @@ impl ToolCall {
                 key: &key,
                 title,
                 color: self.status.color(),
-                count: 0,
+                count: "0",
                 open,
             }
             .element(

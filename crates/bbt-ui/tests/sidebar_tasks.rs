@@ -8,9 +8,10 @@ use bbt_ui::{
     self as ui, components as c,
     modules::{
         composer::{
-            Attachment, Composer, Conversation, Regions as ComposerRegions, Report, Verification,
+            Attachment, Composer, Conversation, Feed, Regions as ComposerRegions, Report,
+            Verification,
         },
-        stream_dock::{Action, Entry, Message, Regions, StreamDock, WorkItem},
+        stream_dock::{Action, Entry, Line, Message, Regions, StreamDock, WorkItem},
     },
 };
 use bbt_ui_model::layout::{Rect, TextMeasure, TextStyle};
@@ -321,4 +322,105 @@ fn sidebar_disclosure_uses_intermediate_clipped_card_bounds_with_natural_rows() 
         );
         assert!((displayed.h - (low + high) / 2.).abs() < 0.1);
     }
+}
+
+fn text(tree: &c::Layout) -> String {
+    let mut out = match &tree.kind {
+        c::LayoutKind::Text { runs, .. } => runs.iter().map(|run| run.text.as_str()).collect(),
+        _ => String::new(),
+    };
+    for child in &tree.children {
+        out.push_str(&text(child));
+    }
+    out
+}
+// The feed's pinned rows keep their whole-stream keys and actions while the
+// list scrolls under them; the header count is the host's `shown / total`.
+#[test]
+fn feed_pins_leading_lines_above_the_scrolling_list_and_labels_the_header() {
+    let mut view = view();
+    let plain = solve(&view, [300., 700.], Some(96.));
+    assert_eq!(
+        text(named(&plain, "conversation/chat-section/head/count")),
+        "12"
+    );
+    let full = named(&plain, "conversation/rows").rect;
+    view.stream.entries.splice(
+        0..0,
+        [
+            Entry::Line {
+                data: Line {
+                    who: "Lumen".into(),
+                    verb: "waiting".into(),
+                    object: "permission".into(),
+                    seat: "seat-1".into(),
+                    needs: true,
+                    ..Default::default()
+                },
+            },
+            Entry::Line {
+                data: Line {
+                    time: "14:02".into(),
+                    who: "Vex".into(),
+                    verb: "reported".into(),
+                    object: "A measured report".into(),
+                    task: "task-1".into(),
+                    needs: true,
+                    ..Default::default()
+                },
+            },
+            Entry::Line {
+                data: Line {
+                    object: "+3 more".into(),
+                    ..Default::default()
+                },
+            },
+        ],
+    );
+    view.feed = Some(Feed {
+        all: false,
+        shown: 4,
+        total: 128,
+        pinned: 3,
+    });
+    view.scroll = 10_000.;
+    let tree = solve(&view, [300., 700.], Some(96.));
+    assert_eq!(
+        text(named(&tree, "conversation/chat-section/head/count")),
+        "4 / 128 · signal"
+    );
+    assert_eq!(text(named(&tree, "e0")), "● Lumen · waiting · permission");
+    assert_eq!(
+        text(named(&tree, "e1")),
+        "● 14:02 · Vex · reported · A measured report"
+    );
+    assert_eq!(text(named(&tree, "e2")), "+3 more");
+    let pinned = named(&tree, "conversation/pinned").rect;
+    let rows = named(&tree, "conversation/rows").rect;
+    assert!(pinned.h > 0. && (pinned.bottom() - rows.y).abs() < 0.01);
+    assert!((pinned.y - full.y).abs() < 0.01);
+    assert!((rows.bottom() - full.bottom()).abs() < 0.01);
+    // Scrolled to the tail, the pinned rows have not moved and still act.
+    let actions = regions(&tree, &view);
+    assert_eq!(
+        actions.hit(center(named(&tree, "e0").rect)),
+        Some(Action::Seat("seat-1".into()))
+    );
+    assert_eq!(
+        actions.hit(center(named(&tree, "e1").rect)),
+        Some(Action::Task("task-1".into()))
+    );
+    assert_eq!(actions.hit(center(named(&tree, "e2").rect)), None);
+    view.feed = Some(Feed {
+        all: true,
+        shown: 128,
+        total: 128,
+        pinned: 0,
+    });
+    let all = solve(&view, [300., 700.], Some(96.));
+    assert_eq!(
+        text(named(&all, "conversation/chat-section/head/count")),
+        "128 / 128 · all"
+    );
+    assert!((named(&all, "conversation/rows").rect.h - full.h).abs() < 0.01);
 }

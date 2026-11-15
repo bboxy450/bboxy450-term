@@ -198,6 +198,10 @@ impl App {
         if self.titlebar_pressed(at, false) {
             return;
         }
+        if self.chat_feed_toggle(at) {
+            self.toggle_chat_feed();
+            return;
+        }
         if let Some(key) = self.panel_header(at) {
             self.toggle_sidebar_section(key);
             return;
@@ -547,6 +551,10 @@ impl App {
             self.toggle_sidebar_section(section);
             return;
         }
+        if id == "toggle-chat-feed" {
+            self.toggle_chat_feed();
+            return;
+        }
         if id == "new-swarm" {
             let id = bbt_proto::SwarmId::from_u128(bbt_mux::Ulid::new().0);
             self.queue(live::UiMsg::NewSwarm(id));
@@ -655,6 +663,12 @@ impl App {
                         [n.rect.x, n.rect.y, n.rect.w, n.rect.h],
                     );
                 }
+            }
+            if let Some(n) = find(&layout.layout, "conversation/chat-section/head/count") {
+                regions.insert(
+                    "toggle-chat-feed".into(),
+                    [n.rect.x, n.rect.y, n.rect.w, n.rect.h],
+                );
             }
         }
         if let Some(settings) = self

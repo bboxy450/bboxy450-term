@@ -62,6 +62,9 @@ pub fn capture(
         sidebar_sections_closed: prior
             .or(model.window_restore.as_deref())
             .map_or_else(Vec::new, |saved| saved.sidebar_sections_closed.clone()),
+        chat_all: prior
+            .or(model.window_restore.as_deref())
+            .is_some_and(|saved| saved.chat_all),
         swarms: model
             .ui
             .window
@@ -384,6 +387,22 @@ mod tests {
             capture(&model, &stage, [1280., 720.], Some(&prior))
                 .sidebar_sections_closed
                 .is_empty()
+        );
+    }
+    #[test]
+    fn chat_defaults_to_signal_and_capture_keeps_the_saved_choice() {
+        let mut model = crate::model::Model::default();
+        let stage = model.ui.window.stage.clone();
+        let mut restored = capture(&model, &stage, [1280., 720.], None);
+        assert!(!restored.chat_all, "no saved window: signal");
+        restored.chat_all = true;
+        model.window_restore = Some(std::sync::Arc::new(restored));
+        assert!(capture(&model, &stage, [1280., 720.], None).chat_all);
+        let mut prior = capture(&model, &stage, [1280., 720.], None);
+        prior.chat_all = false;
+        assert!(
+            !capture(&model, &stage, [1280., 720.], Some(&prior)).chat_all,
+            "this session's last frame outranks the restored window"
         );
     }
     // keeps: decision #344; UI data roundtrips while current registry metadata wins

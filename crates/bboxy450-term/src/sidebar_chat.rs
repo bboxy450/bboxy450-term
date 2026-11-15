@@ -262,6 +262,49 @@ impl App {
         }
     }
 
+    /// The session's choice, else the restored window's; signal by default.
+    pub(super) fn chat_all(&self) -> bool {
+        self.chat_all.unwrap_or_else(|| {
+            self.live_state
+                .as_ref()
+                .and_then(|model| model.window_restore.as_ref())
+                .is_some_and(|saved| saved.chat_all)
+        })
+    }
+    pub(super) fn chat_feed_toggle(&self, at: [f32; 2]) -> bool {
+        self.conversation_layout.as_ref().is_some_and(|layout| {
+            layout
+                .actions
+                .contains("conversation/chat-section/head/count", at)
+        })
+    }
+    pub(super) fn toggle_chat_feed(&mut self) {
+        self.chat_all = Some(!self.chat_all());
+        self.refresh_conversation();
+        self.request_redraw();
+    }
+    /// Last step of a conversation refresh: every row is present, so the
+    /// projection sees presence lines and close notices as well as history.
+    pub(super) fn project_chat_feed(&mut self) {
+        let all = self.chat_all();
+        let Some(model) = self.live_state.as_deref() else {
+            return;
+        };
+        let waiting = self.composer_scope.map_or_else(Vec::new, |scope| {
+            bboxy450_term::messaging::feed::waiting(model, scope)
+        });
+        let (entries, feed) = bboxy450_term::messaging::feed::project(
+            std::mem::take(&mut self.conversation.entries),
+            &self.message_history.facts(),
+            self.task_records.tasks(),
+            &waiting,
+            model,
+            all,
+        );
+        self.conversation.entries = entries;
+        self.chat_feed = Some(feed);
+    }
+
     pub(super) fn schedule_chat_notice_expiry(&mut self) {
         let until = self
             .live_state
