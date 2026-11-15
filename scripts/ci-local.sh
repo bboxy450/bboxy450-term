@@ -69,37 +69,42 @@ if [ -f "$ledger_helper" ]; then
     BBOXY_LEDGER_SAMPLER=$(python3 -I "$ledger_helper" start $$) || BBOXY_LEDGER_SAMPLER=''
     export BBOXY_LEDGER_SAMPLER
 fi
-if [ "$after_tests" = false ]; then
-    # Aggregate orchestration stays unclamped for explicit timing gates. Clamp
-    # ordinary interpreted leaves here; Cargo and Make classify their own trees.
-    ledger smoke sh scripts/qos.sh utility sh scripts/layering.sh
-    ledger integration python3 -I scripts/test-landing.py
-    if [ -f "$ledger_helper" ]; then
-        ledger integration sh scripts/qos.sh utility python3 -I scripts/test-resource-ledger.py
-    fi
-    ledger integration sh scripts/qos.sh utility python3 -I scripts/test-landing-budget-controls.py --out "$BBOXY_CARGO_TARGET_DIR/landing-budget-controls"
-    ledger build cargo build --workspace --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
-    ledger build cargo clippy --workspace --all-targets --locked --target-dir "$BBOXY_CARGO_TARGET_DIR" -- -D warnings
-    # The harness repository's own gate runs its suite in its own configuration;
-    # here it would rerun under this workspace's feature unification. Its CLOEXEC
-    # fixture and term-facing seats run in test-harness-native below.
-    # The Dream C1 family asserts 1 ms per-unit CPU budgets on optimized code; it runs
-    # in its own gate, make test-dream-c1 (same filters, dream-c1-fixture profile), not
-    # here. scripts/landing.py DREAM_C1_GATE_TESTS names the same family.
-    dream='(package(bboxy450-term-mux) & (test(dream_c1) | test(dream_public_))) | (package(bboxy450-harness-wake-up) & (test(dream_c1) | test(dream_bootstrap) | binary(dream_c1) | binary(dream_bootstrap)))'
-    # Head-of-line recovery and knowledge responsiveness hold wall-clock budgets:
-    # run them alone after the parallel suite, not under its contention.
-    timed='package(bboxy450-term-mux) & test(/^(logic::hol_tests::|logic::knowledge_responsiveness_tests::)/)'
-    ledger unit sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked -E "not ($timed) & not ($dream)"
-    ledger unit env NEXTEST_TEST_THREADS=1 sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux -E "$timed"
+# Stages the --after-tests continuation skips.
+full() {
+    if [ "$after_tests" = false ]; then ledger "$@"; fi
+}
+# Fail fast: every stage still runs, cheapest and most often red first. Scans and
+# lints precede the test suites; the model check precedes the longer native
+# harness stage; the capability control, which has not failed, runs last.
+# Aggregate orchestration stays unclamped for explicit timing gates. Clamp
+# ordinary interpreted leaves here; Cargo and Make classify their own trees.
+full smoke sh scripts/qos.sh utility sh scripts/layering.sh
+full integration python3 -I scripts/test-landing.py
+if [ -f "$ledger_helper" ]; then
+    full integration sh scripts/qos.sh utility python3 -I scripts/test-resource-ledger.py
 fi
+full integration sh scripts/qos.sh utility python3 -I scripts/test-landing-budget-controls.py --out "$BBOXY_CARGO_TARGET_DIR/landing-budget-controls"
+ledger integration make test-capability-scan TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
+full build cargo build --workspace --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
+full build cargo clippy --workspace --all-targets --locked --target-dir "$BBOXY_CARGO_TARGET_DIR" -- -D warnings
+ledger smoke sh scripts/qos.sh utility sh scripts/ui-lint.sh
+# The harness repository's own gate runs its suite in its own configuration;
+# here it would rerun under this workspace's feature unification. Its CLOEXEC
+# fixture and term-facing seats run in test-harness-native below.
+# The Dream C1 family asserts 1 ms per-unit CPU budgets on optimized code; it runs
+# in its own gate, make test-dream-c1 (same filters, dream-c1-fixture profile), not
+# here. scripts/landing.py DREAM_C1_GATE_TESTS names the same family.
+dream='(package(bboxy450-term-mux) & (test(dream_c1) | test(dream_public_))) | (package(bboxy450-harness-wake-up) & (test(dream_c1) | test(dream_bootstrap) | binary(dream_c1) | binary(dream_bootstrap)))'
+# Head-of-line recovery and knowledge responsiveness hold wall-clock budgets:
+# run them alone after the parallel suite, not under its contention.
+timed='package(bboxy450-term-mux) & test(/^(logic::hol_tests::|logic::knowledge_responsiveness_tests::)/)'
+full unit sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked -E "not ($timed) & not ($dream)"
+full unit env NEXTEST_TEST_THREADS=1 sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux -E "$timed"
+ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR" FORMAL_REUSE=0
+ledger integration make test-harness-native TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 # This real exec-environment control restores and hashes its source before
 # returning; no other compilation runs while the broken variant is present.
-ledger integration make test-capability-scan TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger integration make test-capability-control TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
-ledger integration make test-harness-native TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
-ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR" FORMAL_REUSE=0
-ledger smoke sh scripts/qos.sh utility sh scripts/ui-lint.sh
 ledger build cargo build -p bboxy450-term --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
 smoke_bin="$BBOXY_CARGO_TARGET_DIR/debug/bboxy450-term"
 case "$smoke_bin" in

@@ -1586,7 +1586,13 @@ class GateReceiptTests(unittest.TestCase):
                                 env=environment, text=True, capture_output=True, timeout=15)
         self.assertNotEqual(result.returncode, 0)
         self.assertIn('"make", "test-capability-control"', result.stdout)
-        self.assertNotIn('"make", "test-formal"', result.stdout)
+        # The model check and the native harness stage precede the control;
+        # nothing after it runs once it fails.
+        self.assertLess(result.stdout.index('"make", "test-formal"'),
+                        result.stdout.index('"make", "test-harness-native"'))
+        self.assertLess(result.stdout.index('"make", "test-harness-native"'),
+                        result.stdout.index('"make", "test-capability-control"'))
+        self.assertNotIn('"cargo", "build", "-p", "bboxy450-term"', result.stdout)
         log.write_text(result.stdout + result.stderr)
         with self.assertRaisesRegex(landing.Refusal, 'gate_log_not_green'):
             landing.gate_proof(log, control_failed)
