@@ -3532,7 +3532,7 @@ class BudgetPresubmitTests(unittest.TestCase):
                 env=self.repo.environment,capture_output=True,text=True,timeout=45)
         result=run("--covered-check","sh scripts/staged.sh","--covered-check","sh scripts/other.sh --more")
         self.assertIn("invariant staged: skipped (covered in this gate)",result.stdout,result.stdout+result.stderr)
-        self.assertIn("invariant other: pass",result.stdout)
+        self.assertIn("invariant other: pass",result.stdout,"a check the gate never ran was skipped")
         self.assertFalse((self.repo.state/"staged-runs").exists(),"the gate's own stage ran twice")
         self.assertEqual((self.repo.state/"other-runs").read_text(),"x")
         result=run()
