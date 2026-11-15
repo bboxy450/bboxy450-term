@@ -4,7 +4,7 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! The five queries against a small fixture tree, and the server over stdio.
+//! The queries against a small fixture tree, and the server over stdio.
 #![expect(
     clippy::disallowed_methods,
     reason = "Fixture files and the server child are plain synchronous test IO."
@@ -385,6 +385,219 @@ fn every_result_is_bounded_says_what_was_cut_and_is_the_same_twice() {
     );
 }
 
+/// A tree with a verification inventory: `src/a.rs` under a contract,
+/// `src/b.rs` under its crate's coverage row only, `tools/c.rs` under nothing,
+/// one sound Den spec that names `src/a.rs` and one unsound spec.
+fn verified(contracts: usize) -> (tempfile::TempDir, Root) {
+    let dir = tempfile::tempdir().unwrap();
+    let write = |name: &str, body: &str| {
+        let path = dir.path().join(name);
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(path, body).unwrap();
+    };
+    write("Cargo.toml", "[package]\nname = \"fix\"\n");
+    write("src/a.rs", "pub fn a() {}\n");
+    write("src/b.rs", "pub fn b() {}\n");
+    write("tools/Cargo.toml", "[package]\nname = \"tools\"\n");
+    write("tools/c.rs", "pub fn c() {}\n");
+    write(
+        "specs/turnstile.den",
+        &include_str!("../../bboxy450-den/tests/sound/turnstile.den")
+            .replace("A coin opens", "src/a.rs: a coin opens"),
+    );
+    write(
+        "specs/broken.den",
+        include_str!("../../bboxy450-den/tests/unsound/X201-unknown-name.den"),
+    );
+    let mut rows = String::from(
+        "[[contract]]\nname = \"Turnstile\"\ntitle = \"A paid gate\"\nmodels = [\"Turnstile\", \"BrokenTurnstile\"]\n\
+         sources = [\"src/a.rs\"]\nimplementation_tests = [\"tests/gate.rs\"]\n\
+         assumptions = \"One gate.\"\nproperty = \"TURN_001 holds.\"\nchecks = [\"make test-formal\"]\n",
+    );
+    for index in 0..contracts {
+        rows.push_str(&format!(
+            "[[contract]]\nname = \"Many{index}\"\nmodels = [\"Many{index}\"]\ncontrols = [{{name = \"BrokenMany{index}\", expected = \"safety\"}}]\n\
+             sources = [\"src\"]\nproperty = \"{}\"\n",
+            "p".repeat(300)
+        ));
+    }
+    write("verification/contracts.toml", &rows);
+    write(
+        "verification/coverage.toml",
+        "[[crate]]\nname = \"fix\"\nstatus = \"contract-model\"\nmodels = [\"Turnstile\", \"BrokenTurnstile\"]\nscope = \"s\"\nsources = [\"src/a.rs\"]\n\
+         [[implementation_only]]\nname = \"Fixtures\"\nsources = [\"src/b.rs\"]\ntests = []\nmodels = []\n",
+    );
+    write(
+        "verification/corpus.toml",
+        "[[model]]\nname = \"Turnstile\"\nexpected = \"pass\"\nfrontend = \"den\"\n\
+         [[model]]\nname = \"BrokenTurnstile\"\nexpected = \"safety\"\nfrontend = \"den\"\n",
+    );
+    let root = Root::new(dir.path()).unwrap();
+    (dir, root)
+}
+
+#[test]
+fn den_check_reports_sound_and_unsound_files_with_totals_and_missing_paths() {
+    let (_dir, root) = verified(0);
+    let got = call(&root, "den_check", &json!({"paths": ["specs", "gone"]})).unwrap();
+    assert_eq!(got["totals"], json!({"files": 2, "sound": 1, "unsound": 1}));
+    assert_eq!(got["missing"], json!(["gone"]));
+    let broken = &got["files"][0];
+    assert_eq!(
+        (&broken["path"], &broken["sound"]),
+        (&json!("specs/broken.den"), &json!(false))
+    );
+    let diagnostic = &broken["diagnostics"][0];
+    assert_eq!(diagnostic["code"], "X201");
+    assert_eq!(diagnostic["line"], 13);
+    for field in ["column", "record", "message", "repair"] {
+        assert!(diagnostic.get(field).is_some(), "{field}");
+    }
+    let sound = &got["files"][1];
+    assert_eq!(
+        (&sound["sound"], &sound["diagnostics"]),
+        (&json!(true), &json!([]))
+    );
+    let record = &sound["records"][0];
+    assert_eq!(
+        (&record["kind"], &record["name"], &record["theorems"]),
+        (&json!("spec"), &json!("Turnstile"), &json!(["TURN_001"]))
+    );
+    assert!(record["states"].as_u64().unwrap() > 0 && record["transitions"].as_u64().unwrap() > 0);
+    assert!(record["invariants"].is_u64() && record["scenarios"].is_u64());
+    let one = call(
+        &root,
+        "den_check",
+        &json!({"paths": ["specs/turnstile.den"]}),
+    )
+    .unwrap();
+    assert_eq!(one["totals"]["files"], 1);
+    assert!(call(&root, "den_check", &json!({"paths": []})).is_err());
+}
+
+#[test]
+fn contracts_link_paths_and_names_to_what_specifies_them() {
+    let (_dir, root) = verified(0);
+    let got = call(
+        &root,
+        "contracts",
+        &json!({"paths": ["src/a.rs", "src/b.rs", "tools/c.rs", "gone.rs"], "names": ["Turnstile", "BrokenTurnstile", "Nope"]}),
+    )
+    .unwrap();
+    assert_eq!(got["missing"], json!(["gone.rs"]));
+    let a = &got["paths"][0];
+    assert_eq!(
+        a["contracts"],
+        json!([{"name": "Turnstile", "title": "A paid gate", "property": "TURN_001 holds.",
+            "models": [{"name": "Turnstile", "expected": "pass"}, {"name": "BrokenTurnstile", "expected": "safety"}],
+            "controls": ["BrokenTurnstile"], "tests": ["tests/gate.rs"], "den": "specs/turnstile.den"}])
+    );
+    assert_eq!(
+        a["coverage"],
+        json!({"crate": "fix", "status": "contract-model", "models": 2})
+    );
+    assert_eq!(
+        a["den"],
+        json!([{"path": "specs/turnstile.den", "spec": "Turnstile", "sound": true, "theorems": ["TURN_001"]}])
+    );
+    assert!(a.get("uncovered").is_none());
+    // No contract, but the crate's coverage row and an implementation-only row answer.
+    let b = &got["paths"][1];
+    assert_eq!(
+        (
+            &b["contracts"],
+            &b["coverage"]["crate"],
+            &b["implementation_only"]
+        ),
+        (&json!([]), &json!("fix"), &json!(["Fixtures"]))
+    );
+    assert!(b.get("uncovered").is_none());
+    assert_eq!(
+        got["paths"][2],
+        json!({"path": "tools/c.rs", "contracts": [], "den": [], "uncovered": true}),
+        "nothing specifies this file"
+    );
+    let named = &got["names"][0];
+    assert_eq!(named["contracts"][0]["sources"], json!(["src/a.rs"]));
+    assert_eq!(named["contracts"][0]["tests"], json!(["tests/gate.rs"]));
+    assert_eq!(
+        named["model"],
+        json!({"expected": "pass", "frontend": "den"})
+    );
+    assert_eq!(named["den"]["path"], "specs/turnstile.den");
+    assert_eq!(named["crates"], json!(["fix"]));
+    assert!(named["contracts"][0].get("assumptions").is_none());
+    // A model name leads to the contract that lists it.
+    assert_eq!(got["names"][1]["contracts"][0]["name"], "Turnstile");
+    assert_eq!(got["names"][1]["model"]["expected"], "safety");
+    assert_eq!(
+        got["names"][2],
+        json!({"name": "Nope", "contracts": [], "unknown": true})
+    );
+    let detail = call(
+        &root,
+        "contracts",
+        &json!({"paths": ["src"], "detail": true}),
+    )
+    .unwrap();
+    assert_eq!(
+        detail["paths"][0]["contracts"][0]["assumptions"],
+        "One gate."
+    );
+    assert_eq!(
+        detail["paths"][0]["contracts"][0]["sources"],
+        json!(["src/a.rs"])
+    );
+    assert!(call(&root, "contracts", &json!({})).is_err());
+    let (_plain, plain) = fixture();
+    assert_eq!(
+        call(&plain, "contracts", &json!({"paths": ["src/lib.rs"]})).unwrap(),
+        json!({"unavailable": "no verification inventory under this root"})
+    );
+}
+
+#[test]
+fn contracts_and_den_check_are_bounded_say_what_was_cut_and_are_the_same_twice() {
+    let (dir, root) = verified(400);
+    let den = include_str!("../../bboxy450-den/tests/unsound/X201-unknown-name.den");
+    for index in 0..200 {
+        std::fs::write(dir.path().join(format!("specs/more{index:03}.den")), den).unwrap();
+    }
+    for (tool, args) in [
+        ("contracts", json!({"paths": ["src/a.rs", "src"]})),
+        (
+            "contracts",
+            json!({"names": ["Many7", "BrokenMany8"], "paths": ["."], "detail": true}),
+        ),
+        ("den_check", json!({"paths": ["specs"]})),
+    ] {
+        let first = call(&root, tool, &args).unwrap();
+        let bytes = first.to_string();
+        assert!(bytes.len() <= RESULT_BYTES, "{tool}: {} bytes", bytes.len());
+        assert!(
+            first["cut"]["omitted"].as_u64().unwrap() > 0 && first["cut"]["continue"].is_string(),
+            "{tool} names its continuation"
+        );
+        assert_eq!(
+            bytes,
+            call(&root, tool, &args).unwrap().to_string(),
+            "{tool} is deterministic"
+        );
+    }
+    let checked = call(&root, "den_check", &json!({"paths": ["specs"]})).unwrap();
+    assert_eq!(
+        checked["totals"],
+        json!({"files": 202, "sound": 1, "unsound": 201}),
+        "the totals count what was cut"
+    );
+    let named = call(&root, "contracts", &json!({"names": ["BrokenMany8"]})).unwrap();
+    assert_eq!(named["names"][0]["contracts"][0]["name"], "Many8");
+    assert_eq!(
+        named["names"][0]["contracts"][0]["controls"],
+        json!(["BrokenMany8"])
+    );
+}
+
 #[test]
 fn the_server_answers_initialize_list_and_call_on_stdio() {
     let (dir, _root) = fixture();
@@ -412,7 +625,18 @@ fn the_server_answers_initialize_list_and_call_on_stdio() {
         .iter()
         .map(|t| t["name"].as_str().unwrap())
         .collect();
-    assert_eq!(names, ["read", "search", "symbol", "files", "outline"]);
+    assert_eq!(
+        names,
+        [
+            "read",
+            "search",
+            "symbol",
+            "files",
+            "outline",
+            "den_check",
+            "contracts"
+        ]
+    );
     let called = ask(json!({"jsonrpc": "2.0", "id": 3, "method": "tools/call",
         "params": {"name": "search", "arguments": {"patterns": ["pub enum"]}}}));
     assert_eq!(called["result"]["isError"], false);
