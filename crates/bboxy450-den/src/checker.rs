@@ -386,6 +386,20 @@ fn model(s: &Spec, summary: &mut Summary) -> Vec<Diagnostic> {
             )];
         }
     };
+    // The model's actions in order: one per event instance and case.
+    let calls: Vec<String> = instances(s)
+        .expect("the model was built")
+        .iter()
+        .flat_map(|(hi, args)| {
+            let handler = &s.handlers[*hi];
+            let event = s
+                .events
+                .iter()
+                .find(|e| e.name.text == handler.event.text)
+                .expect("checked event");
+            vec![show_call(s, event, args); handler.cases.len()]
+        })
+        .collect();
     summary.states = graph.states.len();
     summary.transitions = graph.edges.iter().map(Vec::len).sum();
     // Event calls along a path of states; a repeated state is an implicit stutter.
@@ -396,12 +410,7 @@ fn model(s: &Spec, summary: &mut Summary) -> Vec<Diagnostic> {
                     .iter()
                     .find(|e| e.to == w[1] && w[0] != w[1])
                     .map_or("(nothing happens)".to_string(), |edge| {
-                        m.actions[edge.action]
-                            .name
-                            .split('/')
-                            .next()
-                            .unwrap_or_default()
-                            .to_string()
+                        calls[edge.action].clone()
                     })
             })
             .collect::<Vec<_>>()
@@ -421,8 +430,15 @@ fn model(s: &Spec, summary: &mut Summary) -> Vec<Diagnostic> {
                         inv.name.pos,
                         "X601",
                         format!(
-                            "invariant {} is false; shortest trace: {}",
+                            "invariant {} is false at {{{}}}; shortest trace: {}",
                             inv.name.text,
+                            show_state(
+                                s,
+                                &lower::unflatten(
+                                    s,
+                                    &graph.states[*v.prefix.last().expect("a violating state")]
+                                )
+                            ),
                             if trace.is_empty() {
                                 "initial state"
                             } else {
@@ -622,7 +638,7 @@ fn scenarios(s: &Spec) -> Vec<Diagnostic> {
                         _ => false,
                     };
                     if !matched {
-                        ds.push(diagnostic(s,call.name.pos,"X801",format!("{} has a different outcome or effects in scenario {}; observed {result:?}",call.name.text,scenario.name),"write the actual outcome and exact emitted effects or repair the event"));
+                        ds.push(diagnostic(s,call.name.pos,"X801",format!("{} has a different outcome or effects in scenario {}; observed {}",call.name.text,scenario.name,show_decision(s,&result)),"write the actual outcome and exact emitted effects or repair the event"));
                         break;
                     }
                     if let Ok(Decision::Accepted(next, _)) = result {

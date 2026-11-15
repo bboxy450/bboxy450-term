@@ -318,6 +318,11 @@ unless `--overwrite`; an unsound source writes nothing and exits 1.
 ## Diagnostics
 
 Every diagnostic carries a stable code, line, column, record name, message and repair.
+Values are printed as they are written: `true`, `12`, `Gate.Open`, a set as `{A, B}`,
+a state as `{coins = 12, latch = Gate.Open}`, a trace as
+`Gain(Element.Fire) -> Speak(Element.Water)`, an observed step as
+`Accepted(coins = 12, held = {Fire}) emits Heard(Element.Fire, 1)`, `Rejected(Full)` or
+`Ignored(Silent)`, and a type as `Bool`, `Int[0..3]`, `Gate` or `Set[Msg]`.
 
 | Group | Code | Unsound condition |
 |---|---|---|

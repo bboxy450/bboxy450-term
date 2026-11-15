@@ -426,6 +426,17 @@ fn type_error(spec: &Spec, pos: Pos, message: impl Into<String>) -> Diagnostic {
         "use a value of the declared type",
     )
 }
+/// A type as it is written: `Bool`, `Int[0..3]`, `Gate`, `Set[Msg]`.
+pub(crate) fn show_ty(ty: &Ty) -> String {
+    match ty {
+        Ty::Bool => "Bool".into(),
+        Ty::Int(i64::MIN, i64::MAX) => "Int".into(),
+        Ty::Int(lo, hi) if lo == hi => format!("the integer {lo}"),
+        Ty::Int(lo, hi) => format!("Int[{lo}..{hi}]"),
+        Ty::Named(name) => name.clone(),
+        Ty::Set(name) => format!("Set[{name}]"),
+    }
+}
 fn require(spec: &Spec, pos: Pos, actual: &Ty, expected: &Ty) -> Result<(), Diagnostic> {
     if compatible(actual, expected) {
         Ok(())
@@ -433,7 +444,7 @@ fn require(spec: &Spec, pos: Pos, actual: &Ty, expected: &Ty) -> Result<(), Diag
         Err(type_error(
             spec,
             pos,
-            format!("expected {expected:?}, found {actual:?}"),
+            format!("expected {}, found {}", show_ty(expected), show_ty(actual)),
         ))
     }
 }

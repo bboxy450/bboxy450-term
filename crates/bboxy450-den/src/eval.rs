@@ -383,13 +383,84 @@ pub(crate) fn in_range(s: &Spec, v: &Value, ty: &Ty) -> bool {
         _ => false,
     }
 }
-pub(crate) fn describe(s: &Spec, state: &State, params: &Bindings) -> String {
-    let entries = s
-        .fields
+/// A value as it is written in Den: `true`, `12`, `Gate.Open`, `{A, B}`.
+pub(crate) fn show(s: &Spec, v: &Value, ty: &Ty) -> String {
+    let member = |d: &str, n: usize| {
+        s.enums
+            .iter()
+            .find(|e| e.name.text == d)
+            .and_then(|e| e.members.get(n))
+            .map_or_else(|| n.to_string(), |m| m.text.clone())
+    };
+    match (v, ty) {
+        (Value::Scalar(n), Ty::Bool) => (*n != 0).to_string(),
+        (Value::Scalar(n), Ty::Named(d)) => format!("{d}.{}", member(d, *n as usize)),
+        (Value::Scalar(n), _) => n.to_string(),
+        (Value::Set(bits), Ty::Set(d)) => {
+            let members = bits
+                .iter()
+                .enumerate()
+                .filter(|(_, bit)| **bit)
+                .map(|(n, _)| member(d, n))
+                .collect::<Vec<_>>();
+            format!("{{{}}}", members.join(", "))
+        }
+        (Value::Set(bits), _) => format!("{bits:?}"),
+    }
+}
+/// An event or effect with its arguments: `Gain(Element.Fire)`, or `Coin`.
+pub(crate) fn show_call(s: &Spec, signature: &Signature, args: &[Value]) -> String {
+    if args.is_empty() {
+        return signature.name.text.clone();
+    }
+    let args = args
+        .iter()
+        .zip(&signature.params)
+        .map(|(v, p)| show(s, v, &p.ty.kind))
+        .collect::<Vec<_>>();
+    format!("{}({})", signature.name.text, args.join(", "))
+}
+/// Every field by name: `coins = 12, latch = Gate.Open`.
+pub(crate) fn show_state(s: &Spec, state: &State) -> String {
+    s.fields
         .iter()
         .zip(state)
-        .map(|(f, v)| format!("{}={v:?}", f.name.text))
-        .chain(params.iter().map(|(n, _, v)| format!("{n}={v:?}")))
+        .map(|(f, v)| format!("{} = {}", f.name.text, show(s, v, &f.ty.kind)))
+        .collect::<Vec<_>>()
+        .join(", ")
+}
+/// What an event did: `Accepted(coins = 12) emits Tell(Msg.A)`, `Rejected(Full)`.
+pub(crate) fn show_decision(s: &Spec, decision: &Result<Decision, String>) -> String {
+    match decision {
+        Ok(Decision::Accepted(next, effects)) => {
+            let mut text = format!("Accepted({})", show_state(s, next));
+            let effects = effects
+                .iter()
+                .filter_map(|effect| {
+                    let signature = s.effects.iter().find(|e| e.name.text == effect.name)?;
+                    Some(show_call(s, signature, &effect.args))
+                })
+                .collect::<Vec<_>>();
+            if !effects.is_empty() {
+                text.push_str(&format!(" emits {}", effects.join(", ")));
+            }
+            text
+        }
+        Ok(Decision::Rejected(reason)) => format!("Rejected({reason})"),
+        Ok(Decision::Ignored(reason)) => format!("Ignored({reason})"),
+        Err(error) => error.clone(),
+    }
+}
+/// A state and the event's bindings, by name: `{coins = 3, m = Msg.A}`.
+pub(crate) fn describe(s: &Spec, state: &State, params: &Bindings) -> String {
+    let entries = [show_state(s, state)]
+        .into_iter()
+        .filter(|fields| !fields.is_empty())
+        .chain(
+            params
+                .iter()
+                .map(|(n, ty, v)| format!("{n} = {}", show(s, v, ty))),
+        )
         .collect::<Vec<_>>();
     format!("{{{}}}", entries.join(", "))
 }

@@ -426,3 +426,61 @@ fn a_trace_must_parse_and_name_the_specs_events() {
         2
     );
 }
+/// Traces and observed state are printed as they are written in Den: enum
+/// members and field names, never an index or a positional list.
+#[test]
+fn diagnostics_print_names_not_indices() {
+    let spec = |invariant: &str, scenario: &str| {
+        format!(
+            "module specs.Circle\nspec Circle {{\n  intent \"A caster gains elements and speaks one.\"\n  enum Element {{ Fire, Water, Air }}\n  state {{\n    held: Set[Element] = Set()\n    said: Element = Element.Fire\n    coins: Int[0..2] = 0\n    open: Bool = false\n  }}\n  event Gain(e: Element)\n  event Speak(e: Element)\n  effect Heard(e: Element, n: Int[0..2])\n  on Gain(e) {{\n    case gain if !held(e) && coins < 2 => {{ held += e; coins = coins + 1 }}\n    case full otherwise => reject Full\n  }}\n  on Speak(e) {{\n    case speak if held(e) && !open => {{ said = e; open = true; emit Heard(e, coins) }}\n    case silent otherwise => ignore Silent\n  }}\n  invariant CIRCLE_001 \"{invariant}\n  scenario \"gain and speak\" {{\n{scenario}  }}\n}}\n"
+        )
+    };
+    let message = |source: String| {
+        let report = check(&source);
+        assert_eq!(report.diagnostics.len(), 1, "{}", report.to_text());
+        (
+            report.diagnostics[0].code,
+            report.diagnostics[0].message.clone(),
+        )
+    };
+    let steps = "    Gain(Element.Fire) ~> accepted\n    Speak(Element.Fire) ~> accepted emits Heard(Element.Fire, 1)\n    expect open\n";
+    assert_eq!(
+        message(spec("water is never said\" = said != Element.Water", steps)),
+        (
+            "X601",
+            "invariant CIRCLE_001 is false at {held = {Water}, said = Element.Water, coins = 1, open = true}; shortest trace: Gain(Element.Water) -> Speak(Element.Water)".into()
+        )
+    );
+    let sound = "an open circle was paid for\" = open ==> coins >= 1";
+    assert!(check(&spec(sound, steps)).is_sound());
+    assert_eq!(
+        message(spec(sound, &steps.replace("emits Heard(Element.Fire, 1)", ""))),
+        (
+            "X801",
+            "Speak has a different outcome or effects in scenario gain and speak; observed Accepted(held = {Fire}, said = Element.Fire, coins = 1, open = true) emits Heard(Element.Fire, 1)".into()
+        )
+    );
+    assert_eq!(
+        message(spec(
+            sound,
+            &steps.replace(
+                "Speak(Element.Fire) ~> accepted emits Heard(Element.Fire, 1)",
+                "Speak(Element.Air) ~> accepted"
+            )
+        ))
+        .1,
+        "Speak has a different outcome or effects in scenario gain and speak; observed Ignored(Silent)"
+    );
+    // A gap in the cases names the state and the event's argument.
+    assert_eq!(
+        message(spec(sound, steps).replace("case full otherwise", "case full if held(e) && coins > 2")),
+        (
+            "X402",
+            "Gain selects no case at {held = {}, said = Element.Fire, coins = 2, open = false, e = Element.Fire}".into()
+        )
+    );
+    assert_eq!(
+        message(spec(sound, steps).replace("said = e;", "said = coins;")).1,
+        "expected Element, found Int[0..2]"
+    );
+}
