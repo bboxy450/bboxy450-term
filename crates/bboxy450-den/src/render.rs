@@ -4,7 +4,7 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! Lowering one sound `spec` record to one Markdown record, the projection a
+//! Lowering one sound record to one Markdown record, the projection a
 //! Markdown-only store such as GitKB keeps (`specs/spec-language.md`, "Lowering
 //! to Markdown"). Den is the source; the Markdown says so in `generated_from:`
 //! and carries the whole source in a fenced `den` block, so a reader can
@@ -44,6 +44,16 @@ pub fn render_with(source: &str, mermaid: bool) -> Result<Rendered, Report> {
     let report = crate::check(source);
     if !report.is_sound() {
         return Err(report);
+    }
+    if crate::record::is_record(source) {
+        let record = crate::load(source).expect("sound").remove(0);
+        let module = record.module.join(".");
+        let source_sha256 = source_sha256(source);
+        return Ok(Rendered {
+            markdown: record_markdown(&record, &module, &source_sha256, source),
+            module,
+            source_sha256,
+        });
     }
     let spec = crate::parser::parse(source).map_err(|diagnostics| Report {
         records: Vec::new(),
@@ -315,6 +325,48 @@ fn markdown(
         }
     }
 
+    let _ = writeln!(out, "## Source\n");
+    let _ = writeln!(out, "```den");
+    out.push_str(source);
+    if !source.ends_with('\n') {
+        out.push('\n');
+    }
+    let _ = writeln!(out, "```");
+    out
+}
+
+/// A header record: the host's header from `metadata`, the prose from `body`,
+/// and the Den source. Fields with no flat header form are named under
+/// `not_lowered:`; the source block is where they are read.
+fn record_markdown(record: &crate::Record, module: &str, sha: &str, source: &str) -> String {
+    let mut out = String::from("---\n");
+    let metadata = crate::metadata(record);
+    for (key, value) in &metadata {
+        let value = if key == "type" {
+            value.clone()
+        } else {
+            yaml(value)
+        };
+        let _ = writeln!(out, "{key}: {value}");
+    }
+    let _ = writeln!(out, "generated_from:");
+    let _ = writeln!(out, "  module: {module}");
+    let _ = writeln!(out, "  source_sha256: {sha}");
+    let not_lowered = crate::record::not_lowered(record);
+    if !not_lowered.is_empty() {
+        let _ = writeln!(out, "not_lowered: {}", not_lowered.join(", "));
+    }
+    let _ = writeln!(out, "---");
+    let _ = writeln!(out, "# {}\n", metadata[1].1);
+    let body = crate::body(record);
+    if !body.is_empty() {
+        let _ = writeln!(out, "{body}\n");
+    }
+    let _ = writeln!(
+        out,
+        "Lowered from `{module}` ({}); the Den source at the end of this record is the original.\n",
+        record.name
+    );
     let _ = writeln!(out, "## Source\n");
     let _ = writeln!(out, "```den");
     out.push_str(source);

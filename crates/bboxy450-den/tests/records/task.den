@@ -1,0 +1,25 @@
+module tasks.`2026-11-09-den-checker-crate`
+
+import specs.SpecLanguage
+import specs.SpecFirstOs
+
+task DenCheckerCrate {
+  title  "Den v1: the checker crate and make check-kb"
+  serves SpecLanguage, SpecFirstOs
+  role   Executor
+  paths  "crates/bboxy450-den/", "Cargo.toml", "Makefile", "verification/coverage.toml"
+  verify $ cargo nextest run -p bboxy450-den && make check-kb
+  brief  """
+    Build the parser and soundness checker defined in SpecLanguage.
+
+    - One crate, no parser runtime.
+    - Every diagnostic carries a code, a line and a repair.
+  """
+  priority 2 // a field the checker does not know is kept
+
+  managed {
+    id        = id"01M71JZAEJPC72B5QT15N0E09Q"
+    status    = Open
+    delegator = seat"01M71GNVXV7ZHXMGM50M5SB2RA"
+  }
+}

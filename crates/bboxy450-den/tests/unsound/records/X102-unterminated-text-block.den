@@ -1,0 +1,8 @@
+module tasks.T
+
+task T {
+  title  "An unterminated brief"
+  verify $ true
+  brief  """
+    This text block is never closed.
+}

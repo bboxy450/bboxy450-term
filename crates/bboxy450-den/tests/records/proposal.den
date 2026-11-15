@@ -1,0 +1,13 @@
+module proposals.LowerEpicsAsTables
+
+import specs.SpecLanguage
+
+proposal LowerEpicsAsTables {
+  title  "Lower an epic's staff and channels as Markdown tables"
+  status Proposed on date"2026-11-14" by Oracle
+  serves SpecLanguage
+  body   """
+    Today an epic's nested blocks are listed under `not_lowered:`.
+    Proposal: one table per block, the work graph as a list with `needs`.
+  """
+}

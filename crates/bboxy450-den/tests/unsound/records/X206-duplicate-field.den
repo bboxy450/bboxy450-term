@@ -1,0 +1,8 @@
+module tasks.T
+
+task T {
+  title  "One title"
+  verify $ true
+  brief  "Do it."
+  title  "Another title"
+}

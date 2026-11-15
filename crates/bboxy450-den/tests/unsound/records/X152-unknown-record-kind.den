@@ -1,0 +1,5 @@
+module tasks.T
+
+tsak T {
+  title "A misspelled keyword"
+}

@@ -1,0 +1,12 @@
+module tasks.T
+
+task T {
+  title  "A status written twice"
+  verify $ true
+  brief  "Do it."
+
+  managed {
+    status = Open
+    status = Claimed
+  }
+}

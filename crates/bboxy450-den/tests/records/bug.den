@@ -1,0 +1,14 @@
+module bugs.StaleCatalogueAfterRoleChange
+
+import specs.SpecFirstOs
+
+bug StaleCatalogueAfterRoleChange {
+  title    "The MCP catalogue is stale after a live role change"
+  status   Open
+  severity 2
+  serves   SpecFirstOs
+  body     """
+    Seen: a seat flipped from Executor to Oracle keeps the Executor tool list.
+    Expected: the catalogue follows the role within one call.
+  """
+}

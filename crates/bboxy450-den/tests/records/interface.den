@@ -1,0 +1,9 @@
+module interfaces.SupervisorLogicLease
+
+import specs.Supervisor
+import specs.Logic
+
+interface SupervisorLogicLease {
+  between specs.Supervisor, specs.Logic
+  intent "Exactly one logic process may change supervisor state; a replaced one is fenced."
+}

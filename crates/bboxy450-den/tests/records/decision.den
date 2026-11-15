@@ -1,0 +1,15 @@
+module decisions.D365MandatoryFormalVerification
+
+import specs.TestPolicy
+import decisions.D220SignedMain
+
+decision D365MandatoryFormalVerification {
+  status  Decided on date"2026-10-29" by Operator
+  decides specs.TestPolicy
+  amends  decisions.D220SignedMain
+  body    """
+    Alternatives: tests only; models for the risky crates only.
+    Choice: TLA+/TLC and Yarn verification for every crate.
+    Reason: an omitted crate must fail, not pass by silence.
+  """
+}

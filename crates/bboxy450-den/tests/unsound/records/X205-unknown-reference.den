@@ -1,0 +1,10 @@
+module tasks.T
+
+import specs.SpecLanguage
+
+task T {
+  title  "A link nobody imported"
+  serves SpecLanguage, SpecFirstOs
+  verify $ true
+  brief  "Do it."
+}

@@ -1,0 +1,17 @@
+module reports.`2026-11-09-remote-delivery-landed`
+
+import tasks.`2026-11-09-remote-delivery-conformance-and-card`
+import reports.`2026-11-09-remote-delivery-refinement-and-card`
+
+report RemoteDeliveryLanded {
+  task       `2026-11-09-remote-delivery-conformance-and-card`
+  author     seat"01M71H0S7MDHJ0QTCQFPQYXJHW"
+  commits    sha"cd1f193b9", sha"ae541605f"
+  verify     $ cargo nextest run -p bboxy450-term-remote ~> exit 0
+  supersedes `2026-11-09-remote-delivery-refinement-and-card`
+  body       """
+    The conformance test replays every recorded delivery against the spec.
+
+    Removed: the hand-written card. Gap: reconnect storms are not recorded.
+  """
+}

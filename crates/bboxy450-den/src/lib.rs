@@ -12,8 +12,10 @@ mod eval;
 mod lean;
 mod lower;
 mod parser;
+mod record;
 pub mod render;
 mod types;
+pub use record::{Field, Record, Value, body, load, metadata, set_managed};
 
 /// Result of checking one source file. Any diagnostic makes it unsound.
 #[derive(Debug)]
@@ -42,7 +44,7 @@ pub struct Diagnostic {
 /// Bounded verification results for a parsed record.
 #[derive(Debug)]
 pub struct Summary {
-    /// Record kind (`spec` in this version).
+    /// Record kind: `spec`, or a header kind, whose counts below stay empty.
     pub kind: &'static str,
     /// Record name.
     pub name: String,
@@ -67,14 +69,44 @@ pub struct Summary {
     pub scenarios: usize,
 }
 /// Checks syntax, names, types, totality, steps, bounded safety, vacuity and examples.
+/// A header record (every kind but a `spec` with a machine) gets the checks of [`load`].
 pub fn check(source: &str) -> Report {
-    checker::check(source)
+    if !record::is_record(source) {
+        return checker::check(source);
+    }
+    let (records, diagnostics) = match (record::parse(source), load(source)) {
+        (Ok(parsed), result) => (vec![parsed.record], result.err().unwrap_or_default()),
+        (Err(diagnostics), _) => (vec![], diagnostics),
+    };
+    let summary = |r: &Record| Summary {
+        kind: r.kind,
+        name: r.name.clone(),
+        intent: r
+            .fields
+            .iter()
+            .find(|field| field.name == "intent")
+            .map(|field| field.value.text())
+            .unwrap_or_default(),
+        domains: vec![],
+        states: 0,
+        transitions: 0,
+        invariants: vec![],
+        assumptions: vec![],
+        properties: vec![],
+        theorems: vec![],
+        scenarios: 0,
+    };
+    Report {
+        records: records.iter().map(summary).collect(),
+        diagnostics,
+    }
 }
 /// One named declaration of a Den record, for navigation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Declaration {
     /// spec, enum, field, event, effect, handler, invariant, theorem, property,
-    /// assumption or scenario.
+    /// assumption or scenario. A header record is its record kind, then one
+    /// `field` per top-level field and one for its `managed` block.
     pub kind: &'static str,
     pub name: String,
     /// One-based source line of the name.
@@ -83,6 +115,28 @@ pub struct Declaration {
 /// The named declarations of a Den source in source order. This is the syntax
 /// only: a file that parses but is unsound still has an outline.
 pub fn declarations(source: &str) -> Result<Vec<Declaration>, Vec<Diagnostic>> {
+    if record::is_record(source) {
+        let parsed = record::parse(source)?;
+        let mut out = vec![Declaration {
+            kind: parsed.record.kind,
+            name: parsed.record.name.clone(),
+            line: parsed.record.line,
+        }];
+        let fields = parsed
+            .record
+            .fields
+            .iter()
+            .map(|f| (f.name.as_str(), f.line));
+        for (name, line) in fields.chain(parsed.managed_line.map(|line| ("managed", line))) {
+            out.push(Declaration {
+                kind: "field",
+                name: name.to_owned(),
+                line,
+            });
+        }
+        out.sort_by_key(|declaration| declaration.line);
+        return Ok(out);
+    }
     let spec = parser::parse(source)?;
     let mut out = vec![Declaration {
         kind: "spec",
@@ -156,6 +210,9 @@ pub fn lean(source: &str) -> Result<Option<bboxy450_tlc::lean::Machine>, Report>
     let report = check(source);
     if !report.is_sound() {
         return Err(report);
+    }
+    if record::is_record(source) {
+        return Ok(None);
     }
     let spec = checker::load(source).expect("sound");
     let machine = lean::machine(&spec);

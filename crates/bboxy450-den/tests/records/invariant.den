@@ -1,0 +1,13 @@
+module invariants.SignedMain
+
+import specs.Provenance
+import specs.Identity
+
+invariant SignedMain {
+  holds      "every commit on main carries a pinned verified signature"
+  check      $ python3 -I scripts/verify-signatures.py "${SIGNED_RANGE:-HEAD}"
+  passes     exit 0
+  cost       "an unsigned commit breaks the chain from artifact to key; releases inherit the gap"
+  constrains Provenance, Identity
+  status     Active
+}

@@ -1,0 +1,11 @@
+module tasks.T
+
+task T {
+  title  "A status the host does not know"
+  verify $ true
+  brief  "Do it."
+
+  managed {
+    status = Finished
+  }
+}

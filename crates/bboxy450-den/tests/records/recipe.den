@@ -1,0 +1,10 @@
+module recipes.LandOneCut
+
+recipe LandOneCut {
+  title "Land one cut"
+  check $ make land ~> exit 0
+  steps """
+    1. Commit signed, in your own worktree.
+    2. `make land`: it rebases, runs the lean gate and pushes.
+  """
+}

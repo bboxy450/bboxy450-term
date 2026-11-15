@@ -1,0 +1,15 @@
+module e2e.WorkspacePythonDeployment
+
+e2e WorkspacePythonDeployment {
+  function "Managed workspace/Python MCP installation and retained-session GUI refresh"
+  group    Deployment
+  steps    """
+    1. Install both signed apps.
+    2. Restart the GUI and keep the session.
+  """
+  expected "Both latest signed apps, ready current-source GUI/logic, retained identities"
+  result   Passed "source, signature, installed hash, readiness and owner checks"
+  coverage Full
+  lastRun  time"2026-11-06T05:11:11Z" by Operator
+  evidence path"~/.local/state/bboxy450-term/python-execute-20261105/deployment/installed-verification.json"
+}

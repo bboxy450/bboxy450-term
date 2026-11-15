@@ -5,6 +5,8 @@ safety by exhaustive exploration, progress under declared fairness. A `theorem` 
 exported to Lean 4 and proved for domains of every size, and a recorded run of an
 implementation can be replayed against the spec. Den does not compile a program or
 perform the described effects.
+Every other knowledge-base record (task, epic, report, decision, ...) is a header record
+in the same language: typed fields and a Markdown body. See "Header records".
 Origin: bboxy450-term, https://github.com/bboxy450/bboxy450-term.
 Credit reuse accurately: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md.
 
@@ -109,6 +111,84 @@ Other primary forms are `Set()`, `Set(e, ...)`, set membership `set(e)`,
 `exists x: Enum. predicate`. A quantifier extends as far right as possible.
 Use parentheses to delimit a quantified subexpression.
 
+## Header records
+
+A record that is not a state machine is a keyword, a name and fields, one per line:
+
+```scala
+module tasks.`2026-11-09-den-checker-crate`
+
+import specs.SpecLanguage
+
+task DenCheckerCrate {
+  title  "Den v1: the checker crate and make check-kb"
+  serves SpecLanguage
+  role   Executor
+  paths  "crates/bboxy450-den/", "Makefile"
+  verify $ cargo nextest run -p bboxy450-den && make check-kb
+  brief  """
+    Build the parser and soundness checker defined in SpecLanguage.
+  """
+
+  managed {
+    id     = id"01M71JZAEJPC72B5QT15N0E09Q"
+    status = Open
+  }
+}
+```
+
+The kinds are `task`, `epic`, `report`, `decision`, `e2e`, `proposal`, `bug`, `recipe`,
+`invariant`, `interface`, and `spec` in its prose form. A `spec` that declares `state`,
+`event`, `on` or any other machine declaration is a machine and is checked as above.
+`tests/records` has one complete record of each kind.
+
+| Value | Written |
+|---|---|
+| Text | `"one line"`, with `\"`, `\\`, `\n`, `\r`, `\t` |
+| Text block | `"""Markdown"""`, across lines, no escapes; the common indentation is removed |
+| Command | `$ command` to the end of the line, optionally ending `~> exit N` |
+| Reference | `Name`, `module.path.Name`, or a backquoted name |
+| Tagged literal | `id"..."`, `seat"..."`, `sha"..."`, `date"..."`, `time"..."`, `path"..."` |
+| Integer | `42` |
+| List | two or more of the above separated by commas; a line may end after a comma |
+| Block | `name head { ... }`: fields on the following lines, or `;`-separated entries kept verbatim when closed on the same line |
+| Anything else | kept verbatim: `status Decided on date"2026-10-29" by Operator` |
+
+`managed { name = value }` is the one block the host writes (identity, status, assignee).
+A field the checker does not know is kept, not refused. A top-level field is written
+once, except `channel` and `gate`.
+
+| Kind | Required fields |
+|---|---|
+| `task` | `title`, `verify`, `brief` |
+| `epic`, prose `spec` | `intent` |
+| `report` | `task`, `author`, `verify` |
+| `decision` | `status` |
+| `e2e` | `function`, `expected` |
+
+Links (`serves`, `realizes`, `decides`, `amends`, `supersedes`, `constrains`, `between`,
+`partOf`, and a report's `task`) must name an import, by its whole path or its last
+segment, or the record itself. A task's `status` is one of the host's: Open, Claimed,
+Running, Reported, Accepted, Rejected, Blocked, Done, in any case.
+
+The library reads them through one model:
+
+```rust
+pub fn load(source: &str) -> Result<Vec<Record>, Vec<Diagnostic>>; // parse and check
+pub fn metadata(record: &Record) -> Vec<(String, String)>;         // the flat header
+pub fn body(record: &Record) -> String;                            // brief, body, steps
+pub fn set_managed(source: &str, record: &str, field: &str, value: &str)
+    -> Result<String, Vec<Diagnostic>>;                            // the host's one write
+```
+
+`metadata` uses the header names the host keeps today: `type`, `title` (the `title`,
+else the first sentence of `intent`, else the name), `links` as `[[module.path]]` for
+`serves`/`realizes`/`decides`/`amends`, `allowed_paths` for `paths`, `verify` and
+`verify_exit`, `status` in lower case (with `status_note` for the rest of the line),
+`delegated_by` for `managed.delegator`, and every other field under its own name.
+`set_managed` changes one value in place, or adds the line or the block, and keeps
+every other byte; it refuses a result that does not load.
+
 ## Meaning and limits
 
 For every state valuation and event argument combination exactly one case must apply.
@@ -207,6 +287,11 @@ hit the valuation bound.
 bboxy450-den render --markdown [--out DIR] [--overwrite] [--no-mermaid] PATH...
 ```
 
+A header record lowers to the `metadata` pairs as the YAML header, `generated_from:`,
+the title, the body and the Den source. Nested blocks and repeated lines (an epic's
+`staff`, `channel`, `work`, `gate`, `budget`) have no Markdown form yet: they are named
+under `not_lowered:` and read from the source block.
+
 One sound `.den` gives one `.md` beside it (or under `DIR`, mirroring the
 path): a YAML header (`type: spec`, `title:` from the intent's first sentence,
 `generated_from:` with the module and source SHA-256), the intent, domains,
@@ -223,14 +308,21 @@ Every diagnostic carries a stable code, line, column, record name, message and r
 | Group | Code | Unsound condition |
 |---|---|---|
 | Syntax | X101 | Text does not parse |
+| | X102 | A string, text block or backquoted name is not terminated (records) |
+| Module | X152 | The record keyword is not a record kind |
 | Version | X190 | Construct is not supported in this version |
 | Names | X201 | Undeclared name |
 | | X202 | Duplicate declaration in one scope |
 | | X203 | Unused declaration or import |
 | | X204 | Event lacks a handler, or handler lacks an event |
+| | X205 | A link names a record that is neither imported nor this record |
+| | X206 | A record field is written twice |
 | Types | X301 | Wrong expression or field type |
 | | X302 | Initial value outside its type |
 | | X303 | Wrong call arity or argument type |
+| Graph | X354 | A field the record's kind requires is missing or empty |
+| | X356 | A `managed` field, or the `managed` block, is written twice |
+| | X357 | A task status is not one the host knows |
 | Totality | X401 | Overlapping case guards |
 | | X402 | State and arguments match no case |
 | Steps | X501 | A case assigns one field twice |
@@ -252,9 +344,12 @@ Every diagnostic carries a stable code, line, column, record name, message and r
 | | X905 | A theorem has no proof file (`lean` only) |
 
 Module paths and imports are parsed but not resolved in this version.
-Composition (`include`, `do`, `expose`, `discharge`), other record kinds,
-typed graph links and managed fields are not supported.
-The public library API is `check(&str) -> Report`, its diagnostic and summary fields,
+Composition (`include`, `do`, `expose`, `discharge`), `loop` records, link kinds
+(a link is checked against the imports, not against the linked record) and the
+typed lowering of an epic's blocks are not supported.
+The public library API is `load`, `metadata`, `body` and `set_managed` for header
+records, `declarations(&str)` (the outline of either form),
+`check(&str) -> Report`, its diagnostic and summary fields,
 `Report::{is_sound,to_text,to_json}`, `model(&str)` (the finite model, also for a broken
 control), `lean(&str)` (the Lean machine of a sound spec with theorems) and
 `replay(spec, trace) -> Report`.
@@ -270,4 +365,5 @@ What each result establishes:
 None of them establishes intent. `make test-formal` also exports the fixtures to TLA+ and
 compares the native checker with Java TLC, state for state. See `tests/sound` for Outbox
 (progress, two theorems), Turnstile (a named enum and an integer) and RemoteDelivery,
-`tests/unsound` for one broken control per code, and `tests/unproved` for the Lean controls.
+`tests/records` for the header kinds, `tests/unsound` for one broken control per code
+(`tests/unsound/records` for the record codes), and `tests/unproved` for the Lean controls.

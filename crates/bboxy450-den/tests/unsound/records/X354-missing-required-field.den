@@ -1,0 +1,6 @@
+module tasks.T
+
+task T {
+  title "A task with nothing to verify"
+  brief "Do it."
+}

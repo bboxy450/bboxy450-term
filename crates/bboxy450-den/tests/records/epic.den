@@ -1,0 +1,51 @@
+module epics.DenChecker
+
+import specs.SpecLanguage
+import specs.SpecFirstOs
+import loops.DelegateVerifyLand
+
+epic DenChecker {
+  intent   "A record that does not check cannot be committed to the knowledge base."
+  realizes SpecLanguage, SpecFirstOs
+
+  staff {
+    Oracle     x 1     owns "briefs, rulings, verification, that the work lands"
+    Architect  x 1     owns "SpecLanguage and every boundary between tasks"
+    Executor   x 1..1  owns "one task at a time, in its own worktree"
+    Researcher x 0..1  owns "evidence as file:line, never conclusions"
+  }
+
+  channel brief    : Oracle    -> Executor   carries Task
+  channel blocked  : Executor  -> Oracle     carries Blocker
+  channel report   : Executor  -> Oracle     carries Report
+  channel ruling   : Oracle    -> Executor   carries Amendment
+  channel question : Oracle    -> Architect  carries SpecQuestion
+  channel law      : Architect -> Oracle     carries SpecChange
+  channel finding  : Researcher -> Oracle    carries Research
+
+  work {
+    task Parser     by Executor  serves SpecLanguage
+    task CommitGate by Executor  needs Graph
+    task Converter  by Executor  needs Graph
+    task Migration  by Executor  needs Converter, CommitGate
+    research KbSurvey by Researcher {
+      brief    """Read every record kind under .bboxy. For each: its fields, its links,
+                  how many exist, and what a checker would reject today. Evidence as file:line."""
+      produces research.KbRecordSurvey
+    }
+    task Graph by Executor needs Parser {
+      serves   SpecLanguage
+      verify   $ cargo nextest run -p bboxy450-den && make check-kb
+      produces reports.DenGraph
+    }
+  }
+
+  loop DelegateVerifyLand for each task
+
+  gate verify { check task.verify ~> exit 0   by Oracle   reads diff, log }
+  gate land   { check $ make land ~> exit 0   by Executor }
+
+  budget { agents <= 3; fullSuite <= 1 at a time }
+
+  done when all work Done && SpecLanguage.acceptance
+}
