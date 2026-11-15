@@ -484,3 +484,64 @@ fn diagnostics_print_names_not_indices() {
         "expected Element, found Int[0..2]"
     );
 }
+/// `open` and `source` are carried, never checked: the machine is the same
+/// with and without them.
+#[test]
+fn open_questions_and_sources_are_carried_not_checked() {
+    let source = include_str!("../tests/sound/open_questions.den");
+    let report = check(source);
+    assert!(report.is_sound(), "{}", report.to_text());
+    let summary = &report.records[0];
+    assert_eq!(
+        summary.open,
+        [
+            (
+                "DOOR_Q1".to_string(),
+                "Does a third pass wear the lock out, or is two the hardware limit?".to_string()
+            ),
+            (
+                "DOOR_Q2".to_string(),
+                "Who holds the key while the door is open?".to_string()
+            ),
+        ]
+    );
+    assert!(
+        report
+            .to_json()
+            .contains("\"open\":[[\"DOOR_Q1\",\"Does a third pass")
+    );
+    let bare: String = source
+        .lines()
+        .filter(|l| !l.trim_start().starts_with("open ") && !l.trim_start().starts_with("source "))
+        .map(|l| format!("{l}\n"))
+        .collect();
+    let without = check(&bare);
+    assert!(without.is_sound() && without.records[0].open.is_empty());
+    assert_eq!(
+        (summary.states, summary.transitions),
+        (without.records[0].states, without.records[0].transitions)
+    );
+    let outline = crate::declarations(source).unwrap();
+    let of = |kind: &str| -> Vec<(String, u32)> {
+        outline
+            .iter()
+            .filter(|d| d.kind == kind)
+            .map(|d| (d.name.clone(), d.line))
+            .collect()
+    };
+    assert_eq!(of("open"), [("DOOR_Q1".into(), 27), ("DOOR_Q2".into(), 28)]);
+    assert_eq!(
+        of("source"),
+        [
+            ("DOOR_001".into(), 31),
+            ("Pass.shut".into(), 32),
+            ("DOOR_Q1".into(), 33)
+        ]
+    );
+    let markdown = crate::render::render(source).unwrap().markdown;
+    assert!(markdown.contains("## Open questions\n\n- **DOOR_Q1**: Does a third pass wear the lock out, or is two the hardware limit?\n- **DOOR_Q2**: Who holds the key while the door is open?\n"), "{markdown}");
+    assert!(markdown.contains("## Provenance\n\n- `DOOR_001` from decisions/d0412-doors-lock-behind.md\n- `Pass.shut` from notes/2026-11-12-door-walkthrough.md#locked\n- `DOOR_Q1` from research/lock-wear.md\n"), "{markdown}");
+    // An open question's ID is a declaration: it cannot repeat another.
+    let twice = source.replace("open DOOR_Q2", "open DOOR_001");
+    assert_eq!(check(&twice).diagnostics[0].code, "X202");
+}

@@ -51,6 +51,11 @@ pub(crate) fn check(source: &str) -> Report {
             .map(|i| i.name.text.clone())
             .collect(),
         scenarios: s.scenarios.len(),
+        open: s
+            .opens
+            .iter()
+            .map(|o| (o.name.text.clone(), o.text.clone()))
+            .collect(),
     };
     // Module identity is parsed here; filesystem/import resolution belongs to the next version.
     let _module = &s.module;

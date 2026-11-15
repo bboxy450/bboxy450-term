@@ -153,6 +153,13 @@ pub(crate) struct Assumption {
     pub name: Name,
     pub text: String,
 }
+/// `source ID "locator"`: the knowledge record a declaration came from.
+/// `target` is a declaration's name, or `Event.case`.
+#[derive(Clone, Debug)]
+pub(crate) struct Source {
+    pub target: Vec<Name>,
+    pub locator: String,
+}
 #[derive(Clone, Debug)]
 pub(crate) enum ScenarioStep {
     Call {
@@ -183,4 +190,7 @@ pub(crate) struct Spec {
     pub properties: Vec<Property>,
     pub assumptions: Vec<Assumption>,
     pub scenarios: Vec<Scenario>,
+    /// `open ID "text"`: questions nobody has decided. Never checked.
+    pub opens: Vec<Assumption>,
+    pub sources: Vec<Source>,
 }

@@ -67,6 +67,9 @@ pub struct Summary {
     pub theorems: Vec<String>,
     /// Number of declared scenarios.
     pub scenarios: usize,
+    /// `open ID "text"`: the questions the spec leaves undecided. They are
+    /// never an error and never change a check.
+    pub open: Vec<(String, String)>,
 }
 /// Checks syntax, names, types, totality, steps, bounded safety, vacuity and examples.
 /// A header record (every kind but a `spec` with a machine) gets the checks of [`load`].
@@ -95,6 +98,7 @@ pub fn check(source: &str) -> Report {
         properties: vec![],
         theorems: vec![],
         scenarios: 0,
+        open: vec![],
     };
     Report {
         records: records.iter().map(summary).collect(),
@@ -105,7 +109,7 @@ pub fn check(source: &str) -> Report {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Declaration {
     /// spec, enum, field, event, effect, handler, invariant, theorem, property,
-    /// assumption or scenario. A header record is its record kind, then one
+    /// assumption, scenario, open or source. A header record is its record kind, then one
     /// `field` per top-level field and one for its `managed` block.
     pub kind: &'static str,
     pub name: String,
@@ -169,6 +173,21 @@ pub fn declarations(source: &str) -> Result<Vec<Declaration>, Vec<Diagnostic>> {
             kind: "scenario",
             name: scenario.name.clone(),
             line: scenario.pos.line,
+        });
+    }
+    spec.opens.iter().for_each(|o| {
+        out.push(Declaration {
+            kind: "open",
+            name: o.name.text.clone(),
+            line: o.name.pos.line,
+        })
+    });
+    for source in &spec.sources {
+        let target: Vec<_> = source.target.iter().map(|n| n.text.as_str()).collect();
+        out.push(Declaration {
+            kind: "source",
+            name: target.join("."),
+            line: source.target[0].pos.line,
         });
     }
     out.sort_by_key(|declaration| declaration.line);
@@ -256,7 +275,7 @@ impl Report {
     }
     /// JSON with stable record, diagnostic and field ordering; no serialization dependency.
     pub fn to_json(&self) -> String {
-        let records=self.records.iter().map(|s|format!("{{\"kind\":{},\"name\":{},\"intent\":{},\"domains\":[{}],\"states\":{},\"transitions\":{},\"invariants\":[{}],\"assumptions\":[{}],\"properties\":[{}],\"theorems\":[{}],\"scenarios\":{}}}",quote(s.kind),quote(&s.name),quote(&s.intent),s.domains.iter().map(|(n,c)|format!("[{},{}]",quote(n),c)).collect::<Vec<_>>().join(","),s.states,s.transitions,pairs(&s.invariants),pairs(&s.assumptions),pairs(&s.properties),s.theorems.iter().map(|t|quote(t)).collect::<Vec<_>>().join(","),s.scenarios)).collect::<Vec<_>>().join(",");
+        let records=self.records.iter().map(|s|format!("{{\"kind\":{},\"name\":{},\"intent\":{},\"domains\":[{}],\"states\":{},\"transitions\":{},\"invariants\":[{}],\"assumptions\":[{}],\"properties\":[{}],\"theorems\":[{}],\"scenarios\":{},\"open\":[{}]}}",quote(s.kind),quote(&s.name),quote(&s.intent),s.domains.iter().map(|(n,c)|format!("[{},{}]",quote(n),c)).collect::<Vec<_>>().join(","),s.states,s.transitions,pairs(&s.invariants),pairs(&s.assumptions),pairs(&s.properties),s.theorems.iter().map(|t|quote(t)).collect::<Vec<_>>().join(","),s.scenarios,pairs(&s.open))).collect::<Vec<_>>().join(",");
         let diagnostics=self.diagnostics.iter().map(|d|format!("{{\"code\":{},\"line\":{},\"column\":{},\"record\":{},\"message\":{},\"repair\":{}}}",quote(d.code),d.line,d.column,quote(&d.record),quote(&d.message),quote(&d.repair))).collect::<Vec<_>>().join(",");
         format!("{{\"records\":[{records}],\"diagnostics\":[{diagnostics}]}}")
     }

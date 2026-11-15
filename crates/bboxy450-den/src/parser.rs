@@ -726,6 +726,8 @@ impl Parser {
             properties: Vec::new(),
             assumptions: Vec::new(),
             scenarios: Vec::new(),
+            opens: Vec::new(),
+            sources: Vec::new(),
         };
         let mut has_intent = false;
         let mut has_state = false;
@@ -841,6 +843,17 @@ impl Parser {
                 result.assumptions.push(Assumption { name, text });
             } else if self.take("scenario") {
                 result.scenarios.push(self.scenario()?);
+            } else if self.take("open") {
+                let name = self.name()?;
+                let text = self.text()?;
+                result.opens.push(Assumption { name, text });
+            } else if self.take("source") {
+                let mut target = vec![self.name()?];
+                if self.take(".") {
+                    target.push(self.name()?);
+                }
+                let locator = self.text()?;
+                result.sources.push(Source { target, locator });
             } else {
                 return Err(self.error("expected a spec declaration"));
             }

@@ -83,7 +83,17 @@ theorem ID TEXT = EXPR
 property ID TEXT = [forall X: ENUM. ]... EXPR leads to EXPR
 assume ID TEXT
 scenario TEXT { STEP; ... }
+open ID TEXT
+source ID TEXT | source EVENT.CASE TEXT
 ```
+
+`open ID "text"` records a question nobody has decided. It is never an error and changes
+no check; it is listed in the report (`open` in `Summary` and in `--json`), in the outline
+and under "Open questions" in the lowering. `source ID "locator"` says which knowledge
+record a declaration came from: `ID` is any declaration of the spec (an invariant, a
+theorem, a property, an assumption, an open question, an event, an enum, a field) or a
+case written `Event.case`; the locator is free text such as a knowledge-base path. A
+source that names nothing is X201. Sources are listed under "Provenance" in the lowering.
 
 Parameterless events, effects and handlers omit parentheses.
 A type is `Bool`, `Int[LO..HI]`, a declared enum, or `Set[ENUM]`.

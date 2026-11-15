@@ -1,0 +1,42 @@
+module specs.Door
+
+spec Door {
+  intent "A door opens for a key and locks behind whoever passes."
+
+  state {
+    locked: Bool = true
+    passes: Int[0..2] = 0
+    opened: Bool = false
+  }
+
+  event Key
+  event Pass
+
+  on Key {
+    case unlock if locked => { locked = false; opened = true }
+    case spare otherwise => ignore AlreadyOpen
+  }
+  on Pass {
+    case through if !locked && passes < 2 => { locked = true; passes = passes + 1 }
+    case shut otherwise => reject Locked
+  }
+
+  invariant DOOR_001 "nobody passed a door that never opened" = passes > 0 ==> opened
+
+  // Undecided questions travel with the spec; they change no check.
+  open DOOR_Q1 "Does a third pass wear the lock out, or is two the hardware limit?"
+  open DOOR_Q2 "Who holds the key while the door is open?"
+
+  // Where a rule came from, by knowledge-base locator.
+  source DOOR_001 "decisions/d0412-doors-lock-behind.md"
+  source Pass.shut "notes/2026-11-12-door-walkthrough.md#locked"
+  source DOOR_Q1 "research/lock-wear.md"
+
+  scenario "open, pass, and find it locked" {
+    Pass ~> rejected Locked
+    Key ~> accepted
+    Key ~> ignored AlreadyOpen
+    Pass ~> accepted
+    expect locked && passes == 1
+  }
+}

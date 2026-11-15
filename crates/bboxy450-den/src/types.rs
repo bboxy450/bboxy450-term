@@ -168,8 +168,30 @@ pub(crate) fn names(spec: &Spec) -> Vec<Diagnostic> {
         .chain(spec.invariants.iter().map(|c| &c.name))
         .chain(spec.properties.iter().map(|p| &p.name))
         .chain(spec.assumptions.iter().map(|a| &a.name))
+        .chain(spec.opens.iter().map(|a| &a.name))
         .chain(imported)
         .collect();
+    // A source names a declaration, or a case as `Event.case`.
+    for source in &spec.sources {
+        let first = &source.target[0];
+        let known = match source.target.get(1) {
+            None => globals.iter().any(|name| name.text == first.text),
+            Some(case) => spec.handlers.iter().any(|handler| {
+                handler.event.text == first.text
+                    && handler.cases.iter().any(|c| c.name.text == case.text)
+            }),
+        };
+        if !known {
+            let target: Vec<_> = source.target.iter().map(|n| n.text.as_str()).collect();
+            errors.push(diagnostic(
+                spec,
+                first.pos,
+                "X201",
+                format!("source names {}, which is not declared", target.join(".")),
+                "name a declaration of this spec, or a case as Event.case",
+            ));
+        }
+    }
     duplicates(spec, globals.iter().copied(), &mut errors);
     reserved(spec, globals, &mut errors);
     for enumeration in &spec.enums {

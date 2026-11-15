@@ -260,6 +260,26 @@ fn markdown(
         let _ = writeln!(out);
     }
 
+    if !spec.opens.is_empty() {
+        let _ = writeln!(out, "## Open questions\n");
+        for o in &spec.opens {
+            let _ = writeln!(out, "- **{}**: {}", o.name.text, o.text.trim());
+        }
+        let _ = writeln!(out);
+    }
+    if !spec.sources.is_empty() {
+        let _ = writeln!(out, "## Provenance\n");
+        for source in &spec.sources {
+            let target: Vec<_> = source.target.iter().map(|n| n.text.as_str()).collect();
+            let _ = writeln!(
+                out,
+                "- `{}` from {}",
+                target.join("."),
+                source.locator.trim()
+            );
+        }
+        let _ = writeln!(out);
+    }
     if !spec.scenarios.is_empty() {
         let _ = writeln!(out, "## Scenarios\n");
         for (n, s) in spec.scenarios.iter().enumerate() {
