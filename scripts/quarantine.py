@@ -254,8 +254,11 @@ def junit_tests(path, packages):
         for case in suite.iter("testcase"):
             failed = case.find("failure") is not None or case.find("error") is not None
             skipped = case.find("skipped") is not None
+            # A pass on retry passes the run but discharges no invariant.
+            flaky = case.find("flakyFailure") is not None or case.find("flakyError") is not None
             rows.append({"package": package, "kind": kind, "target": name, "binary": suite.get("name"),
-                         "test": case.get("name"), "result": "FAILED" if failed else "ignored" if skipped else "ok"})
+                         "test": case.get("name"), "result": "FAILED" if failed else "ignored" if skipped
+                         else "flaky" if flaky else "ok"})
     return rows
 
 

@@ -98,7 +98,12 @@ dream='(package(bboxy450-term-mux) & (test(dream_c1) | test(dream_public_))) | (
 # Head-of-line recovery and knowledge responsiveness hold wall-clock budgets:
 # run them alone after the parallel suite, not under its contention.
 timed='package(bboxy450-term-mux) & test(/^(logic::hol_tests::|logic::knowledge_responsiveness_tests::)/)'
-full unit sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked -E "not ($timed) & not ($dream)"
+# The suite records each observed result; an invariant whose exact test passed
+# here, first try, on this source and target, is not run again below.
+coverage="$BBOXY_CARGO_TARGET_DIR/ci-local-coverage.json"
+rm -f -- "$coverage"
+export BBOXY_PRESUBMIT_ATTEMPT="ci-local.$$"
+full unit env BBOXY_PRESUBMIT_COVERAGE="$coverage" sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked -E "not ($timed) & not ($dream)"
 full unit env NEXTEST_TEST_THREADS=1 sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux -E "$timed"
 ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR" FORMAL_REUSE=0
 ledger integration make test-harness-native TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
@@ -125,7 +130,12 @@ else
   echo "smoke failed; private run retained at $smoke_run" >&2
   exit "$smoke_status"
 fi
-run_check sh scripts/invariants.sh "$@"
+# Invariants whose check is a stage above are not run a second time.
+if [ "$after_tests" = false ]; then
+    set -- "$@" --covered-tests "$coverage" --covered-check 'sh scripts/layering.sh' \
+        --covered-check 'cargo clippy --workspace --all-targets --locked -- -D warnings'
+fi
+run_check sh scripts/invariants.sh "$@" --covered-check 'sh scripts/ui-lint.sh'
 if ! gate_clean || [ "$(git rev-parse HEAD)" != "$gate_sha" ]; then
     echo 'ci-local: source changed during gate; no exact-SHA proof' >&2; exit 2
 fi

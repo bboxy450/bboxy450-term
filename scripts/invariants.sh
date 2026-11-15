@@ -22,6 +22,7 @@ selected_gate=''
 affected_set=false
 affected_crates=''
 covered_tests=''
+covered_checks=''
 while [ "$#" -gt 0 ]; do
     case "$1" in
         --slow) run_slow=true; shift ;;
@@ -30,6 +31,11 @@ while [ "$#" -gt 0 ]; do
         --covered-tests)
             [ "$#" -ge 2 ] || { echo 'invariants: --covered-tests requires a receipt' >&2; exit 2; }
             covered_tests=$2; shift 2 ;;
+        --covered-check)
+            # The full gate names a check command it has itself just passed on this source.
+            [ "$#" -ge 2 ] || { echo 'invariants: --covered-check requires a check command' >&2; exit 2; }
+            covered_checks="$covered_checks$2
+"; shift 2 ;;
         --affected)
             [ "$#" -ge 2 ] || { echo 'invariants: --affected requires one crate-list argument' >&2; exit 2; }
             [ "$affected_set" = false ] || { echo 'invariants: select --affected once' >&2; exit 2; }
@@ -59,7 +65,7 @@ if [ -n "$selected_gate" ]; then
 fi
 
 # One Cargo test graph; exact libtest filters retain each invariant's own verdict.
-exec python3 -I - "$invariant_tools" "$run_slow" "$run_parity" "$run_cargo" "$selected_gate" "$affected_set" "$affected_crates" "$covered_tests" <<'PY_INVARIANTS'
+exec python3 -I - "$invariant_tools" "$run_slow" "$run_parity" "$run_cargo" "$selected_gate" "$affected_set" "$affected_crates" "$covered_tests" "$covered_checks" <<'PY_INVARIANTS'
 import collections
 import glob
 import importlib.util
@@ -73,7 +79,8 @@ import tomllib
 import json
 
 sys.dont_write_bytecode = True
-tools, slow, parity, cargo_enabled, selected, affected_set, affected_arg, coverage_path = sys.argv[1:]
+tools, slow, parity, cargo_enabled, selected, affected_set, affected_arg, coverage_path, gate_checks = sys.argv[1:]
+gate_checks = set(filter(None, gate_checks.splitlines()))
 spec = importlib.util.spec_from_file_location("landing", Path(tools) / "landing.py")
 landing = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(landing)
@@ -275,7 +282,10 @@ try:
         if data.get("type") != "invariant" or (selected and path.stem != selected):
             continue
         entry = {"name": path.stem, "command": data.get("check", ""), "skip": None, "batch": None}
-        if data.get("slow") == "true" and slow == "false" and not selected and (parity == "false" or data.get("gate") != "parity"):
+        if entry["command"] in gate_checks:
+            # Same command, same source, same gate run: the caller's stage is the verdict.
+            entry["skip"] = "covered in this gate"
+        elif data.get("slow") == "true" and slow == "false" and not selected and (parity == "false" or data.get("gate") != "parity"):
             entry["skip"] = "slow"
         elif landing.cargo_backed(entry["command"]):
             if cargo_enabled == "false":

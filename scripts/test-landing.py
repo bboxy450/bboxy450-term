@@ -2749,14 +2749,17 @@ class QuarantineTests(unittest.TestCase):
 <testsuite name="c"><testcase name="tests::unit"/></testsuite>
 <testsuite name="c::ctl"><testcase name="once"><failure type="test failure"/></testcase>
 <testcase name="slow"><skipped/></testcase></testsuite>
-<testsuite name="c::bin/tool"><testcase name="main_test"/></testsuite>
+<testsuite name="c::bin/tool"><testcase name="main_test"/>
+<testcase name="retried"><flakyFailure type="test failure"/></testcase></testsuite>
 <testsuite name="c::example/demo"><testcase name="ignored_kind"/></testsuite>
 </testsuites>""")
         packages = {"c": {"targets": [{"name": "c_lib", "kind": ["lib"]}]}}
         rows = module.junit_tests(junit, packages)
         self.assertEqual([(r["kind"], r["target"], r["test"], r["result"]) for r in rows],
                          [("lib", "c_lib", "tests::unit", "ok"), ("test", "ctl", "once", "FAILED"),
-                          ("test", "ctl", "slow", "ignored"), ("bin", "tool", "main_test", "ok")])
+                          ("test", "ctl", "slow", "ignored"), ("bin", "tool", "main_test", "ok"),
+                          # A pass on retry passes the run; it never discharges an invariant.
+                          ("bin", "tool", "retried", "flaky")])
 
     def test_add_runs_exact_test_links_task_and_expires_in_seven_days(self):
         result = self.repo.cli("quarantine", "add", "fixture_test", "--owner", "Fixture", "--task", "123")
@@ -3517,6 +3520,41 @@ class BudgetPresubmitTests(unittest.TestCase):
         self.assertEqual(result.returncode,0,result.stdout+result.stderr)
         self.assertEqual(len((self.repo.state/"ctl-runs").read_text().splitlines()),2,
                          "coverage from another "+field+" skipped the invariant")
+
+    def test_gate_covered_check_is_skipped_only_by_its_exact_command(self):
+        shutil.copyfile(SOURCE.with_name("invariants.sh"),self.repo.root/"scripts/invariants.sh")
+        for name in ("staged","other"):
+            self.repo.write("scripts/"+name+".sh",'#!/bin/sh\nprintf x >> "$BBOXY_LANDING_STATE_DIR/'+name+'-runs"\n')
+            self.repo.write(".bboxy/invariants/"+name+".md","---\ntype: invariant\ncheck: sh scripts/"+name+".sh\n---\n")
+        self.repo.commit("Fixture gate-covered invariant")
+        def run(*flags):
+            return subprocess.run(["sh","scripts/invariants.sh","--no-cargo",*flags],cwd=self.repo.root,
+                env=self.repo.environment,capture_output=True,text=True,timeout=45)
+        result=run("--covered-check","sh scripts/staged.sh","--covered-check","sh scripts/other.sh --more")
+        self.assertIn("invariant staged: skipped (covered in this gate)",result.stdout,result.stdout+result.stderr)
+        self.assertIn("invariant other: pass",result.stdout)
+        self.assertFalse((self.repo.state/"staged-runs").exists(),"the gate's own stage ran twice")
+        self.assertEqual((self.repo.state/"other-runs").read_text(),"x")
+        result=run()
+        self.assertIn("invariant staged: pass",result.stdout,result.stdout+result.stderr)
+        self.assertEqual((self.repo.state/"staged-runs").read_text(),"x","an unclaimed invariant was skipped")
+        self.assertEqual(run("--covered-check").returncode,2)
+
+    def test_full_gate_claims_only_invariants_whose_command_is_one_of_its_stages(self):
+        source=SOURCE.with_name("ci-local.sh").read_text()
+        re=landing.re
+        claims=re.findall(r"--covered-check '([^']+)'",source)
+        self.assertEqual(len(claims),3)
+        records={line.split(":",1)[1].strip() for path in (SOURCE.parent.parent/".bboxy/invariants").glob("*.md")
+                 for line in path.read_text().splitlines() if line.startswith("check:")}
+        stages=source.replace(' --target-dir "$BBOXY_CARGO_TARGET_DIR"',"")
+        always=re.findall(r"--covered-check '([^']+)'",next(l for l in source.splitlines() if l.startswith("run_check sh scripts/invariants.sh")))
+        for claim in claims:
+            self.assertIn(claim,records,"no invariant has this check")
+            # The --after-tests continuation skips `full` stages, so it may claim only `ledger` ones.
+            wrapper="ledger" if claim in always else "(?:full|ledger)"
+            self.assertRegex(stages,r"(?m)^"+wrapper+r" \S+ (?:sh scripts/qos\.sh utility )?"+re.escape(claim)+"$")
+        self.assertRegex(source,r'(?m)^if \[ "\$after_tests" = false \]; then\n    set -- "\$@" --covered-tests "\$coverage" ')
 
     def test_another_attempt_cannot_discharge_the_invariant(self):
         self.stale_coverage("attempt")

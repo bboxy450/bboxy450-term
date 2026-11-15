@@ -817,6 +817,9 @@ with (pathlib.Path({str(self.repo.state)!r})/'phase-calls').open('a') as f:f.wri
 import json,os,pathlib,shutil,sys
 state=pathlib.Path(os.environ['BBOXY_LANDING_STATE_DIR']);args=sys.argv[1:]
 assert 'CARGO_TARGET_DIR' not in os.environ
+if args[:1]==['metadata']:
+ # The coverage receipt asks for the workspace; it builds nothing.
+ print(json.dumps({'workspace_members':[],'packages':[]}));sys.exit(0)
 index=args.index('--target-dir')
 assert args[index+1]==os.environ['BBOXY_CARGO_TARGET_DIR']
 args=args[:index]+args[index+2:]
@@ -833,11 +836,11 @@ if args==['build','-p','bboxy450-term','--locked']:
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         calls = [json.loads(line) for line in (self.repo.state / "phase-cargo").read_text().splitlines()]
         self.assertEqual((self.repo.state / "phase-calls").read_text().splitlines(),
-                         ["test-capability-scan", "test-capability-control", "ui-lint", "smoke"])
+                         ["test-capability-scan", "ui-lint", "test-capability-control", "smoke"])
         commands = [json.loads(line.removeprefix("ci-command: "))
                     for line in result.stdout.splitlines() if line.startswith("ci-command: ")]
         self.assertEqual([command[1] for command in commands if command[0] == "make"],
-                         ["test-capability-scan", "test-capability-control", "test-harness-native", "test-formal"])
+                         ["test-capability-scan", "test-formal", "test-harness-native", "test-capability-control"])
         self.assertIn("scripts/invariants.sh --parity", (self.repo.state / "shell.log").read_text())
         return result.stdout, calls
 
@@ -851,7 +854,8 @@ if args==['build','-p','bboxy450-term','--locked']:
 
     def test_normal_ci_keeps_workspace_build_clippy_and_tests(self):
         output, calls = self.phase(False)
-        self.assertEqual([c[0] for c in calls], ["build", "clippy", "test", "build"])
+        # Two test calls: the workspace suite, then the timed mux families alone.
+        self.assertEqual([c[0] for c in calls], ["build", "clippy", "test", "test", "build"])
         self.assertIn("--workspace", calls[0])
         self.assertIn("--workspace", calls[2])
         self.assertIn("all gates passed", output)
