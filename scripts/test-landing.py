@@ -3662,6 +3662,26 @@ def fixture_suite(extended=False):
 
 
 class CostTests(unittest.TestCase):
+    def test_gate_profile_serialises_exactly_the_timing_inventory(self):
+        import tomllib
+        policy = landing.qos_policy()
+        config = tomllib.loads((SOURCE.parent.parent / ".config/nextest.toml").read_text())
+        default, gate = config["profile"]["default"], config["profile"]["gate"]
+        self.assertEqual(default["test-threads"], 2, "make land keeps two test threads")
+        self.assertNotIn("overrides", default, "make land keeps ungrouped tests")
+        self.assertEqual(gate["test-threads"], 6)
+        self.assertEqual(config["test-groups"], {"timed": {"max-threads": 1}, "fixtures": {"max-threads": 2}})
+        # First match wins: a timing witness inside an integration binary stays serial.
+        self.assertEqual([(rule["filter"], rule["test-group"]) for rule in gate["overrides"]],
+                         [(policy.nextest_filter(), "timed"), ("kind(test)", "fixtures")])
+        for names in (policy.TIMED_TARGETS, policy.TIMED_FILTERS, policy.TIMED_TESTS, policy.C1_TIMED_TESTS):
+            for name in names:
+                self.assertIn(name, gate["overrides"][0]["filter"])
+        ci = SOURCE.with_name("ci-local.sh").read_text()
+        self.assertEqual(ci.count("NEXTEST_PROFILE=gate "), 1, "only the workspace suite uses the gate profile")
+        self.assertIn('BBOXY_CARGO_JOBS="${BBOXY_CARGO_JOBS:-8}"', ci)
+        self.assertIn('BBOXY_CARGO_JOBS:-2}', SOURCE.with_name("land-fast.sh").read_text())
+
     def test_consolidated_modules_preserve_timing_policy(self):
         policy = landing.qos_policy()
         for target in policy.TIMED_TARGETS:

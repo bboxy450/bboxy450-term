@@ -36,6 +36,8 @@ gate_mode=normal
 [ "$after_tests" = false ] || gate_mode=after-tests
 printf 'ci-local: source %s %s\n' "$gate_sha" "$gate_mode"
 export BBOXY_CARGO_TARGET_DIR="$ci_target"
+# The full gate builds eight wide (16 cores); a gate slot or caller may set its own.
+export BBOXY_CARGO_JOBS="${BBOXY_CARGO_JOBS:-8}"
 # shellcheck source=scripts/cache-env.sh
 . ./scripts/cache-env.sh
 # Keep profile environment identical across gates; it is part of the cache key.
@@ -103,7 +105,9 @@ timed='package(bboxy450-term-mux) & test(/^(logic::hol_tests::|logic::knowledge_
 coverage="$BBOXY_CARGO_TARGET_DIR/ci-local-coverage.json"
 rm -f -- "$coverage"
 export BBOXY_PRESUBMIT_ATTEMPT="ci-local.$$"
-full unit env BBOXY_PRESUBMIT_COVERAGE="$coverage" sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked -E "not ($timed) & not ($dream)"
+# The gate profile (.config/nextest.toml) runs six tests at once, integration
+# binaries two at once as before, and the timing witnesses one at a time.
+full unit env NEXTEST_PROFILE=gate BBOXY_PRESUBMIT_COVERAGE="$coverage" sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked -E "not ($timed) & not ($dream)"
 full unit env NEXTEST_TEST_THREADS=1 sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux -E "$timed"
 ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR" FORMAL_REUSE=0
 ledger integration make test-harness-native TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"

@@ -127,6 +127,19 @@ def timed_test(binary, name):
                 and name.startswith(("client::tests::", "transport::tests::"))))
 
 
+def nextest_filter():
+    """timed_test as a nextest filterset; the gate profile in .config/nextest.toml
+    runs these one at a time (scripts/test-landing.py pins the two together)."""
+    def alt(names):
+        return "|".join(sorted(names))
+    return " | ".join([
+        "binary(/^(%s)$/)" % alt(TIMED_TARGETS),
+        "(binary(=it) & test(/^(%s)::/))" % alt(TIMED_TARGETS),
+        "test(/(^|::)(%s)$/)" % alt(C1_TIMED_TESTS | TIMED_TESTS),
+        "test(/%s/)" % alt(TIMED_FILTERS),
+        "(binary_id(/^bboxy450-harness-host/) & test(/^(client|transport)::tests::/))"])
+
+
 def run_test(arguments):
     # nextest sets these for execution; --list has no per-test name. Its
     # controller stays unclamped so each actual test can choose independently.
@@ -169,4 +182,7 @@ def run_test(arguments):
 
 
 if __name__ == "__main__":
-    run_test(sys.argv[1:])
+    if sys.argv[1:] == ["--nextest-filter"]:
+        print(nextest_filter())
+    else:
+        run_test(sys.argv[1:])

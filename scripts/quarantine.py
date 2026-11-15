@@ -333,7 +333,7 @@ def nextest_run(root, cargo_args, target, api, *, allow_ignored_only=False):
     """Every test binary of the selection runs concurrently; doctests run after, by cargo."""
     split = cargo_args.index("--") if "--" in cargo_args else len(cargo_args)
     build, filters = cargo_args[:split], cargo_args[split + 1:]
-    junit = Path(target) / "nextest" / "default" / "junit.xml"
+    junit = Path(target) / "nextest" / os.environ.get("NEXTEST_PROFILE", "default") / "junit.xml"
     junit.unlink(missing_ok=True)
     argv = ["cargo", "nextest", "run", *nextest_build_args(build), *(["--", *filters] if filters else [])]
     print("quarantine: " + " ".join(argv), flush=True)

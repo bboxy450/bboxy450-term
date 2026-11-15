@@ -204,6 +204,20 @@ landings queue for it instead of failing (`BBOXY_GATE_WAIT=0` restores exit 75);
 Cargo jobs (`BBOXY_GATE_JOBS`). Use it for
 a release, a toolchain change or when a brief asks for the full suite.
 
+### The full gate, `make test`
+
+`scripts/ci-local.sh` runs every stage, cheapest and most often red first: layering and the
+landing self-tests, capability scan, workspace build, clippy, ui-lint, the workspace suite,
+the timed mux families alone, `test-formal`, `test-harness-native`, the capability control,
+app build, smoke, invariants. An invariant is not run again when its check is one of those
+stages (layering, clippy, ui-lint) or its exact test passed first try in the workspace
+suite of the same run; the log says `skipped (covered in this …)`.
+
+It builds with 8 Cargo jobs unless `BBOXY_CARGO_JOBS` is set (a gate slot sets
+`BBOXY_GATE_JOBS`, default 4). The workspace suite uses nextest's `gate` profile
+(`.config/nextest.toml`): 6 test threads, integration binaries 2 at once as before, and
+the measurement inventory above 1 at a time. `make land` keeps 2 jobs and 2 threads.
+
 ## Why diff-scoped by default
 
 This laptop runs many seats at once (16 cores, load 7-36). The full gate took a median
