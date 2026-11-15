@@ -98,7 +98,9 @@ ledger smoke sh scripts/qos.sh utility sh scripts/ui-lint.sh
 # here. scripts/landing.py DREAM_C1_GATE_TESTS names the same family.
 dream='(package(bboxy450-term-mux) & (test(dream_c1) | test(dream_public_))) | (package(bboxy450-harness-wake-up) & (test(dream_c1) | test(dream_bootstrap) | binary(dream_c1) | binary(dream_bootstrap)))'
 # Head-of-line recovery and knowledge responsiveness hold wall-clock budgets:
-# run them alone after the parallel suite, not under its contention.
+# run them alone after the parallel suite, not under its contention. Both stages
+# name the same workspace, so the second reuses the first's build; `-p` alone
+# resolves other features and recompiles. Explicit targets skip a second doctest pass.
 timed='package(bboxy450-term-mux) & test(/^(logic::hol_tests::|logic::knowledge_responsiveness_tests::)/)'
 # The suite records each observed result; an invariant whose exact test passed
 # here, first try, on this source and target, is not run again below.
@@ -108,7 +110,7 @@ export BBOXY_PRESUBMIT_ATTEMPT="ci-local.$$"
 # The gate profile (.config/nextest.toml) runs six tests at once, integration
 # binaries two at once as before, and the timing witnesses one at a time.
 full unit env NEXTEST_PROFILE=gate BBOXY_PRESUBMIT_COVERAGE="$coverage" sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked -E "not ($timed) & not ($dream)"
-full unit env NEXTEST_TEST_THREADS=1 sh scripts/quarantine-test.sh --locked -p bboxy450-term-mux -E "$timed"
+full unit env NEXTEST_TEST_THREADS=1 sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked --lib --bins --tests -E "$timed"
 ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR" FORMAL_REUSE=0
 ledger integration make test-harness-native TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 # This real exec-environment control restores and hashes its source before
