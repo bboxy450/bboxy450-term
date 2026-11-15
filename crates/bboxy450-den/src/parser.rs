@@ -43,14 +43,36 @@ fn unsupported(pos: Pos, construct: &str) -> Diagnostic {
         "use a standalone spec with Bool, bounded Int, enum and Set[Enum] types",
     )
 }
+/// Words that can never be a name: each starts an expression, a statement or
+/// a scenario step, so a declaration with that name could not be used. Every
+/// other keyword is recognized only where its declaration starts and stays
+/// free as a name. `Bool`, `Int` and `Set` are refused as declarations (X202).
+pub(crate) const RESERVED: [&str; 15] = [
+    "true",
+    "false",
+    "if",
+    "then",
+    "else",
+    "forall",
+    "exists",
+    "reject",
+    "ignore",
+    "emit",
+    "expect",
+    "do",
+    "include",
+    "expose",
+    "discharge",
+];
+/// Composition constructs of the design that this version does not check.
 fn is_unsupported(word: &str) -> bool {
+    matches!(word, "include" | "do" | "expose" | "discharge")
+}
+/// Record keywords the machine parser does not read.
+fn is_other_record(word: &str) -> bool {
     matches!(
         word,
-        "include"
-            | "do"
-            | "expose"
-            | "discharge"
-            | "epic"
+        "epic"
             | "loop"
             | "task"
             | "report"
@@ -61,21 +83,14 @@ fn is_unsupported(word: &str) -> bool {
             | "bug"
             | "recipe"
             | "record"
-            | "managed"
-            | "staff"
-            | "channel"
-            | "work"
-            | "waits"
-            | "gate"
-            | "budget"
-            | "done"
-            | "by"
-            | "between"
-            | "roles"
-            | "produces"
-            | "realizes"
-            | "serves"
-            | "brief"
+    )
+}
+/// Type names of the design that this version does not check. A declared enum
+/// of the same name is that enum.
+fn is_future_type(word: &str) -> bool {
+    matches!(
+        word,
+        "Text" | "Markdown" | "Path" | "Sha" | "Time" | "Command" | "List" | "Option" | "Ref"
     )
 }
 fn continues(kind: &TokenKind) -> bool {
@@ -285,6 +300,28 @@ struct Parser {
     index: usize,
     record: String,
     depth: usize,
+    /// Every name that follows `enum` in the source, declared before or after its use.
+    enums: Vec<String>,
+}
+impl Parser {
+    fn new(tokens: Vec<Token>, record: &str) -> Self {
+        let enums = tokens
+            .windows(2)
+            .filter_map(|pair| match (&pair[0].kind, &pair[1].kind) {
+                (TokenKind::Word(keyword), TokenKind::Word(name)) if keyword == "enum" => {
+                    Some(name.clone())
+                }
+                _ => None,
+            })
+            .collect();
+        Self {
+            tokens,
+            index: 0,
+            record: record.into(),
+            depth: 0,
+            enums,
+        }
+    }
 }
 impl Parser {
     fn current(&self) -> &Token {
@@ -354,6 +391,16 @@ impl Parser {
     fn name(&mut self) -> ParseResult<Name> {
         let token = self.current().clone();
         match token.kind {
+            TokenKind::Word(text) if RESERVED.contains(&text.as_str()) => {
+                let mut d = token.pos.diagnostic(
+                    "X103",
+                    &self.record,
+                    format!("`{text}` is a reserved word here; rename it"),
+                    "",
+                );
+                d.repair = format!("rename it; the reserved words are {}", RESERVED.join(", "));
+                Err(d)
+            }
             TokenKind::Word(text) => {
                 self.index += 1;
                 Ok(Name {
@@ -425,10 +472,9 @@ impl Parser {
             "Set" => {
                 self.need("[")?;
                 let element = self.name()?;
-                if matches!(
-                    element.text.as_str(),
-                    "Bool" | "Int" | "Set" | "List" | "Option" | "Ref" | "Text"
-                ) {
+                if matches!(element.text.as_str(), "Bool" | "Int" | "Set")
+                    || (is_future_type(&element.text) && !self.enums.contains(&element.text))
+                {
                     return Err(unsupported(element.pos, "this set element type"));
                 }
                 if self.at("[") {
@@ -437,8 +483,9 @@ impl Parser {
                 self.need("]")?;
                 Ty::Set(element.text)
             }
-            "Text" | "Markdown" | "Path" | "Sha" | "Time" | "Command" | "List" | "Option"
-            | "Ref" => return Err(unsupported(name.pos, &name.text)),
+            word if is_future_type(word) && !self.enums.contains(&name.text) => {
+                return Err(unsupported(name.pos, &name.text));
+            }
             _ if self.at("[") => return Err(unsupported(name.pos, "generic types")),
             _ => Ty::Named(name.text),
         };
@@ -518,10 +565,8 @@ impl Parser {
                     pos,
                 });
             } else {
-                if let TokenKind::Word(word) = &self.current().kind
-                    && is_unsupported(word)
-                {
-                    return Err(unsupported(pos, word));
+                if self.at("do") {
+                    return Err(unsupported(pos, "do"));
                 }
                 let name = self.name()?;
                 let op = if self.take("=") {
@@ -656,6 +701,11 @@ impl Parser {
         }
         if self.at("invariant") {
             return Err(unsupported(self.current().pos, "invariant records"));
+        }
+        if let TokenKind::Word(word) = &self.current().kind
+            && is_other_record(word)
+        {
+            return Err(unsupported(self.current().pos, word));
         }
         self.need("spec")?;
         let name = self.name()?;
@@ -954,11 +1004,6 @@ impl Parser {
                 body,
             }
         } else {
-            if let TokenKind::Word(word) = &self.current().kind
-                && is_unsupported(word)
-            {
-                return Err(unsupported(pos, word));
-            }
             let name = self.name()?;
             if self.take(".") {
                 ExprKind::Member(name.text, self.name()?.text)
@@ -978,12 +1023,7 @@ pub(crate) fn parse_trace(
     record: &str,
 ) -> Result<Vec<ScenarioStep>, Vec<Diagnostic>> {
     let tokens = Lexer::new(source).tokens().map_err(|e| vec![e])?;
-    let mut parser = Parser {
-        tokens,
-        index: 0,
-        record: record.into(),
-        depth: 0,
-    };
+    let mut parser = Parser::new(tokens, record);
     parser.separators();
     parser
         .steps(|p| p.current().kind == TokenKind::End)
@@ -991,14 +1031,7 @@ pub(crate) fn parse_trace(
 }
 pub(crate) fn parse(source: &str) -> Result<Spec, Vec<Diagnostic>> {
     let tokens = Lexer::new(source).tokens().map_err(|e| vec![e])?;
-    Parser {
-        tokens,
-        index: 0,
-        record: String::new(),
-        depth: 0,
-    }
-    .spec()
-    .map_err(|e| vec![e])
+    Parser::new(tokens, "").spec().map_err(|e| vec![e])
 }
 
 #[cfg(test)]
@@ -1053,6 +1086,37 @@ mod tests {
         ] {
             assert_eq!(parse(input).unwrap_err()[0].code, "X101");
         }
+    }
+    #[test]
+    fn a_word_is_reserved_only_where_it_would_be_ambiguous() {
+        // Keywords of declarations and of later record kinds are free names.
+        parse("module T\nspec T { enum Path { by, task }\nstate { by: Bool = false; done: Path = Path.by; on: Path = Path.task }\nevent work\non work { case done if by && done == on => { by = !by } \n case case otherwise => reject state } }")
+            .unwrap();
+        for (word, input) in [
+            ("emit", "module T\nspec T { state { emit: Bool = false } }"),
+            ("if", "module T\nspec T { enum E { if } }"),
+            ("expect", "module T\nspec T { event expect }"),
+            ("do", "module T\nspec T { invariant I \"i\" = do }"),
+            (
+                "then",
+                "module T\nspec T { on Go { case then if true => reject No } }",
+            ),
+        ] {
+            let d = parse(input).unwrap_err().remove(0);
+            assert_eq!(d.code, "X103", "{input}");
+            assert_eq!(
+                d.message,
+                format!("`{word}` is a reserved word here; rename it")
+            );
+            assert!(
+                d.repair
+                    .starts_with("rename it; the reserved words are true, false, if,")
+            );
+        }
+        // A later version's type name is refused as a type, unless an enum declares it.
+        let future = parse("module T\nspec T { state { p: Path = true } }").unwrap_err();
+        assert_eq!(future[0].code, "X190");
+        parse("module T\nspec T { state { p: Set[Path] = Set() }\nenum Path { A } }").unwrap();
     }
     #[test]
     fn reject_updates_reach_the_step_checker() {

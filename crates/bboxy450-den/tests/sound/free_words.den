@@ -1,0 +1,35 @@
+module specs.FreeWords
+
+// Keywords of other declarations and of the design's later record kinds are
+// ordinary names inside a machine: by, done, task, work, on, state, Path.
+spec FreeWords {
+  intent "A walker follows a path until it is done, and records who moved it."
+
+  enum Path { North, South }
+  enum Actor { Oracle, Executor }
+
+  state {
+    by: Actor = Actor.Oracle
+    done: Bool = false
+    task: Path = Path.North
+    work: Int[0..2] = 0
+  }
+
+  event Step(actor: Actor)
+
+  on Step(actor) {
+    case done if done => ignore Finished
+    case turn if !done && work < 2 => { by = actor; task = Path.South; work = work + 1 }
+    case finish otherwise => { by = actor; done = true }
+  }
+
+  invariant WORDS_001 "a finished walk took both steps" = done ==> work == 2 && task == Path.South
+
+  scenario "two steps and a finish" {
+    Step(Actor.Executor) ~> accepted
+    Step(Actor.Executor) ~> accepted
+    Step(Actor.Oracle) ~> accepted
+    Step(Actor.Oracle) ~> ignored Finished
+    expect done && by == Actor.Oracle
+  }
+}

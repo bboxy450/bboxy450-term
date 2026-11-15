@@ -55,6 +55,16 @@ A newline or `;` separates statements. Newlines inside parentheses or brackets,
 after binary operators, `=>` or `=`, and in triple-quoted text continue a statement.
 Text uses `"text"` or `"""multiline text"""`.
 
+Reserved words cannot be used as a name anywhere, because each starts an expression,
+a statement or a scenario step: `true`, `false`, `if`, `then`, `else`, `forall`, `exists`,
+`reject`, `ignore`, `emit`, `expect`, `do`, `include`, `expose`, `discharge`. Using one is
+X103: "`emit` is a reserved word here; rename it". `Bool`, `Int` and `Set` cannot be
+declared (X202). Every other keyword (`state`, `event`, `on`, `case`, `fair`, `otherwise`,
+`leads`, `by`, `done`, `task`, ...) is recognized only where its declaration starts and is
+free as a name. `Text`, `Markdown`, `Path`, `Sha`, `Time`, `Command`, `List`, `Option` and
+`Ref` are types of a later version (X190 when used as a type), unless the spec declares
+an enum of that name.
+
 A spec body contains these declarations:
 
 ```text
@@ -310,6 +320,7 @@ Every diagnostic carries a stable code, line, column, record name, message and r
 | Syntax | X101 | Text does not parse |
 | | X102 | A string, text block or backquoted name is not terminated (records) |
 | Module | X152 | The record keyword is not a record kind |
+| | X103 | A reserved word is used as a name |
 | Version | X190 | Construct is not supported in this version |
 | Names | X201 | Undeclared name |
 | | X202 | Duplicate declaration in one scope |
