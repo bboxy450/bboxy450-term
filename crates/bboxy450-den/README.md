@@ -85,7 +85,28 @@ assume ID TEXT
 scenario TEXT { STEP; ... }
 open ID TEXT
 source ID TEXT | source EVENT.CASE TEXT
+define NAME = EXPR
+table NAME: KEY -> VALUE { MEMBER -> EXPR, MEMBER -> EXPR, ... }
 ```
+
+`define NAME = EXPR` names a Bool or Int expression over the state fields, so a condition
+such as "the shape is complete" is written once and its negation is `!NAME`. It may use
+the defines above it and any table, but no event binding. It is usable wherever an
+expression is: guards, updates, invariants, properties and `expect`.
+
+`table NAME: KEY -> VALUE { ... }` is a total function on the enum `KEY`; `VALUE` is an
+enum, `Bool` or a bounded `Int`. Entries are separated by commas and may span lines; a
+key is a member of `KEY` (bare, or `KEY.Member`); a value of an enum type may be the bare
+member. `NAME(expr)` applies it. A member with no entry is X402 and names the member; a
+repeated member is X202, an unknown one X201, a value outside the range X302, a call
+without exactly one argument X303.
+
+Both are expanded by the parser, a define to its expression and a table call to
+`if key == KEY.A then VA else if ... else VZ`, so the checker, the TLA+ export and the
+Lean statements contain no trace of them. Each is checked where it is written; a
+diagnostic that only appears at a use points at the use and ends
+`(in define NAME, expanded here)` or `(in table NAME, expanded here)`. An unused define
+or table is X203. An expression deeper than 256 levels after expansion is X101.
 
 `open ID "text"` records a question nobody has decided. It is never an error and changes
 no check; it is listed in the report (`open` in `Summary` and in `--json`), in the outline

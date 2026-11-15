@@ -1,0 +1,53 @@
+module specs.Shape
+
+spec Shape {
+  intent "A shape is complete when all three sides are drawn; each side scores by its table."
+
+  enum Side { Left, Right, Base }
+  enum Rank { Low, High }
+
+  state {
+    drawn: Set[Side] = Set()
+    score: Int[0..6] = 0
+    best: Rank = Rank.Low
+  }
+
+  // Written once; its negation is !Complete.
+  define Complete = forall s: Side. drawn(s)
+  define Scored = total > 0
+  define Resettable = Complete && Scored
+
+  table Points: Side -> Int[1..3] { Left -> 1, Right -> 2, Base -> 3 }
+  table RankOf: Side -> Rank {
+    Left -> Low,
+    Right -> Low,
+    Side.Base -> Rank.High
+  }
+
+  event Draw(s: Side)
+  event Reset
+
+  on Draw(s) {
+    case draw if !Complete && !drawn(s) => { drawn += s; score = score + Points(s); best = RankOf(s) }
+    case again otherwise => reject Drawn
+  }
+  on Reset {
+    case clear if Resettable => { drawn = Set(); score = 0; best = Rank.Low }
+    case early otherwise => ignore Incomplete
+  }
+
+  invariant SHAPE_001 "a complete shape scored every side" = Complete ==> score == 6
+  invariant SHAPE_002 "a high rank means the base is drawn" = best == Rank.High ==> drawn(Side.Base)
+
+  scenario "draw, complete and reset" {
+    Draw(Side.Left) ~> accepted
+    Draw(Side.Left) ~> rejected Drawn
+    Reset ~> ignored Incomplete
+    Draw(Side.Base) ~> accepted
+    expect best == RankOf(Side.Base) && score == Points(Side.Left) + Points(Side.Base) && !Complete
+    Draw(Side.Right) ~> accepted
+    expect Resettable
+    Reset ~> accepted
+    expect score == 0 && !Scored
+  }
+}

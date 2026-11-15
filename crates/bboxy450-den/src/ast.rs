@@ -153,6 +153,21 @@ pub(crate) struct Assumption {
     pub name: Name,
     pub text: String,
 }
+/// `define NAME = EXPR`: a named expression over the state, expanded at each use.
+#[derive(Clone, Debug)]
+pub(crate) struct Define {
+    pub name: Name,
+    pub expr: Expr,
+}
+/// `table NAME: KEY -> VALUE { K -> V, ... }`: a total function on an enum,
+/// expanded at each use `NAME(expr)` to a conditional on the key.
+#[derive(Clone, Debug)]
+pub(crate) struct Table {
+    pub name: Name,
+    pub key: Name,
+    pub value: Type,
+    pub entries: Vec<(Name, Expr)>,
+}
 /// `source ID "locator"`: the knowledge record a declaration came from.
 /// `target` is a declaration's name, or `Event.case`.
 #[derive(Clone, Debug)]
@@ -193,4 +208,9 @@ pub(crate) struct Spec {
     /// `open ID "text"`: questions nobody has decided. Never checked.
     pub opens: Vec<Assumption>,
     pub sources: Vec<Source>,
+    pub defines: Vec<Define>,
+    pub tables: Vec<Table>,
+    /// Where a define or table was expanded: the use site and `define NAME`
+    /// or `table NAME`. Everything after the parser sees only the expansion.
+    pub expansions: Vec<(Pos, String)>,
 }

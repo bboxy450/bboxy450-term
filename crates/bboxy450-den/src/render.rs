@@ -148,6 +148,26 @@ fn markdown(
         let _ = writeln!(out);
     }
 
+    if !spec.defines.is_empty() {
+        let _ = writeln!(out, "## Definitions\n");
+        let _ = writeln!(
+            out,
+            "Each name stands for its expression wherever it is used.\n"
+        );
+        for d in &spec.defines {
+            let _ = writeln!(out, "- `{}` = `{}`", d.name.text, expr(&d.expr));
+        }
+        let _ = writeln!(out);
+    }
+    for t in &spec.tables {
+        let _ = writeln!(out, "## Table {}\n", t.name.text);
+        let _ = writeln!(out, "| {} | {} |", t.key.text, ty(&t.value.kind));
+        let _ = writeln!(out, "|---|---|");
+        for (member, value) in &t.entries {
+            let _ = writeln!(out, "| `{}` | `{}` |", member.text, expr(value));
+        }
+        let _ = writeln!(out);
+    }
     let _ = writeln!(out, "## State\n");
     let _ = writeln!(out, "| Field | Type | Initial |");
     let _ = writeln!(out, "|---|---|---|");

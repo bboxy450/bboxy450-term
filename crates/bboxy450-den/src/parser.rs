@@ -728,6 +728,9 @@ impl Parser {
             scenarios: Vec::new(),
             opens: Vec::new(),
             sources: Vec::new(),
+            defines: Vec::new(),
+            tables: Vec::new(),
+            expansions: Vec::new(),
         };
         let mut has_intent = false;
         let mut has_state = false;
@@ -843,6 +846,13 @@ impl Parser {
                 result.assumptions.push(Assumption { name, text });
             } else if self.take("scenario") {
                 result.scenarios.push(self.scenario()?);
+            } else if self.take("define") {
+                let name = self.name()?;
+                self.need("=")?;
+                let expr = self.expr()?;
+                result.defines.push(Define { name, expr });
+            } else if self.take("table") {
+                result.tables.push(self.table()?);
             } else if self.take("open") {
                 let name = self.name()?;
                 let text = self.text()?;
@@ -866,7 +876,54 @@ impl Parser {
             }
             return Err(self.error("expected end of file after the spec record"));
         }
+        expand(&mut result)?;
         Ok(result)
+    }
+    /// `NAME: KEY -> VALUE { K -> V, ... }`. A value of an enum type may be
+    /// written as the bare member.
+    fn table(&mut self) -> ParseResult<Table> {
+        let name = self.name()?;
+        self.need(":")?;
+        let key = self.name()?;
+        self.need("-")?;
+        self.need(">")?;
+        let value = self.ty()?;
+        self.need("{")?;
+        self.separators();
+        let mut entries = Vec::new();
+        while !self.take("}") {
+            let mut member = self.name()?;
+            if member.text == key.text && self.take(".") {
+                member = self.name()?;
+            }
+            self.need("-")?;
+            self.need(">")?;
+            let pos = self.current().pos;
+            let qualified = matches!(
+                self.tokens.get(self.index + 1).map(|t| &t.kind),
+                Some(TokenKind::Symbol(s)) if s == "."
+            );
+            let expr = match (&value.kind, &self.current().kind) {
+                (Ty::Named(domain), TokenKind::Word(_)) if !qualified => Expr {
+                    kind: ExprKind::Member(domain.clone(), self.name()?.text),
+                    pos,
+                },
+                _ => self.expr()?,
+            };
+            entries.push((member, expr));
+            self.separators();
+            if self.take(",") {
+                self.separators();
+            } else if !self.at("}") {
+                return Err(self.error("expected , or } after a table entry"));
+            }
+        }
+        Ok(Table {
+            name,
+            key,
+            value,
+            entries,
+        })
     }
     fn expr(&mut self) -> ParseResult<Expr> {
         self.depth += 1;
@@ -1028,6 +1085,258 @@ impl Parser {
         };
         Ok(Expr { kind, pos })
     }
+}
+
+/// Levels an expression may reach once defines and tables are expanded; the
+/// passes after the parser walk it recursively.
+const MAX_EXPANDED_DEPTH: usize = 256;
+
+fn depth(expression: &Expr) -> usize {
+    let mut deepest = 0;
+    let mut pending = vec![(expression, 1)];
+    while let Some((expression, depth)) = pending.pop() {
+        deepest = deepest.max(depth);
+        let mut push = |expression| pending.push((expression, depth + 1));
+        match &expression.kind {
+            ExprKind::Not(inner) => push(inner.as_ref()),
+            ExprKind::Binary(_, left, right) => {
+                push(left.as_ref());
+                push(right.as_ref());
+            }
+            ExprKind::If(condition, then, otherwise) => {
+                push(condition.as_ref());
+                push(then.as_ref());
+                push(otherwise.as_ref());
+            }
+            ExprKind::Quant { body, .. } => push(body.as_ref()),
+            ExprKind::Call(_, args) => args.iter().for_each(push),
+            _ => {}
+        }
+    }
+    deepest
+}
+/// Moves every node of a copied define or table value to its use site, so a
+/// diagnostic about the expansion points at the line that used it.
+fn relocate(expression: &mut Expr, pos: Pos) {
+    expression.pos = pos;
+    match &mut expression.kind {
+        ExprKind::Not(inner) => relocate(inner, pos),
+        ExprKind::Binary(_, left, right) => {
+            relocate(left, pos);
+            relocate(right, pos);
+        }
+        ExprKind::If(condition, then, otherwise) => {
+            relocate(condition, pos);
+            relocate(then, pos);
+            relocate(otherwise, pos);
+        }
+        ExprKind::Quant {
+            binding,
+            domain,
+            body,
+            ..
+        } => {
+            binding.pos = pos;
+            domain.pos = pos;
+            relocate(body, pos);
+        }
+        ExprKind::Call(_, args) => args.iter_mut().for_each(|a| relocate(a, pos)),
+        _ => {}
+    }
+}
+/// Replaces each use of a define by its expression and each `TABLE(key)` by
+/// a conditional on the key, so no later pass knows either construct.
+struct Expander<'a> {
+    defines: &'a [Define],
+    tables: &'a [Table],
+    uses: Vec<(Pos, String)>,
+    error: Option<Diagnostic>,
+}
+impl Expander<'_> {
+    fn top(&mut self, expression: &mut Expr, locals: &[&Name]) {
+        let mut locals: Vec<String> = locals.iter().map(|n| n.text.clone()).collect();
+        self.expr(expression, &mut locals);
+        if self.error.is_none() && depth(expression) > MAX_EXPANDED_DEPTH {
+            self.error = Some(syntax(
+                expression.pos,
+                format!(
+                    "expression exceeds {MAX_EXPANDED_DEPTH} levels once its defines and tables are expanded"
+                ),
+            ));
+        }
+    }
+    fn call(&mut self, call: &mut Call, locals: &[&Name]) {
+        call.args.iter_mut().for_each(|a| self.top(a, locals));
+    }
+    fn expr(&mut self, expression: &mut Expr, locals: &mut Vec<String>) {
+        let pos = expression.pos;
+        let replacement = match &mut expression.kind {
+            ExprKind::Name(name) if !locals.contains(name) => self
+                .defines
+                .iter()
+                .find(|d| d.name.text == *name)
+                .map(|define| {
+                    self.uses.push((pos, format!("define {name}")));
+                    define.expr.clone()
+                }),
+            ExprKind::Call(name, args) => {
+                for arg in args.iter_mut() {
+                    self.expr(arg, locals);
+                }
+                let table = self
+                    .tables
+                    .iter()
+                    .find(|t| t.name.text == *name && !locals.contains(name));
+                match (table, args.len()) {
+                    (Some(table), 1) if !table.entries.is_empty() => {
+                        self.uses.push((pos, format!("table {name}")));
+                        let key = args.remove(0);
+                        let mut entries = table.entries.iter().rev();
+                        let mut result = entries.next().expect("an entry").1.clone();
+                        for (member, value) in entries {
+                            let is_member = Expr {
+                                kind: ExprKind::Binary(
+                                    "==".into(),
+                                    Box::new(key.clone()),
+                                    Box::new(Expr {
+                                        kind: ExprKind::Member(
+                                            table.key.text.clone(),
+                                            member.text.clone(),
+                                        ),
+                                        pos,
+                                    }),
+                                ),
+                                pos,
+                            };
+                            result = Expr {
+                                kind: ExprKind::If(
+                                    Box::new(is_member),
+                                    Box::new(value.clone()),
+                                    Box::new(result),
+                                ),
+                                pos,
+                            };
+                        }
+                        Some(result)
+                    }
+                    _ => None,
+                }
+            }
+            ExprKind::Not(inner) => {
+                self.expr(inner, locals);
+                None
+            }
+            ExprKind::Binary(_, left, right) => {
+                self.expr(left, locals);
+                self.expr(right, locals);
+                None
+            }
+            ExprKind::If(condition, then, otherwise) => {
+                self.expr(condition, locals);
+                self.expr(then, locals);
+                self.expr(otherwise, locals);
+                None
+            }
+            ExprKind::Quant { binding, body, .. } => {
+                locals.push(binding.text.clone());
+                self.expr(body, locals);
+                locals.pop();
+                None
+            }
+            _ => None,
+        };
+        if let Some(mut replacement) = replacement {
+            relocate(&mut replacement, pos);
+            *expression = replacement;
+        }
+    }
+    fn steps(&mut self, steps: &mut [ScenarioStep]) {
+        for step in steps {
+            match step {
+                ScenarioStep::Expect(expression) => self.top(expression, &[]),
+                ScenarioStep::Call { call, effects, .. } => {
+                    self.call(call, &[]);
+                    effects.iter_mut().for_each(|e| self.call(e, &[]));
+                }
+            }
+        }
+    }
+}
+fn expand(spec: &mut Spec) -> ParseResult<()> {
+    if spec.defines.is_empty() && spec.tables.is_empty() {
+        return Ok(());
+    }
+    let tables = std::mem::take(&mut spec.tables);
+    // A define sees the defines above it.
+    let mut defines: Vec<Define> = Vec::new();
+    let mut uses = Vec::new();
+    for mut define in std::mem::take(&mut spec.defines) {
+        let mut expander = Expander {
+            defines: &defines,
+            tables: &tables,
+            uses: Vec::new(),
+            error: None,
+        };
+        expander.top(&mut define.expr, &[]);
+        if let Some(error) = expander.error {
+            return Err(error);
+        }
+        uses.extend(expander.uses);
+        defines.push(define);
+    }
+    let mut expander = Expander {
+        defines: &defines,
+        tables: &tables,
+        uses,
+        error: None,
+    };
+    for field in &mut spec.fields {
+        expander.top(&mut field.initial, &[]);
+    }
+    for handler in &mut spec.handlers {
+        let locals: Vec<&Name> = handler.bindings.iter().collect();
+        for case in &mut handler.cases {
+            if let Some(guard) = &mut case.guard {
+                expander.top(guard, &locals);
+            }
+            for stmt in &mut case.stmts {
+                match &mut stmt.kind {
+                    StmtKind::Assign(_, _, expression) => expander.top(expression, &locals),
+                    StmtKind::Emit(call) => expander.call(call, &locals),
+                }
+            }
+        }
+    }
+    for invariant in &mut spec.invariants {
+        expander.top(&mut invariant.expr, &[]);
+    }
+    for property in &mut spec.properties {
+        let locals: Vec<&Name> = property
+            .binders
+            .iter()
+            .map(|(binding, _)| binding)
+            .collect();
+        expander.top(&mut property.request, &locals);
+        expander.top(&mut property.response, &locals);
+    }
+    for scenario in &mut spec.scenarios {
+        expander.steps(&mut scenario.steps);
+    }
+    let (uses, error) = (expander.uses, expander.error);
+    spec.expansions = uses;
+    spec.defines = defines;
+    spec.tables = tables;
+    error.map_or(Ok(()), Err)
+}
+/// Expands the defines and tables of `spec` in steps parsed apart from it.
+pub(crate) fn expand_steps(spec: &Spec, steps: &mut [ScenarioStep]) {
+    Expander {
+        defines: &spec.defines,
+        tables: &spec.tables,
+        uses: Vec::new(),
+        error: None,
+    }
+    .steps(steps);
 }
 
 /// A recorded trace: scenario steps with no surrounding declaration.

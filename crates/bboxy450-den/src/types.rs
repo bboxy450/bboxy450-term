@@ -104,7 +104,16 @@ impl Names<'_> {
                 }
             }
             ExprKind::Call(name, args) => {
-                if name != "Set" {
+                if self.spec.tables.iter().any(|t| t.name.text == *name) {
+                    // A table call with one argument was expanded by the parser.
+                    self.diagnostics.push(diagnostic(
+                        self.spec,
+                        expr.pos,
+                        "X303",
+                        format!("table {name} takes one argument, its key"),
+                        "pass one value of the table's key enum",
+                    ));
+                } else if name != "Set" {
                     self.use_name(name, expr.pos, locals);
                 }
                 for arg in args {
@@ -169,8 +178,65 @@ pub(crate) fn names(spec: &Spec) -> Vec<Diagnostic> {
         .chain(spec.properties.iter().map(|p| &p.name))
         .chain(spec.assumptions.iter().map(|a| &a.name))
         .chain(spec.opens.iter().map(|a| &a.name))
+        .chain(spec.defines.iter().map(|d| &d.name))
+        .chain(spec.tables.iter().map(|t| &t.name))
         .chain(imported)
         .collect();
+    // A table is a total function on its key enum.
+    for table in &spec.tables {
+        let enumeration = |name: &str| spec.enums.iter().find(|e| e.name.text == name);
+        if let Ty::Named(domain) | Ty::Set(domain) = &table.value.kind
+            && enumeration(domain).is_none()
+        {
+            errors.push(diagnostic(
+                spec,
+                table.value.pos,
+                "X201",
+                format!("{domain} is not declared"),
+                "declare the enum or correct its spelling",
+            ));
+        }
+        let Some(key) = enumeration(&table.key.text) else {
+            errors.push(diagnostic(
+                spec,
+                table.key.pos,
+                "X201",
+                format!("{} is not declared", table.key.text),
+                "a table's key is a declared enum",
+            ));
+            continue;
+        };
+        duplicates(
+            spec,
+            table.entries.iter().map(|(member, _)| member),
+            &mut errors,
+        );
+        for (member, _) in &table.entries {
+            if !key.members.iter().any(|m| m.text == member.text) {
+                errors.push(diagnostic(
+                    spec,
+                    member.pos,
+                    "X201",
+                    format!("{}.{} is not declared", key.name.text, member.text),
+                    "use a member of the table's key enum",
+                ));
+            }
+        }
+        for member in &key.members {
+            if !table.entries.iter().any(|(m, _)| m.text == member.text) {
+                errors.push(diagnostic(
+                    spec,
+                    table.name.pos,
+                    "X402",
+                    format!(
+                        "table {} has no entry for {}.{}",
+                        table.name.text, key.name.text, member.text
+                    ),
+                    "add an entry for every member of the key enum",
+                ));
+            }
+        }
+    }
     // A source names a declaration, or a case as `Event.case`.
     for source in &spec.sources {
         let first = &source.target[0];
@@ -273,6 +339,20 @@ pub(crate) fn names(spec: &Spec) -> Vec<Diagnostic> {
         diagnostics: vec![],
         unused: vec![],
     };
+    // A define is checked where it is written; its uses are then its copy.
+    for define in &spec.defines {
+        check.expr(&define.expr, &[]);
+        // A later define repeats this one's expression: report it once.
+        if !check.diagnostics.is_empty() {
+            return check.diagnostics;
+        }
+    }
+    for (_, value) in spec.tables.iter().flat_map(|t| &t.entries) {
+        check.expr(value, &[]);
+    }
+    if !check.diagnostics.is_empty() {
+        return check.diagnostics;
+    }
     for field in &spec.fields {
         check.ty(&field.ty);
         check.expr(&field.initial, &[]);
@@ -349,6 +429,26 @@ pub(crate) fn names(spec: &Spec) -> Vec<Diagnostic> {
     }
     if !check.diagnostics.is_empty() {
         return check.diagnostics;
+    }
+    for name in spec
+        .defines
+        .iter()
+        .map(|d| &d.name)
+        .chain(spec.tables.iter().map(|t| &t.name))
+    {
+        let what = [
+            format!("define {}", name.text),
+            format!("table {}", name.text),
+        ];
+        if !spec.expansions.iter().any(|(_, used)| what.contains(used)) {
+            check.diagnostics.push(diagnostic(
+                spec,
+                name.pos,
+                "X203",
+                format!("{} is declared but never used", name.text),
+                "use the declaration or remove it",
+            ));
+        }
     }
     for (name, pos) in &check.declared {
         if !check.used.contains(name) {
@@ -733,6 +833,59 @@ fn is_closed(expr: &Expr, bindings: &[String]) -> bool {
 /// Checks types after all names resolve. Bound checks are separate from integer typing.
 pub(crate) fn types(spec: &Spec) -> Vec<Diagnostic> {
     let mut errors = vec![];
+    // Defines and tables are typed where they are written, before their uses.
+    for define in &spec.defines {
+        match expr_type(spec, &define.expr, &[], None) {
+            Ok(Ty::Bool | Ty::Int(..)) => {}
+            Ok(other) => errors.push(type_error(
+                spec,
+                define.expr.pos,
+                format!(
+                    "define {} is {}; a define is a Bool or an Int",
+                    define.name.text,
+                    show_ty(&other)
+                ),
+            )),
+            Err(error) => errors.push(error),
+        }
+        if !errors.is_empty() {
+            return errors;
+        }
+    }
+    for table in &spec.tables {
+        if matches!(table.value.kind, Ty::Set(_)) {
+            errors.push(type_error(
+                spec,
+                table.value.pos,
+                "a table maps to Bool, a bounded Int or an enum",
+            ));
+            continue;
+        }
+        for (_, value) in &table.entries {
+            match expr_type(spec, value, &[], Some(&table.value.kind)) {
+                Err(error) => errors.push(error),
+                Ok(actual) => {
+                    if let Err(error) = require(spec, value.pos, &actual, &table.value.kind) {
+                        errors.push(error);
+                    } else if let (Ty::Int(lo, hi), ExprKind::Int(n)) =
+                        (&table.value.kind, &value.kind)
+                        && !(lo..=hi).contains(&n)
+                    {
+                        errors.push(diagnostic(
+                            spec,
+                            value.pos,
+                            "X302",
+                            format!("{n} is outside {}", show_ty(&table.value.kind)),
+                            "use a value within the table's declared range",
+                        ));
+                    }
+                }
+            }
+        }
+    }
+    if !errors.is_empty() {
+        return errors;
+    }
     for enumeration in &spec.enums {
         if enumeration.members.is_empty() {
             errors.push(type_error(

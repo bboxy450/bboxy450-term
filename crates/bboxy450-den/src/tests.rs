@@ -545,3 +545,102 @@ fn open_questions_and_sources_are_carried_not_checked() {
     let twice = source.replace("open DOOR_Q2", "open DOOR_001");
     assert_eq!(check(&twice).diagnostics[0].code, "X202");
 }
+/// A define and a table are gone after the parser: the checker, the TLA+
+/// model and the Lean machine see only conditionals and comparisons.
+#[test]
+fn defines_and_tables_expand_before_every_engine() {
+    let source = include_str!("../tests/sound/shape.den");
+    let report = check(source);
+    assert!(report.is_sound(), "{}", report.to_text());
+    // The same machine with every define and table written out by hand.
+    let by_hand = source
+        .lines()
+        .filter(|l| {
+            let l = l.trim_start();
+            !(l.starts_with("define ") || l.starts_with("table ") || l.contains(" -> "))
+        })
+        .map(|l| format!("{l}\n"))
+        .collect::<String>()
+        .replace("  }\n\n  event Draw", "\n  event Draw")
+        .replace("!Complete", "!(forall s: Side. drawn(s))")
+        .replace("Resettable", "((forall s: Side. drawn(s)) && score > 0)")
+        .replace("!Scored", "!(score > 0)")
+        .replace("Complete ==>", "(forall s: Side. drawn(s)) ==>")
+        .replace(
+            "Points(s)",
+            "(if s == Side.Left then 1 else if s == Side.Right then 2 else 3)",
+        )
+        .replace(
+            "best = RankOf(s)",
+            "best = if s == Side.Base then Rank.High else Rank.Low",
+        )
+        .replace("RankOf(Side.Base)", "Rank.High")
+        .replace("Points(Side.Left) + Points(Side.Base)", "4");
+    let plain = check(&by_hand);
+    assert!(plain.is_sound(), "{}\n{by_hand}", plain.to_text());
+    assert_eq!(
+        (report.records[0].states, report.records[0].transitions),
+        (plain.records[0].states, plain.records[0].transitions)
+    );
+    let model = crate::model(source).unwrap();
+    assert_eq!(
+        model.check(eval::STATES).unwrap().states.len(),
+        report.records[0].states
+    );
+    // Lean states a theorem through the expansion.
+    let theorem = source.replace("invariant SHAPE_001", "theorem SHAPE_001");
+    let statements = lean(&theorem).unwrap().unwrap().statements().unwrap();
+    assert!(statements.contains("SHAPE_001"), "{statements}");
+
+    let outline = crate::declarations(source).unwrap();
+    let names = |kind: &str| -> Vec<&str> {
+        outline
+            .iter()
+            .filter(|d| d.kind == kind)
+            .map(|d| d.name.as_str())
+            .collect()
+    };
+    assert_eq!(names("define"), ["Complete", "Scored", "Resettable"]);
+    assert_eq!(names("table"), ["Points", "RankOf"]);
+    let markdown = crate::render::render(source).unwrap().markdown;
+    assert!(markdown.contains("## Definitions\n\nEach name stands for its expression wherever it is used.\n\n- `Complete` = `forall s: Side. drawn(s)`\n- `Scored` = `score > 0`\n"), "{markdown}");
+    assert!(markdown.contains("## Table Points\n\n| Side | Int[1..3] |\n|---|---|\n| `Left` | `1` |\n| `Right` | `2` |\n| `Base` | `3` |\n"), "{markdown}");
+
+    // A define sees only the state and the defines above it; a binding hides it.
+    let code = |from: &str, to: &str| {
+        assert!(source.contains(from), "{from}");
+        let report = check(&source.replace(from, to));
+        report
+            .diagnostics
+            .iter()
+            .map(|d| format!("{} {}", d.code, d.message))
+            .collect::<Vec<_>>()
+    };
+    assert_eq!(
+        code("define Scored = score > 0", "define Scored = Resettable"),
+        ["X201 Resettable is not declared"]
+    );
+    assert_eq!(
+        code("define Scored = score > 0", "define Scored = best"),
+        ["X301 define Scored is Rank; a define is a Bool or an Int"]
+    );
+    assert_eq!(
+        code(
+            "Side.Base -> Rank.High",
+            "Side.Base -> Rank.High,\n    Left -> High"
+        ),
+        ["X202 Left is declared twice in this scope"]
+    );
+    assert_eq!(
+        code("Base -> 3 }", "Base -> 3, Top -> 3 }"),
+        ["X201 Side.Top is not declared"]
+    );
+    assert_eq!(
+        code("best = RankOf(s) }", "best = RankOf(best) }"),
+        ["X301 expected Rank, found Side (in table RankOf, expanded here)"]
+    );
+    assert_eq!(
+        code("table Points: Side", "table Points: Sides"),
+        ["X201 Sides is not declared"]
+    );
+}

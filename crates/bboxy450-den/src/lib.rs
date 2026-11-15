@@ -109,7 +109,7 @@ pub fn check(source: &str) -> Report {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Declaration {
     /// spec, enum, field, event, effect, handler, invariant, theorem, property,
-    /// assumption, scenario, open or source. A header record is its record kind, then one
+    /// assumption, scenario, open, source, define or table. A header record is its record kind, then one
     /// `field` per top-level field and one for its `managed` block.
     pub kind: &'static str,
     pub name: String,
@@ -173,6 +173,18 @@ pub fn declarations(source: &str) -> Result<Vec<Declaration>, Vec<Diagnostic>> {
             kind: "scenario",
             name: scenario.name.clone(),
             line: scenario.pos.line,
+        });
+    }
+    for (kind, name) in spec
+        .defines
+        .iter()
+        .map(|d| ("define", &d.name))
+        .chain(spec.tables.iter().map(|t| ("table", &t.name)))
+    {
+        out.push(Declaration {
+            kind,
+            name: name.text.clone(),
+            line: name.pos.line,
         });
     }
     spec.opens.iter().for_each(|o| {

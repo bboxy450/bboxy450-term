@@ -71,8 +71,18 @@ pub(crate) fn check(source: &str) -> Report {
     }
     Report {
         records: vec![summary],
-        diagnostics,
+        diagnostics: expanded(s, diagnostics),
     }
+}
+/// Names the define or table a diagnostic at its use site came through.
+fn expanded(s: &Spec, mut diagnostics: Vec<Diagnostic>) -> Vec<Diagnostic> {
+    for d in &mut diagnostics {
+        let here = |pos: &Pos| pos.line == d.line && pos.column == d.column;
+        if let Some((_, what)) = s.expansions.iter().find(|(pos, _)| here(pos)) {
+            d.message = format!("{} (in {what}, expanded here)", d.message);
+        }
+    }
+    diagnostics
 }
 /// Names, types, totality and steps: everything a machine needs to have one meaning.
 fn well_formed(s: &Spec) -> Vec<Diagnostic> {
@@ -98,7 +108,7 @@ pub(crate) fn load(source: &str) -> Result<Spec, Vec<Diagnostic>> {
     if diagnostics.is_empty() {
         Ok(spec)
     } else {
-        Err(diagnostics)
+        Err(expanded(&spec, diagnostics))
     }
 }
 /// Replays recorded steps against a sound spec, as one more scenario.
@@ -110,7 +120,8 @@ pub(crate) fn replay(source: &str, trace: &str) -> Report {
     let mut spec = load(source).expect("sound");
     let diagnostics = match parser::parse_trace(trace, &spec.name.text) {
         Err(diagnostics) => diagnostics,
-        Ok(steps) => {
+        Ok(mut steps) => {
+            parser::expand_steps(&spec, &mut steps);
             // Only the trace is checked: the spec's own scenarios already hold.
             spec.scenarios = vec![Scenario {
                 name: "the recorded trace".into(),
