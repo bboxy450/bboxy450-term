@@ -288,7 +288,11 @@ fn run() -> Result<bool, String> {
     }
     files.sort();
     files.dedup();
-    let mut sound = true;
+    if files.is_empty() && unreadable == 0 {
+        return Err("no .den files found".into());
+    }
+    let (mut sound, mut unsound, mut states, mut transitions) = (0usize, 0usize, 0, 0);
+    let mut noun = "spec";
     for path in files {
         let source = match fs::read_to_string(&path) {
             Ok(source) => source,
@@ -299,7 +303,18 @@ fn run() -> Result<bool, String> {
             }
         };
         let report = bboxy450_den::check(&source);
-        sound &= report.is_sound();
+        if report.is_sound() {
+            sound += 1;
+        } else {
+            unsound += 1;
+        }
+        for record in &report.records {
+            states += record.states;
+            transitions += record.transitions;
+            if record.kind != "spec" {
+                noun = "record";
+            }
+        }
         if json {
             println!(
                 "{{\"path\":{},\"report\":{}}}",
@@ -312,10 +327,34 @@ fn run() -> Result<bool, String> {
             }
         }
     }
+    // One line says what was checked, so a clean run is not mistaken for no run.
+    if !json && unsound > 0 {
+        println!("{sound} sound, {unsound} unsound");
+    } else if !json {
+        println!(
+            "{sound} {noun}{} sound ({} states, {} transitions)",
+            if sound == 1 { "" } else { "s" },
+            grouped(states),
+            grouped(transitions)
+        );
+    }
     if unreadable > 0 {
         return Err(format!("{unreadable} path(s) could not be read"));
     }
-    Ok(sound)
+    Ok(unsound == 0)
+}
+
+/// `1234567` as `1,234,567`.
+fn grouped(n: usize) -> String {
+    let digits = n.to_string();
+    let mut out = String::new();
+    for (i, c) in digits.chars().enumerate() {
+        if i > 0 && (digits.len() - i).is_multiple_of(3) {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
 }
 
 fn main() -> ExitCode {

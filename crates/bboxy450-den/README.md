@@ -21,7 +21,11 @@ bboxy450-den replay SPEC TRACE...
 A path is a file or a directory recursively walked for `*.den`, in sorted order.
 Symbolic links are refused. Text output prefixes each diagnostic with its path;
 `--json` emits one object per file, with `path` and `report` fields.
-Exit 0 means every input is sound, 1 means a diagnostic, and 2 means usage or I/O failure.
+Every file is checked and reported; an unreadable one is named on stderr and the rest
+are still checked. The last line of text output is the summary:
+`14 specs sound (2,113 states, 9,870 transitions)`, or `11 sound, 3 unsound`.
+Exit 0 means every input is sound, 1 means a diagnostic, and 2 means usage or I/O failure,
+including `no .den files found`.
 
 ## A complete spec
 

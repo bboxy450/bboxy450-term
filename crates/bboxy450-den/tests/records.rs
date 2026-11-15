@@ -570,11 +570,15 @@ fn the_cli_checks_and_lowers_records() {
     };
     let sound = den(&["check", dir("records").to_str().unwrap()]);
     assert_eq!(sound.status.code(), Some(0), "{sound:?}");
-    assert!(sound.stdout.is_empty());
+    assert_eq!(
+        sound.stdout,
+        b"11 records sound (0 states, 0 transitions)\n"
+    );
     let unsound = den(&["check", dir("unsound").join("records").to_str().unwrap()]);
     assert_eq!(unsound.status.code(), Some(1));
     let text = String::from_utf8(unsound.stdout).unwrap();
-    assert_eq!(text.lines().count(), 7, "{text}");
+    assert_eq!(text.lines().count(), 8, "{text}");
+    assert!(text.ends_with("\n0 sound, 7 unsound\n"));
     assert!(
         text.contains(
             "X357-invalid-task-status.den:9:5 X357 Finished is not a task status. Repair: "

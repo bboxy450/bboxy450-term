@@ -53,7 +53,11 @@ fn checks_directory_recursively_and_ignores_other_extensions() {
     fs::write(temp.0.join("not-den.txt"), "this is not Den").unwrap();
     let result = cli(&["check".as_ref(), temp.0.as_os_str()]);
     assert_eq!(result.status.code(), Some(0), "{:?}", result);
-    assert!(result.stdout.is_empty());
+    let stdout = String::from_utf8(result.stdout).unwrap();
+    assert!(
+        stdout.starts_with("1 spec sound (") && stdout.ends_with(" transitions)\n"),
+        "{stdout}"
+    );
     assert!(result.stderr.is_empty());
 }
 
@@ -299,6 +303,7 @@ fn every_file_is_reported_when_some_are_unsound_or_unreadable() {
         "{stdout}"
     );
     assert!(!stdout.contains("b.den:"), "{stdout}");
+    assert!(stdout.ends_with("\n1 sound, 2 unsound\n"), "{stdout}");
     assert!(
         stderr.contains("missing.den: ") && stderr.contains("c.den: "),
         "{stderr}"
@@ -320,4 +325,67 @@ fn every_file_is_reported_when_some_are_unsound_or_unreadable() {
             .all(|l| l.starts_with("{\"path\":") && l.contains("\"report\":{\"records\":"))
     );
     assert!(lines[1].contains("\"diagnostics\":[]"));
+}
+
+#[test]
+fn a_clean_run_says_what_it_checked_and_an_empty_run_is_not_success() {
+    let temp = Temp::new();
+    let result = cli(&["check".as_ref(), temp.0.as_os_str()]);
+    assert_eq!(result.status.code(), Some(2));
+    assert!(result.stdout.is_empty());
+    assert_eq!(
+        String::from_utf8(result.stderr).unwrap(),
+        "no .den files found\n"
+    );
+
+    let result = cli(&["check".as_ref(), fixture("sound").as_os_str()]);
+    assert_eq!(result.status.code(), Some(0), "{result:?}");
+    let stdout = String::from_utf8(result.stdout).unwrap();
+    // Counts are the sum over the files, with thousands separators.
+    let mut states = 0;
+    let mut transitions = 0;
+    let mut files = 0;
+    for entry in fs::read_dir(fixture("sound")).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_some_and(|x| x == "den") {
+            let report = bboxy450_den::check(&fs::read_to_string(path).unwrap());
+            states += report.records[0].states;
+            transitions += report.records[0].transitions;
+            files += 1;
+        }
+    }
+    let grouped = |n: usize| {
+        let s = n.to_string();
+        if s.len() > 3 {
+            format!("{},{}", &s[..s.len() - 3], &s[s.len() - 3..])
+        } else {
+            s
+        }
+    };
+    assert!(
+        states < 1_000_000 && transitions < 1_000_000,
+        "{states} {transitions}"
+    );
+    assert_eq!(
+        stdout,
+        format!(
+            "{files} specs sound ({} states, {} transitions)\n",
+            grouped(states),
+            grouped(transitions)
+        )
+    );
+    // Header records are counted as records, and --json prints objects only.
+    let result = cli(&["check".as_ref(), fixture("records").as_os_str()]);
+    assert_eq!(
+        String::from_utf8(result.stdout).unwrap(),
+        "11 records sound (0 states, 0 transitions)\n"
+    );
+    let result = cli(&[
+        "check".as_ref(),
+        "--json".as_ref(),
+        fixture("sound/turnstile.den").as_os_str(),
+    ]);
+    let stdout = String::from_utf8(result.stdout).unwrap();
+    assert_eq!(stdout.lines().count(), 1);
+    assert!(stdout.starts_with("{\"path\":"));
 }
