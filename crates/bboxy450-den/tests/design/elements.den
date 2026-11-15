@@ -1,0 +1,8 @@
+module design.Elements
+
+// A vocabulary: enums and no machine. Other specs import it.
+spec Elements {
+  intent "The four elements every spec of the circle shares."
+
+  enum Element { Fire, Water, Air, Earth }
+}

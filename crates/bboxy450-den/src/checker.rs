@@ -7,8 +7,8 @@
 use crate::{Diagnostic, Report, Summary, ast::*, eval::*, lower, parser, types};
 use std::collections::BTreeSet;
 
-pub(crate) fn check(source: &str) -> Report {
-    let spec = match parser::parse(source) {
+pub(crate) fn check(source: &str, resolver: Option<&crate::Resolver>) -> Report {
+    let spec = match parser::parse_with(source, resolver) {
         Ok(s) => s,
         Err(diagnostics) => {
             return Report {
@@ -102,8 +102,11 @@ fn well_formed(s: &Spec) -> Vec<Diagnostic> {
     diagnostics
 }
 /// A well-formed spec, or the diagnostics that say why it has no single meaning.
-pub(crate) fn load(source: &str) -> Result<Spec, Vec<Diagnostic>> {
-    let spec = parser::parse(source)?;
+pub(crate) fn load(
+    source: &str,
+    resolver: Option<&crate::Resolver>,
+) -> Result<Spec, Vec<Diagnostic>> {
+    let spec = parser::parse_with(source, resolver)?;
     let diagnostics = well_formed(&spec);
     if diagnostics.is_empty() {
         Ok(spec)
@@ -113,11 +116,11 @@ pub(crate) fn load(source: &str) -> Result<Spec, Vec<Diagnostic>> {
 }
 /// Replays recorded steps against a sound spec, as one more scenario.
 pub(crate) fn replay(source: &str, trace: &str) -> Report {
-    let report = check(source);
+    let report = check(source, None);
     if !report.is_sound() {
         return report;
     }
-    let mut spec = load(source).expect("sound");
+    let mut spec = load(source, None).expect("sound");
     let diagnostics = match parser::parse_trace(trace, &spec.name.text) {
         Err(diagnostics) => diagnostics,
         Ok(mut steps) => {
@@ -676,6 +679,11 @@ fn completeness(s: &Spec) -> Vec<Diagnostic> {
             "intent is missing or empty",
             "add a nonempty intent string",
         ))
+    }
+    // A spec that declares only enums is a vocabulary for others to import:
+    // it has no machine to hold an invariant or run a scenario.
+    if types::is_vocabulary(s) {
+        return ds;
     }
     if s.invariants.is_empty() {
         ds.push(diagnostic(

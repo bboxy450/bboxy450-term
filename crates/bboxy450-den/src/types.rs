@@ -163,10 +163,35 @@ impl Names<'_> {
     }
 }
 
+/// True for a spec with enums and no machine: no state, event or handler.
+pub(crate) fn is_vocabulary(spec: &Spec) -> bool {
+    !spec.enums.is_empty()
+        && spec.fields.is_empty()
+        && spec.events.is_empty()
+        && spec.handlers.is_empty()
+}
 /// Checks declarations and references before any typing or execution.
 pub(crate) fn names(spec: &Spec) -> Vec<Diagnostic> {
     let mut errors = vec![];
-    let imported = spec.imports.iter().filter_map(|path| path.last());
+    let module = |path: &Vec<Name>| {
+        path.iter()
+            .map(|n| n.text.as_str())
+            .collect::<Vec<_>>()
+            .join(".")
+    };
+    // The enums that came through an import, by the import's module.
+    let brought = |path: &Vec<Name>| {
+        let module = module(path);
+        spec.enums
+            .iter()
+            .filter(move |e| e.from.as_deref() == Some(module.as_str()))
+    };
+    // An import whose spec is named like its enum (`specs.Element`) is one name.
+    let imported = spec
+        .imports
+        .iter()
+        .filter(|path| !brought(path).any(|e| Some(&e.name.text) == path.last().map(|n| &n.text)))
+        .filter_map(|path| path.last());
     let globals: Vec<_> = spec
         .enums
         .iter()
@@ -450,8 +475,21 @@ pub(crate) fn names(spec: &Spec) -> Vec<Diagnostic> {
             ));
         }
     }
+    // An imported enum is used through its import, and the enums of a
+    // vocabulary spec are there to be imported.
+    let exported = |name: &String| {
+        spec.enums
+            .iter()
+            .any(|e| e.name.text == *name && (e.from.is_some() || is_vocabulary(spec)))
+    };
+    let import_used = |name: &String| {
+        spec.imports
+            .iter()
+            .filter(|path| path.last().is_some_and(|n| n.text == *name))
+            .any(|path| brought(path).any(|e| check.used.contains(&e.name.text)))
+    };
     for (name, pos) in &check.declared {
-        if !check.used.contains(name) {
+        if !check.used.contains(name) && !exported(name) && !import_used(name) {
             check.diagnostics.push(diagnostic(
                 spec,
                 *pos,

@@ -1,0 +1,44 @@
+module design.Gather
+
+import design.Elements
+
+spec Gather {
+  intent "A hand gathers each element once and carries the weight of what it holds."
+
+  state {
+    held: Set[Element] = Set()
+    count: Int[0..4] = 0
+    load: Int[0..6] = 0
+  }
+
+  define Full = count == 4
+  table Weight: Element -> Int[1..2] { Fire -> 1, Water -> 2, Air -> 1, Earth -> 2 }
+
+  event Gain(e: Element)
+  event Lose(e: Element)
+
+  on Gain(e) {
+    case gain if !held(e) => { held += e; count = count + 1; load = load + Weight(e) }
+    case have otherwise => reject Held
+  }
+  on Lose(e) {
+    case lose if held(e) => { held -= e; count = count - 1; load = load - Weight(e) }
+    case missing otherwise => ignore NotHeld
+  }
+
+  invariant GATHER_001 "a full hand carries every weight" = Full ==> load == 6
+  invariant GATHER_002 "an empty hand weighs nothing" = count == 0 ==> load == 0
+
+  open GATHER_Q1 "May a hand hold the same element twice once it is full?"
+  source GATHER_001 "decisions/d0007-weights-of-the-elements.md"
+
+  scenario "gain two, lose one" {
+    Gain(Element.Water) ~> accepted
+    Gain(Element.Water) ~> rejected Held
+    Gain(Element.Fire) ~> accepted
+    expect load == Weight(Element.Water) + Weight(Element.Fire) && !Full
+    Lose(Element.Water) ~> accepted
+    Lose(Element.Air) ~> ignored NotHeld
+    expect load == 1 && count == 1
+  }
+}

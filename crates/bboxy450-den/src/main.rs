@@ -61,7 +61,7 @@ fn json_string(value: &str) -> String {
     result
 }
 
-const USAGE: &str = "usage: bboxy450-den check [--json] PATH...\n       bboxy450-den render --markdown [--out DIR] [--overwrite] [--no-mermaid] PATH...\n       bboxy450-den lean --out DIR [--expect-fail] PATH...\n       bboxy450-den replay SPEC TRACE...";
+const USAGE: &str = "usage: bboxy450-den check [--json] [--root DIR] PATH...\n       bboxy450-den render --markdown [--out DIR] [--overwrite] [--no-mermaid] PATH...\n       bboxy450-den lean --out DIR [--expect-fail] PATH...\n       bboxy450-den replay SPEC TRACE...";
 
 /// `replay SPEC TRACE...`: each trace file is a recorded run in scenario-step
 /// syntax; exit 1 when the spec does not allow one of them.
@@ -125,7 +125,8 @@ fn lean(args: impl Iterator<Item = std::ffi::OsString>) -> Result<bool, String> 
         }
         let source =
             fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))?;
-        let lean = match bboxy450_den::lean(&source) {
+        let resolver = bboxy450_den::file_resolver(&path, None);
+        let lean = match bboxy450_den::lean_with(&source, &resolver) {
             Ok(Some(lean)) => lean,
             Ok(None) => continue,
             Err(report) => {
@@ -211,7 +212,8 @@ fn render(args: impl Iterator<Item = std::ffi::OsString>) -> Result<bool, String
             None => path.clone(),
         }
         .with_extension("md");
-        match bboxy450_den::render::render_with(&source, mermaid) {
+        let resolver = bboxy450_den::file_resolver(&path, None);
+        match bboxy450_den::render::render_resolved(&source, mermaid, &resolver) {
             Err(report) => {
                 sound = false;
                 for line in report.to_text().lines() {
@@ -260,13 +262,18 @@ fn run() -> Result<bool, String> {
         _ => return Err(USAGE.into()),
     }
     let mut json = false;
+    let mut root: Option<PathBuf> = None;
     let mut paths = Vec::new();
     let mut options = true;
-    for arg in args {
+    while let Some(arg) = args.next() {
         if options && arg == OsStr::new("--") {
             options = false;
         } else if options && arg == OsStr::new("--json") {
             json = true;
+        } else if options && arg == OsStr::new("--root") {
+            root = Some(PathBuf::from(
+                args.next().ok_or("--root needs a directory")?,
+            ));
         } else if options && arg.to_string_lossy().starts_with('-') {
             return Err(format!("unknown option: {}", arg.to_string_lossy()));
         } else {
@@ -302,7 +309,8 @@ fn run() -> Result<bool, String> {
                 continue;
             }
         };
-        let report = bboxy450_den::check(&source);
+        let resolver = bboxy450_den::file_resolver(&path, root.as_deref());
+        let report = bboxy450_den::check_with(&source, &resolver);
         if report.is_sound() {
             sound += 1;
         } else {

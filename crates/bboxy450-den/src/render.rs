@@ -41,7 +41,22 @@ pub fn render(source: &str) -> Result<Rendered, Report> {
 
 /// [`render`], with the Mermaid views left out when `mermaid` is false.
 pub fn render_with(source: &str, mermaid: bool) -> Result<Rendered, Report> {
-    let report = crate::check(source);
+    render_inner(source, mermaid, None)
+}
+/// [`render_with`], with imports resolved as in [`crate::check_with`].
+pub fn render_resolved(
+    source: &str,
+    mermaid: bool,
+    resolver: &crate::Resolver,
+) -> Result<Rendered, Report> {
+    render_inner(source, mermaid, Some(resolver))
+}
+fn render_inner(
+    source: &str,
+    mermaid: bool,
+    resolver: Option<&crate::Resolver>,
+) -> Result<Rendered, Report> {
+    let report = crate::check_inner(source, resolver);
     if !report.is_sound() {
         return Err(report);
     }
@@ -55,7 +70,7 @@ pub fn render_with(source: &str, mermaid: bool) -> Result<Rendered, Report> {
             source_sha256,
         });
     }
-    let spec = crate::parser::parse(source).map_err(|diagnostics| Report {
+    let spec = crate::parser::parse_with(source, resolver).map_err(|diagnostics| Report {
         records: Vec::new(),
         diagnostics,
     })?;
@@ -143,7 +158,11 @@ fn markdown(
                 .map(|m| format!("`{}`", m.text))
                 .collect::<Vec<_>>()
                 .join(", ");
-            let _ = writeln!(out, "- `{}`: {members}", e.name.text);
+            let from = e
+                .from
+                .as_ref()
+                .map_or(String::new(), |module| format!(" (from `{module}`)"));
+            let _ = writeln!(out, "- `{}`: {members}{from}", e.name.text);
         }
         let _ = writeln!(out);
     }

@@ -773,7 +773,11 @@ impl Parser {
                     }
                 }
                 self.need("}")?;
-                result.enums.push(Enum { name, members });
+                result.enums.push(Enum {
+                    name,
+                    members,
+                    from: None,
+                });
             } else if self.take("state") {
                 if has_state {
                     return Err(declaration_pos.diagnostic(
@@ -1352,8 +1356,58 @@ pub(crate) fn parse_trace(
         .map_err(|e| vec![e])
 }
 pub(crate) fn parse(source: &str) -> Result<Spec, Vec<Diagnostic>> {
+    parse_with(source, None)
+}
+/// [`parse`], with each import resolved to its source: the enums the imported
+/// spec declares become enums of this one, placed at the import line. Only
+/// the imported file's own enums come in; its imports are not followed.
+pub(crate) fn parse_with(
+    source: &str,
+    resolver: Option<&crate::Resolver>,
+) -> Result<Spec, Vec<Diagnostic>> {
     let tokens = Lexer::new(source).tokens().map_err(|e| vec![e])?;
-    Parser::new(tokens, "").spec().map_err(|e| vec![e])
+    let mut spec = Parser::new(tokens, "").spec().map_err(|e| vec![e])?;
+    let Some(resolve) = resolver else {
+        return Ok(spec);
+    };
+    let mut imported = Vec::new();
+    let mut unresolved = Vec::new();
+    for import in &spec.imports {
+        let path: Vec<String> = import.iter().map(|n| n.text.clone()).collect();
+        let module = path.join(".");
+        let pos = import[0].pos;
+        let refuse = |why: String| {
+            pos.diagnostic(
+                "X351",
+                &spec.name.text,
+                format!("import {module} does not resolve: {why}"),
+                "correct the module path, or pass the directory that holds it with --root",
+            )
+        };
+        match resolve(&path) {
+            Err(why) => unresolved.push(refuse(why)),
+            // A header record is a link target with nothing to bring in.
+            Ok(text) if crate::record::is_record(&text) => {}
+            Ok(text) => match parse(&text) {
+                Err(diagnostics) => unresolved.push(refuse(format!(
+                    "its file does not parse ({}:{} {})",
+                    diagnostics[0].line, diagnostics[0].column, diagnostics[0].message
+                ))),
+                Ok(other) => imported.extend(other.enums.into_iter().map(|mut e| {
+                    e.name.pos = pos;
+                    e.members.iter_mut().for_each(|m| m.pos = pos);
+                    e.from = Some(module.clone());
+                    e
+                })),
+            },
+        }
+    }
+    if !unresolved.is_empty() {
+        return Err(unresolved);
+    }
+    imported.append(&mut spec.enums);
+    spec.enums = imported;
+    Ok(spec)
 }
 
 #[cfg(test)]

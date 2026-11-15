@@ -73,9 +73,111 @@ pub struct Summary {
 }
 /// Checks syntax, names, types, totality, steps, bounded safety, vacuity and examples.
 /// A header record (every kind but a `spec` with a machine) gets the checks of [`load`].
+/// Imports are names only: an enum declared in another file is not visible
+/// here; use [`check_with`] or [`check_file`] for that.
 pub fn check(source: &str) -> Report {
+    check_inner(source, None)
+}
+/// Gives the source of an imported module, by its path segments
+/// (`["specs", "shared", "Elements"]`), or says where it looked.
+pub type Resolver<'a> = dyn Fn(&[String]) -> Result<String, String> + 'a;
+/// [`check`], with every import of a machine spec resolved: the enums the
+/// imported spec declares are usable as if declared at the import line. An
+/// import the resolver cannot give is X351; an imported enum declared again
+/// is X202; an import none of whose names is used is X203. Only the imported
+/// file's own enums come in: its imports are not followed.
+pub fn check_with(source: &str, resolver: &Resolver) -> Report {
+    check_inner(source, Some(resolver))
+}
+/// The resolver for files. Module `a.b.C` is the `.den` file whose `module`
+/// line says `a.b.C`. It is looked for in the directory of `file`, then in
+/// each parent up to `root`; in each of those directories `D`, in `D/a/b`,
+/// `D/b` and `D` itself. `root` defaults to the nearest parent holding `.git`,
+/// else the directory of `file`. Directories are not searched recursively.
+#[expect(
+    clippy::disallowed_methods,
+    reason = "A standalone checker reads its inputs synchronously; no UI thread exists here."
+)]
+pub fn file_resolver(
+    file: &std::path::Path,
+    root: Option<&std::path::Path>,
+) -> impl Fn(&[String]) -> Result<String, String> + use<> {
+    use std::path::{Path, PathBuf};
+    let absolute = |path: &Path| path.canonicalize().unwrap_or_else(|_| path.to_owned());
+    let start = absolute(
+        file.parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or(Path::new(".")),
+    );
+    let root = root.map(absolute).unwrap_or_else(|| {
+        start
+            .ancestors()
+            .find(|dir| dir.join(".git").exists())
+            .unwrap_or(&start)
+            .to_owned()
+    });
+    move |module: &[String]| {
+        let wanted = module.join(".");
+        let folders = &module[..module.len().saturating_sub(1)];
+        let mut places: Vec<PathBuf> = start
+            .ancestors()
+            .take_while(|dir| dir.starts_with(&root))
+            .map(Path::to_owned)
+            .collect();
+        if places.is_empty() {
+            places.push(root.clone());
+        }
+        for place in &places {
+            for skip in 0..=folders.len() {
+                let folder = folders[skip..]
+                    .iter()
+                    .fold(place.clone(), |dir, name| dir.join(name));
+                let Ok(entries) = std::fs::read_dir(&folder) else {
+                    continue;
+                };
+                let mut files: Vec<PathBuf> = entries
+                    .filter_map(|entry| Some(entry.ok()?.path()))
+                    .filter(|path| path.extension().is_some_and(|x| x == "den"))
+                    .collect();
+                files.sort();
+                for path in files {
+                    let Ok(text) = std::fs::read_to_string(&path) else {
+                        continue;
+                    };
+                    let declared = text
+                        .lines()
+                        .map(str::trim)
+                        .find(|line| !line.is_empty() && !line.starts_with("//"))
+                        .and_then(|line| line.strip_prefix("module"))
+                        .map(|path| path.trim().replace('`', ""));
+                    if declared.as_deref() == Some(wanted.as_str()) {
+                        return Ok(text);
+                    }
+                }
+            }
+        }
+        Err(format!(
+            "no .den file declares module {wanted} in {} or its parents up to {}",
+            start.display(),
+            root.display()
+        ))
+    }
+}
+/// Reads and checks one file, resolving its imports with [`file_resolver`].
+pub fn check_file(
+    path: &std::path::Path,
+    root: Option<&std::path::Path>,
+) -> std::io::Result<Report> {
+    #[expect(
+        clippy::disallowed_methods,
+        reason = "A standalone checker reads its input synchronously; no UI thread exists here."
+    )]
+    let source = std::fs::read_to_string(path)?;
+    Ok(check_with(&source, &file_resolver(path, root)))
+}
+fn check_inner(source: &str, resolver: Option<&Resolver>) -> Report {
     if !record::is_record(source) {
-        return checker::check(source);
+        return checker::check(source, resolver);
     }
     let (records, diagnostics) = match (record::parse(source), load(source)) {
         (Ok(parsed), result) => (vec![parsed.record], result.err().unwrap_or_default()),
@@ -222,7 +324,7 @@ pub fn model(source: &str) -> Result<bboxy450_tlc::Model, Report> {
         records: vec![],
         diagnostics,
     };
-    let spec = checker::load(source).map_err(unsound)?;
+    let spec = checker::load(source, None).map_err(unsound)?;
     lower::model(&spec).map_err(|e| {
         unsound(vec![spec.name.pos.diagnostic(
             "X602",
@@ -238,14 +340,27 @@ pub fn model(source: &str) -> Result<bboxy450_tlc::Model, Report> {
 /// no theorem. Unsound specs are refused: a bounded counterexample is cheaper
 /// than a failed proof.
 pub fn lean(source: &str) -> Result<Option<bboxy450_tlc::lean::Machine>, Report> {
-    let report = check(source);
+    lean_inner(source, None)
+}
+/// [`lean`], with imports resolved as in [`check_with`].
+pub fn lean_with(
+    source: &str,
+    resolver: &Resolver,
+) -> Result<Option<bboxy450_tlc::lean::Machine>, Report> {
+    lean_inner(source, Some(resolver))
+}
+fn lean_inner(
+    source: &str,
+    resolver: Option<&Resolver>,
+) -> Result<Option<bboxy450_tlc::lean::Machine>, Report> {
+    let report = check_inner(source, resolver);
     if !report.is_sound() {
         return Err(report);
     }
     if record::is_record(source) {
         return Ok(None);
     }
-    let spec = checker::load(source).expect("sound");
+    let spec = checker::load(source, resolver).expect("sound");
     let machine = lean::machine(&spec);
     if machine.theorems().is_empty() {
         return Ok(None);

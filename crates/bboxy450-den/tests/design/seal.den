@@ -1,0 +1,41 @@
+module design.Seal
+
+import design.Elements
+
+spec Seal {
+  intent "A core can be sealed only while it holds a stable element."
+
+  state {
+    core: Element = Element.Earth
+    sealed: Bool = false
+  }
+
+  table Volatile: Element -> Bool { Fire -> true, Water -> false, Air -> true, Earth -> false }
+  define Stable = !Volatile(core)
+
+  event Fill(e: Element)
+  event Close
+
+  on Fill(e) {
+    case fill if !sealed && e != core => { core = e }
+    case keep otherwise => ignore Unchanged
+  }
+  on Close {
+    case close if !sealed && Stable => { sealed = true }
+    case refuse otherwise => reject Unstable
+  }
+
+  invariant SEAL_001 "nothing volatile is sealed" = sealed ==> Stable
+
+  open SEAL_Q1 "Can a seal be broken, and by whom?"
+  source SEAL_001 "decisions/d0009-stable-cores.md"
+
+  scenario "fire cannot be sealed, water can" {
+    Fill(Element.Fire) ~> accepted
+    Close ~> rejected Unstable
+    Fill(Element.Water) ~> accepted
+    Close ~> accepted
+    Fill(Element.Air) ~> ignored Unchanged
+    expect sealed && core == Element.Water
+  }
+}

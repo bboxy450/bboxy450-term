@@ -1,0 +1,41 @@
+module design.SpeakBroken
+
+import design.Elements
+
+spec Speak {
+  intent "Each word must oppose the last one said, for two turns."
+
+  state {
+    said: Element = Element.Fire
+    turns: Int[0..2] = 0
+  }
+
+  define Spent = turns == 2
+  table Opposes: Element -> Element {
+    Fire -> Water,
+    Water -> Fire,
+    Air -> Earth,
+    Earth -> Air
+  }
+
+  event Speak(e: Element)
+
+  on Speak(e) {
+    case answer if !Spent && e != Opposes(e) => { said = e; turns = turns + 1 }
+    case off otherwise => reject OutOfTurn
+  }
+
+  invariant SPEAK_001 "the first answer to fire is water" = turns == 1 ==> said == Element.Water
+  invariant SPEAK_002 "the last word returns to the first" = Spent ==> said == Element.Fire
+
+  open SPEAK_Q1 "Do air and earth ever enter, or is the circle only fire and water?"
+  source Speak.answer "notes/2026-11-14-circle-rules.md#opposition"
+
+  scenario "fire, water, fire" {
+    Speak(Element.Air) ~> rejected OutOfTurn
+    Speak(Element.Water) ~> accepted
+    Speak(Element.Fire) ~> accepted
+    Speak(Element.Water) ~> rejected OutOfTurn
+    expect Spent && said == Element.Fire
+  }
+}

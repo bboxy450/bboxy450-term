@@ -72,6 +72,8 @@ pub(crate) enum ExprKind {
 pub(crate) struct Enum {
     pub name: Name,
     pub members: Vec<Name>,
+    /// The dotted module this enum was imported from; `None` when declared here.
+    pub from: Option<String>,
 }
 #[derive(Clone, Debug)]
 pub(crate) struct Field {

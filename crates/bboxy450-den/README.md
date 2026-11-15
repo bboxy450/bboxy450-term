@@ -11,7 +11,7 @@ Origin: bboxy450-term, https://github.com/bboxy450/bboxy450-term.
 Credit reuse accurately: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md.
 
 ```
-bboxy450-den check [--json] PATH...
+bboxy450-den check [--json] [--root DIR] PATH...
 bboxy450-den lean --out DIR [--expect-fail] PATH...
 bboxy450-den replay SPEC TRACE...
 ```
@@ -234,6 +234,41 @@ else the first sentence of `intent`, else the name), `links` as `[[module.path]]
 `set_managed` changes one value in place, or adds the line or the block, and keeps
 every other byte; it refuses a result that does not load.
 
+## Imports and shared enums
+
+`import a.b.C` in a machine spec makes the enums of the spec in module `a.b.C` usable as
+if they were declared at the import line. The imported spec is usually a vocabulary: a
+spec with enums and no state, event or handler, which is sound without an invariant or a
+scenario and whose enums are not reported unused.
+
+```scala
+module design.Elements
+spec Elements {
+  intent "The four elements every spec of the circle shares."
+  enum Element { Fire, Water, Air, Earth }
+}
+```
+
+Module `a.b.C` is the `.den` file whose `module` line says `a.b.C`; the file name does not
+matter. `check`, `render` and `lean` look for it in the directory of the checked file and
+then in each parent up to the root; in each such directory `D` they read the `.den`
+files of `D/a/b`, `D/b` and `D`, not recursively. The root is `--root DIR` for `check`,
+else the nearest parent that holds `.git`, else the file's own directory.
+
+| Code | Condition |
+|---|---|
+| X351 | An import does not resolve; the message names the module and where it was looked for, or the parse error of its file |
+| X202 | An imported enum is declared again in the importing spec |
+| X203 | Nothing an import brings is used |
+
+Only the imported file's own enums come in: its imports are not followed, and its
+defines, tables and state stay its own. An import of a header record brings nothing. The
+string API `check(source)` has no files and treats an import as a name, as before; use
+`check_file(path, root)`, or `check_with(source, resolver)` with any
+`Fn(&[String]) -> Result<String, String>` from module path to source. `file_resolver`,
+`lean_with` and `render::render_resolved` are the same for the other engines. `model`,
+`replay` and `declarations` do not resolve imports.
+
 ## Meaning and limits
 
 For every state valuation and event argument combination exactly one case must apply.
@@ -374,6 +409,7 @@ a state as `{coins = 12, latch = Gate.Open}`, a trace as
 | Graph | X354 | A field the record's kind requires is missing or empty |
 | | X356 | A `managed` field, or the `managed` block, is written twice |
 | | X357 | A task status is not one the host knows |
+| | X351 | An import does not resolve to a `.den` file (`check_file`, `check_with`, the CLI) |
 | Totality | X401 | Overlapping case guards |
 | | X402 | State and arguments match no case |
 | Steps | X501 | A case assigns one field twice |
@@ -394,7 +430,8 @@ a state as `{coins = 12, latch = Gate.Open}`, a trace as
 | | X903 | No scenario |
 | | X905 | A theorem has no proof file (`lean` only) |
 
-Module paths and imports are parsed but not resolved in this version.
+Arithmetic is `+` and `-`; there is no `*` or `/`, because the model checker's expression
+language (`bboxy450-tlc`) has neither.
 Composition (`include`, `do`, `expose`, `discharge`), `loop` records, link kinds
 (a link is checked against the imports, not against the linked record) and the
 typed lowering of an epic's blocks are not supported.
