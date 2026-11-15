@@ -274,7 +274,7 @@ name = "bboxy450-code"
 status = "implementation-tests"
 models = []
 scope = "Stateless read-only queries: each call reads files, parses and answers; no retries, persistence, ownership, lifecycle or arbitration, so there is no state machine to model. The stdio server answers one request per line in order. Shapes, per-element errors, the 16 KiB bound, cut reporting, .gitignore and binary handling, byte-identical repeat calls and a real stdio round trip are implementation-tested."
-sources = ["crates/bboxy450-code/src/lib.rs", "crates/bboxy450-code/src/syntax.rs", "crates/bboxy450-code/src/main.rs"]
+sources = ["crates/bboxy450-code/src/lib.rs", "crates/bboxy450-code/src/syntax.rs", "crates/bboxy450-code/src/formal.rs", "crates/bboxy450-code/src/main.rs"]
 
 [[crate]]
 name = "bboxy450-kitty-graphics"
