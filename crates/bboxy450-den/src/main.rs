@@ -276,16 +276,28 @@ fn run() -> Result<bool, String> {
     if paths.is_empty() {
         return Err(USAGE.into());
     }
+    // Every path is checked and reported: one unreadable or unsound file
+    // never hides the others.
+    let mut unreadable = 0;
     let mut files = Vec::new();
     for path in paths {
-        collect(&path, &mut files).map_err(|error| format!("{}: {error}", path.display()))?;
+        if let Err(error) = collect(&path, &mut files) {
+            eprintln!("{}: {error}", path.display());
+            unreadable += 1;
+        }
     }
     files.sort();
     files.dedup();
     let mut sound = true;
     for path in files {
-        let source =
-            fs::read_to_string(&path).map_err(|error| format!("{}: {error}", path.display()))?;
+        let source = match fs::read_to_string(&path) {
+            Ok(source) => source,
+            Err(error) => {
+                eprintln!("{}: {error}", path.display());
+                unreadable += 1;
+                continue;
+            }
+        };
         let report = bboxy450_den::check(&source);
         sound &= report.is_sound();
         if json {
@@ -299,6 +311,9 @@ fn run() -> Result<bool, String> {
                 println!("{}:{line}", path.display());
             }
         }
+    }
+    if unreadable > 0 {
+        return Err(format!("{unreadable} path(s) could not be read"));
     }
     Ok(sound)
 }

@@ -272,3 +272,52 @@ fn lean_writes_three_files_per_theorem_spec_and_refuses_a_missing_proof() {
             .contains("X905 theorems OUTBOX_001, OUTBOX_002 have no proof")
     );
 }
+
+#[test]
+fn every_file_is_reported_when_some_are_unsound_or_unreadable() {
+    let temp = Temp::new();
+    fs::copy(fixture("unsound/X901-no-intent.den"), temp.0.join("a.den")).unwrap();
+    fs::copy(fixture("sound/turnstile.den"), temp.0.join("b.den")).unwrap();
+    fs::write(temp.0.join("c.den"), [0xff, 0xfe]).unwrap();
+    fs::copy(
+        fixture("unsound/X101-missing-brace.den"),
+        temp.0.join("d.den"),
+    )
+    .unwrap();
+    let missing = temp.0.join("missing.den");
+    let result = cli(&["check".as_ref(), missing.as_os_str(), temp.0.as_os_str()]);
+    let stdout = String::from_utf8(result.stdout).unwrap();
+    let stderr = String::from_utf8(result.stderr).unwrap();
+    // Unreadable input is an I/O failure (2), reported after every other file.
+    assert_eq!(result.status.code(), Some(2), "{stdout}{stderr}");
+    assert!(
+        stdout.contains("a.den:") && stdout.contains(" X901 "),
+        "{stdout}"
+    );
+    assert!(
+        stdout.contains("d.den:") && stdout.contains(" X101 "),
+        "{stdout}"
+    );
+    assert!(!stdout.contains("b.den:"), "{stdout}");
+    assert!(
+        stderr.contains("missing.den: ") && stderr.contains("c.den: "),
+        "{stderr}"
+    );
+    assert!(
+        stderr.ends_with("2 path(s) could not be read\n"),
+        "{stderr}"
+    );
+
+    fs::remove_file(temp.0.join("c.den")).unwrap();
+    let result = cli(&["check".as_ref(), "--json".as_ref(), temp.0.as_os_str()]);
+    assert_eq!(result.status.code(), Some(1));
+    let stdout = String::from_utf8(result.stdout).unwrap();
+    let lines: Vec<_> = stdout.lines().collect();
+    assert_eq!(lines.len(), 3, "{stdout}");
+    assert!(
+        lines
+            .iter()
+            .all(|l| l.starts_with("{\"path\":") && l.contains("\"report\":{\"records\":"))
+    );
+    assert!(lines[1].contains("\"diagnostics\":[]"));
+}
