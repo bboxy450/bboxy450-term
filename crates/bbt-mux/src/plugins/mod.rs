@@ -11,6 +11,7 @@ mod check;
 mod client;
 pub(crate) mod control;
 mod discovery;
+pub(crate) mod lowering;
 mod registry;
 mod signed;
 mod trust;

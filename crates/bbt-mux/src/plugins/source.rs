@@ -516,18 +516,18 @@ impl DataSource for DataSourceProvider {
             ));
         }
         for reference in &request.refs {
-            if self
-                .fetch_before(
-                    d::FetchRequest {
-                        reference: reference.clone(),
-                    },
-                    Some(deadline),
-                )?
-                .reference
-                != *reference
-            {
+            let current = self.fetch_before(
+                d::FetchRequest {
+                    reference: reference.clone(),
+                },
+                Some(deadline),
+            )?;
+            if current.reference != *reference {
                 return Err(error("stale_reference", "commit source changed"));
             }
+            // A lowered record commits only while it still is its Den source.
+            crate::plugins::lowering::raise(&current)
+                .map_err(|reason| error("den_forked", format!("{}: {reason}", reference.path)))?;
         }
         let result: d::CommitResult = self
             .request_before("commit", &request, Some(deadline))
@@ -554,6 +554,7 @@ impl DataSource for DataSourceProvider {
     }
     fn fetch(&self, request: d::FetchRequest) -> d::Result<d::Record> {
         self.fetch_before(request, None)
+            .map(crate::plugins::lowering::mark)
     }
     fn search(&self, request: d::SearchRequest) -> d::Result<d::Page<d::SearchHit>> {
         self.request("search", request)
@@ -579,6 +580,7 @@ impl DataSource for DataSourceProvider {
     }
     fn fetch_until(&self, request: d::FetchRequest, deadline: Instant) -> d::Result<d::Record> {
         self.fetch_before(request, Some(deadline))
+            .map(crate::plugins::lowering::mark)
     }
     fn changes_since(&self, request: d::ChangesRequest) -> d::Result<d::Changes> {
         self.request("changes_since", request)
@@ -600,6 +602,16 @@ impl DataSource for DataSourceProvider {
                 "signed_writer_unavailable",
                 "Selected provider does not support host-signed writes. Select bboxy450-term-data_source-bboxy in Settings > Knowledge to write locally.",
             ));
+        }
+        // Den at the boundary: a provider stores Markdown, so a `.den` create
+        // crosses as `.md` and keeps its Den path for the lowering below.
+        let mut den_path = None;
+        if request.reference.is_none()
+            && let Some(path) = request.path.clone()
+            && let Some(markdown) = crate::plugins::lowering::markdown_path(&path)
+        {
+            request.path = Some(markdown);
+            den_path = Some(path);
         }
         let path = request
             .reference
@@ -626,6 +638,7 @@ impl DataSource for DataSourceProvider {
         if request.reference.is_some() && request.path.is_some() {
             return Err(error("invalid_path", "update uses ref without path"));
         }
+        let mut previous = None;
         if let Some(reference) = request.reference.clone() {
             let current = self.fetch_before(
                 d::FetchRequest {
@@ -633,6 +646,14 @@ impl DataSource for DataSourceProvider {
                 },
                 Some(deadline),
             )?;
+            // An update of a lowered record is lowered again from its stored
+            // source; a projection edited outside the host is never overwritten.
+            if let Some(raised) = crate::plugins::lowering::raise(&current)
+                .map_err(|reason| error("den_forked", format!("{}: {reason}", reference.path)))?
+            {
+                den_path = Some(raised.path);
+                previous = Some(raised.source);
+            }
             if current.reference != reference
                 || request
                     .etag
@@ -665,6 +686,12 @@ impl DataSource for DataSourceProvider {
         front.insert("updated_by".into(), json!(context.author.id));
         if request.reference.is_none() {
             front.insert("created_by".into(), json!(context.author.id));
+        }
+        match &den_path {
+            Some(den) => {
+                crate::plugins::lowering::lower(den, front, &request.body, previous.as_deref())?
+            }
+            None => crate::plugins::lowering::refuse_claim(&request.frontmatter)?,
         }
         let signed_record = super::super::signed::sign(&request, context)?;
         let mut args =
@@ -725,6 +752,14 @@ impl DataSource for DataSourceProvider {
             }
             for link in &stored.resources {
                 crate::knowledge::BboxySource::validate_resource(self.data_dir(), link)?;
+            }
+            if den_path.is_some()
+                && !crate::plugins::lowering::raise(&stored).is_ok_and(|r| r.is_some())
+            {
+                return Err(error(
+                    "den_lossy",
+                    "provider did not keep the lowered Den record exactly",
+                ));
             }
             Ok(result)
         };

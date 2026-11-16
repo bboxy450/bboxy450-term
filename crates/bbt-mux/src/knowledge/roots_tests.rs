@@ -42,6 +42,10 @@ fn actor() -> Actor {
 }
 impl Fixture {
     fn new(count: usize, gate: Option<&Path>) -> Self {
+        Self::with(count, gate, false)
+    }
+    /// `harmony`: a signed writer whose records live in `repo/external`.
+    fn with(count: usize, gate: Option<&Path>, harmony: bool) -> Self {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("repo/.bboxy");
         fs::create_dir_all(root.join("notes")).unwrap();
@@ -77,6 +81,7 @@ impl Fixture {
             trace: text(&trace),
             gate: gate.and_then(text),
             gate_root: gate.and_then(|_| text(&root.canonicalize().unwrap())),
+            harmony,
             ..bbt_plugin_fixture::Knobs::root()
         }
         .install(&path);
@@ -525,4 +530,165 @@ async fn retained_unknown_selection_keeps_its_reason_and_never_executes_or_retri
     assert_eq!(f.host.revision().unwrap(), 0);
     assert!(!f.trace.exists());
     f.unchanged();
+}
+
+/// Writes through the selected Markdown-only provider, on a blocking thread.
+async fn provider_write(f: &Fixture, request: d::WriteRequest) -> d::Result<d::WriteResult> {
+    let host = f.host.clone();
+    let index = f.index.clone();
+    let seats = f.seats.clone();
+    tokio::task::spawn_blocking(move || {
+        let key = ed25519_dalek::SigningKey::from_bytes(&[41; 32]);
+        let context = super::super::WriteContext::seat(Ulid::from(41_u128), Some(1), &key);
+        host.with_source(&index, &seats, |source| source.write(request, &context))
+    })
+    .await
+    .unwrap()
+}
+
+// keeps: Den lowering at the plugin boundary (specs/spec-language.md, "In a
+// Markdown-only provider: GitKB"): the provider stores Markdown, the round
+// trip gives back the same Den record, and loss or a fork is refused.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn den_record_lowers_to_markdown_for_a_plugin_provider_and_reads_back_exactly() {
+    use crate::plugins::lowering;
+    let f = Fixture::with(0, None, true);
+    let entry = f.checked().await;
+    f.select(&entry).await;
+    let id = Ulid::from(4242_u128).to_string();
+    let written = provider_write(
+        &f,
+        d::WriteRequest {
+            reference: None,
+            path: Some("tasks/lowered.den".into()),
+            frontmatter: json!({"id":id,"type":"task","title":"Lower one task","status":"open",
+                "verify":"make check","allowed_paths":["src/a.rs"]}),
+            body: "Intent: cross the boundary as Markdown.\n".into(),
+            etag: None,
+        },
+    )
+    .await
+    .unwrap();
+    assert_eq!(written.record.reference.path, "tasks/lowered.md");
+    // What the provider stored: Markdown with the metadata, the body and the source.
+    let external = f.temp.path().join("repo/external");
+    assert!(!external.join("tasks/lowered.den").exists());
+    let stored = fs::read_to_string(external.join("tasks/lowered.md")).unwrap();
+    let (header, body) = stored
+        .strip_prefix("---\n")
+        .and_then(|rest| rest.split_once("\n---\n"))
+        .unwrap();
+    let header: Value = serde_json::from_str(header).unwrap();
+    assert_eq!(body, "Intent: cross the boundary as Markdown.\n");
+    for (key, value) in [
+        ("type", json!("task")),
+        ("title", json!("Lower one task")),
+        ("status", json!("open")),
+        ("verify", json!("make check")),
+        ("allowed_paths", json!(["src/a.rs"])),
+    ] {
+        assert_eq!(header[key], value, "{key}: {stored}");
+    }
+    assert_eq!(header["generated_from"]["module"], "tasks.lowered", "{stored}");
+    let source = header["den_source"].as_str().unwrap();
+    assert!(source.starts_with("module tasks.lowered"), "{source}");
+    assert_eq!(
+        header["generated_from"]["source_sha256"],
+        bboxy450_den::render::source_sha256(source)
+    );
+    // Reading back gives the same Den record the native provider would keep.
+    let fetched = f
+        .read("fetch", json!({"ref":written.record.reference}))
+        .await
+        .unwrap();
+    let fetched: d::Record = serde_json::from_value(fetched).unwrap();
+    assert!(fetched.frontmatter.get("den_state").is_none());
+    let raised = lowering::raise(&fetched).unwrap().unwrap();
+    assert_eq!(raised.path, "tasks/lowered.den");
+    assert_eq!(raised.body, "Intent: cross the boundary as Markdown.\n");
+    assert_eq!(raised.source, source);
+    let mut expected = header.as_object().unwrap().clone();
+    for key in ["generated_from", "den_source", "bboxy_signed_record"] {
+        expected.remove(key);
+    }
+    assert_eq!(raised.metadata, Value::Object(expected.clone()));
+    assert_eq!(
+        crate::knowledge::den::render(&raised.path, &raised.metadata, &raised.body, None).unwrap(),
+        source
+    );
+    // An update through the Markdown reference is lowered again from the source.
+    let mut front = fetched.frontmatter.clone();
+    front["status"] = json!("blocked");
+    let updated = provider_write(
+        &f,
+        d::WriteRequest {
+            reference: Some(fetched.reference.clone()),
+            path: None,
+            frontmatter: front,
+            body: fetched.body.clone(),
+            etag: Some(fetched.etag.clone()),
+        },
+    )
+    .await
+    .unwrap();
+    let again = lowering::raise(&updated.record).unwrap().unwrap();
+    assert_eq!(again.metadata["status"], "blocked");
+    assert_ne!(again.source, source);
+    // Loss is refused before anything reaches the provider: a record keeps its type.
+    let mut retyped = updated.record.frontmatter.clone();
+    retyped["type"] = json!("bug");
+    let lossy = provider_write(
+        &f,
+        d::WriteRequest {
+            reference: Some(updated.record.reference.clone()),
+            path: None,
+            frontmatter: retyped,
+            body: updated.record.body.clone(),
+            etag: Some(updated.record.etag.clone()),
+        },
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(lossy.code, "den_lossy", "{lossy:?}");
+    // A Markdown record never claims to be a projection.
+    let claim = provider_write(
+        &f,
+        d::WriteRequest {
+            reference: None,
+            path: Some("notes/claims.md".into()),
+            frontmatter: json!({"id":Ulid::from(4243_u128).to_string(),"type":"note","den_source":"task x"}),
+            body: "plain".into(),
+            etag: None,
+        },
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(claim.code, "den_field_reserved");
+    // A projection edited outside the host reads as forked and is never overwritten.
+    let path = external.join("tasks/lowered.md");
+    let edited = fs::read_to_string(&path)
+        .unwrap()
+        .replace("Intent: cross", "Intent: hand-edited cross");
+    fs::write(&path, edited).unwrap();
+    let reference = f.read("resolve", json!({"locator":id})).await.unwrap();
+    let forked: d::Record =
+        serde_json::from_value(f.read("fetch", json!({"ref":reference})).await.unwrap()).unwrap();
+    assert_eq!(forked.frontmatter["den_state"], "forked");
+    let refused = provider_write(
+        &f,
+        d::WriteRequest {
+            reference: Some(forked.reference.clone()),
+            path: None,
+            frontmatter: forked.frontmatter.clone(),
+            body: forked.body.clone(),
+            etag: Some(forked.etag.clone()),
+        },
+    )
+    .await
+    .unwrap_err();
+    assert_eq!(refused.code, "den_forked", "{refused:?}");
+    let host = f.host.clone();
+    tokio::task::spawn_blocking(move || host.close())
+        .await
+        .unwrap();
 }
