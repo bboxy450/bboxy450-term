@@ -169,6 +169,31 @@ pub struct Document {
     pub digest: String,
     pub error: Option<String>,
     pub links: Vec<Link>,
+    /// SHA-256 of the YAML header exactly as written, without its top-level
+    /// `provenance` block. A host built with `serde_json/preserve_order` signed
+    /// that text in insertion order; re-serialising the parsed (sorted) map
+    /// cannot reproduce it, so the verifier also accepts this digest.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub written_header: Option<String>,
+}
+
+/// The header text a signer hashed: every line but the top-level
+/// `provenance:` block, which the host appends after signing.
+fn written_header(front: &str) -> String {
+    let mut kept = String::with_capacity(front.len());
+    let mut skipping = false;
+    for line in front.split_inclusive('\n') {
+        if line.starts_with("provenance:") {
+            skipping = true;
+            continue;
+        }
+        if skipping && (line.starts_with(' ') || line.starts_with('-')) {
+            continue;
+        }
+        skipping = false;
+        kept.push_str(line);
+    }
+    digest(kept.as_bytes())
 }
 
 pub fn wikilinks(text: &str) -> Vec<Link> {
@@ -237,6 +262,7 @@ impl Document {
             digest: digest(text.as_bytes()),
             error: None,
             links: Vec::new(),
+            written_header: None,
         };
         let source = text.strip_prefix('\u{feff}').unwrap_or(text);
         if crate::knowledge::den::is_path(path) {
@@ -264,6 +290,7 @@ impl Document {
                     Ok(value) if value.is_object() => {
                         doc.metadata = value;
                         doc.body = body.into();
+                        doc.written_header = Some(written_header(front));
                     }
                     Ok(_) => doc.error = Some("frontmatter must be a mapping".into()),
                     Err(error) => doc.error = Some(format!("broken frontmatter: {error}")),

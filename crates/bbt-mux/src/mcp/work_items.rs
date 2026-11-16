@@ -215,6 +215,7 @@ impl TaskDocuments for ProviderTasks<'_> {
                             digest: reference.digest.clone(),
                             error: None,
                             links: Vec::new(),
+                            written_header: None,
                         };
                         if metadata.metadata["type"].as_str().is_some() && !is_task(&metadata) {
                             continue;
@@ -334,6 +335,7 @@ impl ProviderTasks<'_> {
                         digest: found.digest.clone(),
                         error: None,
                         links: Vec::new(),
+                        written_header: None,
                     };
                     // Older graph providers may omit metadata.
                     if doc.metadata["status"].as_str().is_none() {
@@ -401,6 +403,7 @@ impl ProviderTasks<'_> {
             digest: reference.digest,
             error: record.parse_error,
             links: Vec::new(),
+            written_header: None,
         };
         Ok(doc)
     }

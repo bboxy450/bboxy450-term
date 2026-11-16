@@ -704,7 +704,17 @@ pub(crate) fn document_signature(doc: &Document) -> Value {
         .ok()?;
         let mut front = doc.metadata.clone();
         front.as_object_mut()?.remove("provenance");
-        let front_hash = hash(serde_yaml::to_string(&front).ok()?.as_bytes());
+        let declared = doc.metadata["provenance"]["frontmatter_digest"].as_str()?;
+        // The header as re-serialised (sorted keys), or exactly as written: a
+        // host built with `serde_json/preserve_order` signed insertion order.
+        let front_hash = [
+            Some(hash(serde_yaml::to_string(&front).ok()?.as_bytes())),
+            doc.written_header.clone(),
+        ]
+        .into_iter()
+        .flatten()
+        .find(|candidate| declared == format!("sha256:{candidate}"))
+        .unwrap_or_default();
         let body_hash = hash(doc.body.as_bytes());
         let payload = format!("{front_hash}{body_hash}");
         let domain = "bboxy/item/v1";

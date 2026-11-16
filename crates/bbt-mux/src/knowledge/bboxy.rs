@@ -1083,6 +1083,7 @@ impl DataSource for BboxySource<'_> {
             digest: String::new(),
             error: None,
             links: Vec::new(),
+            written_header: None,
         })?;
         let path = self
             .index

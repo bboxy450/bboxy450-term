@@ -383,3 +383,22 @@ fn provenance_queries_revoked_task_assignment_blocks_old_replay_and_completion_w
     assert!(!current_authority(&f.index, &f.actor, &f.seat, &paths));
     assert!(f.call("provenance_get", json!({"locator":id})).is_err());
 }
+
+/// A record the installed host signed with `serde_json/preserve_order`: its
+/// header is in insertion order, which the sorted re-serialisation cannot
+/// reproduce. It verifies by the header as written, and only unchanged.
+#[test]
+fn a_header_signed_in_written_order_verifies_and_still_detects_edits() {
+    let text = include_str!("../../../tests/fixtures/signed-written-order/storage.md");
+    let doc = Document::parse("specs/storage.md", text);
+    assert_eq!(document_signature(&doc)["status"], "valid");
+    // Broken control: without the written header only the sorted form is tried.
+    let mut sorted_only = doc.clone();
+    sorted_only.written_header = None;
+    assert_eq!(document_signature(&sorted_only)["status"], "invalid");
+    // An edit to the header or the body still fails.
+    let header = text.replacen("title: Storage — decided", "title: Storage — edited", 1);
+    assert_eq!(document_signature(&Document::parse("specs/storage.md", &header))["status"], "invalid");
+    let body = text.replacen("\n---\n", "\n---\nEdited after signing.\n", 1);
+    assert_eq!(document_signature(&Document::parse("specs/storage.md", &body))["status"], "invalid");
+}

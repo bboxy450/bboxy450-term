@@ -206,6 +206,7 @@ pub(crate) fn prepare(
                             .unwrap_or_default(),
                         error: current.as_ref().and_then(|old| old.parse_error.clone()),
                         links: Vec::new(),
+                        written_header: None,
                     };
                     tasks::authorize(&document, registry, actor)
                         .map_err(|reason| d::CommandError::new("task_field_protected", reason))?;
@@ -296,6 +297,7 @@ pub(crate) fn prepare(
                     digest: task.reference.digest,
                     error: task.parse_error,
                     links: Vec::new(),
+                    written_header: None,
                 };
                 tasks::authorize(&document, registry, actor)
                     .map_err(|e| d::CommandError::new("report_task_denied", e))?;
@@ -438,6 +440,7 @@ fn apply_inner(
                             digest: String::new(),
                             error: None,
                             links: Vec::new(),
+                            written_header: None,
                         };
                         tasks::linked_report(&tasks::ProviderTasks(source, None), &document)
                             .map_err(rejected)?;
