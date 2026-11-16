@@ -400,12 +400,33 @@ fn markdown(
 fn record_markdown(record: &crate::Record, module: &str, sha: &str, source: &str) -> String {
     let mut out = String::from("---\n");
     let metadata = crate::metadata(record);
-    for (key, value) in &metadata {
-        let value = if key == "type" {
-            value.clone()
-        } else {
-            yaml(value)
+    let mut header: Vec<(String, String)> = metadata
+        .iter()
+        .map(|(key, value)| {
+            let value = if key == "type" { value.clone() } else { yaml(value) };
+            (key.clone(), value)
+        })
+        .collect();
+    // The host's `managed` block overrides the author's field of the same name,
+    // as the host reads it. A `json"..."` value is JSON, which is YAML flow syntax.
+    // `other` (keys with no Den name) and `body_tail` have no flat header form.
+    for field in &record.managed {
+        let (name, value) = match &field.value {
+            crate::Value::Tagged { tag, value } if tag == "json" => (field.name.as_str(), value.clone()),
+            crate::Value::Integer(number) => (field.name.as_str(), number.to_string()),
+            value if field.name == "status" => ("status", yaml(&value.text().to_ascii_lowercase())),
+            value if field.name == "delegator" => ("delegated_by", yaml(&value.text())),
+            value => (field.name.as_str(), yaml(&value.text())),
         };
+        if matches!(name, "other" | "body_tail") {
+            continue;
+        }
+        match header.iter_mut().find(|(key, _)| key == name) {
+            Some(entry) => entry.1 = value,
+            None => header.push((name.to_owned(), value)),
+        }
+    }
+    for (key, value) in &header {
         let _ = writeln!(out, "{key}: {value}");
     }
     let _ = writeln!(out, "generated_from:");

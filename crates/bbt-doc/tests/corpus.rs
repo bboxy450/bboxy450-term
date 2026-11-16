@@ -26,6 +26,16 @@ fn record_sources(root: &Path) -> io::Result<Vec<(String, String)>> {
                     path.strip_prefix(root).unwrap().to_string_lossy().into(),
                     fs::read_to_string(&path)?,
                 ));
+            } else if kind.is_file() && path.extension().is_some_and(|ext| ext == "den") {
+                // A Den record is read as its Markdown lowering, as the gallery reads it.
+                let source = fs::read_to_string(&path)?;
+                let resolver = bboxy450_den::file_resolver(&path, Some(root));
+                let lowered = bboxy450_den::render::render_resolved(&source, false, &resolver)
+                    .map_err(|report| io::Error::other(format!("{}: {}", path.display(), report.to_text())))?;
+                out.push((
+                    path.strip_prefix(root).unwrap().to_string_lossy().into(),
+                    lowered.markdown,
+                ));
             }
         }
         Ok(())
@@ -43,6 +53,14 @@ fn frontmatter_errors(root: &Path) -> io::Result<(usize, Vec<String>)> {
     let mut numbers = BTreeMap::new();
     for (path, source) in &sources {
         let doc = bbt_doc::parse(source);
+        // An author's Den record the host has not stamped yet holds no id or
+        // number; its first write gives it both (as the host's index allows).
+        if path.ends_with(".den")
+            && !doc.frontmatter.fields.contains_key("id")
+            && !doc.frontmatter.fields.contains_key("number")
+        {
+            continue;
+        }
         if let Some(error) = &doc.frontmatter.error {
             errors.push(format!(
                 "{path}:{}: invalid YAML frontmatter: {error}",
@@ -377,7 +395,9 @@ fn real_corpus_links_numeric_handles_and_legacy_ledger_anchors_resolve() {
         resolved
             .record
             .path
-            .ends_with("/decisions/d47-decision-nodes.md")
+            .trim_end_matches(".den")
+            .trim_end_matches(".md")
+            .ends_with("/decisions/d47-decision-nodes")
     );
     let view = resolved.record.markdown.document(resolved.record.path);
     assert_eq!(view.number, Some(47));

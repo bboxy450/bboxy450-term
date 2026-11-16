@@ -396,6 +396,7 @@ version = "0.2.0"
 name = "bboxy450-doc"
 version = "0.2.0"
 dependencies = [
+ "bboxy450-den",
  "bboxy450-mermaid",
  "bboxy450-rt",
  "bboxy450-ui",

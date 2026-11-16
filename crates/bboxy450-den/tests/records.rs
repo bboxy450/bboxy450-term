@@ -107,6 +107,11 @@ fn every_kind_loads_and_lowers_with_every_field() {
         assert!(header.contains(&format!("generated_from:\n  module: {}\n", rendered.module)));
         let pairs = metadata(&record);
         for (key, value) in &pairs[1..] {
+            // The host's managed value overrides the author's, as the host reads it.
+            if record.managed.iter().any(|field| field.name == *key) {
+                assert!(header.lines().any(|l| l.starts_with(&format!("{key}: "))), "{file}: {key}\n{header}");
+                continue;
+            }
             let line = format!("{key}: '{}'", value.replace('\'', "''").replace('\n', " "));
             assert!(
                 header.lines().any(|l| l == line),

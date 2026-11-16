@@ -23,3 +23,6 @@ unicode-segmentation = "=1.13.3"
 
 [lib]
 name = "bbt_doc"
+
+[dev-dependencies]
+bboxy450-den = { version = "0.2.0", path = "../bboxy450-den" }
