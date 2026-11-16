@@ -311,7 +311,9 @@ fn app_detach(replace: bool) {
         .find(|p| p["seat"] == seat)
         .unwrap();
     let rect = pane["rect"].as_array().unwrap();
-    let x = (rect[0].as_f64().unwrap() + rect[2].as_f64().unwrap() - 52.)
+    // The view switch ends 70 px from the pane's right edge: the automation
+    // bolt (13 px and an 8 px gap) sits between it and mute.
+    let x = (rect[0].as_f64().unwrap() + rect[2].as_f64().unwrap() - 73.)
         .round()
         .to_string();
     let y = (rect[1].as_f64().unwrap() - 13.).round().to_string();
