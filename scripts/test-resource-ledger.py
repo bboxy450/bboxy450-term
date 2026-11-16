@@ -34,7 +34,7 @@ class CacheEnvTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             marker = root / 'cache-contacted'
-            fake = root / 'sccache'
+            fake = root / 'kache'
             fake.write_text('#!/bin/sh\n: > "$CACHE_TEST_MARKER"\nexit 9\n')
             fake.chmod(0o755)
             source = SOURCE.with_name('cache-env.sh').resolve()
@@ -180,84 +180,21 @@ class LedgerContracts(unittest.TestCase):
         self.assertEqual(usage['block_output_operations'], 21)
         self.assertNotIn('disk_bytes_written', usage)
 
-    def test_cache_binding_rejects_missing_reused_and_conflicting_owners(self):
-        with tempfile.TemporaryDirectory() as directory, patch.dict(
-                os.environ, BBOXY_LANDING_STATE_DIR=directory):
-            root = (Path(directory) / 'worktree').resolve()
-            bindings = Path(directory) / 'ledger-cache-bindings/4800'
-            bindings.mkdir(parents=True)
-            rows = {41: dict(start=100)}
-            self.assertIsNone(ledger.cache_root(root, '4800', rows))
-            value = dict(pid=41, start=99, worktree=str(root), port=4800, basis='fixture')
-            (bindings / 'a.json').write_text(json.dumps(value))
-            self.assertIsNone(ledger.cache_root(root, '4800', rows), 'PID reuse is unknown')
-            value['start'] = 100
-            (bindings / 'a.json').write_text(json.dumps(value))
-            self.assertEqual(ledger.cache_root(root, '4800', rows)['pid'], 41)
-            value['worktree'] = str((Path(directory) / 'another-worktree').resolve())
-            (bindings / 'b.json').write_text(json.dumps(value))
-            self.assertIsNone(ledger.cache_root(root, '4800', rows), 'shared port is unknown')
-
-    def test_cache_children_join_only_a_live_recorded_stage_without_double_charging(self):
-        with tempfile.TemporaryDirectory() as directory, patch.dict(
-                os.environ, BBOXY_LANDING_STATE_DIR=directory):
-            root = (Path(directory) / 'worktree').resolve()
-            bindings = Path(directory) / 'ledger-cache-bindings/4800'
-            bindings.mkdir(parents=True)
-            value = dict(pid=8, start=80, worktree=str(root), port=4800, basis='fixture')
-            (bindings / 'a.json').write_text(json.dumps(value))
-            rows = {p: dict(pid=p, parent=parent, pgid=p, start=p*10,
-                            user=2., system=0., written=0, rss=100)
-                    for p,parent in [(1,0),(8,0),(9,8)]}
-            previous = {(p,v['start']):dict(v,user=1.) for p,v in rows.items()}
-            registration = dict(id='command',agent='fixture',cut='cut',stage='build',
-                                pid=1,start=10,cache_port='4800',worktree=str(root))
-            with patch.object(ledger, 'processes', return_value=rows):
-                groups,_ = ledger.sample([registration],previous)
-            self.assertEqual(len(groups),1)
-            self.assertEqual(groups[0]['pids'],[1,8,9])
-            self.assertEqual(groups[0]['cpu_user_seconds'],3.)
-            rows.pop(1)
-            with patch.object(ledger, 'processes', return_value=rows):
-                groups,_ = ledger.sample([registration],previous)
-            self.assertEqual(groups[0]['agent'],'unattributed')
-
-    def test_cache_totals_include_already_reaped_compiler_children(self):
-        usage = ledger.Usage()
-        usage.start = 100
-        usage.user, usage.child_user = 24_000_000, 48_000_000
-        usage.system, usage.child_system = 12_000_000, 24_000_000
-        def fill(pid, flavor, pointer):
-            ledger.ctypes.memmove(pointer, ledger.ctypes.byref(usage), ledger.ctypes.sizeof(usage))
-            return 0
-        library = Mock()
-        library.proc_pid_rusage.side_effect = fill
-        with patch.dict(os.environ, RUSTC_WRAPPER='sccache'), \
-             patch.object(ledger, 'cache_root', return_value=dict(pid=41,start=100)), \
-             patch.object(ledger.ctypes, 'CDLL', return_value=library), \
-             patch.object(ledger, 'mach_seconds_per_tick', return_value=1/24_000_000):
-            totals = ledger.cache_totals(Path.cwd())
-        self.assertEqual(totals['user'],3.)
-        self.assertEqual(totals['system'],1.5)
-
     @unittest.skipUnless(sys.platform == 'darwin', 'time -l accounting pipe')
-    def test_stage_keeps_waited_and_cache_cpu_separate_and_adds_each_once(self):
+    def test_stage_reports_waited_cpu_and_leaves_the_shared_cache_daemon_out(self):
         with tempfile.TemporaryDirectory() as directory, patch.dict(
                 os.environ, BBOXY_LANDING_STATE_DIR=directory), \
-             patch.object(ledger, 'start_observer', return_value=os.getpid()), \
-             patch.object(ledger, 'cache_totals', side_effect=[
-                 dict(pid=41,start=100,user=10.,system=20.),
-                 dict(pid=41,start=100,user=12.,system=23.)]):
+             patch.object(ledger, 'start_observer', return_value=os.getpid()):
             stage = ledger.Stage('build',Path(directory))
             os.write(stage.writer,b'0.00 real 1.00 user 2.00 sys\n123 maximum resident set size\n')
             stage.attach(os.getpid())
             stage.finish(0)
             path = next(Path(directory).glob('ledger/*/ledger.jsonl'))
             row = json.loads(path.read_text())
-            self.assertEqual(row['waited_cpu_user_seconds'],1.)
-            self.assertEqual(row['cache_cpu_user_seconds'],2.)
-            self.assertEqual(row['cpu_user_seconds'],3.)
-            self.assertEqual(row['cpu_system_seconds'],5.)
+            self.assertEqual(row['cpu_user_seconds'],1.)
+            self.assertEqual(row['cpu_system_seconds'],2.)
+            self.assertEqual(row['cache_cpu_accounting'],'unavailable; one machine-wide cache daemon')
+            self.assertNotIn('cache_cpu_user_seconds', row)
 
     def test_deepest_recorded_root_owns_child_once_and_pid_reuse_is_unattributed(self):
         rows = {p: dict(pid=p, parent=parent, pgid=1, start=start,

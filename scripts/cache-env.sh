@@ -20,7 +20,7 @@ bboxy_cache_env() {
     export CARGO_BUILD_JOBS="${BBOXY_CARGO_JOBS:-2}" CARGO_INCREMENTAL=0
     # A machine-wide build.build-dir mixes worktrees' same-named crates
     # (rust-lang/cargo#12516) and serializes every build on one lock. Keep
-    # intermediates with this worktree's target; sccache shares dependencies.
+    # intermediates with this worktree's target; kache shares compiled outputs.
     if [ -z "${CARGO_BUILD_BUILD_DIR:-}" ]; then
         CARGO_BUILD_BUILD_DIR=${BBOXY_CARGO_TARGET_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)/target}
         export CARGO_BUILD_BUILD_DIR
@@ -34,72 +34,29 @@ bboxy_cache_env() {
         auto) ;;
         *) printf 'cache: configuration refused (unknown BBOXY_CACHE_MODE)\n' >&2; return 2 ;;
     esac
-    if ! command -v sccache >/dev/null 2>&1; then
-        printf 'cache: off (sccache missing; run make tools)\n' >&2
+    if ! command -v kache >/dev/null 2>&1; then
+        printf 'cache: off (kache missing; run make tools)\n' >&2
         return 0
     fi
-    if ! command -v python3 >/dev/null 2>&1; then
-        printf 'cache: off (python3 missing; cannot bound server startup)\n' >&2
+    if [ -z "${HOME:-}" ]; then
+        printf 'cache: off (HOME unavailable)\n' >&2
         return 0
     fi
-    if ! bboxy_cache_root=$(git rev-parse --show-toplevel 2>/dev/null) || [ -z "${HOME:-}" ]; then
-        printf 'cache: off (worktree or HOME unavailable)\n' >&2
-        return 0
-    fi
-    bboxy_cache_root=$(CDPATH='' cd -- "$bboxy_cache_root" && pwd -P)
-    # Separate policy generation: never reuse a legacy default-QoS server.
-    SCCACHE_SERVER_PORT=$(printf '%s' "$bboxy_cache_root" | cksum | awk '{print 5300 + $1 % 1000}')
+    # kache (https://github.com/kunobi-ninja/kache) wraps rustc: it caches
+    # libraries, build scripts and linked executables, normalises worktree paths
+    # so another worktree of the same source hits, and restores outputs as APFS
+    # clones, so worktrees share disk. Enabled by environment only: `kache init`
+    # would rewrite the user's global Cargo config. Local store only; no remote,
+    # no account.
     case "$(uname -s)" in
-        Darwin) SCCACHE_DIR=${SCCACHE_DIR:-$HOME/Library/Caches/bboxy450-sccache} ;;
-        *) SCCACHE_DIR=${SCCACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/bboxy450-sccache} ;;
+        Darwin) KACHE_CACHE_DIR=${KACHE_CACHE_DIR:-$HOME/Library/Caches/bboxy450-kache} ;;
+        *) KACHE_CACHE_DIR=${KACHE_CACHE_DIR:-${XDG_CACHE_HOME:-$HOME/.cache}/bboxy450-kache} ;;
     esac
-    SCCACHE_CACHE_SIZE=${SCCACHE_CACHE_SIZE:-10G}
-    SCCACHE_IGNORE_SERVER_IO_ERROR=1
-    # An inherited Unix socket would override the worktree's TCP port.
-    unset SCCACHE_SERVER_UDS
-    export SCCACHE_SERVER_PORT SCCACHE_DIR SCCACHE_CACHE_SIZE SCCACHE_IGNORE_SERVER_IO_ERROR
-    if bboxy_cache_reason=$(python3 - <<'PY'
-import os
-import socket
-import subprocess
-import sys
-import time
-
-deadline = time.monotonic() + 9.5
-try:
-    for action in ("--show-stats", "--start-server", "--show-stats"):
-        remaining = deadline - time.monotonic()
-        if remaining <= 0:
-            raise subprocess.TimeoutExpired("sccache", 9.5)
-        result = subprocess.run(
-            (["/usr/sbin/taskpolicy", "-b"] if sys.platform == "darwin" else ["nice", "-n", "10"])
-            + ["sccache", action], capture_output=True, timeout=remaining,
-        )
-        if result.returncode == 0:
-            # --show-stats can succeed with zero counters and no running server.
-            try:
-                with socket.create_connection(
-                    ("127.0.0.1", int(os.environ["SCCACHE_SERVER_PORT"])),
-                    timeout=max(0.001, min(0.25, deadline - time.monotonic())),
-                ):
-                    pass
-            except OSError:
-                continue
-            sys.exit(0)
-    print("server failed to start")
-except subprocess.TimeoutExpired:
-    print("server startup exceeded 10 s")
-except OSError as error:
-    print(f"server unavailable: {error.strerror}")
-sys.exit(1)
-PY
-    ); then
-        export RUSTC_WRAPPER=sccache
-        (python3 -I "$bboxy_cache_root/scripts/resource-ledger.py" bind-cache "$bboxy_cache_root" "$SCCACHE_SERVER_PORT" </dev/null >/dev/null 2>&1 || :) &
-        printf 'cache: on (port %s; shared local cache %s; %s)\n' "$SCCACHE_SERVER_PORT" "$SCCACHE_DIR" "$SCCACHE_CACHE_SIZE" >&2
-    else
-        printf 'cache: off (%s)\n' "${bboxy_cache_reason:-server check failed}" >&2
-    fi
+    KACHE_MAX_SIZE=${KACHE_MAX_SIZE:-40GiB}
+    KACHE_LOCAL_ONLY=1
+    export KACHE_CACHE_DIR KACHE_MAX_SIZE KACHE_LOCAL_ONLY
+    export RUSTC_WRAPPER=kache
+    printf 'cache: on (kache; local store %s; %s)\n' "$KACHE_CACHE_DIR" "$KACHE_MAX_SIZE" >&2
     return 0
 }
 bboxy_cache_env || return $?
@@ -127,4 +84,4 @@ if [ -f "$bboxy_qos_root/scripts/qos.sh" ]; then
     export PATH
 fi
 unset -f bboxy_cache_env
-unset bboxy_cache_root bboxy_cache_reason bboxy_qos_root bboxy_qos_bin
+unset bboxy_qos_root bboxy_qos_bin

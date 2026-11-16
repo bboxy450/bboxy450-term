@@ -61,7 +61,7 @@ batch runs at default because it contains these witnesses. Filtered ordinary
 libtest selections stay utility. No tests or assertions are dropped.
 Rustdoc compiles doctests at background policy and uses its stable test runtool
 to execute each doctest at utility; `--doc` first prebuilds library dependencies.
-The sccache daemon is started at background policy as well. Linux retains
+Linux retains
 `nice -n 10`. Land defaults to two Cargo jobs (`BBOXY_CARGO_JOBS`) and two test
 threads, reusing the worktree target and shared cache.
 
@@ -69,7 +69,7 @@ Each gate command prints `land-cost` with wall seconds, child CPU seconds,
 allocated target-directory growth in bytes and exit status, including failures.
 The final `total` line accounts for the entire landing process tree (including
 rebases and pushes). CPU uses `getrusage(RUSAGE_CHILDREN)`, so a separate already
-running sccache server's CPU is outside this measurement. Disk growth is the
+running kache daemon's CPU is outside this measurement. Disk growth is the
 target's `du -sk` delta; shared cache growth is outside it.
 
 ### Explicit default-QoS measurements

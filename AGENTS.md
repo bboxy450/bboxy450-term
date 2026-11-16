@@ -108,15 +108,15 @@ authorized release brief.
 | `make publish-release` | Signed tag and GitHub app release; only on an authorized release brief |
 | `make land` = `make push` | **Lean land, always the default.** `scripts/land-fast.sh`: rebase, signed-commit check, clippy and the lib/bin tests of the crates the diff touches plus each changed integration-test file, `cargo check` of their dependents, push. `LAND_MODE=wide` also tests every dependent. Only when push is authorized. **Read [LAND.md](LAND.md) first** |
 | `make land-full` | Full signed gate (`make test` + formal receipt) in a warm, queued gate slot; on a release, toolchain or explicit brief |
-| `make tools` | Install cargo-nextest and sccache once per machine |
+| `make tools` | Install cargo-nextest and kache once per machine |
 
 Overrides live in `make help`: `PROFILE`, `TARGET_DIR`, `INSTALL_DIR`, `UNSIGNED_INSTALL_DIR`, `CI_LOG`. Build caches are selected by `scripts/cache-env.sh`; Make sources it. Never change global Cargo configuration for a task.
 
 **Rust workflow, every crate.** `rust-toolchain.toml` pins the compiler for every worktree.
 Tests run through cargo-nextest (`.config/nextest.toml`): binaries run concurrently, each test
 is its own process, hung tests die after 5 min; doctests run after through `cargo test --doc`.
-`scripts/quarantine-test.sh` is the one entry point. sccache shares compiled dependencies
-between worktrees. `.cargo/config.toml` keeps intermediates in the worktree's `target/`, overriding
+`scripts/quarantine-test.sh` is the one entry point. kache shares compiled outputs (libraries,
+build scripts and linked test binaries) between worktrees, restored as APFS clones. `.cargo/config.toml` keeps intermediates in the worktree's `target/`, overriding
 a machine-wide `build-dir`. Iteration builds use two Cargo jobs; `make land` uses four, niced, and two
 test threads; on a new machine any build/test/land target installs the tools first.
 While iterating, test one crate: `cargo nextest run -p <crate>` (add `-E 'test(name)'` to narrow).

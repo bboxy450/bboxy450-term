@@ -315,7 +315,7 @@ if failed:
         ("security", "printf 'lookup\\n' >> \"$FIXTURE_ROOT/lookups\"; test -z \"${FIXTURE_NO_IDENTITY:-}\" || exit 0; printf '%s\\n' fixture-only-identity".into()),
         ("cargo", "exit 0".into()),
         ("cargo-nextest", "# PRIVATE FAKE availability only; no installation\nexit 0".into()),
-        ("sccache", "# PRIVATE FAKE availability only; no daemon or cache\nexit 0".into()),
+        ("kache", "# PRIVATE FAKE availability only; no daemon or cache\nexit 0".into()),
         ("plutil", "if [ \"$1\" = -insert ] && [ \"$2\" = BBOXYHarnessRevision ]; then test \"$4\" = fixture-harness-revision || exit 31; printf '%s' \"$4\" > \"$FIXTURE_ROOT/harness-revision\"; fi".into()),
         ("git", "case \"$1\" in rev-list) printf '17\\n' ;; rev-parse) printf 'fixture-revision\\n' ;; -C) test \"$2\" = crates/bboxy450-harness && test \"$3\" = rev-parse && test \"$4\" = HEAD || exit 2; printf 'fixture-harness-revision\\n' ;; diff) exit 0 ;; *) exit 2 ;; esac".into()),
     ] {

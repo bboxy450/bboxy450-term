@@ -6,7 +6,7 @@
 # touches (their lib/bin tests, plus each changed integration-test file), compile-
 # check every crate that depends on them, push. LAND_MODE=wide also tests every
 # dependent (scripts/affected.sh); Cargo.toml/Cargo.lock/toolchain changes select
-# all. Niced, shared sccache. The full gate stays available as `make land-full`.
+# all. Niced, shared kache. The full gate stays available as `make land-full`.
 set -eu
 if [ "${BBOXY_LAND_COST_TREE:-}" != 1 ]; then
     export BBOXY_LAND_COST_TREE=1

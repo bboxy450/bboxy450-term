@@ -176,7 +176,7 @@ def _build_closure_file(path, limit=128 * 1024 * 1024):
 
 
 def _build_closure_query(argv, environment):
-    """Only called with fixed rustup which or known sccache --version argv."""
+    """Only called with fixed rustup which or known kache --version argv."""
     process = subprocess.Popen(argv, cwd=ROOT, env=environment, stdin=subprocess.DEVNULL,
                                stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
     output = bytearray()
@@ -310,12 +310,12 @@ def build_closure_before(*, cargo_argv, target, source_hashes, compiler_version,
         if not value:
             wrappers[name] = {"present": name in environment, "enabled": False,
                               **({"value": ""} if name in environment else {})}
-        elif Path(value).name == "sccache":
+        elif Path(value).name == "kache":
             identity = _build_closure_file(program(value))
             version = _build_closure_query([identity["resolved_path"], "--version"], environment)
-            if re.fullmatch(r"sccache [0-9][A-Za-z0-9._+ -]{0,255}", version) is None:
+            if re.fullmatch(r"kache [0-9][A-Za-z0-9._+ -]{0,255}", version) is None:
                 raise ValueError("unexpected known-wrapper version record")
-            wrappers[name] = {"present": True, "enabled": True, "kind": "sccache", **identity,
+            wrappers[name] = {"present": True, "enabled": True, "kind": "kache", **identity,
                               "version": version}
         elif (name == "RUSTC_WRAPPER" and Path(value).name == "rustc-qos"
               and environment.get("BBOXY_QOS_ROOT", str(ROOT.resolve())) == str(ROOT.resolve())
@@ -378,10 +378,10 @@ def build_closure_before(*, cargo_argv, target, source_hashes, compiler_version,
         configs.append(_build_closure_file(path, 2 * 1024 * 1024) if path.exists()
                        else {"path": str(path.absolute()), "present": False})
     cache = {"mode": state("BBOXY_CACHE_MODE", {"auto", "off", ""}),
-             "wrapper_enabled": any(v.get("kind") == "sccache" for v in wrappers.values()),
+             "wrapper_enabled": any(v.get("kind") == "kache" for v in wrappers.values()),
              "server_contacted_by_evidence_helper": False}
     cache["selected_mode"] = (environment.get("BBOXY_CACHE_MODE") or "auto") if not cache["mode"].get("value_redacted") else "unknown_redacted"
-    for name in ("SCCACHE_DIR", "SCCACHE_SERVER_PORT", "SCCACHE_CACHE_SIZE"):
+    for name in ("KACHE_CACHE_DIR", "KACHE_MAX_SIZE", "KACHE_LOCAL_ONLY"):
         # Presence is sufficient to label inherited cache configuration; raw
         # cache environment values are deliberately not copied here.
         cache[name] = {"present": name in environment, "nonempty": bool(environment.get(name))}
@@ -514,7 +514,7 @@ def check_build_closure_controls(canonical_receipt=None):
             path.write_bytes(raw)
             os.chmod(path, 0o700 if executable else 0o600)
 
-        for name in ("rustup", "rustc", "cargo", "sccache"):
+        for name in ("rustup", "rustc", "cargo", "kache"):
             put(tools / name, ("NEVER EXECUTED private metadata input " + name).encode(), True)
         put(root / ".cargo/config.toml", b'[build]\nbuild-dir="target"\nincremental=false\n')
         put(root / "Cargo.toml", b"[workspace]\n")
@@ -530,7 +530,7 @@ def check_build_closure_controls(canonical_receipt=None):
         environment = {"PATH": str(tools), "CARGO_HOME": str(root / "cargo-home"),
                        "CARGO_PROFILE_DEV_DEBUG": "0", "CARGO_PROFILE_TEST_DEBUG": "0",
                        "CARGO_PROFILE_DEV_OPT_LEVEL": "1", "CARGO_PROFILE_TEST_OPT_LEVEL": "1",
-                       "CARGO_INCREMENTAL": "0", "RUSTC_WRAPPER": "sccache",
+                       "CARGO_INCREMENTAL": "0", "RUSTC_WRAPPER": "kache",
                        "RUSTC_WORKSPACE_WRAPPER": "", "BBOXY_CACHE_MODE": "auto",
                        "BBOXY_DREAM_BUILD_ENTRY": "test-dream-c1",
                        "BBOXY_CAPABILITY_FILE": "PRIVATE_CAPABILITY_MARKER_NEVER_READ",
@@ -547,8 +547,8 @@ def check_build_closure_controls(canonical_receipt=None):
             query_calls.append(argv)
             if argv[:2] == [str(tools / "rustup"), "which"] and argv[2:] in (["rustc"], ["cargo"]):
                 return str(tools / argv[2])
-            if argv == [str(tools / "sccache"), "--version"]:
-                return "sccache 0.0.0-private-helper"
+            if argv == [str(tools / "kache"), "--version"]:
+                return "kache 0.0.0-private-helper"
             raise AssertionError("unexpected metadata query in private closure control")
 
         with mock.patch.dict(globals(), {"ROOT": root, "_build_closure_query": query}):
@@ -577,11 +577,11 @@ def check_build_closure_controls(canonical_receipt=None):
                 refused.append(label)
 
             qos_environment = {**environment, "RUSTC_WRAPPER": str(qos),
-                               "BBOXY_QOS_ROOT": str(root), "BBOXY_INNER_RUSTC_WRAPPER": "sccache"}
+                               "BBOXY_QOS_ROOT": str(root), "BBOXY_INNER_RUSTC_WRAPPER": "kache"}
             qos_before = build_closure_before(**parameters, environment=qos_environment)
             assert qos_before["admissible"] and qos_before["cache"]["wrapper_enabled"]
             assert qos_before["wrappers"]["RUSTC_WRAPPER"]["kind"] == "bboxy-qos"
-            assert qos_before["wrappers"]["BBOXY_INNER_RUSTC_WRAPPER"]["kind"] == "sccache"
+            assert qos_before["wrappers"]["BBOXY_INNER_RUSTC_WRAPPER"]["kind"] == "kache"
             without_cache = build_closure_before(
                 **parameters, environment={**qos_environment, "BBOXY_INNER_RUSTC_WRAPPER": ""})
             assert without_cache["admissible"] and not without_cache["cache"]["wrapper_enabled"]
@@ -629,7 +629,7 @@ def check_build_closure_controls(canonical_receipt=None):
             assert metadata["deps"][0][3] == str((1 << 64) - 1)
             accepted.extend(["same_features_different_bytes_select_exact_deps_SHA", "u64_fingerprints_preserve_exact_string_values"])
             assert build_closure_after(qos_before, runner=runner)["admissible"]
-            for path in (root / "scripts/qos.sh", tools / "sccache"):
+            for path in (root / "scripts/qos.sh", tools / "kache"):
                 retained = path.read_bytes()
                 put(path, b"changed wrapper input", True)
                 changed = build_closure_after(qos_before, runner=runner)

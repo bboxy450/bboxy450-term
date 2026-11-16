@@ -122,69 +122,6 @@ def process_start(pid):
     return usage.start if lib.proc_pid_rusage(pid, 2, ctypes.byref(usage)) == 0 else None
 
 
-def bind_cache(worktree, port):
-    """Called only after cache-env has selected and checked this listener."""
-    import hashlib
-    if not str(port).isdecimal() or not 0 < int(port) < 65536:
-        return
-    pids = set(output(['lsof', '-nP', '-iTCP:' + str(port), '-sTCP:LISTEN', '-t']).splitlines())
-    if len(pids) != 1:
-        return
-    pid = int(pids.pop())
-    start = process_start(pid)
-    if start is None:
-        return
-    worktree = str(Path(worktree).resolve())
-    directory = state_dir() / 'ledger-cache-bindings' / str(port)
-    directory.mkdir(parents=True, exist_ok=True, mode=0o700)
-    name = hashlib.sha256(os.fsencode(worktree)).hexdigest()
-    temporary = directory / (name + '.' + uuid.uuid4().hex + '.tmp')
-    data = dict(pid=pid, start=start, worktree=worktree, port=int(port), at=now(),
-                basis='cache-env successful caller-selected worktree/port association')
-    fd = os.open(temporary, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)
-    try:
-        os.write(fd, json.dumps(data).encode())
-    finally:
-        os.close(fd)
-    os.replace(temporary, directory / (name + '.json'))
-
-
-def cache_root(cwd, port=None, rows=None):
-    """Missing, reused or conflicting bindings stay unattributed (#333)."""
-    port = port or os.environ.get('SCCACHE_SERVER_PORT')
-    if not port or not str(port).isdecimal():
-        return None
-    valid = []
-    for path in (state_dir() / 'ledger-cache-bindings' / str(port)).glob('*.json'):
-        try:
-            value = json.loads(path.read_text())
-            pid = value['pid']
-            start = rows.get(pid, {}).get('start') if rows is not None else process_start(pid)
-            if start is not None and start == value['start']:
-                valid.append(value)
-        except (OSError, ValueError, KeyError):
-            continue
-    if len(valid) == 1 and valid[0]['worktree'] == str(Path(cwd).resolve()):
-        return dict(pid=valid[0]['pid'], start=valid[0]['start'], basis=valid[0]['basis'])
-    return None
-
-
-def cache_totals(cwd):
-    if os.environ.get('RUSTC_WRAPPER') != 'sccache':
-        return None
-    root = cache_root(cwd)
-    if root is None:
-        return None
-    usage = Usage()
-    lib = ctypes.CDLL('/usr/lib/libproc.dylib')
-    if lib.proc_pid_rusage(root['pid'], 2, ctypes.byref(usage)) != 0 or usage.start != root['start']:
-        return None
-    factor = mach_seconds_per_tick()
-    return dict(pid=root['pid'], start=root['start'],
-                user=(usage.user + usage.child_user) * factor,
-                system=(usage.system + usage.child_system) * factor)
-
-
 def machine():
     result = dict(load=list(os.getloadavg()), disk_free_bytes=shutil.disk_usage(state_dir()).free)
     if sys.platform == 'darwin':
@@ -223,10 +160,6 @@ def sample(registrations, previous):
         expanded.append(registration)
         if registration['pid'] in rows and rows[registration['pid']]['start'] == registration['start']:
             expanded.extend(dict(registration, **root) for root in registration.get('external_roots', []))
-            if registration.get('cache_port'):
-                root = cache_root(registration['worktree'], registration['cache_port'], rows)
-                if root:
-                    expanded.append(dict(registration, **root))
     for registration in expanded:
         pid = registration['pid']
         if pid not in rows or rows[pid]['start'] != registration['start']:
@@ -335,7 +268,6 @@ class Stage:
         self.target = Path(os.environ.get('CARGO_TARGET_DIR') or
                            os.environ.get('BBOXY_CARGO_TARGET_DIR') or self.cwd / 'target')
         self.child = None
-        self.cache_before = cache_totals(self.cwd) if sys.platform == 'darwin' else None
 
         sampler = os.environ.get('BBOXY_LEDGER_SAMPLER')
         if sampler:
@@ -371,9 +303,7 @@ class Stage:
                 start = usage.start
         data = dict(id=self.id, agent=self.agent, cut=self.cut, stage=self.stage,
                     pid=pid, pgid=os.getpgid(pid), start=start, owner=os.getpid(),
-                    worktree=str(self.cwd.resolve()),
-                    cache_port=os.environ.get('SCCACHE_SERVER_PORT') if
-                    os.environ.get('RUSTC_WRAPPER') == 'sccache' else None)
+                    worktree=str(self.cwd.resolve()))
         self.file.write_text(json.dumps(data))
         self.file.chmod(0o600)
 
@@ -390,18 +320,9 @@ class Stage:
             row.update(parse_time(stats))
         except OSError:
             row['rusage'] = 'unavailable'
-        after = cache_totals(self.cwd) if self.cache_before else None
-        row['cache_cpu_accounting'] = 'unavailable; no stable selected cache binding'
-        if (after and (after['pid'], after['start']) ==
-                (self.cache_before['pid'], self.cache_before['start'])):
-            row['cache_cpu_accounting'] = 'selected worktree cache self+reaped-child delta; sequential stage interval'
-            for kind in ('user', 'system'):
-                delta = after[kind] - self.cache_before[kind]
-                row['cache_cpu_' + kind + '_seconds'] = max(0., delta)
-                key = 'cpu_' + kind + '_seconds'
-                row['waited_' + key] = row[key]
-                if row[key] is not None:
-                    row[key] += max(0., delta)
+        # The compiler cache's daemon is shared by every worktree, so its CPU is
+        # not charged to a stage.
+        row['cache_cpu_accounting'] = 'unavailable; one machine-wide cache daemon'
         sample_path = self.directory / (self.id + '.sample')
         try:
             sampled = json.loads(sample_path.read_text())
@@ -486,20 +407,11 @@ def main():
     p.add_argument('command', nargs=argparse.REMAINDER)
     p = sub.add_parser('start')
     p.add_argument('owner', type=int)
-    p = sub.add_parser('bind-cache')
-    p.add_argument('worktree', type=Path)
-    p.add_argument('port')
     p = sub.add_parser('observe')
     p.add_argument('owner', type=int)
     p.add_argument('directory', type=Path)
     p.add_argument('session')
     args = parser.parse_args()
-    if args.verb == 'bind-cache':
-        try:
-            bind_cache(args.worktree, args.port)
-        except Exception:
-            pass  # The caller's selected cache is never gated by accounting.
-        return 0
     if args.verb == 'start':
         try:
             print(start_observer(args.owner))

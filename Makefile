@@ -103,7 +103,7 @@ help:
 	  'make lock                       Refresh workspace lock metadata offline' \
 	  'make lock-online                Resolve added dependencies with the registry' \
 	  'make bump-harness [REV=sha]      Move and stage the harness submodule and changed lockfile (default origin/main)' \
-	  'make tools                      Install the Rust workflow tools (cargo-nextest, sccache) once per machine' \
+	  'make tools                      Install the Rust workflow tools (cargo-nextest, kache) once per machine' \
 	  'make land / make push           Diff-scoped gate (affected crates + dependents, nextest), then push' \
 	  'make land-full                  Full signed gate (make test in a warm, queued gate slot)' \
 	  'make verify-clean-start        Private Codex defaults, CLI/seat, native GUI and Bridge checks' \
@@ -322,12 +322,12 @@ help:
 	  'Overrides: PROFILE=debug|release TARGET_DIR=... INSTALL_DIR=... UNSIGNED_INSTALL_DIR=... CI_LOG=... LAND_GATE_LOG=... BBOXY_CACHE_MODE=auto|off CODEX_BIN=... PUSH_IDENTITY=... SWARM_TEST_THREADS=2 RUST_TEST_THREADS=2' \
 	  'GitKB: GITKB_BIN=... PLUGIN_WORKSPACE=/explicit/local/project'
 
-# The Rust workflow every entry point uses: nextest runs tests, sccache shares
-# compiled dependencies between worktrees, rust-toolchain.toml pins the compiler.
+# The Rust workflow every entry point uses: nextest runs tests, kache shares
+# compiled outputs between worktrees, rust-toolchain.toml pins the compiler.
 # Build, test and land targets bootstrap these once on a new machine.
 tools:
 	@command -v cargo-nextest >/dev/null || sh scripts/qos.sh background cargo install --locked cargo-nextest
-	@command -v sccache >/dev/null || { command -v brew >/dev/null && sh scripts/qos.sh background brew install sccache || sh scripts/qos.sh background cargo install --locked sccache; }
+	@command -v kache >/dev/null || sh scripts/qos.sh background cargo install --locked kache --version 2.1.1
 
 build:
 	@$(MAKE) compile PROFILE=debug
