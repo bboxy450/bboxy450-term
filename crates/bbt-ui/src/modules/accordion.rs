@@ -17,8 +17,10 @@ pub struct Accordion<'a> {
     pub key: &'a str,
     pub title: &'a str,
     pub color: [f32; 4],
-    /// Header count as shown: a number, or `shown / total · mode`.
+    /// Header count as shown: a number, or `shown / total`.
     pub count: &'a str,
+    /// A word at the band's right edge; the host may make it a control.
+    pub note: Option<&'a str>,
     pub open: bool,
 }
 impl Accordion<'_> {
@@ -78,7 +80,7 @@ impl Accordion<'_> {
             extra: vec![],
             shadows: vec![],
         };
-        let mut head = card.header_element_with_count(ctx, self.count);
+        let mut head = card.header_element_with_count(ctx, self.count, self.note);
         c::namespace(&mut head, &format!("{}/", self.key));
         let mut children = vec![head.into()];
         if let Some(body) = body.filter(|_| self.open) {

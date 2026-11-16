@@ -132,6 +132,7 @@ impl ToolCall {
                 title,
                 color: self.status.color(),
                 count: "0",
+                note: None,
                 open,
             }
             .element(

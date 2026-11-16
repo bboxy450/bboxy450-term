@@ -55,14 +55,13 @@ pub struct Feed {
     pub pinned: usize,
 }
 impl Feed {
-    /// The header count, also the mode toggle: `12 / 128 · signal`.
+    /// The header count: `12 / 128`.
     pub fn label(self) -> String {
-        format!(
-            "{} / {} · {}",
-            self.shown,
-            self.total,
-            if self.all { "all" } else { "signal" }
-        )
+        format!("{} / {}", self.shown, self.total)
+    }
+    /// The header's mode word, which the host toggles.
+    pub fn mode(self) -> &'static str {
+        if self.all { "all" } else { "signal" }
     }
 }
 
@@ -220,6 +219,7 @@ impl Conversation {
             title: "Tasks",
             color: bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.section.tasks).0,
             count: &task_count.to_string(),
+            note: None,
             open: open[0],
         }
         .element(ctx, [width, tasks_height], tasks_body);
@@ -228,6 +228,7 @@ impl Conversation {
             title: "Chat",
             color: bbt_ui_model::draw::Color::hex(bbt_ui_model::TOKENS.color.section.chat).0,
             count: &chat_count,
+            note: self.feed.map(Feed::mode),
             open: open[1],
         }
         .element(ctx, [width, chat_height], chat_body);

@@ -57,6 +57,8 @@ pub struct History {
     rows: VecDeque<Row>,
     bytes: usize,
     listed: Vec<(Ulid, Option<wire::BusPosition>, String, MessageAttachments)>,
+    /// Typed bodies seen on history pages, for the ledger; newest 256.
+    typed: BTreeMap<Ulid, super::feed::Typed>,
     list: Option<List>,
     list_wanted: Option<u64>,
     list_next: Option<u64>,
@@ -414,6 +416,16 @@ impl History {
         });
         self.trim();
     }
+    /// Pages carry the stored body; live rows do not. Ulids order by time.
+    fn note_typed(&mut self, item: &wire::StoredMessage) {
+        let view = item.view();
+        if let Some(typed) = super::feed::Typed::of(view.body) {
+            self.typed.insert(view.id, typed);
+            while self.typed.len() > 256 {
+                self.typed.pop_first();
+            }
+        }
+    }
     fn trim(&mut self) {
         while self.rows.len() > 128 || self.bytes + 2 > 1024 * 1024 {
             let Some(old) = self.rows.pop_front() else {
@@ -663,6 +675,7 @@ impl History {
             // the latest conversation. Event coverage/read cursors stay separate.
             for (row, item) in rows.iter().zip(&page.items) {
                 self.canonical_row(row, Some(item.view().context), *projected_at);
+                self.note_typed(item);
             }
             if refresh {
                 // This snapshot chooses no older-history cursor and proves no
@@ -706,6 +719,9 @@ impl History {
                 self.issue = None;
                 self.list_failed_after = None;
                 self.list_next = page.next;
+                for item in &page.items {
+                    self.note_typed(item);
+                }
                 self.listed = page
                     .items
                     .iter()
@@ -795,7 +811,7 @@ impl History {
             .map(|row| {
                 (
                     row.row.id.to_string(),
-                    super::feed::Fact::of(&row.row, &row.context),
+                    super::feed::Fact::of(&row.row, &row.context, self.typed.get(&row.row.id)),
                 )
             })
             .collect()
@@ -1290,6 +1306,48 @@ mod quiet_history_tests {
             history.commands().is_empty(),
             "no effect replay or second in-flight read"
         );
+    }
+
+    #[test]
+    fn a_history_page_types_its_task_rows_and_a_live_row_stays_untyped() {
+        use crate::messaging::feed::Typed;
+        let scope = SwarmId::from_u128(107);
+        let mut history = History::default();
+        history.select(scope);
+        let UiMsg::Messaging { id, .. } = history.commands().pop().unwrap() else {
+            panic!("message read")
+        };
+        let mut message = committed_message(scope, 3);
+        let wire::StoredContent::Pending { intent } = &mut message.content else {
+            unreachable!()
+        };
+        intent.request.kind = wire::MessageKind::Task;
+        intent.body = wire::Body::Task {
+            task_id: Ulid(77),
+            event: "report".into(),
+            path: ".bboxy/tasks/fixture.md".into(),
+            summary: intent.request.text.clone(),
+        };
+        let mut results = Results::default();
+        results.push(id, snapshot(std::slice::from_ref(&message)));
+        assert!(history.replies(&results));
+        assert_eq!(history.issue, None);
+        let mut live = latest_row(scope, 40);
+        live.kind = wire::MessageKind::Task;
+        history.row(&live, Some("seats/a/inbox"), 3000);
+        let facts = history.facts();
+        assert_eq!(
+            facts[&message.view().id.to_string()].typed,
+            Some(Typed::Task {
+                task: Ulid(77),
+                event: "report".into()
+            })
+        );
+        assert!(facts[&message.view().id.to_string()].to_operator);
+        assert_eq!(facts[&live.id.to_string()].typed, None);
+        // Selecting another swarm forgets them with the rows.
+        history.select(SwarmId::from_u128(108));
+        assert!(history.typed.is_empty());
     }
 
     #[test]

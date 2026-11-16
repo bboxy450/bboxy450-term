@@ -387,8 +387,14 @@ fn feed_pins_leading_lines_above_the_scrolling_list_and_labels_the_header() {
     let tree = solve(&view, [300., 700.], Some(96.));
     assert_eq!(
         text(named(&tree, "conversation/chat-section/head/count")),
-        "4 / 128 · signal"
+        "4 / 128"
     );
+    // The mode word sits at the band's right edge, clear of the header's
+    // centre, which folds the section.
+    let head = named(&tree, "conversation/chat-section/head").rect;
+    let mode = named(&tree, "conversation/chat-section/head/right/note");
+    assert_eq!(text(mode), "signal");
+    assert!(mode.rect.x > head.x + head.w / 2. && mode.rect.right() <= head.right());
     assert_eq!(text(named(&tree, "e0")), "● Lumen · waiting · permission");
     assert_eq!(
         text(named(&tree, "e1")),
@@ -420,7 +426,11 @@ fn feed_pins_leading_lines_above_the_scrolling_list_and_labels_the_header() {
     let all = solve(&view, [300., 700.], Some(96.));
     assert_eq!(
         text(named(&all, "conversation/chat-section/head/count")),
-        "128 / 128 · all"
+        "128 / 128"
+    );
+    assert_eq!(
+        text(named(&all, "conversation/chat-section/head/right/note")),
+        "all"
     );
     assert!((named(&all, "conversation/rows").rect.h - full.h).abs() < 0.01);
 }

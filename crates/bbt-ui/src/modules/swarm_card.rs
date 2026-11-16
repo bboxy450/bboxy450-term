@@ -238,9 +238,15 @@ pub struct SwarmCard {
 }
 impl SwarmCard {
     pub fn header_element(&self, ctx: ui::Context) -> c::Element {
-        self.header_element_with_count(ctx, &self.seats.len().to_string())
+        self.header_element_with_count(ctx, &self.seats.len().to_string(), None)
     }
-    pub fn header_element_with_count(&self, ctx: ui::Context, count: &str) -> c::Element {
+    /// `note` is a short word at the band's right edge, for a section's mode.
+    pub fn header_element_with_count(
+        &self,
+        ctx: ui::Context,
+        count: &str,
+        note: Option<&str>,
+    ) -> c::Element {
         let band = ui::Style::new(ui::Preset::Band)
             .resolve(ctx)
             .expect("band Style");
@@ -386,6 +392,15 @@ impl SwarmCard {
                     max_fraction: None,
                 },
             });
+        }
+        if let Some(note) = note {
+            right.push(
+                named(
+                    "head/right/note",
+                    text(note, STYLE.r#type.note as f32, 400, true, white(0.7)),
+                )
+                .into(),
+            );
         }
         let mut swatch = plain(Some(10.), [0.; 4], ui::Color::Rgba(self.color), 999.);
         swatch.overrides.width = Some(ui::Length::Px(10.));

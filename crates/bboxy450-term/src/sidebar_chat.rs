@@ -275,7 +275,7 @@ impl App {
         self.conversation_layout.as_ref().is_some_and(|layout| {
             layout
                 .actions
-                .contains("conversation/chat-section/head/count", at)
+                .contains("conversation/chat-section/head/right/note", at)
         })
     }
     pub(super) fn toggle_chat_feed(&mut self) {

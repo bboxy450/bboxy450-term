@@ -664,7 +664,7 @@ impl App {
                     );
                 }
             }
-            if let Some(n) = find(&layout.layout, "conversation/chat-section/head/count") {
+            if let Some(n) = find(&layout.layout, "conversation/chat-section/head/right/note") {
                 regions.insert(
                     "toggle-chat-feed".into(),
                     [n.rect.x, n.rect.y, n.rect.w, n.rect.h],
