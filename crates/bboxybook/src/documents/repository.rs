@@ -4,7 +4,9 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! Offline corpus gallery: actual tracked Markdown, never a browser screenshot.
+//! Offline corpus gallery: actual tracked Markdown and Den records, never a
+//! browser screenshot. A `.den` record is shown as its Markdown lowering
+//! (`bboxy450_den::render`), the projection a Markdown-only provider stores.
 use crate::{Result, components, gallery, settings::Metrics};
 use bbt_ui::{self as ui, components as c};
 use bbt_ui_model::{
@@ -34,7 +36,10 @@ pub fn inputs(root: &Path) -> Result<Vec<PathBuf>> {
     let mut paths = vec![];
     for value in output.stdout.split(|b| *b == 0).filter(|s| !s.is_empty()) {
         let relative = PathBuf::from(std::str::from_utf8(value)?);
-        if relative.extension().is_some_and(|s| s == "md") {
+        if relative
+            .extension()
+            .is_some_and(|s| s == "md" || s == "den")
+        {
             if relative.components().any(|c| {
                 matches!(
                     c,
@@ -49,6 +54,35 @@ pub fn inputs(root: &Path) -> Result<Vec<PathBuf>> {
     paths.sort();
     Ok(paths)
 }
+/// One tracked record as the Markdown the viewer reads. A `.den` file is
+/// lowered with its imports resolved inside `root`; an unsound one is an error,
+/// never a silently skipped page.
+pub fn markdown(root: &Path, relative: &Path) -> Result<String> {
+    let source = fs::read_to_string(root.join(relative))?;
+    if relative.extension().is_none_or(|s| s != "den") {
+        return Ok(source);
+    }
+    let resolver = bboxy450_den::file_resolver(&root.join(relative), Some(root));
+    lowered(relative, &source, Some(&resolver))
+}
+fn lowered(
+    relative: &Path,
+    source: &str,
+    resolver: Option<&bboxy450_den::Resolver>,
+) -> Result<String> {
+    let rendered = match resolver {
+        Some(resolver) => bboxy450_den::render::render_resolved(source, true, resolver),
+        None => bboxy450_den::render::render_with(source, true),
+    };
+    rendered.map(|r| r.markdown).map_err(|report| {
+        format!(
+            "{}: Den record is not sound:\n{}",
+            relative.display(),
+            report.to_text()
+        )
+        .into()
+    })
+}
 fn escape(value: &str) -> String {
     value
         .replace('&', "&amp;")
@@ -61,7 +95,7 @@ pub fn check(root: &Path) -> Result<Vec<serde_json::Value>> {
     let metrics = Metrics::default();
     check_sources(
         inputs(root)?.into_iter().map(|path| {
-            let source = fs::read_to_string(root.join(&path))?;
+            let source = markdown(root, &path)?;
             Ok((path, source))
         }),
         &metrics,
@@ -185,7 +219,7 @@ pub fn preview(root: &Path, out: &Path, paths: &[String], size: [u32; 2]) -> Res
     let mut renderer = bbt_render::chrome::ChromeRenderer::new(crate::images()?)?;
     let [width, height] = size;
     for relative in paths {
-        let markdown = bbt_doc::parse(&fs::read_to_string(root.join(relative))?);
+        let markdown = bbt_doc::parse(&markdown(root, Path::new(relative))?);
         let path = relative.strip_prefix(".bboxy/").unwrap_or(relative);
         for theme in [ui::Theme::Light, ui::Theme::Dark] {
             let ctx = ui::Context::new(theme, ui::Density::Cozy);
@@ -209,7 +243,9 @@ pub fn preview(root: &Path, out: &Path, paths: &[String], size: [u32; 2]) -> Res
             )?;
             let name = format!(
                 "{}.{}.png",
-                path.replace('/', "__").trim_end_matches(".md"),
+                path.replace('/', "__")
+                    .trim_end_matches(".md")
+                    .trim_end_matches(".den"),
                 gallery::theme_name(theme)
             );
             bbt_render::write_png(out.join(&name), &pixels, width, height)?;
@@ -259,7 +295,7 @@ fn render_mode(root: &Path, out: &Path, single: bool) -> Result<()> {
     let paths = inputs(root)?;
     let total = paths.len();
     if paths.is_empty() {
-        return Err("no tracked .bboxy Markdown found".into());
+        return Err("no tracked .bboxy Markdown or Den found".into());
     }
     fs::create_dir_all(out)?;
     let metrics = Metrics::default();
@@ -282,7 +318,7 @@ fn render_mode(root: &Path, out: &Path, single: bool) -> Result<()> {
             isolated = bbt_render::chrome::ChromeRenderer::new(crate::images()?)?;
             &mut isolated
         };
-        let source = fs::read_to_string(root.join(&relative))?;
+        let source = markdown(root, &relative)?;
         let markdown = bbt_doc::parse(&source);
         fn mermaid_blocks<'a>(blocks: &'a [bbt_doc::Block], out: &mut Vec<&'a str>) {
             for block in blocks {
@@ -468,6 +504,14 @@ mod tests {
     // keeps: spec document-viewer.md §Build order 1
     #[test]
     fn representative_sources_lay_out_in_both_themes_without_unclipped_overflow() {
+        // A `.den` header record reaches the viewer as its Markdown lowering.
+        let den = lowered(
+            Path::new(".bboxy/tasks/lowered.den"),
+            "module tasks.lowered\n\ntask Lowered {\n  title \"A Den task in the gallery\"\n  status Running\n  verify $ make check ~> exit 0\n  paths \"src/a.rs\"\n  brief \"\"\"\n    The viewer shows a `.den` record as its Markdown lowering.\n    \"\"\"\n}\n",
+            None,
+        )
+        .unwrap();
+        assert!(den.contains("A Den task in the gallery") && den.contains("```den"));
         let sources = [
             (
                 ".bboxy/vision.md",
@@ -477,6 +521,7 @@ mod tests {
                 ".bboxy/tasks/task.md",
                 "---\ntype: task\ntitle: Fixture task\nstatus: running\n---\n## Contract\n\n| Key | Value |\n| --- | --- |\n| alpha | wrapped table content |\n\n> A quoted paragraph.\n",
             ),
+            (".bboxy/tasks/lowered.den", den.as_str()),
             (
                 ".bboxy/specs/diagram.md",
                 "# Diagram\n\n```mermaid\nflowchart LR\n A[alpha] --> B[beta]\n```\n\n```rust\nlet value = 1;\n```\n",

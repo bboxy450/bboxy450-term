@@ -19,6 +19,7 @@ fn every_tracked_bboxy_markdown_lays_out_in_both_themes_without_unclipped_overfl
     assert!(files.contains(&std::path::PathBuf::from(".bboxy/vision.md")));
     assert!(files.contains(&std::path::PathBuf::from(".bboxy/specs/architecture.md")));
     assert!(files.iter().any(|p| p.starts_with(".bboxy/tasks")));
+    assert!(files.contains(&std::path::PathBuf::from(".bboxy/specs/delivery/outbox.den")));
     let reports = documents::repository::check(&root).unwrap();
     assert_eq!(reports.len(), files.len() * 2);
     assert!(reports.iter().all(|r| {
