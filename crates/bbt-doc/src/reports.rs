@@ -13,8 +13,8 @@ fn validate_path(path: &str) -> Result<(), String> {
         .strip_prefix(".bboxy/")
         .unwrap_or(path)
         .strip_prefix("reports/")
-        .and_then(|s| s.strip_suffix(".md"))
-        .ok_or("reports require reports/YYYY-MM-DD-slug.md")?;
+        .and_then(|s| s.strip_suffix(".den").or_else(|| s.strip_suffix(".md")))
+        .ok_or("reports require reports/YYYY-MM-DD-slug.den (or .md)")?;
     let date = name.as_bytes();
     if date.len() < 12
         || date[4] != b'-'
@@ -28,7 +28,7 @@ fn validate_path(path: &str) -> Result<(), String> {
             .bytes()
             .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-')
     {
-        return Err("reports require reports/YYYY-MM-DD-slug.md".into());
+        return Err("reports require reports/YYYY-MM-DD-slug.den (or .md)".into());
     }
     let year: u32 = name[..4].parse().map_err(|_| "invalid report date")?;
     let month: usize = name[5..7].parse().map_err(|_| "invalid report date")?;

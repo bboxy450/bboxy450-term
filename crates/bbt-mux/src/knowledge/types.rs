@@ -45,8 +45,8 @@ pub const DOCUMENT_TYPES: &[DocumentType] = &[
     DocumentType {
         kind: "bug",
         purpose: "A reproducible defect in expected behavior. It connects the failure to affected specifications, invariants and repair work.",
-        path: "bugs/<slug>.md",
-        writing: "Record reproduction steps, expected and actual behavior, and evidence. Oracle creates open and unassigned; assignment, reports and lifecycle use task_*.",
+        path: "bugs/<slug>.den",
+        writing: "Record reproduction steps, expected and actual behavior, and evidence. Oracle creates open and unassigned; assignment, reports and lifecycle use task_*. Written in Den at the .den path: the host generates it from frontmatter and body, or takes the Den source as the body.",
     },
     DocumentType {
         kind: "note",
@@ -57,8 +57,8 @@ pub const DOCUMENT_TYPES: &[DocumentType] = &[
     DocumentType {
         kind: "invariant",
         purpose: "A property that must hold before and after changes. It includes an executable check and the cost of violating the property.",
-        path: "invariants/<slug>.md",
-        writing: "State the property, check command, successful exit status and cost of failure; link constrained specs. Requires Oracle authority.",
+        path: "invariants/<slug>.den",
+        writing: "State the property, check command, successful exit status and cost of failure; link constrained specs. Requires Oracle authority. Written in Den at the .den path: the host generates it from frontmatter and body, or takes the Den source as the body.",
     },
     DocumentType {
         kind: "artifact",
@@ -69,14 +69,14 @@ pub const DOCUMENT_TYPES: &[DocumentType] = &[
     DocumentType {
         kind: "decision",
         purpose: "A durable record of a choice, its alternatives and rationale. It explains why the resulting design or policy exists.",
-        path: "decisions/<slug>.md",
-        writing: "Record alternatives, choice, reasons and date; link the affected proposal or spec. Create with this unnumbered path; the Index returns decisions/d<number>-<slug>.md. Requires Oracle authority.",
+        path: "decisions/<slug>.den",
+        writing: "Record alternatives, choice, reasons and date; link the affected proposal or spec. Create with this unnumbered path; the Index returns decisions/d<number>-<slug>.den. Requires Oracle authority. Written in Den at the .den path: the host generates it from frontmatter and body, or takes the Den source as the body.",
     },
     DocumentType {
         kind: "proposal",
         purpose: "A design offered for review before a decision is made. It records motivation, alternatives and unresolved questions.",
-        path: "proposals/<slug>.md",
-        writing: "Describe motivation, proposed design, alternatives and open questions; link review comments and the eventual decision. Requires Oracle authority.",
+        path: "proposals/<slug>.den",
+        writing: "Describe motivation, proposed design, alternatives and open questions; link review comments and the eventual decision. Requires Oracle authority. Written in Den at the .den path: the host generates it from frontmatter and body, or takes the Den source as the body.",
     },
     DocumentType {
         kind: "comment",
@@ -105,19 +105,19 @@ pub const DOCUMENT_TYPES: &[DocumentType] = &[
     DocumentType {
         kind: "e2e",
         purpose: "An end-to-end acceptance record for one promised user-facing function. It records the procedure, observed result and coverage gaps.",
-        path: "e2e/<slug>.md",
-        writing: "Provide function, group, steps, expected, status, coverage, last_run, result, run_by and evidence. Name missing checks for partial coverage and link failing or partial results to repair tasks.",
+        path: "e2e/<slug>.den",
+        writing: "Provide function, group, steps, expected, status, coverage, last_run, result, run_by and evidence. Name missing checks for partial coverage and link failing or partial results to repair tasks. Written in Den at the .den path: the host generates it from frontmatter and body, or takes the Den source as the body.",
     },
     DocumentType {
         kind: "report",
         purpose: "An append-only record of completed work and its verification evidence. Corrections preserve the earlier report and identify what they supersede.",
-        path: "reports/YYYY-MM-DD-<slug>.md",
-        writing: "Set task to a [[task locator]] or #N, author to your authenticated seat:ULID (never its display name), created to a timestamp such as 2026-11-05T15:00:00Z, commits to a list of full commit SHAs (possibly empty), and verify to an object with command and integer exit_code. Record changes, evidence and gaps in the body; use task_report to hand it back. Create a new report with supersedes for corrections.",
+        path: "reports/YYYY-MM-DD-<slug>.den",
+        writing: "Set task to a [[task locator]] or #N, author to your authenticated seat:ULID (never its display name), created to a timestamp such as 2026-11-05T15:00:00Z, commits to a list of full commit SHAs (possibly empty), and verify to an object with command and integer exit_code. Record changes, evidence and gaps in the body; use task_report to hand it back. Create a new report with supersedes for corrections. Written in Den at the .den path: the host generates it from frontmatter and body, or takes the Den source as the body.",
     },
     DocumentType {
         kind: "interface",
         purpose: "A contract between components or subsystems. It defines the data, operations and obligations at their boundary.",
-        path: "interfaces/<slug>.md",
-        writing: "Identify the participants, data and operation shapes, ownership, ordering, errors and compatibility rules. Link the relevant specs and verification evidence. Requires Oracle authority.",
+        path: "interfaces/<slug>.den",
+        writing: "Identify the participants, data and operation shapes, ownership, ordering, errors and compatibility rules. Link the relevant specs and verification evidence. Requires Oracle authority. Written in Den at the .den path: the host generates it from frontmatter and body, or takes the Den source as the body.",
     },
 ];

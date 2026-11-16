@@ -2157,7 +2157,7 @@ fn paste(client: &mut Client, seat: &str, text: &[u8]) -> Result<Vec<Value>, Str
     ])
 }
 
-/// The record write of a new task: open and unassigned at `tasks/<date>-<slug>.md`; logic
+/// The record write of a new task: open and unassigned at `tasks/<date>-<slug>.den`; logic
 /// adds the operator as its delegator and the Index its number.
 pub fn task_create(title: &str, verify: &str, brief: Option<&str>) -> Value {
     let now = utc_now();
@@ -2171,7 +2171,7 @@ pub fn task_create(title: &str, verify: &str, brief: Option<&str>) -> Value {
     }
     let slug: String = slug.trim_end_matches('-').chars().take(48).collect();
     let slug = slug.trim_end_matches('-');
-    json!({ "path": format!("tasks/{}-{slug}.md", &now[..10]),
+    json!({ "path": format!("tasks/{}-{slug}.den", &now[..10]),
         "frontmatter": { "type": "task", "title": title, "verify": verify, "status": "open",
             "assignee": "none", "role": "executor" },
         "body": format!("# {title}\n\n{}\n", brief.unwrap_or("")) })

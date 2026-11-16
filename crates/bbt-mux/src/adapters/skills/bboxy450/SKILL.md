@@ -72,7 +72,7 @@ decision, and wait.
    returns, so large results stay out of your context.
 2. **Tasks.** Read the task and its cited specs. Make the smallest change that
    makes the behavior explicit and checked. Write the report with
-   `knowledge_write` at `reports/YYYY-MM-DD-slug.md`, then send `task_report`
+   `knowledge_write` at `reports/YYYY-MM-DD-slug.den`, then send `task_report`
    with a one-paragraph summary, the report locator, the commit, and every
    command with its real exit status. Only the accepting authority uses
    `task_accept` or `task_reject`, and acceptance needs a verification exit of 0

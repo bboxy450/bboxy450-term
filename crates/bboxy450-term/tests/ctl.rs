@@ -2237,7 +2237,7 @@ async fn ctl_task_create_opens_an_unassigned_operator_task() {
     let record = &reply["data"]["record"];
     let path = record["path"].as_str().unwrap();
     assert!(
-        path.starts_with("tasks/") && path.ends_with("-fix-the-t9-fixture.md"),
+        path.starts_with("tasks/") && path.ends_with("-fix-the-t9-fixture.den"),
         "{path}"
     );
     let front = &record["frontmatter"];

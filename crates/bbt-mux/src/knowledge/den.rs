@@ -128,6 +128,9 @@ fn authored(record: &Record) -> Map<String, Value> {
                 let paths: Vec<_> = items(value).iter().map(Den::text).collect();
                 out.insert("allowed_paths".into(), json!(paths));
             }
+            ("verify", Den::Command { exit: Some(exit), .. }) if record.kind == "report" => {
+                out.insert("verify".into(), json!({"command":text,"exit_code":exit}));
+            }
             ("verify", Den::Command { exit, .. }) => {
                 out.insert("verify".into(), json!(text));
                 if let Some(exit) = exit {
@@ -298,6 +301,155 @@ fn insertion(source: &str, layout: &bboxy450_den::Layout) -> (usize, bool) {
     }
 }
 
+/// A record locator (`[[tasks/x]]`, `.bboxy/tasks/x.md`, `#12`) as a Den path.
+fn den_path(locator: &str) -> Option<String> {
+    let inner = locator.trim();
+    let inner = inner
+        .strip_prefix("[[")
+        .and_then(|rest| rest.strip_suffix("]]"))
+        .unwrap_or(inner);
+    let inner = inner.split('|').next().unwrap_or_default();
+    let inner = inner.strip_prefix(".bboxy/").unwrap_or(inner);
+    let inner = inner
+        .strip_suffix(".md")
+        .or_else(|| inner.strip_suffix(".den"))
+        .unwrap_or(inner);
+    let segments: Vec<_> = inner.split('/').collect();
+    if inner.contains(['`', '\n', '\r']) || segments.iter().any(|s| s.is_empty()) {
+        return None;
+    }
+    let segments: Vec<_> = segments
+        .iter()
+        .map(|s| if is_name(s) { (*s).to_owned() } else { format!("`{s}`") })
+        .collect();
+    Some(segments.join("."))
+}
+/// A status the record can state as one word: `open` is `status Open`.
+fn plain_status(status: &str) -> bool {
+    is_name(status)
+        && status == status.to_ascii_lowercase()
+        && status.starts_with(|c: char| c.is_ascii_alphabetic())
+}
+/// A one-line shell command a `$` field can hold exactly.
+fn command(text: &str) -> Option<&str> {
+    (!text.is_empty()
+        && text == text.trim()
+        && !text.contains(['\n', '\r'])
+        && !text.contains("~> exit"))
+    .then_some(text)
+}
+/// The fields of a kind the host knows as typed Den, beyond `title`, `intent`,
+/// `verify`, `paths`, `status` and the prose: what a new record's checker
+/// requires, and what reads well. The exact value of any key whose typed form
+/// differs from the host's stays in `managed`, which overrides it on reading.
+/// Returns the imports the links need and the field lines.
+fn typed(kind: &str, map: &Map<String, Value>) -> (Vec<String>, Vec<String>) {
+    let text = |key: &str| map.get(key).and_then(Value::as_str);
+    let mut imports: Vec<String> = Vec::new();
+    let mut lines = Vec::new();
+    let mut link = |field: &str, targets: Vec<&str>, lines: &mut Vec<String>| {
+        let paths: Vec<_> = targets.into_iter().filter_map(den_path).collect();
+        if paths.is_empty() {
+            return;
+        }
+        for path in &paths {
+            if !imports.contains(path) {
+                imports.push(path.clone());
+            }
+        }
+        lines.push(format!("{field} {}", paths.join(", ")));
+    };
+    let strings = |key: &str| -> Option<Vec<&str>> {
+        match map.get(key)? {
+            Value::String(one) => Some(vec![one.as_str()]),
+            Value::Array(items) if !items.is_empty() => {
+                items.iter().map(Value::as_str).collect::<Option<Vec<_>>>()
+            }
+            _ => None,
+        }
+    };
+    let tagged = |tag: &str, items: Vec<&str>| {
+        items
+            .iter()
+            .map(|item| format!("{tag}{}", quote(item)))
+            .collect::<Vec<_>>()
+            .join(", ")
+    };
+    let words: &[&str] = match kind {
+        "e2e" => &["function", "group", "expected", "coverage", "result", "run_by", "last_run"],
+        "invariant" => &["holds", "passes", "cost"],
+        _ => &[],
+    };
+    for key in words {
+        if let Some(value) = text(key) {
+            lines.push(format!("{key} {}", quote(value)));
+        }
+    }
+    match kind {
+        "report" => {
+            if let Some(task) = text("task") {
+                link("task", vec![task], &mut lines);
+            }
+            if let Some(author) = text("author") {
+                lines.push(match author.strip_prefix("seat:") {
+                    Some(seat) => format!("author seat{}", quote(seat)),
+                    None => format!("author {}", quote(author)),
+                });
+            }
+            if let Some(commits) = strings("commits") {
+                lines.push(format!("commits {}", tagged("sha", commits)));
+            }
+            let verify = &map.get("verify").cloned().unwrap_or_default();
+            if let (Some(run), Some(exit)) = (
+                verify["command"].as_str().and_then(command),
+                verify["exit_code"].as_i64(),
+            ) {
+                lines.push(format!("verify $ {run} ~> exit {exit}"));
+            }
+            if let Some(previous) = text("supersedes") {
+                link("supersedes", vec![previous], &mut lines);
+            }
+        }
+        "e2e" => {
+            if let Some(evidence) = strings("evidence") {
+                lines.push(format!("evidence {}", tagged("path", evidence)));
+            }
+        }
+        "decision" => {
+            if let Some(date) = text("date") {
+                lines.push(format!("date date{}", quote(date)));
+            }
+            // A decision's status is required: its first word, when that is a name.
+            if let Some(status) = text("status")
+                && !plain_status(status)
+                && let Some(word) = status.split(|c: char| !c.is_ascii_alphanumeric()).next()
+                && is_name(word)
+            {
+                let mut word = word.to_ascii_lowercase();
+                word[..1].make_ascii_uppercase();
+                lines.push(format!("status {word}"));
+            }
+            let links = map.get("links").and_then(Value::as_array);
+            for relation in ["decides", "amends"] {
+                let targets = links
+                    .into_iter()
+                    .flatten()
+                    .filter(|link| link["rel"] == relation)
+                    .filter_map(|link| link["to"].as_str())
+                    .collect();
+                link(relation, targets, &mut lines);
+            }
+        }
+        "invariant" => {
+            if let Some(check) = text("check").and_then(command) {
+                lines.push(format!("check $ {check}"));
+            }
+        }
+        _ => {}
+    }
+    (imports, lines)
+}
+
 /// A new record's source, before its `managed` block: the well-known text
 /// fields typed, everything else left to `managed`.
 fn generate(
@@ -339,11 +491,22 @@ fn generate(
         })
         .collect();
     let name = if name.is_empty() { "Record" } else { &name };
-    let mut out = format!("module {}\n\n{kind} {name} {{\n", module.join("."));
+    let (imports, typed) = typed(kind, map);
+    let mut out = format!("module {}\n\n", module.join("."));
+    for import in &imports {
+        out.push_str(&format!("import {import}\n"));
+    }
+    if !imports.is_empty() {
+        out.push('\n');
+    }
+    out.push_str(&format!("{kind} {name} {{\n"));
     for key in ["title", "intent"] {
         if let Some(text) = map.get(key).and_then(Value::as_str) {
             out.push_str(&format!("  {key} {}\n", quote(text)));
         }
+    }
+    for line in typed {
+        out.push_str(&format!("  {line}\n"));
     }
     if let Some(command) = map.get("verify").and_then(Value::as_str)
         && !command.is_empty()
@@ -365,9 +528,7 @@ fn generate(
     }
     if kind != "task"
         && let Some(status) = map.get("status").and_then(Value::as_str)
-        && is_name(status)
-        && status == status.to_ascii_lowercase()
-        && status.starts_with(|c: char| c.is_ascii_alphabetic())
+        && plain_status(status)
     {
         let mut word = status.to_owned();
         word[..1].make_ascii_uppercase();
@@ -629,6 +790,58 @@ mod tests {
                 round(&format!("{kind}s/a_b.den"), metadata, "", None);
             }
         }
+    }
+
+    /// Every kind the host recommends in Den is generated from frontmatter and
+    /// a body, its typed fields filled, and reads back exactly.
+    #[test]
+    fn every_den_kind_is_generated_from_frontmatter() {
+        let stamp = json!({"id":"01M71JZAEJPC72B5QT15N0E09Q","number":44,"created":"2026-11-16T10:00:00Z",
+            "provenance":{"digest":"sha256:ab","sig":"AAAA"},"links":[{"rel":"ref","to":"[[specs/a]]"}]});
+        let cases = [
+            ("reports/2026-11-16-landed.den", json!({"type":"report","title":"Landed",
+                "task":"[[tasks/2026-11-15-den-task]]","author":"seat:01M71H0S7MDHJ0QTCQFPQYXJHW",
+                "commits":["cd1f193b9cd1f193b9cd1f193b9cd1f193b9abcd","ae541605fae541605fae541605fae541605fabcd"],
+                "verify":{"command":"cargo nextest run -p bboxy450-den","exit_code":0},
+                "supersedes":"reports/2026-11-15-landed.md"}), "Changes.\n\nGaps: none.\n",
+                &["import tasks.`2026-11-15-den-task`", "task tasks.`2026-11-15-den-task`", "author seat\"01M71H0S7MDHJ0QTCQFPQYXJHW\"", "commits sha\"cd1f", "verify $ cargo nextest run -p bboxy450-den ~> exit 0", "supersedes reports.`2026-11-15-landed`"][..]),
+            ("reports/2026-11-16-empty.den", json!({"type":"report","title":"No commits","task":"#12",
+                "author":"seat:01M71H0S7MDHJ0QTCQFPQYXJHW","commits":[],"verify":{"command":"true","exit_code":1}}), "", &["task `#12`"][..]),
+            ("e2e/workspace.den", json!({"type":"e2e","title":"Install","function":"Managed install",
+                "group":"deployment","status":"passed","coverage":"full for this installation",
+                "last_run":"2026-11-06T05:11:11.148567+00:00","expected":"Both apps \"ready\"",
+                "result":"Passed source checks","run_by":"operator","evidence":["/a/b.json","/c d.json"]}), "1. Install.\n",
+                &["function \"Managed install\"", "status Passed", "evidence path\"/a/b.json\", path\"/c d.json\""][..]),
+            ("e2e/one.den", json!({"type":"e2e","function":"F","expected":"E","evidence":"/only.json","steps":["a"]}), "", &["evidence path\"/only.json\""][..]),
+            ("decisions/d7-den-default.den", json!({"type":"decision","title":"Den by default","status":"Accepted (operator)",
+                "date":"2026-11-16","links":[{"rel":"decides","to":"[[specs/spec-language]]"},{"rel":"amends","to":"decisions/d6-x.md"},{"rel":"ref","to":"x"}]}),
+                "Alternatives. Choice. Reason.\n", &["import specs.`spec-language`", "status Accepted", "decides specs.`spec-language`", "amends decisions.`d6-x`", "date date\"2026-11-16\""][..]),
+            ("decisions/d8-plain.den", json!({"type":"decision","status":"accepted"}), "Body.", &["status Accepted"][..]),
+            ("invariants/signed-main.den", json!({"type":"invariant","title":"every commit is signed","status":"active",
+                "check":"python3 -I scripts/verify-signatures.py \"${SIGNED_RANGE:-HEAD}\"","cost":"the chain breaks"}), "",
+                &["check $ python3 -I scripts/verify-signatures.py \"${SIGNED_RANGE:-HEAD}\"", "status Active", "cost \"the chain breaks\""][..]),
+            ("interfaces/app-harness.den", json!({"type":"interface","title":"ICD: app ↔ harness","status":"baselined"}), "## Participants\n", &["status Baselined"][..]),
+            ("proposals/research.den", json!({"type":"proposal","title":"Bounded research"}), "Motivation.\n", &[][..]),
+            ("bugs/stale.den", json!({"type":"bug","title":"Stale catalogue","status":"reported","verify":"make land",
+                "owner":"seat:01M6MADHFD19P4TKM7P7X6QESA","artifacts":["[[01M6MJ4RX3HH93AAS66QZY6KKP]]"]}), "Seen.\n", &["verify $ make land"][..]),
+        ];
+        for (path, mut metadata, body, expected) in cases {
+            for (key, value) in stamp.as_object().unwrap() {
+                metadata.as_object_mut().unwrap().entry(key.clone()).or_insert(value.clone());
+            }
+            let source = round(path, metadata.clone(), body, None);
+            println!("--- {path} ---\n{source}");
+            for line in expected {
+                assert!(source.contains(line), "{path}: {line}\n{source}");
+            }
+            // Unsound output is refused, never written: each is sound.
+            assert!(bboxy450_den::load(&source).is_ok(), "{path}\n{source}");
+            // The host's later writes keep it exact.
+            metadata["updated"] = json!("2026-11-16T11:00:00Z");
+            round(path, metadata, body, Some(&source));
+        }
+        let missing = render("e2e/x.den", &json!({"type":"e2e","function":"F"}), "", None).unwrap_err();
+        assert!(missing.contains("needs a expected"), "{missing}");
     }
 
     #[test]
