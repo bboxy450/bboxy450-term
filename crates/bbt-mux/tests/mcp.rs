@@ -4963,6 +4963,9 @@ index = args.index('--mcp-config') + 1
 original = Path(args[index])
 config = json.loads(original.read_text())
 assert config['mcpServers']['bboxy']['args'] == ['mcp']
+# The code server is the app's own `code` mode; libtest cannot serve it, and a
+# server that fails to start writes a notice on every retry.
+assert config['mcpServers'].pop('bboxy_code')['args'] == ['code']
 Path(HOME, 'launcher-argv.json').write_text(json.dumps(args))
 config['mcpServers']['bboxy'] = {'command': MCP, 'args': ['normal'], 'env': {'MCP_SPAWNS': str(Path(HOME, 'mcp-pids'))}}
 private = Path(HOME, 'fixture-mcp.json')
