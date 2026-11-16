@@ -8,9 +8,13 @@
 set -eu
 cd "$(dirname "$0")/.."
 bad=0
-for f in .bboxy/tasks/*.md; do
+for f in .bboxy/tasks/*.md .bboxy/tasks/*.den; do
+    [ -f "$f" ] || continue
     case "$f" in */README.md) continue ;; esac   # the index is derived from the task records; the records are the truth
-    status=$(awk '/^---$/{c++; next} c==1 && /^status:/{sub(/^status:[ ]*/,""); print; exit}' "$f" | tr -d '"')
+    case "$f" in
+        *.den) status=$(python3 -I scripts/kb_record.py status "$f") ;;
+        *) status=$(awk '/^---$/{c++; next} c==1 && /^status:/{sub(/^status:[ ]*/,""); print; exit}' "$f" | tr -d '"') ;;
+    esac
     case "$status" in accepted|rejected|done|closed|retired|superseded) continue ;; esac
     if grep -qiE '(blocked on|blocked by|waits? (for|on)|waiting (for|on)|needs|requires) (the )?(operator|architect|oracle|a ruling|ruling)' "$f"; then
         echo "never-block: $f parks work on a person: $(grep -oiE '(blocked on|blocked by|waits? (for|on)|waiting (for|on)|needs|requires) (the )?(operator|architect|oracle|a ruling|ruling)' "$f" | head -1)"

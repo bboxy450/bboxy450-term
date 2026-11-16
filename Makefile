@@ -2806,6 +2806,7 @@ test-dream-mcp: init-submodules
 .PHONY: check-den
 check-den:
 	@set -eu; . ./scripts/cache-env.sh; \
+	python3 -I scripts/test-kb-record.py; \
 	cargo build --locked -p bboxy450-den --bin bboxy450-den --target-dir '$(TARGET_DIR)'; \
 	git ls-files -z -- '*.den' ':!:crates/bboxy450-den/tests/unsound/*.den' | xargs -0 '$(TARGET_DIR)/debug/bboxy450-den' check
 

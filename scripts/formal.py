@@ -532,6 +532,16 @@ def record_scalar(text, field):
     return match.group(1).strip(" \"'") if match else ""
 
 
+def den_fields(path):
+    """A `.den` record's fields through the one script-side reader, loaded
+    only when a Den record is met (scripts/kb_record.py)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("kb_record", Path(__file__).with_name("kb_record.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.fields(path)
+
+
 def live_evidence(root, store):
     """Pin remote-main, every extant worktree HEAD and pending report citations.
 
@@ -553,14 +563,17 @@ def live_evidence(root, store):
     for checkout in roots:
         kb = checkout / ".bboxy"
         tasks = {}
-        for task in (kb / "tasks").glob("*.md"):
+        def scalar(path, text, field):
+            return den_fields(path).get(field, "") if path.suffix == ".den" else record_scalar(text, field)
+        for task in [*(kb / "tasks").glob("*.md"), *(kb / "tasks").glob("*.den")]:
             text = task.read_text()
-            for key in (task.stem, "tasks/" + task.stem, record_scalar(text, "id"),
-                        "#" + record_scalar(text, "number")):
-                tasks[key] = record_scalar(text, "status")
-        for report in (kb / "reports").glob("*.md"):
+            for key in (task.stem, "tasks/" + task.stem, scalar(task, text, "id"),
+                        "#" + scalar(task, text, "number")):
+                tasks[key] = scalar(task, text, "status")
+        for report in [*(kb / "reports").glob("*.md"), *(kb / "reports").glob("*.den")]:
             text = report.read_text()
-            task = record_scalar(text, "task").removeprefix("[[").removesuffix("]]").removesuffix(".md")
+            task = scalar(report, text, "task").removeprefix("[[").removesuffix("]]")
+            task = task.removesuffix(".md").removesuffix(".den")
             if tasks.get(task) not in {"accepted", "done"}:
                 pending.update(re.findall(r"(?<![a-f0-9])[a-f0-9]{40,64}(?![a-f0-9])", text))
     live = set()

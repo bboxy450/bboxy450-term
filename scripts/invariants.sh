@@ -8,6 +8,7 @@ invariant_tools=$(CDPATH='' cd -- "$(dirname -- "$0")" && pwd)
 invariant_root=$(CDPATH='' cd -- "$invariant_tools/.." && pwd)
 
 frontmatter_field() {
+    case "$2" in *.den) python3 -I "$invariant_tools/kb_record.py" "$1" "$2"; return ;; esac
     awk -v key="$1" '
         NR == 1 { if ($0 != "---") exit; next }
         $0 == "---" { exit }
@@ -59,6 +60,7 @@ else
 fi
 if [ -n "$selected_gate" ]; then
     selected_file=".bboxy/invariants/$selected_gate.md"
+    [ -f "$selected_file" ] || selected_file=".bboxy/invariants/$selected_gate.den"
     [ -f "$selected_file" ] && [ "$(frontmatter_field type "$selected_file")" = invariant ] || {
         printf 'invariants: unknown gate: %s\n' "$selected_gate" >&2; exit 2;
     }
@@ -103,6 +105,11 @@ def metered(argv):
 
 
 def fields(path):
+    if path.suffix == ".den":
+        reader = importlib.util.spec_from_file_location("kb_record", Path(tools) / "kb_record.py")
+        module = importlib.util.module_from_spec(reader)
+        reader.loader.exec_module(module)
+        return module.fields(path)
     lines = path.read_text().splitlines()
     result = {}
     if lines and lines[0] == "---":
@@ -277,7 +284,7 @@ try:
             raise ValueError("unknown affected crates: " + " ".join(sorted(unknown)))
     entries = []
     observed_coverage = prior_coverage()
-    for path in sorted(Path(".bboxy/invariants").glob("*.md")):
+    for path in sorted([*Path(".bboxy/invariants").glob("*.md"), *Path(".bboxy/invariants").glob("*.den")]):
         data = fields(path)
         if data.get("type") != "invariant" or (selected and path.stem != selected):
             continue

@@ -15,6 +15,15 @@ import os
 import xml.etree.ElementTree as ElementTree
 
 
+def den_fields(path):
+    """A `.den` record's fields through the one script-side reader, loaded
+    only when a Den record is met (scripts/kb_record.py)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("kb_record", Path(__file__).with_name("kb_record.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module.fields(path)
+
 class TestCoverage:
     """Only observed libtest outcomes, tied to this attempt, source and target."""
     def __init__(self, root, arguments, api):
@@ -125,6 +134,8 @@ def administer(arguments, api):
         raise api.Refusal("quarantine_already_listed: " + args.test)
     tasks = [p for p in (root / ".bboxy/tasks").glob("*.md")
              if re.search(r"(?m)^number:\s*" + str(args.task) + r"\s*$", p.read_text())]
+    tasks += [p for p in (root / ".bboxy/tasks").glob("*.den")
+              if den_fields(p).get("number") == str(args.task)]
     if len(tasks) != 1:
         raise api.Refusal("quarantine_task_not_unique: " + str(args.task))
     packages = api.metadata(root)

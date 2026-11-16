@@ -26,4 +26,13 @@ numbers=$(find .bboxy -type f -name '*.md' -exec awk '
         }
     }
 ' {} +)
+# Den records keep `number` in their managed block (scripts/kb_record.py).
+den=$(find .bboxy -type f -name '*.den' -exec python3 -I scripts/kb_record.py number {} + | grep . || true)
+for value in $den; do
+    case "$value" in
+        [1-9]*) ;;
+        *) echo "invalid Den record number: $value" >&2; exit 1 ;;
+    esac
+done
+numbers=$(printf '%s\n%s\n' "$numbers" "$den")
 printf '%s\n' "$numbers" | awk 'max < $1 { max = $1 } END { printf "%.0f\n", max + 1 }'
