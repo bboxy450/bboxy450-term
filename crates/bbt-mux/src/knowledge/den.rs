@@ -844,6 +844,18 @@ fn convert_file(text: &str, relative: &str) -> Result<Result<String, String>, St
     let source = convert(text, relative)?;
     let den = format!("{}.den", relative.strip_suffix(".md").unwrap_or(relative));
     let after = signature(&crate::index::Document::parse(&den, &source));
+    // Den holds the header as a map; a signature over the header's written key
+    // order cannot survive that. Such a record stays Markdown, still signed,
+    // until the host's next write re-signs it in the order Den keeps.
+    if before == "valid" && after != "valid" && document.written_header.is_some() {
+        let mut sorted = document.clone();
+        sorted.written_header = None;
+        if signature(&sorted) != "valid" {
+            return Ok(Err(
+                "its signature covers the header's written key order, which Den does not keep; it converts once the host re-signs it".into(),
+            ));
+        }
+    }
     if after != before {
         return Err(format!("its signature is {before} as Markdown and {after} as Den"));
     }
@@ -1244,6 +1256,22 @@ mod tests {
         assert!(convert_kind(&root, "notes", false, &mut Vec::new()).unwrap_err().contains("not converted"));
         // A numbered record is history: a field it never had does not block it.
         assert!(convert("---\nnumber: 1\ntype: task\ntitle: T\n---\nB\n", "tasks/t.md").is_ok());
+    }
+
+    #[test]
+    fn a_record_signed_in_written_order_stays_markdown_and_signed() {
+        let temp = tempfile::tempdir().unwrap();
+        let specs = temp.path().join("specs");
+        std::fs::create_dir_all(&specs).unwrap();
+        let text = include_str!("../../tests/fixtures/signed-written-order/storage.md");
+        std::fs::write(specs.join("storage.md"), text).unwrap();
+        let mut out = Vec::new();
+        let done = convert_kind(temp.path(), "specs", false, &mut out).unwrap();
+        let out = String::from_utf8(out).unwrap();
+        assert_eq!((done.converted, done.skipped, done.refused), (0, 1, 0), "{out}");
+        assert!(out.contains("specs/storage.md: skipped: its signature covers the header's written key order"), "{out}");
+        assert_eq!(std::fs::read_to_string(specs.join("storage.md")).unwrap(), text);
+        assert!(!specs.join("storage.den").exists());
     }
 
     #[test]
