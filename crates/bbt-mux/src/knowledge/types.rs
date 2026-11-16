@@ -27,20 +27,20 @@ pub const DOCUMENT_TYPES: &[DocumentType] = &[
     DocumentType {
         kind: "epic",
         purpose: "An outcome spanning several specifications and tasks. It groups the work needed to achieve that outcome.",
-        path: "epics/<slug>.md",
-        writing: "Describe the desired outcome and acceptance criteria; link child specs and tasks. Create open and unassigned with Oracle authority; use task_* for assignment and lifecycle.",
+        path: "epics/<slug>.den",
+        writing: "Describe the desired outcome and acceptance criteria; link child specs and tasks. Create open and unassigned with Oracle authority; use task_* for assignment and lifecycle. Written in Den (crate bboxy450-den) and checked on write: pass the Den source as the body with frontmatter holding only type; den_check checks a file.",
     },
     DocumentType {
         kind: "spec",
         purpose: "A design and behavioral contract for one concern. It states what must be built and how acceptance will be checked.",
-        path: "specs/<slug>.md",
-        writing: "Describe scope, behavior, constraints and acceptance criteria; cite the concern, decisions and research. Requires Oracle authority.",
+        path: "specs/<slug>.den",
+        writing: "Describe scope, behavior, constraints and acceptance criteria; cite the concern, decisions and research. Requires Oracle authority. Written in Den (crate bboxy450-den) and checked on write: pass the Den source as the body with frontmatter holding only type; den_check checks a file.",
     },
     DocumentType {
         kind: "task",
         purpose: "One scoped assignment with an owner, boundaries and a verification command. It tracks implementation through reporting and acceptance.",
-        path: "tasks/<date>-<slug>.md",
-        writing: "Provide the brief, allowed_paths, acceptance criteria and verify command. For a provider-allocated blank, open, unowned task, fetch its ref and etag, then initialize only its brief, verify and allowed_paths with knowledge_write; the host sets the delegator and swarm before task_delegate. Existing ownership or a populated brief cannot be adopted. Oracle creates open and unassigned; use task_delegate, task_report and task_accept for lifecycle. An assignee may update only its permitted report fields through knowledge_write.",
+        path: "tasks/<date>-<slug>.den",
+        writing: "Provide the brief, allowed_paths, acceptance criteria and verify command. For a provider-allocated blank, open, unowned task, fetch its ref and etag, then initialize only its brief, verify and allowed_paths with knowledge_write; the host sets the delegator and swarm before task_delegate. Existing ownership or a populated brief cannot be adopted. Oracle creates open and unassigned; use task_delegate, task_report and task_accept for lifecycle. An assignee may update only its permitted report fields through knowledge_write. Written in Den (crate bboxy450-den) and checked on write: pass the Den source as the body with frontmatter holding only type; den_check checks a file.",
     },
     DocumentType {
         kind: "bug",

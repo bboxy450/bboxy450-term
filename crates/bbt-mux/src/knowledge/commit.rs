@@ -34,14 +34,14 @@ pub(crate) fn validate(request: &d::CommitRequest) -> d::Result<()> {
         let path = Path::new(&reference.path);
         if !ids.insert(&reference.id)
             || path.is_absolute()
-            || path.extension().is_none_or(|e| e != "md")
+            || !crate::index::record_file(path)
             || path
                 .components()
                 .any(|c| !matches!(c, Component::Normal(_)))
         {
             return Err(d::CommandError::new(
                 "invalid_commit",
-                "records must be distinct confined Markdown paths",
+                "records must be distinct confined Markdown or Den paths",
             ));
         }
     }

@@ -224,6 +224,7 @@ pub fn metadata(record: &Record) -> Vec<(String, String)>;         // the flat h
 pub fn body(record: &Record) -> String;                            // brief, body, steps
 pub fn set_managed(source: &str, record: &str, field: &str, value: &str)
     -> Result<String, Vec<Diagnostic>>;                            // the host's one write
+pub fn layout(source: &str) -> Result<(Record, Layout), Vec<Diagnostic>>; // where the parts are
 ```
 
 `metadata` uses the header names the host keeps today: `type`, `title` (the `title`,
@@ -232,7 +233,10 @@ else the first sentence of `intent`, else the name), `links` as `[[module.path]]
 `verify_exit`, `status` in lower case (with `status_note` for the rest of the line),
 `delegated_by` for `managed.delegator`, and every other field under its own name.
 `set_managed` changes one value in place, or adds the line or the block, and keeps
-every other byte; it refuses a result that does not load.
+every other byte; it refuses a result that does not load. `layout` loads the record
+and gives the byte range of each top-level value, of the `managed` block and of the
+closing brace, for a host that rewrites a prose value or the whole block and loads
+its result again.
 
 ## Imports and shared enums
 
@@ -435,7 +439,7 @@ language (`bboxy450-tlc`) has neither.
 Composition (`include`, `do`, `expose`, `discharge`), `loop` records, link kinds
 (a link is checked against the imports, not against the linked record) and the
 typed lowering of an epic's blocks are not supported.
-The public library API is `load`, `metadata`, `body` and `set_managed` for header
+The public library API is `load`, `metadata`, `body`, `set_managed` and `layout` for header
 records, `declarations(&str)` (the outline of either form),
 `check(&str) -> Report`, its diagnostic and summary fields,
 `Report::{is_sound,to_text,to_json}`, `model(&str)` (the finite model, also for a broken

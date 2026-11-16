@@ -29,6 +29,10 @@ the corresponding `task_*` tools. The host owns custody, signatures, role
 checks and acceptance; a storage plugin cannot grant those powers. Native
 historical bulk-import tools may be unavailable for an external provider.
 
+Den is the knowledge base's own record language: specs, epics and tasks are
+written in it as `.den` files (`specs/spec-language` describes it), the host
+checks a record when it is written, and `den_check` checks a file.
+
 Call `knowledge_types` for the built-in document dictionary: each type has a
 short purpose, recommended path and writing instructions. Pass `{"type":"concern"}`
 for one entry or `{}` for all types. A `concern` lives at `concerns/<slug>.md`

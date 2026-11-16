@@ -86,8 +86,13 @@ fn decision_birth_path(path: &str, number: u64) -> Result<String> {
         .filter(|(digits, _)| !digits.is_empty() && digits.bytes().all(|b| b.is_ascii_digit()));
     let slug = prefixed.map_or(stem, |(_, slug)| slug);
     let expected = format!(
-        "decisions/d{number}-{}.md",
-        if slug.is_empty() { "<slug>" } else { slug }
+        "decisions/d{number}-{}.{}",
+        if slug.is_empty() { "<slug>" } else { slug },
+        if path.extension().is_some_and(|e| e == "den") {
+            "den"
+        } else {
+            "md"
+        }
     );
     if path.parent() != Some(Path::new("decisions"))
         || slug.is_empty()
@@ -96,6 +101,27 @@ fn decision_birth_path(path: &str, number: u64) -> Result<String> {
         return Err(Box::new(DecisionFilenameRequired { expected }));
     }
     Ok(expected)
+}
+
+/// A record is one Markdown or one Den file.
+pub(crate) fn record_file(path: &Path) -> bool {
+    path.extension()
+        .is_some_and(|extension| extension == "md" || extension == "den")
+}
+/// The path without its record extension: the name links and locators use.
+pub(crate) fn record_key(path: &str) -> &str {
+    path.strip_suffix(".md")
+        .or_else(|| path.strip_suffix(".den"))
+        .unwrap_or(path)
+}
+/// The same record in the other format, which may not exist beside it.
+fn twin(path: &str) -> Option<String> {
+    let (stem, extension) = path.rsplit_once('.')?;
+    match extension {
+        "md" => Some(format!("{stem}.den")),
+        "den" => Some(format!("{stem}.md")),
+        _ => None,
+    }
 }
 
 fn record_number(metadata: &Value) -> Option<u64> {
@@ -199,7 +225,15 @@ impl Document {
             links: Vec::new(),
         };
         let source = text.strip_prefix('\u{feff}').unwrap_or(text);
-        if let Some(after) = source
+        if crate::knowledge::den::is_path(path) {
+            match crate::knowledge::den::parse(source) {
+                Ok((metadata, body)) => {
+                    doc.metadata = metadata;
+                    doc.body = body;
+                }
+                Err(error) => doc.error = Some(format!("unsound Den: {error}")),
+            }
+        } else if let Some(after) = source
             .strip_prefix("---\n")
             .or_else(|| source.strip_prefix("---\r\n"))
         {
@@ -455,9 +489,7 @@ impl Index {
             if let Some(metadata) = metadata.filter(|metadata| {
                 metadata.is_file()
                     && metadata.len() <= MAX_DOCUMENT
-                    && relative_path
-                        .extension()
-                        .is_some_and(|extension| extension == "md")
+                    && record_file(relative_path)
             }) {
                 paths.push((path, metadata));
             }
@@ -526,6 +558,14 @@ impl Index {
                 && previous != doc.metadata["status"]
             {
                 events.push(Draft::new(format!("task/{}/status",doc.id),"index",json!({"from":previous,"to":doc.metadata["status"],"path":relative,"swarm_id":doc.metadata["swarm_id"]})));
+            }
+            // Both files of one stem stay indexed; the collision is named, never resolved silently.
+            if let Some(other) = twin(&relative).filter(|other| self.root.join(other).is_file()) {
+                events.push(Draft::new(
+                    format!("doc/path/{relative}/collision"),
+                    "index",
+                    json!({"path":relative,"other":other,"error":format!("record already exists as {other}")}),
+                ));
             }
             let payload = json!({"path":relative,"digest":doc.digest,"frontmatter":doc.metadata,"error":doc.error});
             events.push(Draft::new(
@@ -637,7 +677,7 @@ impl Index {
         for doc in self.documents.values() {
             for alias in [
                 doc.id.clone(),
-                doc.path.trim_end_matches(".md").to_string(),
+                record_key(&doc.path).to_string(),
                 Path::new(&doc.path)
                     .file_stem()
                     .unwrap_or_default()
@@ -1004,9 +1044,9 @@ impl Index {
             || path
                 .components()
                 .any(|c| !matches!(c, Component::Normal(_)))
-            || path.extension().is_none_or(|e| e != "md")
+            || !record_file(path)
         {
-            return Err(invalid("write must be a relative Markdown path"));
+            return Err(invalid("write must be a relative Markdown or Den path"));
         }
         let mut destination = self.root.clone();
         for component in path.components() {
@@ -1106,6 +1146,26 @@ impl Index {
             self.unchanged(&update)?;
         }
         let destination = self.destination(&update.path)?;
+        // A record lives in one format. Refuse the second file at its birth.
+        if let Some(other) = twin(&update.path)
+            && !destination.exists()
+            && self.destination(&other)?.exists()
+        {
+            return Err(invalid(format!("record already exists as {other}")));
+        }
+        // A Den record keeps its author's text: the write's body may be the
+        // Den source itself, else the file being replaced is the previous text.
+        let den = crate::knowledge::den::is_path(&update.path);
+        let mut den_previous = None;
+        if den {
+            if crate::knowledge::den::opens_like_source(&update.body)
+                && let Ok((_, prose)) = crate::knowledge::den::source(&update.body)
+            {
+                den_previous = Some(std::mem::replace(&mut update.body, prose));
+            } else {
+                den_previous = std::fs::read_to_string(&destination).ok();
+            }
+        }
         let metadata = &mut update.metadata;
         let body = &update.body;
         let path = Path::new(&update.path);
@@ -1132,6 +1192,11 @@ impl Index {
             authorship["issued_by"] = json!(label);
         }
         map.insert("authorship".into(), authorship);
+        if den {
+            // Refuse a record Den cannot hold exactly before anything is signed.
+            crate::knowledge::den::render(&update.path, metadata, body, den_previous.as_deref())
+                .map_err(invalid)?;
+        }
         let front = serde_yaml::to_string(&metadata)?;
         let body_digest = digest(body.as_bytes());
         let front_digest = digest(front.as_bytes());
@@ -1204,7 +1269,12 @@ impl Index {
             .mode(0o600)
             .open(&temp)?;
         let _temporary = Temporary(temp.clone());
-        let rendered = format!("---\n{}---\n{body}", serde_yaml::to_string(metadata)?);
+        let rendered = if den {
+            crate::knowledge::den::render(&update.path, metadata, body, den_previous.as_deref())
+                .map_err(invalid)?
+        } else {
+            format!("---\n{}---\n{body}", serde_yaml::to_string(metadata)?)
+        };
         if rendered.len() as u64 > MAX_DOCUMENT {
             return Err(invalid("document exceeds write bound"));
         }
@@ -1276,7 +1346,7 @@ fn collect_in(
                 continue;
             }
             collect_in(root, &entry.path(), paths)?;
-        } else if entry.path().extension().is_some_and(|e| e == "md") {
+        } else if record_file(&entry.path()) {
             let metadata = entry.metadata()?;
             if metadata.len() > MAX_DOCUMENT {
                 oversized(&entry.path(), metadata.len());
@@ -1328,7 +1398,7 @@ fn knowledge_path(root: &Path, path: &Path, kind: notify::EventKind) -> bool {
                 | notify::event::ModifyKind::Data(_)
                 | notify::event::ModifyKind::Metadata(_)
         )
-    ) && path.extension().is_none_or(|extension| extension != "md")
+    ) && !record_file(path)
         && path
             .symlink_metadata()
             .is_ok_and(|metadata| metadata.is_file()))
@@ -1347,6 +1417,30 @@ pub(crate) use watch::ScanBatch;
 mod tests {
     use super::*;
     use std::time::{Duration, UNIX_EPOCH};
+
+    #[test]
+    fn scan_indexes_den_records_and_names_a_same_stem_collision() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("records");
+        std::fs::create_dir_all(root.join("epics")).unwrap();
+        std::fs::write(root.join("epics/e.den"), "module epics.e\nepic E {\n  intent \"Why.\"\n  body \"Prose.\"\n  managed {\n    number = 7\n  }\n}\n").unwrap();
+        std::fs::write(root.join("epics/e.md"), "---\nnumber: 8\ntype: epic\n---\nTwin.\n").unwrap();
+        std::fs::write(root.join("epics/broken.den"), "module epics.broken\nepic Broken {\n}\n").unwrap();
+        let mut index = Index::open(&root, SqliteStore::open(&temp.path().join("db")).unwrap()).unwrap();
+        let events = index.scan().unwrap();
+        let den = &index.documents["epics/e.den"];
+        assert_eq!((den.error.as_deref(), den.body.as_str()), (None, "Prose."));
+        assert_eq!(den.metadata, json!({"type":"epic","intent":"Why.","number":7}));
+        assert_eq!(index.documents["epics/e.md"].body, "Twin.\n");
+        assert!(index.documents["epics/broken.den"].error.as_deref().unwrap().starts_with("unsound Den: X354 line 2:1"));
+        let collisions: Vec<_> = events.iter().filter(|event| event.subject.ends_with("/collision")).collect();
+        assert_eq!(collisions.len(), 2);
+        assert!(collisions.iter().any(|event| event.payload == json!({"path":"epics/e.den","other":"epics/e.md","error":"record already exists as epics/e.md"})));
+        // A watcher hint for a Den file is read, and its edit is seen.
+        std::fs::write(root.join("epics/e.den"), "module epics.e\nepic E {\n  intent \"Why now.\"\n  managed {\n    number = 7\n  }\n}\n").unwrap();
+        index.scan_paths(&BTreeSet::from(["epics/e.den".into()])).unwrap();
+        assert_eq!(index.documents["epics/e.den"].metadata["intent"], "Why now.");
+    }
 
     #[test]
     fn incremental_scan_reads_only_dirty_paths_and_preserves_unrelated_records() {

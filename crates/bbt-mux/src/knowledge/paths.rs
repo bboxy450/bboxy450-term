@@ -12,14 +12,14 @@ pub(crate) fn validate(path: &str, kind: &str) -> d::Result<()> {
     let relative = Path::new(path);
     if path.len() > 4096
         || relative.is_absolute()
-        || relative.extension().is_none_or(|ext| ext != "md")
+        || !crate::index::record_file(relative)
         || relative
             .components()
             .any(|part| !matches!(part, Component::Normal(_)))
     {
         return Err(d::CommandError::new(
             "invalid_path",
-            "Use a relative Markdown path inside the knowledge root.",
+            "Use a relative Markdown or Den path inside the knowledge root.",
         ));
     }
     let prefix = path.split_once('/').map(|(prefix, _)| prefix);
@@ -82,6 +82,7 @@ mod tests {
         }
         for (path, kind) in [
             ("tasks/a.md", "task"),
+            ("tasks/a.den", "task"),
             ("specs/auth/a.md", "spec"),
             ("research/a.md", "research"),
             ("e2e/a.md", "e2e"),

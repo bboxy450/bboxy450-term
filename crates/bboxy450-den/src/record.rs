@@ -191,8 +191,12 @@ pub(crate) struct Parsed {
     pub managed_line: Option<u32>,
     /// Byte range of each managed field's value, parallel to `record.managed`.
     values: Vec<(usize, usize)>,
+    /// Offset of the `managed` keyword.
+    managed_open: Option<usize>,
     /// Offset of the `managed` block's closing brace.
     managed_close: Option<usize>,
+    /// Byte range of each top-level field's value, parallel to `record.fields`.
+    top: Vec<(usize, usize)>,
     /// Offset of the record's closing brace.
     close: usize,
 }
@@ -206,7 +210,9 @@ struct Scan<'a> {
     managed: Vec<Field>,
     managed_line: Option<u32>,
     values: Vec<(usize, usize)>,
+    managed_open: Option<usize>,
     managed_close: Option<usize>,
+    top: Vec<(usize, usize)>,
 }
 type Scanned<T> = Result<T, Diagnostic>;
 
@@ -498,11 +504,17 @@ impl<'a> Scan<'a> {
                 continue;
             }
             let pos = self.pos(at);
+            self.spaces();
+            let start = self.i;
+            let value = self.value(depth)?;
+            if depth == 0 {
+                self.top.push((start, self.end));
+            }
             fields.push(Field {
                 name: name.to_owned(),
                 line: pos.line,
                 column: pos.column,
-                value: self.value(depth)?,
+                value,
             });
         }
     }
@@ -517,6 +529,7 @@ impl<'a> Scan<'a> {
             ));
         }
         self.managed_line = Some(self.pos(at).line);
+        self.managed_open = Some(at);
         self.spaces();
         if self.peek() != Some(b'{') {
             return Err(self.syntax(self.i, "expected { after managed"));
@@ -612,7 +625,9 @@ impl<'a> Scan<'a> {
             },
             managed_line: self.managed_line,
             values: self.values,
+            managed_open: self.managed_open,
             managed_close: self.managed_close,
+            top: self.top,
             close,
         })
     }
@@ -655,7 +670,9 @@ pub(crate) fn parse(source: &str) -> Result<Parsed, Vec<Diagnostic>> {
         managed: Vec::new(),
         managed_line: None,
         values: Vec::new(),
+        managed_open: None,
         managed_close: None,
+        top: Vec::new(),
     }
     .record()
     .map_err(|diagnostic| vec![diagnostic])
@@ -1043,4 +1060,33 @@ pub fn set_managed(
         )]);
     }
     Ok(out)
+}
+
+/// Where the host edits a record's source: byte ranges into the text
+/// [`layout`] was given.
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[non_exhaustive]
+pub struct Layout {
+    /// The value of each top-level field, parallel to [`Record::fields`].
+    pub values: Vec<(usize, usize)>,
+    /// The `managed` block, from its keyword through its closing brace.
+    pub managed: Option<(usize, usize)>,
+    /// The record's closing brace.
+    pub close: usize,
+}
+/// Loads the record like [`load`] and says where its parts are, so the host
+/// can replace a prose value or its whole `managed` block and keep every
+/// other byte. The host loads its result again: an edit is not checked here.
+pub fn layout(source: &str) -> Result<(Record, Layout), Vec<Diagnostic>> {
+    let record = load(source)?.remove(0);
+    let parsed = parse(source)?;
+    let layout = Layout {
+        values: parsed.top,
+        managed: parsed
+            .managed_open
+            .zip(parsed.managed_close)
+            .map(|(open, close)| (open, close + 1)),
+        close: parsed.close,
+    };
+    Ok((record, layout))
 }

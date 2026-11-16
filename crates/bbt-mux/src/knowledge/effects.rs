@@ -120,6 +120,44 @@ pub(crate) fn prepare(
                     "etag does not match the current record",
                 ));
             }
+            // Den at the door: a `.den` write whose frontmatter holds only its
+            // type carries the record's Den source as its body. An unsound
+            // source is refused with its diagnostics; a sound one supplies the
+            // author's fields, and the Index keeps its text.
+            let mut den_prose = None;
+            if request
+                .reference
+                .as_ref()
+                .map(|r| r.path.as_str())
+                .or(request.path.as_deref())
+                .is_some_and(super::den::is_path)
+                && super::den::opens_like_source(&request.body)
+                && request
+                    .frontmatter
+                    .as_object()
+                    .is_some_and(|map| map.keys().all(|key| key == "type" || key == "id"))
+            {
+                let (authored, prose) = super::den::source(&request.body)
+                    .map_err(|diagnostics| d::CommandError::new("den_unsound", diagnostics))?;
+                if authored["type"] != request.frontmatter["type"] {
+                    return Err(d::CommandError::new(
+                        "den_unsound",
+                        format!(
+                            "the Den source is a {}, the frontmatter type is {}",
+                            authored["type"], request.frontmatter["type"]
+                        ),
+                    ));
+                }
+                if let Some(current) = &current {
+                    request.frontmatter = current.frontmatter.clone();
+                }
+                if let (Some(map), Value::Object(authored)) =
+                    (request.frontmatter.as_object_mut(), authored)
+                {
+                    map.extend(authored);
+                }
+                den_prose = Some(prose);
+            }
             if let Some(seat) = actor.seat() {
                 match tool::write_plan(seat, call, *request, current.as_ref())? {
                     tool::WritePlan::Record(prepared) => request = prepared,
@@ -161,7 +199,7 @@ pub(crate) fn prepare(
                             .unwrap_or_default()
                             .into(),
                         metadata: request.frontmatter.clone(),
-                        body: request.body.clone(),
+                        body: den_prose.clone().unwrap_or_else(|| request.body.clone()),
                         digest: current
                             .as_ref()
                             .map(|old| old.reference.digest.clone())
@@ -172,9 +210,12 @@ pub(crate) fn prepare(
                     tasks::authorize(&document, registry, actor)
                         .map_err(|reason| d::CommandError::new("task_field_protected", reason))?;
                     if let Some(old) = &current
-                        && let Some(plan) =
+                        && let Some(mut plan) =
                             tasks::amendment(document, old, call).map_err(rejected)?
                     {
+                        if den_prose.is_some() {
+                            plan.writes[0].body = request.body.clone();
+                        }
                         return Ok(Prepared::Task {
                             plan,
                             record: Some(old.reference.id.clone()),

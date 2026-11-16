@@ -8,6 +8,8 @@
 
 use bbt_mux::messaging::wire::EnvelopeExt;
 use crate::common;
+#[path = "mcp/den_records.rs"]
+mod den_records;
 #[path = "mcp/harness_status.rs"]
 mod harness_status;
 #[path = "mcp/canvas.rs"]

@@ -15,7 +15,7 @@ mod parser;
 mod record;
 pub mod render;
 mod types;
-pub use record::{Field, Record, Value, body, load, metadata, set_managed};
+pub use record::{Field, Layout, Record, Value, body, layout, load, metadata, set_managed};
 
 /// Result of checking one source file. Any diagnostic makes it unsound.
 #[derive(Debug)]

@@ -180,7 +180,7 @@ fn resolve<'a>(docs: &[&'a Document], locator: &str) -> Result<&'a Document> {
         .filter(|doc| {
             doc.id == locator
                 || doc.path == path
-                || doc.path.trim_end_matches(".md") == path
+                || crate::index::record_key(&doc.path) == path
                 || locator
                     .strip_prefix('#')
                     .and_then(|s| s.parse::<u64>().ok())

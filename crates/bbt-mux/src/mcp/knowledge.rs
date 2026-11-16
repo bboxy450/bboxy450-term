@@ -162,7 +162,7 @@ fn permitted(path: &str) -> bool {
     !path.is_absolute()
         && !path.as_os_str().is_empty()
         && path.as_os_str().len() <= 4096
-        && path.extension().is_some_and(|ext| ext == "md")
+        && crate::index::record_file(path)
         && path
             .components()
             .all(|component| matches!(component, Component::Normal(_)))

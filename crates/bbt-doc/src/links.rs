@@ -38,7 +38,10 @@ impl std::error::Error for ResolveError {}
 
 fn path_key(value: &str) -> &str {
     let value = value.strip_prefix(".bboxy/").unwrap_or(value);
-    value.strip_suffix(".md").unwrap_or(value)
+    value
+        .strip_suffix(".md")
+        .or_else(|| value.strip_suffix(".den"))
+        .unwrap_or(value)
 }
 
 /// Remove wiki wrapping and display aliases without changing record identity.
