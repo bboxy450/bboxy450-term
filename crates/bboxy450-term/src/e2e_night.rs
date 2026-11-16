@@ -296,7 +296,8 @@ fn upsert(
         issued_by,
         cover: (full, missing),
     } = *run;
-    let path = format!("e2e/{id}.md");
+    // A converted record is Den; one not yet converted stays Markdown. New ones are Den.
+    let path = format!("e2e/{id}.den");
     let last = tail.lines().last().unwrap_or_default();
     let result: String = format!("{verdict}: {last}").chars().take(240).collect();
     let read = |client: &mut crate::ctl::Client, method, args| {
@@ -304,7 +305,15 @@ fn upsert(
             .knowledge(&crate::knowledge::ReadCall { method, args })
             .map_err(|e| format!("{}: {}", e.code, e.message))
     };
-    let (mut args, mut frontmatter) = match read(client, "resolve", json!({ "locator": path })) {
+    let found = match read(client, "resolve", json!({ "locator": path })) {
+        Err(error) if error.starts_with("not_found") => read(
+            client,
+            "resolve",
+            json!({ "locator": format!("e2e/{id}.md") }),
+        ),
+        found => found,
+    };
+    let (mut args, mut frontmatter) = match found {
         Ok(reference) => {
             let record = read(client, "fetch", json!({ "ref": reference }))?;
             let args = json!({ "ref": reference, "body": record["body"], "etag": record["etag"] });
@@ -314,7 +323,7 @@ fn upsert(
             json!({ "path": path,
                 "body": format!("The e2e record for promise {id}; scripts/e2e/{id}.sh is its test.\n") }),
             json!({ "type": "e2e", "title": format!("{id} e2e promise"), "function": id,
-                "group": group, "links": [] }),
+                "group": group, "expected": format!("scripts/e2e/{id}.sh exits 0"), "links": [] }),
         ),
         Err(error) => return Err(error),
     };

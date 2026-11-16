@@ -204,6 +204,14 @@ pub(crate) fn source(text: &str) -> Result<(Value, String), String> {
     Ok((Value::Object(own(&record)), body))
 }
 
+/// A `.den` record lowered to the Markdown a YAML-header reader expects:
+/// the host's metadata as the header, then the prose. Read-only; never written back.
+pub fn markdown(text: &str) -> Result<String, String> {
+    let (metadata, body) = parse(text)?;
+    let header = serde_yaml::to_string(&metadata).map_err(|e| e.to_string())?;
+    Ok(format!("---\n{header}---\n{body}"))
+}
+
 /// Reads a `.den` file as the host's (metadata, body).
 pub(crate) fn parse(text: &str) -> Result<(Value, String), String> {
     let record = record(text)?;
@@ -633,7 +641,22 @@ pub(crate) fn render(
                     "{path}: a machine spec is written as its Den source, not from frontmatter; send the source as the body"
                 ));
             }
-            generate(path, kind, map, core)?
+            let generated = generate(path, kind, map, core)?;
+            // A host-numbered record is history: stamp its number first, so the
+            // check below sees the stamp that exempts it from new-record fields.
+            // The full managed block replaces this one.
+            match map.get("number") {
+                Some(number) => {
+                    let close = generated.rfind('}').ok_or("generated record has no close")?;
+                    let mut stamped = generated.clone();
+                    stamped.insert_str(
+                        close,
+                        &format!("\n  managed {{\n    number = json{}\n  }}\n", quote(&number.to_string())),
+                    );
+                    stamped
+                }
+                None => generated,
+            }
         }
     };
     let (record, layout) = bboxy450_den::layout(&source).map_err(|d| refusal(&d))?;
@@ -768,6 +791,8 @@ const CONVERTIBLE: [&str; 10] = [
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Converted {
     pub converted: usize,
+    /// Of `converted`, records whose signature already failed as Markdown.
+    pub unsigned: usize,
     pub skipped: usize,
     pub refused: usize,
 }
@@ -812,15 +837,11 @@ fn convert_file(text: &str, relative: &str) -> Result<Result<String, String>, St
             .unwrap_or_default()
             .to_owned()
     };
+    // Conversion never makes provenance better or worse: a signature that
+    // already fails converts and still fails; the host re-signs it on its next
+    // write. The caller reports it.
     let before = signature(&document);
-    if before == "invalid" {
-        return Err("its signature does not verify".into());
-    }
-    let source = match convert(text, relative) {
-        // A required field the record does not have yet: not a fault.
-        Err(why) if why.starts_with("X354 ") => return Ok(Err(why)),
-        result => result?,
-    };
+    let source = convert(text, relative)?;
     let den = format!("{}.den", relative.strip_suffix(".md").unwrap_or(relative));
     let after = signature(&crate::index::Document::parse(&den, &source));
     if after != before {
@@ -874,7 +895,16 @@ pub fn convert_kind(
                     std::fs::remove_file(&path).map_err(io)?;
                 }
                 done.converted += 1;
-                "converted".to_owned()
+                let parsed = crate::index::Document::parse(
+                    &format!("{}.den", relative.strip_suffix(".md").unwrap_or(&relative)),
+                    &source,
+                );
+                if crate::provenance::queries::document_signature(&parsed)["status"] == "invalid" {
+                    done.unsigned += 1;
+                    "converted (its signature already failed as Markdown; re-signed on its next write)".to_owned()
+                } else {
+                    "converted".to_owned()
+                }
             }
             Ok(Err(why)) => {
                 done.skipped += 1;
@@ -889,8 +919,9 @@ pub fn convert_kind(
     }
     writeln!(
         out,
-        "kb-convert {kind}: {} converted, {} skipped, {} refused{}",
+        "kb-convert {kind}: {} converted ({} with a signature that already failed), {} skipped, {} refused{}",
         done.converted,
+        done.unsigned,
         done.skipped,
         done.refused,
         if dry_run { " (dry run: nothing written)" } else { "" }
@@ -1171,25 +1202,31 @@ mod tests {
             totals.converted += done.converted;
             totals.skipped += done.skipped;
             totals.refused += done.refused;
+            totals.unsigned += done.unsigned;
         }
         println!("{statuses:?}\n{lines}");
-        assert!(lines.contains("reports/2026-11-02-tampered.md: refused: its signature does not verify"), "{lines}");
+        assert!(lines.contains("reports/2026-11-02-tampered.md: converted (its signature already failed"), "{lines}");
         assert!(lines.contains("decisions/2026-10-22-architecture-round-1.md: skipped: a note record stays Markdown"), "{lines}");
-        // Every file has one outcome; a refusal is exactly a signature that
-        // already failed (records edited after signing, and the tampered one).
+        // Every file has one outcome. A signature that already failed (records
+        // edited after signing, and the tampered one) converts, flagged, and still fails.
         let outcomes: Vec<_> = lines.lines().filter(|line| !line.starts_with("kb-convert ")).collect();
         assert_eq!(outcomes.len(), statuses.len(), "{lines}");
         for line in outcomes {
             let (path, outcome) = line.split_once(": ").unwrap();
-            let refused = outcome.starts_with("refused: ");
-            assert_eq!(refused, statuses[path] == "invalid", "{line}");
-            assert!(refused || outcome == "converted" || outcome.len() > "skipped: ".len(), "{line}");
+            let flagged = outcome.starts_with("converted (its signature already failed");
+            assert_eq!(flagged, statuses[path] == "invalid", "{line}");
+            assert!(!outcome.starts_with("refused: "), "{line}");
+            assert!(flagged || outcome == "converted" || outcome.len() > "skipped: ".len(), "{line}");
         }
-        assert_eq!(totals.refused, statuses.values().filter(|s| *s == "invalid").count());
+        assert_eq!(totals.refused, 0);
+        assert_eq!(totals.unsigned, statuses.values().filter(|s| *s == "invalid").count());
         assert_eq!(totals.converted + totals.skipped + totals.refused, statuses.len());
         assert!(totals.converted >= 7, "{lines}");
-        assert_eq!(std::fs::read_to_string(&tampered).unwrap(), tampered_text);
-        assert!(!root.join("reports/2026-11-02-tampered.den").exists());
+        // Never better: the tampered record's Den still fails its signature.
+        let den_text = std::fs::read_to_string(root.join("reports/2026-11-02-tampered.den")).unwrap();
+        let den_doc = crate::index::Document::parse("reports/2026-11-02-tampered.den", &den_text);
+        assert_eq!(crate::provenance::queries::document_signature(&den_doc)["status"], "invalid");
+        assert_eq!(crate::index::Document::parse("r.md", &tampered_text).body, den_doc.body);
         // The Index reads the same records, by id and number, all still signed.
         let mut index = Index::open(&root, SqliteStore::open(&temp.path().join("db2")).unwrap()).unwrap();
         index.scan().unwrap();
@@ -1205,8 +1242,8 @@ mod tests {
         let mut out = Vec::new();
         assert_eq!(convert_kind(&root, "tasks", false, &mut out).unwrap().converted, 0);
         assert!(convert_kind(&root, "notes", false, &mut Vec::new()).unwrap_err().contains("not converted"));
-        // `convert` names the first key the Den record would lose.
-        assert!(convert("---\nnumber: 1\ntype: task\ntitle: T\n---\nB\n", "tasks/t.md").unwrap_err().contains("X354"));
+        // A numbered record is history: a field it never had does not block it.
+        assert!(convert("---\nnumber: 1\ntype: task\ntitle: T\n---\nB\n", "tasks/t.md").is_ok());
     }
 
     #[test]

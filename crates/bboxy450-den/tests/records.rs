@@ -518,6 +518,8 @@ fn required_fields_and_edges_per_kind() {
         missing("module e.E\ne2e E {}"),
         ["X354 a e2e needs a function", "X354 a e2e needs a expected"]
     );
+    // A record the host has numbered is history: its missing fields are not refused.
+    assert_eq!(one("module t.T\ntask T { managed { number = json\"59\" } }").kind, "task");
     assert_eq!(
         missing("module s.S\nspec S { title \"t\" }"),
         ["X354 a spec needs a intent"]

@@ -864,7 +864,10 @@ fn check(record: &Record) -> Vec<Diagnostic> {
             }
         }
     }
-    for name in required(record) {
+    // A record the host has numbered is history: a field missing there is a
+    // fact about the past, not an authoring error. New records must have it.
+    let stamped = record.managed.iter().any(|field| field.name == "number");
+    for name in required(record).iter().filter(|_| !stamped) {
         let present = record
             .fields
             .iter()

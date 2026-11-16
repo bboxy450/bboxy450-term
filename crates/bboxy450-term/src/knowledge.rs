@@ -317,7 +317,7 @@ impl E2eLoader {
                         return Err(error("knowledge list repeated a record"));
                     }
                     if reference.path.starts_with("e2e/") {
-                        if !reference.path.ends_with(".md")
+                        if !(reference.path.ends_with(".md") || reference.path.ends_with(".den"))
                             || reference
                                 .path
                                 .split('/')

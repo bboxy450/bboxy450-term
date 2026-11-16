@@ -19,13 +19,16 @@ if [ "${1:-}" = verify ]; then
     # Every `- **<ID>**` line of §1 is a promise; every .bboxy/e2e record must be one of them,
     # once, type e2e, status untested.
     promises=$(sed -n 's/^- \*\*\([A-Z][0-9]*\)\*\* .*/\1/p' "$spec" | sort)
-    records=$(for f in .bboxy/e2e/*.md; do
-        [ -f "$f" ] || continue
-        awk 'NR == 1 && $0 != "---" { exit } NR > 1 && $0 == "---" { exit }
-            { gsub(/"/, "") }
-            /^type:/ { t = $2 } /^status:/ { s = $2 } /^function:/ { fn = $2 }
-            END { print fn, t, s }' "$f"
-    done | sort)
+    # Markdown and Den records alike, through the one script-side record reader.
+    records=$(python3 -I - .bboxy/e2e <<'PY' | sort
+import sys, importlib.util
+spec = importlib.util.spec_from_file_location("kb_record", "scripts/kb_record.py")
+kb = importlib.util.module_from_spec(spec); spec.loader.exec_module(kb)
+for path in kb.records(sys.argv[1]):
+    f = kb.fields(path)
+    print(f.get("function", ""), f.get("type", ""), f.get("status", ""))
+PY
+)
     want=$(printf '%s\n' "$promises" | grep -c .)
     have=$(printf '%s\n' "$records" | grep -c . || true)
     bad=$(printf '%s\n' "$records" | awk 'NF && ($2 != "e2e" || $3 != "untested")')

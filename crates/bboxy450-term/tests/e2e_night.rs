@@ -183,7 +183,9 @@ seat=$("$BBT" ctl seat spawn zsh --place tab --cwd "$E2E_WORK" | python3 -I -c '
     let written: Vec<&Value> = lines.iter().filter(|l| l["kind"] == "record").collect();
     assert_eq!(written.len(), 9, "{written:?}");
     let record = |id: &str| {
-        std::fs::read_to_string(records.path().join(format!(".bboxy/e2e/{id}.md"))).unwrap()
+        // New e2e records are Den; read them as the YAML header they lower to.
+        let den = std::fs::read_to_string(records.path().join(format!(".bboxy/e2e/{id}.den")));
+        bbt_mux::knowledge::den::markdown(&den.unwrap()).unwrap()
     };
     let first = record("T2");
     for field in ["type: e2e", "function: T2", "status: fail"] {
