@@ -214,10 +214,14 @@ pub fn wikilinks(text: &str) -> Vec<Link> {
 type NumberCache = BTreeMap<PathBuf, (Stamp, Option<u64>)>;
 /// The parse error of a record that reads cleanly but was never numbered.
 const MISSING_NUMBER: &str = "frontmatter number must be a positive integer";
-/// A record the host has not stamped yet: it reads cleanly and has no
-/// `number` at all. It holds no number, and its first write gives it one.
+/// A Den record the host has not stamped yet (an author's new `.den` file):
+/// it reads cleanly and has no `number` at all. It holds no number, and its
+/// first write gives it one. A Markdown record without a number still blocks
+/// writes: it is legacy data to repair, not a new record.
 fn unstamped(doc: &Document) -> bool {
-    doc.error.as_deref() == Some(MISSING_NUMBER) && doc.metadata.get("number").is_none()
+    crate::knowledge::den::is_path(&doc.path)
+        && doc.error.as_deref() == Some(MISSING_NUMBER)
+        && doc.metadata.get("number").is_none()
 }
 
 impl Document {
