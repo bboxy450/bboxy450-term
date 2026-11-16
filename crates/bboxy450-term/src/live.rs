@@ -1220,6 +1220,7 @@ async fn run_with_control(
     let mut history = History::default();
     let mut action_replies = ActionReplies::default();
     let mut swarm_mutations = SwarmMutations::default();
+    let mut seat_drops: BTreeMap<SeatId, Option<SeatId>> = BTreeMap::new();
     let mut canvas_reads = bboxy450_term::canvas_host::Reads::default();
     let mut canvas_jobs: tokio::task::JoinSet<bboxy450_term::canvas_host::Completion> = tokio::task::JoinSet::new();
     let mut document_reader = documents::Reader::default();
@@ -1579,6 +1580,10 @@ async fn run_with_control(
                             publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
                         }
                     },
+                    // The row re-parents when the mux names the seat's new swarm; keep where it was dropped.
+                    UiMsg::SidebarMove(bbt_ui_model::SidebarMove::SeatToSwarm{seat,before,..}) => {
+                        seat_drops.insert(*seat,*before);
+                    },
                     UiMsg::SidebarMove(change) => {
                         if Arc::make_mut(&mut model).ui.window.sidebar.apply_move(*change) {
                             publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
@@ -1840,8 +1845,13 @@ async fn run_with_control(
                                 queue_action(&mut outgoing, GuiAction::Unwatch {seat:id});
                             }
                             logger.write(format!("seat {} activity={:?} process={:?}",seat.record.id,seat.state.activity,seat.state.process));
+                            let moved=seats.get(&seat.record.id).is_some_and(|old|old.record.swarm!=seat.record.swarm);
                             seats.insert(seat.record.id,seat);
                             publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                            // The build put a moved seat last in its new swarm; the drop named a row.
+                            if moved && let Some(Some(before))=seat_drops.remove(&id) && Arc::make_mut(&mut model).ui.window.sidebar.move_seat(id,before) {
+                                publish(&seats,&identity,&grids,&mut model,&mut preparer,&updates)?;
+                            }
                             }
                         }
                          GuiReply::Spawned {op,seat}=> {

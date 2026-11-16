@@ -1163,6 +1163,12 @@ impl Messaging {
                         if event == "mute" { "muted" } else { "unmuted" }
                     )
                 }
+                Body::Presence { event, name, .. } if event == "leave" => {
+                    format!("{name} moved to another swarm")
+                }
+                Body::Presence { event, name, .. } if event == "join" => {
+                    format!("{name} moved in from another swarm")
+                }
                 body => body.text().unwrap_or_default().into(),
             },
             ts_ms: message
@@ -2523,6 +2529,13 @@ impl Messaging {
                 "signed role/seat fields do not match the issued grant",
             ));
         }
+        // A move between swarms retires every grant issued before it, so the
+        // first swarm's grant stays dead after A → B → A.
+        if grant.epoch < self.moved_epoch(message.seat)? {
+            return Err(invalid(
+                "seat grant predates the seat's move to another swarm",
+            ));
+        }
         let class = if grant.role.class == Class::Oracle && record.role.class == Class::Oracle {
             Class::Oracle
         } else {
@@ -2744,6 +2757,116 @@ impl Messaging {
         self.recover_notices()?;
         self.reconcile(now)?;
         Ok(Some(envelope.id))
+    }
+    /// The policy epoch of `seat`'s last move between swarms; 0 if it never moved.
+    fn moved_epoch(&self, seat: Ulid) -> Result<u64> {
+        match self.account.get(&format!("messaging/seat-moved/{seat}"))? {
+            Some(bytes) => Ok(std::str::from_utf8(&bytes)?.parse()?),
+            None => Ok(0),
+        }
+    }
+    /// The operator moves a live seat into swarm `to`. A seat's inbox and the
+    /// messages stored for it belong to the swarm that stored them and do not
+    /// follow it, so a seat with a message still waiting for its process is
+    /// refused. The steps, each safe to stop after:
+    /// 1. a `leave` notice in the old swarm, the last use of the old grant, and
+    ///    a new policy epoch below which no grant of this seat validates again;
+    /// 2. the registry record names the new swarm;
+    /// 3. the old tree loses the seat's inbox and membership, so nothing in the
+    ///    old swarm routes to it (later sends skip it; stored ones are held);
+    /// 4. the new tree gains them and a `join` notice is issued under the new
+    ///    grant.
+    ///
+    /// The process, generation, session and workspace are not touched.
+    pub(crate) fn move_seat(
+        &mut self,
+        seat: Ulid,
+        generation: u64,
+        to: Ulid,
+        state: State,
+        now: u64,
+    ) -> Result<SeatRecord> {
+        let mut record = self.registry.get(seat)?;
+        if record.generation != generation {
+            return Err(invalid(
+                "StaleGeneration: captured seat process was replaced",
+            ));
+        }
+        let from = record.swarm;
+        if to == Ulid::nil() || to == from {
+            return Err(invalid("seat is already in that swarm"));
+        }
+        if record.harness_kind == crate::logic::PLUGIN_LOGIN_HARNESS {
+            return Err(invalid("a plugin login terminal stays in its swarm"));
+        }
+        let waiting = self.swarm(from)?.ledger.undelivered(seat)?;
+        if waiting > 0 {
+            return Err(invalid(format!(
+                "seat has {waiting} undelivered inbox message(s) in its swarm; stored messages do not move with a seat, so let them arrive first"
+            )));
+        }
+        let mut moved = || -> Result<()> {
+            let mut db = self.account.connection()?;
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            let epoch = policy(&tx, &record)?;
+            presence_notice(&tx, self.keys.as_ref(), &record, "leave", state, epoch, now)?;
+            let epoch = epoch
+                .checked_add(1)
+                .ok_or_else(|| invalid("seat policy epoch exhausted"))?;
+            tx.execute(
+                "UPDATE msg_policies SET epoch=?2 WHERE seat=?1",
+                params![seat.to_string(), sqlint(epoch)?],
+            )?;
+            tx.execute(
+                "INSERT INTO kv(key,value) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                params![format!("messaging/seat-moved/{seat}"), epoch.to_string().into_bytes()],
+            )?;
+            tx.commit()?;
+            drop(db);
+            self.registry.update(seat, |record| {
+                if record.generation != generation {
+                    return Err(invalid(
+                        "StaleGeneration: captured seat process was replaced",
+                    ));
+                }
+                record.swarm = to;
+                Ok(())
+            })?;
+            record.swarm = to;
+            let old = &mut self.swarm(from)?.tree;
+            old.remove_all(Actor::Operator, &format!("seats/{seat}"))?;
+            old.remove(Actor::Operator, &format!("swarms/{from}/{seat}"))?;
+            self.sync_seat(&record)?;
+            let mut db = self.account.connection()?;
+            let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+            let epoch = policy(&tx, &record)?;
+            presence_notice(&tx, self.keys.as_ref(), &record, "join", state, epoch, now)?;
+            let mut changed = Draft::new(
+                format!("seat/{seat}/state"),
+                "swarm",
+                serde_json::json!({"swarm":to,"from":from,"policy_epoch":epoch.to_string()}),
+            );
+            changed.seat = Some(seat);
+            changed.generation = Some(record.generation);
+            changed.ts = now;
+            tx.execute(
+                "INSERT INTO kv(key,value) VALUES(?1,?2)",
+                params![
+                    format!("messaging/seat-state/{}", changed.id),
+                    serde_json::to_vec(&changed)?
+                ],
+            )?;
+            tx.commit()?;
+            drop(db);
+            self.recover_notices()?;
+            self.reconcile(now)
+        };
+        moved().map_err(|error| {
+            invalid(format!(
+                "unknown: seat move outcome unavailable: {error}; read the seat's swarm before retrying"
+            ))
+        })?;
+        Ok(record)
     }
     fn recover_notices(&mut self) -> Result<()> {
         let notices = {
@@ -3200,6 +3323,49 @@ impl Messaging {
         ledger.bus_sent(id)
     }
 }
+/// One signed presence notice from `record` to its swarm, journaled in `tx`
+/// for `recover_notices` to store.
+fn presence_notice(
+    tx: &rusqlite::Transaction<'_>,
+    keys: &dyn SeatKeys,
+    record: &SeatRecord,
+    event: &str,
+    state: State,
+    epoch: u64,
+    now: u64,
+) -> Result<Envelope> {
+    let mut request = SendRequest::text(format!("swarms/{}/*", record.swarm), event);
+    request.kind = MessageKind::Presence;
+    let body = Body::Presence {
+        event: event.into(),
+        name: record.name.clone(),
+        harness: record.harness_kind.clone(),
+        state: crate::adapters::mapping::state(state),
+        muted: record.muted,
+        policy_epoch: epoch,
+    };
+    let envelope = mint(
+        tx,
+        keys,
+        record,
+        &request,
+        body,
+        Issue {
+            epoch,
+            now,
+            operator_direct: false,
+        },
+    )?;
+    tx.execute(
+        "INSERT INTO msg_notices(id,envelope,request) VALUES(?1,?2,?3)",
+        params![
+            envelope.id.to_string(),
+            serde_json::to_vec(&envelope)?,
+            serde_json::to_vec(&request)?
+        ],
+    )?;
+    Ok(envelope)
+}
 fn policy(tx: &rusqlite::Transaction<'_>, record: &SeatRecord) -> Result<u64> {
     let old: Option<(u64, Vec<u8>, bool)> = tx
         .query_row(
@@ -3516,6 +3682,100 @@ mod reference_tests {
         registry.insert(&recipient).unwrap();
         let messaging = Messaging::open(root.path(), Arc::new(NoAuthor)).unwrap();
         (root, messaging, recipient)
+    }
+
+    // keeps: contract SeatMove — one grant and one inbox follow a moved seat; A → B → A revives nothing.
+    #[test]
+    fn a_moved_seat_has_one_grant_and_one_inbox_and_its_old_grant_stays_dead() {
+        use super::super::api::Response;
+        let (root, messaging, seat) = recent_fixture();
+        drop(messaging);
+        let keys = Arc::new(LocalSeatKeys::new(SigningKey::from_bytes(&[42; 32])));
+        let mut messaging = Messaging::open(root.path(), keys).unwrap();
+        let (a, b) = (seat.swarm, Ulid::new());
+        let peer = SeatRecord::new(Ulid::new(), a, "peer", "zsh");
+        messaging.registry.insert(&peer).unwrap();
+        messaging.sync_seat(&seat).unwrap();
+        messaging.sync_seat(&peer).unwrap();
+        let idle = crate::adapters::State::Idle;
+        let dm = |to: &SeatRecord, text: &str| {
+            SendRequest::text(format!("seats/{}/inbox", to.id), text)
+        };
+        let before = messaging.send(seat.id, 1, dm(&peer, "before"), 1000).unwrap();
+        let before = before.envelope().unwrap().clone();
+        messaging.validate(&before).unwrap();
+        let epoch = |messaging: &Messaging| messaging.authority(seat.id, 1).unwrap().1;
+        let inbox = |messaging: &mut Messaging, swarm| {
+            let tree = messaging.tree(swarm).unwrap();
+            (
+                tree.get(&format!("seats/{}/inbox", seat.id)).is_some(),
+                tree.get(&format!("swarms/{swarm}/{}", seat.id)).is_some(),
+            )
+        };
+        let rows = |messaging: &mut Messaging, swarm: Ulid| {
+            let Response::Recent { rows, .. } =
+                recent(messaging, swarm, Some(format!("swarms/{swarm}/*")), None, 128)
+            else {
+                panic!("recent presence rows");
+            };
+            rows.into_iter().map(|row| row.text).collect::<Vec<_>>()
+        };
+        let mut epochs = vec![epoch(&messaging)];
+        let stale = messaging.move_seat(seat.id, 2, b, idle, 2000).unwrap_err();
+        assert!(stale.to_string().contains("StaleGeneration"), "{stale}");
+        let same = messaging.move_seat(seat.id, 1, a, idle, 2000).unwrap_err();
+        assert!(same.to_string().contains("already in that swarm"), "{same}");
+        assert_eq!(epoch(&messaging), epochs[0], "a refusal issues nothing");
+
+        let moved = messaging.move_seat(seat.id, 1, b, idle, 2000).unwrap();
+        assert_eq!((moved.swarm, moved.generation), (b, 1));
+        assert_eq!(messaging.registry.get(seat.id).unwrap(), moved);
+        epochs.push(epoch(&messaging));
+        assert!(messaging.validate(&before).is_err(), "the old grant is dead");
+        assert_eq!(inbox(&mut messaging, a), (false, false));
+        assert_eq!(inbox(&mut messaging, b), (true, true));
+        assert_eq!(rows(&mut messaging, a), ["recent fixture moved to another swarm"]);
+        assert_eq!(
+            rows(&mut messaging, b),
+            ["recent fixture moved in from another swarm"]
+        );
+        // The old swarm no longer routes to it, by broadcast or by name.
+        let mut broadcast = SendRequest::text(format!("swarms/{a}/*"), "to the swarm");
+        broadcast.kind = MessageKind::Decision;
+        let routes = messaging.send(peer.id, 1, broadcast, 2500).unwrap();
+        assert!(
+            messaging
+                .swarm(a)
+                .unwrap()
+                .ledger
+                .receipts(routes.view().id)
+                .unwrap()
+                .iter()
+                .all(|receipt| receipt.recipient != Recipient::Seat(seat.id))
+        );
+        assert!(messaging.send(peer.id, 1, dm(&seat, "gone"), 2600).is_err());
+
+        // A → B → A: a newer grant in A, and the first one stays dead.
+        messaging.move_seat(seat.id, 1, a, idle, 3000).unwrap();
+        epochs.push(epoch(&messaging));
+        assert!(epochs.windows(2).all(|pair| pair[0] < pair[1]), "{epochs:?}");
+        assert!(
+            messaging.validate(&before).is_err(),
+            "returning does not revive the first grant"
+        );
+        assert_eq!(inbox(&mut messaging, a), (true, true));
+        assert_eq!(inbox(&mut messaging, b), (false, false));
+        let after = messaging.send(seat.id, 1, dm(&peer, "after"), 4000).unwrap();
+        messaging.validate(after.envelope().unwrap()).unwrap();
+
+        // A message still waiting for the seat's process keeps the seat where it is.
+        let waiting = messaging.send(peer.id, 1, dm(&seat, "waiting"), 5000).unwrap();
+        assert_eq!(messaging.swarm(a).unwrap().ledger.undelivered(seat.id).unwrap(), 1);
+        let refused = messaging.move_seat(seat.id, 1, b, idle, 6000).unwrap_err();
+        assert!(refused.to_string().contains("undelivered"), "{refused}");
+        assert_eq!(messaging.registry.get(seat.id).unwrap().swarm, a);
+        assert_eq!(epoch(&messaging), epochs[2]);
+        let _ = waiting;
     }
 
     #[test]

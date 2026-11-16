@@ -25,6 +25,8 @@ mod notification_models;
 
 #[path = "seat_models.rs"]
 mod seat_models;
+#[path = "seat_move_model.rs"]
+mod seat_move_model;
 
 #[path = "plugin_models.rs"]
 mod plugin_models;
@@ -1907,6 +1909,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(task_amend_model::cases());
     cases.extend(mcp_recovery_model::cases());
     cases.extend(wake_circuit_model::cases());
+    cases.extend(seat_move_model::cases());
     cases.extend(capability_models::cases());
     cases.extend(gitkb_models::cases());
     cases.extend(usage_models::cases());

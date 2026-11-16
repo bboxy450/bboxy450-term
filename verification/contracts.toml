@@ -25,6 +25,16 @@ broken_controls = "Remove the Signal fixture's post-registration readiness reche
 limits = "The shim explores the real Yarn adapter/macro code, not Tokio's internal atomics, lock-free queues, cancellation tree, timers, cooperative budget or OS scheduler. Channel synchronization is one mutex transaction and has no capacity/backpressure semantics; the bounded Receiver name only selects the real adapter enum branch. std Arc reference counts for Wake objects are not instrumented. Existing normal Tokio runtime/source tests remain independent API witnesses. No arbitrary Rust correctness, full memory-model, unbounded fairness or formal refinement claim."
 
 [[contract]]
+name = "SeatMove"
+title = "A live seat moves between swarms under one grant and one inbox"
+models = ["SeatMove", "BrokenSeatMove"]
+sources = ["crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/messaging/tree.rs", "crates/bbt-mux/src/messaging/ledger.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/src/mcp/work_items.rs", "crates/bbt-proto/src/gui/seat.rs", "crates/bbt-ui-model/src/model/window.rs", "crates/bboxy450-term/src/sidebar_reorder.rs", "crates/bboxy450-term/src/ctl/seat.rs", "crates/bboxy450-term/tests/formal_contracts/seat_move_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/messaging/service.rs", "crates/bbt-mux/src/logic.rs", "crates/bbt-mux/tests/provider_gui.rs", "crates/bbt-ui-model/tests/model.rs", "crates/bboxy450-term/src/sidebar_reorder.rs", "crates/bboxy450-term/src/ctl.rs"]
+assumptions = "One seat, two swarms, policy epochs 0..3 (at most three moves or role/mute changes), one message addressed to the seat and one signed by it. The operator's move, each policy change and each messaging step are separate atomic actions on the logic thread, so the refusal check and the move cannot interleave with a send. No fairness: a waiting or held message may wait forever. Stored messages are not copied between swarm stores: a held message left in the old swarm is released only when the seat is back in that swarm's tree. Process generation, session and workspace are constants outside the model. Task and only-oracle refusals, the two presence notices, SQLite transactions, crash points between the move's steps, signatures, sidebar re-parenting and the ctl grammar are implementation tests, not model state. The model does not prove arbitrary Rust."
+property = "The policy epoch never falls below an issued grant or the last move; exactly one swarm holds a grant that validates, the one the seat is in; the seat has one inbox, in its swarm; a message addressed before a move is delivered at most once; a message the seat signed before a move is never released after it, including after A -> B -> A. The broken control keeps a grant valid after the seat left its swarm and must fail safety."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "WakeCircuitSelf"
 title = "Self-notification suppression and durable recipient-local wake circuit breaker"
 models = ["WakeCircuitSelf", "BrokenWakeCircuitSelf"]

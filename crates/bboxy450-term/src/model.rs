@@ -1253,6 +1253,38 @@ fn build_with_clock(
     if closes.needs_reconcile(seats) {
         closes.reconcile(seats, layout_source.to_mut(), now, now_ms);
     }
+    // A seat the operator moved between swarms takes its tab along, or leaves
+    // a shared tab as a tab of its own; the stage follows a focused seat.
+    for record in seats {
+        let id = SeatId::from_u128(record.id.0);
+        let swarm = ui::SwarmId::from_u128(record.swarm.0);
+        if record.lifecycle != registry::Lifecycle::Open
+            || previous.ui.seats.get(&id).is_none_or(|old| old.swarm == swarm)
+        {
+            continue;
+        }
+        let window = &mut layout_source.to_mut().window;
+        if !window.sidebar.swarms.iter().any(|s| s.id == swarm) {
+            window
+                .sidebar
+                .swarms
+                .push(ui::Swarm::new(swarm, "swarm", vec![]));
+        }
+        if window.sidebar.move_seat_to_swarm(id, swarm, None) && window.stage.focused == Some(id) {
+            let tab = window
+                .sidebar
+                .swarms
+                .iter()
+                .flat_map(|s| &s.tabs)
+                .find(|t| t.seats.contains(&id))
+                .map(|t| t.id);
+            window.stage = ui::Stage {
+                swarm: Some(swarm),
+                tab,
+                focused: Some(id),
+            };
+        }
+    }
     let mut metadata: BTreeMap<_, _> = seats
         .iter()
         .map(|record| {

@@ -42,13 +42,116 @@ fn move_to<T>(items: &mut Vec<T>, item: usize, target: usize) -> bool {
 pub enum SidebarMove {
     Swarm { swarm: SwarmId, target: SwarmId },
     Seat { seat: SeatId, target: SeatId },
+    /// The seat leaves its swarm for `swarm`, as a tab of its own in front of
+    /// the tab that holds `before`, or last.
+    SeatToSwarm {
+        seat: SeatId,
+        swarm: SwarmId,
+        before: Option<SeatId>,
+    },
+    /// The seat leaves for a swarm of its own. The mux mints that swarm, so the
+    /// sidebar has nothing to apply until the seat's record names it.
+    SeatToNewSwarm { seat: SeatId },
+}
+/// What a dragged seat row was dropped onto.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SeatDrop {
+    Seat(SeatId),
+    Swarm(SwarmId),
+    NewSwarm,
 }
 impl Sidebar {
     pub fn apply_move(&mut self, change: SidebarMove) -> bool {
         match change {
             SidebarMove::Swarm { swarm, target } => self.move_swarm(swarm, target),
             SidebarMove::Seat { seat, target } => self.move_seat(seat, target),
+            SidebarMove::SeatToSwarm {
+                seat,
+                swarm,
+                before,
+            } => self.move_seat_to_swarm(seat, swarm, before),
+            SidebarMove::SeatToNewSwarm { .. } => false,
         }
+    }
+    fn swarm_of(&self, seat: SeatId) -> Option<SwarmId> {
+        self.swarms
+            .iter()
+            .find(|s| s.tabs.iter().any(|t| t.seats.contains(&seat)))
+            .map(|s| s.id)
+    }
+    /// The move a drop of seat row `seat` makes: a reorder inside its swarm, a
+    /// move into another swarm, or a swarm of its own. None when nothing would
+    /// change: its own header, itself, or a tear-out of a swarm's only seat.
+    pub fn seat_drop(&self, seat: SeatId, onto: SeatDrop) -> Option<SidebarMove> {
+        let home = self.swarm_of(seat)?;
+        let into = |swarm, before| {
+            (swarm != home).then_some(SidebarMove::SeatToSwarm {
+                seat,
+                swarm,
+                before,
+            })
+        };
+        match onto {
+            SeatDrop::Seat(target) if target == seat => None,
+            SeatDrop::Seat(target) => match self.swarm_of(target)? {
+                swarm if swarm == home => Some(SidebarMove::Seat { seat, target }),
+                swarm => into(swarm, Some(target)),
+            },
+            SeatDrop::Swarm(swarm) => {
+                into(self.swarms.iter().find(|s| s.id == swarm)?.id, None)
+            }
+            SeatDrop::NewSwarm => {
+                let rows = self.swarms.iter().find(|s| s.id == home)?;
+                (rows.tabs.iter().map(|t| t.seats.len()).sum::<usize>() > 1)
+                    .then_some(SidebarMove::SeatToNewSwarm { seat })
+            }
+        }
+    }
+    /// Seat `seat` becomes a tab of its own in `swarm`, in front of the tab that
+    /// holds `before` or last. Its old tab keeps its other seats and goes when it
+    /// has none; a seat that was alone in its tab takes the tab along. False when
+    /// the swarm is missing or already holds the seat.
+    pub fn move_seat_to_swarm(
+        &mut self,
+        seat: SeatId,
+        swarm: SwarmId,
+        before: Option<SeatId>,
+    ) -> bool {
+        if self.swarm_of(seat) == Some(swarm) || !self.swarms.iter().any(|s| s.id == swarm) {
+            return false;
+        }
+        let mut moved = None;
+        for source in &mut self.swarms {
+            let Some(index) = source.tabs.iter().position(|t| t.seats.contains(&seat)) else {
+                continue;
+            };
+            let tab = &mut source.tabs[index];
+            match prune(&tab.tree, seat) {
+                Some(tree) if tab.seats.len() > 1 => {
+                    tab.tree = tree;
+                    tab.seats.retain(|id| *id != seat);
+                    moved = Some(Tab::new(tab.id, tab.name.clone(), SplitNode::Leaf(seat)));
+                }
+                _ => moved = Some(source.tabs.remove(index)),
+            }
+        }
+        let mut tab = moved.unwrap_or_else(|| Tab::new(TabId(seat.0), "seat", SplitNode::Leaf(seat)));
+        // A tab id names one tab: a seat split out of a tab that stays needs its own.
+        while self
+            .swarms
+            .iter()
+            .any(|s| s.tabs.iter().any(|t| t.id == tab.id))
+        {
+            tab.id = TabId::from_u128(tab.id.0.0.wrapping_add(1));
+        }
+        let target = self.swarms.iter_mut().find(|s| s.id == swarm).unwrap();
+        let at = before
+            .and_then(|before| target.tabs.iter().position(|t| t.seats.contains(&before)))
+            .unwrap_or(target.tabs.len());
+        tab.shortcut = (target.tabs.len() < 9).then_some((target.tabs.len() + 1) as u8);
+        target.tabs.insert(at, tab);
+        self.open.insert(swarm);
+        true
     }
     /// Swarms with their seat rows, as the sidebar lists them.
     pub fn order(&self) -> Vec<(SwarmId, Vec<SeatId>)> {

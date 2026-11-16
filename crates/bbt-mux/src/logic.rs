@@ -3066,6 +3066,65 @@ struct ProvenanceBackoff {
 const PROVENANCE_RETRY_MIN: Duration = Duration::from_millis(500);
 const PROVENANCE_RETRY_MAX: Duration = Duration::from_secs(30);
 
+/// Why the operator may not move `seat` out of its swarm now. `members` are the
+/// swarm's open seats, `tasks` the live tasks naming the seat as assignee or
+/// delegator: a task's messages and scope belong to the swarm it was delegated in.
+fn move_refusal(seat: &SeatRecord, members: &[SeatRecord], tasks: &[String]) -> Option<String> {
+    if let Some(task) = tasks.first() {
+        let more = match tasks.len() - 1 {
+            0 => String::new(),
+            more => format!(" and {more} more"),
+        };
+        return Some(format!(
+            "seat move refused: {} is assignee or delegator of live task {task}{more}; close or reassign first",
+            seat.name
+        ));
+    }
+    let oracle = |member: &SeatRecord| member.role.class == crate::registry::Class::Oracle;
+    let others = || members.iter().filter(|member| member.id != seat.id);
+    if oracle(seat) && others().next().is_some() && !others().any(oracle) {
+        return Some(format!(
+            "seat move refused: {} is the only oracle of a swarm that still has other open seats; close them or name another oracle first",
+            seat.name
+        ));
+    }
+    None
+}
+#[cfg(test)]
+mod seat_move_tests {
+    use super::*;
+    // keeps: a seat leaves its swarm only without live tasks and without orphaning workers.
+    #[test]
+    fn move_refusal_names_the_task_or_the_orphaned_swarm() {
+        let swarm = Ulid::new();
+        let oracle = |name: &str| {
+            let mut seat = SeatRecord::new(Ulid::new(), swarm, name, "zsh");
+            seat.role.class = crate::registry::Class::Oracle;
+            seat
+        };
+        let lead = oracle("lead");
+        let worker = SeatRecord::new(Ulid::new(), swarm, "worker", "zsh");
+        let both = [lead.clone(), worker.clone()];
+        assert_eq!(move_refusal(&worker, &both, &[]), None);
+        assert!(
+            move_refusal(&lead, &both, &[])
+                .unwrap()
+                .contains("only oracle")
+        );
+        assert_eq!(move_refusal(&lead, std::slice::from_ref(&lead), &[]), None);
+        assert_eq!(
+            move_refusal(&lead, &[lead.clone(), worker.clone(), oracle("second")], &[]),
+            None
+        );
+        let reason = move_refusal(&worker, &both, &["tasks/a.md".into(), "tasks/b.md".into()]);
+        let reason = reason.unwrap();
+        assert!(
+            reason.contains("tasks/a.md") && reason.contains("1 more"),
+            "{reason}"
+        );
+    }
+}
+
 struct Worker {
     dream_runtime: crate::registry::dream_c1::Runtime,
     #[cfg(test)]
@@ -7864,6 +7923,34 @@ impl Worker {
                         ),
                     )?;
                     this.push_automation(id, on);
+                    Ok(())
+                })
+            }
+            SeatControl::Move { swarm } => {
+                let args = serde_json::json!({"seat":id,"generation":generation,"swarm":swarm});
+                self.ctl_journaled(op, "seat_move", args, origin, |this| {
+                    let record = this.controlled_seat(id, generation)?;
+                    let to = swarm.unwrap_or_else(Ulid::new);
+                    // Task documents live in the swarm's workspace; a workspace
+                    // that cannot be read cannot show the seat is free to go.
+                    let tasks = (|| -> Result<Vec<String>> {
+                        let port = this.workspaces.select(&this.registry, record.swarm, None)?;
+                        let port = this.scan_port(&port.binding)?;
+                        let source = port.host.source(&port.index, &this.registry);
+                        crate::mcp::work_items::ProviderTasks(&source, None)
+                            .live_for_seat(id)
+                            .map_err(invalid)
+                    })()
+                    .map_err(|error| invalid(format!("seat move refused: its swarm's tasks could not be read ({error}); retry when the workspace is ready")))?;
+                    let members = this.registry.open_in_swarm(record.swarm)?;
+                    if let Some(reason) = move_refusal(&record, &members, &tasks) {
+                        return Err(invalid(reason));
+                    }
+                    let state = this.views.get(&id).map_or(crate::adapters::State::Idle, |view| view.adapter.status.state);
+                    // The record, the policy epoch and both notices are one
+                    // messaging operation; its seat-state event reaches the bus
+                    // through the messaging outbox, as a mute does.
+                    this.messaging.move_seat(id, generation, to, state, now_ms())?;
                     Ok(())
                 })
             }

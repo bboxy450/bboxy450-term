@@ -82,6 +82,7 @@ pub const USAGE: &str = "usage: bboxy450-term ctl <noun> <verb> [args] [flags]  
   seat rename <seat> <name>
   seat restart <seat>                     stop the seat's process and start its next generation
   seat automation <seat> on|off           whether a decision model may answer the seat's harness questions
+  seat move <seat> <swarm|new>            move a live seat into another swarm, or into a new one of its own
   seat focus <seat>                       the window focuses it
   seat close <seat>                       close in the window, with 60 s undo
   seat undo-close <seat>                  restore the same PTY in its saved position
@@ -2516,6 +2517,22 @@ mod tests {
         );
         assert!(parse_full(&args("record commit notes/one.md")).is_err());
         assert!(parse_full(&args("record fetch notes/one.md --message ignored")).is_err());
+    }
+    // keeps: `seat move` names a seat and a swarm, or `new` for a swarm of its own.
+    #[test]
+    fn seat_move_parses_a_target_swarm_or_new() {
+        let swarm = Ulid::new().to_string();
+        let moved = |target: &str| parse_full(&args(&format!("seat move worker {target}")));
+        assert!(matches!(
+            moved(&swarm).unwrap().command,
+            Command::Move { seat, swarm: Some(id) } if seat == "worker" && id == swarm
+        ));
+        assert!(matches!(
+            moved("new").unwrap().command,
+            Command::Move { seat, swarm: None } if seat == "worker"
+        ));
+        assert!(parse_full(&args("seat move worker")).is_err());
+        assert!(parse_full(&args(&format!("seat move worker {swarm} extra"))).is_err());
     }
     #[test]
     fn task_verbs_parse_typed_evidence_and_require_their_own_flags() {

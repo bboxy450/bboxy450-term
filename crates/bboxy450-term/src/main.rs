@@ -981,6 +981,11 @@ impl UiEffect {
     ) -> Option<Self> {
         match message {
             live::UiMsg::NewSwarm(id) => Some(Self::NewSwarm(*id)),
+            // A move between swarms is the mux's: its operation is the effect.
+            live::UiMsg::SidebarMove(
+                bbt_ui_model::SidebarMove::SeatToSwarm { .. }
+                | bbt_ui_model::SidebarMove::SeatToNewSwarm { .. },
+            ) => None,
             live::UiMsg::SidebarMove(change) => model.map(|m| {
                 let mut sidebar = m.ui.window.sidebar.clone();
                 sidebar.apply_move(*change);

@@ -1322,6 +1322,13 @@ impl Ledger {
         items.reverse();
         Ok(Page { items, next })
     }
+    /// Messages stored for `recipient` that still wait to be handed to its process.
+    pub(crate) fn undelivered(&self, recipient: Ulid) -> Result<u64> {
+        Ok(self.store.connection()?.query_row(
+            "SELECT COUNT(DISTINCT message) FROM msg_deliveries INDEXED BY msg_native_ready WHERE recipient=?1 AND evidence='recipient-stored' AND json_extract(CAST(data AS TEXT),'$.wake') IS NOT 'none' AND held IS NULL",
+            [recipient.to_string()],|row|u64_at(row,0),
+        )?)
+    }
     pub fn pending_application_ack(&self, recipient: Ulid) -> Result<u64> {
         Ok(self.store.connection()?.query_row(
             "SELECT COUNT(DISTINCT message) FROM msg_deliveries WHERE recipient=?1 AND evidence<>'application-acknowledged'",

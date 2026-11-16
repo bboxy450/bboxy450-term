@@ -230,7 +230,7 @@ impl EnvelopeExt for Envelope {
                 ..
             } => {
                 self.kind == MessageKind::Presence
-                    && matches!(event.as_str(), "mute" | "unmute")
+                    && matches!(event.as_str(), "mute" | "unmute" | "leave" | "join")
                     && *policy_epoch > 0
                     && !name.is_empty()
                     && name.len() <= 256

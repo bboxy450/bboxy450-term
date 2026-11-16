@@ -6,9 +6,12 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Sidebar drag and drop. A press on a swarm header or seat row waits for release:
 //! released in place it is the ordinary click; moved, it drops onto the row under
-//! the pointer. Native input and `ctl ui drag` share this path.
+//! the pointer. A seat row dropped on another swarm's header or rows moves into
+//! that swarm; dropped on the new-swarm control it gets a swarm of its own. Both
+//! are the mux's decision (`SeatControl::Move`): the row re-parents when the
+//! seat's record names its new swarm. Native input and `ctl ui drag` share this path.
 use crate::*;
-use bbt_ui_model::{SeatId, SidebarMove, SwarmId};
+use bbt_ui_model::{SeatDrop, SeatId, SidebarMove, SwarmId};
 
 /// The scene key of a pressed region: `toggle-swarm:<id>` drags `swarm:<id>`.
 fn drag_key(pressed: &str) -> String {
@@ -77,6 +80,13 @@ impl App {
             .and_then(|target| self.keyed_move(&press.id, &target));
         self.scene.set_sidebar_drag(None);
         self.request_redraw();
+        // Another swarm under the pointer outranks the preview, which only
+        // knows the dragged row's own swarm.
+        if let Some(change) = self.seat_leaving(&press.id, self.pointer) {
+            self.logger.write(format!("ui sidebar move: {change:?}"));
+            self.request_seat_move(change);
+            return true;
+        }
         if let Some(change) = previewed.or_else(|| self.row_drop(&press.id, self.pointer)) {
             self.logger.write(format!("ui sidebar move: {change:?}"));
             self.queue(live::UiMsg::SidebarMove(change));
@@ -107,6 +117,61 @@ impl App {
             }),
             _ => None,
         }
+    }
+    /// The move out of its swarm a seat row dropped at `at` asks for, if any.
+    fn seat_leaving(&self, pressed: &str, at: [f32; 2]) -> Option<SidebarMove> {
+        let seat: SeatId = pressed.strip_prefix("seat:")?.parse().ok()?;
+        let contains =
+            |r: &Rect| at[0] >= r.x && at[0] < r.right() && at[1] >= r.y && at[1] < r.bottom();
+        let onto = self
+            .navigation_regions
+            .iter()
+            .filter(|(_, rect)| contains(rect))
+            .find_map(|(id, _)| match id.split_once(':') {
+                Some(("seat", id)) => id.parse().ok().map(SeatDrop::Seat),
+                Some(("toggle-swarm", id)) => id.parse().ok().map(SeatDrop::Swarm),
+                None if id == "new-swarm" => Some(SeatDrop::NewSwarm),
+                _ => None,
+            })?;
+        let sidebar = &self.live_state.as_ref()?.ui.window.sidebar;
+        sidebar
+            .seat_drop(seat, onto)
+            .filter(|change| !matches!(change, SidebarMove::Seat { .. }))
+    }
+    /// Asks the mux to move a seat into another swarm, or into a new one.
+    pub(super) fn request_seat_move(&mut self, change: SidebarMove) {
+        let (seat, swarm) = match change {
+            SidebarMove::SeatToSwarm { seat, swarm, .. } => (seat, Some(bbt_mux::Ulid(swarm.0.0))),
+            SidebarMove::SeatToNewSwarm { seat } => (seat, None),
+            SidebarMove::Swarm { .. } | SidebarMove::Seat { .. } => return,
+        };
+        let Some(generation) = self
+            .live_state
+            .as_deref()
+            .and_then(|model| model.ui.seats.get(&seat))
+            .filter(|seat| seat.lifecycle == bbt_ui_model::Lifecycle::Open)
+            .map(|seat| seat.process_generation)
+        else {
+            self.logger.write("ui sidebar move dropped: seat is not open");
+            return;
+        };
+        if self.backend_lost || self.closing || self.live_commands.is_none() {
+            self.logger.write("ui sidebar move dropped: backend unavailable");
+            return;
+        }
+        // The drop position, kept until the mux answers.
+        self.queue(live::UiMsg::SidebarMove(change));
+        let id = bbt_mux::Ulid::new();
+        if let Some(effects) = &mut self.ui_collect {
+            effects.push(UiEffect::Operation(id));
+        }
+        self.operation_backlog.push_back(live::UiMsg::SeatControl {
+            id,
+            seat: bbt_mux::Ulid(seat.0.0),
+            generation,
+            command: bbt_proto::gui::SeatControl::Move { swarm },
+        });
+        self.flush_operations();
     }
     fn row_drop(&self, dragged: &str, at: [f32; 2]) -> Option<SidebarMove> {
         let model = self.live_state.as_ref()?;
@@ -235,9 +300,14 @@ mod tests {
         let (swarm, seat) = (SwarmId::from_u128, SeatId::from_u128);
         let header = |app: &App, id| center(app, format!("toggle-swarm:{}", swarm(id)));
         let row = |app: &App, id| center(app, format!("seat:{}", seat(id)));
-        let last = |app: &App| match app.pending_commands.back() {
-            Some(live::UiMsg::SidebarMove(change)) => Some(*change),
-            _ => None,
+        let last = |app: &App| {
+            app.pending_commands
+                .iter()
+                .rev()
+                .find_map(|message| match message {
+                    live::UiMsg::SidebarMove(change) => Some(*change),
+                    _ => None,
+                })
         };
         let (from, to) = (header(&app, 91), header(&app, 90));
         assert_eq!(app.drag_sidebar(from, to), Ok(None));
@@ -267,11 +337,63 @@ mod tests {
                 target: seat(1)
             })
         );
-        // Seats never cross swarms.
-        let queued = app.pending_commands.len();
+        // A seat dropped on another swarm's row asks the mux to move it there,
+        // in front of that row; the sidebar itself does not reorder.
+        let moves = |app: &App| -> Vec<_> {
+            app.pending_commands
+                .iter()
+                .chain(&app.operation_backlog)
+                .filter_map(|message| match message {
+                    live::UiMsg::SeatControl {
+                        seat,
+                        generation,
+                        command: bbt_proto::gui::SeatControl::Move { swarm },
+                        ..
+                    } => Some((seat.0, *generation, swarm.map(|id| id.0))),
+                    _ => None,
+                })
+                .collect()
+        };
+        // The mux decides a move between swarms: without a backend nothing is asked.
+        assert!(app.backend_lost && !app.closing);
+        let asked = app.pending_commands.len();
         let (from, to) = (row(&app, 3), row(&app, 1));
         app.drag_sidebar(from, to).unwrap();
-        assert_eq!(app.pending_commands.len(), queued);
+        assert_eq!(app.pending_commands.len(), asked);
+        assert!(app.operation_backlog.is_empty());
+        // The fixture's command channel is closed, so each send marks the backend lost again.
+        app.backend_lost = false;
+        let (from, to) = (row(&app, 3), row(&app, 1));
+        app.drag_sidebar(from, to).unwrap();
+        assert_eq!(
+            last(&app),
+            Some(SidebarMove::SeatToSwarm {
+                seat: seat(3),
+                swarm: swarm(90),
+                before: Some(seat(1))
+            })
+        );
+        assert_eq!(moves(&app), [(3, 1, Some(90))]);
+        // On another swarm's header: into that swarm, last.
+        let (from, to) = (row(&app, 1), header(&app, 91));
+        app.backend_lost = false;
+        app.drag_sidebar(from, to).unwrap();
+        assert_eq!(moves(&app).last(), Some(&(1, 1, Some(91))));
+        // On the new-swarm control: a swarm of its own, which the mux mints.
+        let (from, to) = (row(&app, 2), center(&app, "new-swarm".into()));
+        app.backend_lost = false;
+        app.drag_sidebar(from, to).unwrap();
+        assert_eq!(moves(&app).last(), Some(&(2, 1, None)));
+        // A swarm's only seat already has one; its own header changes nothing.
+        let asked = moves(&app).len();
+        let (from, to) = (row(&app, 3), center(&app, "new-swarm".into()));
+        app.backend_lost = false;
+        app.drag_sidebar(from, to).unwrap();
+        let (from, to) = (row(&app, 1), header(&app, 90));
+        app.backend_lost = false;
+        app.drag_sidebar(from, to).unwrap();
+        assert_eq!(moves(&app).len(), asked);
+        let queued = app.pending_commands.len();
         // A press that does not move is the ordinary click, applied on release.
         let open = app
             .scene

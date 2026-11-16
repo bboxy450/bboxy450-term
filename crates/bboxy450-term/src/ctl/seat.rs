@@ -23,6 +23,7 @@ pub(super) const VERBS: &[super::Verb] = &[
     ("seat", "focus", "FocusSeat"),
     ("seat", "restart", "RestartSeat"),
     ("seat", "automation", "SeatControl"),
+    ("seat", "move", "SeatControl"),
     ("seat", "close", "CloseSeat"),
     ("seat", "undo-close", "UndoCloseSeat"),
     ("seat", "capture", "Capture"),
@@ -88,6 +89,12 @@ macro_rules! seat_commands {
             Automation {
                 seat: String,
                 on: bool,
+            },
+            /// `seat move <seat> <swarm|new>`: into another live swarm, or
+            /// (`None`) into a new swarm of its own.
+            Move {
+                seat: String,
+                swarm: Option<String>,
             },
             /// `seat focus <seat>`: the window focuses it.
             Focus {
@@ -219,6 +226,10 @@ pub(super) fn parse(words: &[&str], cx: &super::ParseCx) -> Result<Option<Comman
     ["seat", "automation", seat, state @ ("on" | "off")] => Command::Automation {
         seat: seat.into(),
         on: state == "on",
+    },
+    ["seat", "move", seat, swarm] => Command::Move {
+        seat: seat.into(),
+        swarm: (swarm != "new").then(|| swarm.into()),
     },
     ["seat", "close", seat] => Command::Close { seat: seat.into() },
     ["seat", "undo-close", seat] => Command::UndoClose { seat: seat.into() },
@@ -645,6 +656,32 @@ pub(super) fn run_verb(cx: super::VerbCx<'_>, command: Command) -> Result<(), St
             )?;
             json!({ "seat": seat.id, "automation": on })
         }
+        Command::Move { seat, swarm } => {
+            let seats = client.seats()?;
+            let seat = resolve(&seats, &seat)?.record.clone();
+            let live = super::swarms(&seats);
+            let swarm = swarm
+                .map(|text| {
+                    text.parse::<Ulid>()
+                        .ok()
+                        .filter(|id| live.contains(id))
+                        .ok_or_else(|| format!("no swarm {text}; name a live swarm's id, or new"))
+                })
+                .transpose()?;
+            let op = client.mint();
+            client.call(
+                Some(op),
+                GuiAction::SeatControl {
+                    id: op,
+                    seat: seat.id,
+                    generation: seat.generation,
+                    command: bbt_proto::gui::SeatControl::Move { swarm },
+                },
+                |r| matches!(r, GuiReply::SeatControlled { op: o } if *o == op),
+            )?;
+            let now = resolve(&client.seats()?, &seat.id.to_string())?.record.swarm;
+            json!({ "seat": seat.id, "from_swarm": seat.swarm, "swarm": now })
+        }
         command @ (Command::Close { .. } | Command::UndoClose { .. }) => {
             let (seat, undo) = match command {
                 Command::Close { seat } => (seat, false),
@@ -792,6 +829,7 @@ pub(super) const PARSE_SAMPLES: &[&str] = &[
     "seat focus s",
     "seat restart s",
     "seat automation s off",
+    "seat move s new",
     "seat resize s 80x24",
 ];
 

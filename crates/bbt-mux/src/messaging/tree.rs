@@ -419,6 +419,21 @@ impl Tree {
         self.nodes.remove(&path);
         Ok(())
     }
+    /// Removes `path` and everything below it, children before their parents.
+    pub(crate) fn remove_all(&mut self, actor: Actor, path: &str) -> Result<()> {
+        let below = format!("{path}/");
+        let mut paths: Vec<String> = self
+            .nodes
+            .keys()
+            .filter(|node| node.as_str() == path || node.starts_with(&below))
+            .cloned()
+            .collect();
+        paths.sort_by_key(|node| std::cmp::Reverse(node.len()));
+        for node in paths {
+            self.remove(actor, &node)?;
+        }
+        Ok(())
+    }
     pub fn pause(&mut self, actor: Actor, path: &str, paused: bool) -> Result<()> {
         let path = normalize(path, false)?;
         let mut node = self

@@ -304,6 +304,62 @@ impl TaskDocuments for ProviderTasks<'_> {
     }
 }
 impl ProviderTasks<'_> {
+    /// Paths of the live tasks that name `seat` as assignee or delegator, from
+    /// typed metadata. An operator seat move refuses on any of them.
+    pub(crate) fn live_for_seat(&self, seat: Ulid) -> Checked<Vec<String>> {
+        let deadline = Instant::now() + TASK_LIST_BUDGET;
+        let mut paths = BTreeSet::new();
+        for kind in ["task", "bug", "epic"] {
+            let mut cursor = None;
+            let mut pages = 0;
+            loop {
+                let request = d::GraphRequest {
+                    scope: d::Scope::Type {
+                        graph: d::DocumentGraph::Markdown,
+                        record_type: kind.into(),
+                    },
+                    cursor,
+                    limit: Some(d::MAX_PAGE),
+                };
+                let page = within(deadline, || self.0.graph_until(request, deadline))?;
+                for node in page.nodes {
+                    let Some(found) = node.reference else {
+                        continue;
+                    };
+                    let mut doc = Document {
+                        id: found.id.clone(),
+                        path: found.path.clone(),
+                        metadata: node.frontmatter,
+                        body: String::new(),
+                        digest: found.digest.clone(),
+                        error: None,
+                        links: Vec::new(),
+                    };
+                    // Older graph providers may omit metadata.
+                    if doc.metadata["status"].as_str().is_none() {
+                        doc = self.fetch_record(found, Some(deadline))?;
+                    }
+                    let named = reference(&doc, "assignee").ok().flatten() == Some(seat)
+                        || delegator(&doc).ok().flatten() == Some(Recipient::Seat(seat));
+                    if named
+                        && is_task(&doc)
+                        && live_status(doc.metadata["status"].as_str().unwrap_or_default())
+                    {
+                        paths.insert(doc.path);
+                    }
+                }
+                cursor = page.next;
+                pages += 1;
+                if cursor.is_none() {
+                    break;
+                }
+                if pages == 64 {
+                    return Err("task inventory exceeds its page bound".into());
+                }
+            }
+        }
+        Ok(paths.into_iter().collect())
+    }
     fn fetch(&self, reference: d::RecordRef, deadline: Option<Instant>) -> Checked<Document> {
         let doc = self.fetch_record(reference, deadline)?;
         if !is_task(&doc) {

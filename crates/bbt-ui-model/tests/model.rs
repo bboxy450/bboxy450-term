@@ -472,3 +472,65 @@ fn sidebar_drag_reorders_swarms_rows_and_tabs_but_never_crosses_swarms() {
     assert!(!sidebar.move_seat(seat(5), seat(4)));
     assert!(!sidebar.move_seat(seat(4), seat(4)));
 }
+
+// A seat row dropped on another swarm moves there as its own tab; within its swarm it reorders.
+#[test]
+fn a_seat_dropped_on_another_swarm_moves_there_and_back_as_its_own_tab() {
+    let mut model = fixture();
+    let other = Swarm::new(swarm(2), "other", vec![Tab::new(tab(3), "x", leaf(5))]);
+    model.window.sidebar.swarms.push(other);
+    let sidebar = &mut model.window.sidebar;
+    let rows = |s: &Sidebar, swarm: usize| {
+        s.swarms[swarm].tabs.iter().map(|t| t.seats.clone()).collect::<Vec<_>>()
+    };
+    let home = rows(sidebar, 0);
+    let (first, second) = (home[0][0], home[0][1]);
+    // What a drop means: a reorder at home, a move elsewhere, nothing in place.
+    assert_eq!(
+        sidebar.seat_drop(first, SeatDrop::Seat(second)),
+        Some(SidebarMove::Seat { seat: first, target: second })
+    );
+    let onto_row = SidebarMove::SeatToSwarm { seat: first, swarm: swarm(2), before: Some(seat(5)) };
+    assert_eq!(sidebar.seat_drop(first, SeatDrop::Seat(seat(5))), Some(onto_row));
+    assert_eq!(
+        sidebar.seat_drop(first, SeatDrop::Swarm(swarm(2))),
+        Some(SidebarMove::SeatToSwarm { seat: first, swarm: swarm(2), before: None })
+    );
+    assert_eq!(sidebar.seat_drop(first, SeatDrop::Swarm(swarm(1))), None);
+    assert_eq!(sidebar.seat_drop(first, SeatDrop::Seat(first)), None);
+    assert_eq!(sidebar.seat_drop(first, SeatDrop::Swarm(swarm(9))), None);
+    assert_eq!(
+        sidebar.seat_drop(first, SeatDrop::NewSwarm),
+        Some(SidebarMove::SeatToNewSwarm { seat: first })
+    );
+    // A swarm's only seat already has a swarm of its own.
+    assert_eq!(sidebar.seat_drop(seat(5), SeatDrop::NewSwarm), None);
+    // The mux mints a new swarm; the sidebar waits for the seat's record.
+    assert!(!sidebar.apply_move(SidebarMove::SeatToNewSwarm { seat: first }));
+    // Out of a shared tab: the tab keeps its other seats and its tree loses the leaf.
+    assert!(sidebar.apply_move(onto_row));
+    assert_eq!(rows(sidebar, 0)[0], home[0][1..]);
+    assert!(!sidebar.swarms[0].tabs[0].tree.leaves().contains(&first));
+    assert_eq!(rows(sidebar, 1), [vec![first], vec![seat(5)]]);
+    assert_eq!(sidebar.swarms[1].tabs[0].tree, SplitNode::Leaf(first));
+    let ids: Vec<_> = sidebar.swarms.iter().flat_map(|s| &s.tabs).map(|t| t.id).collect();
+    let mut unique = ids.clone();
+    unique.sort();
+    unique.dedup();
+    assert_eq!(unique.len(), ids.len(), "a split-out seat gets its own tab id");
+    assert!(sidebar.open.contains(&swarm(2)));
+    assert!(!sidebar.apply_move(onto_row), "already there");
+    assert!(!sidebar.move_seat_to_swarm(first, swarm(9), None), "no such swarm");
+    // A → B → A: back home as the last tab, once.
+    assert!(sidebar.move_seat_to_swarm(first, swarm(1), None));
+    assert_eq!(rows(sidebar, 1), [vec![seat(5)]]);
+    assert_eq!(rows(sidebar, 0).last().unwrap(), &vec![first]);
+    let all: Vec<_> = sidebar.order().into_iter().flat_map(|(_, seats)| seats).collect();
+    assert_eq!(all.iter().filter(|id| **id == first).count(), 1);
+    // A seat alone in its tab takes the tab along; the emptied swarm stays.
+    assert!(sidebar.move_seat_to_swarm(seat(5), swarm(1), Some(first)));
+    assert!(sidebar.swarms[1].tabs.is_empty());
+    let home = &sidebar.swarms[0].tabs;
+    assert_eq!(home[home.len() - 2].id, tab(3));
+    assert_eq!(home[home.len() - 2].seats, [seat(5)]);
+}

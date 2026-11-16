@@ -1415,6 +1415,75 @@ fn seat_controls_case() {
             .unwrap_err()
             .contains("StaleGeneration")
     );
+    // Move: a seat holding a live task stays; a free seat moves to another
+    // swarm, back, and into a swarm of its own, as the same process.
+    let move_to = |swarm| SeatControl::Move { swarm };
+    let refused = runtime
+        .block_on(gui.control(Ulid::new(), target, generation, move_to(Some(Ulid(9)))))
+        .unwrap_err();
+    assert!(
+        refused.contains("seat-action.md") && refused.contains("live task"),
+        "{refused}"
+    );
+    let record = |seat| runtime.block_on(logic.client.record(seat)).unwrap();
+    assert_eq!(record(target).swarm, Ulid(7));
+    let peer_generation = peer_before.record.generation;
+    let peer_epoch = || {
+        account
+            .connection()
+            .unwrap()
+            .query_row(
+                "SELECT epoch FROM msg_policies WHERE seat=?1",
+                [peer.to_string()],
+                |row| row.get::<_, i64>(0),
+            )
+            .unwrap()
+    };
+    assert!(
+        runtime
+            .block_on(gui.control(Ulid::new(), peer, peer_generation + 1, move_to(Some(Ulid(9)))))
+            .unwrap_err()
+            .contains("StaleGeneration")
+    );
+    assert_eq!(record(peer).swarm, Ulid(7));
+    let mut epochs = vec![peer_epoch()];
+    let away = Ulid::new();
+    for swarm in [Ulid(9), Ulid(7)] {
+        let op = if swarm == Ulid(9) { away } else { Ulid::new() };
+        runtime
+            .block_on(gui.control(op, peer, peer_generation, move_to(Some(swarm))))
+            .unwrap();
+        let moved = runtime.block_on(logic.client.gui_seat(peer)).unwrap();
+        assert_eq!(moved.record.swarm, swarm);
+        assert_eq!(moved.record.generation, peer_generation);
+        assert_eq!(moved.state.process, peer_before.state.process);
+        assert_eq!(
+            moved.record.harness_session_id,
+            peer_before.record.harness_session_id
+        );
+        epochs.push(peer_epoch());
+        assert!(
+            runtime
+                .block_on(gui.control(Ulid::new(), peer, peer_generation, move_to(Some(swarm))))
+                .unwrap_err()
+                .contains("already in that swarm")
+        );
+    }
+    assert!(
+        epochs.windows(2).all(|pair| pair[0] < pair[1]),
+        "every move issues a newer grant epoch: {epochs:?}"
+    );
+    // The first move's operation replays its receipt; it does not move the seat again.
+    runtime
+        .block_on(gui.control(away, peer, peer_generation, move_to(Some(Ulid(9)))))
+        .unwrap();
+    assert_eq!(record(peer).swarm, Ulid(7));
+    assert_eq!(peer_epoch(), *epochs.last().unwrap());
+    runtime
+        .block_on(gui.control(Ulid::new(), peer, peer_generation, move_to(None)))
+        .unwrap();
+    let own = record(peer).swarm;
+    assert!(own != Ulid(7) && own != Ulid(9), "a new swarm of its own");
     assert_eq!(
         runtime
             .block_on(logic.client.gui_seat(target))
@@ -1452,6 +1521,6 @@ fn seat_controls_case() {
     );
     logic.shutdown().unwrap();
     println!(
-        "PASS seat controls: live role epoch + same PID/session, new future-launch prompt, one signed direct operator role/orient notice through mute and replay, scoped task assignment, stale-generation refusal, exact child kill and live peer"
+        "PASS seat controls: live role epoch + same PID/session, new future-launch prompt, one signed direct operator role/orient notice through mute and replay, scoped task assignment, stale-generation refusal, swarm move there/back/own with task refusal, exact child kill and live peer"
     );
 }

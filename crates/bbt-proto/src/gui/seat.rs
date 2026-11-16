@@ -95,6 +95,11 @@ pub enum SeatControl {
     Automation {
         on: bool,
     },
+    /// Move this live seat into another swarm; `None` gives it a new swarm of
+    /// its own. Its process, generation, session and workspace stay as they are.
+    Move {
+        swarm: Option<Ulid>,
+    },
 }
 
 /// This noun's GuiAction variants, spliced into the flat enum by `flat_enum` in `gui/mod.rs`.

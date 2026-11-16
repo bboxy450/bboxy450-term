@@ -1294,6 +1294,16 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "SeatMove"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenSeatMove"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "WakeCircuitSelf"
 expected = "pass"
 frontend = "project"
