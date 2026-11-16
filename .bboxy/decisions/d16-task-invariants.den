@@ -1,0 +1,39 @@
+module decisions.`d16-task-invariants`
+
+import `work-items`
+import messaging
+
+decision D16TaskInvariants {
+  title "The Architect's four loads bind the task system"
+  decides `work-items`, messaging
+  status Decided
+  body """
+    # Decision 16: The Architect's four loads bind the task system
+
+    **The Architect's four loads bind the task system (operator: "embody
+    it", 2026-10-22; `~/.agents/AGENTS.md` Four roles).** Applied to
+    [[work-items]], [[vision]] roles, [[messaging]] attention budget and the
+    task tools: an invariant carries property, `check`, held exit status and
+    `cost`, or it is a preference in a note; `accepted` requires `verify` at
+    exit 0 plus evidence per acceptance line, an Executor's report stops at
+    `reported`; `verify` blocks, `review` advises; a violated invariant blocks
+    the task with the halt as a `decision`-kind message; decisions are a type,
+    written when made. Architect is oracle-class, Creativity worker-class.
+    `.bboxy/invariants/` holds four recorded today, all with commands.
+    Rejected: a bottleneck-index telemetry (not our scale; ZOOM OUT does the
+    job in four lines); a separate halt message kind (`decision` suffices);
+    recording the five "preference" invariants as invariants before they have
+    commands.
+    """
+
+  managed {
+    created = json"\"2026-10-22T21:14:24Z\""
+    decided = json"\"2026-10-22\""
+    id = json"\"01M5JQE3W09HW7HRS2SDTCERSX\""
+    links = json"[{\"rel\":\"supersedes-as-index\",\"to\":\"[[2026-10-22-architecture-round-1#16]]\"},{\"rel\":\"decides\",\"to\":\"[[work-items]]\"},{\"rel\":\"reference\",\"to\":\"[[vision]]\"},{\"rel\":\"decides\",\"to\":\"[[messaging]]\"}]"
+    number = json"16"
+    operator = json"[\"embody it\"]"
+    updated = json"\"2026-10-24T00:10:38Z\""
+    body_tail = json"\"\\n\""
+  }
+}

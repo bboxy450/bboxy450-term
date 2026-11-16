@@ -1,12 +1,31 @@
 ---
-id: "7GC9MD2N0P0ZDQ7NPD6D4KZJEM"
-type: "spec"
+id: 7GC9MD2N0P0ZDQ7NPD6D4KZJEM
+type: spec
 number: 118
-title: "Document viewer — native Markdown and Mermaid"
-created: "2026-10-22T00:22:14Z"
-updated: "2026-10-29T14:27:05Z"
+title: Document viewer — native Markdown and Mermaid
+created: 2026-10-22T00:22:14Z
 links:
-  - { to: "[[d52-brand-and-face]]", rel: decision }
+- to: '[[d52-brand-and-face]]'
+  rel: decision
+intent: Cmd-clicking a Markdown path in any pane opens a native modal that renders the Markdown and Mermaid with the app's own typesetting, and clicking outside it closes it and returns focus.
+updated: 2026-11-16T19:44:33.249Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:aa34089d08d876aa51e32565c1be87847dfc2975a35e44fdf79fd17473fdec9b
+  frontmatter_digest: sha256:390233c285bcaf2a9f1eb2df55e854a36bfe00de18b6c7076d6e23398e1aca27
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: TVpVFXhUiJ2Q0O03bm0I+l/ox86wJni8Hz5S//TKXJOd4Gey4R0piRHswZGDmiSABuTJm4GZBY10ZxJBbGMtCQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151722
+  event:
+    id: 01M7JY7JJFY1BQ9MYX5976YEJT
+    sequence: 151722
+    hash: 7875e537e39e8827db2df8184b9fe71fef2277305d9a08079a84663f60ee1225
 ---
 # Document viewer — native Markdown and Mermaid
 

@@ -1,12 +1,31 @@
 ---
-id: "450CWGNJJ7DM4AMABKSN19ZQME"
-type: "spec"
+id: 450CWGNJJ7DM4AMABKSN19ZQME
+type: spec
 number: 126
-title: "Open-source libraries — bboxy450-*"
-created: "2026-10-22T17:03:48Z"
-updated: "2026-10-28T08:20:00Z"
+title: Open-source libraries — bboxy450-*
+created: 2026-10-22T17:03:48Z
 links:
-  - { to: "[[d39-suite-is-the-product]]", rel: decision }
+- to: '[[d39-suite-is-the-product]]'
+  rel: decision
+intent: The GPU UI, rendering, IO runtime and harness kits are bboxy450-prefixed crates usable without the terminal app, each published to crates.io and GitHub independently.
+updated: 2026-11-16T19:45:02.909Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:d17eabab8b94f9d3db389737a1cdc525125a678f4a971d647c77c968206dc756
+  frontmatter_digest: sha256:b4a1359fc43bcdd160fff413dd6e908eb5df5c2860d80039ee14bb930ef65441
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: FqvveUAK2jqbNOv76VIXL8eAHG6PTHa8GD7JyjU8taqTrtIvsBJ4Vf6MIYEknBZ1rKpO4bEIX67ELfsoW1EqCA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151736
+  event:
+    id: 01M7JY8FHB4NAX3BQ0J1BHDE71
+    sequence: 151736
+    hash: e0fc7525836a02c955ec1925c5d04e8aea0a72c6a70868cdfa9732a36c2a6c39
 ---
 # Open-source libraries — bboxy450-*
 

@@ -20,25 +20,26 @@ links:
 - to: '[[d365-mandatory-formal-verification]]'
   rel: constrained-by
 id: 01M71S12MYSVQ81FW9VSKV02KZ
-updated: 2026-11-12T16:51:09.622Z
 number: 1794274420276168
-created_by: seat:01M788X1K2MZH0V5CH8RDS2EYS
-updated_by: seat:01M788X1K2MZH0V5CH8RDS2EYS
+intent: Any seat can open an endless canvas that it draws on live, stroke by stroke; every canvas is a numbered record with full history that survives restarts, and the operator can move, edit, draw and point on it.
+updated: 2026-11-16T19:44:19.630Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
 authorship:
-  signer: seat:01M788X1K2MZH0V5CH8RDS2EYS
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
   kind: seat
-  public_key: QirMRCVq4MGjLqozHY5Hg1PxrBTQC7432d3nv2JAmW0=
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
   process_generation: '1'
 provenance:
   digest: sha256:8675957dcaae7b394dbf68337e232e3077c3a6f6412f24865b6661461ebe8eee
-  frontmatter_digest: sha256:c2b7cc9a163bff8190dcb6b6b767fbc51a6f7d07ac3ef3ede30fdb676bf92b8a
-  signer: seat:01M788X1K2MZH0V5CH8RDS2EYS
-  sig: zsrl21IM4fUJb7NcM11XL+kBjflEurPTOT/w43UmCseUOOy4IbK33DI6QEF/cruukrAAvaxVrFo3j0RN5sGOAQ==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/82809
+  frontmatter_digest: sha256:bc467f4b63d147ec10d605d0d3b763c7fa194f11e71279494650d9ee2d102c78
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: T5gvgH1fD481uyZEduOzTn+2zar/g48A/gAPJW78LYZQmK9f0V+HO8aYdblIm0bV7NpJZoLWbYbKiaAIpEi4Ag==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151712
   event:
-    id: 01M78AQ6R741REDT49GVVTV3W0
-    sequence: 82809
-    hash: a866d7ff8f88b21ed08a58ebbcab1173bcee2a378f055095f07e9beacdc6d0cf
+    id: 01M7JY759E09PQA5NAQGTTFPYS
+    sequence: 151712
+    hash: e5f5b1f982517dbf0f55b100a8a59e32d52a170a17de8466615deffc1edfcb75
 ---
 # Canvas
 

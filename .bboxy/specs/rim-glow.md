@@ -2,22 +2,51 @@
 id: 01M5MT43P3AHWH7F9G3EAP85DR
 number: 154
 type: spec
-title: "rim glow — the pane glow is an alive rim centred on the pane border, half out, half in"
+title: rim glow — the pane glow is an alive rim centred on the pane border, half out, half in
 status: decided
 links:
-  - { to: "[[d35-alive-rim]]", rel: decision }
-  - { to: "[[d39-suite-is-the-product]]", rel: decision }
-  - { to: "[[d42-focus-swell]]", rel: decision }
-  - { to: "[[d43-kit-alive-borders]]", rel: decision }
-  - { to: "[[d44-waiting-attention]]", rel: decision }
-  - { to: "[[ux-prototype]]", rel: changes }
-  - { to: "[[renderer]]", rel: changes }
-  - { to: "[[gui-components]]", rel: changes }
-  - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
-  - { to: "[[rim-never-covers-text]]", rel: invariant }
-  - { to: "[[glow-never-moves-layout]]", rel: invariant }
+- to: '[[d35-alive-rim]]'
+  rel: decision
+- to: '[[d39-suite-is-the-product]]'
+  rel: decision
+- to: '[[d42-focus-swell]]'
+  rel: decision
+- to: '[[d43-kit-alive-borders]]'
+  rel: decision
+- to: '[[d44-waiting-attention]]'
+  rel: decision
+- to: '[[ux-prototype]]'
+  rel: changes
+- to: '[[renderer]]'
+  rel: changes
+- to: '[[gui-components]]'
+  rel: changes
+- to: '[[2026-10-22-architecture-round-1]]'
+  rel: decisions
+- to: '[[rim-never-covers-text]]'
+  rel: invariant
+- to: '[[glow-never-moves-layout]]'
+  rel: invariant
 created: 2026-10-23T16:39:50Z
-updated: 2026-10-24T00:24:57Z
+intent: A pane's glow is an animated rim centred on its border, half outside and half inside, sized by the rim setting, coloured by seat and activity, and never covering a body text cell.
+updated: 2026-11-16T19:45:14.783Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:97f878a4902e7600d735541e65b32f61582c9faac62e3ca886d0a32daa9f1cf8
+  frontmatter_digest: sha256:fb6a68daff852421e1f097eda896bc539cff731345ce61ee89d26c0321521e23
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: malWbbSzJxs6METravfg+yeZFIlYBUh6nANBIyrWc1skmszLFsaQGRN4wjvNbg2Ml6HR9XOPEWPWOBIrZheCCA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151744
+  event:
+    id: 01M7JY8V4DGZY9D3XFYRJV7KM2
+    sequence: 151744
+    hash: 6972c115ac43d5c2a666a275f1d38cc84a5e00cece5793bfc16718a4a140948b
 ---
 # Rim glow
 

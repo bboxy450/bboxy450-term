@@ -10,22 +10,27 @@ links:
 - to: '[[storage]]'
   rel: constrains
 id: 01M6KTA7H9DFX1H51W6X38C00S
-updated: 2026-11-04T17:39:39.717Z
 created: 2026-11-04T17:39:39.717Z
 number: 93377961361169
-created_by: seat:01M6KN12436S0N6CJDQ0RWBQNG
-updated_by: seat:01M6KN12436S0N6CJDQ0RWBQNG
+intent: Hashbrown replaces lookup maps only where ordering does not matter, and KB search uses one owned graph-score and normalized-text projection per Index whose results and score bits equal the uncached reference.
+updated: 2026-11-16T19:44:46.302Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
 authorship:
-  signer: seat:01M6KN12436S0N6CJDQ0RWBQNG
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
   kind: seat
-  public_key: 4FB10dq226S4+Z6CUKQrEvBUsQCbt4dAXA3Nd2bPO6o=
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
   process_generation: '1'
 provenance:
   digest: sha256:0046b80b9db33acec233dc09306b5fb8632b8b56d6674a488df9dc396691acbb
-  frontmatter_digest: sha256:93fecb950a36e195052b7824ebe5149b57a06b6817364fba8d6e581e37462ce0
-  signer: seat:01M6KN12436S0N6CJDQ0RWBQNG
-  sig: Wy3A8P+cAK/uk+Sq66cT5+y98npj5niXio1uT75MiydIb/8UD2aSSBxq4zV8Uiz1Uojue61A7tOU+L9P7Bw7Cg==
-  log: .bboxy/log/2026-11-04.jsonl#122318
+  frontmatter_digest: sha256:0aec833a749363dfea3a23caa26b658a1383e1c0ffb2447ecf17a4d84beb3e83
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: xCKNNgne5jLG2YrZfezxk4/MY1c6ETa+82vvqMRBpjghSUu2bpF686a+c1++XjtLOhEp7/cOkaTcQurD70g1CQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151728
+  event:
+    id: 01M7JY7ZBAQK38Z37CDEYJWAE6
+    sequence: 151728
+    hash: b049ff6939b5dd010de9e4a0a0acc02820303b5bcf087e379c47f29fb7ffe464
 ---
 The operator authorized adopting hashbrown wherever it makes sense after the 2026-11-04 source review and CPU probes. Implement in the solo hashbrown-search task.
 

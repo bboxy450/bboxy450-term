@@ -2,27 +2,61 @@
 id: 01M5N0AXBKDQ4B1WPKT8QQKCVV
 number: 156
 type: spec
-title: "L9-M — messaging and tasks in the app: the GUI socket carries them, one events lane pushes them"
+title: 'L9-M — messaging and tasks in the app: the GUI socket carries them, one events lane pushes them'
 status: decided
 links:
-  - { to: "[[d4-seat-identity]]", rel: decision }
-  - { to: "[[d6-shared-protocol]]", rel: decision }
-  - { to: "[[d26-terminal-key-ownership]]", rel: decision }
-  - { to: "[[d28-structured-task-verification]]", rel: decision }
-  - { to: "[[d29-explicit-seat-placement]]", rel: decision }
-  - { to: "[[d31-device-bound-operator-journal]]", rel: decision }
-  - { to: "[[d37-gui-messaging-tasks]]", rel: decision }
-  - { to: "[[d38-messaging-task-rulings]]", rel: decision }
-  - { to: "[[2026-10-22-c-cockpit]]", rel: epic }
-  - { to: "[[c1-live-seats]]", rel: extends }
-  - { to: "[[messaging]]", rel: spec }
-  - { to: "[[work-items]]", rel: spec }
-  - { to: "[[w2-5-mcp-and-seat-wiring]]", rel: reuses }
-  - { to: "[[events]]", rel: spec }
-  - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
-  - { to: "[[ux-prototype]]", rel: ui }
+- to: '[[d4-seat-identity]]'
+  rel: decision
+- to: '[[d6-shared-protocol]]'
+  rel: decision
+- to: '[[d26-terminal-key-ownership]]'
+  rel: decision
+- to: '[[d28-structured-task-verification]]'
+  rel: decision
+- to: '[[d29-explicit-seat-placement]]'
+  rel: decision
+- to: '[[d31-device-bound-operator-journal]]'
+  rel: decision
+- to: '[[d37-gui-messaging-tasks]]'
+  rel: decision
+- to: '[[d38-messaging-task-rulings]]'
+  rel: decision
+- to: '[[2026-10-22-c-cockpit]]'
+  rel: epic
+- to: '[[c1-live-seats]]'
+  rel: extends
+- to: '[[messaging]]'
+  rel: spec
+- to: '[[work-items]]'
+  rel: spec
+- to: '[[w2-5-mcp-and-seat-wiring]]'
+  rel: reuses
+- to: '[[events]]'
+  rel: spec
+- to: '[[2026-10-22-architecture-round-1]]'
+  rel: decisions
+- to: '[[ux-prototype]]'
+  rel: ui
 created: 2026-10-23T18:28:25Z
-updated: "2026-10-29T19:48:09Z"
+intent: The app sends messages and delegates tasks with the operator's authority over the GUI socket, and one durable events lane pushes messages, task changes and reports back to the window.
+updated: 2026-11-16T19:51:06.762Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:f7612eb223cc7a2e49b3ed5caff915ced01d5aa9928fa4673367b3ca66853412
+  frontmatter_digest: sha256:e8aba93e530d599aaefeff2ebae33b0aaf29fe65505d7b690e35e5b243d27f44
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: CFqf/c7YqHcIRutSNuItDLC0Yb41slQuJGsdb7m+nZklr1UwKJZFc72JmNzhb0AyFuDlWOehVuVCpMgcKw5kBg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151776
+  event:
+    id: 01M7JYKJVP6KX3AM9BA9N0H27A
+    sequence: 151776
+    hash: 0a329a8ae92228e97ad9d130a701d77fa5c47f7c47807e30c745af4cd5f92586
 ---
 # L9-M — messaging and tasks in the app
 

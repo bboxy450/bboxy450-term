@@ -2,26 +2,27 @@
 type: spec
 title: 'Spec-first bboxy450: a spec system strong enough to one-shot an OS'
 id: 01M71GXJYBVN1XC5CQQW51X21V
-updated: 2026-11-10T01:24:49.682Z
 created: 2026-11-10T01:24:49.682Z
 number: 205483610615694
-created_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-updated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
+intent: The bboxy450 spec system is strong enough that a swarm could build a Linux-based OS around bboxy450-term from specs alone, shown on term and harness components, with no image built.
+updated: 2026-11-16T19:45:20.622Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
 authorship:
-  signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
   kind: seat
-  public_key: V5Zkz4W1rnaDG/FsjK3//xQX+WByyxD7/fuIYoV6NbU=
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
   process_generation: '1'
 provenance:
-  digest: sha256:9d22d2c761b440c9ca750f3a57e70959306f219d3d9b00e8610455e561279d3a
-  frontmatter_digest: sha256:56d1de726506a519ec6c2573d03bfcfff3a7bc4fa589e7dd5746664785cb437b
-  signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-  sig: KcjIICpQp2/Tx2B7VmPeI/XI6go9oFEaA9QQgoFt38eC9PV96gb2F9PRdT1tp0DP8UAMG/7zwZeTMhnaOpkWAA==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151245
+  digest: sha256:ddb51872cc396c677208b4136142f1c4dbae448f82221b775ddc49063871d079
+  frontmatter_digest: sha256:2499df7e68f1fcc6fe50a638df709239a30eb46b3f3f39172418b26bcfc99015
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: w20xCI7p2nVOb3KwgmFp41IisuAbnkpX88vmZnosoTz4miG3HQI/3OrsCpHL0ob96w/3kFT5+2Haw+rFuvkoCw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151748
   event:
-    id: 01M71GXKG6AF6RG56AFXBNRE1Q
-    sequence: 151245
-    hash: 74eac7eec084b6277f46325a1403c6d14314d595c7905fbe93e2ff00d4b3485d
+    id: 01M7JY90TPSQC0D4FWCNJ4E7H8
+    sequence: 151748
+    hash: 4d82de5962ba9c4e427965bf95da9b4a1e31eeb7a3d33c96594c37d74ce26671
 ---
 # Spec-first bboxy450
 

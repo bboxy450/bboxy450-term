@@ -7,22 +7,27 @@ links:
 - to: '[[interfaces/dream-term]]'
   rel: interface
 id: 01M6NKFP4H8VH3F73Q4D1YA9RB
-updated: 2026-11-05T10:28:20.714Z
 created: 2026-11-05T10:18:46.692Z
 number: 93377961364360
-created_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-updated_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+intent: Dream runs inside term as a bounded background worker reusing the harness's one implementation, behind one admitted job API in which term owns source selection, budgets, job control and result presentation.
+updated: 2026-11-16T19:50:22.441Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
 authorship:
-  signer: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
   kind: seat
-  public_key: L62ggzXO9nS9icBZrd6nPN71BnmasbyzYyfTJE3eu0k=
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
   process_generation: '1'
 provenance:
   digest: sha256:53976687574d53b9ba82aed054057c6c2493037afdb3d737ac0e1a1e51494cd2
-  frontmatter_digest: sha256:ef844564e57dab2a607706e89560b41b61cba3bdb5a7608849b67ec43423f9a9
-  signer: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-  sig: pdQC7G6ErxC0vQYziTCprAjqGKxJKDL4IhAx+1aW+UVouQafgKqe6YUnP1Gy/QygKiKRb8xEBBO9lc42RzssCA==
-  log: .bboxy/log/2026-11-05.jsonl#134000
+  frontmatter_digest: sha256:cb32a1f152a32112c28690eab0e1615777adbb238bafe952cf0c8eddf394b855
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: rqfY9nRRezAGP2al/GW8MgZgwCG12Kio93GTmqm6qUFOre5SzPhFkf7Xfh+Npl42XaAXzo3GdFZ4DPiNz8IHDg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151762
+  event:
+    id: 01M7JYJ7JG1YHMKK5QN9CWQE3Q
+    sequence: 151762
+    hash: 4051995d0373239ab9bf4515224dcef2f63f0a5d18a0237c00b24425f4807906
 ---
 # Integrating Dream into bboxy450-term
 

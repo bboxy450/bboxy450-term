@@ -2,26 +2,27 @@
 type: spec
 title: 'Den: the knowledge-graph language of mux 2.0, and what it means for a record to be sound'
 id: 01M71JX1D359A2BSM88TTEDH18
-updated: 2026-11-10T01:59:29.092Z
 created: 2026-11-10T01:59:29.092Z
 number: 1794274420276156
-created_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-updated_by: seat:01M71GNVXV7ZHXMGM50M5SB2RA
+intent: Every structured knowledge record is a typed Den declaration whose links are imports, so the knowledge base is a typed graph that checks links resolve, reports point at tasks and invariants carry commands.
+updated: 2026-11-16T19:51:54.987Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
 authorship:
-  signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
   kind: seat
-  public_key: V5Zkz4W1rnaDG/FsjK3//xQX+WByyxD7/fuIYoV6NbU=
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
   process_generation: '1'
 provenance:
-  digest: sha256:34551e729ac82a8405813acc83bdc3c879a0efd20b04cc252a0637c404640ee6
-  frontmatter_digest: sha256:1d9e69e98b01006239d2305fc3a726c700ed7ab5268e4293fb5e5326cde5d763
-  signer: seat:01M71GNVXV7ZHXMGM50M5SB2RA
-  sig: bcCCtD5rHP41qlvqMRhCVerdgx7NQMF0emIh2PHwDclMMt6ptcQ25YSOXY11LsVEVzLlc1KjL4DYUkErd8ehAw==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151284
+  digest: sha256:5b27b5659ceecd52c2121031cc8e0a0f949e1bdaf3b2f89250bb6211ececf0c1
+  frontmatter_digest: sha256:8a45e61b5a6392e2b2ed95a32284ac4651d15072dcb7a974a301cfab17a34ab3
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: MZd7U49ZxcgtDabdbZUHXLFd36g6zRGXjqU4m1ETzNmqlUOlqQuCMFJTr0/iPneOkjeAzbDR0nMmO/YvNR2aAg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151794
   event:
-    id: 01M71JX2AMQMYFV0TQ0MZNKNEK
-    sequence: 151284
-    hash: 3519ea076200beea1c7df370960e6651d757b928c499f16fedb267d996cd38bf
+    id: 01M7JYN1ZAQPA2B9GN0V4PDKBK
+    sequence: 151794
+    hash: 22190dcc36e3f10b2a07bb2c9f0a83e17a686ed05a386a7fede0069d8c58a86d
 ---
 # Den: the knowledge-graph language of mux 2.0
 

@@ -2,16 +2,39 @@
 id: 01M5NKND80QY0J7D1TRW6ZQM6R
 type: spec
 number: 209
-title: "mantras — the design's core rules, each tied to the gate that holds it or named as judgement"
+title: mantras — the design's core rules, each tied to the gate that holds it or named as judgement
 status: decided
 links:
-  - { to: "[[vision]]", rel: direction }
-  - { to: "[[philosophy]]", rel: direction }
-  - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
-  - { to: "[[d53-evolve-and-restart]]", rel: decides }
-  - { to: "[[work-items]]", rel: uses }
+- to: '[[vision]]'
+  rel: direction
+- to: '[[philosophy]]'
+  rel: direction
+- to: '[[2026-10-22-architecture-round-1]]'
+  rel: decisions
+- to: '[[d53-evolve-and-restart]]'
+  rel: decides
+- to: '[[work-items]]'
+  rel: uses
 created: 2026-10-24T00:06:11Z
-updated: "2026-10-24T19:32:03Z"
+intent: Each of the design's core rules names the gate that holds it or is marked as judgement, and the set is a fixed complexity budget in which a new mantra replaces or merges an old one.
+updated: 2026-11-16T19:51:13.682Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:61a10325b84811819d6b0d10e1f0d0aa68abecb908c8f0c5a98c8980c09d0e36
+  frontmatter_digest: sha256:694d8f6c30a950051f8f88274c0d7b897efa6e2991a187dad6bcea71bd6de3d3
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: CROKnUtq1iRJmOlLkuxFaQpvZH7kGJKUFE2Mq6y5z8n5sxs3lC+Rq3rgU53+QRILEqIZxsxh2G/fXuprqUnbCA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151780
+  event:
+    id: 01M7JYKSM8JR88HE4NZ8EH93QD
+    sequence: 151780
+    hash: 3d642fa47cd67f6075efa360ae72cdb3dbc9b1622ac4c5ec5b54797f504555e4
 ---
 # Mantras
 

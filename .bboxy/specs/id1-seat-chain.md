@@ -5,18 +5,46 @@ type: spec
 title: ID1 — the GPG seat chain replaces the local-dev keys
 status: decided
 links:
-  - { to: "[[d4-seat-identity]]", rel: decision }
-  - { to: "[[d17-device-key-custody]]", rel: decision }
-  - { to: "[[d24-defer-code-signing]]", rel: decision }
-  - { to: "[[d31-device-bound-operator-journal]]", rel: decision }
-  - { to: "[[identity]]", rel: spec }
-  - { to: "[[messaging]]", rel: spec }
-  - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
-  - { to: "[[architecture]]", rel: as-built }
-  - { to: "[[2026-10-22-c-cockpit]]", rel: epic }
-  - { to: "[[ux-prototype]]", rel: ui }
+- to: '[[d4-seat-identity]]'
+  rel: decision
+- to: '[[d17-device-key-custody]]'
+  rel: decision
+- to: '[[d24-defer-code-signing]]'
+  rel: decision
+- to: '[[d31-device-bound-operator-journal]]'
+  rel: decision
+- to: '[[identity]]'
+  rel: spec
+- to: '[[messaging]]'
+  rel: spec
+- to: '[[2026-10-22-architecture-round-1]]'
+  rel: decisions
+- to: '[[architecture]]'
+  rel: as-built
+- to: '[[2026-10-22-c-cockpit]]'
+  rel: epic
+- to: '[[ux-prototype]]'
+  rel: ui
 created: 2026-10-22T20:12:48Z
-updated: "2026-10-24T23:41:01Z"
+intent: 'Seat identity is a GPG chain: the operator''s primary in gpg-agent certifies a per-machine Keychain device key, which certifies an in-memory per-seat-generation key that signs envelopes.'
+updated: 2026-11-16T19:50:57.491Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:5b405c5d3c2fc1ef1a8de5990b4d4f1ac2097099a3bf16a34db9c47a113f0889
+  frontmatter_digest: sha256:2cd864118bf97828c3baecad0f7e88573c4ce2dabc9c434f0f2199e1a27edc05
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: MtuXklLbV1cv1BuTsgQ99IZS8IkdnxwSunjcjvyAt0icPrkR0giCBR2zlhcZLJlPNZUQw+EHk7SHSv6MBCsaAg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151772
+  event:
+    id: 01M7JYK9WGFW5DXVJP1GWQ875C
+    sequence: 151772
+    hash: 04908e3d687bd1a1c76a3f766627c5be00f9db6d554b17d08dabc9b042d9a8aa
 ---
 # ID1 — the GPG seat chain
 

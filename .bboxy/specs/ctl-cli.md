@@ -2,20 +2,47 @@
 id: 01M5Q8771KD6D038P2DS8RB2QN
 type: spec
 number: 271
-title: "ctl — one grammar over the actions the window already issues: nouns and verbs, one reply shape, one error model, one principal, one door, one audit kind; prompts are recipes"
+title: 'ctl — one grammar over the actions the window already issues: nouns and verbs, one reply shape, one error model, one principal, one door, one audit kind; prompts are recipes'
 status: decided
 links:
-  - { to: "[[e2e-acceptance]]", rel: consumer }
-  - { to: "[[l9-messaging-tasks]]", rel: builds-on }
-  - { to: "[[mcp-control-plane]]", rel: builds-on }
-  - { to: "[[knowledge-base]]", rel: builds-on }
-  - { to: "[[d260-ctl-authority]]", rel: decision }
-  - { to: "[[d269-ctl-door-and-issuer]]", rel: decision }
-  - { to: "[[d270-ctl-screen-input-wait]]", rel: decision }
-  - { to: "[[d272-ctl-one-grammar]]", rel: decision }
-  - { to: "[[work-items]]", rel: record-type }
-created: "2026-10-24T15:24:41Z"
-updated: "2026-10-26T13:15:19Z"
+- to: '[[e2e-acceptance]]'
+  rel: consumer
+- to: '[[l9-messaging-tasks]]'
+  rel: builds-on
+- to: '[[mcp-control-plane]]'
+  rel: builds-on
+- to: '[[knowledge-base]]'
+  rel: builds-on
+- to: '[[d260-ctl-authority]]'
+  rel: decision
+- to: '[[d269-ctl-door-and-issuer]]'
+  rel: decision
+- to: '[[d270-ctl-screen-input-wait]]'
+  rel: decision
+- to: '[[d272-ctl-one-grammar]]'
+  rel: decision
+- to: '[[work-items]]'
+  rel: record-type
+created: 2026-10-24T15:24:41Z
+intent: bboxy450-term ctl exposes the actions the window already issues as one noun-verb grammar with one reply shape, one error model, one principal, one door and one audit kind.
+updated: 2026-11-16T19:50:14.824Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:5763bb9273ecc17c5cb5b48dec6e1a9a947c77bcebe9bf4b63ff2666241e7e13
+  frontmatter_digest: sha256:55a9e45ab3332debca0c1beb9778c446903cdd246f5307d8d44c9706ec9b841a
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: IC4fhBfhFdPP8c61tX2y1O4htAwMmvCETAWhk1DHsGqEv+uiJ3YbWOFPsay2NPfOYkuq3c/Fgc16gUiKzuG0BQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151758
+  event:
+    id: 01M7JYJ05YCXY788SCZGGFVQ31
+    sequence: 151758
+    hash: f429d781d0dabeb462ccc8761ee0d6767d73e3765f1d6d6173f116129e84a90f
 ---
 # ctl
 

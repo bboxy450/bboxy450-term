@@ -2,33 +2,73 @@
 id: 01M5JGSHMT3P6DBTEEJNP62RFC
 number: 134
 type: spec
-title: "C1 — live seats: the app becomes a client of logic"
+title: 'C1 — live seats: the app becomes a client of logic'
 status: decided
 links:
-  - { to: "[[d1-crate-topology]]", rel: decision }
-  - { to: "[[d2-c1-io-binding]]", rel: decision }
-  - { to: "[[d5-theme-data]]", rel: decision }
-  - { to: "[[d6-shared-protocol]]", rel: decision }
-  - { to: "[[d10-thousand-seat-gates]]", rel: decision }
-  - { to: "[[d11-supervisor-death-survivable]]", rel: decision }
-  - { to: "[[d19-pty-ceiling]]", rel: decision }
-  - { to: "[[d20-seats-and-jobs]]", rel: decision }
-  - { to: "[[d23-recipient-batching]]", rel: decision }
-  - { to: "[[d26-terminal-key-ownership]]", rel: decision }
-  - { to: "[[d27-close-and-history-wire]]", rel: decision }
-  - { to: "[[d29-explicit-seat-placement]]", rel: decision }
-  - { to: "[[d31-device-bound-operator-journal]]", rel: decision }
-  - { to: "[[d39-suite-is-the-product]]", rel: decision }
-  - { to: "[[d40-scrollback-bounds]]", rel: decision }
-  - { to: "[[2026-10-22-c-cockpit]]", rel: epic }
-  - { to: "[[architecture]]", rel: as-built }
-  - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
-  - { to: "[[runtime]]", rel: constrains }
-  - { to: "[[mux-daemon]]", rel: spec }
-  - { to: "[[harness-adapters]]", rel: spec }
-  - { to: "[[layering]]", rel: invariant }
+- to: '[[d1-crate-topology]]'
+  rel: decision
+- to: '[[d2-c1-io-binding]]'
+  rel: decision
+- to: '[[d5-theme-data]]'
+  rel: decision
+- to: '[[d6-shared-protocol]]'
+  rel: decision
+- to: '[[d10-thousand-seat-gates]]'
+  rel: decision
+- to: '[[d11-supervisor-death-survivable]]'
+  rel: decision
+- to: '[[d19-pty-ceiling]]'
+  rel: decision
+- to: '[[d20-seats-and-jobs]]'
+  rel: decision
+- to: '[[d23-recipient-batching]]'
+  rel: decision
+- to: '[[d26-terminal-key-ownership]]'
+  rel: decision
+- to: '[[d27-close-and-history-wire]]'
+  rel: decision
+- to: '[[d29-explicit-seat-placement]]'
+  rel: decision
+- to: '[[d31-device-bound-operator-journal]]'
+  rel: decision
+- to: '[[d39-suite-is-the-product]]'
+  rel: decision
+- to: '[[d40-scrollback-bounds]]'
+  rel: decision
+- to: '[[2026-10-22-c-cockpit]]'
+  rel: epic
+- to: '[[architecture]]'
+  rel: as-built
+- to: '[[2026-10-22-architecture-round-1]]'
+  rel: decisions
+- to: '[[runtime]]'
+  rel: constrains
+- to: '[[mux-daemon]]'
+  rel: spec
+- to: '[[harness-adapters]]'
+  rel: spec
+- to: '[[layering]]'
+  rel: invariant
 created: 2026-10-22T19:18:18Z
-updated: 2026-10-30T19:36:00Z
+intent: 'The app is a client of the logic process over gui.sock: its IO task holds a replica per watched seat and swaps the model at frame start, so the UI thread never waits and live seats survive app restarts.'
+updated: 2026-11-16T19:50:05.622Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:373e2c5c84aff548ebd39c14f2fe230d957ad6e34bbb4eaf331b0b17884e4ba5
+  frontmatter_digest: sha256:5acee4dc96127aaa22e94de89b27b083babc87a2d2faed879175f00d78df5acc
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: YdjWfnYZYNJGEAQbdN/sfbnP5CePVSM22QKl3uqVTrtAgeKFSoAaZTDoTjquldw45tB/j5wTlipOj0DDf73+Bw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151756
+  event:
+    id: 01M7JYHQ520RZF4TAAEFCAVDHZ
+    sequence: 151756
+    hash: 6fa414f5ebf1979dd214fcc6f78e37c58a85bb0725c87e1cb2a717514dfd877d
 ---
 # C1 — live seats
 

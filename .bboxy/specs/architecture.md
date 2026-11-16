@@ -5,22 +5,54 @@ type: spec
 title: architecture — the system as the code is
 status: decided
 links:
-  - { to: "[[d1-crate-topology]]", rel: decision }
-  - { to: "[[d3-mcp-server]]", rel: decision }
-  - { to: "[[d4-seat-identity]]", rel: decision }
-  - { to: "[[d5-theme-data]]", rel: decision }
-  - { to: "[[d6-shared-protocol]]", rel: decision }
-  - { to: "[[d7-provider-supervisor-link]]", rel: decision }
-  - { to: "[[d11-supervisor-death-survivable]]", rel: decision }
-  - { to: "[[d39-suite-is-the-product]]", rel: decision }
-  - { to: "[[d46-cross-os-facades]]", rel: decision }
-  - { to: "[[vision]]", rel: direction }
-  - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
-  - { to: "[[layering]]", rel: invariant }
-  - { to: "[[mux-daemon]]", rel: supersedes-in-part }
-  - { to: "[[runtime]]", rel: spec }
+- to: '[[d1-crate-topology]]'
+  rel: decision
+- to: '[[d3-mcp-server]]'
+  rel: decision
+- to: '[[d4-seat-identity]]'
+  rel: decision
+- to: '[[d5-theme-data]]'
+  rel: decision
+- to: '[[d6-shared-protocol]]'
+  rel: decision
+- to: '[[d7-provider-supervisor-link]]'
+  rel: decision
+- to: '[[d11-supervisor-death-survivable]]'
+  rel: decision
+- to: '[[d39-suite-is-the-product]]'
+  rel: decision
+- to: '[[d46-cross-os-facades]]'
+  rel: decision
+- to: '[[vision]]'
+  rel: direction
+- to: '[[2026-10-22-architecture-round-1]]'
+  rel: decisions
+- to: '[[layering]]'
+  rel: invariant
+- to: '[[mux-daemon]]'
+  rel: supersedes-in-part
+- to: '[[runtime]]'
+  rel: spec
 created: 2026-10-22T19:12:38Z
-updated: "2026-10-30T21:03:04Z"
+intent: The record maps every running process, crate and wire of bboxy450-term as the code actually is, each claim anchored to a file:line, so specs that disagree with the code are visible.
+updated: 2026-11-16T19:49:49.744Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:a5861e5461fe84d51c7c293506fd70064946530235089112d54481faf56400f3
+  frontmatter_digest: sha256:69d7c05c74781f08881234c3181614e3d21d7d08e51a9cf8d0835ae4018e554c
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: cbvSHhxcNR4alC59pFCkscvoA+u0EwIn+Tv9vC49fL6Ql/tYs4S5aaMnNqqqgvFfRmtqE26PBbnvMBXWb9l/DQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151754
+  event:
+    id: 01M7JYH7MY0G7ZJ6Z5JJHQ9YCG
+    sequence: 151754
+    hash: 17784a073f320cd3b7c0879a6e98cf3e64c272c152c270ec5a05a2d094d4459c
 ---
 # Architecture — as built
 

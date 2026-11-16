@@ -1,12 +1,31 @@
 ---
-id: "2VF1D6DWBZKNSTYNQ2Z1QWKSKE"
-type: "spec"
+id: 2VF1D6DWBZKNSTYNQ2Z1QWKSKE
+type: spec
 number: 115
-title: "Events — the spine"
-created: "2026-10-21T23:15:27Z"
-updated: "2026-10-24T00:10:38Z"
+title: Events — the spine
+created: 2026-10-21T23:15:27Z
 links:
-  - { to: "[[d30-artifact-provenance-scope]]", rel: decision }
+- to: '[[d30-artifact-provenance-scope]]'
+  rel: decision
+intent: Everything that happens is an event on one bus in the mux logic process, where seats, documents, artifacts, tasks, swarms and messaging publish on topics any subscriber can follow.
+updated: 2026-11-16T19:44:38.062Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:c7d072363ab3e5b7cb8d36e3cf48ca2582846591e5b7eada7ad93e61c8746904
+  frontmatter_digest: sha256:961f8d538199df8a24921c6d36240236cebfaa3607c8d41847d90f9ed0b991d6
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: j3ggNlYlma4mbu/7vhw+J4nM7gfSWpKo/guKWR/hc4IjQEFTUDnWpRnjGWF8IzEV7/iEDoyjGJXXwSJ4R/PjCQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151724
+  event:
+    id: 01M7JY7Q95JZENAE3NKW6D9616
+    sequence: 151724
+    hash: d7d83d9296f4c6b04522c32b7d1aec5aa905aaf3b679a434ada530f04e65946c
 ---
 # Events — the spine
 

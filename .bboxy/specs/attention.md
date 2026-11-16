@@ -2,20 +2,47 @@
 id: 01M5NE27YAMSX3SQ8D9JEZ5XXA
 number: 205
 type: spec
-title: "attention — a seat that needs the operator swells, pulses and notifies; the notification focuses it"
+title: attention — a seat that needs the operator swells, pulses and notifies; the notification focuses it
 status: decided
 links:
-  - { to: "[[d24-defer-code-signing]]", rel: decision }
-  - { to: "[[d29-explicit-seat-placement]]", rel: decision }
-  - { to: "[[d44-waiting-attention]]", rel: decision }
-  - { to: "[[vision]]", rel: direction }
-  - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
-  - { to: "[[rim-glow]]", rel: uses }
-  - { to: "[[harness-adapters]]", rel: source }
-  - { to: "[[gui-components]]", rel: focus-model }
-  - { to: "[[c1-live-seats]]", rel: wire }
+- to: '[[d24-defer-code-signing]]'
+  rel: decision
+- to: '[[d29-explicit-seat-placement]]'
+  rel: decision
+- to: '[[d44-waiting-attention]]'
+  rel: decision
+- to: '[[vision]]'
+  rel: direction
+- to: '[[2026-10-22-architecture-round-1]]'
+  rel: decisions
+- to: '[[rim-glow]]'
+  rel: uses
+- to: '[[harness-adapters]]'
+  rel: source
+- to: '[[gui-components]]'
+  rel: focus-model
+- to: '[[c1-live-seats]]'
+  rel: wire
 created: 2026-10-23T22:28:21Z
-updated: "2026-10-25T09:05:54Z"
+intent: A seat whose harness waits on the operator swells and pulses its sidebar name and pane border and posts a desktop notification until it leaves waiting; clicking the notification focuses that seat.
+updated: 2026-11-16T19:43:42.042Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:919c6fd7013e7706702bf1a9bb0b5ec3f8f5c1e691b82f56d2bbfea51056a6ac
+  frontmatter_digest: sha256:ca7d8f201ff5ac8734c568255d4099e34d1da5b3ad952f5ef808faf75f7801a9
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: iVrjgTXaAIlpqRINhChS/j8DRbm+0NIHAwgDMKaFKx9G1qyhvz5ZXCqGVQhSuwe3pk0gT8k2KcwQQ6f03mR8Dw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151706
+  event:
+    id: 01M7JY60JBNSGVXMBMR8X6RMNZ
+    sequence: 151706
+    hash: 382c19ff07bd1a9432e085d17164fbf29615d88dd442ce93e2f4cd9f3d87bb23
 ---
 # Attention
 

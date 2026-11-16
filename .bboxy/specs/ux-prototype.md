@@ -1,10 +1,28 @@
 ---
-id: "6RDBZ0SYW6DTJ04C5SW8530Q0R"
-type: "spec"
+id: 6RDBZ0SYW6DTJ04C5SW8530Q0R
+type: spec
 number: 92
-title: "UX prototype spec — bboxy450-term sidebar and panes"
-created: "2026-10-21T20:07:02Z"
-updated: "2026-10-30T15:04:48Z"
+title: UX prototype spec — bboxy450-term sidebar and panes
+created: 2026-10-21T20:07:02Z
+intent: 'The window is one canvas with the app''s own chrome: a resizable sidebar map and a pane stage where every element answers which swarm, which seat, what state, and where am I.'
+updated: 2026-11-16T19:52:10.843Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:79950c3a73d032862e9f662443f5dba10a28e4ee05aa0f290fc58c5d43226758
+  frontmatter_digest: sha256:5dc359c90aa894a6594631cc65ad89a9c639587a4965e566b877b1735830c00d
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: m3fYAmsDpN1BM/ubDm5fElny0P8QSi5/TOy9JyY8f9OOwazJ6WKyUzm0TdUW47qYK5B51dTQQd/y3lEzn4MzAw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151800
+  event:
+    id: 01M7JYNHEQM1QZ2JNPTEMZ0JZQ
+    sequence: 151800
+    hash: 0ade28980b4d9290d7112c603e8ba0a89ec35d44a0537d031ead37d73d59db23
 ---
 # UX prototype spec — bboxy450-term sidebar and panes
 

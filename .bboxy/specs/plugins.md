@@ -2,23 +2,53 @@
 id: 01M5N4A3B188KCYVGT1V7D350Q
 number: 157
 type: spec
-title: "plugins — a folder of binaries, each with a shape, fulfilling the app's system contracts"
+title: plugins — a folder of binaries, each with a shape, fulfilling the app's system contracts
 status: draft
 links:
-  - { to: "[[d12-audience-and-plugins]]", rel: decision }
-  - { to: "[[d28-structured-task-verification]]", rel: decision }
-  - { to: "[[d39-suite-is-the-product]]", rel: decision }
-  - { to: "[[d41-plugins]]", rel: decision }
-  - { to: "[[vision]]", rel: direction }
-  - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
-  - { to: "[[d1-providers]]", rel: first-seam }
-  - { to: "[[mcp-control-plane]]", rel: exposes }
-  - { to: "[[harness-adapters]]", rel: hooks }
-  - { to: "[[work-items]]", rel: contract }
-  - { to: "[[events]]", rel: contract }
-  - { to: "[[plugins-sota]]", rel: research }
+- to: '[[d12-audience-and-plugins]]'
+  rel: decision
+- to: '[[d28-structured-task-verification]]'
+  rel: decision
+- to: '[[d39-suite-is-the-product]]'
+  rel: decision
+- to: '[[d41-plugins]]'
+  rel: decision
+- to: '[[vision]]'
+  rel: direction
+- to: '[[2026-10-22-architecture-round-1]]'
+  rel: decisions
+- to: '[[d1-providers]]'
+  rel: first-seam
+- to: '[[mcp-control-plane]]'
+  rel: exposes
+- to: '[[harness-adapters]]'
+  rel: hooks
+- to: '[[work-items]]'
+  rel: contract
+- to: '[[events]]'
+  rel: contract
+- to: '[[plugins-sota]]'
+  rel: research
 created: 2026-10-23T19:37:52Z
-updated: "2026-11-01T13:15:36Z"
+intent: A plugin is a binary in a global or workspace plugin folder whose Shape declares the system contract it fulfils, with explicit trust, digest pinning and collision refusal, and a workspace's selection never leaks to another.
+updated: 2026-11-16T19:51:46.263Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:71b447d2d2e80332edb7ed078ab8b0e202a129cc544891f495f6dbd0f4c2c72f
+  frontmatter_digest: sha256:9837425b120b88707b57d9324e50610e9854d1b71afb6f1ac749b8f471961292
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: LKdfVXSXahB1PDvLFIiiZN/MpjHd2Gc47aSBX5FFOo5TsTRLZEHbkPsga6wCE/kHUBn/9/CSLx+A7XNxPmpbCA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151792
+  event:
+    id: 01M7JYMSEBGDD29BMGA8R7H5DC
+    sequence: 151792
+    hash: 1864a3be055932a725b7fa286e01b62415e1aa2582d95f363ce7083922b80a1a
 ---
 # Plugins
 

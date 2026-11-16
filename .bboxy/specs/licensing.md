@@ -26,24 +26,25 @@ links:
 - to: '[[2026-10-22-architecture-round-1]]'
   rel: decisions
 created: 2026-10-23T16:26:37Z
-updated: 2026-11-12T23:21:03.784Z
-created_by: seat:01M788X1K2MZH0V5CH8RDS2EYS
-updated_by: seat:01M788X1K2MZH0V5CH8RDS2EYS
+intent: bboxy450-owned contributions carry the Respectful Slop License 1.0-Draft, upstream licenses and prior grants stay intact, and reused protected material keeps accurate source attribution.
+updated: 2026-11-16T19:44:56.342Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
 authorship:
-  signer: seat:01M788X1K2MZH0V5CH8RDS2EYS
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
   kind: seat
-  public_key: QirMRCVq4MGjLqozHY5Hg1PxrBTQC7432d3nv2JAmW0=
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
   process_generation: '1'
 provenance:
-  digest: sha256:b85071e2b60bdeee8d7f0c1873f95f12c92d1437fcb06065acd38d3457131ce5
-  frontmatter_digest: sha256:69a23a8b269b786c9bd5e53394cc793ed2dc0ece1b096f91a4bb0246345a936f
-  signer: seat:01M788X1K2MZH0V5CH8RDS2EYS
-  sig: KI4Q1JdJ7DhJIGNc+zRIMQVxxhRak2DAU65o2nL85gI3S1N+YczUb/e+tvzvXOQVJMBZrpaVOSEdBWZDanc1BQ==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/82820
+  digest: sha256:34ba96adb2da825bfb5bf789b958d305c911cac280eb65c59b452feeea96b64c
+  frontmatter_digest: sha256:90c246a9eb174c3bc3aaf3140199d2ab9cf1daa0f19c69aa4b24a5f9df7aaeb5
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: bCPsq6m2wLJKhRdwQTzlxSFf+h2ZvJQSiDv0zOPYqdBnw5fjkNjSj+f01eLEZeYQBejmwpRodXD2fawu/G4tAA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151734
   event:
-    id: 01M79114KBPHR9CMSB7S8DKCHR
-    sequence: 82820
-    hash: 956463d3ffad7f3a9668c18c995433e59d78ed6aba1b02420bca3509b275bc73
+    id: 01M7JY894DEFJPJGY3ZCGG9BJ7
+    sequence: 151734
+    hash: 02997bd421a623da205935a61a10df14e36f0ad3a6764b831c147e32e94ae8f6
 ---
 # Licensing
 

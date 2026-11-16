@@ -1,10 +1,28 @@
 ---
-id: "649EE54RA63WYNNNPTZFEG9GXT"
-type: "spec"
+id: 649EE54RA63WYNNNPTZFEG9GXT
+type: spec
 number: 78
-title: "Spec: seat state and subagent detection"
-created: "2026-10-21T19:14:16Z"
-updated: "2026-10-24T00:10:38Z"
+title: 'Spec: seat state and subagent detection'
+created: 2026-10-21T19:14:16Z
+intent: Seat state and subagents are detected from the seat's own PTY, with OSC 7501 Program Status as the primary channel and hooks secondary, and no env lookup or socket round-trip on the common path.
+updated: 2026-11-16T19:52:01.491Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:557ada76c2ff118bfbf868f62be05ad99f4a5a17a98d43d54adef03bd4c1eb20
+  frontmatter_digest: sha256:1b6494904ac3fcd6e5bfadf1b57c0393275e14f2f0b8608040e0bc540a31792f
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: MWttnqmsYeaIuKyOw86VD0yYdJjjQtMARKmwqke97iIN8twV+XBNTstxQan96Fs6eJIY7tHp4PBhm0JgSJdVBw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151796
+  event:
+    id: 01M7JYN8A46FD3BMV6Y7G1ATN6
+    sequence: 151796
+    hash: 414fb626ea0b86c9877fce6010c9ba8f278f9f5d7aeb85ae7a58df4099a63905
 ---
 # Spec: seat state and subagent detection
 

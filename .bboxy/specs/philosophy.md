@@ -2,13 +2,33 @@
 id: 01M70ZZ9RB43H8ABQCN1Q530YJ
 type: spec
 number: 93377961366305
-title: "philosophy — our stand: against bloat and die, stop building piano tops, DOS not Linux, recreational programming first"
+title: 'philosophy — our stand: against bloat and die, stop building piano tops, DOS not Linux, recreational programming first'
 status: decided
 links:
-  - { to: "[[vision]]", rel: direction }
-  - { to: "[[mantras]]", rel: governs }
+- to: '[[vision]]'
+  rel: direction
+- to: '[[mantras]]'
+  rel: governs
 created: 2026-11-09T20:28:39Z
-updated: "2026-11-10T01:40:00Z"
+intent: 'Every brief, tool, prompt and spec answers to one stand: a system agents can take apart, understand, change and reassemble, with no layer that exists only to manage another layer.'
+updated: 2026-11-16T19:52:23.851Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:193b17908005bc158749f2ad7a81b38beb7e913edba2a579dc252655341c165f
+  frontmatter_digest: sha256:c0d4f050d8038fa7f1ccb92bfb406d9d6a2cfcc6046cd96b6e4482bb797beb04
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: 3O6aeGIB0hcEby7QHZd0UCRK/U1L6rGiKKmQZvWbZl1Rr+hix3WROdoHfV5LT8cQBh71PszzouC+qakYyeRbDA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151806
+  event:
+    id: 01M7JYNY5B184762YK8Z9B449H
+    sequence: 151806
+    hash: aea965a5472d25403c89c0a5ef3ca9d5ffac21d1a50f2cf3e35d8a7dcdae3e39
 ---
 # Philosophy: our stand
 

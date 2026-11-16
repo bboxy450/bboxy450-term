@@ -3,22 +3,27 @@ type: spec
 title: bboxy450-build-store — one disk budget for every worktree's build tree (spike)
 status: proposed
 id: 01M6HD7Y2TKS8XEQK1EGP8NNMA
-updated: 2026-11-03T19:12:43.674Z
 created: 2026-11-03T19:12:43.674Z
 number: 15489
-created_by: seat:01M6HCZWWK2PPMNFN1SJKW21BH
-updated_by: seat:01M6HCZWWK2PPMNFN1SJKW21BH
+intent: Every worktree's build tree shares one bounded, deduplicated disk budget, and nothing of the store is built until its measured gate passes.
+updated: 2026-11-16T19:43:58.643Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
 authorship:
-  signer: seat:01M6HCZWWK2PPMNFN1SJKW21BH
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
   kind: seat
-  public_key: EdCHgspnF2HeQMN0lvmNqxQy6st++RXk6dJTFu1mWis=
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
   process_generation: '1'
 provenance:
   digest: sha256:1cbe141dba061e28a1afd3984cdaf1d1cab5104672b215fefee60af74fc758fe
-  frontmatter_digest: sha256:da14228faf1caa2c80db3e8257b055b97a2b585b6b935cd3982085c8636ddce0
-  signer: seat:01M6HCZWWK2PPMNFN1SJKW21BH
-  sig: VSRgrg3oipDtAkd6HYxXU/JvZ7YrABIJkjeaxaNcWQcnM3g2XN5y2ppaDJ3dX1Ry4IaivBDW4rcBgHM99txxCQ==
-  log: .bboxy/log/2026-11-03.part-86213.jsonl#92410
+  frontmatter_digest: sha256:7cc716c5a686b0b9834e2daa3453c27784e0025482d920fb43e8e70e5989d5cd
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: nPZT59HiZECaD5Tsq8mJzn/3qaoms9a7hf1Vochaakiv+FZzrWmbA6yTx5C2CgUrxTvN/q3izPG8vT2kajX1Cw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151708
+  event:
+    id: 01M7JY6GVC5MEXR40MDT1Q3YFT
+    sequence: 151708
+    hash: eb4e4dd1ae5d693869cc89b2f9ea59cb2b8cea18affcdc82a840ad68b75ae9ac
 ---
 # bboxy450-build-store (spike, design only)
 

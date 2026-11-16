@@ -9,26 +9,27 @@ links:
 - to: '[[specs/dream-term-c1]]'
   rel: depends_on
 created: 2026-11-05T14:24:52.845Z
-created_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
 id: 01M6P1J9AW2MJ6YN45BYMCDJNK
-updated: 2026-11-07T15:54:03.433Z
 number: 93377961364658
-updated_by: seat:01M6VASNV9NAZRZ5JHQ7ER9PPX
+intent: A solving agent can search and read relevant, attributable past observations and verified lessons through dream MCP tools, which report unavailable honestly when no qualifying corpus exists.
+updated: 2026-11-16T19:50:27.423Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
 authorship:
-  signer: seat:01M6VASNV9NAZRZ5JHQ7ER9PPX
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
   kind: seat
-  public_key: gX8ozXnq5IspMTpqtE9rHRFSbgoDxsJh5dGOJgtj2o8=
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
   process_generation: '1'
 provenance:
   digest: sha256:5e259c93159c873ce6e8b639363e9eb421e4c7f13476dd6cc5f062a2e0da7892
-  frontmatter_digest: sha256:10afc980fcdf12325354c2d3a9906458b44dde200a9174e5f32858ce4e465bbd
-  signer: seat:01M6VASNV9NAZRZ5JHQ7ER9PPX
-  sig: M3QmWlPDdyZzmpEDEhSd+w/bvwWJ3cMjjSxBVTqZ6sM6savXA5YjTTG2/Cznl6GjpFS3g3jsRNB4/h5SSe99DA==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/150381
+  frontmatter_digest: sha256:55138b7a7fea6a59561a9143021bcffe6b3ffff20144c2faf492a549a390a170
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: e+TJ4D0uN1q/HgGmuqHfbxU4T917J2b9OufkRLQuAQpjtS35c57sYHnW8rKbcbjLbGDVngBS/5KF9yTzoflTBA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151764
   event:
-    id: 01M6VBF1XE66Z933BRB87R8TRY
-    sequence: 150381
-    hash: 87ab1391cebdfbd7408d5f74362fce8b645eda28a4dc921095c7d6d99555eba2
+    id: 01M7JYJCEFFMAHZ6SV165Y4TZ2
+    sequence: 151764
+    hash: e137d3510f553d8b323f2bfdb9ef3a35ab73bd6ba1587f9e2895b41f93fb31ce
 ---
 # Dreaming MCP: useful reads before new autonomy
 

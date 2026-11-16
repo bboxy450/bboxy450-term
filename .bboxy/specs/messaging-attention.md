@@ -2,21 +2,46 @@
 id: 01M5TGD48S9GWHYA6YV0H0T3MK
 type: spec
 number: 334
-title: "messaging attention: a stored message is not a wake; events versus conversation; receiver-owned wake policy per destination and class (wake, inbox, digest); bounded digests; validated threads; the cost of every wake in the ledger"
+title: 'messaging attention: a stored message is not a wake; events versus conversation; receiver-owned wake policy per destination and class (wake, inbox, digest); bounded digests; validated threads; the cost of every wake in the ledger'
 status: decided
 operator:
-  - "everything you stated above, around resource and messaging utilization - we should bake this into term messaging system as well, thats clear optimization of communication patterns"
-  - "send the above learnings as something we need to build into our messaging system with mutes and unmutes and such, ways to optimize messaging patterns - send it to architect to structure task for integration of it into our system"
+- everything you stated above, around resource and messaging utilization - we should bake this into term messaging system as well, thats clear optimization of communication patterns
+- send the above learnings as something we need to build into our messaging system with mutes and unmutes and such, ways to optimize messaging patterns - send it to architect to structure task for integration of it into our system
 links:
-  - { to: "[[l9-messaging-tasks]]", rel: builds-on }
-  - { to: "[[messaging]]", rel: builds-on }
-  - { to: "[[resource-ledger]]", rel: builds-on }
-  - { to: "[[messaging-never-held]]", rel: invariant }
-  - { to: "[[notices-never-wake]]", rel: invariant }
-  - { to: "[[d285-no-gated-communications]]", rel: builds-on }
-  - { to: "[[mcp-control-plane]]", rel: builds-on }
-created: "2026-10-25T21:45:27Z"
-updated: "2026-10-26T19:22:49Z"
+- to: '[[l9-messaging-tasks]]'
+  rel: builds-on
+- to: '[[messaging]]'
+  rel: builds-on
+- to: '[[resource-ledger]]'
+  rel: builds-on
+- to: '[[messaging-never-held]]'
+  rel: invariant
+- to: '[[notices-never-wake]]'
+  rel: invariant
+- to: '[[d285-no-gated-communications]]'
+  rel: builds-on
+- to: '[[mcp-control-plane]]'
+  rel: builds-on
+created: 2026-10-25T21:45:27Z
+intent: Storing a message never wakes a seat; each receiver owns its wake policy per destination and class (wake, inbox, digest), threads are validated and every wake's cost is recorded in the ledger.
+updated: 2026-11-16T19:51:23.264Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:8381c1c7cabf67bf02085353fa134f039926681f4fd0cf668b4a8b9a1404448c
+  frontmatter_digest: sha256:ed920ee5e883206be15c4f3891cb4e560be00ef335dc4966f89107fbc5cb784d
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: 5vNTtCUgWQGWdnASe6kjDl8zbDtxpQwy7Nb8FnSZOSrVZ5ez173ChmdDaO8670NzhDguS12uTLaAR1QM2tggAw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151784
+  event:
+    id: 01M7JYM311M7XCGKQB0ACGSM62
+    sequence: 151784
+    hash: d99350603f66e4b6ead730670db7ed2890e87d8cc3ee83a1663e91f087ac4e3c
 ---
 # Messaging attention
 

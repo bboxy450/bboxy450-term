@@ -2,22 +2,51 @@
 id: 01M5NG4WXQ0B9JZS4FEP5JE5VA
 number: 207
 type: spec
-title: "desktop notifications — an OS-agnostic facade over one crate per OS; macOS real, the rest dummies that say so"
+title: desktop notifications — an OS-agnostic facade over one crate per OS; macOS real, the rest dummies that say so
 status: decided
 links:
-  - { to: "[[d24-defer-code-signing]]", rel: decision }
-  - { to: "[[d39-suite-is-the-product]]", rel: decision }
-  - { to: "[[d44-waiting-attention]]", rel: decision }
-  - { to: "[[d45-desktop-notifications]]", rel: decision }
-  - { to: "[[d46-cross-os-facades]]", rel: decision }
-  - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
-  - { to: "[[attention]]", rel: consumer }
-  - { to: "[[cross-os-facade]]", rel: invariant }
-  - { to: "[[layering]]", rel: invariant }
-  - { to: "[[licensing]]", rel: licence }
-  - { to: "[[desktop-notifications-research]]", rel: research }
+- to: '[[d24-defer-code-signing]]'
+  rel: decision
+- to: '[[d39-suite-is-the-product]]'
+  rel: decision
+- to: '[[d44-waiting-attention]]'
+  rel: decision
+- to: '[[d45-desktop-notifications]]'
+  rel: decision
+- to: '[[d46-cross-os-facades]]'
+  rel: decision
+- to: '[[2026-10-22-architecture-round-1]]'
+  rel: decisions
+- to: '[[attention]]'
+  rel: consumer
+- to: '[[cross-os-facade]]'
+  rel: invariant
+- to: '[[layering]]'
+  rel: invariant
+- to: '[[licensing]]'
+  rel: licence
+- to: '[[desktop-notifications-research]]'
+  rel: research
 created: 2026-10-23T23:04:45Z
-updated: "2026-10-29T21:42:25Z"
+intent: 'The app posts, replaces and removes desktop notifications through one OS-agnostic facade backed by one crate per OS: macOS is real, and other OSes are dummies that report Unsupported.'
+updated: 2026-11-16T19:44:31.102Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:3c8ecf6d5945e7938c19ce7a2b99eb7bc24bec359d9653a17e3b11235c315e13
+  frontmatter_digest: sha256:cd8894a6ff44f454b27e029308ff6f16140e0f070b80563ba3abd28bc5f69405
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: OY6gp6Rd2q8scq5hBBsdnMIOiKY8Mn+Ccu0UzqdfhZjiDIkXROEksBIEhoqPfAps7abDWjMGw6bHC8TEUlvDBg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151720
+  event:
+    id: 01M7JY7GF5QT0N5F900H5QZJBN
+    sequence: 151720
+    hash: 113d1e93b743e461d4feef5675fdf72d1d8f6ba492be26cf4b66bd50e03a6e0f
 ---
 # Desktop notifications
 

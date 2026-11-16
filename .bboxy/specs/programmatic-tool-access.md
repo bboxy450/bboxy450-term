@@ -2,14 +2,35 @@
 id: 01M6PWSQJM1Z19KHV974MXG60X
 number: 93377961364425
 type: spec
-title: "python_execute — harness MCP and command runtime"
+title: python_execute — harness MCP and command runtime
 status: active
-created: "2026-11-05T20:50:36Z"
-updated: "2026-11-05T23:02:49Z"
+created: 2026-11-05T20:50:36Z
 links:
-  - { to: "[[workspace-provisioning]]", rel: contract }
-  - { to: "[[mcp-control-plane]]", rel: contract }
-  - { to: "[[knowledge-base]]", rel: contract }
+- to: '[[workspace-provisioning]]'
+  rel: contract
+- to: '[[mcp-control-plane]]'
+  rel: contract
+- to: '[[knowledge-base]]'
+  rel: contract
+intent: python_execute runs model-submitted Python in an owned CPython worker in the provisioned workspace, calling the harness's configured MCP tools and command bindings under their existing authorization, and returns a bounded result.
+updated: 2026-11-16T19:52:26.383Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:10b15a01582da4b4c4d39b2259a8ac21366e56cfb21fa6305b0de65eaa239719
+  frontmatter_digest: sha256:8f5355a4d13f3421579275714c23711e5574736b12f65b794dfceb65f108b0bb
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: jF49ISHsig5mMDbmtYooK4rixFLxQqYJrHSmdG9XBOUiUo+eMRoRxfhpEo66ep782tjvfGwvyNIko33H4Gr9AQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151808
+  event:
+    id: 01M7JYP0M3BETFP4TCF6CK84JS
+    sequence: 151808
+    hash: f6ee56b00f62e2aab4873032424dca5ac26fc5d240213fe61722ad44cc0e7e34
 ---
 # python_execute: harness MCP and command runtime
 

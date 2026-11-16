@@ -1,10 +1,28 @@
 ---
-id: "49DB1SXHQEH4KF08EFAZ6EPCRT"
-type: "spec"
+id: 49DB1SXHQEH4KF08EFAZ6EPCRT
+type: spec
 number: 124
-title: "Runtime — threads, async IO, 120 Hz frame pacing"
-created: "2026-10-22T15:01:10Z"
-updated: "2026-10-24T00:10:38Z"
+title: Runtime — threads, async IO, 120 Hz frame pacing
+created: 2026-10-22T15:01:10Z
+intent: The UI thread never waits on IO, enforced by lints, debug assertions and a CI stall test, and frames are paced at 120 Hz from messages and published snapshots.
+updated: 2026-11-16T19:45:17.861Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:fe72b629c64fbecfb5d0776cb2338dcba5154121e746589aee0b3bdceb6641cc
+  frontmatter_digest: sha256:92969f668956c5c4a0d97e2915dc72d69d38d317664677789bfdd2093c37f7ef
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: FATgOPQ92Cq2qpGgJ29/XPulzA3FJt8UqFAIw2UTHmxCCIHfCo8/P8W7GexMOuVF7nCDJKgloLWCbBcQxdvnCw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151746
+  event:
+    id: 01M7JY8Y50VMG8EAJ6EC9HQNG0
+    sequence: 151746
+    hash: c8ab93f3523af17aa4fd9d699c33812186ddcf33704de58751ef967c6c196b17
 ---
 # Runtime — threads, async IO, 120 Hz frame pacing
 

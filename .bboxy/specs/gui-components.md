@@ -1,13 +1,33 @@
 ---
-id: "2CY8SN0WBEND8GFYPBN14DVF1F"
-type: "spec"
+id: 2CY8SN0WBEND8GFYPBN14DVF1F
+type: spec
 number: 106
-title: "GUI components — model, layout, draw list, input, signals, lab"
-created: "2026-10-21T22:26:59Z"
-updated: "2026-10-29T12:25:00Z"
+title: GUI components — model, layout, draw list, input, signals, lab
+created: 2026-10-21T22:26:59Z
 links:
-  - { to: "[[d26-terminal-key-ownership]]", rel: decision }
-  - { to: "[[d43-kit-alive-borders]]", rel: decision }
+- to: '[[d26-terminal-key-ownership]]'
+  rel: decision
+- to: '[[d43-kit-alive-borders]]'
+  rel: decision
+intent: The GUI is a window-free model crate (element tree, layout, draw list, input routing, signals, tokens) plus a wgpu chrome pass, mirroring the web lab, with tokens.toml and style.json compiled in as the single source.
+updated: 2026-11-16T19:50:44.483Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:b34460978abb9dc73bdc4cf93ce433bfc3efa42239b442740766e43c83adb367
+  frontmatter_digest: sha256:4fbd3b312547844751c8be0dc2eb5b86fd9075d2d484226becbbd946097bef21
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: dgdJFAQjQmesR5OYxMI3MXpEdkyYHuFz7ihJ1DBYL5bK8h+gK5h3Y4qH9uqtYGYu6fE7QDnmB5Ua1YsJ1KsGCA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151768
+  event:
+    id: 01M7JYJX529GGVKPTHREMNXG87
+    sequence: 151768
+    hash: 711fe32f120e8dab48659b7269a774e203f04fd88ca06a3cb6b55267b90d0dc1
 ---
 # GUI components — model, layout, draw list, input, signals, lab
 

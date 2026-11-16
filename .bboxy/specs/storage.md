@@ -1,10 +1,28 @@
 ---
-id: "5R1Z7ZZEYHQT7F2TD5GJWM6E64"
-type: "spec"
+id: 5R1Z7ZZEYHQT7F2TD5GJWM6E64
+type: spec
 number: 113
-title: "Storage — decided"
-created: "2026-10-21T22:45:47Z"
-updated: "2026-10-24T00:10:38Z"
+title: Storage — decided
+created: 2026-10-21T22:45:47Z
+intent: Every durable object keeps its state in its own SQLite file, large data in a content-addressed blob store and its history in a signed append-only event log, and nothing is deleted by the terminal.
+updated: 2026-11-16T19:40:48.090Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:9948bb7d8b81e50f9e04397d40917fc92fa6b788e91d2fcc79bb1f0e21989352
+  frontmatter_digest: sha256:c8b7e5646241df65fe865707cbad8f9c7d61ef1e4565bc495716e6eda850b1a7
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: ZscTVTgJrKvA/rRnNGy2H+HqCnQuFGEvSrqMCRkMlUs2A/sFUwIIcuuKKiAf1+1fAWeN6hPYGxonUbhYtAQTCw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151704
+  event:
+    id: 01M7JY0PPE0NXG85QTQXFCM5Z3
+    sequence: 151704
+    hash: d69f1f0c33175bd5d01082e28b60dd160cf5d25ef47035f145eaa6ec462f938f
 ---
 # Storage — decided
 

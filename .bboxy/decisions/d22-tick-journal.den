@@ -1,0 +1,34 @@
+module decisions.`d22-tick-journal`
+
+import `mux-daemon`
+
+decision D22TickJournal {
+  title "One tick journal per machine, not barrier threads"
+  decides `mux-daemon`
+  status Decided
+  body """
+    # Decision 22: One tick journal per machine, not barrier threads
+
+    **One tick journal per machine, not barrier threads (from Rook's
+    measurement: cost is per file, two files per seat per tick; Busy at
+    seat 58 after group commit).** All seats append to one journal per
+    supervisor process with a tick-commit record as the boundary, so a
+    tick costs one barrier at any seat count; per-seat rings are compacted
+    from it lazily; recovery replays the journal tail; loss bounds and
+    never-delete unchanged ([[mux-daemon]] Durability tiers). Rejected: four
+    barrier worker threads (a constant factor, still O(seats), and CPU
+    burned on fcntl); dropping the marker file alone (halves it, still
+    O(seats)); a journal per swarm (swarms are not a machine boundary).
+    """
+
+  managed {
+    created = json"\"2026-10-22T23:14:05Z\""
+    decided = json"\"2026-10-22\""
+    id = json"\"01M5JY98J870ZCPN39824YAWYR\""
+    links = json"[{\"rel\":\"supersedes-as-index\",\"to\":\"[[2026-10-22-architecture-round-1#22]]\"},{\"rel\":\"decides\",\"to\":\"[[mux-daemon]]\"}]"
+    number = json"22"
+    operator = json"[]"
+    updated = json"\"2026-10-24T00:10:38Z\""
+    body_tail = json"\"\\n\""
+  }
+}

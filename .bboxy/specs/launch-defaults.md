@@ -1,10 +1,28 @@
 ---
-id: "01M5XPZNF7E38KE7Q5V1GAAPQA"
-type: "spec"
+id: 01M5XPZNF7E38KE7Q5V1GAAPQA
+type: spec
 number: 363
-title: "Spawn parameters — ↵ launches as is, → shows them, every row prefilled"
-created: "2026-10-27T03:38:09Z"
-updated: "2026-10-27T21:54:45Z"
+title: Spawn parameters — ↵ launches as is, → shows them, every row prefilled
+created: 2026-10-27T03:38:09Z
+intent: A spawn launches with prefilled per-swarm defaults for transport, connection, directory and command on Enter, and the right arrow opens every row for editing before launch.
+updated: 2026-11-16T19:44:53.822Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:e5943b7ab53327a1ee74c8ae045575c0e692d05238ccf878c4c655d066e90da2
+  frontmatter_digest: sha256:8d0f71315775c9c256724c05170767ac5105e9701ee89026732034345f2b07e4
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: FEe/9GZjY2pPG80Q6AcxWm+lGg3v1VKqb2a9FEA48FtcMWZSQpyKQ/7s1zKSSvnWvOrvjj3RE9fnuujiaakvAg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151732
+  event:
+    id: 01M7JY86NJSX1CF03MCGT006JX
+    sequence: 151732
+    hash: d7ca31bd38fe310d3299e705d12a8a463b739b013588987d1a7ca56a04280822
 ---
 # Spawn parameters — ↵ launches as is, → shows them, every row prefilled
 

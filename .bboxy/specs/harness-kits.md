@@ -2,19 +2,45 @@
 id: 01M5Q8DB0CWT3B5KN6NTFAXJ3T
 type: spec
 number: 273
-title: "harness kits — bboxy450-harness-wake-up (how to tap into a harness: launch, observe, wake, fallback) and bboxy450-harness-host (run programs in PTYs, capture, resume), split from bbt-mux and bbt-supervisor and published"
+title: 'harness kits — bboxy450-harness-wake-up (how to tap into a harness: launch, observe, wake, fallback) and bboxy450-harness-host (run programs in PTYs, capture, resume), split from bbt-mux and bbt-supervisor and published'
 status: decided
 links:
-  - { to: "[[d274-harness-kits]]", rel: decision }
-  - { to: "[[harness-adapters]]", rel: builds-on }
-  - { to: "[[mux-daemon]]", rel: builds-on }
-  - { to: "[[open-source]]", rel: amends }
-  - { to: "[[licensing]]", rel: amends }
-  - { to: "[[layering]]", rel: invariant }
-  - { to: "[[cross-os-facade]]", rel: invariant }
-  - { to: "[[d39-suite-is-the-product]]", rel: direction }
-created: "2026-10-24T15:28:01Z"
-updated: "2026-10-25T02:37:46Z"
+- to: '[[d274-harness-kits]]'
+  rel: decision
+- to: '[[harness-adapters]]'
+  rel: builds-on
+- to: '[[mux-daemon]]'
+  rel: builds-on
+- to: '[[open-source]]'
+  rel: amends
+- to: '[[licensing]]'
+  rel: amends
+- to: '[[layering]]'
+  rel: invariant
+- to: '[[cross-os-facade]]'
+  rel: invariant
+- to: '[[d39-suite-is-the-product]]'
+  rel: direction
+created: 2026-10-24T15:28:01Z
+intent: Harness launch, observation and wake logic lives in bboxy450-harness-wake-up and PTY hosting, capture and resume in bboxy450-harness-host, both published and independent of the app's wire and registry.
+updated: 2026-11-16T19:44:43.022Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:646d75c6e362cd813acede00e2e3ff070367d7f50ea6ec7eec75e74a5411e318
+  frontmatter_digest: sha256:1c52b9fada8e131ce80b1e82cc6c50fe9461fcee546421f3d84c33d56020ed56
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: KrEkabYvA28WipfWSbNiRD9+n9ScnYbfU8AQrGGQwFPkqi1R554b7Im4KRMOB5EyU7/wr4Sw0mow0ti1/M/cDQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151726
+  event:
+    id: 01M7JY7W445G9RGN23E6T77SES
+    sequence: 151726
+    hash: 55132c0e01ebe2692d3105128b1b2506324f1b677c49316cf5488961bd8dff70
 ---
 # Harness kits
 

@@ -2,21 +2,49 @@
 id: 01M5JRGF410XZ88S9EE1A743TS
 number: 143
 type: spec
-title: "D1 — providers: a host yields a supervisor link; ssh and cloud as fakes"
+title: 'D1 — providers: a host yields a supervisor link; ssh and cloud as fakes'
 status: decided
 links:
-  - { to: "[[d7-provider-supervisor-link]]", rel: decision }
-  - { to: "[[d12-audience-and-plugins]]", rel: decision }
-  - { to: "[[d25-fake-provider-latency]]", rel: decision }
-  - { to: "[[2026-10-22-c-cockpit]]", rel: epic }
-  - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
-  - { to: "[[architecture]]", rel: as-built }
-  - { to: "[[c1-live-seats]]", rel: shares-schema }
-  - { to: "[[mux-daemon]]", rel: spec }
-  - { to: "[[ux-prototype]]", rel: ui }
-  - { to: "[[networking]]", rel: later }
+- to: '[[d7-provider-supervisor-link]]'
+  rel: decision
+- to: '[[d12-audience-and-plugins]]'
+  rel: decision
+- to: '[[d25-fake-provider-latency]]'
+  rel: decision
+- to: '[[2026-10-22-c-cockpit]]'
+  rel: epic
+- to: '[[2026-10-22-architecture-round-1]]'
+  rel: decisions
+- to: '[[architecture]]'
+  rel: as-built
+- to: '[[c1-live-seats]]'
+  rel: shares-schema
+- to: '[[mux-daemon]]'
+  rel: spec
+- to: '[[ux-prototype]]'
+  rel: ui
+- to: '[[networking]]'
+  rel: later
 created: 2026-10-22T21:33:09Z
-updated: 2026-10-22T21:33:09Z
+intent: A provider turns a host into a supervisor link; logic routes each seat's spawn, input and resize by its host over that link, with ssh and cloud hosts served by scripted fakes on local PTYs.
+updated: 2026-11-16T19:44:28.422Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:99e0e6b7bcf2ad12faec89d0ea3f054935ef1e66988304993b0e688f59de8002
+  frontmatter_digest: sha256:da23b9af8862168fd0a9cf7a52832fb512630e318741a0f8617587e849ef7312
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: XcYfy3SKXEBPenffy/l509O0cUlBl0JdNjh8RihLwnQ3usYMyQjUX0iWbQtufzggJ5Z5iYjMmT/tUzAJVjjoBw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151718
+  event:
+    id: 01M7JY7DVDMDQMN6JQ6ZCJDDF0
+    sequence: 151718
+    hash: 6194b68397017e2e03f49862e944a5d9915db24d2106140b4e6bf42e20e83614
 ---
 # D1 — providers
 

@@ -2,15 +2,37 @@
 id: 01M6PWSS59HQXZYFAQ88J4HBY7
 number: 93377961364426
 type: spec
-title: "Managed implementation workspaces for Oracle and worker seats"
+title: Managed implementation workspaces for Oracle and worker seats
 status: draft
-created: "2026-11-05T22:20:00Z"
-updated: "2026-11-05T23:02:49Z"
+created: 2026-11-05T22:20:00Z
 links:
-  - { to: "[[programmatic-tool-access]]", rel: contract }
-  - { to: "[[work-items]]", rel: contract }
-  - { to: "[[mcp-control-plane]]", rel: contract }
-  - { to: "[[knowledge-base]]", rel: contract }
+- to: '[[programmatic-tool-access]]'
+  rel: contract
+- to: '[[work-items]]'
+  rel: contract
+- to: '[[mcp-control-plane]]'
+  rel: contract
+- to: '[[knowledge-base]]'
+  rel: contract
+intent: An Oracle prepares one isolated, identity-verified Git worktree per task, passes its handle to a worker seat and releases it only after the work is preserved, and a crash leaves discoverable state.
+updated: 2026-11-16T19:52:29.723Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:c6567bfe24adcfb59e2c61416e078502353c00abf48490eddb3598897d5ffdec
+  frontmatter_digest: sha256:72c04f758f95f049f8c84e7d7bb3d80fcf87abf5da615be1b212323f8d0e9e8c
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: CURZQc4MtZyFhwk795kVHeZ9lfH4M+7G3lPs0mGrx9yIUEG0q50pvsEHS8BiycyJv4cT8iMLQkvyqo12uYmSBg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151810
+  event:
+    id: 01M7JYP3WCEJJCQPCHF2YWP8P6
+    sequence: 151810
+    hash: 24b56ae48a3deff9d83a7a60f121862609a17d0eb8143e77b629e18c7c7b0a8c
 ---
 # Managed implementation workspaces
 

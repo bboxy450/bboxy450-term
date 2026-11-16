@@ -1,10 +1,28 @@
 ---
-id: "51FPRZP3WWTHWZZJ453YR1C11Q"
-type: "spec"
+id: 51FPRZP3WWTHWZZJ453YR1C11Q
+type: spec
 number: 86
-title: "Spec: harness adapters — launch, observe, feed, wake"
-created: "2026-10-21T19:51:15Z"
-updated: "2026-10-24T00:10:38Z"
+title: 'Spec: harness adapters — launch, observe, feed, wake'
+created: 2026-10-21T19:51:15Z
+intent: Each harness adapter launches its harness wired in, observes state with OSC 7501 ranked above hooks, feeds input behind a guard and states whether and how the harness can be woken.
+updated: 2026-11-16T19:50:54.343Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:1303c431970bd80f68fda5ca0cb3e06c9d071fb424d9031f5a795977415e8bc7
+  frontmatter_digest: sha256:87207749f1696ffcb30543e7a018e929c83de721281fcaead4bfe51203c9f3d6
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: WdO6CFyaKaj3G/n4gvut+Y+uKSR3vO0Pb0d/+Cc2N2iCkCQ5H10iv5ExRCGVLAZVpFS7AXYM/YW5gWIyEvpsAg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151770
+  event:
+    id: 01M7JYK6RE8TH43F45H8C5MECB
+    sequence: 151770
+    hash: 8b226746ea0b9313acf03f9f8aefc2d07b3ff990cbedbbef174ac54ffcd60b75
 ---
 # Spec: harness adapters — launch, observe, feed, wake
 

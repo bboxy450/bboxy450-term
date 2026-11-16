@@ -1,0 +1,29 @@
+module decisions.`d8-open-source`
+
+import `open-source`
+
+decision D8OpenSource {
+  title "Everything goes open-source eventually"
+  decides `open-source`
+  status Decided
+  body """
+    # Decision 8: Everything goes open-source eventually
+
+    **Everything goes open-source eventually.** The invariant is layering, not a
+    fixed public list: every crate must stay publishable without the ones above
+    it. Velocity first; nothing is split or renamed before its plateau.
+    Supersedes the fixed public/private table in [[open-source]] §1 as the rule;
+    the publish order there stands.
+    """
+
+  managed {
+    created = json"\"2026-10-22T19:02:54Z\""
+    decided = json"\"2026-10-22\""
+    id = json"\"01M5JFXASG0Z3089MEDK8BHYZP\""
+    links = json"[{\"rel\":\"supersedes-as-index\",\"to\":\"[[2026-10-22-architecture-round-1#8]]\"},{\"rel\":\"decides\",\"to\":\"[[open-source]]\"}]"
+    number = json"8"
+    operator = json"[]"
+    updated = json"\"2026-10-24T00:10:38Z\""
+    body_tail = json"\"\\n\""
+  }
+}

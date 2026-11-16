@@ -1,17 +1,41 @@
 ---
-id: "7GQMA86QPRHXDM60HXW0S0EAKP"
-type: "spec"
+id: 7GQMA86QPRHXDM60HXW0S0EAKP
+type: spec
 number: 105
-title: "Work items — epics, specs, tasks as Markdown with frontmatter"
-created: "2026-10-21T22:23:16Z"
-updated: "2026-11-04T20:33:00Z"
+title: Work items — epics, specs, tasks as Markdown with frontmatter
+created: 2026-10-21T22:23:16Z
 links:
-  - { to: "[[d18-executor-harness-override]]", rel: decision }
-  - { to: "[[d28-structured-task-verification]]", rel: decision }
-  - { to: "[[d41-plugins]]", rel: decision }
-  - { to: "[[d47-decision-nodes]]", rel: decision }
-  - { to: "[[d48-every-record-has-a-number]]", rel: decision }
-  - { to: "[[d49-swarm-canvas]]", rel: decision }
+- to: '[[d18-executor-harness-override]]'
+  rel: decision
+- to: '[[d28-structured-task-verification]]'
+  rel: decision
+- to: '[[d41-plugins]]'
+  rel: decision
+- to: '[[d47-decision-nodes]]'
+  rel: decision
+- to: '[[d48-every-record-has-a-number]]'
+  rel: decision
+- to: '[[d49-swarm-canvas]]'
+  rel: decision
+intent: Every work item is one Markdown file with YAML frontmatter under .bboxy/, from a fixed vocabulary of sixteen types sharing one schema, with a ULID id, status and parent-child links.
+updated: 2026-11-16T19:52:20.183Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:86b49e715fd8c8e805efaa404a66089cb9b2ee16686a9cb1caea799cb65df1e7
+  frontmatter_digest: sha256:cb6d5b6532ee88edf588c5454afa6628331fbcb73e96bd8f9d394997cd3bb580
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: I/n6rgYcSY1S0awz6W5NtWFPuVl+VgTaI0JVxCs8NzcZYa8R7CxAmgbIGl6kte0ECC0W5A0wOVgLEC7p3mRiDg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151804
+  event:
+    id: 01M7JYNTJN7GDXVB854MSD45H4
+    sequence: 151804
+    hash: 9e5f086354d34945fa4b98fdc9c0cd4aa0f7fba83b588e0e0945a5a6bf167919
 ---
 # Work items — epics, specs, tasks as Markdown with frontmatter
 

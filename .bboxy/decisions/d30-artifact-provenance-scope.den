@@ -1,0 +1,40 @@
+module decisions.`d30-artifact-provenance-scope`
+
+import provenance
+import events
+
+decision D30ArtifactProvenanceScope {
+  title "Three W2.6 rulings"
+  decides provenance, events
+  status Decided
+  body """
+    # Decision 30: Three W2.6 rulings
+
+    **Three W2.6 rulings (2026-10-23, Oracle, recorded in [[provenance]] and
+    [[events]]).** (a) Attribution ambiguity: several seats matching a
+    worktree and activity window → `produced_by: null`, `grade: inferred`,
+    bounded candidates, a named reason; an authenticated claim resolves it;
+    an owner is never invented. (b) Signing: signed rows plus the hash
+    chain are the acceptance; observer-made detections are attributed to a
+    seat but signed by the observer; daily GPG checkpoints stay pending
+    while the root is held, with no device-signed substitute. (c) Scope:
+    cockpit-local (filesystem, hooks, git metadata, local GUI events); GitHub
+    ingress, webhooks, cloud and hook installation deferred; split 2.6a
+    detection/claims/log and 2.6b GUI events lane after L8-D's version bump.
+    Rejected: picking the most recent seat as owner (a guess signed as a
+    fact); observer signing with a seat's key (a key the observer does not
+    hold); device-signed daily checkpoints standing in for the root
+    (changes what the checkpoint proves).
+    """
+
+  managed {
+    created = json"\"2026-10-23T14:11:17Z\""
+    decided = json"\"2026-10-23\""
+    id = json"\"01M5MHM2W8VHTMH889ZYT138NH\""
+    links = json"[{\"rel\":\"supersedes-as-index\",\"to\":\"[[2026-10-22-architecture-round-1#30]]\"},{\"rel\":\"decides\",\"to\":\"[[provenance]]\"},{\"rel\":\"decides\",\"to\":\"[[events]]\"}]"
+    number = json"30"
+    operator = json"[]"
+    updated = json"\"2026-10-24T00:10:38Z\""
+    body_tail = json"\"\\n\""
+  }
+}

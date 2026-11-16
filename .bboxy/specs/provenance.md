@@ -1,12 +1,31 @@
 ---
-id: "3TMDSCB44BZ9X4KNRZFWEMGSBR"
-type: "spec"
+id: 3TMDSCB44BZ9X4KNRZFWEMGSBR
+type: spec
 number: 111
-title: "Provenance — decided"
-created: "2026-10-21T22:41:36Z"
-updated: "2026-11-03T23:01:32Z"
+title: Provenance — decided
+created: 2026-10-21T22:41:36Z
 links:
-  - { to: "[[d30-artifact-provenance-scope]]", rel: decision }
+- to: '[[d30-artifact-provenance-scope]]'
+  rel: decision
+intent: Every Markdown record carries its creator, updater, declared inputs and digests of its body and frontmatter, signed over a pre-authentication encoding and paired with a log entry.
+updated: 2026-11-16T19:45:06.663Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:b7df24f1597de5963c2d9b1cc0e3847963c5c7ab6abf26c30d239de8f5c7fbe5
+  frontmatter_digest: sha256:da1c2c2fe009785f28ad78449386031ef3dd80e674f7f602fa4658088bd590de
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: qzs5yrI21ODgQRTc822J8s0ax9x2q2hFywKS4mfJJHzbh2XiNchABXEVq4ZSZ4HevhLEvxRs1zSFG/kjBUgzAA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151738
+  event:
+    id: 01M7JY8K6FYES0EYDRT3EFAN3V
+    sequence: 151738
+    hash: 2757a6a4e7f6dfb648e81fbe3016627f49e2f25fe5cb4245b6fe2e695d023885
 ---
 # Provenance — decided
 

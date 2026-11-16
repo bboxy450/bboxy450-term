@@ -11,24 +11,25 @@ links:
   rel: decision
 - to: '[[canvas]]'
   rel: sibling
-updated: 2026-11-12T23:44:27.836Z
-created_by: seat:01M788X1K2MZH0V5CH8RDS2EYS
-updated_by: seat:01M788X1K2MZH0V5CH8RDS2EYS
+intent: The terminal core is a trimmed fork of alacritty_terminal at a pinned HEAD that keeps grid and term state, drops tty, selection and vi mode, and runs a viewport-only grid in the daemon.
+updated: 2026-11-16T19:52:05.370Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
 authorship:
-  signer: seat:01M788X1K2MZH0V5CH8RDS2EYS
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
   kind: seat
-  public_key: QirMRCVq4MGjLqozHY5Hg1PxrBTQC7432d3nv2JAmW0=
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
   process_generation: '1'
 provenance:
   digest: sha256:f5841fe2ede0f21bf038f9cd9c02809f4f36014bb47169760424a5073b94b5e8
-  frontmatter_digest: sha256:ebce32099d457c9be4730eca5ac64a9890942c2d5deff341b956773447d816b5
-  signer: seat:01M788X1K2MZH0V5CH8RDS2EYS
-  sig: 9wEaNGvidy8L6DyqAuUInxVBFgZSml8r3CI4fPxj6p8lFgweO64dObq3WzwCXLys8lSQJvXZQswkvUcfTX2yBA==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/82822
+  frontmatter_digest: sha256:cdb5b4c2be6424f5b9e18deb0aac831644e0f0018c196d2eb4d3195772c1acd2
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: iXdeKDNTS+meeMp/kdBp2p0tpYWBhSPndZS02A+kSgNJuWzfgCwqDpnhUij5HeuzGTldDdUenfJoCxACwuEJCA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151798
   event:
-    id: 01M792BZQZ66R3V4K793WTSZ72
-    sequence: 82822
-    hash: 9cb6cbdc16e6724b75f592590375b8afbb9d09f9f9a2bbdc408f1afb3c06809c
+    id: 01M7JYNC3EA8S303GDQSM38HGT
+    sequence: 151798
+    hash: a242032cb5cec337439a3ed117d319f86c2124381850489c6a42deea7381060f
 ---
 # Terminal core — the stack, as decisions
 

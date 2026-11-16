@@ -2,17 +2,41 @@
 id: 01M5TFBJ0ZJRSE9RR1FP9C0YVZ
 type: spec
 number: 333
-title: "resource ledger: what inference, CPU, memory and disk each agent and each pipeline stage spends, per landed cut; which numbers gate and which advise; the levers each number points at"
+title: 'resource ledger: what inference, CPU, memory and disk each agent and each pipeline stage spends, per landed cut; which numbers gate and which advise; the levers each number points at'
 status: decided
 links:
-  - { to: "[[landing]]", rel: builds-on }
-  - { to: "[[test-policy]]", rel: builds-on }
-  - { to: "[[d325-ci-capacity]]", rel: builds-on }
-  - { to: "[[presubmit-tests-fast]]", rel: builds-on }
-  - { to: "[[kill-only-own-pids]]", rel: builds-on }
-  - { to: "[[no-chokepoints]]", rel: invariant }
-created: "2026-10-25T21:27:06Z"
-updated: "2026-10-25T21:27:06Z"
+- to: '[[landing]]'
+  rel: builds-on
+- to: '[[test-policy]]'
+  rel: builds-on
+- to: '[[d325-ci-capacity]]'
+  rel: builds-on
+- to: '[[presubmit-tests-fast]]'
+  rel: builds-on
+- to: '[[kill-only-own-pids]]'
+  rel: builds-on
+- to: '[[no-chokepoints]]'
+  rel: invariant
+created: 2026-10-25T21:27:06Z
+intent: Inference, CPU, memory and disk spent by each agent and pipeline stage are accounted against the landed cut they served, or as waste, and each number is marked as gating or advisory.
+updated: 2026-11-16T19:45:10.861Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:a79b554d3378aacb732be4809521f0a48a69829f75db321291e743d1aa00513c
+  frontmatter_digest: sha256:017f41d1a5b51e8e111098e55ac16864252d6342283a061226bba3da8f8132f2
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: hhab8Q1et0aCTnSqrnDDl7rg/BjAr7qyXhW2JCCiW69YkghC5um7EfHofcSQ1Jan93OEF0akbsUx6SfjWfzcCw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151742
+  event:
+    id: 01M7JY8QA5GCBX6XWJKTS5JF9P
+    sequence: 151742
+    hash: 20ca0fcb147fb403306a6c114f9a44f0a696c799be63c137a35f7eeab845096c
 ---
 # Resource ledger
 

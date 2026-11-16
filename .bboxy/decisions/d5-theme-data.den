@@ -1,0 +1,25 @@
+module decisions.`d5-theme-data`
+
+decision D5ThemeData {
+  title "Theme is data"
+  status Decided
+  body """
+    # Decision 5: Theme is data
+
+    **Theme is data.** One source, `design/tokens.toml`, becomes a Theme value at
+    startup (hot-reload in the lab), passed by reference to layout and draw.
+    bbt-ui holds a neutral default for tests; the bboxy theme is an asset of the
+    app. Rejected: compile-time consts; trait object.
+    """
+
+  managed {
+    created = json"\"2026-10-22T19:02:54Z\""
+    decided = json"\"2026-10-22\""
+    id = json"\"01M5JFXASG4VAB3PJJ87CTPY5R\""
+    links = json"[{\"rel\":\"supersedes-as-index\",\"to\":\"[[2026-10-22-architecture-round-1#5]]\"}]"
+    number = json"5"
+    operator = json"[]"
+    updated = json"\"2026-10-24T00:10:38Z\""
+    body_tail = json"\"\\n\""
+  }
+}

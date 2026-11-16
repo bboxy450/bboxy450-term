@@ -1,0 +1,31 @@
+module invariants.`packaged-inputs-current`
+
+invariant PackagedInputsCurrent {
+  title "packaged build inputs match their canonical repository sources"
+  cost "stale bundled inputs make the published crate differ from the tested workspace"
+  check $ python3 -I scripts/release-inputs.py
+  status Active
+  body """
+    # Packaged build inputs match their canonical repository sources
+
+    A crate's `release-inputs/` directory mirrors repository-relative paths.
+    Every file there is a regular byte-identical copy of the canonical source.
+    The workspace uses the canonical files; Cargo's isolated package build uses
+    these copies. `scripts/landing.py::native_input_crates` derives the same mapping,
+    so a source edit still selects the crate and its reverse dependencies.
+
+    `python3 -I scripts/release-inputs.py` returns 0 when every copy agrees and 1
+    with the mismatched paths otherwise. It runs in the default invariant set.
+    This check implements the Oracle's release ruling 20143 (2026-10-26).
+    """
+
+  managed {
+    created = json"\"2026-10-26T20:54:48Z\""
+    id = json"\"01M5WZX468FCVNRG4Q5265SEN1\""
+    links = json"[{\"rel\":\"constrains\",\"to\":\"[[landing]]\"}]"
+    number = json"361"
+    slow = json"false"
+    updated = json"\"2026-10-26T20:54:48Z\""
+    body_tail = json"\"\\n\""
+  }
+}

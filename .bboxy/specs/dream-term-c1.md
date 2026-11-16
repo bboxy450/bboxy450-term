@@ -7,26 +7,27 @@ links:
 - to: '[[interfaces/dream-term-c1]]'
   rel: interface
 id: 01M6NP71V62A4WE211ZW5FCRGH
-updated: 2026-11-06T16:07:55.765Z
 created: 2026-11-05T11:06:29.528Z
 number: 93377961364370
-created_by: seat:01M6NJ9RS9EXJ7M5AK1AY1B3JR
-updated_by: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+intent: Term inspects only its own seats' closed sessions after they end, through one bounded owned subprocess of the harness's D0 inspection, with no inference, KB writes or new mux dependency.
+updated: 2026-11-16T19:50:18.925Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
 authorship:
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
   kind: seat
-  public_key: UgGFd6fs0Ln9gJXlN2fw8kUmonpBkr4IBn/U5N0uOrY=
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
   process_generation: '1'
 provenance:
   digest: sha256:d37651d51e74d034b05b1095db67672eb93b200decd0ec3394bc74e9c220de53
-  frontmatter_digest: sha256:94a3dfa86d616439bef2817b51f513ce5df8bfd2e283275a60c5a2bd01635d67
-  signer: seat:01M6NJ8E8ZZ27GP1HDBR5R550E
-  sig: vWZbVzxWxKXZO/SmH2RAi06E3XHlBshTeAGSytieMlb+tg4Tx6xUGiW3Lw+EVoH8hPHgmY47uwA7cykz4k1mDg==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/149540
+  frontmatter_digest: sha256:f51c9042e92da29bd5a5bbaeff17e844a5f85cb8d86fdbe156dfe103f5e5a805
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: 8sTudl9s2Iz/Teb0HKcJxjWow+12wFKFi0Idp+w6+srT7W083M1S5us0HciGkKgacLqZJV7vRCVIHjz2TFSmBQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151760
   event:
-    id: 01M6RSVQQM4AVK11EV23HYGMZQ
-    sequence: 149540
-    hash: 84761bab7982a516ed04efbe5f2e493139aeb112fd011807537566c0777b0a5e
+    id: 01M7JYJ456EWSQ4DJP15M8N51B
+    sequence: 151760
+    hash: a2ac797d9f6b5d37d86fcc50d846d3c10f8400ce8791d116515fd4157d6ac811
 ---
 # C1: own-seat, post-session Dream inspection
 

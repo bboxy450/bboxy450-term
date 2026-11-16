@@ -1,10 +1,28 @@
 ---
-id: "0HHE5X8Q1K2CHYNSWF1C53SHGZ"
-type: "spec"
+id: 0HHE5X8Q1K2CHYNSWF1C53SHGZ
+type: spec
 number: 122
-title: "Channel tree — pubsub as a filesystem of sinks"
-created: "2026-10-22T01:04:13Z"
-updated: "2026-10-24T00:10:38Z"
+title: Channel tree — pubsub as a filesystem of sinks
+created: 2026-10-22T01:04:13Z
+intent: Pub/sub is one bboxy450:// namespace where a folder is a channel, a sink is one delivery endpoint, subscribing adds a sink entry and publishing to a path pattern delivers to the matching sinks.
+updated: 2026-11-16T19:44:23.262Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:573aab8c73800b6990c95fa16f19dc285197cb5f193495c374a8c655aeedfe6e
+  frontmatter_digest: sha256:b9ec59594f4916cb48b7fb3114e4f0fe92da3e48e52a77baa72dc971ba982323
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: O87lx0t4Q7hCFPIQHSaQzQiY8K3m42mH6qS3aou77ybBOs9hgeIuC6j51EPMCphs5hBLoKPEIVFwjV+HHOkoCA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151714
+  event:
+    id: 01M7JY78TQH8WXMP7PX63EYTQ2
+    sequence: 151714
+    hash: 689c396ad8d888bb4620608453fd9df2a28ed17a00e9fbdc9688bd39a3c63dcb
 ---
 # Channel tree — pubsub as a filesystem of sinks
 

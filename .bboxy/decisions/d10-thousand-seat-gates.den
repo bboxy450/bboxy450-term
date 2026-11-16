@@ -1,0 +1,30 @@
+module decisions.`d10-thousand-seat-gates`
+
+import runtime
+
+decision D10ThousandSeatGates {
+  title "1000 seats: four measured gates before C1 ships"
+  decides runtime
+  status Decided
+  body """
+    # Decision 10: 1000 seats: four measured gates before C1 ships
+
+    **1000 seats: four measured gates before C1 ships.** Memory per seat
+    (1000-seat headless fixture under an RSS budget); bus fan-out (throughput
+    and p99 under Oracle bursts with the weighted fair queue); supervisor fds
+    and poller (firehose at 1000 seats, p99 write latency); sidebar and minimap
+    draw (1000 rows, 50 visible, hitch meter). Budgets come from the first
+    measurement, never a guess ([[runtime]]).
+    """
+
+  managed {
+    created = json"\"2026-10-22T19:02:54Z\""
+    decided = json"\"2026-10-22\""
+    id = json"\"01M5JFXASG79RZCJTFPX6RGZRT\""
+    links = json"[{\"rel\":\"supersedes-as-index\",\"to\":\"[[2026-10-22-architecture-round-1#10]]\"},{\"rel\":\"decides\",\"to\":\"[[runtime]]\"}]"
+    number = json"10"
+    operator = json"[]"
+    updated = json"\"2026-10-24T00:10:38Z\""
+    body_tail = json"\"\\n\""
+  }
+}

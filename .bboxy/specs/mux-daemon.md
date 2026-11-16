@@ -1,13 +1,33 @@
 ---
-id: "0Y29DKW4NY4NFYTQEKAE0EV8ZK"
-type: "spec"
+id: 0Y29DKW4NY4NFYTQEKAE0EV8ZK
+type: spec
 number: 84
-title: "Mux daemon — process survival and state delivery"
-created: "2026-10-21T19:43:20Z"
-updated: "2026-10-25T10:31:36Z"
+title: Mux daemon — process survival and state delivery
+created: 2026-10-21T19:43:20Z
 links:
-  - { to: "[[d21-ring-durability]]", rel: decision }
-  - { to: "[[d22-tick-journal]]", rel: decision }
+- to: '[[d21-ring-durability]]'
+  rel: decision
+- to: '[[d22-tick-journal]]'
+  rel: decision
+intent: 'Seats survive GUI and logic crashes: a per-machine supervisor owns PTY masters and bounded byte history, a restartable logic process owns terminal models, messaging and MCP, and the GUI only renders.'
+updated: 2026-11-16T19:51:34.302Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:966e21a815f374bd0bffaeef6f679115465db4560509d5f2d38278efdd2b6df8
+  frontmatter_digest: sha256:8c8b188e97a6a0fa6955b196153b63a7ba74e4630e204c5ffbeb9abd39201703
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: HG0YDldXCl4vfbJmQw61ECPNKQhNO+HZxNXfbK/Z02IFZQFkbiLlROQd+W0nt0Zm/iOujUUmGEgGCBV8pQKxBw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151788
+  event:
+    id: 01M7JYMDRFPMRR1YZ3N3ESAH2R
+    sequence: 151788
+    hash: 51fc47af936ed9bbc7fa88c7f1d53f8af9da03d348922acf16748fb69f2a48f4
 ---
 # Mux daemon — process survival and state delivery
 

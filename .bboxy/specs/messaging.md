@@ -1,26 +1,31 @@
 ---
-authorship:
-  kind: seat
-  process_generation: '1'
-  public_key: dz6NmhXKbHy9Oj4XPzJo0/rAkWqtxM4tdPbxlsgDDG4=
-  signer: seat:01M6ER6V2ZYS7Z1K05TE6ZJTJD
 created: 2026-10-21T18:57:39Z
-created_by: seat:01M6ER6V2ZYS7Z1K05TE6ZJTJD
 id: 2C06HC6R5PF2S85MPFMY6AZ563
 links:
 - rel: decision
   to: '[[d23-recipient-batching]]'
 number: 71
-provenance:
-  digest: sha256:0c34e483254069c23a214226597950379217ea75ee6745e12897d965c45c3b2d
-  frontmatter_digest: sha256:a961035d85930cceb61ab113d38a2b7c266770a25ddf2cff0249e8a356d33a5f
-  log: .bboxy/log/2026-11-02.jsonl#539
-  sig: L2e/FZmYiVGH+lWTfqeZqjLQCvpxdJIauroTxDruvoI70QAZmdP28fVGJ4bCwZUpAI/b9nlC4gHL6iWypKx0AA==
-  signer: seat:01M6ER6V2ZYS7Z1K05TE6ZJTJD
 title: Messaging — proposed architecture
 type: spec
-updated: 2026-11-02T18:31:20.304Z
-updated_by: seat:01M6ER6V2ZYS7Z1K05TE6ZJTJD
+intent: 'Messaging is our own service on Quinn: signed envelopes proving author seat and role grant, durable inbox and outbox with delivery evidence, role priority, destination grants, mute and published presence.'
+updated: 2026-11-16T19:51:27.662Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:7a47b5d45d28ef881177543b146e8f6dcd02bd8fc97c79803416f5b79baabadc
+  frontmatter_digest: sha256:884ac617e3c22cabc5422c3a1d297be2eed4ece30ad28d3517b6669ab5253385
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: hzle7ZusHfJQsHAb4LKdct1KwOdjkjTH4BGOrYUi/LhdzGumyIhEk9rrj7ne8cAN+7ZUlsdLCXGiHeP9dPRDCQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151786
+  event:
+    id: 01M7JYM7922X2Z0XG2YPF2B8NX
+    sequence: 151786
+    hash: c0a197754b7cfcfb07cb81843a37c4032568777993f3001b5687d65553d6c95d
 ---
 # Messaging — proposed architecture
 

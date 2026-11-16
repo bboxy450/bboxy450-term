@@ -1,0 +1,28 @@
+module tasks.`2026-11-02-fast-land`
+
+task FastLand {
+  title "Fast landing by default: compile, test changed packages, push"
+  verify $ make land
+  brief """
+    # Fast landing by default
+
+    Operator: land.sh is a poor gate on this CPU-constrained machine; agents sat in it for 25-50 min.
+
+    - `make land` now runs `scripts/land-fast.sh`: rebase, `cargo check --workspace --all-targets`,
+      clippy and tests for changed packages only, corpus/formal checks only when their inputs change,
+      push with rebase-and-recompile retries. Niced, half the cores, private build dir.
+    - `make land-full` keeps the previous full signed gate (`scripts/land.sh --full`) via `land-gate`.
+    - LAND.md and AGENTS.md describe the new default. This change landed through the new path itself.
+    - Not covered: rustfmt (main is not fmt-clean today), reverse-dependency tests, the full suite.
+    """
+
+  managed {
+    created = json"\"2026-11-02T17:45:00Z\""
+    id = json"\"01M6EN3WJNV1ZF59VKAWK3HSBX\""
+    number = json"5186"
+    role = json"\"executor\""
+    status = Done
+    updated = json"\"2026-11-02T17:45:00Z\""
+    body_tail = json"\"\\n\""
+  }
+}

@@ -1,0 +1,27 @@
+module decisions.`d7-provider-supervisor-link`
+
+decision D7ProviderSupervisorLink {
+  title "Provider yields a supervisor link"
+  status Decided
+  body """
+    # Decision 7: Provider yields a supervisor link
+
+    **Provider yields a supervisor link.** `Provider` produces a SupervisorLink
+    per host: LocalProvider returns the unix socket; FakeProvider wraps the local
+    supervisor in a scripted link (connect, latency, drop, reconnect from
+    fixtures); SshProvider later bootstraps a supervisor over ssh and tunnels the
+    same protocol. Seats, rings and adapters never know where they run.
+    Rejected: provider spawns seats (duplicates the protocol); data only.
+    """
+
+  managed {
+    created = json"\"2026-10-22T19:02:54Z\""
+    decided = json"\"2026-10-22\""
+    id = json"\"01M5JFXASGF86TA6AHDA5NW9FE\""
+    links = json"[{\"rel\":\"supersedes-as-index\",\"to\":\"[[2026-10-22-architecture-round-1#7]]\"}]"
+    number = json"7"
+    operator = json"[]"
+    updated = json"\"2026-10-24T00:10:38Z\""
+    body_tail = json"\"\\n\""
+  }
+}

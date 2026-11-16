@@ -1,10 +1,28 @@
 ---
-id: "4AN26KWPX64CEC0HVQZWC6MYEA"
-type: "spec"
+id: 4AN26KWPX64CEC0HVQZWC6MYEA
+type: spec
 number: 87
-title: "MCP control plane — the Oracle's hands"
-created: "2026-10-21T20:04:14Z"
-updated: "2026-11-04T20:40:00Z"
+title: MCP control plane — the Oracle's hands
+created: 2026-10-21T20:04:14Z
+intent: Seats control the swarm through role-filtered MCP tools that enforce grants, bound reads and input, cap spawns, audit every call and return next-step hints.
+updated: 2026-11-16T19:51:18.746Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:94a2d31aa49fc0d149591c4e92f37763169b35f8c642115ecc1a5800db3ee45c
+  frontmatter_digest: sha256:1e245d3b8e65105bcfca099b1c7bae1be828b84a50587c9f7f81bdfd33f12a2d
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: spgMLG+5DjGBKx6eEhml/7gviOYA/BZ4/kjvVP+kh2x72oN/Zoa+v5zScneBf8TJqcz76M6bXi3Oby8yO4X9CA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151782
+  event:
+    id: 01M7JYKYJ7ABWWR1JZTE3T65BP
+    sequence: 151782
+    hash: af7fb94b0f06d7568b2c3c7f55d9a454e94a35805099f072c862d009eb088cc0
 ---
 # MCP control plane — the Oracle's hands
 

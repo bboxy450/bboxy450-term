@@ -2,14 +2,35 @@
 id: 01M5WG2WSGF22CM3MKX7VC8P3W
 type: spec
 number: 355
-title: "budgets: frame time, memory, disk, build and run time and inference, allocated across subsystems with margins; measurement confirms an allocation, it never replaces one"
+title: 'budgets: frame time, memory, disk, build and run time and inference, allocated across subsystems with margins; measurement confirms an allocation, it never replaces one'
 status: baselined
 links:
-  - { to: "[[interfaces]]", rel: builds-on }
-  - { to: "[[resource-ledger]]", rel: builds-on }
-  - { to: "[[seats-967-frame]]", rel: constrains }
-created: "2026-10-26T16:18:20Z"
-updated: "2026-10-26T18:31:26Z"
+- to: '[[interfaces]]'
+  rel: builds-on
+- to: '[[resource-ledger]]'
+  rel: builds-on
+- to: '[[seats-967-frame]]'
+  rel: constrains
+created: 2026-10-26T16:18:20Z
+intent: Each shared resource (frame time, memory, disk, build and run time, inference) is allocated across subsystems with an explicit margin, and measurements confirm the allocation rather than replace it.
+updated: 2026-11-16T19:44:12.073Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:8d2c5731a5331c109e1b9094808628b06f3e30e2be18ace485e01affb3c78716
+  frontmatter_digest: sha256:6b19845f8f6619c552b903612e59e8ae7de3a49605e2162ea4957872d7bea8cf
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: digWOrJIeJoe9+ObpWK4EQfjUjGvyogQM3t0lYkTOsRUM1A84UBWailrtKRZHpta1qDa7jCfeqYHz1u6Gsg8Cg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151710
+  event:
+    id: 01M7JY6XXBF24WNMF4AEN9S0SA
+    sequence: 151710
+    hash: fa8f6629b83cbd06a3cfe6b442e5aee9d57cc32590c0e7364dcb7f54d2557322
 ---
 # Budgets
 

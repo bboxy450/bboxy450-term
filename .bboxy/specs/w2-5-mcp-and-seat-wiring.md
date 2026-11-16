@@ -5,21 +5,52 @@ type: spec
 title: W2.5 MCP server and W2.5b seat wiring kit
 status: decided
 links:
-  - { to: "[[d3-mcp-server]]", rel: decision }
-  - { to: "[[d4-seat-identity]]", rel: decision }
-  - { to: "[[d13-document-types]]", rel: decision }
-  - { to: "[[d28-structured-task-verification]]", rel: decision }
-  - { to: "[[d31-device-bound-operator-journal]]", rel: decision }
-  - { to: "[[2026-10-22-c-cockpit]]", rel: epic }
-  - { to: "[[mcp-control-plane]]", rel: spec }
-  - { to: "[[messaging]]", rel: spec }
-  - { to: "[[work-items]]", rel: spec }
-  - { to: "[[harness-adapters]]", rel: spec }
-  - { to: "[[architecture]]", rel: as-built }
-  - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
-  - { to: "[[c1-live-seats]]", rel: shares-socket }
+- to: '[[d3-mcp-server]]'
+  rel: decision
+- to: '[[d4-seat-identity]]'
+  rel: decision
+- to: '[[d13-document-types]]'
+  rel: decision
+- to: '[[d28-structured-task-verification]]'
+  rel: decision
+- to: '[[d31-device-bound-operator-journal]]'
+  rel: decision
+- to: '[[2026-10-22-c-cockpit]]'
+  rel: epic
+- to: '[[mcp-control-plane]]'
+  rel: spec
+- to: '[[messaging]]'
+  rel: spec
+- to: '[[work-items]]'
+  rel: spec
+- to: '[[harness-adapters]]'
+  rel: spec
+- to: '[[architecture]]'
+  rel: as-built
+- to: '[[2026-10-22-architecture-round-1]]'
+  rel: decisions
+- to: '[[c1-live-seats]]'
+  rel: shares-socket
 created: 2026-10-22T20:09:59Z
-updated: "2026-10-27T23:15:00Z"
+intent: Each harness seat reaches logic's MCP server through a per-seat stdio bridge carrying a capability token, and logic alone dispatches, enforces grants and audits every call on the seat stream.
+updated: 2026-11-16T19:52:16.663Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:2f74cafe54935f0c7f1282b6f906da3a16c171a11123220c74b67b08a18edc14
+  frontmatter_digest: sha256:4e3af7245570d1d6a5c5ba8a3bc62795ad58a5306348d90ff0967e37a74ced33
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: bRts1BYr4LHFADoVda//keVfjzi40/HdEmbSPMsc0dwDd5mD62Pe3ysfnlplSz+Ag91gN16hHx94mzVnZtmKAQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151802
+  event:
+    id: 01M7JYNQ3ZS67NEV957FH1ZKVQ
+    sequence: 151802
+    hash: 44fddaa951a97a73ab1b0d4d982f91db60b0e01f946a29e1e22267b036c3f4c2
 ---
 # W2.5 MCP server and W2.5b seat wiring kit
 

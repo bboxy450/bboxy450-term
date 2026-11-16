@@ -1,0 +1,31 @@
+module decisions.`d26-terminal-key-ownership`
+
+import `gui-components`
+
+decision D26TerminalKeyOwnership {
+  title "Terminals own every plain key"
+  decides `gui-components`
+  status Decided
+  body """
+    # Decision 26: Terminals own every plain key
+
+    **Terminals own every plain key (2026-10-23, Oracle finding in
+    [[gui-components]] §4.4).** With a terminal pane focused, Tab, arrows
+    and every other plain key go to the PTY; pane navigation is ⌘⌥ arrows
+    (spatial) and ⌘⌥ Tab (tree order); plain Tab and arrows navigate only
+    in the launcher, overlays, text fields and app chrome. Rejected: plain
+    Tab/arrows for pane navigation (steals them from shells and TUIs);
+    a modal "navigation mode" (one more state the operator must notice).
+    """
+
+  managed {
+    created = json"\"2026-10-23T08:06:43Z\""
+    decided = json"\"2026-10-23\""
+    id = json"\"01M5KWRHHRV8TP65ST6CGTZDM6\""
+    links = json"[{\"rel\":\"supersedes-as-index\",\"to\":\"[[2026-10-22-architecture-round-1#26]]\"},{\"rel\":\"decides\",\"to\":\"[[gui-components]]\"}]"
+    number = json"26"
+    operator = json"[]"
+    updated = json"\"2026-10-24T00:10:38Z\""
+    body_tail = json"\"\\n\""
+  }
+}

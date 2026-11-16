@@ -1,10 +1,28 @@
 ---
-id: "38TCRNC4PG2FKGRAZ66M0A6PWG"
-type: "spec"
+id: 38TCRNC4PG2FKGRAZ66M0A6PWG
+type: spec
 number: 107
-title: "Networking — transport, discovery, failover, pubsub, remote hosts"
-created: "2026-10-21T22:26:59Z"
-updated: "2026-10-24T00:10:38Z"
+title: Networking — transport, discovery, failover, pubsub, remote hosts
+created: 2026-10-21T22:26:59Z
+intent: Remote transport is upstream quinn behind one Transport trait, with our own direct dial, UDP punch, encrypted relay and mainline-DHT discovery, and no quinn type visible above the net crate.
+updated: 2026-11-16T19:51:39.122Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:30cc79fabc568afa4decb59f3e164bc7b939d43d54ecd557bdf901fb4677c75e
+  frontmatter_digest: sha256:77a4567bf3558a829f09f0ebb508aded0d6168195e73bedfe4a17617b8a3b8c4
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: 8Bx6O3CZwD0MYl39w3pnaG6EPeazaj3IMCaT5Fmb0NAH/9YduNvdsU2mtAwrJsXMUhmz6Ap3r8pf23p6mJuyAw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151790
+  event:
+    id: 01M7JYMJF8H98P6G7Y6EG498Y8
+    sequence: 151790
+    hash: 440fd91971c7fcb28bffe1bdb4680ee39aa40bd5f5075e8aa9fcbf0f94705a21
 ---
 # Networking — transport, discovery, failover, pubsub, remote hosts
 

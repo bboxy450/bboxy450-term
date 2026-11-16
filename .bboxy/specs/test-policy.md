@@ -2,17 +2,41 @@
 id: 01M5SZK7DG7CTKSGVFM4BD2RTC
 type: spec
 number: 327
-title: "test policy: what a test is for, the mechanical criteria for pointless, dumb and too-direct tests, what is deleted, rewritten, moved to the night or kept, and how a sweep proves coverage did not drop"
+title: 'test policy: what a test is for, the mechanical criteria for pointless, dumb and too-direct tests, what is deleted, rewritten, moved to the night or kept, and how a sweep proves coverage did not drop'
 status: decided
 links:
-  - { to: "[[landing]]", rel: builds-on }
-  - { to: "[[presubmit-tests-fast]]", rel: invariant }
-  - { to: "[[d321-out-of-integration-hell]]", rel: builds-on }
-  - { to: "[[e2e-acceptance]]", rel: builds-on }
-  - { to: "[[d316-pass-means-the-whole-promise]]", rel: builds-on }
-  - { to: "[[mantras]]", rel: mantra }
-created: "2026-10-25T16:51:40Z"
-updated: "2026-10-26T02:25:00Z"
+- to: '[[landing]]'
+  rel: builds-on
+- to: '[[presubmit-tests-fast]]'
+  rel: invariant
+- to: '[[d321-out-of-integration-hell]]'
+  rel: builds-on
+- to: '[[e2e-acceptance]]'
+  rel: builds-on
+- to: '[[d316-pass-means-the-whole-promise]]'
+  rel: builds-on
+- to: '[[mantras]]'
+  rel: mantra
+created: 2026-10-25T16:51:40Z
+intent: Each test checks one contract and fails for exactly one reason under any load; pointless tests are deleted, real-time and too-direct tests are rewritten, and law-bearing tests are kept and tagged.
+updated: 2026-11-16T19:45:23.642Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:b916c8adf7d1fe43bb5cf988922e70f06877ae3f178c6f70065e936ce8f37bd4
+  frontmatter_digest: sha256:920e44ef5cdd9e4f5e8431f40ec88f2e471e2e8184a459d1373e3c033a86899e
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: j49MVpM8NpdHxfFte+Xz2q2QS7FO90+0E+3LFTiqhE+As5R9BSSFbIk3CmwwWsEb33vlPLGbUYlxlBps3W4iAA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151750
+  event:
+    id: 01M7JY93S3SZT2WKXP9VD39D4F
+    sequence: 151750
+    hash: 94f1ebee4146b8fd61f877f6c446c88e395e3bdb08f42a36f300069398bc65d5
 ---
 # Test policy
 

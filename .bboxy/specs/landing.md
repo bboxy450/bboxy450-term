@@ -2,19 +2,45 @@
 id: 01M5SXY4XAK7MSG9ZV3W9R6EFM
 type: spec
 number: 323
-title: "landing: how a cut travels from an Executor's branch to main, with a bounded presubmit, self-service landing by script, a batched postsubmit with culprit finding and revert-first, a quarantine with expiry, and the scale run on a schedule"
+title: 'landing: how a cut travels from an Executor''s branch to main, with a bounded presubmit, self-service landing by script, a batched postsubmit with culprit finding and revert-first, a quarantine with expiry, and the scale run on a schedule'
 status: decided
 links:
-  - { to: "[[d321-out-of-integration-hell]]", rel: decision }
-  - { to: "[[main-red-bounded]]", rel: invariant }
-  - { to: "[[no-chokepoints]]", rel: invariant }
-  - { to: "[[never-block-swarm]]", rel: invariant }
-  - { to: "[[kill-only-own-pids]]", rel: invariant }
-  - { to: "[[d320-dispatch-by-noun]]", rel: builds-on }
-  - { to: "[[e2e-acceptance]]", rel: builds-on }
-  - { to: "[[seats-967-frame]]", rel: constrains }
-created: "2026-10-25T16:22:41Z"
-updated: "2026-10-26T05:08:41Z"
+- to: '[[d321-out-of-integration-hell]]'
+  rel: decision
+- to: '[[main-red-bounded]]'
+  rel: invariant
+- to: '[[no-chokepoints]]'
+  rel: invariant
+- to: '[[never-block-swarm]]'
+  rel: invariant
+- to: '[[kill-only-own-pids]]'
+  rel: invariant
+- to: '[[d320-dispatch-by-noun]]'
+  rel: builds-on
+- to: '[[e2e-acceptance]]'
+  rel: builds-on
+- to: '[[seats-967-frame]]'
+  rel: constrains
+created: 2026-10-25T16:22:41Z
+intent: A cut lands by script after a bounded presubmit on the candidate rebased onto origin/main, main is verified afterwards in batches with culprit finding, and a red main is fixed by revert first.
+updated: 2026-11-16T19:51:10.162Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:2a2ba3ee48331caa879b4912fa5dae14b14923b4a9932545553815c593ca59f3
+  frontmatter_digest: sha256:93affcd718d0b9da3c41b4164481da3925bc9e52fb6617559927f5319a9381a0
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: /K+XpZnKi1dbZ1M2E95ELbFrPfeBY533SQXG7WR+NQdhys79J6jZHv/unDXIOb69Y2kDA/1tL2+YJjjWqR/aBw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151778
+  event:
+    id: 01M7JYKP65SKJ50RM008WV45R0
+    sequence: 151778
+    hash: 8a1cb4304e96588e42e7a85452be34d5dc25870be7487ba16b9fa04b8369eef7
 ---
 # Landing
 

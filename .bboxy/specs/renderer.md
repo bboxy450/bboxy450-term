@@ -1,10 +1,28 @@
 ---
-id: "6163KGYXYABV0YZZN8JZ0FWPXK"
-type: "spec"
+id: 6163KGYXYABV0YZZN8JZ0FWPXK
+type: spec
 number: 98
-title: "Renderer — architecture and automated render testing"
-created: "2026-10-21T21:11:08Z"
-updated: "2026-10-31T18:18:14Z"
+title: Renderer — architecture and automated render testing
+created: 2026-10-21T21:11:08Z
+intent: One wgpu device draws each frame through fixed passes (cell backgrounds, glyphs, decorations, chrome, effects) with retained geometry and per-row damage tracking, and render output is checked headlessly.
+updated: 2026-11-16T19:45:08.822Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:802944debb151e868acf00872c3145b708ac5650433e8a4bd55643abe396c886
+  frontmatter_digest: sha256:500a914dc2004fbeae77e410291795535b63daf6cd2c28c4e8d074c13dea2985
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: CLS/e908ypIIB/BOcOUaiF7CkRdc0Vade8bMRE0U2OATIy3kOElLg3Gi9ZhY6j3x7WXVSvwdV0kw0ohjFW71CQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151740
+  event:
+    id: 01M7JY8NADYDM78S4QZSM56R1P
+    sequence: 151740
+    hash: 6e6cde4750b34f9d0a0eca969fc9f6c5d2693e0ac58006bea3c58ea6f5436e6c
 ---
 # Renderer — architecture and automated render testing
 

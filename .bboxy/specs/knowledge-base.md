@@ -2,19 +2,45 @@
 id: 01M5P2MXKR8DWBXXRX0J1J89WC
 type: spec
 number: 256
-title: "knowledge base — the bundled data_source plugin: records, wikilinks, numbers, images and search over the .bboxy store, swappable in Settings"
+title: 'knowledge base — the bundled data_source plugin: records, wikilinks, numbers, images and search over the .bboxy store, swappable in Settings'
 status: decided
 links:
-  - { to: "[[plugins]]", rel: contract }
-  - { to: "[[work-items]]", rel: model }
-  - { to: "[[storage]]", rel: backing }
-  - { to: "[[document-viewer]]", rel: consumer }
-  - { to: "[[d257-knowledge-base-first-plugin]]", rel: decision }
-  - { to: "[[d255-visualization-is-ours]]", rel: direction }
-  - { to: "[[d47-decision-nodes]]", rel: model }
-  - { to: "[[d48-every-record-has-a-number]]", rel: model }
-created: "2026-10-24T04:28:04Z"
-updated: "2026-10-29T18:31:33Z"
+- to: '[[plugins]]'
+  rel: contract
+- to: '[[work-items]]'
+  rel: model
+- to: '[[storage]]'
+  rel: backing
+- to: '[[document-viewer]]'
+  rel: consumer
+- to: '[[d257-knowledge-base-first-plugin]]'
+  rel: decision
+- to: '[[d255-visualization-is-ours]]'
+  rel: direction
+- to: '[[d47-decision-nodes]]'
+  rel: model
+- to: '[[d48-every-record-has-a-number]]'
+  rel: model
+created: 2026-10-24T04:28:04Z
+intent: The bundled data_source plugin serves records, wikilinks, numbers, images and search over each workspace's .bboxy store, and a workspace can swap it for another provider such as GitKB in Settings.
+updated: 2026-11-16T19:44:50.201Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:fe4dd06475955bf9d8e1aaeea3d6b01ca3106809c96d182f207397cbdb08bb11
+  frontmatter_digest: sha256:64343f985e439c5c84f72474eb58bbdf51274a5ba364df630dfea52e0ab54350
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: 58xtTZ/86sHQWU/2sw5F845ZWpr87vz3Sd/uTfsnEoUjVHpTw8Qk0MMNc7AcsB20N0fdNzf3e9g1UDGiW5emDQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151730
+  event:
+    id: 01M7JY835FCMSFBA2VJ8KG62E6
+    sequence: 151730
+    hash: 663df37d2c4b33f9197d9192d9ba560a70924ed3c1fac42c847c5d9500012efc
 ---
 # Knowledge base
 

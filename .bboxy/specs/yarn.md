@@ -2,19 +2,45 @@
 id: 01M5MR5NCX1EZRXQMF2FDBC44Y
 number: 150
 type: spec
-title: "yarn — the reactor macro: declared event-loop topology, checked by the compiler"
+title: 'yarn — the reactor macro: declared event-loop topology, checked by the compiler'
 status: decided
 links:
-  - { to: "[[d11-supervisor-death-survivable]]", rel: decision }
-  - { to: "[[d33-yarn-macro]]", rel: decision }
-  - { to: "[[2026-10-22-architecture-round-1]]", rel: decisions }
-  - { to: "[[runtime]]", rel: constrains }
-  - { to: "[[open-source]]", rel: spec }
-  - { to: "[[layering]]", rel: invariant }
-  - { to: "[[c1-live-seats]]", rel: adopts }
-  - { to: "[[mux-daemon]]", rel: adopts-later }
+- to: '[[d11-supervisor-death-survivable]]'
+  rel: decision
+- to: '[[d33-yarn-macro]]'
+  rel: decision
+- to: '[[2026-10-22-architecture-round-1]]'
+  rel: decisions
+- to: '[[runtime]]'
+  rel: constrains
+- to: '[[open-source]]'
+  rel: spec
+- to: '[[layering]]'
+  rel: invariant
+- to: '[[c1-live-seats]]'
+  rel: adopts
+- to: '[[mux-daemon]]'
+  rel: adopts-later
 created: 2026-10-23T16:05:44Z
-updated: 2026-10-23T16:05:44Z
+intent: An event loop's sources, priorities and relations are declared in a reactor! macro that the compiler validates as a graph and expands into one loop, with a scheduling projection checked by TLC.
+updated: 2026-11-16T19:45:29.522Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:08b3390f31e157d1dc7ea34415289ff87d32d97b94ee079d2b5b4227e52f157d
+  frontmatter_digest: sha256:e785b0403b99584ff5750c325e8b229721db570e6e9f27262b9d7b60d7a3e7ee
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: 5om7/O+OxYGgkddbeT0EZp7C183M8uif+aj/uCZv4vi+eICK0Mgoys410JNpTe2llxBM4EH6d5EZ95S46UGoBw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151752
+  event:
+    id: 01M7JY99H38ADFMK5T36W1BWJ8
+    sequence: 151752
+    hash: 24666795866fdcd5bf49f514f5c1cf8f0f33da6b7ff620459f9e8dcd33f48341
 ---
 # yarn
 

@@ -1,0 +1,33 @@
+module decisions.`d18-executor-harness-override`
+
+import `mcp-control-plane`
+
+decision D18ExecutorHarnessOverride {
+  title "Claude Code may be an Executor when the operator launches it so"
+  decides `mcp-control-plane`
+  status Decided
+  body """
+    # Decision 18: Claude Code may be an Executor when the operator launches it so
+
+    **Claude Code may be an Executor when the operator launches it so
+    (operator, 2026-10-22: "i gave you one more executor that is claude
+    code").** The `~/.agents/AGENTS.md` default stands for sessions nobody
+    assigned; an explicit operator launch outranks it, as that file says.
+    Seraph Quillfire is the first. The terminal's harness-eligibility rule
+    ([[mcp-control-plane]] Caller, role and grants) gains the same clause:
+    the operator can assign any role to any seat; the signed class in the
+    grant is what receivers trust. Rejected: editing AGENTS.md (the
+    operator's file; its override clause already covers this).
+    """
+
+  managed {
+    created = json"\"2026-10-22T21:22:33Z\""
+    decided = json"\"2026-10-22\""
+    id = json"\"01M5JQX1D8KVP28ASZF10Q9FBD\""
+    links = json"[{\"rel\":\"supersedes-as-index\",\"to\":\"[[2026-10-22-architecture-round-1#18]]\"},{\"rel\":\"decides\",\"to\":\"[[mcp-control-plane]]\"}]"
+    number = json"18"
+    operator = json"[\"i gave you one more executor that is claude code\"]"
+    updated = json"\"2026-10-24T00:10:38Z\""
+    body_tail = json"\"\\n\""
+  }
+}

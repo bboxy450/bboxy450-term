@@ -1,10 +1,28 @@
 ---
-id: "4DH8RH916HD0THD4CXYKE76TXX"
-type: "spec"
+id: 4DH8RH916HD0THD4CXYKE76TXX
+type: spec
 number: 94
-title: "Identity and account"
-created: "2026-10-21T20:17:23Z"
-updated: "2026-10-24T00:10:38Z"
+title: Identity and account
+created: 2026-10-21T20:17:23Z
+intent: The account root is the operator's pinned OpenPGP primary key, which delegates device and seat grants with custody, epochs, revocation and recovery, and no MCP role can export or sign as the primary.
+updated: 2026-11-16T19:51:00.823Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:a238a6cfb3f47764c2c683011b78331fb698fc5826550a5a8859d8c3c9b3fcc2
+  frontmatter_digest: sha256:ef7167c0b866fff6b61b8dbcf62210f188e7b7e3a8643398d6ed56ba8e271665
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: hBqYrnOyHjLCe1xYEZFc0F0WjBLIL940zLtESu70PnLdPNFJrqSaJJ3eIuWCLiZnns3McESs5SVqH/crybAdAw==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151774
+  event:
+    id: 01M7JYKD2CR7V75PHZ9K0MF7TM
+    sequence: 151774
+    hash: 51a4bae092e12107f3a779f8e68de187703f344b052065dc29189b4e033e3301
 ---
 # Identity and account
 
