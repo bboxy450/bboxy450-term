@@ -175,7 +175,11 @@ fn markdown_target(token: &str) -> Option<String> {
     if token.contains("://") || token.chars().any(char::is_control) {
         return None;
     }
-    let end = token.rfind(".md")? + 3;
+    // A knowledge record is Markdown or Den; take the later suffix.
+    let end = [".md", ".den"]
+        .iter()
+        .filter_map(|suffix| token.rfind(suffix).map(|at| at + suffix.len()))
+        .max()?;
     if token[..end].contains(':') { return None; }
     let suffix = &token[end..];
     if !suffix.is_empty()
@@ -410,6 +414,8 @@ mod tests {
     fn markdown_paths_wikilinks_aliases_and_wrapped_locators_use_displayed_cells() {
         let d = display(b"see (e2e/target.md:12:3), [[target|an alias]]", 60, 2);
         assert_eq!(d.document_at([100., 1.]).as_deref(), Some("e2e/target.md"));
+        let den = display(b"see specs/kb/task_lifecycle.den:4 now", 60, 2);
+        assert_eq!(den.document_at([40., 1.]).as_deref(), Some("specs/kb/task_lifecycle.den"));
         assert_eq!(d.document_at([370., 1.]).as_deref(), Some("target"));
         assert_eq!(d.document_at([10., 1.]), None);
         let d = display(b"[[target|a long alias]]", 12, 3);
