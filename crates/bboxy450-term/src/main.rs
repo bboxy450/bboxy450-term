@@ -10360,6 +10360,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         })?;
         return Ok(());
     }
+    if hook_args.first().is_some_and(|arg| arg == "kb-convert") {
+        // Markdown records to Den with the same metadata, body and signature (make convert-kb).
+        std::process::exit(bbt_mux::knowledge::den::run_cli(&hook_args[1..]));
+    }
     if hook_args.first().is_some_and(|arg| arg == "code") {
         // The code-query MCP server (specs/code-query.md), rooted at the seat's cwd.
         let root = bboxy450_code::Root::new(std::env::current_dir()?)?;

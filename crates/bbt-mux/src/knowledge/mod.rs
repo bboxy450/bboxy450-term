@@ -8,7 +8,7 @@
 //! transport, registry/Settings and foreign providers are later checkpoints.
 mod bboxy;
 pub(crate) mod commit;
-pub(crate) mod den;
+pub mod den;
 pub(crate) mod effects;
 mod paths;
 mod read;

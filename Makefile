@@ -100,6 +100,7 @@ help:
 	  'make test-startup-modal         Focused startup checklist layout and observation tests' \
 	  'make check-den                  Check repository Den specs (excluding broken controls)' \
 	  'make render-den [DEN_OUT=dir]   Mirror tracked Den specs to Markdown beside them, or under DEN_OUT' \
+	  'make convert-kb KIND=dir [ROOT=.bboxy] [DRY_RUN=1]  Markdown records of one kind to Den, same metadata/body/signature' \
 	  'make lock                       Refresh workspace lock metadata offline' \
 	  'make lock-online                Resolve added dependencies with the registry' \
 	  'make bump-harness [REV=sha]      Move and stage the harness submodule and changed lockfile (default origin/main)' \
@@ -2807,6 +2808,16 @@ check-den:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo build --locked -p bboxy450-den --bin bboxy450-den --target-dir '$(TARGET_DIR)'; \
 	git ls-files -z -- '*.den' ':!:crates/bboxy450-den/tests/unsound/*.den' | xargs -0 '$(TARGET_DIR)/debug/bboxy450-den' check
+
+# Convert ROOT/KIND/**/*.md records to Den beside them: the same (metadata, body),
+# so every signature still verifies; the .md goes. DRY_RUN=1 writes nothing.
+# Exit 1 when a record is refused. Prose kinds and artifacts are never converted.
+.PHONY: convert-kb
+convert-kb:
+	@set -eu; test -n '$(KIND)' || { echo 'usage: make convert-kb KIND=reports [ROOT=.bboxy] [DRY_RUN=1]' >&2; exit 2; }; \
+	. ./scripts/cache-env.sh; \
+	cargo build --locked -p bboxy450-term --bin bboxy450-term --target-dir '$(TARGET_DIR)'; \
+	'$(TARGET_DIR)/debug/bboxy450-term' kb-convert --root '$(or $(ROOT),.bboxy)' --kind '$(KIND)' $(if $(DRY_RUN),--dry-run)
 
 # Mirror every tracked .den record to Markdown: beside its source, or under
 # DEN_OUT (a GitKB checkout, say) keeping the relative path. The Den source

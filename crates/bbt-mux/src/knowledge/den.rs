@@ -718,6 +718,220 @@ pub(crate) fn render(
     }
 }
 
+/// The Den source of a Markdown record with the same (metadata, body), so
+/// every signature over that pair stays valid. `path` is the Markdown path,
+/// root-relative; the Den path is the same with `.den`. Refused, naming the
+/// first differing key, when Den cannot hold the record exactly.
+pub fn convert(markdown: &str, path: &str) -> Result<String, String> {
+    let document = crate::index::Document::parse(path, markdown);
+    if let Some(error) = document.error {
+        return Err(error);
+    }
+    let den = format!("{}.den", path.strip_suffix(".md").unwrap_or(path));
+    let source = render(&den, &document.metadata, &document.body, None)?;
+    let (metadata, body) = parse(&source)?;
+    if metadata != document.metadata {
+        let empty = Map::new();
+        let (old, new) = (
+            document.metadata.as_object().unwrap_or(&empty),
+            metadata.as_object().unwrap_or(&empty),
+        );
+        let key = old
+            .keys()
+            .chain(new.keys())
+            .filter(|key| old.get(*key) != new.get(*key))
+            .min()
+            .cloned()
+            .unwrap_or_default();
+        return Err(format!("the Den record differs at {key}"));
+    }
+    if body != document.body {
+        return Err("the Den record differs in its body".into());
+    }
+    Ok(source)
+}
+
+/// The record directories `kb-convert` reads: the kinds Den holds.
+const CONVERTIBLE: [&str; 10] = [
+    "tasks",
+    "reports",
+    "decisions",
+    "specs",
+    "invariants",
+    "interfaces",
+    "bugs",
+    "e2e",
+    "epics",
+    "proposals",
+];
+/// What `kb-convert` did with one directory.
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct Converted {
+    pub converted: usize,
+    pub skipped: usize,
+    pub refused: usize,
+}
+fn markdown_files(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) -> std::io::Result<()> {
+    let mut entries: Vec<_> = std::fs::read_dir(dir)?
+        .map(|entry| entry.map(|e| e.path()))
+        .collect::<Result<_, _>>()?;
+    entries.sort();
+    for path in entries {
+        let hidden = path
+            .file_name()
+            .and_then(|n| n.to_str())
+            .is_some_and(|n| n.starts_with('.'));
+        if hidden || path.is_symlink() {
+            continue;
+        }
+        if path.is_dir() {
+            markdown_files(&path, out)?;
+        } else if path.extension().is_some_and(|x| x == "md") {
+            out.push(path);
+        }
+    }
+    Ok(())
+}
+/// One file: `Ok(Some(den))` converts, `Ok(None)` is skipped with the reason
+/// in `why`, `Err` is refused.
+fn convert_file(text: &str, relative: &str) -> Result<Result<String, String>, String> {
+    let document = crate::index::Document::parse(relative, text);
+    if let Some(error) = &document.error {
+        return Err(error.clone());
+    }
+    let kind = document.metadata["type"].as_str().unwrap_or_default();
+    if !KINDS.contains(&kind) || kind == "recipe" {
+        return Ok(Err(format!("a {kind} record stays Markdown")));
+    }
+    if relative.ends_with("/SKILL.md") {
+        return Ok(Err("a skill stays Markdown".into()));
+    }
+    let signature = |doc: &crate::index::Document| {
+        crate::provenance::queries::document_signature(doc)["status"]
+            .as_str()
+            .unwrap_or_default()
+            .to_owned()
+    };
+    let before = signature(&document);
+    if before == "invalid" {
+        return Err("its signature does not verify".into());
+    }
+    let source = match convert(text, relative) {
+        // A required field the record does not have yet: not a fault.
+        Err(why) if why.starts_with("X354 ") => return Ok(Err(why)),
+        result => result?,
+    };
+    let den = format!("{}.den", relative.strip_suffix(".md").unwrap_or(relative));
+    let after = signature(&crate::index::Document::parse(&den, &source));
+    if after != before {
+        return Err(format!("its signature is {before} as Markdown and {after} as Den"));
+    }
+    Ok(Ok(source))
+}
+
+/// `kb-convert --root DIR --kind KIND [--dry-run]`: each `ROOT/KIND/**/*.md`
+/// record becomes the `.den` file beside it with the same (metadata, body) and
+/// signature, and the `.md` goes. One line per file and a summary on `out`.
+/// A dry run writes nothing.
+pub fn convert_kind(
+    root: &std::path::Path,
+    kind: &str,
+    dry_run: bool,
+    out: &mut dyn std::io::Write,
+) -> Result<Converted, String> {
+    if !CONVERTIBLE.contains(&kind) {
+        return Err(format!(
+            "{kind} is not converted; Den kinds: {}",
+            CONVERTIBLE.join(", ")
+        ));
+    }
+    let mut files = Vec::new();
+    markdown_files(&root.join(kind), &mut files).map_err(|e| format!("{kind}: {e}"))?;
+    let mut done = Converted::default();
+    let io = |e: std::io::Error| e.to_string();
+    for path in files {
+        let relative = path
+            .strip_prefix(root)
+            .ok()
+            .and_then(|p| p.to_str())
+            .ok_or("a record path is not UTF-8")?
+            .to_owned();
+        let den = path.with_extension("den");
+        let outcome = if den.exists() {
+            Ok(Err("its .den twin already exists".to_owned()))
+        } else {
+            match std::fs::read_to_string(&path) {
+                Ok(text) => convert_file(&text, &relative),
+                Err(error) => Err(error.to_string()),
+            }
+        };
+        let line = match outcome {
+            Ok(Ok(source)) => {
+                if !dry_run {
+                    let temp = den.with_extension("den.tmp");
+                    std::fs::write(&temp, &source).map_err(io)?;
+                    std::fs::rename(&temp, &den).map_err(io)?;
+                    std::fs::remove_file(&path).map_err(io)?;
+                }
+                done.converted += 1;
+                "converted".to_owned()
+            }
+            Ok(Err(why)) => {
+                done.skipped += 1;
+                format!("skipped: {why}")
+            }
+            Err(why) => {
+                done.refused += 1;
+                format!("refused: {}", why.replace('\n', " "))
+            }
+        };
+        writeln!(out, "{relative}: {line}").map_err(io)?;
+    }
+    writeln!(
+        out,
+        "kb-convert {kind}: {} converted, {} skipped, {} refused{}",
+        done.converted,
+        done.skipped,
+        done.refused,
+        if dry_run { " (dry run: nothing written)" } else { "" }
+    )
+    .map_err(io)?;
+    Ok(done)
+}
+
+/// The `kb-convert` command line; the exit status: 0 clean, 1 when a record
+/// was refused, 2 for a usage error.
+pub fn run_cli(args: &[String]) -> i32 {
+    let usage = "usage: bboxy450-term kb-convert --kind DIR [--root DIR] [--dry-run]";
+    let (mut root, mut kind, mut dry_run) = (std::path::PathBuf::from(".bboxy"), None, false);
+    let mut args = args.iter();
+    while let Some(arg) = args.next() {
+        match arg.as_str() {
+            "--root" => match args.next() {
+                Some(dir) => root = dir.into(),
+                None => return usage_error(usage),
+            },
+            "--kind" => kind = args.next().cloned(),
+            "--dry-run" => dry_run = true,
+            _ => return usage_error(usage),
+        }
+    }
+    let Some(kind) = kind else {
+        return usage_error(usage);
+    };
+    match convert_kind(&root, &kind, dry_run, &mut std::io::stdout().lock()) {
+        Ok(done) => i32::from(done.refused > 0),
+        Err(error) => {
+            eprintln!("kb-convert: {error}");
+            2
+        }
+    }
+}
+fn usage_error(usage: &str) -> i32 {
+    eprintln!("{usage}");
+    2
+}
+
 #[cfg(test)]
 #[allow(
     clippy::disallowed_methods,
@@ -898,6 +1112,101 @@ mod tests {
                 round("epics/E.den", metadata, "", Some(&source));
             }
         }
+    }
+
+    /// `kb-convert` over copies of real records (`tests/fixtures/kb-convert`):
+    /// each is converted or skipped with a reason, the Index sees the same
+    /// records, ids and numbers, every signature verifies, and a tampered
+    /// record is refused and left alone.
+    #[test]
+    fn kb_convert_keeps_records_ids_numbers_and_signatures() {
+        use crate::index::Index;
+        use crate::store::sqlite::SqliteStore;
+        use std::path::Path;
+        let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/kb-convert");
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join(".bboxy");
+        let kinds = ["tasks", "reports", "decisions", "specs", "interfaces"];
+        for kind in kinds {
+            std::fs::create_dir_all(root.join(kind)).unwrap();
+            for entry in std::fs::read_dir(fixtures.join(kind)).unwrap() {
+                let path = entry.unwrap().path();
+                std::fs::copy(&path, root.join(kind).join(path.file_name().unwrap())).unwrap();
+            }
+        }
+        // One signed record whose body was edited after signing.
+        let honest = root.join("reports/2026-11-01-seat-launch-environment.md");
+        let tampered = root.join("reports/2026-11-02-tampered.md");
+        let text = std::fs::read_to_string(&honest).unwrap();
+        std::fs::write(&tampered, text.replacen("\n---\n", "\n---\nEdited after signing.\n", 1)).unwrap();
+        let tampered_text = std::fs::read_to_string(&tampered).unwrap();
+        let seen = |index: &Index| -> std::collections::BTreeMap<String, (String, Value)> {
+            index.documents.iter().map(|(path, doc)| {
+                let stem = path.trim_end_matches(".md").trim_end_matches(".den").to_owned();
+                (stem, (doc.id.clone(), doc.metadata["number"].clone()))
+            }).collect()
+        };
+        let mut index = Index::open(&root, SqliteStore::open(&temp.path().join("db")).unwrap()).unwrap();
+        index.scan().unwrap();
+        let before = seen(&index);
+        let signed: Vec<_> = index.documents.iter()
+            .filter(|(_, doc)| crate::provenance::queries::document_signature(doc)["status"] == "valid")
+            .map(|(path, _)| path.trim_end_matches(".md").to_owned()).collect();
+        let status = |doc: &crate::index::Document| {
+            crate::provenance::queries::document_signature(doc)["status"].as_str().unwrap_or_default().to_owned()
+        };
+        let statuses: std::collections::BTreeMap<String, String> = index.documents.iter()
+            .map(|(path, doc)| (path.clone(), status(doc))).collect();
+        assert!(signed.len() >= 4, "{statuses:?}");
+        // A dry run writes nothing.
+        let mut out = Vec::new();
+        convert_kind(&root, "reports", true, &mut out).unwrap();
+        assert!(!root.join("reports/2026-11-01-seat-launch-environment.den").exists());
+        let mut totals = Converted::default();
+        let mut lines = String::new();
+        for kind in kinds {
+            let mut out = Vec::new();
+            let done = convert_kind(&root, kind, false, &mut out).unwrap();
+            lines.push_str(&String::from_utf8(out).unwrap());
+            totals.converted += done.converted;
+            totals.skipped += done.skipped;
+            totals.refused += done.refused;
+        }
+        println!("{statuses:?}\n{lines}");
+        assert!(lines.contains("reports/2026-11-02-tampered.md: refused: its signature does not verify"), "{lines}");
+        assert!(lines.contains("decisions/2026-10-22-architecture-round-1.md: skipped: a note record stays Markdown"), "{lines}");
+        // Every file has one outcome; a refusal is exactly a signature that
+        // already failed (records edited after signing, and the tampered one).
+        let outcomes: Vec<_> = lines.lines().filter(|line| !line.starts_with("kb-convert ")).collect();
+        assert_eq!(outcomes.len(), statuses.len(), "{lines}");
+        for line in outcomes {
+            let (path, outcome) = line.split_once(": ").unwrap();
+            let refused = outcome.starts_with("refused: ");
+            assert_eq!(refused, statuses[path] == "invalid", "{line}");
+            assert!(refused || outcome == "converted" || outcome.len() > "skipped: ".len(), "{line}");
+        }
+        assert_eq!(totals.refused, statuses.values().filter(|s| *s == "invalid").count());
+        assert_eq!(totals.converted + totals.skipped + totals.refused, statuses.len());
+        assert!(totals.converted >= 7, "{lines}");
+        assert_eq!(std::fs::read_to_string(&tampered).unwrap(), tampered_text);
+        assert!(!root.join("reports/2026-11-02-tampered.den").exists());
+        // The Index reads the same records, by id and number, all still signed.
+        let mut index = Index::open(&root, SqliteStore::open(&temp.path().join("db2")).unwrap()).unwrap();
+        index.scan().unwrap();
+        assert_eq!(seen(&index), before);
+        let den = index.documents.keys().filter(|path| path.ends_with(".den")).count();
+        assert_eq!(den, totals.converted);
+        for stem in &signed {
+            let doc = index.documents.get(&format!("{stem}.den"))
+                .or_else(|| index.documents.get(&format!("{stem}.md"))).unwrap();
+            assert_eq!(crate::provenance::queries::document_signature(doc)["status"], "valid", "{stem}");
+        }
+        // Converting again finds nothing left to convert.
+        let mut out = Vec::new();
+        assert_eq!(convert_kind(&root, "tasks", false, &mut out).unwrap().converted, 0);
+        assert!(convert_kind(&root, "notes", false, &mut Vec::new()).unwrap_err().contains("not converted"));
+        // `convert` names the first key the Den record would lose.
+        assert!(convert("---\nnumber: 1\ntype: task\ntitle: T\n---\nB\n", "tasks/t.md").unwrap_err().contains("X354"));
     }
 
     #[test]

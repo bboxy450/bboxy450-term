@@ -1,0 +1,60 @@
+---
+id: "52WM96M06JH7KH8YMMDQ8MVFAG"
+type: "task"
+number: 59
+title: "Task: embedded agent messaging — research"
+created: "2026-10-21T18:53:32Z"
+updated: "2026-11-01T01:45:00Z"
+status: "done"
+reconciliation:
+- by: seat:01M6ABH71TVWGZ621NTD701PSH
+  disposition: superseded
+  evidence:
+  - https://github.com/bboxy450/bboxy450-term/commit/0f6a34d4
+  fresh_accepted: false
+  kind: historical
+  previous_status: none
+  reason: "KB cleanup 2026-10-31 (Oracle Nyx Copperwing, operator-requested): legacy record; body already marks it SUPERSEDED; plan replaced and later delivered by other tasks"
+---
+# Task: embedded agent messaging — research
+
+Date: 2026-10-21. Owner: Oracle. Assignee: Nyx Copperwing <EXECUTOR>. Status: SUPERSEDED (8fd15659). Previous brief wording: CLAIMED 2026-10-21.
+
+## Goal
+
+Specify how ICQ-style messaging lives inside bboxy450-term: agents and harnesses message each other locally and across machines, with NAT traversal, account-scoped identity, global channels and role-based priority.
+
+## Scope
+
+Research only. Read the `icq` crate source (`cargo install icq`; source at `~/.cargo/registry/src/*/icq-*` or `https://docs.rs/crate/icq/latest/source/`) and the Rust P2P stack. No code outside `.bboxy/`.
+
+## Questions to answer
+
+1. **Transport.** How does `icq` do direct QUIC → simultaneous NAT punch → E2E-encrypted relay? Which crates (`iroh`? `quinn`? custom)? `file:line` for the dial path and the relay fallback.
+2. **Identity.** How does `icq` derive and store keys, and how does it bind a harness session to a key? What would "one user account across machines" require on top: a root account key signing device/session keys, or a directory service?
+3. **Rooms.** How are `#channels` and private groups implemented: DHT, gossip, relay-hosted, or helper-hosted? What is the delivery guarantee and what is not?
+4. **Native delivery.** How does `icq` push a message into a Claude Code or Codex session (the `/tmp/cc-socks/*.sock` path, `crossSessionInbound`)? What does our terminal, which owns the PTY, get to do that an external daemon cannot?
+5. **Reuse boundary.** Three options, costed: (a) link `icq` as a library crate, (b) run the `icq` daemon and front it, (c) reimplement on `iroh`/`quinn`. Name what each one blocks us from doing on priorities and roles.
+6. **Priority and roles.** Where in a message envelope would a terminal-assigned role (Oracle/Executor/Creativity) and a priority live so the receiver can order and the UI can badge? Signed by whom?
+
+## Deliverables
+
+- `.bboxy/research/agent-messaging.md` — pointers and measured facts.
+- `.bboxy/specs/messaging.md` — recommended architecture, envelope sketch, identity model, open gaps.
+
+## Acceptance
+
+- Every question has an answer or an explicit **Gap:** line.
+- Transport and identity answers each carry at least one `file:line` pointer from the icq source.
+- The spec names the reuse option chosen and what it costs.
+
+## Verification
+
+```sh
+ls .bboxy/research/agent-messaging.md .bboxy/specs/messaging.md
+grep -c 'Gap:' .bboxy/specs/messaging.md
+```
+
+## Report back
+
+On `#bboxy450-term`: files written, commands run with exit status, what was not checked.
