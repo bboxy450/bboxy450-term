@@ -54,7 +54,12 @@ bboxy_cache_env() {
     esac
     KACHE_MAX_SIZE=${KACHE_MAX_SIZE:-40GiB}
     KACHE_LOCAL_ONLY=1
-    export KACHE_CACHE_DIR KACHE_MAX_SIZE KACHE_LOCAL_ONLY
+    # Cargo's job count (CARGO_BUILD_JOBS above) is the one concurrency limit.
+    # kache's own scheduler sizes permits from the CPU count and halves them
+    # under memory pressure: on this workspace it made a cold build 12.4 min
+    # against 8.8 min without it, and a second worktree 5.5 against 4.2 min.
+    KACHE_SCHEDULER=${KACHE_SCHEDULER:-0}
+    export KACHE_CACHE_DIR KACHE_MAX_SIZE KACHE_LOCAL_ONLY KACHE_SCHEDULER
     export RUSTC_WRAPPER=kache
     printf 'cache: on (kache; local store %s; %s)\n' "$KACHE_CACHE_DIR" "$KACHE_MAX_SIZE" >&2
     return 0
