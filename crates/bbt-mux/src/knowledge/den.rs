@@ -23,8 +23,10 @@
 //! | `managed { body_tail = json"..." }` | the white space that ends the body |
 //!
 //! Nested blocks and repeated lines (`staff`, `work`, `channel`, `gate`) stay
-//! in the file and have no metadata. A machine `spec` is read-only here: its
-//! name is its title and its body is the source in a fenced block.
+//! in the file and have no metadata. A machine `spec` is a record too: its
+//! `title` (else its name) and `intent` are its metadata with its `managed`
+//! block, its body is its source without that block in a fenced block, and
+//! the host writes only its `managed` block.
 use bboxy450_den::{Diagnostic, Field, Record, Value as Den};
 use serde_json::{Map, Value, json};
 
@@ -158,36 +160,56 @@ fn authored(record: &Record) -> Map<String, Value> {
     out
 }
 
-/// The author's part of a header record's source: its fields as metadata and
-/// its prose. `Err` is the source's diagnostics, ready to return to a writer.
+/// [`authored`], and a machine spec's name as its title when it has none.
+fn own(record: &Record) -> Map<String, Value> {
+    let mut out = authored(record);
+    if record.machine {
+        out.entry("title").or_insert_with(|| json!(record.name));
+    }
+    out
+}
+/// A machine spec's body: its source without the `managed` block, fenced.
+fn machine_body(text: &str) -> String {
+    format!(
+        "```den\n{}\n```\n",
+        bboxy450_den::unmanaged(text).trim_end()
+    )
+}
+/// The record a source holds. A header record must be sound; a `spec` with a
+/// state machine is read for its syntax only: `den_check` is what proves it.
+fn record(text: &str) -> Result<Record, String> {
+    match bboxy450_den::load(text) {
+        Ok(mut records) => Ok(records.remove(0)),
+        Err(diagnostics) => match bboxy450_den::layout(text) {
+            Ok((record, _)) if record.machine => Ok(record),
+            Err(machine) if diagnostics.iter().any(|d| d.code == "X190") => {
+                Err(refusal(&machine))
+            }
+            _ => Err(refusal(&diagnostics)),
+        },
+    }
+}
+/// The author's part of a record's source: its fields as metadata and its
+/// prose. `Err` is the source's diagnostics, ready to return to a writer.
 pub(crate) fn source(text: &str) -> Result<(Value, String), String> {
-    let record = bboxy450_den::load(text)
-        .map_err(|diagnostics| refusal(&diagnostics))?
-        .remove(0);
-    Ok((Value::Object(authored(&record)), bboxy450_den::body(&record)))
+    let record = record(text)?;
+    let body = if record.machine {
+        machine_body(text)
+    } else {
+        bboxy450_den::body(&record)
+    };
+    Ok((Value::Object(own(&record)), body))
 }
 
 /// Reads a `.den` file as the host's (metadata, body).
 pub(crate) fn parse(text: &str) -> Result<(Value, String), String> {
-    let record = match bboxy450_den::load(text) {
-        Ok(mut records) => records.remove(0),
-        Err(diagnostics) => {
-            // A `spec` with a state machine is not a header record. Reading it
-            // is syntax only; `den_check` is what proves it.
-            let outline = bboxy450_den::declarations(text).unwrap_or_default();
-            let machine = diagnostics.iter().any(|d| d.code == "X190")
-                || outline.iter().any(|d| !matches!(d.kind, "spec" | "field"));
-            return match outline.first() {
-                Some(spec) if machine && spec.kind == "spec" => Ok((
-                    json!({"type":"spec","title":spec.name}),
-                    format!("```den\n{}\n```\n", text.trim_end()),
-                )),
-                _ => Err(refusal(&diagnostics)),
-            };
-        }
+    let record = record(text)?;
+    let mut out = own(&record);
+    let mut body = if record.machine {
+        machine_body(text)
+    } else {
+        bboxy450_den::body(&record)
     };
-    let mut out = authored(&record);
-    let mut body = bboxy450_den::body(&record);
     for field in &record.managed {
         let name = field.name.as_str();
         let value = match &field.value {
@@ -381,13 +403,22 @@ pub(crate) fn render(
     let tail = &body[core.len()..];
     let mut source = match previous.and_then(|text| Some((text, bboxy450_den::layout(text).ok()?)))
     {
-        Some((text, (record, layout))) => {
-            if record.kind != kind {
+        Some((_, (record, _))) if record.kind != kind => {
+            return Err(format!(
+                "this file holds a {}, not a {kind}; a record keeps its type",
+                record.kind
+            ));
+        }
+        // The host writes a machine's `managed` block and nothing else.
+        Some((text, (record, _))) if record.machine => {
+            if machine_body(text) != body {
                 return Err(format!(
-                    "this file holds a {}, not a {kind}; a record keeps its type",
-                    record.kind
+                    "{path} is a machine spec: its body is its Den source, which frontmatter cannot change; write the Den source as the body instead"
                 ));
             }
+            text.to_owned()
+        }
+        Some((text, (record, layout))) => {
             let fields: Vec<_> = (0..record.fields.len())
                 .filter(|index| is_prose(&record.fields[*index]))
                 .collect();
@@ -428,10 +459,25 @@ pub(crate) fn render(
             }
             text
         }
-        None => generate(path, kind, map, core)?,
+        None => {
+            let machine = |text: &str| text.trim_start().starts_with("```den");
+            // A previous machine that does not parse is never replaced by a header.
+            let broken_machine = |text: &str| {
+                bboxy450_den::load(text).is_err_and(|d| d.iter().any(|d| d.code == "X190"))
+            };
+            if previous.is_some_and(broken_machine)
+                || (kind == "spec" && machine(core))
+            {
+                return Err(format!(
+                    "{path}: a machine spec is written as its Den source, not from frontmatter; send the source as the body"
+                ));
+            }
+            generate(path, kind, map, core)?
+        }
     };
     let (record, layout) = bboxy450_den::layout(&source).map_err(|d| refusal(&d))?;
-    let own = authored(&record);
+    let own = own(&record);
+    let tail = if record.machine { "" } else { tail };
     let mut lines = Vec::new();
     let mut other = Map::new();
     for (key, value) in map {
@@ -652,6 +698,31 @@ mod tests {
         assert_eq!(metadata["type"], "spec");
         assert!(metadata["title"].as_str().is_some_and(|title| !title.is_empty()));
         assert!(body.starts_with("```den\nmodule ") && body.ends_with("\n```\n"));
+        // The host stamps it: only the managed block is new, and the body stays.
+        let mut stamped = metadata.clone();
+        stamped["id"] = json!("01M71JZAEJPC72B5QT15N0E09Q");
+        stamped["number"] = json!(12);
+        stamped["provenance"] = json!({"sig":"AAAA","digest":"sha256:x"});
+        let written = round("specs/turnstile.den", stamped.clone(), &body, Some(&text));
+        let close = text.trim_end().len() - 1;
+        assert!(written.starts_with(&text[..close]), "{written}");
+        assert!(written.contains("\n  managed {\n    id = json\"\\\"01M71JZAEJPC72B5QT15N0E09Q\\\"\"\n"), "{written}");
+        assert_eq!(bboxy450_den::unmanaged(&written), text);
+        let again = round("specs/turnstile.den", stamped.clone(), &body, Some(&written));
+        assert_eq!(again, written);
+        // A title the source states is the title; a new one is managed.
+        stamped["title"] = json!("Turnstile, retitled");
+        round("specs/turnstile.den", stamped.clone(), &body, Some(&written));
+        // Frontmatter cannot change the machine, nor write one from nothing.
+        let changed = render("specs/turnstile.den", &stamped, "```den\nmodule x\n```\n", Some(&written)).unwrap_err();
+        assert!(changed.contains("is a machine spec"), "{changed}");
+        let fresh = render("specs/new.den", &stamped, &body, None).unwrap_err();
+        assert!(fresh.contains("written as its Den source"), "{fresh}");
+        let broken_machine = text.replacen("state {", "state {{", 1);
+        assert!(render("specs/turnstile.den", &stamped, &body, Some(&broken_machine)).unwrap_err().contains("written as its Den source"));
+        // Its source is what a writer sends: metadata and body as parse reads them.
+        assert_eq!(source(&written).unwrap(), source(&text).unwrap());
+        assert_eq!(source(&text).unwrap(), (metadata, body));
         let broken = parse("module a.B\ntask B {\n  title \"x\"\n}\n").unwrap_err();
         assert!(broken.contains("X354 line 2:1"), "{broken}");
     }

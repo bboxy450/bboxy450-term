@@ -76,6 +76,9 @@ pub struct Record {
     pub managed: Vec<Field>,
     /// One-based source line of the record keyword.
     pub line: u32,
+    /// True for a `spec` with a state machine. Its `fields` are only its
+    /// `intent` and `title`; the machine itself is read by [`crate::check`].
+    pub machine: bool,
 }
 /// One `name value` line of a record or of a nested block.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -622,6 +625,7 @@ impl<'a> Scan<'a> {
                 fields,
                 managed: self.managed,
                 line,
+                machine: false,
             },
             managed_line: self.managed_line,
             values: self.values,
@@ -676,6 +680,133 @@ pub(crate) fn parse(source: &str) -> Result<Parsed, Vec<Diagnostic>> {
     }
     .record()
     .map_err(|diagnostic| vec![diagnostic])
+}
+
+/// A machine spec's host part: its `intent`, `title` and `managed` block,
+/// found where the machine parser says they start. The machine is checked for
+/// syntax only; a repeated managed field is X356, as on a header record.
+fn machine(source: &str) -> Result<Parsed, Vec<Diagnostic>> {
+    let spec = crate::parser::parse(source)?;
+    let offset = |pos: Pos| {
+        let start: usize = source
+            .split_inclusive('\n')
+            .take(pos.line as usize - 1)
+            .map(str::len)
+            .sum();
+        start
+            + source[start..]
+                .chars()
+                .take(pos.column as usize - 1)
+                .map(char::len_utf8)
+                .sum::<usize>()
+    };
+    let mut scan = Scan {
+        src: source,
+        i: 0,
+        record: spec.name.text.clone(),
+        end: 0,
+        managed: Vec::new(),
+        managed_line: None,
+        values: Vec::new(),
+        managed_open: None,
+        managed_close: None,
+        top: Vec::new(),
+    };
+    let mut fields = Vec::new();
+    for (word, pos) in &spec.header {
+        let at = offset(*pos);
+        scan.i = at + word.len();
+        if *word == "managed" {
+            scan.managed_block(at).map_err(|d| vec![d])?;
+            continue;
+        }
+        scan.spaces();
+        let start = scan.i;
+        let value = scan.value(MAX_DEPTH).map_err(|d| vec![d])?;
+        scan.top.push((start, scan.end));
+        fields.push(Field {
+            name: (*word).to_owned(),
+            line: pos.line,
+            column: pos.column,
+            value,
+        });
+    }
+    let names = |path: &[crate::ast::Name]| path.iter().map(|n| n.text.clone()).collect();
+    let record = Record {
+        kind: "spec",
+        name: spec.name.text.clone(),
+        module: names(&spec.module),
+        imports: spec.imports.iter().map(|path| names(path)).collect(),
+        fields,
+        managed: scan.managed,
+        line: spec.name.pos.line,
+        machine: true,
+    };
+    let repeated = record.managed.iter().enumerate().find(|(index, field)| {
+        record.managed[..*index]
+            .iter()
+            .any(|earlier| earlier.name == field.name)
+    });
+    if let Some((_, field)) = repeated {
+        return Err(vec![
+            Pos {
+                line: field.line,
+                column: field.column,
+            }
+            .diagnostic(
+                "X356",
+                &record.name,
+                format!("{} is written twice", field.name),
+                "keep one line for this field",
+            ),
+        ]);
+    }
+    Ok(Parsed {
+        record,
+        managed_line: scan.managed_line,
+        values: scan.values,
+        managed_open: scan.managed_open,
+        managed_close: scan.managed_close,
+        top: scan.top,
+        close: offset(spec.close),
+    })
+}
+/// [`parse`] for a header record, [`machine`] for a machine spec.
+fn parse_any(source: &str) -> Result<Parsed, Vec<Diagnostic>> {
+    if is_record(source) {
+        parse(source)
+    } else {
+        machine(source)
+    }
+}
+
+/// The source without its `managed` block: what the author wrote. A block on
+/// lines of its own goes with those lines and one blank line before them, the
+/// way the host adds it. A source that does not parse is returned as it is.
+pub fn unmanaged(source: &str) -> String {
+    let Some((open, close)) = parse_any(source)
+        .ok()
+        .and_then(|parsed| parsed.managed_open.zip(parsed.managed_close))
+    else {
+        return source.to_owned();
+    };
+    let end = close + 1;
+    let start = source[..open].rfind('\n').map_or(0, |n| n + 1);
+    let stop = source[end..]
+        .find('\n')
+        .map_or(source.len(), |n| end + n + 1);
+    if !source[start..open].trim().is_empty() || !source[end..stop].trim().is_empty() {
+        return format!("{}{}", &source[..open], &source[end..]);
+    }
+    let before = &source[..start];
+    let blank = before
+        .strip_suffix('\n')
+        .and_then(|rest| {
+            let line = rest.rfind('\n').map_or(0, |n| n + 1);
+            rest[line..].trim().is_empty().then_some(line)
+        })
+        .filter(|_| start > 0);
+    format!("{}{}", &source[..blank.unwrap_or(start)], &source[stop..])
 }
 
 /// The fields a kind cannot do without.
@@ -993,7 +1124,7 @@ pub fn set_managed(
     field: &str,
     value: &str,
 ) -> Result<String, Vec<Diagnostic>> {
-    let parsed = parse(source)?;
+    let parsed = parse_any(source)?;
     let at = Pos {
         line: parsed.record.line,
         column: 1,
@@ -1047,7 +1178,11 @@ pub fn set_managed(
     let out = format!("{}{text}{}", &source[..start], &source[end..]);
     // The edit must be exactly one managed value: a `value` that closes the
     // block or opens a field would change the author's part of the record.
-    let written = load(&out)?.remove(0);
+    let written = if parsed.record.machine {
+        machine(&out)?.record
+    } else {
+        load(&out)?.remove(0)
+    };
     let before = &parsed.record;
     let expected = before.managed.len() + usize::from(existing.is_none());
     if value.contains('\n') || written.fields != before.fields || written.managed.len() != expected
@@ -1076,10 +1211,16 @@ pub struct Layout {
 }
 /// Loads the record like [`load`] and says where its parts are, so the host
 /// can replace a prose value or its whole `managed` block and keep every
-/// other byte. The host loads its result again: an edit is not checked here.
+/// other byte. A machine spec is read for its syntax only, as a record whose
+/// fields are its `intent` and `title` ([`Record::machine`]). The host loads
+/// its result again: an edit is not checked here.
 pub fn layout(source: &str) -> Result<(Record, Layout), Vec<Diagnostic>> {
-    let record = load(source)?.remove(0);
-    let parsed = parse(source)?;
+    let (record, parsed) = if is_record(source) {
+        (load(source)?.remove(0), parse(source)?)
+    } else {
+        let parsed = machine(source)?;
+        (parsed.record.clone(), parsed)
+    };
     let layout = Layout {
         values: parsed.top,
         managed: parsed

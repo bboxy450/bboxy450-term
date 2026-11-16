@@ -210,6 +210,16 @@ pub fn wikilinks(text: &str) -> Vec<Link> {
     result
 }
 
+/// Each record file's stamp and number; `None` for an unstamped record.
+type NumberCache = BTreeMap<PathBuf, (Stamp, Option<u64>)>;
+/// The parse error of a record that reads cleanly but was never numbered.
+const MISSING_NUMBER: &str = "frontmatter number must be a positive integer";
+/// A record the host has not stamped yet: it reads cleanly and has no
+/// `number` at all. It holds no number, and its first write gives it one.
+fn unstamped(doc: &Document) -> bool {
+    doc.error.as_deref() == Some(MISSING_NUMBER) && doc.metadata.get("number").is_none()
+}
+
 impl Document {
     pub fn parse(path: &str, text: &str) -> Self {
         use sha2::{Digest, Sha256};
@@ -266,7 +276,7 @@ impl Document {
             }
         }
         if doc.error.is_none() && record_number(&doc.metadata).is_none() {
-            doc.error = Some("frontmatter number must be a positive integer".into());
+            doc.error = Some(MISSING_NUMBER.into());
         }
         doc.links = wikilinks(text);
         if let Some(links) = doc.metadata.get("links").and_then(Value::as_array) {
@@ -358,7 +368,7 @@ pub struct Index {
     // not prove that an on-disk file still has the same contents.
     file_states: BTreeMap<String, FileState>,
     // Shared by clones of this root; each entry is checked against a fresh stat.
-    numbers: Arc<Mutex<BTreeMap<PathBuf, (Stamp, u64)>>>,
+    numbers: Arc<Mutex<NumberCache>>,
     #[cfg(test)]
     document_reads: usize,
 }
@@ -915,12 +925,19 @@ impl Index {
                     let doc = self
                         .current(relative)?
                         .ok_or_else(|| invalid("record disappeared during number scan"))?;
-                    let number = record_number(&doc.metadata).ok_or_else(|| {
-                        invalid(format!("{relative}: invalid or missing record number"))
-                    })?;
+                    let number = record_number(&doc.metadata);
+                    if number.is_none() && !unstamped(&doc) {
+                        return Err(invalid(format!(
+                            "{relative}: invalid or missing record number"
+                        )));
+                    }
                     cache.insert(path.clone(), (stamp, number));
                     number
                 }
+            };
+            let Some(number) = number else {
+                seen.insert(path);
+                continue;
             };
             let relative = path
                 .strip_prefix(&self.root)
@@ -962,7 +979,7 @@ impl Index {
             .as_object_mut()
             .ok_or_else(|| invalid("frontmatter must be a mapping"))?;
         let numbers = self.record_numbers()?;
-        let number = if let Some(current) = current {
+        let number = if let Some(current) = current.filter(|current| !unstamped(current)) {
             let number = record_number(&current.metadata)
                 .ok_or_else(|| invalid("existing record has no valid number; repair the record"))?;
             if let Some(paths) = numbers.get(&number).filter(|paths| paths.len() != 1) {
@@ -1440,6 +1457,50 @@ mod tests {
         std::fs::write(root.join("epics/e.den"), "module epics.e\nepic E {\n  intent \"Why now.\"\n  managed {\n    number = 7\n  }\n}\n").unwrap();
         index.scan_paths(&BTreeSet::from(["epics/e.den".into()])).unwrap();
         assert_eq!(index.documents["epics/e.den"].metadata["intent"], "Why now.");
+    }
+
+    /// The knowledge base's machine specs (copies in `tests/fixtures/den-specs`)
+    /// have no number until the host stamps their `managed` block; after one
+    /// write each indexes cleanly, keeps every byte of its machine and is signed.
+    #[test]
+    fn machine_specs_are_stamped_through_the_index() {
+        let fixtures = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/den-specs");
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join(".bboxy");
+        let mut paths = Vec::new();
+        for folder in ["specs/kb", "specs/delivery"] {
+            std::fs::create_dir_all(root.join(folder)).unwrap();
+            for entry in std::fs::read_dir(fixtures.join(folder)).unwrap() {
+                let name = entry.unwrap().file_name().into_string().unwrap();
+                let path = format!("{folder}/{name}");
+                std::fs::copy(fixtures.join(&path), root.join(&path)).unwrap();
+                paths.push(path);
+            }
+        }
+        assert_eq!(paths.len(), 5);
+        let mut index = Index::open(&root, SqliteStore::open(&temp.path().join("db")).unwrap()).unwrap();
+        index.scan().unwrap();
+        let (seat, key) = (Ulid::new(), SigningKey::from_bytes(&[41; 32]));
+        for path in &paths {
+            let original = std::fs::read_to_string(root.join(path)).unwrap();
+            let doc = index.documents[path].clone();
+            assert_eq!(doc.error.as_deref(), Some("frontmatter number must be a positive integer"), "{path}");
+            assert_eq!(doc.metadata["type"], "spec");
+            index.write(path, doc.metadata.clone(), &original, seat, &key).unwrap();
+            let written = std::fs::read_to_string(root.join(path)).unwrap();
+            assert_eq!(bboxy450_den::unmanaged(&written), original, "{path}");
+            assert!(bboxy450_den::check(&written).is_sound(), "{path}");
+            println!("--- {path} as the host wrote it ---\n{written}");
+        }
+        index.scan().unwrap();
+        let mut numbers = BTreeSet::new();
+        for path in &paths {
+            let doc = &index.documents[path];
+            assert_eq!(doc.error, None, "{path}");
+            assert!(doc.body.starts_with("```den\nmodule specs."), "{path}");
+            assert!(numbers.insert(record_number(&doc.metadata).unwrap()));
+            assert_eq!(crate::provenance::queries::document_signature(doc)["status"], "valid", "{path}");
+        }
     }
 
     #[test]

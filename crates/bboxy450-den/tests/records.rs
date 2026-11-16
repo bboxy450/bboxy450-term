@@ -617,14 +617,27 @@ fn layout_says_where_the_host_edits() {
         slice(layout.values[0]),
         "\"Den v1: the checker crate and make check-kb\""
     );
-    let brief = record.fields.iter().position(|f| f.name == "brief").unwrap();
+    let brief = record
+        .fields
+        .iter()
+        .position(|f| f.name == "brief")
+        .unwrap();
     let text = slice(layout.values[brief]);
-    assert!(text.starts_with("\"\"\"\n") && text.ends_with("\"\"\""), "{text}");
+    assert!(
+        text.starts_with("\"\"\"\n") && text.ends_with("\"\"\""),
+        "{text}"
+    );
     let managed = slice(layout.managed.unwrap());
-    assert!(managed.starts_with("managed {") && managed.ends_with("\n  }"), "{managed}");
+    assert!(
+        managed.starts_with("managed {") && managed.ends_with("\n  }"),
+        "{managed}"
+    );
     assert_eq!(&source[layout.close..], "}\n");
     let bare = "module a.B\nepic B { intent \"x\" }\n";
     let (_, layout) = bboxy450_den::layout(bare).unwrap();
     assert_eq!((layout.managed, &bare[layout.close..]), (None, "}\n"));
-    assert_eq!(bboxy450_den::layout("module a.B\ntask B {}\n").unwrap_err()[0].code, "X354");
+    assert_eq!(
+        bboxy450_den::layout("module a.B\ntask B {}\n").unwrap_err()[0].code,
+        "X354"
+    );
 }

@@ -278,9 +278,10 @@ fn knowledge_base_specs_match_their_fixtures() {
     if !kb.is_dir() {
         return; // A packaged crate has no knowledge base.
     }
+    // The knowledge base's copy may carry the host's managed block.
     for name in ["outbox.den", "outbox.lean"] {
         assert_eq!(
-            std::fs::read_to_string(kb.join(name)).unwrap(),
+            unmanaged(&std::fs::read_to_string(kb.join(name)).unwrap()),
             std::fs::read_to_string(fixture_dir("sound").join(name)).unwrap(),
             "{name}"
         );
@@ -643,4 +644,88 @@ fn defines_and_tables_expand_before_every_engine() {
         code("table Points: Side", "table Points: Sides"),
         ["X201 Sides is not declared"]
     );
+}
+
+/// A machine spec's `title` and `managed` block are the host's: the checker,
+/// the TLA+ export, the Lean statements and replay give the same bytes with
+/// or without them, and the host can find, set and remove the block.
+#[test]
+fn a_managed_block_changes_no_engine_output() {
+    let block = "\n  title \"A machine, stamped\"\n  managed {\n    id = id\"01M71JZAEJPC72B5QT15N0E09Q\"\n    number = json\"7\"\n    other = json\"{\\\"k\\\":[1,\\\"x\\\"]}\"\n  }\n";
+    let mut seen = 0;
+    for entry in std::fs::read_dir(fixture_dir("sound")).unwrap() {
+        let path = entry.unwrap().path();
+        if path.extension().is_none_or(|x| x != "den") {
+            continue;
+        }
+        let plain = std::fs::read_to_string(&path).unwrap();
+        let close = plain.rfind('}').unwrap();
+        let stamped = format!("{}{}{}", &plain[..close], &block[1..], &plain[close..]);
+        let name = path.display();
+        assert_eq!(check(&plain).to_json(), check(&stamped).to_json(), "{name}");
+        assert!(
+            check(&stamped).is_sound(),
+            "{name}: {}",
+            check(&stamped).to_text()
+        );
+        let tla = |source: &str| model(source).map(|m| m.tla()).map_err(|r| r.to_text());
+        assert_eq!(tla(&plain), tla(&stamped), "{name}");
+        let statements = |source: &str| match lean(source) {
+            Ok(machine) => Ok(machine.map(|m| m.statements())),
+            Err(report) => Err(report.to_text()),
+        };
+        assert_eq!(statements(&plain), statements(&stamped), "{name}");
+        let spec = parser::parse(&plain).unwrap();
+        for scenario in &spec.scenarios {
+            let lines: Vec<_> = plain
+                .lines()
+                .skip(scenario.pos.line as usize)
+                .take_while(|line| line.trim() != "}")
+                .collect();
+            let trace = lines.join("\n");
+            assert_eq!(
+                replay(&plain, &trace).to_json(),
+                replay(&stamped, &trace).to_json(),
+                "{name}"
+            );
+        }
+        assert_eq!(replay(&plain, "").to_json(), replay(&stamped, "").to_json());
+        // The host's part: found, edited in place, and removed exactly.
+        let (record, layout) = record::layout(&stamped).unwrap();
+        assert!(record.machine && record.kind == "spec", "{name}");
+        assert_eq!(record.managed.len(), 3);
+        let title = record.fields.iter().find(|f| f.name == "title").unwrap();
+        assert_eq!(title.value.text(), "A machine, stamped");
+        let (start, end) = layout.managed.unwrap();
+        assert!(stamped[start..end].starts_with("managed {") && stamped[..end].ends_with('}'));
+        let set = set_managed(&stamped, &record.name, "number", "json\"8\"").unwrap();
+        assert_eq!(set, stamped.replace("json\"7\"", "json\"8\""));
+        let added = set_managed(&plain, &record.name, "status", "Open").unwrap();
+        assert!(
+            added.contains("\n  managed {\n    status = Open\n  }\n"),
+            "{added}"
+        );
+        assert_eq!(unmanaged(&added), plain, "{name}");
+        assert_eq!(unmanaged(&plain), plain);
+        seen += 1;
+    }
+    assert!(seen >= 5);
+    let twice = include_str!("../tests/sound/outbox.den").replacen(
+        "  enum Msg",
+        "  managed { id = id\"X\" }\n  managed { id = id\"Y\" }\n  enum Msg",
+        1,
+    );
+    assert_eq!(check(&twice).diagnostics[0].code, "X356");
+    let repeated = include_str!("../tests/sound/outbox.den").replacen(
+        "  enum Msg",
+        "  managed {\n    id = id\"X\"\n    id = id\"Y\"\n  }\n  enum Msg",
+        1,
+    );
+    assert_eq!(record::layout(&repeated).unwrap_err()[0].code, "X356");
+    let bad = include_str!("../tests/sound/outbox.den").replacen(
+        "  enum Msg",
+        "  managed { id = Set() }\n  enum Msg",
+        1,
+    );
+    assert_eq!(check(&bad).diagnostics[0].code, "X101");
 }

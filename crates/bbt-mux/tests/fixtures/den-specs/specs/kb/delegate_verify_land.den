@@ -1,0 +1,79 @@
+module specs.kb.DelegateVerifyLand
+
+spec DelegateVerifyLand {
+  intent "One task goes from brief to landed with exactly one role responsible at every moment."
+
+  enum Stage { Briefed, Working, Blocked, Reported, Verified, Landed, Closed }
+
+  state {
+    stage: Stage = Stage.Briefed
+    failedLandings: Int[0..3] = 0
+  }
+
+  event Start
+  event Block
+  event Rule
+  event Report
+  event Accept
+  event Reject
+  event Land
+  event LandFails
+  event TakeOver
+  event Close
+
+  on Start {
+    case go if stage == Stage.Briefed => { stage = Stage.Working }
+    case no otherwise => reject NotBriefed
+  }
+  on Block {
+    case stop if stage == Stage.Working => { stage = Stage.Blocked }
+    case no otherwise => reject NotWorking
+  }
+  on Rule {
+    case unblock if stage == Stage.Blocked => { stage = Stage.Working }
+    case no otherwise => reject NothingToRule
+  }
+  on Report {
+    case hand if stage == Stage.Working => { stage = Stage.Reported }
+    case no otherwise => reject NotWorking
+  }
+  on Accept {
+    case ok if stage == Stage.Reported => { stage = Stage.Verified }
+    case no otherwise => reject NothingReported
+  }
+  on Reject {
+    case back if stage == Stage.Reported => { stage = Stage.Working }
+    case no otherwise => reject NothingReported
+  }
+  on Land {
+    case landed if stage == Stage.Verified => { stage = Stage.Landed }
+    case no otherwise => reject NotVerified
+  }
+  on LandFails {
+    case again if stage == Stage.Verified && failedLandings < 3 => { failedLandings = failedLandings + 1 }
+    case no otherwise => reject NotLanding
+  }
+  on TakeOver {
+    case seize if stage == Stage.Verified && failedLandings == 3 => { stage = Stage.Landed }
+    case no otherwise => reject NotYet
+  }
+  on Close {
+    case close if stage == Stage.Landed => { stage = Stage.Closed }
+    case no otherwise => reject NotLanded
+  }
+
+  invariant LOOP_001 "only verified work can fail to land" =
+    failedLandings > 0 ==> (stage == Stage.Verified || stage == Stage.Landed || stage == Stage.Closed)
+
+  scenario "the Oracle takes over a landing that keeps failing" {
+    Start     ~> accepted
+    Report    ~> accepted
+    Accept    ~> accepted
+    LandFails ~> accepted
+    LandFails ~> accepted
+    LandFails ~> accepted
+    TakeOver  ~> accepted
+    Close     ~> accepted
+    expect stage == Stage.Closed
+  }
+}

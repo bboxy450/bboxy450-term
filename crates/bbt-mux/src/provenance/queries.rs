@@ -688,7 +688,7 @@ fn history(
         json!({"entity":doc.id,"items":items,"next":next,"event_head":captured.to_string(),"complete":next.is_none(),"full_history_audited":false}),
     )
 }
-fn document_signature(doc: &Document) -> Value {
+pub(crate) fn document_signature(doc: &Document) -> Value {
     use ed25519_dalek::{Signature, Verifier, VerifyingKey};
     let outcome = (|| -> Option<bool> {
         let public = base64::engine::general_purpose::STANDARD

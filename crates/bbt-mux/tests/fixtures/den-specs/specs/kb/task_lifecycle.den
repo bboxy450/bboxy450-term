@@ -1,0 +1,71 @@
+module specs.kb.TaskLifecycle
+
+spec TaskLifecycle {
+  intent "A task is accepted only on a report whose verification passed against the current brief."
+
+  enum Status { Open, Claimed, Reported, Accepted, Done }
+  enum Exit { Zero, NonZero }
+
+  state {
+    status: Status = Status.Open
+    exit: Exit = Exit.NonZero
+    stale: Bool = false
+  }
+
+  event Delegate
+  event Report(e: Exit)
+  event Amend
+  event Accept
+  event Reject
+  event Close
+  effect WakeAssignee
+  effect WakeDelegator
+
+  on Delegate {
+    case assign if status == Status.Open => { status = Status.Claimed; emit WakeAssignee }
+    case taken otherwise => reject AlreadyAssigned
+  }
+  on Report(e) {
+    case report if status == Status.Claimed || status == Status.Reported => {
+      status = Status.Reported
+      exit = e
+      stale = false
+      emit WakeDelegator
+    }
+    case closed otherwise => reject NotReportable
+  }
+  on Amend {
+    case amend if status == Status.Claimed || status == Status.Reported => {
+      stale = true
+      emit WakeAssignee
+    }
+    case frozen otherwise => reject Frozen
+  }
+  on Accept {
+    case accept if status == Status.Reported && exit == Exit.Zero && !stale => {
+      status = Status.Accepted
+    }
+    case refuse otherwise => reject NotAcceptable
+  }
+  on Reject {
+    case back if status == Status.Reported => { status = Status.Claimed; emit WakeAssignee }
+    case nothing otherwise => reject NothingToReject
+  }
+  on Close {
+    case close if status == Status.Accepted => { status = Status.Done }
+    case early otherwise => reject NotAccepted
+  }
+
+  invariant TASK_001 "accepted work passed verification against the current brief" =
+    (status == Status.Accepted || status == Status.Done) ==> (exit == Exit.Zero && !stale)
+
+  scenario "an amended brief voids the report" {
+    Delegate          ~> accepted emits WakeAssignee
+    Report(Exit.Zero) ~> accepted emits WakeDelegator
+    Amend             ~> accepted emits WakeAssignee
+    Accept            ~> rejected NotAcceptable
+    Report(Exit.Zero) ~> accepted emits WakeDelegator
+    Accept            ~> accepted
+    expect status == Status.Accepted
+  }
+}

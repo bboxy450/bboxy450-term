@@ -215,4 +215,9 @@ pub(crate) struct Spec {
     /// Where a define or table was expanded: the use site and `define NAME`
     /// or `table NAME`. Everything after the parser sees only the expansion.
     pub expansions: Vec<(Pos, String)>,
+    /// Where `intent`, `title` and `managed` start, in source order: the
+    /// host's part of the record (`record::machine`). No engine reads them.
+    pub header: Vec<(&'static str, Pos)>,
+    /// The record's closing brace.
+    pub close: Pos,
 }

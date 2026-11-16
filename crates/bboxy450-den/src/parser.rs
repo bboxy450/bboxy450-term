@@ -731,12 +731,44 @@ impl Parser {
             defines: Vec::new(),
             tables: Vec::new(),
             expansions: Vec::new(),
+            header: Vec::new(),
+            close: Pos::default(),
         };
         let mut has_intent = false;
         let mut has_state = false;
-        while !self.take("}") {
+        loop {
             let declaration_pos = self.current().pos;
-            if self.take("intent") {
+            if self.take("}") {
+                result.close = declaration_pos;
+                break;
+            }
+            if self.at("title") || self.at("managed") {
+                let word = if self.at("title") { "title" } else { "managed" };
+                self.index += 1;
+                if result.header.iter().any(|(seen, _)| *seen == word) {
+                    let (code, repair) = if word == "title" {
+                        ("X202", "keep one title declaration")
+                    } else {
+                        (
+                            "X356",
+                            "merge the two managed blocks; only the host writes them",
+                        )
+                    };
+                    return Err(declaration_pos.diagnostic(
+                        code,
+                        &self.record,
+                        format!("{word} is declared twice"),
+                        repair,
+                    ));
+                }
+                result.header.push((word, declaration_pos));
+                if word == "title" {
+                    self.text()?;
+                } else {
+                    self.managed()?;
+                }
+            } else if self.take("intent") {
+                result.header.push(("intent", declaration_pos));
                 if has_intent {
                     return Err(declaration_pos.diagnostic(
                         "X202",
@@ -882,6 +914,39 @@ impl Parser {
         }
         expand(&mut result)?;
         Ok(result)
+    }
+    /// `managed { name = value ... }`: the host's block, read for its syntax
+    /// only. A value is a name, an integer, `"text"` or `tag"text"`.
+    fn managed(&mut self) -> ParseResult<()> {
+        self.need("{")?;
+        self.separators();
+        while !self.take("}") {
+            let TokenKind::Word(_) = self.current().kind else {
+                return Err(self.error("a managed field is written `name = value`"));
+            };
+            self.index += 1;
+            self.need("=")?;
+            let token = self.current().clone();
+            match &token.kind {
+                TokenKind::Word(tag) => {
+                    self.index += 1;
+                    let next = self.current();
+                    let adjacent = next.pos.line == token.pos.line
+                        && next.pos.column == token.pos.column + tag.chars().count() as u32;
+                    if matches!(next.kind, TokenKind::Text(_)) && adjacent {
+                        self.index += 1;
+                    }
+                }
+                TokenKind::Number(_) | TokenKind::Text(_) => self.index += 1,
+                _ => {
+                    return Err(self.error(
+                        "expected a managed value: a name, an integer, \"text\" or tag\"text\"",
+                    ));
+                }
+            }
+            self.end_statement()?;
+        }
+        Ok(())
     }
     /// `NAME: KEY -> VALUE { K -> V, ... }`. A value of an enum type may be
     /// written as the bare member.
