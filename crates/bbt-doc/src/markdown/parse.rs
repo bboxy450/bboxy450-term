@@ -23,7 +23,8 @@ pub(super) fn body(source: &str, offset: usize) -> Vec<Block> {
         | Options::ENABLE_TASKLISTS
         | Options::ENABLE_STRIKETHROUGH
         | Options::ENABLE_FOOTNOTES
-        | Options::ENABLE_WIKILINKS;
+        | Options::ENABLE_WIKILINKS
+        | Options::ENABLE_GFM;
     let events = Parser::new_ext(&source[offset..], options)
         .into_offset_iter()
         .map(|(event, span)| (event, span.start + offset..span.end + offset))
@@ -131,9 +132,21 @@ impl Reader<'_> {
                 }
                 Event::Start(Tag::BlockQuote(kind)) => {
                     self.at += 1;
-                    Some(BlockKind::Quote(
-                        self.blocks(Some(TagEnd::BlockQuote(kind))),
-                    ))
+                    let blocks = self.blocks(Some(TagEnd::BlockQuote(kind)));
+                    Some(match kind {
+                        None => BlockKind::Quote(blocks),
+                        Some(kind) => BlockKind::Callout {
+                            kind: match kind {
+                                pulldown_cmark::BlockQuoteKind::Note => "note",
+                                pulldown_cmark::BlockQuoteKind::Tip => "tip",
+                                pulldown_cmark::BlockQuoteKind::Important => "important",
+                                pulldown_cmark::BlockQuoteKind::Warning => "warning",
+                                pulldown_cmark::BlockQuoteKind::Caution => "caution",
+                            }
+                            .into(),
+                            blocks,
+                        },
+                    })
                 }
                 Event::Start(Tag::FootnoteDefinition(label)) => {
                     self.at += 1;

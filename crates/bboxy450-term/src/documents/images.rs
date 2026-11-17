@@ -26,7 +26,7 @@ fn blocks(values: &mut [Block], load: &mut impl FnMut(&str) -> Option<ImageAsset
     for block in values {
         match &mut block.kind {
             BlockKind::Paragraph(v) | BlockKind::Heading { content: v, .. } => visit(v,load),
-            BlockKind::Quote(v) | BlockKind::Footnote { blocks: v, .. } => blocks(v,load),
+            BlockKind::Quote(v) | BlockKind::Callout { blocks: v, .. } | BlockKind::Footnote { blocks: v, .. } => blocks(v,load),
             BlockKind::List { items, .. } => { for item in items { blocks(item,load); } }
             BlockKind::Table { header, rows, .. } => { for cell in header.iter_mut().chain(rows.iter_mut().flatten()) { visit(cell,load); } }
             _ => {}

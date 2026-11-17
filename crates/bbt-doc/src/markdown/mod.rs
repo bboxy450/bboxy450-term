@@ -70,6 +70,12 @@ pub enum BlockKind {
         items: Vec<Vec<Block>>,
     },
     Quote(Vec<Block>),
+    /// A GFM alert (`> [!NOTE]`): `kind` is note, tip, important, warning or
+    /// caution. Drawn as an mdxcn frame (see layout.rs `frame`).
+    Callout {
+        kind: String,
+        blocks: Vec<Block>,
+    },
     Code {
         info: String,
         text: String,
@@ -182,7 +188,9 @@ impl Markdown {
                     BlockKind::Paragraph(v) | BlockKind::Heading { content: v, .. } => {
                         inlines(v, out)
                     }
-                    BlockKind::Quote(v) | BlockKind::Footnote { blocks: v, .. } => blocks(v, out),
+                    BlockKind::Quote(v)
+                    | BlockKind::Callout { blocks: v, .. }
+                    | BlockKind::Footnote { blocks: v, .. } => blocks(v, out),
                     BlockKind::List { items, .. } => {
                         for item in items {
                             blocks(item, out);

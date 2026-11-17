@@ -232,7 +232,9 @@ fn every_real_bboxy_mermaid_block_lays_out_on_the_ui_measurement_contract() {
                         walk_blocks(item, out)
                     }
                 }
-                bbt_doc::BlockKind::Quote(bs) | bbt_doc::BlockKind::Footnote { blocks: bs, .. } => {
+                bbt_doc::BlockKind::Quote(bs)
+                | bbt_doc::BlockKind::Callout { blocks: bs, .. }
+                | bbt_doc::BlockKind::Footnote { blocks: bs, .. } => {
                     walk_blocks(bs, out)
                 }
                 _ => {}

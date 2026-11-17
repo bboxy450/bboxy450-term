@@ -8,7 +8,7 @@ links:
 - to: '[[d52-brand-and-face]]'
   rel: decision
 intent: Cmd-clicking a Markdown path in any pane opens a native modal that renders the Markdown and Mermaid with the app's own typesetting, and clicking outside it closes it and returns focus.
-updated: 2026-11-16T19:44:33.249Z
+updated: 2026-11-17T00:52:04.715Z
 created_by: seat:01M79HGAW321GYNK8468FYN4K9
 updated_by: seat:01M79HGAW321GYNK8468FYN4K9
 authorship:
@@ -17,15 +17,15 @@ authorship:
   public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
   process_generation: '1'
 provenance:
-  digest: sha256:aa34089d08d876aa51e32565c1be87847dfc2975a35e44fdf79fd17473fdec9b
-  frontmatter_digest: sha256:390233c285bcaf2a9f1eb2df55e854a36bfe00de18b6c7076d6e23398e1aca27
+  digest: sha256:cf34bc5906b903194dcac2de91857b6a530f6eee3cef67dd86d1a2e29d7c7326
+  frontmatter_digest: sha256:12994b3f3536ef826dba02eb68de4b14ac4274459cdb84c237ada2aa5ce23ad7
   signer: seat:01M79HGAW321GYNK8468FYN4K9
-  sig: TVpVFXhUiJ2Q0O03bm0I+l/ox86wJni8Hz5S//TKXJOd4Gey4R0piRHswZGDmiSABuTJm4GZBY10ZxJBbGMtCQ==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151722
+  sig: KXDM9mQVYZEL118+m18yQMezgCvkyausS9aehu2MsaCvkmXfdSBkKQUIa6qWlvaUu7I8thDC3wbYY4DzAcy0Bg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151819
   event:
-    id: 01M7JY7JJFY1BQ9MYX5976YEJT
-    sequence: 151722
-    hash: 7875e537e39e8827db2df8184b9fe71fef2277305d9a08079a84663f60ee1225
+    id: 01M7KFTNJKV6G1AFKRZMJGG7V7
+    sequence: 151819
+    hash: 235f7cb3b31b50ab43063862292d3e95544be5782792a7e0ee826c55fd234d4b
 ---
 # Document viewer — native Markdown and Mermaid
 
@@ -85,3 +85,18 @@ Rendering uses the chrome primitives (rounded rects, hairlines, text runs, arrow
 - **Gap:** large documents: virtualised layout past ~5k lines; measure first.
 
 Links: [[vision]] [[renderer]] [[gui-components]] [[work-items]] [[ux-prototype]] [[plan]]
+
+## Figures
+
+Adapted from mdxcn (MIT, https://github.com/shadcn-labs/mdxcn): a figure sits in a
+dashed frame with `+` corners and its title as `[ TITLE ]` centred on the top edge, in
+the accent; the frame ink is the muted foreground at half alpha.
+
+- A GFM alert (`> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]`) is a
+  callout: the kind as its title and one glyph — `i` muted, `+` and `!` accent, `×` in
+  the errored state colour — beside the prose. A plain `>` quote keeps its left rule.
+- A fenced code block is framed with its language, uppercased, as the title; an
+  unlabelled fence has no title. Wide code still pans in its own viewport, keyed by the
+  block. mdxcn's pasteable ASCII figures render as written inside a plain fence.
+- Witness: `crates/bbt-doc/tests/layout.rs`
+  `callouts_and_code_blocks_are_framed_with_their_title_on_the_top_edge`.

@@ -329,6 +329,7 @@ fn render_mode(root: &Path, out: &Path, single: bool) -> Result<()> {
                         out.push(text)
                     }
                     bbt_doc::BlockKind::Quote(blocks)
+                    | bbt_doc::BlockKind::Callout { blocks, .. }
                     | bbt_doc::BlockKind::Footnote { blocks, .. } => mermaid_blocks(blocks, out),
                     bbt_doc::BlockKind::List { items, .. } => {
                         for item in items {

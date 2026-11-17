@@ -735,3 +735,35 @@ fn transcript_diagrams_use_the_offered_width_like_tables() {
     );
     assert!(diagram.rect.w <= width + 0.01);
 }
+
+// keeps: spec document-viewer §Figures — GFM alerts and fenced code sit in an
+// mdxcn frame: dashed box, `+` corners, `[ TITLE ]` centred on the top edge.
+#[test]
+fn callouts_and_code_blocks_are_framed_with_their_title_on_the_top_edge() {
+    let doc = parse("> [!WARNING]\n> Copies files.\n\n```rust\nfn main() {}\n```\n\n> plain quote\n");
+    assert!(matches!(&doc.blocks[0].kind, bbt_doc::BlockKind::Callout { kind, .. } if kind == "warning"));
+    // Broken control: an ordinary quote stays a quote, without a frame.
+    assert!(matches!(&doc.blocks[2].kind, bbt_doc::BlockKind::Quote(_)));
+    let width = 480.;
+    let layout = doc
+        .body_element(ctx(), &Fonts, width, &[])
+        .layout(Rect::new(0., 0., width, 0.), ctx(), &Fonts)
+        .unwrap();
+    let all = texts(&layout);
+    assert!(all.contains("[ WARNING ]") && all.contains("[ RUST ]"), "{all}");
+    assert!(all.contains("!\n") && all.contains("Copies files."), "{all}");
+    assert!(!all.contains("[ QUOTE ]"), "{all}");
+    for block in ["block0", "block1"] {
+        let frame = named(&layout, &format!("{block}/frame")).unwrap();
+        let title = named(&layout, &format!("{block}/title")).unwrap();
+        let tl = named(&layout, &format!("{block}/tl")).unwrap();
+        let br = named(&layout, &format!("{block}/br")).unwrap();
+        // The title is centred on the frame and straddles its top edge.
+        let centre = title.rect.x + title.rect.w / 2.;
+        assert!((centre - (frame.rect.x + frame.rect.w / 2.)).abs() < 8., "{block}");
+        assert!(title.rect.y < frame.rect.y && title.rect.y + title.rect.h > frame.rect.y, "{block}");
+        // Corners sit on the frame's corners.
+        assert!((tl.rect.x + tl.rect.w / 2. - frame.rect.x).abs() < 1., "{block}");
+        assert!((br.rect.y + br.rect.h / 2. - (frame.rect.y + frame.rect.h)).abs() < 1., "{block}");
+    }
+}

@@ -621,7 +621,9 @@ fn image_blocks(blocks: &[bbt_doc::Block], targets: &mut Vec<(String, bool)>) {
                     image_blocks(blocks, targets)
                 }
             }
-            BlockKind::Quote(blocks) | BlockKind::Footnote { blocks, .. } => {
+            BlockKind::Quote(blocks)
+            | BlockKind::Callout { blocks, .. }
+            | BlockKind::Footnote { blocks, .. } => {
                 image_blocks(blocks, targets)
             }
             BlockKind::Table { header, rows, .. } => {

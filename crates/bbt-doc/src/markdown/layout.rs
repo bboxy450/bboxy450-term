@@ -785,8 +785,14 @@ impl Render<'_> {
                         0.,
                     )
                 } else {
+                    let caption = info.split_whitespace().next().map(str::to_uppercase);
                     (
-                        self.code_spans(key, text, 1.6, self.highlights.and_then(|h| h.spans(b))),
+                        self.framed_code(
+                            key,
+                            text,
+                            caption.as_deref(),
+                            self.highlights.and_then(|h| h.spans(b)),
+                        ),
                         ui::TypeStep::Caption.pixels(),
                         ui::TypeStep::Caption.pixels(),
                     )
@@ -860,6 +866,50 @@ impl Render<'_> {
                     ),
                     STYLE.spacing.s2 as f32,
                     STYLE.spacing.s4 as f32,
+                )
+            }
+            BlockKind::Callout { kind, blocks } => {
+                // Adapted from mdxcn (MIT), https://github.com/shadcn-labs/mdxcn,
+                // registry/default/callout/callout.tsx: one glyph per type, the
+                // type as the frame title. Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+                let (glyph, tone) = match kind.as_str() {
+                    "tip" => ("+", ui::Color::Accent),
+                    "important" | "warning" => ("!", ui::Color::Accent),
+                    "caution" => (
+                        "\u{d7}",
+                        ui::Color::Rgba(bbt_ui_model::draw::Color::hex(TOKENS.color.state.errored).0),
+                    ),
+                    _ => ("i", ui::Color::Muted),
+                };
+                let gutter = STYLE.spacing.s7 as f32;
+                let pad = STYLE.spacing.s5 as f32;
+                let inset = self.corner_size()[0];
+                let inner = Render {
+                    width: (self.width - inset - pad * 2. - gutter - 2.).max(0.),
+                    table_width: (self.width - inset - pad * 2. - gutter - 2.).max(0.),
+                    ..*self
+                };
+                let mark = nowrap(
+                    format!("{key}/glyph"),
+                    glyph,
+                    ui::Text {
+                        line_height: 1.6,
+                        ..font(ui::TypeStep::Body, 700, true, tone)
+                    },
+                );
+                let content = row(
+                    format!("{key}/callout"),
+                    plain([0.; 4]),
+                    0.,
+                    vec![
+                        fixed(mark, gutter),
+                        natural(inner.blocks(blocks, &format!("{key}/callout"))),
+                    ],
+                );
+                (
+                    self.frame(key, Some(&kind.to_uppercase()), ui::Color::Transparent, content),
+                    STYLE.spacing.s6 as f32,
+                    STYLE.spacing.s6 as f32,
                 )
             }
             BlockKind::Table {
@@ -1387,7 +1437,166 @@ impl Render<'_> {
     fn code(&self, key: &str, value: &str, line_height: f32) -> c::Element {
         self.code_spans(key, value, line_height, None)
     }
-    fn code_spans(
+    /// A fenced code block in an mdxcn frame, the language as its title.
+    fn framed_code(
+        &self,
+        key: &str,
+        value: &str,
+        caption: Option<&str>,
+        spans: Option<&[crate::highlight::Span]>,
+    ) -> c::Element {
+        let pad = STYLE.spacing.s5 as f32;
+        let text = self.code_text(key, value, 1.6, spans);
+        let inner = (self.width - self.corner_size()[0] - pad * 2. - 2.).max(0.);
+        let content = self.scroll_wide(key, text, inner);
+        self.frame(key, caption, ui::Color::Surface, content)
+    }
+    /// mdxcn's figure frame, natively: a dashed box, `+` corners and the
+    /// title as `[ TITLE ]` on the top edge.
+    /// Adapted from mdxcn (MIT), https://github.com/shadcn-labs/mdxcn,
+    /// registry/default/graph-knap/frame.ts `frameAscii` and
+    /// registry/default/graph-frame/graph-frame.tsx. The top edge is drawn in
+    /// pieces (corner, dash, title, dash, corner) because the modal is
+    /// translucent and nothing could mask a line under the title.
+    /// Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+    fn frame(
+        &self,
+        key: &str,
+        caption: Option<&str>,
+        fill: ui::Color,
+        content: c::Element,
+    ) -> c::Element {
+        // mdxcn's --graph-frame: the muted ink, receded (oklch .74 light / .46 dark).
+        let mut ink = bbt_ui_model::draw::Color::hex(self.ctx.theme.palette().fg_dim).0;
+        ink[3] *= 0.5;
+        let ink = ui::Color::Rgba(ink);
+        let mono = |weight, paint| ui::Text {
+            line_height: 1.,
+            ..font(ui::TypeStep::Caption, weight, true, paint)
+        };
+        let corner = |name: &str| self.corner(format!("{key}/{name}"), ink);
+        let [cw, ch] = self.corner_size();
+        let half = (ch / 2.).round();
+        let dashed = |mut s: ui::Style, sides: [bool; 4]| {
+            s.overrides.border = Some(ui::Border {
+                width: ui::Length::Px(1.),
+                paint: ui::Paint::solid(ink),
+                outside: false,
+            });
+            s.overrides.border_sides = Some(sides);
+            s.overrides.dashed = Some(true);
+            s
+        };
+        let pad = STYLE.spacing.s5 as f32;
+        let fill_alpha = if fill == ui::Color::Transparent { 0. } else { 1. };
+        let body = column(
+            format!("{key}/frame"),
+            dashed(
+                style(fill, fill_alpha, 0., [pad, pad, pad, pad]),
+                [false, true, true, true],
+            ),
+            0.,
+            vec![content.into()],
+        );
+        // Inset by half a corner on every side the corners straddle, so the
+        // whole figure stays inside its column.
+        let base = column(
+            format!("{key}/figure"),
+            plain([half, cw / 2., half, cw / 2.]),
+            0.,
+            vec![body.into()],
+        );
+        // The frame spans the column, whatever its content's natural width.
+        let w = self.width;
+        let h = size(&base, w, self.ctx, self.m)[1];
+        let dash = |name: &str, length: f32| {
+            fixed(
+                column(
+                    format!("{key}/{name}"),
+                    dashed(plain([half, 0., 0., 0.]), [false, false, true, false]),
+                    0.,
+                    vec![],
+                ),
+                length.max(0.),
+            )
+        };
+        let mut edge = vec![fixed(corner("tl"), cw)];
+        match caption.filter(|c| !c.is_empty()) {
+            Some(caption) => {
+                let gap = STYLE.spacing.s3 as f32;
+                let title = nowrap(
+                    format!("{key}/title"),
+                    format!("[ {caption} ]"),
+                    ui::Text {
+                        tracking_em: 0.05,
+                        ..mono(600, ui::Color::Accent)
+                    },
+                );
+                let tw = size(&title, w, self.ctx, self.m)[0];
+                let left = ((w - cw * 2. - tw) / 2. - gap).floor();
+                let right = w - cw * 2. - tw - gap * 2. - left;
+                edge.push(dash("dl", left));
+                edge.push(fixed(c::Element::Spacer, gap));
+                edge.push(fixed(title, tw));
+                edge.push(fixed(c::Element::Spacer, gap));
+                edge.push(dash("dr", right));
+            }
+            None => edge.push(dash("d", w - cw * 2.)),
+        }
+        edge.push(fixed(corner("tr"), cw));
+        c::Element::Layers {
+            base: Box::new(base),
+            overlays: vec![
+                c::Placed {
+                    content: row(format!("{key}/edge"), plain([0.; 4]), 0., edge),
+                    left: 0.,
+                    bottom: h - ch,
+                },
+                c::Placed {
+                    content: corner("bl"),
+                    left: 0.,
+                    bottom: half - ch / 2.,
+                },
+                c::Placed {
+                    content: corner("br"),
+                    left: w - cw,
+                    bottom: half - ch / 2.,
+                },
+            ],
+        }
+    }
+    fn corner(&self, key: String, ink: ui::Color) -> c::Element {
+        nowrap(
+            key,
+            "+",
+            ui::Text {
+                line_height: 1.,
+                ..font(ui::TypeStep::Body, 400, true, ink)
+            },
+        )
+    }
+    /// The `+` corner's box; a frame insets its content by its width.
+    fn corner_size(&self) -> [f32; 2] {
+        size(&self.corner(String::new(), ui::Color::Muted), self.width, self.ctx, self.m)
+    }
+    fn scroll_wide(&self, key: &str, e: c::Element, inner: f32) -> c::Element {
+        let [w, h] = size(&e, inner, self.ctx, self.m);
+        if w > inner + 0.01 {
+            // Named by the block key: the retained pan offset is stored under it.
+            named(key, c::Element::ScrollView(c::ScrollView {
+                viewport: [inner, h],
+                offset: [
+                    self.scrolls.and_then(|s| s.get(key)).copied().unwrap_or(0.),
+                    0.,
+                ],
+                content_width: Some(w),
+                content: Box::new(e),
+            }))
+        } else {
+            e
+        }
+    }
+    fn code_text(
         &self,
         key: &str,
         value: &str,
@@ -1421,7 +1630,16 @@ impl Render<'_> {
         }
         literal.wrap = false;
         literal.preserve_whitespace = true;
-        let e = named(format!("{key}/text"), c::Element::Text(literal));
+        named(format!("{key}/text"), c::Element::Text(literal))
+    }
+    fn code_spans(
+        &self,
+        key: &str,
+        value: &str,
+        line_height: f32,
+        spans: Option<&[crate::highlight::Span]>,
+    ) -> c::Element {
+        let e = self.code_text(key, value, line_height, spans);
         let pad = [
             STYLE.spacing.s4 as f32,
             STYLE.spacing.s5 as f32,

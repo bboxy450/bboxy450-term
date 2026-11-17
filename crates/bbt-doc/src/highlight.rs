@@ -117,7 +117,9 @@ impl Highlights {
                             );
                         }
                     }
-                    BlockKind::Quote(bs) | BlockKind::Footnote { blocks: bs, .. } => {
+                    BlockKind::Quote(bs)
+                    | BlockKind::Callout { blocks: bs, .. }
+                    | BlockKind::Footnote { blocks: bs, .. } => {
                         visit(bs, h, out)
                     }
                     BlockKind::List { items, .. } => {
