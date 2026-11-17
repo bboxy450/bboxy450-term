@@ -350,11 +350,13 @@ bump-harness:
 # The harness builds alone: built with the app in one invocation, Cargo unifies
 # its ACP dependency's serde_json/preserve_order into the app, whose record
 # signatures then hash headers in insertion order (472 KB records, 2026-11-16).
+# `embedded` is named explicitly: it reached the shipped harness only through
+# that unification, and the native rich actor needs it.
 compile: tools
 	@set -eu; case '$(PROFILE)' in debug) flag='' ;; release) flag='--release' ;; *) echo 'PROFILE must be debug or release' >&2; exit 2 ;; esac; \
 	. ./scripts/cache-env.sh; \
 	cargo build --locked -p $(APP) -p bboxy450-term-remote --target-dir '$(TARGET_DIR)' $$flag; \
-	cargo build --locked -p bboxy450-harness --target-dir '$(TARGET_DIR)' $$flag
+	cargo build --locked -p bboxy450-harness --features embedded --target-dir '$(TARGET_DIR)' $$flag
 
 test check: tools test-signatures test-yarn-concurrency
 	@set -eu; mkdir -p "$$(dirname '$(CI_LOG)')"; \
