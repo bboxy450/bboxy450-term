@@ -992,13 +992,8 @@ impl TaskRow {
         if matches!(self.state.as_str(), "duplicate" | "wontfix") {
             s.overrides.opacity = Some(0.6);
         }
-        let status = match self.state.as_str() {
-            "running" => ui::Color::Accent,
-            "reported" => rgba(TOKENS.color.state.waiting),
-            "accepted" | "done" => rgba(TOKENS.color.ui.ok),
-            "rejected" | "blocked" => rgba(TOKENS.color.state.errored),
-            _ => ui::Color::Muted,
-        };
+        let status = bbt_ui_model::emphasis::state(&self.state)
+            .map_or(ui::Color::Muted, |tone| rgba(tone.hex()));
         let glyph_color = if self.bug {
             rgba(if self.state == "fixed" {
                 TOKENS.color.state.idle

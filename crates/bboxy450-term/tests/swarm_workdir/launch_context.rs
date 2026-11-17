@@ -295,6 +295,7 @@ fn launch_children_receive_workflow_and_call_their_own_admitted_mcp() {
     for marker in [
         "ROLE: EXECUTOR",
         "# bboxy450 seat workflow",
+        "## Reply style",
         "orient",
         "task_report",
         cwd.to_str().unwrap(),

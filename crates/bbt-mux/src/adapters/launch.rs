@@ -183,11 +183,18 @@ pub(crate) fn in_login_shell(
     }
 }
 
+/// The seat workflow skill, followed by the reply-style rules generated from
+/// the emphasis vocabulary the renderer draws (bbt_ui_model::emphasis).
 pub(crate) fn workflow_skill(role: &crate::registry::Role) -> Result<String> {
-    Ok(bboxy450_harness_wake_up::launch::render_skill(
+    let skill = bboxy450_harness_wake_up::launch::render_skill(
         include_str!("skills/bboxy450/SKILL.md"),
         &serde_json::to_string(&role.name)?,
         &serde_json::to_string(&role.class)?,
+    );
+    Ok(format!(
+        "{}\n\n{}",
+        skill.trim_end(),
+        bbt_ui_model::emphasis::guidance()
     ))
 }
 

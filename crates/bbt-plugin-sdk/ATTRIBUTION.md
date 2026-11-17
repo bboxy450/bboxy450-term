@@ -104,6 +104,7 @@ their own licenses and are not relicensed by this document.
 | `crates/bboxy-firehose/reference/vendor/` | Pinned xterm.js assets, MIT; accompanying notices/provenance apply. Excluded from its Cargo package. |
 | `crates/bboxy450-usage/src/{claude,codex,grok}.rs`, provider abstraction and quota selection in `src/lib.rs`, and `tests/fixtures/*.json` | Translated from Tachyon (MIT), https://github.com/Gonzih/tachyon, `Sources/Tachyon/Providers/{Provider,ClaudeProvider,CodexProvider,GrokProvider}.swift`, `Model/UsageModel.swift`; JSON copied from `Tests/TachyonTests/ProviderDecodeTests.swift`. Rust workers/OS sampling and integration additions are bboxy450-owned. Original notice retained below and in `crates/bboxy450-usage/LICENSE-TACHYON`. |
 | Figure frame and callouts in `crates/bbt-doc/src/markdown/layout.rs` (`frame`, `framed_code`, the `Callout` block) | Adapted from mdxcn (MIT), https://github.com/shadcn-labs/mdxcn at 884eba5356762cf49f8828db8f861dc2f33d65e4: the dashed frame with `+` corners and a centred `[ TITLE ]` on the top edge (`registry/default/graph-knap/frame.ts` `frameAscii`, `registry/default/graph-frame/graph-frame.tsx`) and the callout glyphs and tones (`registry/default/callout/callout.tsx`). Redrawn natively in Rust; no source copied verbatim. Original notice retained below. |
+| `crates/bbt-ui-model/src/emphasis.rs`; the pill, label-symbol and mark drawing in `crates/bbt-doc/src/markdown/layout.rs` (`pill_chip`, `marks`, `with_action`, the leading label in `rich`) | Adapted from pi-emphasis (MIT), https://github.com/johnlindquist/pi-emphasis at f884b736c489944ee778ab951c7f78580f137b02, `index.ts`: the pill word tables, synonyms, label and action lead-in word lists, the word-plus-detail rule and the shape of the reply-style prompt. Symbols are Unicode instead of Nerd Font glyphs, tones are this suite's tokens, task and message states join the table; drawn natively in Rust, no source copied verbatim. Original notice retained below. |
 | Names, logos and identity images | Identity/trademark rights stay with their respective owners. Existing project-brand exclusions and upstream logo rights remain unchanged. No blanket ownership claim over harness logos. |
 
 For schemas, examples or design documents reused separately, identify the actual
@@ -195,6 +196,35 @@ https://github.com/shadcn-labs/mdxcn:
 MIT License
 
 Copyright (c) 2026 Keshav Bagaade
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## pi-emphasis adapted vocabulary
+
+The following MIT notice applies to the portions adapted from pi-emphasis,
+https://github.com/johnlindquist/pi-emphasis:
+
+```text
+MIT License
+
+Copyright (c) 2026 John Lindquist
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

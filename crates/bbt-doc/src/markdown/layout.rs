@@ -641,6 +641,8 @@ enum Piece {
         relation: Option<String>,
         weight: Option<f32>,
     },
+    /// `[[Done]]`: a word from the emphasis vocabulary, drawn as a pill.
+    Pill(bbt_ui_model::emphasis::Pill),
     Image(super::ImageAsset),
     Break,
 }
@@ -877,7 +879,9 @@ impl Render<'_> {
                     "important" | "warning" => ("!", ui::Color::Accent),
                     "caution" => (
                         "\u{d7}",
-                        ui::Color::Rgba(bbt_ui_model::draw::Color::hex(TOKENS.color.state.errored).0),
+                        ui::Color::Rgba(
+                            bbt_ui_model::draw::Color::hex(TOKENS.color.state.errored).0,
+                        ),
                     ),
                     _ => ("i", ui::Color::Muted),
                 };
@@ -907,7 +911,12 @@ impl Render<'_> {
                     ],
                 );
                 (
-                    self.frame(key, Some(&kind.to_uppercase()), ui::Color::Transparent, content),
+                    self.frame(
+                        key,
+                        Some(&kind.to_uppercase()),
+                        ui::Color::Transparent,
+                        content,
+                    ),
                     STYLE.spacing.s6 as f32,
                     STYLE.spacing.s6 as f32,
                 )
@@ -988,7 +997,11 @@ impl Render<'_> {
                 target: target.map(str::to_owned),
             };
             match value {
-                Inline::Text(s) => out.push(text(s.clone(), f)),
+                Inline::Text(s) => {
+                    for (run, tone) in marks(s) {
+                        out.push(text(run, tone_font(f, tone)))
+                    }
+                }
                 Inline::Code(s) => out.push(Piece::Code {
                     value: s.clone(),
                     font: f,
@@ -1003,7 +1016,7 @@ impl Render<'_> {
                     out,
                 ),
                 Inline::Strong(s) => Self::pieces(
-                    s,
+                    &with_action(s),
                     ui::Text { weight: 700, ..f },
                     strike,
                     underline,
@@ -1024,6 +1037,13 @@ impl Render<'_> {
                     Some(target),
                     out,
                 ),
+                Inline::WikiLink {
+                    target, display, ..
+                } if let Some(pill) = bbt_ui_model::emphasis::pill(display)
+                    .or_else(|| bbt_ui_model::emphasis::pill(target)) =>
+                {
+                    out.push(Piece::Pill(pill))
+                }
                 Inline::WikiLink {
                     target,
                     display,
@@ -1065,6 +1085,33 @@ impl Render<'_> {
     fn rich(&self, key: &str, values: &[Inline], f: ui::Text) -> c::Element {
         let mut pieces = vec![];
         Self::pieces(values, f, false, false, None, &mut pieces);
+        // A heading or a line's leading bold label takes its word's symbol.
+        let lead = match values.first() {
+            Some(Inline::Strong(s)) => Some(Inline::plain_text(s)),
+            _ if values.iter().all(|v| matches!(v, Inline::Text(_))) => {
+                Some(Inline::plain_text(values))
+            }
+            _ => None,
+        };
+        if let Some(symbol) = lead
+            .filter(|t| bbt_ui_model::emphasis::action(t).is_none())
+            .and_then(|t| bbt_ui_model::emphasis::label(&t))
+        {
+            pieces.insert(
+                0,
+                Piece::Text {
+                    value: format!("{symbol} "),
+                    font: ui::Text {
+                        paint: ui::Paint::solid(ui::Color::Accent),
+                        weight: 700,
+                        ..f
+                    },
+                    strike: false,
+                    underline: false,
+                    target: None,
+                },
+            );
+        }
         if !self.fragment_words
             && pieces.iter().all(|p| {
                 matches!(
@@ -1201,6 +1248,10 @@ impl Render<'_> {
                             content: Box::new(image),
                         }),
                     ));
+                    i += 1;
+                }
+                Piece::Pill(pill) => {
+                    children.push(natural(pill_chip(&format!("{key}/pill{i}"), &pill, f)));
                     i += 1;
                 }
                 Piece::Wiki {
@@ -1488,7 +1539,11 @@ impl Render<'_> {
             s
         };
         let pad = STYLE.spacing.s5 as f32;
-        let fill_alpha = if fill == ui::Color::Transparent { 0. } else { 1. };
+        let fill_alpha = if fill == ui::Color::Transparent {
+            0.
+        } else {
+            1.
+        };
         let body = column(
             format!("{key}/frame"),
             dashed(
@@ -1577,21 +1632,29 @@ impl Render<'_> {
     }
     /// The `+` corner's box; a frame insets its content by its width.
     fn corner_size(&self) -> [f32; 2] {
-        size(&self.corner(String::new(), ui::Color::Muted), self.width, self.ctx, self.m)
+        size(
+            &self.corner(String::new(), ui::Color::Muted),
+            self.width,
+            self.ctx,
+            self.m,
+        )
     }
     fn scroll_wide(&self, key: &str, e: c::Element, inner: f32) -> c::Element {
         let [w, h] = size(&e, inner, self.ctx, self.m);
         if w > inner + 0.01 {
             // Named by the block key: the retained pan offset is stored under it.
-            named(key, c::Element::ScrollView(c::ScrollView {
-                viewport: [inner, h],
-                offset: [
-                    self.scrolls.and_then(|s| s.get(key)).copied().unwrap_or(0.),
-                    0.,
-                ],
-                content_width: Some(w),
-                content: Box::new(e),
-            }))
+            named(
+                key,
+                c::Element::ScrollView(c::ScrollView {
+                    viewport: [inner, h],
+                    offset: [
+                        self.scrolls.and_then(|s| s.get(key)).copied().unwrap_or(0.),
+                        0.,
+                    ],
+                    content_width: Some(w),
+                    content: Box::new(e),
+                }),
+            )
         } else {
             e
         }
@@ -1921,6 +1984,19 @@ impl Render<'_> {
                     hard = hard.max(width);
                     line += width;
                 }
+                Piece::Pill(pill) => {
+                    minimum = minimum.max(word);
+                    word = 0.;
+                    let width = size(
+                        &pill_chip("table-measure", &pill, f),
+                        f32::INFINITY,
+                        self.ctx,
+                        self.m,
+                    )[0];
+                    minimum = minimum.max(width);
+                    hard = hard.max(width);
+                    line += width;
+                }
                 Piece::Image(asset) => {
                     minimum = minimum.max(asset.width as f32);
                     hard = hard.max(asset.width as f32);
@@ -2041,4 +2117,90 @@ impl Render<'_> {
             children,
         )
     }
+}
+
+// ---------- emphasis: pills, label symbols and marks (bbt_ui_model::emphasis) ----------
+fn tone_color(tone: bbt_ui_model::emphasis::Tone) -> ui::Color {
+    ui::Color::Rgba(bbt_ui_model::draw::Color::hex(tone.hex()).0)
+}
+/// Splits text into runs, giving ✓ ✗ → their tone and tree lines (`├──`,
+/// `└──`) the muted colour; `None` keeps the parent paint.
+fn marks(s: &str) -> Vec<(String, Option<ui::Color>)> {
+    let mut out: Vec<(String, Option<ui::Color>)> = vec![];
+    let mut push = |run: &str, paint: Option<ui::Color>| match out.last_mut() {
+        Some((last, p)) if *p == paint => last.push_str(run),
+        _ => out.push((run.to_owned(), paint)),
+    };
+    let mut rest = s;
+    while let Some(c) = rest.chars().next() {
+        if let Some(tree) = ["├──", "└──"].into_iter().find(|t| rest.starts_with(t)) {
+            push(tree, Some(ui::Color::Muted));
+            rest = &rest[tree.len()..];
+            continue;
+        }
+        let run = &rest[..c.len_utf8()];
+        push(run, bbt_ui_model::emphasis::mark(c).map(tone_color));
+        rest = &rest[c.len_utf8()..];
+    }
+    out
+}
+fn tone_font(f: ui::Text, paint: Option<ui::Color>) -> ui::Text {
+    match paint {
+        Some(color) => ui::Text {
+            paint: ui::Paint::solid(color),
+            ..f
+        },
+        None => f,
+    }
+}
+/// A bold action lead-in (`**Check:**`) opens with its symbol.
+fn with_action(s: &[Inline]) -> Vec<Inline> {
+    match bbt_ui_model::emphasis::action(&Inline::plain_text(s)) {
+        Some(symbol) => std::iter::once(Inline::Text(format!("{symbol} ")))
+            .chain(s.iter().cloned())
+            .collect(),
+        None => s.to_vec(),
+    }
+}
+/// A rounded pill: the symbol and word in the tone colour on a tint of it, or
+/// on-accent text on the solid tone for consequences and ownership.
+fn pill_chip(key: &str, pill: &bbt_ui_model::emphasis::Pill, parent: ui::Text) -> c::Element {
+    let tone = tone_color(pill.tone);
+    let solid = pill.tone.solid();
+    let size = parent.size.unwrap_or_else(|| parent.step.pixels()) * 0.86;
+    let text = ui::Text {
+        size: Some(size),
+        weight: 650,
+        italic: false,
+        line_height: 1.35,
+        tracking_em: 0.01,
+        paint: ui::Paint::solid(if solid {
+            ui::Color::Rgba(bbt_ui_model::draw::Color::hex(TOKENS.color.ui.on_accent).0)
+        } else {
+            tone
+        }),
+        ..parent
+    };
+    let label = nowrap(
+        format!("{key}/text"),
+        format!("{}\u{a0}{}", pill.symbol, pill.text.replace(' ', "\u{a0}")),
+        text,
+    );
+    let mut s = style(
+        tone,
+        if solid { 0.92 } else { 0.16 },
+        size,
+        [1., 7., 1., 7.],
+    );
+    if !solid {
+        s.overrides.border = Some(ui::Border {
+            width: ui::Length::Px(STYLE.material.hairline_px as f32),
+            paint: ui::Paint {
+                color: tone,
+                alpha: ui::Alpha::Value(0.35),
+            },
+            outside: false,
+        });
+    }
+    row(key, s, 0., vec![label.into()])
 }

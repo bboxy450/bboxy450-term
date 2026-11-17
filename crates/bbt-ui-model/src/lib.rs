@@ -10,6 +10,7 @@
 //! Callers supply durable IDs, observation updates and a monotonic time for undo.
 
 pub mod draw;
+pub mod emphasis;
 pub mod event;
 pub mod input;
 pub mod layout;

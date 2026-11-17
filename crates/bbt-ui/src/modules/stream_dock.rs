@@ -1195,11 +1195,10 @@ fn line_item(line: &Line, k: &str) -> c::Element {
     let small = STYLE.r#type.small as f32;
     let waiting = rgba(TOKENS.color.state.waiting);
     let verb = match line.verb.as_str() {
-        "rejected" => rgba(TOKENS.color.state.errored),
-        "accepted" => rgba(TOKENS.color.ui.ok),
         "decided" => rgba(TOKENS.color.ui.invariant),
-        "reported" | "asked" | "waiting" => waiting,
-        _ => ui::Color::Muted,
+        verb => {
+            bbt_ui_model::emphasis::state(verb).map_or(ui::Color::Muted, |tone| rgba(tone.hex()))
+        }
     };
     let mut head = c::Text::new(
         if line.needs { "● " } else { "" },
@@ -1271,13 +1270,8 @@ fn line_item(line: &Line, k: &str) -> c::Element {
 fn task_item(item: &WorkItem, k: &str, delegate: bool) -> c::Element {
     let sp = &STYLE.spacing;
     let t = &STYLE.r#type;
-    let col = match item.state.as_str() {
-        "running" => ui::Color::Accent,
-        "reported" => rgba(TOKENS.color.state.waiting),
-        "accepted" | "done" => rgba(TOKENS.color.ui.ok),
-        "rejected" | "blocked" => rgba(TOKENS.color.state.errored),
-        _ => ui::Color::Muted,
-    };
+    let col = bbt_ui_model::emphasis::state(&item.state)
+        .map_or(ui::Color::Muted, |tone| rgba(tone.hex()));
     let mut cells = vec![
         named(
             format!("{k}/tglyph"),

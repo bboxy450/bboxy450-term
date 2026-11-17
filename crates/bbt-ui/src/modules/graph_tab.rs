@@ -307,13 +307,7 @@ fn upper(mut s: ui::Text, tracking: f32) -> ui::Text {
 }
 fn task_color(state: &str) -> ui::Color {
     color(
-        Some(match state {
-            "running" => return ui::Color::Accent,
-            "reported" => TOKENS.color.state.waiting,
-            "accepted" | "done" => TOKENS.color.ui.ok,
-            "rejected" | "blocked" => TOKENS.color.state.errored,
-            _ => return ui::Color::Muted,
-        }),
+        bbt_ui_model::emphasis::state(state).map(|tone| tone.hex()),
         ui::Color::Muted,
     )
 }
