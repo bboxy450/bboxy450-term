@@ -37,13 +37,13 @@ Current operator instructions and authenticated grants retain their precedence.
 
 | Record | Obligation in this recipe |
 |---|---|
-| [Structured verification, decision 28](../.bboxy/decisions/d28-structured-task-verification.md) | Keep command, actual exit and evidence per criterion. Task completion and scientific success are separate. |
-| [Attribution and provenance, decision 30](../.bboxy/decisions/d30-artifact-provenance-scope.md) | Retain the producer and verification basis; unknown ownership and incomplete proof remain explicit. |
-| [Formal verification, decision 365](../.bboxy/decisions/d365-mandatory-formal-verification.md) | Stateful implementation changes carry models, broken controls and API/process witnesses under the repository's canonical checks. |
-| [Never block the swarm](../.bboxy/invariants/never-block-swarm.md), [unattended checks](../.bboxy/invariants/e2e-runs-unattended.md) | No test or iteration requires an operator prompt, desktop action or borrowed identity. |
-| [No chokepoints](../.bboxy/invariants/no-chokepoints.md), [responsive UI](../.bboxy/invariants/ui-never-waits.md) | Work off live input/UI owners; keep independent programs progressing. No experiment holds a KB writer lease across execution. |
-| [Owned cleanup](../.bboxy/invariants/kill-only-own-pids.md) | Record owned process/resource identities before effects. Cancel and clean up only those instances. |
-| [Signed source](../.bboxy/invariants/signed-main.md) | Source publication follows current approved identity, signing and [landing](../LAND.md) rules. A research verdict does not authorize a merge or deployment. |
+| [Structured verification, decision 28](../.bboxy/decisions/d28-structured-task-verification.den) | Keep command, actual exit and evidence per criterion. Task completion and scientific success are separate. |
+| [Attribution and provenance, decision 30](../.bboxy/decisions/d30-artifact-provenance-scope.den) | Retain the producer and verification basis; unknown ownership and incomplete proof remain explicit. |
+| [Formal verification, decision 365](../.bboxy/decisions/d365-mandatory-formal-verification.den) | Stateful implementation changes carry models, broken controls and API/process witnesses under the repository's canonical checks. |
+| [Never block the swarm](../.bboxy/invariants/never-block-swarm.den), [unattended checks](../.bboxy/invariants/e2e-runs-unattended.den) | No test or iteration requires an operator prompt, desktop action or borrowed identity. |
+| [No chokepoints](../.bboxy/invariants/no-chokepoints.den), [responsive UI](../.bboxy/invariants/ui-never-waits.den) | Work off live input/UI owners; keep independent programs progressing. No experiment holds a KB writer lease across execution. |
+| [Owned cleanup](../.bboxy/invariants/kill-only-own-pids.den) | Record owned process/resource identities before effects. Cancel and clean up only those instances. |
+| [Signed source](../.bboxy/invariants/signed-main.den) | Source publication follows current approved identity, signing and [landing](../LAND.md) rules. A research verdict does not authorize a merge or deployment. |
 
 Decisions explain which choices apply and why; invariants provide the checks that
 must hold. Neither becomes a scientific result. If governing records conflict,

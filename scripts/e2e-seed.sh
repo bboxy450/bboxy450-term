@@ -9,7 +9,7 @@
 set -eu
 cd "$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
 root=$(pwd)
-task=.bboxy/tasks/2026-10-24-a0-seed-e2e.md
+task=.bboxy/tasks/2026-10-24-a0-seed-e2e.den
 spec=.bboxy/specs/e2e-acceptance.md
 # One fixed path: Codex approves the seat's hooks once per hook command path (#265).
 bin=$root/target/release/bboxy450-term
@@ -57,7 +57,7 @@ step() {
     if ! $dry; then "$@"; fi
 }
 
-number=$(sed -n 's/^number: *\([0-9][0-9]*\)$/\1/p' "$task" | head -1)
+number=$(python3 -I scripts/kb_record.py number "$task")
 [ -n "$number" ] || { echo "e2e-seed: $task has no number" >&2; exit 2; }
 
 # Release build: it always uses the Keychain, whatever BBOXY_TEST_CUSTODY says; unset it so

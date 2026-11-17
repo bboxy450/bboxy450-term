@@ -1,5 +1,5 @@
 #!/bin/sh
-# Brand invariant (.bboxy/invariants/bboxy450-prefix.md, decision #52): every
+# Brand invariant (.bboxy/invariants/bboxy450-prefix.den, decision #52): every
 # workspace crate is either named bboxy450-* or has a row in the licensing map
 # (.bboxy/specs/licensing.md §1) whose "Publishes as" column names a bboxy450-*
 # crate or says internal. A new crate adds its row in the same commit. An internal

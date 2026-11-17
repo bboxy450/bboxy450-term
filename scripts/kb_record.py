@@ -101,7 +101,8 @@ def den_fields(text):
             value = _unquote(value)
         if key == "status":
             value = value.split()[0].lower()
-        elif key == "verify":
+        elif value.startswith("$ "):
+            # A command field (`verify`, an invariant's `check`) reads as its command.
             value = re.sub(r"\s*~>\s*exit\s+\d+$", "", value.removeprefix("$ "))
         elif key == "paths":
             key = "allowed_paths"
@@ -122,6 +123,11 @@ def markdown_fields(text):
                 key, value = line.split(":", 1)
                 out[key] = value.strip().strip("\"'")
     return out
+
+
+def text_fields(text):
+    """[`fields`] of a record's text: a YAML header is Markdown, anything else Den."""
+    return markdown_fields(text) if text.startswith("---") else den_fields(text)
 
 
 def fields(path):

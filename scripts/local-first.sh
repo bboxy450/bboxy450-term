@@ -1,5 +1,5 @@
 #!/bin/sh
-# Local-first invariant (.bboxy/invariants/local-first.md): until the cloud phase
+# Local-first invariant (.bboxy/invariants/local-first.den): until the cloud phase
 # opens, the mux depends on no remote transport or cloud SDK. Operator-authorized
 # launch cut 2 invokes local ssh/mosh/et clients; cloud providers remain separate.
 set -eu

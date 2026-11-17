@@ -1,5 +1,5 @@
 #!/bin/sh
-# Never block the swarm (.bboxy/invariants/never-block-swarm.md). Operator, 2026-10-24:
+# Never block the swarm (.bboxy/invariants/never-block-swarm.den). Operator, 2026-10-24:
 # "test and e2e tests and smoke tests should not require MY INPUT, fully autonomous! NEVER BLOCK SWARM".
 # Checkable half: no open task or brief is parked on a person. A task whose status is not
 # closed and whose frontmatter or body says it waits on, is blocked on, needs or requires

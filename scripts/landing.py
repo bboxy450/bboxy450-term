@@ -1186,26 +1186,31 @@ def execution_commands(root, sha, transcript, *, fixtures=False):
         if not match:
             continue
         gate = match[1]
-        source = command(["git", "show", f"{sha}:.bboxy/invariants/{gate}.md"], cwd=root, check=False)
+        # The invariant record is Den or Markdown; read its `check` either way.
+        for suffix in (".den", ".md"):
+            source = command(["git", "show", f"{sha}:.bboxy/invariants/{gate}{suffix}"], cwd=root, check=False)
+            if not source.returncode:
+                break
         if source.returncode:
             continue
-        lines = source.stdout.splitlines()
-        if not lines or lines[0] != "---":
-            continue
-        for field in lines[1:]:
-            if field == "---":
-                break
-            if field.startswith("check:"):
-                check = field.removeprefix("check:").strip()
-                if len(check) >= 2 and check[0] == check[-1] and check[0] in "\"'":
-                    check = check[1:-1]
-                try:
-                    tools = command_tools(["sh", "-c", check], root)
-                except ValueError:
-                    tools = set()
-                add([*invariants, *([] if gate in invariants else [gate])], tools)
-                break
+        check = kb_record().text_fields(source.stdout).get("check", "")
+        if len(check) >= 2 and check[0] == check[-1] and check[0] in "\"'":
+            check = check[1:-1]
+        if check:
+            try:
+                tools = command_tools(["sh", "-c", check], root)
+            except ValueError:
+                tools = set()
+            add([*invariants, *([] if gate in invariants else [gate])], tools)
     return list(commands.values())
+
+
+def kb_record():
+    """scripts/kb_record.py, the one script-side reader of a record's fields."""
+    spec = importlib.util.spec_from_file_location("kb_record", Path(__file__).with_name("kb_record.py"))
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def parity_cases(cases, data, root=None):

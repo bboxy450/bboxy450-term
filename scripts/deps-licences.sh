@@ -1,5 +1,5 @@
 #!/bin/sh
-# Dependency licence invariant (.bboxy/invariants/no-copyleft-deps.md, decision #50):
+# Dependency licence invariant (.bboxy/invariants/no-copyleft-deps.den, decision #50):
 # every dependency in the lockfile offers a permissive licence; copyleft-only or
 # unlicensed crates never enter the tree.
 set -eu

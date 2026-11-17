@@ -1,5 +1,5 @@
 #!/bin/sh
-# Images invariant (.bboxy/invariants/images-resolve.md, decision #52): the face
+# Images invariant (.bboxy/invariants/images-resolve.den, decision #52): the face
 # in .bboxy/images/bboxy.png is the identity file byte for byte, and every image
 # wikilink ![[name.ext]] under .bboxy names a file in .bboxy/images/.
 set -eu

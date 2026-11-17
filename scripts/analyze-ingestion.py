@@ -79,7 +79,7 @@ def analyze(report, capture, seats=967, watched=50):
             'fixture_failures': report['failures'], 'cursor_cuts': cuts,
             'owner_windows': windows,
             'coverage_note': 'R5i probe stamps and capture-owner timestamps have independent origins. No cross-clock subtraction or probe-window overlap is inferred. Each owner window summarizes its entire retained span buffer, which can include work outside the probe. Spans can be overwritten/missed; absence is unknown. Durations are inclusive and cannot be added as exclusive CPU. Named cuts are causal observations, not atomic cross-process snapshots.',
-            'interfaces': ['.bboxy/interfaces/supervisor-logic.md', '.bboxy/interfaces/logic-gui.md']}
+            'interfaces': ['.bboxy/interfaces/supervisor-logic.den', '.bboxy/interfaces/logic-gui.den']}
 
 
 def owner_window(owner):

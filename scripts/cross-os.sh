@@ -1,5 +1,5 @@
 #!/bin/sh
-# Cross-OS facade invariant (.bboxy/invariants/cross-os-facade.md, decision #46):
+# Cross-OS facade invariant (.bboxy/invariants/cross-os-facade.den, decision #46):
 # raw OS bindings live only in per-OS crates (*-macos, *-windows, *-linux, *-ios,
 # *-android, *-web) behind an OS-agnostic facade crate. OS-agnostic crates that
 # are facades themselves (winit, wgpu) are not bindings. ALLOW lists the bindings

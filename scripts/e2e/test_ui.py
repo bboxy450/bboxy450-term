@@ -77,7 +77,9 @@ class Assertions(unittest.TestCase):
             good["panes"][0][field]=old
 
     def test_every_script_header_matches_its_map_row(self):
-        mapping = (ROOT.parent.parent / ".bboxy/specs/e2e-script-map.md").read_text()
+        base = ROOT.parent.parent / ".bboxy/specs/e2e-script-map"
+        source = next(p for p in (base.with_suffix(".den"), base.with_suffix(".md")) if p.exists())
+        mapping = "\n".join(line.strip() for line in source.read_text().splitlines())
         for name in ["S1", "S2", "S3", "S4", "K2", "L1"]:
             header = (ROOT / f"{name}.sh").read_text().splitlines()[0]
             row_prefix = f"| {name} | `scripts/e2e/{name}.sh` | "

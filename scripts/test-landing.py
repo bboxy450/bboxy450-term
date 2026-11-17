@@ -33,7 +33,7 @@ sys.dont_write_bytecode = True
 SOURCE = Path(__file__).with_name("landing.py")
 # The copy loop and production trigger both consume this tuple. Keep it literal
 # so landing.py can read the declaration without importing this fixture runner.
-FIXTURE_SCRIPTS = ("landing.py", "formal.py", "formal-stage.py", "harness-submodule.py", "presubmit.sh", "land.sh",
+FIXTURE_SCRIPTS = ("landing.py", "kb_record.py", "formal.py", "formal-stage.py", "harness-submodule.py", "presubmit.sh", "land.sh",
                    "quarantine.py", "quarantine.sh", "quarantine-test.sh", "main_watch.py", "main-watch.sh",
                    "landing_recovery.py", "main-red-bounded.sh", "release-inputs.py", "verify-signatures.py",
                    "verify-signatures-core.py", "test-landing-budget-controls.py", "qos.sh", "qos-policy.py")
@@ -1038,9 +1038,12 @@ class PresubmitTests(unittest.TestCase):
         self.repo.commit("Fixture candidate")
 
     def signature_invariant(self):
-        invariant = SOURCE.parent.parent / ".bboxy/invariants/signed-main.md"
-        check = next(line.removeprefix("check: ") for line in invariant.read_text().splitlines()
-                     if line.startswith("check: "))
+        base = SOURCE.parent.parent / ".bboxy/invariants/signed-main"
+        invariant = next(p for p in (base.with_suffix(".den"), base.with_suffix(".md")) if p.exists())
+        spec = importlib.util.spec_from_file_location("kb_record", SOURCE.with_name("kb_record.py"))
+        kb_record = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(kb_record)
+        check = kb_record.fields(invariant)["check"]
         key, program = fixture_identity()
         # Copy the real verifier unchanged. Only this private test entry point
         # supplies the fixture's own public pin; production has no such override.
@@ -3545,8 +3548,9 @@ class BudgetPresubmitTests(unittest.TestCase):
         re=landing.re
         claims=re.findall(r"--covered-check '([^']+)'",source)
         self.assertEqual(len(claims),3)
-        records={line.split(":",1)[1].strip() for path in (SOURCE.parent.parent/".bboxy/invariants").glob("*.md")
-                 for line in path.read_text().splitlines() if line.startswith("check:")}
+        kb_record=landing.kb_record()
+        folder=SOURCE.parent.parent/".bboxy/invariants"
+        records={kb_record.fields(path).get("check","") for path in [*folder.glob("*.md"),*folder.glob("*.den")]}
         stages=source.replace(' --target-dir "$BBOXY_CARGO_TARGET_DIR"',"")
         always=re.findall(r"--covered-check '([^']+)'",next(l for l in source.splitlines() if l.startswith("run_check sh scripts/invariants.sh")))
         for claim in claims:

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Layering invariant (.bboxy/invariants/layering.md): every workspace crate
+# Layering invariant (.bboxy/invariants/layering.den): every workspace crate
 # depends only on crates earlier in ORDER, so any prefix is publishable alone.
 # New crate: add it to ORDER in the same commit.
 # HK-0: the wake-up kit follows core; its optional runtime assertion is below core.
