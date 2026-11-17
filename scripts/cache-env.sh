@@ -59,7 +59,11 @@ bboxy_cache_env() {
     # under memory pressure: on this workspace it made a cold build 12.4 min
     # against 8.8 min without it, and a second worktree 5.5 against 4.2 min.
     KACHE_SCHEDULER=${KACHE_SCHEDULER:-0}
-    export KACHE_CACHE_DIR KACHE_MAX_SIZE KACHE_LOCAL_ONLY KACHE_SCHEDULER
+    # Compile in the wrapper, not the daemon: under load (2026-11-17, load 57-79)
+    # daemon compiles dropped with "Broken pipe" and kache refused to rerun them
+    # locally, failing build scripts and cc crates. Cache lookups still use it.
+    KACHE_TRUST_DAEMON_EXECUTION=${KACHE_TRUST_DAEMON_EXECUTION:-0}
+    export KACHE_CACHE_DIR KACHE_MAX_SIZE KACHE_LOCAL_ONLY KACHE_SCHEDULER KACHE_TRUST_DAEMON_EXECUTION
     export RUSTC_WRAPPER=kache
     printf 'cache: on (kache; local store %s; %s)\n' "$KACHE_CACHE_DIR" "$KACHE_MAX_SIZE" >&2
     return 0
