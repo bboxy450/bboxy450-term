@@ -62,7 +62,8 @@ fn rendered() -> &'static [(String, String, Geometry)] {
     })
 }
 
-/// Mermaid fences in every Markdown file under `dir`, recursively.
+/// Mermaid fences in every Markdown and Den record under `dir`, recursively.
+/// A Den record's prose is indented; its fence's indent is removed from each line.
 fn mermaid_blocks(dir: &Path, out: &mut Vec<(String, String)>) {
     let mut entries: Vec<_> = std::fs::read_dir(dir)
         .unwrap()
@@ -72,12 +73,21 @@ fn mermaid_blocks(dir: &Path, out: &mut Vec<(String, String)>) {
     for p in entries {
         if p.is_dir() {
             mermaid_blocks(&p, out);
-        } else if p.extension().is_some_and(|e| e == "md") {
+        } else if p.extension().is_some_and(|e| e == "md" || e == "den") {
+            let den = p.extension().is_some_and(|e| e == "den");
             let text = std::fs::read_to_string(&p).unwrap();
             let mut cur: Option<String> = None;
+            let mut indent = 0;
             for line in text.lines() {
+                let line = if den && cur.is_some() {
+                    let strip = line.len() - line.trim_start_matches(' ').len();
+                    &line[strip.min(indent)..]
+                } else {
+                    line
+                };
                 match &mut cur {
                     None if line.trim_start().starts_with("```mermaid") => {
+                        indent = line.len() - line.trim_start_matches(' ').len();
                         cur = Some(String::new())
                     }
                     Some(b) if line.trim_start().starts_with("```") => {
