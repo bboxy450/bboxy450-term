@@ -347,9 +347,14 @@ lock-online:
 bump-harness:
 	@set -eu; . ./scripts/cache-env.sh; python3 -I scripts/bump-harness.py '$(REV)'
 
+# The harness builds alone: built with the app in one invocation, Cargo unifies
+# its ACP dependency's serde_json/preserve_order into the app, whose record
+# signatures then hash headers in insertion order (472 KB records, 2026-11-16).
 compile: tools
 	@set -eu; case '$(PROFILE)' in debug) flag='' ;; release) flag='--release' ;; *) echo 'PROFILE must be debug or release' >&2; exit 2 ;; esac; \
-	. ./scripts/cache-env.sh; cargo build --locked -p $(APP) -p bboxy450-harness -p bboxy450-term-remote --target-dir '$(TARGET_DIR)' $$flag
+	. ./scripts/cache-env.sh; \
+	cargo build --locked -p $(APP) -p bboxy450-term-remote --target-dir '$(TARGET_DIR)' $$flag; \
+	cargo build --locked -p bboxy450-harness --target-dir '$(TARGET_DIR)' $$flag
 
 test check: tools test-signatures test-yarn-concurrency
 	@set -eu; mkdir -p "$$(dirname '$(CI_LOG)')"; \
