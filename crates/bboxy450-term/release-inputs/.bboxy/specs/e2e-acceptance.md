@@ -2,21 +2,49 @@
 id: 01M5P5ERB2FAVBJHW7GJY3D7NA
 type: spec
 number: 258
-title: "e2e acceptance — the swarm's job is a working app with Claude and Codex inside it, judged by e2e records the in-app seats run"
+title: e2e acceptance — the swarm's job is a working app with Claude and Codex inside it, judged by e2e records the in-app seats run
 status: decided
 links:
-  - { to: "[[vision]]", rel: direction }
-  - { to: "[[d259-overnight-north-star]]", rel: decision }
-  - { to: "[[work-items]]", rel: record-type }
-  - { to: "[[knowledge-base]]", rel: store }
-  - { to: "[[l9-messaging-tasks]]", rel: channel }
-  - { to: "[[mcp-control-plane]]", rel: tools }
-  - { to: "[[w2-5-mcp-and-seat-wiring]]", rel: wiring }
-  - { to: "[[c1-live-seats]]", rel: promises }
-  - { to: "[[rim-glow]]", rel: promises }
-  - { to: "[[attention]]", rel: promises }
-created: "2026-10-24T05:17:08Z"
-updated: "2026-10-26T11:37:23Z"
+- to: '[[vision]]'
+  rel: direction
+- to: '[[d259-overnight-north-star]]'
+  rel: decision
+- to: '[[work-items]]'
+  rel: record-type
+- to: '[[knowledge-base]]'
+  rel: store
+- to: '[[l9-messaging-tasks]]'
+  rel: channel
+- to: '[[mcp-control-plane]]'
+  rel: tools
+- to: '[[w2-5-mcp-and-seat-wiring]]'
+  rel: wiring
+- to: '[[c1-live-seats]]'
+  rel: promises
+- to: '[[rim-glow]]'
+  rel: promises
+- to: '[[attention]]'
+  rel: promises
+created: 2026-10-24T05:17:08Z
+intent: The app passes when Claude and Codex seats inside it, driven by the Oracle through ctl, run each promised function's e2e record and report pass, fail or blocked without the operator's desktop.
+updated: 2026-11-16T19:50:30.663Z
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
+updated_by: seat:01M79HGAW321GYNK8468FYN4K9
+authorship:
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  kind: seat
+  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
+  process_generation: '1'
+provenance:
+  digest: sha256:684ba0bcccf5e12228bbfc9bad2d882b16207662dde22d27173a02e3c4284131
+  frontmatter_digest: sha256:a9f9113c30439499bc13d9097ba6315b46f565cb65c51957eb7d17080f8eddc2
+  signer: seat:01M79HGAW321GYNK8468FYN4K9
+  sig: XB+xnk+ax6grzOIPsntOKHuyFLIic/U85JcPFtRADuUClM1hOC/SHJ0Me4q6g106ELaffFLAy5lnIGj+Y+iLAg==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151766
+  event:
+    id: 01M7JYJFMC0QYR44GDK436X2PY
+    sequence: 151766
+    hash: c0280cf469880128229ec6009e8f567642bfb30b9a7c77dccd3588a520743455
 ---
 # E2E acceptance
 
