@@ -72,12 +72,27 @@ bboxy_cache_env || return $?
 # Keep the shell itself unclamped: an explicitly timed process needs default
 # QoS. Cargo/test trees and compiler/linker trees are classified independently.
 bboxy_qos_root=$(git rev-parse --show-toplevel 2>/dev/null || pwd -P)
-if [ -f "$bboxy_qos_root/scripts/qos.sh" ]; then
+# The real Cargo is never a shim that resolves `cargo` through PATH again: with
+# kache's shim first on PATH it found target/qos-bin/cargo, which called the
+# shim back until kache refused ("the chain is now 8 levels deep").
+if [ -z "${BBOXY_REAL_CARGO:-}" ]; then
+    for bboxy_cargo in "$HOME/.cargo/bin/cargo" $(which -a cargo 2>/dev/null); do
+        case "$(readlink "$bboxy_cargo" 2>/dev/null)" in *kache*) continue ;; esac
+        case "$bboxy_cargo" in */kache/*|*/qos-bin/*) continue ;; esac
+        [ -x "$bboxy_cargo" ] && { BBOXY_REAL_CARGO=$bboxy_cargo; break; }
+    done
+    unset bboxy_cargo
+fi
+if [ -n "${BBOXY_REAL_CARGO:-}" ]; then
+    KACHE_REAL_CARGO=${KACHE_REAL_CARGO:-$BBOXY_REAL_CARGO}
+    export BBOXY_REAL_CARGO KACHE_REAL_CARGO
+fi
+# BBOXY_QOS=off runs Cargo and the compilers at normal priority: for a build
+# the operator is waiting on (an install before a restart), not a background
+# gate. `BBOXY_QOS=off make install` (Makefile:8 skips qos.sh too).
+if [ "${BBOXY_QOS:-on}" != off ] && [ -f "$bboxy_qos_root/scripts/qos.sh" ]; then
     BBOXY_QOS_ROOT=$bboxy_qos_root
     export BBOXY_QOS_ROOT
-    if [ -z "${BBOXY_REAL_CARGO:-}" ]; then
-        BBOXY_REAL_CARGO=$(command -v cargo)
-    fi
     bboxy_qos_bin=${BBOXY_CARGO_TARGET_DIR:-$bboxy_qos_root/target}/qos-bin
     mkdir -p "$bboxy_qos_bin"
     ln -sf "$bboxy_qos_root/scripts/qos.sh" "$bboxy_qos_bin/cargo"

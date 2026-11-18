@@ -5,7 +5,7 @@
 # Retain accurate source credit on reuse:
 # https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 # Route even interpreted test drivers through the same inherited policy.
-SHELL = /bin/sh scripts/qos.sh make-$@
+SHELL = $(if $(filter off,$(BBOXY_QOS)),/bin/sh,/bin/sh scripts/qos.sh make-$@)
 .DEFAULT_GOAL := help
 
 .PHONY: test-qos
