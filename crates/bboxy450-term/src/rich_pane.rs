@@ -278,7 +278,7 @@ impl Pane {
                     view.anim.tick(started.elapsed().as_secs_f32()*1000.);
                     let appearance_revision=appearance.load(Ordering::Acquire);
                     let theme=if appearance_revision & 1 == 1 { ui::Theme::Light } else { ui::Theme::Dark };
-                    view.set_theme(theme); bridge.set_theme(theme);
+                    view.set_theme(theme); bridge.set_appearance(theme, view.theme_revision());
                     bridge.drain(Duration::from_micros(300));
                     view.update_inputs(&bridge);
                     for request in batch {
