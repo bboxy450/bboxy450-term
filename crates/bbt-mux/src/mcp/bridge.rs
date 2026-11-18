@@ -309,7 +309,8 @@ impl Bridge {
                         for mut tool in extra {
                             if !tools.iter().any(|current| current["name"] == tool["name"]) {
                                 // The runtime's tools take `intent` like every other.
-                                tool["inputSchema"]["properties"]["intent"] = super::intent_schema();
+                                tool["inputSchema"]["properties"]["intent"] =
+                                    super::intent_schema();
                                 tools.push(tool);
                             }
                         }
@@ -575,29 +576,92 @@ impl Bridge {
     /// Separate stdin framing from catalogue observation so an idle harness
     /// receives role/plugin changes without first sending another request.
     /// A one-frame queue bounds read-ahead; no tool calls are retried here.
-    pub fn run_frames(
+    ///
+    /// A Python runtime call waits up to 25 s for its run, and the run's
+    /// nested `bboxy.*` calls come back through this same stdio stream. Served
+    /// in turn, each nested call waited for the outer reply: every such run
+    /// took the full window and returned `running`. Python calls therefore go
+    /// to one worker, in order, while this loop keeps serving every other
+    /// request. Replies share the writer; JSON-RPC matches them by id.
+    pub fn run_frames<W: Write + Send>(
         &mut self,
         frames: &std::sync::mpsc::Receiver<io::Result<Vec<u8>>>,
-        writer: &mut impl Write,
+        writer: &mut W,
     ) -> io::Result<()> {
-        let period = Duration::from_secs(1);
-        let mut next = Instant::now() + period;
-        loop {
-            match frames.recv_timeout(next.saturating_duration_since(Instant::now())) {
-                Ok(bytes) => {
-                    if let Some(response) = self.handle(&bytes?) {
-                        Self::write_frame(writer, &response)?;
+        let writer = std::sync::Mutex::new(writer);
+        let write = |frame: &Value| -> io::Result<()> {
+            let mut writer = writer.lock().unwrap_or_else(|e| e.into_inner());
+            Self::write_frame(&mut **writer, frame)
+        };
+        std::thread::scope(|scope| {
+            let mut python: Option<std::sync::mpsc::Sender<Vec<u8>>> = None;
+            let period = Duration::from_secs(1);
+            let mut next = Instant::now() + period;
+            loop {
+                match frames.recv_timeout(next.saturating_duration_since(Instant::now())) {
+                    Ok(bytes) => {
+                        let bytes = bytes?;
+                        if self.python_frame(&bytes) {
+                            let sender = python.get_or_insert_with(|| {
+                                let (sender, queue) = std::sync::mpsc::channel::<Vec<u8>>();
+                                let mut worker = self.python_worker();
+                                let write = &write;
+                                scope.spawn(move || {
+                                    for bytes in queue {
+                                        if let Some(response) = worker.handle(&bytes) {
+                                            // A closed stdout ends the main loop too.
+                                            if write(&response).is_err() {
+                                                return;
+                                            }
+                                        }
+                                    }
+                                });
+                                sender
+                            });
+                            if sender.send(bytes).is_err() {
+                                return Err(io::Error::other("Python worker stopped"));
+                            }
+                        } else if let Some(response) = self.handle(&bytes) {
+                            write(&response)?;
+                        }
                     }
+                    Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => return Ok(()),
+                    Err(std::sync::mpsc::RecvTimeoutError::Timeout) => (),
                 }
-                Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => return Ok(()),
-                Err(std::sync::mpsc::RecvTimeoutError::Timeout) => (),
-            }
-            if Instant::now() >= next {
-                if let Some(notification) = self.catalogue_notification() {
-                    Self::write_frame(writer, &notification)?;
+                if Instant::now() >= next {
+                    if let Some(notification) = self.catalogue_notification() {
+                        write(&notification)?;
+                    }
+                    next = Instant::now() + period;
                 }
-                next = Instant::now() + period;
             }
+        })
+    }
+    /// A `tools/call` the Python runtime serves, once this bridge is initialized.
+    fn python_frame(&self, bytes: &[u8]) -> bool {
+        self.initialized
+            && self.python_socket.is_some()
+            && serde_json::from_slice::<Value>(bytes).is_ok_and(|value| {
+                value["method"] == "tools/call"
+                    && value["params"]["name"]
+                        .as_str()
+                        .is_some_and(python::handles)
+            })
+    }
+    /// The same seat's bridge for the Python worker: one authority, its own
+    /// connections, no catalogue (notifications stay on the main loop).
+    fn python_worker(&self) -> Self {
+        Self {
+            config: Config {
+                socket: self.config.socket.clone(),
+                seat: self.config.seat,
+                generation: self.config.generation,
+                capability: self.config.capability,
+            },
+            initialized: true,
+            catalogue: None,
+            attribution: self.attribution.clone(),
+            python_socket: self.python_socket.clone(),
         }
     }
 }
@@ -622,7 +686,7 @@ pub fn run_cli() -> io::Result<()> {
     });
     Bridge::new(config)
         .with_attribution(attribution(std::env::vars_os()))
-        .run_frames(&receiver, &mut io::stdout().lock())
+        .run_frames(&receiver, &mut io::stdout())
 }
 
 #[cfg(test)]
@@ -721,5 +785,91 @@ mod attribution_tests {
             panic!("call round trip");
         };
         assert_eq!(attribution, captured);
+    }
+}
+
+#[cfg(test)]
+mod python_concurrency_tests {
+    use super::*;
+    use std::os::unix::net::UnixListener;
+    use std::sync::mpsc;
+    // State: one held Python runtime call and one ordinary request sent after it.
+    // Safety: the ordinary request is answered while the Python call waits, so a
+    // script's nested `bboxy.*` call never waits for its own outer reply.
+    // Control: the former serial loop answered `ping` only after Python replied.
+    #[test]
+    fn a_waiting_python_call_does_not_hold_the_other_requests() {
+        let temp = tempfile::tempdir().unwrap();
+        let (mux_path, python_path) = (temp.path().join("mux"), temp.path().join("python"));
+        let mux = UnixListener::bind(&mux_path).unwrap();
+        std::thread::spawn(move || {
+            for stream in mux.incoming().flatten() {
+                let mut reader = BufReader::new(stream.try_clone().unwrap());
+                if read_frame(&mut reader).ok().flatten().is_some() {
+                    let _ = (&stream).write_all(
+                        b"{\"structuredContent\":{\"context\":{\"guard_version\":1}}}\n",
+                    );
+                }
+            }
+        });
+        let python = UnixListener::bind(&python_path).unwrap();
+        let (release, held) = mpsc::channel::<()>();
+        std::thread::spawn(move || {
+            let (stream, _) = python.accept().unwrap();
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            read_frame(&mut reader).unwrap();
+            let _ = held.recv_timeout(Duration::from_secs(5));
+            let _ = (&stream).write_all(
+                b"{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"structuredContent\":{\"status\":\"completed\"}}}\n",
+            );
+        });
+        let mut bridge = Bridge::new(Config {
+            socket: mux_path,
+            seat: Ulid::new(),
+            generation: 1,
+            capability: [0; 32],
+        });
+        bridge.python_socket = Some(python_path);
+        let (frames, receiver) = mpsc::sync_channel(4);
+        let (output, mut writer) = UnixStream::pair().unwrap();
+        output
+            .set_read_timeout(Some(Duration::from_secs(10)))
+            .unwrap();
+        let running = std::thread::spawn(move || bridge.run_frames(&receiver, &mut writer));
+        let send = |id: u64, method: &str, params: Value| {
+            frames
+                .send(Ok(serde_json::to_vec(
+                    &json!({"jsonrpc":"2.0","id":id,"method":method,"params":params}),
+                )
+                .unwrap()))
+                .unwrap();
+        };
+        send(
+            0,
+            "initialize",
+            json!({"protocolVersion":"2025-11-25","capabilities":{},"clientInfo":{"name":"t","version":"1"}}),
+        );
+        send(
+            1,
+            "tools/call",
+            json!({"name":"python_execute","arguments":{"source":"emit(1)"}}),
+        );
+        send(2, "ping", json!({}));
+        let mut reader = BufReader::new(output);
+        let mut order = vec![];
+        while order.len() < 3 {
+            let frame = read_frame(&mut reader).unwrap().expect("bridge reply");
+            let reply: Value = serde_json::from_slice(&frame).unwrap();
+            if reply["id"].is_u64() {
+                let id = reply["id"].as_u64().unwrap();
+                order.push(id);
+                if id == 2 {
+                    release.send(()).unwrap();
+                }
+            }
+        }
+        assert_eq!(order, [0, 2, 1], "ping waited for the Python call");
+        drop(frames);
+        running.join().unwrap().unwrap();
     }
 }
