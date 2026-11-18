@@ -237,7 +237,7 @@ impl Markdown {
             scrolls: None,
             provenance_expanded: false,
             highlights: Some(highlights),
-            wide_figures: false,
+            transcript: false,
         }
         .blocks(&self.blocks, "")
     }
@@ -262,7 +262,7 @@ impl Markdown {
             scrolls: None,
             provenance_expanded: false,
             highlights: Some(highlights),
-            wide_figures: true,
+            transcript: true,
         }
         .blocks(&self.blocks, "")
     }
@@ -290,7 +290,7 @@ impl Markdown {
             scrolls: None,
             provenance_expanded: false,
             highlights: None,
-            wide_figures: false,
+            transcript: false,
         };
         let mut children = vec![];
         if !self.frontmatter.fields.is_empty() || self.frontmatter.error.is_some() {
@@ -334,7 +334,7 @@ impl Markdown {
             scrolls: None,
             provenance_expanded: false,
             highlights: None,
-            wide_figures: false,
+            transcript: false,
         };
         r.blocks(self.display_blocks(title), "")
     }
@@ -359,7 +359,7 @@ impl Markdown {
             scrolls: None,
             provenance_expanded: false,
             highlights: None,
-            wide_figures: false,
+            transcript: false,
         }
         .blocks(self.display_blocks(title), "")
     }
@@ -385,7 +385,7 @@ impl Markdown {
             scrolls: Some(scrolls),
             provenance_expanded: false,
             highlights: None,
-            wide_figures: false,
+            transcript: false,
         };
         self.hosted_body(title, &r)
     }
@@ -411,7 +411,7 @@ impl Markdown {
             scrolls: Some(control.horizontal()),
             provenance_expanded: control.provenance_expanded,
             highlights: None,
-            wide_figures: false,
+            transcript: false,
         };
         self.hosted_body(title, &r)
     }
@@ -513,7 +513,7 @@ impl Markdown {
                     scrolls: None,
                     provenance_expanded: false,
                     highlights: None,
-                    wide_figures: false,
+                    transcript: false,
                 };
                 let extra: Vec<_> = self
                     .frontmatter
@@ -613,7 +613,7 @@ struct Render<'a> {
     table_width: f32,
     /// A transcript host without inner horizontal scroll: diagrams take the
     /// enclosing column like tables instead of the reading measure.
-    wide_figures: bool,
+    transcript: bool,
     fragment_words: bool,
     diagrams: &'a [Diagram],
     record_links: Option<&'a ui::modules::document_modal::controller::RecordLinks>,
@@ -662,7 +662,7 @@ impl Render<'_> {
         let wide_block = |b: &Block| match &b.kind {
             BlockKind::Table { .. } => true,
             BlockKind::Code { info, .. } => {
-                self.wide_figures && info.split_whitespace().next() == Some("mermaid")
+                self.transcript && info.split_whitespace().next() == Some("mermaid")
             }
             _ => false,
         };
@@ -751,7 +751,8 @@ impl Render<'_> {
                 STYLE.spacing.s2 as f32,
             ),
             BlockKind::Code { info, text } => {
-                if info.split_whitespace().next() == Some("mermaid") {
+                let language = info.split_whitespace().next();
+                if language == Some("mermaid") {
                     let mut options = self
                         .diagrams
                         .iter()
@@ -773,7 +774,7 @@ impl Render<'_> {
                             crate::mermaid::element_with_key(
                                 key,
                                 text,
-                                if self.wide_figures {
+                                if self.transcript {
                                     self.table_width
                                 } else {
                                     self.width
@@ -787,14 +788,15 @@ impl Render<'_> {
                         0.,
                     )
                 } else {
-                    let caption = info.split_whitespace().next().map(str::to_uppercase);
+                    let spans = self.highlights.and_then(|h| h.spans(b));
+                    let code = if self.transcript && language == Some("json") {
+                        self.code_spans(key, text, 1.35, spans, Some("JSON"))
+                    } else {
+                        let caption = language.map(str::to_uppercase);
+                        self.framed_code(key, text, caption.as_deref(), spans)
+                    };
                     (
-                        self.framed_code(
-                            key,
-                            text,
-                            caption.as_deref(),
-                            self.highlights.and_then(|h| h.spans(b)),
-                        ),
+                        code,
                         ui::TypeStep::Caption.pixels(),
                         ui::TypeStep::Caption.pixels(),
                     )
@@ -1486,7 +1488,7 @@ impl Render<'_> {
         )
     }
     fn code(&self, key: &str, value: &str, line_height: f32) -> c::Element {
-        self.code_spans(key, value, line_height, None)
+        self.code_spans(key, value, line_height, None, None)
     }
     /// A fenced code block in an mdxcn frame, the language as its title.
     fn framed_code(
@@ -1701,6 +1703,7 @@ impl Render<'_> {
         value: &str,
         line_height: f32,
         spans: Option<&[crate::highlight::Span]>,
+        caption: Option<&str>,
     ) -> c::Element {
         let e = self.code_text(key, value, line_height, spans);
         let pad = [
@@ -1724,6 +1727,22 @@ impl Render<'_> {
         } else {
             e
         };
+        let mut children = Vec::new();
+        if let Some(caption) = caption {
+            children.push(
+                nowrap(
+                    format!("{key}/title"),
+                    caption,
+                    ui::Text {
+                        line_height: 1.,
+                        tracking_em: 0.05,
+                        ..font(ui::TypeStep::Caption, 600, true, ui::Color::Muted)
+                    },
+                )
+                .into(),
+            );
+        }
+        children.push(child.into());
         column(
             key,
             border(
@@ -1731,8 +1750,8 @@ impl Render<'_> {
                 self.ctx,
                 [true; 4],
             ),
-            0.,
-            vec![child.into()],
+            STYLE.spacing.s2 as f32,
+            children,
         )
     }
     fn table(

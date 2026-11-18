@@ -736,6 +736,40 @@ fn transcript_diagrams_use_the_offered_width_like_tables() {
     assert!(diagram.rect.w <= width + 0.01);
 }
 
+#[test]
+fn transcript_json_keeps_its_border_title_and_viewport_on_the_same_panel() {
+    let json = format!(r#"{{"error":{{"message":"{} END"}}}}"#, "x".repeat(260));
+    let doc = parse(&format!("```json\n{json}\n```"));
+    for (theme, width) in [(ui::Theme::Dark, 280.), (ui::Theme::Light, 1320.)] {
+        let ctx = ui::Context::new(theme, ui::Density::Cozy);
+        let highlighter = bbt_doc::highlight::RustHighlighter::new(theme == ui::Theme::Light);
+        let highlights = bbt_doc::highlight::Highlights::prepare(&doc, &highlighter);
+        let layout = doc
+            .transcript_body_element(&highlights, ctx, &Fonts, width)
+            .layout(Rect::new(0., 0., width, 0.), ctx, &Fonts)
+            .unwrap();
+        let panel = &named(&layout, "block0").unwrap().children[0];
+        let c::LayoutKind::Box { style, .. } = &panel.kind else {
+            panic!("JSON needs a single bordered panel");
+        };
+        assert!((panel.rect.w - width.min(STYLE.spacing.doc_measure as f32)).abs() < 0.01);
+        assert_eq!(style.border_sides, [true; 4]);
+        assert!(style.border.as_ref().unwrap().width > 0. && !style.dashed);
+        let [title, viewport] = panel.children.as_slice() else {
+            panic!("JSON needs an inline title and a code viewport");
+        };
+        assert_eq!(texts(title), "JSON\n");
+        assert!(title.rect.y > panel.rect.y && title.rect.y + title.rect.h <= viewport.rect.y);
+        assert!((title.rect.x - viewport.rect.x).abs() < 0.01);
+        assert!(viewport.rect.x + viewport.rect.w < panel.rect.x + panel.rect.w);
+        let c::LayoutKind::ScrollView { content, .. } = viewport.kind else {
+            panic!("long JSON needs horizontal overflow");
+        };
+        assert!(content[0] > viewport.rect.w);
+        assert_eq!(texts(viewport).trim_end(), json);
+    }
+}
+
 // keeps: spec document-viewer §Figures — GFM alerts and fenced code sit in an
 // mdxcn frame: dashed box, `+` corners, `[ TITLE ]` centred on the top edge.
 #[test]
