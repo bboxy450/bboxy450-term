@@ -939,9 +939,8 @@ mod checkpoint_tests {
             let log = populated(&stream, 256);
             corrupt_payload(&log, 1);
             if legacy {
-                sqlite::open(&log.path)
-                    .unwrap()
-                    .execute_batch("DROP TABLE verification_checkpoint")
+                let db = sqlite::open(&log.path).unwrap();
+                db.execute_batch("DROP TABLE verification_checkpoint; PRAGMA user_version = 1")
                     .unwrap();
             }
             let (_, verified) = EventLog::open_counted(&stream).unwrap();
