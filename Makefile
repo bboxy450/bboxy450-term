@@ -140,6 +140,8 @@ help:
 	  'make prepare-tlc                Export signed standalone bboxy450-tlc source' \
 	  'make test-tlc-standalone        Verify the public standalone source, native + TLC' \
 	  'make publish-tlc-github         Publish verified signed TLC source/artifacts (authorization required)' \
+	  'make test-data-migrations        Versioned schemas, retained JSON signatures and shell restart' \
+	  'make test-data-migration-models  Focused native/TLC migration and checkpoint parity' \
 	  'make test-task-migration        Private authenticated lifecycle/import and independent 250-record audit' \
 	  'make test-task-import-observer   Native migration with active observer and staging exclusion' \
 	  'make check-task-import-observer  Strict all-target import/mux/app Clippy' \
@@ -2835,3 +2837,22 @@ render-den:
 	@set -eu; . ./scripts/cache-env.sh; \
 	cargo build --locked -p bboxy450-den --bin bboxy450-den --target-dir '$(TARGET_DIR)'; \
 	git ls-files -z -- '*.den' ':!:crates/bboxy450-den/tests/*.den' | xargs -0 '$(TARGET_DIR)/debug/bboxy450-den' render --markdown $(if $(DEN_OUT),--out '$(DEN_OUT)')
+
+# Focused incident regression: schema rollback, both historical JSON orders,
+# checkpoint integrity, metadata signatures and a real retained shell restart.
+# These are correctness fixtures; avoid optimizing the large mux/app test bodies.
+DATA_MIGRATION_CARGO = cargo --config 'profile.test.package.bboxy450-term-mux.opt-level=0' --config 'profile.test.package.bboxy450-term.opt-level=0'
+.PHONY: test-data-migrations
+test-data-migrations: init-submodules
+	@python3 -I scripts/test-harness-submodule.py
+	@set -eu; . ./scripts/cache-env.sh; \
+	$(DATA_MIGRATION_CARGO) nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib -E 'test(store::) | test(index::tests::) | test(provenance::queries::)' ; \
+	$(DATA_MIGRATION_CARGO) nextest run --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --test it -E 'test(=logic::logic_reconnect_keeps_same_supervisor_child_and_exact_screen) | test(/^storage_bus_index::/)'
+
+.PHONY: test-data-migration-models
+test-data-migration-models: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_DATA_MIGRATION_MODELS='$(abspath $(TARGET_DIR))/data-migration/models' $(DATA_MIGRATION_CARGO) nextest run --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test it -E 'test(=formal_contracts::selected_data_migration_models)'; \
+	cargo clippy --locked -p bboxy450-term-mux --target-dir '$(TARGET_DIR)' --lib --tests -- -D warnings; \
+	cargo clippy --locked -p $(APP) --target-dir '$(TARGET_DIR)' --test it -- -D warnings; \
+	sh scripts/qos.sh utility python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]).resolve(); root=target/"models"; java,jar,pins=formal.tools(target); rows=[line.split("\t") for line in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"DataMigration":"pass","BrokenDataMigration":"safety","EventLogCheckpoint":"pass","BrokenEventLogCheckpoint":"safety"}; results=[formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]; import json,hashlib; files=["crates/bbt-mux/src/store/sqlite.rs","crates/bbt-mux/src/store/events.rs","crates/bbt-mux/Cargo.toml","crates/bboxy450-term/tests/formal_contracts/event_log_model.rs"]; (target/"evidence.json").write_text(json.dumps({"models":results,"source_hashes":{f:hashlib.sha256(pathlib.Path(f).read_bytes()).hexdigest() for f in files},"tool_pins":pins},indent=2)+"\n")' '$(abspath $(TARGET_DIR))/data-migration'

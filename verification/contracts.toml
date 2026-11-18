@@ -1996,3 +1996,13 @@ methods = ["native_tlc_differential"]
 assumptions = "Two sessions, each with one independent link, atomic binding/send/drop. The finite projection observes the first session's event destination and the second session's MCP channel. It does not model arbitrary framing, processes, connection ID arithmetic, per-session rebinding or scheduler fairness; real sockets and scripted processes check rebinding, stale owners and disconnect cleanup. No liveness or arbitrary Rust refinement claim."
 property = "REMOTE-ROUTING-001: a session event reaches its own link. REMOTE-ROUTING-002: closing another link preserves its MCP channel. Separate controls replace the session writer with the latest global writer and retire all MCP channels on a single disconnect."
 checks = ["make test-formal", "make test"]
+
+[[contract]]
+name = "DataMigration"
+title = "Versioned startup migrations preserve retained records"
+models = ["DataMigration", "BrokenDataMigration"]
+sources = ["crates/bbt-mux/src/store/sqlite.rs", "crates/bbt-mux/src/store/events.rs", "crates/bbt-mux/Cargo.toml", "crates/bboxy450-term/tests/formal_contracts/event_log_model.rs"]
+implementation_tests = ["crates/bbt-mux/src/store/sqlite.rs", "crates/bbt-mux/src/store/events.rs", "crates/bbt-mux/tests/logic.rs"]
+assumptions = "Two openers, schema versions 0..2, two effects and one interrupted/failed transaction; SQLite immediate writer exclusion and rollback are trusted primitives. Observe and writer recheck may interleave; each effect and user_version update commit atomically. Weak fairness of opener steps and eventually successful IO gives progress. Actual disk failure, unsupported future schemas, legacy version-table refusal, corruption and arbitrary Rust/OS behavior remain implementation coverage. Signed event bytes are immutable; both sorted and insertion-ordered nested JSON must retain their original order, hashes and signatures. JSON/Ed25519 and metadata canonicalization are checked by Rust, not abstract cryptography."
+property = "The schema marker equals committed migration effects after concurrent open, failure or restart. A stale observed version never reapplies a step. BrokenDataMigration advances only the marker and must fail safety. Current schemas use a read-only fast path; unsupported future versions refuse unchanged. Failed steps roll back and resume; old event payloads, signatures, chain links and checkpoints survive upgrade and append/reopen."
+checks = ["make test-data-migrations", "make test-data-migration-models"]

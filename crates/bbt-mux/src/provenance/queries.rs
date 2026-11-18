@@ -704,6 +704,7 @@ pub(crate) fn document_signature(doc: &Document) -> Value {
         .ok()?;
         let mut front = doc.metadata.clone();
         front.as_object_mut()?.remove("provenance");
+        front.sort_all_objects();
         let declared = doc.metadata["provenance"]["frontmatter_digest"].as_str()?;
         // The header as re-serialised (sorted keys), or exactly as written: a
         // host built with `serde_json/preserve_order` signed insertion order.

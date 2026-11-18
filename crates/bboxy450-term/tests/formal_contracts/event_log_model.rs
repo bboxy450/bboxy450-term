@@ -91,6 +91,66 @@ fn checkpoint(broken: bool) -> Model {
     m
 }
 
+// Two startup openers observe versions independently. Only the writer recheck
+// permits a step; SQLite commits its effect and marker together. A single
+// interruption discards in-flight observations, never committed state.
+fn migration(broken: bool) -> Model {
+    let mut m = model(
+        "DataMigration",
+        broken,
+        &[
+            ("version", 2, 0),
+            ("effects", 2, 0),
+            ("first", 3, 3),
+            ("second", 3, 3),
+            ("interrupted", 1, 0),
+        ],
+    );
+    for (slot, name) in [(2, "First"), (3, "Second")] {
+        action(
+            &mut m,
+            &format!("Observe{name}"),
+            eq(slot, 3).and(Var(0).lt(Int(2))),
+            &[(slot, Var(0))],
+        );
+        action(
+            &mut m,
+            &format!("Commit{name}"),
+            Var(slot).eq(Var(0)).and(Var(0).lt(Int(2))),
+            &[
+                (0, Var(0).plus(Int(1))),
+                (1, if broken { Var(1) } else { Var(1).plus(Int(1)) }),
+                (slot, Int(3)),
+            ],
+        );
+        action(
+            &mut m,
+            &format!("Recheck{name}"),
+            Var(slot).lt(Var(0)),
+            &[(slot, Int(3))],
+        );
+    }
+    action(
+        &mut m,
+        "InterruptOrSqlFailure",
+        eq(4, 0),
+        &[(2, Int(3)), (3, Int(3)), (4, Int(1))],
+    );
+    safe(&mut m, "MarkerAndEffectsCommitTogether", Var(0).eq(Var(1)));
+    m.weak_fair.push(vec![0, 1, 2, 3, 4, 5]);
+    m.responses.push(Response {
+        name: "SupportedSchemaEventuallyCurrent".into(),
+        request: Var(0).lt(Int(2)),
+        response: eq(0, 2),
+    });
+    m
+}
+
 pub(super) fn cases() -> Vec<(Model, &'static str)> {
-    vec![(checkpoint(false), "pass"), (checkpoint(true), "safety")]
+    vec![
+        (checkpoint(false), "pass"),
+        (checkpoint(true), "safety"),
+        (migration(false), "pass"),
+        (migration(true), "safety"),
+    ]
 }

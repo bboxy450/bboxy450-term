@@ -147,7 +147,7 @@ impl EventLog {
             path: directory.join("events.sqlite"),
         };
         let mut db = sqlite::open(&log.path)?;
-        sqlite::ensure_schema(&mut db, "CREATE TABLE IF NOT EXISTS version(version INTEGER NOT NULL);
+        sqlite::migrate(&mut db, &["CREATE TABLE IF NOT EXISTS version(version INTEGER NOT NULL);
           INSERT INTO version SELECT 1 WHERE NOT EXISTS(SELECT 1 FROM version);
           CREATE TABLE IF NOT EXISTS events(seq INTEGER PRIMARY KEY, id TEXT NOT NULL UNIQUE, ts INTEGER NOT NULL,
             subject TEXT NOT NULL, source TEXT NOT NULL, payload BLOB NOT NULL, signer BLOB NOT NULL, sig BLOB NOT NULL, prev TEXT NOT NULL, hash TEXT NOT NULL);
@@ -157,17 +157,12 @@ impl EventLog {
           CREATE TABLE IF NOT EXISTS consumers(name TEXT PRIMARY KEY, filter TEXT NOT NULL, cursor INTEGER NOT NULL, acked INTEGER NOT NULL, deliver TEXT NOT NULL, policy TEXT NOT NULL);
           CREATE TABLE IF NOT EXISTS pending(consumer TEXT NOT NULL REFERENCES consumers(name), seq INTEGER NOT NULL REFERENCES events(seq), delivered_at INTEGER NOT NULL, deliveries INTEGER NOT NULL, PRIMARY KEY(consumer,seq));
           CREATE TABLE IF NOT EXISTS stream(first_seq INTEGER NOT NULL,cold TEXT);
-          INSERT INTO stream SELECT 1,NULL WHERE NOT EXISTS(SELECT 1 FROM stream);", "unsupported event schema")?;
-        // ensure_schema deliberately skips DDL for user_version=1. Migrate
-        // separately, additively, without taking a writer on subsequent opens.
-        let migrated: bool = db.query_row(
-            "SELECT EXISTS(SELECT 1 FROM sqlite_master WHERE type='table' AND name='verification_checkpoint')",
-            [], |row| row.get(0),
-        )?;
-        if !migrated {
-            db.execute_batch("CREATE TABLE IF NOT EXISTS verification_checkpoint(
-                id INTEGER PRIMARY KEY CHECK(id=1), seq INTEGER NOT NULL CHECK(seq>=0), hash TEXT NOT NULL)")?;
-        }
+          INSERT INTO stream SELECT 1,NULL WHERE NOT EXISTS(SELECT 1 FROM stream);",
+          // v2: retain existing checkpoints and every signed byte. Both legacy
+          // sorted and insertion-ordered JSON round-trip with preserve_order.
+          "CREATE TABLE IF NOT EXISTS verification_checkpoint(
+                id INTEGER PRIMARY KEY CHECK(id=1), seq INTEGER NOT NULL CHECK(seq>=0), hash TEXT NOT NULL)"],
+          "unsupported event schema")?;
         let tx = db.transaction()?;
         let checkpoint = tx
             .query_row(
@@ -694,6 +689,98 @@ mod checkpoint_tests {
         .unwrap();
     }
 
+    // Independent old-writer bytes: signing never calls Envelope::signed, and
+    // nested keys deliberately differ from sorted serde_json::Map order.
+    // keeps: contract EventLogCheckpoint
+    #[test]
+    fn legacy_json_orders_migrate_without_rewriting_signed_history() {
+        for payload in [
+            r#"{"z":1,"a":{"y":2,"b":3}}"#,
+            r#"{"a":{"b":3,"y":2},"z":1}"#,
+        ] {
+            for (version, checkpointed) in [(0, false), (0, true), (1, false), (1, true)] {
+                let temp = tempfile::tempdir().unwrap();
+                let log = EventLog::open(temp.path()).unwrap();
+                let key = SigningKey::from_bytes(&[27; 32]);
+                let signer = key.verifying_key().to_bytes();
+                let draft = format!(
+                    r#"{{"id":"00000000000000000000000001","ts":7,"subject":"fixture/legacy","source":"old-writer","seat":null,"generation":null,"reply_to":null,"payload":{payload}}}"#
+                );
+                let tuple = format!("[1,{draft},\"\",{signer:?}]").replace(", ", ",");
+                let mut signing = b"bboxy/event/v1\0".to_vec();
+                signing.extend_from_slice(&(tuple.len() as u64).to_le_bytes());
+                signing.extend_from_slice(tuple.as_bytes());
+                let sig = key.sign(&signing).to_bytes();
+                let raw = format!(r#"{{"seq":1,{},"prev":"","provenance":{{"signer":{signer:?},"sig":{sig:?}}}}}"#, &draft[1..draft.len()-1]).replace(", ", ",").into_bytes();
+                let hash = digest(&raw);
+                let db = sqlite::open(&log.path).unwrap();
+                db.execute("INSERT INTO events VALUES(1,?1,7,'fixture/legacy','old-writer',?2,?3,?4,'',?5)",
+                    params![Ulid(1).to_string(),raw,signer.as_slice(),sig.as_slice(),hash]).unwrap();
+                if checkpointed {
+                    db.execute(
+                        "UPDATE verification_checkpoint SET seq=1,hash=?1 WHERE id=1",
+                        [&hash],
+                    )
+                    .unwrap();
+                } else {
+                    db.execute_batch("DROP TABLE verification_checkpoint")
+                        .unwrap();
+                }
+                db.pragma_update(None, "user_version", version).unwrap();
+                drop(db);
+                // Upgrade twice, verify signatures/whole chain and extend the old head.
+                for _ in 0..2 {
+                    let reopened = EventLog::open(temp.path()).unwrap();
+                    assert_eq!(reopened.verify_chain().unwrap(), 1);
+                    let old = reopened.after(0, 1).unwrap().remove(0);
+                    old.verify().unwrap();
+                    assert_eq!(old.hash().unwrap(), hash);
+                    if payload.starts_with(r#"{"z"#) {
+                        let mut reordered = old.clone();
+                        reordered.event.payload.sort_all_objects();
+                        assert_ne!(reordered.hash().unwrap(), hash);
+                        assert!(reordered.verify().is_err(), "sorting is the incident control");
+                    }
+                }
+                let next = log
+                    .append(Draft::new("fixture/next", "new-writer", Value::Null), &key)
+                    .unwrap();
+                assert_eq!(next.prev, hash);
+                let reopened = EventLog::open(temp.path()).unwrap();
+                assert_eq!(reopened.verify_chain().unwrap(), 2);
+                let db = sqlite::open(&log.path).unwrap();
+                assert_eq!(
+                    db.query_row("SELECT payload FROM events WHERE seq=1", [], |r| r
+                        .get::<_, Vec<u8>>(0))
+                        .unwrap(),
+                    raw
+                );
+                assert_eq!(
+                    db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
+                        .unwrap(),
+                    2
+                );
+            }
+        }
+    }
+
+    // Optional private incident evidence. Samples stay in target, never in Git.
+    #[test]
+    #[ignore = "requires private retained checkpoint samples"]
+    fn retained_checkpoint_samples_keep_original_bytes_hashes_and_signatures() {
+        let path = std::env::var_os("BBOXY_RETAINED_EVENT_SAMPLES").expect("sample file");
+        let samples: Vec<(Vec<u8>, String)> =
+            serde_json::from_slice(&std::fs::read(path).unwrap()).unwrap();
+        assert!(!samples.is_empty());
+        for (bytes, hash) in &samples {
+            let event: Envelope = serde_json::from_slice(bytes).unwrap();
+            assert_eq!(serde_json::to_vec(&event).unwrap(), *bytes);
+            assert_eq!(event.hash().unwrap(), *hash);
+            event.verify().unwrap();
+        }
+        println!("retained checkpoints verified: {}", samples.len());
+    }
+
     // keeps: contract EventLogCheckpoint
     #[test]
     fn opening_n_rows_with_checkpoint_n_minus_one_verifies_exactly_one() {
@@ -803,6 +890,7 @@ mod checkpoint_tests {
         let temp = tempfile::tempdir().unwrap();
         let log = populated(temp.path(), 512);
         let db = sqlite::open(&log.path).unwrap();
+        db.pragma_update(None, "user_version", 1).unwrap();
         db.execute_batch("DROP TABLE verification_checkpoint")
             .unwrap();
         assert_eq!(

@@ -40,19 +40,21 @@ class SubmoduleTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, 'feature inventory is missing'):
             harness.validate_json_features({})
 
-    def test_unexpected_ordering_feature_without_acp_agent_is_rejected(self):
-        data = {'serde_json': {'preserve_order'}, 'bboxy450-harness': {'embedded'}}
+    def test_ordering_feature_is_required_independently_of_acp_agent(self):
+        data = {'serde_json': {'std'}, 'bboxy450-harness': {'embedded'}}
         with self.assertRaisesRegex(ValueError, 'serde_json/preserve_order'):
             harness.validate_json_features(data)
+        data['serde_json'].add('preserve_order')
+        self.assertEqual(harness.validate_json_features(data), ['preserve_order', 'std'])
         data['bboxy450-harness'].add('acp-agent')
-        self.assertEqual(harness.validate_json_features(data), ['preserve_order'])
+        self.assertEqual(harness.validate_json_features(data), ['preserve_order', 'std'])
 
     def test_workspace_acp_default_does_not_leak_into_consumer_features(self):
         workspace = {'packages': [{'id': 'h', 'name': 'bboxy450-harness'}],
                      'resolve': {'nodes': [{'id': 'h', 'features': ['default', 'acp', 'acp-agent', 'embedded']}]}}
-        consumer = 'bboxy450-term v0.1.1|default\nbboxy450-harness v0.1.0 (/own path/harness)|embedded\nserde_json v1.0.154|default,std\n'
+        consumer = 'bboxy450-term v0.1.1|default\nbboxy450-harness v0.1.0 (/own path/harness)|embedded\nserde_json v1.0.154|default,preserve_order,std\n'
         with patch.object(harness, 'workspace_metadata', return_value=workspace) as metadata, patch.object(subprocess, 'check_output', return_value=consumer) as tree:
-            self.assertEqual(harness.check_json_features(Path('/own path')), ['default', 'std'])
+            self.assertEqual(harness.check_json_features(Path('/own path')), ['default', 'preserve_order', 'std'])
         metadata.assert_not_called()
         self.assertEqual(tree.call_args.args[0], ['cargo', 'tree', '-p', 'bboxy450-term', '--locked', '-e', 'normal,build',
                                                 '--prefix', 'none', '-f', '{p}|{f}'])

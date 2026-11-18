@@ -2195,3 +2195,13 @@ frontend = "den"
 name = "BrokenDenToggle"
 expected = "safety"
 frontend = "den"
+
+[[model]]
+name = "DataMigration"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenDataMigration"
+expected = "safety"
+frontend = "project"

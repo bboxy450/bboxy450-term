@@ -145,6 +145,28 @@ fn logic_reconnect_keeps_same_supervisor_child_and_exact_screen() {
     let runtime = runtime();
     let supervisor = Supervisor::start(common::capture_config(temp.path())).unwrap();
     let config = fixture(temp.path());
+    // Upgrade an old, checkpointed account with insertion-ordered signed data
+    // before admitting a seat; the second start must retain its live PTY too.
+    use bbt_mux::store::{
+        Events,
+        events::{Draft, EventLog},
+    };
+    let account = config.run_dir.join("account");
+    let history = EventLog::open(&account).unwrap();
+    let old = history
+        .append(
+            Draft::new(
+                "fixture/legacy",
+                "old-writer",
+                serde_json::from_str(r#"{"z":1,"a":{"y":2,"b":3}}"#).unwrap(),
+            ),
+            &SigningKey::from_bytes(&[20; 32]),
+        )
+        .unwrap();
+    let original = serde_json::to_vec(&old).unwrap();
+    let db = rusqlite::Connection::open(account.join("events.sqlite")).unwrap();
+    db.pragma_update(None, "user_version", 1).unwrap();
+    drop(db);
     let logic = Logic::start(
         supervisor.connect().unwrap(),
         config.clone(),
@@ -166,6 +188,17 @@ fn logic_reconnect_keeps_same_supervisor_child_and_exact_screen() {
     )
     .unwrap();
     let after = runtime.block_on(logic.client.snapshot(seat, 1)).unwrap();
+    assert_eq!(
+        serde_json::to_vec(&history.at(1).unwrap().unwrap()).unwrap(),
+        original
+    );
+    history.verify_chain().unwrap();
+    let db = rusqlite::Connection::open(account.join("events.sqlite")).unwrap();
+    assert_eq!(
+        db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
+            .unwrap(),
+        2
+    );
     assert_eq!(before.screen, after.screen);
     assert_eq!(before.sequence, after.sequence);
     assert_ne!(before.view.view_generation, after.view.view_generation);

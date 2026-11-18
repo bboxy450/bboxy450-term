@@ -73,10 +73,9 @@ def validate_json_features(data):
         raise ValueError('harness: parent JSON feature inventory is missing')
     harness_features = data['bboxy450-harness']
     violations = set()
-    # The requested ACP-agent backend enables preserve_order upstream. The
-    # legacy ACP frontend remains forbidden in term's embedded dependency.
-    if 'preserve_order' in data['serde_json'] and 'acp-agent' not in harness_features:
-        violations.add('serde_json/preserve_order')
+    # Mux owns ordered event bytes, independently of the harness backend.
+    if 'preserve_order' not in data['serde_json']:
+        violations.add('missing serde_json/preserve_order')
     if 'acp' in harness_features:
         violations.add('bboxy450-harness/acp')
     if violations:
@@ -100,7 +99,7 @@ def check_json_features(root, features=()):
         if name in {'serde_json', 'bboxy450-harness'}:
             data.setdefault(name, set()).update(filter(None, selected.removesuffix(' (*)').split(',')))
     resolved = validate_json_features(data)
-    print('harness: consumer JSON features (ACP-agent includes preserve_order): ' + ', '.join(resolved), flush=True)
+    print('harness: consumer JSON features (mux requires preserve_order): ' + ', '.join(resolved), flush=True)
     return resolved
 
 

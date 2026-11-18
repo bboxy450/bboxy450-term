@@ -244,3 +244,24 @@ fn selected_provenance_queries() -> Result<(), Box<dyn std::error::Error>> {
     std::fs::write(root.join("manifest.tsv"), manifest)?;
     Ok(())
 }
+
+// keeps: contract DataMigration — scoped native/TLC graph and verdict export.
+#[test]
+fn selected_data_migration_models() {
+    let root = std::env::var_os("BBOXY_DATA_MIGRATION_MODELS").map(std::path::PathBuf::from);
+    let mut manifest = String::new();
+    let mut count = 0;
+    for (m, expected) in models::cases().into_iter().filter(|(m,_)| matches!(m.name.as_str(),
+        "DataMigration" | "BrokenDataMigration" | "EventLogCheckpoint" | "BrokenEventLogCheckpoint")) {
+        if let Some(root) = &root {
+            std::fs::create_dir_all(root).unwrap();
+            export(m, expected, root, &mut manifest).unwrap();
+        } else {
+            let checked = m.check(100_000).unwrap();
+            assert_eq!(checked.violations.is_empty(), expected == "pass");
+        }
+        count += 1;
+    }
+    assert_eq!(count,4);
+    if let Some(root) = root { std::fs::write(root.join("manifest.tsv"),manifest).unwrap(); }
+}

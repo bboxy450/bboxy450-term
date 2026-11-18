@@ -1245,6 +1245,8 @@ impl Index {
             crate::knowledge::den::render(&update.path, metadata, body, den_previous.as_deref())
                 .map_err(invalid)?;
         }
+        // Metadata signatures stay sorted independently of retained event order.
+        metadata.sort_all_objects();
         let front = serde_yaml::to_string(&metadata)?;
         let body_digest = digest(body.as_bytes());
         let front_digest = digest(front.as_bytes());

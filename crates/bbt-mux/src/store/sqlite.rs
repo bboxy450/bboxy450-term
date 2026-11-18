@@ -160,37 +160,42 @@ pub(crate) fn open(path: &Path) -> Result<Lease> {
     })
 }
 
-/// The pragma is a read-only fast path; only a missing schema marker reserves
-/// the writer. Existing version-table databases receive the marker once.
-pub(super) fn ensure_schema(db: &mut Connection, ddl: &str, unsupported: &str) -> Result<()> {
-    let version: i64 = db.pragma_query_value(None, "user_version", |row| row.get(0))?;
-    if version != 0 && version != 1 {
-        return Err(invalid(unsupported));
-    }
-    if version == 0 {
-        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
-        // Another opener may have initialized it while we waited for the writer.
-        let current: i64 = tx.pragma_query_value(None, "user_version", |row| row.get(0))?;
-        match current {
-            0 => {
-                tx.execute_batch(ddl)?;
-                let legacy: i64 = tx.query_row("SELECT version FROM version", [], |r| r.get(0))?;
-                if legacy != 1 {
-                    return Err(invalid(unsupported));
-                }
-                tx.pragma_update(None, "user_version", 1)?;
-            }
-            1 => {}
-            _ => return Err(invalid(unsupported)),
+/// Ordered, append-only schema migrations, run before a store is used. Version
+/// zero includes unmarked legacy databases. Each step and its marker commit in
+/// one SQLite transaction: interruption/failure leaves that step retryable.
+/// Current stores take no writer; future schemas are refused without changing data.
+/// Append steps, never edit/reorder them. user_version is authoritative; the
+/// original version table stays at 1 for compatibility with legacy stores.
+pub(super) fn migrate(db: &mut Connection, steps: &[&str], unsupported: &str) -> Result<()> {
+    let latest = i64::try_from(steps.len())?;
+    loop {
+        let version: i64 = db.pragma_query_value(None, "user_version", |row| row.get(0))?;
+        if version < 0 || version > latest {
+            return Err(invalid(unsupported));
         }
+        if version > 0 {
+            let legacy: i64 = db.query_row("SELECT version FROM version", [], |row| row.get(0))?;
+            if legacy != 1 {
+                return Err(invalid(unsupported));
+            }
+        }
+        if version == latest {
+            return Ok(());
+        }
+        let tx = db.transaction_with_behavior(rusqlite::TransactionBehavior::Immediate)?;
+        // A competing opener may have committed while we waited for the writer.
+        let current: i64 = tx.pragma_query_value(None, "user_version", |row| row.get(0))?;
+        if current != version {
+            continue;
+        }
+        tx.execute_batch(steps[version as usize])?;
+        let legacy: i64 = tx.query_row("SELECT version FROM version", [], |row| row.get(0))?;
+        if legacy != 1 {
+            return Err(invalid(unsupported));
+        }
+        tx.pragma_update(None, "user_version", version + 1)?;
         tx.commit()?;
     }
-    // Preserve the existing version-table compatibility check on the fast path.
-    let legacy: i64 = db.query_row("SELECT version FROM version", [], |row| row.get(0))?;
-    if legacy != 1 {
-        return Err(invalid(unsupported));
-    }
-    Ok(())
 }
 
 impl SqliteStore {
@@ -201,12 +206,14 @@ impl SqliteStore {
             path: directory.join("object.sqlite"),
         };
         let mut db = open(&store.path)?;
-        ensure_schema(
+        migrate(
             &mut db,
-            "CREATE TABLE IF NOT EXISTS version (version INTEGER NOT NULL);
+            &[
+                "CREATE TABLE IF NOT EXISTS version (version INTEGER NOT NULL);
             INSERT INTO version SELECT 1 WHERE NOT EXISTS(SELECT 1 FROM version);
             CREATE TABLE IF NOT EXISTS kv (key TEXT PRIMARY KEY, value BLOB NOT NULL);
             CREATE TABLE IF NOT EXISTS alarms (key TEXT PRIMARY KEY, deadline INTEGER NOT NULL);",
+            ],
             "unsupported object schema",
         )?;
         Ok(store)
@@ -298,14 +305,14 @@ mod tests {
         SqliteStore::open(root.path()).unwrap();
         EventLog::open(root.path()).unwrap();
         assert_eq!(store.get("retained").unwrap().unwrap(), b"original");
-        for path in [&store.path, &log.path] {
+        for (path, expected) in [(&store.path, 1), (&log.path, 2)] {
             let db = open(path).unwrap();
             assert_eq!(
                 db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
                     .unwrap(),
-                1
+                expected
             );
-            db.pragma_update(None, "user_version", 2).unwrap();
+            db.pragma_update(None, "user_version", 99).unwrap();
         }
         assert_eq!(
             SqliteStore::open(root.path())
@@ -329,7 +336,7 @@ mod tests {
             assert_eq!(
                 db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
                     .unwrap(),
-                2
+                99
             );
             db.pragma_update(None, "user_version", 0).unwrap();
             db.execute("UPDATE version SET version=2", []).unwrap();
@@ -358,6 +365,98 @@ mod tests {
                 0
             );
         }
+    }
+
+    // keeps: contract EventLogCheckpoint — migration effects and version are atomic.
+    #[test]
+    fn versioned_migrations_roll_back_failed_steps_and_resume_in_order() {
+        let root = tempfile::tempdir().unwrap();
+        let mut db = Connection::open(root.path().join("migration.sqlite")).unwrap();
+        let first = "CREATE TABLE version(version INTEGER NOT NULL); INSERT INTO version VALUES(1);
+                     CREATE TABLE retained(value BLOB); INSERT INTO retained VALUES(x'0102');";
+        let bad = "CREATE TABLE added(value TEXT); INSERT INTO missing VALUES(1);";
+        assert!(migrate(&mut db, &[first, bad], "future schema").is_err());
+        assert_eq!(
+            db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
+                .unwrap(),
+            1
+        );
+        assert_eq!(
+            db.query_row(
+                "SELECT count(*) FROM sqlite_master WHERE name='added'",
+                [],
+                |r| r.get::<_, i64>(0)
+            )
+            .unwrap(),
+            0
+        );
+        let steps = [
+            first,
+            "CREATE TABLE added(value TEXT); INSERT INTO added VALUES('v2');",
+            "ALTER TABLE added ADD COLUMN revision INTEGER DEFAULT 3;",
+        ];
+        migrate(&mut db, &steps, "future schema").unwrap();
+        migrate(&mut db, &steps, "future schema").unwrap();
+        assert_eq!(
+            db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
+                .unwrap(),
+            3
+        );
+        assert_eq!(
+            db.query_row("SELECT value,revision FROM added", [], |r| Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, i64>(1)?
+            )))
+            .unwrap(),
+            ("v2".into(), 3)
+        );
+        assert_eq!(
+            db.query_row("SELECT value FROM retained", [], |r| r.get::<_, Vec<u8>>(0))
+                .unwrap(),
+            [1, 2]
+        );
+        assert!(migrate(&mut db, &steps[..2], "future schema").is_err());
+        assert_eq!(
+            db.pragma_query_value(None, "user_version", |r| r.get::<_, i64>(0))
+                .unwrap(),
+            3
+        );
+    }
+
+    // keeps: contract DataMigration — racing legacy openers recheck the version.
+    #[test]
+    fn concurrent_legacy_startup_migrations_apply_each_step_once() {
+        let root = tempfile::tempdir().unwrap();
+        let db = Connection::open(root.path().join("migration.sqlite")).unwrap();
+        drop(db);
+        let barrier = Barrier::new(8);
+        std::thread::scope(|scope| {
+            let calls: Vec<_> = (0..8)
+                .map(|_| {
+                    let barrier = &barrier;
+                    let root = root.path();
+                    scope.spawn(move || {
+                        let mut db = Connection::open(root.join("migration.sqlite")).unwrap();
+                        db.busy_timeout(Duration::from_secs(2)).unwrap();
+                        barrier.wait();
+                        migrate(&mut db, &[
+                        "CREATE TABLE version(version INTEGER); INSERT INTO version VALUES(1);
+                         CREATE TABLE effects(step INTEGER UNIQUE); INSERT INTO effects VALUES(1);",
+                        "INSERT INTO effects VALUES(2);",
+                    ], "future schema").unwrap();
+                    })
+                })
+                .collect();
+            for call in calls {
+                call.join().unwrap();
+            }
+        });
+        let db = Connection::open(root.path().join("migration.sqlite")).unwrap();
+        assert_eq!(
+            db.query_row("SELECT count(*) FROM effects", [], |r| r.get::<_, i64>(0))
+                .unwrap(),
+            2
+        );
     }
 
     // keeps: spec storage
