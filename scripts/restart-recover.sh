@@ -33,7 +33,13 @@ absent() {
 gone() { i=0; while kill -0 "$1" 2>/dev/null; do i=$((i + 1)); [ $i -gt 300 ] && return 1; sleep 0.1; done; }
 gui=$(owner gui); logic=$(owner logic); supervisor=$(owner supervisor)
 for p in $gui $logic $supervisor; do ours "$p" || { echo "restart-recover: pid $p is not $BB; refusing" >&2; exit 2; }; done
-kill -TERM "$gui"; gone "$gui"
+kill -TERM "$gui"
+# A window that does not quit within 30 s is killed: stopping half way leaves
+# the seats with no logic and no window (2026-11-18).
+if ! gone "$gui"; then
+    echo "restart-recover: window $gui did not quit; killing it" >&2
+    kill -KILL "$gui"; gone "$gui"
+fi
 # Logic first: once it is gone no seat exit can be recorded as an orderly stop.
 kill -KILL "$logic"; gone "$logic"
 kill -KILL "$supervisor"; gone "$supervisor"
