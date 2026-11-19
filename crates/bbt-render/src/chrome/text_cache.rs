@@ -533,11 +533,24 @@ impl Cache {
         }
         let pinned: FxHashSet<_> = ids.iter().copied().collect();
         let mut repack = false;
-        while self.bytes > self.byte_budget || self.entries.len() > self.entry_budget {
-            let Some(id) = self.oldest(&pinned, false) else {
-                return Err("chrome text working set exceeds cache budget".into());
-            };
-            repack |= self.remove(id);
+        if self.bytes > self.byte_budget || self.entries.len() > self.entry_budget {
+            // Oldest first, as `oldest` picks them, but sorted once: picking each
+            // victim by a full scan made a large overrun quadratic and held a
+            // window at a full core (`Cache::oldest`, 2026-11-18 sample).
+            let mut victims: Vec<_> = self
+                .entries
+                .values()
+                .filter(|e| !pinned.contains(&e.id))
+                .map(|e| (e.last_use, e.id))
+                .collect();
+            victims.sort_unstable();
+            let mut victims = victims.into_iter();
+            while self.bytes > self.byte_budget || self.entries.len() > self.entry_budget {
+                let Some((_, id)) = victims.next() else {
+                    return Err("chrome text working set exceeds cache budget".into());
+                };
+                repack |= self.remove(id);
+            }
         }
         let mut ids: Vec<_> = pinned.iter().copied().collect();
         ids.sort_unstable();
@@ -692,6 +705,36 @@ impl Cache {
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
+    // Budget eviction removes the least recently used unpinned masks first and
+    // keeps exactly the newest ones, as picking each victim by a full scan did,
+    // but sorts once: a large overrun no longer costs one scan per victim.
+    #[test]
+    fn budget_eviction_keeps_exactly_the_newest_masks() {
+        let budget = 20;
+        let mut cache = Cache::with_limits(512, 8192, 512 * 1024 * 1024, budget).unwrap();
+        let style = TextStyle::default();
+        for c in ('a'..='z')
+            .chain('A'..='Z')
+            .chain('0'..='9')
+            .chain('à'..='ÿ')
+        {
+            cache.line(&c.to_string(), style, None, 1., 0.).unwrap();
+        }
+        assert!(
+            cache.entries.len() > budget * 3,
+            "{} masks",
+            cache.entries.len()
+        );
+        let mut by_age: Vec<_> = cache.entries.values().map(|e| (e.last_use, e.id)).collect();
+        by_age.sort_unstable();
+        let newest: FxHashSet<u64> = by_age[by_age.len() - budget..]
+            .iter()
+            .map(|(_, id)| *id)
+            .collect();
+        cache.finish(&[]).unwrap();
+        let kept: FxHashSet<u64> = cache.entries.values().map(|e| e.id).collect();
+        assert_eq!(kept, newest);
+    }
     #[test]
     fn line_plans_reuse_geometry_but_rebuild_after_mask_eviction() {
         let mut cache = Cache::new().unwrap();
