@@ -6,6 +6,19 @@ One command, from your own branch in your own worktree:
 make land
 ```
 
+**KB records only? Do not run `make land`.** A diff that touches only `.bboxy/` records
+bypasses every gate and CI. The bboxy KB MCP is that gate: `knowledge_write` checks a Den
+record on write and refuses an unsound one, and `knowledge_commit` checkpoints it. A record
+written and committed through the KB is ready to ship:
+
+```sh
+git add -f .bboxy/<exact record paths>   # .bboxy/ is globally ignored; never artifacts/, log/, reports/, runs/
+git commit -S -m "<what the records decide>"
+git pull --rebase origin main && git push origin HEAD:main
+```
+
+Push KB changes often. A diff that also changes code lands with `make land`.
+
 It runs `scripts/land-fast.sh` (`make push` is the same command):
 
 1. Rebase on `origin/main` (exit 78 on conflict); refuse unsigned commits and
@@ -239,7 +252,7 @@ tests the affected crates in parallel. A red `main` is fixed forward by whoever 
 3. **Installed binaries equal the package name** (decision 362, `scripts/brand.sh`). Make
    helper tools examples, not binaries.
 4. **Links in committed `.bboxy` records must resolve.** Never link to an untracked local
-   record.
+   record. Write records through `knowledge_write`, so the KB checks them before they reach Git.
 5. **Keep build headroom and bounded fixture space.** Recovery reserves 128 MiB plus
    1 MiB per seat (132 MiB for the default four-seat run), checks retained file bytes
    against that budget, and reports usage. It does not require a blanket 10 GiB free.
