@@ -253,6 +253,8 @@ help:
 	  'make build-harness               Build the in-suite seat binary; add target/debug to PATH' \
 	  'make test-harness-branding       All harness menu/row labels, marks and omission control' \
 	  'make test-harness-native         Scripted harness seat, socket delivery, rich face and bounded cleanup' \
+	  'make test-inbox                  Answer a real harness question and capture the offscreen inbox' \
+	  'make test-question-answer-formal Check first-answer models with native Yarn/TLC and Java TLC' \
 	  'make test-real-sessions          Every machine-local harness session log through the face parsers; skips when none exist' \
 	  'make test-harness-source         The whole harness suite built from this workspace source (never crates.io releases)' \
 	  'make test-rich-pane              Private rich keyboard/IME, layout persistence and offscreen parity' \
@@ -1954,6 +1956,13 @@ test-formal:
 	python3 -I scripts/formal-stage.py lean -- $(MAKE) test-lean TARGET_DIR='$(TARGET_DIR)'; \
 	python3 -I scripts/formal-stage.py java-parity -- sh scripts/qos.sh utility python3 -I scripts/formal.py --target '$(abspath $(TARGET_DIR))/formal' $(if $(filter 1,$(FORMAL_REUSE)),--reuse,)
 
+# Run just the two first-answer models through the same exporter and reference checker.
+.PHONY: test-question-answer-formal
+test-question-answer-formal:
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_QUESTION_ANSWER_MODELS='$(abspath $(TARGET_DIR))/question-answer/models' cargo nextest run --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' -E 'test(=formal_contracts::selected_question_answer_models)'; \
+	sh scripts/qos.sh utility python3 -B -c 'import pathlib,sys; sys.path.insert(0,"scripts"); import formal; target=pathlib.Path(sys.argv[1]); root=target/"models"; java,jar,pins=formal.tools(pathlib.Path(sys.argv[2])); rows=[line.split("\t") for line in (root/"manifest.tsv").read_text().splitlines()]; assert {r[0]:r[1] for r in rows} == {"QuestionAnswer":"pass","BrokenQuestionAnswer":"safety"}; [formal.check_model(root,row,set(),java,jar,pins,target) for row in rows]' '$(abspath $(TARGET_DIR))/question-answer' '$(FORMAL_DIR)'
+
 # Unbounded proofs: Den `theorem`s and Yarn `#[invariant(.., theorem)]`s exported
 # to Lean 4 and checked by the pinned kernel (trimmed toolchain in a shared
 # machine cache; no operator, no global install). Every set has its own module
@@ -2378,6 +2387,12 @@ test-harness-native: init-submodules
 	cargo test --locked -p bboxy450-harness --test seat_process --target-dir '$(TARGET_DIR)' non_pty_spawn_does_not_keep_a_sibling_master_alive -- --exact; \
 	$(MAKE) test-rich-controls test-rich-cancel-control test-rich-pane bench-budgets test-rich-app-detach TARGET_DIR='$(TARGET_DIR)'
 	$(MAKE) test-rich-app-input test-rich-launch-context-control test-rich-gui-handoff-control TARGET_DIR='$(TARGET_DIR)'
+
+.PHONY: test-inbox
+test-inbox: build-harness
+	@set -eu; . ./scripts/cache-env.sh; \
+	BBOXY_INBOX_CAPTURE='$(abspath $(TARGET_DIR))/desktop-inbox.png' \
+	cargo nextest run --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' --run-ignored only -E 'test(desktop_inbox_renders_and_answers_a_harness_question)' --no-capture
 
 format-harness-embed:
 	@rustfmt --edition 2024 crates/bboxy450-harness-wake-up/src/launch.rs crates/bbt-mux/src/adapters/mod.rs crates/bbt-mux/src/mcp/seats.rs crates/bbt-mux/tests/mcp.rs crates/bboxy450-term/src/settings/roles.rs crates/bbt-proto/src/gui/roles.rs

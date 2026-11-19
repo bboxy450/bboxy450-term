@@ -6,6 +6,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Restartable IO/logic owner. The UI gets an async bounded client, not a DB or PTY.
 mod history;
+pub(crate) mod inbox;
 mod implementation_workspaces;
 mod ingestion;
 mod knowledge_effects;
@@ -423,6 +424,12 @@ enum Command {
     GuiSeats(oneshot::Sender<Result<Vec<crate::seat_socket::GuiSeat>>>),
     GuiSeat(Ulid, oneshot::Sender<Result<crate::seat_socket::GuiSeat>>),
     RichState(Ulid, u64),
+    InboxEvent(Ulid, u64, bboxy450_harness_wake_up::rich::InboxEvent),
+    GuiQuestions(
+        Option<bbt_proto::gui::QuestionCursor>,
+        oneshot::Sender<Result<inbox::Page>>,
+    ),
+    GuiAnswer(inbox::AnswerRequest, oneshot::Sender<Result<inbox::Admission>>),
     GuiIdentity(oneshot::Sender<Result<bbt_proto::GuiIdentity>>),
     OperatorIdentity(
         Ulid,
@@ -933,6 +940,7 @@ pub struct LogicClient {
     gui_peers: Arc<std::sync::RwLock<Option<crate::ctl_door::Peers>>>,
     attention_observer_guard: Arc<std::sync::RwLock<Option<AttentionObserverGuard>>>,
     pub(crate) current_attention: Arc<crate::attention_observer::CurrentAttention>,
+    pub(crate) inbox_notices: tokio::sync::broadcast::Sender<inbox::InboxNotice>,
     /// Captures asked of the window on the operator's behalf.
     pub(crate) captures: Arc<crate::gui_capture::Captures>,
     gui_watch_epoch: Arc<AtomicU64>,
@@ -2327,6 +2335,7 @@ impl Logic {
             gui_peers: Arc::default(),
             attention_observer_guard: Arc::default(),
             current_attention: Arc::default(),
+            inbox_notices: tokio::sync::broadcast::channel(128).0,
             captures: Arc::default(),
             gui_watch_epoch: Arc::default(),
             window_journal: Some(Arc::new(crate::window_journal::Journal::open(
@@ -2530,6 +2539,7 @@ struct ViewState {
     replies: VecDeque<(Ulid, Vec<u8>)>,
     native_reader: Option<NativeReader>,
     rich_connection: Option<bboxy450_harness_wake_up::rich::Connection>,
+    inbox: inbox::Inbox,
     rich_delivery: Option<crate::rich::Delivery>,
     rich_socket: Option<PathBuf>,
     shared_codex_runtime: Option<PathBuf>,
@@ -7117,7 +7127,14 @@ impl Worker {
                 let activity=Arc::new(move |active:Option<bool>| {
                     harness_status::publish_rich_activity(active,&foreground,&activity_revision,&latch);
                 });
-                bboxy450_harness_wake_up::rich::Connection::start_observing(
+                let events = sender.clone();
+                let inbox: bboxy450_harness_wake_up::rich::InboxSink = Arc::new(move |event| {
+                    let sender = events.clone();
+                    Box::pin(async move {
+                        let _ = sender.send(Command::InboxEvent(seat, generation, event)).await;
+                    })
+                });
+                bboxy450_harness_wake_up::rich::Connection::start_inbox(
                     path.clone(),
                     &self.handle,
                     Arc::new(move || {
@@ -7128,6 +7145,7 @@ impl Worker {
                     }),
                     Some(adapter.binding.pid),
                     Some(activity),
+                    Some(inbox),
                 )
             });
         let rich_delivery = rich_connection
@@ -7149,6 +7167,7 @@ impl Worker {
                 replies,
                 native_reader: None,
                 rich_connection,
+                inbox: inbox::Inbox::default(),
                 rich_delivery,
                 rich_socket,
                 shared_codex_runtime,
@@ -9635,9 +9654,11 @@ impl Worker {
                     Ok(())
                 })?;
             }
-            if view.adapter.status.source == "exit" {
-                view.rich_connection = None;
+            if view.adapter.status.source == "exit" && view.rich_connection.take().is_some() {
                 view.rich_delivery = None;
+                if view.inbox.disconnect() {
+                    let _ = self.client.inbox_notices.send(inbox::InboxNotice::Invalidated);
+                }
             }
             let before = view.adapter.status.clone();
             let mut live_wait = false;
@@ -12321,6 +12342,15 @@ impl Worker {
                             .and_then(|_| self.messaging.operator_subjects());
                         let _ = reply.send(result);
                     }
+                    Command::InboxEvent(seat, generation, event) => {
+                        self.inbox_event(seat, generation, event);
+                    }
+                    Command::GuiQuestions(after, reply) => {
+                        let _ = reply.send(self.gui_questions(after));
+                    }
+                    Command::GuiAnswer(request, reply) => {
+                        let _ = reply.send(self.gui_answer(request));
+                    }
                     Command::RichState(id, generation) => {
                         if let Some(view) = self
                             .views
@@ -13778,6 +13808,7 @@ mod identity_retry_clock_tests {
             gui_peers: Arc::default(),
             attention_observer_guard: Arc::default(),
             current_attention: Arc::default(),
+            inbox_notices: tokio::sync::broadcast::channel(128).0,
             captures: Arc::default(),
             gui_watch_epoch: Arc::default(),
             window_journal: None,
@@ -14448,6 +14479,7 @@ pub(super) mod dream_public_api_tests {
                 gui_peers: Arc::default(),
                 attention_observer_guard: Arc::default(),
                 current_attention: Arc::default(),
+                inbox_notices: tokio::sync::broadcast::channel(128).0,
                 captures: Arc::default(),
                 gui_watch_epoch: Arc::default(),
                 window_journal: Some(Arc::new(

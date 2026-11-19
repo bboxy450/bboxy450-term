@@ -160,6 +160,7 @@ pub(super) struct Layout {
 }
 #[derive(Default)]
 pub(super) struct Host {
+    pub(super) inbox: Option<crate::app_inbox::Inbox>,
     pub(super) surface: Option<Surface>,
     pub layout: Option<Layout>,
     pub(super) diagram: Option<viewer::Viewer>,
@@ -841,6 +842,7 @@ impl App {
         self.end_sidebar_resize();
     }
     pub(super) fn show_app_dialog(&mut self, dialog: Dialog) {
+        self.app_overlays.inbox = None;
         if !self.app_overlays.open() {
             self.suspend_overlay_focus();
         }
@@ -960,6 +962,7 @@ impl App {
         true
     }
     pub(super) fn close_app_overlay(&mut self) {
+        self.app_overlays.inbox = None;
         // End the native marked-text session before restoring a different field.
         if let Some(window) = &self.window {
             window.set_ime_allowed(false);
@@ -1292,6 +1295,9 @@ impl App {
                     if let Some(focused) = focused {
                         dialog.controller.handle(dialog::Command::Focus(focused));
                     }
+                }
+                if let Some(inbox) = &self.app_overlays.inbox {
+                    inbox.render(dialog, ctx);
                 }
                 let solved = self.scene.app_dialog_layout(dialog.modal.clone(), size)?;
                 let regions = Regions::Dialog(dialog::Regions::retained(

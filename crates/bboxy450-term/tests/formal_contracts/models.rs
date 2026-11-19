@@ -60,6 +60,8 @@ mod launch_readiness;
 mod rich_host;
 #[path = "usage_models.rs"]
 mod usage_models;
+#[path = "../../../../verification/question_answer_model.rs"]
+mod question_answer_model;
 
 #[path = "gitkb_models.rs"]
 mod gitkb_models;
@@ -1916,6 +1918,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(capability_models::cases());
     cases.extend(gitkb_models::cases());
     cases.extend(usage_models::cases());
+    cases.extend(question_answer_model::cases());
     cases.extend(rich_host::cases());
     cases.extend(gui_replacement::cases());
     cases.extend(launch_environment::cases());

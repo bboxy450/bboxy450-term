@@ -10,8 +10,10 @@ use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use std::{
     collections::BTreeMap,
+    future::Future,
     os::unix::fs::{FileTypeExt, MetadataExt},
     path::{Path, PathBuf},
+    pin::Pin,
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
@@ -59,6 +61,21 @@ pub enum State {
     /// Connection ended or could not be established.
     Closed(String),
 }
+/// Question-related records projected from the authenticated harness stream.
+#[allow(missing_docs, reason = "wire fields correspond to the harness log")]
+#[derive(Debug)]
+pub enum InboxEvent {
+    Connected { session: Ulid },
+    Ready,
+    Disconnected,
+    Opened { item: Ulid, asked_at: u64, head: Value },
+    Closed { item: Ulid, cause: Option<Ulid>, body: Value },
+    Rejected { op: Ulid, reason: Value },
+}
+
+/// An inbox owner submits events on its existing bounded command lane.
+pub type InboxSink = Arc<dyn Fn(InboxEvent) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
+
 struct Request {
     id: Ulid,
     session: Ulid,
@@ -111,6 +128,18 @@ impl Connection {
         expected_pid: Option<u32>,
         activity: Option<Arc<dyn Fn(Option<bool>) + Send + Sync>>,
     ) -> Self {
+        Self::start_inbox(path, handle, wake, expected_pid, activity, None)
+    }
+
+    /// Project question records without opening another harness socket.
+    pub fn start_inbox(
+        path: PathBuf,
+        handle: &tokio::runtime::Handle,
+        wake: Arc<dyn Fn() + Send + Sync>,
+        expected_pid: Option<u32>,
+        activity: Option<Arc<dyn Fn(Option<bool>) + Send + Sync>>,
+        inbox: Option<InboxSink>,
+    ) -> Self {
         let (tx, rx) = mpsc::channel(32);
         let (state, latest) = watch::channel(State::Unbound);
         let stop = Arc::new(Stop {
@@ -122,7 +151,7 @@ impl Connection {
             state: latest,
             stop: stop.clone(),
         };
-        let task = handle.spawn(run(path, rx, state, stop, wake, expected_pid, activity));
+        let task = handle.spawn(run(path, rx, state, stop, wake, expected_pid, activity, inbox));
         Self { client, task }
     }
 }
@@ -207,7 +236,7 @@ pub fn valid_session(id: &str) -> bool {
 // https://github.com/bboxy450/bboxy450-harness (d5e7249). Changes: parse/retire
 // payloads on a blocking worker and retain only delivery identity/reply fields.
 // Policy: https://github.com/bboxy450/bboxy450-harness/blob/main/ATTRIBUTION.md
-async fn frame(r: &mut (impl AsyncBufRead + Unpin)) -> std::io::Result<Option<Value>> {
+async fn frame(r: &mut (impl AsyncBufRead + Unpin), inbox: bool) -> std::io::Result<Option<Value>> {
     let mut b = Vec::new();
     loop {
         let buf = r.fill_buf().await?;
@@ -242,7 +271,24 @@ async fn frame(r: &mut (impl AsyncBufRead + Unpin)) -> std::io::Result<Option<Va
                         let turn=value["event"]["turn"].as_str().filter(|s|valid_session(s));
                         let fork=if value["event"]["meta"]["fork"].is_null(){Value::Null}else{json!(true)};
                         let source=if value["event"]["meta"]["source"].is_null(){Value::Null}else{json!(true)};
-                        json!({"v":value["v"],"session":value["session"],"epoch":value["epoch"],"seq":value["seq"],"event":{"type":value["event"]["type"],"turn":turn,"meta":{"fork":fork,"source":source}}})
+                        let event = &value["event"];
+                        let mut minimal = json!({"v":value["v"],"session":value["session"],"epoch":value["epoch"],"seq":value["seq"],"event":{"type":event["type"],"turn":turn,"meta":{"fork":fork,"source":source}}});
+                        if inbox {
+                            match event["type"].as_str() {
+                                Some("item_started") if matches!(event["head"]["kind"].as_str(), Some("question" | "approval")) => {
+                                    minimal["inbox"] = json!({"kind":"opened","item":event["item"],"asked_at":value["ts_ms"],"head":event["head"]});
+                                }
+                                Some("item_completed") if matches!(event["body"]["kind"].as_str(), Some("question" | "approval")) => {
+                                    let body = &event["body"];
+                                    minimal["inbox"] = json!({"kind":"closed","item":event["item"],"cause":value["cause"],"body":{"kind":body["kind"],"answered_by":body["answered_by"],"by":body["by"],"answerer":value["ext"]["question_answerer"]}});
+                                }
+                                Some("op_rejected") => {
+                                    minimal["inbox"] = json!({"kind":"rejected","op":event["op"],"reason":event["reason"]});
+                                }
+                                _ => {}
+                            }
+                        }
+                        minimal
                     }
                 };
                 Ok(Some(minimal))
@@ -349,6 +395,29 @@ impl Foreground {
     }
 }
 
+fn inbox_event(value: &Value) -> Option<InboxEvent> {
+    let row = &value["inbox"];
+    let id = |key: &str| row[key].as_str()?.parse::<Ulid>().ok();
+    match row["kind"].as_str()? {
+        "opened" => Some(InboxEvent::Opened {
+            item: id("item")?,
+            asked_at: row["asked_at"].as_u64()?,
+            head: row["head"].clone(),
+        }),
+        "closed" => Some(InboxEvent::Closed {
+            item: id("item")?,
+            cause: id("cause"),
+            body: row["body"].clone(),
+        }),
+        "rejected" => Some(InboxEvent::Rejected {
+            op: id("op")?,
+            reason: row["reason"].clone(),
+        }),
+        _ => None,
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 async fn run(
     path: PathBuf,
     mut requests: mpsc::Receiver<Request>,
@@ -357,6 +426,7 @@ async fn run(
     wake: Arc<dyn Fn() + Send + Sync>,
     expected_pid: Option<u32>,
     activity: Option<Arc<dyn Fn(Option<bool>) + Send + Sync>>,
+    inbox: Option<InboxSink>,
 ) {
     loop {
         let attempted = tokio::time::Instant::now();
@@ -368,8 +438,8 @@ async fn run(
             let peer=stream.peer_cred()?;
             if peer.uid()!=unsafe{libc::geteuid()} || expected_pid.is_some_and(|pid|peer.pid().map(|p|p as u32)!=Some(pid)) {return Err(std::io::Error::other("harness peer identity mismatch"));}
             let (r,mut w)=stream.into_split();let mut r=BufReader::new(r);
-            write(&mut w,&json!({"v":{"major":1,"minor":1},"subscribe":{"after":null,"ephemeral":false}})).await?;
-            let hello=announcement(frame(&mut r).await?.ok_or_else(||std::io::Error::other("no Hello"))?)?;
+            write(&mut w,&json!({"v":{"major":1,"minor":1},"subscribe":{"after":null,"ephemeral":false},"approver":inbox.is_some()})).await?;
+            let hello=announcement(frame(&mut r, false).await?.ok_or_else(||std::io::Error::other("no Hello"))?)?;
             Ok::<_,std::io::Error>((r,w,hello,identity))
         })=>r};
         if let Ok(Ok((mut reader, mut writer, mut hello, identity))) = result {
@@ -378,6 +448,14 @@ async fn run(
             if let Some(callback) = &activity {
                 callback(None);
             }
+            let initial_head = hello.head;
+            let mut inbox_ready = initial_head == 0;
+            if let Some(inbox) = &inbox {
+                inbox(InboxEvent::Connected { session: hello.session }).await;
+                if inbox_ready {
+                    inbox(InboxEvent::Ready).await;
+                }
+            }
             let mut foreground = Foreground::new(hello.head);
             let mut pending: BTreeMap<Ulid, Vec<(Instant, oneshot::Sender<WakeOutcome>)>> =
                 BTreeMap::new();
@@ -385,7 +463,7 @@ async fn run(
             // Keep the frame future alive while a command/timer is serviced: fill_buf
             // may have consumed a partial line before yielding.
             'connected: loop {
-                let next = frame(&mut reader);
+                let next = frame(&mut reader, inbox.is_some());
                 tokio::pin!(next);
                 loop {
                     tokio::select! {
@@ -415,6 +493,15 @@ async fn run(
                                 hello.last_frame=Instant::now();
                                 if let Some(seq)=v["seq"].as_u64(){hello.head=hello.head.max(seq);}
                                 if let Some(callback)=&activity && let Some(value)=foreground.observe(&v) {callback(value);}
+                                if let Some(inbox) = &inbox {
+                                    if let Some(event) = inbox_event(&v) {
+                                        inbox(event).await;
+                                    }
+                                    if !inbox_ready && v["seq"].as_u64().is_some_and(|seq| seq >= initial_head) {
+                                        inbox_ready = true;
+                                        inbox(InboxEvent::Ready).await;
+                                    }
+                                }
                                 if matches!(v["event"]["type"].as_str(),Some("session_closed"|"lagged"|"reset")){break 'connected;}
                             }
                             state.send_replace(State::Connected(hello.clone()));break;
@@ -453,6 +540,9 @@ async fn run(
                 }
             }
             state.send_replace(State::Closed("harness socket disconnected".into()));
+            if let Some(inbox) = &inbox {
+                inbox(InboxEvent::Disconnected).await;
+            }
         } else {
             state.send_replace(State::Closed(
                 "harness socket unavailable or invalid Hello".into(),

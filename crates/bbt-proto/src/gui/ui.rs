@@ -460,6 +460,7 @@ pub const UI_KEYS: &[&str] = &[
     "cmd-shift-enter",
     "alt-enter",
     "cmd-g",
+    "cmd-i",
     "cmd-m",
     "cmd-minus",
     "cmd-equal",

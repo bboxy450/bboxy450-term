@@ -265,3 +265,22 @@ fn selected_data_migration_models() {
     assert_eq!(count,4);
     if let Some(root) = root { std::fs::write(root.join("manifest.tsv"),manifest).unwrap(); }
 }
+
+
+// A focused export of the same two models registered with the full corpus.
+#[test]
+fn selected_question_answer_models() -> Result<(), Box<dyn std::error::Error>> {
+    let Some(root) = std::env::var_os("BBOXY_QUESTION_ANSWER_MODELS").map(std::path::PathBuf::from)
+    else {
+        return Ok(());
+    };
+    std::fs::create_dir_all(&root)?;
+    let mut manifest = String::new();
+    for (model, expected) in models::cases().into_iter().filter(|(model, _)| {
+        matches!(model.name.as_str(), "QuestionAnswer" | "BrokenQuestionAnswer")
+    }) {
+        export(model, expected, &root, &mut manifest)?;
+    }
+    std::fs::write(root.join("manifest.tsv"), manifest)?;
+    Ok(())
+}

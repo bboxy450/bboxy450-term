@@ -2225,3 +2225,13 @@ frontend = "project"
 name = "BrokenSeatKeyChainScopeSubset"
 expected = "safety"
 frontend = "project"
+
+[[model]]
+name = "QuestionAnswer"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenQuestionAnswer"
+expected = "safety"
+frontend = "project"

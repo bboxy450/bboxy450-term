@@ -34,6 +34,7 @@ pub mod transcript;
 pub mod diff;
 pub mod tool_call;
 pub mod approval;
+pub mod question_form;
 
 // Moved from document_modal/diagram.rs::arrow; shared by document and canvas.
 // bboxy450-term — https://github.com/bboxy450/bboxy450-term

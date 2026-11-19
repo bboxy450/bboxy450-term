@@ -288,6 +288,7 @@ impl Fixture {
             gui_peers: Arc::default(),
             attention_observer_guard: Arc::default(),
             current_attention: Arc::default(),
+            inbox_notices: tokio::sync::broadcast::channel(128).0,
             captures: Arc::default(),
             gui_watch_epoch: Arc::default(),
             window_journal: None,

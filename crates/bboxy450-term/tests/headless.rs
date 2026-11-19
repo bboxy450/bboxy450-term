@@ -123,7 +123,9 @@ impl Fixture {
         rows.last().unwrap().clone()
     }
     fn log(&self) -> String {
-        std::fs::read_to_string(self.run.join("app.log")).unwrap_or_default()
+        std::fs::read_to_string(self.run.join("app.log"))
+            .or_else(|_| std::fs::read_to_string(self.root.path().join("startup.log")))
+            .unwrap_or_default()
     }
     fn wait_stopped(&mut self) {
         let pid: libc::pid_t = self
@@ -2476,4 +2478,177 @@ fn native_wheel_modes_survive_frontend_restart() {
         String::from_utf8_lossy(&output.stderr)
     );
     print!("{}", String::from_utf8_lossy(&output.stdout));
+}
+
+
+#[test]
+#[ignore = "make test-inbox builds the real harness and captures the private headless app"]
+fn desktop_inbox_renders_and_answers_a_harness_question() {
+    let short_tmp = std::path::Path::new("/tmp").canonicalize().unwrap();
+    let root = tempfile::tempdir_in(short_tmp).unwrap();
+    std::fs::create_dir(root.path().join("shell")).unwrap();
+    let mut fixture = Fixture {
+        run: root.path().join("account/run"),
+        root,
+        pid: None,
+        scripted_hosts: false,
+    };
+    let capture = fixture.root.path().join("inbox.png");
+    let home = fixture.root.path();
+    let script = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../bboxy450-harness/tests/fixtures/acp-agent/fake_agent.py")
+        .canonicalize()
+        .unwrap();
+    let harness_home = home.join(".bboxy450-harness");
+    let profiles = harness_home.join("profiles");
+    std::fs::create_dir_all(&profiles).unwrap();
+    let command = serde_json::json!(["python3", "-I", script, "question"]);
+    std::fs::write(profiles.join("inbox.md"), format!(
+        "---\nname: inbox\nprovider: acp-agent\npolicy: ask\nagent:\n  command: {command}\non_unattended: deny\n---\n"
+    )).unwrap();
+    // The native launcher prefers the real sibling harness over PATH. Its
+    // private profile selector chooses the scripted ACP agent before any prompt.
+    std::fs::write(harness_home.join("default-profile"), "inbox\n").unwrap();
+    let account = home.join("account");
+    let startup_log = home.join("startup.log");
+    let stderr = std::fs::File::create(&startup_log).unwrap();
+    let child = Command::new(BIN)
+        .current_dir(home)
+        .args(["--headless", "--ctl", "--app-ready", "--unattended", "--test-account"])
+        .arg(&account)
+        .arg("--run-dir")
+        .arg(&fixture.run)
+        .arg("--capture")
+        .arg(&capture)
+        .args(["--capture-after", "25", "--quit-after", "120"])
+        .env_clear()
+        .env("PATH", std::env::var_os("PATH").unwrap_or_default())
+        .env("SHELL", "/bin/zsh")
+        .env("HOME", home)
+        .env("ZDOTDIR", home.join("shell"))
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(stderr)
+        .spawn()
+        .unwrap();
+    let mut child = child;
+    fixture.pid = Some(child.id());
+    let ready = await_value(&fixture, || {
+        if let Some(status) = child.try_wait().unwrap() {
+            panic!("headless app exited {status}: {}", std::fs::read_to_string(&startup_log).unwrap());
+        }
+        if !fixture.run.join("gui.endpoint").is_file() {
+            return None;
+        }
+        let (code, rows) = fixture.ctl(&["app", "status"]);
+        (code == 0)
+            .then(|| rows.last().cloned())
+            .flatten()
+            .filter(|row| row["data"]["gui_ready"] == true)
+    });
+    assert_eq!(ready["data"]["windows"], 0);
+    let spawned = fixture.ok(&[
+        "seat",
+        "spawn",
+        "bboxy450-harness",
+        "--name",
+        "Inbox fixture",
+    ]);
+    let seat = spawned["data"]["seat"].as_str().unwrap();
+    fixture.ok(&[
+        "seat",
+        "wait",
+        seat,
+        "--text",
+        "session ",
+        "--timeout",
+        "20000",
+    ]);
+    fixture.ok(&["seat", "type", seat, "Choose a database"]);
+    fixture.ok(&["seat", "key", seat, "enter"]);
+    fixture.ok(&["ui", "key", "cmd-i"]);
+    let layout = await_value(&fixture, || {
+        let snapshot = fixture.ok(&["ui", "layout"]);
+        let regions = snapshot["data"]["regions"].as_object()?;
+        regions
+            .keys()
+            .any(|key| key.starts_with("inbox/item/"))
+            .then_some(snapshot)
+    });
+    assert!(
+        layout["data"]["tree"]
+            .to_string()
+            .contains("Which database?")
+    );
+    let click = |rect: &Value| {
+        let rect = rect.as_array().unwrap();
+        let at = |i: usize| {
+            (rect[i].as_f64().unwrap() + rect[i + 2].as_f64().unwrap() * 0.5)
+                .round()
+                .to_string()
+        };
+        fixture.ok(&["ui", "click", &at(0), &at(1)]);
+    };
+    let (_, row) = layout["data"]["regions"].as_object().unwrap().iter()
+        .find(|(id, _)| id.starts_with("inbox/item/")).unwrap();
+    click(row);
+    let layout = fixture.ok(&["ui", "layout"]);
+    assert!(layout["data"]["tree"].to_string().contains("SQLite"));
+    assert!(layout["data"]["regions"]["question-form/choice/0/1"].is_array());
+    assert!(
+        !capture.exists(),
+        "capture preceded the fixture answer form"
+    );
+
+    await_value(&fixture, || {
+        std::fs::read(&capture)
+            .ok()
+            .filter(|bytes| bytes.starts_with(b"\x89PNG\r\n\x1a\n"))
+            .map(|bytes| serde_json::json!(bytes.len()))
+    });
+    if let Some(path) = std::env::var_os("BBOXY_INBOX_CAPTURE") {
+        std::fs::copy(&capture, &path).unwrap();
+        println!(
+            "desktop inbox capture {}",
+            std::path::Path::new(&path).display()
+        );
+    }
+
+    // Select SQLite and submit the ACP object through the production dialog.
+    for id in ["question-form/choice/0/1", "question-form/submit"] {
+        let layout = fixture.ok(&["ui", "layout"]);
+        click(&layout["data"]["regions"][id]);
+    }
+    await_value(&fixture, || {
+        let snapshot = fixture.ok(&["ui", "layout"]);
+        snapshot["data"]["tree"]
+            .to_string()
+            .contains("Answer sent")
+            .then_some(snapshot)
+    });
+    let sessions = fixture.root.path().join(".bboxy450-harness/sessions");
+    let applied = await_value(&fixture, || {
+        for entry in std::fs::read_dir(&sessions).ok()?.flatten() {
+            let Ok(log) = std::fs::read_to_string(entry.path()) else {
+                continue;
+            };
+            for line in log.lines() {
+                let Ok(row) = serde_json::from_str::<Value>(line) else {
+                    continue;
+                };
+                let event = &row["event"];
+                if event["type"] == "item_completed"
+                    && event["body"]["answer"]["content"]["question_0"] == "SQLite"
+                    && event["body"]["answered_by"]["name"] == "Desktop"
+                {
+                    return Some(row);
+                }
+            }
+        }
+        None
+    });
+    assert!(applied["cause"].is_string());
+    fixture.ok(&["app", "stop"]);
+    assert!(child.wait().unwrap().success(), "{}", fixture.log());
+    fixture.pid = None;
 }

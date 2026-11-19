@@ -929,6 +929,16 @@ impl GuiKnowledgeBudget {
     }
 }
 
+// The local operator door owns both scopes until the seat-key grant verifier is wired here.
+fn allows_question_scope(
+    door: crate::mcp::Door,
+    observer: bool,
+    scope: bbt_proto::gui::QuestionScope,
+) -> bool {
+    use bbt_proto::gui::QuestionScope::{Answer, View};
+    !observer && matches!((door, scope), (crate::mcp::Door::Gui | crate::mcp::Door::Ctl, View | Answer))
+}
+
 async fn gui_session(
     stream: tokio::net::UnixStream,
     client: LogicClient,
@@ -1009,6 +1019,8 @@ async fn gui_session(
     let mut dream_jobs = tokio::task::JoinSet::new();
     let mut swarm_jobs = tokio::task::JoinSet::new();
     let mut event_reads = tokio::task::JoinSet::new();
+    let mut inbox_notices: Option<tokio::sync::broadcast::Receiver<crate::logic::inbox::InboxNotice>> = None;
+    let mut answer_jobs = tokio::task::JoinSet::new();
     let result:Result<()>=async {
         loop {
             input_checks.queue_due(&views,&mut checks,Instant::now());
@@ -1059,7 +1071,11 @@ async fn gui_session(
                         }
                         observer_mode=Some(true);
                     } else if observer_mode==Some(true) {
-                        if !matches!(&request.action,GuiAction::ObserveAttention {..}) {
+                        if let GuiAction::Answer {op_id,..}=request.action {
+                            send(&mut write,&GuiReply::Answer {op_id,result:bbt_proto::gui::QuestionAnswerResult::Refused {scope:bbt_proto::gui::QuestionScope::Answer}}).await?;
+                            continue;
+                        }
+                        if !matches!(&request.action,GuiAction::ObserveAttention {..}|GuiAction::Questions {..}) {
                             send(&mut write,&GuiReply::Error {op:Ulid::nil(),reason:"attention observer is read-only".into()}).await?;
                             continue;
                         }
@@ -1071,6 +1087,8 @@ async fn gui_session(
                         if door==crate::mcp::Door::Gui {capture_asks=Some(client.captures.subscribe());}
                     }
                     last_action=match &request.action {
+                        GuiAction::Questions {..}=>"inbox-questions",
+                        GuiAction::Answer {..}=>"inbox-answer",
                         GuiAction::AttachEvents {..}=>"attach-events",
                         GuiAction::EventAck {..}=>"event-ack",
                         GuiAction::GetEventCursor {..}=>"event-cursor",
@@ -1180,6 +1198,24 @@ async fn gui_session(
                         }
                         continue;
                     }
+                    if let GuiAction::Answer {seat,generation,item,op_id,reply}=request.action {
+                        let scope = bbt_proto::gui::QuestionScope::Answer;
+                        if !allows_question_scope(door, observer_mode == Some(true), scope) {
+                            send(&mut write,&GuiReply::Answer {op_id,result:bbt_proto::gui::QuestionAnswerResult::Refused {scope}}).await?;
+                        } else if answer_jobs.len() >= 8 {
+                            send(&mut write,&GuiReply::Error {op:op_id,reason:"inbox busy; retry the same operation ID".into()}).await?;
+                        } else {
+                            let client=client.clone();
+                            let by=bbt_proto::gui::QuestionClient {
+                                name: if door.is_gui() { "Desktop".into() } else { "Local CLI".into() },
+                                key: format!("local:{}",door.as_str()),
+                            };
+                            answer_jobs.spawn(async move {
+                                (op_id,client.gui_answer(crate::logic::inbox::AnswerRequest {seat,generation,item,op:op_id,reply,by}).await)
+                            });
+                        }
+                        continue;
+                    }
                     if let GuiAction::EventsRead {id,stream,after,limit,wait_ms:Some(wait_ms)} = &request.action {
                         let id=*id;
                         if *wait_ms>60_000 || event_reads.len()>=2 {
@@ -1214,6 +1250,17 @@ async fn gui_session(
                         match request.action {
                             GuiAction::SwarmList {..}|GuiAction::SwarmGet {..}|GuiAction::SwarmRename {..}|GuiAction::SwarmWorkdir {..}=>unreachable!("swarm metadata dispatched independently"),
                             GuiAction::WindowSave {..}=>unreachable!("window saves handled before state dispatch"),
+                            GuiAction::Answer {..}=>unreachable!("answers handled on their own lane"),
+                            GuiAction::Questions {after}=> {
+                                if !allows_question_scope(door,observer_mode == Some(true),bbt_proto::gui::QuestionScope::View) {
+                                    return Err(invalid("inbox refused view scope"));
+                                }
+                                if inbox_notices.is_none() {
+                                    inbox_notices=Some(client.inbox_notices.subscribe());
+                                }
+                                let (items,cursor)=client.gui_questions(after).await?;
+                                Ok(GuiReply::Questions {items,cursor})
+                            }
                             GuiAction::Dream {..}=>unreachable!("Dream controls dispatched independently"),
                             GuiAction::GuiHello {id,claim,observer}=> {
                                 if observer {observer_reference=Some(client.gui_device().await?);}
@@ -1543,6 +1590,21 @@ async fn gui_session(
                     let (op,result)=completed.map_err(|_|invalid("waiting event read interrupted"))?;
                     let reply=result.unwrap_or_else(|error|GuiReply::Error {op,reason:error.to_string()});
                     send(&mut write,&reply).await?;
+                }
+                Some(completed)=answer_jobs.join_next(),if !answer_jobs.is_empty()=> {
+                    let (op_id,result)=completed.map_err(|_|invalid("answer outcome unknown; retry the same operation ID"))?;
+                    let response=match result {
+                        Ok(result)=>GuiReply::Answer {op_id,result},
+                        Err(error)=>GuiReply::Error {op:op_id,reason:error.to_string()},
+                    };
+                    send(&mut write,&response).await?;
+                }
+                notice=async {inbox_notices.as_mut().unwrap().recv().await},if inbox_notices.is_some()=> {
+                    match notice {
+                        Ok(notice)=>send(&mut write,&notice.into_reply()).await?,
+                        Err(tokio::sync::broadcast::error::RecvError::Lagged(_))=>return Err(invalid("inbox event gap; reconnect and page Questions")),
+                        Err(tokio::sync::broadcast::error::RecvError::Closed)=>inbox_notices=None,
+                    }
                 }
                 ask=async {capture_asks.as_mut().unwrap().recv().await},if admitted&&capture_asks.is_some()=> {
                     match ask {

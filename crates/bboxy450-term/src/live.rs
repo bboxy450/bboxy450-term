@@ -355,6 +355,7 @@ pub fn start_with_sink(
                             OperatorAsk::SwarmMetadata { op, result } => {
                                 UiEvent::SwarmMetadataReply { op, result }
                             }
+                            OperatorAsk::Inbox(event) => UiEvent::Inbox(event),
                             OperatorAsk::Capture(ask) => UiEvent::CaptureFor(ask),
                             OperatorAsk::Focus(ask) => UiEvent::FocusFor(ask),
                             OperatorAsk::Close { id, seat, undo } => {
@@ -382,6 +383,7 @@ pub fn start_with_sink(
 /// What another operator door asks of the window, relayed by logic.
 #[derive(Debug)]
 pub enum OperatorAsk {
+    Inbox(crate::app_inbox::Event),
     SwarmMetadata {
         op: Ulid,
         result: std::result::Result<(), String>,
@@ -545,6 +547,8 @@ fn return_live(history: &mut History, model: &mut Arc<Model>, seat: SeatId) -> b
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum ActionReply {
+    Questions,
+    Answer(Ulid),
     Operation,
     Seats,
     Hosts,
@@ -642,6 +646,8 @@ impl ActionReplies {
             GuiAction::SwarmGet { id, .. }
             | GuiAction::SwarmRename { id, .. }
             | GuiAction::SwarmWorkdir { id, .. } => ActionReply::Swarm(*id),
+            GuiAction::Questions { .. } => ActionReply::Questions,
+            GuiAction::Answer { op_id, .. } => ActionReply::Answer(*op_id),
             GuiAction::ListSeats => ActionReply::Seats,
             GuiAction::ListHosts => ActionReply::Hosts,
             GuiAction::GetHistory { seat, .. } => ActionReply::History(*seat),
@@ -671,6 +677,7 @@ impl ActionReplies {
     }
     fn take(&mut self, reply: &GuiReply) -> Option<ActionReply> {
         let independent = match reply {
+            GuiReply::Answer { op_id, .. } => self.0.iter().position(|r| *r == ActionReply::Answer(*op_id)),
             GuiReply::SeatControlled{op}=>self.0.iter().position(|r|*r==ActionReply::SeatControl(*op)),
             GuiReply::Task {op,..} => self.0.iter().position(|r|*r==ActionReply::Task(*op)),
             GuiReply::Swarm{op,..}=>self.0.iter().position(|r|*r==ActionReply::Swarm(*op)),
@@ -686,7 +693,7 @@ impl ActionReplies {
                 .iter()
                 .position(|r| matches!(r,ActionReply::Plugin(id,_,_) if id==op)),
             GuiReply::Error { op, .. } => self.0.iter().position(
-                |r| matches!(r,ActionReply::SeatControl(id)|ActionReply::Task(id)|ActionReply::Knowledge(id)|ActionReply::Plugin(id,_,_)|ActionReply::Root(id,_)|ActionReply::Roles(id)|ActionReply::Swarm(id)|ActionReply::Swarms(id) if id==op),
+                |r| matches!(r,ActionReply::Answer(id)|ActionReply::SeatControl(id)|ActionReply::Task(id)|ActionReply::Knowledge(id)|ActionReply::Plugin(id,_,_)|ActionReply::Root(id,_)|ActionReply::Roles(id)|ActionReply::Swarm(id)|ActionReply::Swarms(id) if id==op),
             ),
             _ => None,
         };
@@ -696,7 +703,8 @@ impl ActionReplies {
         let at = self.0.iter().position(|r| {
             !matches!(
                 r,
-                ActionReply::Task(_)
+                ActionReply::Answer(_)
+                    | ActionReply::Task(_)
                     | ActionReply::Knowledge(_)
                     | ActionReply::Plugin(..)
                     | ActionReply::Root(..)
@@ -727,6 +735,7 @@ impl ActionReplies {
             GuiReply::Attention { op, .. } => *expected == ActionReply::Attention(*op),
             GuiReply::IdentityControl { op, .. } => *expected == ActionReply::Identity(*op),
             GuiReply::Knowledge { op, .. } => *expected == ActionReply::Knowledge(*op),
+            GuiReply::Questions { .. } => *expected == ActionReply::Questions,
             GuiReply::Seats(_) => *expected == ActionReply::Seats,
             GuiReply::Hosts(_) => *expected == ActionReply::Hosts,
             GuiReply::History { seat, .. } => *expected == ActionReply::History(*seat),
@@ -823,6 +832,8 @@ fn disconnected_events(
         !matches!(
             action,
             GuiAction::Spawn { .. }
+                | GuiAction::Questions { .. }
+                | GuiAction::Answer { .. }
                 | GuiAction::AttachEvents { .. }
                 | GuiAction::EventAck { .. }
                 | GuiAction::GetEvents { .. }
@@ -1614,6 +1625,8 @@ async fn run_with_control(
                         status.custody_backend=session.endpoint.custody_backend.clone();
                         queue_action(&mut outgoing,GuiAction::AppReply {id:*id,status});
                     },
+                    UiMsg::InboxPage(after)=>queue_action(&mut outgoing,GuiAction::Questions {after:*after}),
+                    UiMsg::InboxAnswer {seat,generation,item,op_id,reply}=>queue_action(&mut outgoing,GuiAction::Answer {seat:*seat,generation:*generation,item:*item,op_id:*op_id,reply:reply.clone()}),
                     UiMsg::MarkEventsRead {stream,sequence}=>queue_action(&mut outgoing,GuiAction::MarkEventsRead {stream:stream.clone(),seq:*sequence}),
                     UiMsg::AttentionFocus {seat,generation,episode,landed}=> {
                         if Arc::make_mut(&mut model).attention_focus(*seat,*generation,*episode,*landed) {
@@ -1729,6 +1742,10 @@ async fn run_with_control(
                                 GuiEventPayload::Activity {..}|GuiEventPayload::Message {..}=>None,
                             }
                         }
+                        GuiReply::Gap {stream,..} if stream == "inbox"=> {
+                            capture(OperatorAsk::Inbox(crate::app_inbox::Event::Changed));
+                            None
+                        }
                         GuiReply::Gap {stream,first,last,reason}=> {
                             match publish_delivery(&mut model,&updates,GuiEventRecord::Gap(EventGap {stream,first,last,reason})) {
                                 Ok(action)=>ack=action,
@@ -1786,6 +1803,19 @@ async fn run_with_control(
                         reply=>Some(reply),
                       };
                       if let Some(reply)=reply {match reply {
+                        GuiReply::Questions {items,cursor}=> {
+                            if terminal_reply == Some(ActionReply::Questions) {
+                                capture(OperatorAsk::Inbox(crate::app_inbox::Event::Page(Ok((items,cursor)))));
+                            }
+                        },
+                        GuiReply::QuestionOpened {..}|GuiReply::QuestionClosed {..}=> {
+                            capture(OperatorAsk::Inbox(crate::app_inbox::Event::Changed));
+                        },
+                        GuiReply::Answer {op_id,result}=> {
+                            if terminal_reply == Some(ActionReply::Answer(op_id)) {
+                                capture(OperatorAsk::Inbox(crate::app_inbox::Event::Answer(op_id,Ok(result))));
+                            }
+                        },
                         GuiReply::Swarms{op,records}=> {
                             if terminal_reply==Some(ActionReply::Swarms(op)) {
                                 let current=Arc::make_mut(&mut model);let loaded=current.swarm_metadata_loaded;current.swarm_metadata_loaded=true;
@@ -1890,6 +1920,11 @@ async fn run_with_control(
                             logger.write(format!("GUI operation {op} accepted"));
                         },
                         GuiReply::Error {op,reason}=> {
+                            match terminal_reply {
+                                Some(ActionReply::Questions) => capture(OperatorAsk::Inbox(crate::app_inbox::Event::Page(Err(reason.clone())))),
+                                Some(ActionReply::Answer(id)) if id == op => capture(OperatorAsk::Inbox(crate::app_inbox::Event::Answer(op,Err(reason.clone())))),
+                                _ => {}
+                            }
                             if reason.starts_with("swarm_root_changed") {queue_action(&mut outgoing,GuiAction::SwarmList{id:Ulid::new()});}
                             if terminal_reply==Some(ActionReply::Swarm(op)) {
                                 if let Some(swarm)=swarm_mutations.complete(op,&mut outgoing) {Arc::make_mut(&mut model).swarm_metadata_pending.remove(&swarm);updates.publish(model.clone());}

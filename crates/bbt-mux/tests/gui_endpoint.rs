@@ -17,7 +17,7 @@ use bbt_mux::{
     identity::{Custody, DeviceKeyStore, PendingReason},
     logic::{Logic, LogicConfig},
     registry::SeatRecord,
-    store::sqlite::SqliteStore,
+    store::{Store, sqlite::SqliteStore},
 };
 use bbt_proto::{
     GuiAction, GuiReply, GuiRequest, SwarmId,
@@ -296,5 +296,228 @@ sys.stdout.buffer.write(reply)"#
         "gui.endpoint is removed when the door closes"
     );
     drop(logic);
+    drop(supervisor);
+}
+
+// Owns the child and both GUI sockets. The scripted harness withholds terminal
+// events until both commands arrive, so an admission ACK cannot pass this race.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn gui_inbox_question_race_and_retry_cross_real_sockets() {
+    use bbt_proto::gui::{QuestionAnswerResult, QuestionAnswerer};
+    use serde_json::json;
+    use tokio::{
+        io::AsyncBufReadExt,
+        net::unix::{OwnedReadHalf, OwnedWriteHalf},
+    };
+
+    struct Gui {
+        writer: OwnedWriteHalf,
+        reader: BufReader<OwnedReadHalf>,
+        capability: [u8; 32],
+        closed: Option<(Ulid, Ulid, QuestionAnswerer)>,
+    }
+    impl Gui {
+        async fn connect(endpoint: &bbt_mux::logic::EndpointInfo) -> Self {
+            let (read, writer) = UnixStream::connect(&endpoint.path)
+                .await
+                .unwrap()
+                .into_split();
+            Self {
+                writer,
+                reader: BufReader::new(read),
+                capability: endpoint.capability,
+                closed: None,
+            }
+        }
+        async fn send(&mut self, action: GuiAction) {
+            self.writer
+                .write_all(format!("{}\n", request(self.capability, action)).as_bytes())
+                .await
+                .unwrap();
+        }
+        async fn until(&mut self, accept: impl Fn(&GuiReply) -> bool) -> GuiReply {
+            tokio::time::timeout(Duration::from_secs(20), async {
+                loop {
+                    let mut line = String::new();
+                    assert_ne!(
+                        self.reader.read_line(&mut line).await.unwrap(),
+                        0,
+                        "GUI closed"
+                    );
+                    let reply = serde_json::from_str(&line).unwrap();
+                    assert!(!matches!(reply, GuiReply::Error { .. }), "{reply:?}");
+                    if let GuiReply::QuestionClosed { seat, item, by } = &reply {
+                        self.closed = Some((*seat, *item, by.clone()));
+                    }
+                    if accept(&reply) {
+                        return reply;
+                    }
+                }
+            })
+            .await
+            .expect("missing GUI inbox event")
+        }
+    }
+
+    let root = tempfile::tempdir_in("/tmp").unwrap();
+    let run = root.path().join("run");
+    let repository = root.path().join("repository");
+    std::fs::create_dir_all(repository.join(".bboxy")).unwrap();
+    let supervisor = Supervisor::start(bbt_mux::Config {
+        journal_directory: Some(root.path().join("supervisor")),
+        ..Default::default()
+    })
+    .unwrap();
+    let logic = Logic::start_custodied_with_store(
+        supervisor.connect().unwrap(),
+        LogicConfig {
+            run_dir: run.clone(),
+            repository,
+            ring: Default::default(),
+        },
+        Arc::new(Keys::default()),
+        &tokio::runtime::Handle::current(),
+    )
+    .unwrap();
+    let endpoint = logic.client.gui_endpoint().await.unwrap();
+    let mut first = Gui::connect(&endpoint).await;
+    let mut second = Gui::connect(&endpoint).await;
+    first.send(GuiAction::Questions { after: None }).await;
+    assert!(
+        matches!(first.until(|r| matches!(r, GuiReply::Questions { .. })).await,
+        GuiReply::Questions { items, cursor: None } if items.is_empty())
+    );
+
+    let record = SeatRecord::new(
+        Ulid::new(),
+        Ulid::new(),
+        "Inbox fixture",
+        "bboxy450-harness",
+    );
+    let seat = record.id;
+    let generation = record.generation;
+    let item = Ulid::new();
+    let socket = root.path().join("h.sock");
+    let opened = root.path().join("open-question");
+    let directory = bbt_mux::store::object_dir(&run, &format!("seat-{seat}")).unwrap();
+    SqliteStore::open(&directory)
+        .unwrap()
+        .put("harness_rich_socket", &serde_json::to_vec(&socket).unwrap())
+        .unwrap();
+    let mut launch = LaunchSpec::new("/usr/bin/env", root.path());
+    launch.seat = seat;
+    launch.generation = generation;
+    launch.args = vec![
+        "python3".into(),
+        "-I".into(),
+        concat!(
+            env!("CARGO_MANIFEST_DIR"),
+            "/tests/fixtures/inbox_harness.py"
+        )
+        .into(),
+        socket.to_str().unwrap().into(),
+        Ulid::new().to_string(),
+        item.to_string(),
+        opened.to_str().unwrap().into(),
+    ];
+    launch
+        .env
+        .insert("HOME".into(), root.path().to_str().unwrap().into());
+    logic.client.spawn(record, launch).await.unwrap();
+    std::fs::write(&opened, []).unwrap();
+
+    first.until(|r| matches!(r, GuiReply::QuestionOpened { seat: s, item: q } if *s == seat && *q == item)).await;
+    first.send(GuiAction::Questions { after: None }).await;
+    let page = first
+        .until(|r| matches!(r, GuiReply::Questions { .. }))
+        .await;
+    let GuiReply::Questions {
+        items,
+        cursor: None,
+    } = page
+    else {
+        panic!("{page:?}")
+    };
+    assert_eq!(items.len(), 1);
+    assert_eq!(items[0].message, "Which database?");
+    assert_eq!(
+        (items[0].seat, items[0].generation, items[0].item),
+        (seat, generation, item)
+    );
+    assert!(items[0].asked_at > 0);
+
+    let answer = |op_id, generation, value| GuiAction::Answer {
+        seat,
+        generation,
+        item,
+        op_id,
+        reply: json!({"action":"accept","content":value}),
+    };
+    let a = Ulid::new();
+    let b = Ulid::new();
+    let wait_for = |op| move |r: &GuiReply| matches!(r,GuiReply::Answer {op_id,..} if *op_id == op);
+    second
+        .send(answer(Ulid::new(), generation + 1, "SQLite"))
+        .await;
+    second
+        .until(|r| {
+            matches!(
+                r,
+                GuiReply::Answer {
+                    result: QuestionAnswerResult::StaleGeneration,
+                    ..
+                }
+            )
+        })
+        .await;
+
+    tokio::join!(
+        first.send(answer(a, generation, "SQLite")),
+        second.send(answer(b, generation, "Postgres"))
+    );
+    let (left, right) = tokio::join!(first.until(wait_for(a)), second.until(wait_for(b)));
+    let result = |reply| match reply {
+        GuiReply::Answer { op_id, result } => (op_id, result),
+        other => panic!("{other:?}"),
+    };
+    let (a, left) = result(left);
+    let (b, right) = result(right);
+    let (winner, by) = match (left, right) {
+        (QuestionAnswerResult::Applied, QuestionAnswerResult::AlreadyAnswered { by }) => (a, by),
+        (QuestionAnswerResult::AlreadyAnswered { by }, QuestionAnswerResult::Applied) => (b, by),
+        results => panic!("expected one applied and one already_answered: {results:?}"),
+    };
+    assert!(
+        matches!(&by, QuestionAnswerer::Client(client) if client.name == "Desktop" && client.key == "local:gui")
+    );
+    if first.closed.is_none() {
+        first
+            .until(|reply| matches!(reply, GuiReply::QuestionClosed { .. }))
+            .await;
+    }
+    assert_eq!(first.closed, Some((seat, item, by)));
+
+    // A new GUI connection replays the identical operation and sees the same result.
+    let mut retry = Gui::connect(&endpoint).await;
+    retry
+        .send(answer(
+            winner,
+            generation,
+            if winner == a { "SQLite" } else { "Postgres" },
+        ))
+        .await;
+    assert!(matches!(
+        retry.until(wait_for(winner)).await,
+        GuiReply::Answer {
+            result: QuestionAnswerResult::Applied,
+            ..
+        }
+    ));
+    retry.send(GuiAction::Questions { after: None }).await;
+    assert!(
+        matches!(retry.until(|r| matches!(r, GuiReply::Questions { .. })).await,
+        GuiReply::Questions { items, cursor: None } if items.is_empty())
+    );
+    logic.shutdown().unwrap();
     drop(supervisor);
 }

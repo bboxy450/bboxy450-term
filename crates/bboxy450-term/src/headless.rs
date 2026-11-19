@@ -196,6 +196,10 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         .or_default() += 1;
                 }
                 match event {
+                    UiEvent::Inbox(event) => {
+                        app.inbox_event(event);
+                        dirty = true;
+                    }
                     UiEvent::SeatTaskRetry(op) => {
                         dirty |= app.retry_seat_tasks(op);
                     }
@@ -271,6 +275,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         custody = custody_backend;
                     }
                     UiEvent::BackendReady => {
+                        app.inbox_reload();
                         backend = true;
                         app.backend_lost = false;
                         app.startup.attached();
@@ -291,6 +296,7 @@ pub fn run(args: &[String]) -> Result<(), String> {
                         backend = false;
                         app.backend_lost = true;
                         app.overlay_backend_lost();
+                        app.inbox_disconnected();
                         logger.write(format!("backend lost: {reason}"));
                     }
                     UiEvent::CaptureFor(ask) => {

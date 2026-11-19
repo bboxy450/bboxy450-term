@@ -8,6 +8,7 @@
 mod animation_clock;
 mod app_canvas;
 mod app_overlays;
+mod app_inbox;
 mod app_starting;
 mod assets;
 mod attention_frames;
@@ -88,6 +89,7 @@ use winit::{
 
 #[derive(Debug)]
 pub enum UiEvent {
+    Inbox(app_inbox::Event),
     Usage(bboxy450_usage::poller::Update),
     DocumentRetry(u64),
     TaskRetry(u64),
@@ -1172,6 +1174,7 @@ fn chrome_input(name: &str) -> Result<keyboard::Input<'_>, String> {
         "d" => (Key::Character("d".into()), KeyCode::KeyD),
         "a" => (Key::Character("a".into()), KeyCode::KeyA),
         "g" => (Key::Character("g".into()), KeyCode::KeyG),
+        "i" => (Key::Character("i".into()), KeyCode::KeyI),
         "m" => (Key::Character("m".into()), KeyCode::KeyM),
         "minus" => (Key::Character("-".into()), KeyCode::Minus),
         "equal" => (Key::Character("=".into()), KeyCode::Equal),
@@ -1218,6 +1221,7 @@ enum RoutedKey {
     OpenLauncher,
     SplitLauncher(bbt_proto::seat_state::Side),
     OpenGraph,
+    OpenInbox,
     OpenSettings,
     MuteFocused,
     TerminalFont(i8),
@@ -1429,6 +1433,9 @@ fn route_key(input: &keyboard::Input<'_>, modes: u64, query: Option<&str>) -> Ro
         };
     }
     if command && !mods.alt_key() && !mods.shift_key() && !mods.control_key() {
+        if shortcut == Some('i') {
+            return if repeat { RoutedKey::Local } else { RoutedKey::OpenInbox };
+        }
         if shortcut == Some('w') {
             return if repeat {
                 RoutedKey::Local
@@ -1602,6 +1609,7 @@ fn route_local_page(input: &keyboard::Input<'_>, modes: u64) -> RoutedKey {
             | RoutedKey::OpenLauncher
             | RoutedKey::SplitLauncher(_)
             | RoutedKey::OpenGraph
+            | RoutedKey::OpenInbox
             | RoutedKey::OpenSettings
             | RoutedKey::MuteFocused
             | RoutedKey::TerminalFont(_)
@@ -1670,6 +1678,7 @@ fn route_settings(input: &keyboard::Input<'_>, modes: u64, editing: bool) -> Rou
                 | RoutedKey::OpenLauncher
                 | RoutedKey::SplitLauncher(_)
                 | RoutedKey::OpenGraph
+            | RoutedKey::OpenInbox
                 | RoutedKey::OpenSettings
                 | RoutedKey::MuteFocused
                 | RoutedKey::TerminalFont(_)
@@ -1758,6 +1767,7 @@ fn route_composer(input: &keyboard::Input<'_>, modes: u64, field: ComposeField) 
             | RoutedKey::OpenLauncher
             | RoutedKey::SplitLauncher(_)
             | RoutedKey::OpenGraph
+            | RoutedKey::OpenInbox
             | RoutedKey::OpenSettings
             | RoutedKey::MuteFocused
             | RoutedKey::TerminalFont(_)
@@ -6428,6 +6438,7 @@ impl App {
             RoutedKey::OpenLauncher => self.open_launcher(),
             RoutedKey::SplitLauncher(side) => self.split_launcher(side),
             RoutedKey::OpenGraph => self.open_graph(),
+            RoutedKey::OpenInbox => self.open_inbox(),
             RoutedKey::OpenSettings => self.open_settings("Account"),
             RoutedKey::SettingsKey(key) => self.settings_key(key),
             RoutedKey::MuteFocused => self.mute_focused(),
@@ -8769,6 +8780,7 @@ impl ApplicationHandler<UiEvent> for App {
                 }
             }
             UiEvent::SwarmMetadataReply { op, result } => self.overlay_metadata_reply(op, result),
+            UiEvent::Inbox(event) => self.inbox_event(event),
             UiEvent::DesktopAction(action, scancode) => {
                 if self.startup.visible
                     && !matches!(
@@ -9204,6 +9216,7 @@ impl ApplicationHandler<UiEvent> for App {
                     );
                 }
                 self.overlay_backend_lost();
+                self.inbox_disconnected();
                 self.command_retry.cancel();
                 self.custody.next(Instant::now(), false);
                 self.pending_commands
@@ -9212,6 +9225,7 @@ impl ApplicationHandler<UiEvent> for App {
                 self.request_redraw();
             }
             UiEvent::BackendReady => {
+                self.inbox_reload();
                 self.backend_lost = false;
                 self.startup.attached();
                 self.sync_role_settings();
@@ -9853,6 +9867,7 @@ fn perf_hud(r: bbt_rt::PerfRecord) -> bbt_ui::modules::perf_hud::PerfHud {
 
 const HELP: &str = "bboxy450-term: GPU terminal for agent swarms.
 
+  Cmd-I opens the questions and approvals inbox.
   Cmd-Q / window close keep live sessions; Cmd-Option-Q hard quits their backends.
   --meter              open with the perf HUD (Cmd+Opt+F toggles it)
   --run-dir DIR        runtime directory (default: the user's)
@@ -11888,6 +11903,8 @@ mod input_tests {
                 | live::UiMsg::IdentityControl { .. }
                 | live::UiMsg::SeatControl { .. }
                 | live::UiMsg::Task { .. }
+                | live::UiMsg::InboxPage(_)
+                | live::UiMsg::InboxAnswer { .. }
                 | live::UiMsg::EventPage { .. }
                 | live::UiMsg::EventCursor { .. }
                 | live::UiMsg::AttentionFocus { .. }
