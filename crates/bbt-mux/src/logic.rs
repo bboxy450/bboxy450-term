@@ -72,6 +72,23 @@ use crate::{Action, Attachment, Event, LaunchSpec, Reply, SeatInfo};
 
 pub use bbt_supervisor::{SocketSupervisor, SupervisorConnection, client::PendingCapture};
 
+#[derive(Debug)]
+enum SpawnEffect {
+    Unknown(crate::store::Error),
+    Confirmed {
+        info: SeatInfo,
+        error: crate::store::Error,
+    },
+}
+impl std::fmt::Display for SpawnEffect {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unknown(error) | Self::Confirmed { error, .. } => std::fmt::Display::fmt(error, f),
+        }
+    }
+}
+impl std::error::Error for SpawnEffect {}
+
 #[derive(Clone)]
 pub struct LogicConfig {
     pub run_dir: PathBuf,
@@ -5510,13 +5527,13 @@ impl Worker {
                 let managed = match managed {
                     Ok(r) => r,
                     Err(error) => {
-                        return crate::mcp::workspaces::failure(call.op_id, error.as_ref());
+                        return crate::mcp::error(call.op_id, "rejected", &error.to_string());
                     }
                 };
                 if let Some(r) = &managed
                     && let Err(error) = self.implementation_workspaces.reserve(r, id, call.op_id)
                 {
-                    return crate::mcp::workspaces::failure(call.op_id, error.as_ref());
+                    return crate::mcp::error(call.op_id, "rejected", &error.to_string());
                 }
                 let result = (|| -> Result<SeatInfo> {
                     let placement = Some(self.control_placement(&args, id)?);
@@ -5555,36 +5572,60 @@ impl Worker {
                             workspace.workspace_id.to_string(),
                         ));
                     }
-                    let info = self.launch(record, harness, options)?;
-                    Ok(info)
+                    self.launch(record, harness, options)
                 })();
-                match result {
-                    Ok(info) => crate::mcp::success(
-                        call.op_id,
-                        json!({"status":"applied","seat_id":info.seat,"process_generation":info.generation.to_string(),"pid":info.pid,"placement":self.registry.get(info.seat).ok().and_then(|r| r.launch_placement)}),
-                    ),
-                    Err(_) => {
-                        let unstarted = managed.as_ref().is_some_and(|r| {
-                            self.implementation_workspaces
-                                .cancel_unstarted_launch(r.workspace_id, id, call.op_id)
-                                .unwrap_or(false)
-                        });
-                        seats::failure(
-                            call.op_id,
-                            if unstarted {
-                                "spawn_not_started"
-                            } else {
-                                "unknown"
-                            },
-                            if unstarted {
-                                "launch planning failed before a supervisor spawn request; reservation released, inspect workspace_get and approved profile"
-                            } else {
-                                "spawn outcome unavailable; inspect the reserved seat ID; no automatic relaunch"
-                            },
-                            json!({"seat_id":id,"process_generation":"1"}),
-                        )
-                    }
-                }
+                let failure_ids = || json!({"seat_id":id,"process_generation":"1"});
+                let info = match result {
+                    Ok(info) => info,
+                    Err(error) => match error.downcast::<SpawnEffect>() {
+                        Ok(effect) => match *effect {
+                            SpawnEffect::Unknown(error) => {
+                                return seats::failure(
+                                    call.op_id,
+                                    "unknown",
+                                    &format!(
+                                        "{error}; inspect the reserved seat ID; no automatic relaunch"
+                                    ),
+                                    failure_ids(),
+                                );
+                            }
+                            SpawnEffect::Confirmed { info, error } => {
+                                bbt_rt::error_journal::report(
+                                    bbt_rt::error_journal::Failure::new(
+                                        "spawn", "publication", &error,
+                                    )
+                                    .seat(info.seat),
+                                );
+                                info
+                            }
+                        },
+                        Err(error) => {
+                            self.endpoints.remove(&id);
+                            if let Some(r) = &managed
+                                && let Err(cleanup) = self.implementation_workspaces.cancel_launch(
+                                    r.workspace_id,
+                                    id,
+                                    call.op_id,
+                                    error.downcast_ref::<crate::Failure>().is_some(),
+                                )
+                            {
+                                bbt_rt::error_journal::report(
+                                    bbt_rt::error_journal::Failure::new(
+                                        "spawn", "reservation", &cleanup,
+                                    )
+                                    .seat(id),
+                                );
+                            }
+                            return seats::failure(
+                                call.op_id, "rejected", &error.to_string(), failure_ids(),
+                            );
+                        }
+                    },
+                };
+                crate::mcp::success(
+                    call.op_id,
+                    json!({"status":"applied","seat_id":info.seat,"process_generation":info.generation.to_string(),"pid":info.pid,"placement":self.registry.get(info.seat).ok().and_then(|r| r.launch_placement)}),
+                )
             }
             Request::Mute {
                 target,
@@ -7997,15 +8038,25 @@ impl Worker {
         if record.id != spec.seat || record.generation != spec.generation {
             return Err(invalid("launch and record identity mismatch"));
         }
-        let new_record = self.registry.get(record.id).is_err();
+        let new_record = match self.registry.get(record.id) {
+            Ok(old) if old != record => return Err(invalid("seat record conflicts")),
+            Ok(_) => false,
+            Err(_) => true,
+        };
         if new_record && !bare {
             self.roles_idle()?;
         }
-        match self.registry.get(record.id) {
-            Ok(old) if old != record => return Err(invalid("seat record conflicts")),
-            Ok(_) => (),
-            Err(_) => self.registry.insert(&record)?,
-        }
+        let managed_workspace = if bare {
+            None
+        } else {
+            self.implementation_workspaces.prepare_launch(
+                record.id,
+                record.generation,
+                record.swarm,
+                &spec.cwd,
+                &self.registry,
+            )?
+        };
         if !bare {
             self.messaging.sync_seat(&record)?;
             SqliteStore::open(&object_dir(
@@ -8028,78 +8079,100 @@ impl Worker {
             self.provenance_registered
                 .insert((record.id, record.generation, port.binding.root_id));
         }
-        let managed_workspace = if bare {
-            None
-        } else {
-            self.implementation_workspaces.prepare_launch(
-                record.id,
-                record.generation,
-                record.swarm,
-                &spec.cwd,
-                &self.registry,
-            )?
-        };
-        if let Some(workspace) = managed_workspace {
-            self.implementation_workspaces.request_launch(
-                workspace,
-                record.id,
-                record.generation,
-            )?;
+        // Keep the record durable for reconciliation if the supervisor reply is lost.
+        if new_record {
+            self.registry.insert(&record)?;
         }
-        let Reply::Spawned { info } = self
-            .request_for_seat(record.id, Action::Spawn { spec })
-            .inspect_err(|e| {
+        let started = (|| -> Result<SeatInfo> {
+            if let Some(workspace) = managed_workspace {
+                self.implementation_workspaces.request_launch(
+                    workspace,
+                    record.id,
+                    record.generation,
+                )?;
+            }
+            let reply = self
+                .connections
+                .request(&HostId::from(&record.location), Action::Spawn { spec })
+                .inspect_err(|error| {
+                    bbt_rt::error_journal::report(
+                        bbt_rt::error_journal::Failure::new("spawn", "seat", error)
+                            .seat(record.id)
+                            .harness(&record.harness_kind),
+                    );
+                });
+            match reply {
+                Ok(Reply::Spawned { info })
+                    if (info.seat, info.generation) == (record.id, record.generation) =>
+                {
+                    Ok(info)
+                }
+                // The in-process connection uses Io for lost replies too.
+                Err(error) if error.downcast_ref::<crate::Failure>()
+                    .is_some_and(|failure| failure.code != crate::FailureCode::Io) => Err(error),
+                Err(error) => Err(SpawnEffect::Unknown(error).into()),
+                Ok(_) => Err(SpawnEffect::Unknown(invalid("spawn reply mismatch")).into()),
+            }
+        })();
+        let info = started.inspect_err(|error| {
+            if new_record && error.downcast_ref::<SpawnEffect>().is_none()
+                && let Err(cleanup) = self.registry.discard_unstarted(&record)
+            {
                 bbt_rt::error_journal::report(
-                    bbt_rt::error_journal::Failure::new("spawn", "seat", e)
-                        .seat(record.id)
-                        .harness(&record.harness_kind),
+                    bbt_rt::error_journal::Failure::new("spawn", "registry", &cleanup)
+                        .seat(record.id),
                 );
-            })?
-        else {
-            return Err(invalid("spawn reply mismatch"));
-        };
-        if let Some(workspace) = managed_workspace {
-            self.implementation_workspaces.launched(
-                workspace,
-                info.seat,
-                info.generation,
-                info.pid,
+            }
+        })?;
+        (|| -> Result<()> {
+            if let Some(workspace) = managed_workspace {
+                self.implementation_workspaces.launched(
+                    workspace,
+                    info.seat,
+                    info.generation,
+                    info.pid,
+                )?;
+            }
+            if self
+                .views
+                .get(&info.seat)
+                .is_none_or(|view| view.generation != info.generation)
+            {
+                self.attach(info.clone(), new_record)?;
+            }
+            self.publish(
+                &format!("seat-{}", info.seat),
+                Draft::new(
+                    format!("seat/{}/spawned", info.seat),
+                    "mux",
+                    serde_json::to_value(&info)?,
+                ),
             )?;
-        }
-        if self
-            .views
-            .get(&info.seat)
-            .is_none_or(|view| view.generation != info.generation)
-        {
-            self.attach(info.clone(), new_record)?;
-        }
-        self.publish(
-            &format!("seat-{}", info.seat),
-            Draft::new(
-                format!("seat/{}/spawned", info.seat),
-                "mux",
-                serde_json::to_value(&info)?,
-            ),
-        )?;
-        self.publish(
-            "account",
-            Draft::new(
-                "mux/seat_spawned",
-                "mux",
-                serde_json::json!({"seat":info.seat,"generation":info.generation}),
-            ),
-        )?;
-        self.publish(
-            &format!("swarm-{}", record.swarm),
-            Draft::new(
-                format!("swarm/{}/joined", record.swarm),
-                "mux",
-                serde_json::json!({"seat":info.seat}),
-            ),
-        )?;
-        // Other GUI connections must learn about a new unwatched seat even
-        // when its adapter remains in the initial state until the first output.
-        self.publish_adapter(info.seat, self.views[&info.seat].adapter.status.clone())?;
+            self.publish(
+                "account",
+                Draft::new(
+                    "mux/seat_spawned",
+                    "mux",
+                    serde_json::json!({"seat":info.seat,"generation":info.generation}),
+                ),
+            )?;
+            self.publish(
+                &format!("swarm-{}", record.swarm),
+                Draft::new(
+                    format!("swarm/{}/joined", record.swarm),
+                    "mux",
+                    serde_json::json!({"seat":info.seat}),
+                ),
+            )?;
+            // Other GUI connections must learn about a new unwatched seat even
+            // when its adapter remains in the initial state until the first output.
+            self.publish_adapter(info.seat, self.views[&info.seat].adapter.status.clone())?;
+            Ok(())
+        })()
+        .map_err(|error| SpawnEffect::Confirmed {
+            info: info.clone(),
+            error,
+        })?;
         Ok(info)
     }
     /// Start a setup's login in a visible bare login seat; `reply` answers

@@ -80,6 +80,80 @@ pub(super) fn prepare(f: &Fixture, task: Ulid) -> (Ulid, Value) {
     (id, ready)
 }
 #[test]
+fn managed_workspace_raw_cwd_spawn_is_rejected_without_opening_a_seat() {
+    let (f, task) = fixture();
+    let (id, ready) = prepare(&f, task);
+    let args = json!({
+        "swarm_id": f.oracle.swarm, "approved_profile": "zsh",
+        "role": "executor", "name": "raw checkout", "cwd": ready["cwd"],
+    });
+    let op = Ulid::new();
+    let response = f.mutate(f.oracle.id, op, "seat_spawn", args.clone());
+    let seats = data(f.call(f.oracle.id, Ulid::new(), "seat_list", json!({})));
+    let error = &response["structuredContent"]["error"];
+    assert_eq!(error["code"], "rejected", "{response}; seats: {seats}");
+    assert!(
+        error["message"]
+            .as_str()
+            .unwrap()
+            .contains("workspace_use_handle"),
+        "{response}"
+    );
+    let reserved: Ulid =
+        serde_json::from_value(response["structuredContent"]["seat_id"].clone()).unwrap();
+    assert!(f.registry().get(reserved).is_err(), "{seats}");
+    assert_eq!(wait(&f, id, "ready")["revision"], ready["revision"]);
+    assert_eq!(f.mutate(f.oracle.id, op, "seat_spawn", args), response);
+}
+
+#[test]
+fn managed_workspace_delegating_oracle_respawns_after_task_amendment() {
+    let (f, task) = fixture_real();
+    let (id, ready) = prepare(&f, task);
+    let mut args = json!({
+        "swarm_id": f.oracle.swarm, "approved_profile": "zsh", "role": "executor",
+        "workspace": {"id": id, "expected_revision": ready["revision"]},
+    });
+    let first = data(f.mutate(f.oracle.id, Ulid::new(), "seat_spawn", args.clone()));
+    let seat: Ulid = serde_json::from_value(first["seat_id"].clone()).unwrap();
+    data(f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "task_delegate",
+        json!({"task_path": task, "seat_id": seat}),
+    ));
+    let before = data(knowledge_fetch(&f, f.oracle.id, &task.to_string()));
+    let mut amendment = knowledge_update_args(&before);
+    amendment["body"] = json!("Implement the amended fixture.");
+    let after = data(f.mutate(f.oracle.id, Ulid::new(), "knowledge_write", amendment));
+    assert_ne!(after["record"]["etag"], before["etag"]);
+    f.runtime
+        .block_on(f.client().close(
+            seat,
+            1,
+            Ulid::new(),
+            bbt_mux::registry::Position {
+                swarm: f.oracle.swarm,
+                tab: Ulid::new(),
+                split_path: vec![],
+                ratios: vec![],
+                layout_revision: 0,
+            },
+            0,
+        ))
+        .unwrap();
+    let ready = wait(&f, id, "ready");
+    args["workspace"]["expected_revision"] = ready["revision"].clone();
+    let replacement = data(f.mutate(f.oracle.id, Ulid::new(), "seat_spawn", args));
+    assert_eq!(replacement["status"], "applied");
+    assert_ne!(replacement["seat_id"], first["seat_id"]);
+    let workspace = wait(&f, id, "in_use");
+    assert_eq!(workspace["cwd"], ready["cwd"]);
+    assert_eq!(workspace["holder"]["seat_id"], replacement["seat_id"]);
+    assert_eq!(workspace["holder"]["pid"], replacement["pid"]);
+}
+
+#[test]
 fn managed_workspace_mcp_prepares_launches_and_delegates_with_canonical_kb() {
     let (mut f, task) = fixture();
     let (id, ready) = prepare(&f, task);

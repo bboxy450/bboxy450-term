@@ -196,7 +196,7 @@ impl Worker {
         let workspace = match prepared {
             Ok(r) => r,
             Err(e) => {
-                let value = managed::failure(call.op_id, e.as_ref());
+                let value = mcp::error(call.op_id, "rejected", &e.to_string());
                 let _ = reply.send(journal.complete(&actor, &call, value));
                 return;
             }
@@ -216,7 +216,7 @@ impl Worker {
                     .port
                     .host
                     .with_source(&context.port.index, &registry, |source| {
-                        Service::verify_ready(&workspace, source).map_err(|e| {
+                        Service::verify_ready(&workspace, &context.actor, source).map_err(|e| {
                             crate::knowledge::data_source::CommandError::new(
                                 "workspace_unavailable",
                                 e.to_string(),
@@ -339,15 +339,15 @@ impl Worker {
                                 Ok(request) => {
                                     self.effect_seat_control(&context.actor, &context.call, request)
                                 }
-                                Err(e) => managed::failure(context.call.op_id, e.as_ref()),
+                                Err(e) => mcp::error(context.call.op_id, "rejected", &e.to_string()),
                             }
                         }
                         Ok(()) => mcp::error(
                             context.call.op_id,
-                            "workspace_binding_changed",
-                            "authority or KB binding changed during launch checks",
+                            "rejected",
+                            "workspace_binding_changed: authority or KB binding changed during launch checks",
                         ),
-                        Err(e) => managed::failure(context.call.op_id, e.as_ref()),
+                        Err(e) => mcp::error(context.call.op_id, "rejected", &e.to_string()),
                     };
                     let result = context
                         .journal

@@ -293,12 +293,12 @@ fn managed_workspace_launch_planning_rolls_back_but_uncertain_request_retains_wr
     f.service.reserve(&ready, seat, op).unwrap();
     assert!(
         !f.service
-            .cancel_unstarted_launch(ready.workspace_id, seat, Ulid::new())
+            .cancel_launch(ready.workspace_id, seat, Ulid::new(), false)
             .unwrap()
     );
     assert!(
         f.service
-            .cancel_unstarted_launch(ready.workspace_id, seat, op)
+            .cancel_launch(ready.workspace_id, seat, op, false)
             .unwrap()
     );
     let ready = f.service.get(ready.workspace_id).unwrap();
@@ -317,7 +317,7 @@ fn managed_workspace_launch_planning_rolls_back_but_uncertain_request_retains_wr
     );
     assert!(
         !f.service
-            .cancel_unstarted_launch(ready.workspace_id, seat, op)
+            .cancel_launch(ready.workspace_id, seat, op, false)
             .unwrap()
     );
     let service = Service::open(&f.temp.path().join("runtime")).unwrap();
@@ -730,7 +730,7 @@ fn managed_workspace_restart_transfers_only_a_proven_dead_writer_generation() {
     );
 }
 #[test]
-fn managed_workspace_task_lifecycle_is_allowed_but_scope_amendment_is_fenced() {
+fn managed_workspace_amended_task_requires_its_delegator_and_live_status() {
     let f = Fixture::new();
     let r = f.prepare();
     let path = f.repo.join(".bboxy/tasks/work.md");
@@ -738,10 +738,20 @@ fn managed_workspace_task_lifecycle_is_allowed_but_scope_amendment_is_fenced() {
         .unwrap()
         .replace("status: open", "status: assigned");
     std::fs::write(&path, &text).unwrap();
-    Service::verify_ready(&r, &BboxySource::new(&f.index)).unwrap();
-    std::fs::write(&path, text.replace("verify: 'true'", "verify: 'false'")).unwrap();
-    let error = Service::verify_ready(&r, &BboxySource::new(&f.index)).unwrap_err();
+    Service::verify_ready(&r, &f.actor, &BboxySource::new(&f.index)).unwrap();
+    let amended = text.replace("verify: 'true'", "verify: 'false'");
+    std::fs::write(&path, &amended).unwrap();
+    let error = Service::verify_ready(&r, &f.actor, &BboxySource::new(&f.index)).unwrap_err();
     assert!(error.to_string().contains("workspace_task_changed"));
+    let amended = amended.replace(
+        "status: assigned",
+        &format!("status: assigned\ndelegated_by: 'seat:{}'", f.actor.seat_id),
+    );
+    std::fs::write(&path, &amended).unwrap();
+    Service::verify_ready(&r, &f.actor, &BboxySource::new(&f.index)).unwrap();
+    std::fs::write(&path, amended.replace("status: assigned", "status: done")).unwrap();
+    let error = Service::verify_ready(&r, &f.actor, &BboxySource::new(&f.index)).unwrap_err();
+    assert!(error.to_string().contains("workspace_task_invalid"));
 }
 
 #[test]

@@ -42,27 +42,15 @@ pub(super) fn managed_workspace_writer(b: bool) -> Model {
             ("holders", 2, 0),
             ("launches", 2, 0),
             ("requested", 1, 0),
-            ("bad", 1, 0),
+            ("outcome", 3, 0),
         ],
     );
+    // Outcome: pending (0), rejected (1), unknown (2), applied (3).
     action(
         &mut m,
         "ReserveWriter",
-        all([
-            Var(1).lt(Int(2)),
-            if b { Expr::Bool(true) } else { eq(0, 0) },
-        ]),
-        &[
-            (0, Var(0).plus(Int(1))),
-            (1, Var(1).plus(Int(1))),
-            (2, Int(0)),
-        ],
-    );
-    action(
-        &mut m,
-        "Detach",
-        Int(0).lt(Var(0)),
-        &[(0, Var(0).minus(Int(1))), (2, Int(0))],
+        all([Var(1).lt(Int(2)), eq(0, 0)]),
+        &[(0, Var(0).plus(Int(1))), (1, Var(1).plus(Int(1))), (3, Int(0))],
     );
     action(
         &mut m,
@@ -72,12 +60,45 @@ pub(super) fn managed_workspace_writer(b: bool) -> Model {
     );
     action(
         &mut m,
-        "CancelPlanning",
+        "RejectBeforeRequest",
         all([eq(0, 1), eq(2, 0)]),
-        &[(0, Int(0)), (3, Var(2))],
+        &[(0, Int(if b { 1 } else { 0 })), (3, Int(1))],
+    );
+    action(
+        &mut m,
+        "SupervisorRefuses",
+        all([eq(2, 1), eq(3, 0)]),
+        &[(0, Int(0)), (2, Int(0)), (3, Int(1))],
+    );
+    action(
+        &mut m,
+        "LoseReply",
+        all([eq(2, 1), eq(3, 0)]),
+        &[(3, Int(2))],
+    );
+    action(
+        &mut m,
+        "ConfirmProcess",
+        all([eq(2, 1), ne(3, 3)]),
+        &[(3, Int(3))],
+    );
+    action(
+        &mut m,
+        "Detach",
+        eq(3, 3),
+        &[(0, Int(0)), (2, Int(0)), (3, Int(0))],
     );
     safe(&mut m, "SingleWriter", Var(0).le(Int(1)));
-    no_bad(&mut m, 3);
+    safe(
+        &mut m,
+        "RejectedReleasesWriter",
+        implies(eq(3, 1), all([eq(0, 0), eq(2, 0)])),
+    );
+    safe(
+        &mut m,
+        "UnknownRequiresRequest",
+        implies(eq(3, 2), all([eq(0, 1), eq(2, 1)])),
+    );
     m
 }
 pub(super) fn managed_workspace_fence(b: bool) -> Model {

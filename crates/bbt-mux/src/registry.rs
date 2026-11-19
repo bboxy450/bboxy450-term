@@ -198,6 +198,15 @@ impl Registry {
         self.routing.invalidate();
         Ok(())
     }
+    /// Discard only the exact record inserted for a launch with proven no effect.
+    pub(crate) fn discard_unstarted(&self, record: &SeatRecord) -> Result<()> {
+        self.store.connection()?.execute(
+            "DELETE FROM kv WHERE key=?1 AND value=?2",
+            rusqlite::params![format!("seat/{}", record.id), serde_json::to_vec(record)?],
+        )?;
+        self.routing.invalidate();
+        Ok(())
+    }
     pub fn get(&self, id: Ulid) -> Result<SeatRecord> {
         let bytes = self
             .store

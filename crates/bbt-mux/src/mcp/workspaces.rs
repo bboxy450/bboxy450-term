@@ -781,7 +781,7 @@ impl Service {
         }
         Ok(Some(r))
     }
-    pub fn verify_ready(r: &Record, source: &dyn DataSource) -> Result<()> {
+    pub fn verify_ready(r: &Record, actor: &SeatActor, source: &dyn DataSource) -> Result<()> {
         git::verify(r)?;
         let task = source
             .resolve(d::ResolveRequest {
@@ -789,9 +789,19 @@ impl Service {
             })
             .and_then(|reference| source.fetch(d::FetchRequest { reference }))
             .map_err(|e| invalid(e.to_string()))?;
-        if task.etag != r.task_etag && task_contract(&task)? != r.task_contract_digest {
+        if !task.frontmatter["status"]
+            .as_str()
+            .is_some_and(super::work_items::live_status)
+        {
+            return Err(invalid("workspace_task_invalid: expected a live task"));
+        }
+        if task.etag != r.task_etag
+            && task_contract(&task)? != r.task_contract_digest
+            && (actor.role.class != Class::Oracle
+                || task.frontmatter["delegated_by"] != format!("seat:{}", actor.seat_id))
+        {
             return Err(invalid(
-                "workspace_task_changed: source brief, verify or allowed paths changed; read the amended task before another attempt",
+                "workspace_task_changed: only the delegating Oracle can launch an amended task's checkout",
             ));
         }
         Ok(())
@@ -894,14 +904,21 @@ impl Service {
             Ok(())
         })
     }
-    pub fn cancel_unstarted_launch(&self, id: Ulid, seat: Ulid, op: Ulid) -> Result<bool> {
+    /// Release the matching reservation after planning failed or the supervisor refused.
+    pub fn cancel_launch(
+        &self,
+        id: Ulid,
+        seat: Ulid,
+        op: Ulid,
+        supervisor_refused: bool,
+    ) -> Result<bool> {
         self.update(id, |r| {
             if r.state != State::InUse
                 || !r.holder.as_ref().is_some_and(|h| {
                     h.seat_id == seat
                         && h.launch_operation == op
                         && h.pid.is_none()
-                        && !h.launch_requested
+                        && (!h.launch_requested || supervisor_refused)
                 })
             {
                 return Ok(false);
