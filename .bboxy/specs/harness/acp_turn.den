@@ -1,0 +1,168 @@
+module specs.harness.AcpTurn
+
+spec AcpTurn {
+  intent "An operator turn on an ACP agent seat always ends or waits on the operator; operator input is never parked while it could reach the running turn; a closed tool call opens no second card."
+
+  enum Turn { Idle, Running, Cancelling, Ended }
+  enum Agent { Live, Hung }
+  enum Tool { NoTool, Open, Closed }
+  enum Input { NoInput, Parked, Delivered }
+
+  state {
+    turn: Turn = Turn.Idle
+    agent: Agent = Agent.Live
+    silent: Bool = false
+    asking: Bool = false
+    steering: Bool = false
+    tool: Tool = Tool.NoTool
+    opens: Int[0..2] = 0
+    input: Input = Input.NoInput
+    interrupted_asking: Bool = false
+  }
+
+  event Start
+  event Speak
+  event Hang
+  event Elapse
+  event Ask
+  event Answer
+  event Watchdog
+  event CancelAck
+  event GraceKill
+  event Returns
+  event ToolStart
+  event ToolDone
+  event LateUpdate
+  event Negotiate
+  event Send
+  event Dispatch
+
+  on Start {
+    // Input sent to an idle seat is the prompt of the turn it starts.
+    case prompted if turn == Turn.Idle && input == Input.Parked => { turn = Turn.Running; input = Input.Delivered }
+    case start if turn == Turn.Idle && input != Input.Parked => { turn = Turn.Running }
+    case busy otherwise => ignore NotIdle
+  }
+  // Any message from a live agent restarts the silence window.
+  on Speak {
+    case speak if turn == Turn.Running && agent == Agent.Live && silent => { silent = false }
+    case mute otherwise => ignore NoSpeaker
+  }
+  // claude-agent-acp after an idle auto-compaction: no reply, no cancel, nothing.
+  on Hang {
+    case hang if turn == Turn.Running && agent == Agent.Live => { agent = Agent.Hung }
+    case gone otherwise => ignore NotLive
+  }
+  // Time passes: the stall window (10 min, 60 with a tool open) elapses since the
+  // agent's last message.
+  on Elapse {
+    fair weak case elapse if turn == Turn.Running && !silent => { silent = true }
+    case still otherwise => ignore NothingToTime
+  }
+  on Ask {
+    case ask if turn == Turn.Running && agent == Agent.Live && !asking => { asking = true; silent = false }
+    case noask otherwise => ignore CannotAsk
+  }
+  on Answer {
+    case answer if asking => { asking = false }
+    case noanswer otherwise => ignore NothingAsked
+  }
+  // The watchdog interrupts a silent operator turn, never one waiting on the operator.
+  on Watchdog {
+    fair weak case stall if turn == Turn.Running && silent && !asking => { turn = Turn.Cancelling; interrupted_asking = interrupted_asking || asking }
+    case fine otherwise => ignore NotStalled
+  }
+  on CancelAck {
+    case acked if turn == Turn.Cancelling && agent == Agent.Live => { turn = Turn.Ended; asking = false }
+    case noack otherwise => ignore NoCancelAck
+  }
+  // An agent that ignores cancel loses its process group after the grace period
+  // and is respawned for the next turn.
+  on GraceKill {
+    fair weak case kill if turn == Turn.Cancelling => { turn = Turn.Ended; agent = Agent.Live; asking = false }
+    case nokill otherwise => ignore NotCancelling
+  }
+  on Returns {
+    case returns if turn == Turn.Running && agent == Agent.Live => { turn = Turn.Ended; asking = false }
+    case noreturn otherwise => ignore NoPrompt
+  }
+  on ToolStart {
+    case open if turn == Turn.Running && tool == Tool.NoTool && opens < 2 => { tool = Tool.Open; opens = opens + 1 }
+    case noopen otherwise => ignore NoToolCall
+  }
+  on ToolDone {
+    case close if tool == Tool.Open => { tool = Tool.Closed }
+    case noclose otherwise => ignore NotOpen
+  }
+  // Claude sends compaction statistics after the compaction call completed: the
+  // update is kept as a record and opens no card.
+  on LateUpdate {
+    case record if tool == Tool.Closed => ignore KeptAsRecord
+    case early otherwise => ignore NotClosed
+  }
+  // Steering becomes available when the agent's session is negotiated; input that
+  // arrived before then goes into the running turn at once.
+  on Negotiate {
+    case negotiate if !steering && turn == Turn.Running && input == Input.Parked => { steering = true; input = Input.Delivered }
+    case ready if !steering && !(turn == Turn.Running && input == Input.Parked) => { steering = true }
+    case known otherwise => ignore AlreadyNegotiated
+  }
+  on Send {
+    case steer if input == Input.NoInput && turn == Turn.Running && steering => { input = Input.Delivered }
+    case park if input == Input.NoInput && turn != Turn.Ended && !(turn == Turn.Running && steering) => { input = Input.Parked }
+    case nosend otherwise => ignore AlreadySent
+  }
+  // Input parked for an idle seat goes out as a normal prompt once the turn ends.
+  on Dispatch {
+    fair weak case dispatch if turn == Turn.Ended && input == Input.Parked => { input = Input.Delivered }
+    case nodispatch otherwise => ignore NothingParked
+  }
+
+  theorem ACPTURN_001 "the watchdog never interrupts a turn that waits on the operator" =
+    !interrupted_asking
+  theorem ACPTURN_002 "a tool call opens at most one card" =
+    opens <= 1
+  theorem ACPTURN_003 "input is never parked while steering could deliver it into the running turn" =
+    !(input == Input.Parked && steering && turn == Turn.Running)
+
+  property ACPTURN_L1 "a hung agent's turn ends unless it waits on the operator" =
+    (turn == Turn.Running && agent == Agent.Hung && !asking) leads to turn == Turn.Ended
+  property ACPTURN_L2 "parked input reaches the agent once the turn ends" =
+    (input == Input.Parked && turn == Turn.Ended) leads to input == Input.Delivered
+
+  assume ACPTURN_A1 "time passes: an elapsed stall window, a due watchdog, a grace kill and a parked dispatch each eventually happen"
+  assume ACPTURN_A2 "the operator is not assumed to answer: a turn waiting on the operator may wait forever"
+
+  scenario "a hung agent is interrupted, killed and respawned" {
+    Start      ~> accepted
+    Hang       ~> accepted
+    Elapse     ~> accepted
+    Watchdog   ~> accepted
+    CancelAck  ~> ignored NoCancelAck
+    GraceKill  ~> accepted
+    expect turn == Turn.Ended && agent == Agent.Live
+  }
+  scenario "input sent before steering is negotiated reaches the running turn" {
+    Start      ~> accepted
+    Send       ~> accepted
+    Negotiate  ~> accepted
+    expect input == Input.Delivered && turn == Turn.Running
+  }
+  scenario "a waiting question holds off the watchdog" {
+    Start      ~> accepted
+    Ask        ~> accepted
+    Elapse     ~> accepted
+    Watchdog   ~> ignored NotStalled
+    Answer     ~> accepted
+    Watchdog   ~> accepted
+    expect turn == Turn.Cancelling
+  }
+  scenario "a late update after compaction opens no second card" {
+    Start      ~> accepted
+    ToolStart  ~> accepted
+    ToolDone   ~> accepted
+    LateUpdate ~> ignored KeptAsRecord
+    ToolStart  ~> ignored NoToolCall
+    expect opens == 1
+  }
+}
