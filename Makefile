@@ -190,6 +190,7 @@ help:
 	  'make build-harness               Build the in-suite seat binary; add target/debug to PATH' \
 	  'make test-harness-branding       All harness menu/row labels, marks and omission control' \
 	  'make test-harness-native         Scripted harness seat, socket delivery, rich face and bounded cleanup' \
+	  'make test-real-sessions          Every machine-local harness session log through the face parsers; skips when none exist' \
 	  'make test-rich-pane              Private rich keyboard/IME, layout persistence and offscreen parity' \
 	  'make bench-budgets               Four-view actual drain/composition p99; load and heap UNMEASURED' \
 	  'make install-reopen              Oracle: signed install, GUI-only replace, rendered source receipt/rollback' \
@@ -2252,6 +2253,17 @@ test-harmony-pages:
 .PHONY: init-submodules
 init-submodules:
 	@python3 -I scripts/harness-submodule.py
+
+# Every completed tool call in this machine's harness session logs goes through
+# the face parsers (spec CodexReply): no transport envelope rendered, no Python
+# card without a status, blob-backed replies read back. Logs stay local; a
+# machine without any skips with a line saying so.
+SESSIONS_DIR ?= $(HOME)/.bboxy450-harness/sessions
+.PHONY: test-real-sessions
+test-real-sessions: init-submodules
+	@set -eu; if ! ls '$(SESSIONS_DIR)'/*.jsonl >/dev/null 2>&1; then echo "test-real-sessions: no session logs in $(SESSIONS_DIR); skipped"; exit 0; fi; \
+	. ./scripts/cache-env.sh; \
+	BBOXY_SMOKE_SESSIONS='$(SESSIONS_DIR)' cargo nextest run --locked -p bboxy450-harness --features acp-agent,embedded --lib --target-dir '$(TARGET_DIR)' -E 'test(real_session_smoke)' --no-capture
 
 .PHONY: test-harness-native format-harness-embed
 test-harness-native: init-submodules

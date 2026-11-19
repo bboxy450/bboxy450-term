@@ -113,6 +113,7 @@ full unit env NEXTEST_PROFILE=gate BBOXY_PRESUBMIT_COVERAGE="$coverage" sh scrip
 full unit env NEXTEST_TEST_THREADS=1 sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked --lib --bins --tests -E "$timed"
 ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR" FORMAL_REUSE=0
 ledger integration make test-harness-native TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
+ledger integration make test-real-sessions TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 # This real exec-environment control restores and hashes its source before
 # returning; no other compilation runs while the broken variant is present.
 ledger integration make test-capability-control TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
