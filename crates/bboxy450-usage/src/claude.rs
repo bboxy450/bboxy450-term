@@ -86,15 +86,18 @@ impl Provider for Claude {
                     windows.extend(window("Current session", limit, "percent", SESSION));
                 } else if kind.starts_with("weekly") && limit["is_active"].as_bool() == Some(true) {
                     // weekly_all → "Weekly"; weekly_opus → "Weekly (Opus)".
-                    let label = match kind.strip_prefix("weekly_").filter(|s| *s != "all") {
-                        Some(model) => {
-                            let mut model = model.replace('_', " ");
-                            if let Some(first) = model.get_mut(..1) {
-                                first.make_ascii_uppercase();
+                    let label = match limit["scope"]["model"]["display_name"].as_str() {
+                        Some(model) => format!("Weekly ({model})"),
+                        None => match kind.strip_prefix("weekly_").filter(|s| *s != "all") {
+                            Some(model) => {
+                                let mut model = model.replace('_', " ");
+                                if let Some(first) = model.get_mut(..1) {
+                                    first.make_ascii_uppercase();
+                                }
+                                format!("Weekly ({model})")
                             }
-                            format!("Weekly ({model})")
-                        }
-                        None => "Weekly".into(),
+                            None => "Weekly".into(),
+                        },
                     };
                     windows.extend(window(&label, limit, "percent", WEEK));
                     weekly |= kind == "weekly_all";

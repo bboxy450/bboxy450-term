@@ -384,3 +384,38 @@ fn tachyon_pace_projects_used_over_elapsed_window() {
     // Same local day says "at"; otherwise the weekday.
     assert!(reset_label(9000, 8000).starts_with("Resets "));
 }
+
+#[tokio::test]
+async fn codex_weekly_exhaustion_retains_available_credits() {
+    let body = br#"{"rate_limit":{"primary_window":{"used_percent":100,"limit_window_seconds":604800,"reset_at":1795201432},"secondary_window":null},"credits":{"has_credits":true,"unlimited":false,"balance":"36130.25"}}"#;
+    let fetch = Fetcher {
+        status: 200,
+        body: body.to_vec(),
+        calls: AtomicUsize::new(0),
+    };
+    let credential = Credential::new("fixture".into(), None).unwrap();
+    let reading = poller::fetch_reading(&Codex, &fetch, &credential, Duration::from_secs(1)).await;
+    assert_eq!(reading.used, Some(100));
+    assert_eq!(reading.windows[0].label, "Weekly");
+    assert_eq!(reading.reason.as_deref(), Some("36130 credits"));
+    assert!(!reading.stale);
+    let historical = codex::rollout(br#"{"payload":{"type":"token_count","rate_limits":{"primary":{"used_percent":100,"window_minutes":10080},"credits":{"has_credits":true,"balance":"36130"}}}}"#).unwrap();
+    assert!(historical.stale);
+    assert_eq!(historical.reason.as_deref(), Some("Historical rollout; account unverified; 36130 credits"));
+    assert_eq!(
+        Codex
+            .reading(include_bytes!("fixtures/codex.json"))
+            .unwrap()
+            .reason,
+        None
+    );
+    assert_eq!(Codex.reading(br#"{"rate_limit":{"primary_window":{"used_percent":4}},"credits":{"unlimited":true}}"#).unwrap().reason.as_deref(), Some("Unlimited credits"));
+}
+
+#[test]
+fn claude_scoped_weekly_window_uses_the_reported_model_name() {
+    let windows = Claude.decode(br#"{"five_hour":{"utilization":22},"seven_day":{"utilization":88},"limits":[{"kind":"weekly_scoped","percent":100,"is_active":true,"scope":{"model":{"display_name":"Fable"}}}]}"#).unwrap();
+    assert_eq!(windows[0].label, "Weekly (Fable)");
+    assert_eq!(windows[0].used, 100.);
+    assert!(windows.iter().any(|w| w.label == "Weekly" && w.used == 88.));
+}

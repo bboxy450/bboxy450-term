@@ -24,8 +24,11 @@ rejects timed-out, duplicate and A -> B -> A completions.
 Anonymous Codex rollout history is shown only while signed out, explicitly
 stale and account-unverified. An authenticated API failure shows a reason;
 it cannot borrow another login's anonymous rollout. Providers without an
-installation/configuration are absent. Keychain reads explicitly forbid
-authentication UI. Tests only inject fake credential readers and fetchers.
+installation/configuration are absent. Native Keychain reads forbid authentication
+UI; when the app is denied access, macOS uses Tachyon's trusted `/usr/bin/security`
+read with a two-second deadline and bounded, unpublished output. Tests inject
+credential readers, fetchers and private commands; they never read the real Keychain.
+Codex credit balances appear below the quota windows, including historical rollouts.
 
 On macOS CPU is whole-machine tick deltas (first sample warms up), memory is
 active, wired and compressed physical pages (reclaimable file cache excluded),

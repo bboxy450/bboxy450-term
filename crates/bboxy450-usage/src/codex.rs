@@ -84,6 +84,12 @@ impl Provider for Codex {
         }
         worst_first(windows)
     }
+    fn reading(&self, body: &[u8]) -> Result<Reading, Failure> {
+        let mut reading = Reading::from_windows(&self.decode(body)?, now());
+        let root = json(body)?;
+        reading.reason = credit_label(&root["credits"]);
+        Ok(reading)
+    }
     fn fallback(&self, r: &dyn CredentialReader) -> Option<Reading> {
         // Like Tachyon, anonymous rollouts cannot be attributed to a signed-in account.
         // Only the signed-out branch calls this; the visible reason labels historical data.
@@ -110,7 +116,11 @@ pub fn rollout(bytes: &[u8]) -> Option<Reading> {
         if let Ok(windows) = worst_first(windows) {
             let mut reading = Reading::from_windows(&windows, now());
             // Stale, so no pace (Tachyon).
-            reading.stale("Historical rollout; account unverified");
+            let mut reason = "Historical rollout; account unverified".to_owned();
+            if let Some(credits) = credit_label(&p["rate_limits"]["credits"]) {
+                reason.push_str(&format!("; {credits}"));
+            }
+            reading.stale(&reason);
             return Some(reading);
         }
     }
@@ -126,5 +136,16 @@ fn window_label(seconds: Option<f64>, slot: &str) -> String {
         Some(s) if s % 3600 == 0 => format!("{}-hour", s / 3600),
         _ if slot.starts_with("primary") => "Primary".into(),
         _ => "Secondary".into(),
+    }
+}
+
+fn credit_label(credits: &Value) -> Option<String> {
+    if credits["unlimited"].as_bool() == Some(true) {
+        Some("Unlimited credits".into())
+    } else {
+        number(&credits["balance"])
+            .filter(|_| credits["has_credits"].as_bool() == Some(true))
+            .filter(|balance| *balance >= 0.)
+            .map(|balance| format!("{balance:.0} credits"))
     }
 }

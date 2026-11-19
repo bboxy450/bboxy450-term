@@ -117,10 +117,73 @@ fn keychain(_: &str) -> Result<Option<Vec<u8>>, Failure> {
 #[cfg(target_os = "macos")]
 fn keychain(service: &str) -> Result<Option<Vec<u8>>, Failure> {
     use bboxy450_keychain_macos::Error;
-    bboxy450_keychain_macos::read_generic_password(service, MAX_BYTES).map_err(|error| match error {
-        Error::TooLarge => Failure::Credentials,
-        Error::Unavailable => Failure::KeychainLocked,
-    })
+    bboxy450_keychain_macos::read_generic_password(service, MAX_BYTES)
+        .map_err(|error| match error {
+            Error::TooLarge => Failure::Credentials,
+            Error::Unavailable => Failure::KeychainLocked,
+        })
+        .or_else(|error| {
+            if error != Failure::KeychainLocked {
+                return Err(error);
+            }
+            // Tachyon uses the trusted system CLI: Claude Code grants it access,
+            // while an independently signed app cannot read the same item directly.
+            // Translated from Tachyon (MIT), ClaudeProvider.swift::Dependencies.live:
+            // https://github.com/Gonzih/tachyon; notice in ../LICENSE-TACHYON.
+            let mut command = std::process::Command::new("/usr/bin/security");
+            command.args(["find-generic-password", "-s", service, "-w"]);
+            password_output(&mut command, std::time::Duration::from_secs(2))
+        })
+}
+
+#[cfg(target_os = "macos")]
+#[allow(
+    clippy::disallowed_methods,
+    reason = "bounded credential IO on the poller's blocking owner"
+)]
+fn password_output(
+    command: &mut std::process::Command,
+    timeout: std::time::Duration,
+) -> Result<Option<Vec<u8>>, Failure> {
+    use std::process::Stdio;
+    let mut child = command
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|_| Failure::KeychainLocked)?;
+    let deadline = std::time::Instant::now() + timeout;
+    let status = loop {
+        match child.try_wait() {
+            Ok(Some(status)) => break status,
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            _ => {
+                let _ = child.kill();
+                let _ = child.wait();
+                return Err(Failure::KeychainLocked);
+            }
+        }
+    };
+    if status.code() == Some(44) {
+        return Ok(None);
+    }
+    if !status.success() {
+        return Err(Failure::KeychainLocked);
+    }
+    let mut bytes = Vec::new();
+    child
+        .stdout
+        .take()
+        .ok_or(Failure::Credentials)?
+        .take(MAX_BYTES + 1)
+        .read_to_end(&mut bytes)
+        .map_err(|_| Failure::Credentials)?;
+    if bytes.len() as u64 > MAX_BYTES {
+        return Err(Failure::Credentials);
+    }
+    Ok(Some(bytes))
 }
 
 pub struct Http {
@@ -173,5 +236,35 @@ impl Fetch for Http {
             }
             Ok(Response { status, body })
         })
+    }
+}
+
+#[cfg(all(test, target_os = "macos"))]
+mod tests {
+    use super::*;
+    #[test]
+    fn credential_command_is_bounded_and_never_returns_failed_output() {
+        let run = |script: &str| {
+            let mut command = std::process::Command::new("/bin/sh");
+            command.args(["-c", script]);
+            password_output(&mut command, std::time::Duration::from_millis(100))
+        };
+        assert_eq!(
+            run("printf fixture-secret"),
+            Ok(Some(b"fixture-secret".to_vec()))
+        );
+        assert_eq!(run("printf fixture-secret; exit 44"), Ok(None));
+        assert_eq!(
+            run("printf fixture-secret; exit 1"),
+            Err(Failure::KeychainLocked)
+        );
+        // exec keeps the exact child PID; the bounded owner kills and reaps it.
+        let start = std::time::Instant::now();
+        assert_eq!(run("exec /bin/sleep 10"), Err(Failure::KeychainLocked));
+        assert!(start.elapsed() < std::time::Duration::from_secs(2));
+        assert_eq!(
+            run("exec /usr/bin/yes fixture-secret"),
+            Err(Failure::KeychainLocked)
+        );
     }
 }

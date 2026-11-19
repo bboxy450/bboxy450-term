@@ -31,6 +31,11 @@ pub trait Provider: Send + Sync {
     fn request(&self, credential: &Credential) -> Request;
     /// Every window, worst first (`worst_first`).
     fn decode(&self, body: &[u8]) -> Result<Vec<Window>, Failure>;
+    /// Decode the windows and any provider detail shown below them.
+    fn reading(&self, body: &[u8]) -> Result<Reading, Failure> {
+        self.decode(body)
+            .map(|windows| Reading::from_windows(&windows, now()))
+    }
     fn fallback(&self, _reader: &dyn CredentialReader) -> Option<Reading> {
         None
     }

@@ -282,14 +282,14 @@ pub async fn fetch_reading(
         let response = fetch.get(p.request(c)).await?;
         match response.status {
             401 | 403 => Err(Failure::Auth),
-            200..300 => p.decode(&response.body),
+            200..300 => p.reading(&response.body),
             status => Err(Failure::Http(status)),
         }
     })
     .await
     .unwrap_or(Err(Failure::Timeout));
     match result {
-        Ok(windows) => Reading::from_windows(&windows, crate::now()),
+        Ok(reading) => reading,
         Err(e) => error_reading(e, p),
     }
 }
