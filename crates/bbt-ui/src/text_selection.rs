@@ -210,11 +210,10 @@ impl Selection {
     pub fn paint(&self, measure: &dyn TextMeasure) -> DrawList {
         let mut draw = DrawList::default();
         if let Some([(a, lo), (b, hi)]) = self.ordered() {
-            for i in a..=b {
-                let r = &self.runs[i];
+            for (i, r) in self.runs[a..=b].iter().enumerate() {
                 let x = |byte| r.rect.x + measure.width(&r.text[..byte], &r.style);
-                let start = x(if i == a { lo } else { 0 });
-                let end = x(if i == b { hi } else { r.text.len() });
+                let start = x(if i == 0 { lo } else { 0 });
+                let end = x(if i == b - a { hi } else { r.text.len() });
                 let rect = intersect(Rect::new(start, r.rect.y, end - start, r.rect.h), r.clip);
                 if rect.w > 0. && rect.h > 0. {
                     draw.rect(rect, 0., Color([0.25, 0.50, 0.95, 0.35]));
