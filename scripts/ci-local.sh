@@ -90,9 +90,9 @@ ledger integration make test-capability-scan TARGET_DIR="$BBOXY_CARGO_TARGET_DIR
 full build cargo build --workspace --locked --target-dir "$BBOXY_CARGO_TARGET_DIR"
 full build cargo clippy --workspace --all-targets --locked --target-dir "$BBOXY_CARGO_TARGET_DIR" -- -D warnings
 ledger smoke sh scripts/qos.sh utility sh scripts/ui-lint.sh
-# The harness repository's own gate runs its suite in its own configuration;
-# here it would rerun under this workspace's feature unification. Its CLOEXEC
-# fixture and term-facing seats run in test-harness-native below.
+# The workspace suite excludes the harness; test-harness-source below runs the
+# whole harness suite from this workspace's source, the build that ships.
+# Its CLOEXEC fixture and term-facing seats run in test-harness-native.
 # The Dream C1 family asserts 1 ms per-unit CPU budgets on optimized code; it runs
 # in its own gate, make test-dream-c1 (same filters, dream-c1-fixture profile), not
 # here. scripts/landing.py DREAM_C1_GATE_TESTS names the same family.
@@ -112,6 +112,7 @@ export BBOXY_PRESUBMIT_ATTEMPT="ci-local.$$"
 full unit env NEXTEST_PROFILE=gate BBOXY_PRESUBMIT_COVERAGE="$coverage" sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked -E "not ($timed) & not ($dream)"
 full unit env NEXTEST_TEST_THREADS=1 sh scripts/quarantine-test.sh --workspace --exclude bboxy450-harness --locked --lib --bins --tests -E "$timed"
 ledger integration make test-formal TARGET_DIR="$BBOXY_CARGO_TARGET_DIR" FORMAL_REUSE=0
+ledger integration make test-harness-source TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger integration make test-harness-native TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 ledger integration make test-real-sessions TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
 # This real exec-environment control restores and hashes its source before

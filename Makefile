@@ -191,6 +191,7 @@ help:
 	  'make test-harness-branding       All harness menu/row labels, marks and omission control' \
 	  'make test-harness-native         Scripted harness seat, socket delivery, rich face and bounded cleanup' \
 	  'make test-real-sessions          Every machine-local harness session log through the face parsers; skips when none exist' \
+	  'make test-harness-source         The whole harness suite built from this workspace source (never crates.io releases)' \
 	  'make test-rich-pane              Private rich keyboard/IME, layout persistence and offscreen parity' \
 	  'make bench-budgets               Four-view actual drain/composition p99; load and heap UNMEASURED' \
 	  'make install-reopen              Oracle: signed install, GUI-only replace, rendered source receipt/rollback' \
@@ -2264,6 +2265,15 @@ test-real-sessions: init-submodules
 	@set -eu; if ! ls '$(SESSIONS_DIR)'/*.jsonl >/dev/null 2>&1; then echo "test-real-sessions: no session logs in $(SESSIONS_DIR); skipped"; exit 0; fi; \
 	. ./scripts/cache-env.sh; \
 	BBOXY_SMOKE_SESSIONS='$(SESSIONS_DIR)' cargo nextest run --locked -p bboxy450-harness --features acp-agent,embedded --lib --target-dir '$(TARGET_DIR)' -E 'test(real_session_smoke)' --no-capture
+
+# The harness is tested from this workspace's source, as it ships: its own
+# manifest pins crates.io releases, and on 2026-11-18 a bbt-doc change that
+# passed against bboxy450-doc 0.2.0 panicked every code card in the app.
+# Nothing is tested against a published release.
+.PHONY: test-harness-source
+test-harness-source: init-submodules
+	@set -eu; . ./scripts/cache-env.sh; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-harness --features acp-agent,acp,embedded,test-fixtures --lib --tests --target-dir '$(TARGET_DIR)' -E 'not test(dream::)'
 
 .PHONY: test-harness-native format-harness-embed
 test-harness-native: init-submodules

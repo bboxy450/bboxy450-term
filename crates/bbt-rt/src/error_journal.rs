@@ -132,7 +132,13 @@ pub fn scrub(text: &str, limit: usize) -> String {
         if !result.is_empty() {
             result.push('\n');
         }
-        let lower = line.to_ascii_lowercase();
+        // Idempotent: rows are scrubbed on write and again on read, and this
+        // function's own "[redacted token]" must not read as the keyword
+        // "token" (2026-11-18: that withheld the panic naming a frozen pane's cause).
+        let lower = line
+            .to_ascii_lowercase()
+            .replace("[redacted token]", "")
+            .replace("[redacted sensitive diagnostic line]", "");
         let assignment = line.split_whitespace().any(|word| {
             word.split_once(['=', ':']).is_some_and(|(key, _)| {
                 let key = key.trim_matches(|c: char| !c.is_ascii_alphanumeric() && c != '_');
@@ -740,6 +746,28 @@ mod tests {
         assert!(!normalized.contains("unsafe"));
         assert!(!normalized.contains("PRIVATE"));
         assert!(!scrub("opaque aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", 100).contains("aaaa"));
+        for text in [
+            "panic at crates/bboxy450-harness/src/frontends/gui/rich.rs:486 (thread bbt-io)",
+            "api_key=abc",
+            "opaque aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa then more",
+        ] {
+            let once = scrub(text, 1024);
+            assert_eq!(
+                scrub(&once, 1024),
+                once,
+                "scrub is not idempotent for {text:?}"
+            );
+        }
+        assert_eq!(
+            scrub(
+                &scrub(
+                    "block at crates/bboxy450-harness/src/frontends/gui/rich.rs:486",
+                    1024
+                ),
+                1024
+            ),
+            "block at [redacted token]"
+        );
     }
 
     // keeps: bounded diagnostics retention; filters never acknowledge other seats

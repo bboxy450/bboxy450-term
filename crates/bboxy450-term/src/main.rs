@@ -10316,6 +10316,34 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("{HELP}\n{}", stall::HELP);
         return Ok(());
     }
+    // The journal withholds any 32-character path-like run as an opaque token,
+    // so a location is written as its crate and a short path tail:
+    // " in bboxy450-harness at frontends/gui/rich.rs:486".
+    fn panic_location(l: &std::panic::Location<'_>) -> String {
+        let parts: Vec<&str> = l.file().split('/').collect();
+        let krate = parts
+            .iter()
+            .position(|p| *p == "crates")
+            .and_then(|i| parts.get(i + 1))
+            .map_or_else(String::new, |c| format!(" in {c}"));
+        let line = format!(":{}", l.line());
+        let mut tail = String::new();
+        for part in parts.iter().rev() {
+            let next = if tail.is_empty() {
+                (*part).to_owned()
+            } else {
+                format!("{part}/{tail}")
+            };
+            if next.len() + line.len() >= 32 {
+                break;
+            }
+            tail = next;
+        }
+        if tail.is_empty() {
+            tail = parts.last().copied().unwrap_or("?").chars().take(24).collect();
+        }
+        format!("{krate} at {tail}{line}")
+    }
     // Every process records its panics where `ctl debug errors` shows them: the
     // window's stderr is /dev/null, so a panic in a pane's task (a frozen pane,
     // 2026-11-18) otherwise left no trace at all. The default hook still prints.
@@ -10329,9 +10357,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .map(|s| (*s).to_owned())
                 .or_else(|| info.payload().downcast_ref::<String>().cloned())
                 .unwrap_or_else(|| "non-string panic".into());
-            let at = info
-                .location()
-                .map_or_else(String::new, |l| format!(" at {}:{}", l.file(), l.line()));
+            let at = info.location().map_or_else(String::new, panic_location);
             let thread = std::thread::current().name().unwrap_or("unnamed").to_owned();
             bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new(
                 &role,
