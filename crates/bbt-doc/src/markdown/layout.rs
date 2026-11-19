@@ -789,8 +789,14 @@ impl Render<'_> {
                     )
                 } else {
                     let spans = self.highlights.and_then(|h| h.spans(b));
+                    // The mdxcn frame belongs to the document viewer
+                    // (document-viewer.md, Figures). A transcript keeps its
+                    // plain code panel: framing it there (38c63286) panicked
+                    // every harness code card and moved transcript geometry.
                     let code = if self.transcript && language == Some("json") {
                         self.code_spans(key, text, 1.35, spans, Some("JSON"))
+                    } else if self.transcript {
+                        self.code_spans(key, text, 1.6, spans, None)
                     } else {
                         let caption = language.map(str::to_uppercase);
                         self.framed_code(key, text, caption.as_deref(), spans)

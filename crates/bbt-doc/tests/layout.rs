@@ -801,3 +801,28 @@ fn callouts_and_code_blocks_are_framed_with_their_title_on_the_top_edge() {
         assert!((br.rect.y + br.rect.h / 2. - (frame.rect.y + frame.rect.h)).abs() < 1., "{block}");
     }
 }
+
+// keeps: the mdxcn frame is the document viewer's (document-viewer.md §Figures).
+// A transcript's fenced code keeps its plain panel under `block0`: framing it
+// there (38c63286) panicked every harness code card that looked the code up.
+#[test]
+fn transcript_code_keeps_its_plain_panel_and_the_viewer_keeps_its_frame() {
+    let doc = parse("```python\nprint(1)\n```\n");
+    let width = 480.;
+    let highlighter = bbt_doc::highlight::RustHighlighter::new(false);
+    let highlights = bbt_doc::highlight::Highlights::prepare(&doc, &highlighter);
+    let transcript = doc
+        .transcript_body_element(&highlights, ctx(), &Fonts, width)
+        .layout(Rect::new(0., 0., width, 0.), ctx(), &Fonts)
+        .unwrap();
+    assert!(named(&transcript, "block0").is_some());
+    assert!(named(&transcript, "block0/text").is_some());
+    assert!(named(&transcript, "block0/frame").is_none());
+    assert!(!texts(&transcript).contains("[ PYTHON ]"));
+    let viewer = doc
+        .body_element(ctx(), &Fonts, width, &[])
+        .layout(Rect::new(0., 0., width, 0.), ctx(), &Fonts)
+        .unwrap();
+    assert!(named(&viewer, "block0/frame").is_some());
+    assert!(texts(&viewer).contains("[ PYTHON ]"));
+}
