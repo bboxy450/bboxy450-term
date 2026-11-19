@@ -1,0 +1,167 @@
+module specs.`nodes`
+
+spec Nodes {
+  title "Nodes: an autonomous distributed swarm on a QUIC mesh over the user's tailnet; the UI only renders"
+  intent "Every machine runs the same headless node that owns its seats and keeps working with no UI attached; nodes talk over a pinned-key QUIC mesh; any UI, on macOS, Linux or a phone, only dials nodes and renders their state."
+  status Draft
+  body """
+    # Nodes
+
+    Binds [[d1794292861627527-remote-nodes-round-2]], which supersedes round 1, and [[d1794292861627529-remote-nodes-round-3]]. Identity comes from [[seat-keys]]; the phone is specified in [[mobile]]. Amends [[networking]], [[remote-supervisor-link]], [[d1-providers]] and [[invariants/local-first]]. The bboxy cloud spec and the bboxy mobile spec follow from §8.
+
+    **Done means:**
+    1. Close the laptop. The seats on other nodes keep working, message each other and write the KB.
+    2. Open the laptop. The UI shows every node's current state, and nothing on those nodes restarted.
+    3. A Linux machine runs as a node, and later runs the UI.
+
+    ## 1. The node
+
+    A node is one machine running `bboxy450-term node`. This is the existing private `supervisor` and `logic` entries (`bboxy450-term/src/cockpit.rs:699-763`) started with no window, the way the headless app already runs (`headless.rs:107`).
+    - **It owns** its seats, PTYs, harness engines, MCP tools, inbox and KB replica.
+    - **Its identity** is one Ed25519 key, the device key of [[identity]]. `NodeId` is that public key.
+    - **A seat lives on exactly one node.** `Location` becomes `Local | Node(NodeId)`, and `Ssh{host}` and `Cloud{provider, host}` are retired (`bbt-proto/src/registry.rs:48`, UI `Where` at `bbt-ui-model/src/model/seat.rs:47`).
+
+    A node never waits for a UI. A UI that disappears costs the node nothing beyond a closed connection.
+
+    ## 2. The mesh: `bboxy450-mesh`
+
+    One crate on upstream quinn. Its API is shaped like iroh's: dial by key, one ALPN per protocol. It is the only crate that links a network library. Mux talks to it through the node, and [[invariants/local-first]] narrows to "mux links no network crate".
+
+    ```rust
+    pub struct Mesh { /* one quinn Endpoint, one UDP socket */ }
+    impl Mesh {
+        pub fn bind(key: SigningKey, listen: SocketAddr, peers: Peers) -> Result<Mesh>;
+        pub async fn connect(&self, peer: NodeId, alpn: &'static [u8]) -> Result<Connection>;
+        pub fn accept(&self, alpn: &'static [u8]) -> impl Stream<Item = (NodeId, Connection)>;
+    }
+    ```
+
+    - **Reachability is Tailscale's job.** The user sets it up; we build no discovery, NAT traversal, relay or DHT. [[networking]] §2–3 are out of scope.
+    - **Peers** are a file the operator edits: `~/.bboxy450/peers.toml` with `[[peer]] name, addr = "box.tail1234.ts.net:4450"`. It is addresses only: it says where to dial, not whom to trust.
+    - **A pinned root, not pinned peers** (round 3 §2). Each node's TLS 1.3 certificate is self-signed by its node key. Its grant chain ([[seat-keys]]) is the first frame on the connection, and the connection is refused unless `verify` reaches the pinned root and the chain's leaf key equals the certificate key. A node with no grant serves only `bboxy/enroll/1`. This replaces the separate signature transcript of [[networking]] §1.
+    - **One connection per peer pair**, with a stream per protocol. Keep-alive is 15 s and the idle timeout 45 s; redial backs off from 250 ms to 30 s (the numbers from [[remote-supervisor-link]] §4).
+
+    | ALPN | Between | Carries |
+    |---|---|---|
+    | `bboxy/gui/3` | UI → node | The existing `GuiRequest`/`GuiReply` NDJSON v3 (`bbt-proto/src/gui/mod.rs:61`) and the event lane, unchanged |
+    | `bboxy/pane/1` | UI → node | The harness gateway protocol to one seat's session socket; the node proxies it to its local `h-<seat>.sock` (the harness gateway ICD (`crates/bboxy450-harness/.bboxy/interfaces/gateway.md`) |
+    | `bboxy/msg/1` | node ↔ node | Signed message envelopes ([[messaging]]), with an exactly-once per-peer outbox |
+    | `bboxy/kb/1` | node ↔ node | Git fetch: `git upload-pack` on a stream, reached through git's `ext::` transport |
+    | `bboxy/blob/1` | any → node | Content by sha256, verified on read |
+
+    The local UI keeps `gui.sock` on this machine. A remote node is reached through the same protocol on a QUIC stream.
+
+    ## 3. A swarm across nodes
+
+    - **The swarm is the union of its seats**, and each seat names its node. Swarm membership is a KB record, so it replicates (§4).
+    - **Messages route by the recipient seat's node.** A local recipient takes today's path; any other goes over `bboxy/msg/1`.
+    - **The exactly-once machinery is reused, not rewritten.** `bboxy450-term-remote/src/delivery.rs` (outbox, fsynced applied journal, duplicate answers) and its RemoteDelivery model, with its Lean proof, move into the mesh as the msg outbox. That is exactly what they prove.
+    - **MCP stays on the seat's node.** A tool that names a seat on another node (`seat_get`, `screen_read`, `seat_input_text`, `seat_spawn {node}`) is forwarded over `bboxy/gui/3`. The target node verifies the calling seat's chain ([[seat-keys]] §3) and checks swarm membership.
+
+    ## 4. KB storage: one seam, git now, object store later
+
+    The knowledge provider is already a seam: it selects either built-in or GitKB. The KB is reduced to one store interface:
+
+    ```rust
+    pub trait KbStore {
+        fn get(&self, path: &str) -> Result<Option<(Bytes, Etag)>>;
+        /// Compare-and-swap; signed by the writer's seat or node key.
+        fn put(&self, path: &str, bytes: Bytes, expected: Option<Etag>, signer: &Signer) -> Result<Etag>;
+        fn list(&self, prefix: &str, after: Option<&str>) -> Result<Page>;
+        fn changes(&self, after: Cursor) -> Result<(Vec<Change>, Cursor)>;
+    }
+    ```
+
+    - **Now: a git replica on every node.**
+      - Each node commits its own writes, signed.
+      - On change, it notifies its peers over `bboxy/msg/1`; peers fetch over `bboxy/kb/1` and merge.
+      - Records are one file per object, so creates never conflict.
+      - When the same record is edited on two nodes, the signed `updated` that is later wins, with node key as the tie-break. The loser is kept at `conflicts/<id>-<digest>` and shown, never dropped.
+    - **Later: one object store (R2 or S3).** Every node writes to it with `put` as a conditional write on the etag (`If-Match`), and the signer is the writer's key. Conflicts are then refused at write time, and the merge and conflict records go away.
+    - Orchestration (tasks, messaging, MCP) sees only `KbStore` and never knows the backend.
+    - Blobs get the same seam ([[vision]]: the `Blobs` trait).
+
+    ## 5. The UI only renders
+
+    - It dials each peer on `bboxy/gui/3`, plus the local `gui.sock`, and merges the seat lists by node. The sidebar's Hosts cards are the nodes, with link state from the connection.
+    - Panes attach over `bboxy/pane/1` with cursor resume. Reopening the laptop resumes at the cursors, so no event is lost or doubled.
+    - Hidden seats cost a state bit, as for local seats.
+    - The fixture demo hosts stay, marked as demo (round 2 §8).
+    - The Mac app, the Linux UI and the phone are the same client.
+
+    ## 6. Linux
+
+    - **Phase 1 is the headless node on Linux.** macOS-specific code is in `bboxy450-term` (16 files with `target_os = "macos"`), `bbt-render` (15), `bbt-mux` (14), `bboxy450-harness` (12) and `bbt-supervisor` (5).
+    - Linux backends already exist for the keychain (`bboxy450-keychain-file`) and notifications (`bboxy450-desktop-notifications-linux`).
+    - The Makefile gains `build-node` and `test-linux`; there is no Linux target today. `test-linux` runs the node crates' tests in one container through dory (round 3 §5), a single run at a time:
+      - `dory run --rm --cpus 2 --memory 4g` with the worktree mounted read-only;
+      - named volumes for the Cargo registry and the target directory, so it writes nothing to the host's `target/`;
+      - a Rust image pinned by digest, with the toolchain from `rust-toolchain.toml`.
+      Dedicated infrastructure replaces it later.
+    - The UI on Linux (wgpu and winit) follows the mesh.
+
+    ## 7. Removed
+
+    - **All of `bboxy450-term-remote` except `delivery.rs` and its model**, which move into the mesh (§3): `attach` and its ACP rewrite, `serve`, the daemon, `client.rs`, `link.rs`, `frame.rs`, `resume.rs`, the MCP relay and `install`.
+    - The second engine per remote seat: the `remote` harness profile (`crates/bboxy450-harness/src/provider/profile.rs:66`), `BBOXY450_HARNESS_AGENT` and `remote_agent` (`bbt-mux/src/adapters/launch.rs:236`).
+    - Wrapping a harness in ssh, mosh or et.
+    - From [[networking]]: discovery records, the DHT, the punch ladder and relays.
+    - The RemoteResume and RemoteRouting models, with their code. Pane resume is the gateway's cursor, checked by `HarnessSocketDelivery`.
+    - The hub, and its MCP access-key custody question: the tools run on the seat's own node.
+
+    ## 8. Seams for cloud and mobile
+
+    - **Cloud:** a cloud machine is a node that a provider started and added to `peers.toml`. Later, the R2/S3 `KbStore` makes KB storage shared instead of replicated.
+    - **Mobile** ([[mobile]]): the phone is a limited UI with a `client` grant carrying `view` and `answer`. It dials nodes on `bboxy/gui/3`, answers questions with the laptop closed, and is woken by APNs pushes sent straight from the nodes.
+
+    ## 9. Formal models
+
+    | Model | Safety | Broken control |
+    |---|---|---|
+    | MeshMsg (RemoteDelivery, moved) | an envelope is applied at most once per peer across drop, reconnect and crash | volatile applied set |
+    | KbReplica | two nodes and one record, concurrent edits, sync in any order, A → B → A: all nodes converge on the same winner, and the loser survives as a conflict record | winner by arrival order, which diverges |
+    | NodeSeat | at most one engine per seat across nodes; a forwarded spawn is idempotent by op id | a retried spawn landing on a different node |
+
+    Liveness: under weak fairness of redial, a running seat's view eventually resumes, and every replica eventually holds every committed record.
+
+    ## 10. Phases
+
+    1. Headless node on macOS and Linux, with `make build-node`. Seats, harness, MCP and ctl run with no window.
+    2. `bboxy450-mesh`: `peers.toml`, pinned keys, `bboxy/gui/3`. The Mac UI lists a Linux node's seats.
+    3. `bboxy/pane/1` and `bboxy/blob/1`: remote panes render and steer.
+    4. `bboxy/msg/1`: cross-node messages and forwarded seat tools.
+    5. The KB replica: `KbStore`, sync and conflict records.
+    6. Retire `bboxy450-term-remote` and the ssh harness path.
+    7. The UI on Linux.
+    8. The `nodes-100-idle` gate.
+
+    ## 11. Open questions
+
+    1. **GUI claim.** Today there is exactly one GUI attachment per device (`logic.rs:1701`). With a laptop and a phone on one node, this becomes one claim per client key.
+    2. ~~Cross-node authority.~~ Settled by [[seat-keys]]: every seat's chain is checked at every boundary.
+    3. ~~A Linux test machine.~~ Settled by round 3 §5: dory, one small container (§6).
+
+    ## 12. Acceptance
+
+    - [ ] With the Mac node stopped, two seats on a Linux node exchange messages and write KB records. Restarting the Mac UI shows both, and the Linux seats' PIDs are unchanged.
+    - [ ] `make build-node` builds and the node runs headless on Linux.
+    - [ ] The Mac UI renders seats from two nodes, and a pane on the other node steers mid-turn.
+    - [ ] A peer without a valid chain to the pinned root is refused before any stream.
+    - [ ] `make test-linux` passes in a dory container capped at 2 CPUs and 4 GB.
+    - [ ] Two nodes edit one record offline; after sync both hold the same winner plus one conflict record.
+    - [ ] MeshMsg, KbReplica and NodeSeat, with their broken controls, run under `make test-formal`.
+    - [ ] `sh scripts/local-first.sh` holds: mux links no quinn.
+    - [ ] `nodes-100-idle`: 100 nodes, idle cost independent of the node count.
+    """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"AkC2Hp2WCfh5UPAedqYDGCBgu03dmXvlfpulQ1Eo+8w=\",\"signer\":\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\"}"
+    created = json"\"2026-11-19T13:59:41.730Z\""
+    created_by = json"\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\""
+    id = json"\"01M7T1P8NCAZYEPH0TN14FM2XE\""
+    number = json"1794292861627525"
+    updated = json"\"2026-11-19T15:24:46.680Z\""
+    updated_by = json"\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\""
+    provenance = json"{\"digest\":\"sha256:11da368c18e79a2dfd463101d3f4112ecde817e161031a5be1ea3860728ab901\",\"frontmatter_digest\":\"sha256:c09ebf8da01fc1c6428e3bf53b89b570c37db5ea2e115ddeff50afd8c4f03b5e\",\"signer\":\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\",\"sig\":\"tNL8EEBeK6MWSBohAUEjO/gQP1OyM+AkiKGq31eYbIgJUKWEyBJRzFywyaJfAFrHNSQA7CtOqbsvJoL9hctDBg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/83017\",\"event\":{\"id\":\"01M7T6J290M42RXGSQ2YVZG60V\",\"sequence\":83017,\"hash\":\"16bc268f5fbcac44506c9635ced0e494a24580bb11842b39f0d4780ee9653a86\"}}"
+  }
+}

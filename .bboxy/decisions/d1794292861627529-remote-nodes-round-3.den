@@ -1,0 +1,49 @@
+module decisions.`d1794292861627529-remote-nodes-round-3`
+
+import `d1794292861627527-remote-nodes-round-2`
+import specs.identity
+
+decision D1794292861627529RemoteNodesRound3 {
+  title "Nodes, round 3: the phone is an addition for visibility and answers; our own seat key infrastructure under a dedicated root; APNs straight from nodes; Linux tests in dory"
+  status Decided
+  amends `d1794292861627527-remote-nodes-round-2`, specs.identity
+  body """
+    # Nodes, round 3
+
+    The operator, 2026-11-19:
+
+    > "design mobile app attachment as a addition to desktop UI, desktop is the cockpit that contlols our software factory, mobile is just an addition that gives some visibility and allows to answer quentions on teh move, it should take in consideration that laptop can be closed and mobile should sitll be able to answer questions, even though via more limited UX"
+
+    > "key checks - lets design and create proper our own SEAT KEY INFRASTRUCTURE, like PKI but for our purposes"
+
+    > "linux tests - lets run then in docker, we have dory for docker, keep small on resources for now"
+
+    ## Decided
+
+    1. **The desktop is the cockpit; the phone is an addition.** The phone shows state, and it answers questions and approvals. It talks to the nodes directly, so it works with the laptop closed. It cannot spawn seats, type into them or edit the KB.
+    2. **We build our own seat key infrastructure ([[specs/seat-keys]]).**
+       - **Root:** a dedicated Ed25519 bboxy root in the desktop keychain. The operator's GPG primary signs it once, so provenance still traces to the operator.
+       - **Below the root:** plain signed grants for nodes, clients and seats.
+       - **Pinning:** the mesh pins the root, not each peer key. This amends round 2 §5.
+       - Rejected: keeping the GPG primary as the signer of every grant.
+    3. **Push comes from the nodes, which send to APNs directly** with the operator's Apple key. There is no bboxy server.
+       - Rejected: no push at all, and a self-hosted relay.
+    4. **The phone is iOS first, drawn by our own Rust UI** (bbt-ui and wgpu), for one look everywhere.
+       - Rejected: a SwiftUI shell, and Android first.
+    5. **Linux tests run in a container through dory**, one at a time, with small CPU and memory limits, until dedicated infrastructure exists.
+    """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"AkC2Hp2WCfh5UPAedqYDGCBgu03dmXvlfpulQ1Eo+8w=\",\"signer\":\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\"}"
+    created = json"\"2026-11-19T15:06:38.760Z\""
+    created_by = json"\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\""
+    decided = json"\"2026-11-19\""
+    id = json"\"01M7T5GVHE2DW8QFZQ3SA379P7\""
+    links = json"[{\"rel\":\"amends\",\"to\":\"[[d1794292861627527-remote-nodes-round-2]]\"},{\"rel\":\"constrains\",\"to\":\"[[specs/mobile]]\"},{\"rel\":\"constrains\",\"to\":\"[[specs/seat-keys]]\"},{\"rel\":\"constrains\",\"to\":\"[[specs/nodes]]\"},{\"rel\":\"amends\",\"to\":\"[[specs/identity]]\"}]"
+    number = json"1794292861627529"
+    status = json"\"Decided\""
+    updated = json"\"2026-11-19T15:06:38.760Z\""
+    updated_by = json"\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\""
+    provenance = json"{\"digest\":\"sha256:b74caf8be936c08da68a4e5b35a3ac58e475c9944b54f6b6b99121857285506f\",\"frontmatter_digest\":\"sha256:34aa3ec6e90dd76e209a635055157c5a00dda0b0899ddb52a9fb44de6d1ffe49\",\"signer\":\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\",\"sig\":\"rHq1732TUada9Q55I5tKXNBnZ9MZRbfLD/899Px/huYtudpfaKHuXt1mynMnE/t3PvsY7ksz3pZljZO/eFJ1Cg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/82991\",\"event\":{\"id\":\"01M7T5GVVFNGG12WQ3ENP8NJXY\",\"sequence\":82991,\"hash\":\"ec3e1f429072ba34ec86ca20a6f05e7a41aa1f089e2c4eb3f27ead3ee1f2586f\"}}"
+  }
+}

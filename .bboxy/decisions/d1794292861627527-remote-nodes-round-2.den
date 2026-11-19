@@ -1,0 +1,59 @@
+module decisions.`d1794292861627527-remote-nodes-round-2`
+
+import specs.networking
+import invariants.`local-first`
+import interfaces.`remote-supervisor-link`
+
+decision D1794292861627527RemoteNodesRound2 {
+  title "Nodes, round 2: an autonomous distributed swarm on a QUIC mesh over the user's tailnet; the UI only renders"
+  status Decided
+  amends specs.networking, invariants.`local-first`, interfaces.`remote-supervisor-link`
+  body """
+    # Nodes, round 2
+
+    The operator, 2026-11-19, on reading round 1:
+
+    > "we should be able to close my laptop and remote session to still work autonomoustly, without host machine, entire sysetm is a distributed swarm, htat works autonomoustly on thisgs and UI only renders state, ideallly different supervisor processes should be able to talk to each other over a mesh network, we want QUIC based mesh, similar to iroh library, we wont handle machine access to each other, tailscale already does that, that should be setup by the user, a lolved problem, our design is simple, KISS and LESS IS MORE … we hould build on linux and ui should run on linux as well!"
+
+    On KB storage:
+
+    > "for now we store shit in git, later we can move to a different storage, R2 or S3 and just make all the nodes write to one storage … abstract KB storage from our orchestration and just let workers write based on node keys that they have, design it this way but for now git replica is fine!"
+
+    ## Decided
+
+    1. **Every machine is an autonomous node.** The full backend (supervisor and logic) runs on each machine, with no UI. A node owns its seats, harness engines, MCP and inbox, and keeps working when every UI is gone.
+       - Supersedes round 1 §1, the engine on a node driven by a Mac hub.
+    2. **There is no hub.** The UI only renders: it dials the nodes and draws their state. The Mac app, a Linux UI and the phone are the same kind of client.
+       - Supersedes round 1 §2.
+    3. **QUIC mesh, built on upstream quinn, with an API shaped like iroh's:** dial by node key, one ALPN per protocol.
+       - Rejected: the iroh crate with relays off.
+    4. **Tailscale, set up by the user, owns reachability.** We build no NAT traversal, discovery, relay or DHT.
+       - This strikes [[networking]] §2–3 (punch ladder, mainline DHT, relays) from scope.
+       - Supersedes round 1 §3 (ssh).
+    5. **Pinned node keys.** Each node has one Ed25519 key, the device key of [[identity]]. The peer list names each peer's key, and TLS refuses any key not on it.
+       - Rejected: trusting every device on the tailnet.
+    6. **The KB has a storage seam.**
+       - **Now:** a git replica on every node, synced over the mesh.
+       - **Later:** one shared object store (R2 or S3) that every node writes to.
+       - Either way, writes are signed by the writer's node or seat key. Orchestration never sees which backend is in use.
+       - Rejected: one home node per swarm.
+    7. **Linux is a first-class build for the node and for the UI.** First step: the headless node on Linux. Then the mesh, then the UI on Linux.
+    8. **The fixture hosts stay for demos.** Round 1 §4 is unchanged.
+
+    [[invariants/local-first]] is narrowed rather than lifted: mux still links no network crate, and the mesh crate is the only one that does. Consequences are in [[specs/nodes]].
+    """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"AkC2Hp2WCfh5UPAedqYDGCBgu03dmXvlfpulQ1Eo+8w=\",\"signer\":\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\"}"
+    created = json"\"2026-11-19T14:50:46.566Z\""
+    created_by = json"\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\""
+    decided = json"\"2026-11-19\""
+    id = json"\"01M7T4KSN67VRNA4QVZ30V0HRC\""
+    links = json"[{\"rel\":\"supersedes\",\"to\":\"[[d1794292861627523-remote-nodes-round-1]]\"},{\"rel\":\"constrains\",\"to\":\"[[specs/nodes]]\"},{\"rel\":\"amends\",\"to\":\"[[specs/networking]]\"},{\"rel\":\"amends\",\"to\":\"[[invariants/local-first]]\"},{\"rel\":\"amends\",\"to\":\"[[interfaces/remote-supervisor-link]]\"}]"
+    number = json"1794292861627527"
+    status = json"\"Decided\""
+    updated = json"\"2026-11-19T14:50:46.566Z\""
+    updated_by = json"\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\""
+    provenance = json"{\"digest\":\"sha256:5353459c211bacfb62655f972dda041f2a9b40b0d0c00a081c94967ad6527e49\",\"frontmatter_digest\":\"sha256:2fde624d0677fdb91761ed59160ca3419ee0681cb61021eaec481eed78b5d984\",\"signer\":\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\",\"sig\":\"VDTVsPp5ch43syQiW944YVrN4kdcJQIZVUWL31OoZW7G0WCUa98qq4P0eaLZQoEmqsnANWSd4cxA1UrlMbcQAw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/82984\",\"event\":{\"id\":\"01M7T4KT03KC4THA0V9EA8S73F\",\"sequence\":82984,\"hash\":\"67f98eeaa484acbf4036e7674caeb533990c3f9d3995f939dc18ecc9f5060f96\"}}"
+  }
+}

@@ -1,0 +1,42 @@
+module decisions.`d1794292861627523-remote-nodes-round-1`
+
+import interfaces.`remote-supervisor-link`
+import specs.`d1-providers`
+
+decision D1794292861627523RemoteNodesRound1 {
+  title "Remote nodes, round 1: engine on the node, Mac hub, ssh carrier, demo fixtures stay"
+  status Decided
+  amends interfaces.`remote-supervisor-link`, specs.`d1-providers`
+  body """
+    # Remote nodes, round 1
+
+    Operator, 2026-11-19: "one cockpit that connects to all various backends, then … mobile app, so we need to prepare our remote supervisor system and how we use it via harness and all the UI to make sure its modular enough to have 100 of remote nodes working for us." Order after this: bboxy cloud, then bboxy mobile.
+
+    The operator chose all four answers below.
+
+    1. **The harness engine runs on the node.** Clients only render, as views over the harness gateway protocol with cursor resume.
+       - Rejected: keeping a local GUI harness that drives the remote engine over ACP. That is two engines per remote seat and one local process per remote seat.
+    2. **This Mac's logic is the hub now; a bboxy cloud hub comes later and speaks the same protocol.**
+       - Rejected: a cloud hub from day one, and clients dialling every node directly.
+    3. **ssh carries nodes now. QUIC and device keys arrive with mobile and cloud.** [[invariants/local-first]] stays in force until that phase lifts it by decision.
+       - Rejected: lifting local-first now for quinn on every node.
+    4. **The fixture hosts stay in normal launches for demos**, labelled as demo hosts.
+       - Rejected: loading them only in tests.
+
+    Consequences are in [[specs/nodes]].
+    """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"AkC2Hp2WCfh5UPAedqYDGCBgu03dmXvlfpulQ1Eo+8w=\",\"signer\":\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\"}"
+    created = json"\"2026-11-19T13:58:16.340Z\""
+    created_by = json"\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\""
+    decided = json"\"2026-11-19\""
+    id = json"\"01M7T1KN8NAE3NMB8H9ZFPASXF\""
+    links = json"[{\"rel\":\"constrains\",\"to\":\"[[specs/nodes]]\"},{\"rel\":\"amends\",\"to\":\"[[interfaces/remote-supervisor-link]]\"},{\"rel\":\"amends\",\"to\":\"[[specs/d1-providers]]\"}]"
+    number = json"1794292861627523"
+    status = json"\"Decided\""
+    updated = json"\"2026-11-19T13:58:16.340Z\""
+    updated_by = json"\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\""
+    provenance = json"{\"digest\":\"sha256:8aeb711f36e172a9f23c23c2911742d2a195199c4815c74c40ac148204e3f587\",\"frontmatter_digest\":\"sha256:977c9f00c4bb074bf20d9d07ddaaea1bb80c4e9819917c971c626cf21bcbff27\",\"signer\":\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\",\"sig\":\"AnKClwSSn4dzZa+iZ/gZtAc+/glMy+WWnUSrYQgmra4Sf2R7wfaKbYUENzo62QmSf1tLYK6IkekTSPwub2OIDA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/82974\",\"event\":{\"id\":\"01M7T1KNKWQ5E4FP2K3GRH78MN\",\"sequence\":82974,\"hash\":\"014e757f70f64dcf8a13caf5b0ab7a74d6f7a90b1b9c746dcd4b0b753165eecb\"}}"
+  }
+}

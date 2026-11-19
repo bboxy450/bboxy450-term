@@ -1,0 +1,70 @@
+module epics.`autonomous-nodes-and-mobile`
+
+epic AutonomousNodesAndMobile {
+  title "Autonomous nodes, seat keys and the phone: the swarm keeps working with the laptop closed"
+  intent "Turn the single-Mac cockpit into autonomous nodes on a QUIC mesh over the user's tailnet, with our own seat key infrastructure and a phone that answers questions, in the phase order below, each phase landed and verified before the next."
+  body """
+    # Autonomous nodes, seat keys and the phone
+
+    This is the entry point for the implementing worker. Read these first, in order:
+    1. [[d1794292861627527-remote-nodes-round-2]], then [[d1794292861627529-remote-nodes-round-3]]. They supersede [[d1794292861627523-remote-nodes-round-1]].
+    2. [[specs/nodes]]: the node, the mesh, the KB storage seam, Linux.
+    3. [[specs/seat-keys]]: root, grants, `verify`, enrollment.
+    4. [[specs/mobile]]: the phone as an addition to the desktop cockpit.
+
+    The stand applies throughout ([[philosophy]]): subtract before you add, and each phase's report names what it removed.
+
+    ## Outcome
+
+    - The laptop closes, and seats on the other nodes keep working, messaging each other and writing the KB.
+    - The phone answers their questions.
+    - The laptop opens, and the desktop shows the current state with nothing restarted.
+    - A Linux machine runs as a node and runs the UI.
+
+    ## Phases, in landing order
+
+    Each phase is one task, created when it starts.
+
+    | # | Phase | Spec | Verification |
+    |---|---|---|---|
+    | 1 | Headless node on macOS and Linux; `make build-node`, `make test-linux` (dory, 2 CPUs, 4 GB) | nodes §1, §6, §10.1 | `make test-linux`; the node runs seats, harness, MCP and ctl with no window |
+    | 2 | `bboxy450-seat-keys`: `Grant`, `Revoke`, `Rotate`, `verify`; the SeatKeyChain model | seat-keys §1–3, §8 | `cargo nextest run -p bboxy450-seat-keys && make test-formal` |
+    | 3 | `bboxy450-mesh`: quinn, `peers.toml` (addresses only), root-pinned handshake, `bboxy/enroll/1`, `bboxy/gui/3` | nodes §2, seat-keys §5 | Two nodes (Mac and a dory container) list each other's seats; an unenrolled peer is refused |
+    | 4 | `bboxy/pane/1` and `bboxy/blob/1`: remote panes render and steer | nodes §2, §5 | A pane on the other node steers mid-turn and resumes after a drop with no lost or doubled event |
+    | 5 | `bboxy/msg/1`: `delivery.rs` and RemoteDelivery move into the mesh as MeshMsg; forwarded seat tools | nodes §3 | `make test-formal` (MeshMsg and its broken control); a cross-node message is delivered exactly once |
+    | 6 | `KbStore` and the git replica over `bboxy/kb/1`; conflict records; the KbReplica model | nodes §4 | Two nodes edit one record offline and converge, with one conflict record |
+    | 7 | Desktop inbox: `Questions`, `Answer` and the events; the first-answer rule; the QuestionAnswer model | mobile §3, §4, §7 | Desktop and phone fixture race on one item: one is `applied`, the other `already_answered` |
+    | 8 | Retire `bboxy450-term-remote`, the `remote` profile, `remote_agent`, the ssh harness path, and the RemoteResume and RemoteRouting models; replace OpenPGP leaf certificates and `local-dev` with seat-keys | nodes §7, seat-keys §7 | The report counts the lines removed; `sh scripts/local-first.sh` holds |
+    | 9 | Extract `bboxy450-client` from `live.rs`; the UI on Linux | mobile §6, nodes §6 | The Linux UI renders a Mac node's seats |
+    | 10 | iOS shell (Inbox, QR enrollment), `apps/ios/`, `make ios-build`; Apple setup per mobile §6a | mobile §6, §6a | A device build answers a question on a node |
+    | 11 | Push from nodes: `bboxy450-push` and APNs | mobile §5 | Laptop closed: push, answer, seat continues |
+    | 12 | Overview and Glance; the `nodes-100-idle` gate | mobile §1, nodes §5 | `nodes-100-idle` holds |
+
+    ## Superseded open tasks
+
+    These open tasks came from the old ACP-over-ssh link. They are closed or re-scoped when phase 8 lands:
+    - [[tasks/2026-11-13-remote-session-migration]]: becomes stop, carry the log, then spawn with resume on another node.
+    - [[tasks/2026-11-13-acp-steering-parity]]: the code landed in harness `1436a01`; node seats steer natively.
+    - [[tasks/2026-11-13-remote-failure-classification]], [[tasks/2026-11-13-remote-artifact-pull]] and [[tasks/2026-11-13-remote-offload-icd-update]]: they become blob fetch and the node's own refusals.
+
+    ## Rules for the worker
+
+    - Every phase works in its own worktree and lands through `make land` with signed commits. Changed stateful contracts carry their model and a broken control (`make test-formal`).
+    - Run one build or test at a time. Linux runs in one small dory container. Check `df -h` before any cold build.
+    - Ask only for what is physical: the Apple steps in mobile §6a.
+    """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"AkC2Hp2WCfh5UPAedqYDGCBgu03dmXvlfpulQ1Eo+8w=\",\"signer\":\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\"}"
+    created = json"\"2026-11-19T15:18:49.285Z\""
+    created_by = json"\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\""
+    delegated_by = json"\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\""
+    id = json"\"01M7T674YE4WZ2D18E6CQGKNJ8\""
+    number = json"1794292861627534"
+    status = json"\"open\""
+    swarm = json"\"01M788WNBMTMR96HK2ABXPFMQD\""
+    updated = json"\"2026-11-19T15:18:49.285Z\""
+    updated_by = json"\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\""
+    provenance = json"{\"digest\":\"sha256:beb2a90d67fd748f7ebe802ff02b96f5c18408e2e68d6ff3cef28edf28348cba\",\"frontmatter_digest\":\"sha256:eb7a019fcbee465474b4fec73aa6cdb28e42c1de3fa17d33aaddb324e2552fb9\",\"signer\":\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\",\"sig\":\"TcSTscYkCpkKWchP5F0fES+uVqGuPdvNaaeLzUWHfm9KI7O765TIU0SmMG/2OeBY7OCuGZl10R418KAu1/jbDg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/83009\",\"event\":{\"id\":\"01M7T6758H64PMQ9093PBQBGRQ\",\"sequence\":83009,\"hash\":\"13ca3c528721e37ac8a127c344c1e89b80072475eab4fa5664fa642ad3a1d1bc\"}}"
+  }
+}

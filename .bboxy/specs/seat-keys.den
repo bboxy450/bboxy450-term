@@ -1,0 +1,131 @@
+module specs.`seat-keys`
+
+spec SeatKeys {
+  title "Seat key infrastructure: one root, one grant format, four kinds of key, checked offline everywhere"
+  intent "Every node, client and seat proves who it is and what it may do with a short chain of signed grants back to one pinned bboxy root, verified offline by one pure function, so a swarm keeps its authority with the laptop closed."
+  status Draft
+  body """
+    # Seat key infrastructure
+
+    Binds [[d1794292861627529-remote-nodes-round-3]] §2. It replaces the key hierarchy of [[identity]] (OpenPGP leaf certificates plus separate grant formats) and is used by [[nodes]] and [[mobile]].
+
+    **Done means:**
+    - A request, message or KB write is accepted only when its signer's grant chain reaches the pinned root, is unexpired and unrevoked, and stays inside its parent's scopes.
+    - Checking needs no network and no root secret.
+
+    ## 1. Four kinds of key
+
+    | Kind | Holder | Issued by | Lifetime | Scopes it can carry |
+    |---|---|---|---|---|
+    | root | the desktop keychain | itself, attested once by the operator's GPG primary | until rotated | `issue-node`, `issue-client`, `revoke` |
+    | node | each node's keystore: Keychain on macOS, a 0600 file (`bboxy450-keychain-file`) on Linux | root | 1 year | `run-seats`, `issue-seats`, `mesh`, `kb-write`, `push` |
+    | client | a UI device: the desktop UI, a phone | root | desktop 1 year, phone 90 days | `view`, `answer`, `control` |
+    | seat | its node; the harness gets a signing capability, never the secret | its node | one key epoch, 7 days, renewed by the node | `swarm`, role class, destinations, control scopes (today's `SeatGrant` fields) |
+
+    - **Nodes issue their own seats**, so seats keep being created and renewed with the laptop closed.
+    - **Only node and client grants need the root**, and only the desktop holds it.
+
+    ## 2. One record format
+
+    ```text
+    Grant  { v: 1, kind: node|client|seat, id: ULID, name, subject: key, issuer: key,
+             parent: digest|null, scopes: [..], swarm?, role?, epoch, not_before, expires_at }
+    Revoke { v: 1, subject: key, below_epoch, issuer: key, issued_at }
+    Rotate { v: 1, old_root: key, new_root: key, issued_at }   // signed by both roots
+    ```
+
+    - **Signing:** each record is signed over `UTF8("bboxy450/<type>/v1\0") || JCS(record)` with Ed25519 ([[identity]] "Signed formats": JCS, raw 32-byte keys, unpadded base64url signatures). Its digest is the SHA-256 of those bytes.
+    - **Attestation:** the root attestation is a GPG detached signature over the root's public key, verified with `gpg --verify` when shown. The `pgp` crate stays out of the hot path.
+    - **Child rules:** a child's scopes are a subset of its parent's, its `expires_at` is no later than its parent's, and its issuer is the parent's subject.
+
+    ## 3. One check
+
+    The crate `bboxy450-seat-keys` is pure, with no I/O and no secrets:
+
+    ```rust
+    pub fn verify(chain: &[Signed<Grant>], root: &RootSet, revoked: &Revocations, now: u64)
+        -> Result<Authority, Refusal>;
+    // Authority { leaf: Key, kind, id, scopes, swarm, role }
+    // Refusal names the first failing link: signature, issuer, scope, expiry, revoked, root, length.
+    ```
+
+    - A chain has at most 3 links: root → node → seat, or root → client.
+    - `RootSet` is the pinned root plus any accepted `Rotate` records.
+    - Every boundary calls this one function:
+
+    | Boundary | What is checked |
+    |---|---|
+    | Mesh handshake ([[nodes]] §2) | The TLS certificate key equals the chain's leaf key. The chain is the first frame on every connection. |
+    | GUI request on `bboxy/gui/3` | The action's required scope, e.g. `Answer` needs `answer` and `Spawn` needs `control`. |
+    | Message envelope ([[messaging]]) | The seat signature and its chain, resolved by digest from `pki/`. |
+    | KB write | The writer's seat or node chain with `kb-write`. The store itself needs no access control, which is what lets R2 or S3 replace git later ([[nodes]] §4). |
+    | Push | The node's `push` scope. |
+
+    `peers.toml` becomes addresses only. It names where to dial, not who to trust: the root decides trust. This amends round 2 §5.
+
+    ## 4. Where grants live
+
+    Grants live in the KB under `pki/grants/<key>.json` and revocations under `pki/revoked/<key>.json`. They replicate with the KB.
+    - A node also caches its own chain, so it can prove itself before its replica has synced.
+    - The KB directory *is* the roster.
+
+    ## 5. Enrollment, with no trust on first use
+
+    - **Node:**
+      1. `bboxy450-term node enroll` prints its key as six words and opens only `bboxy/enroll/1`, which serves nothing else.
+      2. The operator runs `ctl node add <addr>` on the desktop. It dials the node and shows the same six words.
+      3. The operator confirms the words match. The root then signs the node grant, which goes back on the enroll stream.
+    - **Phone:**
+      1. The desktop shows a QR code with the root key, node addresses and a one-time 128-bit code that expires in 5 minutes.
+      2. The phone makes its key and dials the desktop's `bboxy/enroll/1` with the code.
+      3. The desktop issues a `client` grant with `view` and `answer`, valid for 90 days.
+    - **Renewal** of node and client grants happens when the desktop is reachable. Seat renewal is the node's own job.
+
+    ## 6. Revocation and rotation
+
+    - **Revoke:** a `Revoke` record is written to the KB and replicates. A revoked node takes its seats with it, by the parent check.
+    - **Bounded window:** a node that has not seen a revocation yet stays wrong for at most its own seats' 7-day lifetime.
+    - **Rotation:** `Rotate` is signed by both roots and attested by GPG again. Verifiers add the new root and keep accepting the old root's grants until they expire.
+
+    ## 7. Removed
+
+    - OpenPGP leaf certificates for devices and seats (`crates/bbt-mux/src/identity/certificate.rs`, 480 lines).
+    - `AccountHead`, `DeviceGrant`, `SeatGrant` and `SeatRoster` as four formats. They become one `Grant` plus the `pki/` directory.
+    - gpg-agent on every grant: the GPG primary signs once, for the root attestation.
+    - The `local-dev` issuer kind (`bbt-proto/src/messaging.rs:46`, `gui/identity.rs:14`). A test account gets its own throwaway root, so the offline path is the real path. **Check:** every caller of `IdentityState::LocalDev` (`logic.rs:3241`, `:10399`, `:13835`) before deleting it.
+    - Per-peer key pinning in the mesh.
+
+    **Kept:**
+    - The JCS signing discipline and Ed25519 keys.
+    - Seat keys handed to harnesses as capabilities.
+    - Keychain custody (`identity/keychain.rs`, `native_keychain.rs`).
+    - Revoke-by-epoch.
+
+    ## 8. Formal model: SeatKeyChain
+
+    - **State:** root; node A with seats S1 and S2; client P. Each grant is `valid | expired | revoked`, and node A goes through epochs 1 → 2 → 1 (the A → B → A case).
+    - **Actions:** issue, renew, expire, revoke node, revocation replicated or delayed, rotate the root, and a request by any key.
+    - **Safety:** an accepted request's whole chain is valid at `now`, its scopes are within every ancestor's, and no grant from a revoked epoch is accepted after its revocation has been seen.
+    - **Broken controls:** skip the parent revocation check (S1 accepted after A is revoked), and skip the scope subset check (a seat escalates to `issue-node`).
+
+    ## 9. Acceptance
+
+    - [ ] `verify` refuses, each by name: a bad signature, the wrong issuer, scope escalation, expiry beyond the parent, a revoked parent, an unknown root, and a chain longer than 3.
+    - [ ] A node with no grant serves only `bboxy/enroll/1`. Any other ALPN is refused before a stream opens.
+    - [ ] A phone grant with `view` and `answer` gets `Answer` applied and `Spawn` and `Input` refused for missing scope.
+    - [ ] With the desktop off, a node issues and renews seat grants, and peers accept them.
+    - [ ] SeatKeyChain and both broken controls run under `make test-formal`.
+    - [ ] The report states the lines removed from `crates/bbt-mux/src/identity/` and the lines added in `bboxy450-seat-keys`.
+    """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"AkC2Hp2WCfh5UPAedqYDGCBgu03dmXvlfpulQ1Eo+8w=\",\"signer\":\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\"}"
+    created = json"\"2026-11-19T15:07:12.040Z\""
+    created_by = json"\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\""
+    id = json"\"01M7T5HVZR5YYDX7EVMY9FCT1M\""
+    number = json"1794292861627530"
+    updated = json"\"2026-11-19T15:07:12.040Z\""
+    updated_by = json"\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\""
+    provenance = json"{\"digest\":\"sha256:5decee3e21cbf4f00e7acdc467f906f9130ed9bbc244bb9d4f3e03f5cd1050a2\",\"frontmatter_digest\":\"sha256:da974c0dbf5e519e900b46669add831c057e2c60709b1be16db09ad5889f3048\",\"signer\":\"seat:01M7T0E47VJBV0CEBVCKJ9GGJ5\",\"sig\":\"1cDKtukHxFa8NdnsBN9jtQ8bN1iZ59pFHl1wYFIeydcPd7jKga2F3KUJ/UbWZ8ZJj0bl+2e86umzlN8O78C+Bg==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/82993\",\"event\":{\"id\":\"01M7T5HWBNSE4QQ5WAGD9G3N2P\",\"sequence\":82993,\"hash\":\"f7db437c53b7ab8fad38f4f6d3cb8a9ee953cbe776c8a90f70dd93372a64ba6d\"}}"
+  }
+}
