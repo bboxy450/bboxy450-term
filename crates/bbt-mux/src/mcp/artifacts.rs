@@ -14,6 +14,7 @@ use serde_json::{Value, json};
 
 pub(crate) mod staging;
 
+#[cfg(feature = "canvas-image")]
 pub(crate) struct CanvasReads<'a> {
     pub(crate) store: crate::provenance::stored::Store<'a>,
     pub(crate) caller: Option<Ulid>,

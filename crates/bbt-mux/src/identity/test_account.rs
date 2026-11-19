@@ -15,7 +15,7 @@ use ulid::Ulid;
 use zeroize::{Zeroize, Zeroizing};
 
 use super::{
-    AccountHead, Custody, DeviceIdentity, DeviceKeyStore, PendingReason as E, Result, Signed,
+    AccountHead, DeviceIdentity, DeviceKeyStore, FileDeviceKeys, PendingReason as E, Signed,
     certificate::{self, Root},
 };
 use crate::store::{Store, invalid, object_dir, sqlite::SqliteStore};
@@ -45,45 +45,9 @@ struct RunContext {
     issued_by: String,
 }
 
-struct FileKeys(Arc<dyn bboxy450_keychain::Store>);
-impl DeviceKeyStore for FileKeys {
-    fn custody(&self) -> Custody {
-        Custody::File
-    }
-    fn load(&self, device: Ulid) -> Result<Option<SigningKey>> {
-        let secret = self
-            .0
-            .get(&format!("key_{device}"))
-            .map_err(custody_error)?;
-        secret
-            .map(|secret| {
-                let mut seed: [u8; 32] =
-                    secret.as_bytes().try_into().map_err(|_| E::InvalidProof)?;
-                let key = SigningKey::from_bytes(&seed);
-                seed.zeroize();
-                Ok(key)
-            })
-            .transpose()
-    }
-    fn create(&self, device: Ulid, key: &SigningKey) -> Result<()> {
-        if device == Ulid::nil() {
-            return Err(E::InvalidProof);
-        }
-        self.0
-            .put(&format!("key_{device}"), key.as_bytes(), Acl::OwnerOnly)
-            .map_err(custody_error)
-    }
-}
-fn custody_error(error: bboxy450_keychain::Error) -> E {
-    match error {
-        bboxy450_keychain::Error::Conflict => E::JournalConflict,
-        _ => E::FileCustodyUnavailable,
-    }
-}
-
 /// Public context and an opaque custody handle, never a root or device secret.
 pub struct TestAccount {
-    keys: Arc<FileKeys>,
+    keys: Arc<FileDeviceKeys>,
     label: String,
 }
 impl TestAccount {
@@ -101,10 +65,9 @@ impl TestAccount {
     /// is refused, and this function has no native or in-memory fallback.
     pub fn open(directory: &Path, run_dir: &Path) -> crate::store::Result<Self> {
         bbt_rt::assert_not_ui_thread();
-        let store: Arc<dyn bboxy450_keychain::Store> = bboxy450_keychain::open(Backend::File {
+        let store = bboxy450_keychain::open(Backend::File {
             directory: directory.into(),
-        })?
-        .into();
+        })?;
         // Reuse the same owner-only directory validation for the run boundary.
         let _run = bboxy450_keychain::open(Backend::File {
             directory: run_dir.into(),
@@ -190,7 +153,7 @@ impl TestAccount {
         if account.get(CONTEXT)?.as_deref() != Some(bytes.as_slice()) {
             return Err(invalid(E::TestAccountMismatch.to_string()));
         }
-        let keys = Arc::new(FileKeys(store));
+        let keys = Arc::new(FileDeviceKeys(store));
         let now = crate::store::now_ms() / 1000;
         let identity = super::journal::install_certified(
             &account,

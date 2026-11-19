@@ -9,17 +9,22 @@ use crate::{
     Ulid,
     store::{Result, invalid},
 };
+#[cfg(feature = "canvas-image")]
 use bbt_render::chrome::icons::Image;
 use bbt_supervisor::store::{Blobs, blobs::LocalBlobs};
+#[cfg(feature = "canvas-image")]
 use bbt_ui_model::draw::{ImageAsset, RetainedImage};
 use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+#[cfg(feature = "canvas-image")]
 use std::{
     collections::{BTreeMap, VecDeque},
-    path::{Path, PathBuf},
     sync::{Arc, Mutex},
 };
 
+#[cfg(feature = "canvas-image")]
 const MAX_PIXELS: u64 = 4_000_000;
+#[cfg(feature = "canvas-image")]
 const MAX_ATTEMPTS: usize = 16;
 
 pub(crate) fn object_path(runtime: &Path, root: &str) -> PathBuf {
@@ -66,14 +71,17 @@ impl Resolved {
         payload(&object_path(runtime, &self.root), &self.digest, self.bytes)
     }
 }
+#[cfg(feature = "canvas-image")]
 #[derive(Clone)]
 struct Geometry {
     picture: RetainedImage,
     png_pixels: u64,
 }
+#[cfg(feature = "canvas-image")]
 #[derive(Default)]
 pub struct GeometryCache(Mutex<VecDeque<(String, Geometry)>>);
 
+#[cfg(feature = "canvas-image")]
 impl GeometryCache {
     fn scene(
         &self,
@@ -112,12 +120,14 @@ impl GeometryCache {
     }
 }
 
+#[cfg(feature = "canvas-image")]
 pub struct Prepared {
     asset: ImageAsset,
     raster: Option<Arc<Image>>,
     png_pixels: u64,
 }
 
+#[cfg(feature = "canvas-image")]
 impl Prepared {
     pub fn raster(raster: Image) -> Self {
         let asset = ImageAsset {
@@ -175,12 +185,14 @@ impl Prepared {
     }
 }
 
+#[cfg(feature = "canvas-image")]
 #[derive(Default)]
 pub struct Images {
     attempts: BTreeMap<String, Option<ImageAsset>>,
     rasters: BTreeMap<String, Arc<Image>>,
     pixels: u64,
 }
+#[cfg(feature = "canvas-image")]
 impl Images {
     pub fn prepare(
         &mut self,

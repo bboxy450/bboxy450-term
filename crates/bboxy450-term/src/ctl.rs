@@ -2223,7 +2223,7 @@ pub fn bracketed(text: &[u8], modes: u64) -> Vec<u8> {
 /// A named key, encoded by the window's keyboard adapter against the seat's current modes,
 /// so a seat with the Kitty protocol on gets Kitty sequences.
 pub fn key_bytes(name: &str, modes: u64) -> Result<Vec<u8>, String> {
-    crate::keyboard::named_key_bytes(name, modes)
+    bbt_core::keyboard::named_key_bytes(name, modes)
         .ok_or_else(|| format!("seat key: unknown key {name}"))
 }
 

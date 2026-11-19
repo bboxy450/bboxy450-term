@@ -6,11 +6,18 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use super::*;
 
+#[cfg(any(feature = "desktop", target_os = "linux"))]
 pub(super) fn native_settings() -> Result<Value, String> {
     let settings = bboxy450_desktop_notifications::settings().map_err(|e| e.to_string())?;
     Ok(native_settings_value(settings))
 }
 
+#[cfg(not(any(feature = "desktop", target_os = "linux")))]
+pub(super) fn native_settings() -> Result<Value, String> {
+    Err("native notification settings require the desktop build".into())
+}
+
+#[cfg(any(feature = "desktop", target_os = "linux"))]
 fn native_settings_value(settings: bboxy450_desktop_notifications::Settings) -> Value {
     use bboxy450_desktop_notifications::{AlertStyle, Authorization, Setting};
     let setting = |value| match value {
@@ -394,6 +401,7 @@ mod tests {
         }
     }
 
+    #[cfg(any(feature = "desktop", target_os = "linux"))]
     #[test]
     fn native_notification_settings_do_not_equate_permission_with_visible_alerts() {
         use bboxy450_desktop_notifications::{AlertStyle, Authorization, Setting, Settings};

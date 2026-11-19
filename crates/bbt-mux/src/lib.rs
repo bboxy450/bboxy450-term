@@ -24,6 +24,7 @@ mod checkpoint;
 pub mod ctl_door;
 pub mod debug;
 mod gui_capture;
+pub use gui_capture::GUI_UNAVAILABLE;
 mod gui_events;
 mod history_fault;
 pub mod identity;

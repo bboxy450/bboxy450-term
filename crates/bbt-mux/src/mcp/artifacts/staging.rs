@@ -68,6 +68,7 @@ pub(crate) fn read(root: &Path, path: &str) -> Result<Vec<u8>> {
 }
 
 /// A displayed revision reaches the same bounded preparation as a viewed image.
+#[cfg(feature = "canvas-image")]
 pub(crate) fn validate_image(media_type: &str, bytes: &[u8]) -> Result<()> {
     match media_type {
         SVG => bboxy450_svg::prepare_image(bytes, 4_000_000)
@@ -76,6 +77,16 @@ pub(crate) fn validate_image(media_type: &str, bytes: &[u8]) -> Result<()> {
         PNG => bbt_render::image::decode_png(bytes, 4_000_000)
             .map(|_| ())
             .map_err(|reason| invalid(format!("artifact_image_refused: {reason}"))),
+        _ => Ok(()),
+    }
+}
+
+#[cfg(not(feature = "canvas-image"))]
+pub(crate) fn validate_image(media_type: &str, _bytes: &[u8]) -> Result<()> {
+    match media_type {
+        PNG | SVG => Err(invalid(
+            "artifact_image_refused: image validation requires the desktop build",
+        )),
         _ => Ok(()),
     }
 }

@@ -70,6 +70,9 @@ fn main() {
     }
     println!("cargo:rustc-env=BBOXY_GUI_SOURCE={revision}");
 
+    if env::var_os("CARGO_FEATURE_DESKTOP").is_none() {
+        return;
+    }
     let source = root.join("lab/web/components.js");
     println!("cargo:rerun-if-changed={}", source.display());
     println!(

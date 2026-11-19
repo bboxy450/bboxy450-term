@@ -284,6 +284,7 @@ mod tests {
         assert_eq!(episodes.key(id), Some(restarted_source));
     }
 
+    #[cfg(feature = "desktop")]
     #[test]
     fn harness_branding_notification_title_uses_the_display_name() {
         for kind in crate::settings::roles::HARNESSES {
@@ -408,6 +409,7 @@ mod tests {
     }
 
     // keeps: spec attention §5
+    #[cfg(feature = "desktop")]
     #[test]
     fn live_state_updates_preserve_stage_and_handling_survives_model_rebuild() {
         let seat = fixture(Activity::Waiting(WaitKind::Auth));

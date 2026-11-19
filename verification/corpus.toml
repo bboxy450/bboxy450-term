@@ -1164,6 +1164,16 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "NodeLifecycle"
+expected = "pass"
+frontend = "project"
+
+[[model]]
+name = "BrokenNodeLifecycle"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "GuiReplacementOwners"
 expected = "pass"
 frontend = "project"

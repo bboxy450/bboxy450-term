@@ -31,7 +31,7 @@ pub use chain::{ChainSeatKeys, seat_keys};
 pub use hold::{HoldClosure, HoldWindow};
 pub(crate) use hold::{begin_bus_window, seal_bus_window};
 pub use journal::{AccountHead, Bootstrap, BootstrapOutcome, DeviceGrant, DeviceIdentity, Signed};
-pub use keychain::{Custody, DeviceKeyStore, KeychainDeviceKeys};
+pub use keychain::{Custody, DeviceKeyStore, FileDeviceKeys, KeychainDeviceKeys};
 pub use local::{LocalIssuerOutcome, local_dev_issuer, local_dev_issuer_with_store};
 pub use seats::{KeyStatus, RosterEntry, SeatGrant, SeatProof, SeatRoster};
 pub use status::{IdentityRuntime, IdentityState, IdentityStatus};

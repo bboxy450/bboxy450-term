@@ -116,7 +116,7 @@ pub(crate) fn catalogue() -> Vec<Value> {
         ("canvas_close", "Retire a canvas: it leaves canvas_list and the GUI; its record and log are kept under closed/, nothing is deleted. Granted to the creator and Oracle class. Closing an already closed canvas is a no-op.", object(json!({"id":id}),json!(["id"])), false),
         ("canvas_archived_list", "List this swarm's closed canvases, newest first, so one can be restored.", object(json!({}),json!([])), true),
         ("canvas_restore", "Bring a closed canvas back: it returns to canvas_list and the GUI with its drawing. Granted to the creator and Oracle class. Restoring an open canvas is a no-op.", object(json!({"id":id}),json!(["id"])), false),
-        ("canvas_read", "Read seq, digest, the fitted extent of the canvas and of every frame's members, and the elements; elements:false leaves the element list out for a cheap look. image:true also returns a headless GPU-rendered PNG image block fitted to the same extent the GUI fits, with FIT_PADDING around it. Optional frame restricts both to that frame.", object(json!({"id":id,"frame":{"type":"string","minLength":1},"image":{"type":"boolean"},"elements":{"type":"boolean"}}),json!(["id"])), true)
+        ("canvas_read", "Read seq, digest, the fitted extent of the canvas and of every frame's members, and the elements; elements:false leaves the element list out for a cheap look. On render-enabled hosts, image:true adds a PNG fitted to the same extent as the GUI, with FIT_PADDING around it. Optional frame restricts both to that frame.", object(json!({"id":id,"frame":{"type":"string","minLength":1},"image":{"type":"boolean"},"elements":{"type":"boolean"}}),json!(["id"])), true)
     ].into_iter().map(|(name, description, input, read)|json!({"name":name,"description":description,"inputSchema":input,
         "outputSchema":{"type":"object","additionalProperties":true},"annotations":{"readOnlyHint":read,"destructiveHint":false,"idempotentHint":true,"openWorldHint":false}})).collect()
 }
@@ -257,7 +257,7 @@ pub(crate) fn execute(
     actor: &Actor,
     task: Option<&str>,
     call: &Call,
-    artifacts: &super::artifacts::CanvasReads<'_>,
+    #[cfg(feature = "canvas-image")] artifacts: &super::artifacts::CanvasReads<'_>,
 ) -> d::Result<Value> {
     let directory = if root.join(".bboxy").is_dir() {
         root.join(".bboxy")
@@ -266,7 +266,9 @@ pub(crate) fn execute(
     }
     .join("canvases");
     let store = Store::new(directory);
+    #[cfg(feature = "canvas-image")]
     let mut image = None;
+    #[cfg(feature = "canvas-image")]
     let mut resources = Vec::new();
     let value = match call.tool.as_str() {
         "canvas_open" => {
@@ -498,63 +500,76 @@ pub(crate) fn execute(
                 value["elements"] = json!(s.canvas.elements().filter(shown).collect::<Vec<_>>());
             }
             if args.image {
-                use crate::artifact_images::{GeometryCache, Images, Prepared};
-                use crate::provenance::stored::Address;
-                let mut entries = std::collections::BTreeMap::new();
-                let mut images = Images::default();
-                let geometry = GeometryCache::default();
-                images.canvas(&s.canvas, |target, remaining| {
-                    let (id, revision) = bboxy450_canvas::artifact_address(target)
-                        .ok_or_else(|| crate::store::invalid("invalid image address"))?;
-                    let found = artifacts.store.descriptor(id, revision, artifacts.caller)?;
-                    let prepared =
-                        Prepared::artifact(&found, artifacts.runtime, &geometry, remaining)?;
-                    let link = json!({
-                        "type":"resource_link",
-                        "uri":super::artifacts::uri(Address { id, revision: found.revision }, 0),
-                        "name":found.reference(),
-                        "mimeType":found.media_type,
-                        "size":found.bytes,
+                #[cfg(not(feature = "canvas-image"))]
+                return Err(error(
+                    "canvas_image_unavailable",
+                    "canvas PNG rendering requires the desktop build",
+                ));
+                #[cfg(feature = "canvas-image")]
+                {
+                    use crate::artifact_images::{GeometryCache, Images, Prepared};
+                    use crate::provenance::stored::Address;
+                    let mut entries = std::collections::BTreeMap::new();
+                    let mut images = Images::default();
+                    let geometry = GeometryCache::default();
+                    images.canvas(&s.canvas, |target, remaining| {
+                        let (id, revision) = bboxy450_canvas::artifact_address(target)
+                            .ok_or_else(|| crate::store::invalid("invalid image address"))?;
+                        let found = artifacts.store.descriptor(id, revision, artifacts.caller)?;
+                        let prepared =
+                            Prepared::artifact(&found, artifacts.runtime, &geometry, remaining)?;
+                        let link = json!({
+                            "type":"resource_link",
+                            "uri":super::artifacts::uri(Address { id, revision: found.revision }, 0),
+                            "name":found.reference(),
+                            "mimeType":found.media_type,
+                            "size":found.bytes,
+                        });
+                        entries.insert(
+                            target.to_owned(),
+                            json!({
+                                "pin":found.reference(), "digest":found.digest, "resource":link.clone()
+                            }),
+                        );
+                        resources.push(link);
+                        Ok(prepared)
                     });
-                    entries.insert(
-                        target.to_owned(),
-                        json!({
-                            "pin":found.reference(), "digest":found.digest, "resource":link.clone()
-                        }),
-                    );
-                    resources.push(link);
-                    Ok(prepared)
-                });
-                let assets = images.assets();
-                let (png, [width, height]) = render::png(
-                    &s.canvas,
-                    frame.map(|(bounds, _)| bounds),
-                    &assets,
-                    images.into_rasters(),
-                )?;
-                image = Some(png);
-                value["image"] = json!({"mimeType":"image/png","width":width,"height":height});
-                if !entries.is_empty() {
-                    let fonts = bboxy450_svg::FontSet::bundled()
-                        .map_err(|e| error("canvas_render", e.to_string()))?;
-                    value["image"]["artifacts"] = json!(entries);
-                    value["image"]["font_set"] = json!(fonts.identity());
-                    value["image"]["renderer"] = json!(bboxy450_svg::RENDERER);
+                    let assets = images.assets();
+                    let (png, [width, height]) = render::png(
+                        &s.canvas,
+                        frame.map(|(bounds, _)| bounds),
+                        &assets,
+                        images.into_rasters(),
+                    )?;
+                    image = Some(png);
+                    value["image"] = json!({"mimeType":"image/png","width":width,"height":height});
+                    if !entries.is_empty() {
+                        let fonts = bboxy450_svg::FontSet::bundled()
+                            .map_err(|e| error("canvas_render", e.to_string()))?;
+                        value["image"]["artifacts"] = json!(entries);
+                        value["image"]["font_set"] = json!(fonts.identity());
+                        value["image"]["renderer"] = json!(bboxy450_svg::RENDERER);
+                    }
                 }
             }
             value
         }
         _ => return Err(error("unknown_tool", "not a canvas tool")),
     };
-    let mut result = super::success(call.op_id, value);
-    if let Some(png) = image {
-        use base64::Engine;
-        result["content"].as_array_mut().unwrap().push(json!({"type":"image","mimeType":"image/png","data":base64::engine::general_purpose::STANDARD.encode(png)}));
-    }
-    result["content"]
-        .as_array_mut()
-        .expect("MCP content")
-        .extend(resources);
+    let result = super::success(call.op_id, value);
+    #[cfg(feature = "canvas-image")]
+    let result = {
+        let mut result = result;
+        if let Some(png) = image {
+            use base64::Engine;
+            result["content"].as_array_mut().unwrap().push(json!({"type":"image","mimeType":"image/png","data":base64::engine::general_purpose::STANDARD.encode(png)}));
+        }
+        result["content"]
+            .as_array_mut()
+            .expect("MCP content")
+            .extend(resources);
+        result
+    };
     if serde_json::to_vec(&result)
         .map_err(|e| error("canvas_result", e.to_string()))?
         .len()
@@ -567,6 +582,7 @@ pub(crate) fn execute(
     }
     Ok(result)
 }
+#[cfg(feature = "canvas-image")]
 mod render;
 
 #[cfg(test)]

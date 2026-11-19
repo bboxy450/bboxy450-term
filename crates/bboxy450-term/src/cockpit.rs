@@ -30,10 +30,12 @@ use tokio::{
     sync::mpsc,
 };
 
+#[cfg(feature = "desktop")]
 pub mod desktop;
 #[cfg(test)]
 mod environment_tests;
 mod fixture_hosts;
+pub mod node;
 pub mod gui_handoff;
 mod owners;
 mod shell_path;
@@ -54,6 +56,7 @@ const GUI_WRITE_CAPACITY: usize = 64;
 
 /// App-defined, bounded UI-to-IO messages. A full sender returns ownership to
 /// the UI for retry; no socket or process operation runs in the window handler.
+#[cfg(feature = "desktop")]
 pub enum UiMsg {
     ArtifactImage {
         id: bbt_mux::Ulid,
@@ -245,6 +248,7 @@ pub enum UiMsg {
         status: bbt_proto::gui::AppStatus,
     },
 }
+#[cfg(feature = "desktop")]
 impl UiMsg {
     /// All launches share one admission budget, including legacy callers.
     pub fn is_spawn(&self) -> bool {
@@ -714,6 +718,7 @@ async fn write_requests(
 )]
 pub fn private_entry(args: &[String]) -> Option<Result<()>> {
     match args.first().map(String::as_str) {
+        #[cfg(feature = "desktop")]
         Some("desktop") => Some(desktop::run()),
         Some("supervisor") => Some(bbt_rt::handle().block_on(supervisor_main())),
         Some("logic") => Some(bbt_rt::handle().block_on(logic_main())),
@@ -799,6 +804,14 @@ async fn logic_main() -> Result<()> {
                 .map(|account| account.key_store())
         })
         .transpose()?;
+    #[cfg(target_os = "linux")]
+    let store = match store {
+        Some(store) => Some(store),
+        None => Some(std::sync::Arc::new(bbt_mux::identity::FileDeviceKeys::open(
+            &run_dir.canonicalize()?.join("device-keys"),
+        )?) as std::sync::Arc<dyn bbt_mux::identity::DeviceKeyStore + Send + Sync>),
+    };
+    #[cfg(feature = "desktop")]
     let observer_config = bootstrap.config.clone();
     let logic_config = LogicConfig {
         run_dir: bootstrap.config.run_dir,
@@ -837,12 +850,15 @@ async fn logic_main() -> Result<()> {
             emit("Resuming saved sessions", completed, total, true);
         }).await?;
     }
-    let observer_supervisor = bootstrap.supervisor.pid;
-    logic
-        .client
-        .set_attention_observer_guard(std::sync::Arc::new(move |pid| {
-            desktop::admit_observer(&observer_config, pid, observer_supervisor)
-        }));
+    #[cfg(feature = "desktop")]
+    {
+        let observer_supervisor = bootstrap.supervisor.pid;
+        logic
+            .client
+            .set_attention_observer_guard(std::sync::Arc::new(move |pid| {
+                desktop::admit_observer(&observer_config, pid, observer_supervisor)
+            }));
+    }
     // The operator's ctl door, only when asked for (decision #260, invariant #261): the
     // window is logic's parent, and the supervisor names whose descendants are seats.
     emit("Opening control endpoint", 0, 0, true);
@@ -964,6 +980,8 @@ pub async fn preserve_backend_preflight(config: &Config) -> Result<BackendIdenti
 /// The IO owner, never stored on or dropped from the UI thread.
 pub struct Session {
     preserved_backend: Option<BackendIdentity>,
+    #[cfg(feature = "desktop")]
+    refresh_desktop: bool,
     pub supervisor: Process,
     pub desktop_supervisor: std::sync::Arc<std::sync::atomic::AtomicU32>,
     pub logic: Process,
@@ -1038,20 +1056,23 @@ impl Session {
     pub async fn start_with_progress(config: Config, progress: Progress) -> Result<Self> {
         let args: Vec<_> = std::env::args().skip(1).collect();
         let (preserve, expected) = gui_handoff::preservation(&args)?;
-        Self::start_policy(config, progress, preserve, expected).await
+        Self::start_policy(config, progress, preserve, expected, true).await
     }
     pub async fn start_preserving_backend(
         config: Config,
         expected: BackendIdentity,
     ) -> Result<Self> {
-        Self::start_policy(config, std::sync::Arc::new(|_| {}), true, Some(expected)).await
+        Self::start_policy(config, std::sync::Arc::new(|_| {}), true, Some(expected), true).await
     }
     async fn start_policy(
         mut config: Config,
         progress: Progress,
         preserve: bool,
         expected: Option<BackendIdentity>,
+        refresh_desktop: bool,
     ) -> Result<Self> {
+        #[cfg(not(feature = "desktop"))]
+        let _ = refresh_desktop;
         bbt_rt::assert_not_ui_thread();
         progress(Phase::StartingSupervisor);
         // Refuse before any custody or child process opens, including direct callers.
@@ -1191,6 +1212,8 @@ impl Session {
         }
         Ok(Self {
             preserved_backend,
+            #[cfg(feature = "desktop")]
+            refresh_desktop,
             config,
             launch_path,
             _frontend: frontend,
@@ -1413,7 +1436,10 @@ impl Session {
                                 self.supervisor_control = supervisor.control;
                                 self.supervisor_ready = supervisor.ready;
                                 self.desktop_supervisor.store(self.supervisor_ready.pid, std::sync::atomic::Ordering::Release);
-                                desktop::refresh(self.config.clone());
+                                #[cfg(feature = "desktop")]
+                                if self.refresh_desktop {
+                                    desktop::refresh(self.config.clone());
+                                }
                             }
                             if let Some((child, control)) = recovered.logic {
                                 self.logic = Process::Child(child);
@@ -1605,6 +1631,7 @@ async fn attach_gui(config: &Config, endpoint: &mut LogicReady, claim: bool) -> 
     attach_gui_mode(config, endpoint, claim, false).await
 }
 
+#[cfg(feature = "desktop")]
 async fn attach_attention(config: &Config, endpoint: &mut LogicReady) -> Result<GuiIo> {
     attach_gui_mode(config, endpoint, false, true).await
 }

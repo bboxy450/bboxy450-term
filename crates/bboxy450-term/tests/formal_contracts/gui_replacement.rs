@@ -137,6 +137,8 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend([
         (backend_preservation(false), "pass"),
         (backend_preservation(true), "safety"),
+        (node_lifecycle(false), "pass"),
+        (node_lifecycle(true), "safety"),
     ]);
     cases
 }
@@ -191,5 +193,64 @@ fn backend_preservation(broken: bool) -> Model {
     );
     safe(&mut m, "ExactBackendGenerationRetained", eq(2, 0));
     safe(&mut m, "UnsupportedRollbackNeverLaunched", eq(4, 0));
+    m
+}
+
+// The node answers the existing app relay without waiting for a frame. Logic
+// writes the ctl reply before sending AppStopping to the session owner.
+fn node_lifecycle(broken: bool) -> Model {
+    let mut m = model(
+        "NodeLifecycle",
+        broken,
+        &[
+            ("backend_ready", 1, 0),
+            ("ctl_stop", 1, 0),
+            ("receipt", 1, 0),
+            ("stopped", 1, 0),
+        ],
+    );
+    action(
+        &mut m,
+        "BackendReady",
+        all([eq(0, 0), eq(3, 0)]),
+        &[(0, Int(1))],
+    );
+    action(
+        &mut m,
+        "AcceptCtlStop",
+        all([eq(0, 1), eq(2, 0)]),
+        &[(1, Int(1))],
+    );
+    action(
+        &mut m,
+        "WriteCtlReceipt",
+        all([eq(1, 1), eq(3, 0)]),
+        &[(2, Int(1))],
+    );
+    action(
+        &mut m,
+        "AppStopping",
+        eq(1, 1).and(if broken { Bool(true) } else { eq(2, 1) }),
+        &[(3, Int(1)), (0, Int(0))],
+    );
+    // The operator may also stop the foreground process directly. Interleaving
+    // an independent signal with an in-flight ctl stop is outside this model.
+    action(&mut m, "Signal", eq(1, 0), &[(3, Int(1)), (0, Int(0))]);
+    safe(
+        &mut m,
+        "CtlStopAfterReceipt",
+        implies(all([eq(1, 1), eq(3, 1)]), eq(2, 1)),
+    );
+    m.responses.push(Response {
+        name: "ReadyOrStoppedWithoutAFrame".into(),
+        request: eq(3, 0),
+        response: eq(0, 1).or(eq(3, 1)),
+    });
+    m.responses.push(Response {
+        name: "AcceptedStopRetires".into(),
+        request: eq(1, 1),
+        response: eq(3, 1),
+    });
+    m.weak_fair.extend([vec![0], vec![2], vec![3]]);
     m
 }

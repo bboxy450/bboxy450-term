@@ -7,6 +7,7 @@
 //! The app's winit boundary: normalize input, read native locks and call bbt-core.
 
 use bbt_core::keyboard as protocol;
+pub use protocol::named_key_bytes;
 pub use protocol::Locks;
 use std::collections::BTreeSet;
 use winit::{
@@ -325,89 +326,6 @@ pub fn alternate_scroll(up: bool, application: bool) -> Vec<u8> {
 /// operator's named keys (`ctl seat key`, #270).
 fn encode_protocol(key: &protocol::Input<'_>, modes: u64) -> Option<Vec<u8>> {
     protocol::encode(key, modes)
-}
-/// A named key as the window would send it against these terminal modes: `enter`, `esc`,
-/// `tab`, `shift-tab`, `backspace`, `space`, arrows, `home`, `end`, `pageup`, `pagedown`,
-/// `delete`, `ctrl-<letter>`. None for a name it does not know.
-pub fn named_key_bytes(name: &str, modes: u64) -> Option<Vec<u8>> {
-    use protocol::{
-        ElementState, Input, Key, KeyCode, KeyLocation, ModifiersState, NamedKey, PhysicalKey,
-    };
-    let (key, physical, mods) = if let Some(letter) = name.strip_prefix("ctrl-") {
-        let c = letter
-            .chars()
-            .next()
-            .filter(|c| letter.len() == 1 && c.is_ascii_lowercase())?;
-        let code = [
-            KeyCode::KeyA,
-            KeyCode::KeyB,
-            KeyCode::KeyC,
-            KeyCode::KeyD,
-            KeyCode::KeyE,
-            KeyCode::KeyF,
-            KeyCode::KeyG,
-            KeyCode::KeyH,
-            KeyCode::KeyI,
-            KeyCode::KeyJ,
-            KeyCode::KeyK,
-            KeyCode::KeyL,
-            KeyCode::KeyM,
-            KeyCode::KeyN,
-            KeyCode::KeyO,
-            KeyCode::KeyP,
-            KeyCode::KeyQ,
-            KeyCode::KeyR,
-            KeyCode::KeyS,
-            KeyCode::KeyT,
-            KeyCode::KeyU,
-            KeyCode::KeyV,
-            KeyCode::KeyW,
-            KeyCode::KeyX,
-            KeyCode::KeyY,
-            KeyCode::KeyZ,
-        ][(c as u8 - b'a') as usize];
-        (
-            Key::Character(c.to_string()),
-            PhysicalKey::Code(code),
-            ModifiersState::CONTROL,
-        )
-    } else {
-        let empty = ModifiersState::empty();
-        let (named, mods) = match name {
-            "enter" | "return" => (NamedKey::Enter, empty),
-            "esc" | "escape" => (NamedKey::Escape, empty),
-            "tab" => (NamedKey::Tab, empty),
-            "shift-tab" => (NamedKey::Tab, ModifiersState::SHIFT),
-            "backspace" => (NamedKey::Backspace, empty),
-            "space" => (NamedKey::Space, empty),
-            "up" => (NamedKey::ArrowUp, empty),
-            "down" => (NamedKey::ArrowDown, empty),
-            "left" => (NamedKey::ArrowLeft, empty),
-            "right" => (NamedKey::ArrowRight, empty),
-            "home" => (NamedKey::Home, empty),
-            "end" => (NamedKey::End, empty),
-            "pageup" => (NamedKey::PageUp, empty),
-            "pagedown" => (NamedKey::PageDown, empty),
-            "delete" => (NamedKey::Delete, empty),
-            _ => return None,
-        };
-        (Key::Named(named), PhysicalKey::Unidentified, mods)
-    };
-    let input = Input {
-        unmodified_key: key.clone(),
-        logical_key: key,
-        physical_key: physical,
-        text: None,
-        text_all_modifiers: None,
-        location: KeyLocation::Standard,
-        state: ElementState::Pressed,
-        repeat: false,
-        modifiers: protocol::Modifiers {
-            state: mods,
-            ..Default::default()
-        },
-    };
-    encode_protocol(&input, modes)
 }
 fn protocol_key(key: &Key) -> protocol::Key {
     let named = match key {

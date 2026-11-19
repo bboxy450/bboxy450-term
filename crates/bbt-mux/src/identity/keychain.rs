@@ -11,6 +11,7 @@ use std::sync::{
     atomic::{AtomicU8, Ordering},
 };
 use ulid::Ulid;
+use zeroize::Zeroize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "kebab-case")]
@@ -65,6 +66,57 @@ pub trait DeviceKeyStore {
         _progress: super::unlock::Progress,
     ) -> Result<bool> {
         Err(E::KeychainUnavailable(-4))
+    }
+}
+
+/// Device keys in an explicitly selected owner-only directory.
+pub struct FileDeviceKeys(pub(super) Box<dyn bboxy450_keychain::Store>);
+impl FileDeviceKeys {
+    /// Select file custody on the backend owner.
+    pub fn open(directory: &std::path::Path) -> crate::store::Result<Self> {
+        bbt_rt::assert_not_ui_thread();
+        let backend = bboxy450_keychain::Backend::File {
+            directory: directory.into(),
+        };
+        Ok(Self(bboxy450_keychain::open(backend)?))
+    }
+}
+impl DeviceKeyStore for FileDeviceKeys {
+    fn custody(&self) -> Custody {
+        Custody::File
+    }
+    fn load(&self, device: Ulid) -> Result<Option<SigningKey>> {
+        let secret = self
+            .0
+            .get(&format!("key_{device}"))
+            .map_err(custody_error)?;
+        secret
+            .map(|secret| {
+                let mut seed: [u8; 32] =
+                    secret.as_bytes().try_into().map_err(|_| E::InvalidProof)?;
+                let key = SigningKey::from_bytes(&seed);
+                seed.zeroize();
+                Ok(key)
+            })
+            .transpose()
+    }
+    fn create(&self, device: Ulid, key: &SigningKey) -> Result<()> {
+        if device == Ulid::nil() {
+            return Err(E::InvalidProof);
+        }
+        self.0
+            .put(
+                &format!("key_{device}"),
+                key.as_bytes(),
+                bboxy450_keychain::Acl::OwnerOnly,
+            )
+            .map_err(custody_error)
+    }
+}
+fn custody_error(error: bboxy450_keychain::Error) -> E {
+    match error {
+        bboxy450_keychain::Error::Conflict => E::JournalConflict,
+        _ => E::FileCustodyUnavailable,
     }
 }
 

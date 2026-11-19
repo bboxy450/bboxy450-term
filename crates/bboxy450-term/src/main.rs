@@ -4,7 +4,7 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! R2 app shell: event-driven native scene, memory-only UI drain and hitch meter.
+// R2 app shell: event-driven native scene, memory-only UI drain and hitch meter.
 mod animation_clock;
 mod app_canvas;
 mod app_overlays;
@@ -27,7 +27,6 @@ mod log;
 mod navigation;
 mod perf_fixture;
 mod pointer_cursor;
-mod qos;
 mod rich_faces;
 mod scene;
 mod settings_destinations;
@@ -9882,6 +9881,7 @@ const HELP: &str = "bboxy450-term: GPU terminal for agent swarms.
   --meter              open with the perf HUD (Cmd+Opt+F toggles it)
   --run-dir DIR        runtime directory (default: the user's)
   --repository PATH    repository directory (default: cwd, or a writable app workspace)
+  node                 run seats, MCP and ctl without the renderer
   --headless           run the app and renderer without opening a window
   --ctl                enable the operator's ctl endpoint
   --recover-seats      resume retained open sessions when starting a new backend
@@ -10266,26 +10266,6 @@ fn screen_hash(screen: &bbt_proto::Screen) -> String {
     format!("{hash:016x}")
 }
 
-fn diagnostic_root(args: &[String]) -> Result<std::path::PathBuf, String> {
-    // Validate private custody before choosing any fallback. In particular an
-    // inherited seat run must never win over an explicit throwaway account.
-    let account =
-        bboxy450_term::cockpit::Config::test_account_from_args(args).map_err(|e| e.to_string())?;
-    if let Some(path) = args.windows(2).find(|p| p[0] == "--run-dir").map(|p| &p[1]) {
-        return Ok(path.into());
-    }
-    if let Some(account) = account {
-        return Ok(account.join("run"));
-    }
-    if let Some(path) = std::env::var_os("BBOXY_RUN_DIR") {
-        return Ok(path.into());
-    }
-    bbt_mux::transport::default_socket_path()
-        .map_err(|e| e.to_string())?
-        .parent()
-        .map(std::path::Path::to_path_buf)
-        .ok_or("default diagnostics directory unavailable".into())
-}
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let hook_args: Vec<_> = std::env::args().skip(1).collect();
     qos::startup(hook_args.first().map_or("", String::as_str));
@@ -10325,17 +10305,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if let Some(result) = stall::private_entry(&hook_args) {
         return result.map_err(Into::into);
     }
-    if hook_args.first().is_some_and(|arg| arg == "plugin") {
-        let code = bbt_mux::plugins::run_cli(&hook_args[1..]);
-        if code != 0 {
-            std::process::exit(code);
-        }
-        return Ok(());
-    }
-    // `ctl --help` and `e2e --help` are their own usages, printed by them.
+    // Subcommands with their own help keep control of their usage text.
     if hook_args
         .first()
-        .is_none_or(|arg| arg != "ctl" && arg != "e2e")
+        .is_none_or(|arg| !matches!(arg.as_str(), "ctl" | "e2e" | "node" | "plugin"))
         && hook_args.iter().any(|arg| arg == "--help" || arg == "-h")
     {
         println!("{HELP}\n{}", stall::HELP);
@@ -10405,46 +10378,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             eprintln!("{}", std::backtrace::Backtrace::force_capture());
         }));
     }
-    if let Some(result) = bboxy450_term::cockpit::private_entry(&hook_args) {
-        if let Err(error) = &result {
-            bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new(
-                hook_args.first().map_or("backend", String::as_str),
-                "process_entry",
-                error,
-            ));
-        }
-        return result.map_err(|error| error as Box<dyn std::error::Error>);
-    }
-    if hook_args.first().is_some_and(|arg| arg == "harness-exec") {
-        return bbt_mux::adapters::launch::exec_when_ready(&hook_args[1..])
-            .map_err(|error| error as Box<dyn std::error::Error>);
-    }
-    if hook_args.first().is_some_and(|arg| arg == "hook") {
-        let code = bbt_mux::adapters::hook::run_cli(&hook_args[1..]);
-        if code != 0 {
-            std::process::exit(code);
-        }
-        return Ok(());
-    }
-    if hook_args.first().is_some_and(|arg| arg == "mcp") {
-        bbt_mux::mcp::run_cli().inspect_err(|e| {
-            bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new(
-                "mcp",
-                "bridge_exit",
-                e,
-            ));
-        })?;
-        return Ok(());
-    }
-    if hook_args.first().is_some_and(|arg| arg == "kb-convert") {
-        // Markdown records to Den with the same metadata, body and signature (make convert-kb).
-        std::process::exit(bbt_mux::knowledge::den::run_cli(&hook_args[1..]));
-    }
-    if hook_args.first().is_some_and(|arg| arg == "code") {
-        // The code-query MCP server (specs/code-query.md), rooted at the seat's cwd.
-        let root = bboxy450_code::Root::new(std::env::current_dir()?)?;
-        bboxy450_code::serve(&root, std::io::stdin().lock(), std::io::stdout());
-        return Ok(());
+    if let Some(result) = service_entry(&hook_args) {
+        return result;
     }
     if hook_args.first().is_some_and(|arg| arg == "e2e") {
         // The unattended e2e runner (#282): its own windowless app, ctl scripts as verdicts.
@@ -10455,23 +10390,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 std::process::exit(2);
             }
         }
-    }
-    if hook_args.first().is_some_and(|arg| arg == "ctl") {
-        // The operator's door from outside the app (e2e-acceptance §3, decision #260):
-        // the run directory comes from BBOXY_RUN_DIR, else the default one.
-        let run_dir = match std::env::var_os("BBOXY_RUN_DIR") {
-            Some(dir) => std::path::PathBuf::from(dir),
-            None => bbt_mux::transport::default_socket_path()?
-                .parent()
-                .map(std::path::Path::to_path_buf)
-                .ok_or("default run directory unavailable")?,
-        };
-        let endpoint = run_dir.join(bbt_mux::ctl_door::ENDPOINT);
-        if let Err(reason) = bboxy450_term::ctl::main(&hook_args[1..], &endpoint) {
-            println!("{}", serde_json::json!({"kind": "error", "reason": reason}));
-            std::process::exit(1);
-        }
-        return Ok(());
     }
     if let Some(status) = bboxy450_term::cockpit::gui_handoff::probe(&hook_args).map_err(|error| error as Box<dyn std::error::Error>)? {
         println!("{}", serde_json::to_string(&status)?);

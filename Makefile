@@ -147,13 +147,16 @@ export CARGO_PROFILE_TEST_DEBUG ?= 0
 export CARGO_PROFILE_DEV_OPT_LEVEL ?= 1
 export CARGO_PROFILE_TEST_OPT_LEVEL ?= 1
 
-.PHONY: help tools build build-release compile lock test test-parity parity-swarm check test-boundaries test-swarm smoke bundle-files bundle bundle-unsigned install install-unsigned release package-crate publish-release push
+.PHONY: help tools build build-release build-node test-node test-linux compile lock test test-parity parity-swarm check test-boundaries test-swarm smoke bundle-files bundle bundle-unsigned install install-unsigned release package-crate publish-release push
 
 help:
 	@printf '%s\n' \
 	  'make svg-loop                   Pinned SVG corpus and native renderer verification' \
 	  'make test-python-execute         Real CPython/MCP/command, cancellation and recovery checks' \
 	  'make build / build-release       Build the app (debug / optimized)' \
+	  'make build-node                  Build the headless node into TARGET_DIR/node/debug' \
+	  'make test-node                   Build and smoke-test the host node' \
+	  'make test-linux                  Smoke-test Linux and build x86-64 in Dory (2 CPUs, 4 GB)' \
 	  'make privacy-1password          Open persistent macOS access settings for the signed installed app' \
 	  'make parity-startup             Boxybook startup checklist web/native preview and geometry comparison' \
 	  'make preview-startup-web        Capture startup design states in an isolated web preview' \
@@ -404,6 +407,18 @@ build:
 
 build-release:
 	@$(MAKE) compile PROFILE=release
+
+build-node:
+	@set -eu; BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))/node'; export BBOXY_CARGO_TARGET_DIR; \
+	. ./scripts/cache-env.sh; \
+	cargo build --locked --no-default-features -p $(APP) --bin $(APP) --target-dir "$$BBOXY_CARGO_TARGET_DIR"; \
+	cargo build --locked -p bboxy450-harness --bin bboxy450-harness --target-dir "$$BBOXY_CARGO_TARGET_DIR"
+
+test-node: build-node
+	@python3 -I scripts/test-node.py '$(abspath $(TARGET_DIR))/node/debug/$(APP)'
+
+test-linux:
+	@sh scripts/test-linux.sh
 
 lock:
 	@set -eu; . ./scripts/cache-env.sh; cargo update --offline --workspace

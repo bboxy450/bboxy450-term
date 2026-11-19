@@ -12,8 +12,9 @@ use bbt_ui::modules::document_modal::{
     controller::{Controller, RecordLinks},
 };
 use serde_json::Value;
-pub mod observation;
+pub use crate::knowledge::Source;
 pub mod images;
+pub mod observation;
 use std::{
     collections::{BTreeSet, VecDeque},
     sync::Arc,
@@ -77,38 +78,6 @@ pub struct Prepared {
     pub targets: Vec<String>,
     pub follows_artifact: bool,
     pub images: Vec<Arc<bbt_render::chrome::icons::Image>>,
-}
-/// Flat router evidence is retained before portable provider DTO parsing.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Source {
-    pub scope: bbt_proto::gui::SwarmScope,
-    pub root: String,
-    pub provider_revision: u64,
-}
-impl Source {
-    pub(crate) fn decode(value: &Value, scope: bbt_proto::gui::SwarmScope) -> Result<Self, String> {
-        let root = value["knowledge_root_id"]
-            .as_str()
-            .filter(|s| !s.is_empty())
-            .ok_or("document_source_missing: knowledge root")?;
-        let swarm = value["swarm_workspace_id"]
-            .as_str()
-            .and_then(|s| s.parse::<Ulid>().ok());
-        let revision = value["swarm_workspace_revision"].as_u64();
-        if swarm != Some(scope.swarm) || revision != Some(scope.revision) {
-            return Err(
-                "document_scope_mismatch: provider result belongs to another workspace".into(),
-            );
-        }
-        let provider_revision = value["knowledge_root_revision"]
-            .as_u64()
-            .ok_or("document_source_missing: provider revision")?;
-        Ok(Self {
-            scope,
-            root: root.into(),
-            provider_revision,
-        })
-    }
 }
 #[derive(Debug, Clone)]
 pub enum Response {

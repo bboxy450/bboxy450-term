@@ -14,6 +14,9 @@ use crate::Ulid;
 use std::{collections::HashMap, sync::Mutex, time::Duration};
 use tokio::sync::{broadcast, oneshot};
 
+/// A recognized detached-window refusal, also returned by the windowless node.
+pub const GUI_UNAVAILABLE: &str = "endpoint_unavailable: no GUI owner is attached";
+
 /// How long an asker waits for the window to present, read back and write the frame;
 /// inside `ctl`'s 15 s read timeout.
 const WAIT: Duration = Duration::from_secs(10);
@@ -147,7 +150,7 @@ impl Captures {
             pending.insert(id, done);
         }
         let result = if self.asks.send(notice).is_err() {
-            Err("endpoint_unavailable: no GUI owner is attached".into())
+            Err(GUI_UNAVAILABLE.into())
         } else {
             match tokio::time::timeout(WAIT, answer).await {
                 Ok(Ok(result)) => result,

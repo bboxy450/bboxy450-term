@@ -1229,6 +1229,16 @@ property = "Every managed preset admits unattended outer intent and preserves it
 checks = ["make test-formal", "make test"]
 
 [[contract]]
+name = "NodeLifecycle"
+title = "Windowless node readiness and authenticated ctl stop"
+models = ["NodeLifecycle", "BrokenNodeLifecycle"]
+sources = ["crates/bboxy450-term/tests/formal_contracts/gui_replacement.rs", "crates/bboxy450-term/src/cockpit/node.rs", "crates/bboxy450-term/src/cockpit.rs", "crates/bbt-mux/src/seat_socket.rs"]
+implementation_tests = ["scripts/test-node.py"]
+assumptions = "One foreground owner, one backend startup and one admitted stop. Readiness, ctl admission, receipt send, owner notification and direct signal are atomic. Backend ready, receipt and owner notification are weakly fair. The signal path is independent of ctl and projected only before a ctl stop. OS timing, startup failure, PID ownership and restart stay with the shared session and its native process checks. The model excludes concurrent stop callers and signal during a pending ctl stop."
+property = "Node reaches backend readiness without a frame. An admitted ctl stop retires the owner only after Logic writes the receipt. The broken control permits stopping before the receipt. The private process smoke checks real ctl status, live PTY execution, receipt and retirement of both child owners."
+checks = ["make test-formal", "make test"]
+
+[[contract]]
 name = "GuiBackendPreservation"
 title = "Explicit UI-only handoff cannot replace retained backend owners"
 models = ["GuiBackendPreservation", "BrokenGuiBackendPreservation"]

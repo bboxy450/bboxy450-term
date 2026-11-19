@@ -419,6 +419,38 @@ impl E2eLoader {
     }
 }
 
+/// Flat router evidence is retained before portable provider DTO parsing.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Source {
+    pub scope: bbt_proto::gui::SwarmScope,
+    pub root: String,
+    pub provider_revision: u64,
+}
+impl Source {
+    pub(crate) fn decode(value: &Value, scope: bbt_proto::gui::SwarmScope) -> Result<Self, String> {
+        let root = value["knowledge_root_id"]
+            .as_str()
+            .filter(|s| !s.is_empty())
+            .ok_or("document_source_missing: knowledge root")?;
+        let swarm = value["swarm_workspace_id"]
+            .as_str()
+            .and_then(|s| s.parse::<bbt_mux::Ulid>().ok());
+        let revision = value["swarm_workspace_revision"].as_u64();
+        if swarm != Some(scope.swarm) || revision != Some(scope.revision) {
+            return Err(
+                "document_scope_mismatch: provider result belongs to another workspace".into(),
+            );
+        }
+        let provider_revision = value["knowledge_root_revision"]
+            .as_u64()
+            .ok_or("document_source_missing: provider revision")?;
+        Ok(Self {
+            scope,
+            root: root.into(),
+            provider_revision,
+        })
+    }
+}
 /// IO-owned observer. One request may be on the wire; closing stops further
 /// reads and reconnecting refuses replies from the previous source epoch.
 pub struct Watch {
@@ -431,7 +463,7 @@ pub struct Watch {
     restart: bool,
     published: u64,
     scope: Result<Option<bbt_proto::gui::SwarmScope>, String>,
-    source: Option<crate::documents::Source>,
+    source: Option<Source>,
     active_call: Option<ReadCall>,
     retry_call: Option<ReadCall>,
     retry_at: Option<std::time::Instant>,
@@ -596,7 +628,7 @@ impl Watch {
         }
         self.active_call = None;
         if let (Some(scope), Ok(value)) = (self.scope(), &result) {
-            match crate::documents::Source::decode(value, scope) {
+            match Source::decode(value, scope) {
                 Ok(source) if self.source.as_ref().is_none_or(|old| *old == source) => {
                     self.source = Some(source)
                 }

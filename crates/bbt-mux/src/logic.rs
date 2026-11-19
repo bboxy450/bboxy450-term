@@ -10878,6 +10878,7 @@ impl Worker {
         let root = port.host.root_path().to_owned();
         let swarm = port.binding.swarm.to_string();
         let captures = self.client.captures.clone();
+        #[cfg(feature = "canvas-image")]
         let runtime = self.config.run_dir.clone();
         self.canvas_jobs.spawn_blocking_on(
             move || {
@@ -10909,6 +10910,7 @@ impl Worker {
                     &actor,
                     task.as_deref(),
                     &call,
+                    #[cfg(feature = "canvas-image")]
                     &crate::mcp::artifacts::CanvasReads {
                         store: crate::provenance::stored::Store::new(
                             &port.index,

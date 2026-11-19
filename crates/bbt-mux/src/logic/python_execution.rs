@@ -59,6 +59,7 @@ impl Worker {
                 json!({"kind":"cloud","provider":provider,"host":host})
             }
         };
+        #[cfg(feature = "canvas-image")]
         let chart_export = if record.location == crate::registry::Location::Local {
             (|| {
                 let fonts = bboxy450_svg::chart_font_directory().ok()?;
@@ -72,6 +73,8 @@ impl Worker {
         } else {
             None
         };
+        #[cfg(not(feature = "canvas-image"))]
+        let chart_export = Value::Null;
         Ok(
             json!({"guard_version":1,"seat_id":actor.seat_id,"process_generation":actor.process_generation,
             "swarm_id":actor.swarm_id,"role":actor.role,"grant_epoch":actor.grant_epoch,"issuer_kind":actor.issuer_kind,"task_ids":record.tasks,"lifecycle_revision":record.lifecycle_revision,
