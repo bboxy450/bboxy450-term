@@ -424,7 +424,16 @@ def build_closure_after(before, *, runner):
                 refusals.append("build_tool_invocation_changed")
     candidates = []
     selected = []
-    for path in (target / "release/.fingerprint").glob("bboxy450-harness-*/bin-bboxy450-harness.json"):
+    # Cargo <= 1.99 keeps `release/.fingerprint/bboxy450-harness-<hash>/` beside
+    # `release/deps/bboxy450_harness-<hash>`; Cargo 1.100's build-dir layout keeps
+    # `release/build/bboxy450-harness/<hash>/{fingerprint,out}/`. Both are read.
+    layouts = [(path, path.parent.name.removeprefix("bboxy450-harness-"),
+                lambda suffix: target / "release/deps" / ("bboxy450_harness-" + suffix))
+               for path in (target / "release/.fingerprint").glob("bboxy450-harness-*/bin-bboxy450-harness.json")]
+    layouts += [(path, path.parent.parent.name,
+                 lambda suffix: target / "release/build/bboxy450-harness" / suffix / "out/bboxy450_harness")
+                for path in (target / "release/build/bboxy450-harness").glob("*/fingerprint/bin-bboxy450-harness.json")]
+    for path, suffix, binary_for in layouts:
         if len(candidates) >= 32:
             raise ValueError("more than32 worker Cargo fingerprints")
         identity = _build_closure_file(path, 64 * 1024)
@@ -468,10 +477,9 @@ def build_closure_after(before, *, runner):
             raise ValueError("invalid Cargo rustflags metadata")
         metadata["rustflags"] = {"empty": value["rustflags"] == [],
                                   "nonempty_values_redacted": value["rustflags"] != []}
-        suffix = path.parent.name.removeprefix("bboxy450-harness-")
         if re.fullmatch("[0-9a-f]{16}", suffix) is None:
             raise ValueError("invalid Cargo bin fingerprint suffix")
-        binary = target / "release/deps" / ("bboxy450_harness-" + suffix)
+        binary = binary_for(suffix)
         artifact = _build_closure_file(binary) if binary.is_file() else None
         candidate = {"fingerprint": identity, "metadata": metadata, "deps_executable": artifact,
                      "matches_runner_sha256": artifact is not None and artifact["sha256"] == runner["sha256"]}
