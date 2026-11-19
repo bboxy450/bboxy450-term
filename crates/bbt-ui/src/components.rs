@@ -1953,7 +1953,6 @@ fn flow_layout(
     Ok(([widest, height], first.unwrap_or(0.), output))
 }
 
-#[allow(clippy::too_many_arguments)] // Same solver inputs plus explicit CSS cross-overflow policy.
 fn layout_children(
     children: &[Item],
     axis: Axis,

@@ -5,10 +5,6 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Disposable bounded completed-result projection. No read starts preparation.
-#![allow(
-    clippy::disallowed_methods,
-    reason = "isolated completed-result/read owner"
-)]
 use super::dream_c1::{Authority, Record};
 use crate::{
     logic::dream_c1 as engine,

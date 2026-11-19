@@ -24,7 +24,6 @@ pollster = "0.4"
 
 [build-dependencies]
 regex = "1"
-resvg = { version = "=0.48.1", default-features = false }
 
 [lib]
 name = "bboxybook"

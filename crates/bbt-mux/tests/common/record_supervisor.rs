@@ -22,7 +22,6 @@ struct Seat {
     checkpoint: Option<Vec<u8>>,
 }
 impl RecordLink {
-    #[allow(dead_code)] // Only launch-contract consumers inspect process plans.
     pub fn launch_spec(&self, seat: Ulid) -> bbt_mux::LaunchSpec {
         self.0.0.lock().unwrap()[&seat].spec.clone()
     }

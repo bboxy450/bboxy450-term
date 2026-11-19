@@ -8,7 +8,7 @@
 //! Adapted from bboxy450-harness src/dream/read_wire.rs at f848c03ff0462e55dfa0b17fcfd550626a52db2b.
 //! https://github.com/bboxy450/bboxy450-harness/blob/f848c03ff0462e55dfa0b17fcfd550626a52db2b/src/dream/read_wire.rs
 //! Producer license/policy: https://github.com/bboxy450/bboxy450-harness/blob/main/ATTRIBUTION.md
-#![allow(missing_docs)]
+#![allow(missing_docs)] // The prepared-read DTO mirror follows the producer's wire contract.
 
 /// Strict producer-owned prepared-read DTO mirror; no independent artifact schema.
 pub mod wire {

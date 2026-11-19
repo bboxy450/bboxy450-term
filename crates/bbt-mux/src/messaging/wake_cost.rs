@@ -201,7 +201,6 @@ pub(crate) fn note(
 
 #[cfg(test)]
 mod tests {
-    #![allow(clippy::disallowed_methods)] // Private database/file fixtures.
     use super::*;
     use crate::{
         messaging::{Messaging, keys::LocalSeatKeys, wire::SendRequest},

@@ -5,7 +5,6 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Owned-process witness: retained history must never own the request worker.
-#![allow(clippy::disallowed_methods)] // Private process/SQLite fixture.
 use super::*;
 use crate::store::{
     Events,

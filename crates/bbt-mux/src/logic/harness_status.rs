@@ -172,7 +172,7 @@ fn publish_activity(
 
 /// One source IO owner per process binding, with bounded retained-source rotation.
 /// It never shares the legacy reader's potentially held syscall or blocking pool.
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)] // Each source has an independent channel or owner.
 fn follow_sources(
     handle: tokio::runtime::Handle,
     client: LogicClient,
@@ -515,7 +515,7 @@ fn hold_private_legacy_read(runtime: &Path, seat: crate::Ulid) -> std::io::Resul
     Ok(true)
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)] // The follower owns distinct source and retirement endpoints.
 pub(super) async fn run(
     client: LogicClient,
     binding: Binding,

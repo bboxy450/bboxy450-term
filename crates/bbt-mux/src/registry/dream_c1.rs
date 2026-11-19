@@ -2430,10 +2430,6 @@ impl Runtime {
 // Metadata-only source fixtures do not claim observer authentication or IR validity.
 #[cfg(test)]
 mod registry_tests {
-    #![allow(
-        clippy::disallowed_methods,
-        reason = "private unattended persistence/process witnesses"
-    )]
     use super::*;
     use std::{
         fs::{self, File, OpenOptions},

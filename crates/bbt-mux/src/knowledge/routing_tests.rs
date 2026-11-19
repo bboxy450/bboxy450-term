@@ -4,10 +4,6 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-#![allow(
-    clippy::disallowed_methods,
-    reason = "private IO fixtures, never the operator or UI thread"
-)]
 use super::*;
 use crate::store::Events;
 use crate::{

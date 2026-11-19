@@ -582,7 +582,7 @@ impl PluginHost {
     /// Dispatch one call and record its host-side measurement: the whole call
     /// and its phases, and how it ended (accepted, refused by the plugin, or
     /// failed by the host with a named code).
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)] // The plugin call carries authority and a separate delivery context.
     fn dispatch(
         &self,
         candidate: &str,
@@ -614,7 +614,7 @@ impl PluginHost {
         result
     }
 
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)] // The plugin call carries authority and a separate delivery context.
     fn dispatch_inner(
         &self,
         candidate: &str,

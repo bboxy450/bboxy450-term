@@ -5,10 +5,6 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! A throwaway, persistent account root. It never opens native custody.
-#![allow(
-    clippy::disallowed_methods,
-    reason = "explicit private test-account IO bootstrap"
-)]
 use std::{path::Path, sync::Arc};
 
 use base64::{Engine, engine::general_purpose::URL_SAFE_NO_PAD as B64};

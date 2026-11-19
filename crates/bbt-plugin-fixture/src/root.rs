@@ -18,7 +18,7 @@ use std::fs;
 use std::io::Read;
 use std::os::unix::fs::OpenOptionsExt;
 use std::path::{Component, Path, PathBuf};
-use std::sync::OnceLock;
+use std::sync::{LazyLock, OnceLock};
 use std::time::Duration;
 
 use crate::Knobs;
@@ -53,11 +53,6 @@ pub fn main(k: Knobs) {
         trace("shape", json!({}));
     }
     bbt_plugin_sdk::run::<RootFixture>();
-}
-
-// Compiled once per process; a debug-build compile per record cost ~250 ms a call.
-fn compiled(slot: &'static OnceLock<Regex>, pattern: &str) -> &'static Regex {
-    slot.get_or_init(|| Regex::new(pattern).expect("fixture pattern"))
 }
 
 fn refused(code: &str, message: &str) -> Refusal {
@@ -211,9 +206,10 @@ impl RootFixture {
             .unwrap_or_default();
         let mut links = Vec::new();
         if resources {
-            static IMAGE: OnceLock<Regex> = OnceLock::new();
-            let image = compiled(&IMAGE, r"!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]");
-            for name in image.captures_iter(&body).map(|c| c[1].to_owned()) {
+            static IMAGE: LazyLock<Regex> = LazyLock::new(|| {
+                Regex::new(r"!\[\[([^\]|]+)(?:\|[^\]]*)?\]\]").expect("fixture image pattern")
+            });
+            for name in IMAGE.captures_iter(&body).map(|c| c[1].to_owned()) {
                 links.push(self.resource(&name)?);
             }
         }
@@ -646,14 +642,15 @@ fn frontmatter(text: &str) -> Result<(Map<String, Value>, String), Refusal> {
     let value = match serde_json::from_str::<Value>(raw) {
         Ok(value) => value,
         Err(_) => {
-            static LINE: OnceLock<Regex> = OnceLock::new();
-            let line_re = compiled(&LINE, r"^([a-zA-Z_][a-zA-Z0-9_-]*):\s*(.*)$");
+            static LINE: LazyLock<Regex> = LazyLock::new(|| {
+                Regex::new(r"^([a-zA-Z_][a-zA-Z0-9_-]*):\s*(.*)$").expect("fixture line pattern")
+            });
             let mut fields = Map::new();
             for line in raw.lines() {
                 if line.trim().is_empty() || line.starts_with('#') {
                     continue;
                 }
-                let Some(captures) = line_re.captures(line) else {
+                let Some(captures) = LINE.captures(line) else {
                     return Err(unavailable("nested YAML is outside this fixture"));
                 };
                 let (key, scalar) = (captures[1].to_owned(), captures[2].to_owned());
@@ -817,12 +814,12 @@ fn page(items: Vec<Value>, args: &Value, identity: &str) -> Result<Value, Refusa
 }
 
 fn edges(rows: &[Value]) -> Vec<Value> {
-    static LINK: OnceLock<Regex> = OnceLock::new();
-    let link = compiled(&LINK, r"\[\[([^\]]+)\]\]");
+    static LINK: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"\[\[([^\]]+)\]\]").expect("fixture link pattern"));
     let mut result = Vec::new();
     for row in rows {
         let body = row["body"].as_str().unwrap_or("");
-        for found in link.captures_iter(body) {
+        for found in LINK.captures_iter(body) {
             let whole = found.get(0).unwrap();
             // (?<!!): an image embed is not a link.
             if body[..whole.start()].ends_with('!') {

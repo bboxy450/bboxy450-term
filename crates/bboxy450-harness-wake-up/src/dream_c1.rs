@@ -5,7 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Bounded C1 subprocess ownership; every method runs on its dedicated IO owner.
-#![allow(missing_docs)]
+#![allow(missing_docs)] // The DTOs mirror the producer's documented wire contract.
 pub mod wire {
     // Copyright 2026 Boxy (bboxy450) and contributors.
     // SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
@@ -18,7 +18,6 @@ pub mod wire {
     //! https://github.com/bboxy450/bboxy450-harness/blob/main/src/dream/c1_wire.rs
     //! Producer owns schema/fixtures; preserve that origin with extracts.
     //! Consumer policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-    #![allow(missing_docs)]
     use serde::{Deserialize, Serialize};
     pub const MAX_FRAME: usize = 256 * 1024;
     pub const MAX_SAFE: u64 = (1u64 << 53) - 1;

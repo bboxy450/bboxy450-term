@@ -758,7 +758,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::disallowed_methods, reason = "private strict-provider fixture")]
     fn wiki_report_links_reach_a_strict_provider_as_record_locators() {
         use crate::knowledge::{BboxySource, WriteContext};
         struct Strict<'a>(BboxySource<'a>);

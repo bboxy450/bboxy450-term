@@ -5,7 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! SDK transport through the real owner/supervisor boundary, without network.
-#![allow(clippy::disallowed_methods)]
+#![allow(clippy::disallowed_methods)] // Uses private plugin processes and sockets.
 use crate::common;
 use bbt_mux::{
     LaunchSpec, Supervisor, Ulid,

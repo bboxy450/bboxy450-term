@@ -4,10 +4,6 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-#![allow(
-    clippy::disallowed_methods,
-    reason = "test/fixture IO, not the UI thread"
-)]
 
 use super::*;
 use crate::knowledge::{WriteContext, data_source as d};

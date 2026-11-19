@@ -711,10 +711,6 @@ mod scroll_input_tests {
     }
 
     #[test]
-    #[allow(
-        clippy::disallowed_methods,
-        reason = "isolated headless witness joins its private history worker; production UI only admits the wheel intent"
-    )]
     fn wheel_replays_aged_history_through_native_dispatch() {
         if crate::lazy_projection_tests::isolated_ui_case(
             "wheel::scroll_input_tests::wheel_replays_aged_history_through_native_dispatch",

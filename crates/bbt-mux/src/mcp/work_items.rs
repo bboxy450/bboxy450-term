@@ -1945,7 +1945,6 @@ mod task_role_tests {
     use super::*;
     use crate::store::sqlite::SqliteStore;
     #[test]
-    #[allow(clippy::disallowed_methods, reason = "private task planning fixture")]
     fn default_and_explicit_task_briefs_keep_the_exact_architect_and_custom_role() {
         let root = tempfile::tempdir().unwrap();
         let registry = Registry::new(SqliteStore::open(&root.path().join("account")).unwrap());

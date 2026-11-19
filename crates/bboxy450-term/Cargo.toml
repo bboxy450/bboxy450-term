@@ -59,7 +59,6 @@ tokio = { version = "1.54.1", features = ["test-util"] }
 
 [build-dependencies]
 regex = "1"
-resvg = { version = "=0.48.1", default-features = false }
 
 [target.'cfg(target_os = "macos")'.dependencies]
 block2 = "=0.6.2"

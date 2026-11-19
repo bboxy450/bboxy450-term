@@ -1123,7 +1123,7 @@ async fn run(
     .await
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)] // Both GUI entry points share these independent runtime callbacks.
 async fn run_with_control(
     updates: Arc<Latest<Arc<Model>>>,
     mut commands: Commands,

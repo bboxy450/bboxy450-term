@@ -6,10 +6,6 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Isolated closed-source observation, immutable custody and owned C1 execution.
 //! No function in this module runs on the mux/reactor/UI owner.
-#![allow(
-    clippy::disallowed_methods,
-    reason = "dedicated C1 source/process/result owners"
-)]
 use crate::registry::dream_c1::{
     Bookmark, ExistingJournal, Journal, JournalConfig, LaunchBookmark, Record, private_dir,
 };
@@ -4177,7 +4173,7 @@ fn copy_blob(
 // write. A foreground/cancel observation between those operations prevents the
 // next effect. Pausing retains the already-read chunk and hash phase; resuming
 // never rereads or rehashes it. Every retry is a newly guarded/rested unit.
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)] // The bounded copy shares its verified offsets, digest and budget.
 fn copy_chunk(
     input: &mut File,
     output: &mut File,
@@ -4483,7 +4479,7 @@ impl ProbeAudit {
         self.unknown_birth = control.native_birth_unknown.load(Ordering::Acquire);
         self.native_effect = debt.process_effect.load(Ordering::Acquire);
         let errno = debt.process_errno.load(Ordering::Acquire);
-        self.native_errno = (errno != 0).then(|| i32::try_from(errno).ok()).flatten();
+        self.native_errno = i32::try_from(errno).ok().filter(|&code| code != 0);
         self.parent_cost_known = !debt.poisoned.load(Ordering::Acquire)
             && debt.native_clock_failures.load(Ordering::Acquire) == 0
             && control.bootstrap_clock_failures.load(Ordering::Acquire) == 0;

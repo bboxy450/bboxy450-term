@@ -976,10 +976,6 @@ fn usage_error(usage: &str) -> i32 {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::disallowed_methods,
-    reason = "Reads one checked-in Den fixture."
-)]
 mod tests {
     use super::*;
 

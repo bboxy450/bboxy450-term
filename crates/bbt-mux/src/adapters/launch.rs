@@ -352,10 +352,6 @@ mod login_shell_tests {
 
     #[test]
     #[ignore = "night: real login-shell exec boundary; make test-boundaries runs it"]
-    #[allow(
-        clippy::disallowed_methods,
-        reason = "private shell/exec fixture, never UI"
-    )]
     fn login_shell_exec_keeps_pid_exports_and_literal_arguments_for_harness_and_companion() {
         let root = tempfile::tempdir().unwrap();
         let bin = root.path().join("tools");

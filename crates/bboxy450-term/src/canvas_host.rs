@@ -5,10 +5,6 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! IO-owned canvas snapshots. Appends notify; focus/startup re-read external writers.
-#![allow(
-    clippy::disallowed_methods,
-    reason = "canvas filesystem reads execute on the IO blocking pool"
-)]
 use bboxy450_canvas::store::{Snapshot, Store};
 use bbt_proto::gui::UiCanvasSource;
 use std::{

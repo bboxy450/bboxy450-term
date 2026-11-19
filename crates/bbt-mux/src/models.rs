@@ -11,9 +11,7 @@
 //! `Broken` control (one guard removed), checked by `make test-formal` with
 //! the native `bboxy450-tlc` checker and Java TLC.
 use bboxy450_tlc::Expr::{Int, Var};
-#[allow(unused_imports)]
 use bboxy450_tlc::build::{action, all, eq, implies, model, ne, no_bad, safe};
-#[allow(unused_imports)]
 use bboxy450_tlc::{Expr, Model, Response};
 
 /// Every shipped family of this crate.

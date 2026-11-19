@@ -8,7 +8,7 @@
 //! Adapted from bboxy450-harness src/dream/bootstrap.rs at signed bab543e2116d.
 //! https://github.com/bboxy450/bboxy450-harness/blob/main/src/dream/bootstrap.rs
 //! Producer tests/fixtures/dream-bootstrap is the sole byte/vector authority.
-#![allow(missing_docs)]
+#![allow(missing_docs)] // The mirrored bootstrap DTOs follow the producer's wire contract.
 use crate::dream_c1::wire::{self, Code};
 use std::{
     fs::File,
@@ -71,7 +71,7 @@ struct CanonicalContext<'a> {
     workspace_revision: u64,
 }
 impl<'a> Binding<'a> {
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)] // Every input is a distinct field in the signed wire binding.
     pub fn new(
         purpose: Purpose,
         probe: bool,

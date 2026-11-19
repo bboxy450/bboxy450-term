@@ -5,10 +5,6 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! A stuck custody service cannot hold its caller or grow a worker per retry.
-#![allow(
-    clippy::disallowed_methods,
-    reason = "bounded custody IO, never the UI thread"
-)]
 
 use std::{
     sync::{Arc, Condvar, Mutex, OnceLock, mpsc},

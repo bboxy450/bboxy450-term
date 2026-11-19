@@ -106,8 +106,8 @@ are review artifacts; capture errors and rendering failures fail the command.
   commands sample an RGBA atlas. CoreText shapes Unicode UI lines and puts
   grayscale masks in the existing growing glyph atlas. The same pass targets
   offscreen RGBA and the window surface on one caller-owned device.
-- `build.rs`: extracts the lab's SVG dictionary and bakes 64px masks with resvg;
-  the portrait is the repository's copy of the operator's identity PNG.
+- `build.rs` extracts the lab's SVG dictionary. The renderer rasterizes those
+  icons, and the portrait comes from the repository's identity PNG.
 - `src/modules.rs`: atom/module compositions, sidebar and stage fixtures.
   Panes and mini-grids use ui-model's ratio solver and the pinned scene-15 tree.
 - `src/gallery.rs`: explicit component/state registry. Its test fails when a

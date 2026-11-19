@@ -5,10 +5,6 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Canvas tools own no second picture. MCP and ctl share these store operations.
-#![allow(
-    clippy::disallowed_methods,
-    reason = "canvas work executes on the blocking IO pool"
-)]
 use super::{Actor, Call, tools};
 use crate::{knowledge::data_source as d, registry::Class};
 use bboxy450_canvas::{

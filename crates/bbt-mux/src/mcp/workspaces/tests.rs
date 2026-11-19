@@ -4,7 +4,6 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-#![allow(clippy::disallowed_methods)] // Private real Git/process fixtures.
 use super::*;
 use crate::{index::Index, knowledge::BboxySource, messaging::wire::IssuerKind, registry::Role};
 use std::process::Command;

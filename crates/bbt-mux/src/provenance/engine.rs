@@ -168,7 +168,7 @@ impl Engine {
     /// retained envelope bytes (whatever their shape) are kept in this root's
     /// provenance store under `gap-raw/<seq>`, and the gap event says where the
     /// row came from, so a later reconciler can infer and close it.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)] // Each witness records the source, custody and index positions.
     fn record_gap(
         &mut self,
         index: &Index,

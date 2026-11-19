@@ -1460,10 +1460,6 @@ pub use watch::FileWatch;
 pub(crate) use watch::ScanBatch;
 
 #[cfg(test)]
-#[allow(
-    clippy::disallowed_methods,
-    reason = "Disposable filesystem index/watcher fixtures."
-)]
 mod tests {
     use super::*;
     use std::time::{Duration, UNIX_EPOCH};

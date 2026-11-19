@@ -246,7 +246,7 @@ fn scene<'a>(pixels: &'a [u8], size: [u32; 2], items: &'a [Surface], theme: Them
     }
 }
 
-#[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_arguments)] // The offline fixture varies paint inputs independently.
 fn paint_box(
     renderer: &mut ChromeRenderer,
     pixels: &[u8],

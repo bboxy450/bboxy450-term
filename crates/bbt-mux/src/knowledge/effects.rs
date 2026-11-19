@@ -513,10 +513,6 @@ fn apply_inner(
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::disallowed_methods,
-    reason = "private report publication fixtures"
-)]
 mod report_tests {
     use super::*;
     use crate::{

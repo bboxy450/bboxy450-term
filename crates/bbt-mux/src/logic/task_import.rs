@@ -259,8 +259,6 @@ impl Worker {
             };
         let registry = self.registry.clone();
         let commands = self.client.tx.clone();
-        #[cfg(test)]
-        let hook = self.task_import_hook.clone();
         self.task_import_jobs.spawn_blocking_on(move || {
             let _permit=permit;
             let result=(|| -> Result<_> {
@@ -275,8 +273,6 @@ impl Worker {
                 };
                 journal.effect(&actor,&call,|| {
                     let result=port.index.import_staged(*bundle,owner,&author,|| {
-                        #[cfg(test)]
-                        if let Some(hook)=hook {hook();}
                         // Read current authority after all bulk work, off the root
                         // number lock. A full/absent owner fails closed; messages
                         // never wait for this background import or its IO.

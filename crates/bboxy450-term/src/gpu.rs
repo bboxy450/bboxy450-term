@@ -181,7 +181,7 @@ impl ChromeCache {
     /// Retain only self-contained, time-independent chrome. Live cells and
     /// foreground overlays are encoded after the copy, so paging never forces
     /// hundreds of unchanged chrome passes back through Metal.
-    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_arguments)] // Shares the paint inputs of the uncached encoding path.
     fn draw(
         &mut self,
         renderer: &mut ChromeRenderer,
@@ -2114,10 +2114,6 @@ impl VerificationFrame {
     }
 
     /// The windowless driver uses the same foreground-after-pane order as winit.
-    #[allow(
-        clippy::too_many_arguments,
-        reason = "same render layers as native; completion belongs to the driver"
-    )]
     pub fn draw_layers_notifying(
         &mut self,
         ops: Vec<Paint>,

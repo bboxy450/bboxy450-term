@@ -635,7 +635,6 @@ fn write_app_ready(mut status: bbt_proto::gui::AppStatus) {
 }
 
 #[allow(
-    clippy::too_many_arguments,
     clippy::type_complexity,
     reason = "identical visible-pane admission for window and offscreen GUI"
 )]

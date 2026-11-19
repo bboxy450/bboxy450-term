@@ -4,7 +4,7 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-#![allow(missing_docs)]
+
 
 bbt_yarn::protocol! {
     mod Effectful { state { value: bool = false; } events { Ping; } effects { Work; } on Ping { case all when true => { preserve value; emit Work; reject Bad; } } }

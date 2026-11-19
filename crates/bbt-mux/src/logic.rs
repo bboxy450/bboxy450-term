@@ -330,12 +330,6 @@ enum Command {
     KnowledgeFixture(Arc<dyn DataSource + Send + Sync>, oneshot::Sender<()>),
     // Unused since the held-import test was removed as flaky (2026-11-12); its
     // deterministic replacement uses these two hooks again.
-    #[cfg(test)]
-    #[allow(dead_code)]
-    TaskImportFixture(Arc<dyn Fn() + Send + Sync>, oneshot::Sender<()>),
-    #[cfg(test)]
-    #[allow(dead_code)]
-    TaskImportReopenFailed(oneshot::Sender<()>),
     GuiMessageRow(
         Ulid,
         Ulid,
@@ -3197,8 +3191,6 @@ struct Worker {
     canvas_jobs: tokio::task::JoinSet<()>,
     canvas_rates: crate::mcp::canvas::Rates,
     task_import_capacity: BTreeMap<String, Arc<tokio::sync::Semaphore>>,
-    #[cfg(test)]
-    task_import_hook: Option<Arc<dyn Fn() + Send + Sync>>,
     debug_reads: Arc<tokio::sync::Semaphore>,
     plugins: crate::plugins::control::Control,
     plugin_jobs: tokio::task::JoinSet<()>,
@@ -3437,22 +3429,33 @@ impl Worker {
         // also avoids stealing any prior logic instance's listener on restart.
         use std::os::unix::fs::DirBuilderExt;
         // SAFETY: geteuid has no pointer arguments or side effects.
-        #[allow(unused_mut)]
-        let mut endpoint_parent=PathBuf::from("/tmp");
+        let endpoint_parent = PathBuf::from("/tmp");
         #[cfg(debug_assertions)]
-        if identity.issued_by().and_then(|label|label.strip_prefix("test-account:"))
-            .and_then(|label|label.parse::<Ulid>().ok()).is_some_and(|id|id!=Ulid::nil()) {
-            // Only an authenticated disposable account with an owned common root
-            // uses its fixture namespace. No environment label grants authority.
+        let endpoint_parent = {
             use std::os::unix::fs::MetadataExt;
-            if let Some(home)=std::env::var_os("HOME").map(PathBuf::from)
-                && home.is_absolute() && home.canonicalize().ok().as_ref()==Some(&home)
-                && let Some(parent)=home.parent()
-                && config.run_dir.canonicalize().is_ok_and(|run|run.starts_with(parent))
-                && [home.as_path(),parent].iter().all(|path|std::fs::symlink_metadata(path).is_ok_and(|m|m.is_dir()&&m.uid()==unsafe{libc::geteuid()}&&m.mode()&0o077==0)) {
-                endpoint_parent=parent.to_path_buf();
+            // A disposable account can use its owned fixture namespace.
+            let private = identity
+                .issued_by()
+                .and_then(|label| label.strip_prefix("test-account:"))
+                .and_then(|label| label.parse::<Ulid>().ok())
+                .is_some_and(|id| id != Ulid::nil());
+            if private
+                && let Some(home) = std::env::var_os("HOME").map(PathBuf::from)
+                && home.is_absolute()
+                && home.canonicalize().ok().as_ref() == Some(&home)
+                && let Some(parent) = home.parent()
+                && config.run_dir.canonicalize().is_ok_and(|run| run.starts_with(parent))
+                && [home.as_path(), parent].iter().all(|path| {
+                    std::fs::symlink_metadata(path).is_ok_and(|m| {
+                        m.is_dir() && m.uid() == unsafe { libc::geteuid() } && m.mode() & 0o077 == 0
+                    })
+                })
+            {
+                parent.to_path_buf()
+            } else {
+                endpoint_parent
             }
-        }
+        };
         let endpoint_root = endpoint_parent.join(format!(
             "bbt-{}-{}",unsafe { libc::geteuid() },Ulid::new()
         ));
@@ -3521,8 +3524,6 @@ impl Worker {
             canvas_jobs: tokio::task::JoinSet::new(),
             canvas_rates: Default::default(),
             task_import_capacity: BTreeMap::new(),
-            #[cfg(test)]
-            task_import_hook: None,
             debug_reads: Arc::new(tokio::sync::Semaphore::new(2)),
             plugins,
             plugin_jobs: tokio::task::JoinSet::new(),
@@ -7258,12 +7259,12 @@ impl Worker {
         use std::os::unix::ffi::OsStrExt;
         let run = std::fs::canonicalize(&self.config.run_dir)?;
         let digest = crate::store::digest(run.as_os_str().as_bytes());
-        #[allow(unused_mut)]
-        let mut endpoint_parent = PathBuf::from("/tmp");
+        let endpoint_parent = PathBuf::from("/tmp");
         #[cfg(debug_assertions)]
-        if self.dream_private_fixture() {
+        let endpoint_parent = {
             use std::os::unix::fs::MetadataExt;
-            if let Some(home) = std::env::var_os("HOME").map(PathBuf::from)
+            if self.dream_private_fixture()
+                && let Some(home) = std::env::var_os("HOME").map(PathBuf::from)
                 && home.is_absolute()
                 && home.canonicalize().ok().as_ref() == Some(&home)
                 && let Some(parent) = home.parent()
@@ -7276,9 +7277,11 @@ impl Worker {
                     })
                 })
             {
-                endpoint_parent = parent.to_path_buf();
+                parent.to_path_buf()
+            } else {
+                endpoint_parent
             }
-        }
+        };
         // SAFETY: geteuid has no pointer arguments or side effects.
         let root = endpoint_parent.join(format!(
             "bbt-seat-{}-{}",
@@ -12328,21 +12331,8 @@ impl Worker {
                         self.knowledge_fixture = Some(source);
                         let _ = reply.send(());
                     }
-                    #[cfg(test)]
-                    Command::TaskImportFixture(hook, reply) => {
-                        self.task_import_hook = Some(hook);
-                        let _ = reply.send(());
-                    }
                     Command::TaskImportAuthority(authority, reply) => {
                         let _ = reply.send(self.validate_task_import_authority(&authority));
-                    }
-                    #[cfg(test)]
-                    Command::TaskImportReopenFailed(reply) => {
-                        self.identity
-                            .note_reopen_failed(bbt_proto::identity::ReopenFailure {
-                                reason: "private import custody reopen failure".into(),
-                            });
-                        let _ = reply.send(());
                     }
                     Command::GuiMessageRow(swarm, message, reply) => {
                         let result = self
@@ -13176,7 +13166,6 @@ fn is_capture_busy(error: &crate::store::Error) -> bool {
         .is_some_and(|error| error.code == crate::FailureCode::Busy)
 }
 
-#[allow(clippy::disallowed_methods)] // Bounded backoff on the blocking logic IO owner, never the UI.
 fn retry_capture(mut request: impl FnMut() -> Result<Reply>) -> Result<Reply> {
     for attempt in 0..6 {
         let result = request();
@@ -13724,10 +13713,6 @@ mod close_restoration_tests {
 
 #[cfg(test)]
 mod identity_retry_clock_tests {
-    #![allow(
-        clippy::disallowed_methods,
-        reason = "private fixture IO and memory custody"
-    )]
     use super::*;
     use crate::{
         identity::{Custody, DeviceKeyStore, IdentityRuntime, IdentityState, PendingReason},

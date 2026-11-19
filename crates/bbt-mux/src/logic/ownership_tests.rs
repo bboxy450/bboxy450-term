@@ -5,7 +5,6 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Deterministic real-owner interleaving, with private blocking IO held off-owner.
-#![allow(clippy::disallowed_methods)]
 use super::*;
 use crate::{index::Index, mcp::Call, provenance::projection::WriterLease, store::Events};
 use std::sync::{Mutex, Weak, mpsc as channel};

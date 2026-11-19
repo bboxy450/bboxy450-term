@@ -2142,10 +2142,6 @@ impl BusHandle {
 }
 
 #[cfg(test)]
-#[allow(
-    clippy::disallowed_methods,
-    reason = "test/fixture IO, not the UI thread"
-)]
 mod gui_tests {
     use super::*;
 
