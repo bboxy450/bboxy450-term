@@ -2509,12 +2509,13 @@ GUI_RUN_DIR ?=
 GUI_REPOSITORY ?=
 GUI_TEST_ACCOUNT ?=
 GUI_CTL ?=
+GUI_PYTHON ?= python3
 GUI_OPTIONS = $(if $(GUI_RUN_DIR),--run-dir '$(GUI_RUN_DIR)') $(if $(GUI_REPOSITORY),--repository '$(GUI_REPOSITORY)') $(if $(GUI_CTL),--ctl)
 install-reopen: bundle
 	$(MAKE) reopen-prepared BUNDLE='$(BUNDLE)'
 
 reopen-prepared:
-	@python3 -I scripts/reopen-gui.py --prepared '$(abspath $(BUNDLE))' --destination '$(INSTALL_DIR)' $(GUI_OPTIONS)
+	@'$(GUI_PYTHON)' -I scripts/reopen-gui.py --prepared '$(BUNDLE)' --destination '$(INSTALL_DIR)' $(GUI_OPTIONS)
 
 install-unsigned-reopen: PROFILE=debug
 install-unsigned-reopen: bundle-unsigned
