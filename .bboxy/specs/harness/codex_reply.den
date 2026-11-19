@@ -1,0 +1,81 @@
+module specs.harness.CodexReply
+
+spec CodexReply {
+  intent "One tool card fed every reply shape codex-acp sends (logs of 2026-11-18): the card never shows the transport envelope, never says pending once a reply arrived, shows a failure as its message, and stops spinning when its turn ends unpolled."
+
+  // What arrived for the call, in the shapes seen in 60 sessions of logs:
+  // {result: CallToolResult, error: null} (1681), {result: null, error: {message}} (6),
+  // {$blob, $preview} (69, read back from the blob), the envelope as JSON text.
+  enum Shape { NoReply, Envelope, ErrorEnvelope, Blob, TextEnvelope }
+  // What the run reported inside the reply.
+  enum Run { NoStatus, Running, Completed, Failed }
+  enum Card { Pending, Spinning, Done, FailedCard, NotPolled }
+  enum Body { Empty, Result, Message, RawEnvelope }
+
+  state {
+    shape: Shape = Shape.NoReply
+    run: Run = Run.NoStatus
+    turn_ended: Bool = false
+    card: Card = Card.Pending
+    body: Body = Body.Empty
+  }
+
+  event Reply(s: Shape, r: Run)
+  event Poll(r: Run)
+  event TurnEnds
+
+  // The parser unwraps every envelope form to the CallToolResult inside it,
+  // reads a blob back first, and turns an error envelope into its message.
+  on Reply(s, r) {
+    case failed if shape == Shape.NoReply && s == Shape.ErrorEnvelope =>
+      { shape = s; card = Card.FailedCard; body = Body.Message }
+    case running if shape == Shape.NoReply && s != Shape.NoReply && s != Shape.ErrorEnvelope && r == Run.Running && !turn_ended =>
+      { shape = s; run = r; card = Card.Spinning; body = Body.Result }
+    case unpolled if shape == Shape.NoReply && s != Shape.NoReply && s != Shape.ErrorEnvelope && r == Run.Running && turn_ended =>
+      { shape = s; run = r; card = Card.NotPolled; body = Body.Result }
+    case finished if shape == Shape.NoReply && s != Shape.NoReply && s != Shape.ErrorEnvelope && (r == Run.Completed || r == Run.NoStatus) =>
+      { shape = s; run = r; card = Card.Done; body = Body.Result }
+    case runfailed if shape == Shape.NoReply && s != Shape.NoReply && s != Shape.ErrorEnvelope && r == Run.Failed =>
+      { shape = s; run = r; card = Card.FailedCard; body = Body.Message }
+    case late otherwise => ignore AlreadyReplied
+  }
+  // A later poll of the same execution settles a spinning card.
+  on Poll(r) {
+    case settle if card == Card.Spinning && r == Run.Completed => { run = r; card = Card.Done }
+    case settlefail if card == Card.Spinning && r == Run.Failed => { run = r; card = Card.FailedCard; body = Body.Message }
+    case nopoll otherwise => ignore NothingToSettle
+  }
+  on TurnEnds {
+    case stop if !turn_ended && card == Card.Spinning => { turn_ended = true; card = Card.NotPolled }
+    case end if !turn_ended && card != Card.Spinning => { turn_ended = true }
+    case ended otherwise => ignore AlreadyEnded
+  }
+
+  theorem CODEXREPLY_001 "the transport envelope is never the body" =
+    body != Body.RawEnvelope
+  theorem CODEXREPLY_002 "a card with a reply never says pending" =
+    shape != Shape.NoReply ==> card != Card.Pending
+  theorem CODEXREPLY_003 "a failed card shows a message" =
+    card == Card.FailedCard ==> body == Body.Message
+  theorem CODEXREPLY_004 "nothing spins after its turn ended" =
+    turn_ended ==> card != Card.Spinning
+
+  scenario "a handle in a turn that ends unpolled stops spinning" {
+    Reply(Shape.Envelope, Run.Running) ~> accepted
+    TurnEnds                          ~> accepted
+    expect card == Card.NotPolled && body == Body.Result
+  }
+  scenario "an error envelope shows its message" {
+    Reply(Shape.ErrorEnvelope, Run.NoStatus) ~> accepted
+    expect card == Card.FailedCard && body == Body.Message
+  }
+  scenario "a blob-backed reply reads like any other" {
+    Reply(Shape.Blob, Run.Completed) ~> accepted
+    expect card == Card.Done && body == Body.Result
+  }
+  scenario "a poll settles a running card" {
+    Reply(Shape.TextEnvelope, Run.Running) ~> accepted
+    Poll(Run.Completed)                    ~> accepted
+    expect card == Card.Done
+  }
+}
