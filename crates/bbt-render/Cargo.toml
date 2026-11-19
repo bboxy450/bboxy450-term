@@ -16,9 +16,15 @@ lyon_tessellation = "=1.0.22"
 png = "0.18"
 pollster = "0.4"
 resvg = { version = "=0.48.1", default-features = false }
-wgpu = { version = "=30.0.1", default-features = false, features = ["std", "metal", "wgsl"] }
+swash = "0.2.6"
+unicode-segmentation = "1.13"
+wgpu = { version = "=30.0.1", default-features = false, features = ["std", "wgsl"] }
 
-[target.'cfg(target_os = "macos")'.dependencies]
+[target.'cfg(any(target_os = "android", target_os = "linux"))'.dependencies]
+wgpu = { version = "=30.0.1", default-features = false, features = ["vulkan", "gles"] }
+
+[target.'cfg(target_vendor = "apple")'.dependencies]
+wgpu = { version = "=30.0.1", default-features = false, features = ["metal"] }
 objc2-core-foundation = "0.3.2"
 objc2-core-graphics = "0.3.2"
 objc2-core-text = "0.3.2"

@@ -4,9 +4,14 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! CoreText owns line shaping, fallback and composed-character boundaries.
+//! Logical chrome metrics and a reference line mask.
 //! The retained glyph renderer preserves native color; this reference API returns coverage.
+#[cfg(not(target_vendor = "apple"))]
+pub use crate::text::portable::{measure, rasterize, rasterize_at, x_height};
+
+#[cfg(target_vendor = "apple")]
 use crate::Result;
+#[cfg(any(test, target_vendor = "apple"))]
 use bbt_ui_model::draw::TextStyle;
 
 pub struct LineMask {
@@ -19,7 +24,7 @@ pub struct LineMask {
     pub mask: Vec<u8>,
 }
 
-/// Logical CoreText advances and typographic bounds, with no bitmap or draw.
+/// Logical advances and typographic bounds, with no bitmap or draw.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct TextMetrics {
     pub advance: f32,
@@ -28,14 +33,14 @@ pub struct TextMetrics {
     pub leading: f32,
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 struct NativeMetrics {
     advance: f64,
     ascent: f64,
     descent: f64,
     leading: f64,
 }
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 impl NativeMetrics {
     fn logical(&self) -> TextMetrics {
         TextMetrics {
@@ -46,7 +51,7 @@ impl NativeMetrics {
         }
     }
 }
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 fn typographic_bounds(line: &objc2_core_text::CTLine) -> NativeMetrics {
     let (mut ascent, mut descent, mut leading) = (0., 0., 0.);
     let advance = unsafe { line.typographic_bounds(&mut ascent, &mut descent, &mut leading) };
@@ -60,18 +65,13 @@ fn typographic_bounds(line: &objc2_core_text::CTLine) -> NativeMetrics {
 
 /// Shape chrome text without allocating a bitmap, reading coverage or drawing
 /// glyphs. The same line construction and scalar conversions serve painting.
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 pub fn measure(text: &str, style: TextStyle, max_width: Option<f32>) -> Result<TextMetrics> {
     let line = logical_line(text, style, max_width)?;
     Ok(typographic_bounds(&line).logical())
 }
-#[cfg(not(target_os = "macos"))]
-pub fn measure(_: &str, _: TextStyle, _: Option<f32>) -> Result<TextMetrics> {
-    Err("chrome text metrics require CoreText".into())
-}
-
 // The UI font has a CSS wght axis. Menlo uses CoreText's discrete faces.
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 fn upright_font(
     style: TextStyle,
 ) -> Result<objc2_core_foundation::CFRetained<objc2_core_text::CTFont>> {
@@ -85,7 +85,11 @@ fn upright_font(
     // CSS's discrete-face fallback chooses regular for Menlo 400..500.
     let base = unsafe {
         if style.mono {
-            CTFont::with_name(&CFString::from_str("Menlo"), size, std::ptr::null())
+            CTFont::with_name(
+                &CFString::from_str(crate::text::DEFAULT_MONO_FAMILY),
+                size,
+                std::ptr::null(),
+            )
         } else {
             CTFont::new_ui_font_for_language(CTFontUIFontType::System, size, None)
                 .ok_or("system UI font unavailable")?
@@ -112,7 +116,7 @@ fn upright_font(
     let weight = CFNumber::new_f64(anchors[lower] + (anchors[upper] - anchors[lower]) * fraction);
     let weight_key = unsafe { kCTFontWeightTrait };
     let traits = CFDictionary::<CFString, CFNumber>::from_slices(&[weight_key], &[weight.as_ref()]);
-    let family = CFString::from_str("Menlo");
+    let family = CFString::from_str(crate::text::DEFAULT_MONO_FAMILY);
     let values: [&CFType; 2] = [family.as_ref(), traits.as_ref()];
     let keys = unsafe { [kCTFontFamilyNameAttribute, kCTFontTraitsAttribute] };
     let attrs = CFDictionary::from_slices(&keys, &values);
@@ -123,7 +127,7 @@ fn upright_font(
 /// Fonts are rebuilt only when (mono, italic, weight, size) changes. The cache is
 /// per thread, so CTFont objects never cross threads through it (no Send wrapper);
 /// it is bounded and simply cleared when full.
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 fn native_font(
     style: TextStyle,
 ) -> Result<objc2_core_foundation::CFRetained<objc2_core_text::CTFont>> {
@@ -155,7 +159,7 @@ fn native_font(
     Ok(font)
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 fn build_font(
     style: TextStyle,
 ) -> Result<objc2_core_foundation::CFRetained<objc2_core_text::CTFont>> {
@@ -229,19 +233,14 @@ fn build_font(
 }
 
 /// Logical chrome font x-height; the terminal raster path never calls this.
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 pub fn x_height(style: TextStyle) -> Result<f32> {
     if !style.pixels().is_finite() || style.pixels() <= 0. {
         return Err("invalid chrome font size".into());
     }
     Ok(unsafe { native_font(style)?.x_height() } as f32)
 }
-#[cfg(not(target_os = "macos"))]
-pub fn x_height(_: TextStyle) -> Result<f32> {
-    Err("chrome font metrics require macOS".into())
-}
-
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 pub fn rasterize(
     text: &str,
     style: TextStyle,
@@ -252,13 +251,13 @@ pub fn rasterize(
 }
 
 /// CoreText owns logical shaping, fallback fonts and exact quarter-pixel origins.
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 pub(super) struct GlyphRun {
     pub font: objc2_core_foundation::CFRetained<objc2_core_text::CTFont>,
     pub glyphs: Vec<u16>,
     pub positions: Vec<objc2_core_foundation::CGPoint>,
 }
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 pub(super) struct ShapedLine {
     pub width: u32,
     pub height: u32,
@@ -270,7 +269,7 @@ pub(super) struct ShapedLine {
     pub scale: f32,
     pub runs: Vec<GlyphRun>,
 }
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 fn logical_line(
     text: &str,
     style: TextStyle,
@@ -354,7 +353,7 @@ fn logical_line(
     Ok(line)
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 pub(super) fn shape_at(
     text: &str,
     style: TextStyle,
@@ -441,7 +440,7 @@ pub(super) fn shape_at(
 }
 /// Grayscale chrome mask at a fractional device-pixel line origin in [0, 1).
 /// The reference raster path and glyph-cache path share shaping and fallback.
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 pub fn rasterize_at(
     text: &str,
     style: TextStyle,
@@ -519,15 +518,6 @@ pub fn rasterize_at(
         mask,
     })
 }
-#[cfg(not(target_os = "macos"))]
-pub fn rasterize(_: &str, _: TextStyle, _: Option<f32>, _: f32) -> Result<LineMask> {
-    Err("chrome text currently requires CoreText".into())
-}
-#[cfg(not(target_os = "macos"))]
-pub fn rasterize_at(_: &str, _: TextStyle, _: Option<f32>, _: f32, _: f32) -> Result<LineMask> {
-    Err("chrome text currently requires CoreText".into())
-}
-
 #[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
@@ -873,4 +863,21 @@ mod tests {
         let clipped = rasterize("Mireille Bellweather-Lockridge", style, Some(45.0), 1.0).unwrap();
         assert!(clipped.advance <= 45.01);
     }
+}
+
+#[cfg(test)]
+#[test]
+fn portable_chrome_measure_matches_raster_and_truncates_to_width() {
+    use crate::text::portable;
+    let style = TextStyle::default();
+    let text = "Hello, swarm";
+    let full = portable::measure(text, style, None).unwrap();
+    let limit = full.advance * 0.75;
+    let measured = portable::measure(text, style, Some(limit)).unwrap();
+    let painted = portable::rasterize_at(text, style, Some(limit), 2., 0.25).unwrap();
+    assert!(measured.advance > 0. && measured.advance <= limit);
+    assert_eq!(measured.advance, painted.advance);
+    assert_eq!(measured.ascent, painted.ascent);
+    assert_eq!(measured.descent, painted.descent);
+    assert!(portable::x_height(style).unwrap() > 0.);
 }

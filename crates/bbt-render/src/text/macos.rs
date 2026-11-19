@@ -4,7 +4,7 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-use super::{FontConfig, FontMetrics, RasterizedGlyph};
+use super::{DEFAULT_MONO_FAMILY, FontConfig, FontMetrics, RasterizedGlyph};
 use crate::Result;
 use objc2_core_foundation::{CFRetained, CFString, CFURL, CGPoint};
 use objc2_core_graphics::{CGBitmapContextCreate, CGColorSpace, CGContext};
@@ -41,7 +41,7 @@ impl Font {
         }
         let size = f64::from(config.size) * f64::from(config.scale);
         // SAFETY: both CFStrings are retained across each call; a null matrix means identity.
-        let query = if config.family == "SF Mono" {
+        let query = if cfg!(target_os = "macos") && config.family == "SF Mono" {
             "SF Mono Terminal"
         } else {
             &config.family
@@ -56,7 +56,9 @@ impl Font {
         };
         let actual = unsafe { native.family_name() }.to_string();
         if !normalize(&actual).contains(&normalize(&config.family)) {
-            native = unsafe { CTFont::with_name(&CFString::from_str("Menlo"), size, ptr::null()) };
+            native = unsafe {
+                CTFont::with_name(&CFString::from_str(DEFAULT_MONO_FAMILY), size, ptr::null())
+            };
         }
         let mut code = u16::from(b'M');
         let mut glyph = 0;

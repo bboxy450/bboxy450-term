@@ -7,6 +7,11 @@
 //! Shared font settings and the legacy ASCII fixture font.
 //! Current terminal cluster shaping and colour glyphs are in [`terminal`].
 
+#[cfg(target_vendor = "apple")]
+pub(crate) const DEFAULT_MONO_FAMILY: &str = "Menlo";
+#[cfg(not(target_vendor = "apple"))]
+pub(crate) const DEFAULT_MONO_FAMILY: &str = portable::FAMILY;
+
 /// Portable glyph storage contract shared by cell text and proportional chrome.
 /// Color pixels are native premultiplied BGRA, without a UI foreground tint.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -34,7 +39,7 @@ pub struct FontConfig {
 impl Default for FontConfig {
     fn default() -> Self {
         Self {
-            family: "Menlo".into(),
+            family: DEFAULT_MONO_FAMILY.into(),
             size: 13.0,
             scale: 1,
         }
@@ -58,25 +63,18 @@ pub struct RasterizedGlyph {
 
 pub mod terminal;
 
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 mod macos;
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 pub use macos::{Font, register_font_file};
 
-#[cfg(not(target_os = "macos"))]
-pub struct Font;
-#[cfg(not(target_os = "macos"))]
-impl Font {
-    pub fn new(_: &FontConfig) -> crate::Result<Self> {
-        Err("CoreText requires macOS".into())
-    }
-    pub fn metrics(&self) -> FontMetrics {
-        unreachable!()
-    }
-    pub fn effective_name(&self) -> String {
-        unreachable!()
-    }
-    pub fn rasterize(&self, _: char) -> crate::Result<Option<RasterizedGlyph>> {
-        unreachable!()
-    }
-}
+#[cfg_attr(
+    target_vendor = "apple",
+    allow(
+        dead_code,
+        reason = "compile the fallback on Apple and test it on the host"
+    )
+)]
+pub(crate) mod portable;
+#[cfg(not(target_vendor = "apple"))]
+pub use portable::Font;

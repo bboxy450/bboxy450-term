@@ -151,6 +151,7 @@ help:
 	  'make test-task-import-transport  Focused authenticated import transport and original-operation diagnostics' \
 	  'make test-clipboard-isolation   Concurrent explicitly owned private pasteboards; no general clipboard' \
 	  'make check-clipboard-isolation  Strict all-target lint for the private pasteboard fixtures' \
+	  'make check-ui-targets            Check the UI kit for the five macOS/iOS/Android/Linux targets' \
 	  'make test-parity                Full local CI including visual parity' \
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
 	  'make test-error-journal          Private fixture journals, optional probes and strict lint' \
@@ -366,6 +367,10 @@ test check: tools test-signatures test-yarn-concurrency
 	@set -eu; mkdir -p "$$(dirname '$(CI_LOG)')"; \
 	SIGNED_RANGE= BBOXY_GATE_SLOT=none BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))' sh scripts/ci-local.sh $(CI_ARGS) >'$(CI_LOG)' 2>&1 || { code=$$?; tail -60 '$(CI_LOG)'; exit $$code; }; \
 	tail -12 '$(CI_LOG)'; printf 'Full gate log: %s\n' '$(CI_LOG)'
+
+.PHONY: check-ui-targets
+check-ui-targets:
+	@set -eu; . ./scripts/cache-env.sh; sh scripts/check-ui-targets.sh '$(TARGET_DIR)'
 
 test-parity:
 	@$(MAKE) test CI_ARGS=--parity

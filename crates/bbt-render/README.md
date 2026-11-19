@@ -1,7 +1,9 @@
 # bboxy450-render — W3.1
 
-Headless wgpu **30.0.1 / Metal**, with no window or `Term` dependency. The GUI
-parity target remains `ux-prototype-v2`; chrome/showcase parity is later work.
+Headless wgpu **30.0.1**, with no window or `Term` dependency. macOS and iOS use
+Metal and CoreText. Linux and Android use Vulkan or GLES and render terminal
+and chrome text with Swash. `make check-ui-targets` checks all five target
+triples from the repository toolchain file.
 
 `render_to_rgba(&scene, width, height)` shares one device and its pipelines per
 process. `HeadlessRenderer` also allows explicit ownership. `Scene::smoke` builds
@@ -24,15 +26,18 @@ labels CJK/emoji as pending; these are not Unicode/fallback conformance results.
 If a requested font is unavailable, Menlo is used and the manifest names it.
 No font is installed into the user's library: registration is process-local.
 
-- JetBrains Mono Regular is the unmodified fixture in `tests/fonts`, with its
-  **OFL-1.1** notice beside it. Upstream revision
+- JetBrains Mono Regular is the bundled Swash face for terminal and chrome
+  text, and also serves the macOS fixture matrix. The unmodified font and
+  its **OFL-1.1** notice live together in `tests/fonts`. Upstream revision
   `19371302b95d218af43299bce79ddbddd0bc364d`; SHA-256
   `e6fd0d7e91550b3ed2b735d4312474362c4716edc4fc0577a0f61ed782d5aed1`.
   Source: <https://github.com/JetBrains/JetBrainsMono>. The font retains its own
   license; project-owned Rust contributions use the [Respectful Slop License 1.0-Draft](LICENSE), with prior grants preserved.
 - SF Mono uses the existing macOS Terminal.app `SFMono-Terminal.ttf` when present
   (effective name `SFMonoTerminal-Regular`); no Apple font is redistributed.
-- Menlo comes from the operating system.
+- Menlo comes from the operating system on macOS and iOS. On Linux and Android
+  the bundled face defines glyph coverage, and unsupported characters use its
+  missing-glyph outline.
 
 The instance layout is **32 bytes**: u16 cell coordinates, i16 bearing/size,
 four u16 atlas pixel coordinates, foreground/background RGBA8 and u32 flags.
@@ -43,10 +48,8 @@ Smoke assertions cover exact background bytes, 256-byte-padded GPU readback,
 ASCII ink in its expected cells and an asymmetric glyph's upright orientation.
 The allocator test preserves old masks/coordinates across atlas growth.
 
-Not implemented: CJK/emoji, shaping/bidi/ligatures, colour atlas, decorations,
-sprites/cursor, damage retention, term-core corpus/goldens/diffs, chrome/fx,
-surface presentation and Linux/mobile. ASCII
-outside the grid or unsupported text returns an error instead of fake glyphs.
+The legacy W3.1 fixture exercises printable ASCII, pixel placement and readback.
+It rejects text outside the grid and characters outside its ASCII contract.
 Tests require a real Metal adapter on macOS and do not silently pass without it;
 only an observed CI failure can justify the brief's environment-variable gate.
 

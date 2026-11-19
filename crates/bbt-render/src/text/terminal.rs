@@ -4,9 +4,7 @@
 // License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-//! Cell-aligned CoreText shaping with styled faces and colour emoji.
-#[cfg(not(target_os = "macos"))]
-use crate::{FontConfig, FontMetrics, Result};
+//! Cell-aligned shaping with styled faces and colour glyphs.
 
 pub use super::Format;
 
@@ -20,23 +18,11 @@ pub struct Glyph {
     pub faces: Vec<String>,
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 #[path = "terminal_macos.rs"]
 mod platform;
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 pub use platform::Fonts;
 
-#[cfg(not(target_os = "macos"))]
-pub struct Fonts;
-#[cfg(not(target_os = "macos"))]
-impl Fonts {
-    pub fn new(_: &FontConfig, _: Option<f32>, _: bool) -> Result<Self> {
-        Err("terminal fonts require CoreText on macOS".into())
-    }
-    pub fn metrics(&self) -> FontMetrics {
-        unreachable!()
-    }
-    pub fn rasterize(&self, _: &str, _: bool, _: bool, _: u8) -> Result<Option<Glyph>> {
-        unreachable!()
-    }
-}
+#[cfg(not(target_vendor = "apple"))]
+pub use super::portable::Fonts;

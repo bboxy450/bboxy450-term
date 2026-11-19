@@ -15,11 +15,20 @@ pub struct DeviceContext {
 
 impl DeviceContext {
     pub async fn new() -> Result<Self> {
-        if !cfg!(target_os = "macos") {
-            return Err("W3.1 requires macOS and the Metal backend".into());
+        #[cfg(target_vendor = "apple")]
+        let (backends, backend, label) =
+            (wgpu::Backends::METAL, "Metal", "bbt-render headless Metal");
+        #[cfg(not(target_vendor = "apple"))]
+        let (backends, backend, label) = (
+            wgpu::Backends::VULKAN | wgpu::Backends::GL,
+            "Vulkan/GLES",
+            "bbt-render headless Vulkan/GLES",
+        );
+        if !backends.intersects(wgpu::Instance::enabled_backend_features()) {
+            return Err(format!("no {backend} backend compiled for this target").into());
         }
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
-            backends: wgpu::Backends::METAL,
+            backends,
             ..wgpu::InstanceDescriptor::new_without_display_handle()
         });
         let adapter = instance
@@ -30,18 +39,18 @@ impl DeviceContext {
                 apply_limit_buckets: false,
             })
             .await
-            .map_err(|e| RenderError(format!("Metal adapter: {e}")))?;
+            .map_err(|e| RenderError(format!("{backend} adapter: {e}")))?;
         let adapter_info = adapter.get_info();
-        if adapter_info.backend != wgpu::Backend::Metal {
-            return Err(format!("expected Metal, got {:?}", adapter_info.backend).into());
+        if !backends.contains(adapter_info.backend.into()) {
+            return Err(format!("expected {backend}, got {:?}", adapter_info.backend).into());
         }
         let (device, queue) = adapter
             .request_device(&wgpu::DeviceDescriptor {
-                label: Some("bbt-render headless Metal"),
+                label: Some(label),
                 ..Default::default()
             })
             .await
-            .map_err(|e| RenderError(format!("Metal device: {e}")))?;
+            .map_err(|e| RenderError(format!("{backend} device: {e}")))?;
         Ok(Self {
             device,
             queue,

@@ -8,7 +8,7 @@
 use crate::{Result, text::Format};
 use bbt_ui_model::draw::TextStyle;
 
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 struct Font(objc2_core_foundation::CFRetained<objc2_core_text::CTFont>);
 // SAFETY: these fonts originate only in our immutable CoreText shaping runs.
@@ -17,14 +17,14 @@ struct Font(objc2_core_foundation::CFRetained<objc2_core_text::CTFont>);
 // remain local to shape_at and are never retained in the cache.
 // https://developer.apple.com/documentation/coretext
 // objc2 conservatively leaves its toll-free-bridged CTFont type !Send/!Sync.
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 unsafe impl Send for Font {}
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 unsafe impl Sync for Font {}
-#[cfg(not(target_os = "macos"))]
-type Font = u64;
+#[cfg(not(target_vendor = "apple"))]
+use crate::text::portable::Face as Font;
 
-/// CFEqual/CFHash bind the actual fallback face, variation, size and matrix.
+/// The font key includes the actual face and raster style.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub(super) struct Glyph {
     font: Font,
@@ -91,7 +91,7 @@ impl Mask {
     }
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 pub(super) fn shape(
     value: &str,
     style: TextStyle,
@@ -104,32 +104,13 @@ pub(super) fn shape(
     let s = f64::from(scale);
     for (run_index, run) in line.runs.iter().enumerate() {
         for (&id, point) in run.glyphs.iter().zip(&run.positions) {
-            let physical = [point.x * s, point.y * s];
-            let origin = physical.map(|v| v.floor() as i32);
-            let phase = [
-                physical[0] - f64::from(origin[0]),
-                physical[1] - f64::from(origin[1]),
-            ];
-            glyphs.push(Placed {
-                key: Key {
-                    scale: scale.to_bits(),
-                    blur_sigma: 0,
-                    glyphs: vec![Glyph {
-                        font: Font(run.font.clone()),
-                        id,
-                        position: phase.map(|v| {
-                            if v == 0. {
-                                0_f64.to_bits()
-                            } else {
-                                v.to_bits()
-                            }
-                        }),
-                        run_start: true,
-                    }],
-                },
-                origin,
-                run: run_index,
-            });
+            glyphs.push(place(
+                Font(run.font.clone()),
+                id,
+                [point.x * s, point.y * s],
+                scale,
+                run_index,
+            ));
         }
     }
     Ok(Shape {
@@ -140,9 +121,52 @@ pub(super) fn shape(
         glyphs,
     })
 }
-#[cfg(not(target_os = "macos"))]
-pub(super) fn shape(_: &str, _: TextStyle, _: Option<f32>, _: f32, _: f32) -> Result<Shape> {
-    Err("chrome glyph shaping requires macOS".into())
+#[cfg(not(target_vendor = "apple"))]
+pub(super) fn shape(
+    value: &str,
+    style: TextStyle,
+    max_width: Option<f32>,
+    scale: f32,
+    phase: f32,
+) -> Result<Shape> {
+    let line = crate::text::portable::shape_at(value, style, max_width, scale, phase)?;
+    Ok(Shape {
+        width: line.width,
+        height: line.height,
+        baseline: line.baseline,
+        advance: line.metrics.advance,
+        glyphs: line
+            .glyphs
+            .into_iter()
+            .map(|(id, position)| place(line.face, id, position, scale, 0))
+            .collect(),
+    })
+}
+
+fn place(font: Font, id: u16, physical: [f64; 2], scale: f32, run: usize) -> Placed {
+    let origin = physical.map(|v| v.floor() as i32);
+    let position = std::array::from_fn(|i| {
+        let phase = physical[i] - f64::from(origin[i]);
+        if phase == 0. {
+            0_f64.to_bits()
+        } else {
+            phase.to_bits()
+        }
+    });
+    Placed {
+        key: Key {
+            scale: scale.to_bits(),
+            blur_sigma: 0,
+            glyphs: vec![Glyph {
+                font,
+                id,
+                position,
+                run_start: true,
+            }],
+        },
+        origin,
+        run,
+    }
 }
 
 /// Minimal connected overlaps retain native run boundaries, never a text key.
@@ -288,7 +312,7 @@ pub(super) fn blur(mask: &Mask, sigma: f32) -> Result<Mask> {
     })
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(target_vendor = "apple")]
 pub(super) fn rasterize(key: &Key) -> Result<Mask> {
     use objc2_core_foundation::CGPoint;
     use objc2_core_graphics::{CGBitmapContextCreate, CGColorSpace, CGContext, kCGColorSpaceSRGB};
@@ -463,9 +487,54 @@ pub(super) fn rasterize(key: &Key) -> Result<Mask> {
         pixels: trimmed,
     })
 }
-#[cfg(not(target_os = "macos"))]
-pub(super) fn rasterize(_: &Key) -> Result<Mask> {
-    Err("chrome glyph rasterization requires macOS".into())
+#[cfg(not(target_vendor = "apple"))]
+pub(super) fn rasterize(key: &Key) -> Result<Mask> {
+    use crate::text::portable::Bitmap;
+    let scale = f32::from_bits(key.scale);
+    let glyphs: Vec<_> = key
+        .glyphs
+        .iter()
+        .filter_map(|glyph| {
+            glyph
+                .font
+                .bitmap(glyph.id, glyph.position.map(f64::from_bits), scale)
+        })
+        .collect();
+    let Some(first) = glyphs.first() else {
+        return Ok(Mask {
+            format: Format::Mask,
+            bounds: [0; 4],
+            merge_bounds: [0; 4],
+            pixels: Vec::new(),
+        });
+    };
+    let merge_bounds = glyphs.iter().skip(1).fold(first.bounds, |a, glyph| {
+        let b = glyph.bounds;
+        [
+            a[0].min(b[0]),
+            a[1].min(b[1]),
+            a[2].max(b[2]),
+            a[3].max(b[3]),
+        ]
+    });
+    // A one-pixel transparent atlas border keeps neighbouring quads out of filtered samples.
+    let [left, bottom, right, top] = merge_bounds;
+    let bounds = [left - 1, bottom - 1, right + 1, top + 1];
+    if right - left > 16_382 || top - bottom > 2_046 {
+        return Err("chrome text glyph component too large".into());
+    }
+    let format = if glyphs.iter().any(|g| g.format == Format::Bgra) {
+        Format::Bgra
+    } else {
+        Format::Mask
+    };
+    let image = Bitmap::composite(bounds, format, &glyphs);
+    Ok(Mask {
+        format,
+        bounds,
+        merge_bounds,
+        pixels: image.pixels,
+    })
 }
 
 #[cfg(test)]

@@ -5,6 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 use super::{Format, Glyph};
+use crate::text::DEFAULT_MONO_FAMILY;
 use crate::{FontConfig, FontMetrics, Result};
 use objc2_core_foundation::{
     CFArray, CFAttributedString, CFBoolean, CFDictionary, CFNumber, CFRange, CFRetained, CFString,
@@ -90,7 +91,7 @@ impl Fonts {
             .replace(' ', "")
             .contains(&config.family.to_lowercase().replace(' ', ""))
         {
-            regular = named("Menlo", size);
+            regular = named(DEFAULT_MONO_FAMILY, size);
         }
         let styled = |bold: bool, italic: bool| {
             let mut traits = CTFontSymbolicTraits::empty();
@@ -379,7 +380,7 @@ impl Fonts {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, target_os = "macos"))]
 mod tests {
     use super::*;
 
