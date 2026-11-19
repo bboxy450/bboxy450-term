@@ -21,7 +21,7 @@
   };
   STARTUP_STATES['restoring workspaces']={...normal,active_step:3,history:{stream:'',verified:0,total:0,operation:'Loading workspace records'}};
   STARTUP_STATES['restoring sessions']={...normal,active_step:3,history:{stream:'',verified:2,total:5,operation:'Restoring saved sessions'}};
-  const steps = ['Connect to supervisor', 'Start session runtime', 'Verify signed history', 'Restore sessions and attach cockpit'];
+  const steps = ['Connect backend', 'Start runtime', 'Verify history', 'Restore sessions'];
   const text = (s, step='body', color, weight=400) => UI.Text(String(s), {step, color, weight});
   const stack = (dir, gap, ...children) => UI.Stack({dir, gap, align: dir === 'row' ? 'center' : 'stretch'}, ...children);
   const surface = (fill, padding, radius, ...children) => {
@@ -38,16 +38,21 @@
       const mark = surface(tint(color, 12), 0, 8, text(done ? '✓' : current && data.error ? '!' : index+1, 'body', color, 600));
       Object.assign(mark.style, {width:'28px',height:'28px',flexDirection:'row',alignItems:'center',flexShrink:'0'});
       Object.assign(mark.firstElementChild.style,{flex:'1',textAlign:'center'});
-      const status = done ? 'Done' : current && data.error ? 'Failed' : current ? 'In progress' : 'Pending';
+      const status = done ? 'Done' : current && data.error ? 'Failed' : current ? 'Running' : 'Waiting';
       const header = stack('row', 12, mark, text(label, 'body', current || done ? 'var(--fg)' : 'var(--fg-dim)', current ? 600 : 400), UI.Spacer(), text(status, 'caption', color, current ? 600 : 400));
       header.lastElementChild.style.flexShrink = '0';
       const contents = [header];
       if (index === active && data.history) {
         const h = data.history;
-        const title=h.operation?(h.total>0?`${h.verified} of ${h.total} items`:h.operation):(h.total===0?'Checkpoint is current':`${h.verified} new records verified`);
-        const detail=h.operation?(h.total>0?h.operation:'Waiting for this operation to finish'):`Last checked stream · ${h.stream}`;
-        const progress = [text(title, 'heading', 'var(--fg)', 600), text(detail, 'caption', 'var(--fg-dim)')];
-        if (h.operation && h.total > 0) {
+        const operation = h.operation != null;
+        const title = operation
+          ? (h.total > 0 ? `${h.verified} / ${h.total}` : h.operation)
+          : (h.total === 0 ? 'History current' : `${h.verified} records verified`);
+        const detail = operation ? (h.total > 0 ? h.operation : '') : `Stream · ${h.stream}`;
+        const progress = [];
+        if (title) progress.push(text(title, 'heading', 'var(--fg)', 600));
+        if (detail) progress.push(text(detail, 'caption', 'var(--fg-dim)'));
+        if (operation && h.total > 0) {
           const fraction = Math.max(0, Math.min(1, h.verified / h.total));
           const pieces=[];
           for (const [share, color] of [[fraction, ink], [1-fraction, 'transparent']]) if (share > 0) {
@@ -67,12 +72,14 @@
       return row;
     });
     const checklist = stack('column', 4, ...rows);checklist.setAttribute('role','list');
-    const body = [stack('column',8,text(data.title,'heading','var(--fg)',600),text(data.description,'body','var(--fg-dim)')),checklist];
+    const heading = [text(data.title, 'heading', 'var(--fg)', 600)];
+    if (data.description) heading.push(text(data.description, 'body', 'var(--fg-dim)'));
+    const body = [stack('column', 8, ...heading), checklist];
     for (const [label,value] of data.details) body.push(stack('column',4,text(label,'caption','var(--fg-dim)'),text(value,'body','var(--fg)')));
     if (data.error) {const error = surface(tint('var(--c-errored)',6),12,8,text(data.error,'body','var(--fg)'));error.setAttribute('role','alert');body.push(error);}
     if (data.logs.length) body.push(stack('column',8,...data.logs.map(([label,path])=>stack('column',4,text(label,'caption','var(--fg-dim)',600),text(path,'caption','var(--fg-dim)')))));
     const quit = UI.Button('Quit',{kind:'ghost'});quit.onclick=()=>panel.replaceWith(Lab.el('p',{},'Preview closed. Select a startup state above to reopen.'));
-    const footer=[text(`${data.elapsed_secs} s on this step`,'caption','var(--fg-dim)'),UI.Spacer(),quit];
+    const footer=[text(`${data.elapsed_secs} s`,'caption','var(--fg-dim)'),UI.Spacer(),quit];
     if (data.error) {const retry=UI.Button('Retry');retry.onclick=()=>panel.replaceWith(startupModal(STARTUP_STATES.starting));footer.push(retry);}
     body.push(stack('row',8,...footer));
     const panel=UI.Box('modal',stack('column',data.error ? 8 : 12,...body));

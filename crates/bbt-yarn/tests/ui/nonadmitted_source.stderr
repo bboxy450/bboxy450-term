@@ -29,7 +29,6 @@ note: required by a bound in `bbt_yarn::__private::assert_SRC001_reactor_source_
   --> src/lib.rs
    |
    |     pub fn assert_SRC001_reactor_source_is_admitted__repair_use_retained_or_channel<
-   |            ------------------------------------------------------------------------ required by a bound in this function
    |         S: ReactorSource,
    |            ^^^^^^^^^^^^^ required by this bound in `assert_SRC001_reactor_source_is_admitted__repair_use_retained_or_channel`
    = note: this error originates in the macro `bbt_yarn::reactor` (in Nightly builds, run with -Z macro-backtrace for more info)

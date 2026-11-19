@@ -177,7 +177,7 @@ data={"source":sha,"dirty":False,"tlc":pins["tlc"],"java":next(iter(pins["java"]
 archive=formal.archive_evidence(target,root)
 print("formal: receipt "+json.dumps(formal.evidence_receipt(archive,root,require_clean=False),sort_keys=True))
 ''')
-        self.write("Makefile", 'test:\n\t@sh scripts/ci-local.sh > "$(CI_LOG)" 2>&1\n\ntest-harness-native:\n\t@true\ntest-formal:\n\t@python3 -I scripts/formal-stage.py export -- python3 -c "pass"\n\t@python3 -I scripts/formal-stage.py self-tests -- python3 -c "pass"\n\t@python3 -I scripts/formal-stage.py verify -- python3 -c "pass"\n\t@python3 -I scripts/formal-stage.py parity -- python3 -I scripts/fixture-formal.py "$(TARGET_DIR)"\n')
+        self.write("Makefile", 'test:\n\t@sh scripts/ci-local.sh > "$(CI_LOG)" 2>&1\n\ntest-harness-source test-harness-native test-real-sessions:\n\t@true\ntest-formal:\n\t@python3 -I scripts/formal-stage.py export -- python3 -c "pass"\n\t@python3 -I scripts/formal-stage.py self-tests -- python3 -c "pass"\n\t@python3 -I scripts/formal-stage.py verify -- python3 -c "pass"\n\t@python3 -I scripts/formal-stage.py parity -- python3 -I scripts/fixture-formal.py "$(TARGET_DIR)"\n')
         self.write("scripts/ci-local.sh", '''#!/bin/sh
 set -eu
 sha=$(git rev-parse HEAD)
@@ -1588,13 +1588,10 @@ class GateReceiptTests(unittest.TestCase):
         result = subprocess.run(['sh', 'scripts/ci-local.sh'], cwd=repo.root,
                                 env=environment, text=True, capture_output=True, timeout=15)
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('"make", "test-capability-control"', result.stdout)
-        # The model check and the native harness stage precede the control;
-        # nothing after it runs once it fails.
-        self.assertLess(result.stdout.index('"make", "test-formal"'),
-                        result.stdout.index('"make", "test-harness-native"'))
-        self.assertLess(result.stdout.index('"make", "test-harness-native"'),
-                        result.stdout.index('"make", "test-capability-control"'))
+        stages = ("test-formal", "test-harness-source", "test-harness-native",
+                  "test-real-sessions", "test-capability-control")
+        positions = [result.stdout.index(f'"make", "{stage}"') for stage in stages]
+        self.assertEqual(positions, sorted(positions))
         self.assertNotIn('"cargo", "build", "-p", "bboxy450-term"', result.stdout)
         log.write_text(result.stdout + result.stderr)
         with self.assertRaisesRegex(landing.Refusal, 'gate_log_not_green'):
