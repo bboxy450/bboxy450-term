@@ -3,7 +3,6 @@
 // Existing MIT OR Apache-2.0 terms and Kittens contributor notices apply.
 // Credit bboxy450 integration accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-#![allow(missing_docs)]
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};

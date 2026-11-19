@@ -8,7 +8,7 @@
 //! speaks ACP to `attach`, which reaches a scripted remote ACP agent through
 //! a banner-printing carrier, serve and the daemon. Also install into a
 //! private HOME and dead-line detection. Kills only daemon pids it recorded.
-#![allow(clippy::disallowed_methods)]
+#![allow(clippy::disallowed_methods)] // Disposable child and filesystem fixture.
 use bboxy450_term_remote::client::{Client, Received, Transport};
 use std::io::{BufRead, BufReader, Write};
 use std::os::unix::fs::PermissionsExt;

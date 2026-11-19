@@ -7,7 +7,7 @@
 //! The daemon keeps sessions across dropped links, driven only through the
 //! public Client and the real binary (serve pump → daemon socket → scripted
 //! fake ACP agent process). Unattended; kills only the daemon pid it recorded.
-#![allow(clippy::disallowed_methods)]
+#![allow(clippy::disallowed_methods)] // Disposable remote daemon and child-process fixture.
 use bboxy450_term_remote::client::{Client, Received, Transport};
 use std::os::unix::fs::PermissionsExt;
 

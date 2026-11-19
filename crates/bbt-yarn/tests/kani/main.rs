@@ -7,7 +7,6 @@
 // Inspired by Kani's inductive harnesses and automatic private-struct generation:
 // https://model-checking.github.io/kani/reference/experimental/autoharness.html
 #![cfg(all(feature = "macros", feature = "model"))]
-#![allow(unexpected_cfgs)]
 
 // Reuse the actual good/broken declarations and their native witnesses verbatim.
 #[path = "../protocol.rs"]

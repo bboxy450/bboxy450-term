@@ -5,7 +5,6 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Export the actual verification declaration for the baseline guard.
-#![allow(clippy::disallowed_methods)]
 
 #[path = "../tests/protocol.rs"]
 #[allow(dead_code)] // This exporter consumes one contract; the file also carries broken controls.

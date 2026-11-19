@@ -7,7 +7,7 @@
 //! Relay end to end with nobody present: a real Unix socket link, a scripted
 //! fake ACP agent process (stands in for `bboxy450-harness acp`), reconnect
 //! with resume, a duplicate op, an epoch change and a server restart.
-#![allow(clippy::disallowed_methods)]
+#![allow(clippy::disallowed_methods)] // Private listener, filesystem and restart fixture.
 use bboxy450_term_remote::frame::{self, Frame, VERSION};
 use bboxy450_term_remote::resume::{Accept, Cursor};
 use bboxy450_term_remote::serve::Server;

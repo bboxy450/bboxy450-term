@@ -5,7 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! The checked declaration owns the card and its Mermaid corpus fixture.
-#![allow(clippy::disallowed_methods)]
+#![allow(clippy::disallowed_methods)] // Reads the checked-in card fixture outside the app.
 use bboxy450_term_remote::delivery::RemoteDelivery as M;
 use bbt_yarn::card::{View, generate};
 use std::path::Path;

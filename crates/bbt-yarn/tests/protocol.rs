@@ -6,7 +6,6 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 // The exporter includes these very declarations: no handwritten parallel model.
 #![cfg(all(feature = "model", feature = "macros"))]
-#![allow(missing_docs)]
 
 bbt_yarn::protocol! {
     pub mod LatestResult {

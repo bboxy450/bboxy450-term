@@ -7,9 +7,5 @@ pub mod index;
 /// Synchronized-output timing interfaces used by the parser and terminal model.
 pub mod sync;
 // Vendored upstream: style lints are not fixed in the imported source.
-#[allow(
-    clippy::let_and_return,
-    clippy::collapsible_if,
-    clippy::manual_is_multiple_of
-)]
+#[allow(clippy::let_and_return, clippy::collapsible_if)]
 pub mod term;

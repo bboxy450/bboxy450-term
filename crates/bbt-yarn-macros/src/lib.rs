@@ -380,7 +380,6 @@ fn parse_policy(input: ParseStream<'_>) -> Result<Policy> {
     Ok(Policy { required_phases })
 }
 
-#[allow(clippy::too_many_lines)]
 fn parse_arm(attrs: Vec<Attribute>, input: ParseStream<'_>) -> Result<Arm> {
     let binding = Pat::parse_single(input)?;
     match &binding {
@@ -685,8 +684,6 @@ impl Parse for DrainArgs {
     }
 }
 
-// Vendored upstream: retain the validator syntax; only crate paths change.
-#[allow(clippy::too_many_lines, clippy::collapsible_if)]
 fn validate(reactor: &Reactor) -> Result<()> {
     if reactor.arms.is_empty() {
         return Err(ktr(
@@ -812,19 +809,19 @@ fn validate(reactor: &Reactor) -> Result<()> {
             "keep exactly one global last source",
         ));
     }
-    if let Some((index, arm, span)) = last.first().copied() {
-        if index + 1 != reactor.arms.len() {
-            return Err(ktr(
-                span,
-                "KTR004",
-                &format!(
-                    "source `{}` is declared `last`, but source `{}` follows it",
-                    arm.id,
-                    reactor.arms[index + 1].id
-                ),
-                "move the complete last source arm to the end without changing its attributes",
-            ));
-        }
+    if let Some((index, arm, span)) = last.first().copied()
+        && index + 1 != reactor.arms.len()
+    {
+        return Err(ktr(
+            span,
+            "KTR004",
+            &format!(
+                "source `{}` is declared `last`, but source `{}` follows it",
+                arm.id,
+                reactor.arms[index + 1].id
+            ),
+            "move the complete last source arm to the end without changing its attributes",
+        ));
     }
 
     let mut edges = Vec::new();
@@ -1186,9 +1183,7 @@ fn expand_phase(phase: &Phase, kittens: &TokenStream2) -> TokenStream2 {
     quote! {
         match #kittens::__private::assert_KTR013_phase_result((async #block).await) {
             core::result::Result::Ok(()) => {}
-            core::result::Result::Err(__kittens_error) => {
-                return core::result::Result::Err(__kittens_error);
-            }
+            error @ core::result::Result::Err(_) => return error.map(|_| unreachable!()),
         }
     }
 }
@@ -1281,7 +1276,7 @@ fn expand_event_selection(
     };
 
     quote! {
-        #[allow(non_camel_case_types)]
+        #[allow(non_camel_case_types)] // Generated event names are private to the macro expansion.
         enum __KittensEvent<#(#generics),*> {
             #(#variants(#generics)),*
         }
@@ -1404,9 +1399,7 @@ fn expand_service_window(
                 (async #handler).await
             ) {
                 core::result::Result::Ok(__kittens_exit) => __kittens_exit,
-                core::result::Result::Err(__kittens_error) => {
-                    return core::result::Result::Err(__kittens_error);
-                }
+                error @ core::result::Result::Err(_) => return error,
             };
             break '__kittens_reactor core::result::Result::Ok(__kittens_exit);
         };
@@ -1419,9 +1412,7 @@ fn expand_service_window(
                 (async #handler).await
             ) {
                 core::result::Result::Ok(__kittens_control) => __kittens_control,
-                core::result::Result::Err(__kittens_error) => {
-                    return core::result::Result::Err(__kittens_error);
-                }
+                error @ core::result::Result::Err(_) => return error.map(|_| unreachable!()),
             };
             match __kittens_control {
                 #kittens::reactor::Control::Continue => {}
@@ -1453,9 +1444,7 @@ fn expand_service_window(
                 (async #handler).await
             ) {
                 core::result::Result::Ok(__kittens_control) => __kittens_control,
-                core::result::Result::Err(__kittens_error) => {
-                    return core::result::Result::Err(__kittens_error);
-                }
+                error @ core::result::Result::Err(_) => return error.map(|_| unreachable!()),
             };
             match __kittens_control {
                 #kittens::reactor::Control::Continue => {}
@@ -1532,7 +1521,6 @@ mod tests {
         }
     }
 
-    #[allow(clippy::needless_pass_by_value)]
     fn one_arm(attrs: TokenStream2, binding: TokenStream2, source: TokenStream2) -> TokenStream2 {
         quote! {
             policy {
@@ -1592,7 +1580,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::too_many_lines)]
     fn lean_policy_and_phase_contract_rejects_drift() {
         let cases = [
             (
@@ -1725,7 +1712,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::too_many_lines)]
     fn arm_grammar_enforces_one_canonical_declaration() {
         let cases = [
             (
@@ -2015,7 +2001,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::too_many_lines)]
     fn topology_validator_rejects_each_declared_hazard() {
         let cases = [
             (

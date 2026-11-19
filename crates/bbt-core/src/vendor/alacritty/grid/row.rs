@@ -105,7 +105,7 @@ impl<T: Default> Row<T> {
     }
 }
 
-#[allow(clippy::len_without_is_empty)]
+#[allow(clippy::len_without_is_empty)] // Length is allocated width; is_clear exposes occupancy.
 impl<T> Row<T> {
     #[inline]
     /// Adopt cells and their caller-supplied occupied-prefix length without validation.

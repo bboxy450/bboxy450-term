@@ -3,7 +3,7 @@
 // Existing MIT OR Apache-2.0 terms and Kittens contributor notices apply.
 // Credit bboxy450 integration accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-#![allow(dead_code)]
+#![allow(dead_code)] // Compiles the boundary witness without running a reactor.
 
 async fn raw_runtime_bypass() {
     let (_sender, mut receiver) = tokio::sync::mpsc::channel::<u8>(1);

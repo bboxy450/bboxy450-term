@@ -8,7 +8,6 @@
 // https://lamport.azurewebsites.net/tla/high-level-view.html. No source copied.
 // The exporter includes these declarations, including the three broken controls.
 #![cfg(feature = "macros")]
-#![allow(missing_docs)]
 
 // One frame, two nonreused generations, one owner, arbitrary completion order.
 // Fairness is on the presentation case, never on ignored completion events.

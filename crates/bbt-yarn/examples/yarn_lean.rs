@@ -6,11 +6,10 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Export `protocol!` theorems to Lean 4 for `make test-lean`. Lean checks them; this only writes.
 // Standalone development tool, outside the UI.
-#![allow(clippy::disallowed_methods)]
 use std::path::Path;
 
 #[path = "../tests/protocol_runtime.rs"]
-#[allow(dead_code)]
+#[allow(dead_code)] // The imported fixture also defines runtime-only witnesses.
 mod protocol_language;
 #[path = "../../bboxy450-term-remote/src/delivery.rs"]
 #[allow(dead_code)] // Only the declarations' Lean export is used here.

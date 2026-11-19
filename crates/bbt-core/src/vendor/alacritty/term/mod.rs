@@ -2372,7 +2372,7 @@ impl TabStops {
     #[inline]
     fn new(columns: usize) -> TabStops {
         TabStops {
-            tabs: (0..columns).map(|i| i % INITIAL_TABSTOPS == 0).collect(),
+            tabs: (0..columns).map(|i| i.is_multiple_of(INITIAL_TABSTOPS)).collect(),
         }
     }
 
@@ -2389,7 +2389,7 @@ impl TabStops {
     fn resize(&mut self, columns: usize) {
         let mut index = self.tabs.len();
         self.tabs.resize_with(columns, || {
-            let is_tabstop = index % INITIAL_TABSTOPS == 0;
+            let is_tabstop = index.is_multiple_of(INITIAL_TABSTOPS);
             index += 1;
             is_tabstop
         });

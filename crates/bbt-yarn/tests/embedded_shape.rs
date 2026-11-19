@@ -4,7 +4,7 @@
 // Credit bboxy450 integration accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 #![allow(clippy::disallowed_methods)] // Standalone upstream test runtime, outside the UI.
-#![allow(clippy::ignored_unit_patterns, dead_code, missing_docs)]
+#![allow(dead_code)] // The upstream fixture models display modes outside this scenario.
 
 use std::convert::Infallible;
 
@@ -101,8 +101,6 @@ impl Firmware {
         });
     }
 
-    // Vendored upstream: retain the fixture body unchanged.
-    #[allow(clippy::collapsible_if)]
     async fn run(&mut self, sources: &mut Sources) -> Result<(), Infallible> {
         bbt_yarn::reactor! {
             policy {
@@ -111,11 +109,12 @@ impl Firmware {
             }
 
             before_poll {
-                if let Some(due) = self.frame_due {
-                    if self.now_ms >= due && sources.frame_deadline.is_dormant() {
-                        sources.frame_deadline.arm(due).unwrap();
-                        self.frame_due = None;
-                    }
+                if let Some(due) = self.frame_due
+                    && self.now_ms >= due
+                    && sources.frame_deadline.is_dormant()
+                {
+                    sources.frame_deadline.arm(due).unwrap();
+                    self.frame_due = None;
                 }
                 Ok(())
             }

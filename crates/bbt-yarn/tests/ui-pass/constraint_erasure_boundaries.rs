@@ -3,7 +3,7 @@
 // Existing MIT OR Apache-2.0 terms and Kittens contributor notices apply.
 // Credit bboxy450 integration accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-#![allow(dead_code, unused_imports, unused_variables)]
+#![allow(dead_code, unused_imports, unused_variables)] // Type-level witness definitions are compiled without executing them.
 
 use std::collections::VecDeque;
 

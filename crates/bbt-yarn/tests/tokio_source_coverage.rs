@@ -4,7 +4,6 @@
 // Credit bboxy450 integration accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 #![allow(clippy::disallowed_methods)] // Standalone upstream test runtime, outside the UI.
-#![allow(missing_docs)]
 
 use std::future::Future;
 use std::pin::Pin;

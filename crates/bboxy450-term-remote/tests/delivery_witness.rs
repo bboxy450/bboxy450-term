@@ -5,7 +5,7 @@
 // Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Exhaustive refinement of runtime operations, with a volatile-journal control.
-#![allow(clippy::disallowed_methods)]
+#![allow(clippy::disallowed_methods)] // Owns a temporary durable journal and its replay.
 use bboxy450_term_remote::delivery::{BrokenRemoteDelivery, RemoteDelivery as M};
 use bboxy450_term_remote::link::{AppliedJournal, Arrival, FileJournal, Inbox, Outbox};
 use bbt_yarn::model::{Model, Report};

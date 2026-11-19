@@ -5,7 +5,7 @@
 // Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
 //! Minimal executable reactor with one shutdown latch and one buffered source.
 
-#![allow(clippy::ignored_unit_patterns, clippy::disallowed_methods)] // Standalone example runtime.
+#![allow(clippy::disallowed_methods)] // Standalone example runtime.
 
 use std::convert::Infallible;
 
