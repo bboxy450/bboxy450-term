@@ -10316,6 +10316,31 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("{HELP}\n{}", stall::HELP);
         return Ok(());
     }
+    // Every process records its panics where `ctl debug errors` shows them: the
+    // window's stderr is /dev/null, so a panic in a pane's task (a frozen pane,
+    // 2026-11-18) otherwise left no trace at all. The default hook still prints.
+    {
+        let role = hook_args.first().cloned().unwrap_or_else(|| "window".into());
+        let previous = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            let message = info
+                .payload()
+                .downcast_ref::<&str>()
+                .map(|s| (*s).to_owned())
+                .or_else(|| info.payload().downcast_ref::<String>().cloned())
+                .unwrap_or_else(|| "non-string panic".into());
+            let at = info
+                .location()
+                .map_or_else(String::new, |l| format!(" at {}:{}", l.file(), l.line()));
+            let thread = std::thread::current().name().unwrap_or("unnamed").to_owned();
+            bbt_rt::error_journal::report(bbt_rt::error_journal::Failure::new(
+                &role,
+                "panic",
+                format!("{message}{at} (thread {thread})"),
+            ));
+            previous(info);
+        }));
+    }
     if hook_args.iter().any(|arg| arg == "--capture") {
         std::panic::set_hook(Box::new(|info| {
             eprintln!(
