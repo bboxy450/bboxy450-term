@@ -162,6 +162,7 @@ impl DirtySource {
         }
     }
 
+    #[cfg(feature = "runtime")]
     pub(crate) fn complete_drain(&self) {
         self.shared.words[self.index / 64]
             .retained
