@@ -7,7 +7,6 @@
 //! Example `decision_model` plugin: picks the criterion whose description
 //! shares the most words with the instructions and state. Deterministic and
 //! offline; a hosted model (for example Jev) would answer the same request.
-#![allow(clippy::disallowed_methods)] // A plugin process: no UI thread.
 
 use std::collections::{BTreeMap, BTreeSet};
 

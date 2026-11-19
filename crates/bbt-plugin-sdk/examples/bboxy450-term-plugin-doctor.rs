@@ -8,7 +8,6 @@
 //! runs a plugin through the host contract offline and lists its gaps.
 //! Exit 0 when no gap is an error, 1 otherwise, 2 on usage errors.
 // A command-line tool with no UI thread.
-#![allow(clippy::disallowed_methods)]
 
 use std::path::PathBuf;
 use std::time::Duration;

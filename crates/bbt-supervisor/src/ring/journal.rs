@@ -296,26 +296,26 @@ impl Journal {
         self.buffer.extend_from_slice(bytes);
         Ok(())
     }
-    #[allow(clippy::redundant_closure_call, reason = "cfg(test) injects partial writes inside this rollback boundary")]
     fn flush_buffer(&mut self) -> Result<()> {
         if !self.buffer.is_empty() {
             // write_all may have written a prefix before ENOSPC. Retain the
             // complete buffer and restore its exact start before any retry.
             let start = self.length - self.buffer.len() as u64;
             self.file.set_len(start)?;
-            let result = (|| -> std::io::Result<()> {
-                #[cfg(test)]
-                if self
-                    .disk_full
-                    .as_ref()
-                    .is_some_and(|flag| flag.load(std::sync::atomic::Ordering::Acquire))
-                {
-                    self.file
-                        .write_all(&self.buffer[..self.buffer.len().min(17)])?;
-                    return Err(std::io::Error::from_raw_os_error(libc::ENOSPC));
-                }
+            #[cfg(test)]
+            let disk_full = self
+                .disk_full
+                .as_ref()
+                .is_some_and(|flag| flag.load(std::sync::atomic::Ordering::Acquire));
+            #[cfg(not(test))]
+            let disk_full = false;
+            let result = if disk_full {
+                self.file
+                    .write_all(&self.buffer[..self.buffer.len().min(17)])
+                    .and(Err(std::io::Error::from_raw_os_error(libc::ENOSPC)))
+            } else {
                 self.file.write_all(&self.buffer)
-            })();
+            };
             if let Err(error) = result {
                 self.file.set_len(start)?;
                 return Err(error.into());

@@ -89,7 +89,6 @@ pub(super) fn wire_page(page: &History) {
 
 // keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
 #[test]
-#[allow(clippy::disallowed_methods)] // Owned temporary hot/cold capture fixture.
 fn hot_and_cold_pages_fit_the_wire_and_keep_every_record_in_order() {
     let root = tempfile::tempdir().unwrap();
     let seat = Ulid::from(u128::MAX);
@@ -140,7 +139,6 @@ fn hot_and_cold_pages_fit_the_wire_and_keep_every_record_in_order() {
 
 // keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
 #[test]
-#[allow(clippy::disallowed_methods)] // Fault only the unrequested in-memory entry.
 fn a_full_page_returns_before_decoding_the_following_entry() {
     let root = tempfile::tempdir().unwrap();
     let seat = Ulid::new();

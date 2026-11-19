@@ -7,7 +7,6 @@
 //! One fixture executable; its variant is compiled in (`BBOXY_PLUGIN_FIXTURE`).
 
 // A plugin is its own process with no UI thread; blocking stdio is its job.
-#![allow(clippy::disallowed_methods)]
 
 use bbt_plugin_fixture::Knobs;
 

@@ -10,7 +10,6 @@
 //! decides who may make a transition.
 //!
 //! Build: `cargo build -p bboxy450-term-plugin-sdk --example bboxy450-term-task_system-example`.
-#![allow(clippy::disallowed_methods)] // A plugin process: no UI thread.
 
 use std::collections::BTreeMap;
 

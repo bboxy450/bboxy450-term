@@ -143,10 +143,13 @@ impl Default for Queue {
 impl Queue {
     fn automatic_ticks(&self) -> bool {
         #[cfg(test)]
-        if self.manual_ticks {
-            return false;
+        {
+            !self.manual_ticks
         }
-        true
+        #[cfg(not(test))]
+        {
+            true
+        }
     }
 }
 struct Shared {
@@ -1222,7 +1225,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::disallowed_methods)] // A partial buffered append must retry at the same sequence.
     fn disk_full_append_retry_keeps_the_sequence_and_crc_prefix() {
         use std::sync::atomic::{AtomicBool, Ordering};
         let temp = tempfile::tempdir().unwrap();
@@ -1270,7 +1272,6 @@ mod tests {
     }
 
     #[test]
-    #[allow(clippy::disallowed_methods)] // Reopen the durable prefix after an interrupted projection.
     fn interrupted_projection_reopens_before_retrying_the_journal_tail() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("ring");
@@ -1363,7 +1364,6 @@ mod tests {
 
     // keeps: spec mux-daemon.md — Ring records, checkpoints and eviction
     #[test]
-    #[allow(clippy::disallowed_methods)] // Owned ring and journal paging fixture.
     fn ring_and_journal_paging_is_contiguous_wire_bounded_and_does_not_decode_past_full() {
         let root = tempfile::tempdir().unwrap();
         let seat = Ulid::new();
