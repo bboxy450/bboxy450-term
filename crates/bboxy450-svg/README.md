@@ -58,9 +58,8 @@ captures and recorded actual image inspection. Run `make svg-review` to inspect
 the existing paint/interpolation evidence without another browser run.
 Normal `make svg-loop` still fails until native renderer acceptance exists.
 
-The oracle includes the existing bbt-render comparator directly. Phase A reads
-bboxybook's current policy; the renderer phase moves its numeric constants once
-to that comparator. No native renderer or second font stack is introduced here.
+The oracle includes the existing bbt-render comparator directly. Both the loop
+and bboxybook consume the policy constants beside that comparator.
 
 Authored chart/isolation fixtures:
 https://github.com/bboxy450/bboxy450-term.

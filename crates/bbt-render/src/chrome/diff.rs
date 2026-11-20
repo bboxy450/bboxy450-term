@@ -8,6 +8,9 @@
 //! This intentionally ranks review images; it does not bless a new golden.
 pub const CHANNEL_TOLERANCE: u8 = 8;
 pub const CHANGED_BUDGET: f64 = 0.001;
+pub const VECTOR_CHANGED_BUDGET: f64 = 0.005;
+pub const TEXT_CHANGED_BUDGET: f64 = 0.02;
+pub const TEXT_GEOMETRY_TOLERANCE_PX: f64 = 0.5;
 pub struct Difference {
     pub changed_fraction: f64,
     pub mean_error: f64,
