@@ -63,6 +63,12 @@ svg-exporters:
 	@test -x '$(TARGET_DIR)/svg-loop/venv/bin/python' || uv venv --python python3.12 '$(TARGET_DIR)/svg-loop/venv'
 	@uv pip sync --python '$(TARGET_DIR)/svg-loop/venv/bin/python' --require-hashes crates/bboxy450-svg/requirements.lock
 
+.PHONY: test-svg-policy
+test-svg-policy: svg-exporters
+	@set -eu; . scripts/cache-env.sh; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-book -p bboxy450-render --lib --target-dir '$(TARGET_DIR)' -E 'test(parity::tests::) | test(chrome::diff::tests::)'
+	@PYTHONDONTWRITEBYTECODE=1 '$(TARGET_DIR)/svg-loop/venv/bin/python' crates/bboxy450-svg/test_policy.py
+
 .PHONY: svg-review
 svg-review:
 	@PYTHONDONTWRITEBYTECODE=1 '$(TARGET_DIR)/svg-loop/venv/bin/python' crates/bboxy450-svg/review.py '$(TARGET_DIR)/svg-loop'
