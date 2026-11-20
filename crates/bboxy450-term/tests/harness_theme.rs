@@ -202,3 +202,26 @@ fn harness_theme_worker_preserves_identity_draft_and_latest_aba() {
     drop(pane);
     drop(server);
 }
+
+// The embedded toolkit contains Close before the standalone harness toolkit pin.
+// keeps: spec svg-renderer — a transformed closed contour retains its closing command.
+#[test]
+fn closed_harness_path_survives_a_quarter_turn() {
+    use bbt_ui::components::PathCommand as P;
+    use bboxy450_harness::frontends::gui::stream_motion::turned;
+
+    let commands = [
+        P::Move([2., 2.]),
+        P::Line([12., 2.]),
+        P::Line([12., 12.]),
+        P::Close,
+    ];
+    let rotated = turned(&commands, 90., [8., 8.]);
+    let [P::Move(a), P::Line(b), P::Line(c), P::Close] = rotated.as_slice() else {
+        panic!("rotation changed the closed path's command stream: {rotated:?}");
+    };
+    for (point, expected) in [a, b, c].into_iter().zip([[14., 2.], [14., 12.], [4., 12.]]) {
+        assert!((point[0] - expected[0]).abs() < 1e-4);
+        assert!((point[1] - expected[1]).abs() < 1e-4);
+    }
+}

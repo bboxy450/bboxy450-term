@@ -164,6 +164,7 @@ help:
 	  'make lock                       Refresh workspace lock metadata offline' \
 	  'make lock-online                Resolve added dependencies with the registry' \
 	  'make bump-harness [REV=sha]      Move and stage the harness submodule and changed lockfile (default origin/main)' \
+	  'make publish-harness-compat REV=sha  Verify and publish the original-pin Close compatibility branch' \
 	  'make tools                      Install the Rust workflow tools (cargo-nextest, kache) once per machine' \
 	  'make land / make push           Diff-scoped gate (affected crates + dependents, nextest), then push' \
 	  'make land-full                  Full signed gate (make test in a warm, queued gate slot)' \
@@ -412,6 +413,39 @@ lock-online:
 .PHONY: bump-harness
 bump-harness:
 	@set -eu; . ./scripts/cache-env.sh; python3 -I scripts/bump-harness.py '$(REV)'
+
+# This original-pin compatibility ref is retired by the coordinated toolkit bump.
+override HARNESS_COMPAT_BASE := ae2cb09bc3293570d5e89cf4a3c0530d91ba7a82
+override HARNESS_COMPAT_REF := refs/heads/compat/svg-close-rust-1.99
+.PHONY: publish-harness-compat
+publish-harness-compat:
+	@set -eu; revision='$(REV)'; test "$${#revision}" -eq 40; \
+	case "$$revision" in *[!0-9a-f]*) echo 'REV must be the full lowercase compatibility SHA' >&2; exit 2 ;; esac; \
+	test "$$(git -C crates/bboxy450-harness rev-parse HEAD)" = "$$revision"; \
+	test -z "$$(git -C crates/bboxy450-harness status --porcelain)"; \
+	git -C crates/bboxy450-harness merge-base --is-ancestor '$(HARNESS_COMPAT_BASE)' "$$revision"; \
+	for path in $$(git -C crates/bboxy450-harness diff --name-only '$(HARNESS_COMPAT_BASE)' "$$revision"); do \
+	    case "$$path" in src/frontends/gui/face.rs|src/frontends/gui/stream_motion.rs) ;; *) echo "foreign compatibility path: $$path" >&2; exit 2 ;; esac; \
+	done; \
+	git check-ref-format '$(HARNESS_COMPAT_REF)'; \
+	test "$$(git -C crates/bboxy450-harness remote get-url --all origin)" = "$$(git config -f .gitmodules --get submodule.crates/bboxy450-harness.url)"; \
+	test "$$(git -C crates/bboxy450-harness remote get-url --push --all origin)" = "$$(git config -f .gitmodules --get submodule.crates/bboxy450-harness.url)"; \
+	remote=$$(git -C crates/bboxy450-harness ls-remote origin '$(HARNESS_COMPAT_REF)'); test -z "$$remote"; \
+	(cd crates/bboxy450-harness && python3 -I ../../scripts/verify-signatures.py '$(HARNESS_COMPAT_BASE)..$(REV)')
+	@$(MAKE) -C crates/bboxy450-harness -j1 test-licenses check-embedded-lints TARGET_DIR='$(abspath $(TARGET_DIR))'
+	@set -eu; export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; . ./scripts/cache-env.sh; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-harness --features embedded --test gui_motion_stream --target-dir '$(TARGET_DIR)' -E 'test(=a_chevron_turned_90_degrees_is_the_down_chevron)'; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-render --lib --target-dir '$(TARGET_DIR)' -E 'test(=chrome::paths::tests::close_survives_foreground_and_dash_lowering)'; \
+	sh scripts/quarantine-test.sh --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' -E 'test(=harness_theme::closed_harness_path_survives_a_quarter_turn)'
+	@set -eu; test "$$(git -C crates/bboxy450-harness rev-parse HEAD)" = '$(REV)'; \
+	test -z "$$(git -C crates/bboxy450-harness status --porcelain)"; \
+	test "$$(git -C crates/bboxy450-harness remote get-url --all origin)" = "$$(git config -f .gitmodules --get submodule.crates/bboxy450-harness.url)"; \
+	test "$$(git -C crates/bboxy450-harness remote get-url --push --all origin)" = "$$(git config -f .gitmodules --get submodule.crates/bboxy450-harness.url)"; \
+	remote=$$(git -C crates/bboxy450-harness ls-remote origin '$(HARNESS_COMPAT_REF)'); test -z "$$remote"; \
+	GIT_TERMINAL_PROMPT=0 git -C crates/bboxy450-harness push origin '$(REV):$(HARNESS_COMPAT_REF)'; \
+	remote=$$(git -C crates/bboxy450-harness ls-remote origin '$(HARNESS_COMPAT_REF)'); \
+	test "$$remote" = "$$(printf '%s\t%s' '$(REV)' '$(HARNESS_COMPAT_REF)')"; \
+	printf 'harness compatibility: %s %s\n' '$(REV)' '$(HARNESS_COMPAT_REF)'
 
 # The harness builds alone: built with the app in one invocation, Cargo unifies
 # its ACP dependency's serde_json/preserve_order into the app, whose record
