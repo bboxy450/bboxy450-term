@@ -422,7 +422,7 @@ publish-harness-compat:
 	@set -eu; revision='$(REV)'; test "$${#revision}" -eq 40; \
 	case "$$revision" in *[!0-9a-f]*) echo 'REV must be the full lowercase compatibility SHA' >&2; exit 2 ;; esac; \
 	test "$$(git -C crates/bboxy450-harness rev-parse HEAD)" = "$$revision"; \
-	test -z "$$(git -C crates/bboxy450-harness status --porcelain)"; \
+	test -z "$$(git -C crates/bboxy450-harness status --porcelain --untracked-files=all)"; \
 	git -C crates/bboxy450-harness merge-base --is-ancestor '$(HARNESS_COMPAT_BASE)' "$$revision"; \
 	for path in $$(git -C crates/bboxy450-harness diff --name-only '$(HARNESS_COMPAT_BASE)' "$$revision"); do \
 	    case "$$path" in src/frontends/gui/face.rs|src/frontends/gui/stream_motion.rs) ;; *) echo "foreign compatibility path: $$path" >&2; exit 2 ;; esac; \
@@ -438,7 +438,7 @@ publish-harness-compat:
 	sh scripts/quarantine-test.sh --locked -p bboxy450-render --lib --target-dir '$(TARGET_DIR)' -E 'test(=chrome::paths::tests::close_survives_foreground_and_dash_lowering)'; \
 	sh scripts/quarantine-test.sh --locked -p $(APP) --test it --target-dir '$(TARGET_DIR)' -E 'test(=harness_theme::closed_harness_path_survives_a_quarter_turn)'
 	@set -eu; test "$$(git -C crates/bboxy450-harness rev-parse HEAD)" = '$(REV)'; \
-	test -z "$$(git -C crates/bboxy450-harness status --porcelain)"; \
+	test -z "$$(git -C crates/bboxy450-harness status --porcelain --untracked-files=all)"; \
 	test "$$(git -C crates/bboxy450-harness remote get-url --all origin)" = "$$(git config -f .gitmodules --get submodule.crates/bboxy450-harness.url)"; \
 	test "$$(git -C crates/bboxy450-harness remote get-url --push --all origin)" = "$$(git config -f .gitmodules --get submodule.crates/bboxy450-harness.url)"; \
 	remote=$$(git -C crates/bboxy450-harness ls-remote origin '$(HARNESS_COMPAT_REF)'); test -z "$$remote"; \
