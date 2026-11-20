@@ -29,6 +29,7 @@ cargo test -p bboxy450-term --locked --test it headless::test_account_ui_clock_f
 cargo test -p bboxy450-term --locked --test it headless::retained_gap_fixture_requires_actual_test_account_and_preserves_live_bytes -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --test it plugins::real_binary_runs_headless_against_a_fixture_without_opening_the_production_root -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --bin bboxy450-term live::tests::live_e2e_and_ctl_share_one_corpus_and_refresh_from_document_events -- --ignored --exact --nocapture
+cargo test -p bboxy450-term --locked --bin bboxy450-term live::tests::knowledge_provider_events_publish_the_status_and_reread_tasks -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --bin bboxy450-term live::tests::real_io_echo_resize_reflow_and_logic_loss_retains_last_frame -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --bin bboxy450-term live::tests::real_io_scrollback_reaches_first_line_joins_live_and_releases_on_input -- --ignored --exact --nocapture
 cargo test -p bboxy450-term --locked --bin bboxy450-term stall::load::tests::gui_errors_keep_the_operation_and_identify_the_consumer_path -- --ignored --exact --nocapture

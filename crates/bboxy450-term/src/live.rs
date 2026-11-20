@@ -3959,6 +3959,7 @@ mod tests {
     /// re-reads the status and must PUBLISH it (an internally queued status
     /// has no pending operation result to publish it), and the Tasks section
     /// then re-reads on the changed revision.
+    #[ignore = "night: real IO/process/PTY boundary, test-policy #327 B2"]
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
     #[allow(
         clippy::disallowed_methods,
