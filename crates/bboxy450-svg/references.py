@@ -1,0 +1,198 @@
+# Copyright 2026 Boxy (bboxy450) and contributors.
+# SPDX-License-Identifier: LicenseRef-Respectful-Slop-1.0-Draft
+# Project: bboxy450-term — https://github.com/bboxy450/bboxy450-term
+# License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
+# Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
+# Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
+"""Phase A references only: project mutually supported layers, never native paint."""
+import json
+import math
+import os
+from pathlib import Path
+import re
+import subprocess
+import xml.etree.ElementTree as ET
+
+from corpus import BASE, digest, dump, load_fonts
+
+
+def policy():
+    # Phase A must leave CasePolicy untouched. Read its current numeric policy;
+    # renderer phase will move those constants to the canonical comparator once.
+    source = BASE.parent / "bboxybook/src/parity.rs"
+    raw = source.read_bytes()
+    text = raw.decode()
+    pixels = re.search(r"changed_pixel_budget: if vector \{ ([\d.]+) \} else if text \{ ([\d.]+) \}", text)
+    geometry = re.search(r"geometry_tolerance_px: if vector \{ Some\(0\.\) \} else \{ text.then_some\(([\d.]+)\)", text)
+    if not pixels or not geometry:
+        raise ValueError("canonical comparison policy changed; inspect before using it")
+    return {"vector_budget": float(pixels[1]), "text_budget": float(pixels[2]),
+            "text_geometry_px": float(geometry[1]), "source": str(source.relative_to(BASE.parents[1])), "sha256": digest(raw)}
+
+
+def shapes_only(raw):
+    """Reference projection: remove only the two layers this resvg cannot paint.
+
+    This is XML custody for an existing oracle, not SVG interpretation/lowering.
+    IDs on the trusted projection connect public oracle bounds to Chrome paths.
+    """
+    root = ET.fromstring(raw)
+    box = root.attrib["viewBox"].replace(",", " ").split()
+    root.set("width", box[2])
+    root.set("height", box[3])
+    locations = {}
+    serial = 0
+
+    def walk(node, location, definitions=False):
+        nonlocal serial
+        tag = node.tag.split("}")[-1]
+        definitions = definitions or tag == "defs"
+        if tag in {"path", "rect", "circle", "ellipse", "line", "polyline", "polygon", "use"} and not definitions:
+            serial += 1
+            if "id" not in node.attrib:
+                node.set("id", f"bboxy-reference-{serial}")
+            locations[node.attrib["id"]] = location
+        siblings = {}
+        for child in list(node):
+            name = child.tag.split("}")[-1]
+            siblings[name] = siblings.get(name, 0) + 1
+            if name in {"text", "image"}:
+                node.remove(child)
+            else:
+                walk(child, location + f"/{name}[{siblings[name]}]", definitions)
+
+    walk(root, "/svg[1]")
+    return ET.tostring(root), locations
+
+
+def compare_geometry(shapes, paths):
+    """Compare public independent-reference measurements without omitting uses.
+
+    Keep exact equality and floating-point deltas visible. The later vector
+    native gate still requires exact geometry; reference arithmetic is not a
+    new native tolerance or a geometry advisory.
+    """
+    shapes = {s["source"]: s for s in shapes if s["tag"] != "image"}
+    observed = {}
+    for p in paths:
+        if not p.get("source") or p["source"] in observed:
+            raise ValueError("missing/duplicate public oracle path correspondence")
+        observed[p["source"]] = p
+    if shapes.keys() != observed.keys() or not shapes:
+        raise ValueError("missing public reference geometry: " + str(shapes.keys() ^ observed.keys()))
+    rows = []
+    for source, shape in shapes.items():
+        path = observed[source]
+        if shape["endpoints"] is None or path["endpoints"] is None:
+            raise ValueError("missing public path endpoints: " + source)
+        a = [*shape["bounds"], *sum(shape["endpoints"], [])]
+        b = [*path["bounds"], *sum(path["endpoints"], [])]
+        if not all(math.isfinite(v) for v in [*a, *b]):
+            raise ValueError("nonfinite public reference geometry")
+        errors = [abs(x-y) for x, y in zip(a, b)]
+        rows.append({"source": source, "chrome": shape, "resvg": path, "exact": a == b,
+                     "maximum_error_px": max(errors), "errors_px": errors})
+    maximum = max(r["maximum_error_px"] for r in rows)
+    if maximum > policy()["text_geometry_px"]:
+        raise ValueError("independent public reference geometry differs: " + str(maximum))
+    return {"paths": rows, "missing": 0, "maximum_error_px": maximum,
+            "exact_paths": sum(r["exact"] for r in rows),
+            "native_geometry": "not yet implemented; reference float deltas do not waive its exact vector gate"}
+
+
+def run(out):
+    source = BASE / "corpus"
+    manifest = json.loads((source / "manifest.json").read_text())
+    fixtures = json.loads((BASE / "fixtures/manifest.json").read_text())
+    cases = [{**c, "source_directory": source} for c in manifest["cases"]]
+    cases += [{**c, "source_directory": BASE / "fixtures"} for c in fixtures["cases"]]
+    refs = out / "references"
+    refs.mkdir(parents=True, exist_ok=True)
+    request = {"out": str(refs), "font_directory": str(BASE / "fonts"),
+               "cases": [{**{k: v for k, v in c.items() if k != "source_directory"}, "svg": str(c["source_directory"] / c["svg"])} for c in cases]}
+    dump(out / "capture-request.json", request)
+    capture_sha = digest((BASE / "capture.mjs").read_bytes())
+    cache = refs / "chrome.json"
+    chrome = json.loads(cache.read_text()) if cache.is_file() else {}
+    browser_version = subprocess.check_output([os.environ.get("CHROME", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"), "--version"], text=True, timeout=10).strip().replace("Google Chrome ", "Chrome/")
+    # Camera numbers retain their values across Python/JS; JSON 108.0 versus
+    # 108 is serialization noise, not a new camera or a stale reference.
+    expected = {(c["id"], v["id"], c["sha256"], tuple(v["camera"]), v["scale"]) for c in cases for v in c["views"]}
+    actual = {(r["id"], r["view"]["id"], r["source_sha256"], tuple(r["view"]["camera"]), r["view"]["scale"]) for r in chrome.get("runs", [])}
+    files = chrome.get("file_hashes", {})
+    intact = bool(files) and all(Path(p).is_file() and digest(Path(p).read_bytes()) == h for p, h in files.items())
+    if chrome.get("source_sha256") != capture_sha or actual != expected or chrome.get("font_set") != load_fonts()[1] or chrome.get("browser", {}).get("Browser") != browser_version or not intact:
+        subprocess.run(["node", str(BASE / "capture.mjs"), str(out / "capture-request.json")], check=True)
+        chrome = json.loads(cache.read_text())
+    approved = {f["postscript_name"] for f in load_fonts()[0]["faces"]}
+    for r in chrome["runs"]:
+        c = next(c for c in cases if c["id"] == r["id"])
+        if (not r["geometry"]["shapes"] and not r["geometry"]["texts"]) or (c.get("text", True) and (not r["geometry"]["texts"] or not r["platformFontNodes"])):
+            raise ValueError("missing chart geometry/font evidence: " + r["id"])
+        for n in r["platformFontNodes"]:
+            if not n["fonts"] or not any(f["glyphCount"] > 0 for f in n["fonts"]):
+                raise ValueError("empty actual face evidence: " + r["id"])
+            if any(not f["isCustomFont"] or f["postScriptName"] not in approved for f in n["fonts"]):
+                raise ValueError("unapproved actual face: " + r["id"])
+        for capture in r["captures"].values():
+            if digest(Path(capture["file"]).read_bytes()) != capture["sha256"]:
+                raise ValueError("stale reference pixels: " + capture["file"])
+    oracle = out / "oracle-build/debug/bboxy450-svg-reference"
+    identity = json.loads(subprocess.check_output([str(oracle), "identity"]))
+    if identity["resvg"] != "0.48.1" or identity["features"] or identity["text"] or identity["raster_images"]:
+        raise ValueError("wrong oracle capabilities")
+    rules = policy()
+    oracle_hash = digest(oracle.read_bytes())
+    runner_hash = digest((BASE / "references.py").read_bytes())
+    result_path = out / "reference-comparisons.json"
+    previous = json.loads(result_path.read_text()) if result_path.is_file() else {}
+    comparisons = []
+    cache_hits = 0
+    for c in cases:
+        raw = (c["source_directory"] / c["svg"]).read_bytes()
+        if digest(raw) != c["sha256"]:
+            raise ValueError("source digest changed")
+        layer, locations = shapes_only(raw)
+        svg = refs / (c["id"] + "-shapes.svg")
+        svg.write_bytes(layer)
+        if c.get("image") or c.get("text"):
+            # These isolation scenes contain only unsupported reference layers.
+            continue
+        for view in c["views"]:
+            prefix = refs / (c["id"] + "-" + view["id"])
+            png, geometry, diff = (Path(str(prefix) + suffix) for suffix in ("-resvg.png", "-resvg-geometry.json", "-reference-diff.png"))
+            browser = next(r for r in chrome["runs"] if r["id"] == c["id"] and r["view"] == view)
+            key = digest(json.dumps({"svg": c["sha256"], "layer": digest(layer), "view": view, "font_set": load_fonts()[1],
+                                     "oracle_binary": oracle_hash, "runner_program": runner_hash, "capture_program": capture_sha, "browser": chrome["browser"]["Browser"],
+                                     "chrome_pixels": browser["captures"]["shapes"]["sha256"], "policy": rules["sha256"]}, sort_keys=True).encode())
+            cached = next((r for r in previous.get("comparisons", []) if r.get("cache_key") == key), None)
+            if cached and set(cached["file_hashes"]) == {str(png), str(geometry), str(diff)} and all(Path(p).is_file() and digest(Path(p).read_bytes()) == h for p, h in cached["file_hashes"].items()):
+                comparisons.append(cached)
+                cache_hits += 1
+                continue
+            subprocess.run([str(oracle), "render", str(svg), str(png), str(view["scale"]), *map(str, view["camera"]), str(geometry)], check=True)
+            metrics = json.loads(subprocess.check_output([str(oracle), "compare", browser["captures"]["shapes"]["file"], str(png), str(diff)]))
+            bounds = json.loads(geometry.read_text())
+            for row in bounds["paths"]:
+                row["source"] = locations.get(row["id"])
+            dump(geometry, bounds)
+            public_geometry = compare_geometry(browser["geometry"]["shapes"], bounds["paths"])
+            comparisons.append({"case": c["id"], "view": view, "source_sha256": c["sha256"], "layer_sha256": digest(layer), "cache_key": key,
+                                "file_hashes": {str(p): digest(p.read_bytes()) for p in (png, geometry, diff)},
+                                "chrome": browser["captures"]["shapes"], "resvg": str(png), "diff": str(diff),
+                                "oracle_geometry": str(geometry), **metrics,
+                                "public_geometry": public_geometry,
+                                "over_vector_budget": metrics["changed_fraction"] > rules["vector_budget"],
+                                "over_mixed_budget": metrics["changed_fraction"] > rules["text_budget"]})
+    result = {"phase": "A; native renderer absent", "policy": rules, "oracle": identity,
+              "oracle_binary_sha256": oracle_hash, "reference_cache_hits": cache_hits,
+              "font_set": load_fonts()[1], "chrome": chrome["browser"], "comparisons": comparisons}
+    dump(out / "reference-comparisons.json", result)
+    return result
+
+
+if __name__ == "__main__":
+    import sys
+    result = run(Path(sys.argv[1]).resolve())
+    print(json.dumps({"compared": len(result["comparisons"]), "over_vector_budget": sum(r["over_vector_budget"] for r in result["comparisons"]),
+                      "over_mixed_budget": sum(r["over_mixed_budget"] for r in result["comparisons"])}))

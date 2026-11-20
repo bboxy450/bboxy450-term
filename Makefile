@@ -50,6 +50,30 @@ APP := bboxy450-term
 PROFILE ?= release
 NOTIFICATION_BIN ?= $(INSTALL_DIR)/$(APP).app/Contents/MacOS/$(APP)
 TARGET_DIR ?= target
+
+# Corpus/reference preparation only until the SVG review checkpoint is cleared.
+.PHONY: svg-loop
+svg-loop: svg-reference svg-exporters
+	@PYTHONDONTWRITEBYTECODE=1 '$(TARGET_DIR)/svg-loop/venv/bin/python' -m unittest discover -s crates/bboxy450-svg -p 'test_corpus.py'
+	@PYTHONDONTWRITEBYTECODE=1 CORPUS_ONLY='$(CORPUS_ONLY)' UPDATE_CORPUS='$(UPDATE_CORPUS)' '$(TARGET_DIR)/svg-loop/venv/bin/python' crates/bboxy450-svg/corpus.py --out '$(TARGET_DIR)/svg-loop'
+
+.PHONY: svg-exporters
+svg-exporters:
+	@python3 -I -c 'import platform,sys; sys.exit(0 if sys.platform == "darwin" and platform.machine() == "arm64" else "chart export unavailable: macOS arm64 required")'
+	@test -x '$(TARGET_DIR)/svg-loop/venv/bin/python' || uv venv --python python3.12 '$(TARGET_DIR)/svg-loop/venv'
+	@uv pip sync --python '$(TARGET_DIR)/svg-loop/venv/bin/python' --require-hashes crates/bboxy450-svg/requirements.lock
+
+.PHONY: svg-review
+svg-review:
+	@PYTHONDONTWRITEBYTECODE=1 '$(TARGET_DIR)/svg-loop/venv/bin/python' crates/bboxy450-svg/review.py '$(TARGET_DIR)/svg-loop'
+
+.PHONY: svg-reference
+svg-reference:
+	@python3 -I crates/bboxy450-svg/reference_setup.py '$(TARGET_DIR)/svg-loop'
+	@set -eu; export CARGO_BUILD_BUILD_DIR='$(abspath $(TARGET_DIR))/svg-loop/oracle-build'; . scripts/cache-env.sh; \
+	test -f '$(TARGET_DIR)/svg-loop/oracle-source/Cargo.lock' || cargo generate-lockfile --offline --manifest-path '$(TARGET_DIR)/svg-loop/oracle-source/Cargo.toml'; \
+	cargo build --locked --offline --jobs 2 --manifest-path '$(TARGET_DIR)/svg-loop/oracle-source/Cargo.toml' --target-dir '$(TARGET_DIR)/svg-loop/oracle-build'
+
 GITKB_BIN ?= $(shell command -v git-kb)
 GITKB_CRATE := bboxy450-term-data_source-gitkb
 GITKB_PLUGIN :=$(TARGET_DIR)/plugins/bboxy450-term-data_source-gitkb
@@ -92,6 +116,7 @@ export CARGO_PROFILE_TEST_OPT_LEVEL ?= 1
 
 help:
 	@printf '%s\n' \
+	  'make svg-loop CORPUS_ONLY=1     Pinned SVG corpus/census; renderer acceptance remains a separate gate' \
 	  'make test-python-execute         Real CPython/MCP/command, cancellation and recovery checks' \
 	  'make build / build-release       Build the app (debug / optimized)' \
 	  'make privacy-1password          Open persistent macOS access settings for the signed installed app' \

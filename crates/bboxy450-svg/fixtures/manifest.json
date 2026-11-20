@@ -1,0 +1,1069 @@
+{
+  "boundaries": [
+    {
+      "accepted": 16777216,
+      "limit": "svg_bytes",
+      "maximum": 16777216,
+      "native_status": "pending native admission witness",
+      "rejected": 16777217
+    },
+    {
+      "accepted": 50000,
+      "limit": "xml_nodes",
+      "maximum": 50000,
+      "native_status": "pending native admission witness",
+      "rejected": 50001
+    },
+    {
+      "accepted": 64,
+      "limit": "depth",
+      "maximum": 64,
+      "native_status": "pending native admission witness",
+      "rejected": 65
+    },
+    {
+      "accepted": 8192,
+      "limit": "path_commands",
+      "maximum": 8192,
+      "native_status": "pending native admission witness",
+      "rejected": 8193
+    },
+    {
+      "accepted": 262144,
+      "limit": "scene_commands",
+      "maximum": 262144,
+      "native_status": "pending native admission witness",
+      "rejected": 262145
+    },
+    {
+      "accepted": 65536,
+      "limit": "glyphs",
+      "maximum": 65536,
+      "native_status": "pending native admission witness",
+      "rejected": 65537
+    },
+    {
+      "accepted": 16777216,
+      "limit": "png_bytes",
+      "maximum": 16777216,
+      "native_status": "pending native admission witness",
+      "rejected": 16777217
+    },
+    {
+      "accepted": 2047,
+      "limit": "png_side",
+      "maximum": 2047,
+      "native_status": "pending native admission witness",
+      "rejected": 2048
+    },
+    {
+      "accepted": 16,
+      "limit": "png_distinct",
+      "maximum": 16,
+      "native_status": "pending native admission witness",
+      "rejected": 17
+    },
+    {
+      "accepted": 4000000,
+      "limit": "png_pixels",
+      "maximum": 4000000,
+      "native_status": "pending native admission witness",
+      "rejected": 4000001
+    },
+    {
+      "accepted": 256,
+      "limit": "gradient_stops",
+      "maximum": 256,
+      "native_status": "pending native admission witness",
+      "rejected": 257
+    },
+    {
+      "accepted": 4096,
+      "limit": "capture_side",
+      "maximum": 4096,
+      "native_status": "pending native admission witness",
+      "rejected": 4097
+    },
+    {
+      "accepted": 16777216,
+      "limit": "capture_pixels",
+      "maximum": 16777216,
+      "native_status": "pending native admission witness",
+      "rejected": 16777217
+    },
+    {
+      "accepted": 1,
+      "limit": "viewport_width",
+      "native_status": "pending native admission witness",
+      "rejected": 0
+    },
+    {
+      "accepted": 1,
+      "limit": "viewport_height",
+      "native_status": "pending native admission witness",
+      "rejected": 0
+    },
+    {
+      "accepted": 1,
+      "limit": "png_width",
+      "native_status": "pending native admission witness",
+      "rejected": 0
+    },
+    {
+      "accepted": 1,
+      "limit": "png_height",
+      "native_status": "pending native admission witness",
+      "rejected": 0
+    },
+    {
+      "accepted": 1,
+      "limit": "capture_scale",
+      "native_status": "pending native admission witness",
+      "rejected": 0
+    }
+  ],
+  "boundary_materializer": "../fixtures.py:boundary_input",
+  "cases": [
+    {
+      "features": [
+        "M",
+        "L",
+        "H",
+        "v",
+        "h",
+        "z",
+        "Z",
+        "Q",
+        "C",
+        "A",
+        "subpaths",
+        "close"
+      ],
+      "id": "isolation-path-commands",
+      "image": false,
+      "sha256": "9f932ff7edb9c136d427f6d2060bacd132e86a46853d6f6ee0e65b3dd4fc0614",
+      "svg": "isolation/path-commands.svg",
+      "text": false,
+      "viewBox": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            16,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "features": [
+        "fill",
+        "fill-rule",
+        "evenodd",
+        "nonzero"
+      ],
+      "id": "isolation-winding",
+      "image": false,
+      "sha256": "6e50bfe33a5a90274191cbfa91ea9c87b452becf6436644061a141c0299fffd2",
+      "svg": "isolation/winding.svg",
+      "text": false,
+      "viewBox": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            16,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "features": [
+        "stroke",
+        "joins",
+        "caps",
+        "miter",
+        "dash",
+        "dash-offset",
+        "style",
+        "universal-selector",
+        "line"
+      ],
+      "id": "isolation-stroke",
+      "image": false,
+      "sha256": "4d4a364d5b7c1013f95c4cb68ec55a1f8d0968418994efe8965a9daec642bcd3",
+      "svg": "isolation/stroke.svg",
+      "text": false,
+      "viewBox": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            16,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "features": [
+        "translate",
+        "rotate",
+        "matrix",
+        "scale",
+        "nested-group",
+        "group-opacity",
+        "fill-opacity",
+        "stroke-opacity"
+      ],
+      "id": "isolation-affine-opacity",
+      "image": false,
+      "sha256": "2907f93137f02fb14154932fa31197bd6a4a525ce65c4eaa2246fafe53e5b299",
+      "svg": "isolation/affine-opacity.svg",
+      "text": false,
+      "viewBox": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            16,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "features": [
+        "defs",
+        "use",
+        "internal-reference",
+        "clip",
+        "rect",
+        "display-none"
+      ],
+      "id": "isolation-clip-use",
+      "image": false,
+      "sha256": "fdb9735d4aa92eb6feb0eaece12cddcf5fb8966569624f973e701e28565cf2c4",
+      "svg": "isolation/clip-use.svg",
+      "text": false,
+      "viewBox": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            16,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "features": [
+        "viewport",
+        "viewBox",
+        "preserveAspectRatio"
+      ],
+      "id": "isolation-viewport",
+      "image": false,
+      "sha256": "670b1ea30d591f25eae2bf68309436fe75dec5492485b939f27b9004af2b1c02",
+      "svg": "isolation/viewport.svg",
+      "text": false,
+      "viewBox": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            16,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "features": [
+        "linearGradient",
+        "stop",
+        "direction",
+        "interpolation",
+        "objectBoundingBox",
+        "pad",
+        "sRGB",
+        "gradient-transform-by-object"
+      ],
+      "id": "isolation-gradient",
+      "image": false,
+      "sha256": "ef3bdf95ae37ab6fc7c2eeaa375860185ddf7d7625df0bae321acc86baac5176",
+      "svg": "isolation/gradient.svg",
+      "text": false,
+      "viewBox": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            16,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "features": [
+        "inline-PNG",
+        "whitespace-base64",
+        "RGBA",
+        "alpha",
+        "default-interpolation",
+        "preserveAspectRatio"
+      ],
+      "id": "isolation-png-alpha",
+      "image": true,
+      "sha256": "127ce35ecb7f85c31ff2f48817b078f4a4c1ef279f6d7baee73f1b60fe91fa0b",
+      "svg": "isolation/png-alpha.svg",
+      "text": false,
+      "viewBox": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            16,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "features": [
+        "inline-PNG",
+        "placement",
+        "flip",
+        "clip",
+        "dedup"
+      ],
+      "id": "isolation-png-transform-clip",
+      "image": true,
+      "sha256": "8b568b62c55660b3918db5cbb2f45cf586b8e1d54ec3aa4f9d903e13896d442d",
+      "svg": "isolation/png-transform-clip.svg",
+      "text": false,
+      "viewBox": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            16,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "features": [
+        "text",
+        "tspan",
+        "start",
+        "middle",
+        "end",
+        "rotation",
+        "weight-400",
+        "weight-700",
+        "kerning",
+        "text-placement"
+      ],
+      "id": "isolation-text",
+      "image": false,
+      "sha256": "7e1194792eee7e013ad703303cbc906427cffc49f2e9bcc2cfac4c14f459470a",
+      "svg": "isolation/text.svg",
+      "text": true,
+      "viewBox": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            16,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "features": [
+        "outlined-text",
+        "path-text"
+      ],
+      "id": "isolation-outlined-text",
+      "image": false,
+      "sha256": "db1270dc89d52b15ef7fbbd84807bf9667d7e641335c9ebb532dcef06d097a6c",
+      "svg": "isolation/outlined-text.svg",
+      "text": false,
+      "viewBox": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            16,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "features": [
+        "metadata",
+        "namespaces",
+        "aria",
+        "role",
+        "pointer-events",
+        "class",
+        "title",
+        "desc",
+        "PUBLIC-doctype"
+      ],
+      "id": "isolation-metadata",
+      "image": false,
+      "sha256": "c89205cb592d21da027e52601711e3f275b8891b069108142970e83bcf1c634e",
+      "svg": "isolation/metadata.svg",
+      "text": false,
+      "viewBox": [
+        0,
+        0,
+        64,
+        64
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            64,
+            64
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            16,
+            16,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    }
+  ],
+  "negatives": [
+    {
+      "expected": "refused",
+      "id": "script",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "ad2bf713eafd527a79710ed2c7a020893743b124c13a7fee9c7be3d06c46e933",
+      "svg": "refusals/script-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "event",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "89a150e69b953d32f25229f42579eea31e13c78c51c5ff20a3384a2fb269ccf6",
+      "svg": "refusals/event-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "foreign-object",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "de13d0b603ded9ba820d5172877eaf90848d8eece310ad90971cff8dfc3a9494",
+      "svg": "refusals/foreign-object-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "external-href",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "4bcefa9ec7acf6c3b5968a517692e9c757249005e89b910355b07b941f699983",
+      "svg": "refusals/external-href-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "file-href",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "401101ddaa6a51f9ac7392772601c9feb9578e23ac199ebd98e3cfa052d7b38c",
+      "svg": "refusals/file-href-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "css-import",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "1434a052eba5342b24d1185857841c852fde349fa514dbe805a797a9c0309677",
+      "svg": "refusals/css-import-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "external-paint",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "8bc51867345aef8c01867384b1e08a59b801db82bd44e4d0d17227547ebe61b1",
+      "svg": "refusals/external-paint-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "entity",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "0e2ec1434704621b4ca32b7f0c632f596a927036d569f4c5ae82f6ce4ddb41d4",
+      "svg": "refusals/entity-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "cycle",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "c700dfc78a9ad5b0a859fae7b40334ba485abb57e5a69c016370f0e8fcbbd990",
+      "svg": "refusals/cycle-isolation.svg"
+    },
+    {
+      "expected": "unsupported",
+      "id": "unknown-paint",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "9da4d686a7ab5a953905ef6e774a3aa5cf66a4fa64737f2489ff1fa234766979",
+      "svg": "refusals/unknown-paint-isolation.svg"
+    },
+    {
+      "expected": "unsupported",
+      "id": "radial-gradient",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "b5acbd67fc983d41192955a4ac783d7a912375f51222082f4c120217581f2f47",
+      "svg": "refusals/radial-gradient-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "png-malformed-padding",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "de5e6b78c6ee8f682d2bf0d09372c340d47c4704686e6584f0998423ab740802",
+      "svg": "refusals/png-malformed-padding-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "png-invalid-byte",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "b1027dcb6f2f65efc2912af6e0e369e42a89eea500f11a6d1f2afbafd7f07c1e",
+      "svg": "refusals/png-invalid-byte-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "png-signature",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "b2543d7624783c68463dfb912a5b096ae21716e505268a77bd64ece7c3595298",
+      "svg": "refusals/png-signature-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "png-foreign-MIME",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "789de518a12a682ed880a1285cc8cf0f813fd10eb92d8450a7b89856f6e53b15",
+      "svg": "refusals/png-foreign-MIME-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "png-svg",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "bc745144cd51277bed208551ef1f6bef283c3f8d1dd34685398003b1cacda830",
+      "svg": "refusals/png-svg-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "png-option",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "6752801f9d7cbe9f4c4e533f7571c7033686de932043b7c6b91a36a1f730d728",
+      "svg": "refusals/png-option-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "nonfinite",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "14c5f40ccf6acbcbb60950d0b0e765de206e2ba6b064b2e3f5d2eaf437f31167",
+      "svg": "refusals/nonfinite-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "missing-font-identity",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "d3c892cf1d897758a469d410174369a91d396d1536884e1b32660f16aa63b415",
+      "svg": "refusals/missing-font-identity-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "changed-font-identity",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "aa9c8cb17509bdb5d5d5b7ca5c574ac3efabc5ef2439e5dee09ab96f88c9b4b6",
+      "svg": "refusals/changed-font-identity-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "unsupported-weight",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "e61125faa79d37bed335248dc97efcf3db55ce4163aa4cfae5f18e06d9358745",
+      "svg": "refusals/unsupported-weight-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "invalid-family",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "1be9712a84d77bb33c6c2130242a0d1f91e8b741c6614ecd83a19cbd949cc7a0",
+      "svg": "refusals/invalid-family-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "font-css",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "95d49989b276b6f852ad983bbf32e6e328c52f9f77b5248a9a62b7860f828edd",
+      "svg": "refusals/font-css-isolation.svg"
+    },
+    {
+      "expected": "unsupported",
+      "id": "unsupported-glyph",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "a945fd0a2b9058f6499240539d483586abbdbdf7499bf728b3a57bd90333637d",
+      "svg": "refusals/unsupported-glyph-isolation.svg"
+    },
+    {
+      "expected": "unsupported",
+      "id": "filter",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "7104eda819a6fb10292e23182aa726ff169732c0bbabf9141737335d5562f1a2",
+      "svg": "refusals/filter-isolation.svg"
+    },
+    {
+      "expected": "unsupported",
+      "id": "mask",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "358e62d157a69314d3c76a4641517fa312e81fb3b2b2b74f7760bd8725df2144",
+      "svg": "refusals/mask-isolation.svg"
+    },
+    {
+      "expected": "unsupported",
+      "id": "animation",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "beeafa513635e5b25473c2073d038e5db3cea44fdf8033d22dea7d9ec0579ff9",
+      "svg": "refusals/animation-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "gradient-href",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "6c211d7dc0fc012b37d0f2749c94d79ae8fcb2c744f295d87ab357283221f05a",
+      "svg": "refusals/gradient-href-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "gradient-units",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "e64cdefc89a9694f648ad0241cb9aedb87a3fb4ce5970ee4a24800da94bfa891",
+      "svg": "refusals/gradient-units-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "gradient-transform",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "dfbff7a59ae9d4b28f5d33d461589cb4128571cdb4326c8410d2e956e38e7806",
+      "svg": "refusals/gradient-transform-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "gradient-spread",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "23cb3bed7e5938b4da7c591837f2694179e99718ceaed5a5dec15afdb32d21f7",
+      "svg": "refusals/gradient-spread-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "gradient-interpolation",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "b1e7743e40cbad29af28237879b01c658390412230bc6a0efc86ee0c1571f59d",
+      "svg": "refusals/gradient-interpolation-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "gradient-order",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "1c6216d85e3e85cb1255cd7c2cf64035aaada0e24270fb8f174501061855cbaa",
+      "svg": "refusals/gradient-order-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "gradient-offset",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "ed660ab5c851596b2454f732a4a383afda0232c104b85697a7d64bf1b63178d8",
+      "svg": "refusals/gradient-offset-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "gradient-stops",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "48a437a120452e27ac6d4ae75593667c635b355ddce45c61ade024ebb955e506",
+      "svg": "refusals/gradient-stops-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "invalid-utf8",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "72745537e2e9fc520d94f09f0064e7df24a49807f3c944dfcdd169dfc1146cbe",
+      "svg": "refusals/invalid-utf8-isolation.svg"
+    },
+    {
+      "expected": "refused",
+      "id": "malformed-xml",
+      "native_status": "pending native parser; never executed by references",
+      "sha256": "ff7aacd5483a1e810df3d6cf0f865749975c47abfbc96a5ba8b4043e4472ef93",
+      "svg": "refusals/malformed-xml-isolation.svg"
+    }
+  ],
+  "phase": "A; fixture data, not native admission proof",
+  "png": {
+    "rgba": [
+      [
+        255,
+        0,
+        0,
+        255
+      ],
+      [
+        0,
+        255,
+        0,
+        255
+      ],
+      [
+        0,
+        0,
+        255,
+        128
+      ],
+      [
+        255,
+        255,
+        255,
+        0
+      ]
+    ],
+    "sha256": "37f3727037262c95785227e0c6dd2f9adee37d06702dc70419a105fd07529c1d",
+    "size": [
+      2,
+      2
+    ]
+  }
+}

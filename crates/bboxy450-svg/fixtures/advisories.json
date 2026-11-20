@@ -1,0 +1,697 @@
+{
+  "cases": [
+    {
+      "case": "vega-bar",
+      "changed_fraction": 0.005208333333333333,
+      "pixel_sha256": [
+        "c30e65a744145e8140837060e9d32db20addb1265922eec1b5316fda2ea54571",
+        "e91f2bae7c18a6f7928ee3659beafcbc8f49b4b309630137fb4ceb3bed0e87a1",
+        "e0022f697efb1410e2c18a96bbb533a6fbb2ba4a39de168637b1a5290932fff4"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "3e5169ecd4919cfd5bc3379ba28b2f41e5b0ee094e345d7765fbb08e69a4bed9",
+      "view": {
+        "camera": [
+          112.333,
+          89.0,
+          48,
+          32
+        ],
+        "id": "8x",
+        "scale": 8
+      }
+    },
+    {
+      "case": "vega-line",
+      "changed_fraction": 0.010263929618768328,
+      "pixel_sha256": [
+        "e156ec16733e18eff515ec6f37098cc5ad7d0054bdfb39746c624171d16af498",
+        "e7af705e5e3bb3986a9d92b9f014e80964ea4cc20ab442804a2eae469d7f9196",
+        "2fc3a7e84c4df03e4178cfd44968027889d94c65f3f79685b1a77d61a074536f"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "0f940d3fa72d505b76c88d148679f55d83b0cc2e770288c66333a2919a4f83d9",
+      "view": {
+        "camera": [
+          0,
+          0,
+          341,
+          244
+        ],
+        "id": "1x",
+        "scale": 1
+      }
+    },
+    {
+      "case": "vega-line",
+      "changed_fraction": 0.005504543050814865,
+      "pixel_sha256": [
+        "9a751ef4cc4f7c7fa0069e0786aab817e85050b5f1f1b3a1a483a064ee3f7978",
+        "a94f9d764da0909a035bca0d5f5149ecbbce576a0e7d007663c00ffe909f620d",
+        "c360d77c27a9951e9c6916c1e195af54e2b2ab3b62083744fefc2f7fcdf3eea8"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "0f940d3fa72d505b76c88d148679f55d83b0cc2e770288c66333a2919a4f83d9",
+      "view": {
+        "camera": [
+          0,
+          0,
+          341,
+          244
+        ],
+        "id": "2x",
+        "scale": 2
+      }
+    },
+    {
+      "case": "vega-line",
+      "changed_fraction": 0.0068359375,
+      "pixel_sha256": [
+        "d7ae24a96c3305bc9f4392be94054e24ee8d74eb86c26d22abf8a108fc58d56f",
+        "4228f1e806b80615cdf5a725c482c4a6570d8e903122a10a4bbf88817f1bd271",
+        "2ce872e944f7e77e233c8b608effc03a6b944ceb2ab581362ac2750601f1a525"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "0f940d3fa72d505b76c88d148679f55d83b0cc2e770288c66333a2919a4f83d9",
+      "view": {
+        "camera": [
+          113.667,
+          81.333,
+          48,
+          32
+        ],
+        "id": "8x",
+        "scale": 8
+      }
+    },
+    {
+      "case": "vega-layered",
+      "changed_fraction": 0.006183395737327189,
+      "pixel_sha256": [
+        "71034bf459b9dd3ddbc54532d5a42a041f26cf3be93de0012c08ea204bca42f2",
+        "5b5b5011d2e6f4c9285c02940f15fe37e2b5a7ae66f2ee6d552d0a1266705920",
+        "7952d3b0e6f0fc65e932b9cb984ee41df88ff0f3ab05a5fe9aae93fe7c10fb4a"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "c54da26d8a0e4071675c08f74ece6ed9543b60745c02d31944997798101012e6",
+      "view": {
+        "camera": [
+          0,
+          0,
+          448,
+          248
+        ],
+        "id": "1x",
+        "scale": 1
+      }
+    },
+    {
+      "case": "matplotlib-bar",
+      "changed_fraction": 0.01285340174229063,
+      "pixel_sha256": [
+        "d7f0a3e19029f7317f9f6bf0077c49acb92f460f25f485a817815945b4b7ade5",
+        "8fd0180f25d7efee2b9e5a6e331643bfe3a2bda79f4c68d74428f7a255e87849",
+        "8d28fbd5a6f54d6fc0471b8bcc25d767aa4c33e22a6180541a74fa2fc1ec1ef9"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "54d193397a1df8cfb1598debec47ae435694f196f2779a2f517b43e9a5a9f2a4",
+      "view": {
+        "camera": [
+          0,
+          0,
+          324,
+          231
+        ],
+        "id": "1x",
+        "scale": 1
+      }
+    },
+    {
+      "case": "matplotlib-bar",
+      "changed_fraction": 0.01146384479717813,
+      "pixel_sha256": [
+        "89c293c1e1ac84defaaca01a33c5f330093ec35583f74ed494a5e7e7ba94b526",
+        "4667479946284c354c27b37967b2f28c9db10900d0515f26f4e5ff735eef1249",
+        "fdf26eb2987ca69715537ab71be24681a72373a80a8f9d0ad61d8c682cee5337"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "54d193397a1df8cfb1598debec47ae435694f196f2779a2f517b43e9a5a9f2a4",
+      "view": {
+        "camera": [
+          0,
+          0,
+          324,
+          231
+        ],
+        "id": "2x",
+        "scale": 2
+      }
+    },
+    {
+      "case": "matplotlib-bar",
+      "changed_fraction": 0.005208333333333333,
+      "pixel_sha256": [
+        "659bc28a16d1cc2e45284ffbc6078c8520d16a00babaac1f081a7584a2cc2ae0",
+        "2ad7c6da634d61e0d79cc24362f9d48d8fd87d72101c99073d898bfd1c09fd93",
+        "7df5f180257aeffda2aeddcba0dfcab1993bd1953f7216276bcd0b442e93c657"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "54d193397a1df8cfb1598debec47ae435694f196f2779a2f517b43e9a5a9f2a4",
+      "view": {
+        "camera": [
+          108.0,
+          76.8,
+          48,
+          32
+        ],
+        "id": "8x",
+        "scale": 8
+      }
+    },
+    {
+      "case": "matplotlib-line",
+      "changed_fraction": 0.015311848645181978,
+      "pixel_sha256": [
+        "8181f2941d28a4dca7b4594fa66e29a9e2d99687a8030e7c9b5c9fee3831b04c",
+        "ce794c852fb7e58b2b01e03b63421a362aa22f591429a3023e5e4cc90ec10a25",
+        "854623819fcb91d363af449c9cada8419d3051eea7bc16e232f796b22074d2dd"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "33327afb284869928b4c863c051c8f25e94760bc9c6f18a9ee56856fa973e518",
+      "view": {
+        "camera": [
+          0,
+          0,
+          324,
+          231
+        ],
+        "id": "1x",
+        "scale": 1
+      }
+    },
+    {
+      "case": "matplotlib-line",
+      "changed_fraction": 0.011727727005504783,
+      "pixel_sha256": [
+        "0d6f2cfcd14d1aa85259aee04e6635a78672643bc783615e3ac898a590dc248b",
+        "eca74991e6a8ebbdab9996c4f203b5c64fb738614d8594b2dab15e50e864648c",
+        "fb539bf4b57776dcc3d9e83f01db590f80cb74c766a252fdf140b9047ebd2e46"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "33327afb284869928b4c863c051c8f25e94760bc9c6f18a9ee56856fa973e518",
+      "view": {
+        "camera": [
+          0,
+          0,
+          324,
+          231
+        ],
+        "id": "2x",
+        "scale": 2
+      }
+    },
+    {
+      "case": "matplotlib-line",
+      "changed_fraction": 0.006876627604166667,
+      "pixel_sha256": [
+        "d4475e018deb8bcee81533d413bcd2d0c46993e348f054d5ff7c46c37975ca2c",
+        "07e68458e524999b612714989cf054b802f8bd84c1a7f53bf9e88b23159481e8",
+        "2889692ce3c3aee00d8faa939f7a3f6cff6103de315078032977c42e733893cc"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "33327afb284869928b4c863c051c8f25e94760bc9c6f18a9ee56856fa973e518",
+      "view": {
+        "camera": [
+          108.0,
+          76.8,
+          48,
+          32
+        ],
+        "id": "8x",
+        "scale": 8
+      }
+    },
+    {
+      "case": "matplotlib-scatter",
+      "changed_fraction": 0.006119395008283898,
+      "pixel_sha256": [
+        "de758416dd68c87d5b35e510670acccf8041621f57c202f559d865aa191047cc",
+        "c4a62ecd9de405f24a4286e31e3fac1546895609b71d9fd12b28dfc2362f6472",
+        "d69718226ab311e06543141af3d8e3f844f4eb1fd84d5c24faa07baf20392e44"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "763223c6fedc7df51e4a6536d06923be695a6eecbb99e03fc68cfc3cc233ffd3",
+      "view": {
+        "camera": [
+          0,
+          0,
+          324,
+          231
+        ],
+        "id": "1x",
+        "scale": 1
+      }
+    },
+    {
+      "case": "matplotlib-scatter",
+      "changed_fraction": 0.007098097375875153,
+      "pixel_sha256": [
+        "ba04584a31e0143b8f92f62595cfff64b400a07bc3bb513fb4bab8ea5eb4eea6",
+        "15ee589a0eeb69cf3d2844707a6365d64b7ef6e57d69cc2e6747cc0cce0d1fc8",
+        "84c01eebb93c0dde26ae458dd0b5c1a82f5f76668b65ba04205d5efafd5c6831"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "763223c6fedc7df51e4a6536d06923be695a6eecbb99e03fc68cfc3cc233ffd3",
+      "view": {
+        "camera": [
+          0,
+          0,
+          324,
+          231
+        ],
+        "id": "2x",
+        "scale": 2
+      }
+    },
+    {
+      "case": "matplotlib-heatmap",
+      "changed_fraction": 0.009967398856287744,
+      "pixel_sha256": [
+        "ac1cf2ff91b6ef6d7e9e80b33c2bf9e42e535004882e7b26cf3400d43e28f344",
+        "ab085cc6bc10e3bb1522ee249bdc5555b08d94896a6a6dd3b5bc4220ebec3bb8",
+        "8a2a4a2491700ab3876af72e0b8d826cf0e85fb51ca5c423a32e5a0295be7134"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "3c76747d9b1b1e45251dfbbaa0024240985dd83dafae601ac6bf7935cf6ce690",
+      "view": {
+        "camera": [
+          0,
+          0,
+          324,
+          231
+        ],
+        "id": "1x",
+        "scale": 1
+      }
+    },
+    {
+      "case": "matplotlib-heatmap",
+      "changed_fraction": 0.009930655763989098,
+      "pixel_sha256": [
+        "1f8febd4376a6fcbb475c8983a916a8e95edd3bf551ade5e7d96deff427d4ac7",
+        "89429d47713d42d320ae9a045ea680dc4fcbfef15b495338e9e3042d2cf5d632",
+        "c56519b75b35eee8013132e82aa4fd9934b635350e4b64615475ce0094379fd8"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "3c76747d9b1b1e45251dfbbaa0024240985dd83dafae601ac6bf7935cf6ce690",
+      "view": {
+        "camera": [
+          0,
+          0,
+          324,
+          231
+        ],
+        "id": "2x",
+        "scale": 2
+      }
+    },
+    {
+      "case": "matplotlib-layered",
+      "changed_fraction": 0.021310993533215757,
+      "pixel_sha256": [
+        "f7f465ce72c085e99df376b7c4758c283a3f3e7376f40e8f73268f4d6127de28",
+        "b614ff102237ddfac7b81f65d58180455b7b39d855ab444ef2d22db91d6c9e40",
+        "862823866fe617c2368cd717f39bc588a81df344a23f8c401ef74e39669dcd07"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "a03e65389e5639dd8b1eead3d163e50a50a3ee58f9a00a57cf238305fb0febf2",
+      "view": {
+        "camera": [
+          0,
+          0,
+          324,
+          231
+        ],
+        "id": "1x",
+        "scale": 1
+      }
+    },
+    {
+      "case": "matplotlib-layered",
+      "changed_fraction": 0.015405376516487627,
+      "pixel_sha256": [
+        "ec6807602a1e22c9ec19ff0f78ca4c32dcb3564532fdb9a97b030b179d08f451",
+        "a6404105e898097f8d3ab4504664e4a84f4c85adf648522b0e4912228dfe6c10",
+        "8a6aa729e4c1c8635371a30d1c234f35731954dad0dd37a692fe313e4c51d71b"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "a03e65389e5639dd8b1eead3d163e50a50a3ee58f9a00a57cf238305fb0febf2",
+      "view": {
+        "camera": [
+          0,
+          0,
+          324,
+          231
+        ],
+        "id": "2x",
+        "scale": 2
+      }
+    },
+    {
+      "case": "matplotlib-layered",
+      "changed_fraction": 0.0074462890625,
+      "pixel_sha256": [
+        "db1d49cec479438c4c7443de91d3235a0f8ded400dd3576d5c3ecfb2af46ed01",
+        "d90b2931cf2443a0e8b56bda976f4eb33a3318258b297f6eb1b3ebc78257cc70",
+        "13a800d6a2e64dfa52541ca062ed505cf7b48fe83d0482329edb308ef9cc6239"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "a03e65389e5639dd8b1eead3d163e50a50a3ee58f9a00a57cf238305fb0febf2",
+      "view": {
+        "camera": [
+          108.0,
+          76.8,
+          48,
+          32
+        ],
+        "id": "8x",
+        "scale": 8
+      }
+    },
+    {
+      "case": "isolation-path-commands",
+      "changed_fraction": 0.038330078125,
+      "pixel_sha256": [
+        "b3a30c7a2ce5d63963b1d114531e1dbf32c8b48495688704b40ae13d771db26a",
+        "b81b4d312a20aa7370f0093b0a3299231972e3d4b6f50c1a5831d8e90c5f231a",
+        "bae096a302c27d3513f8308ca054de9a9431e4c10429435aadd545be550833a4"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "9f932ff7edb9c136d427f6d2060bacd132e86a46853d6f6ee0e65b3dd4fc0614",
+      "view": {
+        "camera": [
+          0,
+          0,
+          64,
+          64
+        ],
+        "id": "1x",
+        "scale": 1
+      }
+    },
+    {
+      "case": "isolation-path-commands",
+      "changed_fraction": 0.02020263671875,
+      "pixel_sha256": [
+        "5007e5e5db72dbd82de8573ba8e1c86f8893075c3e8c710140a99390d09080e9",
+        "38f29f49aaebe03792212f59a7947a7879627cf05f9e7e8532a3c454359160cb",
+        "a1d3c5f75ff78a1b491bdbaed0eaeff0ab28636155c3f02b03e3611196c69e91"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "9f932ff7edb9c136d427f6d2060bacd132e86a46853d6f6ee0e65b3dd4fc0614",
+      "view": {
+        "camera": [
+          0,
+          0,
+          64,
+          64
+        ],
+        "id": "2x",
+        "scale": 2
+      }
+    },
+    {
+      "case": "isolation-path-commands",
+      "changed_fraction": 0.006561279296875,
+      "pixel_sha256": [
+        "e3fd717e5969856b7a33b7dcdc5ff277cda57bf716ba04e198209cb9398d5d07",
+        "4292e3d9c6e06aad78bcd2923e568a4cb65f09e0cb7decd7b88d737d16e154a6",
+        "ec376a237939309b15dcf07c2f01024d9cd45e412912d29cf1c7550b1a69d813"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "9f932ff7edb9c136d427f6d2060bacd132e86a46853d6f6ee0e65b3dd4fc0614",
+      "view": {
+        "camera": [
+          16,
+          16,
+          48,
+          32
+        ],
+        "id": "8x",
+        "scale": 8
+      }
+    },
+    {
+      "case": "isolation-stroke",
+      "changed_fraction": 0.05029296875,
+      "pixel_sha256": [
+        "20bedd396909741779d0a9b6e10f18178373497a1216805f979cc226820fd27e",
+        "ed50da112e3679465552c2cac3dfa241d8c6f8e6b702225e6513efd2dfcf9031",
+        "6a596871527ea9ac2e2ec33be2d9e5407ea4d04e623ae59dc1a812506318dc02"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "4d4a364d5b7c1013f95c4cb68ec55a1f8d0968418994efe8965a9daec642bcd3",
+      "view": {
+        "camera": [
+          0,
+          0,
+          64,
+          64
+        ],
+        "id": "1x",
+        "scale": 1
+      }
+    },
+    {
+      "case": "isolation-stroke",
+      "changed_fraction": 0.02423095703125,
+      "pixel_sha256": [
+        "fd896e5d2a0cb7c19168b407343556af51239e4cb523ada51b00f503a2bd42b4",
+        "1c9946ca84d79af3dad6b4c17d672383b56fee7d8523caea56bf0aa00e9127f0",
+        "82a0b337fb0c1abe2e86102cfea5786b1934b88d681eac68347f30b9a8645a2a"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "4d4a364d5b7c1013f95c4cb68ec55a1f8d0968418994efe8965a9daec642bcd3",
+      "view": {
+        "camera": [
+          0,
+          0,
+          64,
+          64
+        ],
+        "id": "2x",
+        "scale": 2
+      }
+    },
+    {
+      "case": "isolation-stroke",
+      "changed_fraction": 0.008565266927083334,
+      "pixel_sha256": [
+        "78bee4ff5d3ac93d55db9c3d6a05de0c0ab902acf57eda2df0d3092cb8fecaf1",
+        "cd61ab11c1d7f02bac7647762b24efa46ec5e5b878cb69e7fc1043eb35b96785",
+        "69519ac28249c50fd9cb02d241eabfccf25819b3c3032240f13dd0a9f15e4509"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "4d4a364d5b7c1013f95c4cb68ec55a1f8d0968418994efe8965a9daec642bcd3",
+      "view": {
+        "camera": [
+          16,
+          16,
+          48,
+          32
+        ],
+        "id": "8x",
+        "scale": 8
+      }
+    },
+    {
+      "case": "isolation-clip-use",
+      "changed_fraction": 0.0166015625,
+      "pixel_sha256": [
+        "3ca3a3b787036ab5dbc27230a333e85947819236bf868002b82adca720d990f4",
+        "a84a6bfec4cbcf7c3d2a36854df1a4e95e0d22e146042f784dd9d4f19b5035ff",
+        "9432920a3983b5633878576caa54768999dbac80d7d5a4a622522dcf8979bd64"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "fdb9735d4aa92eb6feb0eaece12cddcf5fb8966569624f973e701e28565cf2c4",
+      "view": {
+        "camera": [
+          0,
+          0,
+          64,
+          64
+        ],
+        "id": "1x",
+        "scale": 1
+      }
+    },
+    {
+      "case": "isolation-clip-use",
+      "changed_fraction": 0.0086669921875,
+      "pixel_sha256": [
+        "6662271cd75f1750233bfd616b0064a3a838bdaf6dd15a2eeda9fae404aecb7c",
+        "11213da422146ad671b2e078cc1178bd6d3789b1b371b7ca320644aa0c56f627",
+        "b9a234782f7a96cd287d8899aaaa3a701658804ca7879da2c5015d5020ca5643"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "fdb9735d4aa92eb6feb0eaece12cddcf5fb8966569624f973e701e28565cf2c4",
+      "view": {
+        "camera": [
+          0,
+          0,
+          64,
+          64
+        ],
+        "id": "2x",
+        "scale": 2
+      }
+    },
+    {
+      "case": "isolation-viewport",
+      "changed_fraction": 0.025390625,
+      "pixel_sha256": [
+        "7513777b4f7d759d2afafadee593b93641e705348baffaf3e0f1f010e32139ca",
+        "1a18413914a9c173b6d4a28bcd5a42bd9862c25f07ac85acb63e61b64829d717",
+        "4ce8879f69b507d0243a5b4363326a93c04b4836daf25f99289688186383ebed"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "670b1ea30d591f25eae2bf68309436fe75dec5492485b939f27b9004af2b1c02",
+      "view": {
+        "camera": [
+          0,
+          0,
+          64,
+          64
+        ],
+        "id": "1x",
+        "scale": 1
+      }
+    },
+    {
+      "case": "isolation-viewport",
+      "changed_fraction": 0.006693522135416667,
+      "pixel_sha256": [
+        "8fcc108250fe75d3a91393e2cde753354a532c666c6eddb39be8236a31c69386",
+        "b711129e31353516b4e2b44eea320a1d5f3e09c394296d3958f4e65be98225c6",
+        "a2b4f0698fca51dcc0c3b274d3549ba5293fa1c704be82c290cd2e787761fcb8"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "670b1ea30d591f25eae2bf68309436fe75dec5492485b939f27b9004af2b1c02",
+      "view": {
+        "camera": [
+          16,
+          16,
+          48,
+          32
+        ],
+        "id": "8x",
+        "scale": 8
+      }
+    },
+    {
+      "case": "isolation-outlined-text",
+      "changed_fraction": 0.03515625,
+      "pixel_sha256": [
+        "6c5e9eb7f265b1905c94e02366623e57fa4276aac3d96ce0c48df152dedb257f",
+        "ae5d24526beb56c03d58f416818f2fbfd7f2318b1b2fe7d6e3d5068459257fa8",
+        "c7a5bbfc9605201d7a0418d443522452d6e1a1349fd04a69324f891a91dba914"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "db1270dc89d52b15ef7fbbd84807bf9667d7e641335c9ebb532dcef06d097a6c",
+      "view": {
+        "camera": [
+          0,
+          0,
+          64,
+          64
+        ],
+        "id": "1x",
+        "scale": 1
+      }
+    },
+    {
+      "case": "isolation-outlined-text",
+      "changed_fraction": 0.017578125,
+      "pixel_sha256": [
+        "0128d21b435b4610cbf7c861122c2ab7ddedf3396583282c84be7ae3bbfd18fa",
+        "b8742118eea9775b059920d129afc0416895b5e5fb91ae755aeca5152b9b901b",
+        "49c77443b10c3bc493b6983cc11b6a1318a66e662ca2ba2f2f5166a892a24c4a"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "db1270dc89d52b15ef7fbbd84807bf9667d7e641335c9ebb532dcef06d097a6c",
+      "view": {
+        "camera": [
+          0,
+          0,
+          64,
+          64
+        ],
+        "id": "2x",
+        "scale": 2
+      }
+    },
+    {
+      "case": "isolation-outlined-text",
+      "changed_fraction": 0.007954915364583334,
+      "pixel_sha256": [
+        "feabc14bb62e7a1196827f74872c1742f437347028e1808139d122a03e26be06",
+        "387e97e933d2ff0ad48b249986f429ba28569547f88ab42d74cc174b90804c4a",
+        "7a558b489ad1dcc56d266f1adc463cf2620760000d8656729d00b37817478b8c"
+      ],
+      "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
+      "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
+      "source_sha256": "db1270dc89d52b15ef7fbbd84807bf9667d7e641335c9ebb532dcef06d097a6c",
+      "view": {
+        "camera": [
+          16,
+          16,
+          48,
+          32
+        ],
+        "id": "8x",
+        "scale": 8
+      }
+    }
+  ],
+  "chrome": "Chrome/158.0.8127.37",
+  "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
+  "phase": "A; frozen before native implementation; Architect review requested at checkpoint",
+  "policy": {
+    "sha256": "c10b1e4729c657019402a06e45d6fffe267bf04e7a54c8da50bcb7959ab5e19e",
+    "source": "crates/bboxybook/src/parity.rs",
+    "text_budget": 0.02,
+    "text_geometry_px": 0.5,
+    "vector_budget": 0.005
+  },
+  "resvg": "0.48.1"
+}

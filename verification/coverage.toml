@@ -3,6 +3,16 @@
 # implementation-tests entries make remaining formal coverage explicit.
 
 [[implementation_only]]
+name = "SvgExporterCorpusPhaseA"
+sources = ["crates/bboxy450-svg/corpus.py", "crates/bboxy450-svg/census.py", "crates/bboxy450-svg/fonts/manifest.json", "crates/bboxy450-svg/reference.rs", "crates/bboxy450-svg/reference_setup.py", "crates/bboxy450-svg/capture.mjs", "crates/bboxy450-svg/references.py", "crates/bboxy450-svg/measurements.py", "crates/bboxy450-svg/guard_controls.py", "crates/bboxy450-svg/fixtures.py", "crates/bboxy450-svg/review.py"]
+tests = ["crates/bboxy450-svg/test_corpus.py", "crates/bboxy450-svg/guard_controls.py"]
+models = []
+scope = "Phase A pinned export/font identity, syntax inventory, handwritten inputs and independent references only; no native interpreter, painter or workspace crate exists yet. One synchronous RC7 owner verifies full selected face bytes and restores metadata configuration. Actual browser faces and all 507 exporter correspondences/containments are checked at every scale. Every admitted rendering census feature has an isolation witness. Boundary construction is measured; negative/native admission, exact native vector geometry and text-cell parity remain later renderer checks. Public independent-reference paths/bounds/endpoints are compared with raw floating-point deviations retained, without waiving the future native exact-vector gate. PNG sampling and omitted-paint controls are observed. Reference-only pixel advisories are frozen before native implementation. Chrome reuses existing startup/custody; no new lifecycle proof is claimed."
+bounds = "Ten deterministic chart exports plus twelve handwritten positives at 1x/2x/8x; 66 Chrome captures and 57 compatible vector-layer pairs; bounded deep crops; finite negative SVGs and both sides of all named numeric bounds. One manifest supplies two static font faces."
+broken_control = "Substitute one font byte; supply unknown paint; attempt controlled external data/image resources; retain the original invalid CSS family or omit actual rendered glyphs. Font/resource/actual-face controls must be refused, unknown paint must be an explicit decision gap, the independently reachable controlled URL must receive zero converter requests, metadata restore/identity/concurrent-owner controls must refuse, dropped image/gradient paint and nearest PNG sampling must visibly disagree, and a wider measured fixture must fail containment even while a narrower fixture fits and still fails actual exporter face identity."
+checks = ["make svg-loop CORPUS_ONLY=1"]
+
+[[implementation_only]]
 name = "DeterministicHookAndWriterFixtures"
 sources = ["crates/bbt-mux/tests/plugin_host.rs", "crates/bbt-supervisor/src/ring/writer.rs", "crates/bbt-plugin-fixture/src/reference.rs"]
 tests = ["scripts/test-ledger-fixture-controls.py"]

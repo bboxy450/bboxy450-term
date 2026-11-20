@@ -1,0 +1,4 @@
+# Make-managed corpus only; no application/runtime installation.
+altair==5.5.0
+matplotlib==3.10.7
+vl-convert-python==2.0.0rc7

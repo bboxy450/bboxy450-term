@@ -1,0 +1,3484 @@
+{
+  "counts": [
+    {
+      "case": "isolation-path-commands",
+      "glyphs": 0,
+      "path_commands": 15,
+      "xml_nodes": 2
+    },
+    {
+      "case": "isolation-winding",
+      "glyphs": 0,
+      "path_commands": 15,
+      "xml_nodes": 3
+    },
+    {
+      "case": "isolation-stroke",
+      "glyphs": 0,
+      "path_commands": 6,
+      "xml_nodes": 5
+    },
+    {
+      "case": "isolation-affine-opacity",
+      "glyphs": 0,
+      "path_commands": 15,
+      "xml_nodes": 6
+    },
+    {
+      "case": "isolation-clip-use",
+      "glyphs": 0,
+      "path_commands": 12,
+      "xml_nodes": 10
+    },
+    {
+      "case": "isolation-viewport",
+      "glyphs": 0,
+      "path_commands": 9,
+      "xml_nodes": 4
+    },
+    {
+      "case": "isolation-gradient",
+      "glyphs": 0,
+      "path_commands": 0,
+      "xml_nodes": 12
+    },
+    {
+      "case": "isolation-png-alpha",
+      "glyphs": 0,
+      "path_commands": 0,
+      "xml_nodes": 2
+    },
+    {
+      "case": "isolation-png-transform-clip",
+      "glyphs": 0,
+      "path_commands": 0,
+      "xml_nodes": 7
+    },
+    {
+      "case": "isolation-text",
+      "glyphs": 26,
+      "path_commands": 0,
+      "xml_nodes": 9
+    },
+    {
+      "case": "isolation-outlined-text",
+      "glyphs": 0,
+      "path_commands": 13,
+      "xml_nodes": 2
+    },
+    {
+      "case": "isolation-metadata",
+      "glyphs": 0,
+      "path_commands": 0,
+      "xml_nodes": 7
+    }
+  ],
+  "decision_gaps": [],
+  "features": [
+    {
+      "cases": [
+        "isolation-clip-use",
+        "isolation-png-transform-clip"
+      ],
+      "category": "attribute",
+      "disposition": "deliberately inert: descriptive/accessibility metadata has no pixels",
+      "feature": "{http://www.w3.org/2000/svg}clipPath/@id",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/defs[1]/clipPath[1]/@id",
+          "value": "clip"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/defs[1]/clipPath[1]/@id",
+          "value": "clip"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-metadata"
+      ],
+      "category": "attribute",
+      "disposition": "deliberately inert: descriptive/accessibility metadata has no pixels",
+      "feature": "{http://www.w3.org/2000/svg}g/@aria-label",
+      "witnesses": [
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/g[1]/@aria-label",
+          "value": "blue square"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-metadata"
+      ],
+      "category": "attribute",
+      "disposition": "deliberately inert: descriptive/accessibility metadata has no pixels",
+      "feature": "{http://www.w3.org/2000/svg}g/@class",
+      "witnesses": [
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/g[1]/@class",
+          "value": "case"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use",
+        "isolation-png-transform-clip"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}g/@clip-path",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/@clip-path",
+          "value": "url(#clip)"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/@clip-path",
+          "value": "url(#clip)"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}g/@fill",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/@fill",
+          "value": "#152c40"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}g/@font-family",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/@font-family",
+          "value": "'Source Sans 3'"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}g/@font-size",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/@font-size",
+          "value": "10"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}g/@opacity",
+      "witnesses": [
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/@opacity",
+          "value": "0.6"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-metadata"
+      ],
+      "category": "attribute",
+      "disposition": "deliberately inert: descriptive/accessibility metadata has no pixels",
+      "feature": "{http://www.w3.org/2000/svg}g/@pointer-events",
+      "witnesses": [
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/g[1]/@pointer-events",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-metadata"
+      ],
+      "category": "attribute",
+      "disposition": "deliberately inert: descriptive/accessibility metadata has no pixels",
+      "feature": "{http://www.w3.org/2000/svg}g/@role",
+      "witnesses": [
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/g[1]/@role",
+          "value": "img"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}g/@transform",
+      "witnesses": [
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/@transform",
+          "value": "translate(8,8)"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]/@transform",
+          "value": "rotate(90,20,20)"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/g[1]/@transform",
+          "value": "translate(4,32) scale(2,1)"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/@transform",
+          "value": "translate(64,0) scale(-1,1)"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-png-alpha",
+        "isolation-png-transform-clip"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}image/@height",
+      "witnesses": [
+        {
+          "case": "isolation-png-alpha",
+          "source": "isolation/png-alpha.svg:/svg[1]/image[1]/@height",
+          "value": "56"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[1]/@height",
+          "value": "56"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[2]/@height",
+          "value": "16"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-png-alpha",
+        "isolation-png-transform-clip"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}image/@href",
+      "witnesses": [
+        {
+          "case": "isolation-png-alpha",
+          "source": "isolation/png-alpha.svg:/svg[1]/image[1]/@href",
+          "value": "data:image/png;base64,  iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABy  tg0kAAAAF0lEQVR4nGP4z8DwHwwZGP43/P//nwEARk4IeZvz32MAAAAASUVORK5CYII="
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[1]/@href",
+          "value": "data:image/png;base64,  iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABy  tg0kAAAAF0lEQVR4nGP4z8DwHwwZGP43/P//nwEARk4IeZvz32MAAAAASUVORK5CYII="
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[2]/@href",
+          "value": "data:image/png;base64,  iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABy  tg0kAAAAF0lEQVR4nGP4z8DwHwwZGP43/P//nwEARk4IeZvz32MAAAAASUVORK5CYII="
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-png-alpha",
+        "isolation-png-transform-clip"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}image/@width",
+      "witnesses": [
+        {
+          "case": "isolation-png-alpha",
+          "source": "isolation/png-alpha.svg:/svg[1]/image[1]/@width",
+          "value": "56"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[1]/@width",
+          "value": "56"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[2]/@width",
+          "value": "16"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-png-alpha",
+        "isolation-png-transform-clip"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}image/@x",
+      "witnesses": [
+        {
+          "case": "isolation-png-alpha",
+          "source": "isolation/png-alpha.svg:/svg[1]/image[1]/@x",
+          "value": "4"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[1]/@x",
+          "value": "4"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[2]/@x",
+          "value": "12"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-png-alpha",
+        "isolation-png-transform-clip"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}image/@y",
+      "witnesses": [
+        {
+          "case": "isolation-png-alpha",
+          "source": "isolation/png-alpha.svg:/svg[1]/image[1]/@y",
+          "value": "4"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[1]/@y",
+          "value": "4"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[2]/@y",
+          "value": "12"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}line/@opacity",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/line[1]/@opacity",
+          "value": "0.5"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}line/@stroke",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/line[1]/@stroke",
+          "value": "#224433"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}line/@stroke-width",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/line[1]/@stroke-width",
+          "value": "2"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}line/@x1",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/line[1]/@x1",
+          "value": "4"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}line/@x2",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/line[1]/@x2",
+          "value": "60"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}line/@y1",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/line[1]/@y1",
+          "value": "58"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}line/@y2",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/line[1]/@y2",
+          "value": "58"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-gradient"
+      ],
+      "category": "attribute",
+      "disposition": "deliberately inert: descriptive/accessibility metadata has no pixels",
+      "feature": "{http://www.w3.org/2000/svg}linearGradient/@id",
+      "witnesses": [
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[1]/@id",
+          "value": "ramp"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[2]/@id",
+          "value": "vertical"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-gradient"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}linearGradient/@x1",
+      "witnesses": [
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[1]/@x1",
+          "value": "0"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[2]/@x1",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-gradient"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}linearGradient/@x2",
+      "witnesses": [
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[1]/@x2",
+          "value": "1"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[2]/@x2",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-gradient"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}linearGradient/@y1",
+      "witnesses": [
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[1]/@y1",
+          "value": "0"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[2]/@y1",
+          "value": "0"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-gradient"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}linearGradient/@y2",
+      "witnesses": [
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[1]/@y2",
+          "value": "0"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[2]/@y2",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-viewport",
+        "isolation-winding"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@d",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/path[1]/@d",
+          "value": "M4 4H28v24h-24z M36 4L60 4L60 28L36 28Z M4 36Q16 24 28 36C40 48 4 60 28 60 M40 40A8 8 0 1 1 56 56"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/path[1]/@d",
+          "value": "M4 4H60V60H4Z M20 20H44V44H20Z"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/path[2]/@d",
+          "value": "M24 24H40V40H24Z"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[1]/@d",
+          "value": "M4 8L20 28L36 8L52 28"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[2]/@d",
+          "value": "M4 44L60 44"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]/path[1]/@d",
+          "value": "M4 4H36V20H4Z"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]/path[2]/@d",
+          "value": "M12 12H44V28H12Z"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/path[1]/@d",
+          "value": "M0 0H12V8H0Z"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/defs[1]/path[1]/@d",
+          "value": "M0 0H32V24H0Z"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/path[1]/@d",
+          "value": "M0 60L60 0"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/path[1]/@d",
+          "value": "M0 0H64V64H0Z"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/path[1]/@d",
+          "value": "M0 0H24V16H0Z"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/path[2]/@d",
+          "value": "M0 0L24 16M24 0L0 16"
+        },
+        {
+          "case": "isolation-outlined-text",
+          "source": "isolation/outlined-text.svg:/svg[1]/path[1]/@d",
+          "value": "M8 52L24 12H32L48 52H40L36 40H20L16 52Z M23 32H33L28 20Z"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@display",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/path[1]/@display",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-viewport",
+        "isolation-winding"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@fill",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/path[1]/@fill",
+          "value": "#467ac1"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/path[1]/@fill",
+          "value": "#463c9a"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/path[2]/@fill",
+          "value": "#f0a030"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[1]/@fill",
+          "value": "none"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]/path[1]/@fill",
+          "value": "#ce3640"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]/path[2]/@fill",
+          "value": "#267bb0"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/path[1]/@fill",
+          "value": "#18854a"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/path[1]/@fill",
+          "value": "#3284ad"
+        },
+        {
+          "case": "isolation-outlined-text",
+          "source": "isolation/outlined-text.svg:/svg[1]/path[1]/@fill",
+          "value": "#224f81"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@fill-opacity",
+      "witnesses": [
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/path[1]/@fill-opacity",
+          "value": "0.7"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-outlined-text",
+        "isolation-winding"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@fill-rule",
+      "witnesses": [
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/path[1]/@fill-rule",
+          "value": "evenodd"
+        },
+        {
+          "case": "isolation-outlined-text",
+          "source": "isolation/outlined-text.svg:/svg[1]/path[1]/@fill-rule",
+          "value": "evenodd"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use"
+      ],
+      "category": "attribute",
+      "disposition": "deliberately inert: descriptive/accessibility metadata has no pixels",
+      "feature": "{http://www.w3.org/2000/svg}path/@id",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/defs[1]/path[1]/@id",
+          "value": "tile"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-viewport"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@stroke",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/path[1]/@stroke",
+          "value": "#152a42"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[1]/@stroke",
+          "value": "#164a75"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/path[1]/@stroke",
+          "value": "#202020"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/path[1]/@stroke",
+          "value": "#202020"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/path[2]/@stroke",
+          "value": "#122f44"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@stroke-linejoin",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[1]/@stroke-linejoin",
+          "value": "miter"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@stroke-miterlimit",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[1]/@stroke-miterlimit",
+          "value": "4"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@stroke-opacity",
+      "witnesses": [
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/path[1]/@stroke-opacity",
+          "value": "0.8"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-viewport"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@stroke-width",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/path[1]/@stroke-width",
+          "value": "2"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[1]/@stroke-width",
+          "value": "4"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/path[1]/@stroke-width",
+          "value": "6"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/path[2]/@stroke-width",
+          "value": "2"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@style",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[2]/@style",
+          "value": "fill:none;stroke:#a42a45;stroke-width:6;stroke-dasharray:8,4;stroke-dashoffset:2;stroke-linecap:round;opacity:1"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@transform",
+      "witnesses": [
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/path[1]/@transform",
+          "value": "matrix(1,0,0.5,1,8,44)"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-gradient",
+        "isolation-metadata"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}rect/@fill",
+      "witnesses": [
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/rect[1]/@fill",
+          "value": "url(#ramp)"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/g[1]/rect[1]/@fill",
+          "value": "url(#vertical)"
+        },
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/g[1]/rect[1]/@fill",
+          "value": "#347aa0"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-png-transform-clip"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}rect/@height",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]/@height",
+          "value": "40"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/rect[1]/@height",
+          "value": "24"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/g[1]/rect[1]/@height",
+          "value": "28"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]/@height",
+          "value": "44"
+        },
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/g[1]/rect[1]/@height",
+          "value": "64"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-png-transform-clip"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}rect/@width",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]/@width",
+          "value": "40"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/rect[1]/@width",
+          "value": "56"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/g[1]/rect[1]/@width",
+          "value": "28"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]/@width",
+          "value": "44"
+        },
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/g[1]/rect[1]/@width",
+          "value": "64"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}rect/@x",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]/@x",
+          "value": "12"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/rect[1]/@x",
+          "value": "4"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]/@x",
+          "value": "8"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}rect/@y",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]/@y",
+          "value": "12"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/rect[1]/@y",
+          "value": "4"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]/@y",
+          "value": "8"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-gradient"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}stop/@offset",
+      "witnesses": [
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[1]/stop[1]/@offset",
+          "value": "0"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[1]/stop[2]/@offset",
+          "value": "0.5"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[1]/stop[3]/@offset",
+          "value": "1"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[2]/stop[1]/@offset",
+          "value": "0"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[2]/stop[2]/@offset",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-gradient"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}stop/@stop-color",
+      "witnesses": [
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[1]/stop[1]/@stop-color",
+          "value": "#ff0000"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[1]/stop[2]/@stop-color",
+          "value": "#00ff00"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[1]/stop[3]/@stop-color",
+          "value": "#0000ff"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[2]/stop[1]/@stop-color",
+          "value": "#ffffff"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[2]/stop[2]/@stop-color",
+          "value": "#000000"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}style/@type",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/style[1]/@type",
+          "value": "text/css"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ],
+      "category": "attribute",
+      "disposition": "deliberately inert: descriptive/accessibility metadata has no pixels",
+      "feature": "{http://www.w3.org/2000/svg}svg/@data-bboxy-font-set",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        },
+        {
+          "case": "isolation-png-alpha",
+          "source": "isolation/png-alpha.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        },
+        {
+          "case": "isolation-outlined-text",
+          "source": "isolation/outlined-text.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        },
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/@data-bboxy-font-set",
+          "value": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}svg/@height",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/@height",
+          "value": "40"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-png-alpha",
+          "source": "isolation/png-alpha.svg:/svg[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-outlined-text",
+          "source": "isolation/outlined-text.svg:/svg[1]/@height",
+          "value": "64"
+        },
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/@height",
+          "value": "64"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-viewport"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}svg/@preserveAspectRatio",
+      "witnesses": [
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/@preserveAspectRatio",
+          "value": "xMidYMid meet"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}svg/@viewBox",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 64"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 64"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 64"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 64"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 64"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 64"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/@viewBox",
+          "value": "0 0 24 16"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 64"
+        },
+        {
+          "case": "isolation-png-alpha",
+          "source": "isolation/png-alpha.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 64"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 64"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 64"
+        },
+        {
+          "case": "isolation-outlined-text",
+          "source": "isolation/outlined-text.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 64"
+        },
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/@viewBox",
+          "value": "0 0 64 64"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}svg/@width",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/@width",
+          "value": "48"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-png-alpha",
+          "source": "isolation/png-alpha.svg:/svg[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-outlined-text",
+          "source": "isolation/outlined-text.svg:/svg[1]/@width",
+          "value": "64"
+        },
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/@width",
+          "value": "64"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-viewport"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}svg/@x",
+      "witnesses": [
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/@x",
+          "value": "8"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-viewport"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}svg/@y",
+      "witnesses": [
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/@y",
+          "value": "8"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@font-weight",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[1]/@font-weight",
+          "value": "400"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[2]/@font-weight",
+          "value": "700"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[4]/@font-weight",
+          "value": "400"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[5]/@font-weight",
+          "value": "400"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@style",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[3]/@style",
+          "value": "font-family: 'Source Sans 3'; font-size: 10px; font-weight: 400; text-anchor: end"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@text-anchor",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[2]/@text-anchor",
+          "value": "middle"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@transform",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[4]/@transform",
+          "value": "translate(16,60) rotate(-90)"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@x",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[1]/@x",
+          "value": "4"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[2]/@x",
+          "value": "32"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[3]/@x",
+          "value": "60"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[5]/@x",
+          "value": "32"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@y",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[1]/@y",
+          "value": "14"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[2]/@y",
+          "value": "30"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[3]/@y",
+          "value": "44"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[5]/@y",
+          "value": "60"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}tspan/@dx",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[5]/tspan[1]/@dx",
+          "value": "0"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[5]/tspan[2]/@dx",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}tspan/@dy",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[5]/tspan[1]/@dy",
+          "value": "0"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[5]/tspan[2]/@dy",
+          "value": "-2"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}use/@fill",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/use[1]/@fill",
+          "value": "#e85531"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/use[2]/@fill",
+          "value": "#305aa3"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}use/@href",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/use[2]/@href",
+          "value": "#tile"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}use/@x",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/use[1]/@x",
+          "value": "4"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/use[2]/@x",
+          "value": "28"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}use/@y",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/use[1]/@y",
+          "value": "4"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/use[2]/@y",
+          "value": "32"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use"
+      ],
+      "category": "attribute",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}use/@{http://www.w3.org/1999/xlink}href",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/use[1]/@href",
+          "value": "#tile"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-metadata"
+      ],
+      "category": "element",
+      "disposition": "deliberately inert: descriptive/accessibility metadata has no pixels",
+      "feature": "{http://purl.org/dc/elements/1.1/}title",
+      "witnesses": [
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/metadata[1]/title[1]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use",
+        "isolation-png-transform-clip"
+      ],
+      "category": "element",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}clipPath",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/defs[1]/clipPath[1]"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/defs[1]/clipPath[1]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ],
+      "category": "element",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}defs",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/defs[1]"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/defs[1]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-metadata"
+      ],
+      "category": "element",
+      "disposition": "deliberately inert: descriptive/accessibility metadata has no pixels",
+      "feature": "{http://www.w3.org/2000/svg}desc",
+      "witnesses": [
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/desc[1]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-png-transform-clip",
+        "isolation-text"
+      ],
+      "category": "element",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}g",
+      "witnesses": [
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/g[1]"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]"
+        },
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/g[1]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-png-alpha",
+        "isolation-png-transform-clip"
+      ],
+      "category": "element",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}image",
+      "witnesses": [
+        {
+          "case": "isolation-png-alpha",
+          "source": "isolation/png-alpha.svg:/svg[1]/image[1]"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[1]"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[2]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "element",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}line",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/line[1]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-gradient"
+      ],
+      "category": "element",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}linearGradient",
+      "witnesses": [
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[1]"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[2]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-metadata"
+      ],
+      "category": "element",
+      "disposition": "deliberately inert: descriptive/accessibility metadata has no pixels",
+      "feature": "{http://www.w3.org/2000/svg}metadata",
+      "witnesses": [
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/metadata[1]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-viewport",
+        "isolation-winding"
+      ],
+      "category": "element",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/path[1]"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/path[1]"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/path[2]"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[1]"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[2]"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]/path[1]"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]/path[2]"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/path[1]"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/defs[1]/path[1]"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/path[1]"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/path[1]"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/path[1]"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/path[2]"
+        },
+        {
+          "case": "isolation-outlined-text",
+          "source": "isolation/outlined-text.svg:/svg[1]/path[1]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-png-transform-clip"
+      ],
+      "category": "element",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}rect",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/rect[1]"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/g[1]/rect[1]"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/defs[1]/clipPath[1]/rect[1]"
+        },
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/g[1]/rect[1]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-gradient"
+      ],
+      "category": "element",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}stop",
+      "witnesses": [
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[1]/stop[1]"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[1]/stop[2]"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[1]/stop[3]"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[2]/stop[1]"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/defs[1]/linearGradient[2]/stop[2]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "element",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}style",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/style[1]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ],
+      "category": "element",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}svg",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]"
+        },
+        {
+          "case": "isolation-png-alpha",
+          "source": "isolation/png-alpha.svg:/svg[1]"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]"
+        },
+        {
+          "case": "isolation-outlined-text",
+          "source": "isolation/outlined-text.svg:/svg[1]"
+        },
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "element",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[1]"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[2]"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[3]"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[4]"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[5]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-metadata"
+      ],
+      "category": "element",
+      "disposition": "deliberately inert: descriptive/accessibility metadata has no pixels",
+      "feature": "{http://www.w3.org/2000/svg}title",
+      "witnesses": [
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/title[1]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "element",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}tspan",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[5]/tspan[1]"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[5]/tspan[2]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use"
+      ],
+      "category": "element",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}use",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/use[1]"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/use[2]"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-metadata"
+      ],
+      "category": "metadata",
+      "disposition": "deliberately inert: parser never resolves the external DTD",
+      "feature": "PUBLIC doctype",
+      "witnesses": [
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg",
+          "value": "<!DOCTYPE svg PUBLIC \"-//W3C//DTD SVG 1.1//EN\" \"http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd\">"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-metadata"
+      ],
+      "category": "metadata",
+      "disposition": "deliberately inert: descriptive/accessibility metadata has no pixels",
+      "feature": "{http://purl.org/dc/elements/1.1/}title/text()",
+      "witnesses": [
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg:/svg[1]/metadata[1]/title[1]",
+          "value": "Inert credit"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ],
+      "category": "namespace",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "=http://www.w3.org/2000/svg",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg"
+        },
+        {
+          "case": "isolation-png-alpha",
+          "source": "isolation/png-alpha.svg"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg"
+        },
+        {
+          "case": "isolation-outlined-text",
+          "source": "isolation/outlined-text.svg"
+        },
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-metadata"
+      ],
+      "category": "namespace",
+      "disposition": "deliberately inert: namespace declarations do not paint; each element/attribute is checked separately",
+      "feature": "dc=http://purl.org/dc/elements/1.1/",
+      "witnesses": [
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ],
+      "category": "namespace",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "xlink=http://www.w3.org/1999/xlink",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg"
+        },
+        {
+          "case": "isolation-png-alpha",
+          "source": "isolation/png-alpha.svg"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg"
+        },
+        {
+          "case": "isolation-outlined-text",
+          "source": "isolation/outlined-text.svg"
+        },
+        {
+          "case": "isolation-metadata",
+          "source": "isolation/metadata.svg"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-path-commands"
+      ],
+      "category": "path-command",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "A",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/path[1]/@d",
+          "value": "M4 4H28v24h-24z M36 4L60 4L60 28L36 28Z M4 36Q16 24 28 36C40 48 4 60 28 60 M40 40A8 8 0 1 1 56 56"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-path-commands"
+      ],
+      "category": "path-command",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "C",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/path[1]/@d",
+          "value": "M4 4H28v24h-24z M36 4L60 4L60 28L36 28Z M4 36Q16 24 28 36C40 48 4 60 28 60 M40 40A8 8 0 1 1 56 56"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-viewport",
+        "isolation-winding"
+      ],
+      "category": "path-command",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "H",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/path[1]/@d",
+          "value": "M4 4H28v24h-24z M36 4L60 4L60 28L36 28Z M4 36Q16 24 28 36C40 48 4 60 28 60 M40 40A8 8 0 1 1 56 56"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/path[1]/@d",
+          "value": "M4 4H60V60H4Z M20 20H44V44H20Z"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/path[2]/@d",
+          "value": "M24 24H40V40H24Z"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]/path[1]/@d",
+          "value": "M4 4H36V20H4Z"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]/path[2]/@d",
+          "value": "M12 12H44V28H12Z"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/path[1]/@d",
+          "value": "M0 0H12V8H0Z"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/defs[1]/path[1]/@d",
+          "value": "M0 0H32V24H0Z"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/path[1]/@d",
+          "value": "M0 0H64V64H0Z"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/path[1]/@d",
+          "value": "M0 0H24V16H0Z"
+        },
+        {
+          "case": "isolation-outlined-text",
+          "source": "isolation/outlined-text.svg:/svg[1]/path[1]/@d",
+          "value": "M8 52L24 12H32L48 52H40L36 40H20L16 52Z M23 32H33L28 20Z"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-viewport"
+      ],
+      "category": "path-command",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "L",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/path[1]/@d",
+          "value": "M4 4H28v24h-24z M36 4L60 4L60 28L36 28Z M4 36Q16 24 28 36C40 48 4 60 28 60 M40 40A8 8 0 1 1 56 56"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[1]/@d",
+          "value": "M4 8L20 28L36 8L52 28"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[2]/@d",
+          "value": "M4 44L60 44"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/path[1]/@d",
+          "value": "M0 60L60 0"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/path[2]/@d",
+          "value": "M0 0L24 16M24 0L0 16"
+        },
+        {
+          "case": "isolation-outlined-text",
+          "source": "isolation/outlined-text.svg:/svg[1]/path[1]/@d",
+          "value": "M8 52L24 12H32L48 52H40L36 40H20L16 52Z M23 32H33L28 20Z"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-viewport",
+        "isolation-winding"
+      ],
+      "category": "path-command",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "M",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/path[1]/@d",
+          "value": "M4 4H28v24h-24z M36 4L60 4L60 28L36 28Z M4 36Q16 24 28 36C40 48 4 60 28 60 M40 40A8 8 0 1 1 56 56"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/path[1]/@d",
+          "value": "M4 4H60V60H4Z M20 20H44V44H20Z"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/path[2]/@d",
+          "value": "M24 24H40V40H24Z"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[1]/@d",
+          "value": "M4 8L20 28L36 8L52 28"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[2]/@d",
+          "value": "M4 44L60 44"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]/path[1]/@d",
+          "value": "M4 4H36V20H4Z"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]/path[2]/@d",
+          "value": "M12 12H44V28H12Z"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/path[1]/@d",
+          "value": "M0 0H12V8H0Z"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/defs[1]/path[1]/@d",
+          "value": "M0 0H32V24H0Z"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/path[1]/@d",
+          "value": "M0 60L60 0"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/path[1]/@d",
+          "value": "M0 0H64V64H0Z"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/path[1]/@d",
+          "value": "M0 0H24V16H0Z"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/path[2]/@d",
+          "value": "M0 0L24 16M24 0L0 16"
+        },
+        {
+          "case": "isolation-outlined-text",
+          "source": "isolation/outlined-text.svg:/svg[1]/path[1]/@d",
+          "value": "M8 52L24 12H32L48 52H40L36 40H20L16 52Z M23 32H33L28 20Z"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-path-commands"
+      ],
+      "category": "path-command",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "Q",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/path[1]/@d",
+          "value": "M4 4H28v24h-24z M36 4L60 4L60 28L36 28Z M4 36Q16 24 28 36C40 48 4 60 28 60 M40 40A8 8 0 1 1 56 56"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-viewport",
+        "isolation-winding"
+      ],
+      "category": "path-command",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "V",
+      "witnesses": [
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/path[1]/@d",
+          "value": "M4 4H60V60H4Z M20 20H44V44H20Z"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/path[2]/@d",
+          "value": "M24 24H40V40H24Z"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]/path[1]/@d",
+          "value": "M4 4H36V20H4Z"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]/path[2]/@d",
+          "value": "M12 12H44V28H12Z"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/path[1]/@d",
+          "value": "M0 0H12V8H0Z"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/defs[1]/path[1]/@d",
+          "value": "M0 0H32V24H0Z"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/path[1]/@d",
+          "value": "M0 0H64V64H0Z"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/path[1]/@d",
+          "value": "M0 0H24V16H0Z"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-viewport",
+        "isolation-winding"
+      ],
+      "category": "path-command",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "Z",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/path[1]/@d",
+          "value": "M4 4H28v24h-24z M36 4L60 4L60 28L36 28Z M4 36Q16 24 28 36C40 48 4 60 28 60 M40 40A8 8 0 1 1 56 56"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/path[1]/@d",
+          "value": "M4 4H60V60H4Z M20 20H44V44H20Z"
+        },
+        {
+          "case": "isolation-winding",
+          "source": "isolation/winding.svg:/svg[1]/path[2]/@d",
+          "value": "M24 24H40V40H24Z"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]/path[1]/@d",
+          "value": "M4 4H36V20H4Z"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]/path[2]/@d",
+          "value": "M12 12H44V28H12Z"
+        },
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/path[1]/@d",
+          "value": "M0 0H12V8H0Z"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/defs[1]/path[1]/@d",
+          "value": "M0 0H32V24H0Z"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/path[1]/@d",
+          "value": "M0 0H64V64H0Z"
+        },
+        {
+          "case": "isolation-viewport",
+          "source": "isolation/viewport.svg:/svg[1]/svg[1]/path[1]/@d",
+          "value": "M0 0H24V16H0Z"
+        },
+        {
+          "case": "isolation-outlined-text",
+          "source": "isolation/outlined-text.svg:/svg[1]/path[1]/@d",
+          "value": "M8 52L24 12H32L48 52H40L36 40H20L16 52Z M23 32H33L28 20Z"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-path-commands"
+      ],
+      "category": "path-command",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "h",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/path[1]/@d",
+          "value": "M4 4H28v24h-24z M36 4L60 4L60 28L36 28Z M4 36Q16 24 28 36C40 48 4 60 28 60 M40 40A8 8 0 1 1 56 56"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-path-commands"
+      ],
+      "category": "path-command",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "v",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/path[1]/@d",
+          "value": "M4 4H28v24h-24z M36 4L60 4L60 28L36 28Z M4 36Q16 24 28 36C40 48 4 60 28 60 M40 40A8 8 0 1 1 56 56"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-path-commands"
+      ],
+      "category": "path-command",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "z",
+      "witnesses": [
+        {
+          "case": "isolation-path-commands",
+          "source": "isolation/path-commands.svg:/svg[1]/path[1]/@d",
+          "value": "M4 4H28v24h-24z M36 4L60 4L60 28L36 28Z M4 36Q16 24 28 36C40 48 4 60 28 60 M40 40A8 8 0 1 1 56 56"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use",
+        "isolation-png-transform-clip"
+      ],
+      "category": "reference",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "#clip",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/@clip-path",
+          "value": "clipPath"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/@clip-path",
+          "value": "clipPath"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-gradient"
+      ],
+      "category": "reference",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "#ramp",
+      "witnesses": [
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/rect[1]/@fill",
+          "value": "linearGradient"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-clip-use"
+      ],
+      "category": "reference",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "#tile",
+      "witnesses": [
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/use[1]/@href",
+          "value": "path"
+        },
+        {
+          "case": "isolation-clip-use",
+          "source": "isolation/clip-use.svg:/svg[1]/g[1]/use[2]/@href",
+          "value": "path"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-gradient"
+      ],
+      "category": "reference",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "#vertical",
+      "witnesses": [
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/g[1]/rect[1]/@fill",
+          "value": "linearGradient"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-png-alpha",
+        "isolation-png-transform-clip"
+      ],
+      "category": "reference",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "data:image/png;base64,  iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABy  tg0kAAAAF0lEQVR4nGP4z8DwHwwZGP43/P//nwEARk4IeZvz32MAAAAASUVORK5CYII=",
+      "witnesses": [
+        {
+          "case": "isolation-png-alpha",
+          "source": "isolation/png-alpha.svg:/svg[1]/image[1]/@href",
+          "value": "bounded inline PNG; inspect encoded bytes before reference capture"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[1]/@href",
+          "value": "bounded inline PNG; inspect encoded bytes before reference capture"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/image[2]/@href",
+          "value": "bounded inline PNG; inspect encoded bytes before reference capture"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "style",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "fill",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[2]/@style",
+          "value": "none"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "style",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "font-family",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[3]/@style",
+          "value": "'Source Sans 3'"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "style",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "font-size",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[3]/@style",
+          "value": "10px"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "style",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "font-weight",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[3]/@style",
+          "value": "400"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "style",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "opacity",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[2]/@style",
+          "value": "1"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "style",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "stroke",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[2]/@style",
+          "value": "#a42a45"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "style",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "stroke-dasharray",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[2]/@style",
+          "value": "8,4"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "style",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "stroke-dashoffset",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[2]/@style",
+          "value": "2"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "style",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "stroke-linecap",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/style[1]",
+          "value": "butt"
+        },
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[2]/@style",
+          "value": "round"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "style",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "stroke-linejoin",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/style[1]",
+          "value": "round"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "style",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "stroke-width",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/path[2]/@style",
+          "value": "6"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "category": "style",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "text-anchor",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[3]/@style",
+          "value": "end"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-stroke"
+      ],
+      "category": "style-selector",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "*",
+      "witnesses": [
+        {
+          "case": "isolation-stroke",
+          "source": "isolation/stroke.svg:/svg[1]/style[1]",
+          "value": "stroke-linejoin:round;stroke-linecap:butt"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity"
+      ],
+      "category": "transform",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "matrix",
+      "witnesses": [
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/path[1]/@transform",
+          "value": "1,0,0.5,1,8,44"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-text"
+      ],
+      "category": "transform",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "rotate",
+      "witnesses": [
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/g[1]/@transform",
+          "value": "90,20,20"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[4]/@transform",
+          "value": "-90"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ],
+      "category": "transform",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "scale",
+      "witnesses": [
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/g[1]/@transform",
+          "value": "2,1"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/@transform",
+          "value": "-1,1"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-affine-opacity",
+        "isolation-gradient",
+        "isolation-png-transform-clip",
+        "isolation-text"
+      ],
+      "category": "transform",
+      "disposition": "admitted grammar: implementation and native witness pending",
+      "feature": "translate",
+      "witnesses": [
+        {
+          "case": "isolation-affine-opacity",
+          "source": "isolation/affine-opacity.svg:/svg[1]/g[1]/@transform",
+          "value": "8,8"
+        },
+        {
+          "case": "isolation-gradient",
+          "source": "isolation/gradient.svg:/svg[1]/g[1]/@transform",
+          "value": "4,32"
+        },
+        {
+          "case": "isolation-png-transform-clip",
+          "source": "isolation/png-transform-clip.svg:/svg[1]/g[1]/@transform",
+          "value": "64,0"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[4]/@transform",
+          "value": "16,60"
+        }
+      ]
+    }
+  ],
+  "font_usage": [
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "family": "'Source Sans 3'",
+      "glyphs": [
+        {
+          "char": " ",
+          "codepoint": "U+0020"
+        },
+        {
+          "char": "A",
+          "codepoint": "U+0041"
+        },
+        {
+          "char": "E",
+          "codepoint": "U+0045"
+        },
+        {
+          "char": "R",
+          "codepoint": "U+0052"
+        },
+        {
+          "char": "T",
+          "codepoint": "U+0054"
+        },
+        {
+          "char": "V",
+          "codepoint": "U+0056"
+        },
+        {
+          "char": "a",
+          "codepoint": "U+0061"
+        },
+        {
+          "char": "d",
+          "codepoint": "U+0064"
+        },
+        {
+          "char": "e",
+          "codepoint": "U+0065"
+        },
+        {
+          "char": "g",
+          "codepoint": "U+0067"
+        },
+        {
+          "char": "l",
+          "codepoint": "U+006C"
+        },
+        {
+          "char": "n",
+          "codepoint": "U+006E"
+        },
+        {
+          "char": "r",
+          "codepoint": "U+0072"
+        },
+        {
+          "char": "u",
+          "codepoint": "U+0075"
+        }
+      ],
+      "weight": "400",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[1]",
+          "style": {
+            "font-family": "'Source Sans 3'",
+            "font-size": "10",
+            "font-weight": "400"
+          },
+          "text": "Regular AV"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[3]",
+          "style": {
+            "font-family": "'Source Sans 3'",
+            "font-size": "10px",
+            "font-weight": "400",
+            "text-anchor": "end"
+          },
+          "text": "End"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[4]",
+          "style": {
+            "font-family": "'Source Sans 3'",
+            "font-size": "10",
+            "font-weight": "400"
+          },
+          "text": "Turn"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[5]/tspan[1]",
+          "style": {
+            "font-family": "'Source Sans 3'",
+            "font-size": "10",
+            "font-weight": "400"
+          },
+          "text": "A"
+        },
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[5]/tspan[2]",
+          "style": {
+            "font-family": "'Source Sans 3'",
+            "font-size": "10",
+            "font-weight": "400"
+          },
+          "text": "V"
+        }
+      ]
+    },
+    {
+      "cases": [
+        "isolation-text"
+      ],
+      "family": "'Source Sans 3'",
+      "glyphs": [
+        {
+          "char": " ",
+          "codepoint": "U+0020"
+        },
+        {
+          "char": "A",
+          "codepoint": "U+0041"
+        },
+        {
+          "char": "B",
+          "codepoint": "U+0042"
+        },
+        {
+          "char": "V",
+          "codepoint": "U+0056"
+        },
+        {
+          "char": "d",
+          "codepoint": "U+0064"
+        },
+        {
+          "char": "l",
+          "codepoint": "U+006C"
+        },
+        {
+          "char": "o",
+          "codepoint": "U+006F"
+        }
+      ],
+      "weight": "700",
+      "witnesses": [
+        {
+          "case": "isolation-text",
+          "source": "isolation/text.svg:/svg[1]/g[1]/text[2]",
+          "style": {
+            "font-family": "'Source Sans 3'",
+            "font-size": "10",
+            "font-weight": "700"
+          },
+          "text": "Bold AV"
+        }
+      ]
+    }
+  ],
+  "phase": "A; syntax census only; no native feature is claimed implemented"
+}
