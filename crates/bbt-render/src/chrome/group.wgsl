@@ -11,8 +11,11 @@ struct Parameters {
     effects: vec4f,
     line: vec4f,
     alpha: vec4f,
+    coverage:vec4f,
+    extent:vec4f,
 }
 @group(0) @binding(1) var<uniform> parameters: Parameters;
+@group(0) @binding(2) var coverage:texture_2d<f32>;
 
 @vertex fn vs(@builtin(vertex_index) vertex: u32) -> @builtin(position) vec4f {
     let p = array<vec2f, 3>(vec2f(-1,-1), vec2f(3,-1), vec2f(-1,3));
@@ -28,6 +31,11 @@ struct Parameters {
         let delta = parameters.line.zw - parameters.line.xy;
         let t = clamp(dot(position.xy - parameters.line.xy, delta) / dot(delta, delta), 0., 1.);
         alpha *= mix(parameters.alpha.x, parameters.alpha.y, t);
+    }
+    if parameters.effects.w>0. {
+        let q=position.xy-parameters.coverage.xy;
+        if any(q<vec2f(0))||any(q>=parameters.extent.xy) {discard;}
+        alpha*=textureLoad(coverage,vec2i(floor(q)+parameters.coverage.zw),0).a;
     }
     return vec4f(color * alpha, alpha);
 }

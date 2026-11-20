@@ -74,6 +74,7 @@ impl Mark {
                 PathCommand::Move(p) => PathCommand::Move(point(p)),
                 PathCommand::Line(p) => PathCommand::Line(point(p)),
                 PathCommand::Cubic(p) => PathCommand::Cubic(p.map(point)),
+                PathCommand::Close => PathCommand::Close,
             })
             .collect();
         c::Element::Path(c::Path {

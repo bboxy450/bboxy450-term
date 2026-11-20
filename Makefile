@@ -51,11 +51,11 @@ PROFILE ?= release
 NOTIFICATION_BIN ?= $(INSTALL_DIR)/$(APP).app/Contents/MacOS/$(APP)
 TARGET_DIR ?= target
 
-# Corpus/reference preparation only until the SVG review checkpoint is cleared.
+# Exact-source native pixels, geometry, fonts, resource ceilings and causal controls.
 .PHONY: svg-loop
-svg-loop: svg-reference svg-exporters
+svg-loop: svg-reference svg-exporters svg-native
 	@PYTHONDONTWRITEBYTECODE=1 '$(TARGET_DIR)/svg-loop/venv/bin/python' -m unittest discover -s crates/bboxy450-svg -p 'test_corpus.py'
-	@PYTHONDONTWRITEBYTECODE=1 CORPUS_ONLY='$(CORPUS_ONLY)' UPDATE_CORPUS='$(UPDATE_CORPUS)' '$(TARGET_DIR)/svg-loop/venv/bin/python' crates/bboxy450-svg/corpus.py --out '$(TARGET_DIR)/svg-loop'
+	@PYTHONDONTWRITEBYTECODE=1 CORPUS_ONLY='$(CORPUS_ONLY)' UPDATE_CORPUS='$(UPDATE_CORPUS)' CASES='$(CASES)' UPDATE_REFERENCES='$(UPDATE_REFERENCES)' '$(TARGET_DIR)/svg-loop/venv/bin/python' crates/bboxy450-svg/corpus.py --out '$(TARGET_DIR)/svg-loop'
 
 .PHONY: svg-exporters
 svg-exporters:
@@ -64,10 +64,39 @@ svg-exporters:
 	@uv pip sync --python '$(TARGET_DIR)/svg-loop/venv/bin/python' --require-hashes crates/bboxy450-svg/requirements.lock
 
 .PHONY: test-svg-policy
-test-svg-policy: svg-exporters
+test-svg-policy:
 	@set -eu; . scripts/cache-env.sh; \
 	sh scripts/quarantine-test.sh --locked -p bboxy450-book -p bboxy450-render --lib --target-dir '$(TARGET_DIR)' -E 'test(parity::tests::) | test(chrome::diff::tests::)'
-	@PYTHONDONTWRITEBYTECODE=1 '$(TARGET_DIR)/svg-loop/venv/bin/python' crates/bboxy450-svg/test_policy.py
+
+.PHONY: test-svg-admission
+test-svg-admission: svg-native
+	@PYTHONDONTWRITEBYTECODE=1 '$(TARGET_DIR)/svg-loop/venv/bin/python' -c 'import json,sys; from pathlib import Path; sys.path.insert(0,"crates/bboxy450-svg"); from native import admission; out=Path("$(TARGET_DIR)/svg-loop").resolve(); result=admission(out,out.parent/"debug/examples/svg-loop-native"); print(json.dumps({"checks":len(result["rows"]),"passed":result["passed"]})); sys.exit(0 if result["passed"] else 1)'
+
+.PHONY: svg-native-check
+svg-native-check: svg-native
+	@PYTHONDONTWRITEBYTECODE=1 CASES='$(CASES)' UPDATE_REFERENCES='$(UPDATE_REFERENCES)' '$(TARGET_DIR)/svg-loop/venv/bin/python' crates/bboxy450-svg/native.py '$(TARGET_DIR)/svg-loop'
+
+.PHONY: test-svg svg-lock svg-native
+svg-native:
+	@set -eu; . scripts/cache-env.sh; cargo build --locked -p bboxy450-svg --example svg-loop-native --target-dir '$(TARGET_DIR)'
+
+# Lockfile refresh is explicit for new workspace membership; subsequent checks are locked.
+svg-lock:
+	@set -eu; . scripts/cache-env.sh; cargo metadata --offline --format-version 1 > /dev/null
+
+test-svg:
+	@set -eu; . scripts/cache-env.sh; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-svg --lib --target-dir '$(TARGET_DIR)'
+
+.PHONY: check-svg
+check-svg:
+	@set -eu; . scripts/cache-env.sh; cargo clippy --locked -p bboxy450-svg -p bboxy450-render -p bboxy450-ui-core --all-targets --target-dir '$(TARGET_DIR)' -- -D warnings
+
+.PHONY: test-svg-primitives
+test-svg-primitives:
+	@set -eu; . scripts/cache-env.sh; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-ui-core -p bboxy450-render --lib --target-dir '$(TARGET_DIR)' -E 'test(close_) | test(bounded_png_) | test(chrome::paths::tests::) | test(chrome::group::) | test(svg_) | test(minified_bitmap_) | test(colored_text_) | test(cropped_glyph_)'; \
+	sh scripts/quarantine-test.sh --locked -p bboxy450-ui --test canvas --target-dir '$(TARGET_DIR)'
 
 .PHONY: svg-review
 svg-review:
@@ -349,7 +378,7 @@ help:
 	  'make package-crate CRATE=name    Package and GPG-sign one crate, without publishing' \
 	  'make sync-release-inputs         Refresh packaged copies of canonical build inputs' \
 	  'make sync-tokens                 Regenerate canonical web design tokens and release inputs' \
-	  'make sync-licenses               Refresh local crate LICENSE/NOTICE/ATTRIBUTION copies' \
+	  'make sync-licenses               Refresh local crate LICENSE/NOTICE/ATTRIBUTION copies (BBOXY_LICENSE_MAP=path)' \
 	  'make sync-source-notices         Attach scoped source comments; preserve upstream files' \
 	  'make test-licenses               License metadata, copies and unattended negative fixtures' \
 	  'make check-license-packages      Inspect all crate package lists; no compilation' \
@@ -752,9 +781,18 @@ diagnose-fifty-seat-pty: build-fifty-seat-probe
 	@set -eu; \
 	python3 -c 'import subprocess,sys; sys.exit(subprocess.run([sys.argv[1]], timeout=30).returncode)' '$(TARGET_DIR)/night-fifty-seat-startup/pty-syscall-probe'
 
+.PHONY: test-svg-fonts
+test-svg-fonts: bundle-svg-fonts svg-native
+	@'$(TARGET_DIR)/debug/examples/svg-loop-native' prepare crates/bboxy450-svg/fixtures/isolation/text.svg '$(BUNDLE)/Contents/Resources/chart-fonts'
+
+.PHONY: bundle-svg-fonts
+bundle-svg-fonts:
+	@mkdir -p '$(BUNDLE)/Contents/Resources/chart-fonts'
+	@cp crates/bboxy450-svg/fonts/manifest.json crates/bboxy450-svg/fonts/SourceSans3-Regular.ttf crates/bboxy450-svg/fonts/SourceSans3-Bold.ttf crates/bboxy450-svg/fonts/LICENSE.md '$(BUNDLE)/Contents/Resources/chart-fonts/'
+
 # The Dream C1 gate admits only its pinned build inputs: ci-local's debug-assertion
 # overrides are for test builds, not for the packaged worker, so they are cleared for it.
-bundle-files: check-licenses compile
+bundle-files: check-licenses compile bundle-svg-fonts
 	@set -eu; test "$$(uname -s)" = Darwin || { echo 'macOS is required' >&2; exit 2; }; \
 	case '$(BUNDLE)' in *.app) ;; *) echo 'BUNDLE must end in .app' >&2; exit 2 ;; esac; \
 	. ./scripts/cache-env.sh; \
@@ -882,6 +920,9 @@ sync-release-inputs:
 sync-tokens:
 	@python3 -I lab/web/gen-tokens.py
 	@$(MAKE) sync-release-inputs
+
+# Optional read-only canonical KB build input; inherited by direct landing checks too.
+export BBOXY_LICENSE_MAP
 
 .PHONY: sync-licenses sync-source-notices check-licenses test-licenses test-licenses-fixtures test-license-integration check-license-packages
 sync-licenses:

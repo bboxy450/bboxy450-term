@@ -31,6 +31,56 @@ pub fn register_font_file(path: &std::path::Path) -> Result<()> {
     Ok(())
 }
 
+/// Verify actual CoreText resolution; a matching request string is not identity.
+#[allow(
+    clippy::disallowed_methods,
+    reason = "font resources are verified on the preparation worker"
+)]
+pub fn verify_font_file(path: &std::path::Path, family: &str, postscript: &str) -> Result<()> {
+    use objc2_core_foundation::CFURLPathStyle;
+    use objc2_core_text::kCTFontURLAttribute;
+    let font = unsafe { CTFont::with_name(&CFString::from_str(postscript), 12., ptr::null()) };
+    if unsafe { font.post_script_name() }.to_string() != postscript
+        || unsafe { font.family_name() }.to_string() != family
+    {
+        return Err("CoreText resolved a different font face".into());
+    }
+    let url = unsafe { font.attribute(kCTFontURLAttribute) }
+        .and_then(|value| value.downcast::<CFURL>().ok())
+        .ok_or("CoreText face has no file identity")?;
+    let actual = url
+        .file_system_path(CFURLPathStyle::CFURLPOSIXPathStyle)
+        .ok_or("CoreText face file URL is unavailable")?;
+    if std::path::Path::new(&actual.to_string())
+        .canonicalize()
+        .map_err(|e| e.to_string())?
+        != path.canonicalize().map_err(|e| e.to_string())?
+    {
+        return Err("CoreText face file differs from the verified resource".into());
+    }
+    Ok(())
+}
+
+/// Coverage is checked on the exact face, without CoreText's fallback cascade.
+pub fn font_covers(postscript: &str, text: &str) -> Result<bool> {
+    let font = unsafe { CTFont::with_name(&CFString::from_str(postscript), 12., ptr::null()) };
+    if unsafe { font.post_script_name() }.to_string() != postscript {
+        return Err("requested font face is unavailable".into());
+    }
+    let mut units: Vec<_> = text.encode_utf16().collect();
+    if units.is_empty() {
+        return Ok(true);
+    }
+    let mut glyphs = vec![0; units.len()];
+    Ok(unsafe {
+        font.glyphs_for_characters(
+            NonNull::new(units.as_mut_ptr()).unwrap(),
+            NonNull::new(glyphs.as_mut_ptr()).unwrap(),
+            units.len() as isize,
+        )
+    })
+}
+
 impl Font {
     pub fn new(config: &FontConfig) -> Result<Self> {
         if !config.size.is_finite()

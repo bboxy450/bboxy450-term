@@ -61,7 +61,20 @@ pub mod terminal;
 #[cfg(target_os = "macos")]
 mod macos;
 #[cfg(target_os = "macos")]
-pub use macos::{Font, register_font_file};
+pub use macos::{Font, font_covers, register_font_file, verify_font_file};
+
+#[cfg(not(target_os = "macos"))]
+pub fn register_font_file(_: &std::path::Path) -> crate::Result<()> {
+    Err("CoreText requires macOS".into())
+}
+#[cfg(not(target_os = "macos"))]
+pub fn verify_font_file(_: &std::path::Path, _: &str, _: &str) -> crate::Result<()> {
+    Err("CoreText requires macOS".into())
+}
+#[cfg(not(target_os = "macos"))]
+pub fn font_covers(_: &str, _: &str) -> crate::Result<bool> {
+    Err("CoreText requires macOS".into())
+}
 
 #[cfg(not(target_os = "macos"))]
 pub struct Font;

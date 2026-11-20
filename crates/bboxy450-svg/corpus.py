@@ -5,7 +5,7 @@
 # License: https://github.com/bboxy450/bboxy450-term/blob/main/LICENSE
 # Credit copied/adapted/translated reuse accurately; independent inspiration credit requested.
 # Policy: https://github.com/bboxy450/bboxy450-term/blob/main/ATTRIBUTION.md
-"""Pinned exporter corpus. This does not interpret, lower or render SVG natively."""
+"""Pinned exporter corpus and source-bound native acceptance loop."""
 import argparse
 import base64
 from contextlib import contextmanager
@@ -401,8 +401,8 @@ def generate(out):
         if exporter == "vl-convert-python":
             cases[-1].update({"scenegraph_sha256": digest((out / (key + ".scenegraph.json")).read_bytes()),
                               "measurements_sha256": digest((out / (key + ".measurements.json")).read_bytes())})
-    dump(out / "manifest.json", {"phase": "A; corpus only; native renderer absent", "font_set": identity,
-                                 "exporters": versions, "generator_sha256": {p: digest((BASE / p).read_bytes()) for p in ("corpus.py", "census.py", "references.py", "measurements.py", "guard_controls.py", "capture.mjs", "reference.rs", "reference_setup.py", "test_corpus.py", "fixtures.py", "review.py")},
+    dump(out / "manifest.json", {"phase": "exporter corpus", "font_set": identity,
+                                 "exporters": versions, "generator_sha256": {p: digest((BASE / p).read_bytes()) for p in ("corpus.py", "census.py", "references.py", "measurements.py", "guard_controls.py", "capture.mjs", "reference.rs", "reference_setup.py", "test_corpus.py", "fixtures.py", "review.py", "native.py", "src/viewport.rs", "../bboxybook/capture-cdp.mjs", "../bboxybook/capture-startup.mjs")},
                                  "requirements_sha256": digest((BASE / "requirements.lock").read_bytes()), "cases": cases})
     return cases
 
@@ -454,7 +454,7 @@ def main():
             target.write_bytes(path.read_bytes())
         elif not target.is_file() or target.read_bytes() != path.read_bytes():
             mismatches.append("fixtures/" + str(path.relative_to(fixture_out)))
-    result = {"phase": "A", "native_renderer": "absent", "python": platform.python_version(),
+    result = {"phase": "B", "native_renderer": "bboxy450-svg", "python": platform.python_version(),
               "phase_a_complete": False, "reference_status": "pending reference/measurement checks",
               "cases": len(cases), "font_set": load_fonts()[1], "corpus_mismatches": mismatches,
               "decision_gaps": report["decision_gaps"] + fixture_census["decision_gaps"], "corpus_only": os.environ.get("CORPUS_ONLY") == "1"}
@@ -471,7 +471,7 @@ def main():
     from review import run as review_run, frozen_advisories
     review = review_run(args.out)
     advisories = frozen_advisories(args.out, review)
-    result["reference_status"] = "all 66 full Chrome captures and 57 compatible shape-layer comparisons recorded"
+    result["reference_status"] = f"{references['captures']} full Chrome captures and {len(references['comparisons'])} compatible shape-layer comparisons recorded"
     result["font_refusal_controls"] = len(controls["controls"])
     result["measurement_failures"] = len(measurements["failures"])
     result["isolation_cases"] = len(fixture_manifest["cases"])
@@ -482,15 +482,21 @@ def main():
     result["frozen_advisory_sha256"] = digest((BASE / "fixtures/advisories.json").read_bytes())
     result["reference_geometry_missing"] = sum(r["public_geometry"]["missing"] for r in references["comparisons"])
     result["phase_a_complete"] = not measurements["failures"]
-    dump(args.out / "result.json", result)
-    print(json.dumps(result, indent=2))
     if not result["phase_a_complete"]:
-        print("Phase A failed: exporter correspondence/containment differs.", file=sys.stderr)
+        dump(args.out / "result.json", result)
+        print("Exporter correspondence/containment differs.", file=sys.stderr)
         return 1
     if os.environ.get("CORPUS_ONLY") != "1":
-        print("Native renderer gate unavailable: Phase A does not prove renderer acceptance.", file=sys.stderr)
-        return 1
-    return 0
+        from native import run as native_run
+        native = native_run(args.out, selected=os.environ.get("CASES", "").replace(",", " ").split() or None, refresh_references=False)
+        result["renderer_complete"] = native["passed"]
+        result["native_captures"] = len(native["runs"])
+        result["native_failures"] = len(native["failures"])
+    else:
+        result["renderer_complete"] = False
+    dump(args.out / "result.json", result)
+    print(json.dumps(result, indent=2))
+    return 0 if result["corpus_only"] or result["renderer_complete"] else 1
 
 
 if __name__ == "__main__":

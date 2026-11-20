@@ -26,19 +26,19 @@ def policy():
             raise ValueError("canonical comparison constant missing: " + name)
         return float(value[1])
     return {"vector_budget": constant("VECTOR_CHANGED_BUDGET"), "text_budget": constant("TEXT_CHANGED_BUDGET"),
-            "text_geometry_px": constant("TEXT_GEOMETRY_TOLERANCE_PX"), "source": str(source.relative_to(BASE.parents[1])), "sha256": digest(raw)}
+            "text_geometry_px": constant("TEXT_GEOMETRY_TOLERANCE_PX"), "source": str(source.relative_to(BASE.parents[1]))}
 
 
-def shapes_only(raw):
+def shapes_only(raw, viewport, root_clip=False):
     """Reference projection: remove only the two layers this resvg cannot paint.
 
     This is XML custody for an existing oracle, not SVG interpretation/lowering.
     IDs on the trusted projection connect public oracle bounds to Chrome paths.
     """
     root = ET.fromstring(raw)
-    box = root.attrib["viewBox"].replace(",", " ").split()
-    root.set("width", box[2])
-    root.set("height", box[3])
+    root.set("width",str(viewport[2]))
+    root.set("height",str(viewport[3]))
+    root.set("viewBox"," ".join(map(str,viewport)))
     locations = {}
     serial = 0
 
@@ -61,6 +61,16 @@ def shapes_only(raw):
                 walk(child, location + f"/{name}[{siblings[name]}]", definitions)
 
     walk(root, "/svg[1]")
+    if root_clip:
+        ns="{http://www.w3.org/2000/svg}"
+        defs=ET.SubElement(root,ns+"defs")
+        clip=ET.SubElement(defs,ns+"clipPath",{"id":"bboxy-loop-viewport"})
+        ET.SubElement(clip,ns+"rect",dict(zip(("x","y","width","height"),map(str,viewport))))
+        group=ET.Element(ns+"g",{"clip-path":"url(#bboxy-loop-viewport)"})
+        for child in list(root):
+            if child is not defs:
+                root.remove(child);group.append(child)
+        root.append(group)
     return ET.tostring(root), locations
 
 
@@ -99,18 +109,73 @@ def compare_geometry(shapes, paths):
             "native_geometry": "not yet implemented; reference float deltas do not waive its exact vector gate"}
 
 
+def order_independence(out, request, chrome):
+    """The same bounded cases must produce identical PNG bytes in every order."""
+    names = ("vega-heatmap", "isolation-text", "isolation-png-alpha")
+    cases = [next(c for c in request["cases"] if c["id"] == name) for name in names]
+
+    def pixels(runs):
+        return {(r["id"], r["view"]["id"], mode): capture["sha256"]
+                for r in runs for mode, capture in r["captures"].items()}
+
+    expected = pixels([r for r in chrome["runs"] if r["id"] in names])
+    key = digest(json.dumps({"capture": chrome["source_sha256"], "checker": digest(Path(__file__).read_bytes()),
+                             "font_set": chrome["font_set"], "browser": chrome["browser"], "cases": cases,
+                             "pixels": sorted(expected.items())}, sort_keys=True).encode())
+    root = out / "order-controls"
+    root.mkdir(exist_ok=True)
+    cache = root / "result.json"
+    if cache.is_file():
+        previous = json.loads(cache.read_text())
+        if (previous.get("cache_key") == key and previous.get("passed")
+                and len(previous["runs"]) == 5
+                and all(Path(p).is_file() and digest(Path(p).read_bytes()) == sha
+                        for row in previous["runs"] for p, sha in row["file_hashes"].items())):
+            return previous
+    rows = []
+    orders = [(c["id"], [c]) for c in cases] + [("normal", cases), ("reverse", list(reversed(cases)))]
+    for name, ordered in orders:
+        directory = root / name
+        recipe = root / (name + "-request.json")
+        dump(recipe, {**request, "out": str(directory), "cases": ordered})
+        with (root / (name + ".log")).open("w") as log:
+            result = subprocess.run(["node", str(BASE / "capture.mjs"), str(recipe)], stdout=log, stderr=subprocess.STDOUT)
+        if result.returncode:
+            raise ValueError("order control capture failed: " + name)
+        captured = json.loads((directory / "chrome.json").read_text())
+        custody = json.loads((directory / "owned-process.json").read_text())
+        wanted = {k: sha for k, sha in expected.items() if k[0] in {c["id"] for c in ordered}}
+        observed = pixels(captured["runs"])
+        differing = sorted(k for k in wanted.keys() | observed.keys() if wanted.get(k) != observed.get(k))
+        row = {"order": name, "exit_code": result.returncode, "pngs": len(observed), "differing": differing,
+               "custody": custody, "file_hashes": {**captured["file_hashes"],
+                   str(directory / "chrome.json"): digest((directory / "chrome.json").read_bytes()),
+                   str(directory / "owned-process.json"): digest((directory / "owned-process.json").read_bytes())},
+               "passed": not differing and custody.get("reaped") and custody.get("profile_removed")}
+        rows.append(row)
+    result = {"cache_key": key, "cases": list(names), "capture_source_sha256": chrome["source_sha256"],
+              "runs": rows, "passed": all(r["passed"] for r in rows)}
+    dump(cache, result)
+    if not result["passed"]:
+        raise ValueError("capture PNG bytes depend on case order; see " + str(cache))
+    return result
+
+
 def run(out):
     source = BASE / "corpus"
     manifest = json.loads((source / "manifest.json").read_text())
     fixtures = json.loads((BASE / "fixtures/manifest.json").read_text())
     cases = [{**c, "source_directory": source} for c in manifest["cases"]]
     cases += [{**c, "source_directory": BASE / "fixtures"} for c in fixtures["cases"]]
+    oracle=out / "oracle-build/debug/bboxy450-svg-reference"
+    for case in cases:
+        case["capture_views"]={v["id"]:json.loads(subprocess.check_output([str(oracle),"viewport",json.dumps(case["viewBox"]),json.dumps(v["camera"]),str(v["scale"])])) for v in case["views"]}
     refs = out / "references"
     refs.mkdir(parents=True, exist_ok=True)
     request = {"out": str(refs), "font_directory": str(BASE / "fonts"),
                "cases": [{**{k: v for k, v in c.items() if k != "source_directory"}, "svg": str(c["source_directory"] / c["svg"])} for c in cases]}
     dump(out / "capture-request.json", request)
-    capture_sha = digest((BASE / "capture.mjs").read_bytes())
+    capture_sha = digest(b"".join(p.read_bytes() for p in (BASE / "capture.mjs", BASE.parent / "bboxybook/capture-cdp.mjs", BASE.parent / "bboxybook/capture-startup.mjs", BASE / "src/viewport.rs")))
     cache = refs / "chrome.json"
     chrome = json.loads(cache.read_text()) if cache.is_file() else {}
     browser_version = subprocess.check_output([os.environ.get("CHROME", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"), "--version"], text=True, timeout=10).strip().replace("Google Chrome ", "Chrome/")
@@ -151,25 +216,25 @@ def run(out):
         raw = (c["source_directory"] / c["svg"]).read_bytes()
         if digest(raw) != c["sha256"]:
             raise ValueError("source digest changed")
-        layer, locations = shapes_only(raw)
-        svg = refs / (c["id"] + "-shapes.svg")
-        svg.write_bytes(layer)
-        if c.get("image") or c.get("text"):
-            # These isolation scenes contain only unsupported reference layers.
-            continue
         for view in c["views"]:
+            mapping=c["capture_views"][view["id"]]
+            layer,locations=shapes_only(raw,mapping["viewport"],mapping["root_clip"])
+            if not locations:
+                continue
+            svg=refs/(c["id"]+"-"+view["id"]+"-shapes.svg")
+            svg.write_bytes(layer)
             prefix = refs / (c["id"] + "-" + view["id"])
             png, geometry, diff = (Path(str(prefix) + suffix) for suffix in ("-resvg.png", "-resvg-geometry.json", "-reference-diff.png"))
             browser = next(r for r in chrome["runs"] if r["id"] == c["id"] and r["view"] == view)
             key = digest(json.dumps({"svg": c["sha256"], "layer": digest(layer), "view": view, "font_set": load_fonts()[1],
                                      "oracle_binary": oracle_hash, "runner_program": runner_hash, "capture_program": capture_sha, "browser": chrome["browser"]["Browser"],
-                                     "chrome_pixels": browser["captures"]["shapes"]["sha256"], "policy": rules["sha256"]}, sort_keys=True).encode())
+                                     "chrome_pixels": browser["captures"]["shapes"]["sha256"], "policy": rules}, sort_keys=True).encode())
             cached = next((r for r in previous.get("comparisons", []) if r.get("cache_key") == key), None)
             if cached and set(cached["file_hashes"]) == {str(png), str(geometry), str(diff)} and all(Path(p).is_file() and digest(Path(p).read_bytes()) == h for p, h in cached["file_hashes"].items()):
                 comparisons.append(cached)
                 cache_hits += 1
                 continue
-            subprocess.run([str(oracle), "render", str(svg), str(png), str(view["scale"]), *map(str, view["camera"]), str(geometry)], check=True)
+            subprocess.run([str(oracle), "render", str(svg), str(png), str(view["scale"]), *map(str, view["camera"]), str(geometry),json.dumps(c["viewBox"])], check=True)
             metrics = json.loads(subprocess.check_output([str(oracle), "compare", browser["captures"]["shapes"]["file"], str(png), str(diff)]))
             bounds = json.loads(geometry.read_text())
             for row in bounds["paths"]:
@@ -183,9 +248,10 @@ def run(out):
                                 "public_geometry": public_geometry,
                                 "over_vector_budget": metrics["changed_fraction"] > rules["vector_budget"],
                                 "over_mixed_budget": metrics["changed_fraction"] > rules["text_budget"]})
-    result = {"phase": "A; native renderer absent", "policy": rules, "oracle": identity,
-              "oracle_binary_sha256": oracle_hash, "reference_cache_hits": cache_hits,
-              "font_set": load_fonts()[1], "chrome": chrome["browser"], "comparisons": comparisons}
+    capture_order = order_independence(out, request, chrome)
+    result = {"phase": "reference evidence", "policy": rules, "oracle": identity,
+              "oracle_binary_sha256": oracle_hash, "reference_cache_hits": cache_hits, "capture_order": capture_order,
+              "font_set": load_fonts()[1], "chrome": chrome["browser"], "captures": len(chrome["runs"]), "comparisons": comparisons}
     dump(out / "reference-comparisons.json", result)
     return result
 

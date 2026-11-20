@@ -108,9 +108,9 @@ checks = ["make test-formal", "make test"]
 name = "RenderLinePlan"
 title = "Cached chrome geometry never reuses evicted ink"
 models = ["RenderLinePlan", "BrokenRenderLinePlan"]
-sources = ["crates/bbt-render/src/chrome/text_cache.rs", "crates/bbt-render/src/chrome/mod.rs"]
-implementation_tests = ["crates/bbt-render/src/chrome/text_cache.rs"]
-assumptions = "One cached plan, three font and mask incarnations. Build/reuse, eviction, font replacement and plan trimming are atomic renderer-owner calls. Repacking preserves mask IDs; the plan contains no atlas coordinates. No scheduling/liveness or arbitrary Rust refinement claim. Real byte budgets, shape-key inputs, exact pixels, emoji and font/scale A-B-A use cache/image tests."
+sources = ["crates/bbt-render/src/chrome/text_cache.rs", "crates/bbt-render/src/chrome/mod.rs", "crates/bbt-render/src/chrome/path_masks.rs", "crates/bbt-render/src/chrome/text_glyphs.rs"]
+implementation_tests = ["crates/bbt-render/src/chrome/text_cache.rs", "crates/bbt-render/src/chrome/path_masks.rs", "crates/bbt-render/src/chrome/text.rs"]
+assumptions = "One cached plan, three font and mask incarnations. Build/reuse, eviction, font replacement and plan trimming are atomic renderer-owner calls. Repacking preserves mask IDs; the plan contains no atlas coordinates. No scheduling/liveness or arbitrary Rust refinement claim. Real byte budgets, shape-key inputs, exact pixels, emoji and font/scale A-B-A use cache/image tests. Prepared SVG masks reuse these existing mask IDs, pins, LRU and byte budget; transform, dash phase, clip, viewport and smoothing identity are implementation witnesses, not new state variables in this incarnation model. SVG parsing and pixel/geometry parity use make svg-loop and are not proved by this model."
 property = "A reused plan has current font and mask identities. The broken control omits the mask identity guard and consumes an evicted incarnation."
 checks = ["make test-formal", "make test"]
 

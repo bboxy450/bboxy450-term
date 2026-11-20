@@ -7,6 +7,7 @@
 """Reference-only causal paint controls, PNG sampling witness and review index."""
 import html
 import json
+import os
 import math
 from pathlib import Path
 import subprocess
@@ -81,7 +82,7 @@ def run(out):
 
 def report(out, review, advisories):
     rows = sorted(review["comparisons"]["comparisons"], key=lambda r: r["changed_fraction"], reverse=True)
-    text = ["# SVG corpus reference review", "", "Phase A only. Native renderer is absent; these are two independent references.", "",
+    text = ["# SVG corpus reference review", "", "Reference captures only. Native acceptance is recorded by native.py.", "",
             f"{len(rows)} compatible vector-layer pairs; {len(advisories['cases'])} frozen pixel advisories. Geometry remains measured and cannot become advisory.", ""]
     cells = []
     for row in rows:
@@ -90,26 +91,40 @@ def report(out, review, advisories):
         title = row["case"]+" / "+row["view"]["id"]
         text += [f"## {title}", "", f"Changed {row['changed_fraction']:.9%}; public geometry maximum {row['public_geometry']['maximum_error_px']:.9g} px.", "",
                  " | ".join(f"[{name}]({path})" for name, path in zip(("Chrome", "resvg", "difference"), relative)), ""]
-        cells.append("<section><h2>"+html.escape(title)+"</h2><p>Changed "+str(row["changed_fraction"])+"; native absent</p>"+
+        cells.append("<section><h2>"+html.escape(title)+"</h2><p>Changed "+str(row["changed_fraction"])+"; reference comparison</p>"+
                      "".join('<a href="'+html.escape(p)+'"><img alt="'+name+'" src="'+html.escape(p)+'"></a>' for name,p in zip(("Chrome", "resvg", "difference"), relative))+"</section>")
     (out / "report.md").write_text("\n".join(text))
-    (out / "index.html").write_text('<!doctype html><meta charset="utf-8"><title>SVG corpus references</title><style>body{font:16px system-ui}img{max-width:32%;image-rendering:pixelated}section{border-top:1px solid #aaa}</style><h1>SVG corpus references</h1><p>Phase A; native renderer absent. Chrome / resvg / difference, worst first.</p>'+"".join(cells))
+    (out / "index.html").write_text('<!doctype html><meta charset="utf-8"><title>SVG corpus references</title><style>body{font:16px system-ui}img{max-width:32%;image-rendering:pixelated}section{border-top:1px solid #aaa}</style><h1>SVG corpus references</h1><p>Reference-only Chrome / resvg / difference, worst first.</p>'+"".join(cells))
 
 
 def frozen_advisories(out, review):
     frozen = json.loads((BASE / "fixtures/advisories.json").read_text())
+    if frozen["policy"] != policy():
+        raise ValueError("frozen numeric comparison policy differs from canonical constants")
     rows = review["comparisons"]["comparisons"]
     expected = {(r["case"], r["view"]["id"]) for r in rows if r["over_vector_budget"]}
     actual = {(r["case"], r["view"]["id"]) for r in frozen["cases"]}
     if actual != expected or len(actual) != len(frozen["cases"]):
         raise ValueError("frozen reference advisory set changed")
+    manifests=[("corpus",json.loads((BASE/"corpus/manifest.json").read_text())),("fixtures",json.loads((BASE/"fixtures/manifest.json").read_text()))]
+    fractional={c["id"] for _,m in manifests for c in m["cases"] if any(not float(v).is_integer() for v in c["viewBox"])}
+    refreshed=[]
     for entry in frozen["cases"]:
         row = next(r for r in rows if (r["case"], r["view"]) == (entry["case"], entry["view"]))
         files = (row["chrome"]["file"], row["resvg"], row["diff"])
-        if entry["source_sha256"] != row["source_sha256"] or entry["changed_fraction"] != row["changed_fraction"] or entry["pixel_sha256"] != [digest(Path(p).read_bytes()) for p in files]:
-            raise ValueError("frozen advisory reference/source changed")
+        hashes=[digest(Path(p).read_bytes()) for p in files]
+        if entry["source_sha256"]!=row["source_sha256"]:raise ValueError("frozen advisory authored source changed")
+        if entry["changed_fraction"]!=row["changed_fraction"] or entry["pixel_sha256"]!=hashes:
+            if os.environ.get("UPDATE_REFERENCES")!="1" or entry["case"] not in fractional:
+                raise ValueError("frozen advisory reference changed outside approved fractional viewport refresh")
+            entry["changed_fraction"]=row["changed_fraction"]
+            entry["pixel_sha256"]=hashes
+            refreshed.append((entry["case"],entry["view"]["id"]))
     if frozen["font_set"] != review["comparisons"]["font_set"] or frozen["chrome"] != review["comparisons"]["chrome"]["Browser"] or frozen["resvg"] != review["comparisons"]["oracle"]["resvg"]:
         raise ValueError("frozen advisory tool/font identity changed")
+    if refreshed:
+        dump(BASE/"fixtures/advisories.json",frozen)
+        dump(out/"fractional-advisory-refresh.json",{"rows":refreshed,"authority":"specs/svg-renderer.den@60841c3b9bf030a2f9b2a6786b982d2d10382640ca196ce0a5304f889de07199"})
     inspected = json.loads((out / "phase-a-inspected.json").read_text())
     if not inspected["files"] or any(digest(Path(p).read_bytes()) != sha for p, sha in inspected["files"].items()):
         raise ValueError("missing/stale actual image inspection")

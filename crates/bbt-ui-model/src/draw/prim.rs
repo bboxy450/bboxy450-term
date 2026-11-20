@@ -92,6 +92,46 @@ impl Color {
 }
 
 pub type Pt = [f32; 2];
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ColorStop {
+    pub offset: f32,
+    pub color: Color,
+}
+
+/// The two witnessed RGB paints. Gradient coordinates are in the object's
+/// bounding box; interpolation is sRGB with pad spread.
+#[derive(Debug, Clone, PartialEq)]
+pub enum Paint {
+    Solid(Color),
+    LinearGradient {
+        start: Pt,
+        end: Pt,
+        stops: Arc<[ColorStop]>,
+    },
+}
+impl Paint {
+    pub fn validate(&self) -> Result<(), &'static str> {
+        let color = |c: Color| c.0.iter().all(|n| n.is_finite() && (0. ..=1.).contains(n));
+        match self {
+            Self::Solid(c) if c.0.iter().all(|n| n.is_finite()) => Ok(()),
+            Self::LinearGradient { start, end, stops }
+                if start.iter().chain(end).all(|n| n.is_finite())
+                    && (2..=256).contains(&stops.len())
+                    && stops.iter().all(|s| {
+                        s.offset.is_finite()
+                            && (0. ..=1.).contains(&s.offset)
+                            && color(s.color)
+                            && s.color.0[3] == 1.
+                    })
+                    && stops.windows(2).all(|p| p[0].offset <= p[1].offset) =>
+            {
+                Ok(())
+            }
+            _ => Err("invalid RGB paint"),
+        }
+    }
+}
 /// Clamped linear alpha ramp. Draw-list coordinates are logical pixels;
 /// retained Boxes translate their group-local endpoints at paint time.
 #[derive(Debug, Clone, Copy, PartialEq)]

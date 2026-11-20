@@ -332,6 +332,7 @@ impl Collector<'_> {
                             c::PathCommand::Move(p) => UiDocumentPathCommand::Move(*p),
                             c::PathCommand::Line(p) => UiDocumentPathCommand::Line(*p),
                             c::PathCommand::Cubic(p) => UiDocumentPathCommand::Cubic(*p),
+                            c::PathCommand::Close => UiDocumentPathCommand::Close,
                         })
                         .collect();
                     let alpha = |mut c: [f32; 4]| {

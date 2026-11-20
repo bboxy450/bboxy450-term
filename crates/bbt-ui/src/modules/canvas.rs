@@ -1180,6 +1180,7 @@ fn stroke(
         match p {
             P::Move(p) | P::Line(p) => seen(*p),
             P::Cubic(c) => c.iter().for_each(|p| seen(*p)),
+            P::Close => {},
         }
     }
     if lo.iter().chain(hi.iter()).any(|v| !v.is_finite()) {
@@ -1199,6 +1200,7 @@ fn stroke(
             P::Move(p) => P::Move(relative(p)),
             P::Line(p) => P::Line(relative(p)),
             P::Cubic(p) => P::Cubic(p.map(relative)),
+            P::Close => P::Close,
         })
         .collect::<Vec<_>>();
     out.place(

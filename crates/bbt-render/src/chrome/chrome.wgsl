@@ -11,21 +11,24 @@ struct Instance {rect:vec4f,fill:vec4f,stroke:vec4f,radii:vec4f,params:vec4f,uv:
 @group(0) @binding(3) var images:texture_2d<f32>;
 @group(0) @binding(4) var color_glyphs:texture_2d<f32>;
 @group(0) @binding(5) var image_sampler:sampler;
-struct Vertex {@builtin(position) pos:vec4f,@location(0) point:vec2f,@location(1) @interpolate(flat) index:u32}
+struct Vertex {@builtin(position) pos:vec4f,@location(0) point:vec2f,@location(1) @interpolate(flat) index:u32,@location(2) physical:vec2f}
 @vertex fn vs(@builtin(vertex_index) v:u32,@builtin(instance_index) i:u32)->Vertex {
     let corners=array<vec2f,6>(vec2f(0,0),vec2f(1,0),vec2f(0,1),vec2f(0,1),vec2f(1,0),vec2f(1,1));
     let item=items[i];let margin=select(1.0,item.params.z*3.0,item.params.x==4.0);
     let p=item.rect.xy-vec2f(margin)+corners[v]*(item.rect.zw+vec2f(margin*2.0));
-    return Vertex(vec4f(p.x/view.x*2.0-1.0,1.0-p.y/view.y*2.0,0,1),p,i);
+    var physical=p;
+    if item.params.x==7.0 {physical=vec2f(item.stroke.x*p.x+item.stroke.z*p.y,item.stroke.y*p.x+item.stroke.w*p.y)+item.radii.xy;}
+    return Vertex(vec4f(physical.x/view.x*2.0-1.0,1.0-physical.y/view.y*2.0,0,1),p,i,physical);
 }
 fn shade(v:Vertex)->vec4f {
     let i=items[v.index];let p=v.point;
-    if rounded_sdf(p,i.clip,i.clip_radii)>0.0 {discard;}
-    let kind=u32(i.params.x);let d=rounded_sdf(p,i.rect,i.radii);var c=i.fill;var a=clamp(0.5-d,0.0,1.0);
+    if rounded_sdf(v.physical,i.clip,i.clip_radii)>0.0 {discard;}
+    let kind=u32(i.params.x);var d=rounded_sdf(p,i.rect,i.radii);var c=i.fill;var a=clamp(0.5-d,0.0,1.0);
     if kind==4u {let knockout=clamp(0.5+rounded_sdf(p,i.uv,i.stroke),0.0,1.0);return vec4f(c.rgb,c.a*gaussian_box(p,i.rect,i.radii,i.params.z)*knockout);}
     if kind==5u {let ab=i.uv.zw-i.uv.xy;let t=clamp(dot(p-i.uv.xy,ab)/max(dot(ab,ab),0.0001),0.0,1.0);a=clamp(0.5-(length(p-i.uv.xy-t*ab)-i.params.y*0.5),0.0,1.0);}
     if kind==1u {let t=clamp((p.y-i.rect.y)/i.rect.w,0.0,1.0);c=select(mix(i.fill,vec4f(1,1,1,i.fill.a),(1.0-t/0.55)*0.12),vec4f(i.fill.rgb*(1.0-(t-0.55)/0.45*0.18),i.fill.a),t>0.55);}
-    if kind==2u||kind==3u {
+    if kind==7u {d=rounded_sdf(p,i.rect,vec4f(0));a=clamp(0.5-d/max(fwidth(d),0.000001),0.0,1.0);}
+    if kind==2u||kind==3u||kind==7u {
         let unit=clamp((p-i.rect.xy)/max(i.rect.zw,vec2f(0.001)),vec2f(0),vec2f(0.99999));let pixel=vec2i(i.uv.xy+unit*i.uv.zw);
         if kind==2u {a*=textureLoad(masks,pixel,0).r;} else {
             let point=clamp(i.uv.xy+unit*i.uv.zw,i.uv.xy+vec2f(0.5),i.uv.xy+i.uv.zw-vec2f(0.5));

@@ -13,6 +13,8 @@ pub mod icons;
 pub mod images;
 pub mod materials;
 mod path_masks;
+pub use path_masks::{PreparedPath, prepare_vector_path};
+pub use text_cache::MASK_BYTE_BUDGET;
 mod paths;
 pub mod pipeline;
 pub mod text;
@@ -26,6 +28,7 @@ use bbt_ui_model::{
 use pipeline::Instance;
 use std::{collections::HashMap, sync::mpsc, time::Duration};
 
+#[derive(Clone, Copy)]
 pub struct ChromeTarget<'a> {
     pub width: u32,
     pub height: u32,
@@ -275,23 +278,7 @@ impl ChromeRenderer {
                 }
                 #[cfg(test)]
                 let probe_group = std::time::Instant::now();
-                let layer = self.take_group_layer(width, height);
-                let layer_view = layer.create_view(&Default::default());
-                self.with_group_layer(|renderer| {
-                    renderer.draw(
-                        &children,
-                        ChromeTarget {
-                            width,
-                            height,
-                            scale,
-                            view: &layer_view,
-                            format: wgpu::TextureFormat::Rgba8Unorm,
-                        },
-                        encoder,
-                    )
-                })?;
-                self.composite_group_with_mask(
-                    &layer_view,
+                self.paint_group(
                     group::Filter {
                         opacity: *opacity,
                         saturation: *saturation,
@@ -305,10 +292,8 @@ impl ChromeRenderer {
                         format,
                     },
                     encoder,
+                    |renderer, target, encoder| renderer.draw_overlay(&children, target, encoder),
                 )?;
-                // The composite reading this layer is already encoded; the next
-                // group in this frame may draw into it again.
-                self.group_layers.push(layer);
                 #[cfg(test)]
                 probe(2, probe_group);
                 batch = DrawList {
@@ -715,6 +700,35 @@ impl ChromeRenderer {
         }
         #[cfg(test)]
         probe(1, probe_start);
+        self.draw_instances(
+            instances,
+            glyph_instances,
+            ChromeTarget {
+                width,
+                height,
+                scale,
+                view: target,
+                format,
+            },
+            encoder,
+            load,
+        )
+    }
+    fn draw_instances(
+        &mut self,
+        mut instances: Vec<pipeline::Instance>,
+        glyph_instances: Vec<(usize, u64, [f32; 2])>,
+        target: ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+        load: wgpu::LoadOp<wgpu::Color>,
+    ) -> Result<()> {
+        let ChromeTarget {
+            width,
+            height,
+            scale,
+            view: target,
+            format,
+        } = target;
         self.glyph_reset_pending |= self.text.finish(
             &glyph_instances
                 .iter()
@@ -744,27 +758,9 @@ impl ChromeRenderer {
         FLAT_BATCHES.with(|c| c.set(c.get() + 1));
         #[cfg(test)]
         let probe_sync = std::time::Instant::now();
-        let (atlas, dirty) = self.text.upload();
-        atlas_gpu::sync_glyphs(
-            &mut self.glyph_gpu,
-            &self.context.device,
-            &self.context.queue,
-            atlas,
-            dirty,
-            self.glyph_reset_pending,
-        );
+        self.sync_glyph_atlases();
         #[cfg(test)]
         probe(0, probe_sync);
-        let (atlas, dirty) = self.text.upload_color();
-        atlas_gpu::sync_glyphs(
-            &mut self.color_glyph_gpu,
-            &self.context.device,
-            &self.context.queue,
-            atlas,
-            dirty,
-            self.glyph_reset_pending,
-        );
-        self.glyph_reset_pending = false;
         for [x, y, width, height] in self.icons.dirty.drain(..) {
             let start = ((y * self.icons.size + x) * 4) as usize;
             let end = start + (((height - 1) * self.icons.size + width) * 4) as usize;
@@ -871,12 +867,148 @@ impl ChromeRenderer {
         drop(pass);
         Ok(())
     }
+    fn sync_glyph_atlases(&mut self) {
+        let (atlas, dirty) = self.text.upload();
+        atlas_gpu::sync_glyphs(
+            &mut self.glyph_gpu,
+            &self.context.device,
+            &self.context.queue,
+            atlas,
+            dirty,
+            self.glyph_reset_pending,
+        );
+        let (atlas, dirty) = self.text.upload_color();
+        atlas_gpu::sync_glyphs(
+            &mut self.color_glyph_gpu,
+            &self.context.device,
+            &self.context.queue,
+            atlas,
+            dirty,
+            self.glyph_reset_pending,
+        );
+        self.glyph_reset_pending = false;
+    }
+    /// Upload/draw worker-prepared coverage using the shared cache and compositor.
+    pub fn draw_prepared_path(
+        &mut self,
+        path: &PreparedPath,
+        target: ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<()> {
+        let Some(part) = self.text.prepared_path(path)? else {
+            return Ok(());
+        };
+        let [x, y] = part.offset.map(|n| n as f32);
+        let [w, h] = part.size.map(|n| n as f32);
+        let item = pipeline::Instance {
+            rect: [x, y, w, h],
+            fill: [1.; 4],
+            params: [6., 0., 0., 0.],
+            clip: path.clip(),
+            ..Default::default()
+        };
+        self.draw_instances(
+            vec![item],
+            vec![(0, part.id, [0.; 2])],
+            target,
+            encoder,
+            wgpu::LoadOp::Load,
+        )
+    }
+    /// Affine placement reuses native premultiplied sRGB image sampling and its
+    /// integrated minification cache. Bitmap custody/decoding stays with workers.
+    pub fn draw_image_affine(
+        &mut self,
+        key: &str,
+        size: [u32; 2],
+        transform: bbt_ui_model::draw::Affine,
+        target: ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<()> {
+        transform.validate()?;
+        let [a, b, c, d, e, f] = transform.0.map(|n| n * target.scale);
+        if a * d - b * c == 0. {
+            return Ok(());
+        }
+        let rect = [0., 0., size[0] as f32, size[1] as f32];
+        let uv = self.icons.image(
+            key,
+            [
+                (a * a + b * b).sqrt() * rect[2],
+                (c * c + d * d).sqrt() * rect[3],
+            ],
+            1.,
+        )?;
+        let item = pipeline::Instance {
+            rect,
+            uv,
+            fill: [1.; 4],
+            params: [7., 0., 0., 0.],
+            stroke: [a, b, c, d],
+            radii: [e, f, 0., 0.],
+            clip: [0., 0., target.width as f32, target.height as f32],
+            ..Default::default()
+        };
+        self.draw_instances(vec![item], vec![], target, encoder, wgpu::LoadOp::Load)
+    }
+    /// Paint a verified face through the shared glyph cache and instance pass.
+    pub fn draw_face_text(
+        &mut self,
+        text: &text::FaceText<'_>,
+        target: ChromeTarget<'_>,
+        encoder: &mut wgpu::CommandEncoder,
+    ) -> Result<()> {
+        if text.value.is_empty() {
+            return Ok(());
+        }
+        let physical = text::FaceText {
+            transform: bbt_ui_model::draw::Affine(text.transform.0.map(|n| n * target.scale)),
+            ..*text
+        };
+        let line = self.text.face_line(&physical)?;
+        let mut instances = Vec::new();
+        let mut glyphs = Vec::new();
+        for part in &line.parts {
+            let [x, y] = part.offset.map(|n| n as f32);
+            let [w, h] = part.size.map(|n| n as f32);
+            if x >= target.width as f32 || y >= target.height as f32 || x + w <= 0. || y + h <= 0. {
+                continue;
+            }
+            let (fill, kind) = if part.format == crate::text::Format::Bgra {
+                ([1., 1., 1., text.color.0[3]], 6.)
+            } else {
+                (text.color.0, 2.)
+            };
+            glyphs.push((instances.len(), part.id, [0.; 2]));
+            instances.push(pipeline::Instance {
+                rect: [x, y, w, h],
+                fill,
+                params: [kind, 0., 0., 0.],
+                clip: [0., 0., target.width as f32, target.height as f32],
+                ..Default::default()
+            });
+        }
+        self.draw_instances(instances, glyphs, target, encoder, wgpu::LoadOp::Load)
+    }
     pub fn render_to_rgba(
         &mut self,
         list: &DrawList,
         width: u32,
         height: u32,
         scale: f32,
+    ) -> Result<Vec<u8>> {
+        self.render_to_rgba_with(width, height, scale, |renderer, target, encoder| {
+            renderer.draw(list, target, encoder)
+        })
+    }
+    /// Reuse the existing bounded offscreen target/submission/readback boundary
+    /// for a retained consumer that paints more than a flat draw list.
+    pub fn render_to_rgba_with(
+        &mut self,
+        width: u32,
+        height: u32,
+        scale: f32,
+        paint: impl FnOnce(&mut Self, ChromeTarget<'_>, &mut wgpu::CommandEncoder) -> Result<()>,
     ) -> Result<Vec<u8>> {
         let format = wgpu::TextureFormat::Rgba8Unorm;
         if width == 0 || height == 0 || width > 8192 || height > 8192 {
@@ -905,8 +1037,8 @@ impl ChromeRenderer {
             .context
             .device
             .create_command_encoder(&Default::default());
-        self.draw(
-            list,
+        let painted = paint(
+            self,
             ChromeTarget {
                 width,
                 height,
@@ -915,8 +1047,9 @@ impl ChromeRenderer {
                 format,
             },
             &mut encoder,
-        )?;
+        );
         self.flush();
+        painted?;
         self.readback(&texture, encoder, width, height)
     }
     #[allow(
@@ -1018,6 +1151,7 @@ fn atlas_path(primitive: &Prim, device_scale: f32) -> Vec<Prim> {
         match *command {
             PathCommand::Move(p) | PathCommand::Line(p) => see(p),
             PathCommand::Cubic(ps) => ps.into_iter().for_each(&mut see),
+            PathCommand::Close => {}
         }
     }
     let s = scale * device_scale;
