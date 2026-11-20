@@ -58,9 +58,7 @@ lean_gate() {
                 run python3 -I scripts/landing.py lean-check "$name" -- "$selection" || exit 1 ;;
             harness-test)
                 run python3 -I scripts/landing.py lean-test "$name" -- "$selection" || exit 1 ;;
-            full)
-                run sh scripts/quarantine-test.sh --locked -p "$name" || exit 1 ;;
-            test)
+            full|test)
                 # Real-process tests run the crate's executable; build it as wide runs do.
                 case " $selection " in
                     *" --bins "*) run cargo build --locked -q -p "$name" --bins || exit 1 ;;

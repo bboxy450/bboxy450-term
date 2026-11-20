@@ -715,11 +715,14 @@ class ConsolidatedIntegrationTests(unittest.TestCase):
                                                "-E", expression])
 
     def test_dream_c1_family_is_left_to_its_own_gate(self):
-        with patch.object(landing.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
-            self.assertEqual(landing.lean_test("bboxy450-term-mux", "--lib"), 0)
         family = landing.DREAM_C1_GATE_TESTS["bboxy450-term-mux"]
-        self.assertEqual(run.call_count, 1)
-        self.assertEqual(run.call_args.args[0][6:], ["--no-tests=pass", "--lib", "-E", f"not ({family})"])
+        for selection in ("--lib", ""):
+            with self.subTest(selection=selection), patch.object(
+                    landing.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
+                self.assertEqual(landing.lean_test("bboxy450-term-mux", selection), 0)
+                self.assertEqual(run.call_count, 1)
+                self.assertEqual(run.call_args.args[0][6:],
+                    ["--no-tests=pass", *shlex.split(selection), "-E", f"not ({family})"])
 
     def test_dream_c1_exclusion_conjoins_an_existing_filter_and_keeps_test_arguments(self):
         with patch.object(landing.subprocess, "run", return_value=subprocess.CompletedProcess([], 0)) as run:
@@ -934,6 +937,11 @@ wire={package="bboxy450-harness-wake-up",path="../bboxy450-harness-wake-up"}
             shutil.copy2(SOURCE.with_name(name), self.repo.root / "scripts" / name)
         path = self.repo.root / "Makefile"
         path.write_text(path.read_text() + "\ninit-submodules:\n\t@true\n")
+        family = landing.DREAM_C1_GATE_TESTS["bboxy450-term-mux"]
+        planner = self.repo.root / "scripts/landing.py"
+        planner.write_text(planner.read_text().replace(
+            "DREAM_C1_GATE_TESTS = {",
+            "DREAM_C1_GATE_TESTS = {" + f"\n    'b': {family!r},", 1))
         self.repo.commit("Private pointer-gate tooling")
         self.repo.remote()
         candidate = self.bump(lock=True)
@@ -960,6 +968,12 @@ wire={package="bboxy450-harness-wake-up",path="../bboxy450-harness-wake-up"}
                      and any(args[i:i+2] == ["-p", name] for i in range(len(args) - 1))]
             self.assertTrue(tests, f"missing full term dependent: {name}")
             self.assertTrue(any(not set(args) & {"--lib", "--test", "--bins"} for args in tests))
+            for args in tests:
+                if name == "b":
+                    self.assertIn("-E", args, "full dependents must use the existing family policy")
+                    self.assertEqual(args[args.index("-E") + 1], f"not ({family})")
+                else:
+                    self.assertNotIn("-E", args, "ordinary full dependents retain every test")
 
     def test_default_lean_gate_runs_pointer_policy_without_harness_integration(self):
         self.gate(None)
