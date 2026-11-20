@@ -292,14 +292,24 @@ struct Recorded {
     host: HostId,
     inner: Box<dyn SupervisorConnection>,
     trace: Trace,
+    link_down_after_spawn: bool,
 }
 impl SupervisorConnection for Recorded {
     fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
+        let spawning = matches!(&action, Action::Spawn { .. });
         self.trace
             .lock()
             .unwrap()
             .push((self.host.clone(), action.clone()));
-        self.inner.request(action)
+        let reply = self.inner.request(action)?;
+        if spawning && self.link_down_after_spawn {
+            assert!(matches!(&reply, Reply::Spawned { .. }));
+            return Err(Box::new(bbt_mux::provider::fake::LinkDown {
+                host: self.host.clone(),
+                state: LinkState::Connecting,
+            }));
+        }
+        Ok(reply)
     }
     fn receive(&mut self, wait: Duration) -> bbt_mux::store::Result<Option<Event>> {
         self.inner.receive(wait)
@@ -309,11 +319,13 @@ fn providers(
     servers: &[Supervisor],
     clock: Arc<ManualClock>,
     trace: Trace,
+    link_down_after_spawn: bool,
 ) -> Vec<Box<dyn Provider>> {
     let mut result: Vec<Box<dyn Provider>> = vec![Box::new(LocalProvider::new(Recorded {
         host: HostId::Local,
         inner: Box::new(servers[0].connect().unwrap()),
         trace: trace.clone(),
+        link_down_after_spawn: false,
     }))];
     let links: VecDeque<Box<dyn SupervisorConnection>> = servers[1..]
         .iter()
@@ -329,6 +341,7 @@ fn providers(
                     host: host.id.clone(),
                     inner: links.lock().unwrap().pop_front().unwrap(),
                     trace: trace.clone(),
+                    link_down_after_spawn,
                 }))
             })
             .unwrap(),
@@ -420,7 +433,7 @@ fn headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_r
     let trace: Trace = Default::default();
     let key = ed25519_dalek::SigningKey::from_bytes(&[42; 32]);
     let logic = Logic::start_with_providers(
-        providers(&servers, clock.clone(), trace.clone()),
+        providers(&servers, clock.clone(), trace.clone(), false),
         config.clone(),
         key.clone(),
         rt.handle(),
@@ -455,8 +468,11 @@ fn headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_r
     let error = rt
         .block_on(logic.client.spawn(record.clone(), spec.clone()))
         .unwrap_err();
-    assert!(is_link_down(&error), "{error}");
-    assert!(rt.block_on(logic.client.record(seat)).is_err());
+    assert!(is_link_down(&error), "pre-send refusal: {error:#?}");
+    assert!(
+        rt.block_on(logic.client.record(seat)).is_err(),
+        "pre-send refusal retained an unstarted seat"
+    );
     assert!(
         !trace
             .lock()
@@ -561,7 +577,7 @@ fn headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_r
         .filter(|(_, a)| matches!(a, Action::Spawn { .. }))
         .count();
     let logic = Logic::start_with_providers(
-        providers(&servers, clock.clone(), trace.clone()),
+        providers(&servers, clock.clone(), trace.clone(), false),
         config,
         key,
         rt.handle(),
@@ -607,4 +623,79 @@ fn headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_r
     println!(
         "D1b: fixture HostState sequence verified; disconnected effects rejected; RTT queued events; real PTY output retained through drop/reconnect and startup-down recovery, with no extra spawn"
     );
+}
+
+#[test]
+fn post_send_link_down_keeps_the_applied_seat_unknown() {
+    use bbt_mux::registry::{Location, SeatRecord};
+    let temp = tempfile::tempdir().unwrap();
+    let repository = temp.path().join(".bboxy");
+    std::fs::create_dir(&repository).unwrap();
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let servers: Vec<_> = (0..4)
+        .map(|n| {
+            Supervisor::start(Config {
+                journal_directory: Some(temp.path().join(format!("journal-{n}"))),
+                ..Default::default()
+            })
+            .unwrap()
+        })
+        .collect();
+    let clock = Arc::new(ManualClock::default());
+    let trace: Trace = Default::default();
+    let logic = Logic::start_with_providers(
+        providers(&servers, clock.clone(), trace.clone(), true),
+        LogicConfig {
+            run_dir: temp.path().join("run"),
+            repository,
+            ring: Default::default(),
+        },
+        ed25519_dalek::SigningKey::from_bytes(&[42; 32]),
+        rt.handle(),
+    )
+    .unwrap();
+    clock.set(300);
+    let mut spec = LaunchSpec::new("/bin/zsh", temp.path());
+    spec.args = vec!["-f".into(), "-c".into(), "cat".into()];
+    let seat = spec.seat;
+    let mut record = SeatRecord::new(seat, Ulid::new(), "remote", "zsh");
+    record.location = Location::Ssh {
+        host: "build-box".into(),
+    };
+    let error = rt.block_on(logic.client.spawn(record, spec)).unwrap_err();
+    let mut owned = Vec::new();
+    for server in &servers {
+        let Reply::Seats { seats } = server
+            .connect()
+            .unwrap()
+            .request(Action::ListOwnedSeats)
+            .unwrap()
+        else {
+            panic!("expected exact native owned-seat observation");
+        };
+        owned.extend(seats);
+    }
+    assert_eq!(owned.len(), 1);
+    assert_eq!((owned[0].seat, owned[0].generation), (seat, 1));
+    assert!(owned[0].pid > 0);
+    assert_eq!(
+        trace
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|(_, action)| matches!(action, Action::Spawn { .. }))
+            .count(),
+        1
+    );
+    assert!(
+        !is_link_down(&error),
+        "post-send LinkDown escaped unknown-outcome fencing: {error:#?}"
+    );
+    let retained = rt.block_on(logic.client.record(seat)).unwrap();
+    assert_eq!((retained.id, retained.generation), (seat, 1));
+    logic.shutdown().unwrap();
 }
