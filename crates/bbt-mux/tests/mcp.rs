@@ -1607,10 +1607,16 @@ fn mcp_skills_and_resources_share_exact_root_bound_instructions_and_recheck_admi
         assert_eq!(resource["description"], metadata["description"]);
         assert_eq!(resource["mimeType"], "text/markdown");
         let expected = match metadata["name"].as_str().unwrap() {
-            "bboxy450" => bboxy450_harness_wake_up::launch::render_skill(
-                include_str!("../src/adapters/skills/bboxy450/SKILL.md"),
-                &serde_json::to_string(&fixture.own.role.name).unwrap(),
-                &serde_json::to_string(&fixture.own.role.class).unwrap(),
+            // Served as `adapters::launch::workflow_skill`: the skill, then the reply-style rules.
+            "bboxy450" => format!(
+                "{}\n\n{}",
+                bboxy450_harness_wake_up::launch::render_skill(
+                    include_str!("../src/adapters/skills/bboxy450/SKILL.md"),
+                    &serde_json::to_string(&fixture.own.role.name).unwrap(),
+                    &serde_json::to_string(&fixture.own.role.class).unwrap(),
+                )
+                .trim_end(),
+                bbt_ui_model::emphasis::guidance()
             ),
             "knowledge-base" => {
                 include_str!("../src/knowledge/skills/knowledge-base/SKILL.md").into()
@@ -3666,6 +3672,8 @@ fn assert_item_signature(doc: &bbt_mux::index::Document, seat: Ulid) {
     use ed25519_dalek::{Signature, Verifier};
     let mut front = doc.metadata.clone();
     let provenance = front.as_object_mut().unwrap().remove("provenance").unwrap();
+    // The signer hashes sorted metadata (index.rs), independent of preserve_order.
+    front.sort_all_objects();
     let front_hash = bbt_mux::store::digest(serde_yaml::to_string(&front).unwrap().as_bytes());
     let body_hash = bbt_mux::store::digest(doc.body.as_bytes());
     assert_eq!(
