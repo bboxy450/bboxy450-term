@@ -292,7 +292,12 @@ def run(out, selected=None, refresh_references=True):
         result["broken_controls"]=broken_controls(out,program,rows,references)
     inspection=out/"native-inspected.json"
     recorded=json.loads(inspection.read_text()) if inspection.is_file() else {"files":{}}
-    result["inspection_current"]=bool(recorded["files"]) and all(Path(p).is_file() and digest(Path(p).read_bytes())==sha for p,sha in recorded["files"].items())
+    inspection_files={r["native"] for r in rows}
+    for row in rows:
+        for target in ("chrome","resvg"):
+            if target in row:inspection_files.update((row[target]["reference"],row[target]["diff"]))
+    result["missing_inspections"]=len(inspection_files-recorded["files"].keys())
+    result["inspection_current"]=not result["missing_inspections"] and bool(recorded["files"]) and all(Path(p).is_file() and digest(Path(p).read_bytes())==sha for p,sha in recorded["files"].items())
     result["capture_order"]=capture_order
     result["passed"]= capture_order["passed"] and result["complete_manifest"] and result["advisories_current"] and not result["failures"] and not result["missing_captures"] and result.get("admission",{}).get("passed",False) and result.get("broken_controls",{}).get("passed",False) and result["inspection_current"]
     dump(out/"native-results.json",result)
