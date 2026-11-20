@@ -2737,6 +2737,11 @@ class CargoProfileForwardingTests(unittest.TestCase):
                 self.assertFalse(any(arg.startswith("--cargo-profile") for arg in calls[1]))
                 self.assertFalse(any(arg == "--profile" or arg.startswith("--profile=") for arg in calls[0]))
 
+    def test_cargo_doctests_drop_the_nextest_only_empty_selection_option(self):
+        _, calls = self.invoke(["--locked", "-p", "fixture", "--no-tests=pass"])
+        self.assertEqual(calls[0], ["cargo", "nextest", "run", "--locked", "-p", "fixture", "--no-tests=pass"])
+        self.assertEqual(calls[1], ["cargo", "test", "--doc", "--locked", "-p", "fixture"])
+
     def test_exact_cargo_retry_keeps_the_original_profile(self):
         module = self.module()
         for profile in [["--profile", "dream-c1-fixture"], ["--profile=dream-c1-fixture"]]:

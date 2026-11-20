@@ -365,7 +365,7 @@ def nextest_run(root, cargo_args, target, api, *, allow_ignored_only=False):
         if libraries:
             # Doctests take Cargo selection only: drop nextest filtersets and package lists.
             kept = [a for i, a in enumerate(build) if a not in ("-p", "--package", "--workspace", "--all", "--exclude", "-E", "--filterset")
-                    and not a.startswith("--filterset=")
+                    and not a.startswith(("--filterset=", "--no-tests="))
                     and (i == 0 or build[i - 1] not in ("-p", "--package", "--exclude", "-E", "--filterset"))]
             doc = ["cargo", "test", "--doc", *kept, *[x for n in libraries for x in ("-p", n)],
                    *(["--", *filters] if filters else [])]
