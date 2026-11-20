@@ -1,0 +1,42 @@
+{
+  "after_sha256": "5a2120e46d7875bcb8055f7c96707406f6f41586537fd5229f8675a3989e1644",
+  "before_sha256": "5a2120e46d7875bcb8055f7c96707406f6f41586537fd5229f8675a3989e1644",
+  "effective_configuration": {
+    "allow_google_fonts": false,
+    "allow_per_request_plugins": false,
+    "allowed_base_urls": [],
+    "auto_google_fonts": false,
+    "base_url": false,
+    "default_format_locale": null,
+    "default_theme": null,
+    "default_time_format_locale": null,
+    "embed_local_fonts": false,
+    "gc_after_conversion": false,
+    "google_font_variant_threshold": null,
+    "google_fonts": [],
+    "max_ephemeral_workers": 2,
+    "max_v8_execution_time_secs": 15,
+    "max_v8_heap_size_mb": 512,
+    "missing_fonts": "error",
+    "num_workers": 1,
+    "per_request_plugin_import_domains": [],
+    "plugin_import_domains": [],
+    "subset_fonts": false,
+    "themes": {},
+    "vega_plugins": []
+  },
+  "selected": [
+    {
+      "bytes": 431196,
+      "postscript_name": "SourceSans3-Regular",
+      "sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "weight": 400
+    },
+    {
+      "bytes": 428176,
+      "postscript_name": "SourceSans3-Bold",
+      "sha256": "9214b9d95e4231c609802815c2646c98174e2102d0d37f88978a7f8e71006e6a",
+      "weight": 700
+    }
+  ]
+}

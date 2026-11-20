@@ -1,0 +1,5 @@
+# Preserve reviewed exporter bytes, whitespace-bearing data URIs and upstream text.
+corpus/*.svg -text -whitespace
+fixtures/**/*.svg -text -whitespace
+fonts/LICENSE.md -text -whitespace
+fonts/*.ttf -text

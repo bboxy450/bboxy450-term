@@ -1,0 +1,595 @@
+{
+  "cases": [
+    {
+      "definition": "vega-bar.json",
+      "export_configuration_sha256": "1cd97618c891ed3e1bd747ed6f4328398275442c0b6bc03c7bc1cdaddcb9c861",
+      "exporter": "vl-convert-python",
+      "exporter_evidence": "vega-bar.measurements.json",
+      "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
+      "generator": "../corpus.py",
+      "id": "vega-bar",
+      "measurement_status": "real exporter bounds/advance, emitted SVG text and exact selected bytes/face",
+      "measurements_sha256": "761a0ba94ee7ab8252fb03616522f01be7de88ea1e50c82afcc903729db12db9",
+      "scenegraph_sha256": "1121c3dd9895cbe518f77a97f4a9bc69c8becf222b3a7f460375845140e12cea",
+      "sha256": "3e5169ecd4919cfd5bc3379ba28b2f41e5b0ee094e345d7765fbb08e69a4bed9",
+      "svg": "vega-bar.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        337.0,
+        267.0
+      ],
+      "viewport": [
+        0,
+        0,
+        337,
+        267
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            337,
+            267
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            337,
+            267
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            112.333,
+            89.0,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "definition": "vega-line.json",
+      "export_configuration_sha256": "1cd97618c891ed3e1bd747ed6f4328398275442c0b6bc03c7bc1cdaddcb9c861",
+      "exporter": "vl-convert-python",
+      "exporter_evidence": "vega-line.measurements.json",
+      "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
+      "generator": "../corpus.py",
+      "id": "vega-line",
+      "measurement_status": "real exporter bounds/advance, emitted SVG text and exact selected bytes/face",
+      "measurements_sha256": "e7c95c52d94ce675e3326ea26d54d5c1ab9c5f56ccf6f69ad14b51a95f901c04",
+      "scenegraph_sha256": "2a36b4860dca753bcf957b133ca27bee8905c8a274ca9dfd757e08bf8d1ba6f0",
+      "sha256": "0f940d3fa72d505b76c88d148679f55d83b0cc2e770288c66333a2919a4f83d9",
+      "svg": "vega-line.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        341.0,
+        244.0
+      ],
+      "viewport": [
+        0,
+        0,
+        341,
+        244
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            341,
+            244
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            341,
+            244
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            113.667,
+            81.333,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "definition": "vega-scatter.json",
+      "export_configuration_sha256": "1cd97618c891ed3e1bd747ed6f4328398275442c0b6bc03c7bc1cdaddcb9c861",
+      "exporter": "vl-convert-python",
+      "exporter_evidence": "vega-scatter.measurements.json",
+      "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
+      "generator": "../corpus.py",
+      "id": "vega-scatter",
+      "measurement_status": "real exporter bounds/advance, emitted SVG text and exact selected bytes/face",
+      "measurements_sha256": "a5837771b38ffb393ec167b622ccc47fd8218a21d5f909b9fce1652c5f91ee71",
+      "scenegraph_sha256": "22b2b8e9a22d6e22d016857c677098489f7cedd7702313ade7ecf87318199f1d",
+      "sha256": "a3e23830e0f0116cf37eeaf2f6ec09fa6190979f858f149622b483b6c727e4a5",
+      "svg": "vega-scatter.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        444.0,
+        244.0
+      ],
+      "viewport": [
+        0,
+        0,
+        444,
+        244
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            444,
+            244
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            444,
+            244
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            148.0,
+            81.333,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "definition": "vega-heatmap.json",
+      "export_configuration_sha256": "1cd97618c891ed3e1bd747ed6f4328398275442c0b6bc03c7bc1cdaddcb9c861",
+      "exporter": "vl-convert-python",
+      "exporter_evidence": "vega-heatmap.measurements.json",
+      "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
+      "generator": "../corpus.py",
+      "id": "vega-heatmap",
+      "measurement_status": "real exporter bounds/advance, emitted SVG text and exact selected bytes/face",
+      "measurements_sha256": "f77d8f23babd263c917b8e5f26f16171704086dbba83ec5feca065a2c1d0d47f",
+      "scenegraph_sha256": "8c43c6db8b15248f20b7024be71b5ce01b456252ccfd2d7344301ce3fd5e66bb",
+      "sha256": "6e1df2025cb3fa5a0d224bf5634195acbc5e7b2509686be3039913180d05f71e",
+      "svg": "vega-heatmap.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        409.0,
+        235.0
+      ],
+      "viewport": [
+        0,
+        0,
+        409,
+        235
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            409,
+            235
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            409,
+            235
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            136.333,
+            78.333,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "definition": "vega-layered.json",
+      "export_configuration_sha256": "1cd97618c891ed3e1bd747ed6f4328398275442c0b6bc03c7bc1cdaddcb9c861",
+      "exporter": "vl-convert-python",
+      "exporter_evidence": "vega-layered.measurements.json",
+      "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
+      "generator": "../corpus.py",
+      "id": "vega-layered",
+      "measurement_status": "real exporter bounds/advance, emitted SVG text and exact selected bytes/face",
+      "measurements_sha256": "0c6c1d28284570062ba9650d0d0f4ba2a74104b5f8d2f6c01f165d00ca7a7401",
+      "scenegraph_sha256": "97d0e00bf37a6b53d0dda0dbe9a1a8ef9ab8777fd941185ab2f6c555bb8dce47",
+      "sha256": "c54da26d8a0e4071675c08f74ece6ed9543b60745c02d31944997798101012e6",
+      "svg": "vega-layered.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        448.0,
+        248.0
+      ],
+      "viewport": [
+        0,
+        0,
+        448,
+        248
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            448,
+            248
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            448,
+            248
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            149.333,
+            82.667,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "definition": "matplotlib-bar.json",
+      "export_configuration_sha256": "9dfc1ab44154808c41bcde7f70ec094fe85057e9391b24ffa80f77a8b5652d30",
+      "exporter": "matplotlib",
+      "exporter_evidence": "matplotlib-bar.measurements.json",
+      "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
+      "generator": "../corpus.py",
+      "id": "matplotlib-bar",
+      "measurement_status": "SVG-backend Text bounds, advances, emitted anchors and actual face; Agg retained separately",
+      "sha256": "54d193397a1df8cfb1598debec47ae435694f196f2779a2f517b43e9a5a9f2a4",
+      "svg": "matplotlib-bar.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        324.0,
+        230.4
+      ],
+      "viewport": [
+        0,
+        0,
+        324,
+        231
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            324,
+            231
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            324,
+            231
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            108.0,
+            76.8,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "definition": "matplotlib-line.json",
+      "export_configuration_sha256": "9dfc1ab44154808c41bcde7f70ec094fe85057e9391b24ffa80f77a8b5652d30",
+      "exporter": "matplotlib",
+      "exporter_evidence": "matplotlib-line.measurements.json",
+      "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
+      "generator": "../corpus.py",
+      "id": "matplotlib-line",
+      "measurement_status": "SVG-backend Text bounds, advances, emitted anchors and actual face; Agg retained separately",
+      "sha256": "33327afb284869928b4c863c051c8f25e94760bc9c6f18a9ee56856fa973e518",
+      "svg": "matplotlib-line.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        324.0,
+        230.4
+      ],
+      "viewport": [
+        0,
+        0,
+        324,
+        231
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            324,
+            231
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            324,
+            231
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            108.0,
+            76.8,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "definition": "matplotlib-scatter.json",
+      "export_configuration_sha256": "9dfc1ab44154808c41bcde7f70ec094fe85057e9391b24ffa80f77a8b5652d30",
+      "exporter": "matplotlib",
+      "exporter_evidence": "matplotlib-scatter.measurements.json",
+      "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
+      "generator": "../corpus.py",
+      "id": "matplotlib-scatter",
+      "measurement_status": "SVG-backend Text bounds, advances, emitted anchors and actual face; Agg retained separately",
+      "sha256": "763223c6fedc7df51e4a6536d06923be695a6eecbb99e03fc68cfc3cc233ffd3",
+      "svg": "matplotlib-scatter.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        324.0,
+        230.4
+      ],
+      "viewport": [
+        0,
+        0,
+        324,
+        231
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            324,
+            231
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            324,
+            231
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            108.0,
+            76.8,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "definition": "matplotlib-heatmap.json",
+      "export_configuration_sha256": "9dfc1ab44154808c41bcde7f70ec094fe85057e9391b24ffa80f77a8b5652d30",
+      "exporter": "matplotlib",
+      "exporter_evidence": "matplotlib-heatmap.measurements.json",
+      "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
+      "generator": "../corpus.py",
+      "id": "matplotlib-heatmap",
+      "measurement_status": "SVG-backend Text bounds, advances, emitted anchors and actual face; Agg retained separately",
+      "sha256": "3c76747d9b1b1e45251dfbbaa0024240985dd83dafae601ac6bf7935cf6ce690",
+      "svg": "matplotlib-heatmap.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        324.0,
+        230.4
+      ],
+      "viewport": [
+        0,
+        0,
+        324,
+        231
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            324,
+            231
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            324,
+            231
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            108.0,
+            76.8,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    },
+    {
+      "definition": "matplotlib-layered.json",
+      "export_configuration_sha256": "9dfc1ab44154808c41bcde7f70ec094fe85057e9391b24ffa80f77a8b5652d30",
+      "exporter": "matplotlib",
+      "exporter_evidence": "matplotlib-layered.measurements.json",
+      "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
+      "generator": "../corpus.py",
+      "id": "matplotlib-layered",
+      "measurement_status": "SVG-backend Text bounds, advances, emitted anchors and actual face; Agg retained separately",
+      "sha256": "a03e65389e5639dd8b1eead3d163e50a50a3ee58f9a00a57cf238305fb0febf2",
+      "svg": "matplotlib-layered.svg",
+      "viewBox": [
+        0.0,
+        0.0,
+        324.0,
+        230.4
+      ],
+      "viewport": [
+        0,
+        0,
+        324,
+        231
+      ],
+      "views": [
+        {
+          "camera": [
+            0,
+            0,
+            324,
+            231
+          ],
+          "id": "1x",
+          "scale": 1
+        },
+        {
+          "camera": [
+            0,
+            0,
+            324,
+            231
+          ],
+          "id": "2x",
+          "scale": 2
+        },
+        {
+          "camera": [
+            108.0,
+            76.8,
+            48,
+            32
+          ],
+          "id": "8x",
+          "scale": 8
+        }
+      ]
+    }
+  ],
+  "exporters": {
+    "altair": "5.5.0",
+    "matplotlib": "3.10.7",
+    "vl-convert-python": "2.0.0rc7"
+  },
+  "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
+  "generator_sha256": {
+    "capture.mjs": "08a9a242394d79e16b41c473c272680ba9030e45bc1f712650daafc68632c34b",
+    "census.py": "40b0e9e448177c1e977852fb649e0c79d9a7d94d6b4acabd6ec96e9a799f94e4",
+    "corpus.py": "8e5389baf5a3f4161a527d3478b3adff73da025d6ec52a6146a57f15e36c5ad8",
+    "fixtures.py": "bfbe4319b3f0d8883e5da77b9501e4f28742c16b4279a03f2787be3ae7b9dac7",
+    "guard_controls.py": "374eefc5b595d96651ccf6efa99b20a4fdcd2c0c6dbe5335eaae97ce3f3d0acc",
+    "measurements.py": "4bb5ef371a88b92739d36a7ecca97e8dba80c295f7b7cdbb577596a596d6661d",
+    "reference.rs": "7ea19cda77350358ab935c46f240837935741017a69635771aa80c195556beed",
+    "reference_setup.py": "4a3ee3dcde220562a9ad6ae193a1686ebbc23a22519f1327dc1dc42f1014b0e2",
+    "references.py": "e7f272189b908a3e565dbba17fdd3759126babf665c7ff2e84eb11bd2b1e902a",
+    "review.py": "76300ffefa9df75d9d671584b01a62ae4502583262cb3f332603d783ea6ab246",
+    "test_corpus.py": "d4231d12cfb14a07ddb7bb214ca3f45e547ee862e3a2ada39faf40ce3511f4eb"
+  },
+  "phase": "A; corpus only; native renderer absent",
+  "requirements_sha256": "d44024743354ef9ae24b73e0dc7b5d3c981b20929c826bb8156a637bc532dc2a"
+}

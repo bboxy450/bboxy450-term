@@ -1,0 +1,162 @@
+{
+  "definition": {
+    "$schema": "https://vega.github.io/schema/vega-lite/v5.20.1.json",
+    "config": {
+      "axis": {
+        "labelFont": "'Source Sans 3'",
+        "labelFontWeight": 400,
+        "titleFont": "'Source Sans 3'",
+        "titleFontWeight": 700
+      },
+      "font": "'Source Sans 3'",
+      "legend": {
+        "labelFont": "'Source Sans 3'",
+        "labelFontWeight": 400,
+        "labelLimit": 74,
+        "titleFont": "'Source Sans 3'",
+        "titleFontWeight": 700
+      },
+      "title": {
+        "font": "'Source Sans 3'",
+        "fontWeight": 700
+      },
+      "view": {
+        "continuousHeight": 300,
+        "continuousWidth": 300
+      }
+    },
+    "data": {
+      "name": "data-7a923c59bdb2aaa292d39904f9d886c7"
+    },
+    "datasets": {
+      "data-7a923c59bdb2aaa292d39904f9d886c7": [
+        {
+          "group": "First long legend label",
+          "label": "Alpha",
+          "other": 2,
+          "x": 1,
+          "y": 3
+        },
+        {
+          "group": "Second long legend label",
+          "label": "Beta",
+          "other": 4,
+          "x": 2,
+          "y": 5
+        },
+        {
+          "group": "First long legend label",
+          "label": "Gamma",
+          "other": 3,
+          "x": 3,
+          "y": 2
+        },
+        {
+          "group": "Second long legend label",
+          "label": "Delta",
+          "other": 5,
+          "x": 4,
+          "y": 6
+        },
+        {
+          "group": "First long legend label",
+          "label": "Epsilon",
+          "other": 6,
+          "x": 5,
+          "y": 4
+        }
+      ]
+    },
+    "encoding": {
+      "x": {
+        "field": "x",
+        "title": "Sample",
+        "type": "quantitative"
+      },
+      "y": {
+        "field": "y",
+        "title": "Value",
+        "type": "quantitative"
+      }
+    },
+    "height": 180,
+    "mark": {
+      "point": true,
+      "type": "line"
+    },
+    "title": "Line comparison",
+    "width": 300
+  },
+  "export": {
+    "configuration": {
+      "allow_google_fonts": false,
+      "allow_per_request_plugins": false,
+      "allowed_base_urls": [],
+      "auto_google_fonts": false,
+      "base_url": false,
+      "default_format_locale": null,
+      "default_theme": null,
+      "default_time_format_locale": null,
+      "embed_local_fonts": false,
+      "gc_after_conversion": false,
+      "google_font_variant_threshold": null,
+      "google_fonts": [],
+      "max_ephemeral_workers": 2,
+      "max_v8_execution_time_secs": 15,
+      "max_v8_heap_size_mb": 512,
+      "missing_fonts": "error",
+      "num_workers": 1,
+      "per_request_plugin_import_domains": [],
+      "plugin_import_domains": [],
+      "subset_fonts": false,
+      "themes": {},
+      "vega_plugins": []
+    },
+    "font_family": "Source Sans 3",
+    "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
+    "font_weights": [
+      400,
+      700
+    ],
+    "registered_directory": "fonts",
+    "vega_version": "6.4.0",
+    "vl_version": "5.20"
+  },
+  "literal_data": [
+    {
+      "group": "First long legend label",
+      "label": "Alpha",
+      "other": 2,
+      "x": 1,
+      "y": 3
+    },
+    {
+      "group": "Second long legend label",
+      "label": "Beta",
+      "other": 4,
+      "x": 2,
+      "y": 5
+    },
+    {
+      "group": "First long legend label",
+      "label": "Gamma",
+      "other": 3,
+      "x": 3,
+      "y": 2
+    },
+    {
+      "group": "Second long legend label",
+      "label": "Delta",
+      "other": 5,
+      "x": 4,
+      "y": 6
+    },
+    {
+      "group": "First long legend label",
+      "label": "Epsilon",
+      "other": 6,
+      "x": 5,
+      "y": 4
+    }
+  ]
+}
