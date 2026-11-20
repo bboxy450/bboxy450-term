@@ -1,0 +1,171 @@
+module specs.`python-charts`
+
+spec PythonCharts {
+  title "Stored artifacts and Python SVG snapshots"
+  intent "Reuse native artifact custody for revisioned SVG pictures and write-once captured evidence"
+  status draft
+  acceptance "Canonical root ownership serializes durable image revisions, CAS and operation deduplication",
+             "Every Python artifact write captures ordinary write-once host-observed source evidence",
+             "SVG display sugar preserves image identity on explicit update and rejects external resources",
+             "Document viewer, transcript and canvas share authenticated artifact resolution and native SVG painting",
+             "Evidence stays at revision 1 while displayed image revisions and pinned history remain accurate"
+  body """
+    # Stored artifacts and image snapshots
+
+    Draft, not implementation approval. Proposed simplification for operator/Architect review: use existing artifact image syntax instead of a separate chart namespace. Python creates SVGs; our renderer paints the same saved vector scene in output and canvas. The renderer prerequisite is [[specs/svg-renderer]]; both specs need approval before chart code.
+
+    ## References and API
+
+    `![[artifact:ID]]` embeds an image; `[[artifact:ID]]` opens its artifact view. `artifact:ID:N` pins dense revision N; omitting N follows latest. Braces retain their existing relation/weight meaning. Code spans/fences remain literal.
+
+    Proposed tools:
+    - `artifact_store(media_type, content?, source_path?, inputs=[])`
+    - `artifact_read(id, revision?)`
+    - `artifact_update(id, expected_revision, content?, source_path?, inputs=[])`
+
+    Exactly one of content/source_path is required for writes. The limit is 262144 serialized UTF-8 bytes for inline JSON/text, or 16777216 bytes for an authorized staged regular file, including SVG. Reject oversize before mutation; the existing 64 MiB blob ceiling is not this API's limit. At most 32 input pins per write. Media type is the authoritative content type; derive existing display kind from it, never accept kind as another input. Start with SVG image embeds, ordinary text/JSON and files. Other stored types open/download as files and never execute. Existing local PNG images retain their current behavior.
+
+    For v1, artifact_update is admitted only for displayed image/svg+xml artifacts. Execution source (text/x-python), Vega-Lite definitions, data snapshots and other non-display evidence are write-once: artifact_store creates a fresh ID at revision 1; update refuses them as artifact_immutable. No evidence-ID revision streams to keep in step. Input pins to an image's historical revision remain immutable even when that displayed image later advances.
+
+    Each declared input is a same-root stored artifact ID plus exact revision. The host resolves its digest and verifies access. Inputs replace the complete declared set for a new revision, rather than silently inheriting inputs from another execution. They are declared lineage, not proof that a computation used them.
+
+    Successful writes return ID, media_type, revision, digest, byte length, reference, snapshot_reference and capture. For an image, reference is `![[artifact:ID]]`; snapshot_reference adds `:N`. Non-images return the ordinary link form. Read defaults to latest; revision reads return exact historical payload and input pins. Large/binary results use bounded resource references instead of base64 text dumps. `artifact_read/update` refuse a reference-only legacy artifact as not_stored and point at provenance_get; they never fetch its path/URL.
+
+    The only per-success teaching message is a short `display_hint`: "Print <reference> verbatim outside a code fence to show this image. Use <snapshot_reference> for an unchanged historical view." Include it in structuredContent and its text mirror. Suppress the generic artifact success next-read hint; do not add a redundant tools/call to artifact_read or a new hint protocol. Existing error/unknown-outcome recovery hints remain. Canvas embedding uses the same returned ID/address.
+
+    ## Authority, owner and custody
+
+    The signed canonical SQLite event stream is authoritative for `(root, artifact ID, revision) → (digest, media type, capture)`. The generated `artifacts/<id>.md` and indexes are projections, not revision authority: current inline history is truncated at INLINE_HISTORY. Source: `crates/bbt-mux/src/provenance/artifacts.rs:19,85,119`.
+
+    Reuse the existing canonical-root write owner, not a new artifact service or lock:
+    - `knowledge/bboxy.rs:1046` resolves the expected digest for knowledge_write.
+    - `index.rs:1114,1163` rechecks current bytes inside guarded publication.
+    - `index.rs:1128–1150` holds the root directory lock and projection writer custody across publication.
+    - `provenance/projection.rs:34–58` canonicalizes the root and owns a kernel File::try_lock descriptor; another process cannot acquire it. Owner-loop paths already use preclaimed, nonblocking custody.
+
+    Artifact mutations ride that same root custody and lock order. With two app processes on one root, one owns publication; the other reports busy before an effect using existing recovery rules. Do no storage IO on the UI/logic turn.
+
+    Persist source/payload blobs first. Under root custody, read the authoritative latest revision, compare expected_revision, assign N+1 and append the signed content event. This critical section is the CAS linearization point; a derived .md or process-local cached latest is insufficient. Numbering starts at 1, is dense and is assigned only by the owner. Conflict/failure consumes no revision. Two writers expecting N cannot both publish N+1.
+
+    Bind the existing operation ID and request fingerprint to the content event, so original-operation recovery can recognize a published mutation even if its response/receipt was lost. Same operation and arguments replay the original result; changed arguments/content are op_id_reused. For source_path, capture the file once at first admission; a retry replays those captured bytes rather than rereading a changed path. A new file ingestion needs a new operation. Retry does not replace the original observed source with the retrying script.
+
+    One host-owned custody field distinguishes `stored` from `reference`. Existing path/external claims stay reference custody and retain their observation/attribution semantics. Stored artifacts have blob revisions and cannot simultaneously acquire watcher path refs, aliases or observed/deleted lifecycle. A watcher cannot mutate them. Converting custody under the same ID is refused. Preserve artifact_claim's promise not to read external content.
+
+    Use existing Blobs/LocalBlobs (`crates/bbt-supervisor/src/store/mod.rs:44`, `store/blobs.rs:15,50–90`); mux already depends on that crate. Proposed custody directory: `<native-state>/artifact-objects/<canonical-root-id>/blobs/<sha256>.zst`, separate from terminal capture and excluded from both source and knowledge Git. Source code, data, definitions and SVG use the same byte custody. Read verifies hashes. A crash can leave an unreferenced blob, never publish a revision referring to unwritten bytes. No second catalog, storage crate or provider framework. S3/R2 may later implement Blobs; the signed native catalog remains authoritative.
+
+    ## Mandatory observed execution source
+
+    Every store/update originating through python_execute gets an execution-source input added by the host, including direct bboxy/tool-proxy/mcp.call use, not only display(). This is mandatory before publication; source-capture failure rejects the mutation. It identifies exactly the submitted script, not an inferred author or proof of all upstream object construction.
+
+    Current retention gap: `crates/bboxy450-harness/src/python_execute/mod.rs:127–150` persists source_digest but no source bytes. At lines 1087–1101, source is sent in the worker launch through stdin; `process.rs:103` writes that input to the child. Terminal execution metadata is therefore not durable source custody, regardless of its cleanup policy. The source is bounded at 1048576 bytes (mod.rs:43,449).
+
+    Keep those admitted source bytes in host-owned run context while executing, and at the first artifact write store an ordinary write-once text/x-python artifact at revision 1 before publishing the target revision. The capturing host/runtime is its producer via the existing observer-signing path; the submitting seat/execution remains its recorded origin. artifact_read(id, revision=1) reads it normally, and the observed pin is artifact:ID:1. Reuse that immutable source pin for later writes in the execution. The internal host source copy does not recursively invoke artifact_store. It survives execution completion, retention cleanup and restart.
+
+    The runtime broker must carry a trusted execution-source binding into the native call. Today's callback path (`server.rs:389–412`) forwards guarded context but does not establish this new binding. Add it to the host path, not user kwargs; a caller-supplied execution ID/source digest is not observed evidence. Existing root/actor/generation checks still apply. The caller cannot add, remove or forge observed input edges.
+
+    Every read/write result has exactly one coverage field:
+    `capture: { observed: [pinned host evidence], declared: [resolved caller input pins], missing: [known absent evidence names] }`.
+    A non-Python call has no observed execution source and lists execution_source in missing unless authoritative source evidence exists through another existing host path. Caller-supplied source files remain declared. Missing lists known omissions; an empty list is not proof that arbitrary Python dependencies were exhaustively captured. No new partial/complete snapshot lifecycle state.
+
+    ## Familiar Python, conversion before store
+
+    Native MCP registration exposes the tools through worker.py's existing Server proxy (__getattr__ at line 245); no SDK or per-harness wrappers.
+
+    Production font files, weights, source digests, manifest, app resource path and license have exactly one home: the Shared chart font section of [[specs/svg-renderer]]. The Python worker loads that host-supplied resource directory before exporter layout: set_font_directories under the pinned exporter policy for vl-convert and exact-file FontProperties for matplotlib. Vega CSS family fields use the properly quoted representation derived from the manifest before layout; they do not use its raw numeric family name as an unquoted CSS token. The quoted-family correction and exact five refreshed Vega source pins live in the SVG spec. Matplotlib/CoreText keep their logical/file identities. Invalid syntax or a platform-font fallback is a refusal even with a matching digest; no post-export font-family rewrite is allowed. The app and Chrome load the same manifest/files. Same font bytes give the same outlines and advance tables, while shaping can differ. The text correspondence and exporter containment contract in [[specs/svg-renderer]] owns the executable checks: actual exporter face/bytes and emitted baseline anchor must match; Chrome/native shaped text must fit the exporter advance along that anchor; native geometry must match Chrome under the unchanged gate. Raw exporter metrics remain evidence, and unlike layout/text-cell boxes are not asserted equal. The wider/narrower substituted-face controls distinguish containment from font identity. A containment failure requires a reviewed exporter/config correction, never a tolerance increase. Capture its font-set digest in the effective immutable export configuration and SVG root marker defined there; native prepare compares it with the app's active registered FontSet. Missing/mismatched identity is refused with a reason, including direct artifact_store/update calls. Do not relabel an already exported foreign-font SVG to make it pass.
+
+    The main sugar is `display(plot, inputs=[...], update=None)`:
+    1. Save a fresh write-once Vega-Lite definition artifact and captured data pins, all at revision 1. Capture the exact export configuration, including the bundled font.
+    2. In the existing Python worker, call `vl_convert.vegalite_to_svg(spec, vl_version="5.20", bundle=False)` after the verified metadata helper restores final-export mode.
+    3. Stage that SVG. Without update, artifact_store it as image/svg+xml. With `update=saved`, call `artifact_update(saved.id, expected_revision=saved.revision, ...)` using the new definition/data pins. Preserve the displayed image ID.
+    4. Emit the returned image reference once and return the ordinary saved metadata, so callers can bind the next update. The final-expression output hook avoids re-emitting a result that display already emitted; ordinary emit behavior stays unchanged.
+
+    ```python
+    saved = display(plot, inputs=[data])
+    saved = display(new_plot, inputs=[new_data], update=saved)
+    ```
+
+    A CAS conflict raises with the existing read/reconcile guidance; never retry blindly, switch IDs or silently fetch-and-overwrite. Each update gets fresh definition/data evidence and the host's observed execution-source pin. Evidence stays write-once; only the displayed SVG ID advances.
+
+    `display(saved)` displays an existing artifact without another store. An explicit SVG export must first comply with the shared font contract, including pre-layout registration and its recorded identity; an unconfigured raw savefig result is not a valid shortcut. Such an SVG uses the same primitive:
+    ```python
+    saved = bboxy.artifact_store(
+        media_type="image/svg+xml", source_path=svg_path, inputs=input_pins
+    )
+    display(saved)
+    ```
+
+    The harness prints the returned embed in its normal reply. Retained Python display rows also need the transcript image-preparation wiring below; a reference hidden inside arbitrary JSON/code is not automatically rendered. Markdown references only resolve stored content; they never execute author Python.
+
+    The displayed picture has exactly one SVG artifact, rendered by [[specs/svg-renderer]] in the harness, document viewer and canvas. No PNG companion, GUI-side Vega compiler, JavaScript engine or app render-job lifecycle. The real heatmap exporters may use the bounded same-document linear-gradient paint and inline data-PNG colorbar forms admitted by that renderer contract. An embedded PNG stays inside the SVG payload, retains its original resolution at deep zoom and is never stored as a second chart artifact. Parsed vector scenes and raster coverage are disposable caches, never another authoritative picture. Camera zoom paints the stored vector scene again at the requested scale.
+
+    The helper checks export options and byte length. Native image/svg+xml admission calls bboxy450-svg preparation to validate intrinsic size and the approved grammar before publishing the displayed revision; this uses the same prepare function as viewing, with no new validation MCP or Python parser. Export configuration uses the shared font manifest and is captured with the definition; an unsupported requested face is an explicit error with guidance, not a hidden font replacement. Matplotlib layout/export uses those same files before either live text or outlined paths are produced. Failed conversion/validation creates no displayed output revision; previously saved evidence remains ordinary retained artifacts. Cancellation uses existing Python execution ownership.
+
+    The exact RC7 wheel hash, arm64 macOS availability, single-owner metadata/final-export transition and pinned network/plugin configuration live in the exporter amendment of [[specs/svg-renderer]]. Reuse that one policy; do not pass the retired per-call allowed_base_urls argument. Decode the nonempty selected-font payload with subsetting disabled, verify exact manifest bytes/face for every used weight, then restore final-export mode in finally. Capture the matched identities with the definition/export evidence. An empty/changed payload, concurrent conversion or leaked font CSS refuses publication of the displayed revision. Keep the existing Python execution owner; witness the transition and refusal in its ownership/contract checks. Other platforms report chart export unavailable. Controlled external URLs record zero requests.
+
+    The helper also rejects external data references and image marks/resources before conversion; the data HTTP hook is not evidence for every resource path. Controlled data/image URL negatives must assert rejection and zero requests, failing closed if the pinned option is unavailable. The SVG renderer independently refuses external resources. URLs/query strings/file paths are origin metadata, not captured data: store actual response/result bytes as fresh evidence rather than refetching history.
+
+    Make-managed Python setup pins the converter and a fixture-verified compatible Altair version, reusing the renderer corpus's exact exporter versions. Nothing is installed by this draft. No installs on display/import or global Python/PATH changes. Chart implementation starts only after the SVG loop is verified and both exact-revision specs are approved.
+
+    ## Image resolver, transcript and canvas
+
+    The current document path is PNG-only: crates/bboxy450-term/src/documents/images.rs:60–102 reads a flat regular filename from .bboxy/images and decodes PNG; documents.rs:145–150 prepares it for the viewer. Existing resvg icons are not an SVG document path. New SVG support comes exclusively from bboxy450-svg under [[specs/svg-renderer]].
+
+    Add an explicit `artifact:ID[:N]` branch to images::load before local-file-name handling. Through the captured root's authenticated artifact-read owner, resolve latest/exact revision, check access/custody/media type, read and digest-verify stored bytes off the UI thread, then prepare the SVG through bboxy450-svg. Artifact targets are addresses, never filesystem paths, URL imports or recursive self-MCP calls. Other stored media keep their existing file/link behavior; existing local PNG behavior remains intact.
+
+    The shared prepared image representation must carry natural bounds and either the existing raster asset or retained vector drawing data. Existing bbt-doc ImageAsset is only a bitmap key/width/height, so extending that preparation/paint contract is explicit work. It is a generic image capability, not a Chart Figure. Retain the SVG scene and paint through the shared native draw/glyph pipeline at the current clip, device scale and camera zoom. Do not send an SVG through the monochrome icon atlas or stretch an initial bitmap at deep zoom.
+
+    Transcript embeds are also new work: crates/bboxy450-harness/src/frontends/gui/rich.rs:549–623 parses Markdown and lays out fragments, but has no image preload; fragment.transcript_body_element at line 602 does not create assets. Add a narrow host image-preparation hook before fragment layout on the existing off-thread path. The term host supplies the same artifact resolver and SVG preparation; invalidate affected prepared blocks on updates even when message text is unchanged. No second store, decoder or interpreter in the harness. Without an authorized root binding, standalone hosts show alt text/placeholders rather than probing files.
+
+    Inherited local PNG limits are unchanged, per whole document/message rather than per fragment: 16777216 encoded bytes; each dimension 1..2047 (2048 is refused); at most 16 distinct attempted targets including failures, with repeats reusing their result; at most 4000000 decoded pixels total. Source: images.rs:39–55,70–90. The 17th distinct target and an over-budget image show placeholders without breaking the document.
+
+    SVG artifact bytes share the 16777216-byte and 16-target host bounds. For this first integration, intrinsic width/height are positive and under 2048 logical pixels; the SVG renderer owns its node/depth/path/glyph limits. Intrinsic size is not a cap on camera zoom: paint a bounded visible viewport from retained vectors, not a full zoom-sized image. Any offscreen scratch/raster work uses at most 4000000 pixels per prepared host surface and the library's capture dimension limit; reject an over-budget preparation visibly instead of silently lowering resolution. Direct vector painting does not consume a fictional decoded-bitmap pixel count. The existing PNG pixel counter also counts actual inline PNG allocations from prepared SVGs against the same per-host decoded-image budget; the SVG renderer enforces its embedded-image byte, dimension, count and pixel bounds before allocation.
+
+    Canvas adds generic `Image { bounds, artifact: "ID[:N]" }`, using the same resolver, retained scene, glyphs and bounded viewport work. Existing selection/move/resize/remove/pan/zoom apply. Removing a placement never deletes its artifact. Host-side unsupported, inaccessible, invalid or over-budget images show readable placeholders; artifact_read still exposes retained source and provenance for inspection.
+
+    The amendment in [[specs/canvas]] states the single replay exception: unpinned references follow latest outside the placement log; pins use exact retained revisions. Reproducible captures/export include resolved pins, SVG bytes and font/renderer identity. No mutable chart payload copied into canvas.
+
+    Cache prepared scenes by SVG digest and rendering/font identity; coverage caches also include the effective transform, phase and clip required by the native pipeline. Labels retain the resolved artifact revision independently. A(rev1)→B(rev2)→A(rev3) may reuse geometry/coverage but must identify rev3 in label/history/export. A delayed resolver/preparation result cannot revert the current binding or label. Use existing event delivery and reopening re-resolution, without per-artifact polling.
+
+    ## History, retention and Dream
+
+    Historical content is the stored SVG revision itself; pixel captures record renderer/font identity. A renderer upgrade may improve pixels for the same SVG. This slice preserves historical chart content and inputs, not bit-identical pixels across renderer versions or a retained PNG companion. Its capture pins point at submitted code, chart definition and captured data; no separately generated output artifact or renderer history system. Reuse provenance_get/history/lineage/search with revision-qualified edges where needed, sourced from signed events rather than truncated .md history. Declared lineage stays declared, not proof of semantic causation.
+
+    V1 deliberately retains blobs and historical revisions with no delete or GC. They remain machine-local and do not travel with a knowledge/source Git push; a missing local blob is reported unavailable, never reconstructed from today's live source. Backup/export, cross-machine payload transfer and remote backend setup are separate work.
+
+    No Dream change: EvidenceBundle already binds selected file bytes by digest and ArtifactBinding to a logical path (read_wire.rs:215–250; read.rs:2187–2203); native artifact-ID/revision selection is not currently demonstrated, so that adapter is deferred, with existing eligibility/grants unchanged.
+
+    ## Invariants and verification
+
+    Finite model: two stored artifact IDs, three revisions, two writers/operation IDs and two image views; bounded immutable source/input digests, durable blobs, custody, latest pointers and view labels. Start empty. Model capture/persist, publish/CAS, retry, read, update, delayed image result, close/reopen, crash/restart and A→B→A. No Vega compiler job state in the app model.
+
+    Safety: every published revision's payload and observed source/input pins resolve verified same-root bytes; revision inputs never drift and evidence IDs stay at revision 1; one expected image revision admits one update; numbering is dense; retry is singular and changed arguments are refused; reference custody cannot become stored custody; callers cannot forge observed source; stale results cannot change a current label. Liveness assumes fair owner/event scheduling and available storage: admitted writes and current views finish or return explicit error without blocking unrelated control/UI. IO success is not a fairness promise.
+
+    Extend existing root-publication/operation models and image witnesses; record changed contracts in verification/contracts.toml and mappings in verification/coverage.toml. Broken controls remove root/CAS guards, durability ordering, dedup, observed-source binding or revision-label checks and must fail causally.
+
+    Required implementation evidence:
+    - Native MCP chart-independent JSON/text/staged-file round-trip, limits, source capture on all Python call paths, failed capture rejection, CAS across two real app processes, duplicate/changed-op recovery and forbidden custody conversion.
+    - Finish/clean Python execution metadata, mutate original files/data, restart, then retrieve old source/data/SVG bytes and exact input digests through artifacts/provenance. No reliance on execution retention.
+    - A real private GUI saved=display(plot) → document and transcript image embed → same artifact in canvas → display(new_plot, update=saved); live views advance, pinned views stay fixed, and A→B→A labels rev3 while sharing equal-image pixels. Inspect labels, colors, clipping and export at two scales.
+    - Inherited PNG boundary witnesses: 2047 accepted versus 2048 refused, 16 versus 17 unique targets, duplicate/failed targets and the 4000000-pixel whole-message cap. SVG witnesses cover the host limits, unsupported placeholders, bounded deep-zoom painting and verified SVG corpus at 1x/2x/8x. Controlled external data/image URLs receive zero requests under the pinned conversion policy. Exporter font-measurement witnesses and missing/changed font-identity negatives are required by the shared SVG font contract; packaged-app resources must match the vendored bytes.
+    - Existing Mermaid/wiki/image/JSON/canvas regressions; targeted affected tests, mandatory formal/broken controls and existing parity gate, then lean make land only after implementation is authorized. No build/CI or source worktree for this draft.
+
+    ## Removed and attribution
+
+    Removed from the proposal: chart kind/namespace/registry, chart Figure, chart canvas case, revision braces, app-side Vega conversion and queue, asynchronous output snapshots, renderer profiles, PNG-only chart storage and a parallel PNG picture, mutable evidence streams, duplicate history/Dream stores, SDK wrappers and redundant source-read teaching calls.
+
+    Inspired by Marimo's typed Python output separation. No Marimo code copied: [pinned formatter](https://github.com/marimo-team/marimo/blob/91667bcb46e81d36893705a68e46202e273043a5/marimo/_output/formatters/altair_formatters.py#L71), [Altair export](https://altair-viz.github.io/user_guide/saving_charts.html), [pinned vl-convert-python 2.0.0rc7](https://pypi.org/project/vl-convert-python/2.0.0rc7/). Prior REA source analysis succeeded; the notebook preview itself returned HTTP 403, so its exact plotting package remains unconfirmed.
+
+    Draft-only: no application source, package, lockfile or implementation workspace changed. The companion legacy canvas spec is edited through native KB tools.
+  """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"zaZM/RXH8b9WIWoi0q31BjOJ4guZHxdNg4Ux4XiqNMI=\",\"signer\":\"seat:01M7TBJ9FCVMEJ19T5G3N2EFJA\"}"
+    created = json"\"2026-11-19T22:41:49.618Z\""
+    created_by = json"\"seat:01M7TBJ9FCVMEJ19T5G3N2EFJA\""
+    id = json"\"01M7TZJAB73X9ZDRDRFP94T4CF\""
+    number = json"1794292861627549"
+    updated = json"\"2026-11-20T02:12:02.570Z\""
+    updated_by = json"\"seat:01M7TBJ9FCVMEJ19T5G3N2EFJA\""
+    provenance = json"{\"digest\":\"sha256:2be0add319c95d36bc7119d028ca04377925f5941bf8328c61b43089084e0566\",\"frontmatter_digest\":\"sha256:64065ab1d1836e0305287b839375bcd59695aa9f3cf99ef5f11e892ba82983f5\",\"signer\":\"seat:01M7TBJ9FCVMEJ19T5G3N2EFJA\",\"sig\":\"TVBXpZN2TFdPNvUW+WwdTwx+6Ti7XFb6duTQULkHehKcJaeVbMw7jV7JnpvdoO9pydBjtPtEQ/arsbvOsICVCA==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/83178\",\"event\":{\"id\":\"01M7VBK7YH34FW2CJM801YTYBW\",\"sequence\":83178,\"hash\":\"235586c65c4ddf538ba6914d183e8b2da93c1895d54c68cbd82fd18b58767c8e\"}}"
+  }
+}

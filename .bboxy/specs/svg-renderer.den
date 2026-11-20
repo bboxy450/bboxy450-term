@@ -1,0 +1,227 @@
+module specs.`svg-renderer`
+
+spec SvgRenderer {
+  title "Native SVG renderer and corpus loop"
+  intent "Render chart SVG with our existing drawing and glyph primitives, checked against independent references"
+  status draft
+  acceptance "Complete exporter corpus and feature census define a bounded visible rendering scope",
+             "Our path and glyph output passes geometry and visual gates at 1x, 2x and deep zoom",
+             "One unattended library loop reports inspected reference, native and diff images",
+             "Unsupported input, missing geometry and regression cannot produce a passing result"
+  body """
+    # SVG corpus, census and visual loop
+
+    Draft for Architect review. This is the renderer prerequisite for [[specs/python-charts]], not approval to implement charts. One Executor builds and runs this library and its loop; no parallel rendering workers.
+
+    ## Corpus and feature census
+
+    The gate corpus contains ten deterministic chart exports: bar, line, scatter, heatmap and layered charts from each of vl-convert-python and matplotlib. Keep each fixture's generator, literal input data, exporter version, font digest, SVG digest and attribution beside its case manifest. Matplotlib exports with svg.fonttype=none and the exact Source Sans 3 files defined in Shared chart font. Same bytes give the same outlines and advance tables; shaping can differ, and the containment check below bounds that difference. Outlined-text output also gets a handwritten path case. Small handwritten cases isolate every admitted rendering feature and every refusal/limit boundary. No live data or network is required to replay checked-in SVGs.
+
+    Observed seed, not the finished corpus: the verified vl-convert-python 1.9.0.post1 source archive contains eight published SVG fixtures (seven distinct digests), under vl-convert-rs/tests/vl-specs/expected/v5_8. They use svg, g, rect, path, line and text. The census inspected on 2026-11-19 found:
+    - svg: class, height, version, viewBox, width.
+    - g: aria-hidden, aria-label, aria-roledescription, class, fill, pointer-events, role, stroke-miterlimit, transform.
+    - rect: fill, height, width.
+    - path: aria-hidden, aria-label, aria-roledescription, class, d, display, fill, opacity, pointer-events, role, stroke, stroke-width, transform.
+    - line: opacity, stroke, stroke-width, transform, x2, y2.
+    - text: fill, font-family, font-size, font-weight, opacity, text-anchor, transform.
+
+    That is measured seed coverage, not a claim about matplotlib or all exporter versions. Implementation starts by generating the ten required fixtures with pinned exporters and producing the full census before renderer work. The manifest and census are reviewable deliverables. A feature outside this spec's bounded grammar returns to the Architect before implementation expands scope.
+
+    The census records every element and attribute, including the data-bboxy-font-set identity marker, namespaces, inert metadata, path-command forms, transform forms, style declarations, internal references and font usage. Each row identifies cases and one disposition: implemented with a witness, deliberately inert with a reason, unsupported with a visible placeholder, or refused. The passing corpus may contain no unsupported rendering feature. Metadata such as aria labels is explicitly inert for pixels, never confused with an unknown paint attribute.
+
+    Bounded grammar: viewBox/viewport and preserveAspectRatio; nested groups and affine transforms; paths and basic shapes; fill/stroke, joins/caps/dashes, opacity and winding; internal defs/use and clipping; the small style/inheritance subset emitted by the fixtures; text/tspan placement, anchoring, numeric weight and rotation through our glyph pipeline. Implement only forms present in the complete census plus their isolation/negative fixtures. The linear-gradient and inline-PNG forms in Corpus amendment: heatmap paint are admitted. Other gradients, filters, masks, raster formats, general CSS and animation remain outside v1 unless the actual required fixture census demonstrates a need and the Architect amends the scope. Unknown paint is never silently approximated or dropped.
+
+    ## Corpus amendment: heatmap paint
+
+    The first ten pinned exports exposed two ordinary colorbar features. Preserve the actual heatmap paints and original source evidence: the original vega-heatmap.svg (SHA-256 51743fa7220691f8c6ab43348342b3c77eee24564911201d846f3a08a83289d0) uses one linearGradient with eleven stops; matplotlib-heatmap.svg (SHA-256 3c76747d9b1b1e45251dfbbaa0024240985dd83dafae601ac6bf7935cf6ce690) embeds one 7 by 143 pixel PNG, 299 bytes, inside its SVG. The PNG SHA-256 is 5ebb3de385e06886ecc8b291df24c5681d09121c8c0045b54472459d347d09af. Their manifest/census are retained in the assigned worktree; the independent make svg-loop CORPUS_ONLY=1 replay found no corpus mismatches and the same seven grammar gaps. This amendment admits the two emitted forms; it does not change the corpus to avoid them. The original Vega hash here is observational evidence; the separately reviewed quoted-family correction below supplies the current Vega source pins and is the only permitted refresh. The Matplotlib heatmap pin and embedded PNG bytes remain unchanged.
+
+    Linear gradient scope is the emitted same-document paint server: linearGradient/stop, id, x1/y1/x2/y2, numeric stop offsets and existing supported color syntax. Admit the default objectBoundingBox units and pad spread only, finite coordinates and 2..256 nondecreasing stops within 0..1. Defaults are explicit (including opaque stops and sRGB interpolation); do not sort, clamp malformed input or silently substitute a solid fill. A fill url(#id) resolves a same-document linearGradient. External references, inherited gradient hrefs, radial gradients, nondefault gradient units/transforms/spread/color-interpolation and unrecognized attributes remain unsupported/refused under the existing rules. Reuse current clipping/compositing; add only the shared paint capability required by this case, not a general shader or gradient framework.
+
+    The only admitted raster reference is an image href/xlink:href with the exact data:image/png;base64, prefix. Its bytes remain inline in the one stored SVG; no extracted PNG artifact, second picture, URL import or new storage path. Whitespace space/tab/CR/LF in the base64 payload is allowed because matplotlib emits it; reject every other non-base64 byte and malformed padding. Validate the PNG signature and decode with the existing workspace PNG codec, preserving RGBA/alpha and the native color-image paint path. Use one shared bounded decode helper with existing document PNG decoding where practical; do not copy a decoder or introduce another image library.
+
+    Reject before allocation beyond the inherited limits: at most 16777216 decoded file bytes, each image dimension 1..2047, at most 16 distinct embedded PNG digests per prepared SVG and at most 4000000 decoded image pixels total. Repeated bytes reuse their decoded result; reference/node expansion still consumes the existing scene bounds. Read dimensions before allocating and bound decompression/output. The enclosing SVG's existing byte ceiling applies to the encoded data too. Image placement uses the emitted x/y/width/height and existing affine transform/clip semantics; default preserveAspectRatio and interpolation must match the references. Other MIME types, image data containing SVG, external/file image URLs and unsupported image options are refused or visibly unsupported, never fetched or guessed.
+
+    Host image budgets count these actual decoded PNG pixels alongside existing raster images; vector geometry still does not consume a fictional bitmap count. The raster colorbar retains its finite source resolution at deep zoom, as in the reference SVG; vector marks and labels remain freshly painted at camera scale. This is an accepted cost of preserving the real exporter output, not a promise that a raster tile becomes vector geometry.
+
+    Add isolation and limit/refusal witnesses for both features to the census and full 1x/2x/8x loop. Gradient witnesses cover direction, stop interpolation and object-bounding-box transforms; PNG witnesses cover the actual whitespace-bearing data URI, alpha, placement/flip/clip and bounded decode. Broken controls omit the gradient or image and must fail visibly; external, malformed, oversized and unsupported forms must fail admission. Pixel/geometry budgets and frozen-advisory rules remain unchanged. Only forms justified by the census are admitted.
+
+    The Phase A continuation may classify these forms, complete reference captures/exporter measurements and submit the frozen advisory list. It still may not implement our SVG renderer or alter shared rendering primitives before the mandatory Architect corpus review.
+
+    ## Corpus amendment: quote the CSS family before layout
+
+    Chrome's actual font guard found that the raw manifest family Source Sans 3 is not a valid unquoted CSS family value: the numeric token makes it invalid. Loading the right font files and matching the font-set digest did not prevent SVG text from falling back to Times. The quoted family is valid and resolves the intended regular/bold custom faces. This is a generator serialization defect, never an advisory renderer difference.
+
+    Keep the manifest family, font files, font-set identity and weights unchanged. Derive the CSS representation as a properly quoted/escaped family token before passing font, labelFont and titleFont settings to Vega layout/export. Chrome font-face declarations and native SVG family parsing must respect that same CSS syntax. Matplotlib file/FontProperties and CoreText identities continue using the logical family/face names, not a CSS quoting token. No exported SVG text is rewritten afterward, no foreign-font picture is relabeled, and no alias or second font table is added.
+
+    This reviewed corpus correction supersedes only the five original Vega SVG hashes; the other five Matplotlib SVGs remain unchanged. Private controls independently compared every parsed element, text node, attribute and geometry: only font-family attribute values change, to the quoted form. The new source pins are:
+
+    | Case | Quoted-family SVG SHA-256 |
+    |---|---|
+    | vega-bar | 67cb19335bbc329a1b37a4b99558f7867bcf10b358ff7e6a66ecc4d8999d657b |
+    | vega-line | e14343c217b99c68b03b824d8ae140ecebbf80307a346b5bc8c07639fe0cd490 |
+    | vega-scatter | 045f9cb273c13493396f340d02932e2b4f61185106a50a26a25fb912a0fe3e70 |
+    | vega-heatmap | 3fc204eae223ef1a20cb4a237543a81d0396a59e5a2e53bb0736dac5ee0cd110 |
+    | vega-layered | 7b96fccdb0b9429103ee7da0f500694bb9dcad04fd5600f2f37b620027438980 |
+
+    Regenerate definitions, SVGs, scenegraphs, measurements, manifest and census from the corrected pre-layout configuration, and verify these exact SVG hashes before replacing the old corpus. Preserve the original invalid-family form as a refusal control, not a passing golden. Refreshed derived metadata is not permission to change data, paints, geometry, viewports or the heatmap gradient/PNG evidence. This correction does not weaken exporter-bound comparisons or any pixel/geometry budget.
+
+    Font admission rejects invalid family syntax and fallback even when the font-set digest matches. Chrome must record actual approved custom face identities for each capture at 1x/2x/8x, not merely confirm that files loaded or accept computed family text. Retain the invalid-family negative and substituted-exporter-font controls. Diagnostic controls demonstrate the correction; the complete per-capture face audit, exporter/native measurement and corpus/advisory review remain required before our renderer code starts.
+
+    ## Corpus amendment: pinned exporter font selection
+
+    Retire vl-convert-python 1.9.0.post1 for new exports. Its internal text measurement serializes family names into an SVG after stripping quote characters, making the numeric family Source Sans 3 invalid again; it also loads system/default fonts. The actual registered family and explicit serif diagnostics measured identically, and the fixed containment gate found 60 overflows. Primary source: [v1.9.0 text.rs:264–267 and font database initialization](https://github.com/vega/vl-convert/blob/v1.9.0/vl-convert-rs/src/text.rs). Keep that failure as historical/negative evidence, not a passing positive or a claimed resolved identity.
+
+    Pin vl-convert-python exactly to 2.0.0rc7. The sole v1 export platform is arm64 macOS, matching the native text platform; other platforms return chart export unavailable without attempting an install. The macOS arm64 wheel vl_convert_python-2.0.0rc7-cp310-abi3-macosx_11_0_arm64.whl is frozen at SHA-256 400535cc9172995cf1152847a2ac24c93657ba8b00345daac61c76260fbdc561, with Make-managed hash-checked installation. No range or floating candidate. Its bundled Vega is 6.4.0 and it retains Vega-Lite 5.20, so the existing Altair 5.5.0 / Vega-Lite 5.20.1 definitions and literal data stay unchanged. A stable 2.0.0 or any other version is a separately reviewed bump with corpus regeneration and the full loop. No converter fork, font alias/renaming or second font home.
+
+    Before layout, set_font_directories([the verified manifest directory]) and pin the process configuration: num_workers=1, base_url=False, allowed_base_urls=[], auto_google_fonts=False, allow_google_fonts=False, missing_fonts=error, embed_local_fonts=False, subset_fonts=False, no Vega plugins or plugin imports/per-request plugins. Set bounded heap/execution limits through this existing API. The per-call allowed_base_urls argument from 1.9 is retired; 2.0 uses configure. Check the effective configuration, not an assumed default. Controlled URL tests must record zero requests, with an independently reachable private test server. External data/image sources remain refused before conversion as already specified.
+
+    One synchronous worker execution owns conversion and process-global configuration. Exactly one helper function temporarily sets embed_local_fonts=True, calls vegalite_fonts(..., vl_version="5.20", include_font_face=True, subset_fonts=False, auto_google_fonts=False) for a Vega-Lite definition (vega_fonts for the already compiled Vega equivalent), and restores embed_local_fonts=False in finally before final export. One worker process and num_workers=1; no concurrent conversions in a process. Keep this under the existing worker execution owner, with an ownership/refusal witness; no new conversion pool or per-artifact lock. The corpus generator obeys the same one-owner rule.
+
+    Metadata mode must return a nonempty payload covering the faces actually used by every text/weight. Decode each returned font-face data URI as bytes, ignoring its media label for identity, and require its complete, unsubsetted payload digest and PostScript face to equal the corresponding manifest file. Unexpected/missing faces, altered bytes or an empty metadata-mode result refuse export. Similar widths and successful registration are not proof of selected identity. Retain matched face digests with the effective export evidence; do not retain another font copy as a chart artifact. The two payloads in the candidate runs equal the existing Regular and Bold files byte-for-byte.
+
+    The metadata mode is not final SVG mode. Final vegalite_to_svg(..., vl_version="5.20", bundle=False) / vega_to_svg(..., bundle=False) runs only after restore; font-face CSS, imports and data-font payloads are refused in the displayed SVG. For each corpus chart, export before and after the metadata call and require byte-identical SVG hashes. A broken control skips restore and must fail the forbidden font-face/data-font check; once native preparation exists, that same input must fail it too. This keeps one bundled font home and the existing SVG grammar rather than admitting embedded font CSS.
+
+    The five refreshed candidate files below are the exact reviewed snapshots. SVG, scenegraph and measurement JSON are produced from the unchanged definitions; measurement JSON uses the existing canonical corpus dump and records the resolved face/digest rather than null. Regeneration must preserve these facts and exact pins; a changed source or pinned evidence digest returns for review. Matplotlib SVGs and their PNG heatmap bytes remain unchanged.
+
+    | Case | SVG SHA-256 | Scenegraph SHA-256 | Measurement SHA-256 |
+    |---|---|---|---|
+    | vega-bar | 3e5169ecd4919cfd5bc3379ba28b2f41e5b0ee094e345d7765fbb08e69a4bed9 | 1121c3dd9895cbe518f77a97f4a9bc69c8becf222b3a7f460375845140e12cea | 761a0ba94ee7ab8252fb03616522f01be7de88ea1e50c82afcc903729db12db9 |
+    | vega-line | 0f940d3fa72d505b76c88d148679f55d83b0cc2e770288c66333a2919a4f83d9 | 2a36b4860dca753bcf957b133ca27bee8905c8a274ca9dfd757e08bf8d1ba6f0 | e7c95c52d94ce675e3326ea26d54d5c1ab9c5f56ccf6f69ad14b51a95f901c04 |
+    | vega-scatter | a3e23830e0f0116cf37eeaf2f6ec09fa6190979f858f149622b483b6c727e4a5 | 22b2b8e9a22d6e22d016857c677098489f7cedd7702313ade7ecf87318199f1d | a5837771b38ffb393ec167b622ccc47fd8218a21d5f909b9fce1652c5f91ee71 |
+    | vega-heatmap | 6e1df2025cb3fa5a0d224bf5634195acbc5e7b2509686be3039913180d05f71e | 8c43c6db8b15248f20b7024be71b5ce01b456252ccfd2d7344301ce3fd5e66bb | f77d8f23babd263c917b8e5f26f16171704086dbba83ec5feca065a2c1d0d47f |
+    | vega-layered | c54da26d8a0e4071675c08f74ece6ed9543b60745c02d31944997798101012e6 | 97d0e00bf37a6b53d0dda0dbe9a1a8ef9ab8777fd941185ab2f6c555bb8dce47 | 0c6c1d28284570062ba9650d0d0f4ba2a74104b5f8d2f6c01f165d00ca7a7401 |
+
+    Recompute only the Vega cameras from corrected intrinsic layout using the existing generator rule: full viewport ceil(width/height) at 1x and 2x, and an 8x crop at round(width/3,3), round(height/3,3), 48 by 32. New intrinsic sizes are bar 337x267, line 341x244, scatter 444x244, heatmap 409x235 and layered 448x248. These small layout changes follow corrected measurement; they are not a chart/data redesign. The earlier quoted-family SVG hashes are retained as prior evidence, superseded only by this table.
+
+    Private candidate verification recorded all 276 Vega text/case/scale correspondences and containment checks passing at 1x/2x/8x, with the same anchored 0.5 physical-pixel allowance; worst excess is 0.1240081787109375 px for the heatmap value label at 8x. All actual custom browser faces match the manifest weight. No new census decision gaps appeared. The five with/without-metadata SVG witnesses pass; controlled URL requests are zero; skipped restore is refused by the reference census. This is exporter/reference evidence, not native renderer acceptance or a frozen advisory list. Full references, isolation/refusal witnesses and the complete corpus checkpoint remain required. See [[notes/2026-11-19-svg-rc7-candidate-review]] for commands, hashes, paths, ownership and limits. Do not file an outward-facing upstream report without explicit operator authorization.
+
+    ## Comparison policy
+
+    Reuse the constants beside bbt-render/src/chrome/diff.rs and [[specs/renderer]] section 4.4a. Channel tolerance remains 8; no new budget class is introduced. Gate layers separately at every required view:
+    - `vectors`: exact public path bounds/endpoints and native versus resvg at most 0.5% changed pixels on every vector layer. Native versus Chrome also stays at 0.5% wherever that case/view has no frozen common-vector advisory. Geometry is always hard.
+    - `text`: a new isolated text layer, with Chrome hiding non-text paint through the existing data-bboxy-hidden capture mechanism and native painting text only. Preserve groups, opacity and clip dependencies. Native versus Chrome is at most 2% changed pixels, with corresponding SVG text-cell rectangles, baseline anchors, character geometry and shaped advances within 0.5 physical pixel plus the exporter containment rules below. A vector advisory never waives text.
+    - `image`: a new isolated image layer using the same capture mechanism, with groups/clip dependencies preserved. Chrome is the sole reference; native versus Chrome uses the existing vector budget of 0.5%. An unmet interpolation gate returns with actual triplets for Architect review, never an advisory or wider tolerance.
+    - `render`: the complete chart is hard-gated against Chrome at 2% only when that case/view has no frozen vector advisory. With a frozen vector advisory, retain, report and image-inspect the complete render as evidence, while its isolated text/image gates remain hard. This decision is mechanically keyed to the frozen rows, never chosen case by case. Do not subtract changed fractions or mask text/image errors with a vector waiver.
+    - Missing reference/native/exporter geometry, a required layer/case/scale, parser diagnostics or unsupported rendering always fails. A blank layer cannot pass by omission. The census determines which isolated layers are required.
+
+    Add four small composition cases with interleaved layers: text under a shape, a shape over text, an image under text, and one clip spanning layers. Their occluders and clip are pixel-aligned axis-aligned rectangles with no vector antialiasing residue. These cases can never become advisory; their complete renders are hard against Chrome at 2%, proving paint order, occlusion and clipping. Use the admitted grammar and retain causal composition controls. Existing SVG/font/camera pins do not change to make these cases.
+
+    Every case runs at device scales 1 and 2, plus an 8x camera zoom over a manifest-declared viewport. Deep zoom crops before allocating pixels, never stretches a cached bitmap and never allocates an 8x whole-chart surface. Re-render vectors and glyph coverage at the requested transform. Geometry uses the same final device coordinates.
+
+    The capture viewport and view mapping have one home: one function computes the full-view rectangle as ceil(viewBox width) by ceil(viewBox height) at the viewBox origin, extending the root viewBox to that same integer rectangle for a 1:1 full-view mapping. The root clip is this integer capture viewport, not the fractional viewBox edge: whatever the SVG paints in the extra strip is shown; anything else is background. For each manifest view, apply the camera as the exact root viewBox rectangle, with output width and height equal to the camera size times scale. A fractional camera origin remains exact in user space; never apply it as a CSS inset, offset, scroll or clip on the page. Chrome, resvg and native consume that same computed viewport and view mapping; none carries another copy of the rule. Check the full-view 1:1 mapping, exact fractional camera transform and a fractional-viewBox witness including its text measurements. This applies [[specs/renderer]] section 4.4b: a stretched reference is a lab bug to correct at its source, not an output for native to imitate.
+
+    The approved integer-viewport reference correction changes no authored SVG, font or camera pin. Re-capture Chrome, resvg and native for cases with a fractional viewBox using that shared viewport. Retain reference-before-integer-viewport as local evidence outside Git. Require byte-identical captures for every integer-viewBox case at every view against that retained reference; only fractional-viewBox captures may change hashes or statistics. Recompute Chrome/resvg advisory classification and require exactly the original 31 frozen case/view/status rows and reasons, with no additions or removals. A row appearing, disappearing or changing status returns to the Architect before continuation. The four new composition cases and the new isolation-fractional-viewport witness can never be advisory; they must pass their hard native gates.
+
+    Two reference interpreters are recorded:
+    - Existing resvg 0.48.1, text and raster-image support disabled, is the offline shape oracle for the separated vector layer.
+    - Isolated headless Chrome is mandatory for isolated text/image and complete chart captures. Load identical bundled font bytes through host-supplied CSS font-face, await document.fonts.ready and record pixels plus SVG getBBox/transformed character geometry through DevTools. Baseline witnesses use text positions and font metrics, not a guessed bounding-box bottom.
+
+    Native and resvg share the existing tiny-skia path coverage engine. Their comparison proves native parsing/lowering, transforms, viewport, clipping, paint order, winding, dashing and gradients; it is not independent proof of antialiasing. Chrome versus native on every non-advisory vector pair remains the independent coverage gate. resvg's lack of text/images never makes those layers advisory. The reviewed common-vector advisory list is frozen before native comparison, except for the exact integer-viewport refresh above. Native failures never create, reword or widen an advisory. No automatic budget widening.
+
+    ## Renderer and existing primitives
+
+    Add reusable crate bboxy450-svg, directory crates/bboxy450-svg. It owns SVG interpretation and the corpus loop. Use existing roxmltree 0.21.1 from Cargo.lock for XML parsing, preserving text; do not use the usvg tree that drops text in this build. The crate depends on the existing draw model and bbt-render, never bboxybook.
+
+    Compile SVG into a bounded immutable vector scene and reuse bbt-render's path/fill, clipping/compositing and native glyph coverage. Source: bbt-ui-model/src/draw/path.rs:12,76; draw/prim.rs:207; bbt-render/src/chrome/paths.rs:7; path_masks.rs:7; text_glyphs.rs:7. These are primitives to reuse, not an assertion that they already implement SVG.
+
+    The gaps are part of this work: path close/subpaths and winding, arbitrary affine placement including rotated text, and the clipping required by the census must survive lowering. Current PathCommand is Move/Line/Cubic, Prim::Text has no affine matrix and Prim::Clip is rectangular. Add only the shared drawing capability needed by a corpus witness, or lower without loss to existing primitives. Do not render SVG text with the monochrome icon path or add a second font stack. Any public primitive change carries a focused geometry/parity regression for its existing consumers.
+
+    Text uses the existing CoreText-backed glyph pipeline, including weight, positioning and affine placement, with the production font files and all-consumer identity check specified below. A requested face or glyph outside that set is explicit unsupported coverage, not a hidden system-font fallback. V1's proven text platform is macOS, matching the existing pipeline; other platforms return an explicit unavailable result rather than claiming portable text parity.
+
+    A small API is sufficient:
+    - corpus() returns cases and census.
+    - prepare(svg, fonts) returns the immutable scene and diagnostics.
+    - render(svg, size, scale) returns RGBA plus native geometry; its request also names the viewport/camera for zoom crops.
+    - reference(case, scale), compare(reference, ours, policy), report(runs) drive the same loop from any harness.
+
+    The app can retain the prepared scene and paint through the same primitives at its current viewport/zoom; it need not retain a zoomed bitmap as the picture's source. PNG files are comparison captures only. All GPU readback stays in the existing offscreen renderer boundary; no windows or operator UI are owned here.
+
+    ## Shared chart font
+
+    The single production chart family is Source Sans 3, upstream tag 3.052R, commit ed1808970eb3c7301c9a523bee26473ba0bb62fa. Choose two static faces, not a variable font or synthetic weight. The authoritative vendored directory is crates/bboxy450-svg/fonts/:
+
+    | File | Weight | SHA-256 |
+    |---|---|---|
+    | SourceSans3-Regular.ttf | 400 / normal | 4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f |
+    | SourceSans3-Bold.ttf | 700 / bold | 9214b9d95e4231c609802815c2646c98174e2102d0d37f88978a7f8e71006e6a |
+
+    Both files' internal family name is Source Sans 3; their PostScript names are SourceSans3-Regular and SourceSans3-Bold, respectively. Research read the upstream bytes and confirmed OS/2 weights 400/700 and no fvar table. Do not depend on unverified CoreText variable axes. Other weights/styles/faces are explicit unsupported scope until a corpus-backed amendment; the required chart corpus uses these two weights.
+
+    Upstream binary/license sources are [Adobe's pinned TTF directory](https://github.com/adobe-fonts/source-sans/tree/ed1808970eb3c7301c9a523bee26473ba0bb62fa/TTF) and [its SIL OFL 1.1 license](https://github.com/adobe-fonts/source-sans/blob/ed1808970eb3c7301c9a523bee26473ba0bb62fa/LICENSE.md). Preserve that LICENSE.md beside the files (SHA-256 89ad2c4f66dd29127527493e729c31e731f111cf10faf5774c3db9275ed0c22c), Adobe copyright and Reserved Font Name notice, plus the attribution/license inventory row required by make test-licenses. The existing JetBrainsMono file stays a test fixture; it is not the production chart font.
+
+    One manifest.json in this directory names the upstream revision, family, face/weight mapping, file digests and license. Its exact UTF-8 byte digest is the font-set identity; do not duplicate these facts in Python constants, another app font table or the comparison runner. Make's existing bundle workflow ships an exact copy of this directory under Contents/Resources/chart-fonts/, including its manifest and license. Packaged reusable-crate tests and source-tree runs read the same vendored source directory; the packaged app and its Python worker read the app's resource copy. No system/user font installation or runtime font download.
+
+    All four consumers use that manifest and those files:
+    1. The Python worker receives the active host font-resource directory through its existing launch configuration, verifies the manifest/file digests, calls vl_convert.set_font_directories([directory]) under the pinned exporter configuration before any conversion, and derives properly quoted CSS family values from the manifest for Vega-Lite config.font and explicit text font fields before layout, with the named face weights. The logical manifest family remains unchanged; see the quoted-family corpus amendment. The selected-face payload check and single-owner metadata mode are defined in the pinned exporter amendment above. Conflicting explicit chart font settings are rejected with guidance rather than silently overwritten. Capture the effective export configuration and font-set identity with the definition.
+    2. Matplotlib registers both exact paths with font_manager.addfont, selects the manifest family and real face weights before measuring/layout/export, and uses svg.fonttype=none. Text FontProperties resolve to those files; an explicit foreign face is rejected. This happens before layout, not as an SVG text-family rewrite afterward.
+    3. App startup verifies the resource manifest/files and registers both through bbt-render::text::register_font_file (text/macos.rs:23). Verify the resolved CoreText face identity/file against the manifest and retain one immutable active FontSet before chart preparation. Registration failure disables chart preparation with a reason; it must not break the rest of the app or silently use a system face. A standalone library caller/loop initializes the same FontSet explicitly.
+    4. Chrome reference CSS declares both weights with font-face pointing at those exact files and waits for document.fonts.ready. The native loop uses the same FontSet. No platform Helvetica fallback.
+
+    The exported SVG root records data-bboxy-font-set="sha256:<manifest digest>". The same identity is recorded in its immutable definition/export configuration; this attribute is a declared export fact, not proof of arbitrary Python computation. display adds it only after verified font registration/export, not to disguise an already exported foreign-font file. It introduces no new artifact tool parameter or font registry.
+
+    prepare reads this identity and compares it to the active registered FontSet, verifies text face/weight selection against the manifest and returns font_identity_missing, font_identity_mismatch or font_unavailable with a reason before image publication/painting. An exact font digest mismatch is refused even if the family name matches. Standalone fixtures carry the same marker; hand-written non-text negatives do not require a browser. No hot font replacement in v1; restart loads a new FontSet.
+
+    ### Text correspondence and exporter containment
+
+    One font file does not imply identical shaping across exporters, Chrome and CoreText. Same bytes give the same outlines and advance tables; shaping can differ. The invariant is that painted text fits the advance the exporter reserved, while our rendering matches the corresponding browser geometry. Keep the ten approved SVG pins and all pixel/geometry budgets unchanged.
+
+    For every corpus text node, retain the raw export-time layout bounds and advance, actual measured font file digest and face, text, size, weight, transform, emitted baseline anchor and its start/middle/end text-anchor mode. Use Vega export-time scenegraph/text measurements and Matplotlib SVG-backend measurements; keep Agg measurements separately named. The anchor is the baseline position actually emitted into the SVG, not Matplotlib draw_text's left draw origin when the exporter instead emits a centered or end anchor. Map exporter, Chrome and native quantities through the same root/camera/device transform at each scale. Missing correspondence or nonfinite/missing measurements fail.
+
+    Exporter admission in this loop hard-checks the actual measured font bytes and face against the expected manifest face/weight, plus the emitted text, size, weight, transform, baseline anchor and anchor mode. Retain raw Matplotlib Text layout rectangles and Vega scenegraph bounds as evidence, but do not equate them to SVG getBBox text-cell rectangles. A Matplotlib lp-based height is not a browser text-cell height. Vertically, compare the emitted baseline anchor only between exporter and renderer.
+
+    Native versus Chrome remains a hard equality-with-tolerance check: corresponding SVG text-cell rectangles, baseline anchors, per-character geometry and shaped advances must agree within 0.5 physical pixel at 1x, 2x and 8x. The native glyph pipeline shapes with kerning enabled, matching the browser contract; no font-kerning:none override or post-export SVG rewrite is introduced.
+
+    Containment is a separate hard check for Chrome and for native at every scale: the rendered shaped advance must be no greater than the exporter's reserved layout advance plus 0.5 physical pixel. Measure along the advance axis from the same emitted start, middle or end anchor. The allowance is 0.5 physical pixel of total advance; for a middle anchor it is split across the two ends, not granted again at each end. Never compare first-glyph start positions from differently shaped strings as if they were baseline anchors, and never compare heights between unlike boxes. Exporter width need not equal browser/native width. A containment failure is a real overlap risk and returns for an exporter/config amendment; it cannot become an advisory or authorize a wider tolerance. Vega advances are measured too, never assumed to behave like Matplotlib's.
+
+    Retain regular/bold labels, a tight legend and a truncation witness. Broken controls omit exporter font registration or substitute a different exporter face, and must fail even when Chrome and native load the correct face. Include a substitute whose measured advance is narrower and fits the slot, proving that the face-identity guard rejects it independently of containment; include a wider-face containment witness as well. Altered font bytes and missing/changed SVG/config identity remain refusal controls. These are corpus/exporter and renderer-loop checks, not another artifact type, runtime measurement service or second font stack.
+
+    Observed motivation: in the unchanged Matplotlib scatter title, the SVG backend reserves advance 103.858125 at 12 px while Chrome shapes about 102.519791 SVG units around the same centered baseline anchor. Its lp-based layout height and SVG text-cell height differ. All 231 recorded Matplotlib case/scale advances satisfy containment under the fixed tolerance; this observation does not replace the executable check or complete the pending Vega measurements. See [[notes/2026-11-19-svg-exporter-geometry-gap]] for the original hard failure and retained raw values.
+
+    Check the built app resource directory, not just the source fixture: its font/license/manifest bytes must match the vendored digests. Exercise a real private packaged-app chart with both regular labels and bold titles through the same files. No font files are vendored or installed by this draft.
+
+    ## Refusal and resource bounds
+
+    Accept UTF-8 SVG at most 16777216 bytes, at most 50000 XML nodes, depth 64, at most 8192 path commands per path (existing PathStroke bound), at most 262144 lowered commands and 65536 glyphs in a scene. Internal reference expansion counts toward the same totals; cycles fail. Inputs and transforms must be finite, viewport dimensions positive. Any exceeded bound returns a structured error and visible host placeholder, with no partial success.
+
+    No scripts, event-handler attributes, foreignObject, external/file href, external CSS imports or non-fragment url() paint references. The sole data-URI exception is the bounded inline PNG image described above; it is not an external resource resolver. Disable external entity resolution; an ordinary exporter PUBLIC doctype is inert and never fetched, while entity declarations/expansion are refused. Apart from that inline PNG image exception, internal hrefs may resolve only bounded same-document IDs. No filesystem/network resource resolver exists in the renderer. The loop injects its own bundled font from the trusted manifest, never an input URL.
+
+    A capture is at most 4096 pixels per side and 16777216 pixels total; reject rather than silently resize. The pure render request uses an explicit bounded viewport at any camera zoom. Hosts may apply tighter surface budgets, as named in the chart integration spec.
+
+    An unsupported non-dangerous rendering feature yields one visible unsupported-SVG placeholder and a complete diagnostic census, not a plausible partial chart. Refused content is not passed to Chrome/resvg until the fixture runner has classified it as a negative test and stripped active execution from the reference boundary. Negative inputs test our rejection directly; they never need executing in a browser.
+
+    ## One loop and one comparison implementation
+
+    The pure pixel comparator is already shared: bbt-render/src/chrome/diff.rs:9–44 exports CHANNEL_TOLERANCE and compare; bboxybook's CasePolicy supplies vector/text budgets. Reuse it directly. No comparator move or new comparison crate is needed. Move the vector changed-pixel budget (0.005), text budget (0.02) and text geometry tolerance (0.5 px) once from bboxybook CasePolicy to constants beside that existing comparator; both CasePolicy and the SVG loop must consume those constants. Leave gallery-specific case classification in bboxybook, with no duplicate numeric policy literals.
+
+    Expose one Make target, make svg-loop [CASES=...]. It builds/runs the crate's loop, one case/reference at a time, with the existing isolated-profile Chrome/DevTools process approach from crates/bboxybook/capture.mjs:38–65. Reuse reusable capture/process pieces where available; do not fork a second generic browser framework. A selected-case run is diagnostic; only a full manifest run can pass the corpus gate.
+
+    Each run writes target/svg-loop/index.html, report.md, census.json and machine-readable results. The HTML/report orders failures worst first and links reference, native and diff PNG triplets, geometry differences, advisories, omissions and tool/font/source digests. No scores-only success. Reference captures may be cached by exact SVG/font/reference-version/viewport/scale key; stale or missing captures fail or regenerate, never masquerade as fresh references.
+
+    One iteration is: render, read the report, open the worst failing triplet, fix one cause, rerun selected cases, rerun the full corpus. The harness records which images it inspected. A previously passed case remains in the suite unchanged and cannot regress; do not replace its source, reference or policy to hide a failure. An intentional corpus change is separately reviewed and gets a new digest.
+
+    The loop finishes only when every non-advisory case passes at all required scales, census coverage is complete, and actual image inspection is recorded. Missing Chrome, missing geometry, a timeout or an unrendered case makes the gate fail. Advisory pixels stay visible and counted. Reference disagreements do not excuse text/geometry/census failures.
+
+    Keep only the current result set and reusable exact-key references; no unbounded per-iteration output directories. Reap only Chrome PIDs the loop started, then remove only its private profile. Reference/browser work and font bytes stay local. This work introduces no app render queue, daemon, network service or parallel worker pool.
+
+    ## Checks, coverage and sequencing
+
+    Add the crate/source/corpus mapping to verification/coverage.toml and its pure-function witnesses and bounds to verification/contracts.toml. The SVG renderer is deterministic bounded geometry, so no new SVG-specific TLA state machine is needed. This is not a waiver of repository formal coverage: reuse existing offscreen/process custody for the loop; a change to lifecycle, ownership or retries requires the relevant existing model and broken control.
+
+    Verification: parser/refusal and geometry witnesses; broken controls for missing geometry, unknown paint, stale references and dropped text must make the gate fail; the full SVG loop at all scales with image inspection; existing affected renderer parity and make test-licenses. New dependency/lockfile changes follow the repository's full-CI rule; otherwise use targeted checks and lean make land. No code/CI is authorized by writing this draft.
+
+    Sequence: approve this spec, implement and verify its loop with one Executor, then enable chart implementation against the verified renderer. [[specs/python-charts]] must also be approved at its exact revision before chart code starts.
+
+    Removed: proposed PNG-only chart storage, resvg/usvg as the app SVG interpreter, a second text stack, duplicated diff logic, a separate loop service and full-SVG-standard scope. Existing resvg icon behavior is outside this change. Inspired by our renderer lab and the published vl-convert fixtures; borrowed fixture/font bytes keep their upstream license and adjacent attribution. No third-party renderer code is copied.
+  """
+
+  managed {
+    authorship = json"{\"kind\":\"seat\",\"process_generation\":\"1\",\"public_key\":\"zaZM/RXH8b9WIWoi0q31BjOJ4guZHxdNg4Ux4XiqNMI=\",\"signer\":\"seat:01M7TBJ9FCVMEJ19T5G3N2EFJA\"}"
+    created = json"\"2026-11-19T23:43:53.917Z\""
+    created_by = json"\"seat:01M7TBJ9FCVMEJ19T5G3N2EFJA\""
+    id = json"\"01M7V33ZB015D4BHBEQ4APEE5E\""
+    number = json"1794292861627553"
+    updated = json"\"2026-11-20T06:08:27.926Z\""
+    updated_by = json"\"seat:01M7TBJ9FCVMEJ19T5G3N2EFJA\""
+    provenance = json"{\"digest\":\"sha256:f778bba1794d902f2facad3c77dd9c809328d2fba865312fefdc9a2bda268a0e\",\"frontmatter_digest\":\"sha256:16f26861df64ecc694416aaca69876a731a6879368165a4a01ce82d514feacc6\",\"signer\":\"seat:01M7TBJ9FCVMEJ19T5G3N2EFJA\",\"sig\":\"ohCq8VK8OwejQh6gqH7PpjiJLgG1ej0p86lC4SAi6H8vu61AxSgfTKJsH6LF3rOPPdOQZj7npadbEHG+T74gBw==\",\"log\":\"bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/83250\",\"event\":{\"id\":\"01M7VS44TY9BE5HBFQ03QCHW34\",\"sequence\":83250,\"hash\":\"12c08b5c232c7cd938bf7c03fa640f74f4cee1c35064a46791690ae62d8f9b4b\"}}"
+  }
+}

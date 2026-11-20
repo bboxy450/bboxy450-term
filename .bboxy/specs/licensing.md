@@ -1,50 +1,25 @@
 ---
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: zaZM/RXH8b9WIWoi0q31BjOJ4guZHxdNg4Ux4XiqNMI=
+  signer: seat:01M7TBJ9FCVMEJ19T5G3N2EFJA
+created_by: seat:01M7TBJ9FCVMEJ19T5G3N2EFJA
 id: 01M5MSBWYSH6HK73HKZ8E9ZYV4
 number: 151
 type: spec
-title: licensing — which crate carries which license, and why
-status: decided
-links:
-- to: '[[d8-open-source]]'
-  rel: decision
-- to: '[[d34-licensing]]'
-  rel: decision
-- to: '[[d36-apache-code-placement]]'
-  rel: decision
-- to: '[[d50-licence-when-mit-when-apache]]'
-  rel: decision
-- to: '[[d51-frontmatter-is-the-gui-kit]]'
-  rel: decision
-- to: '[[d52-brand-and-face]]'
-  rel: decision
-- to: '[[open-source]]'
-  rel: constrains
-- to: '[[terminal-core]]'
-  rel: spec
-- to: '[[yarn]]'
-  rel: spec
-- to: '[[2026-10-22-architecture-round-1]]'
-  rel: decisions
-created: 2026-10-23T16:26:37Z
-intent: bboxy450-owned contributions carry the Respectful Slop License 1.0-Draft, upstream licenses and prior grants stay intact, and reused protected material keeps accurate source attribution.
-updated: 2026-11-16T19:44:56.342Z
-created_by: seat:01M79HGAW321GYNK8468FYN4K9
-updated_by: seat:01M79HGAW321GYNK8468FYN4K9
-authorship:
-  signer: seat:01M79HGAW321GYNK8468FYN4K9
-  kind: seat
-  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
-  process_generation: '1'
+updated: 2026-11-20T05:41:37.311Z
+updated_by: seat:01M7TBJ9FCVMEJ19T5G3N2EFJA
 provenance:
-  digest: sha256:34ba96adb2da825bfb5bf789b958d305c911cac280eb65c59b452feeea96b64c
-  frontmatter_digest: sha256:90c246a9eb174c3bc3aaf3140199d2ab9cf1daa0f19c69aa4b24a5f9df7aaeb5
-  signer: seat:01M79HGAW321GYNK8468FYN4K9
-  sig: bCPsq6m2wLJKhRdwQTzlxSFf+h2ZvJQSiDv0zOPYqdBnw5fjkNjSj+f01eLEZeYQBejmwpRodXD2fawu/G4tAA==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151734
+  digest: sha256:ff161c8e2dbe3515845043c756afa05dbf55c8d0f30adc8702668fb7d4ecc638
+  frontmatter_digest: sha256:7def55b1371dd3de759d7394caee05174245c4afe861ea242ab58ea5ecf7b801
+  signer: seat:01M7TBJ9FCVMEJ19T5G3N2EFJA
+  sig: vZuCnhg/D3m3VTnW8qKR/xTfWuk0dlCTpucfzDp6qI7lSNYAi0shAKT0nPDH1mhNRnexo+GKLlUrC4RHnTP6AQ==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/83237
   event:
-    id: 01M7JY894DEFJPJGY3ZCGG9BJ7
-    sequence: 151734
-    hash: 02997bd421a623da205935a61a10df14e36f0ad3a6764b831c147e32e94ae8f6
+    id: 01M7VQJZZEAH0NTV4KGE9SRXSW
+    sequence: 83237
+    hash: 7c6998176f3514eef1658e11e19f57f60f25aa967a8d868c217383b4727a2186
 ---
 # Licensing
 
@@ -87,6 +62,7 @@ the scope within that package.
 | `bbt-mermaid` | `bboxy450-mermaid` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | Mermaid MIT documentation fixtures, with attribution and license in tests/fixtures; original import revision unknown |
 | `bbt-ui-model` | `bboxy450-ui-core` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
 | `bbt-render` | `bboxy450-render` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | JetBrains Mono test font under OFL-1.1; tests/fonts/OFL.txt retained |
+| `bboxy450-svg` | `bboxy450-svg` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | Bounded native SVG interpretation and corpus/reference loop, reusing bboxy450-render path coverage, compositor and glyphs | Source Sans 3 3.052R Regular/Bold and LICENSE.md under OFL-1.1, with Adobe Reserved Font Name notice; internal capture-loop adaptations and generated Altair/Matplotlib fixtures keep their accurate origin entries in ATTRIBUTION.md. Dependencies retain their own terms. |
 | `bbt-ui` | `bboxy450-ui`, and with `bbt-ui-model` and `bbt-render` as the umbrella **`bboxy450-frontmatter`** ([[d51-frontmatter-is-the-gui-kit]]) | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
 | `bbt-doc` | `bboxy450-doc` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |
 | `bboxybook` | `bboxy450-book` | Respectful Slop License 1.0-Draft; upstream terms and prior grants retained | bboxy450-owned contributions use LICENSE; retained upstream material keeps its own terms | none |

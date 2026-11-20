@@ -1,45 +1,45 @@
 ---
-type: spec
-title: canvas — an endless, kept, shared drawing surface a harness draws on live, rendered by the suite's GPU kit
-status: decided
+authorship:
+  kind: seat
+  process_generation: '1'
+  public_key: zaZM/RXH8b9WIWoi0q31BjOJ4guZHxdNg4Ux4XiqNMI=
+  signer: seat:01M7TBJ9FCVMEJ19T5G3N2EFJA
+created_by: seat:01M79HGAW321GYNK8468FYN4K9
 decided: 2026-11-09
+id: 01M71S12MYSVQ81FW9VSKV02KZ
+intent: Any seat can open an endless canvas that it draws on live, stroke by stroke; every canvas is a numbered record with full history that survives restarts, and the operator can move, edit, draw and point on it.
+links:
+- rel: sibling
+  to: '[[d49-swarm-canvas]]'
+- rel: builds-on
+  to: '[[d255-visualization-is-ours]]'
+- rel: amends
+  to: '[[d13-document-types]]'
+- rel: builds-on
+  to: '[[gui-components]]'
+- rel: constrained-by
+  to: '[[d365-mandatory-formal-verification]]'
+number: 1794274420276168
 operator:
 - it should tie to the bigger bboxy450 sutie and use our GPU GUI library to render things, it should have infinite zoom in and out and ability to tag creations, but not to be overwhelmed, you know?
 - yes canvases can have their own format of how we store them on disk in canvases, love that!
 - we are in another harness working on beyound markdown so you can store not just md, but other formats, but md is ok for now
 - '2026-11-12: canvas should be more freeflowing and harnesses should be able to do things like they would be able to do with three.js maybe / more effects more styles more sexiness! it should be a killer feature, expand the api and sdk!'
-links:
-- to: '[[d49-swarm-canvas]]'
-  rel: sibling
-- to: '[[d255-visualization-is-ours]]'
-  rel: builds-on
-- to: '[[d13-document-types]]'
-  rel: amends
-- to: '[[gui-components]]'
-  rel: builds-on
-- to: '[[d365-mandatory-formal-verification]]'
-  rel: constrained-by
-id: 01M71S12MYSVQ81FW9VSKV02KZ
-number: 1794274420276168
-intent: Any seat can open an endless canvas that it draws on live, stroke by stroke; every canvas is a numbered record with full history that survives restarts, and the operator can move, edit, draw and point on it.
-updated: 2026-11-16T19:44:19.630Z
-created_by: seat:01M79HGAW321GYNK8468FYN4K9
-updated_by: seat:01M79HGAW321GYNK8468FYN4K9
-authorship:
-  signer: seat:01M79HGAW321GYNK8468FYN4K9
-  kind: seat
-  public_key: O/GLv3wEDMQc2X2CJwZN8QH5avRWsmx3x4SdZZC6lKU=
-  process_generation: '1'
+status: decided
+title: canvas — an endless, kept, shared drawing surface a harness draws on live, rendered by the suite's GPU kit
+type: spec
+updated: 2026-11-19T23:51:45.988Z
+updated_by: seat:01M7TBJ9FCVMEJ19T5G3N2EFJA
 provenance:
-  digest: sha256:8675957dcaae7b394dbf68337e232e3077c3a6f6412f24865b6661461ebe8eee
-  frontmatter_digest: sha256:bc467f4b63d147ec10d605d0d3b763c7fa194f11e71279494650d9ee2d102c78
-  signer: seat:01M79HGAW321GYNK8468FYN4K9
-  sig: T5gvgH1fD481uyZEduOzTn+2zar/g48A/gAPJW78LYZQmK9f0V+HO8aYdblIm0bV7NpJZoLWbYbKiaAIpEi4Ag==
-  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/151712
+  digest: sha256:264d000300ac2431f2092ad1032d8e36073f419831919819567edf697321439e
+  frontmatter_digest: sha256:199ff7c75b7de9a7fe77b0c53a5994ca4d20a2bdf5f4e1c6fec930d22a0a0cc1
+  signer: seat:01M7TBJ9FCVMEJ19T5G3N2EFJA
+  sig: R/vi207rhK39Om/2AlfxyvxrUw3/Z9JsvKeV0fiZIm6fXkX9QHeeLHKB4nU5BfOzjtmhXkwpKimW4dbUVH08DA==
+  log: bboxy://activity/index-93ad8c65834c983167272adcebd708d5016d7d1135673e1090720e78289f698a/83106
   event:
-    id: 01M7JY759E09PQA5NAQGTTFPYS
-    sequence: 151712
-    hash: e5f5b1f982517dbf0f55b100a8a59e32d52a170a17de8466615deffc1edfcb75
+    id: 01M7V3JCMCXYKM1QVBGQCXJP60
+    sequence: 83106
+    hash: 87525b34a49860f180bdbeefda6d27ba58aa4bfef4bdd822974d50469fc64557
 ---
 # Canvas
 
@@ -146,7 +146,7 @@ Draw in small batches. Read `extent` before placing. Look at your own work throu
 ## Rules and non-goals
 
 - **Data, not pixels** (d255). Elements, meaning and declared style in; the app renders.
-- **The log is the canvas.** The picture is always the replay of the log; no second copy.
+- **The log is the canvas.** The picture is the replay of placement operations, with one explicit exception: an unpinned stored artifact image resolves latest content outside the log. Pinned images and reproducible capture follow the stored-artifact amendment below; no second mutable copy of image content.
 - **A drawing never blocks.** Frame rate holds while a harness draws; a dead harness leaves a usable canvas.
 - **Bounded.** An element cap per canvas, a point cap per path and an op-rate cap per seat; at the cap the tool refuses with the reason.
 - Not a design tool (no gradients, layers, blend modes, pixel painting). Not a web page (no HTML/scripts). Export-only outside the swarm in v1. The harness does not hear the call.
@@ -180,3 +180,16 @@ Draw in small batches. Read `extent` before placing. Look at your own work throu
 C0–C2 is the call scenario with a harness drawing; that is the first thing worth showing.
 
 **Formal verification (d365).** C0 is single-writer replay: coverage entry with deterministic-replay witness. From C1 the log is lifecycle and persistence code: a TLA+/Yarn model where ops from two seats and the operator, late, duplicated or reordered, converge on one picture, with a broken control.
+
+
+## Draft amendment: stored artifact images
+
+Companion to [[specs/python-charts]], under Architect/operator review; no implementation is implied by this KB edit.
+
+An image placement is `Image { bounds, artifact: "ID[:N]" }`, backed by the generic stored artifact system. The canvas log owns the placement and reference; the artifact event stream owns revisioned image bytes. Existing add/change/remove, selection, move/resize, clipping and pan/zoom apply. There is no chart-specific element or copied mutable chart source. SVG painting uses the shared bboxy450-svg renderer specified in [[specs/svg-renderer]]. Removing a placement never deletes its artifact.
+
+**The single live-replay exception:** `artifact:ID` without a revision resolves the artifact's latest authorized revision when viewed or replayed. Its pixels therefore depend on content outside the placement log and can change after the log was written. This explicitly qualifies the deterministic-replay promise for unpinned artifact images.
+
+`artifact:ID:N` resolves exactly revision N and its retained bytes. A reproducible checkpoint, history scrub or export first resolves every live reference to an exact revision and captures those pins, required SVG bytes and renderer/font identity; it never labels latest-content replay as an exact historical picture. A previously captured checkpoint preserves its pins. Missing/inaccessible payloads remain visible placeholders, not live-source refetches. Blob bytes are machine-local and do not accompany a KB push.
+
+Canvas and harness embeds share the new authenticated artifact branch in images::load and bboxy450-svg preparation/painting. The existing local PNG decoder remains unchanged. The shared image representation retains SVG vector drawing data and paints at the current camera transform; any raster work covers a bounded visible viewport, rather than stretching the first bitmap. Host limits are named once in [[specs/python-charts]]; SVG parser/path/glyph bounds live in [[specs/svg-renderer]]. Reuse prepared geometry/coverage by content, font and effective transform while keeping the resolved revision in the view label. On A(rev1) → B(rev2) → A(rev3), reused pixels must still identify rev3. Delayed lookup/decode cannot revert the current reference or label. Changes use existing event delivery; reopening re-resolves live references. SVG creation happens in Python before save, never in the canvas GUI. Export layout and canvas painting use the one production font manifest in the Shared chart font section of [[specs/svg-renderer]]; a missing or different registered identity produces a reasoned placeholder/refusal, never a canvas-specific font fallback.
