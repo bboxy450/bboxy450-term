@@ -8,7 +8,7 @@ use argument arrays; fixture runs use their own repository and shared-state dir.
 """
 import argparse
 import ast
-from contextlib import contextmanager
+from contextlib import contextmanager, redirect_stdout
 import fcntl
 import fnmatch
 from html.parser import HTMLParser
@@ -596,7 +596,7 @@ def dependent_closure(names, dependencies):
         result |= more
 
 
-def harness_library_selection(packages):
+def harness_library_selection(packages, root):
     """Use the features declared by actual workspace consumers, not harness defaults."""
     directory = Path(packages[HARNESS_PACKAGE]["manifest_path"]).parent.resolve()
     consumers = [dep for name, package in packages.items() if name != HARNESS_PACKAGE
@@ -605,7 +605,18 @@ def harness_library_selection(packages):
     selection = ["--lib"]
     if not any(dep.get("uses_default_features", True) for dep in consumers):
         selection.append("--no-default-features")
-    features = sorted({feature for dep in consumers for feature in dep.get("features", [])})
+    features = {feature for dep in consumers for feature in dep.get("features", [])}
+    if "bboxy450-term" in packages and any(
+            dep["name"] == "serde_json" for dep in packages[HARNESS_PACKAGE]["dependencies"]):
+        # Isolated -p harness tests need the same shared JSON features as term.
+        spec = importlib.util.spec_from_file_location(
+            "harness_submodule", Path(__file__).with_name("harness-submodule.py"))
+        harness = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(harness)
+        with redirect_stdout(io.StringIO()):
+            json_features = harness.check_json_features(root)
+        features.update("serde_json/" + feature for feature in json_features)
+    features = sorted(features)
     if features:
         selection += ["--features", ",".join(features)]
     return selection
@@ -625,7 +636,7 @@ def lean(range_spec, *, root=None, wide=False):
     if bump:
         if HARNESS_PACKAGE not in packages:
             raise Refusal("harness pointer changed without its workspace package")
-        selection = harness_library_selection(packages)
+        selection = harness_library_selection(packages, root)
         lines += [shlex.join([kind, HARNESS_PACKAGE, *selection])
                   for kind in ("harness-check", "harness-test")]
         owners = {HARNESS_PACKAGE} | (HARNESS_CONSUMER_OWNERS & set(packages))

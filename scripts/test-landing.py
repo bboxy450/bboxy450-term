@@ -851,6 +851,22 @@ embedded=[]
         ])
         self.assertNotIn("full a", selected, "a is a dependency, not a harness dependent")
 
+    def test_embedded_library_keeps_resolved_consumer_json_features(self):
+        packages = landing.metadata(self.repo.root)
+        packages["bboxy450-term"] = packages["b"]
+        packages[landing.HARNESS_PACKAGE]["dependencies"].append({"name": "serde_json"})
+        consumer = ("bboxy450-harness v0.1.0|embedded\n"
+                    "serde_json v1.0.154|default,preserve_order,std\n")
+        output = io.StringIO()
+        with patch.object(subprocess, "check_output", return_value=consumer) as tree, \
+             contextlib.redirect_stdout(output):
+            selection = landing.harness_library_selection(packages, self.repo.root)
+        self.assertEqual(selection, ["--lib", "--no-default-features", "--features",
+            "embedded,serde_json/default,serde_json/preserve_order,serde_json/std"])
+        self.assertEqual(tree.call_args.args[0][:4], ["cargo", "tree", "-p", "bboxy450-term"])
+        self.assertEqual(tree.call_args.kwargs["cwd"], self.repo.root)
+        self.assertEqual(output.getvalue(), "", "feature diagnostics must not become plan rows")
+
     def test_lock_bump_keeps_ordinary_workspace_coverage_and_harness_owned_fixtures_out(self):
         self.bump(lock=True)
         selected = landing.lean(self.repo.base + "..HEAD", root=self.repo.root)
