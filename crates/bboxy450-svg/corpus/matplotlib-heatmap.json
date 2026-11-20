@@ -1,0 +1,45 @@
+{
+  "export": {
+    "dpi": 72,
+    "font_family": "Source Sans 3",
+    "font_files": [
+      "SourceSans3-Regular.ttf",
+      "SourceSans3-Bold.ttf"
+    ],
+    "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
+    "svg.fonttype": "none",
+    "svg.hashsalt": "bboxy450-svg-phase-a"
+  },
+  "literal_data": [
+    {
+      "column": "A",
+      "row": "Top",
+      "value": 1
+    },
+    {
+      "column": "B",
+      "row": "Top",
+      "value": 3
+    },
+    {
+      "column": "C",
+      "row": "Top",
+      "value": 5
+    },
+    {
+      "column": "A",
+      "row": "Bottom",
+      "value": 6
+    },
+    {
+      "column": "B",
+      "row": "Bottom",
+      "value": 4
+    },
+    {
+      "column": "C",
+      "row": "Bottom",
+      "value": 2
+    }
+  ]
+}

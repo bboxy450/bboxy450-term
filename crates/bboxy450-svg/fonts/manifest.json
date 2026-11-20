@@ -1,0 +1,30 @@
+{
+  "family": "Source Sans 3",
+  "upstream": {
+    "project": "Adobe Source Sans",
+    "url": "https://github.com/adobe-fonts/source-sans",
+    "tag": "3.052R",
+    "revision": "ed1808970eb3c7301c9a523bee26473ba0bb62fa"
+  },
+  "faces": [
+    {
+      "file": "SourceSans3-Regular.ttf",
+      "weight": 400,
+      "style": "normal",
+      "postscript_name": "SourceSans3-Regular",
+      "sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f"
+    },
+    {
+      "file": "SourceSans3-Bold.ttf",
+      "weight": 700,
+      "style": "normal",
+      "postscript_name": "SourceSans3-Bold",
+      "sha256": "9214b9d95e4231c609802815c2646c98174e2102d0d37f88978a7f8e71006e6a"
+    }
+  ],
+  "license": {
+    "file": "LICENSE.md",
+    "spdx": "OFL-1.1",
+    "sha256": "89ad2c4f66dd29127527493e729c31e731f111cf10faf5774c3db9275ed0c22c"
+  }
+}

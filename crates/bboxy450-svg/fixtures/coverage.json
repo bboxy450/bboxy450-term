@@ -1,0 +1,1413 @@
+{
+  "features": [
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://purl.org/dc/elements/1.1/}type/@{http://www.w3.org/1999/02/22-rdf-syntax-ns#}resource",
+      "isolation_cases": []
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}clipPath/@id",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}g/@aria-hidden",
+      "isolation_cases": []
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}g/@aria-label",
+      "isolation_cases": [
+        "isolation-metadata"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}g/@aria-roledescription",
+      "isolation_cases": []
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}g/@class",
+      "isolation_cases": [
+        "isolation-metadata"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}g/@clip-path",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}g/@fill",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}g/@id",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}g/@pointer-events",
+      "isolation_cases": [
+        "isolation-metadata"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}g/@role",
+      "isolation_cases": [
+        "isolation-metadata"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}g/@stroke-miterlimit",
+      "isolation_cases": [
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}g/@transform",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-gradient",
+        "isolation-png-transform-clip",
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}image/@height",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}image/@id",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}image/@transform",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-gradient",
+        "isolation-png-transform-clip",
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}image/@width",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}image/@x",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-text",
+        "isolation-viewport"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}image/@y",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-text",
+        "isolation-viewport"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}image/@{http://www.w3.org/1999/xlink}href",
+      "isolation_cases": [
+        "isolation-clip-use"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}line/@opacity",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}line/@stroke",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-viewport"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}line/@stroke-width",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-viewport"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}line/@transform",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-gradient",
+        "isolation-png-transform-clip",
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}line/@x2",
+      "isolation_cases": [
+        "isolation-gradient",
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}line/@y2",
+      "isolation_cases": [
+        "isolation-gradient",
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}linearGradient/@id",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}linearGradient/@x1",
+      "isolation_cases": [
+        "isolation-gradient",
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}linearGradient/@x2",
+      "isolation_cases": [
+        "isolation-gradient",
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}linearGradient/@y1",
+      "isolation_cases": [
+        "isolation-gradient",
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}linearGradient/@y2",
+      "isolation_cases": [
+        "isolation-gradient",
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}path/@aria-hidden",
+      "isolation_cases": []
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}path/@aria-label",
+      "isolation_cases": [
+        "isolation-metadata"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}path/@aria-roledescription",
+      "isolation_cases": []
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}path/@class",
+      "isolation_cases": [
+        "isolation-metadata"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@clip-path",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@d",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@display",
+      "isolation_cases": [
+        "isolation-clip-use"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@fill",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}path/@id",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@opacity",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}path/@pointer-events",
+      "isolation_cases": [
+        "isolation-metadata"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}path/@role",
+      "isolation_cases": [
+        "isolation-metadata"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@stroke",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-viewport"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@stroke-width",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-viewport"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@style",
+      "isolation_cases": [
+        "isolation-stroke",
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path/@transform",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-gradient",
+        "isolation-png-transform-clip",
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}rect/@fill",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}rect/@height",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}rect/@width",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}rect/@x",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-text",
+        "isolation-viewport"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}rect/@y",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-text",
+        "isolation-viewport"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}stop/@offset",
+      "isolation_cases": [
+        "isolation-gradient"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}stop/@stop-color",
+      "isolation_cases": [
+        "isolation-gradient"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}style/@type",
+      "isolation_cases": [
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}svg/@class",
+      "isolation_cases": [
+        "isolation-metadata"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}svg/@data-bboxy-font-set",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}svg/@height",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}svg/@version",
+      "isolation_cases": []
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}svg/@viewBox",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}svg/@width",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@fill",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@font-family",
+      "isolation_cases": [
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@font-size",
+      "isolation_cases": [
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@font-weight",
+      "isolation_cases": [
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@opacity",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@style",
+      "isolation_cases": [
+        "isolation-stroke",
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@text-anchor",
+      "isolation_cases": [
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@transform",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-gradient",
+        "isolation-png-transform-clip",
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@x",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-text",
+        "isolation-viewport"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text/@y",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-text",
+        "isolation-viewport"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}use/@style",
+      "isolation_cases": [
+        "isolation-stroke",
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}use/@x",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-text",
+        "isolation-viewport"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}use/@y",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-text",
+        "isolation-viewport"
+      ]
+    },
+    {
+      "category": "attribute",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}use/@{http://www.w3.org/1999/xlink}href",
+      "isolation_cases": [
+        "isolation-clip-use"
+      ]
+    },
+    {
+      "category": "element",
+      "disposition": "explicitly inert",
+      "feature": "{http://creativecommons.org/ns#}Agent",
+      "isolation_cases": []
+    },
+    {
+      "category": "element",
+      "disposition": "explicitly inert",
+      "feature": "{http://creativecommons.org/ns#}Work",
+      "isolation_cases": []
+    },
+    {
+      "category": "element",
+      "disposition": "explicitly inert",
+      "feature": "{http://purl.org/dc/elements/1.1/}creator",
+      "isolation_cases": []
+    },
+    {
+      "category": "element",
+      "disposition": "explicitly inert",
+      "feature": "{http://purl.org/dc/elements/1.1/}date",
+      "isolation_cases": []
+    },
+    {
+      "category": "element",
+      "disposition": "explicitly inert",
+      "feature": "{http://purl.org/dc/elements/1.1/}format",
+      "isolation_cases": []
+    },
+    {
+      "category": "element",
+      "disposition": "explicitly inert",
+      "feature": "{http://purl.org/dc/elements/1.1/}title",
+      "isolation_cases": [
+        "isolation-metadata"
+      ]
+    },
+    {
+      "category": "element",
+      "disposition": "explicitly inert",
+      "feature": "{http://purl.org/dc/elements/1.1/}type",
+      "isolation_cases": []
+    },
+    {
+      "category": "element",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/1999/02/22-rdf-syntax-ns#}RDF",
+      "isolation_cases": []
+    },
+    {
+      "category": "element",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}clipPath",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "element",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}defs",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "element",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}g",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-png-transform-clip",
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "element",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}image",
+      "isolation_cases": [
+        "isolation-png-alpha",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "element",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}line",
+      "isolation_cases": [
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "element",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}linearGradient",
+      "isolation_cases": [
+        "isolation-gradient"
+      ]
+    },
+    {
+      "category": "element",
+      "disposition": "explicitly inert",
+      "feature": "{http://www.w3.org/2000/svg}metadata",
+      "isolation_cases": [
+        "isolation-metadata"
+      ]
+    },
+    {
+      "category": "element",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}path",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "element",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}rect",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "element",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}stop",
+      "isolation_cases": [
+        "isolation-gradient"
+      ]
+    },
+    {
+      "category": "element",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}style",
+      "isolation_cases": [
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "element",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}svg",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "element",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}text",
+      "isolation_cases": [
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "element",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "{http://www.w3.org/2000/svg}use",
+      "isolation_cases": [
+        "isolation-clip-use"
+      ]
+    },
+    {
+      "category": "metadata",
+      "disposition": "explicitly inert",
+      "feature": "PUBLIC doctype",
+      "isolation_cases": [
+        "isolation-metadata"
+      ]
+    },
+    {
+      "category": "metadata",
+      "disposition": "explicitly inert",
+      "feature": "{http://purl.org/dc/elements/1.1/}date/text()",
+      "isolation_cases": []
+    },
+    {
+      "category": "metadata",
+      "disposition": "explicitly inert",
+      "feature": "{http://purl.org/dc/elements/1.1/}format/text()",
+      "isolation_cases": []
+    },
+    {
+      "category": "metadata",
+      "disposition": "explicitly inert",
+      "feature": "{http://purl.org/dc/elements/1.1/}title/text()",
+      "isolation_cases": [
+        "isolation-metadata"
+      ]
+    },
+    {
+      "category": "namespace",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "=http://www.w3.org/2000/svg",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "namespace",
+      "disposition": "explicitly inert",
+      "feature": "cc=http://creativecommons.org/ns#",
+      "isolation_cases": []
+    },
+    {
+      "category": "namespace",
+      "disposition": "explicitly inert",
+      "feature": "dc=http://purl.org/dc/elements/1.1/",
+      "isolation_cases": [
+        "isolation-metadata"
+      ]
+    },
+    {
+      "category": "namespace",
+      "disposition": "explicitly inert",
+      "feature": "rdf=http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+      "isolation_cases": []
+    },
+    {
+      "category": "namespace",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "xlink=http://www.w3.org/1999/xlink",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-metadata",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-png-alpha",
+        "isolation-png-transform-clip",
+        "isolation-stroke",
+        "isolation-text",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "path-command",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "A",
+      "isolation_cases": [
+        "isolation-path-commands"
+      ]
+    },
+    {
+      "category": "path-command",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "C",
+      "isolation_cases": [
+        "isolation-path-commands"
+      ]
+    },
+    {
+      "category": "path-command",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "L",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-viewport"
+      ]
+    },
+    {
+      "category": "path-command",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "M",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-stroke",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "path-command",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "Q",
+      "isolation_cases": [
+        "isolation-path-commands"
+      ]
+    },
+    {
+      "category": "path-command",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "Z",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-clip-use",
+        "isolation-outlined-text",
+        "isolation-path-commands",
+        "isolation-viewport",
+        "isolation-winding"
+      ]
+    },
+    {
+      "category": "path-command",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "h",
+      "isolation_cases": [
+        "isolation-path-commands"
+      ]
+    },
+    {
+      "category": "path-command",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "v",
+      "isolation_cases": [
+        "isolation-path-commands"
+      ]
+    },
+    {
+      "category": "path-command",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "z",
+      "isolation_cases": [
+        "isolation-path-commands"
+      ]
+    },
+    {
+      "category": "reference",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "#C0_0_83a0ce2cdc",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "reference",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "#gradient_0",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "reference",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "#m4afc1d86d3",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "reference",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "#m6e4236408b",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "reference",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "#m8348d2ce95",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "reference",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "#m9dd2d371d2",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "reference",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "#mfe4437de93",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "reference",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "#p85b95fb715",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "reference",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "#pacc9fe07a0",
+      "isolation_cases": [
+        "isolation-clip-use",
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "reference",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "data:image/png;base64, iVBORw0KGgoAAAANSUhEUgAAAAcAAACPCAYAAAA2scFmAAAA8klEQVR4nM2X0Q3CMBBDz07SyZiB/QehPcQAvA+jAP21nu3eRWqjm+9db56pMSoTy0rJgaJTWynNtMNC9YPMRtIVZjYX0o5CzaSAHFhIYKvaYdssFhRySnZOKrYdSNaWrXiTKBBV8aGuHWLlE9KfFap8Qvo3W6WZ5f76VgozFWe6txRySiovpNRWcaaIdJxpfBWlmcPXFrKQ7NB2oCgqJMicZDvJdiLpdELTZ1zofC8untAVkpMzT8rskFwo+hGSg7aylNouFh9QSGmhI85cRRPSFZLHBxO64pU1iEQedBeET9krE65BC/4/5hJcMVE02D4Bbh1rQia35x0AAAAASUVORK5CYII=",
+      "isolation_cases": [
+        "isolation-png-alpha",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "style",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "fill",
+      "isolation_cases": [
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "style",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "font-family",
+      "isolation_cases": [
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "style",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "font-size",
+      "isolation_cases": [
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "style",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "font-weight",
+      "isolation_cases": [
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "style",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "opacity",
+      "isolation_cases": [
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "style",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "stroke",
+      "isolation_cases": [
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "style",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "stroke-dasharray",
+      "isolation_cases": [
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "style",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "stroke-dashoffset",
+      "isolation_cases": [
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "style",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "stroke-linecap",
+      "isolation_cases": [
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "style",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "stroke-linejoin",
+      "isolation_cases": [
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "style",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "stroke-width",
+      "isolation_cases": [
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "style",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "text-anchor",
+      "isolation_cases": [
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "style-selector",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "*",
+      "isolation_cases": [
+        "isolation-stroke"
+      ]
+    },
+    {
+      "category": "transform",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "rotate",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-text"
+      ]
+    },
+    {
+      "category": "transform",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "scale",
+      "isolation_cases": [
+        "isolation-gradient",
+        "isolation-png-transform-clip"
+      ]
+    },
+    {
+      "category": "transform",
+      "disposition": "isolation/reference present; native witness pending",
+      "feature": "translate",
+      "isolation_cases": [
+        "isolation-affine-opacity",
+        "isolation-gradient",
+        "isolation-png-transform-clip",
+        "isolation-text"
+      ]
+    }
+  ],
+  "missing": 0,
+  "native_implementation": "not claimed by Phase A"
+}

@@ -1,0 +1,1264 @@
+{
+  "agg_text": [
+    {
+      "anchor": [
+        150.336,
+        199.712
+      ],
+      "bounds": [
+        133.836,
+        199.712,
+        33.0,
+        9.0
+      ],
+      "face": "SourceSans3-Bold.ttf",
+      "font_size": 10.0,
+      "ha": "center",
+      "rotation": 0.0,
+      "text": "Sample",
+      "va": "top",
+      "weight": 700
+    },
+    {
+      "anchor": [
+        51.84,
+        186.712
+      ],
+      "bounds": [
+        45.465,
+        186.712,
+        12.75,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "center",
+      "rotation": 0.0,
+      "text": "0.0",
+      "va": "top",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        84.672,
+        186.712
+      ],
+      "bounds": [
+        78.3595,
+        186.712,
+        12.625,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "center",
+      "rotation": 0.0,
+      "text": "0.5",
+      "va": "top",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        117.50399999999999,
+        186.712
+      ],
+      "bounds": [
+        111.19149999999999,
+        186.712,
+        12.625,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "center",
+      "rotation": 0.0,
+      "text": "1.0",
+      "va": "top",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        150.33599999999998,
+        186.712
+      ],
+      "bounds": [
+        144.08599999999998,
+        186.712,
+        12.5,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "center",
+      "rotation": 0.0,
+      "text": "1.5",
+      "va": "top",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        183.16799999999998,
+        186.712
+      ],
+      "bounds": [
+        176.85549999999998,
+        186.712,
+        12.625,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "center",
+      "rotation": 0.0,
+      "text": "2.0",
+      "va": "top",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        215.99999999999997,
+        186.712
+      ],
+      "bounds": [
+        209.74999999999997,
+        186.712,
+        12.5,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "center",
+      "rotation": 0.0,
+      "text": "2.5",
+      "va": "top",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        248.83199999999997,
+        186.712
+      ],
+      "bounds": [
+        242.51949999999997,
+        186.712,
+        12.625,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "center",
+      "rotation": 0.0,
+      "text": "3.0",
+      "va": "top",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        28.090000000000003,
+        108.288
+      ],
+      "bounds": [
+        19.090000000000003,
+        96.03799999999998,
+        9.0,
+        24.500000000000014
+      ],
+      "face": "SourceSans3-Bold.ttf",
+      "font_size": 10.0,
+      "ha": "center",
+      "rotation": 90.0,
+      "text": "Value",
+      "va": "bottom",
+      "weight": 700
+    },
+    {
+      "anchor": [
+        44.84,
+        179.712
+      ],
+      "bounds": [
+        32.09,
+        176.212,
+        12.75,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "right",
+      "rotation": 0.0,
+      "text": "0.0",
+      "va": "center_baseline",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        44.84,
+        144.0
+      ],
+      "bounds": [
+        32.215,
+        140.5,
+        12.625,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "right",
+      "rotation": 0.0,
+      "text": "0.5",
+      "va": "center_baseline",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        44.84,
+        108.288
+      ],
+      "bounds": [
+        32.215,
+        104.788,
+        12.625,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "right",
+      "rotation": 0.0,
+      "text": "1.0",
+      "va": "center_baseline",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        44.84,
+        72.576
+      ],
+      "bounds": [
+        32.34,
+        69.076,
+        12.5,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "right",
+      "rotation": 0.0,
+      "text": "1.5",
+      "va": "center_baseline",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        44.84,
+        36.864000000000004
+      ],
+      "bounds": [
+        32.215,
+        33.364000000000004,
+        12.625,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "right",
+      "rotation": 0.0,
+      "text": "2.0",
+      "va": "center_baseline",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        150.336,
+        30.864000000000004
+      ],
+      "bounds": [
+        93.58600000000001,
+        22.864000000000004,
+        113.5,
+        10.0
+      ],
+      "face": "SourceSans3-Bold.ttf",
+      "font_size": 12.0,
+      "ha": "center",
+      "rotation": 0.0,
+      "text": "Heatmap comparison",
+      "va": "baseline",
+      "weight": 700
+    },
+    {
+      "anchor": [
+        275.2864,
+        179.712
+      ],
+      "bounds": [
+        275.2864,
+        176.212,
+        5.0,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "left",
+      "rotation": 0.0,
+      "text": "1",
+      "va": "center_baseline",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        275.2864,
+        151.1424
+      ],
+      "bounds": [
+        275.2864,
+        147.6424,
+        5.0,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "left",
+      "rotation": 0.0,
+      "text": "2",
+      "va": "center_baseline",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        275.2864,
+        122.5728
+      ],
+      "bounds": [
+        275.2864,
+        119.0728,
+        5.0,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "left",
+      "rotation": 0.0,
+      "text": "3",
+      "va": "center_baseline",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        275.2864,
+        94.00319999999999
+      ],
+      "bounds": [
+        275.2864,
+        90.50319999999999,
+        4.875,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "left",
+      "rotation": 0.0,
+      "text": "4",
+      "va": "center_baseline",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        275.2864,
+        65.43359999999998
+      ],
+      "bounds": [
+        275.2864,
+        61.933599999999984,
+        5.0,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "left",
+      "rotation": 0.0,
+      "text": "5",
+      "va": "center_baseline",
+      "weight": 400
+    },
+    {
+      "anchor": [
+        275.2864,
+        36.863999999999976
+      ],
+      "bounds": [
+        275.2864,
+        33.363999999999976,
+        5.0,
+        9.0
+      ],
+      "face": "SourceSans3-Regular.ttf",
+      "font_size": 10.0,
+      "ha": "left",
+      "rotation": 0.0,
+      "text": "6",
+      "va": "center_baseline",
+      "weight": 400
+    }
+  ],
+  "coordinates": "SVG viewBox units; upper-left origin; SVG backend dpi=72",
+  "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
+  "text": [
+    {
+      "advance": 12.43125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        45.624375,
+        193.8323125
+      ],
+      "bounds": [
+        45.624375,
+        186.712,
+        12.431250000000006,
+        9.170312500000001
+      ],
+      "descent": 0.1203125,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: middle",
+          "transform": "rotate(-0 51.84 193.832313)",
+          "x": "51.84",
+          "y": "193.832313"
+        },
+        "source": "/svg[1]/g[1]/g[2]/g[3]/g[1]/g[2]/text[1]",
+        "text": "0.0",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 51.84 193.832313)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.620312500000001,
+      "text": "0.0",
+      "weight": 400
+    },
+    {
+      "advance": 12.43125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        78.456375,
+        193.8323125
+      ],
+      "bounds": [
+        78.456375,
+        186.712,
+        12.431250000000006,
+        9.170312500000001
+      ],
+      "descent": 0.1203125,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: middle",
+          "transform": "rotate(-0 84.672 193.832313)",
+          "x": "84.672",
+          "y": "193.832313"
+        },
+        "source": "/svg[1]/g[1]/g[2]/g[3]/g[2]/g[2]/text[1]",
+        "text": "0.5",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 84.672 193.832313)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.620312500000001,
+      "text": "0.5",
+      "weight": 400
+    },
+    {
+      "advance": 12.43125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        111.28837499999999,
+        193.8323125
+      ],
+      "bounds": [
+        111.28837499999999,
+        186.712,
+        12.431250000000006,
+        9.170312500000001
+      ],
+      "descent": 0.1203125,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: middle",
+          "transform": "rotate(-0 117.504 193.832313)",
+          "x": "117.504",
+          "y": "193.832313"
+        },
+        "source": "/svg[1]/g[1]/g[2]/g[3]/g[3]/g[2]/text[1]",
+        "text": "1.0",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 117.504 193.832313)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.620312500000001,
+      "text": "1.0",
+      "weight": 400
+    },
+    {
+      "advance": 12.43125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        144.120375,
+        193.8323125
+      ],
+      "bounds": [
+        144.120375,
+        186.712,
+        12.431249999999977,
+        9.170312500000001
+      ],
+      "descent": 0.1203125,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: middle",
+          "transform": "rotate(-0 150.336 193.832313)",
+          "x": "150.336",
+          "y": "193.832313"
+        },
+        "source": "/svg[1]/g[1]/g[2]/g[3]/g[4]/g[2]/text[1]",
+        "text": "1.5",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 150.336 193.832313)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.5,
+      "text": "1.5",
+      "weight": 400
+    },
+    {
+      "advance": 12.43125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        176.952375,
+        193.8323125
+      ],
+      "bounds": [
+        176.952375,
+        186.712,
+        12.431249999999977,
+        9.170312500000001
+      ],
+      "descent": 0.1203125,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: middle",
+          "transform": "rotate(-0 183.168 193.832313)",
+          "x": "183.168",
+          "y": "193.832313"
+        },
+        "source": "/svg[1]/g[1]/g[2]/g[3]/g[5]/g[2]/text[1]",
+        "text": "2.0",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 183.168 193.832313)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.620312500000001,
+      "text": "2.0",
+      "weight": 400
+    },
+    {
+      "advance": 12.43125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        209.78437499999998,
+        193.8323125
+      ],
+      "bounds": [
+        209.78437499999998,
+        186.712,
+        12.431249999999977,
+        9.170312500000001
+      ],
+      "descent": 0.1203125,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: middle",
+          "transform": "rotate(-0 216 193.832313)",
+          "x": "216",
+          "y": "193.832313"
+        },
+        "source": "/svg[1]/g[1]/g[2]/g[3]/g[6]/g[2]/text[1]",
+        "text": "2.5",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 216 193.832313)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.620312500000001,
+      "text": "2.5",
+      "weight": 400
+    },
+    {
+      "advance": 12.43125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        242.61637499999998,
+        193.8323125
+      ],
+      "bounds": [
+        242.61637499999998,
+        186.712,
+        12.431249999999977,
+        9.170312500000001
+      ],
+      "descent": 0.1203125,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: middle",
+          "transform": "rotate(-0 248.832 193.832313)",
+          "x": "248.832",
+          "y": "193.832313"
+        },
+        "source": "/svg[1]/g[1]/g[2]/g[3]/g[7]/g[2]/text[1]",
+        "text": "3.0",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 248.832 193.832313)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.620312500000001,
+      "text": "3.0",
+      "weight": 400
+    },
+    {
+      "advance": 33.16875,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Bold",
+      "baseline_start": [
+        133.75162500000002,
+        206.8916875
+      ],
+      "bounds": [
+        133.75162500000002,
+        199.8823125,
+        33.16874999999999,
+        8.850000000000001
+      ],
+      "descent": 1.8406250000000002,
+      "emitted": {
+        "attributes": {
+          "style": "font-weight: 700; font-size: 10px; font-family: 'Source Sans 3'; text-anchor: middle",
+          "transform": "rotate(-0 150.336 206.891687)",
+          "x": "150.336",
+          "y": "206.891687"
+        },
+        "source": "/svg[1]/g[1]/g[2]/g[3]/g[8]/text[1]",
+        "text": "Sample",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 150.336 206.891687)"
+        ]
+      },
+      "face": "SourceSans3-Bold.ttf",
+      "font_sha256": "9214b9d95e4231c609802815c2646c98174e2102d0d37f88978a7f8e71006e6a",
+      "font_size": 10.0,
+      "ink_height": 8.85,
+      "text": "Sample",
+      "weight": 700
+    },
+    {
+      "advance": 12.43125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        32.408750000000005,
+        183.27215625
+      ],
+      "bounds": [
+        32.408750000000005,
+        176.15184375,
+        12.431249999999999,
+        9.170312500000001
+      ],
+      "descent": 0.1203125,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: end",
+          "transform": "rotate(-0 44.84 183.272156)",
+          "x": "44.84",
+          "y": "183.272156"
+        },
+        "source": "/svg[1]/g[1]/g[2]/g[4]/g[1]/g[2]/text[1]",
+        "text": "0.0",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 44.84 183.272156)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.620312500000001,
+      "text": "0.0",
+      "weight": 400
+    },
+    {
+      "advance": 12.43125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        32.408750000000005,
+        147.56015625
+      ],
+      "bounds": [
+        32.408750000000005,
+        140.43984375,
+        12.431249999999999,
+        9.170312500000009
+      ],
+      "descent": 0.1203125,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: end",
+          "transform": "rotate(-0 44.84 147.560156)",
+          "x": "44.84",
+          "y": "147.560156"
+        },
+        "source": "/svg[1]/g[1]/g[2]/g[4]/g[2]/g[2]/text[1]",
+        "text": "0.5",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 44.84 147.560156)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.620312500000001,
+      "text": "0.5",
+      "weight": 400
+    },
+    {
+      "advance": 12.43125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        32.408750000000005,
+        111.84815625
+      ],
+      "bounds": [
+        32.408750000000005,
+        104.72784374999999,
+        12.431249999999999,
+        9.170312500000009
+      ],
+      "descent": 0.1203125,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: end",
+          "transform": "rotate(-0 44.84 111.848156)",
+          "x": "44.84",
+          "y": "111.848156"
+        },
+        "source": "/svg[1]/g[1]/g[2]/g[4]/g[3]/g[2]/text[1]",
+        "text": "1.0",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 44.84 111.848156)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.620312500000001,
+      "text": "1.0",
+      "weight": 400
+    },
+    {
+      "advance": 12.43125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        32.408750000000005,
+        76.13615625
+      ],
+      "bounds": [
+        32.408750000000005,
+        69.01584374999999,
+        12.431249999999999,
+        9.170312499999994
+      ],
+      "descent": 0.1203125,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: end",
+          "transform": "rotate(-0 44.84 76.136156)",
+          "x": "44.84",
+          "y": "76.136156"
+        },
+        "source": "/svg[1]/g[1]/g[2]/g[4]/g[4]/g[2]/text[1]",
+        "text": "1.5",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 44.84 76.136156)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.5,
+      "text": "1.5",
+      "weight": 400
+    },
+    {
+      "advance": 12.43125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        32.408750000000005,
+        40.42415625000001
+      ],
+      "bounds": [
+        32.408750000000005,
+        33.30384375,
+        12.431249999999999,
+        9.170312499999994
+      ],
+      "descent": 0.1203125,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: end",
+          "transform": "rotate(-0 44.84 40.424156)",
+          "x": "44.84",
+          "y": "40.424156"
+        },
+        "source": "/svg[1]/g[1]/g[2]/g[4]/g[5]/g[2]/text[1]",
+        "text": "2.0",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 44.84 40.424156)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.620312500000001,
+      "text": "2.0",
+      "weight": 400
+    },
+    {
+      "advance": 24.548437500000002,
+      "angle": 90.0,
+      "backend_postscript_name": "SourceSans3-Bold",
+      "baseline_start": [
+        26.568125000000006,
+        120.56221875
+      ],
+      "bounds": [
+        19.558750000000003,
+        96.01378125,
+        8.850000000000001,
+        24.548437500000006
+      ],
+      "descent": 0.1203125,
+      "emitted": {
+        "attributes": {
+          "style": "font-weight: 700; font-size: 10px; font-family: 'Source Sans 3'; text-anchor: middle",
+          "transform": "rotate(-90 26.568125 108.288)",
+          "x": "26.568125",
+          "y": "108.288"
+        },
+        "source": "/svg[1]/g[1]/g[2]/g[4]/g[6]/text[1]",
+        "text": "Value",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-90 26.568125 108.288)"
+        ]
+      },
+      "face": "SourceSans3-Bold.ttf",
+      "font_sha256": "9214b9d95e4231c609802815c2646c98174e2102d0d37f88978a7f8e71006e6a",
+      "font_size": 10.0,
+      "ink_height": 7.1296875,
+      "text": "Value",
+      "weight": 700
+    },
+    {
+      "advance": 113.784375,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Bold",
+      "baseline_start": [
+        93.4438125,
+        30.864000000000004
+      ],
+      "bounds": [
+        93.4438125,
+        22.188375000000008,
+        113.78437500000001,
+        10.884375000000006
+      ],
+      "descent": 2.2087499999999998,
+      "emitted": {
+        "attributes": {
+          "style": "font-weight: 700; font-size: 12px; font-family: 'Source Sans 3'; text-anchor: middle",
+          "transform": "rotate(-0 150.336 30.864)",
+          "x": "150.336",
+          "y": "30.864"
+        },
+        "source": "/svg[1]/g[1]/g[2]/g[9]/text[1]",
+        "text": "Heatmap comparison",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 150.336 30.864)"
+        ]
+      },
+      "face": "SourceSans3-Bold.ttf",
+      "font_sha256": "9214b9d95e4231c609802815c2646c98174e2102d0d37f88978a7f8e71006e6a",
+      "font_size": 12.0,
+      "ink_height": 10.884375,
+      "text": "Heatmap comparison",
+      "weight": 700
+    },
+    {
+      "advance": 4.9703125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        275.2864,
+        183.27215625
+      ],
+      "bounds": [
+        275.2864,
+        176.15184375,
+        4.970312499999977,
+        9.170312500000001
+      ],
+      "descent": 0.0,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: start",
+          "transform": "rotate(-0 275.2864 183.272156)",
+          "x": "275.2864",
+          "y": "183.272156"
+        },
+        "source": "/svg[1]/g[1]/g[3]/g[3]/g[1]/g[2]/text[1]",
+        "text": "1",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 275.2864 183.272156)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.3796875,
+      "text": "1",
+      "weight": 400
+    },
+    {
+      "advance": 4.9703125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        275.2864,
+        154.70255625
+      ],
+      "bounds": [
+        275.2864,
+        147.58224374999998,
+        4.970312499999977,
+        9.170312500000009
+      ],
+      "descent": 0.0,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: start",
+          "transform": "rotate(-0 275.2864 154.702556)",
+          "x": "275.2864",
+          "y": "154.702556"
+        },
+        "source": "/svg[1]/g[1]/g[3]/g[3]/g[2]/g[2]/text[1]",
+        "text": "2",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 275.2864 154.702556)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.5,
+      "text": "2",
+      "weight": 400
+    },
+    {
+      "advance": 4.9703125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        275.2864,
+        126.13295625
+      ],
+      "bounds": [
+        275.2864,
+        119.01264375,
+        4.970312499999977,
+        9.170312500000009
+      ],
+      "descent": 0.1203125,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: start",
+          "transform": "rotate(-0 275.2864 126.132956)",
+          "x": "275.2864",
+          "y": "126.132956"
+        },
+        "source": "/svg[1]/g[1]/g[3]/g[3]/g[3]/g[2]/text[1]",
+        "text": "3",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 275.2864 126.132956)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.620312500000001,
+      "text": "3",
+      "weight": 400
+    },
+    {
+      "advance": 4.9703125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        275.2864,
+        97.56335625
+      ],
+      "bounds": [
+        275.2864,
+        90.44304374999999,
+        4.970312499999977,
+        9.170312499999994
+      ],
+      "descent": 0.0,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: start",
+          "transform": "rotate(-0 275.2864 97.563356)",
+          "x": "275.2864",
+          "y": "97.563356"
+        },
+        "source": "/svg[1]/g[1]/g[3]/g[3]/g[4]/g[2]/text[1]",
+        "text": "4",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 275.2864 97.563356)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.3796875,
+      "text": "4",
+      "weight": 400
+    },
+    {
+      "advance": 4.9703125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        275.2864,
+        68.99375624999999
+      ],
+      "bounds": [
+        275.2864,
+        61.87344374999998,
+        4.970312499999977,
+        9.170312499999994
+      ],
+      "descent": 0.1203125,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: start",
+          "transform": "rotate(-0 275.2864 68.993756)",
+          "x": "275.2864",
+          "y": "68.993756"
+        },
+        "source": "/svg[1]/g[1]/g[3]/g[3]/g[5]/g[2]/text[1]",
+        "text": "5",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 275.2864 68.993756)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.5,
+      "text": "5",
+      "weight": 400
+    },
+    {
+      "advance": 4.9703125,
+      "angle": 0.0,
+      "backend_postscript_name": "SourceSans3-Regular",
+      "baseline_start": [
+        275.2864,
+        40.42415624999998
+      ],
+      "bounds": [
+        275.2864,
+        33.30384374999997,
+        4.970312499999977,
+        9.170312499999994
+      ],
+      "descent": 0.1203125,
+      "emitted": {
+        "attributes": {
+          "style": "font-size: 10px; font-family: 'Source Sans 3'; text-anchor: start",
+          "transform": "rotate(-0 275.2864 40.424156)",
+          "x": "275.2864",
+          "y": "40.424156"
+        },
+        "source": "/svg[1]/g[1]/g[3]/g[3]/g[6]/g[2]/text[1]",
+        "text": "6",
+        "transforms": [
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          "rotate(-0 275.2864 40.424156)"
+        ]
+      },
+      "face": "SourceSans3-Regular.ttf",
+      "font_sha256": "4644c81b86ec9caaa76b634889968ed3c4f4f52f054855933acc7c2b21e53b0f",
+      "font_size": 10.0,
+      "ink_height": 6.620312500000001,
+      "text": "6",
+      "weight": 400
+    }
+  ]
+}
