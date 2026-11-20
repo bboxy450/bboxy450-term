@@ -178,7 +178,8 @@ def run(out):
     capture_sha = digest(b"".join(p.read_bytes() for p in (BASE / "capture.mjs", BASE.parent / "bboxybook/capture-cdp.mjs", BASE.parent / "bboxybook/capture-startup.mjs", BASE / "src/viewport.rs")))
     cache = refs / "chrome.json"
     chrome = json.loads(cache.read_text()) if cache.is_file() else {}
-    browser_version = subprocess.check_output([os.environ.get("CHROME", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"), "--version"], text=True, timeout=10).strip().replace("Google Chrome ", "Chrome/")
+    browser_version = subprocess.check_output([os.environ.get("CHROME", "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"), "--version"], text=True, timeout=10).split()[-1]
+    browser_version = f"Chrome/{browser_version}"
     # Camera numbers retain their values across Python/JS; JSON 108.0 versus
     # 108 is serialization noise, not a new camera or a stale reference.
     expected = {(c["id"], v["id"], c["sha256"], tuple(v["camera"]), v["scale"]) for c in cases for v in c["views"]}
