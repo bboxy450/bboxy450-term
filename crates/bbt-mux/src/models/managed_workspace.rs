@@ -35,9 +35,15 @@ pub(super) fn managed_workspace_create(b: bool) -> Model {
     m
 }
 pub(super) fn managed_workspace_writer(b: bool) -> Model {
+    workspace_writer(b, false)
+}
+pub(super) fn broken_managed_workspace_writer_probe() -> Model {
+    workspace_writer(false, true)
+}
+fn workspace_writer(retain_rejected_writer: bool, skip_probe: bool) -> Model {
     let mut m = model(
         "ManagedWorkspaceWriter",
-        b,
+        retain_rejected_writer || skip_probe,
         &[
             ("holders", 2, 0),
             ("launches", 2, 0),
@@ -47,6 +53,9 @@ pub(super) fn managed_workspace_writer(b: bool) -> Model {
             ("probe", 2, 0),
         ],
     );
+    if skip_probe {
+        m.name.push_str("Probe");
+    }
     // Outcome: pending (0), rejected (1), unknown (2), applied (3).
     // Probe: pending (0), success/non-LinkDown fallthrough (1), direct LinkDown (2).
     action(
@@ -79,7 +88,11 @@ pub(super) fn managed_workspace_writer(b: bool) -> Model {
         all([
             eq(0, 1),
             eq(2, 0),
-            if b { Expr::Bool(true) } else { eq(5, 1) },
+            if skip_probe {
+                Expr::Bool(true)
+            } else {
+                eq(5, 1)
+            },
         ]),
         &[(2, Int(1)), (4, Int(0))],
     );
@@ -87,7 +100,10 @@ pub(super) fn managed_workspace_writer(b: bool) -> Model {
         &mut m,
         "RejectBeforeRequest",
         all([eq(0, 1), eq(2, 0)]),
-        &[(0, Int(0)), (3, Int(1))],
+        &[
+            (0, Int(if retain_rejected_writer { 1 } else { 0 })),
+            (3, Int(1)),
+        ],
     );
     action(
         &mut m,
@@ -300,30 +316,45 @@ mod tests {
     use super::*;
     #[test]
     fn managed_workspace_models_and_broken_controls() {
-        for family in [
+        let cases = [
             managed_workspace_create,
             managed_workspace_writer,
             managed_workspace_fence,
             managed_workspace_release,
             managed_workspace_ownership,
             managed_workspace_provider_lease,
-        ] {
-            for (model, expected) in bboxy450_tlc::build::family(family) {
-                let checked = model.check(20000).unwrap();
-                assert_eq!(
-                    checked.violations.is_empty(),
-                    expected == "pass",
-                    "{}",
-                    model.name
-                );
-                let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("models");
-                for (name, text) in bboxy450_tlc::build::artifacts(&model).unwrap() {
-                    let path = dir.join(name);
-                    if std::env::var_os("BBOXY_UPDATE_MODELS").is_some() {
-                        std::fs::write(&path, &text).unwrap();
-                    }
-                    assert_eq!(std::fs::read_to_string(path).unwrap(), text);
+        ]
+        .into_iter()
+        .flat_map(bboxy450_tlc::build::family)
+        .chain([(broken_managed_workspace_writer_probe(), "safety")]);
+        for (model, expected) in cases {
+            let checked = model.check(20000).unwrap();
+            assert_eq!(
+                checked.violations.is_empty(),
+                expected == "pass",
+                "{}",
+                model.name
+            );
+            let expected_violation = match model.name.as_str() {
+                "BrokenManagedWorkspaceWriter" => Some("RejectedReleasesWriter"),
+                "BrokenManagedWorkspaceWriterProbe" => Some("RequestPassedProbe"),
+                _ => None,
+            };
+            if let Some(property) = expected_violation {
+                let properties = checked
+                    .violations
+                    .iter()
+                    .map(|v| v.property.as_str())
+                    .collect::<Vec<_>>();
+                assert_eq!(properties, [property], "{}", model.name);
+            }
+            let dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("models");
+            for (name, text) in bboxy450_tlc::build::artifacts(&model).unwrap() {
+                let path = dir.join(name);
+                if std::env::var_os("BBOXY_UPDATE_MODELS").is_some() {
+                    std::fs::write(&path, &text).unwrap();
                 }
+                assert_eq!(std::fs::read_to_string(path).unwrap(), text);
             }
         }
     }
