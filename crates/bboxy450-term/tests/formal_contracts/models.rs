@@ -25,6 +25,8 @@ mod notification_models;
 
 #[path = "seat_models.rs"]
 mod seat_models;
+#[path = "../../../../verification/seat_key_chain.rs"]
+mod seat_key_chain;
 #[path = "seat_move_model.rs"]
 mod seat_move_model;
 
@@ -1910,6 +1912,7 @@ pub fn cases() -> Vec<(Model, &'static str)> {
     cases.extend(mcp_recovery_model::cases());
     cases.extend(wake_circuit_model::cases());
     cases.extend(seat_move_model::cases());
+    cases.extend(seat_key_chain::cases());
     cases.extend(capability_models::cases());
     cases.extend(gitkb_models::cases());
     cases.extend(usage_models::cases());

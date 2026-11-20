@@ -23,6 +23,13 @@ broken_control = "Move handler registration after Popen and attach; the named sp
 checks = ["python3 -I scripts/test-resource-ledger.py", "make test"]
 
 [[crate]]
+name = "bboxy450-seat-keys"
+status = "contract-model"
+models = ["SeatKeyChain", "BrokenSeatKeyChainParentRevocation", "BrokenSeatKeyChainScopeSubset"]
+scope = "Pure root, node, seat and client verification with delayed revocation and root rotation. Ed25519, JCS/digests, input shape, scope strings, full numeric time/epoch bounds and exact refusal locations are implementation-tested."
+sources = ["crates/bboxy450-seat-keys/src/lib.rs", "verification/seat_key_chain.rs"]
+
+[[crate]]
 name = "bboxy450-term-desktop-core"
 status = "contract-model"
 models = ["LifecycleOwnership"]
