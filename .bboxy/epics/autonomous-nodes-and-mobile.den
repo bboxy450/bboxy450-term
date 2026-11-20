@@ -43,9 +43,9 @@ epic AutonomousNodesAndMobile {
     ## Superseded open tasks
 
     These open tasks came from the old ACP-over-ssh link. They are closed or re-scoped when phase 8 lands:
-    - [[tasks/2026-11-13-remote-session-migration]]: becomes stop, carry the log, then spawn with resume on another node.
-    - [[tasks/2026-11-13-acp-steering-parity]]: the code landed in harness `1436a01`; node seats steer natively.
-    - [[tasks/2026-11-13-remote-failure-classification]], [[tasks/2026-11-13-remote-artifact-pull]] and [[tasks/2026-11-13-remote-offload-icd-update]]: they become blob fetch and the node's own refusals.
+    - `tasks/2026-11-13-remote-session-migration` (historical, not in this KB): becomes stop, carry the log, then spawn with resume on another node.
+    - `tasks/2026-11-13-acp-steering-parity` (historical, not in this KB): the code landed in harness `1436a01`; node seats steer natively.
+    - `tasks/2026-11-13-remote-failure-classification` (historical, not in this KB), `tasks/2026-11-13-remote-artifact-pull` (historical, not in this KB) and `tasks/2026-11-13-remote-offload-icd-update` (historical, not in this KB): they become blob fetch and the node's own refusals.
 
     ## Rules for the worker
 
