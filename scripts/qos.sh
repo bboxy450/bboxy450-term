@@ -50,15 +50,9 @@ case "$role" in
     rustdoc)
         if [ -z "${BBOXY_QOS_ROOT:-}" ]; then
             BBOXY_QOS_ROOT=$(python3 -I -c 'from pathlib import Path; import sys; print(Path(sys.argv[1]).resolve().parents[1])' "$0")
+            export BBOXY_QOS_ROOT
         fi
-        role=background
-        for argument do
-            if [ "$argument" = --test ]; then
-                set -- "$@" --test-runtool "$BBOXY_QOS_ROOT/scripts/qos.sh" --test-runtool-arg utility
-                break
-            fi
-        done
-        set -- "${BBOXY_REAL_RUSTDOC:-$(command -v rustdoc)}" "$@" ;;
+        exec python3 -I "$BBOXY_QOS_ROOT/scripts/landing.py" qos-rustdoc-exec "$@" ;;
     background|utility|default) ;;
     *) echo "qos: unknown role $role" >&2; exit 2 ;;
 esac

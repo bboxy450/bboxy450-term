@@ -3929,10 +3929,31 @@ mod ordinary {
             source = Path(directory) / "doc.rs"
             source.write_text('/// ```\n/// unsafe extern "C" { fn getpriority(which: i32, who: u32) -> i32; }\n/// assert_eq!(unsafe { getpriority(4, std::process::id()) }, 0);\n/// let output = std::process::Command::new("ps").args(["-o", "pri=", "-p", &std::process::id().to_string()]).output().unwrap();\n/// let priority: i32 = String::from_utf8(output.stdout).unwrap().trim().parse().unwrap();\n/// assert!(priority > 4 && priority <= 20);\n/// ```\npub fn fixture() {}\n')
             environment = dict(os.environ, BBOXY_CACHE_MODE="off", BBOXY_CARGO_TARGET_DIR=str(Path(directory) / "target"))
-            result = subprocess.run(["sh", "-c", '. scripts/cache-env.sh; "$RUSTDOC" --test "$1"', "fixture", str(source)],
-                                    cwd=root, env=environment, capture_output=True, text=True)
-            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
-            self.assertIn("1 passed", result.stdout)
+            runner = Path(directory) / "runner with spaces"
+            runner.write_text("#!" + sys.executable + "\nimport os,sys\nfrom pathlib import Path\n"
+                "assert sys.argv[1:3] == ['--fixture', 'kept space']\n"
+                "Path(os.environ['BBOXY_QOS_RUNNER_TRACE']).write_text('called')\n"
+                "os.execv(sys.argv[3], sys.argv[3:])\n")
+            runner.chmod(0o700)
+            trace = Path(directory) / "runner.trace"
+            environment["BBOXY_QOS_RUNNER_TRACE"] = str(trace)
+            cases = [[],
+                ["--test-runtool", str(runner), "--test-runtool-arg=--fixture",
+                 "--test-runtool-arg", "kept space"],
+                ["--test-runtool=" + str(runner), "--test-runtool-arg=--fixture",
+                 "--test-runtool-arg=kept space"],
+                ["--test-runtool", "kache", "--test-runtool-arg", "test-runner"]]
+            for arguments in cases:
+                with self.subTest(arguments=arguments):
+                    trace.unlink(missing_ok=True)
+                    result = subprocess.run(["sh", "-c",
+                        '. scripts/cache-env.sh; bboxy_doc_source=$1; shift; "$RUSTDOC" --test "$bboxy_doc_source" "$@"',
+                        "fixture", str(source), *arguments],
+                        cwd=root, env=environment, capture_output=True, text=True)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertIn("1 passed", result.stdout)
+                    if any(str(runner) in argument for argument in arguments):
+                        self.assertEqual(trace.read_text(), "called")
 
     def test_policy_is_inherited_by_a_grandchild(self):
         root = SOURCE.parents[1]

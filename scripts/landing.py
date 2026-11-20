@@ -238,6 +238,35 @@ def nextest_environment(options, environment):
     return environment
 
 
+def qos_rustdoc_exec(arguments):
+    root = Path(os.environ.get("BBOXY_QOS_ROOT", Path(__file__).resolve().parents[1]))
+    wrapper = str(root / "scripts/qos.sh")
+    if "--test" in arguments:
+        flags, runner, tool = [], [], None
+        remaining = iter(arguments)
+        for argument in remaining:
+            name, equal, value = argument.partition("=")
+            if name not in {"--test-runtool", "--test-runtool-arg"}:
+                flags.append(argument)
+                continue
+            if not equal:
+                value = next(remaining, None)
+            if value is None:
+                raise Refusal("qos: missing rustdoc runtool value")
+            if name == "--test-runtool":
+                if tool is not None:
+                    raise Refusal("qos: multiple rustdoc test runtools")
+                tool = value
+            else:
+                runner.append(value)
+        # One outer policy runner, followed by Cargo's existing runner and args.
+        arguments = [*flags, "--test-runtool", wrapper, "--test-runtool-arg=utility"]
+        arguments += ["--test-runtool-arg=" + value
+                      for value in ([tool] if tool is not None else []) + runner]
+    rustdoc = os.environ.get("BBOXY_REAL_RUSTDOC") or shutil.which("rustdoc")
+    os.execv("/bin/sh", ["/bin/sh", wrapper, "background", rustdoc, *arguments])
+
+
 def qos_cargo_exec(arguments):
     root = Path(os.environ.get("BBOXY_QOS_ROOT", Path(__file__).resolve().parents[1]))
     wrapper = str(root / "scripts/qos.sh")
@@ -2237,6 +2266,8 @@ def land(gate_log=None, full=False):
 
 
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == "qos-rustdoc-exec":
+        return qos_rustdoc_exec(sys.argv[2:])
     if len(sys.argv) > 1 and sys.argv[1] == "qos-cargo-exec":
         return qos_cargo_exec(sys.argv[2:])
     if len(sys.argv) > 1 and sys.argv[1] == "qos-cargo":
