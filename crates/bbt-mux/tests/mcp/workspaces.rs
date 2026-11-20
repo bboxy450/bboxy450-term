@@ -377,3 +377,127 @@ fn managed_workspace_mcp_child_project_keeps_parent_knowledge_binding() {
     ));
     assert_eq!(document["id"], json!(task));
 }
+
+#[test]
+fn managed_workspace_pre_send_link_down_releases_the_unrequested_writer() {
+    use bbt_mux::logic::SupervisorConnection;
+    use bbt_mux::provider::{HostId, LinkState};
+    use bbt_mux::{Action, Reply};
+    use std::sync::{
+        Arc, Mutex,
+        atomic::{AtomicBool, Ordering},
+    };
+    struct Probe {
+        inner: LostInputReceipt,
+        armed: Arc<AtomicBool>,
+        trace: Arc<Mutex<Vec<Action>>>,
+        store: SqliteStore,
+        workspace: Ulid,
+    }
+    impl SupervisorConnection for Probe {
+        fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
+            self.trace.lock().unwrap().push(action.clone());
+            if matches!(&action, Action::ListOwnedSeats) && self.armed.load(Ordering::SeqCst) {
+                let bytes = self
+                    .store
+                    .get(&format!("workspace/{}", self.workspace))?
+                    .unwrap();
+                let reserved: Value = serde_json::from_slice(&bytes)?;
+                // Caller admission also reads owned seats before reservation.
+                if reserved["state"] == "in_use" && self.armed.swap(false, Ordering::SeqCst) {
+                    assert_eq!(reserved["holder"]["launch_requested"], false);
+                    assert!(reserved["holder"]["pid"].is_null());
+                    return Err(Box::new(bbt_mux::provider::fake::LinkDown {
+                        host: HostId::Local,
+                        state: LinkState::Connecting,
+                    }));
+                }
+            }
+            self.inner.request(action)
+        }
+        fn receive(&mut self, wait: Duration) -> bbt_mux::store::Result<Option<bbt_mux::Event>> {
+            self.inner.receive(wait)
+        }
+    }
+    let (mut f, task) = fixture_real();
+    let (id, ready) = prepare(&f, task);
+    f.logic.take().unwrap().shutdown().unwrap();
+    let armed = Arc::new(AtomicBool::new(false));
+    let trace = Arc::new(Mutex::new(Vec::new()));
+    // A new supervisor connection replaces the current logic lease.
+    let Reply::Seats { seats: before } = f.connection().request(Action::ListOwnedSeats).unwrap()
+    else {
+        panic!("native seat observation");
+    };
+    f.logic = Some(
+        Logic::start(
+            Probe {
+                inner: LostInputReceipt {
+                    client: f.connection(),
+                    lose: false,
+                    attempts: f.input_attempts.clone(),
+                    pty_bytes: f.pty_bytes.clone(),
+                    history_gap: f.history_gap.clone(),
+                    native_runtime: f.native_runtime.clone(),
+                },
+                armed: armed.clone(),
+                trace: trace.clone(),
+                store: SqliteStore::open(&f.config.run_dir.join("implementation-workspaces"))
+                    .unwrap(),
+                workspace: id,
+            },
+            f.config.clone(),
+            key(),
+            f.runtime.handle(),
+        )
+        .unwrap(),
+    );
+    trace.lock().unwrap().clear();
+    armed.store(true, Ordering::SeqCst);
+    let response = f.mutate(
+        f.oracle.id,
+        Ulid::new(),
+        "seat_spawn",
+        json!({
+            "swarm_id": f.oracle.swarm, "approved_profile": "zsh", "role": "executor",
+            "workspace": {"id": id, "expected_revision": ready["revision"]},
+        }),
+    );
+    let result = &response["structuredContent"];
+    assert_eq!(result["error"]["code"], "rejected", "{response}");
+    assert!(
+        result["error"]["message"]
+            .as_str()
+            .unwrap()
+            .contains("Connecting"),
+        "{response}"
+    );
+    let seat: Ulid = serde_json::from_value(result["seat_id"].clone()).unwrap();
+    assert!(f.registry().get(seat).is_err());
+    assert!(
+        !armed.load(Ordering::SeqCst),
+        "the fresh pre-read did not run"
+    );
+    let actions = trace.lock().unwrap().clone();
+    assert!(
+        actions.iter().any(|a| matches!(a, Action::ListOwnedSeats)),
+        "{actions:?}"
+    );
+    assert!(
+        !actions.iter().any(|a| matches!(a, Action::Spawn { .. })),
+        "{actions:?}"
+    );
+    let released = wait(&f, id, "ready");
+    assert!(released["holder"].is_null(), "{released}");
+    f.logic.take().unwrap().shutdown().unwrap();
+    let Reply::Seats { seats: after } = f.connection().request(Action::ListOwnedSeats).unwrap()
+    else {
+        panic!("native seat observation");
+    };
+    assert_eq!(after.len(), before.len());
+    assert!(!after.iter().any(|info| info.seat == seat));
+    eprintln!(
+        "managed pre-send Connecting: probe saw launch_requested=false/PID=null, trace={actions:?}, registry absent, native seats={} unchanged, refused seat/PID absent, workspace ready/no holder",
+        after.len()
+    );
+}

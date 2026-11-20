@@ -43,26 +43,51 @@ pub(super) fn managed_workspace_writer(b: bool) -> Model {
             ("launches", 2, 0),
             ("requested", 1, 0),
             ("outcome", 3, 0),
+            ("fresh", 1, 1),
+            ("probe", 2, 0),
         ],
     );
     // Outcome: pending (0), rejected (1), unknown (2), applied (3).
+    // Probe: pending (0), success/non-LinkDown fallthrough (1), direct LinkDown (2).
     action(
         &mut m,
         "ReserveWriter",
         all([Var(1).lt(Int(2)), eq(0, 0)]),
-        &[(0, Var(0).plus(Int(1))), (1, Var(1).plus(Int(1))), (3, Int(0))],
+        &[
+            (0, Int(1)),
+            (1, Var(1).plus(Int(1))),
+            (3, Int(0)),
+            (4, Int(1)),
+            (5, Int(0)),
+        ],
+    );
+    action(
+        &mut m,
+        "ProbeAllowsRequest",
+        all([eq(0, 1), eq(2, 0), eq(4, 1), eq(5, 0)]),
+        &[(5, Int(1))],
+    );
+    action(
+        &mut m,
+        "ProbeLinkDown",
+        all([eq(0, 1), eq(2, 0), eq(4, 1), eq(5, 0)]),
+        &[(5, Int(2))],
     );
     action(
         &mut m,
         "RequestLaunch",
-        all([eq(0, 1), eq(2, 0)]),
-        &[(2, Int(1))],
+        all([
+            eq(0, 1),
+            eq(2, 0),
+            if b { Expr::Bool(true) } else { eq(5, 1) },
+        ]),
+        &[(2, Int(1)), (4, Int(0))],
     );
     action(
         &mut m,
         "RejectBeforeRequest",
         all([eq(0, 1), eq(2, 0)]),
-        &[(0, Int(if b { 1 } else { 0 })), (3, Int(1))],
+        &[(0, Int(0)), (3, Int(1))],
     );
     action(
         &mut m,
@@ -70,10 +95,17 @@ pub(super) fn managed_workspace_writer(b: bool) -> Model {
         all([eq(2, 1), eq(3, 0)]),
         &[(0, Int(0)), (2, Int(0)), (3, Int(1))],
     );
+    // Includes a direct LinkDown after a real Spawn applied: its type proves no phase.
     action(
         &mut m,
         "LoseReply",
         all([eq(2, 1), eq(3, 0)]),
+        &[(3, Int(2))],
+    );
+    action(
+        &mut m,
+        "RetryRetainedWithLinkDown",
+        all([eq(2, 1), eq(3, 2), eq(4, 0)]),
         &[(3, Int(2))],
     );
     action(
@@ -96,8 +128,13 @@ pub(super) fn managed_workspace_writer(b: bool) -> Model {
     );
     safe(
         &mut m,
+        "RequestPassedProbe",
+        implies(eq(2, 1), all([eq(5, 1), eq(4, 0)])),
+    );
+    safe(
+        &mut m,
         "UnknownRequiresRequest",
-        implies(eq(3, 2), all([eq(0, 1), eq(2, 1)])),
+        implies(eq(3, 2), all([eq(0, 1), eq(2, 1), eq(4, 0)])),
     );
     m
 }
@@ -190,7 +227,12 @@ pub(super) fn managed_workspace_ownership(b: bool) -> Model {
         all([eq(1, 0), if b { Expr::Bool(true) } else { eq(0, 1) }]),
         &[(1, Int(1)), (2, eq(0, 0).ite(Int(1), Var(2)))],
     );
-    action(&mut m, "ReassignHistoricalWorkspace", eq(3, 1), &[(3, Int(0))]);
+    action(
+        &mut m,
+        "ReassignHistoricalWorkspace",
+        eq(3, 1),
+        &[(3, Int(0))],
+    );
     // A retained exited process is observed as history, without confirming a
     // writer lease. The broken control attempts the stale launch confirmation.
     action(
@@ -199,7 +241,14 @@ pub(super) fn managed_workspace_ownership(b: bool) -> Model {
         eq(4, 0),
         &[
             (4, Int(1)),
-            (5, if b { eq(3, 0).ite(Int(1), Var(5)) } else { Var(5) }),
+            (
+                5,
+                if b {
+                    eq(3, 0).ite(Int(1), Var(5))
+                } else {
+                    Var(5)
+                },
+            ),
         ],
     );
     no_bad(&mut m, 2);

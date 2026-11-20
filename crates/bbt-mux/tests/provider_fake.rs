@@ -11,7 +11,7 @@
 use std::collections::{BTreeMap, VecDeque};
 use std::sync::{
     Arc, Mutex,
-    atomic::{AtomicU64, Ordering},
+    atomic::{AtomicBool, AtomicU64, Ordering},
 };
 use std::time::{Duration, Instant};
 
@@ -293,6 +293,7 @@ struct Recorded {
     inner: Box<dyn SupervisorConnection>,
     trace: Trace,
     link_down_after_spawn: bool,
+    fail_probe: Option<Arc<AtomicBool>>,
 }
 impl SupervisorConnection for Recorded {
     fn request(&mut self, action: Action) -> bbt_mux::store::Result<Reply> {
@@ -301,6 +302,14 @@ impl SupervisorConnection for Recorded {
             .lock()
             .unwrap()
             .push((self.host.clone(), action.clone()));
+        if matches!(&action, Action::ListOwnedSeats)
+            && self
+                .fail_probe
+                .as_ref()
+                .is_some_and(|fail| fail.swap(false, Ordering::SeqCst))
+        {
+            return Err(std::io::Error::other("fixture probe IO failure").into());
+        }
         let reply = self.inner.request(action)?;
         if spawning && self.link_down_after_spawn {
             assert!(matches!(&reply, Reply::Spawned { .. }));
@@ -326,6 +335,7 @@ fn providers(
         inner: Box::new(servers[0].connect().unwrap()),
         trace: trace.clone(),
         link_down_after_spawn: false,
+        fail_probe: None,
     }))];
     let links: VecDeque<Box<dyn SupervisorConnection>> = servers[1..]
         .iter()
@@ -342,6 +352,7 @@ fn providers(
                     inner: links.lock().unwrap().pop_front().unwrap(),
                     trace: trace.clone(),
                     link_down_after_spawn,
+                    fail_probe: None,
                 }))
             })
             .unwrap(),
@@ -666,7 +677,9 @@ fn post_send_link_down_keeps_the_applied_seat_unknown() {
     record.location = Location::Ssh {
         host: "build-box".into(),
     };
-    let error = rt.block_on(logic.client.spawn(record, spec)).unwrap_err();
+    let error = rt
+        .block_on(logic.client.spawn(record, spec.clone()))
+        .unwrap_err();
     let mut owned = Vec::new();
     for server in &servers {
         let Reply::Seats { seats } = server
@@ -697,5 +710,107 @@ fn post_send_link_down_keeps_the_applied_seat_unknown() {
     );
     let retained = rt.block_on(logic.client.record(seat)).unwrap();
     assert_eq!((retained.id, retained.generation), (seat, 1));
+    // A retained attempt skips the pre-read: its original Spawn already applied.
+    clock.set(12_000);
+    let error = rt.block_on(logic.client.spawn(retained, spec)).unwrap_err();
+    assert!(
+        !is_link_down(&error),
+        "retained attempt lost its uncertainty fence: {error:#?}"
+    );
+    assert!(rt.block_on(logic.client.record(seat)).is_ok());
+    assert_eq!(
+        trace
+            .lock()
+            .unwrap()
+            .iter()
+            .filter(|(_, action)| matches!(action, Action::Spawn { .. }))
+            .count(),
+        1
+    );
+    eprintln!(
+        "post-send and retained retry: native seats=1, Spawn dispatches=1, PID={}, registry retained, direct refusal=false",
+        owned[0].pid
+    );
+    logic.shutdown().unwrap();
+}
+
+#[test]
+fn non_link_down_probe_error_does_not_prevent_spawn() {
+    use bbt_mux::registry::SeatRecord;
+    let temp = tempfile::tempdir().unwrap();
+    let repository = temp.path().join(".bboxy");
+    std::fs::create_dir(&repository).unwrap();
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(2)
+        .enable_all()
+        .build()
+        .unwrap();
+    let server = Supervisor::start(Config {
+        journal_directory: Some(temp.path().join("journal")),
+        ..Default::default()
+    })
+    .unwrap();
+    let trace: Trace = Default::default();
+    let fail = Arc::new(AtomicBool::new(false));
+    let logic = Logic::start(
+        Recorded {
+            host: HostId::Local,
+            inner: Box::new(server.connect().unwrap()),
+            trace: trace.clone(),
+            link_down_after_spawn: false,
+            fail_probe: Some(fail.clone()),
+        },
+        LogicConfig {
+            run_dir: temp.path().join("run"),
+            repository,
+            ring: Default::default(),
+        },
+        ed25519_dalek::SigningKey::from_bytes(&[42; 32]),
+        rt.handle(),
+    )
+    .unwrap();
+    trace.lock().unwrap().clear();
+    fail.store(true, Ordering::SeqCst);
+    let mut spec = LaunchSpec::new("/bin/zsh", temp.path());
+    spec.args = vec!["-f".into(), "-c".into(), "cat".into()];
+    let seat = spec.seat;
+    let info = rt
+        .block_on(
+            logic
+                .client
+                .spawn(SeatRecord::new(seat, Ulid::new(), "local", "zsh"), spec),
+        )
+        .unwrap();
+    assert!(
+        !fail.load(Ordering::SeqCst),
+        "the probe failure was not injected"
+    );
+    let actions = trace.lock().unwrap();
+    assert!(matches!(actions[0].1, Action::ListOwnedSeats));
+    assert!(matches!(actions[1].1, Action::Spawn { .. }));
+    assert_eq!(
+        actions
+            .iter()
+            .filter(|(_, action)| matches!(action, Action::Spawn { .. }))
+            .count(),
+        1
+    );
+    drop(actions);
+    let Reply::Seats { seats } = server
+        .connect()
+        .unwrap()
+        .request(Action::ListOwnedSeats)
+        .unwrap()
+    else {
+        panic!("expected native seat observation");
+    };
+    assert_eq!(seats.len(), 1);
+    assert_eq!((seats[0].seat, seats[0].pid), (seat, info.pid));
+    assert!(info.pid > 0);
+    assert!(rt.block_on(logic.client.record(seat)).is_ok());
+    eprintln!(
+        "non-LinkDown probe IO failure: consumed, followed by one Spawn, native PID={}, registry retained",
+        info.pid
+    );
     logic.shutdown().unwrap();
 }
