@@ -9220,7 +9220,7 @@ mod disposal_tests {
                 "nonce":"01ARZ3NDEKTSV4RRFFQ69G5FAW","manifest_sha256":"0".repeat(64),"algorithm":"d0-c1/1",
                 "source_count":1,"episode_count":0,"cluster_count":0,"max_poll_cpu_ns":0,
                 "knowledge":"not_requested","trust":if invalid_in_array {"not_evaluated"}else{"bad after completed pages"},"pages":pages});
-            let bytes = public::canonical(&descriptor).unwrap();
+            let bytes = transport::canonical(&descriptor).unwrap();
             assert!(bytes.len() > LINE && bytes.len() < 768 * 1024);
             let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(10));
             let result = budget.parse::<w::ResultDescriptor>(&bytes);
@@ -9246,7 +9246,7 @@ mod disposal_tests {
             "rows":[{"kind":"episode","session":"01ARZ3NDEKTSV4RRFFQ69G5FAV","turn":"01ARZ3NDEKTSV4RRFFQ69G5FAW",
                 "origin":{"session":"01ARZ3NDEKTSV4RRFFQ69G5FAV","seq":1,"digest":"sha256:original"},
                 "fingerprints":vec!["0".repeat(64);200],"first_ms":1,"last_ms":null}]});
-        let bytes = public::canonical(&page).unwrap();
+        let bytes = transport::canonical(&page).unwrap();
         assert!(bytes.len() < 16 * 1024);
         let mut budget = Budget::new(&control, Instant::now() + Duration::from_secs(5));
         assert!(matches!(

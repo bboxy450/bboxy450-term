@@ -8107,9 +8107,16 @@ impl Worker {
                 {
                     Ok(info)
                 }
-                // The in-process connection uses Io for lost replies too.
-                Err(error) if error.downcast_ref::<crate::Failure>()
-                    .is_some_and(|failure| failure.code != crate::FailureCode::Io) => Err(error),
+                // A down provider refuses before forwarding Spawn. The
+                // in-process connection uses Io for lost replies too.
+                Err(error)
+                    if crate::provider::fake::is_link_down(&error)
+                        || error.downcast_ref::<crate::Failure>().is_some_and(|failure| {
+                            failure.code != crate::FailureCode::Io
+                        }) =>
+                {
+                    Err(error)
+                }
                 Err(error) => Err(SpawnEffect::Unknown(error).into()),
                 Ok(_) => Err(SpawnEffect::Unknown(invalid("spawn reply mismatch")).into()),
             }
@@ -14279,6 +14286,7 @@ pub(super) mod dream_public_api_tests {
     use crate::identity::{Custody, DeviceIdentity, DeviceKeyStore, IdentityRuntime, TestAccount};
     use crate::mcp::bridge::{Bridge, Config as BridgeConfig};
     use crate::registry::dream_c1::{Bookmark, Journal, Record};
+    use bboxy450_harness_wake_up::dream_c1::canonical;
     use bbt_proto::dream as w;
     use serde_json::{Value, json};
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
@@ -14556,7 +14564,7 @@ pub(super) mod dream_public_api_tests {
             let request = w::canonical(&json!({"v":1,"context":context,"sources":[
                 {"session":source,"source_generation":own.generation}],"algorithm":"d0-c1/1"}))
             .unwrap();
-            let manifest_bytes=w::canonical(&json!({"schema":"bboxy.dream.c1.manifest/1","run_id":run,"nonce":nonce,"context":context,"trigger":"session_closed","algorithm":"d0-c1/1","sources":[]})).unwrap();
+            let manifest_bytes=canonical(&json!({"schema":"bboxy.dream.c1.manifest/1","run_id":run,"nonce":nonce,"context":context,"trigger":"session_closed","algorithm":"d0-c1/1","sources":[]})).unwrap();
             let manifest = w::Hex(crate::store::digest(&manifest_bytes));
             let prepared_fixture=rows.is_some();
             // Only Q1's long API spy fixtures park the unrelated30s identity
@@ -14579,13 +14587,13 @@ pub(super) mod dream_public_api_tests {
                 rows,
                 next: None,
             };
-            let page_bytes = w::canonical(&page).unwrap();
+            let page_bytes = canonical(&page).unwrap();
             let result = json!({"schema":"bboxy.dream.c1.result/1","run_id":run,"nonce":nonce,
                 "manifest_sha256":manifest,"algorithm":"d0-c1/1","source_count":sources.len(),
                 "episode_count":episodes,"cluster_count":clusters,"max_poll_cpu_ns":0,
                 "knowledge":"not_requested","trust":"not_evaluated",
                 "pages":[{"index":0,"len":page_bytes.len(),"sha256":crate::store::digest(&page_bytes)}]});
-            let result_bytes = w::canonical(&result).unwrap();
+            let result_bytes = canonical(&result).unwrap();
             let output = run_dir.join("dream-c1").join(&run.0).join("output");
             std::fs::create_dir_all(&output).unwrap();
             for (name, bytes) in [
@@ -15152,14 +15160,14 @@ pub(super) mod dream_public_api_tests {
         let (mut low, mut high) = (0, 4096 - attack.len());
         while low < high {
             let middle = (low + high).div_ceil(2);
-            if w::canonical(&make_page(middle)).unwrap().len() <= 16 * 1024 {
+            if canonical(&make_page(middle)).unwrap().len() <= 16 * 1024 {
                 low = middle;
             } else {
                 high = middle - 1;
             }
         }
         let page = make_page(low);
-        let page_bytes = w::canonical(&page).unwrap();
+        let page_bytes = canonical(&page).unwrap();
         assert!((16 * 1024 - 4..=16 * 1024).contains(&page_bytes.len()));
         let descriptor_path = job.join("output/result.json");
         let mut descriptor: Value =
@@ -15167,7 +15175,7 @@ pub(super) mod dream_public_api_tests {
         descriptor["cluster_count"] = json!(4);
         descriptor["pages"][0]["len"] = json!(page_bytes.len());
         descriptor["pages"][0]["sha256"] = json!(crate::store::digest(&page_bytes));
-        let descriptor_bytes = w::canonical(&descriptor).unwrap();
+        let descriptor_bytes = canonical(&descriptor).unwrap();
         // Private immutable-page source fixture only: this does not certify
         // producer replay, source observation or canonical worker conformance.
         std::fs::write(job.join("output/page-000000.json"), &page_bytes).unwrap();

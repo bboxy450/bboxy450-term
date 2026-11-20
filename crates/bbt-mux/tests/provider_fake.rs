@@ -455,7 +455,8 @@ fn headless_fixture_routes_real_ptys_survives_drop_and_recovers_a_down_host_on_r
     let error = rt
         .block_on(logic.client.spawn(record.clone(), spec.clone()))
         .unwrap_err();
-    assert!(is_link_down(&error));
+    assert!(is_link_down(&error), "{error}");
+    assert!(rt.block_on(logic.client.record(seat)).is_err());
     assert!(
         !trace
             .lock()
