@@ -687,8 +687,8 @@
   "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
   "phase": "A; frozen before native implementation; Architect review requested at checkpoint",
   "policy": {
-    "sha256": "c10b1e4729c657019402a06e45d6fffe267bf04e7a54c8da50bcb7959ab5e19e",
-    "source": "crates/bboxybook/src/parity.rs",
+    "sha256": "9fce9220e368e9e31f3ffb9d6ad47ce218bef4a58a7c4c4bdb602f6b5c1fc7fa",
+    "source": "crates/bbt-render/src/chrome/diff.rs",
     "text_budget": 0.02,
     "text_geometry_px": 0.5,
     "vector_budget": 0.005

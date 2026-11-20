@@ -17,17 +17,16 @@ from corpus import BASE, digest, dump, load_fonts
 
 
 def policy():
-    # Phase A must leave CasePolicy untouched. Read its current numeric policy;
-    # renderer phase will move those constants to the canonical comparator once.
-    source = BASE.parent / "bboxybook/src/parity.rs"
+    source = BASE.parent / "bbt-render/src/chrome/diff.rs"
     raw = source.read_bytes()
     text = raw.decode()
-    pixels = re.search(r"changed_pixel_budget: if vector \{ ([\d.]+) \} else if text \{ ([\d.]+) \}", text)
-    geometry = re.search(r"geometry_tolerance_px: if vector \{ Some\(0\.\) \} else \{ text.then_some\(([\d.]+)\)", text)
-    if not pixels or not geometry:
-        raise ValueError("canonical comparison policy changed; inspect before using it")
-    return {"vector_budget": float(pixels[1]), "text_budget": float(pixels[2]),
-            "text_geometry_px": float(geometry[1]), "source": str(source.relative_to(BASE.parents[1])), "sha256": digest(raw)}
+    def constant(name):
+        value = re.search(r"(?m)^pub const " + name + r": f64 = ([\d.]+);$", text)
+        if not value:
+            raise ValueError("canonical comparison constant missing: " + name)
+        return float(value[1])
+    return {"vector_budget": constant("VECTOR_CHANGED_BUDGET"), "text_budget": constant("TEXT_CHANGED_BUDGET"),
+            "text_geometry_px": constant("TEXT_GEOMETRY_TOLERANCE_PX"), "source": str(source.relative_to(BASE.parents[1])), "sha256": digest(raw)}
 
 
 def shapes_only(raw):

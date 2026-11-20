@@ -196,8 +196,8 @@ impl CasePolicy {
             text,
             diagram_body_advisory: crate::documents::has_diagram_body(case),
             channel_tolerance: diff::CHANNEL_TOLERANCE,
-            changed_pixel_budget: if vector { 0.005 } else if text { 0.02 } else { diff::CHANGED_BUDGET },
-            geometry_tolerance_px: if vector { Some(0.) } else { text.then_some(0.5) },
+            changed_pixel_budget: if vector { diff::VECTOR_CHANGED_BUDGET } else if text { diff::TEXT_CHANGED_BUDGET } else { diff::CHANGED_BUDGET },
+            geometry_tolerance_px: if vector { Some(0.) } else { text.then_some(diff::TEXT_GEOMETRY_TOLERANCE_PX) },
             scope: if f.is_some_and(|f|f["layer"]=="close") {
                 "T7 full window: native split, sidebar grace strip, panes and retained notice; public constructor data and an external viewport"
             } else if f.is_some_and(|f|f["layer"]=="paths") {
