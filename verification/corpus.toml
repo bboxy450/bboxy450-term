@@ -1424,6 +1424,11 @@ expected = "safety"
 frontend = "project"
 
 [[model]]
+name = "BrokenManagedWorkspaceWriterProbe"
+expected = "safety"
+frontend = "project"
+
+[[model]]
 name = "ManagedWorkspaceFence"
 expected = "pass"
 frontend = "project"

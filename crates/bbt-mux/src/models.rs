@@ -46,6 +46,18 @@ pub fn families() -> [fn(bool) -> Model; 19] {
     ]
 }
 
+/// All shipped cases, including the writer's independent probe control.
+pub fn cases() -> Vec<(Model, &'static str)> {
+    families()
+        .into_iter()
+        .flat_map(bboxy450_tlc::build::family)
+        .chain([(
+            managed_workspace::broken_managed_workspace_writer_probe(),
+            "safety",
+        )])
+        .collect()
+}
+
 // The per-root hook queue (plugins/hooks.rs, HOOK_QUEUE) shared by many
 // plugins: two plugins here, a FIFO of two slots, three offers. Each queued
 // delivery carries its plugin and that plugin's activation generation; a

@@ -14,34 +14,41 @@ use super::*;
 
 pub use bbt_mux::models::plugin_activation;
 
-/// A model family: the model, or its broken control.
-type Family = fn(bool) -> Model;
+/// One shipped model and its expected verdict.
+type Case = (Model, &'static str);
 
 /// The crate that ships each family, and its `models/` directory.
-fn shipped() -> Vec<(&'static str, Vec<Family>)> {
+fn shipped() -> Vec<(&'static str, Vec<Case>)> {
     vec![
         (
             "crates/bbt-plugin/models",
-            bbt_plugin::models::families().to_vec(),
+            bbt_plugin::models::families()
+                .into_iter()
+                .flat_map(bboxy450_tlc::build::family)
+                .collect(),
         ),
         (
             "crates/bbt-plugin-sdk/models",
-            bbt_plugin_sdk::models::families().to_vec(),
+            bbt_plugin_sdk::models::families()
+                .into_iter()
+                .flat_map(bboxy450_tlc::build::family)
+                .collect(),
         ),
         // PluginActivation is registered in the shared family list.
-        (
-            "crates/bbt-mux/models",
-            bbt_mux::models::families().to_vec(),
-        ),
+        ("crates/bbt-mux/models", bbt_mux::models::cases()),
     ]
 }
 
 pub fn cases() -> Vec<(Model, &'static str)> {
     shipped()
         .into_iter()
-        .flat_map(|(_, families)| families)
-        .filter(|family| family(false).name != "PluginActivation")
-        .flat_map(bboxy450_tlc::build::family)
+        .flat_map(|(_, cases)| cases)
+        .filter(|(model, _)| {
+            !matches!(
+                model.name.as_str(),
+                "PluginActivation" | "BrokenPluginActivation"
+            )
+        })
         .map(|(model, expected)| {
             // The positive fence has a fair progress property, but its broken
             // control removes completion authority and violates safety. Keep
@@ -63,25 +70,23 @@ pub fn cases() -> Vec<(Model, &'static str)> {
 fn shipped_plugin_models_match_their_rust_sources() {
     let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let update = std::env::var_os("BBOXY_UPDATE_MODELS").is_some();
-    for (dir, families) in shipped() {
+    for (dir, cases) in shipped() {
         let dir = root.join(dir);
         let mut expected = std::collections::BTreeSet::new();
-        for family in families {
-            for (model, _) in bboxy450_tlc::build::family(family) {
-                for (name, text) in bboxy450_tlc::build::artifacts(&model).unwrap() {
-                    let path = dir.join(&name);
-                    if update {
-                        std::fs::create_dir_all(&dir).unwrap();
-                        std::fs::write(&path, &text).unwrap();
-                    }
-                    let shipped = std::fs::read_to_string(&path).unwrap_or_default();
-                    assert!(
-                        shipped == text,
-                        "{} drifted from its Rust model; run BBOXY_UPDATE_MODELS=1 cargo test -p bboxy450-term --test it formal_contracts::",
-                        path.display()
-                    );
-                    expected.insert(name);
+        for (model, _) in cases {
+            for (name, text) in bboxy450_tlc::build::artifacts(&model).unwrap() {
+                let path = dir.join(&name);
+                if update {
+                    std::fs::create_dir_all(&dir).unwrap();
+                    std::fs::write(&path, &text).unwrap();
                 }
+                let shipped = std::fs::read_to_string(&path).unwrap_or_default();
+                assert!(
+                    shipped == text,
+                    "{} drifted from its Rust model; run BBOXY_UPDATE_MODELS=1 cargo test -p bboxy450-term --test it formal_contracts::",
+                    path.display()
+                );
+                expected.insert(name);
             }
         }
         let actual: std::collections::BTreeSet<String> = std::fs::read_dir(&dir)
