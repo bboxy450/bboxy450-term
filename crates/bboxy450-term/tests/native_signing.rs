@@ -190,6 +190,7 @@ fn native_bundle_fixture_child() {
         "scripts",
         "packaging/macos",
         "crates/bboxy450-term",
+        "crates/bboxy450-svg/fonts",
         "target/debug",
         "tools",
     ] {
@@ -238,6 +239,10 @@ fn native_bundle_fixture_child() {
         "ATTRIBUTION.md",
         "LICENSE-MIT",
         "LICENSE-APACHE",
+        "crates/bboxy450-svg/fonts/manifest.json",
+        "crates/bboxy450-svg/fonts/SourceSans3-Regular.ttf",
+        "crates/bboxy450-svg/fonts/SourceSans3-Bold.ttf",
+        "crates/bboxy450-svg/fonts/LICENSE.md",
     ] {
         fs::write(p.join(name), format!("fixture {name}")).unwrap();
     }
