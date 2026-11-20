@@ -41,6 +41,7 @@ fn key(points: &[PathCommand], stroke: Option<&PathStroke>) -> Vec<u32> {
     }
     for p in points {
         match p {
+            PathCommand::Close => out.push(3),
             PathCommand::Move(p) => {
                 out.push(0);
                 out.extend(p.map(f32::to_bits));
@@ -74,19 +75,35 @@ fn join(j: LineJoin) -> lyon_tessellation::LineJoin {
 fn source(points: &[PathCommand], close: bool) -> Path {
     let mut b = Path::builder();
     let mut open = false;
+    let mut start = point(0., 0.);
     for p in points {
         match *p {
             PathCommand::Move(p) => {
                 if open {
                     b.end(close);
                 }
-                b.begin(point(p[0], p[1]));
+                start = point(p[0], p[1]);
+                b.begin(start);
                 open = true;
             }
+            PathCommand::Close => {
+                if open {
+                    b.end(true);
+                    open = false;
+                }
+            }
             PathCommand::Line(p) => {
+                if !open {
+                    b.begin(start);
+                    open = true;
+                }
                 b.line_to(point(p[0], p[1]));
             }
             PathCommand::Cubic(p) => {
+                if !open {
+                    b.begin(start);
+                    open = true;
+                }
                 b.cubic_bezier_to(
                     point(p[0][0], p[0][1]),
                     point(p[1][0], p[1][1]),
@@ -110,6 +127,11 @@ fn dashed(points: &[PathCommand], dash: &[f32]) -> Result<(Path, Vec<[f32; 2]>)>
             PathCommand::Move(p) => {
                 contours.push(vec![p]);
                 at = p;
+            }
+            PathCommand::Close => {
+                let contour = contours.last_mut().unwrap();
+                at = contour[0];
+                contour.push(at);
             }
             PathCommand::Line(p) => {
                 contours.last_mut().unwrap().push(p);
@@ -609,6 +631,49 @@ mod tests {
     fn unrepresentable_pattern_cannot_cycle_through_zero_length_phases() {
         let points = [PathCommand::Move([0., 0.]), PathCommand::Line([1., 0.])];
         assert!(dashed(&points, &[0., 0.000_000_1]).is_err());
+    }
+    // keeps: spec svg-renderer — Close is a joined contour, not a line with caps.
+    #[test]
+    fn close_survives_foreground_and_dash_lowering() {
+        use lyon_tessellation::path::PathEvent;
+        let commands = [
+            PathCommand::Move([2., 2.]),
+            PathCommand::Line([12., 2.]),
+            PathCommand::Line([12., 12.]),
+            PathCommand::Close,
+        ];
+        let events: Vec<_> = source(&commands, false).iter().collect();
+        assert!(
+            matches!(events.last(), Some(PathEvent::End { close: true, first, .. }) if *first == point(2., 2.))
+        );
+        let open = &commands[..commands.len() - 1];
+        assert_ne!(key(&commands, None), key(open, None));
+        let (dashes, _) = dashed(&commands, &[100., 1.]).unwrap();
+        assert!(
+            dashes
+                .iter()
+                .any(|e| matches!(e, PathEvent::Line { to, .. } if to == point(2., 2.)))
+        );
+        let mut continuation = commands.to_vec();
+        continuation.push(PathCommand::Line([1., 1.]));
+        assert_eq!(
+            source(&continuation, false)
+                .iter()
+                .filter(|e| matches!(e, PathEvent::Begin { .. }))
+                .count(),
+            2
+        );
+        let stroke = PathStroke {
+            width: 4.,
+            cap: LineCap::Butt,
+            ..Default::default()
+        };
+        let mut repeated = open.to_vec();
+        repeated.push(PathCommand::Line([2., 2.]));
+        assert_ne!(
+            tessellate(&commands, &stroke).unwrap(),
+            tessellate(&repeated, &stroke).unwrap()
+        );
     }
     fn path(points: Vec<PathCommand>, stroke: PathStroke) -> Prim {
         Prim::Path {

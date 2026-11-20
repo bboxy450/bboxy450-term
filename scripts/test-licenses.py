@@ -78,6 +78,7 @@ else:
 ''')
         cargo.chmod(0o700)
         self.environment = dict(os.environ, PATH=str(binary) + os.pathsep + os.environ['PATH'], BBOXY_LICENSE_FIXTURE=str(self.root))
+        self.environment.pop("BBOXY_LICENSE_MAP", None)
 
     def run_check(self, expected=0, reason=None, *arguments):
         (self.root / 'metadata.json').write_text(json.dumps(self.data))
@@ -97,6 +98,20 @@ else:
         calls = [json.loads(line) for line in (self.root / 'calls.jsonl').read_text().splitlines()]
         self.assertEqual([call[-1] for call in calls if call[0] == 'package'], ['bboxy450-ui'])
         self.run_check(1, 'unknown workspace package', '--packages', '--package', 'missing')
+
+    def test_explicit_read_only_map_overrides_a_stale_projection(self):
+        projection = self.root / '.bboxy/specs/licensing.md'
+        approved = self.root / 'approved-licensing.md'
+        raw = projection.read_bytes()
+        approved.write_bytes(raw)
+        projection.write_text('| Crate | Publishes as | License | Why |\n|---|---|---|---|\n')
+        self.run_check(1, 'missing from the licensing map')
+        self.environment['BBOXY_LICENSE_MAP'] = str(approved)
+        self.run_check(0, str(approved))
+        self.assertEqual(approved.read_bytes(), raw)
+        self.assertNotEqual(projection.read_bytes(), raw)
+        approved.write_bytes(raw.replace(b'upstream terms and prior grants retained', b'policy removed'))
+        self.run_check(1, 'retained upstream/prior')
 
     def test_missing_empty_symlink_and_stale_policy_copies_refuse(self):
         for filename in ('LICENSE', 'NOTICE', 'ATTRIBUTION.md', 'LICENSE-MIT'):

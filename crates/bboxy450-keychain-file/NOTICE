@@ -72,3 +72,10 @@ embeds the data_source schema from crates/bbt-plugin under the project LICENSE.
 
 Harness/provider logos remain the marks of their respective owners. This
 inventory asserts no ownership of upstream logos and implies no endorsement.
+
+Source Sans 3 Regular and Bold — Adobe Source Sans 3.052R
+https://github.com/adobe-fonts/source-sans/tree/ed1808970eb3c7301c9a523bee26473ba0bb62fa
+Copyright 2010-2022 Adobe (http://www.adobe.com/), with Reserved Font Name 'Source'.
+Unmodified font files licensed under SIL Open Font License 1.1. The original
+notice and complete license accompany the bundled Resources/chart-fonts files
+and crates/bboxy450-svg/fonts/LICENSE.md. Prior upstream terms remain in force.

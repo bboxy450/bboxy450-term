@@ -82,6 +82,7 @@ struct ShapeKey {
 }
 /// Distinct shaped lines kept. A visible working set above this re-shapes every
 /// line on every frame, so it is sized well past a busy window's text.
+pub const MASK_BYTE_BUDGET: usize = 128 * 1024 * 1024;
 const SHAPE_BUDGET: usize = 32 * 1024;
 /// Memoized line geometry. Over budget, the least recently used plans go;
 /// clearing them all made every visible line rebuild on the next frame.
@@ -170,7 +171,7 @@ pub(super) struct Cache {
 }
 impl Cache {
     pub fn new() -> Result<Self> {
-        Self::with_limits(512, 8192, 128 * 1024 * 1024, 128 * 1024)
+        Self::with_limits(512, 8192, MASK_BYTE_BUDGET, 128 * 1024)
     }
     pub fn with_limits(
         initial_size: u32,
@@ -227,6 +228,9 @@ impl Cache {
             self.totals.shadow_blurs += 1;
             Arc::new(glyphs::blur(&mask, f32::from_bits(key.blur_sigma()))?)
         };
+        self.insert_mask(key, mask)
+    }
+    fn insert_mask(&mut self, key: MaskKey, mask: Arc<Mask>) -> Result<(u64, Arc<Mask>)> {
         self.next_id += 1;
         let id = self.next_id;
         self.bytes += mask.pixels.len();
@@ -242,6 +246,24 @@ impl Cache {
             },
         );
         Ok((id, mask))
+    }
+    pub fn prepared_path(&mut self, path: &path_masks::PreparedPath) -> Result<Option<Part>> {
+        let key = MaskKey::Path(path.key.clone());
+        self.clock += 1;
+        let (id, mask) = if let Some(entry) = self.entries.get_mut(&key) {
+            entry.last_use = self.clock;
+            self.totals.hits += 1;
+            (entry.id, entry.mask.clone())
+        } else {
+            self.totals.misses += 1;
+            self.insert_mask(key, path.mask.clone())?
+        };
+        Ok((!mask.empty()).then(|| Part {
+            id,
+            offset: [mask.bounds[0], -mask.bounds[3]],
+            size: [mask.width(), mask.height()],
+            format: mask.format,
+        }))
     }
     pub fn line(
         &mut self,
@@ -269,6 +291,19 @@ impl Cache {
             return Ok(line);
         }
         self.totals.line_plan_misses += 1;
+        let line = self.line_from_shape(&shape)?;
+        self.remember_line(&key, line.clone());
+        self.recycle_key(key);
+        Ok(line)
+    }
+
+    /// Drops the least recently used eighth in one pass: a full cache costs one
+    /// scan per budget/8 misses, never a scan per miss.
+    pub fn face_line(&mut self, text: &super::text::FaceText<'_>) -> Result<Arc<Line>> {
+        let shape = glyphs::shape_face(text)?;
+        self.line_from_shape(&shape)
+    }
+    fn line_from_shape(&mut self, shape: &Shape) -> Result<Arc<Line>> {
         let mut atoms = Vec::with_capacity(shape.glyphs.len());
         let mut bounds = Vec::with_capacity(shape.glyphs.len());
         for placed in &shape.glyphs {
@@ -312,7 +347,7 @@ impl Cache {
                 (atoms[group[0]].clone(), shape.glyphs[group[0]].origin)
             } else {
                 self.totals.overlap_requests += 1;
-                let (key, origin) = glyphs::component(&shape, &group);
+                let (key, origin) = glyphs::component(shape, &group);
                 (self.get(key)?, origin)
             };
             if mask.empty() {
@@ -335,13 +370,9 @@ impl Cache {
             advance: shape.advance,
             parts,
         });
-        self.remember_line(&key, line.clone());
-        self.recycle_key(key);
         Ok(line)
     }
 
-    /// Drops the least recently used eighth in one pass: a full cache costs one
-    /// scan per budget/8 misses, never a scan per miss.
     fn evict_shapes(&mut self) {
         let mut uses: Vec<u64> = self.shapes.values().map(|entry| entry.last_use).collect();
         let count = (uses.len() / 8).max(1);

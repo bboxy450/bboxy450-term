@@ -363,6 +363,7 @@ fn step(out: &mut Vec<c::PathCommand>, a: [f32; 2], b: [f32; 2], lr: bool) {
             c::PathCommand::Move(p) => c::PathCommand::Move(swap(p)),
             c::PathCommand::Line(p) => c::PathCommand::Line(swap(p)),
             c::PathCommand::Cubic(p) => c::PathCommand::Cubic(p.map(swap)),
+            c::PathCommand::Close => c::PathCommand::Close,
         }));
     }
 }

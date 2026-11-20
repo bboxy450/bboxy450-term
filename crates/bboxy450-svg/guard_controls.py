@@ -42,9 +42,10 @@ def run(out):
             directory = root / (name + "-" + view["id"])
             camera = view["camera"] if name == "invalid-family" else [0, 0, 48, 32]
             request = root / (name + "-" + view["id"] + "-request.json")
+            mapping=json.loads(subprocess.check_output([str(out / "oracle-build/debug/bboxy450-svg-reference"), "viewport", json.dumps(box), json.dumps(camera), str(view["scale"])]))
             dump(request, {"out": str(directory), "font_directory": str(BASE / "fonts"),
                            "cases": [{"id": name, "exporter": "refusal control", "svg": str(svg), "sha256": digest(svg.read_bytes()),
-                                      "viewBox": box, "views": [{**view, "camera": camera}]}]})
+                                      "viewBox": box, "capture_views": {view["id"]: mapping}, "views": [{**view, "camera": camera}]}]})
             with (root / (name + "-" + view["id"] + ".log")).open("w") as log:
                 result = subprocess.run(["node", str(BASE / "capture.mjs"), str(request)], stdout=log, stderr=subprocess.STDOUT)
             if result.returncode != 1:
@@ -60,6 +61,6 @@ def run(out):
             controls.append({"control": name, "view": view["id"], "expected_reason": reason, "exit": result.returncode,
                              "refusal": str(directory / "font-refusal.json"), "refusal_sha256": digest((directory / "font-refusal.json").read_bytes()),
                              "source_sha256": digest(svg.read_bytes()), "custody": custody})
-    result = {"cache_key": cache_key, "native_refusal": "pending renderer phase", "font_set": identity, "capture_source_sha256": digest((BASE / "capture.mjs").read_bytes()), "controls": controls}
+    result = {"cache_key": cache_key, "font_set": identity, "capture_source_sha256": digest((BASE / "capture.mjs").read_bytes()), "controls": controls}
     dump(out / "font-controls.json", result)
     return result

@@ -224,9 +224,9 @@
       "case": "matplotlib-line",
       "changed_fraction": 0.006876627604166667,
       "pixel_sha256": [
-        "d4475e018deb8bcee81533d413bcd2d0c46993e348f054d5ff7c46c37975ca2c",
+        "1f57ed4bc9bd677708b61df63b1f875e86fa72afb70c1e1d1afadb9fc32dd7d1",
         "07e68458e524999b612714989cf054b802f8bd84c1a7f53bf9e88b23159481e8",
-        "2889692ce3c3aee00d8faa939f7a3f6cff6103de315078032977c42e733893cc"
+        "0f33408ba688ffd079f78bbcd1ff4c1209cd342c9af80191ab8b8eb3c546ef18"
       ],
       "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
       "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
@@ -378,9 +378,9 @@
       "case": "matplotlib-layered",
       "changed_fraction": 0.0074462890625,
       "pixel_sha256": [
-        "db1d49cec479438c4c7443de91d3235a0f8ded400dd3576d5c3ecfb2af46ed01",
+        "d4abc80fe3264818e50a73c56d77e1a0778164b96732f97fa6a62471279b3972",
         "d90b2931cf2443a0e8b56bda976f4eb33a3318258b297f6eb1b3ebc78257cc70",
-        "13a800d6a2e64dfa52541ca062ed505cf7b48fe83d0482329edb308ef9cc6239"
+        "7cfa72650215be4d98ffd98f73f737fe3f2415a579dbb4b6e7a317229a960761"
       ],
       "reason": "Independent Skia/resvg edge-coverage differences in the common vector-only layer; corresponding public paths/bounds/endpoints are present and recorded. Text/image omissions and geometry are never advisory.",
       "scope": "common vector-layer pixels only; fixed budgets retained; no native failure observed or waived",
@@ -687,7 +687,6 @@
   "font_set": "sha256:2b17dc21ce843fbc73049092b0a8223106322bf78e159edf64b464d067ec3f7a",
   "phase": "A; frozen before native implementation; Architect review requested at checkpoint",
   "policy": {
-    "sha256": "9fce9220e368e9e31f3ffb9d6ad47ce218bef4a58a7c4c4bdb602f6b5c1fc7fa",
     "source": "crates/bbt-render/src/chrome/diff.rs",
     "text_budget": 0.02,
     "text_geometry_px": 0.5,
