@@ -8084,6 +8084,15 @@ impl Worker {
             self.registry.insert(&record)?;
         }
         let started = (|| -> Result<SeatInfo> {
+            let host = HostId::from(&record.location);
+            if new_record {
+                // This read can reject a fresh seat before its Spawn is sent.
+                if let Err(error) = self.connections.request(&host, Action::ListOwnedSeats)
+                    && crate::provider::fake::is_link_down(&error)
+                {
+                    return Err(error);
+                }
+            }
             if let Some(workspace) = managed_workspace {
                 self.implementation_workspaces.request_launch(
                     workspace,
@@ -8093,7 +8102,7 @@ impl Worker {
             }
             let reply = self
                 .connections
-                .request(&HostId::from(&record.location), Action::Spawn { spec })
+                .request(&host, Action::Spawn { spec })
                 .inspect_err(|error| {
                     bbt_rt::error_journal::report(
                         bbt_rt::error_journal::Failure::new("spawn", "seat", error)
