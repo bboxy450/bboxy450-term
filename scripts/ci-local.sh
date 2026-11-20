@@ -138,6 +138,14 @@ else
   echo "smoke failed; private run retained at $smoke_run" >&2
   exit "$smoke_status"
 fi
+# Full CI and the standalone gallery use the same unfiltered Make workflow.
+for ci_option in "$@"; do
+    if [ "$ci_option" = --parity ]; then
+        ledger integration make parity-gallery TARGET_DIR="$BBOXY_CARGO_TARGET_DIR"
+        set -- "$@" --covered-check 'sh scripts/parity.sh'
+        break
+    fi
+done
 # Invariants whose check is a stage above are not run a second time.
 if [ "$after_tests" = false ]; then
     set -- "$@" --covered-tests "$coverage" --covered-check 'sh scripts/layering.sh' \

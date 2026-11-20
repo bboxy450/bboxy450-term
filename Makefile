@@ -212,6 +212,7 @@ help:
 	  'make test-clipboard-isolation   Concurrent explicitly owned private pasteboards; no general clipboard' \
 	  'make check-clipboard-isolation  Strict all-target lint for the private pasteboard fixtures' \
 	  'make test-parity                Full local CI including visual parity' \
+	  'make parity-gallery             Full UI gallery parity and lab checks, without full CI' \
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
 	  'make test-error-journal          Private fixture journals, optional probes and strict lint' \
 	  'make test-error-journal-control  Remove bootstrap isolation; require failure and restored pass' \
@@ -429,6 +430,13 @@ test check: tools test-signatures test-yarn-concurrency
 
 test-parity:
 	@$(MAKE) test CI_ARGS=--parity
+
+.PHONY: parity-gallery
+parity-gallery:
+	@set -eu; unset CARGO_TARGET_DIR BBOXYBOOK_GALLERY GALLERY; \
+	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
+	. ./scripts/cache-env.sh; \
+	PARITY_OUT="$${PARITY_OUT:-$(TARGET_DIR)/parity}" sh scripts/parity.sh
 
 .PHONY: test-task-migration
 test-task-migration:
