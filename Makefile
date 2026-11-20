@@ -214,6 +214,7 @@ help:
 	  'make check-ui-targets            Check the UI kit for the five macOS/iOS/Android/Linux targets' \
 	  'make test-parity                Full local CI including visual parity' \
 	  'make parity-gallery             Full UI gallery parity and lab checks, without full CI' \
+	  'make parity-baseline SOURCE=... Build a read-only source export for native gallery comparison' \
 	  'make test-boundaries             Explicit shell/lifecycle process regressions' \
 	  'make test-error-journal          Private fixture journals, optional probes and strict lint' \
 	  'make test-error-journal-control  Remove bootstrap isolation; require failure and restored pass' \
@@ -442,6 +443,16 @@ parity-gallery:
 	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))'; \
 	. ./scripts/cache-env.sh; \
 	PARITY_OUT="$${PARITY_OUT:-$(TARGET_DIR)/parity}" sh scripts/parity.sh
+
+# SOURCE is an exact Git archive fixture; all Cargo outputs remain outside it.
+.PHONY: parity-baseline
+parity-baseline:
+	@test -n '$(SOURCE)' || { echo 'parity-baseline: SOURCE must name an exact source export' >&2; exit 2; }
+	@set -eu; unset CARGO_TARGET_DIR BBOXYBOOK_GALLERY GALLERY; \
+	export BBOXY_CARGO_TARGET_DIR='$(abspath $(TARGET_DIR))' CARGO_BUILD_BUILD_DIR='$(abspath $(TARGET_DIR))'; \
+	. ./scripts/cache-env.sh; \
+	cargo build --locked --manifest-path '$(abspath $(SOURCE))/Cargo.toml' \
+	    --target-dir '$(abspath $(TARGET_DIR))' -p bboxy450-book
 
 .PHONY: test-task-migration
 test-task-migration:
