@@ -7,7 +7,6 @@
 import argparse
 import hashlib
 import json
-import os
 from pathlib import Path
 import re
 import subprocess
@@ -93,10 +92,7 @@ def packages_from(data):
 
 def licensing_map(root):
     policy, in_map = {}, False
-    source = Path(os.environ.get("BBOXY_LICENSE_MAP") or root / ".bboxy/specs/licensing.md")
-    raw = read_regular(source)
-    print(f"licensing map: {source}; sha256={hashlib.sha256(raw).hexdigest()}")
-    for line in raw.decode("utf-8").splitlines():
+    for line in (root / ".bboxy/specs/licensing.md").read_text(encoding="utf-8").splitlines():
         cells = [c.strip() for c in re.split(r"(?<!\\)\|", line.strip().strip("|"))]
         if cells[:3] == ["Crate", "Publishes as", "License"]:
             in_map = True

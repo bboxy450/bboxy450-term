@@ -151,7 +151,7 @@ export CARGO_PROFILE_TEST_OPT_LEVEL ?= 1
 
 help:
 	@printf '%s\n' \
-	  'make svg-loop CORPUS_ONLY=1     Pinned SVG corpus/census; renderer acceptance remains a separate gate' \
+	  'make svg-loop                   Pinned SVG corpus and native renderer verification' \
 	  'make test-python-execute         Real CPython/MCP/command, cancellation and recovery checks' \
 	  'make build / build-release       Build the app (debug / optimized)' \
 	  'make privacy-1password          Open persistent macOS access settings for the signed installed app' \
@@ -381,7 +381,7 @@ help:
 	  'make package-crate CRATE=name    Package and GPG-sign one crate, without publishing' \
 	  'make sync-release-inputs         Refresh packaged copies of canonical build inputs' \
 	  'make sync-tokens                 Regenerate canonical web design tokens and release inputs' \
-	  'make sync-licenses               Refresh local crate LICENSE/NOTICE/ATTRIBUTION copies (BBOXY_LICENSE_MAP=path)' \
+	  'make sync-licenses               Refresh local crate LICENSE/NOTICE/ATTRIBUTION copies' \
 	  'make sync-source-notices         Attach scoped source comments; preserve upstream files' \
 	  'make test-licenses               License metadata, copies and unattended negative fixtures' \
 	  'make check-license-packages      Inspect all crate package lists; no compilation' \
@@ -944,9 +944,6 @@ sync-release-inputs:
 sync-tokens:
 	@python3 -I lab/web/gen-tokens.py
 	@$(MAKE) sync-release-inputs
-
-# Optional read-only canonical KB build input; inherited by direct landing checks too.
-export BBOXY_LICENSE_MAP
 
 .PHONY: sync-licenses sync-source-notices check-licenses test-licenses test-licenses-fixtures test-license-integration check-license-packages
 sync-licenses:
